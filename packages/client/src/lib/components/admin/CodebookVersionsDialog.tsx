@@ -1,4 +1,4 @@
-import type { CodebookMeta } from "@annotinder/contracts";
+import type { DesignVersionMeta } from "@annotinder/contracts";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { History, Info, CircleDot, FilePen, Clock, Eye, RotateCcw, Trash2, AlertCircle } from "lucide-react";
@@ -6,7 +6,7 @@ import type { CodebookVersions } from "../../codebook/versions";
 import { HelpButton } from "../../help/HelpButton";
 
 export interface CodebookVersionsViewProps {
-  codebooks: CodebookMeta[];
+  codebooks: DesignVersionMeta[];
   versions: CodebookVersions;
   /** Id of the version open in the editor; null for a new, unsaved codebook. */
   openId: number | null;

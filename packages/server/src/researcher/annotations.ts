@@ -18,7 +18,7 @@ export function annotations(server: Server): Hono<Env> {
     const { after, limit, retired } = parsed.data;
     const rows = await db.query<AnnotationRow & { retiredAt: Date | null }>(
       `SELECT a.id, a.unit_id AS "unitId", u.external_id AS "externalId", a.coder_id AS "coderId",
-         c.participant_id AS "participantId", a.variable, a.value, a.codebook_id AS "codebookId",
+         c.participant_id AS "participantId", a.variable, a.value, a.design_version_id AS "designVersionId",
          a.unit_version_id AS "unitVersionId", a.device_id AS "deviceId", a.assigned, a.timing,
          s.first_served AS "servedAt", a.created, a.updated, a.retired_at AS "retiredAt"
        FROM annotation_values a

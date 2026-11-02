@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { JobWriteSchema, JobResponseSchema, JobUsersWriteSchema, JobUserSchema, ExampleSummarySchema, JobFromExampleSchema } from "../job.js";
 import { RecipeSchema } from "../recipe.js";
-import { CodebookWriteSchema, CodebookResponseSchema, CodebookMetaSchema } from "../codebook/codebook.js";
+import { DesignWriteSchema, DesignVersionSchema, DesignVersionMetaSchema } from "../codebook/codebook.js";
 import { UnitsCreateBodySchema, UnitMetaSchema, UnitPageSchema, UnitResponseSchema } from "../unit.js";
 import { UnitFieldSchema, UnitsSpecSchema } from "../unitFields.js";
 import { SetGroupResponseSchema, SetGroupWriteSchema } from "../sets.js";
@@ -90,31 +90,31 @@ export const researcherEndpoints = {
   getJobUsers: { method: "GET", path: "/job/:id/users", request: z.void(), response: z.array(JobUserSchema) },
   putJobUsers: { method: "PUT", path: "/job/:id/users", request: JobUsersWriteSchema, response: z.void() },
 
-  listCodebooks: {
+  listDesignVersions: {
     method: "GET",
-    path: "/job/:jobId/codebook",
+    path: "/job/:jobId/design",
     request: z.void(),
-    response: z.array(CodebookMetaSchema),
+    response: z.array(DesignVersionMetaSchema),
   },
-  getCodebook: {
+  getDesignVersion: {
     method: "GET",
-    path: "/job/:jobId/codebook/:id",
+    path: "/job/:jobId/design/:id",
     request: z.void(),
-    response: CodebookResponseSchema,
+    response: DesignVersionSchema,
   },
-  createCodebook: {
+  createDesignVersion: {
     method: "POST",
-    path: "/job/:jobId/codebook",
-    request: CodebookWriteSchema,
-    response: CodebookResponseSchema,
+    path: "/job/:jobId/design",
+    request: DesignWriteSchema,
+    response: DesignVersionSchema,
   },
-  updateCodebook: {
+  updateDesignVersion: {
     method: "PUT",
-    path: "/job/:jobId/codebook/:id",
-    request: CodebookWriteSchema,
-    response: CodebookResponseSchema,
+    path: "/job/:jobId/design/:id",
+    request: DesignWriteSchema,
+    response: DesignVersionSchema,
   },
-  deleteCodebook: { method: "DELETE", path: "/job/:jobId/codebook/:id", request: z.void(), response: z.void() },
+  deleteDesignVersion: { method: "DELETE", path: "/job/:jobId/design/:id", request: z.void(), response: z.void() },
 
   listUnits: { method: "GET", path: "/job/:jobId/units", request: z.void(), response: z.array(UnitMetaSchema) },
   /** Static paths: a server must match these before `/units/:id`. */

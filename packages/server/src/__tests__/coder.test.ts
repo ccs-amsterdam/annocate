@@ -134,16 +134,16 @@ async function unitByExternalId(externalId: string): Promise<{ id: number }> {
 /** Live annotation values per (unit, coder), as stored in the database. */
 /** Unit answers in the database, per unit and coder. */
 async function dbAnnotations() {
-  const rows = await db.query<{ unitId: number; coderId: number; variable: string; value: VariableValue; codebookId: number }>(
-    `SELECT unit_id AS "unitId", coder_id AS "coderId", variable, value, codebook_id AS "codebookId"
+  const rows = await db.query<{ unitId: number; coderId: number; variable: string; value: VariableValue; designVersionId: number }>(
+    `SELECT unit_id AS "unitId", coder_id AS "coderId", variable, value, design_version_id AS "designVersionId"
      FROM annotation_values WHERE unit_id IS NOT NULL AND retired_at IS NULL ORDER BY unit_id, coder_id`,
   );
-  const byUnit = new Map<string, { unitId: number; coderId: number; variables: Record<string, VariableValue>; codebookIds: number[] }>();
+  const byUnit = new Map<string, { unitId: number; coderId: number; variables: Record<string, VariableValue>; designVersionIds: number[] }>();
   for (const row of rows) {
     const key = `${row.unitId}/${row.coderId}`;
-    if (!byUnit.has(key)) byUnit.set(key, { unitId: row.unitId, coderId: row.coderId, variables: {}, codebookIds: [] });
+    if (!byUnit.has(key)) byUnit.set(key, { unitId: row.unitId, coderId: row.coderId, variables: {}, designVersionIds: [] });
     byUnit.get(key)!.variables[row.variable] = row.value;
-    byUnit.get(key)!.codebookIds.push(row.codebookId);
+    byUnit.get(key)!.designVersionIds.push(row.designVersionId);
   }
   return [...byUnit.values()];
 }
@@ -230,7 +230,7 @@ const sentimentQuestion = {
  * deployment response.
  */
 async function redeploy(loop: object, extraItems: object[] = []): Promise<DeploymentResponse> {
-  const res = await server.request("/job/1/codebook", {
+  const res = await server.request("/job/1/design", {
     method: "POST",
     headers: adminHeaders,
     body: JSON.stringify({
@@ -254,7 +254,7 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
   const deploy = await server.request("/job/1/deployment", {
     method: "PUT",
     headers: adminHeaders,
-    body: JSON.stringify({ codebookId: codebook.id, units: true }),
+    body: JSON.stringify({ designVersionId: codebook.id, units: true }),
   });
   expect(deploy.status).toBe(200);
   return (await deploy.json()) as DeploymentResponse;
@@ -262,8 +262,8 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
 
 /** Deploys the draft units and sets with the deployed codebook (docs/plans/design.md §5). */
 async function deployDrafts(): Promise<DeploymentResponse> {
-  const current = (await (await server.request("/job/1/deployment", { headers: adminHeaders })).json()) as { codebookId: number };
-  const res = await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: current.codebookId, units: true }) });
+  const current = (await (await server.request("/job/1/deployment", { headers: adminHeaders })).json()) as { designVersionId: number };
+  const res = await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: current.designVersionId, units: true }) });
   expect(res.status, await res.clone().text()).toBe(200);
   return (await res.json()) as DeploymentResponse;
 }
@@ -871,7 +871,7 @@ describe("auto questions", () => {
     // ... and per wave
     expect(await start("w3", "f", "2")).toEqual([{ value: "a" }]);
     // A stratify name that is no question before it, or no session value: an issue
-    const bad = await server.request("/job/1/codebook", {
+    const bad = await server.request("/job/1/design", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({
@@ -925,9 +925,9 @@ describe("pausing a job", () => {
     const c = coder("working");
     const [first, second] = await c.batch(2);
     const before = (await c.session()).version;
-    const deployment = (await (await server.request("/job/1/deployment", { headers: adminHeaders })).json()) as { codebookId: number };
+    const deployment = (await (await server.request("/job/1/deployment", { headers: adminHeaders })).json()) as { designVersionId: number };
     const pause = (active: boolean) =>
-      server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: deployment.codebookId, active }) });
+      server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: deployment.designVersionId, active }) });
     await pause(false);
     expect((await c.session()).version).toBe(before); // no reload for coders
     // What they have open is saved
@@ -1191,8 +1191,8 @@ describe("resuming and codebook updates", () => {
     const [stored] = await dbAnnotations();
     expect(stored.variables.sentiment.values).toEqual([{ value: "positive" }]);
     expect(stored.variables).toHaveProperty("actors_and_issues"); // kept, though v2 no longer asks it
-    const sentimentRows = await db.query(`SELECT codebook_id AS "codebookId" FROM annotation_values WHERE variable = 'sentiment'`);
-    expect(sentimentRows).toEqual([{ codebookId: 2 }]);
+    const sentimentRows = await db.query(`SELECT design_version_id AS "designVersionId" FROM annotation_values WHERE variable = 'sentiment'`);
+    expect(sentimentRows).toEqual([{ designVersionId: 2 }]);
   });
 });
 
@@ -1376,8 +1376,8 @@ describe("state in the database, not in memory", () => {
     expect((await phone.session()).coderId).toBe((await c.session()).coderId);
     // Pausing the job on one process is seen at once by the other
     server = other;
-    const deployment = (await (await server.request("/job/1/deployment", { headers: adminHeaders })).json()) as { codebookId: number };
-    await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: deployment.codebookId, active: false }) });
+    const deployment = (await (await server.request("/job/1/deployment", { headers: adminHeaders })).json()) as { designVersionId: number };
+    await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: deployment.designVersionId, active: false }) });
     server = first;
     expect((await c.call("/loop/1/next")).status).toBe(409);
   });
@@ -1542,8 +1542,8 @@ describe("review regressions", () => {
     const { data } = await draftUnit((await unitByExternalId("unit-1")).id);
     const upload = await server.request("/job/1/units", { method: "POST", headers: adminHeaders, body: JSON.stringify({ units: [{ externalId: "n1", data: { ...data, extra: "x" } }] }) });
     expect(upload.status).toBe(201);
-    const list = (await (await server.request("/job/1/codebook", { headers: adminHeaders })).json()) as { id: number }[];
-    const draft = (await (await server.request(`/job/1/codebook/${list.at(-1)!.id}`, { headers: adminHeaders })).json()) as { session: unknown };
+    const list = (await (await server.request("/job/1/design", { headers: adminHeaders })).json()) as { id: number }[];
+    const draft = (await (await server.request(`/job/1/design/${list.at(-1)!.id}`, { headers: adminHeaders })).json()) as { session: unknown };
     expect(draft.session).toMatchObject({ params: [{ name: "wave" }] });
     // An empty set is a change to deploy, and reaches the live sets
     await createSet("empty", []);
@@ -1559,13 +1559,13 @@ describe("review regressions", () => {
 describe("unit fields in the design", () => {
   it("keeps the session next to the items, not among them", async () => {
     const session = { params: [{ name: "wave", kind: "url", values: { list: [{ value: "1" }] } }] };
-    const post = (body: object) => server.request("/job/1/codebook", { method: "POST", headers: adminHeaders, body: JSON.stringify(body) });
+    const post = (body: object) => server.request("/job/1/design", { method: "POST", headers: adminHeaders, body: JSON.stringify(body) });
     expect((await post({ items: [{ type: "session", ...session }] })).status).toBe(400);
     const created = (await (await post({ items: [], session })).json()) as { id: number; items: unknown[]; session: unknown };
     expect(created).toMatchObject({ items: [], session });
     // A write without `session` keeps it; null clears it
     const put = async (body: object) =>
-      (await (await server.request(`/job/1/codebook/${created.id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify(body) })).json()) as { session: unknown };
+      (await (await server.request(`/job/1/design/${created.id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify(body) })).json()) as { session: unknown };
     expect((await put({ items: [] })).session).toEqual(session);
     expect((await put({ items: [], session: null })).session).toBeNull();
   });
@@ -1579,23 +1579,23 @@ describe("unit fields in the design", () => {
     });
     expect(upload.status, await upload.clone().text()).toBe(201);
     // The deployed version is frozen: the new field goes into a new draft
-    const list = (await (await server.request("/job/1/codebook", { headers: adminHeaders })).json()) as { id: number; note: string | null }[];
+    const list = (await (await server.request("/job/1/design", { headers: adminHeaders })).json()) as { id: number; note: string | null }[];
     const draft = list.at(-1)!;
     expect(draft.note).toBe("Unit fields from an upload");
-    const get = async (id: number) => (await (await server.request(`/job/1/codebook/${id}`, { headers: adminHeaders })).json()) as { items: unknown[]; units: { fields: { name: string; type: string }[] } };
+    const get = async (id: number) => (await (await server.request(`/job/1/design/${id}`, { headers: adminHeaders })).json()) as { items: unknown[]; units: { fields: { name: string; type: string }[] } };
     expect((await get(draft.id)).units.fields).toContainEqual({ name: "source", type: "text" });
     // A write without `units` keeps them
     const items = (await get(draft.id)).items;
-    await server.request(`/job/1/codebook/${draft.id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ items }) });
+    await server.request(`/job/1/design/${draft.id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ items }) });
     expect((await get(draft.id)).units.fields.map((f) => f.name)).toContain("source");
     // A codebook using a field the design doesn't declare can't be deployed
-    const created = await server.request("/job/1/codebook", {
+    const created = await server.request("/job/1/design", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({ items: [{ type: "unit_loop", units: [{ mode: "all" }], layout: { template: "$unit.nowhere" }, children: [sentimentQuestion] }] }),
     });
     const { id } = (await created.json()) as { id: number };
-    const deploy = await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: id }) });
+    const deploy = await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: id }) });
     expect(deploy.status).toBe(400);
     expect(await deploy.json()).toMatchObject({ code: "undeclared_fields" });
 
@@ -1603,7 +1603,7 @@ describe("unit fields in the design", () => {
     const putFields = (fields: object[]) => server.request("/job/1/units/fields", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ fields }) });
     const fields = (await get(id)).units.fields;
     expect((await putFields([...fields, { name: "nowhere", type: "number" }])).status).toBe(200);
-    expect((await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: id }) })).status).toBe(200);
+    expect((await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: id }) })).status).toBe(200);
     const unit = await unitByExternalId("with-extra");
     expect((await draftUnit(unit.id)).data.source).toBe("wire");
     const kept = [...fields.filter((f) => f.name !== "source"), { name: "nowhere", type: "number" }];
@@ -1617,7 +1617,7 @@ describe("unit fields in the design", () => {
 
 describe("researcher preview", () => {
   const draft = async (note: string) => {
-    const res = await server.request("/job/1/codebook", {
+    const res = await server.request("/job/1/design", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({

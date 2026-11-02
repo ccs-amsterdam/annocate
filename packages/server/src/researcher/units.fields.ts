@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { UnitsSpecSchema, fieldUsage, typeOfValue, unitFieldNameError, type UnitDataValue } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
-import { codebookItems } from "../shared/codebooks.js";
+import { codebookItems } from "../shared/designVersions.js";
 import { dropDraftFields, getUnitFields, latestCodebook, setUnitFields } from "../shared/units.js";
 
 // The design's unit fields (docs/plans/design.md §3).

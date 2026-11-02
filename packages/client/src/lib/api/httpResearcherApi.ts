@@ -9,9 +9,9 @@ import {
   type DeleteCoders,
   type ResetAnnotations,
   type DeleteCodersResponse,
-  type CodebookMeta,
-  type CodebookResponse,
-  type CodebookWrite,
+  type DesignVersionMeta,
+  type DesignVersion,
+  type DesignWrite,
   type UnitMeta,
   type UnitField,
   type UnitPage,
@@ -59,7 +59,7 @@ export class ResearcherApiError extends Error {
     return typeof error === "string" ? error : this.message;
   }
 
-  /** The machine-readable `code` of the error body, e.g. `codebook_conflict`. */
+  /** The machine-readable `code` of the error body, e.g. `design_conflict`. */
   get code(): string | undefined {
     const code = (this.body as { code?: unknown } | undefined)?.code;
     return typeof code === "string" ? code : undefined;
@@ -115,11 +115,11 @@ export interface ResearcherApi {
   getJobUsers(id: number): Promise<JobUser[]>;
   putJobUsers(id: number, users: JobUser[]): Promise<void>;
 
-  listCodebooks(): Promise<CodebookMeta[]>;
-  getCodebook(id: number): Promise<CodebookResponse>;
-  createCodebook(body: CodebookWrite): Promise<CodebookResponse>;
-  updateCodebook(id: number, body: CodebookWrite): Promise<CodebookResponse>;
-  deleteCodebook(id: number): Promise<void>;
+  listDesignVersions(): Promise<DesignVersionMeta[]>;
+  getDesignVersion(id: number): Promise<DesignVersion>;
+  createDesignVersion(body: DesignWrite): Promise<DesignVersion>;
+  updateDesignVersion(id: number, body: DesignWrite): Promise<DesignVersion>;
+  deleteDesignVersion(id: number): Promise<void>;
 
   listUnits(): Promise<UnitMeta[]>;
   /** The job's unit fields (set by the first upload); empty without units. */
@@ -382,30 +382,30 @@ export class HttpResearcherApi implements ResearcherApi {
     });
   }
 
-  async listCodebooks(): Promise<CodebookMeta[]> {
+  async listDesignVersions(): Promise<DesignVersionMeta[]> {
     const jobId = this.requireJobId();
-    return this.request(researcherEndpoints.listCodebooks.path.replace(":jobId", String(jobId)));
+    return this.request(researcherEndpoints.listDesignVersions.path.replace(":jobId", String(jobId)));
   }
 
-  async getCodebook(id: number): Promise<CodebookResponse> {
+  async getDesignVersion(id: number): Promise<DesignVersion> {
     const jobId = this.requireJobId();
     return this.request(
-      researcherEndpoints.getCodebook.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
+      researcherEndpoints.getDesignVersion.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
     );
   }
 
-  async createCodebook(body: CodebookWrite): Promise<CodebookResponse> {
+  async createDesignVersion(body: DesignWrite): Promise<DesignVersion> {
     const jobId = this.requireJobId();
-    return this.request(researcherEndpoints.createCodebook.path.replace(":jobId", String(jobId)), {
+    return this.request(researcherEndpoints.createDesignVersion.path.replace(":jobId", String(jobId)), {
       method: "POST",
       body: JSON.stringify(body),
     });
   }
 
-  async updateCodebook(id: number, body: CodebookWrite): Promise<CodebookResponse> {
+  async updateDesignVersion(id: number, body: DesignWrite): Promise<DesignVersion> {
     const jobId = this.requireJobId();
     return this.request(
-      researcherEndpoints.updateCodebook.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
+      researcherEndpoints.updateDesignVersion.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
       {
         method: "PUT",
         body: JSON.stringify(body),
@@ -413,10 +413,10 @@ export class HttpResearcherApi implements ResearcherApi {
     );
   }
 
-  async deleteCodebook(id: number): Promise<void> {
+  async deleteDesignVersion(id: number): Promise<void> {
     const jobId = this.requireJobId();
     await this.request(
-      researcherEndpoints.deleteCodebook.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
+      researcherEndpoints.deleteDesignVersion.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
       { method: "DELETE" },
     );
   }

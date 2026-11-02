@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 import type {
-  CodebookMeta,
+  DesignVersionMeta,
   DeploymentVersion,
   PendingChanges,
   CoderDeletion,
-  CodebookResponse,
-  CodebookWrite,
+  DesignVersion,
+  DesignWrite,
   LinkWrite,
   LinkResponse,
   CoderProgress,
@@ -44,8 +44,8 @@ export const keys = {
   examples: ["admin", "examples"] as const,
   job: (id?: number) => ["admin", "job", id ?? "current"] as const,
   jobUsers: (id: number) => ["admin", "job", id, "users"] as const,
-  codebooks: (jobId?: number) => ["admin", "job", jobId ?? "current", "codebooks"] as const,
-  codebook: (jobId: number | undefined, id: number) => ["admin", "job", jobId ?? "current", "codebook", id] as const,
+  designVersions: (jobId?: number) => ["admin", "job", jobId ?? "current", "designVersions"] as const,
+  designVersion: (jobId: number | undefined, id: number) => ["admin", "job", jobId ?? "current", "designVersion", id] as const,
   // Fields and pages share the units prefix: invalidating units refreshes them too
   units: (jobId?: number) => ["admin", "job", jobId ?? "current", "units"] as const,
   unitFields: (jobId?: number) => ["admin", "job", jobId ?? "current", "units", "fields"] as const,
@@ -134,55 +134,55 @@ export function useDeleteJobMutation(client: ResearcherApi): UseMutationResult<v
   });
 }
 
-export function useCodebooksQuery(client: ResearcherApi): UseQueryResult<CodebookMeta[]> {
-  return useQuery({ queryKey: keys.codebooks(client.jobId), queryFn: () => client.listCodebooks() });
+export function useDesignVersionsQuery(client: ResearcherApi): UseQueryResult<DesignVersionMeta[]> {
+  return useQuery({ queryKey: keys.designVersions(client.jobId), queryFn: () => client.listDesignVersions() });
 }
 
-export function useCodebookQuery(client: ResearcherApi, id: number | null): UseQueryResult<CodebookResponse> {
+export function useDesignVersionQuery(client: ResearcherApi, id: number | null): UseQueryResult<DesignVersion> {
   return useQuery({
-    queryKey: keys.codebook(client.jobId, id ?? -1),
-    queryFn: () => client.getCodebook(id as number),
+    queryKey: keys.designVersion(client.jobId, id ?? -1),
+    queryFn: () => client.getDesignVersion(id as number),
     enabled: id !== null,
   });
 }
 
-export function useCreateCodebookMutation(
+export function useCreateDesignVersionMutation(
   client: ResearcherApi,
-): UseMutationResult<CodebookResponse, Error, CodebookWrite> {
+): UseMutationResult<DesignVersion, Error, DesignWrite> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: CodebookWrite) => client.createCodebook(body),
+    mutationFn: (body: DesignWrite) => client.createDesignVersion(body),
     onSuccess: (codebook) => {
-      queryClient.setQueryData(keys.codebook(client.jobId, codebook.id), codebook);
+      queryClient.setQueryData(keys.designVersion(client.jobId, codebook.id), codebook);
       return Promise.all([
-        queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) }),
+        queryClient.invalidateQueries({ queryKey: keys.designVersions(client.jobId) }),
         queryClient.invalidateQueries({ queryKey: keys.pending(client.jobId) }),
       ]);
     },
   });
 }
 
-export function useUpdateCodebookMutation(
+export function useUpdateDesignVersionMutation(
   client: ResearcherApi,
-): UseMutationResult<CodebookResponse, Error, { id: number; body: CodebookWrite }> {
+): UseMutationResult<DesignVersion, Error, { id: number; body: DesignWrite }> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, body }) => client.updateCodebook(id, body),
+    mutationFn: ({ id, body }) => client.updateDesignVersion(id, body),
     onSuccess: (codebook) => {
-      queryClient.setQueryData(keys.codebook(client.jobId, codebook.id), codebook);
-      void queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) });
+      queryClient.setQueryData(keys.designVersion(client.jobId, codebook.id), codebook);
+      void queryClient.invalidateQueries({ queryKey: keys.designVersions(client.jobId) });
       void queryClient.invalidateQueries({ queryKey: keys.pending(client.jobId) });
     },
   });
 }
 
-export function useDeleteCodebookMutation(client: ResearcherApi): UseMutationResult<void, Error, number> {
+export function useDeleteDesignVersionMutation(client: ResearcherApi): UseMutationResult<void, Error, number> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => client.deleteCodebook(id),
+    mutationFn: (id: number) => client.deleteDesignVersion(id),
     onSuccess: () =>
       Promise.all([
-        queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) }),
+        queryClient.invalidateQueries({ queryKey: keys.designVersions(client.jobId) }),
         queryClient.invalidateQueries({ queryKey: keys.pending(client.jobId) }),
       ]),
   });
@@ -204,7 +204,7 @@ export function useUnitFieldsMutation(client: ResearcherApi): UseMutationResult<
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: keys.units(client.jobId) }),
-        queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) }),
+        queryClient.invalidateQueries({ queryKey: keys.designVersions(client.jobId) }),
         queryClient.invalidateQueries({ queryKey: keys.pending(client.jobId) }),
       ]),
   });
@@ -229,7 +229,7 @@ export function useCreateUnitsMutation(client: ResearcherApi) {
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: keys.units(client.jobId) }),
-        queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) }),
+        queryClient.invalidateQueries({ queryKey: keys.designVersions(client.jobId) }),
         queryClient.invalidateQueries({ queryKey: keys.pending(client.jobId) }),
       ]),
   });
@@ -373,7 +373,7 @@ export function useJobUsersMutation(client: ResearcherApi): UseMutationResult<vo
 }
 
 /** Pauses (no new units for coders) or resumes the live job, keeping its codebook. */
-export function useDeploymentActiveMutation(client: ResearcherApi): UseMutationResult<DeploymentResponse, Error, { codebookId: number; active: boolean }> {
+export function useDeploymentActiveMutation(client: ResearcherApi): UseMutationResult<DeploymentResponse, Error, { designVersionId: number; active: boolean }> {
   const queryClient = useQueryClient();
   return useMutation({
     // Keeps the deployed units, and their links (confirmed at deploy): pausing deploys nothing
@@ -401,7 +401,7 @@ export function useUnitQuery(client: ResearcherApi, id: number | null): UseQuery
 
 /** What to deploy: a codebook (the deployed one: keep it), and the draft units and sets (default) or not. */
 export interface DeployVars {
-  codebookId: number;
+  designVersionId: number;
   units?: boolean;
   confirmLinks?: boolean;
 }
@@ -415,9 +415,9 @@ export function usePublishMutation(client: ResearcherApi): UseMutationResult<Dep
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (vars: number | DeployVars) => {
-      const { codebookId, confirmLinks, units = false } = typeof vars === "number" ? { codebookId: vars } : vars;
+      const { designVersionId, confirmLinks, units = false } = typeof vars === "number" ? { designVersionId: vars } : vars;
       const current = queryClient.getQueryData<DeploymentResponse | null>(keys.deployment(client.jobId));
-      return client.putDeployment({ codebookId, units, active: current?.active ?? true, ...(confirmLinks ? { confirmLinks } : {}) });
+      return client.putDeployment({ designVersionId, units, active: current?.active ?? true, ...(confirmLinks ? { confirmLinks } : {}) });
     },
     onSuccess: (deployment) => {
       queryClient.setQueryData(keys.deployment(client.jobId), deployment);
@@ -426,8 +426,8 @@ export function usePublishMutation(client: ResearcherApi): UseMutationResult<Dep
       void queryClient.invalidateQueries({ queryKey: keys.overview(client.jobId) });
       void queryClient.invalidateQueries({ queryKey: keys.links(client.jobId) });
       void queryClient.invalidateQueries({ queryKey: keys.sets(client.jobId) });
-      void queryClient.invalidateQueries({ queryKey: ["admin", "job", client.jobId ?? "current", "codebook"] });
-      return queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) });
+      void queryClient.invalidateQueries({ queryKey: ["admin", "job", client.jobId ?? "current", "designVersion"] });
+      return queryClient.invalidateQueries({ queryKey: keys.designVersions(client.jobId) });
     },
   });
 }

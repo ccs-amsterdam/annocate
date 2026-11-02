@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { codebookMarkdown } from "../../codebook/codebookMarkdown";
-import type { CodebookResponse } from "@annotinder/contracts";
+import type { DesignVersion } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useUnitFieldsQuery } from "../../admin/queries";
 import { unknownUnitFields } from "../../codebook/unitFieldRefs";
@@ -27,18 +27,18 @@ import { ItemPanel, PreviewPanel } from "./codebookEditor/ItemPanel";
 export type CodebookEditorMode = "draft" | "live" | "history";
 
 /** The editor's save function, for a parent to save from e.g. an "unsaved changes" dialog. */
-export type SaveFn = () => Promise<CodebookResponse>;
+export type SaveFn = () => Promise<DesignVersion>;
 
 interface CodebookEditorProps {
   client: ResearcherApi;
   /** The version to edit; null/undefined for a new codebook. Mount with a `key` per version. */
-  codebook?: CodebookResponse | null;
+  codebook?: DesignVersion | null;
   mode?: CodebookEditorMode;
   /** Shown below the toolbar: what version this is and what to do next. */
   banner?: ReactNode;
-  onSaved: (codebook: CodebookResponse) => void;
+  onSaved: (codebook: DesignVersion) => void;
   /** Shows a Deploy button; called with the saved version (unsaved changes are saved first). */
-  onPublish?: (codebook: CodebookResponse) => void;
+  onPublish?: (codebook: DesignVersion) => void;
   onDirtyChange?: (isDirty: boolean) => void;
   onOpenVersions?: () => void;
   /** Receives the editor's save function (and null on unmount). */
@@ -54,7 +54,7 @@ interface CodebookEditorProps {
 /**
  * Whole-document codebook editor (docs/client.md §7): holds one in-memory
  * copy of the items (`useCodebookDraft`), edited purely client-side, and
- * saved in one `PUT`/`POST /codebook` call.
+ * saved in one `PUT`/`POST /design` call.
  *
  * Parts (see ./codebookEditor):
  * - useCodebookDraft  items, selection, validation, unsaved changes, saving

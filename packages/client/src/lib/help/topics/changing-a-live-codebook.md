@@ -71,7 +71,7 @@ The download keeps every answer that counts (see
 [Downloading results](results.md)):
 
 - Each row of `annotations.csv` says which design version the answers
-  were given under (`codebook_id`), and which version of the unit the coder
+  were given under (`design_version_id`), and which version of the unit the coder
   saw.
 - Answers to a question you removed or renamed still have their column,
   after the columns of the current questions.

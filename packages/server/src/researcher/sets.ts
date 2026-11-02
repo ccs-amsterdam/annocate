@@ -2,15 +2,15 @@ import { Hono } from "hono";
 import { CodebookItemsSchema, SetGroupWriteSchema, branchGroups, setParameters, unitLoops, type CodebookItem } from "@annotinder/contracts";
 import type { Sql } from "../db.js";
 import type { Server, Env } from "../context.js";
-import { codebookItems } from "../shared/codebooks.js";
+import { codebookItems } from "../shared/designVersions.js";
 import { requireJobUser } from "./auth.js";
 import { deleteSetGroup, listSetGroups, putSetGroup } from "../shared/sets.js";
 
 /** Whether the deployed or latest codebook uses a group (a loop's set, or a link or URL parameter's values). */
 async function groupInUse(sql: Sql, jobId: number, group: string): Promise<boolean> {
   const rows = await sql.query<{ items: unknown; session: unknown }>(
-    `SELECT items, session FROM codebooks WHERE job_id = $1 AND (id = (SELECT codebook_id FROM deployments WHERE job_id = $1)
-       OR id = (SELECT max(id) FROM codebooks WHERE job_id = $1))`,
+    `SELECT items, session FROM design_versions WHERE job_id = $1 AND (id = (SELECT design_version_id FROM deployments WHERE job_id = $1)
+       OR id = (SELECT max(id) FROM design_versions WHERE job_id = $1))`,
     [jobId],
   );
   return rows.some((row) => {

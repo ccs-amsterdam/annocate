@@ -15,7 +15,7 @@ export async function finishedPerLoop(sql: Sql, jobId: number): Promise<Map<stri
   const result = new Map<string, Map<number, number>>();
   const deployment = await getDeployment(sql, jobId);
   if (!deployment) return result;
-  for (const [loop, questions] of await loopVariables(sql, jobId, deployment.codebookId)) {
+  for (const [loop, questions] of await loopVariables(sql, jobId, deployment.designVersionId)) {
     const variables = [...new Set(questions)];
     if (variables.length === 0) continue;
     const rows = await sql.query<{ coderId: number; n: number }>(

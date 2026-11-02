@@ -358,10 +358,10 @@ export class DbStore implements Store {
       );
       for (const [variable, value] of Object.entries(write.variables)) {
         await tx.query(
-          `INSERT INTO annotation_values (job_id, unit_id, coder_id, variable, value, codebook_id, unit_version_id, device_id, timing, created, updated)
+          `INSERT INTO annotation_values (job_id, unit_id, coder_id, variable, value, design_version_id, unit_version_id, device_id, timing, created, updated)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
            ON CONFLICT (unit_id, coder_id, variable) WHERE retired_at IS NULL
-           DO UPDATE SET value = excluded.value, codebook_id = excluded.codebook_id, unit_version_id = excluded.unit_version_id,
+           DO UPDATE SET value = excluded.value, design_version_id = excluded.design_version_id, unit_version_id = excluded.unit_version_id,
              device_id = excluded.device_id, timing = excluded.timing, updated = excluded.updated`,
           [
             jobId,
@@ -369,7 +369,7 @@ export class DbStore implements Store {
             write.coderId,
             variable,
             JSON.stringify(value),
-            write.codebookId ?? null,
+            write.designVersionId ?? null,
             version?.id ?? null,
             write.deviceId ?? null,
             write.timings?.[variable] ? JSON.stringify(write.timings[variable]) : null,

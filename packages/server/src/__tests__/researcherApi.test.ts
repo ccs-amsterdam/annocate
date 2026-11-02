@@ -64,13 +64,13 @@ async function setUpJob(key: string): Promise<{ jobId: number; unitIds: number[]
     await call(key, "createUnits", { jobId: job.id }, { units: [{ externalId: "a", data: { text: "one" } }, { externalId: "b", data: { text: "two" } }] })
   ).data;
   const codebook = (
-    await call(key, "createCodebook", { jobId: job.id }, {
+    await call(key, "createDesignVersion", { jobId: job.id }, {
       items: [
         { type: "unit_loop", label: "loop", units: [{ mode: "all" }], layout: { template: "" }, children: [question("q")] },
       ],
     })
   ).data;
-  expect((await call(key, "putDeployment", { jobId: job.id }, { codebookId: codebook.id })).status).toBe(200);
+  expect((await call(key, "putDeployment", { jobId: job.id }, { designVersionId: codebook.id })).status).toBe(200);
   // Deploying made the job's link
   const [invite] = (await call(key, "listLinks", { jobId: job.id })).data;
   return { jobId: job.id, unitIds: units.map((u) => u.id), invite: invite.secret };
@@ -150,7 +150,7 @@ describe("jobs and roles", () => {
     expect((await call(alice, "putJobUsers", { id: jobId, jobId }, { users })).status).toBe(204);
     expect((await call(bob, "listJobs")).data.map((j) => j.id)).toEqual([jobId]);
     expect((await call(bob, "listAnnotations", { jobId })).status).toBe(200);
-    expect((await call(bob, "putDeployment", { jobId }, { codebookId: 1 })).status).toBe(403);
+    expect((await call(bob, "putDeployment", { jobId }, { designVersionId: 1 })).status).toBe(403);
   });
 });
 

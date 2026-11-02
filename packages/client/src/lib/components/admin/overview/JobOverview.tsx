@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { ChevronRight, CircleDot, FilePen, PauseCircle, CircleOff } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import {
-  useCodebooksQuery,
+  useDesignVersionsQuery,
   useDeploymentQuery,
   useDeploymentStatusQuery,
   useDeploymentVersionsQuery,
@@ -36,13 +36,13 @@ interface JobOverviewProps {
 export function JobOverview({ client, onNavigate, onOpenCodebook }: JobOverviewProps) {
   const overviewQuery = useOverviewQuery(client);
   const deploymentQuery = useDeploymentQuery(client);
-  const codebooksQuery = useCodebooksQuery(client);
+  const codebooksQuery = useDesignVersionsQuery(client);
   const linksQuery = useLinksQuery(client);
   const deployment = deploymentQuery.data ?? null;
   const statusQuery = useDeploymentStatusQuery(client, deployment !== null);
 
   const codebooks = codebooksQuery.data ?? [];
-  const versions = describeVersions(codebooks, deployment?.codebookId ?? null);
+  const versions = describeVersions(codebooks, deployment?.designVersionId ?? null);
   const overview = overviewQuery.data;
   const openLinks = (linksQuery.data ?? []).filter(
     (i) => !i.revokedAt && !i.retiredAt && (i.maxUses === undefined || i.uses < i.maxUses),
@@ -271,7 +271,7 @@ function DeployHistory({ client, numberOf }: { client: ResearcherApi; numberOf: 
       <ol className="flex flex-col gap-1 text-sm">
         {versions.slice(0, 8).map((v) => {
           const parts = [
-            v.changes.codebook && `design v${numberOf(v.codebookId) ?? "?"}`,
+            v.changes.codebook && `design v${numberOf(v.designVersionId) ?? "?"}`,
             v.changes.units && `units: ${describeUnitChanges(v.changes.units)}`,
           ].filter(Boolean);
           return (

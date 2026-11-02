@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import type { CodebookResponse, DeploymentResponse } from "@annotinder/contracts";
+import type { DesignVersion, DeploymentResponse } from "@annotinder/contracts";
 import { answers, api, coders, fromExample, question } from "./helpers";
 
 // A coder's session over time: quitting, another device, pausing, and a
@@ -62,7 +62,7 @@ test("pausing: a working coder saves what they have and sees the study is paused
   await question(page, "What is this headline about?");
 
   const deployment = await api<DeploymentResponse>(request, "GET", `/job/${job.id}/deployment`);
-  const pause = (active: boolean) => api(request, "PUT", `/job/${job.id}/deployment`, { codebookId: deployment.codebookId, active });
+  const pause = (active: boolean) => api(request, "PUT", `/job/${job.id}/deployment`, { designVersionId: deployment.designVersionId, active });
   await pause(false);
 
   // Code the units already loaded (a batch of 5), then the paused message
@@ -95,10 +95,10 @@ test("a new codebook version while coding: the coder continues on the new versio
 
   // The researcher rewords a question and publishes
   const deployment = await api<DeploymentResponse>(request, "GET", `/job/${job.id}/deployment`);
-  const codebook = await api<CodebookResponse>(request, "GET", `/job/${job.id}/codebook/${deployment.codebookId}`);
+  const codebook = await api<DesignVersion>(request, "GET", `/job/${job.id}/design/${deployment.designVersionId}`);
   const items = JSON.parse(JSON.stringify(codebook.items).replace("How relevant is this news to you personally?", "How relevant is this news for you?"));
-  const next = await api<CodebookResponse>(request, "POST", `/job/${job.id}/codebook`, { note: "v2", items });
-  await api(request, "PUT", `/job/${job.id}/deployment`, { codebookId: next.id, active: true });
+  const next = await api<DesignVersion>(request, "POST", `/job/${job.id}/design`, { note: "v2", items });
+  await api(request, "PUT", `/job/${job.id}/deployment`, { designVersionId: next.id, active: true });
 
   await page.getByRole("button", { name: /Quite/ }).click();
   // Its save was refused (old version): the session loads the new version,
@@ -107,5 +107,5 @@ test("a new codebook version while coding: the coder continues on the new versio
   await expect(page.getByRole("button", { name: /Quite/ })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: /Quite/ }).click();
   await question(page, "What is this headline about?");
-  await expect.poll(async () => (await answers(request, job.id)).filter((a) => a.variable === "relevance" && a.codebookId === next.id).length).toBe(1);
+  await expect.poll(async () => (await answers(request, job.id)).filter((a) => a.variable === "relevance" && a.designVersionId === next.id).length).toBe(1);
 });

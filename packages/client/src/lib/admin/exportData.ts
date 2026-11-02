@@ -114,9 +114,9 @@ export class Labels {
     return [...this.byCodebook.values()].some((q) => q.has(question));
   }
 
-  /** How to write a question's values as labels, for an answer given under `codebookId`. */
-  writer(question: string, codebookId: number | null): Write {
-    const order = [codebookId, this.liveId, ...this.byCodebook.keys()];
+  /** How to write a question's values as labels, for an answer given under `designVersionId`. */
+  writer(question: string, designVersionId: number | null): Write {
+    const order = [designVersionId, this.liveId, ...this.byCodebook.keys()];
     return (value) => {
       for (const id of order) {
         const label = id === null ? undefined : this.byCodebook.get(id)?.get(question)?.get(String(value));
@@ -166,8 +166,8 @@ function answerColumns(values: Iterable<[string, VariableValue]>, order: string[
 
 const header = (c: Column) => `${c.item ? `${c.variable}.${c.item}` : c.variable}${c.label ? "_label" : c.json ? "_json" : ""}`;
 const time = (d: Date | string | null | undefined) => (d ? new Date(d).toISOString() : "");
-const cellOf = (value: VariableValue | undefined, c: Column, labels: Labels | undefined, codebookId: number | null, spans?: ReadonlyMap<string, SpanAnswer>) =>
-  c.json ? answerJson(value) : answerText(value, c.item, c.label && labels ? labels.writer(c.variable, codebookId) : asIs, spans);
+const cellOf = (value: VariableValue | undefined, c: Column, labels: Labels | undefined, designVersionId: number | null, spans?: ReadonlyMap<string, SpanAnswer>) =>
+  c.json ? answerJson(value) : answerText(value, c.item, c.label && labels ? labels.writer(c.variable, designVersionId) : asIs, spans);
 
 /** Question names in codebook order (the live codebook's, if given). */
 export function questionOrder(items: TopLevelItem[] | undefined): string[] {
@@ -201,7 +201,7 @@ export function annotationsTable(
     let row = byUnitCoder.get(key);
     if (!row) byUnitCoder.set(key, (row = { first: a, last: new Date(a.updated), deviceId: a.deviceId ?? null, values: new Map(), codebooks: new Map() }));
     row.values.set(a.variable, a.value);
-    row.codebooks.set(a.variable, a.codebookId);
+    row.codebooks.set(a.variable, a.designVersionId);
     if (new Date(a.updated) > row.last) {
       row.last = new Date(a.updated);
       row.deviceId = a.deviceId ?? null;
@@ -222,7 +222,7 @@ export function annotationsTable(
       "link",
       "first_answer",
       "last_change",
-      "codebook_id",
+      "design_version_id",
       "device_id",
       "unit_ms_client",
       "unit_ms_server",
@@ -240,11 +240,11 @@ export function annotationsTable(
       coderById.get(first.coderId)?.linkLabel ?? "",
       time(first.created),
       time(last),
-      first.codebookId === null ? "" : String(first.codebookId),
+      first.designVersionId === null ? "" : String(first.designVersionId),
       deviceId === null ? "" : String(deviceId),
       times?.client == null ? "" : String(times.client),
       times?.server == null ? "" : String(times.server),
-      ...columns.map((c) => cellOf(values.get(c.variable), c, labels, codebooks.get(c.variable) ?? first.codebookId, spans)),
+      ...columns.map((c) => cellOf(values.get(c.variable), c, labels, codebooks.get(c.variable) ?? first.designVersionId, spans)),
       ];
     }),
   };
@@ -258,7 +258,7 @@ export function annotationsTable(
 export function resetAnswersTable(annotations: AnnotationRow[], labels?: Labels): Table {
   const reset = annotations.filter((a) => a.retiredAt);
   return {
-    headers: ["unit_id", "unit_version_id", "coder_id", "participant_id", "variable", "value", ...(labels ? ["value_label"] : []), "value_json", "codebook_id", "answered", "reset_at"],
+    headers: ["unit_id", "unit_version_id", "coder_id", "participant_id", "variable", "value", ...(labels ? ["value_label"] : []), "value_json", "design_version_id", "answered", "reset_at"],
     rows: reset.map((a) => [
       a.externalId ?? "",
       a.unitVersionId === null ? "" : String(a.unitVersionId),
@@ -266,9 +266,9 @@ export function resetAnswersTable(annotations: AnnotationRow[], labels?: Labels)
       a.participantId ?? "",
       a.variable,
       answerText(a.value),
-      ...(labels ? [answerText(a.value, undefined, labels.writer(a.variable, a.codebookId))] : []),
+      ...(labels ? [answerText(a.value, undefined, labels.writer(a.variable, a.designVersionId))] : []),
       answerJson(a.value),
-      a.codebookId === null ? "" : String(a.codebookId),
+      a.designVersionId === null ? "" : String(a.designVersionId),
       time(a.updated),
       time(a.retiredAt),
     ]),
@@ -373,7 +373,7 @@ export function variablesTable(codebooks: ReadonlyMap<number, TopLevelItem[]>): 
       }
     }
   }
-  return { headers: ["codebook_id", "loop", "variable", "type", "question", "value", "label"], rows };
+  return { headers: ["design_version_id", "loop", "variable", "type", "question", "value", "label"], rows };
 }
 
 /** Leeway when comparing the browser's times with the server's (clocks, network). */
@@ -486,7 +486,7 @@ export function readme(job: string, exported: Date, labels: boolean, spreadsheet
 
 annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
                  version the coder saw (unit_version_id), the coder, when they
-                 first and last answered, the codebook version (codebook_id),
+                 first and last answered, the codebook version (design_version_id),
                  the time the coder's browser measured on the unit's
                  questions (unit_ms_client; see timings.csv) and the time
                  from the server handing out the unit to its last answer

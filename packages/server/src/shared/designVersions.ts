@@ -2,15 +2,15 @@ import {
   UnitsSpecSchema,
   codebookErrors,
   designItems,
-  type CodebookMeta,
-  type CodebookResponse,
+  type DesignVersionMeta,
+  type DesignVersion,
   type SessionSpec,
   type TopLevelItem,
   type UnitsSpec,
 } from "@annotinder/contracts";
 
-/** A row of `codebooks`. */
-export interface CodebookRow {
+/** A row of `design_versions`: a version of the design. */
+export interface DesignVersionRow {
   id: number;
   job_id: number;
   note: string | null;
@@ -25,22 +25,22 @@ export interface CodebookRow {
 }
 
 /** A stored codebook's items, without the session. */
-function storedItems(row: Pick<CodebookRow, "items">): TopLevelItem[] {
+function storedItems(row: Pick<DesignVersionRow, "items">): TopLevelItem[] {
   return (Array.isArray(row.items) ? row.items : []) as TopLevelItem[];
 }
 
 /** A stored codebook's session (docs/plans/design.md §2). */
-export function codebookSession(row: Pick<CodebookRow, "session">): SessionSpec | null {
+export function codebookSession(row: Pick<DesignVersionRow, "session">): SessionSpec | null {
   return (row.session as SessionSpec | null) ?? null;
 }
 
 /** A stored codebook's items with its session as the first item: what validation, links and the runtime work on. */
-export function codebookItems(row: Pick<CodebookRow, "items" | "session">): TopLevelItem[] {
+export function codebookItems(row: Pick<DesignVersionRow, "items" | "session">): TopLevelItem[] {
   return designItems({ items: storedItems(row), session: codebookSession(row) }) as TopLevelItem[];
 }
 
 /** A stored codebook's unit fields (docs/plans/design.md §3). */
-export function codebookUnits(row: Pick<CodebookRow, "units">): UnitsSpec {
+export function codebookUnits(row: Pick<DesignVersionRow, "units">): UnitsSpec {
   const parsed = UnitsSpecSchema.safeParse(row.units);
   return parsed.success ? parsed.data : { fields: [] };
 }
@@ -50,7 +50,7 @@ export function itemsValid(items: unknown[]): boolean {
   return items.length > 0 && codebookErrors(items).length === 0;
 }
 
-export function toCodebookMeta(row: CodebookRow): CodebookMeta {
+export function toDesignVersionMeta(row: DesignVersionRow): DesignVersionMeta {
   return {
     id: row.id,
     note: row.note,
@@ -64,6 +64,6 @@ export function toCodebookMeta(row: CodebookRow): CodebookMeta {
 }
 
 /** A stored codebook as served. */
-export function toCodebookResponse(row: CodebookRow): CodebookResponse {
-  return { ...toCodebookMeta(row), jobId: row.job_id, items: storedItems(row), units: codebookUnits(row), session: codebookSession(row) };
+export function toDesignVersion(row: DesignVersionRow): DesignVersion {
+  return { ...toDesignVersionMeta(row), jobId: row.job_id, items: storedItems(row), units: codebookUnits(row), session: codebookSession(row) };
 }

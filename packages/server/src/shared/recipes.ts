@@ -26,7 +26,7 @@ export interface RecipeOptions {
 
 export interface MadeJob {
   job: JobRow;
-  codebookId: number;
+  designVersionId: number;
   /** Database ids of the recipe's units, by their ids in the recipe. */
   unitIds: Map<string, number>;
   /** The first link's id, if deployed. */
@@ -100,7 +100,7 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
 
   // The codebook: deployed, or the first draft
   // With the units' fields (docs/plans/design.md §3)
-  const codebookId = (await one<{ id: number }>(tx, "INSERT INTO codebooks (job_id, note, items, units, session) VALUES ($1, $2, $3, $4, $5) RETURNING id", [
+  const designVersionId = (await one<{ id: number }>(tx, "INSERT INTO design_versions (job_id, note, items, units, session) VALUES ($1, $2, $3, $4, $5) RETURNING id", [
     job.id,
     recipe.codebook.note ?? null,
     JSON.stringify(recipe.codebook.items),
@@ -109,10 +109,10 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
   ]))!.id;
   let firstLink: number | null = null;
   if (recipe.publish) {
-    await putDeployment(tx, job.id, { codebookId, active: true, units: true });
+    await putDeployment(tx, job.id, { designVersionId, active: true, units: true });
     await checkLinkCount(tx, job.id, designItems(recipe.codebook) as CodebookItem[], true, true);
     await syncLinks(tx, job.id, { secrets: options.secrets });
     firstLink = (await one<{ id: number }>(tx, "SELECT id FROM links WHERE job_id = $1 ORDER BY id LIMIT 1", [job.id]))?.id ?? null;
   }
-  return { job, codebookId, unitIds, firstLink };
+  return { job, designVersionId, unitIds, firstLink };
 }

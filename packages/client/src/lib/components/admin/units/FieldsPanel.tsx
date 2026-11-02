@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { fieldUsage, undeclaredFields, type FieldUse, type TopLevelItem, type UnitField, type UnitFieldType } from "@annotinder/contracts";
 import { Trash2 } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useCodebookQuery, useCodebooksQuery, useUnitFieldsMutation } from "../../../admin/queries";
+import { useDesignVersionQuery, useDesignVersionsQuery, useUnitFieldsMutation } from "../../../admin/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldBadge } from "./FieldBadge";
@@ -27,8 +27,8 @@ const TYPES: UnitFieldType[] = ["text", "number", "boolean"];
  * units); fields it uses but the design doesn't declare can be declared.
  */
 export function FieldsPanel({ client, fields }: { client: ResearcherApi; fields: UnitField[] }) {
-  const codebooks = useCodebooksQuery(client).data ?? [];
-  const latest = useCodebookQuery(client, codebooks.at(-1)?.id ?? null).data;
+  const codebooks = useDesignVersionsQuery(client).data ?? [];
+  const latest = useDesignVersionQuery(client, codebooks.at(-1)?.id ?? null).data;
   const items = useMemo(() => (latest?.items ?? []) as TopLevelItem[], [latest]);
   const usage = useMemo(() => fieldUsage(items), [items]);
   const undeclared = useMemo(() => undeclaredFields(items, fields), [items, fields]);

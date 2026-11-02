@@ -89,11 +89,11 @@ response checked against its contract schema.
 | [putJobUsers](#putjobusers) | `PUT /job/:id/users` | ADMIN | `JobUsersWriteSchema` | – |
 | [getOverview](#getoverview) | `GET /job/:jobId/overview` | READ | – | `JobOverviewSchema` |
 | **Codebooks** | | | | |
-| [listCodebooks](#listcodebooks) | `GET /job/:jobId/codebook` | READ | – | `CodebookMetaSchema[]` |
-| [getCodebook](#getcodebook) | `GET /job/:jobId/codebook/:id` | READ | – | `CodebookResponseSchema` |
-| [createCodebook](#createcodebook) | `POST /job/:jobId/codebook` | WRITE | `CodebookWriteSchema` | `CodebookResponseSchema` |
-| [updateCodebook](#updatecodebook) | `PUT /job/:jobId/codebook/:id` | WRITE | `CodebookWriteSchema` | `CodebookResponseSchema` |
-| [deleteCodebook](#deletecodebook) | `DELETE /job/:jobId/codebook/:id` | WRITE | – | – |
+| [listDesignVersions](#listdesignversions) | `GET /job/:jobId/design` | READ | – | `DesignVersionMetaSchema[]` |
+| [getDesignVersion](#getdesignversion) | `GET /job/:jobId/design/:id` | READ | – | `DesignVersionSchema` |
+| [createDesignVersion](#createdesignversion) | `POST /job/:jobId/design` | WRITE | `DesignWriteSchema` | `DesignVersionSchema` |
+| [updateDesignVersion](#updatedesignversion) | `PUT /job/:jobId/design/:id` | WRITE | `DesignWriteSchema` | `DesignVersionSchema` |
+| [deleteDesignVersion](#deletedesignversion) | `DELETE /job/:jobId/design/:id` | WRITE | – | – |
 | **Units and sets** | | | | |
 | [listUnits](#listunits) | `GET /job/:jobId/units` | READ | – | `UnitMetaSchema[]` |
 | [getUnitFields](#getunitfields) | `GET /job/:jobId/units/fields` | READ | – | `UnitFieldSchema[]` |
@@ -284,18 +284,18 @@ deployment's); the latest, if unpublished, is the **draft**
 Schemas: [`contracts/src/codebook/codebook.ts`](../../packages/contracts/src/codebook/codebook.ts).
 Implementation: [`researcher/codebook.ts`](../../packages/server/src/researcher/codebook.ts), [`codebook.$id.ts`](../../packages/server/src/researcher/codebook.$id.ts).
 
-### listCodebooks
+### listDesignVersions
 
-`GET /job/:jobId/codebook` → `CodebookMetaSchema[]` (id, note, created,
+`GET /job/:jobId/design` → `DesignVersionMetaSchema[]` (id, note, created,
 immutable), oldest first: the position is the version number.
 
-### getCodebook
+### getDesignVersion
 
-`GET /job/:jobId/codebook/:id` → `CodebookResponseSchema`: the whole document.
+`GET /job/:jobId/design/:id` → `DesignVersionSchema`: the whole document.
 
-### createCodebook
+### createDesignVersion
 
-`POST /job/:jobId/codebook` → `CodebookResponseSchema` (201). A new version.
+`POST /job/:jobId/design` → `DesignVersionSchema` (201). A new version.
 The body is always the full document, with an optional `note` (what
 changed). A draft may be saved while it doesn't pass validation (work in
 progress): `items` only has to be a list (`DraftItemsSchema`). The response says whether it is `valid`
@@ -303,18 +303,18 @@ progress): `items` only has to be a list (`DraftItemsSchema`). The response says
 deploying and previewing require. Codebooks also have `updated`,
 `updatedBy` (the email of who saved last) and `revision`.
 
-### updateCodebook
+### updateDesignVersion
 
-`PUT /job/:jobId/codebook/:id` → `CodebookResponseSchema`. Full replace of
+`PUT /job/:jobId/design/:id` → `DesignVersionSchema`. Full replace of
 items and note; bumps `revision`. 409 once `immutable` (deployed). With
 `revision` (the revision the edits are based on): 409
-`CodebookConflictSchema` (`code: "codebook_conflict"`, who saved when) if
+`DesignConflictSchema` (`code: "design_conflict"`, who saved when) if
 someone saved since, instead of overwriting their work. Without it, the
 save overwrites.
 
-### deleteCodebook
+### deleteDesignVersion
 
-`DELETE /job/:jobId/codebook/:id` → 204. Deletes a draft (for everyone; the
+`DELETE /job/:jobId/design/:id` → 204. Deletes a draft (for everyone; the
 editor offers this only in the versions dialog). 409 once `immutable`.
 
 ## Units and sets
@@ -548,7 +548,7 @@ with fewer overlap units than a loop expects.
 `GET /job/:jobId/deployment/pending` → `PendingChangesSchema`: what
 deploying the drafts would change: `units` (`added`, `changed`, `removed`,
 and whether the `sets` differ; all added before the first deploy) and
-`codebookId`, the latest codebook if it isn't the deployed one.
+`designVersionId`, the latest codebook if it isn't the deployed one.
 
 ### listDeploymentVersions
 

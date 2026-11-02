@@ -15,7 +15,7 @@ import {
 import { Ban, Check, Copy, KeyRound, Pencil } from "lucide-react";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import {
-  useCodebookQuery,
+  useDesignVersionQuery,
   useDeploymentQuery,
   useLinksQuery,
   useRenewLinkSecretMutation,
@@ -49,7 +49,7 @@ interface LinksPanelProps {
 export function LinksPanel({ client, baseUrl, linkUrl }: LinksPanelProps) {
   const linksQuery = useLinksQuery(client);
   const deployment = useDeploymentQuery(client).data;
-  const codebook = useCodebookQuery(client, deployment?.codebookId ?? null).data;
+  const codebook = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data;
   const items = (codebook ? designItems(codebook) : []) as TopLevelItem[];
   const session = sessionItem(items);
   // The deployed sets: links are the deployed design's

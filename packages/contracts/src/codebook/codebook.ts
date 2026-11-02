@@ -27,7 +27,7 @@ export const DraftItemsSchema = z.array(z.unknown()).max(10_000);
  * Body for `POST /codebook` and `PUT /codebook/:id` -- always the full document.
  * Versions are identified by their order of creation, not by name.
  */
-export const CodebookWriteSchema = z.object({
+export const DesignWriteSchema = z.object({
   /** What changed in this version, e.g. "Added a sentiment question". */
   note: z.string().max(1000).optional(),
   items: DraftItemsSchema,
@@ -44,15 +44,15 @@ export const CodebookWriteSchema = z.object({
   session: SessionSpecSchema.nullable().optional(),
   /**
    * `PUT` only: the revision the edits are based on. If the draft was saved
-   * since (by someone else), the server answers 409 `codebook_conflict`
+   * since (by someone else), the server answers 409 `design_conflict`
    * instead of overwriting it. Leave out to overwrite regardless.
    */
   revision: z.number().int().positive().optional(),
 });
-export type CodebookWrite = z.input<typeof CodebookWriteSchema>;
+export type DesignWrite = z.input<typeof DesignWriteSchema>;
 
 /** Codebook metadata, e.g. for `GET /codebook`. */
-export const CodebookMetaSchema = z.object({
+export const DesignVersionMetaSchema = z.object({
   id: IdSchema,
   note: z.string().nullable(),
   created: z.coerce.date(),
@@ -66,27 +66,27 @@ export const CodebookMetaSchema = z.object({
   /** Whether it passes validation: required to deploy or preview it. */
   valid: z.boolean(),
 });
-export type CodebookMeta = z.infer<typeof CodebookMetaSchema>;
+export type DesignVersionMeta = z.infer<typeof DesignVersionMetaSchema>;
 
 /** Full codebook document as returned by the server. A draft's items may not pass validation (`valid`). */
-export const CodebookResponseSchema = CodebookMetaSchema.extend({
+export const DesignVersionSchema = DesignVersionMetaSchema.extend({
   jobId: IdSchema,
   items: z.custom<TopLevelItem[]>((v) => Array.isArray(v)),
   units: UnitsSpecSchema,
   session: z.custom<SessionSpec | null>((v) => v === null || typeof v === "object"),
 });
-export type CodebookResponse = z.infer<typeof CodebookResponseSchema>;
+export type DesignVersion = z.infer<typeof DesignVersionSchema>;
 
 /**
  * The 409 body of a `PUT /codebook/:id` whose `revision` is out of date:
  * someone saved the draft since. The client offers to overwrite it or to
  * load the saved version.
  */
-export const CodebookConflictSchema = z.object({
+export const DesignConflictSchema = z.object({
   error: z.string(),
-  code: z.literal("codebook_conflict"),
+  code: z.literal("design_conflict"),
   updated: z.coerce.date(),
   updatedBy: z.string().nullable(),
   revision: z.number().int().positive(),
 });
-export type CodebookConflict = z.infer<typeof CodebookConflictSchema>;
+export type DesignConflict = z.infer<typeof DesignConflictSchema>;

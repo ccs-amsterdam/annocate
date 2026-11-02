@@ -37,7 +37,7 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
   ]);
 
   // A codebook that gives each set its own link, with the overlap first
-  const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/codebook`, {
+  const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/design`, {
     session: { params: [{ name: "part", kind: "link", values: { sets: "part" } }] },
     items: [
       {
@@ -48,7 +48,7 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
       },
     ],
   });
-  await api(request, "PUT", `/job/${job.id}/deployment`, { codebookId: codebook.id });
+  await api(request, "PUT", `/job/${job.id}/deployment`, { designVersionId: codebook.id });
 
   // The Links tab lists a link per set
   await page.getByRole("button", { name: "Deploy", exact: true }).click();

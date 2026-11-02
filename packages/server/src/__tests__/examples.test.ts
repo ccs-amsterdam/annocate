@@ -115,7 +115,7 @@ describe("jobs from a recipe", () => {
       ],
     ]);
     // A draft with a question to specify: saved, not deployed
-    const codebooks = (await (await researcher(`/job/${job.id}/codebook`)).json()) as { items: unknown[] }[];
+    const codebooks = (await (await researcher(`/job/${job.id}/design`)).json()) as { items: unknown[] }[];
     expect(codebooks).toHaveLength(1);
     expect(await (await researcher(`/job/${job.id}/deployment`)).json()).toBeNull();
     expect(((await (await researcher(`/job/${job.id}/links`)).json()) as unknown[]).length).toBe(0);

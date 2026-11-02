@@ -2,7 +2,7 @@ import { useState } from "react";
 import { codebookErrors, designItems, undeclaredFields, type TopLevelItem } from "@annotinder/contracts";
 import { Rocket } from "lucide-react";
 import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
-import { useCodebookQuery, useCodebooksQuery, useDeploymentQuery, usePendingChangesQuery, usePublishMutation, useUpdateCodebookMutation } from "../../admin/queries";
+import { useDesignVersionQuery, useDesignVersionsQuery, useDeploymentQuery, usePendingChangesQuery, usePublishMutation, useUpdateDesignVersionMutation } from "../../admin/queries";
 import { describeVersions } from "../../codebook/versions";
 import { Button } from "@/components/ui/button";
 import { DeployDialog, describeUnitChanges } from "./DeployDialog";
@@ -17,15 +17,15 @@ import { DeployDialog, describeUnitChanges } from "./DeployDialog";
 export function PendingDeployBar({ client, includeCodebook = false }: { client: ResearcherApi; includeCodebook?: boolean }) {
   const deployment = useDeploymentQuery(client).data;
   const pending = usePendingChangesQuery(client, !!deployment).data;
-  const codebooksQuery = useCodebooksQuery(client);
+  const codebooksQuery = useDesignVersionsQuery(client);
   const codebooks = codebooksQuery.data ?? [];
-  const versions = describeVersions(codebooks, deployment?.codebookId ?? null);
+  const versions = describeVersions(codebooks, deployment?.designVersionId ?? null);
   // Only a draft (not frozen) codebook is offered: an older version is restored from the editor first.
-  const draftId = pending?.codebookId !== null && pending?.codebookId === versions.draftId ? versions.draftId : null;
-  const draft = useCodebookQuery(client, draftId).data ?? null;
-  const live = useCodebookQuery(client, deployment?.codebookId ?? null).data ?? null;
+  const draftId = pending?.designVersionId !== null && pending?.designVersionId === versions.draftId ? versions.draftId : null;
+  const draft = useDesignVersionQuery(client, draftId).data ?? null;
+  const live = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data ?? null;
   const publish = usePublishMutation(client);
-  const updateCodebook = useUpdateCodebookMutation(client);
+  const updateDesignVersion = useUpdateDesignVersionMutation(client);
   const [open, setOpen] = useState(false);
 
   // The versions are needed to number them (and not take a deployed job for a first deploy)
@@ -53,18 +53,18 @@ export function PendingDeployBar({ client, includeCodebook = false }: { client: 
           codebook={draftValid ? draft : null}
           versionNumber={draftId !== null ? (versions.numberOf(draftId) ?? 0) : 0}
           live={live}
-          liveNumber={versions.numberOf(deployment.codebookId)}
+          liveNumber={versions.numberOf(deployment.designVersionId)}
           includeCodebook={includeCodebook}
           onDeploy={async (codebook, note, withUnits) => {
             if (codebook && note !== (codebook.note ?? "")) {
-              await updateCodebook.mutateAsync({ id: codebook.id, body: { note: note || undefined, items: codebook.items, revision: codebook.revision } });
+              await updateDesignVersion.mutateAsync({ id: codebook.id, body: { note: note || undefined, items: codebook.items, revision: codebook.revision } });
             }
-            const codebookId = codebook?.id ?? deployment.codebookId;
+            const designVersionId = codebook?.id ?? deployment.designVersionId;
             try {
-              return await publish.mutateAsync({ codebookId, units: withUnits });
+              return await publish.mutateAsync({ designVersionId, units: withUnits });
             } catch (err) {
               if (!(err instanceof ResearcherApiError && err.code === "confirm_links") || !confirm(err.reason)) throw err;
-              return publish.mutateAsync({ codebookId, units: withUnits, confirmLinks: true });
+              return publish.mutateAsync({ designVersionId, units: withUnits, confirmLinks: true });
             }
           }}
           onClose={() => setOpen(false)}

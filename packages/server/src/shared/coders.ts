@@ -67,13 +67,13 @@ export async function putCoderValues(sql: Sql, jobId: number, write: CoderValues
   };
   for (const [variable, value] of Object.entries(write.values)) {
     await sql.query(
-      `INSERT INTO annotation_values (job_id, unit_id, coder_id, variable, value, codebook_id, device_id, assigned, timing, created, updated)
+      `INSERT INTO annotation_values (job_id, unit_id, coder_id, variable, value, design_version_id, device_id, assigned, timing, created, updated)
        VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, now(), now())
        ON CONFLICT (coder_id, variable) WHERE retired_at IS NULL AND unit_id IS NULL
-       DO UPDATE SET value = excluded.value, codebook_id = excluded.codebook_id, device_id = excluded.device_id,
+       DO UPDATE SET value = excluded.value, design_version_id = excluded.design_version_id, device_id = excluded.device_id,
          timing = excluded.timing, updated = excluded.updated
        WHERE NOT annotation_values.assigned AND NOT annotation_values.frozen`,
-      [jobId, write.coderId, variable, JSON.stringify(value), write.codebookId ?? null, write.deviceId ?? null, write.assigned ?? false, timing(variable)],
+      [jobId, write.coderId, variable, JSON.stringify(value), write.designVersionId ?? null, write.deviceId ?? null, write.assigned ?? false, timing(variable)],
     );
   }
   for (const variable of Object.keys(write.timings ?? {})) {

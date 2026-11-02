@@ -319,7 +319,7 @@ export class DeploymentRuntime {
     const stored = (await this.store.coderValues(coder.coderId))[name];
     if (stored) return stored.value;
     const put = (store: Store, value: VariableValue) =>
-      store.putCoderValues({ coderId: coder.coderId, values: { [name]: value }, assigned: true, codebookId: this.spec.codebook.id });
+      store.putCoderValues({ coderId: coder.coderId, values: { [name]: value }, assigned: true, designVersionId: this.spec.codebook.id });
     if (variable.source === "random") {
       const value = singleValue(this.drawWeighted(variable.options));
       await put(this.store, value);
@@ -528,7 +528,7 @@ export class DeploymentRuntime {
     const timed = Object.fromEntries(Object.entries(timings).filter(([name]) => open(name) && (name in changed || name in stored)));
     if (Object.keys(changed).length === 0 && Object.keys(timed).length === 0) return;
     await this.store.checkAnswers(changed);
-    await this.store.putCoderValues({ coderId: coder.coderId, values: changed, codebookId: this.spec.codebook.id, deviceId, timings: timed });
+    await this.store.putCoderValues({ coderId: coder.coderId, values: changed, designVersionId: this.spec.codebook.id, deviceId, timings: timed });
   }
 
   // --- routing ----------------------------------------------------------------
@@ -861,7 +861,7 @@ export class DeploymentRuntime {
       unitId,
       coderId: coder.coderId,
       variables,
-      codebookId: this.spec.codebook.id,
+      designVersionId: this.spec.codebook.id,
       unitVersionId,
       deviceId,
       timings: Object.fromEntries(Object.entries(timings).filter(([name]) => name in variables)),

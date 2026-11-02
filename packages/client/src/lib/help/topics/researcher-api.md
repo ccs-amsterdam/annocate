@@ -68,8 +68,8 @@ curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/j
 | Upload units (at most 200 per request) | `POST /job/<id>/units` |
 | List the job's fields | `GET /job/<id>/units/fields` |
 | List set groups, replace or delete a group | `GET /job/<id>/sets`; `PUT`, `DELETE /job/<id>/sets/<group>` |
-| Save a design version | `POST /job/<id>/codebook` with `{ "items": [...], "note": ... }` |
-| Deploy: a design version and the draft units and sets (this makes its links) | `PUT /job/<id>/deployment` with `{ "codebookId": ..., "units": true }` (without `units`, the deployed units stay) |
+| Save a design version | `POST /job/<id>/design` with `{ "items": [...], "note": ... }` |
+| Deploy: a design version and the draft units and sets (this makes its links) | `PUT /job/<id>/deployment` with `{ "designVersionId": ..., "units": true }` (without `units`, the deployed units stay) |
 | What deploying would change; the deployed versions | `GET /job/<id>/deployment/pending`, `GET /job/<id>/deployment/versions` |
 | List links, or change who may use one | `GET /job/<id>/links`; `PUT /job/<id>/links/<link id>` |
 | Coders, with their answers outside unit loops | `GET /job/<id>/coders` |
@@ -83,7 +83,7 @@ job's admin role.
 
 A design version is the same JSON as in the codebook editor's JSON view: write it
 in the editor, copy it, and a script can save it to another job. (The API
-still calls a design version a codebook: `/job/<id>/codebook`, `codebookId`.)
+still calls a design version a codebook: `/job/<id>/design`, `designVersionId`.)
 
 ## Uploading units
 
@@ -204,7 +204,7 @@ while True:
 
 Each row has the unit (`unitId`, and your `externalId`), the coder
 (`coderId`, `participantId`), the question (`variable`), the answer
-(`value`), the design version (`codebookId`), the unit version the coder
+(`value`), the design version (`designVersionId`), the unit version the coder
 saw (`unitVersionId`), and when it was first written and last changed
 (`created`, `updated`). An answer `value` has a list of `values` (each with
 `value`, and `item` for a scale), or `spans` for selected text, and

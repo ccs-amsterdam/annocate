@@ -117,7 +117,7 @@ the client, so the server stores only ciphertext (`plans/encryption.md`).
 ## 5. Lifecycle
 
 **Deploy.** A researcher calls `PUT /job/:jobId/deployment` with
-`{ codebookId, units, active }`: the codebook, with the draft units and
+`{ designVersionId, units, active }`: the codebook, with the draft units and
 sets (new unit versions, §8.4) or the deployed ones. The server bumps the
 deployment `version` when either changed, and freezes the codebook. Every
 runtime checks the deployment's stamp on each request and re-reads it when
@@ -455,7 +455,7 @@ against the **current** codebook (`validateAnswer`, shared via contracts):
 How it works:
 
 - **Annotations are stored per (unit, coder, variable)**, with `created`,
-  `updated`, `codebookId` and `retiredAt`. Only live rows (`retiredAt` empty)
+  `updated`, `designVersionId` and `retiredAt`. Only live rows (`retiredAt` empty)
   count, and only those must be unique. Writes upsert per variable, so
   answers to questions a later version removed are never overwritten. They
   stay as data, tagged with the codebook they were written under.

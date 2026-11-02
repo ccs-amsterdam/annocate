@@ -3,15 +3,15 @@ import {
   undeclaredFields,
   designItems,
   splitSession,
-  CodebookConflictSchema,
+  DesignConflictSchema,
   validateCodebookItems,
-  type CodebookConflict,
+  type DesignConflict,
   type CodebookItem,
-  type CodebookResponse,
+  type DesignVersion,
   type TopLevelItem,
 } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useCreateCodebookMutation, useUnitFieldsQuery, useUpdateCodebookMutation } from "../../../admin/queries";
+import { useCreateDesignVersionMutation, useUnitFieldsQuery, useUpdateDesignVersionMutation } from "../../../admin/queries";
 import {
   deleteItems,
   ensureKeys,
@@ -37,9 +37,9 @@ import type { ItemType } from "../codebookTree/utils";
 interface UseCodebookDraftOptions {
   client: ResearcherApi;
   /** The version being edited; null/undefined for a new codebook. */
-  codebook?: CodebookResponse | null;
+  codebook?: DesignVersion | null;
   readOnly: boolean;
-  onSaved: (codebook: CodebookResponse) => void;
+  onSaved: (codebook: DesignVersion) => void;
   /** Unsaved edits of this version from an earlier session (localBackup.ts), to continue with. */
   restore?: CodebookBackup | null;
 }
@@ -61,13 +61,13 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
   const [selected, setSelected] = useState<string | null>(null);
   // The items as last saved (with the same keys), to tell what changed and to revert to
   const [saved, setSaved] = useState<TopLevelItem[]>(() => (restore ? ensureKeys(restore.saved) : items));
-  // The saved revision the edits are based on (contracts CodebookWriteSchema `revision`)
+  // The saved revision the edits are based on (contracts DesignWriteSchema `revision`)
   const [revision, setRevision] = useState<number | undefined>(restore ? restore.revision : codebook?.revision);
   const [history, setHistory] = useState(() => emptyHistory<TopLevelItem[]>());
-  const [conflict, setConflict] = useState<CodebookConflict | null>(null);
+  const [conflict, setConflict] = useState<DesignConflict | null>(null);
 
-  const createCodebook = useCreateCodebookMutation(client);
-  const updateCodebook = useUpdateCodebookMutation(client);
+  const createDesignVersion = useCreateDesignVersionMutation(client);
+  const updateDesignVersion = useUpdateDesignVersionMutation(client);
 
   const cleanItems = useMemo(() => stripKeys(items), [items]);
   const serialized = useMemo(() => JSON.stringify(cleanItems), [cleanItems]);
@@ -92,7 +92,7 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
   useWarnBeforeUnload(dirty);
 
   // A copy of unsaved edits in the browser, in case it closes (localBackup.ts)
-  const backupOf = useMemo(() => ({ jobId: client.jobId ?? 0, codebookId: codebook?.id ?? null }), [client.jobId, codebook?.id]);
+  const backupOf = useMemo(() => ({ jobId: client.jobId ?? 0, designVersionId: codebook?.id ?? null }), [client.jobId, codebook?.id]);
   useEffect(() => {
     if (readOnly) return;
     if (!dirty) {
@@ -182,18 +182,18 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
    * revision than the server has is refused (someone else saved): then
    * `conflict` is set, and `save({ overwrite: true })` saves anyway.
    */
-  async function save({ overwrite = false }: { overwrite?: boolean } = {}): Promise<CodebookResponse> {
+  async function save({ overwrite = false }: { overwrite?: boolean } = {}): Promise<DesignVersion> {
     if (readOnly) throw new Error("This version is read only");
     const sent = items;
     try {
       // A frozen (live) version is never overwritten: its changes become a new draft
       const result =
         codebook && !codebook.immutable
-          ? await updateCodebook.mutateAsync({
+          ? await updateDesignVersion.mutateAsync({
               id: codebook.id,
               body: { note: codebook.note ?? undefined, ...splitSession(cleanItems), revision: overwrite ? undefined : revision },
             })
-          : await createCodebook.mutateAsync(splitSession(cleanItems));
+          : await createDesignVersion.mutateAsync(splitSession(cleanItems));
       setSaved(sent);
       setRevision(result.revision);
       clearBackup(backupOf);
@@ -201,8 +201,8 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
       onSaved(result);
       return result;
     } catch (err) {
-      if (err instanceof ResearcherApiError && err.code === "codebook_conflict") {
-        setConflict(CodebookConflictSchema.parse(err.body));
+      if (err instanceof ResearcherApiError && err.code === "design_conflict") {
+        setConflict(DesignConflictSchema.parse(err.body));
         throw new Error("Someone else saved this draft meanwhile", { cause: err });
       }
       throw err;
@@ -227,8 +227,8 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
     canRedo: history.future.length > 0,
     conflict,
     dismissConflict: () => setConflict(null),
-    saving: createCodebook.isPending || updateCodebook.isPending,
-    saveError: conflict ? null : (createCodebook.error ?? updateCodebook.error),
+    saving: createDesignVersion.isPending || updateDesignVersion.isPending,
+    saveError: conflict ? null : (createDesignVersion.error ?? updateDesignVersion.error),
     select: setSelected,
     insertAt,
     remove,

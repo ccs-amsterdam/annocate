@@ -65,9 +65,9 @@ describe("codebook routes", () => {
       },
     ];
     const post = (items: unknown) =>
-      app.request(`/job/${job.id}/codebook`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ items }) });
-    const publish = (codebookId: number) =>
-      app.request(`/job/${job.id}/deployment`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId }) });
+      app.request(`/job/${job.id}/design`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ items }) });
+    const publish = (designVersionId: number) =>
+      app.request(`/job/${job.id}/deployment`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId }) });
 
     // Work in progress: a span question outside a loop
     const bad = await post([{ type: "question", name: "q1", variable: { type: "span", question: "?", fields: ["text"], options: [{ value: "x" }] } }]);
@@ -89,10 +89,10 @@ describe("codebook routes", () => {
     const job = await createJob();
     const items = [{ type: "question", name: "q", variable: { type: "confirm", question: "?" } }];
     const draft = await json(
-      await app.request(`/job/${job.id}/codebook`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ items }) }),
+      await app.request(`/job/${job.id}/design`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ items }) }),
     );
     const put = (revision: number | undefined, headers = adminHeaders) =>
-      app.request(`/job/${job.id}/codebook/${draft.id}`, { method: "PUT", headers, body: JSON.stringify({ items, revision }) });
+      app.request(`/job/${job.id}/design/${draft.id}`, { method: "PUT", headers, body: JSON.stringify({ items, revision }) });
 
     // Jane saves first (revision 1 -> 2)
     const jane = { ...adminHeaders, "x-dev-email": "jane@uni.nl" };
@@ -100,7 +100,7 @@ describe("codebook routes", () => {
     // Our edits were based on revision 1
     const stale = await put(1);
     expect(stale.status).toBe(409);
-    expect(await json(stale)).toMatchObject({ code: "codebook_conflict", updatedBy: "jane@uni.nl", revision: 2 });
+    expect(await json(stale)).toMatchObject({ code: "design_conflict", updatedBy: "jane@uni.nl", revision: 2 });
     // Overwrite on purpose: without a revision, or with the current one
     expect((await json(await put(2))).revision).toBe(3);
     expect((await json(await put(undefined))).revision).toBe(4);
@@ -267,7 +267,7 @@ describe("annotations: finished counts and resets", () => {
 
   it("resets by retiring values: they stay, but no longer count", async () => {
     const { job, units, put, finished } = await setup();
-    await app.request(`/job/${job.id}/deployment`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: 1 }) });
+    await app.request(`/job/${job.id}/deployment`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: 1 }) });
     await put(units[0].id, { q1: value("a") });
     await put(units[1].id, { q1: value("a") });
 
@@ -301,8 +301,8 @@ describe("links, coder progress and overview", () => {
     const question = (name: string) => ({ type: "question", name, variable: { type: "confirm", question: "?" } });
     const loop = { type: "unit_loop", label: "l", units: [{ mode: "all" }], layout: { template: "" }, children: [question("q1"), question("q2")] };
     const publish = async (items: object[], confirmLinks?: boolean) => {
-      const codebook = await json(await app.request(`/job/${job.id}/codebook`, { method: "POST", headers: adminHeaders, body: JSON.stringify(splitSession(items)) }));
-      return app.request(`/job/${job.id}/deployment`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: codebook.id, confirmLinks }) });
+      const codebook = await json(await app.request(`/job/${job.id}/design`, { method: "POST", headers: adminHeaders, body: JSON.stringify(splitSession(items)) }));
+      return app.request(`/job/${job.id}/deployment`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: codebook.id, confirmLinks }) });
     };
     expect((await publish(session ? [session, loop] : [loop])).status).toBe(200);
     const resolve = async (coderKey: string, linkSecret: string) => (await store.resolveCoder({ coderKey, linkSecret })).coder;

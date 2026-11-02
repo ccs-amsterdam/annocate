@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { UnitsCreateBodySchema, addedFields, checkUnitData, fieldUsage, type UnitField } from "@annotinder/contracts";
-import { codebookItems } from "../shared/codebooks.js";
+import { codebookItems } from "../shared/designVersions.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
 import { checkUnitUpload } from "../shared/limits.js";

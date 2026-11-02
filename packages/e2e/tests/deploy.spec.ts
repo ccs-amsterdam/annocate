@@ -8,7 +8,7 @@ import { api } from "./helpers";
 test("new units are drafts until deployed: the bar, the dialog, and then coders get them", async ({ page, request, browser }) => {
   const job = await api<JobResponse>(request, "POST", "/job", { name: "Draft units" });
   await api(request, "POST", `/job/${job.id}/units`, { units: [{ externalId: "a1", data: { text: "First text" } }] });
-  const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/codebook`, {
+  const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/design`, {
     items: [
       {
         type: "unit_loop",
@@ -18,7 +18,7 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
       },
     ],
   });
-  await api(request, "PUT", `/job/${job.id}/deployment`, { codebookId: codebook.id });
+  await api(request, "PUT", `/job/${job.id}/deployment`, { designVersionId: codebook.id });
   await api(request, "POST", `/job/${job.id}/units`, { units: [{ externalId: "a2", data: { text: "Second text" } }] });
   const [link] = await api<{ secret: string }[]>(request, "GET", `/job/${job.id}/links`);
 
@@ -52,9 +52,9 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
 test("the design's unit fields: how the codebook uses each, removing an unused one", async ({ page, request }) => {
   const job = await api<JobResponse>(request, "POST", "/job", { name: "Field use" });
   await api(request, "POST", `/job/${job.id}/units`, { units: [{ externalId: "a1", data: { text: "Hello", year: 2020, note: "x" } }] });
-  const [draft] = await api<{ id: number }[]>(request, "GET", `/job/${job.id}/codebook`);
-  const { units } = await api<{ units: unknown }>(request, "GET", `/job/${job.id}/codebook/${draft.id}`);
-  await api(request, "PUT", `/job/${job.id}/codebook/${draft.id}`, {
+  const [draft] = await api<{ id: number }[]>(request, "GET", `/job/${job.id}/design`);
+  const { units } = await api<{ units: unknown }>(request, "GET", `/job/${job.id}/design/${draft.id}`);
+  await api(request, "PUT", `/job/${job.id}/design/${draft.id}`, {
     units,
     items: [
       {
@@ -87,7 +87,7 @@ test("the design's unit fields: how the codebook uses each, removing an unused o
 
 test("the codebook as a document: what coders see", async ({ page, request }) => {
   const job = await api<JobResponse>(request, "POST", "/job", { name: "Codebook export" });
-  await api(request, "POST", `/job/${job.id}/codebook`, {
+  await api(request, "POST", `/job/${job.id}/design`, {
     items: [{ type: "question", name: "age", variable: { type: "numeric", question: "How old are you?", min: 18 } }],
   });
   await page.goto("/");
@@ -110,7 +110,7 @@ test("the codebook as a document: what coders see", async ({ page, request }) =>
 
 test("panel return links are settings of the run, filled in for coders", async ({ page, request }) => {
   const job = await api<JobResponse>(request, "POST", "/job", { name: "Panel run" });
-  await api(request, "POST", `/job/${job.id}/codebook`, {
+  await api(request, "POST", `/job/${job.id}/design`, {
     items: [
       { type: "question", name: "ok", variable: { type: "confirm", question: "Ready?" } },
       { type: "end", name: "done", outcome: "complete", redirectSetting: "panel_done" },
@@ -126,11 +126,11 @@ test("panel return links are settings of the run, filled in for coders", async (
 
 test("a link per value of a URL parameter, built in the browser", async ({ page, request }) => {
   const job = await api<JobResponse>(request, "POST", "/job", { name: "Schools" });
-  const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/codebook`, {
+  const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/design`, {
     session: { params: [{ name: "school", kind: "url", values: { list: [{ value: "north" }, { value: "south" }] } }] },
     items: [{ type: "question", name: "ok", variable: { type: "confirm", question: "Ready?" } }],
   });
-  await api(request, "PUT", `/job/${job.id}/deployment`, { codebookId: codebook.id });
+  await api(request, "PUT", `/job/${job.id}/deployment`, { designVersionId: codebook.id });
   await page.goto("/");
   await page.getByText("Schools").click();
   await page.getByRole("button", { name: "Deploy", exact: true }).click();

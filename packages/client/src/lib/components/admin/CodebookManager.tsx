@@ -1,14 +1,14 @@
 import { useRef, useState } from "react";
-import type { CodebookResponse } from "@annotinder/contracts";
+import type { DesignVersion } from "@annotinder/contracts";
 import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
 import {
-  useCodebooksQuery,
-  useCodebookQuery,
-  useCreateCodebookMutation,
-  useDeleteCodebookMutation,
+  useDesignVersionsQuery,
+  useDesignVersionQuery,
+  useCreateDesignVersionMutation,
+  useDeleteDesignVersionMutation,
   useDeploymentQuery,
   usePublishMutation,
-  useUpdateCodebookMutation,
+  useUpdateDesignVersionMutation,
 } from "../../admin/queries";
 import { describeVersions } from "../../codebook/versions";
 import { CodebookEditor, type CodebookEditorMode, type SaveFn } from "./CodebookEditor";
@@ -41,27 +41,27 @@ interface CodebookManagerProps {
  * Deploying makes the draft live, which also freezes it.
  */
 export function CodebookManager({ client, onDirtyChange, registerSave, initialVersionId = null, restore = null }: CodebookManagerProps) {
-  const codebooksQuery = useCodebooksQuery(client);
+  const codebooksQuery = useDesignVersionsQuery(client);
   const deploymentQuery = useDeploymentQuery(client);
   const codebooks = codebooksQuery.data ?? [];
-  const versions = describeVersions(codebooks, deploymentQuery.data?.codebookId ?? null);
+  const versions = describeVersions(codebooks, deploymentQuery.data?.designVersionId ?? null);
 
   // The version shown in the editor; null follows the current version (draft, else latest)
-  const [selectedId, setSelectedId] = useState<number | null>(restore ? restore.codebookId : initialVersionId);
+  const [selectedId, setSelectedId] = useState<number | null>(restore ? restore.designVersionId : initialVersionId);
   // The backup is used by the first editor only: later ones start from what is saved
   const [pendingRestore, setPendingRestore] = useState(restore);
   const openId = selectedId ?? versions.currentId;
-  const openQuery = useCodebookQuery(client, openId);
-  const liveQuery = useCodebookQuery(client, versions.liveId);
+  const openQuery = useDesignVersionQuery(client, openId);
+  const liveQuery = useDesignVersionQuery(client, versions.liveId);
 
   // Bumped when the open version's content is replaced underneath the editor (restore)
   const [editorEpoch, setEditorEpoch] = useState(0);
   const [versionsDialogOpen, setVersionsDialogOpen] = useState(false);
-  const [toPublish, setToPublish] = useState<CodebookResponse | null>(null);
+  const [toPublish, setToPublish] = useState<DesignVersion | null>(null);
 
-  const createCodebook = useCreateCodebookMutation(client);
-  const updateCodebook = useUpdateCodebookMutation(client);
-  const deleteCodebook = useDeleteCodebookMutation(client);
+  const createDesignVersion = useCreateDesignVersionMutation(client);
+  const updateDesignVersion = useUpdateDesignVersionMutation(client);
+  const deleteDesignVersion = useDeleteDesignVersionMutation(client);
   const publish = usePublishMutation(client);
 
   // Unsaved changes tracking
@@ -121,13 +121,13 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
     if (versions.draftId !== null && !confirm(`Replace the draft (v${draftNumber}) with the content of v${versions.numberOf(id)}?`)) return;
     requestNavigation(async () => {
       try {
-        const source = await client.getCodebook(id);
+        const source = await client.getDesignVersion(id);
         const body = { items: source.items, session: source.session };
         if (versions.draftId !== null) {
-          await updateCodebook.mutateAsync({ id: versions.draftId, body });
+          await updateDesignVersion.mutateAsync({ id: versions.draftId, body });
           setSelectedId(null);
         } else {
-          const created = await createCodebook.mutateAsync(body);
+          const created = await createDesignVersion.mutateAsync(body);
           setSelectedId(created.id);
         }
         setIsDirty(false);
@@ -147,7 +147,7 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
       (isDirty && openId === versions.draftId ? " Your unsaved changes are lost too." : "");
     if (!confirm(message)) return;
     try {
-      await deleteCodebook.mutateAsync(versions.draftId);
+      await deleteDesignVersion.mutateAsync(versions.draftId);
     } catch (e) {
       alert(`Could not delete the draft: ${e instanceof Error ? e.message : String(e)}`);
       return;
@@ -197,7 +197,7 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
             setSelectedId(saved.id);
           }}
           onPublish={setToPublish}
-          restore={pendingRestore && pendingRestore.codebookId === openId ? pendingRestore : null}
+          restore={pendingRestore && pendingRestore.designVersionId === openId ? pendingRestore : null}
           onRestored={() => setPendingRestore(null)}
           onReload={async () => {
             await openQuery.refetch();
@@ -229,18 +229,18 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
         onDeploy={async (codebook, note, units) => {
           if (codebook && note !== (codebook.note ?? "")) {
             // Based on the saved revision; the editor reloads after (its revision is now old), deploy or not
-            const updated = await updateCodebook.mutateAsync({ id: codebook.id, body: { note: note || undefined, items: codebook.items, revision: codebook.revision } });
+            const updated = await updateDesignVersion.mutateAsync({ id: codebook.id, body: { note: note || undefined, items: codebook.items, revision: codebook.revision } });
             setToPublish(updated);
             setEditorEpoch((n) => n + 1);
           }
-          const codebookId = codebook?.id ?? versions.liveId!;
+          const designVersionId = codebook?.id ?? versions.liveId!;
           let deployment;
           try {
-            deployment = await publish.mutateAsync({ codebookId, units });
+            deployment = await publish.mutateAsync({ designVersionId, units });
           } catch (err) {
             // Many links (one per combination of link parameter values): deployed only when confirmed
             if (!(err instanceof ResearcherApiError && err.code === "confirm_links") || !confirm(err.reason)) throw err;
-            deployment = await publish.mutateAsync({ codebookId, units, confirmLinks: true });
+            deployment = await publish.mutateAsync({ designVersionId, units, confirmLinks: true });
           }
           if (codebook) setSelectedId(null);
           return deployment;

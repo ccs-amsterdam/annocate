@@ -27,7 +27,7 @@ export type DeploymentChanges = z.infer<typeof DeploymentChangesSchema>;
 /** `GET /job/:jobId/deployment/versions`: the deployed versions, newest first. */
 export const DeploymentVersionSchema = z.object({
   version: z.number().int().positive(),
-  codebookId: IdSchema,
+  designVersionId: IdSchema,
   changes: DeploymentChangesSchema,
   created: z.coerce.date(),
 });
@@ -38,14 +38,14 @@ export const PendingChangesSchema = z.object({
   /** The draft units against the deployed ones (all added when nothing is deployed). */
   units: UnitChangesSchema,
   /** The latest codebook, if it isn't the deployed one. */
-  codebookId: IdSchema.nullable(),
+  designVersionId: IdSchema.nullable(),
 });
 export type PendingChanges = z.infer<typeof PendingChangesSchema>;
 
 /** Researcher-facing: `PUT /job/:jobId/deployment`. */
 export const DeploymentWriteSchema = z.object({
   /** The codebook coders get (the deployed one: keep it). */
-  codebookId: IdSchema,
+  designVersionId: IdSchema,
   /**
    * Deploy the draft units and sets too. Default false: keep the deployed
    * ones, so changing the codebook or pausing deploys no units by accident

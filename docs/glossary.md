@@ -32,23 +32,27 @@ Older identifiers that mean a term above:
 
 | Identifier | Means |
 | --- | --- |
-| `codebooks` table, `/job/:id/codebook` endpoints, `CodebookResponse`, `codebookId` | a **design version** |
 | `CodebookEditor`, `useCodebookDraft`, `client/src/lib/codebook/` | the **codebook editor** and design-item helpers |
+| `codebookItems`, `codebookSession`, `codebookUnits` (server `shared/designVersions.ts`) | the items, session and units of a **design version** |
+| `codebook_changed` (coder API error) | a new **design version** was deployed |
 | `toCoderItems`, `CoderCodebook` | the **codebook** (coders' part) |
 | `putDeployment` (`PUT /deployment`) | **deploy** |
 | `variable` (a question's answer type; `VariableValue`) | a question's **answer type**; an **answer** |
 
-## 3. Proposed renames (not done)
+## 3. Renames
 
-So code and API say what the app says. Each is mechanical but touches the
-public researcher API (and the R/Python clients), so it waits for a decision:
+So code and API say what the app says (decided 2026-11-02; they change the
+public researcher API, so the R/Python clients follow):
 
-1. `/job/:id/codebook` → `/job/:id/design`, `codebooks` → `design_versions`,
-   `CodebookResponse`/`CodebookWrite` → `DesignVersion`/`DesignWrite`,
-   `codebookId` → `designVersionId` (in deployments, answers, exports).
+1. Done: `/job/:id/codebook` → `/job/:id/design`, table `codebooks` →
+   `design_versions`, `CodebookResponse`/`CodebookWrite`/`CodebookMeta` →
+   `DesignVersion`/`DesignWrite`/`DesignVersionMeta`, `codebookId` →
+   `designVersionId` (deployments, answers, exports), `codebook_conflict` →
+   `design_conflict`. Kept: the coder API's `codebook_changed` and the
+   session's `codebook` (that is the coders' codebook).
 2. Done: `/invites` → `/links`, table `invites` → `links`, `CoderInvite*` → `Link*`.
    Kept: the coder URL parameter `?invite=<secret>` (links already sent out
    keep working) and the error code `email_not_invited`.
 3. Done: `unitset` → `set` in `SourceStatus` and the distribution tables.
-4. Client: `CodebookEditor` stays (it is the codebook editor); `codebook/`
-   helpers that work on the whole design move to `design/`.
+4. Not done yet: `CodebookEditor` stays (it is the codebook editor); client
+   `codebook/` helpers that work on the whole design would move to `design/`.

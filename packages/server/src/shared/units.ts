@@ -1,6 +1,6 @@
 import type { UnitChanges, UnitData, UnitField, UnitMeta, UnitResponse } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
-import { codebookUnits, type CodebookRow } from "./codebooks.js";
+import { codebookUnits, type DesignVersionRow } from "./designVersions.js";
 
 // Units (docs/plans/design.md §5, migration 0026): field values stored once
 // per job (unit_values). `unit_draft` is each unit's working copy; deploys
@@ -43,8 +43,8 @@ export async function lockUnits(sql: Sql, jobId: number, mode: "write" | "read")
 const UNITS_LOCK = 24026;
 
 /** The job's latest design version (the draft, or the deployed one if there is no draft). */
-export function latestCodebook(sql: Sql, jobId: number): Promise<CodebookRow | undefined> {
-  return one<CodebookRow>(sql, "SELECT * FROM codebooks WHERE job_id = $1 ORDER BY id DESC LIMIT 1", [jobId]);
+export function latestCodebook(sql: Sql, jobId: number): Promise<DesignVersionRow | undefined> {
+  return one<DesignVersionRow>(sql, "SELECT * FROM design_versions WHERE job_id = $1 ORDER BY id DESC LIMIT 1", [jobId]);
 }
 
 /** The job's unit fields: the latest design's (docs/plans/design.md §3). */
@@ -75,10 +75,10 @@ export async function setUnitFields(sql: Sql, jobId: number, fields: UnitField[]
   const units = JSON.stringify({ fields });
   const latest = await latestCodebook(sql, jobId);
   if (latest && !latest.immutable) {
-    await sql.query("UPDATE codebooks SET units = $1 WHERE id = $2", [units, latest.id]);
+    await sql.query("UPDATE design_versions SET units = $1 WHERE id = $2", [units, latest.id]);
   } else {
     // A copy of the latest version (items and session), with the new fields
-    await sql.query("INSERT INTO codebooks (job_id, note, items, units, session) VALUES ($1, $2, $3, $4, $5)", [
+    await sql.query("INSERT INTO design_versions (job_id, note, items, units, session) VALUES ($1, $2, $3, $4, $5)", [
       jobId,
       latest ? "Unit fields from an upload" : null,
       JSON.stringify(latest?.items ?? []),

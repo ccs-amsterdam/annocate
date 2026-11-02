@@ -89,12 +89,12 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
       const annotations = rows.filter((a) => !a.retiredAt);
       // The design versions answers were given under, and the live one.
       setBusy("Loading design versions…");
-      const ids = new Set(rows.flatMap((a) => (a.codebookId === null ? [] : [a.codebookId])));
-      if (deployment) ids.add(deployment.codebookId);
+      const ids = new Set(rows.flatMap((a) => (a.designVersionId === null ? [] : [a.designVersionId])));
+      if (deployment) ids.add(deployment.designVersionId);
       const codebooks = new Map<number, TopLevelItem[]>();
-      for (const id of ids) codebooks.set(id, (await client.getCodebook(id)).items as TopLevelItem[]);
+      for (const id of ids) codebooks.set(id, (await client.getDesignVersion(id)).items as TopLevelItem[]);
 
-      const liveId = deployment?.codebookId ?? null;
+      const liveId = deployment?.designVersionId ?? null;
       const order = questionOrder(liveId === null ? undefined : codebooks.get(liveId));
       const nested = nestedQuestions(liveId === null ? undefined : codebooks.get(liveId));
       const labels = withLabels ? new Labels(codebooks, liveId) : undefined;

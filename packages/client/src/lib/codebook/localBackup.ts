@@ -11,7 +11,7 @@ const STORAGE_KEY = "annotinder:codebook-backup";
 export interface CodebookBackup {
   jobId: number;
   /** The version being edited; null for a new codebook. */
-  codebookId: number | null;
+  designVersionId: number | null;
   /** The saved revision the edits are based on (for the save conflict check). */
   revision?: number;
   /** The edited items, and the items as last saved (both with editor keys, for changed marks and revert). */
@@ -42,11 +42,11 @@ export function writeBackup(backup: CodebookBackup): void {
 }
 
 /** Clears the backup; with a job and codebook, only if it is theirs. */
-export function clearBackup(of?: { jobId: number; codebookId: number | null }): void {
+export function clearBackup(of?: { jobId: number; designVersionId: number | null }): void {
   try {
     if (of) {
       const backup = readBackup();
-      if (!backup || backup.jobId !== of.jobId || backup.codebookId !== of.codebookId) return;
+      if (!backup || backup.jobId !== of.jobId || backup.designVersionId !== of.designVersionId) return;
     }
     localStorage.removeItem(STORAGE_KEY);
   } catch {

@@ -21,7 +21,7 @@ export function LiveControls({ client, deployment }: { client: ResearcherApi; de
           onClick={() => {
             const pausing = deployment.active;
             if (pausing && !confirm("Pause the job? Coders get no new units until you resume it; units they have open can still be finished.")) return;
-            setActive.mutate({ codebookId: deployment.codebookId, active: !pausing });
+            setActive.mutate({ designVersionId: deployment.designVersionId, active: !pausing });
           }}
         >
           {deployment.active ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}

@@ -11,7 +11,7 @@ import {
   type PendingChanges,
 } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
-import { codebookItems, itemsValid, toCodebookResponse, type CodebookRow } from "./codebooks.js";
+import { codebookItems, itemsValid, toDesignVersion, type DesignVersionRow } from "./designVersions.js";
 import { HttpError } from "./http.js";
 import { listFinished } from "./finished.js";
 import type { DeploymentSpec } from "../runtime/types.js";
@@ -20,7 +20,7 @@ import { anyUnitChanges, deployDraftUnits, unitChanges } from "./units.js";
 
 interface DeploymentRow {
   job_id: number;
-  codebook_id: number;
+  design_version_id: number;
   active: boolean;
   version: number;
   annotation_epoch: number;
@@ -30,7 +30,7 @@ interface DeploymentRow {
 export async function getDeployment(sql: Sql, jobId: number): Promise<DeploymentResponse | null> {
   const row = await one<DeploymentRow>(sql, "SELECT * FROM deployments WHERE job_id = $1", [jobId]);
   if (!row) return null;
-  return { jobId: row.job_id, codebookId: row.codebook_id, active: row.active, version: row.version, updated: row.updated };
+  return { jobId: row.job_id, designVersionId: row.design_version_id, active: row.active, version: row.version, updated: row.updated };
 }
 
 /**
@@ -43,11 +43,11 @@ export async function getDeployment(sql: Sql, jobId: number): Promise<Deployment
  */
 export async function putDeployment(sql: Sql, jobId: number, body: DeploymentWrite): Promise<DeploymentResponse> {
   const previous = await one<DeploymentRow>(sql, "SELECT * FROM deployments WHERE job_id = $1", [jobId]);
-  const warnings = previous ? await reopenWarnings(sql, jobId, previous.codebook_id, body.codebookId) : [];
+  const warnings = previous ? await reopenWarnings(sql, jobId, previous.design_version_id, body.designVersionId) : [];
   const units = !previous || body.units ? await unitChanges(sql, jobId) : null;
   const newUnits = units !== null && (!previous || anyUnitChanges(units));
   const changes: DeploymentChanges = {
-    codebook: previous?.codebook_id !== body.codebookId,
+    codebook: previous?.design_version_id !== body.designVersionId,
     units: newUnits ? units : null,
   };
   const changed = changes.codebook || changes.units !== null;
@@ -55,40 +55,40 @@ export async function putDeployment(sql: Sql, jobId: number, body: DeploymentWri
   // The units of this version: new versions of changed units, the draft's sets
   if (newUnits) await deployDraftUnits(sql, jobId, version);
   await sql.query(
-    `INSERT INTO deployments (job_id, codebook_id, active, version, updated) VALUES ($1, $2, $3, $4, now())
-     ON CONFLICT (job_id) DO UPDATE SET codebook_id = excluded.codebook_id,
+    `INSERT INTO deployments (job_id, design_version_id, active, version, updated) VALUES ($1, $2, $3, $4, now())
+     ON CONFLICT (job_id) DO UPDATE SET design_version_id = excluded.design_version_id,
        active = excluded.active, version = excluded.version, updated = excluded.updated`,
-    [jobId, body.codebookId, body.active, version],
+    [jobId, body.designVersionId, body.active, version],
   );
   if (!previous || changed) {
-    await sql.query("INSERT INTO deployment_versions (job_id, version, codebook_id, changes) VALUES ($1, $2, $3, $4)", [
+    await sql.query("INSERT INTO deployment_versions (job_id, version, design_version_id, changes) VALUES ($1, $2, $3, $4)", [
       jobId,
       version,
-      body.codebookId,
+      body.designVersionId,
       JSON.stringify(changes),
     ]);
   }
-  await sql.query("UPDATE codebooks SET immutable = true WHERE job_id = $1 AND id = $2", [jobId, body.codebookId]);
+  await sql.query("UPDATE design_versions SET immutable = true WHERE job_id = $1 AND id = $2", [jobId, body.designVersionId]);
   return { ...(await getDeployment(sql, jobId))!, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
 /** What deploying the drafts would change: the units, and the latest codebook if it isn't deployed. */
 export async function pendingChanges(sql: Sql, jobId: number): Promise<PendingChanges> {
   const deployed = await one<DeploymentRow>(sql, "SELECT * FROM deployments WHERE job_id = $1", [jobId]);
-  const latest = await one<{ id: number }>(sql, "SELECT id FROM codebooks WHERE job_id = $1 ORDER BY id DESC LIMIT 1", [jobId]);
+  const latest = await one<{ id: number }>(sql, "SELECT id FROM design_versions WHERE job_id = $1 ORDER BY id DESC LIMIT 1", [jobId]);
   return {
     units: await unitChanges(sql, jobId),
-    codebookId: latest && latest.id !== deployed?.codebook_id ? latest.id : null,
+    designVersionId: latest && latest.id !== deployed?.design_version_id ? latest.id : null,
   };
 }
 
 /** The deployed versions, newest first. */
 export async function deploymentVersions(sql: Sql, jobId: number): Promise<DeploymentVersion[]> {
-  const rows = await sql.query<{ version: number; codebook_id: number; changes: DeploymentChanges; created: Date }>(
-    "SELECT version, codebook_id, changes, created FROM deployment_versions WHERE job_id = $1 ORDER BY version DESC",
+  const rows = await sql.query<{ version: number; design_version_id: number; changes: DeploymentChanges; created: Date }>(
+    "SELECT version, design_version_id, changes, created FROM deployment_versions WHERE job_id = $1 ORDER BY version DESC",
     [jobId],
   );
-  return rows.map((r) => ({ version: r.version, codebookId: r.codebook_id, changes: r.changes, created: r.created }));
+  return rows.map((r) => ({ version: r.version, designVersionId: r.design_version_id, changes: r.changes, created: r.created }));
 }
 
 /**
@@ -96,8 +96,8 @@ export async function deploymentVersions(sql: Sql, jobId: number): Promise<Deplo
  * (through conditions), from a stored codebook. Titles are for people:
  * progress per loop and warnings.
  */
-export async function loopVariables(sql: Sql, jobId: number, codebookId: number): Promise<Map<string, string[]>> {
-  const row = await one<{ items: unknown; session: unknown }>(sql, "SELECT items, session FROM codebooks WHERE job_id = $1 AND id = $2", [jobId, codebookId]);
+export async function loopVariables(sql: Sql, jobId: number, designVersionId: number): Promise<Map<string, string[]>> {
+  const row = await one<{ items: unknown; session: unknown }>(sql, "SELECT items, session FROM design_versions WHERE job_id = $1 AND id = $2", [jobId, designVersionId]);
   const loops = new Map<string, string[]>();
   const parsed = row ? CodebookItemsSchema.safeParse(codebookItems(row)) : null;
   if (!parsed?.success) return loops;
@@ -110,10 +110,10 @@ export async function loopVariables(sql: Sql, jobId: number, codebookId: number)
   return loops;
 }
 
-async function reopenWarnings(sql: Sql, jobId: number, previousCodebookId: number, codebookId: number): Promise<string[]> {
-  if (previousCodebookId === codebookId) return [];
-  const before = await loopVariables(sql, jobId, previousCodebookId);
-  const after = await loopVariables(sql, jobId, codebookId);
+async function reopenWarnings(sql: Sql, jobId: number, previousDesignVersionId: number, designVersionId: number): Promise<string[]> {
+  if (previousDesignVersionId === designVersionId) return [];
+  const before = await loopVariables(sql, jobId, previousDesignVersionId);
+  const after = await loopVariables(sql, jobId, designVersionId);
   const warnings: string[] = [];
   for (const [loop, variables] of after) {
     // The same loop in the previous version: same title, or else the one sharing most questions.
@@ -140,7 +140,7 @@ async function reopenWarnings(sql: Sql, jobId: number, previousCodebookId: numbe
 export async function getDeploymentSpec(sql: Sql, jobId: number): Promise<DeploymentSpec | null> {
   const deployment = await one<DeploymentRow>(sql, "SELECT * FROM deployments WHERE job_id = $1", [jobId]);
   if (!deployment) return null;
-  const codebook = await one<CodebookRow>(sql, "SELECT * FROM codebooks WHERE job_id = $1 AND id = $2", [jobId, deployment.codebook_id]);
+  const codebook = await one<DesignVersionRow>(sql, "SELECT * FROM design_versions WHERE job_id = $1 AND id = $2", [jobId, deployment.design_version_id]);
   if (!codebook) return null;
   return buildSpec(sql, jobId, codebook, {
     version: deployment.version,
@@ -156,7 +156,7 @@ export async function getDeploymentSpec(sql: Sql, jobId: number): Promise<Deploy
  * picks up every edit.
  */
 export async function getPreviewSpec(sql: Sql, jobId: number): Promise<DeploymentSpec | null> {
-  const codebook = await one<CodebookRow>(sql, "SELECT * FROM codebooks WHERE job_id = $1 ORDER BY id DESC LIMIT 1", [jobId]);
+  const codebook = await one<DesignVersionRow>(sql, "SELECT * FROM design_versions WHERE job_id = $1 ORDER BY id DESC LIMIT 1", [jobId]);
   if (!codebook) return null;
   if (!itemsValid(codebookItems(codebook))) throw new HttpError(409, "The latest design version has issues: fix them to preview it", "codebook_invalid");
   // The drafts: the latest codebook with the draft units and sets.
@@ -168,7 +168,7 @@ export async function getPreviewSpec(sql: Sql, jobId: number): Promise<Deploymen
 async function buildSpec(
   sql: Sql,
   jobId: number,
-  codebook: CodebookRow,
+  codebook: DesignVersionRow,
   meta: Pick<DeploymentSpec, "version" | "active" | "annotationEpoch" | "liveUnits">,
 ): Promise<DeploymentSpec> {
   const job = await one<{ keep_sessions_open: boolean; redirect_urls: Record<string, string> }>(
@@ -182,7 +182,7 @@ async function buildSpec(
     keepSessionsOpen: job?.keep_sessions_open ?? false,
     redirectUrls: job?.redirect_urls ?? {},
     // The runtime works on the items with the session first
-    codebook: { ...toCodebookResponse(codebook), items: codebookItems(codebook) },
+    codebook: { ...toDesignVersion(codebook), items: codebookItems(codebook) },
     sets: await runtimeSets(sql, jobId, meta.liveUnits),
   };
 }

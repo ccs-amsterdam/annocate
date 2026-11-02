@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { designItems, redirectSettings, type JobResponse } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useCodebookQuery, useCodebooksQuery, useCreateJobMutation, useDeleteJobMutation, useJobQuery, useUpdateJobMutation } from "../../admin/queries";
+import { useDesignVersionQuery, useDesignVersionsQuery, useCreateJobMutation, useDeleteJobMutation, useJobQuery, useUpdateJobMutation } from "../../admin/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2 } from "lucide-react";
@@ -77,8 +77,8 @@ function JobEditForm({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [redirects, setRedirects] = useState<Record<string, string>>(job.redirectUrls ?? {});
   // The end items' redirect settings in the latest design version, and any URL already set
-  const codebooks = useCodebooksQuery(client).data ?? [];
-  const latest = useCodebookQuery(client, codebooks.at(-1)?.id ?? null).data;
+  const codebooks = useDesignVersionsQuery(client).data ?? [];
+  const latest = useDesignVersionQuery(client, codebooks.at(-1)?.id ?? null).data;
   const settingNames = [...new Set([...(latest ? redirectSettings(designItems(latest)) : []), ...Object.keys(job.redirectUrls ?? {})])];
   // Compared as saved: without empty URLs, in any key order (the server stores JSONB)
   const redirectsDirty = JSON.stringify(setUrls(redirects)) !== JSON.stringify(setUrls(job.redirectUrls ?? {}));

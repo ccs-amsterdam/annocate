@@ -3,7 +3,7 @@ import { collectQuestions, loopTitle, unitLoops, type TopLevelItem } from "@anno
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useCodebookQuery, useDeploymentQuery, useResetAnswersMutation } from "../../admin/queries";
+import { useDesignVersionQuery, useDeploymentQuery, useResetAnswersMutation } from "../../admin/queries";
 import { HelpButton } from "../../help/HelpButton";
 
 /** Whose or which answers to reset: some coders, some units, or (neither) everyone's. */
@@ -23,7 +23,7 @@ export interface ResetScope {
  */
 export function ResetAnswersDialog({ client, scope, onClose }: { client: ResearcherApi; scope: ResetScope | null; onClose: () => void }) {
   const deployment = useDeploymentQuery(client).data;
-  const codebook = useCodebookQuery(client, deployment?.codebookId ?? null).data;
+  const codebook = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data;
   const reset = useResetAnswersMutation(client);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
 

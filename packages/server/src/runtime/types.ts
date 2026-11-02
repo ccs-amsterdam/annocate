@@ -1,6 +1,6 @@
 import type { DeviceDetails } from "../shared/devices.js";
 import type { SessionRules } from "./sessionValues.js";
-import type { AnswerTiming, CodebookResponse, DeletionRequest, SessionEnd, UnitData, VariableValue } from "@annotinder/contracts";
+import type { AnswerTiming, DesignVersion, DeletionRequest, SessionEnd, UnitData, VariableValue } from "@annotinder/contracts";
 
 // What the runtime reads from and writes to the database (store.ts). Not
 // part of any API: coders get what the coder API (contracts
@@ -11,7 +11,7 @@ export interface DeploymentSpec {
   jobId: number;
   version: number;
   active: boolean;
-  codebook: CodebookResponse;
+  codebook: DesignVersion;
   /** The deployed units (docs/plans/design.md §5); false: the drafts (a preview). */
   liveUnits: boolean;
   /** All sets coders get, keyed `group/set` (contracts `setKey`), plus `__all__` (every unit). */
@@ -130,7 +130,7 @@ export interface CoderValuesWrite {
   coderId: number;
   values: Record<string, VariableValue>;
   assigned?: boolean;
-  codebookId?: number | null;
+  designVersionId?: number | null;
   deviceId?: number | null;
   /**
    * How long the coder took per question, as their browser measured it (by
@@ -204,7 +204,7 @@ export interface AnnotationWrite {
   coderId: number;
   variables: Record<string, VariableValue>;
   /** The deployed codebook the coder answered under. */
-  codebookId?: number;
+  designVersionId?: number;
   /** The unit version the coder saw (`Store.unitVersion`). */
   unitVersionId?: number;
   /** The device the answers were given on (`coder_devices`). */

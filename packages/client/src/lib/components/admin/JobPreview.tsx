@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { PreviewSession } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useCodebooksQuery, useDeploymentQuery, useUnitsQuery } from "../../admin/queries";
+import { useDesignVersionsQuery, useDeploymentQuery, useUnitsQuery } from "../../admin/queries";
 import { describeVersions } from "../../codebook/versions";
 import { JobRunner } from "../JobRunner";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,7 @@ const DESKTOP_PRESETS: DimensionPreset[] = [
  * fresh token, and with it a fresh coder.
  */
 export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
-  const codebooksQuery = useCodebooksQuery(client);
+  const codebooksQuery = useDesignVersionsQuery(client);
   const deploymentQuery = useDeploymentQuery(client);
   const unitsQuery = useUnitsQuery(client);
 
@@ -93,7 +93,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
   const hasCodebook = codebooks.length > 0;
   const latest = codebooks.at(-1);
   const latestStatus = latest
-    ? describeVersions(codebooks, deploymentQuery.data?.codebookId ?? null).statusOf(latest.id)
+    ? describeVersions(codebooks, deploymentQuery.data?.designVersionId ?? null).statusOf(latest.id)
     : null;
   const hasUnits = (unitsQuery.data?.length ?? 0) > 0;
 

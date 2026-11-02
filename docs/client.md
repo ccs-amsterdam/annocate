@@ -592,7 +592,7 @@ from the Preview Job button. It uses a `ResearcherApi`
   deploy it), derived from `GET /codebook` and `GET /deployment`
   (`codebook/versions.ts`):
   - *live*: the version coders get (the deployment's codebook), frozen,
-    since annotations refer to it (`codebookId`);
+    since annotations refer to it (`designVersionId`);
   - *draft*: the latest version, if it isn't frozen; what the editor and
     Preview work on;
   - *history*: every other version, read only; can be restored as the

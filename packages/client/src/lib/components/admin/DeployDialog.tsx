@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { designItems, type CodebookResponse, type TopLevelItem, type UnitChanges } from "@annotinder/contracts";
+import { designItems, type DesignVersion, type TopLevelItem, type UnitChanges } from "@annotinder/contracts";
 import { AlertTriangle, Loader2, Rocket } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,10 +12,10 @@ interface DeployDialogProps {
   client: ResearcherApi;
   open: boolean;
   /** A design version to deploy (a draft that isn't live); null: none, the live one stays. */
-  codebook: CodebookResponse | null;
+  codebook: DesignVersion | null;
   versionNumber: number;
   /** The version coders use now; null if nothing was deployed yet. */
-  live: CodebookResponse | null;
+  live: DesignVersion | null;
   liveNumber: number | null;
   /** Whether the codebook part starts ticked (the editor's Deploy: yes; after uploading units: no). */
   includeCodebook?: boolean;
@@ -23,7 +23,7 @@ interface DeployDialogProps {
    * Deploys: the codebook (null: keep the live one; its note stored first,
    * empty: none) and the draft units and sets or not.
    */
-  onDeploy: (codebook: CodebookResponse | null, note: string, units: boolean) => Promise<{ warnings?: string[] }>;
+  onDeploy: (codebook: DesignVersion | null, note: string, units: boolean) => Promise<{ warnings?: string[] }>;
   onClose: () => void;
 }
 

@@ -35,7 +35,7 @@ test("a practice unit gives feedback when wrong; a wrong gold unit ends the sess
   await page.getByRole("button", { name: /Upload 4 units/ }).click();
   await expect(page.getByRole("button", { name: /^s1 1$/ })).toBeVisible();
 
-  const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/codebook`, {
+  const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/design`, {
     session: { params: [{ name: "part", kind: "link", values: { sets: "part" } }] },
     items: [
       {
@@ -56,7 +56,7 @@ test("a practice unit gives feedback when wrong; a wrong gold unit ends the sess
       { type: "end", name: "low_quality", outcome: "screenout", message: "Sorry, this study is over for you." },
     ],
   });
-  await api(request, "PUT", `/job/${job.id}/deployment`, { codebookId: codebook.id });
+  await api(request, "PUT", `/job/${job.id}/deployment`, { designVersionId: codebook.id });
   const links = await api<{ secret: string; params: Record<string, string> }[]>(request, "GET", `/job/${job.id}/links`);
   const s1 = links.find((l) => l.params.part === "s1")!;
 
@@ -101,7 +101,7 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
       { name: "_gold", unitIds: [id("g1")] },
     ],
   });
-  await api(request, "POST", `/job/${job.id}/codebook`, {
+  await api(request, "POST", `/job/${job.id}/design`, {
     items: [
       {
         type: "unit_loop",

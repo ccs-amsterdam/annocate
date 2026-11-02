@@ -62,7 +62,7 @@ test("your first job, as the help describes it: units, a codebook, publish, invi
   await expect.poll(async () => (await api<unknown[]>(request, "GET", `/job/${job.id}/units`)).length).toBe(3);
 
   // 3-6. A codebook (written through the API: the editor has its own unit tests), published
-  const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/codebook`, {
+  const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/design`, {
     note: "v1",
     items: [
       {
@@ -91,7 +91,7 @@ test("your first job, as the help describes it: units, a codebook, publish, invi
   await page.getByRole("button", { name: "Codebook", exact: true }).click();
   await page.getByRole("button", { name: "Deploy…", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Deploy", exact: true }).click();
-  await expect.poll(async () => (await api<{ codebookId: number } | null>(request, "GET", `/job/${job.id}/deployment`))?.codebookId).toBe(codebook.id);
+  await expect.poll(async () => (await api<{ designVersionId: number } | null>(request, "GET", `/job/${job.id}/deployment`))?.designVersionId).toBe(codebook.id);
 
   // 7. Link coders: publishing made the job's link; give it a label
   await page.getByRole("button", { name: "Deploy", exact: true }).click();

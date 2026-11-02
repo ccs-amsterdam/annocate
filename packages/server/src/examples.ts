@@ -108,7 +108,7 @@ export async function createJobFromExample(db: Sql, id: string, options: FromExa
   if (issues.length > 0) throw new Error(`examples/${id}.json: ${issues.map((i) => i.message).join("; ")}`);
 
   return db.transaction(async (tx) => {
-    const { job, codebookId, unitIds, firstLink } = await createJobFromRecipe(
+    const { job, designVersionId, unitIds, firstLink } = await createJobFromRecipe(
       tx,
       { ...example, name: options.name ?? example.name },
       { ownerId: options.ownerId, ownerEmail: options.ownerEmail, origin: id, secrets: options.secrets },
@@ -139,8 +139,8 @@ export async function createJobFromExample(db: Sql, id: string, options: FromExa
       const isAuto = (name: string) => coderTypes.get(name)?.type === "auto";
       const assigned = Object.fromEntries(Object.entries(values).filter(([name]) => isAuto(name)));
       const answered = Object.fromEntries(Object.entries(values).filter(([name]) => !isAuto(name)));
-      await putCoderValues(tx, job.id, { coderId, values: assigned, assigned: true, codebookId });
-      await putCoderValues(tx, job.id, { coderId, values: answered, codebookId });
+      await putCoderValues(tx, job.id, { coderId, values: assigned, assigned: true, designVersionId });
+      await putCoderValues(tx, job.id, { coderId, values: answered, designVersionId });
 
       for (const [externalId, answers] of Object.entries(coder.units)) {
         // A finished unit: every question of a loop answered (`skip` for hidden ones)
@@ -154,9 +154,9 @@ export async function createJobFromExample(db: Sql, id: string, options: FromExa
           const value = answerValue(short);
           check(name, unitTypes.get(name), value);
           await tx.query(
-            `INSERT INTO annotation_values (job_id, unit_id, coder_id, variable, value, codebook_id, unit_version_id, created, updated)
+            `INSERT INTO annotation_values (job_id, unit_id, coder_id, variable, value, design_version_id, unit_version_id, created, updated)
              VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())`,
-            [job.id, uid, coderId, name, JSON.stringify(value), codebookId, version],
+            [job.id, uid, coderId, name, JSON.stringify(value), designVersionId, version],
           );
         }
         await tx.query("UPDATE units SET coded = true WHERE id = $1", [uid]);

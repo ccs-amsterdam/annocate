@@ -1,4 +1,4 @@
-import type { CodebookMeta } from "@annotinder/contracts";
+import type { DesignVersionMeta } from "@annotinder/contracts";
 
 /**
  * Where each design version stands (docs/client.md §7):
@@ -20,7 +20,7 @@ export interface CodebookVersions {
 }
 
 /** `codebooks` in order of creation, as `GET /codebook` returns them. */
-export function describeVersions(codebooks: CodebookMeta[], liveId: number | null): CodebookVersions {
+export function describeVersions(codebooks: DesignVersionMeta[], liveId: number | null): CodebookVersions {
   const latest = codebooks.at(-1) ?? null;
   const draftId = latest && !latest.immutable && latest.id !== liveId ? latest.id : null;
   const index = new Map(codebooks.map((c, i) => [c.id, i + 1]));

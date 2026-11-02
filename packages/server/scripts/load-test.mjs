@@ -53,8 +53,8 @@ async function setUp() {
       ],
     },
   ];
-  const codebook = await api("POST", `/job/${job.id}/codebook`, { items });
-  await api("PUT", `/job/${job.id}/deployment`, { codebookId: codebook.id, active: true });
+  const codebook = await api("POST", `/job/${job.id}/design`, { items });
+  await api("PUT", `/job/${job.id}/deployment`, { designVersionId: codebook.id, active: true });
   const invite = await api("POST", `/job/${job.id}/links`, { label: "load", auth: "none" });
   console.log(`setup: job ${job.id}, ${UNITS} units in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
   return { jobId: job.id, secret: invite.secret };

@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import type { CodebookResponse, JobResponse } from "@annotinder/contracts";
+import type { DesignVersion, JobResponse } from "@annotinder/contracts";
 import { api } from "./helpers";
 
 // The codebook editor, step by step as "Your first job" (help) describes it.
@@ -35,10 +35,10 @@ test("writing a codebook in the editor, as the help describes it, and saving it"
 
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect
-    .poll(async () => (await api<CodebookResponse[]>(request, "GET", `/job/${job.id}/codebook`)).length, { timeout: 10_000 })
+    .poll(async () => (await api<DesignVersion[]>(request, "GET", `/job/${job.id}/design`)).length, { timeout: 10_000 })
     .toBe(1);
-  const [saved] = await api<{ id: number }[]>(request, "GET", `/job/${job.id}/codebook`);
-  const { items } = await api<CodebookResponse>(request, "GET", `/job/${job.id}/codebook/${saved.id}`);
+  const [saved] = await api<{ id: number }[]>(request, "GET", `/job/${job.id}/design`);
+  const { items } = await api<DesignVersion>(request, "GET", `/job/${job.id}/design/${saved.id}`);
   expect(items).toMatchObject([
     { type: "unit_loop", label: "News articles", units: [{ mode: "all" }], children: [{ name: "topic", variable: { type: "nominal", question: "What is this article mainly about?" } }] },
   ]);

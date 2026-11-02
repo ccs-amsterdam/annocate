@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import type { CodebookResponse, JobResponse, SetGroupResponse } from "@annotinder/contracts";
+import type { DesignVersion, JobResponse, SetGroupResponse } from "@annotinder/contracts";
 import { api } from "./helpers";
 
 // The setup wizard (docs/plans/setup-wizard.md): through its steps to a job
@@ -56,8 +56,8 @@ test("annotation with an experiment: a set of units per condition, questions bef
     ["control", 1],
     ["treatment", 2],
   ]);
-  const [draft] = await api<CodebookResponse[]>(request, "GET", `/job/${job.id}/codebook`);
-  const items = (await api<CodebookResponse>(request, "GET", `/job/${job.id}/codebook/${draft.id}`)).items as {
+  const [draft] = await api<DesignVersion[]>(request, "GET", `/job/${job.id}/design`);
+  const items = (await api<DesignVersion>(request, "GET", `/job/${job.id}/design/${draft.id}`)).items as {
     name?: string;
     type: string;
     variable?: { type: string; question?: string };
@@ -124,8 +124,8 @@ test("crowd coding with an overlap; the loop's units are set by the wizard", asy
   await page.getByRole("button", { name: "Create job" }).click();
 
   const job = (await api<JobResponse[]>(request, "GET", "/job")).find((j) => j.name === "Crowd pilot")!;
-  const [draft] = await api<CodebookResponse[]>(request, "GET", `/job/${job.id}/codebook`);
-  const [loop] = (await api<CodebookResponse>(request, "GET", `/job/${job.id}/codebook/${draft.id}`)).items as { units: unknown[]; layout: { template: string } }[];
+  const [draft] = await api<DesignVersion[]>(request, "GET", `/job/${job.id}/design`);
+  const [loop] = (await api<DesignVersion>(request, "GET", `/job/${job.id}/design/${draft.id}`)).items as { units: unknown[]; layout: { template: string } }[];
   expect(loop.units).toEqual([
     {
       mode: "shared",
