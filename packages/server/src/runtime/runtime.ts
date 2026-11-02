@@ -16,19 +16,13 @@ import {
   sessionItem,
   setKey,
   sharedDefaults,
-  buildScope,
   collectQuestions,
   goldColumn,
-  outputText,
-  parseTemplate,
   practiceColumn,
   practiceMessageColumn,
   parseAnswerKey,
-  matchesAnswerKey,
-  type AnswerAlternative,
-  referenceValue,
+  answerMatchesKey,
   type GoldSettings,
-  type PracticeSettings,
   type SubmitUnitResponse,
   toCoderItems,
   DEFAULT_RATE,
@@ -65,13 +59,6 @@ import {
   type LoopInfo,
   type VariableType,
 } from "./designItems.js";
-
-/** A unit's answer column as the values it names (`a;b` for several); null when empty. */
-/** Whether an answer matches a unit's answer key (contracts answerKey.ts). */
-function sameAnswer(answer: VariableValue | undefined, key: AnswerAlternative[]): boolean {
-  if (!answer || answer.skip) return false;
-  return matchesAnswerKey(key, (answer.values ?? []).map((v) => String(v.value)));
-}
 
 /** Stored coder-level answers as plain values. */
 const plainValues = (values: Record<string, CoderValue>) => Object.fromEntries(Object.entries(values).map(([name, v]) => [name, v.value]));
@@ -728,7 +715,7 @@ export class DeploymentRuntime {
     return Promise.all(
       units.map(async (unit) => {
         const [shown, answers] = await Promise.all([this.markServed(coder.coderId, unit), this.store.unitAnswers(coder.coderId, unit.id)]);
-        return { id: unit.id, externalId: unit.externalId, data: this.withPractice(route, unit.id, shown.data), variables: answers };
+        return this.coderUnit(route, unit, shown.data, answers);
       }),
     );
   }
@@ -803,7 +790,7 @@ export class DeploymentRuntime {
     const unit = (await this.getUnits([unitId])).get(unitId);
     if (!unit) throw new HttpError(404, "Unit not found");
     const shown = await this.markServed(coder.coderId, unit);
-    return { id: unit.id, externalId: unit.externalId, data: this.withPractice(route, unit.id, shown.data), variables: answers };
+    return this.coderUnit(route, unit, shown.data, answers);
   }
 
   /**
@@ -870,15 +857,11 @@ export class DeploymentRuntime {
     // The coder-level answers this loop depends on can't change any more.
     await this.store.freezeCoderValues(coder.coderId, this.dependencies.get(info.key) ?? []);
 
-    // Practice and gold units (docs/plans/special-sets.md): checked here, against the unit's answer columns.
+    // Gold units (docs/plans/special-sets.md): checked here, against the unit's answer columns (practice: in the browser).
     const route = this.assignedRoute(coder, info.key);
     if (!route || route.branch.mode === "all") return {};
     const response: SubmitUnitResponse = {};
-    const { practice, gold } = route.branch;
-    if (practice?.questions?.length && this.specialSet(route, PRACTICE_SET).includes(unitId)) {
-      const unit = (await this.getUnits([unitId])).get(unitId);
-      if (unit) response.practice = this.checkPractice(practice, unit.data, merged, coder);
-    }
+    const { gold } = route.branch;
     if (gold?.health && this.specialSet(route, GOLD_SET).includes(unitId)) {
       const health = await this.goldHealth(coder, info.key, gold, this.specialSet(route, GOLD_SET));
       if (health <= 0) {
@@ -889,42 +872,25 @@ export class DeploymentRuntime {
     return response;
   }
 
-  /** A practice unit's data marked as such (`$unit._practice`): the one special-set flag coders get. */
-  private withPractice(route: Route | null, unitId: number, data: UnitData): UnitData {
-    return route && this.specialSet(route, PRACTICE_SET).includes(unitId) ? { ...data, _practice: true } : data;
-  }
-
   /**
-   * A practice unit's answers against its answer columns (`<question>_practice`):
-   * right, or the feedback per wrong question (the unit's own message, the
-   * loop's, or the expected answer). Questions whose column is empty aren't checked.
+   * A unit as the coder gets it. A practice unit is marked (`$unit._practice`)
+   * and comes with its checks: the answer cells of the loop's practice
+   * questions and their feedback, checked in the browser (special-sets.md §2).
+   * Gold cells never leave the server.
    */
-  private checkPractice(practice: PracticeSettings, data: UnitData, answers: Record<string, VariableValue>, coder: Coder): NonNullable<SubmitUnitResponse["practice"]> {
-    const messages: string[] = [];
-    for (const name of practice.questions ?? []) {
-      const expected = parseAnswerKey(data[practiceColumn(name)]);
-      if (expected === null || sameAnswer(answers[name], expected)) continue;
-      const own = String(data[practiceMessageColumn(name)] ?? "").trim();
-      const question = this.questions.get(name);
-      if (own) messages.push(own);
-      else if (practice.message) messages.push(this.renderText(practice.message, answers, data, coder));
-      else {
-        const options = question && "options" in question ? (question.options as { value: unknown; label?: string }[] | undefined) : undefined;
-        const label = (v: string) => options?.find((o) => String(o.value) === v)?.label ?? v;
-        const right = expected.map((alt) => ("range" in alt ? `between ${alt.range[0]} and ${alt.range[1]}` : alt.values.map(label).join(" and ")));
-        const text = question && "question" in question && question.question ? `"${question.question}"` : name;
-        messages.push(`The expected answer to ${text} was ${right.join(" or ")}.`);
-      }
+  private coderUnit(route: Route | null, unit: { id: number; externalId: string; data: UnitData }, shown: UnitData, answers: Record<string, VariableValue>): CoderUnitResponse {
+    const base = { id: unit.id, externalId: unit.externalId, variables: answers };
+    if (!route || !this.specialSet(route, PRACTICE_SET).includes(unit.id)) return { ...base, data: shown };
+    const practice = route.branch.mode === "all" ? undefined : route.branch.practice;
+    const questions: NonNullable<CoderUnitResponse["practice"]>["questions"] = {};
+    for (const name of practice?.questions ?? []) {
+      const key = String(unit.data[practiceColumn(name)] ?? "").trim();
+      if (!parseAnswerKey(key)) continue;
+      const message = String(unit.data[practiceMessageColumn(name)] ?? "").trim();
+      questions[name] = { key, ...(message ? { message } : {}) };
     }
-    return { correct: messages.length === 0, messages };
-  }
-
-  /** A text with $var and $unit references filled in (no {{ }} expressions: the server runs no scripts). */
-  private renderText(template: string, answers: Record<string, VariableValue>, data: UnitData, coder: Coder): string {
-    const scope = buildScope(this.questions, answers, data, coder.session);
-    return parseTemplate(template)
-      .segments.map((s) => (s.type === "text" ? s.text : s.ref ? outputText(referenceValue(scope, s.ref)) : ""))
-      .join("");
+    const checks = Object.keys(questions).length > 0 ? { practice: { retry: practice?.retry ?? true, ...(practice?.message ? { message: practice.message } : {}), questions } } : {};
+    return { ...base, data: { ...shown, _practice: true }, ...checks };
   }
 
   /**
@@ -947,7 +913,7 @@ export class DeploymentRuntime {
       for (const name of gold.questions) {
         const expected = parseAnswerKey(unit.data[goldColumn(name)]);
         if (expected === null) continue;
-        value = sameAnswer(answers[name], expected) ? Math.min(health.start, value + (health.right ?? 0)) : value + health.wrong;
+        value = answerMatchesKey(answers[name], expected) ? Math.min(health.start, value + (health.right ?? 0)) : value + health.wrong;
       }
     }
     return value;

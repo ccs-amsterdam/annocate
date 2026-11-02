@@ -770,7 +770,7 @@ describe("quitting and deleting a coder's data", () => {
 });
 
 describe("practice and gold units", () => {
-  it("practice units come first, with feedback when wrong; gold units are checked silently, and health running out ends the session", async () => {
+  it("practice units come first, with their checks; gold units are checked silently, and health running out ends the session", async () => {
     const { data: base } = await draftUnit((await unitByExternalId("unit-1")).id);
     const upload = await server.request("/job/1/units", {
       method: "POST",
@@ -814,8 +814,9 @@ describe("practice and gold units", () => {
     expect(practice.externalId).toBe("p1");
     expect(practice.data).toMatchObject({ _practice: true });
     expect(practice.data).not.toHaveProperty("sentiment_practice");
-    expect(await submit(practice.id, "positive")).toEqual({ practice: { correct: false, messages: ["It reports a disaster."] } });
-    expect(await submit(practice.id, "negative")).toEqual({ practice: { correct: true, messages: [] } });
+    // Its checks come along, for the browser (retry by default); the server doesn't check practice
+    expect(practice.practice).toEqual({ retry: true, questions: { sentiment: { key: "negative", message: "It reports a disaster." } } });
+    expect(await submit(practice.id, "negative")).toEqual({});
     // Then their own unit, then the gold units: nothing tells them they are gold
     const own = (await c.next())!;
     expect(own.externalId).toBe("unit-1");

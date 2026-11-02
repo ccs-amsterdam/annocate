@@ -10,7 +10,9 @@
  * | `3..5`              | a number from 3 to 5 (numeric)                |
  *
  * Alternatives combine: `a;b|c` is right for "a and b" and for "c".
- * Checked on the server; coders never get the cells.
+ * Gold cells are checked on the server and never reach coders; practice
+ * cells come with practice units and are checked in the browser, as each
+ * question is answered (special-sets.md §2).
  */
 
 export type AnswerAlternative = { values: string[] } | { range: [number, number] };
@@ -47,6 +49,12 @@ export function matchesAnswerKey(key: AnswerAlternative[], given: string[]): boo
     }
     return given.length === alt.values.length && alt.values.every((v) => given.includes(v));
   });
+}
+
+/** Whether an answer (a question's value) matches a key; a skipped or missing answer never does. */
+export function answerMatchesKey(answer: { skip?: boolean; values?: { value: unknown }[] } | undefined, key: AnswerAlternative[]): boolean {
+  if (!answer || answer.skip) return false;
+  return matchesAnswerKey(key, (answer.values ?? []).map((v) => String(v.value)));
 }
 
 /** A cell written back from alternatives (the inverse of parseAnswerKey). */

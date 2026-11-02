@@ -65,8 +65,9 @@ or spread through the work as an attention check with feedback.
 
 **Answer cells** (built, contracts `answerKey.ts`): `positive` (exactly
 this), `a;b` (these together), `positive|neutral` (any alternative),
-`3..5` (a number in the range). Gold and practice share them; checked on
-the server, no scripts. A right practice answer shows a short check; a
+`3..5` (a number in the range). Gold and practice share them; gold checked
+on the server, practice in the browser as each question is answered (the
+practice unit comes with its cells; decided 2026-11-02), no scripts. A right practice answer shows a short check; a
 wrong one, one message per question (more messages may come later as
 extra columns).
 
@@ -110,8 +111,12 @@ optional `max` / `pick`:
 - `message` (practice): shown when an answer is wrong: text, which may use
   `$unit.<column>` for a message per unit (e.g. an explanation column), and
   `$var.<question>` for the coder's answer. Default: "The expected answer
-  was …" with the option's label. The coder then continues (or, an option
-  to decide: must answer again until right).
+  was …" with the option's label. The coder answers again until right (`retry`, default; decided
+  2026-11-02), or with `retry: false` may go on. The tries per question
+  are stored with the answer's timing (`tries`).
+- Gold: answers are saved in the background as always; when the server
+  says health ran out, the coder sees the screen-out at once, even on the
+  next unit (failing the last gold unit doesn't give away which it was).
 - `health` (gold): a score that starts at `start` and changes per checked
   gold unit (`wrong` per wrong answer, `right` per right one, capped at
   `start`). At or below 0 the session ends at the end item `end` (an `end`

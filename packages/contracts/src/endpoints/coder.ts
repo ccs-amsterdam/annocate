@@ -39,8 +39,6 @@ export type NextUnitQuery = z.infer<typeof NextUnitQuerySchema>;
  */
 /** The answer to a submitted unit (`postUnitVariables`). */
 export const SubmitUnitResponseSchema = z.object({
-  /** A practice unit: right or wrong, and the feedback per wrong question. */
-  practice: z.object({ correct: z.boolean(), messages: z.array(z.string()) }).optional(),
   /** Gold checks ended the session (health ran out) at this end item. */
   end: z.string().optional(),
 });
@@ -63,9 +61,8 @@ export const coderEndpoints = {
     response: CoderUnitResponseSchema,
   },
   /**
-   * A finished unit. On a practice unit (`$unit._practice`), whether the
-   * answers were right, with feedback; when gold checks ended the session
-   * (health ran out), the end item it ended at.
+   * A finished unit. When gold checks ended the session (health ran out),
+   * the end item it ended at (practice is checked in the browser).
    */
   postUnitVariables: { method: "POST", path: "/variables/unit", request: PostUnitVariablesSchema, response: SubmitUnitResponseSchema },
   postCoderVariables: {

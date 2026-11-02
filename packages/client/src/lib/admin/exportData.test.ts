@@ -107,8 +107,8 @@ describe("data download", () => {
     const unit = { ...row(1, 1, "sentiment", value, 3), timing: timing(5000, 90_000), servedAt: new Date(at.getTime() + 2 * 60_000) };
     const coders = [coder(1)];
     expect(timingsTable([survey, unit], coders).rows).toEqual([
-      ["", "1", "p1", "age", "30000", "30000", "0", "1", "60000", "false"],
-      ["u1", "1", "p1", "sentiment", "5000", "90000", "0", "1", "60000", "true"],
+      ["", "1", "p1", "age", "30000", "30000", "0", "1", "", "60000", "false"],
+      ["u1", "1", "p1", "sentiment", "5000", "90000", "0", "1", "", "60000", "true"],
     ]);
     const units = annotationsTable([survey, unit], coders, ["sentiment"]);
     expect(units.rows[0].slice(9, 11)).toEqual(["90000", "60000"]);

@@ -80,6 +80,8 @@ export const AnswerTimingSchema = z.object({
   totalMs: ms,
   hiddenMs: ms,
   edits: z.number().int().nonnegative().max(10_000),
+  /** A practice question (checked in the browser): the answers given until right; 1 is right the first time. */
+  tries: z.number().int().positive().max(10_000).optional(),
 });
 export type AnswerTiming = z.infer<typeof AnswerTimingSchema>;
 

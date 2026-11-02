@@ -13,7 +13,7 @@ in with each coder's own units:
 | --- | --- | --- |
 | `_overlap` | coded by every coder of the group: to compare coders (reliability) | nothing |
 | `_gold` | have a known answer: coders are checked silently | nothing, unless they fail (below) |
-| `_practice` | have a known answer: coders are told when they were wrong | feedback after answering |
+| `_practice` | have a known answer: coders are told when they are wrong | feedback per question, answer again |
 
 Keep each unit in at most one of them: a gold unit that is also an overlap
 unit is checked twice, and a practice unit tells coders the answer.
@@ -69,9 +69,16 @@ about units without answers and answers that aren't options of the question.
 
 Turn on **Practice** in the loop: placed **first** (a practice round,
 recommended), spread through the coder's units, or last. For the questions
-ticked, a wrong answer shows the unit's own message, else the loop's
-**Message when wrong**, else the expected answer; the coder then goes on. A
-right answer shows a short check.
+ticked, each answer is checked as it is given: a wrong one shows the unit's
+own message, else the loop's **Message when wrong**, else the expected
+answer, right with the question, and the coder answers again until right.
+Untick **Answer again until right** to let them go on after the message
+instead. A right answer shows a short check. How many tries each question
+took is in the export (`timings.csv`, `practice_tries`).
+
+Practice units come with their answers, so a coder who looks behind the
+scenes can find them; that's fine for practice. Gold answers never leave
+the server.
 
 A layout or question can show something on practice units only:
 `$unit._practice` is true there (e.g. `::: if $unit._practice`). A

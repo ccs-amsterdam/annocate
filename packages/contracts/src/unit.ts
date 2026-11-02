@@ -63,5 +63,18 @@ export const CoderUnitResponseSchema = z.object({
   /** Only the fields the codebook uses (`shownUnitFields`). */
   data: UnitDataSchema,
   variables: z.record(z.string(), VariableValueSchema),
+  /**
+   * A practice unit's checks (special-sets.md §2), for the browser: per
+   * question the unit's answer cell (`<question>_practice`, answerKey.ts) and
+   * its own feedback; the loop's feedback template; whether coders must
+   * answer again until right.
+   */
+  practice: z
+    .object({
+      retry: z.boolean(),
+      message: z.string().optional(),
+      questions: z.record(z.string(), z.object({ key: z.string(), message: z.string().optional() })),
+    })
+    .optional(),
 });
 export type CoderUnitResponse = z.infer<typeof CoderUnitResponseSchema>;

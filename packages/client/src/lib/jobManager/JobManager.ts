@@ -17,12 +17,12 @@ import type {
   ReferenceScope,
   UnitData,
 } from "@annotinder/contracts";
-import { buildScope, unitScopeData, loopDependencies, unitLoops, collectQuestions, fillRedirectUrl, itemName, validateAnswer } from "@annotinder/contracts";
+import { answerMatchesKey, parseAnswerKey, type AnswerAlternative, buildScope, unitScopeData, loopDependencies, unitLoops, collectQuestions, fillRedirectUrl, itemName, validateAnswer } from "@annotinder/contracts";
 import type { BranchChoice, CoderApi } from "../api/httpCoderApi";
 import { evaluateCondition } from "../codebook/conditions";
 import { ExpressionCache } from "../codebook/expressionCache";
 import { computeLoopSteps, computeTopLevelSteps, flattenTree, spanColumns, type StepContext } from "../codebook/tree";
-import { renderTemplate, type RenderedTemplate } from "../codebook/renderTemplate";
+import { renderTemplate, staticTemplate, type RenderedTemplate } from "../codebook/renderTemplate";
 import type { QuestionTexts } from "../components/Question";
 import { QuestionTimer } from "./timing";
 
@@ -110,11 +110,12 @@ export interface JobManagerSnapshot {
   retrying: boolean;
   navigation: JobManagerNavigation;
   /**
-   * After a practice unit answered wrongly: the feedback, shown until the
-   * coder continues (`continueAfterFeedback`). Null otherwise.
+   * A practice question answered wrongly (special-sets.md §2): the feedback,
+   * shown with the question. With `retry` the coder answers again until
+   * right; without, they may go on (`continueAfterPractice`). Null otherwise.
    */
-  feedback: { messages: string[] } | null;
-  /** Practice units answered right so far: the coding screen flashes a check when it goes up. */
+  practiceWrong: { question: string; messages: RenderedTemplate[]; retry: boolean } | null;
+  /** Practice questions answered right so far: the coding screen flashes a check when it goes up. */
   practiceRight: number;
 }
 
@@ -334,7 +335,7 @@ export class JobManager {
     reopen: null,
     unsaved: 0,
     retrying: false,
-    feedback: null,
+    practiceWrong: null,
     practiceRight: 0,
     navigation: {
       canGoBack: false,
@@ -398,6 +399,7 @@ export class JobManager {
       this.histories.clear();
       this.progress = new Map(session.progress.map((p) => [p.set, p]));
       this.session = session.session ?? {};
+      this.coderId = session.coderId;
       if (session.deletionRequest) this.publish({ deletionRequested: true });
       this.publish({ login: session.login ?? null, canLogIn: session.canLogIn ?? false });
       if (session.ended) {
@@ -696,9 +698,67 @@ export class JobManager {
         await this.advanceTop();
       } else {
         this.unitVariableValues[item.name] = value;
+        this.writeDraft();
+        if (!(await this.checkPractice(item.name, value))) return;
         await this.advanceUnit();
       }
     });
+  }
+
+  /** Tries per practice question until right, by `<unitId>:<question>` (stored with the answer's timing). */
+  private practiceTries = new Map<string, number>();
+
+  /**
+   * A practice unit's question (special-sets.md §2), checked as it is
+   * answered: right flashes a check; wrong shows the feedback with the
+   * question. Returns whether the coder goes on now (right, a question
+   * without a check, or wrong without `retry`... after `continueAfterPractice`).
+   */
+  private async checkPractice(name: string, value: VariableValue): Promise<boolean> {
+    const unit = this.currentUnit;
+    const check = unit?.practice?.questions[name];
+    const key = check ? parseAnswerKey(check.key) : null;
+    if (!unit?.practice || !check || !key) return true;
+    const triesKey = `${unit.id}:${name}`;
+    if (this.solvedPractice.has(triesKey)) return true;
+    this.practiceTries.set(triesKey, (this.practiceTries.get(triesKey) ?? 0) + 1);
+    if (answerMatchesKey(value, key)) {
+      this.solvedPractice.add(triesKey);
+      this.publish({ practiceWrong: null, practiceRight: this.snapshot.practiceRight + 1 });
+      return true;
+    }
+    const scope = this.scope(this.unitVariableValues, unitScopeData(unit) as UnitData);
+    const message = check.message
+      ? staticTemplate(check.message)
+      : unit.practice.message
+        ? await renderTemplate(unit.practice.message, scope, this.expressionCache, `practice:${name}`)
+        : staticTemplate(this.expectedAnswerText(name, key));
+    // Shown again (the question stays): the field starts from the wrong answer
+    this.syncCurrentUnitAnswers();
+    await this.publishLoopStep();
+    this.publish({ practiceWrong: { question: name, messages: [message], retry: unit.practice.retry } });
+    return false;
+  }
+
+  /** Practice questions answered right (or gone on from), by `<unitId>:<question>`: checked once. */
+  private solvedPractice = new Set<string>();
+
+  /** "The expected answer to "…" was …", with the options' labels. */
+  private expectedAnswerText(name: string, key: AnswerAlternative[]): string {
+    const variable = this.questions.get(name) as { question?: string; options?: { value: unknown; label?: string }[] } | undefined;
+    const label = (v: string) => variable?.options?.find((o) => String(o.value) === v)?.label ?? v;
+    const right = key.map((alt) => ("range" in alt ? `between ${alt.range[0]} and ${alt.range[1]}` : alt.values.map(label).join(" and ")));
+    const text = variable?.question ? `"${variable.question}"` : name;
+    return `The expected answer to ${text} is ${right.join(" or ")}.`;
+  }
+
+  /** A wrong practice answer without `retry`: the coder goes on with their answer. */
+  async continueAfterPractice(): Promise<void> {
+    const wrong = this.snapshot.practiceWrong;
+    if (!wrong || wrong.retry || !this.currentUnit) return;
+    this.solvedPractice.add(`${this.currentUnit.id}:${wrong.question}`);
+    this.publish({ practiceWrong: null });
+    await this.guarded(() => this.advanceUnit());
   }
 
   /** The timer's key for a question on screen now (`QuestionTimer`): coder-level, or in the current unit. */
@@ -715,6 +775,7 @@ export class JobManager {
    * saving until it is dealt with (`reportSaveError`).
    */
   private save(item: OutboxItem): void {
+    if (this.serverEnded) return;
     const waiting = this.outbox.findIndex((other, i) => other.key === item.key && !(i === 0 && this.draining));
     if (waiting >= 0) this.outbox[waiting] = item;
     else this.outbox.push(item);
@@ -795,6 +856,8 @@ export class JobManager {
       // (An operation that handles its own failure, like start(), sets its own retry.)
       if (this.lastFailedOperation === operation) this.lastFailedOperation = null;
     } catch (err) {
+      // The session already ended (gold checks): what was underway doesn't matter
+      if (this.serverEnded) return;
       if (errorCodeOf(err) === "codebook_changed") {
         this.lastFailedOperation = null;
         await this.reloadAfterPublish();
@@ -820,9 +883,8 @@ export class JobManager {
     for (const { unit } of this.outbox) if (unit) this.carryOver.set(`${unit.loop}/${unit.unitId}`, unit.answers);
     this.outbox = [];
     this.saveError = null;
-    // A practice unit's feedback belongs to the unit, which is served again
-    this.afterFeedback = null;
-    this.publish({ feedback: null });
+    // A practice question's feedback belongs to the unit, which is served again
+    this.publish({ practiceWrong: null });
     if (this.activeLoop && this.currentUnit) this.carryOver.set(`${this.keyOf(this.activeLoop)}/${this.currentUnit.id}`, { ...this.unitVariableValues });
     this.unitQueues.clear();
     this.publish({ unsaved: 0, retrying: false });
@@ -1036,12 +1098,62 @@ export class JobManager {
     return queue.filling;
   }
 
-  /** Answers to a unit kept over a new design version (`carryOver`), once. */
+  /**
+   * Answers to a unit not saved yet: kept over a new design version
+   * (`carryOver`, once), or the browser's draft of it (after a reload).
+   */
   private takeCarryOver(loop: CoderUnitLoopItem, unitId: number): Record<string, VariableValue> {
     const key = `${this.keyOf(loop)}/${unitId}`;
     const answers = this.carryOver.get(key) ?? {};
     this.carryOver.delete(key);
-    return answers;
+    const draft = this.readDraft();
+    return draft && draft.loop === this.keyOf(loop) && draft.unitId === unitId ? { ...draft.answers, ...answers } : answers;
+  }
+
+  /** The coder (from the session): the browser's draft of a unit is theirs. */
+  private coderId: number | null = null;
+
+  private get draftKey(): string | null {
+    return this.coderId === null ? null : `annotinder:unit-draft:${this.coderId}`;
+  }
+
+  /**
+   * The answers to the unit on screen, in the browser (localStorage) as they
+   * are given: a coder who closes the page mid-unit finds them back when the
+   * unit comes again. One per coder; cleared once the unit is saved or the
+   * session ends. Storage that fails (private mode, full) just keeps none.
+   */
+  private writeDraft(): void {
+    const key = this.draftKey;
+    // Not for practice units: a restored answer would skip its check
+    if (!key || !this.activeLoop || !this.currentUnit || this.currentUnit.practice) return;
+    try {
+      localStorage.setItem(key, JSON.stringify({ loop: this.keyOf(this.activeLoop), unitId: this.currentUnit.id, answers: this.unitVariableValues }));
+    } catch {
+      // No draft then
+    }
+  }
+
+  private readDraft(): { loop: string; unitId: number; answers: Record<string, VariableValue> } | null {
+    const key = this.draftKey;
+    if (!key) return null;
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Clears the draft (of `unitId` only, when given). */
+  private clearDraft(unitId?: number): void {
+    const key = this.draftKey;
+    if (!key) return;
+    try {
+      if (unitId === undefined || this.readDraft()?.unitId === unitId) localStorage.removeItem(key);
+    } catch {
+      // Nothing to clear
+    }
   }
 
   /**
@@ -1104,6 +1216,7 @@ export class JobManager {
     };
     this.activeLoop = null;
     this.currentUnit = null;
+    this.clearDraft();
     this.publish({
       phase: "finished",
       currentItem: null,
@@ -1204,13 +1317,19 @@ export class JobManager {
       const { id } = this.currentUnit;
       const loopKey = this.keyOf(this.activeLoop);
       const timings = this.timer.take(`u:${id}:`);
-      const practice = this.currentUnit.data?._practice === true;
-      let submitted: SubmitUnitResponse | null = null;
+      // Practice questions: how many tries it took (1: right the first time)
+      for (const [triesKey, tries] of this.practiceTries) {
+        const [unitId, name] = [Number(triesKey.slice(0, triesKey.indexOf(":"))), triesKey.slice(triesKey.indexOf(":") + 1)];
+        if (unitId !== id) continue;
+        if (timings[name]) timings[name] = { ...timings[name], tries };
+        this.practiceTries.delete(triesKey);
+      }
       this.save({
         key: `unit:${loopKey}/${id}`,
         send: async () => {
-          submitted = (await this.coderApi.postUnitVariables(id, doneValues, loopKey, timings)) || null;
-          // Gold checks ended the session (health ran out): show its end.
+          const submitted: SubmitUnitResponse | null = (await this.coderApi.postUnitVariables(id, doneValues, loopKey, timings)) || null;
+          this.clearDraft(id);
+          // Gold checks ended the session (health ran out): it ends now, wherever the coder is.
           if (submitted?.end) this.endedByServer(submitted.end);
         },
         unit: { loop: loopKey, unitId: id, answers: doneValues },
@@ -1219,17 +1338,6 @@ export class JobManager {
       if (this.currentUnit && this.unitHistoryIndex >= 0 && this.unitHistoryIndex < this.unitHistory.length) {
         this.unitHistory[this.unitHistoryIndex].answers = { ...doneValues };
       }
-      // A practice unit: saved now, and the coder sees what was wrong before going on.
-      if (practice) {
-        await this.flush();
-        const result = (submitted as SubmitUnitResponse | null)?.practice;
-        if (result && !result.correct) {
-          this.afterFeedback = () => this.continueAfterUnit(next);
-          this.publish({ feedback: { messages: result.messages } });
-          return;
-        }
-        if (result?.correct) this.publish({ practiceRight: this.snapshot.practiceRight + 1 });
-      }
       await this.continueAfterUnit(next);
       return;
     }
@@ -1237,22 +1345,24 @@ export class JobManager {
     await this.nextUnitAtFrontier();
   }
 
-  /** What to do once the coder read a practice unit's feedback. */
-  private afterFeedback: (() => Promise<void>) | null = null;
-
-  /** The coder read a practice unit's feedback: on to the next unit. */
-  async continueAfterFeedback(): Promise<void> {
-    const next = this.afterFeedback;
-    this.afterFeedback = null;
-    this.publish({ feedback: null });
-    if (next) await this.guarded(next);
-  }
-
-  /** The server ended the session at an `end` item (gold checks): show that ending. */
+  /**
+   * The server ended the session (gold checks, after a unit posted in the
+   * background): the coder sees the ending at once, even if they started on
+   * the next unit; what they do after is not saved (the server accepts
+   * nothing more), and no error shows for it.
+   */
   private endedByServer(name: string): void {
-    const item = findEnd(this.stepItems, name);
-    void this.guarded(() => this.reachEnd(item, this.scope(this.coderVisible)));
+    if (this.serverEnded) return;
+    this.serverEnded = true;
+    this.clearDraft();
+    this.outbox = [];
+    this.saveError = null;
+    this.publish({ unsaved: 0, retrying: false, practiceWrong: null });
+    void this.publishEnding(findEnd(this.stepItems, name), this.scope(this.coderVisible));
   }
+
+  /** The server ended the session (`endedByServer`): nothing more is saved or shown. */
+  private serverEnded = false;
 
   /** After a unit is finished and saved: an `end` in the loop, the next unit in history, or the next one from the server. */
   private async continueAfterUnit(next: DesignItem | undefined): Promise<void> {
@@ -1374,6 +1484,8 @@ export class JobManager {
   }
 
   private publish(next: Partial<JobManagerSnapshot>): void {
+    // After the server ended the session, its ending stays on screen
+    if (this.serverEnded && this.snapshot.phase === "finished" && next.phase !== undefined && next.phase !== "finished") return;
     // Navigation (canGoBack etc.) depends on the new phase, so set that first.
     this.snapshot = { ...this.snapshot, userVariableValues: { ...this.userVariableValues }, ...next };
     this.snapshot = { ...this.snapshot, navigation: this.buildNavigation() };

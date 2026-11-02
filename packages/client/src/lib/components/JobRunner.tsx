@@ -17,6 +17,7 @@ import { CoderSettingsProvider, useCoderSettings } from "../context/CoderSetting
 import { Question } from "./Question";
 import { UnitFields } from "./UnitFields";
 import { DockedAnswerPane } from "./DockedAnswerPane";
+import { TemplateMarkdown } from "./TemplateMarkdown";
 import { SessionEnd } from "./SessionEnd";
 import { QuitMenu } from "./QuitMenu";
 import { SwipeCard, SwipeProvider, SwipeSurface } from "./SwipeCard";
@@ -368,21 +369,6 @@ function JobRunnerContent({
     );
   }
 
-  // A practice unit answered wrongly: what was expected, before going on.
-  if (snapshot.feedback) {
-    return (
-      <SessionNotice title="Not quite">
-        {[...new Set(snapshot.feedback.messages)].map((m, i) => (
-          <p key={i}>{m}</p>
-        ))}
-        <p className="text-muted-foreground">This was a practice unit: your answers are kept, and you go on with the next unit.</p>
-        <Button type="button" className="mt-2" onClick={() => void manager.continueAfterFeedback()}>
-          Continue
-        </Button>
-      </SessionNotice>
-    );
-  }
-
   const item = snapshot.currentItem;
   const isUnitVar = snapshot.phase === "unit_variable";
   const hasUnitLayout = Boolean(isUnitVar && snapshot.currentUnit && snapshot.currentUnitLayout && snapshot.currentUnitTemplate);
@@ -408,8 +394,30 @@ function JobRunnerContent({
       texts={snapshot.currentTexts}
     />
   );
+  // A practice question answered wrongly: the feedback with the question (special-sets.md §2)
+  const practiceWrong = snapshot.practiceWrong?.question === item.name ? snapshot.practiceWrong : null;
+  const practiceNote = practiceWrong && (
+    <div role="alert" className="mx-4 mb-3 rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm">
+      <p className="font-semibold">Not quite</p>
+      {practiceWrong.messages.map((m, i) => (
+        <TemplateMarkdown key={i} rendered={m} />
+      ))}
+      {practiceWrong.retry ? (
+        <p className="mt-1 text-muted-foreground">This is a practice unit: answer again.</p>
+      ) : (
+        <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => void manager.continueAfterPractice()}>
+          Continue
+        </Button>
+      )}
+    </div>
+  );
   // A frozen answer (units were coded with it): shown, not changeable.
-  const questionElement = snapshot.currentFrozen ? (
+  const questionElement = practiceNote ? (
+    <div className="flex flex-col">
+      {practiceNote}
+      {answerField}
+    </div>
+  ) : snapshot.currentFrozen ? (
     <div className="flex flex-col gap-3">
       <fieldset disabled className="pointer-events-none opacity-60" aria-readonly>
         {answerField}

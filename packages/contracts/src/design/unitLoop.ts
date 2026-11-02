@@ -67,8 +67,10 @@ const CheckPlacementSchema = z.enum(["first", "last", "spread", "rate"]);
  * units, before the coder's own units by default. For the `questions`
  * listed, a unit's right answer is in its column `<question>_practice`
  * (optional per unit), and its own feedback in `<question>_practice_message`
- * (optional): coders are told when they are wrong, after answering.
- * Without questions: practice units without feedback.
+ * (optional). Checked in the browser as each question is answered: a wrong
+ * answer shows the feedback, and the coder answers again until right
+ * (`retry`, the default) or may go on. How many tries it took is stored with
+ * the answer's timing. Without questions: practice units without feedback.
  */
 export const PracticeSettingsSchema = z.object({
   placement: CheckPlacementSchema,
@@ -76,6 +78,8 @@ export const PracticeSettingsSchema = z.object({
   questions: z.array(SafeNameSchema).max(20).optional(),
   /** Shown when an answer is wrong (unless the unit has its own message): a template that may use $var and $unit. Default: the expected answer. */
   message: z.string().max(2000).optional(),
+  /** Coders answer a wrong question again until right (default); false: they see the feedback and may go on. */
+  retry: z.boolean().optional(),
 });
 export type PracticeSettings = z.infer<typeof PracticeSettingsSchema>;
 

@@ -445,13 +445,14 @@ export function timingsTable(annotations: AnnotationRow[], coders: CoderProgress
         ms(t.totalMs),
         ms(t.hiddenMs),
         String(t.edits),
+        t.tries === undefined ? "" : String(t.tries),
         ms(server),
         exceeds === null ? "" : String(exceeds),
       ],
     ];
   });
   return {
-    headers: ["unit_id", "coder_id", "participant_id", "variable", "first_ms", "total_ms", "hidden_ms", "edits", "server_ms", "exceeds_server"],
+    headers: ["unit_id", "coder_id", "participant_id", "variable", "first_ms", "total_ms", "hidden_ms", "edits", "practice_tries", "server_ms", "exceeds_server"],
     rows,
   };
 }
@@ -518,8 +519,9 @@ timings.csv      Response times, a row per answer: as the coder's browser
                  measured them, in milliseconds: until the first answer
                  (first_ms), on screen over all visits (total_ms), with the
                  page hidden (hidden_ms; another tab, not in total_ms), and
-                 how often the answer changed (edits). A browser can be
-                 tampered with, so with the server's own bound (server_ms):
+                 how often the answer changed (edits). practice_tries: on
+                 a practice question, the answers given until right (1:
+                 right the first time). A browser can be tampered with, so with the server's own bound (server_ms):
                  for answers in units, the unit's unit_ms_server; outside
                  units, the time since the coder's previous answer.
                  exceeds_server is true where the browser claims more time

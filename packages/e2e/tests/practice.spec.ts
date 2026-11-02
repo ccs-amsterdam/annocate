@@ -2,11 +2,11 @@ import { expect, test } from "./fixtures";
 import type { JobResponse } from "@annotinder/contracts";
 import { api, question } from "./helpers";
 
-// Practice and gold units (docs/plans/special-sets.md): a practice unit
-// tells the coder when they were wrong; a gold unit is checked silently, and
+// Practice and gold units (docs/plans/special-sets.md): a practice question
+// tells the coder when they are wrong, and they answer again; a gold unit is checked silently, and
 // running out of health ends the session at a screen-out.
 
-test("a practice unit gives feedback when wrong; a wrong gold unit ends the session at a screen-out", async ({ page, request, browser }) => {
+test("a practice question gives feedback when wrong, answered again until right; a wrong gold unit ends the session at a screen-out", async ({ page, request, browser }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Create new job/ }).click();
   await page.getByRole("menuitem", { name: /Empty job/ }).click();
@@ -63,13 +63,15 @@ test("a practice unit gives feedback when wrong; a wrong gold unit ends the sess
   const coder = await (await browser.newContext()).newPage();
   await coder.goto(`/?deployment=${job.id}&invite=${s1.secret}`);
 
-  // The practice unit, answered wrongly: feedback, then on
+  // The practice unit, answered wrongly: feedback with the question, and answering again until right
   await question(coder, "Topic?");
   await expect(coder.getByText("Practice text")).toBeVisible();
   await coder.getByRole("button", { name: "2 other" }).click();
   await expect(coder.getByText("Not quite")).toBeVisible();
   await expect(coder.getByText("It is about an election.")).toBeVisible();
-  await coder.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(coder.getByText("Practice text")).toBeVisible();
+  await coder.getByRole("button", { name: "1 politics" }).click();
+  await expect(coder.getByRole("status").filter({ hasText: "Correct" })).toBeVisible();
 
   // The second practice unit accepts either answer: a check, then on
   await expect(coder.getByText("Second practice")).toBeVisible();

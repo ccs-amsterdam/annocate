@@ -810,3 +810,113 @@ describe("auto questions", () => {
     expect(manager.getSnapshot().currentItem).toMatchObject({ name: "seen_b" });
   });
 });
+
+describe("practice and gold units (special-sets.md §2)", () => {
+  const A = { done: true, skip: false, values: [{ value: "A" }] };
+  const B = { done: true, skip: false, values: [{ value: "B" }] };
+  const practiceUnit = (retry: boolean): CoderUnitResponse => ({
+    id: 7,
+    externalId: "p1",
+    data: { _practice: true },
+    variables: {},
+    practice: { retry, questions: { q1: { key: "B", message: "It is B." } } },
+  });
+
+  it("a wrong practice answer shows its feedback and the coder answers again; the tries are posted", async () => {
+    const postUnitVariables = vi.fn(async () => ({}));
+    let served = false;
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session([unitLoop("main", [unitVar("q1")])])),
+      getNextUnit: vi.fn(async () => (served ? null : ((served = true), practiceUnit(true)))),
+      postUnitVariables,
+    });
+    const manager = new JobManager(server, { timer: new QuestionTimer(() => 0) });
+    await manager.start();
+    await manager.answer(A);
+    const wrong = manager.getSnapshot();
+    expect(wrong.currentItem).toMatchObject({ name: "q1" });
+    expect(wrong.practiceWrong).toMatchObject({ question: "q1", retry: true });
+    // Retry required: going on without the right answer isn't possible
+    await manager.continueAfterPractice();
+    expect(postUnitVariables).not.toHaveBeenCalled();
+    await manager.answer(B);
+    expect(manager.getSnapshot().practiceWrong).toBeNull();
+    expect(manager.getSnapshot().practiceRight).toBe(1);
+    expect(postUnitVariables).toHaveBeenCalledWith(7, { q1: B }, "1", { q1: expect.objectContaining({ tries: 2 }) });
+  });
+
+  it("without retry, the coder may go on with a wrong answer", async () => {
+    const postUnitVariables = vi.fn(async () => ({}));
+    let served = false;
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session([unitLoop("main", [unitVar("q1")])])),
+      getNextUnit: vi.fn(async () => (served ? null : ((served = true), practiceUnit(false)))),
+      postUnitVariables,
+    });
+    const manager = new JobManager(server, { timer: new QuestionTimer(() => 0) });
+    await manager.start();
+    await manager.answer(A);
+    expect(manager.getSnapshot().practiceWrong).toMatchObject({ retry: false });
+    await manager.continueAfterPractice();
+    expect(postUnitVariables).toHaveBeenCalledWith(7, { q1: A }, "1", { q1: expect.objectContaining({ tries: 1 }) });
+  });
+
+  it("gold checks ending the session: the ending shows at once, and what follows isn't saved or shown as an error", async () => {
+    const end = { type: "end", name: "low_quality", outcome: "screenout", message: "Thanks" } as TopLevelItem;
+    let release: () => void = () => {};
+    const postUnitVariables = vi.fn(async (id: number) => {
+      // The gold unit's answer comes back after the coder started the next unit
+      if (id === 1) {
+        await new Promise<void>((resolve) => (release = resolve));
+        return { end: "low_quality" };
+      }
+      throw new CoderApiError("This session has ended", 409, "session_closed");
+    });
+    let next = 0;
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session([unitLoop("main", [unitVar("q1")]), end])),
+      getNextUnit: vi.fn(async () => unit(++next)),
+      postUnitVariables,
+    });
+    const manager = new JobManager(server);
+    await manager.start();
+    await manager.answer(A);
+    expect(manager.getSnapshot().currentUnit?.id).toBe(2);
+    release();
+    await vi.waitFor(() => expect(manager.getSnapshot().phase).toBe("finished"));
+    expect(manager.getSnapshot().ending?.item).toMatchObject({ name: "low_quality" });
+    await manager.answer(A);
+    expect(manager.getSnapshot().phase).toBe("finished");
+  });
+});
+
+describe("a draft of the unit on screen (browser storage)", () => {
+  it("a coder who reloads mid-unit finds their answers back; saving the unit clears it", async () => {
+    const store = new Map<string, string>();
+    globalThis.localStorage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    } as Storage;
+    const A = { done: true, skip: false, values: [{ value: "A" }] };
+    const make = () =>
+      makeFlakyServer({
+        getSession: vi.fn(async () => ({ ...session([unitLoop("main", [unitVar("q1"), unitVar("q2")])]), coderId: 42 }) as SessionResponse),
+        getNextUnit: vi.fn(async () => unit(3)),
+        postUnitVariables: vi.fn(async () => ({})),
+      });
+    const first = new JobManager(make());
+    await first.start();
+    await first.answer(A);
+    expect(first.getSnapshot().currentItem).toMatchObject({ name: "q2" });
+
+    // A reload: the unit comes again, with q1 answered from the draft
+    const server = make();
+    const second = new JobManager(server);
+    await second.start();
+    expect(second.getSnapshot().currentItem).toMatchObject({ name: "q2" });
+    await second.answer(A);
+    expect(server.postUnitVariables).toHaveBeenCalledWith(3, { q1: A, q2: A }, "1", expect.anything());
+    expect(localStorage.getItem("annotinder:unit-draft:42")).toBeNull();
+  });
+});

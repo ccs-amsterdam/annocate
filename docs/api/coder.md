@@ -107,9 +107,13 @@ Empty: the coder is done with the loop. 409 while the job is paused
 A branch can add the group's **practice** and **gold** units
 (`docs/plans/special-sets.md`) among the coder's own, like the overlap.
 Their answer columns (`<question>_practice`, `<question>_practice_message`,
-`<question>_gold`) are never served. A practice unit's data has
-`_practice: true` (layouts and texts can use `$unit._practice`); gold and
-overlap units look like any other.
+`<question>_gold`) are not in the unit's data. A practice unit's data has
+`_practice: true` (layouts and texts can use `$unit._practice`), and the
+unit has `practice: { retry, message?, questions: { <question>: { key,
+message? } } }`: the answer cells and feedback, so the client checks each
+practice question as it is answered (contracts `answerKey.ts`), shows the
+feedback, and with `retry` asks again until right. Gold and overlap units
+look like any other; gold cells never leave the server.
 
 The client chooses the branch (`NextUnitQuerySchema`): the index of the
 first branch in the loop's `units` whose `when` holds. The server picks the
@@ -139,11 +143,9 @@ codebook update removed) are kept. `timings`: per question, how long the
 coder took, as the browser measured it (`AnswerTimingSchema`,
 `coder-identity.md` §10).
 
-The response is usually `{}`. For a practice unit with checked questions:
-`practice: { correct, messages }` (the messages for wrong answers: the
-unit's own message column, the branch's `message`, or the expected
-answer; rendered on the server). For a gold unit that brings the coder's
-health to 0: `end`, the screen-out end item the session ended at (the
+The response is usually `{}`. On practice questions the timing has
+`tries`: the answers given until right. For a gold unit that brings the
+coder's health to 0: `end`, the screen-out end item the session ended at (the
 client shows it). A gold unit's response never says right or wrong.
 
 ### postCoderVariables

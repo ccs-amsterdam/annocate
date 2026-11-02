@@ -1259,8 +1259,28 @@ function PracticeEditor({
               />
               <span className="text-[11px] font-normal text-muted-foreground">
                 May use $unit and $var. A unit&apos;s own message, per question, goes in the column{" "}
-                <code>{practiceMessageColumn("question")}</code>. Coders never get the answer columns; $unit._practice tells a layout it shows a
-                practice unit.
+                <code>{practiceMessageColumn("question")}</code>. Practice units come with their answers (checked in the coder&apos;s browser, as
+                each question is answered); $unit._practice tells a layout it shows a practice unit.
+              </span>
+            </label>
+          )}
+          {(practice.questions?.length ?? 0) > 0 && (
+            <label className="flex items-start gap-2 text-xs">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={practice.retry !== false}
+                onChange={(e) => {
+                  const next: PracticeSettings = { ...practice, retry: false };
+                  if (e.target.checked) delete next.retry;
+                  onChange(next);
+                }}
+              />
+              <span>
+                Answer again until right
+                <span className="block text-[11px] text-muted-foreground">
+                  Off: coders see the message and may go on. Either way, how many tries each question took is in the export.
+                </span>
               </span>
             </label>
           )}
