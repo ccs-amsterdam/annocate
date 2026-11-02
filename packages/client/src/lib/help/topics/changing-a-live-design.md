@@ -1,6 +1,6 @@
 ---
 title: Changing a design while coding runs
-section: Codebook
+section: Editor
 order: 7
 summary: What happens to finished units, units in progress and earlier answers when you deploy a new design version during a study, and how to change things safely.
 ---

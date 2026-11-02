@@ -10,7 +10,7 @@ keeps the word "codebook", "In code" says why.
 | **Job** | A study in AnnoTinder: its design, units, deployment and results. | project, study (in UI text: "job") |
 | **Design** | Everything someone repeating the study needs (`plans/design.md`): the **unit fields**, the **session** (URL and link parameters, participant id, sample size per link) and the **items** (questions, unit loops with who codes which units, conditions, end items). Versioned. | "codebook" for the whole |
 | **Design version** (v1, v2, ...) | A saved state of the design. The latest one is the **draft** until it is deployed; deployed versions are frozen. | "codebook version" |
-| **Codebook** | The part of the design coders see: questions with their instructions and options, layouts, conditions, end messages. What the coding client gets (the *coder codebook*) and what **Export** writes (`codebook.md`), e.g. for a paper. The **codebook editor** (Design › Codebook) edits the design's items and session. | the whole design; a version |
+| **Codebook** | The part of the design coders see: questions with their instructions and options, layouts, conditions, end messages. What the coding client gets (the *coder codebook*) and what **Export** writes (`codebook.md`), e.g. for a paper. The **Editor** tab (Design › Editor) edits the design's items and session. | the whole design; a version |
 | **Item** | An entry of the design: a question, unit loop, condition, end item, or the session (shown as the first item in the editor). | |
 | **Question** | An item coders answer; its **answer type** (`variable` in the JSON, e.g. `nominal`) says how. Its answers are a column in the results. | "variable" in UI text |
 | **Unit** | A thing coders code, with **unit fields** (declared in the design). | document, item |
@@ -36,7 +36,6 @@ coders' part:
 | `codebook_changed` (coder API error) | the coder's **codebook** changed: a new design version was deployed |
 | `codebookMarkdown`, `codebook.md` (the editor's Export) | the **codebook** as a document |
 | client `codebook/` | the coding client's runtime (templates, conditions, expressions, the item tree) |
-| The **Codebook** tab (Design › Codebook), help section "Codebook" | UI wording: the design editor, kept as the user-facing name |
 | `putDeployment` (`PUT /deployment`) | **deploy** |
 | `variable` (a question's answer type; `VariableValue`) | a question's **answer type**; an **answer** |
 

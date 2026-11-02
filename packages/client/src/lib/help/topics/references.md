@@ -1,6 +1,6 @@
 ---
 title: Referring to answers and unit data
-section: Codebook
+section: Editor
 order: 3
 summary: Use a unit's data ($unit), earlier answers ($var) and session values ($session) in texts, layouts, conditions, coder groups and redirect links.
 ---

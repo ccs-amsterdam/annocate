@@ -21,7 +21,7 @@ Everything belongs to a **job**: one study or coding project. A job has:
 
 | Part | What it is | Where |
 | --- | --- | --- |
-| **Design** | The questions coders answer, in order, how units are shown and handed out, and the unit fields and session parameters. Its versions are v1, v2, ... | Design › Codebook |
+| **Design** | The questions coders answer, in order, how units are shown and handed out, and the unit fields and session parameters. Its versions are v1, v2, ... | Design › Editor |
 | **Units** | The material to code: rows of data, each with an id and fields such as `headline` and `text` | Design › Units |
 | **Sets** | Named lists of units, in groups, for handing out different units to different coders | Design › Units |
 | **Links** | The links coders open to start, made when you deploy | Deploy › Links |

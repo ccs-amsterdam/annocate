@@ -14,8 +14,8 @@ import { HelpButton } from "../../help/HelpButton";
 
 interface JobListProps {
   client: ResearcherApi;
-  /** `codebook`: open the job on its Codebook tab (after the setup wizard). */
-  onSelectJob: (jobId: number, open?: "codebook") => void;
+  /** `editor`: open the job on its Editor tab (after the setup wizard). */
+  onSelectJob: (jobId: number, open?: "editor") => void;
   /** Who is logged in (null: unknown, e.g. a host app without accounts): only researchers create jobs. */
   me?: MeResponse | null;
   server?: ServerApi;
@@ -242,7 +242,7 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
           onClose={() => setShowWizard(false)}
           onCreated={(job) => {
             setShowWizard(false);
-            onSelectJob(job.id, "codebook");
+            onSelectJob(job.id, "editor");
           }}
         />
       )}

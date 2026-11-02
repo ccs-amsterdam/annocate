@@ -1,6 +1,6 @@
 ---
 title: Ending a session
-section: Codebook
+section: Editor
 order: 6
 summary: End items end a coder's session early or on purpose - screened out or complete - with a message and an optional link back to a panel.
 ---

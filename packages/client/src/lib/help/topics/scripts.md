@@ -1,6 +1,6 @@
 ---
 title: Scripts
-section: Codebook
+section: Editor
 order: 5
 summary: Small JavaScript expressions in {{ }} and in conditions, for when a plain value or the rules editor isn't enough.
 ---

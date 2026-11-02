@@ -1,11 +1,11 @@
 ---
 title: The codebook editor
-section: Codebook
+section: Editor
 order: 1
 summary: The item tree, the item form, the preview, errors and warnings, saving, undo, reverting, backups and co-editors.
 ---
 
-The **Codebook** tab (under **Design**) is where you write the codebook: the questions,
+The **Editor** tab (under **Design**) is where you write the codebook: the questions,
 unit loops, conditions and end items, in the order coders meet them. This
 page explains the editor itself. What the items mean is on their own pages:
 [Questions](questions.md), [Unit loops](unit-loops.md),
@@ -151,7 +151,7 @@ You can **save** with issues: a draft is work in progress.
   you added is removed: *new: removes it*). **Revert all changes** undoes
   everything since the last save. A revert is itself a step you can undo.
 
-If you leave the **Codebook** tab with unsaved changes, a dialog asks
+If you leave the **Editor** tab with unsaved changes, a dialog asks
 whether to **Save changes**, **Discard changes** or **Cancel**. Your
 browser also asks before you close or reload the page.
 

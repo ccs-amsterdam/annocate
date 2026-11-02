@@ -1,6 +1,6 @@
 ---
 title: Questions
-section: Codebook
+section: Editor
 order: 2
 summary: What a question item is - its name, its text and instruction, where it goes in the codebook, and its answer type.
 ---

@@ -42,7 +42,7 @@ A banner under the toolbar always says what you are looking at:
 | **v2 is live: coders are using it** | you opened the live version and there is no draft. It can't be changed, so the button says **Save as draft**: your changes become a new draft, and coders keep using v2 |
 | **Viewing v1, an older version** | a version from the history: read only |
 
-If you leave the **Codebook** tab with unsaved changes, AnnoTinder asks
+If you leave the **Editor** tab with unsaved changes, AnnoTinder asks
 whether to **Save changes** or **Discard changes**. Unsaved changes are
 also kept in your browser, in case it closes; see
 [Backups in your browser](design-editor.md#backups-in-your-browser).

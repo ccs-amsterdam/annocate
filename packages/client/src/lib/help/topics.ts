@@ -17,7 +17,7 @@ export interface HelpTopic {
 /** The sections of the help, in order. */
 export const HELP_SECTIONS = [
   "Getting started",
-  "Codebook",
+  "Editor",
   "Question types",
   "Unit layouts",
   "Units and distribution",

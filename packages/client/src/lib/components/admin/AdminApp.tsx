@@ -38,7 +38,7 @@ import { PendingDeployBar } from "./PendingDeployBar";
 import { openHelp } from "../../help/helpStore";
 
 /** The job's pages. Preview is opened with the Preview Job button, not from the tabs. */
-type TabId = "Overview" | "Codebook" | "Units" | "Links" | "Coders" | "Results" | "Settings" | "Preview";
+type TabId = "Overview" | "Editor" | "Units" | "Links" | "Coders" | "Results" | "Settings" | "Preview";
 
 /**
  * The tabs, grouped: designing the job (codebook, units), deploying it
@@ -51,7 +51,7 @@ const GROUPS: { label: string; icon: typeof LayoutDashboard; pages: { id: TabId;
     label: "Design",
     icon: PencilRuler,
     pages: [
-      { id: "Codebook", label: "Codebook", icon: BookOpen },
+      { id: "Editor", label: "Editor", icon: BookOpen },
       { id: "Units", label: "Units", icon: Layers },
     ],
   },
@@ -70,7 +70,7 @@ const GROUPS: { label: string; icon: typeof LayoutDashboard; pages: { id: TabId;
 /** The help topic the Help button opens on each tab. */
 const TAB_HELP: Record<TabId, string> = {
   Overview: "overview",
-  Codebook: "design-editor",
+  Editor: "design-editor",
   Units: "uploading-units",
   Links: "links",
   Coders: "coders-and-progress",
@@ -151,7 +151,7 @@ function AdminAppInner({
       backup={backup}
       onContinue={() => {
         setSelectedJobId(backup.jobId);
-        setTab("Codebook");
+        setTab("Editor");
         setRestore(backup);
         setBackup(null);
       }}
@@ -180,7 +180,7 @@ function AdminAppInner({
             client={client}
             onSelectJob={(id, open) => {
               setSelectedJobId(id);
-              if (open === "codebook") setTab("Codebook");
+              if (open === "editor") setTab("Editor");
             }}
             me={me}
             server={server}
@@ -265,7 +265,7 @@ function JobAdminView({
   }
 
   function requestNavigation(action: () => void) {
-    if (isDesignDirty && tab === "Codebook") {
+    if (isDesignDirty && tab === "Editor") {
       setPendingNav(() => action);
     } else {
       action();
@@ -390,12 +390,12 @@ function JobAdminView({
             onNavigate={onTabChange}
             onOpenDesign={(id) => {
               setDesignTarget((t) => ({ id, n: (t?.n ?? 0) + 1 }));
-              onTabChange("Codebook");
+              onTabChange("Editor");
             }}
           />
         )}
         {tab === "Settings" && <JobSettingsPage client={client} onDeleted={onBackToJobs} />}
-        {tab === "Codebook" && (
+        {tab === "Editor" && (
           <DesignManager
             key={`${designTarget?.n ?? 0}:${restore?.at ?? ""}`}
             initialVersionId={designTarget?.id ?? null}

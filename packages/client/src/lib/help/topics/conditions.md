@@ -1,6 +1,6 @@
 ---
 title: Conditions
-section: Codebook
+section: Editor
 order: 4
 summary: Show questions, loops or end items only when earlier answers (or the unit) say so.
 ---

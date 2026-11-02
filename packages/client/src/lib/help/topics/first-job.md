@@ -57,7 +57,7 @@ More in [Uploading units](uploading-units.md).
 
 ## 3. Write the codebook
 
-Open the **Codebook** tab. On the left is the codebook as a tree of items;
+Open the **Editor** tab. On the left is the codebook as a tree of items;
 on the right the form of the item you select.
 
 **A unit loop.** Questions about units go inside a *unit loop*: the loop
@@ -146,12 +146,12 @@ Click **Preview Job** at the top right. You
 now code the job as a coder would, with your real units, on a phone-sized
 screen (switch to **Desktop** for a larger one). Nothing you answer in a
 preview is stored. Check that the questions read well and the units look
-right; go back to the **Codebook** tab to change things, save, and preview
+right; go back to the **Editor** tab to change things, save, and preview
 again.
 
 ## 6. Deploy
 
-On the **Codebook** tab, click **Deploy…**. The dialog says what deploying
+On the **Editor** tab, click **Deploy…**. The dialog says what deploying
 does; click **Deploy**. Coders can now start, with the codebook and your
 units. You can keep improving both: changes to the design, the units and
 the sets are drafts until you deploy them again. See

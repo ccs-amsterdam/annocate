@@ -24,7 +24,7 @@ export type OverviewTarget = "Units" | "Links" | "Coders";
 interface JobOverviewProps {
   client: ResearcherApi;
   onNavigate: (tab: OverviewTarget) => void;
-  /** Opens the Codebook tab on this version. */
+  /** Opens the Editor tab on this version. */
   onOpenDesign: (versionId: number) => void;
 }
 
