@@ -226,7 +226,7 @@ as in SPSS or Stata value labels:
 - **The value** is what is stored, compared in conditions and exported.
   Values are unique within a question. Changing one in a deployed codebook
   changes what earlier answers mean; the deploy dialog warns
-  (`codebook/diff.ts` `valueChanges`).
+  (`design/diff.ts` `valueChanges`).
 - **The label** is what coders see (default: the value). It can change
   without touching data.
 - **The measurement level decides the type of the values.** Nominal:
@@ -498,7 +498,7 @@ from the Preview Job button. It uses a `ResearcherApi`
     is ambiguous (after its last item, or inside an empty container, is
     also after the container, and so on outwards): there the menu asks
     where first, each place a level further out marked with one more
-    "outdent" icon (`addPositions` in `codebook/codebookEdit.ts`).
+    "outdent" icon (`addPositions` in `design/itemEdit.ts`).
     Moving and deleting work on ticked items (a container brings its
     children), from the toolbar above the tree: Delete asks once. Move
     turns each row's + into "move below this item", at the same place (the
@@ -511,12 +511,12 @@ from the Preview Job button. It uses a `ResearcherApi`
     browser), and the editor (Monaco, bundled and loaded only with the
     editor: `jsonEditor/`) completes and checks it against the codebook's
     JSON Schema (contracts `codebookItemsJsonSchema`), with the schemas'
-    descriptions on hover. Formatting (`codebook/jsonFormat.ts`) keeps small
+    descriptions on hover. Formatting (`design/jsonFormat.ts`) keeps small
     objects on one line (an option: `{ "value": "neg", "label": "Negative" }`)
     and puts keys in reading order (`name`, `type`, `value`, `label` first,
     `children` last).
   - Both JSON views apply an edit as soon as it parses to items the tree
-    can show (`codebook/itemShape.ts`; items keep their identity by name,
+    can show (`design/itemShape.ts`; items keep their identity by name,
     conditions by place);
     until then "Not applied" says why. Validation shows the rest, as for
     the forms.
@@ -530,7 +530,7 @@ from the Preview Job button. It uses a `ResearcherApi`
   - A save carries the `revision` it is based on. If someone else saved
     meanwhile, a dialog says who and when, and offers "Save mine over
     theirs" or "Discard mine, load theirs".
-  - **Undo/redo** buttons (`codebook/editHistory.ts`): the last 100 steps,
+  - **Undo/redo** buttons (`design/editHistory.ts`): the last 100 steps,
     kept in memory as whole snapshots (cheap: unchanged items are shared).
     Changes less than a second apart are one step, so typing a word is one
     step, and occasionally two quick edits are too.
@@ -540,7 +540,7 @@ from the Preview Job button. It uses a `ResearcherApi`
   - A draft is deleted only from the versions dialog ("Delete draft", with
     a confirm), so it isn't mistaken for dropping unsaved changes.
   - **Backup**: unsaved edits are copied to the browser's localStorage a
-    second after each change (`codebook/localBackup.ts`; one backup, the
+    second after each change (`design/localBackup.ts`; one backup, the
     codebook being edited; none if it doesn't fit), and cleared when they
     are saved or discarded. After the browser was closed, a banner anywhere
     in the researcher area offers to continue editing them (with the
@@ -590,7 +590,7 @@ from the Preview Job button. It uses a `ResearcherApi`
   that every example is a valid template (as a codebook) and renders.
 - **Versions and deploying** (as in Qualtrics or REDCap: edit a draft,
   deploy it), derived from `GET /codebook` and `GET /deployment`
-  (`codebook/versions.ts`):
+  (`design/versions.ts`):
   - *live*: the version coders get (the deployment's codebook), frozen,
     since annotations refer to it (`designVersionId`);
   - *draft*: the latest version, if it isn't frozen; what the editor and
@@ -602,7 +602,7 @@ from the Preview Job button. It uses a `ResearcherApi`
   until it is deployed. A status banner says which you're looking at and
   what to do next. **Deploy** (`PUT /deployment`) makes the draft live and
   freezes it. Its dialog lists the changes against the live version
-  (`codebook/diff.ts`), prefills the version note (versions are numbered,
+  (`design/diff.ts`), prefills the version note (versions are numbered,
   with an optional `note`) and shows the server's warnings (e.g. a loop
   gained questions, which reopens finished units). Coders who are working
   switch to the new version on their next request to the server (§2),
@@ -625,7 +625,7 @@ from the Preview Job button. It uses a `ResearcherApi`
   Condition items and branch `when` use `ConditionEditor.tsx`: a
   **Rules | Script** toggle over the same script. Rules mode reads and
   writes simple conditions that are a flat list of rows, all joined by
-  "and" or all by "or" (`codebook/conditionRules.ts`): per row a question
+  "and" or all by "or" (`design/conditionRules.ts`): per row a question
   (or scale item) available at that point (`availableQuestions`), an
   operator that fits its type (is, is one of, ≥, has any of, count ≥, is
   answered, ...) and its values as toggles or number inputs. A row that
@@ -656,7 +656,7 @@ from the Preview Job button. It uses a `ResearcherApi`
   reset; a group can be deleted while no codebook uses it. Clicking a unit's id shows it
   in full.
   A coded unit can only be replaced by uploading it again, after a warning (its answers keep the version their coder saw). The codebook editor warns about `$unit.x`
-  references to fields that don't exist (`codebook/unitFieldRefs.ts`).
+  references to fields that don't exist (`design/unitFieldRefs.ts`).
 - **Overview** (`overview/`): live/paused/unpublished, the live and draft
   design versions (open them in the editor), unit/coder/link counts, set groups with their sets' sizes,
   answers per day (`GET /overview`), progress per loop

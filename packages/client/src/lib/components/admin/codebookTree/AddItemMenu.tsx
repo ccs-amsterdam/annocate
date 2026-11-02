@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { ChevronLeft, ListIndentDecrease, Plus, type LucideIcon } from "lucide-react";
 import { cn } from "cn";
-import type { TreePosition } from "../../../codebook/codebookEdit";
+import type { TreePosition } from "../../../design/itemEdit";
 import { ActionButton } from "./TreeRow";
 import { ITEM_TYPES } from "./itemTypes";
 import type { ItemType } from "./utils";

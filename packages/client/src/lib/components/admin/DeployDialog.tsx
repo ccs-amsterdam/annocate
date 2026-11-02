@@ -3,7 +3,7 @@ import { designItems, type DesignVersion, type TopLevelItem, type UnitChanges } 
 import { AlertTriangle, Loader2, Rocket } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { diffCodebooks, summarizeChanges, valueChanges, type CodebookChange } from "../../codebook/diff";
+import { diffCodebooks, summarizeChanges, valueChanges, type CodebookChange } from "../../design/diff";
 import { HelpButton } from "../../help/HelpButton";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { usePendingChangesQuery } from "../../admin/queries";

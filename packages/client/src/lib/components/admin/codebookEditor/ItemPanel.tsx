@@ -20,7 +20,7 @@ import { getItemKey } from "../codebookTree/utils";
 import { SegmentedToggle } from "./SegmentedToggle";
 import { ItemJsonEditor } from "./ItemJsonEditor";
 import type { CodebookDraft } from "./useCodebookDraft";
-import type { UnitFieldWarning } from "../../../codebook/unitFieldRefs";
+import type { UnitFieldWarning } from "../../../design/unitFieldRefs";
 
 type ItemPane = "edit" | "json" | "preview";
 

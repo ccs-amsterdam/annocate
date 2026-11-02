@@ -3,7 +3,7 @@ import { codebookErrors, designItems, undeclaredFields, type TopLevelItem } from
 import { Rocket } from "lucide-react";
 import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
 import { useDesignVersionQuery, useDesignVersionsQuery, useDeploymentQuery, usePendingChangesQuery, usePublishMutation, useUpdateDesignVersionMutation } from "../../admin/queries";
-import { describeVersions } from "../../codebook/versions";
+import { describeVersions } from "../../design/versions";
 import { Button } from "@/components/ui/button";
 import { DeployDialog, describeUnitChanges } from "./DeployDialog";
 

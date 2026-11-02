@@ -18,8 +18,8 @@ import {
   moveToRootEnd,
   outdentItem,
   updateItem,
-} from "./codebookEdit";
-import { flattenTree, keyOf } from "./tree";
+} from "./itemEdit";
+import { flattenTree, keyOf } from "../codebook/tree";
 
 /** A condition; it has no name, so the tests identify it by its editor key. */
 function cond(key: string, children: CodebookItem[] = []): TopLevelItem {

@@ -1,5 +1,5 @@
 import { collectQuestions, optionLabel, questionValues, type AnyVariableType, type CodebookItem, type InLoopItem, type TopLevelItem } from "@annotinder/contracts";
-import { itemTitle } from "./conditions";
+import { itemTitle } from "../codebook/conditions";
 
 export type CodebookChangeKind = "added" | "removed" | "changed" | "moved";
 

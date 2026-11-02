@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CodebookVersionsView } from "./CodebookVersionsDialog";
 import type { DesignVersionMeta } from "@annotinder/contracts";
-import { describeVersions } from "../../codebook/versions";
+import { describeVersions } from "../../design/versions";
 
 describe("CodebookVersionsDialog", () => {
   const mockCodebooks: DesignVersionMeta[] = [

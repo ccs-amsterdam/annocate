@@ -10,14 +10,14 @@ import {
   usePublishMutation,
   useUpdateDesignVersionMutation,
 } from "../../admin/queries";
-import { describeVersions } from "../../codebook/versions";
+import { describeVersions } from "../../design/versions";
 import { CodebookEditor, type CodebookEditorMode, type SaveFn } from "./CodebookEditor";
 import { CodebookStatusBanner } from "./CodebookStatusBanner";
 import { CodebookVersionsDialog } from "./CodebookVersionsDialog";
 import { DeployDialog } from "./DeployDialog";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Loader2 } from "lucide-react";
-import { clearBackup, type CodebookBackup } from "../../codebook/localBackup";
+import { clearBackup, type CodebookBackup } from "../../design/localBackup";
 
 interface CodebookManagerProps {
   client: ResearcherApi;

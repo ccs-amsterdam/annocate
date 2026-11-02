@@ -36,7 +36,7 @@ import { ConditionEditor } from "./ConditionEditor";
 import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
 import { HelpButton } from "../../help/HelpButton";
-import { guessSimpleLayout, parseSimpleLayout, simpleTemplate } from "../../codebook/simpleLayout";
+import { guessSimpleLayout, parseSimpleLayout, simpleTemplate } from "../../design/simpleLayout";
 import { LayoutDesigner } from "./LayoutDesigner";
 import { GenerateSets } from "./units/GenerateSets";
 import { AnswerKeyDialog, type AnswerKeyQuestion } from "./units/AnswerKeyDialog";

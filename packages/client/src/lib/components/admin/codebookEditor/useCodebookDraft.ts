@@ -22,12 +22,12 @@ import {
   stripKeys,
   updateItem,
   type TreePosition,
-} from "../../../codebook/codebookEdit";
+} from "../../../design/itemEdit";
 import { findItem } from "../../../codebook/tree";
-import { carryKeys } from "../../../codebook/itemShape";
-import { changedKeys, emptyHistory, recordChange, redo, revertItem, undo } from "../../../codebook/editHistory";
+import { carryKeys } from "../../../design/itemShape";
+import { changedKeys, emptyHistory, recordChange, redo, revertItem, undo } from "../../../design/editHistory";
 import { ResearcherApiError } from "../../../api/httpResearcherApi";
-import { clearBackup, writeBackup, type CodebookBackup } from "../../../codebook/localBackup";
+import { clearBackup, writeBackup, type CodebookBackup } from "../../../design/localBackup";
 
 /** Unsaved edits are copied to the browser's storage this long after the last change. */
 const BACKUP_DELAY_MS = 1000;

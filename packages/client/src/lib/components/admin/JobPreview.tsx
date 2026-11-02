@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import type { PreviewSession } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useDesignVersionsQuery, useDeploymentQuery, useUnitsQuery } from "../../admin/queries";
-import { describeVersions } from "../../codebook/versions";
+import { describeVersions } from "../../design/versions";
 import { JobRunner } from "../JobRunner";
 import { Button } from "@/components/ui/button";
 import { Smartphone, Monitor, RotateCcw, AlertCircle, Maximize2 } from "lucide-react";

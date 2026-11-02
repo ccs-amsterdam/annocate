@@ -9,7 +9,7 @@ import {
   type TopLevelItem,
   type UnitField,
 } from "@annotinder/contracts";
-import { itemTitle } from "./conditions";
+import { itemTitle } from "../codebook/conditions";
 
 export interface UnitFieldWarning {
   /** The item that refers to the field (the loop itself for its layout). */

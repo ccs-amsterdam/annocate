@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { TopLevelItem } from "@annotinder/contracts";
 import { CodebookJsonEditor, getFoldableLineNumbers } from "./CodebookJsonEditor";
-import { formatJson } from "../../codebook/jsonFormat";
+import { formatJson } from "../../design/jsonFormat";
 
 describe("CodebookJsonEditor", () => {
   const items = [

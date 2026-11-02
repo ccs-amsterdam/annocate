@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 import type { CodebookItem, TopLevelItem } from "@annotinder/contracts";
-import type { TreePosition } from "../../../codebook/codebookEdit";
+import type { TreePosition } from "../../../design/itemEdit";
 import type { ItemType } from "./utils";
 
 /**

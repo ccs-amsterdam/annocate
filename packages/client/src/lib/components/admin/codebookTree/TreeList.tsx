@@ -1,5 +1,5 @@
 import { cn } from "cn";
-import type { TreePosition } from "../../../codebook/codebookEdit";
+import type { TreePosition } from "../../../design/itemEdit";
 import { TreeItemRow } from "./TreeItemRow";
 import { ITEM_TYPES } from "./itemTypes";
 import { InsertionLine } from "./TreeRow";

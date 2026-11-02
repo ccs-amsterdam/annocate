@@ -2,7 +2,7 @@ import type { DesignVersionMeta } from "@annotinder/contracts";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { History, Info, CircleDot, FilePen, Clock, Eye, RotateCcw, Trash2, AlertCircle } from "lucide-react";
-import type { CodebookVersions } from "../../codebook/versions";
+import type { CodebookVersions } from "../../design/versions";
 import { HelpButton } from "../../help/HelpButton";
 
 export interface CodebookVersionsViewProps {

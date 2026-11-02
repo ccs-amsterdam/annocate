@@ -32,7 +32,7 @@ import {
   Send,
   Settings,
 } from "lucide-react";
-import { clearBackup, readBackup, type CodebookBackup } from "../../codebook/localBackup";
+import { clearBackup, readBackup, type CodebookBackup } from "../../design/localBackup";
 import { HelpDialog } from "../../help/HelpDialog";
 import { PendingDeployBar } from "./PendingDeployBar";
 import { openHelp } from "../../help/helpStore";

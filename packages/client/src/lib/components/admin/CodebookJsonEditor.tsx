@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { TopLevelItem } from "@annotinder/contracts";
 import { AlertCircle, Maximize2, Minimize2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatJson } from "../../codebook/jsonFormat";
-import { itemsShapeError } from "../../codebook/itemShape";
+import { formatJson } from "../../design/jsonFormat";
+import { itemsShapeError } from "../../design/itemShape";
 import { CODEBOOK_MODEL, JsonCodeEditor } from "./jsonEditor/JsonCodeEditor";
 import type { MonacoEditor } from "./jsonEditor/MonacoJson";
 

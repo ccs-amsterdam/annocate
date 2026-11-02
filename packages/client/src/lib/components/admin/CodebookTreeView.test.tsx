@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CodebookTreeView } from "./CodebookTreeView";
 import type { TopLevelItem } from "@annotinder/contracts";
-import { ensureKeys } from "../../codebook/codebookEdit";
+import { ensureKeys } from "../../design/itemEdit";
 
 describe("CodebookTreeView", () => {
   // As in the editor: every item has a key (a loop has no name).

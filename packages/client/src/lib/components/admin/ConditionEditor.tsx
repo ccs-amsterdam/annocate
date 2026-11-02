@@ -27,7 +27,7 @@ import {
   type RuleRow,
   type RuleRows,
   type RuleTarget,
-} from "../../codebook/conditionRules";
+} from "../../design/conditionRules";
 import { SegmentedToggle } from "./codebookEditor/SegmentedToggle";
 import { IssueList } from "./IssueList";
 import { HelpButton } from "../../help/HelpButton";

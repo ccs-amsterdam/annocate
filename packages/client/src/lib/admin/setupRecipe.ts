@@ -1,5 +1,5 @@
 import { DEFAULT_RATE, OVERLAP_SET, RESERVED_SETS, SharedBranchSchema, seededShuffle, type RecipeInput, type SessionSpec, type SharedBranch, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
-import { simpleTemplate, type SimpleLayout } from "../codebook/simpleLayout";
+import { simpleTemplate, type SimpleLayout } from "../design/simpleLayout";
 
 // The setup wizard (docs/plans/setup-wizard.md) as data: what the
 // researcher chose, and the recipe it makes. The wizard asks no question

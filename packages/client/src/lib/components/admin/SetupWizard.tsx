@@ -26,7 +26,7 @@ import {
   type SetupOverlap,
   type SetupParts,
 } from "../../admin/setupRecipe";
-import { guessSimpleLayout } from "../../codebook/simpleLayout";
+import { guessSimpleLayout } from "../../design/simpleLayout";
 import { CsvUnitsForm } from "./units/UploadUnits";
 import { HelpButton } from "../../help/HelpButton";
 import { LayoutDesigner, UnitPreview } from "./LayoutDesigner";

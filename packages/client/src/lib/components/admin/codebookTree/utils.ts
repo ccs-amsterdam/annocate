@@ -1,5 +1,5 @@
 import { itemName, type CodebookItem, type InLoopItem, type TopLevelItem } from "@annotinder/contracts";
-import { positionInLoop, type TreePosition } from "../../../codebook/codebookEdit";
+import { positionInLoop, type TreePosition } from "../../../design/itemEdit";
 
 export type TreeNode = TopLevelItem | InLoopItem;
 export type ItemType = CodebookItem["type"];

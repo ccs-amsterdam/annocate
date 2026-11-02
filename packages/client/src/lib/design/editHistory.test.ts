@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TopLevelItem } from "@annotinder/contracts";
 import { changedKeys, emptyHistory, recordChange, redo, revertItem, undo, STEP_GROUP_MS, HISTORY_LIMIT } from "./editHistory";
-import { findItem } from "./tree";
+import { findItem } from "../codebook/tree";
 
 describe("edit history", () => {
   it("groups changes close in time into one step, and undoes and redoes them", () => {

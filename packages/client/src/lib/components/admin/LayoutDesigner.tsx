@@ -3,12 +3,12 @@ import { buildScope } from "@annotinder/contracts";
 import { Plus, X } from "lucide-react";
 import { cn } from "cn";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import type { SimpleLayout } from "../../codebook/simpleLayout";
-import { simpleTemplate } from "../../codebook/simpleLayout";
+import type { SimpleLayout } from "../../design/simpleLayout";
+import { simpleTemplate } from "../../design/simpleLayout";
 import { renderTemplate, type RenderedTemplate } from "../../codebook/renderTemplate";
 import { UnitFields } from "../UnitFields";
 
-// A unit's layout as a sketch of a document (codebook/simpleLayout.ts):
+// A unit's layout as a sketch of a document (design/simpleLayout.ts):
 // click a place (title, byline, body) to put a field there. Title and
 // byline hold one field; the body any number, in order. The default layout
 // form, in the setup wizard and the loop's Layout tab. More places (an

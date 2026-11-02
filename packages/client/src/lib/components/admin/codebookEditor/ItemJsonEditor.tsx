@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { CodebookItem, CodebookValidationIssue } from "@annotinder/contracts";
 import { AlertCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatJson } from "../../../codebook/jsonFormat";
-import { itemShapeError } from "../../../codebook/itemShape";
+import { formatJson } from "../../../design/jsonFormat";
+import { itemShapeError } from "../../../design/itemShape";
 import { IssueList } from "../IssueList";
 import { ITEM_MODEL, JsonCodeEditor } from "../jsonEditor/JsonCodeEditor";
 

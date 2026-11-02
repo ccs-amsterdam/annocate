@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { codebookMarkdown } from "../../codebook/codebookMarkdown";
+import { codebookMarkdown } from "../../design/codebookMarkdown";
 import type { DesignVersion } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useUnitFieldsQuery } from "../../admin/queries";
-import { unknownUnitFields } from "../../codebook/unitFieldRefs";
+import { unknownUnitFields } from "../../design/unitFieldRefs";
 import { CodebookJsonEditor } from "./CodebookJsonEditor";
 import { useCodebookDraft } from "./codebookEditor/useCodebookDraft";
 import { EditorToolbar, type ChangedItem, type EditorIssue, type EditorView } from "./codebookEditor/EditorToolbar";
 import { findItem, flattenTree, itemAtPath, keyOf } from "../../codebook/tree";
 import { itemTitle } from "../../codebook/conditions";
-import type { CodebookBackup } from "../../codebook/localBackup";
+import type { CodebookBackup } from "../../design/localBackup";
 import { Button } from "@/components/ui/button";
 import { cn } from "cn";
 import { useMediaQuery } from "../../hooks/useMediaQuery";

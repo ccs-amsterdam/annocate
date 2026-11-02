@@ -8,7 +8,7 @@ import {
   moveChanges,
   topmostSelected,
   type TreePosition,
-} from "../../codebook/codebookEdit";
+} from "../../design/itemEdit";
 import { issueIsAbout } from "../../codebook/tree";
 import { Button } from "@/components/ui/button";
 import { CodebookTreeProvider, type CodebookTreeState } from "./codebookTree/context";

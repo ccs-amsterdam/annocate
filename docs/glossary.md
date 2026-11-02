@@ -54,5 +54,6 @@ public researcher API, so the R/Python clients follow):
    Kept: the coder URL parameter `?invite=<secret>` (links already sent out
    keep working) and the error code `email_not_invited`.
 3. Done: `unitset` → `set` in `SourceStatus` and the distribution tables.
-4. Not done yet: `CodebookEditor` stays (it is the codebook editor); client
-   `codebook/` helpers that work on the whole design would move to `design/`.
+4. Done: client `codebook/` holds the coding runtime (templates, conditions,
+   expressions, the item tree); the editor's helpers moved to `design/`
+   (`codebookEdit` → `design/itemEdit`).

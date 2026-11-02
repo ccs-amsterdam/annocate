@@ -1,6 +1,6 @@
 import type { TopLevelItem } from "@annotinder/contracts";
-import { deleteItem, updateItem } from "./codebookEdit";
-import { findItem, flattenTree, keyOf } from "./tree";
+import { deleteItem, updateItem } from "./itemEdit";
+import { findItem, flattenTree, keyOf } from "../codebook/tree";
 
 // Undo/redo and "what changed since the last save" for the codebook editor
 // (docs/client.md §7). The editor keeps whole snapshots of the items: the

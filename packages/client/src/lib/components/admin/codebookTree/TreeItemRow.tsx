@@ -13,7 +13,7 @@ import {
   type UnitLoopItem,
 } from "@annotinder/contracts";
 import { describeCondition, itemTitle } from "../../../codebook/conditions";
-import type { TreePosition } from "../../../codebook/codebookEdit";
+import type { TreePosition } from "../../../design/itemEdit";
 import { VARIABLE_TYPE_LABELS } from "../VariableTypeForm";
 import { findItem, findParent, loopUnitsSummary } from "../../../codebook/tree";
 

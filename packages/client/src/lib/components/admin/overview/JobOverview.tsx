@@ -9,7 +9,7 @@ import {
   useLinksQuery,
   useOverviewQuery,
 } from "../../../admin/queries";
-import { describeVersions } from "../../../codebook/versions";
+import { describeVersions } from "../../../design/versions";
 import { formatWhen } from "../../../admin/format";
 import { JobSettings } from "../JobSettings";
 import { ActivityChart } from "./ActivityChart";
