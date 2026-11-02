@@ -120,7 +120,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
             <span className={hasDesign ? "text-primary font-bold" : "text-muted-foreground"}>
               {hasDesign ? "✓" : "○"}
             </span>
-            <span>Codebook with questions {hasDesign ? "(Ready)" : "(Missing)"}</span>
+            <span>Design with questions {hasDesign ? "(Ready)" : "(Missing)"}</span>
           </li>
           <li className="flex items-center gap-2">
             <span className={hasUnits ? "text-primary font-bold" : "text-muted-foreground"}>

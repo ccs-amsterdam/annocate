@@ -22,7 +22,7 @@ export function DesignVersionsView({ designVersions, versions, openId, onView, o
     <div className="flex h-full flex-col overflow-hidden">
       <h2 className="flex shrink-0 items-center gap-2 pr-8 text-lg font-bold text-foreground">
         <History className="h-5 w-5 text-primary" />
-        Codebook versions
+        Design versions
         <HelpButton topic="previewing-and-publishing" label="Help: preview, save and publish" />
       </h2>
 
