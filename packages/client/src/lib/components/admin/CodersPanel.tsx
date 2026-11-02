@@ -21,12 +21,12 @@ function endedText(ended: CoderProgress["ended"]): string {
 
 /**
  * Coder progress (docs/client.md §7): who started, through which
- * invitation, when they were last active, how their session ended, and how
+ * link, when they were last active, how their session ended, and how
  * many units they finished per loop of the live codebook. Coders' requests
  * to delete their answers come first, to delete now or later (they are
  * then no longer brought up, but stay marked); any coder's data can be
  * deleted (also by participant id or email). Deleted coders stay listed in
- * the deletion log, for deleting them from earlier downloads. Invitations
+ * the deletion log, for deleting them from earlier downloads. Links
  * are on their own tab.
  */
 export function CodersPanel({ client }: { client: ResearcherApi }) {
@@ -72,7 +72,7 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
               <li key={c.id} className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{coderName(c)}</span>
                 <span className="text-xs text-muted-foreground">
-                  asked {formatWhen(c.deletionRequest!.at)} · {c.answers} answers{c.inviteLabel ? ` · ${c.inviteLabel}` : ""}
+                  asked {formatWhen(c.deletionRequest!.at)} · {c.answers} answers{c.linkLabel ? ` · ${c.linkLabel}` : ""}
                 </span>
                 <span className="ml-auto flex gap-1">
                   <Button size="xs" variant="destructive" onClick={() => deleteCoder(c)}>
@@ -141,7 +141,7 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
                   <td className="p-2">
                     {coder.participantId || coder.email ? coderName(coder) : <span className="text-muted-foreground">#{coder.id}</span>}
                   </td>
-                  <td className="p-2 text-muted-foreground">{coder.inviteLabel ?? "–"}</td>
+                  <td className="p-2 text-muted-foreground">{coder.linkLabel ?? "–"}</td>
                   <td className="p-2 whitespace-nowrap text-muted-foreground">{formatWhen(coder.started)}</td>
                   <td className="p-2 whitespace-nowrap">{formatWhen(coder.lastActive)}</td>
                   <td className="p-2 text-right tabular-nums">{coder.answers}</td>

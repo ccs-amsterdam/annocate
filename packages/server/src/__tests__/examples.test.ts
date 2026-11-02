@@ -38,7 +38,7 @@ describe("example jobs", () => {
 
     // The researcher owns it, and it is deployed with an invitation
     expect((await researcher(`/job/${job.id}`)).status).toBe(200);
-    const [invite] = (await (await researcher(`/job/${job.id}/invites`)).json()) as { secret: string }[];
+    const [invite] = (await (await researcher(`/job/${job.id}/links`)).json()) as { secret: string }[];
     expect((await (await researcher(`/job/${job.id}/deployment`)).json()) as { active: boolean }).toMatchObject({ active: true });
 
     // Example answers: every coder's answers are in the download
@@ -51,7 +51,7 @@ describe("example jobs", () => {
     if (units > 0) expect(coders.some((c) => Object.values(c.finished).some((n) => n > 0))).toBe(true);
 
     // A coder can start
-    const coder = await app.request(`/d/${job.id}/session`, { headers: { "x-annotinder": "1", "x-invite-secret": invite.secret } });
+    const coder = await app.request(`/d/${job.id}/session`, { headers: { "x-annotinder": "1", "x-link-secret": invite.secret } });
     expect(coder.status).toBe(200);
   });
 
@@ -118,7 +118,7 @@ describe("jobs from a recipe", () => {
     const codebooks = (await (await researcher(`/job/${job.id}/codebook`)).json()) as { items: unknown[] }[];
     expect(codebooks).toHaveLength(1);
     expect(await (await researcher(`/job/${job.id}/deployment`)).json()).toBeNull();
-    expect(((await (await researcher(`/job/${job.id}/invites`)).json()) as unknown[]).length).toBe(0);
+    expect(((await (await researcher(`/job/${job.id}/links`)).json()) as unknown[]).length).toBe(0);
 
     // Published (the question specified): one open link
     const specified = structuredClone(items);
@@ -126,7 +126,7 @@ describe("jobs from a recipe", () => {
     const published = await post({ ...recipe, codebook: { items: specified }, publish: true });
     expect(published.status, await published.clone().text()).toBe(201);
     const { id } = JobResponseSchema.parse(await published.json());
-    expect(((await (await researcher(`/job/${id}/invites`)).json()) as { label: string }[]).map((l) => l.label)).toEqual(["Open link"]);
+    expect(((await (await researcher(`/job/${id}/links`)).json()) as { label: string }[]).map((l) => l.label)).toEqual(["Open link"]);
   });
 
   it("publishes only a valid codebook; a refused recipe leaves nothing", async () => {

@@ -31,7 +31,7 @@ export type SetupDistribution =
   | { mode: "all" }
   /**
    * The units in sets, each coder one set: `split` into `sets` sets, or one
-   * set per value of `column`. Handed out by an invitation link per set
+   * set per value of `column`. Handed out by a link per set
    * (`links`), or by one link giving each new coder the set with the fewest
    * coders (`rotate`).
    */

@@ -71,7 +71,7 @@ curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/j
 | Save a design version | `POST /job/<id>/codebook` with `{ "items": [...], "note": ... }` |
 | Deploy: a design version and the draft units and sets (this makes its links) | `PUT /job/<id>/deployment` with `{ "codebookId": ..., "units": true }` (without `units`, the deployed units stay) |
 | What deploying would change; the deployed versions | `GET /job/<id>/deployment/pending`, `GET /job/<id>/deployment/versions` |
-| List links, or change who may use one | `GET /job/<id>/invites`; `PUT /job/<id>/invites/<link id>` |
+| List links, or change who may use one | `GET /job/<id>/links`; `PUT /job/<id>/links/<link id>` |
 | Coders, with their answers outside unit loops | `GET /job/<id>/coders` |
 | Answers in unit loops, a page at a time | `GET /job/<id>/annotations` |
 | Units as coders saw them, a page at a time | `GET /job/<id>/unit-versions` |

@@ -22,8 +22,8 @@ const row = (unitId: number, coderId: number, variable: string, value: Annotatio
 });
 const coder = (id: number, extra: Partial<CoderProgress> = {}): CoderProgress => ({
   id,
-  inviteId: 1,
-  inviteLabel: "Open link",
+  linkId: 1,
+  linkLabel: "Open link",
   started: at,
   lastActive: at,
   answers: 0,

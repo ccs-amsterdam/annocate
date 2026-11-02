@@ -57,7 +57,7 @@ beforeEach(async () => {
 });
 
 /**
- * Simulated browsers, by name: their cookies, and the invite link they were
+ * Simulated browsers, by name: their cookies, and the link they were
  * opened with (a reload sends it again, like the client does from the URL).
  */
 let devices = new Map<string, { cookies: Map<string, string>; invite: string | null }>();
@@ -90,13 +90,13 @@ function branchQuery(branch?: number) {
   return branch === undefined ? "" : `?branch=${branch}`;
 }
 
-/** A coder on device `name`, opened with `invite` (`null`: the link the device was opened with before, if any). */
+/** A coder on device `name`, opened with `link` (`null`: the link the device was opened with before, if any). */
 function coder(name: string, invite: string | null = "demo-secret", app = () => server) {
   if (!devices.has(name)) devices.set(name, { cookies: new Map(), invite: null });
   const device = devices.get(name)!;
   if (invite !== null) device.invite = invite;
   const call = (path: string, init?: RequestInit) =>
-    send(name, path, init, device.invite ? { "x-invite-secret": device.invite } : {}, app);
+    send(name, path, init, device.invite ? { "x-link-secret": device.invite } : {}, app);
   return {
     session: async () => (await call("/session")).json() as Promise<SessionResponse>,
     next: async (loop = "1", branch?: number) => {
@@ -182,13 +182,13 @@ describe("coder flow", () => {
     expect(await dbAnnotations()).toHaveLength(0);
   });
 
-  it("requires a valid invite for new coders", async () => {
+  it("requires a valid link for new coders", async () => {
     expect((await coder("coder-x", null).call("/session")).status).toBe(401);
     expect((await coder("coder-x", "wrong").call("/session")).status).toBe(401);
   });
 
   it("returns 404 for unknown or undeployed jobs", async () => {
-    const headers = { "x-annotinder": "1", "x-invite-secret": "demo-secret" };
+    const headers = { "x-annotinder": "1", "x-link-secret": "demo-secret" };
     expect((await server.request("/d/other/session", { headers })).status).toBe(404);
     expect((await server.request("/d/99/session", { headers })).status).toBe(404);
   });
@@ -293,7 +293,7 @@ async function createSet(name: string, externalIds: string[], group = "g") {
 
 /** The deployed codebook's links: params -> secret. */
 async function links(): Promise<{ id: number; secret: string; params: Record<string, string>; retiredAt: string | null }[]> {
-  return (await (await server.request("/job/1/invites", { headers: adminHeaders })).json()) as never;
+  return (await (await server.request("/job/1/links", { headers: adminHeaders })).json()) as never;
 }
 
 let extraLinks = 0;
@@ -302,13 +302,13 @@ let extraLinks = 0;
  * them on a link). Made directly: links come from the deployed codebook,
  * so a later deploy retires it.
  */
-async function invite(settings: { auth?: string; emails?: string[]; participantId?: string; maxUses?: number } = {}) {
+async function link(settings: { auth?: string; emails?: string[]; participantId?: string; maxUses?: number } = {}) {
   const secret = `extra-${++extraLinks}`;
   const [{ id }] = await db.query<{ id: number }>(
-    "INSERT INTO invites (job_id, label, auth, secret, link_key) VALUES (1, 'x', 'none', $1, $2) RETURNING id",
+    "INSERT INTO links (job_id, label, auth, secret, link_key) VALUES (1, 'x', 'none', $1, $2) RETURNING id",
     [secret, JSON.stringify(["test", extraLinks])],
   );
-  const res = await server.request(`/job/1/invites/${id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ label: "x", ...settings }) });
+  const res = await server.request(`/job/1/links/${id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ label: "x", ...settings }) });
   expect(res.status).toBe(200);
   return secret;
 }
@@ -491,11 +491,11 @@ describe("assigned sets", () => {
       body: JSON.stringify({ sets: [{ name: "s2", unitIds: [(await unitByExternalId("unit-2")).id] }, { name: "s3", unitIds: [(await unitByExternalId("unit-3")).id] }] }),
     });
     await deployDrafts();
-    const retired = await send("late", "/session", {}, { "x-invite-secret": bySet.s1 });
+    const retired = await send("late", "/session", {}, { "x-link-secret": bySet.s1 });
     expect(retired.status).toBe(403);
     expect(await retired.json()).toMatchObject({ code: "link_inactive" });
     // The demo link (no link parameters before) is retired too: the codebook makes only set links now
-    expect((await send("demo", "/session", {}, { "x-invite-secret": "demo-secret" })).status).toBe(403);
+    expect((await send("demo", "/session", {}, { "x-link-secret": "demo-secret" })).status).toBe(403);
     // A group the codebook uses can't be deleted
     expect((await server.request("/job/1/sets/g", { method: "DELETE", headers: adminHeaders })).status).toBe(409);
   });
@@ -504,13 +504,13 @@ describe("assigned sets", () => {
     await createSet("a@example.org", ["unit-1"]);
     await createSet("b@example.org", ["unit-2"]);
     await redeploy(assign({ session: "email" }));
-    expect(await (await send("anon", "/session", {}, { "x-invite-secret": "demo-secret" })).json()).toMatchObject({ code: "auth_required" });
+    expect(await (await send("anon", "/session", {}, { "x-link-secret": "demo-secret" })).json()).toMatchObject({ code: "auth_required" });
     const login = async (device: string, email: string) => {
       const user = await ensureUser(db, email);
       devices.set(device, { cookies: new Map([["annotinder_session", await createSession(db, user.id)]]), invite: null });
     };
     await login("stranger", "c@example.org");
-    expect(await (await send("stranger", "/session", {}, { "x-invite-secret": "demo-secret" })).json()).toMatchObject({ code: "email_not_invited" });
+    expect(await (await send("stranger", "/session", {}, { "x-link-secret": "demo-secret" })).json()).toMatchObject({ code: "email_not_invited" });
     await login("b", "B@example.org");
     expect((await coder("b").next())!.externalId).toBe("unit-2");
   });
@@ -624,7 +624,7 @@ describe("routing by branch", () => {
 describe("sessions", () => {
   it("keeps a device id in an httpOnly cookie; stores only a per-job hash of it, with coarse device details", async () => {
     const iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
-    const res = await send("browser", "/session", {}, { "x-invite-secret": "demo-secret", "user-agent": iphone });
+    const res = await send("browser", "/session", {}, { "x-link-secret": "demo-secret", "user-agent": iphone });
     expect(res.status).toBe(200);
     const [set] = res.headers.getSetCookie();
     expect(set).toMatch(/^annotinder_device=/);
@@ -644,7 +644,7 @@ describe("sessions", () => {
     expect(JSON.stringify(await db.query("SELECT * FROM coders"))).not.toContain(deviceId);
 
     // the cookie continues the session; it isn't set again
-    const again = await send("browser", "/session", {}, { "x-invite-secret": "demo-secret" });
+    const again = await send("browser", "/session", {}, { "x-link-secret": "demo-secret" });
     expect(((await again.json()) as SessionResponse).coderId).toBe(coderId);
     expect(again.headers.getSetCookie()).toEqual([]);
   });
@@ -661,22 +661,22 @@ describe("sessions", () => {
   });
 
   it("refuses requests without the client header (CSRF)", async () => {
-    const res = await server.request("/d/1/session", { headers: { "x-invite-secret": "demo-secret" } });
+    const res = await server.request("/d/1/session", { headers: { "x-link-secret": "demo-secret" } });
     expect(res.status).toBe(403);
   });
 
   it("continues a device's session whatever link it comes back with; separate per participant", async () => {
-    const other = await invite();
-    const a = (await (await send("shared", "/session", {}, { "x-invite-secret": "demo-secret" })).json()) as SessionResponse;
-    const b = (await (await send("shared", "/session", {}, { "x-invite-secret": other })).json()) as SessionResponse;
-    const bare = (await (await send("shared", "/session")).json()) as SessionResponse; // no invite at all
+    const other = await link();
+    const a = (await (await send("shared", "/session", {}, { "x-link-secret": "demo-secret" })).json()) as SessionResponse;
+    const b = (await (await send("shared", "/session", {}, { "x-link-secret": other })).json()) as SessionResponse;
+    const bare = (await (await send("shared", "/session")).json()) as SessionResponse; // no link at all
     expect(b.coderId).toBe(a.coderId);
     expect(bare.coderId).toBe(a.coderId);
 
     await redeploy({}, [sessionItem({ participant: { param: "participant" } })]);
     const panel = "demo-secret";
-    const p1 = (await (await send("shared", "/session", {}, { "x-invite-secret": panel, "x-url-params": "participant=P1" })).json()) as SessionResponse;
-    const p2 = (await (await send("shared", "/session", {}, { "x-invite-secret": panel, "x-url-params": "participant=P2" })).json()) as SessionResponse;
+    const p1 = (await (await send("shared", "/session", {}, { "x-link-secret": panel, "x-url-params": "participant=P1" })).json()) as SessionResponse;
+    const p2 = (await (await send("shared", "/session", {}, { "x-link-secret": panel, "x-url-params": "participant=P2" })).json()) as SessionResponse;
     expect(new Set([a.coderId, p1.coderId, p2.coderId]).size).toBe(3);
     // One cookie for all of it
     expect(devices.get("shared")!.cookies.size).toBe(1);
@@ -684,13 +684,13 @@ describe("sessions", () => {
 
   it("knows a deployment by one spelling only", async () => {
     for (const id of ["01", "0001.preview", "1e3", "99999999999"]) {
-      const res = await server.request(`/d/${id}/session`, { headers: { "x-annotinder": "1", "x-invite-secret": "demo-secret" } });
+      const res = await server.request(`/d/${id}/session`, { headers: { "x-annotinder": "1", "x-link-secret": "demo-secret" } });
       expect(res.status).toBe(404);
     }
   });
 
-  it("sets no cookie when the invite is refused", async () => {
-    const res = await send("nobody", "/session", {}, { "x-invite-secret": "wrong" });
+  it("sets no cookie when the link is refused", async () => {
+    const res = await send("nobody", "/session", {}, { "x-link-secret": "wrong" });
     expect(res.status).toBe(401);
     expect(res.headers.getSetCookie()).toEqual([]);
   });
@@ -708,7 +708,7 @@ describe("URL parameters", () => {
         ],
       }),
     ]);
-    const start = (device: string, params: string) => send(device, "/session", {}, { "x-invite-secret": "demo-secret", "x-url-params": params });
+    const start = (device: string, params: string) => send(device, "/session", {}, { "x-link-secret": "demo-secret", "x-url-params": params });
 
     const missing = await start("u1", "PROLIFIC_PID=ab12&src=panel");
     expect(missing.status).toBe(400);
@@ -737,7 +737,7 @@ describe("URL parameters", () => {
 describe("quitting and deleting a coder's data", () => {
   it("lets a coder quit and ask for deletion; the researcher deletes later, then now, and the deletion is logged", async () => {
     await redeploy({}, [sessionItem({ participant: { param: "participant" } })]);
-    const link = { "x-invite-secret": "demo-secret", "x-url-params": "participant=P77" };
+    const link = { "x-link-secret": "demo-secret", "x-url-params": "participant=P77" };
     const unit = ((await (await send("quitter", "/loop/1/next", {}, link)).json()) as { units: CoderUnitResponse[] }).units[0];
     expect((await send("quitter", "/variables/unit", { method: "POST", body: JSON.stringify({ unitId: unit.id, variables: sentiment("positive") }) }, link)).status).toBe(200);
 
@@ -859,7 +859,7 @@ describe("auto questions", () => {
     await redeploy({}, [sessionItem({ params: [{ name: "wave", kind: "url", values: { list: [{ value: "1" }, { value: "2" }] }, default: "1" }] }), gender, condition]);
     const start = async (name: string, g: string, wave = "1") => {
       const c = coder(name);
-      await send(name, "/session", {}, { "x-invite-secret": "demo-secret", "x-url-params": `wave=${wave}` });
+      await send(name, "/session", {}, { "x-link-secret": "demo-secret", "x-url-params": `wave=${wave}` });
       await c.call("/variables/coder", { method: "POST", body: JSON.stringify({ variables: { gender: value(g) } }) });
       return reach(c, "condition");
     };
@@ -1020,12 +1020,12 @@ describe("coder login", () => {
     devices.set(device, { cookies: new Map([["annotinder_session", await createSession(db, user.id)]]), invite: null });
   }
   const session = async (device: string, secret: string | null) => {
-    const res = await send(device, "/session", {}, secret ? { "x-invite-secret": secret } : {});
+    const res = await send(device, "/session", {}, secret ? { "x-link-secret": secret } : {});
     return { status: res.status, body: (await res.json()) as SessionResponse & { code?: string } };
   };
 
-  it("an invite that requires login: the email is linked once; another device finds the session by logging in", async () => {
-    const secret = await invite({ auth: "required" });
+  it("a link that requires login: the email is linked once; another device finds the session by logging in", async () => {
+    const secret = await link({ auth: "required" });
     expect(await session("anonymous", secret)).toMatchObject({ status: 401, body: { code: "auth_required" } });
 
     await loggedIn("phone", "a@example.org");
@@ -1049,7 +1049,7 @@ describe("coder login", () => {
   });
 
   it("an email list: only those logins", async () => {
-    const secret = await invite({ emails: ["b@example.org"] });
+    const secret = await link({ emails: ["b@example.org"] });
     expect(await session("nobody", secret)).toMatchObject({ status: 401, body: { code: "auth_required" } });
     await loggedIn("other", "a@example.org");
     expect(await session("other", secret)).toMatchObject({ status: 403, body: { code: "email_not_invited" } });
@@ -1057,8 +1057,8 @@ describe("coder login", () => {
     expect((await session("invited", secret)).status).toBe(200);
   });
 
-  it("an optional login: links the email to the session started on the device; invites without login ignore it", async () => {
-    const secret = await invite({ auth: "optional" });
+  it("an optional login: links the email to the session started on the device; links without login ignore it", async () => {
+    const secret = await link({ auth: "optional" });
     const before = await session("tablet", secret);
     expect(before.body.login).toBeNull();
     const user = await ensureUser(db, "c@example.org");
@@ -1075,7 +1075,7 @@ describe("coder login", () => {
     devices.get("phone")!.cookies.set("annotinder_session", await createSession(db, phoneUser.id));
     expect((await session("phone", secret)).body.coderId).toBe(before.body.coderId);
 
-    // The demo invite takes no logins: an anonymous session as always
+    // The demo link takes no logins: an anonymous session as always
     await loggedIn("researcher", "c@example.org");
     expect((await session("researcher", "demo-secret")).body).toMatchObject({ login: null });
   });
@@ -1105,7 +1105,7 @@ describe("sessions across devices", () => {
   it("never resumes a participant's session from a link alone", async () => {
     await redeploy({}, [sessionItem({ participant: { param: "participant" } })]);
     const secret = "demo-secret";
-    const link = { "x-invite-secret": secret, "x-url-params": "participant=P123" };
+    const link = { "x-link-secret": secret, "x-url-params": "participant=P123" };
 
     const first = await send("device-1", "/session", {}, link);
     expect(first.status).toBe(200);
@@ -1128,15 +1128,15 @@ describe("sessions across devices", () => {
     const reload = await send("device-2", "/session", {}, link);
     expect(((await reload.json()) as SessionResponse).coderId).toBe(secondCoder);
 
-    // A revoked invite starts no new sessions, also not for a known participant; existing ones go on.
-    await db.query("UPDATE invites SET revoked_at = now() WHERE secret = $1", [secret]);
+    // A revoked link starts no new sessions, also not for a known participant; existing ones go on.
+    await db.query("UPDATE links SET revoked_at = now() WHERE secret = $1", [secret]);
     expect((await send("device-3", "/session", {}, { ...link, "x-new-session": "1" })).status).toBe(401);
     expect((await send("device-2", "/session", {}, link)).status).toBe(200);
   });
 
-  it("refuses invites that require login (not supported yet)", async () => {
-    const secret = await invite({ auth: "required" });
-    const res = await send("login", "/session", {}, { "x-invite-secret": secret });
+  it("refuses links that require login (not supported yet)", async () => {
+    const secret = await link({ auth: "required" });
+    const res = await send("login", "/session", {}, { "x-link-secret": secret });
     expect(res.status).toBe(401);
     expect(await res.json()).toMatchObject({ code: "auth_required" });
   });
@@ -1529,7 +1529,7 @@ describe("deployment settings", () => {
     const items = (await coder("first").session()).codebook.items as { type: string; redirectUrl?: string }[];
     expect(items.find((i) => i.type === "end")?.redirectUrl).toBe("https://panel.example/done?id=$session.participant");
     // maxUses 1: the demo link took "first"; a second new coder is refused
-    expect((await send("second", "/session", {}, { "x-invite-secret": "demo-secret" })).status).toBe(401);
+    expect((await send("second", "/session", {}, { "x-link-secret": "demo-secret" })).status).toBe(401);
   });
 });
 
@@ -1638,7 +1638,7 @@ describe("researcher preview", () => {
     return async (path: string, init: RequestInit = {}) => {
       const res = await server.request(`/d/${deploymentId}${path}`, {
         ...init,
-        headers: { "content-type": "application/json", "x-annotinder": "1", "x-invite-secret": token, cookie },
+        headers: { "content-type": "application/json", "x-annotinder": "1", "x-link-secret": token, cookie },
       });
       const [set] = res.headers.getSetCookie();
       if (set) cookie = set.split(";")[0];

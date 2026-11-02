@@ -3,7 +3,7 @@
   "title": "Labeling actors in texts",
   "description": "Coders select the people and organisations in short news texts and label them: span annotation. With example answers from 2 coders, one of whom missed a few actors.",
   "tryThis": [
-    "Open the invitation link in a private window and select words in the text to label them.",
+    "Open the link in a private window and select words in the text to label them.",
     "Download the results: the spans come with their text, and with their positions in the _json columns."
   ],
   "name": "Labeling actors",

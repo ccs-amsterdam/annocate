@@ -8,7 +8,7 @@ import { useCreateJobFromExampleMutation, useExamplesQuery } from "../../admin/q
 /**
  * "New job from an example" (docs/plans/examples.md): the examples by
  * category; the chosen one becomes an ordinary job, deployed, with an
- * invitation and sometimes example answers.
+ * link and sometimes example answers.
  */
 export function ExamplesDialog({ client, onCreated, onClose }: { client: ResearcherApi; onCreated: (job: JobResponse) => void; onClose: () => void }) {
   const examplesQuery = useExamplesQuery(client);

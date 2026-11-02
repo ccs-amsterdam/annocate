@@ -3,7 +3,7 @@
   "title": "A simple experiment",
   "description": "A survey experiment: each participant is randomly assigned to one of two versions of a news article (an auto question), reads it, and answers the same questions. With example answers from 4 participants.",
   "tryThis": [
-    "Open the invitation link in a private window a few times: you get either version at random.",
+    "Open the link in a private window a few times: you get either version at random.",
     "Look at the auto question and the article text in the codebook: the text shows a different paragraph per condition.",
     "Download the results: the condition is a column in coders.csv, next to the answers."
   ],

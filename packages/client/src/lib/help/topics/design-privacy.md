@@ -29,7 +29,7 @@ Everything of a job is stored on the AnnoTinder server you use:
 | **Response times** | Per question: how long it was on screen until the first answer and in total, how long the page was hidden meanwhile, and how often the answer changed (measured in the coder's browser); per unit, when the server handed it out. Always recorded: mention it in your participant information if it matters for your study |
 
 What AnnoTinder itself does **not** store about coders: their name, their
-email address (unless the link has them [log in](invitations.md#login)), their IP address, details of their device beyond its kind, browser and operating system, or
+email address (unless the link has them [log in](links.md#login)), their IP address, details of their device beyond its kind, browser and operating system, or
 URL parameters other than the ones the design asks for (an
 [auto question](auto.md) that reads a URL parameter, and the participant
 id if the link takes it from the URL). The web server in front of

@@ -37,7 +37,7 @@ server sends no CORS headers for these paths.
 Headers:
 
 - `x-annotinder: 1` on every request (CSRF: cross-site forms can't send it);
-- `x-invite-secret` from the URL (the link): create the coder on first
+- `x-link-secret` from the URL (the link): create the coder on first
   use. A retired link (no longer part of the deployed design) is 403
   `link_inactive` for new sessions;
 - `x-url-params`: the page's other query parameters. They hold the URL
@@ -81,7 +81,7 @@ its `when` condition (the client sends the branch index; the server works
 out the units); no modes, sets or overlap, no Session item, no researcher
 notes, and `auto` questions only with their options. Creates the coder and session on first
 use. `login`: the email of the login the session belongs to, or null;
-`canLogIn`: the invite offers a login the coder hasn't used. `frozen`: the
+`canLogIn`: the link offers a login the coder hasn't used. `frozen`: the
 coder-level answers that can't change any more, because the coder coded
 units in a loop that depends on them (contracts `loopDependencies`).
 Assigns the coder's `auto` variables they don't have yet (`random` or

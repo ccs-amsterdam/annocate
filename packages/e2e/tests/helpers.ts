@@ -11,10 +11,10 @@ export async function api<T>(request: APIRequestContext, method: string, path: s
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
-/** A new job from an example, and the link of its (first) invitation. */
+/** A new job from an example, and the link of its (first) link. */
 export async function fromExample(request: APIRequestContext, example: string): Promise<{ job: JobResponse; link: string }> {
   const job = await api<JobResponse>(request, "POST", "/job/from-example", { example });
-  const [invite] = await api<{ secret: string }[]>(request, "GET", `/job/${job.id}/invites`);
+  const [invite] = await api<{ secret: string }[]>(request, "GET", `/job/${job.id}/links`);
   return { job, link: `/?deployment=${job.id}&invite=${invite.secret}` };
 }
 

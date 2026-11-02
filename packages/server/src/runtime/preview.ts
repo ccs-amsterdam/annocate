@@ -10,7 +10,7 @@ import type { Coder as StoredCoder, Coding, Lease, CoderValue, CoderAssignments,
 // and answers stay here, in memory. Nothing a preview does is stored, and it
 // is gone when the server forgets the deployment.
 
-/** A preview token (the invite secret of a preview): `preview.<jobId>.<expiresAtMs>.<HMAC>`. */
+/** A preview token (the link secret of a preview): `preview.<jobId>.<expiresAtMs>.<HMAC>`. */
 export function previewToken(secret: string, jobId: number, expiresAt: number): string {
   return `preview.${jobId}.${expiresAt}.${sign(secret, jobId, expiresAt)}`;
 }
@@ -59,8 +59,8 @@ export class PreviewStore implements Store {
     // A copy, as from a database: changes go through the store.
     if (known) return { coder: { ...known }, deviceId: null };
     const valid =
-      request.inviteSecret !== undefined &&
-      verifyPreviewToken(this.secret, this.jobId, request.inviteSecret, this.now());
+      request.linkSecret !== undefined &&
+      verifyPreviewToken(this.secret, this.jobId, request.linkSecret, this.now());
     if (!valid) throw new HttpError(401, "This preview link has expired; open the preview again");
     const coder: Coder = {
       coderId: this.coders.size + 1,
@@ -68,7 +68,7 @@ export class PreviewStore implements Store {
       ended: null,
       deletionRequest: null,
       session: request.sessionRules ? previewSessionValues(request.sessionRules, request.urlParams ?? {}) : {},
-      inviteId: null,
+      linkId: null,
       email: null,
       created: new Date(this.now()),
     };

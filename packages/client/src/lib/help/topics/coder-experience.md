@@ -7,7 +7,7 @@ summary: The coding screen, moving back and forward, saving and resuming, contin
 
 Coders (or participants) open a link and start right
 away, without an account (unless the link asks them to
-[log in](invitations.md#login)). This page describes what they see
+[log in](links.md#login)). This page describes what they see
 and can do, so you can write instructions for them and know what to expect.
 The quickest way to see it for yourself is **Preview Job** at the top right (see
 [Preview, save and deploy](previewing-and-publishing.md#previewing)).
@@ -117,7 +117,7 @@ there. The link works once, for 15 minutes; after that, coders make a new
 one. Both devices can then continue the session.
 
 The link gives access to the session, so coders shouldn't share it.
-Coders who [logged in](invitations.md#login) need no link: they log in on
+Coders who [logged in](links.md#login) need no link: they log in on
 the other device.
 
 ## Keyboard shortcuts

@@ -4,7 +4,7 @@ import { DeletionRequestSchema, SessionEndSchema } from "./session.js";
 import { VariableValueSchema } from "./variableValue.js";
 
 /**
- * A coder: someone annotating a job via an invite/access link. Distinct from
+ * A coder: someone annotating a job via a link/access link. Distinct from
  * a "job user" (see job.ts). Job-scoped identity (CONTRACTS.md).
  */
 export const CoderResponseSchema = z.object({
@@ -22,9 +22,9 @@ export const CoderProgressSchema = z.object({
   email: z.string().email().optional(),
   /** External label (e.g. a panel company's participant id); see docs/coder-identity.md. */
   participantId: z.string().optional(),
-  /** The invite the coder came in through; null for coders from before this was recorded. */
-  inviteId: IdSchema.nullable(),
-  inviteLabel: z.string().nullable(),
+  /** The link the coder came in through; null for coders from before this was recorded. */
+  linkId: IdSchema.nullable(),
+  linkLabel: z.string().nullable(),
   /** When the coder was created (first opened the invite); null if unknown. */
   started: z.coerce.date().nullable(),
   /** Their latest answer; null if they haven't answered anything yet. */
@@ -43,7 +43,7 @@ export const CoderProgressSchema = z.object({
   variables: z.record(z.string(), VariableValueSchema),
   /** Set if the coder's session ended at an `end` item (screened out or complete), or they quit. */
   ended: SessionEndSchema.nullable(),
-  /** The session's values: the URL parameters its invitation required, by their `$session` name. */
+  /** The session's values: the URL parameters its link required, by their `$session` name. */
   session: z.record(z.string(), z.string()),
   /** Set if the coder asked for their answers to be deleted (until the researcher deletes their data). */
   deletionRequest: DeletionRequestSchema.nullable(),
@@ -93,12 +93,12 @@ export const CoderDeletionSchema = z.object({
 export type CoderDeletion = z.infer<typeof CoderDeletionSchema>;
 
 /**
- * An invitation link (docs/coder-identity.md §3). Links are generated from
+ * An link (docs/coder-identity.md §3). Links are generated from
  * the deployed codebook: one per combination of its link parameters
  * (docs/plans/sets-and-session-parameters.md §4). The researcher manages
  * who may use a link, not which links exist.
  */
-export const CoderInviteWriteSchema = z.object({
+export const LinkWriteSchema = z.object({
   label: z.string().min(1).max(128),
   /**
    * `none`: no login; work stays on the device unless transferred.
@@ -116,20 +116,20 @@ export const CoderInviteWriteSchema = z.object({
   /** Stop accepting new coders after this many. */
   maxUses: z.number().int().positive().optional(),
 });
-export type CoderInviteWrite = z.input<typeof CoderInviteWriteSchema>;
+export type LinkWrite = z.input<typeof LinkWriteSchema>;
 
-export const CoderInviteResponseSchema = CoderInviteWriteSchema.extend({
+export const LinkResponseSchema = LinkWriteSchema.extend({
   id: IdSchema,
   jobId: IdSchema,
-  /** Opaque secret used to build the invite URL; not the same as a coder session token. */
+  /** Opaque secret used to build the link URL; not the same as a coder session token. */
   secret: z.string(),
-  /** Number of coders created from this invite so far. */
+  /** Number of coders created from this link so far. */
   uses: z.number().int().nonnegative(),
-  /** Null for invites from before this was recorded. */
+  /** Null for links from before this was recorded. */
   created: z.coerce.date().nullable(),
   /**
-   * Set once revoked (`POST /invites/:id/revoke`): no new coders. Coders who
-   * already started keep working. An invite can only be deleted while unused.
+   * Set once revoked (`POST /links/:id/revoke`): no new coders. Coders who
+   * already started keep working. A link can only be deleted while unused.
    */
   revokedAt: z.coerce.date().nullable(),
   /** The link parameter values this link carries (`$session.<name>`). */
@@ -141,4 +141,4 @@ export const CoderInviteResponseSchema = CoderInviteWriteSchema.extend({
    */
   retiredAt: z.coerce.date().nullable(),
 });
-export type CoderInviteResponse = z.infer<typeof CoderInviteResponseSchema>;
+export type LinkResponse = z.infer<typeof LinkResponseSchema>;

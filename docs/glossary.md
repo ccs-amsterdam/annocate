@@ -35,7 +35,6 @@ Older identifiers that mean a term above:
 | `codebooks` table, `/job/:id/codebook` endpoints, `CodebookResponse`, `codebookId` | a **design version** |
 | `CodebookEditor`, `useCodebookDraft`, `client/src/lib/codebook/` | the **codebook editor** and design-item helpers |
 | `toCoderItems`, `CoderCodebook` | the **codebook** (coders' part) |
-| `invites` table, `/invites` endpoints, `CoderInvite*` | **links** |
 | `putDeployment` (`PUT /deployment`) | **deploy** |
 | `variable` (a question's answer type; `VariableValue`) | a question's **answer type**; an **answer** |
 
@@ -47,7 +46,9 @@ public researcher API (and the R/Python clients), so it waits for a decision:
 1. `/job/:id/codebook` → `/job/:id/design`, `codebooks` → `design_versions`,
    `CodebookResponse`/`CodebookWrite` → `DesignVersion`/`DesignWrite`,
    `codebookId` → `designVersionId` (in deployments, answers, exports).
-2. `/invites` → `/links`, `invites` → `links`, `CoderInvite*` → `Link*`.
-3. `unitset` → `set` in `SourceStatus` and the distribution tables.
+2. Done: `/invites` → `/links`, table `invites` → `links`, `CoderInvite*` → `Link*`.
+   Kept: the coder URL parameter `?invite=<secret>` (links already sent out
+   keep working) and the error code `email_not_invited`.
+3. Done: `unitset` → `set` in `SourceStatus` and the distribution tables.
 4. Client: `CodebookEditor` stays (it is the codebook editor); `codebook/`
    helpers that work on the whole design move to `design/`.

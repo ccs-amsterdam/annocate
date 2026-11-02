@@ -90,7 +90,7 @@ test("a survey alone: questions by name, no units", async ({ page, request }) =>
   const job = (await api<JobResponse[]>(request, "GET", "/job")).find((j) => j.name === "Opinion survey")!;
   expect(await api<unknown[]>(request, "GET", `/job/${job.id}/units`)).toEqual([]);
   // A draft: its link comes when it is published
-  expect((await api<unknown[]>(request, "GET", `/job/${job.id}/invites`)).length).toBe(0);
+  expect((await api<unknown[]>(request, "GET", `/job/${job.id}/links`)).length).toBe(0);
 });
 
 test("crowd coding with an overlap; the loop's units are set by the wizard", async ({ page, request }) => {

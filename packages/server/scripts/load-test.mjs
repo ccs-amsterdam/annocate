@@ -55,7 +55,7 @@ async function setUp() {
   ];
   const codebook = await api("POST", `/job/${job.id}/codebook`, { items });
   await api("PUT", `/job/${job.id}/deployment`, { codebookId: codebook.id, active: true });
-  const invite = await api("POST", `/job/${job.id}/invites`, { label: "load", auth: "none" });
+  const invite = await api("POST", `/job/${job.id}/links`, { label: "load", auth: "none" });
   console.log(`setup: job ${job.id}, ${UNITS} units in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
   return { jobId: job.id, secret: invite.secret };
 }
@@ -73,7 +73,7 @@ function coderClient(jobId, secret) {
     const t = performance.now();
     const res = await fetch(`${BASE}/d/${jobId}${path}`, {
       method,
-      headers: { "content-type": "application/json", "x-annotinder": "1", "x-invite-secret": secret, ...(cookie ? { cookie } : {}) },
+      headers: { "content-type": "application/json", "x-annotinder": "1", "x-link-secret": secret, ...(cookie ? { cookie } : {}) },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const setCookie = res.headers.get("set-cookie");

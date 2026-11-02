@@ -100,7 +100,7 @@ export interface JobManagerSnapshot {
   deletionRequested: boolean;
   /** The email the coder is logged in with (their session is found by it on any device); null without. */
   login: string | null;
-  /** The invitation lets the coder log in, and they haven't. */
+  /** The link lets the coder log in, and they haven't. */
   canLogIn: boolean;
   /** With phase `finished`: whether the coder can go back (`reopen()`); `until` null: always. */
   reopen: Reopen;
@@ -267,7 +267,7 @@ export class JobManager {
   private topSteps: CodebookItem[] = [];
   /** Answers of coder-level questions that are currently shown (hidden ones count as unanswered). */
   private coderVisible: Record<string, VariableValue> = {};
-  /** The session's `$session` values (participant id, URL parameters its invite required). */
+  /** The session's `$session` values (participant id, URL parameters its link required). */
   private session: Record<string, string> = {};
   /** `coderVisible` plus the current unit's answers to questions that are currently shown. */
   private unitVisible: Record<string, VariableValue> = {};

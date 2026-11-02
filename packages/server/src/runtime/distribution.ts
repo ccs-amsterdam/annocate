@@ -63,7 +63,7 @@ export class Codings {
 
 /**
  * One set of one unit_loop branch, handed out either `fixed` (every
- * routed coder gets every unit: `all`, `sets` and `invitation` mode, and
+ * routed coder gets every unit: `all`, `sets` and `link` mode, and
  * overlaps) or `dynamic` (a shared queue with saturation rules: `shared`
  * mode, see contracts unitLoop.ts).
  */

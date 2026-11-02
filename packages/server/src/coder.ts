@@ -3,7 +3,7 @@ import { EndSessionSchema, QuitSessionSchema, NextUnitQuerySchema, PostCoderVari
 import type { Server } from "./context.js";
 import { HttpError } from "./shared/http.js";
 import { getCookie } from "hono/cookie";
-import { linkInfo } from "./shared/invites.js";
+import { linkInfo } from "./shared/links.js";
 import { userForSession } from "./shared/sessions.js";
 import { deviceDetails } from "./shared/devices.js";
 import { SESSION_COOKIE } from "./researcher/login.js";
@@ -70,11 +70,11 @@ export function coderApi(server: Server): Hono {
     // participant id the link carries (a device keeps a session per
     // participant id). `x-new-session`: the coder asked for a new one (a
     // participant id that already has a session elsewhere).
-    const inviteSecret = c.req.header("x-invite-secret");
+    const linkSecret = c.req.header("x-link-secret");
     // The page's query parameters: the participant id and the codebook's URL parameters.
     const urlParams = Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));
     const newSession = c.req.header("x-new-session") === "1";
-    const link = inviteSecret ? await linkInfo(server.db, inviteSecret) : null;
+    const link = linkSecret ? await linkInfo(server.db, linkSecret) : null;
     const existingDevice = readDevice(c);
     const device = existingDevice ?? newDeviceId();
     const participantParam = runtime.participantParam;
@@ -94,14 +94,14 @@ export function coderApi(server: Server): Hono {
         : undefined;
     const { coder, deviceId } = await runtime.resolveCoder({
       coderKey: key,
-      inviteSecret,
+      linkSecret,
       urlParams,
       newSession,
       device: deviceDetails(c.req.header("user-agent")),
       login,
       linkable: takesLogin,
     });
-    // Only once the coder was accepted (an invite may be invalid or used up).
+    // Only once the coder was accepted (a link may be invalid or used up).
     if (device !== existingDevice) writeDevice(c, device);
     c.set("deviceId", deviceId);
     c.set("canLogIn", !!server.login && link?.login === "optional" && coder.email === null);

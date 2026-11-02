@@ -9,7 +9,7 @@ import type { Sql } from "../db.js";
 
 /** Requests per minute, per kind. */
 export interface RateLimits {
-  /** Coder requests from a browser without a session here: new sessions, and guessed invite secrets (per IP). */
+  /** Coder requests from a browser without a session here: new sessions, and guessed link secrets (per IP). */
   coderStart: number;
   /** Redeeming "continue on another device" tokens (per IP). */
   transfer: number;

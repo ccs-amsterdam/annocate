@@ -5,7 +5,7 @@ import { coderAnswers, putCoderValues, toCoder, type CoderRow } from "../shared/
 import { getDeploymentSpec, getPreviewSpec } from "../shared/deployments.js";
 import { listFinished } from "../shared/finished.js";
 import { HttpError } from "../shared/http.js";
-import type { InviteRow } from "../shared/invites.js";
+import type { LinkRow } from "../shared/links.js";
 import { sessionValues } from "./sessionValues.js";
 import { getSettings } from "../shared/accounts.js";
 import { checkAnswerSize, checkNewCoder, jobLimits } from "../shared/limits.js";
@@ -47,7 +47,7 @@ export interface Store {
   getUnits(ids: number[], live: boolean): Promise<Unit[]>;
   /** All coders (for researcher status). */
   listCoders(): Promise<Coder[]>;
-  /** The coder for a coder key, created from an invite on first use (docs/coder-identity.md). */
+  /** The coder for a coder key, created from a link on first use (docs/coder-identity.md). */
   resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder>;
   /** Adds a device to a session (a transfer link): its key now finds this coder. Returns the device's row. */
   addDevice(coderId: number, coderKey: string, device: DeviceDetails): Promise<number | null>;
@@ -450,7 +450,7 @@ async function knownCoder(sql: Sql, jobId: number, coderKey: string): Promise<(C
 
 /**
  * A device's session to link to a login (`known`, without an email yet), or
- * a new device's: found by the login, or created from the invite.
+ * a new device's: found by the login, or created from the link.
  */
 async function findOrCreateCoder(
   sql: Sql,
@@ -473,23 +473,23 @@ async function findOrCreateCoder(
     const mine = await sessionOfEmail(sql, jobId, login.email);
     if (mine) return { row: mine, deviceId: await addDevice(sql, jobId, mine.id, coderKey, device) };
   }
-  if (!request.inviteSecret) throw new HttpError(401, "Unknown coder; a valid invite is needed");
-  const invite = await one<InviteRow>(sql, "SELECT * FROM invites WHERE secret = $1", [request.inviteSecret]);
-  if (!invite || invite.job_id !== jobId) throw new HttpError(401, "Invalid invite secret");
+  if (!request.linkSecret) throw new HttpError(401, "Unknown coder; a valid link is needed");
+  const link = await one<LinkRow>(sql, "SELECT * FROM links WHERE secret = $1", [request.linkSecret]);
+  if (!link || link.job_id !== jobId) throw new HttpError(401, "Invalid link secret");
   // An email list means only those people: they log in to show who they are.
-  const emails = invite.emails?.length ? invite.emails.map((e) => e.toLowerCase()) : null;
-  if ((invite.auth === "required" || emails) && !login) throw new HttpError(401, "This invite requires login", "auth_required");
+  const emails = link.emails?.length ? link.emails.map((e) => e.toLowerCase()) : null;
+  if ((link.auth === "required" || emails) && !login) throw new HttpError(401, "This link requires login", "auth_required");
   if (emails && login && !emails.includes(login.email.toLowerCase())) {
-    throw new HttpError(403, "This invitation is for other email addresses", "email_not_invited");
+    throw new HttpError(403, "This link is for other email addresses", "email_not_invited");
   }
   // Revoked or retired: no new sessions, also not for a known participant (existing sessions go on).
-  if (invite.revoked_at !== null) throw new HttpError(401, "This invite has been revoked");
-  if (invite.retired_at !== null) throw new HttpError(403, "This link is no longer active", "link_inactive");
+  if (link.revoked_at !== null) throw new HttpError(401, "This link has been revoked");
+  if (link.retired_at !== null) throw new HttpError(403, "This link is no longer active", "link_inactive");
   // A participant id is a label, never a credential: a new device for a
   // known participant gets a *new* session, and only when asked for.
   const { participantId, session } = sessionValues(
     request.sessionRules ?? { item: null, setsOf: () => [], emailGroups: [] },
-    { params: invite.params, participantId: invite.participant_id },
+    { params: link.params, participantId: link.participant_id },
     request.urlParams ?? {},
     login?.email ?? null,
   );
@@ -500,20 +500,20 @@ async function findOrCreateCoder(
   }
   if (request.paused) throw new HttpError(409, "This study is paused", "job_paused");
   await checkNewCoder(sql, jobId);
-  // A new session of a known participant is the same person: it doesn't use up the invite.
+  // A new session of a known participant is the same person: it doesn't use up the link.
   if (!knownParticipant) {
     // Checked and counted in one statement, so concurrent coders can't overrun `max_uses`.
     // The link's own limit, else the design's sample size per link (docs/plans/design.md §4)
     const used = await sql.query(
-      "UPDATE invites SET uses = uses + 1 WHERE id = $1 AND (COALESCE(max_uses, $2::int) IS NULL OR uses < COALESCE(max_uses, $2::int)) RETURNING id",
-      [invite.id, request.sessionRules?.item?.maxUses ?? null],
+      "UPDATE links SET uses = uses + 1 WHERE id = $1 AND (COALESCE(max_uses, $2::int) IS NULL OR uses < COALESCE(max_uses, $2::int)) RETURNING id",
+      [link.id, request.sessionRules?.item?.maxUses ?? null],
     );
-    if (used.length === 0) throw new HttpError(401, "This invite has been used up");
+    if (used.length === 0) throw new HttpError(401, "This link has been used up");
   }
   const created = await one<CoderRow>(
     sql,
-    "INSERT INTO coders (job_id, email, participant_id, invite_id, session) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-    [jobId, login?.email.toLowerCase() ?? null, participantId, invite.id, JSON.stringify(session)],
+    "INSERT INTO coders (job_id, email, participant_id, link_id, session) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+    [jobId, login?.email.toLowerCase() ?? null, participantId, link.id, JSON.stringify(session)],
   );
   // A new session on a device that had one (`newSession`): the device moves to the new one.
   return { row: created!, deviceId: await addDevice(sql, jobId, created!.id, coderKey, device) };

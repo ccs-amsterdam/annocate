@@ -45,8 +45,8 @@ import {
 export interface JobRunnerProps {
   /** Server URL including the deployment, e.g. `/d/42` (same origin as the client). */
   baseUrl: string;
-  inviteSecret?: string;
-  /** The page's other query parameters: the participant id and other parameters the invite requires, and `url_param` auto variables (stored by the server when the coder starts). */
+  linkSecret?: string;
+  /** The page's other query parameters: the participant id and other parameters the link requires, and `url_param` auto variables (stored by the server when the coder starts). */
   urlParams?: Record<string, string>;
   /** Token from a "Continue on another device" link: redeemed for the session's coder key. */
   transferToken?: string;
@@ -174,7 +174,7 @@ function computeGlobalPosition(nav: JobManagerNavigation): number {
  */
 function JobRunnerContent({
   baseUrl,
-  inviteSecret,
+  linkSecret,
   urlParams,
   newSession,
   onStartNewSession,
@@ -185,8 +185,8 @@ function JobRunnerContent({
   // By content: a new object with the same params must not restart the session.
   const urlParamsKey = JSON.stringify(urlParams ?? {});
   const coderApi = useMemo(
-    () => new HttpCoderApi({ baseUrl, inviteSecret, urlParams: JSON.parse(urlParamsKey), newSession }),
-    [baseUrl, inviteSecret, urlParamsKey, newSession],
+    () => new HttpCoderApi({ baseUrl, linkSecret, urlParams: JSON.parse(urlParamsKey), newSession }),
+    [baseUrl, linkSecret, urlParamsKey, newSession],
   );
   const { manager, snapshot } = useJobManager(coderApi);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -748,10 +748,10 @@ export function JobRunner(props: JobRunnerProps) {
  * first visit. See docs/coder-identity.md §4.
  */
 function CoderSessionGate(props: JobRunnerProps) {
-  const { baseUrl, inviteSecret, transferToken, onTransferRedeemed, newSession = false } = props;
+  const { baseUrl, linkSecret, transferToken, onTransferRedeemed, newSession = false } = props;
   const scope = useMemo<CoderSessionScope>(
-    () => ({ baseUrl, inviteSecret }),
-    [baseUrl, inviteSecret],
+    () => ({ baseUrl, linkSecret }),
+    [baseUrl, linkSecret],
   );
   const [session, setSession] = useState<{ ready: boolean; generation: number; newSession: boolean; error: string | null }>(
     () => ({ ready: !transferToken, generation: 0, newSession, error: null }),
@@ -818,7 +818,7 @@ function SessionNotice({ title, children }: { title: string; children: ReactNode
   );
 }
 
-/** An invitation that needs a login (docs/coder-identity.md §5). */
+/** A link that needs a login (docs/coder-identity.md §5). */
 function LoginNotice() {
   const [available, setAvailable] = useState<boolean | null>(null);
   useEffect(() => {
@@ -844,7 +844,7 @@ function LoginNotice() {
 /**
  * "Continue on another device": a one-time link + QR code for this session.
  * A coder whose session is linked to their email can also log in on the
- * other device. Where the invitation offers a login, it is offered here too.
+ * other device. Where the link offers a login, it is offered here too.
  */
 function TransferMenu({
   coderApi,

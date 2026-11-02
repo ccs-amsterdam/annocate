@@ -230,8 +230,8 @@ describe("annotations: finished counts and resets", () => {
         body: JSON.stringify({ units: [{ externalId: "u1", data: {} }, { externalId: "u2", data: {} }] }),
       }),
     )) as { id: number }[];
-    await db.query("INSERT INTO invites (job_id, label, auth, secret) VALUES ($1, 'x', 'none', 'annotations-link')", [job.id]);
-    const { coder } = await store.resolveCoder({ coderKey: "k", inviteSecret: "annotations-link" });
+    await db.query("INSERT INTO links (job_id, label, auth, secret) VALUES ($1, 'x', 'none', 'annotations-link')", [job.id]);
+    const { coder } = await store.resolveCoder({ coderKey: "k", linkSecret: "annotations-link" });
     const put = (unitId: number, variables: Record<string, VariableValue>) =>
       store.putAnnotation({ unitId, coderId: coder.coderId, variables });
     const finished = (variables: string[], values?: string[]) => store.listFinished({ loops: [{ loop: "l", variables, values }] });
@@ -305,7 +305,7 @@ describe("links, coder progress and overview", () => {
       return app.request(`/job/${job.id}/deployment`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: codebook.id, confirmLinks }) });
     };
     expect((await publish(session ? [session, loop] : [loop])).status).toBe(200);
-    const resolve = async (coderKey: string, inviteSecret: string) => (await store.resolveCoder({ coderKey, inviteSecret })).coder;
+    const resolve = async (coderKey: string, linkSecret: string) => (await store.resolveCoder({ coderKey, linkSecret })).coder;
     const put = (coderId: number, unitId: number, variables: Record<string, VariableValue>) =>
       store.putAnnotation({ unitId, coderId, variables });
     const get = async (path: string) => json(await app.request(`/job/${job.id}${path}`, { headers: adminHeaders }));
@@ -315,18 +315,18 @@ describe("links, coder progress and overview", () => {
 
   it("makes a link per link parameter value; links are revoked, renewed or retired, never deleted", async () => {
     const { job, loop, publish, resolve, get } = await setup(batches(["used", "unused"]));
-    const links = await get("/invites");
+    const links = await get("/links");
     expect(links.map((i: { label: string; params: object }) => [i.label, i.params])).toEqual([
       ["used", { batch: "used" }],
       ["unused", { batch: "unused" }],
     ]);
     const [used, unused] = links;
     expect(await status(resolve("a", used.secret))).toBe(200);
-    expect((await get("/invites"))[0].uses).toBe(1);
+    expect((await get("/links"))[0].uses).toBe(1);
 
     // Access settings
     const updated = await json(
-      await app.request(`/job/${job.id}/invites/${unused.id}`, {
+      await app.request(`/job/${job.id}/links/${unused.id}`, {
         method: "PUT",
         headers: adminHeaders,
         body: JSON.stringify({ label: "Panel", auth: "none", maxUses: 1 }),
@@ -337,11 +337,11 @@ describe("links, coder progress and overview", () => {
     expect(await status(resolve("u2", unused.secret))).toBe(401);
 
     // A new secret: the old one stops working
-    const renewed = await json(await app.request(`/job/${job.id}/invites/${used.id}/secret`, { method: "POST", headers: adminHeaders }));
+    const renewed = await json(await app.request(`/job/${job.id}/links/${used.id}/secret`, { method: "POST", headers: adminHeaders }));
     expect(renewed.secret).not.toBe(used.secret);
     expect(await status(resolve("b", used.secret))).toBe(401);
 
-    const revoked = await json(await app.request(`/job/${job.id}/invites/${used.id}/revoke`, { method: "POST", headers: adminHeaders }));
+    const revoked = await json(await app.request(`/job/${job.id}/links/${used.id}/revoke`, { method: "POST", headers: adminHeaders }));
     expect(revoked.revokedAt).not.toBeNull();
     expect(await status(resolve("c", renewed.secret))).toBe(401);
     // coders who already started keep their access
@@ -349,7 +349,7 @@ describe("links, coder progress and overview", () => {
 
     // Republished with other values: "unused" is retired, "new" made; "used" keeps its row
     expect((await publish([batches(["used", "new"]), loop])).status).toBe(200);
-    const after = await get("/invites");
+    const after = await get("/links");
     expect(after.map((i: { params: { batch: string }; retiredAt: string | null }) => [i.params.batch, i.retiredAt === null])).toEqual([
       ["used", true],
       ["new", true],
@@ -372,14 +372,14 @@ describe("links, coder progress and overview", () => {
 
   it("reports coder progress and the overview from live answers", async () => {
     const { units, resolve, put, get } = await setup(batches(["batch 1"]));
-    const [invite] = await get("/invites");
+    const [invite] = await get("/links");
     const coderA = await resolve("a", invite.secret);
     await resolve("b", invite.secret);
     await put(coderA.coderId, units[0].id, { q1: value("x"), q2: value("y") });
     await put(coderA.coderId, units[1].id, { q1: value("x") });
 
     const coders = await get("/coders");
-    expect(coders[0]).toMatchObject({ inviteLabel: "batch 1", answers: 3, finished: { l: 1 } });
+    expect(coders[0]).toMatchObject({ linkLabel: "batch 1", answers: 3, finished: { l: 1 } });
     expect(coders[0].lastActive).not.toBeNull();
     expect(coders[1]).toMatchObject({ answers: 0, lastActive: null, finished: { l: 0 } });
 
@@ -426,7 +426,7 @@ describe("security headers", () => {
 describe("rate limits", () => {
   it("count per kind and address (or account) per minute, in the database; 429 with Retry-After", async () => {
     const limited = createApp(db, { devAuth: true, rateLimits: { coderStart: 2, researcher: 3 } });
-    const start = () => limited.request("/d/1/session", { headers: { "x-annotinder": "1", "x-invite-secret": "nope" } });
+    const start = () => limited.request("/d/1/session", { headers: { "x-annotinder": "1", "x-link-secret": "nope" } });
     expect((await start()).status).not.toBe(429); // refused for other reasons (no such job), but counted
     expect((await start()).status).not.toBe(429);
     const third = await start();

@@ -37,16 +37,16 @@ export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderP
     id: number;
     email: string | null;
     participantId: string | null;
-    inviteId: number | null;
+    linkId: number | null;
     created: Date;
-    inviteLabel: string | null;
+    linkLabel: string | null;
     ended: SessionEnd | null;
     deletionRequest: DeletionRequest | null;
     session: Record<string, string>;
   }>(
-    `SELECT c.id, c.email, c.participant_id AS "participantId", c.invite_id AS "inviteId", c.created, i.label AS "inviteLabel",
+    `SELECT c.id, c.email, c.participant_id AS "participantId", c.link_id AS "linkId", c.created, i.label AS "linkLabel",
        c.ended, c.deletion_request AS "deletionRequest", c.session
-     FROM coders c LEFT JOIN invites i ON i.id = c.invite_id
+     FROM coders c LEFT JOIN links i ON i.id = c.link_id
      WHERE c.job_id = $1 ORDER BY c.id`,
     [jobId],
   );
@@ -84,8 +84,8 @@ export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderP
     id: c.id,
     ...(c.email ? { email: c.email } : {}),
     ...(c.participantId ? { participantId: c.participantId } : {}),
-    inviteId: c.inviteId,
-    inviteLabel: c.inviteLabel,
+    linkId: c.linkId,
+    linkLabel: c.linkLabel,
     started: c.created,
     lastActive: activity.get(c.id)?.lastActive ?? null,
     answers: activity.get(c.id)?.answers ?? 0,

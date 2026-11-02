@@ -4,13 +4,13 @@ import { putDeployment } from "./deployments.js";
 import { HttpError } from "./http.js";
 import type { JobRow } from "./jobs.js";
 import { checkUnitUpload } from "./limits.js";
-import { checkLinkCount, syncLinks } from "./invites.js";
+import { checkLinkCount, syncLinks } from "./links.js";
 import { putSetGroup } from "./sets.js";
 import { saveUnits } from "./units.js";
 
 // Recipes (contracts recipe.ts, docs/plans/setup-wizard.md): a new job's
 // units, set groups and first codebook in one document; deploying it makes
-// its links (shared/invites.ts `syncLinks`). Example
+// its links (shared/links.ts `syncLinks`). Example
 // jobs and the setup wizard both make jobs through here.
 
 export interface RecipeOptions {
@@ -20,7 +20,7 @@ export interface RecipeOptions {
   ownerEmail: string | null;
   /** The example the job came from (`jobs.origin`). */
   origin?: string;
-  /** Fixed invite secrets, in order (the development demo's `demo-secret`); random otherwise. */
+  /** Fixed link secrets, in order (the development demo's `demo-secret`); random otherwise. */
   secrets?: string[];
 }
 
@@ -30,7 +30,7 @@ export interface MadeJob {
   /** Database ids of the recipe's units, by their ids in the recipe. */
   unitIds: Map<string, number>;
   /** The first link's id, if deployed. */
-  firstInvite: number | null;
+  firstLink: number | null;
 }
 
 const invalid = (message: string) => new HttpError(400, message, "recipe_invalid");
@@ -107,12 +107,12 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
     JSON.stringify({ fields }),
     recipe.codebook.session ? JSON.stringify(recipe.codebook.session) : null,
   ]))!.id;
-  let firstInvite: number | null = null;
+  let firstLink: number | null = null;
   if (recipe.publish) {
     await putDeployment(tx, job.id, { codebookId, active: true, units: true });
     await checkLinkCount(tx, job.id, designItems(recipe.codebook) as CodebookItem[], true, true);
     await syncLinks(tx, job.id, { secrets: options.secrets });
-    firstInvite = (await one<{ id: number }>(tx, "SELECT id FROM invites WHERE job_id = $1 ORDER BY id LIMIT 1", [job.id]))?.id ?? null;
+    firstLink = (await one<{ id: number }>(tx, "SELECT id FROM links WHERE job_id = $1 ORDER BY id LIMIT 1", [job.id]))?.id ?? null;
   }
-  return { job, codebookId, unitIds, firstInvite };
+  return { job, codebookId, unitIds, firstLink };
 }

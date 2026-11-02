@@ -64,7 +64,7 @@ afterwards:
 | Different units for coders by an earlier answer | [Different units for different coders](coder-groups.md) |
 | Where the overlap comes (before, after, spread) | [Overlap](overlap.md#placement) |
 | A condition per link, or from a URL parameter | [Session parameters](session-parameters.md) |
-| Login, participant ids, max uses | [Links](invitations.md) |
+| Login, participant ids, max uses | [Links](links.md) |
 | Prolific and other online panels | [Online panels and crowd coding](online-panels.md) |
 | Layouts beyond a title, byline and body: styles, blocks, conditions, HTML | [Layout templates](layout-templates.md), [Showing parts conditionally](template-blocks.md), [HTML in a layout](html.md) |
 | Reusable pieces of a layout | [Snippets](snippets.md) |

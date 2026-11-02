@@ -13,7 +13,7 @@ import type { AnyVariableType } from "./variableTypes.js";
 //   $var.<q>.answered                   true if answered and not skipped
 //   $var.<q>.is("x"), .gte(3), ...      helper methods (HELPER_METHODS)
 //   $session.<name>                     the session's participant id (`participant`) and
-//                                       the URL parameters its invitation requires
+//                                       the URL parameters its link requires
 //
 // Names are always literal, so what a codebook refers to (and where) can be
 // checked without running anything. All functions here are pure, shared by
@@ -655,7 +655,7 @@ export interface VarScopeEntry {
 export interface ReferenceScope {
   $unit: Record<string, unknown>;
   $var: Record<string, VarScopeEntry>;
-  /** The session's values: its participant id and the URL parameters its invitation requires (`$session.<name>`). */
+  /** The session's values: its participant id and the URL parameters its link requires (`$session.<name>`). */
   $session?: Record<string, string>;
 }
 

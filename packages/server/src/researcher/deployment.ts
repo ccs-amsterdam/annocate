@@ -5,7 +5,7 @@ import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
 import { deploymentVersions, getDeployment, pendingChanges, putDeployment } from "../shared/deployments.js";
-import { checkLinkCount, syncLinks } from "../shared/invites.js";
+import { checkLinkCount, syncLinks } from "../shared/links.js";
 import { setWarnings } from "../shared/sets.js";
 
 export function deployment(server: Server): Hono<Env> {

@@ -6,7 +6,7 @@ import {
   useDeploymentQuery,
   useDeploymentStatusQuery,
   useDeploymentVersionsQuery,
-  useInvitesQuery,
+  useLinksQuery,
   useOverviewQuery,
 } from "../../../admin/queries";
 import { describeVersions } from "../../../codebook/versions";
@@ -19,7 +19,7 @@ import { TeamSettings } from "./TeamSettings";
 import { ExampleNotice } from "./ExampleNotice";
 import { describeUnitChanges } from "../DeployDialog";
 
-export type OverviewTarget = "Units" | "Invitations" | "Coders";
+export type OverviewTarget = "Units" | "Links" | "Coders";
 
 interface JobOverviewProps {
   client: ResearcherApi;
@@ -37,14 +37,14 @@ export function JobOverview({ client, onNavigate, onOpenCodebook }: JobOverviewP
   const overviewQuery = useOverviewQuery(client);
   const deploymentQuery = useDeploymentQuery(client);
   const codebooksQuery = useCodebooksQuery(client);
-  const invitesQuery = useInvitesQuery(client);
+  const linksQuery = useLinksQuery(client);
   const deployment = deploymentQuery.data ?? null;
   const statusQuery = useDeploymentStatusQuery(client, deployment !== null);
 
   const codebooks = codebooksQuery.data ?? [];
   const versions = describeVersions(codebooks, deployment?.codebookId ?? null);
   const overview = overviewQuery.data;
-  const openInvites = (invitesQuery.data ?? []).filter(
+  const openLinks = (linksQuery.data ?? []).filter(
     (i) => !i.revokedAt && !i.retiredAt && (i.maxUses === undefined || i.uses < i.maxUses),
   ).length;
 
@@ -99,9 +99,9 @@ export function JobOverview({ client, onNavigate, onOpenCodebook }: JobOverviewP
         />
         <StatTile
           label="Active links"
-          value={invitesQuery.data ? openInvites : undefined}
-          detail={invitesQuery.data && `of ${invitesQuery.data.length}`}
-          onClick={() => onNavigate("Invitations")}
+          value={linksQuery.data ? openLinks : undefined}
+          detail={linksQuery.data && `of ${linksQuery.data.length}`}
+          onClick={() => onNavigate("Links")}
         />
       </div>
 

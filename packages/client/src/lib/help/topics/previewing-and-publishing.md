@@ -127,7 +127,7 @@ and finished units become unfinished again. See
 [Changing a design while coding runs](changing-a-live-codebook.md).
 
 The first deploy is what lets coders start, and it makes the job's links
-(see [Links](invitations.md)): until then, there is no link to open.
+(see [Links](links.md)): until then, there is no link to open.
 
 ## What coders experience when you deploy
 

@@ -22,8 +22,8 @@ import {
   type CoderDeletion,
   type Device,
   type CoderProgress,
-  type CoderInviteWrite,
-  type CoderInviteResponse,
+  type LinkWrite,
+  type LinkResponse,
   type PreviewSession,
   type DeploymentResponse,
   type DeploymentStatus,
@@ -106,7 +106,7 @@ export interface ResearcherApi {
   createJob(body: JobWrite): Promise<JobResponse>;
   /** The example jobs AnnoTinder ships (docs/plans/examples.md). */
   listExamples(): Promise<ExampleSummary[]>;
-  /** A new job from an example: units, a deployed codebook, an invitation and example answers. */
+  /** A new job from an example: units, a deployed codebook, a link and example answers. */
   createJobFromExample(body: JobFromExample): Promise<JobResponse>;
   /** A new job from a recipe (the setup wizard): units, set groups, a codebook (a draft unless `publish`; deploying makes its links). */
   createJobFromRecipe(body: RecipeInput): Promise<JobResponse>;
@@ -146,13 +146,13 @@ export interface ResearcherApi {
   /** The job's deletion log, newest first. */
   listCoderDeletions(): Promise<CoderDeletion[]>;
   /** The links (made from the deployed codebook), active ones first. */
-  listInvites(): Promise<CoderInviteResponse[]>;
+  listLinks(): Promise<LinkResponse[]>;
   /** A link's access settings: label, login, emails, max uses, participant id. */
-  updateInvite(id: number, body: CoderInviteWrite): Promise<CoderInviteResponse>;
+  updateLink(id: number, body: LinkWrite): Promise<LinkResponse>;
   /** No new coders from this link; coders who started keep working. */
-  revokeInvite(id: number): Promise<CoderInviteResponse>;
+  revokeLink(id: number): Promise<LinkResponse>;
   /** A new secret: the old link stops working. */
-  renewInviteSecret(id: number): Promise<CoderInviteResponse>;
+  renewLinkSecret(id: number): Promise<LinkResponse>;
 
   /** Counts and activity for the job's overview page. */
   getOverview(): Promise<JobOverview>;
@@ -501,20 +501,20 @@ export class HttpResearcherApi implements ResearcherApi {
     return id === undefined ? withJob : withJob.replace(":id", String(id));
   }
 
-  async listInvites(): Promise<CoderInviteResponse[]> {
-    return this.request(this.jobPath(researcherEndpoints.listInvites.path));
+  async listLinks(): Promise<LinkResponse[]> {
+    return this.request(this.jobPath(researcherEndpoints.listLinks.path));
   }
 
-  async updateInvite(id: number, body: CoderInviteWrite): Promise<CoderInviteResponse> {
-    return this.request(this.jobPath(researcherEndpoints.updateInvite.path, id), { method: "PUT", body: JSON.stringify(body) });
+  async updateLink(id: number, body: LinkWrite): Promise<LinkResponse> {
+    return this.request(this.jobPath(researcherEndpoints.updateLink.path, id), { method: "PUT", body: JSON.stringify(body) });
   }
 
-  async revokeInvite(id: number): Promise<CoderInviteResponse> {
-    return this.request(this.jobPath(researcherEndpoints.revokeInvite.path, id), { method: "POST" });
+  async revokeLink(id: number): Promise<LinkResponse> {
+    return this.request(this.jobPath(researcherEndpoints.revokeLink.path, id), { method: "POST" });
   }
 
-  async renewInviteSecret(id: number): Promise<CoderInviteResponse> {
-    return this.request(this.jobPath(researcherEndpoints.renewInviteSecret.path, id), { method: "POST" });
+  async renewLinkSecret(id: number): Promise<LinkResponse> {
+    return this.request(this.jobPath(researcherEndpoints.renewLinkSecret.path, id), { method: "POST" });
   }
 
   async getOverview(): Promise<JobOverview> {

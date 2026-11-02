@@ -72,7 +72,7 @@ async function setUpJob(key: string): Promise<{ jobId: number; unitIds: number[]
   ).data;
   expect((await call(key, "putDeployment", { jobId: job.id }, { codebookId: codebook.id })).status).toBe(200);
   // Deploying made the job's link
-  const [invite] = (await call(key, "listInvites", { jobId: job.id })).data;
+  const [invite] = (await call(key, "listLinks", { jobId: job.id })).data;
   return { jobId: job.id, unitIds: units.map((u) => u.id), invite: invite.secret };
 }
 
@@ -82,7 +82,7 @@ async function code(jobId: number, invite: string, answer: string): Promise<void
   const send = async (path: string, init: RequestInit = {}) => {
     const res = await app.request(`/d/${jobId}${path}`, {
       ...init,
-      headers: { "content-type": "application/json", "x-annotinder": "1", "x-invite-secret": invite, cookie },
+      headers: { "content-type": "application/json", "x-annotinder": "1", "x-link-secret": invite, cookie },
     });
     const [set] = res.headers.getSetCookie();
     if (set) cookie = set.split(";")[0];

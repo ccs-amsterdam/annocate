@@ -5,8 +5,8 @@ import {
   sessionItem,
   sessionParamKey,
   unitLoops,
-  type CoderInviteResponse,
-  type CoderInviteWrite,
+  type LinkResponse,
+  type LinkWrite,
   type SessionItem,
   type SessionParam,
   type SetGroupResponse,
@@ -17,11 +17,11 @@ import type { ResearcherApi } from "../../api/httpResearcherApi";
 import {
   useCodebookQuery,
   useDeploymentQuery,
-  useInvitesQuery,
-  useRenewInviteSecretMutation,
-  useRevokeInviteMutation,
+  useLinksQuery,
+  useRenewLinkSecretMutation,
+  useRevokeLinkMutation,
   useSetGroupsQuery,
-  useUpdateInviteMutation,
+  useUpdateLinkMutation,
 } from "../../admin/queries";
 import { loginAvailable } from "../../session/coderSession";
 import { formatWhen } from "../../admin/format";
@@ -29,13 +29,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HelpButton } from "../../help/HelpButton";
 
-type InviteUrl = (invite: CoderInviteResponse) => string;
+type LinkUrl = (invite: LinkResponse) => string;
 
-interface InvitationsPanelProps {
+interface LinksPanelProps {
   client: ResearcherApi;
   baseUrl: string;
-  /** Builds the link coders open for an invite (host-app specific). */
-  inviteUrl?: InviteUrl;
+  /** Builds the URL coders open for a link (host-app specific). */
+  linkUrl?: LinkUrl;
 }
 
 /**
@@ -46,8 +46,8 @@ interface InvitationsPanelProps {
  * retired, never deleted: coders and their answers refer to the link they
  * came from.
  */
-export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPanelProps) {
-  const invitesQuery = useInvitesQuery(client);
+export function LinksPanel({ client, baseUrl, linkUrl }: LinksPanelProps) {
+  const linksQuery = useLinksQuery(client);
   const deployment = useDeploymentQuery(client).data;
   const codebook = useCodebookQuery(client, deployment?.codebookId ?? null).data;
   const items = (codebook ? designItems(codebook) : []) as TopLevelItem[];
@@ -61,8 +61,8 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
     ...(session?.participant ? [`${session.participant.param}=<participant id>`] : []),
     ...(session?.params ?? []).filter((p) => p.kind === "url" && p.default === undefined).map((p) => `${sessionParamKey(p)}=<${p.name}>`),
   ];
-  const linkOf = (invite: CoderInviteResponse) => {
-    const url = inviteUrl ? inviteUrl(invite) : `${baseUrl}/invite/${invite.secret}`;
+  const linkOf = (invite: LinkResponse) => {
+    const url = linkUrl ? linkUrl(invite) : `${baseUrl}/invite/${invite.secret}`;
     return urlParams.length ? `${url}${url.includes("?") ? "&" : "?"}${urlParams.join("&")}` : url;
   };
   // Loops whose sets are assigned by the login's email: only those emails may code.
@@ -72,7 +72,7 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
     ),
   ];
 
-  const links = invitesQuery.data ?? [];
+  const links = linksQuery.data ?? [];
   const active = links.filter((l) => !l.retiredAt);
   const retired = links.filter((l) => l.retiredAt);
 
@@ -80,7 +80,7 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-2">
         <h2 className="flex items-center gap-1.5 text-lg font-medium">
-          Links <HelpButton topic="invitations" label="Help: links" />
+          Links <HelpButton topic="links" label="Help: links" />
         </h2>
         <p className="text-xs text-muted-foreground">
           Deploying the design makes its links: one, or one per value of each link parameter (and per combination) in its
@@ -104,7 +104,7 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
             </p>
           );
         })}
-        {invitesQuery.isLoading ? (
+        {linksQuery.isLoading ? (
           <p className="text-sm text-muted-foreground">Loading links...</p>
         ) : active.length === 0 ? (
           <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
@@ -130,7 +130,7 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
   );
 }
 
-function LinkTable({ client, links, linkOf }: { client: ResearcherApi; links: CoderInviteResponse[]; linkOf: (invite: CoderInviteResponse) => string }) {
+function LinkTable({ client, links, linkOf }: { client: ResearcherApi; links: LinkResponse[]; linkOf: (invite: LinkResponse) => string }) {
   return (
     <div className="overflow-x-auto rounded-lg border">
       <table className="w-full text-sm">
@@ -148,7 +148,7 @@ function LinkTable({ client, links, linkOf }: { client: ResearcherApi; links: Co
         </thead>
         <tbody>
           {links.map((invite) => (
-            <InviteRow key={invite.id} client={client} invite={invite} link={linkOf(invite)} />
+            <LinkRow key={invite.id} client={client} invite={invite} link={linkOf(invite)} />
           ))}
         </tbody>
       </table>
@@ -156,16 +156,16 @@ function LinkTable({ client, links, linkOf }: { client: ResearcherApi; links: Co
   );
 }
 
-type InviteStatus = "open" | "used up" | "revoked" | "retired";
+type LinkStatus = "open" | "used up" | "revoked" | "retired";
 
-function statusOf(invite: CoderInviteResponse): InviteStatus {
+function statusOf(invite: LinkResponse): LinkStatus {
   if (invite.retiredAt) return "retired";
   if (invite.revokedAt) return "revoked";
   if (invite.maxUses !== undefined && invite.uses >= invite.maxUses) return "used up";
   return "open";
 }
 
-const STATUS_STYLE: Record<InviteStatus, string> = {
+const STATUS_STYLE: Record<LinkStatus, string> = {
   open: "bg-primary/15 text-primary",
   "used up": "bg-muted text-muted-foreground",
   revoked: "bg-destructive/10 text-destructive",
@@ -173,14 +173,14 @@ const STATUS_STYLE: Record<InviteStatus, string> = {
 };
 
 /** Who may use a link, in a few words. */
-function accessOf(invite: CoderInviteResponse): string {
+function accessOf(invite: LinkResponse): string {
   const login = invite.emails?.length ? `${invite.emails.length} email${invite.emails.length === 1 ? "" : "s"}` : invite.auth === "none" ? "anyone" : `login ${invite.auth}`;
   return [login, invite.participantId ? `participant ${invite.participantId}` : null].filter(Boolean).join(" · ");
 }
 
-function InviteRow({ client, invite, link }: { client: ResearcherApi; invite: CoderInviteResponse; link: string }) {
-  const revoke = useRevokeInviteMutation(client);
-  const renew = useRenewInviteSecretMutation(client);
+function LinkRow({ client, invite, link }: { client: ResearcherApi; invite: LinkResponse; link: string }) {
+  const revoke = useRevokeLinkMutation(client);
+  const renew = useRenewLinkSecretMutation(client);
   const [editing, setEditing] = useState(false);
   const status = statusOf(invite);
   const values = Object.entries(invite.params);
@@ -247,10 +247,10 @@ function InviteRow({ client, invite, link }: { client: ResearcherApi; invite: Co
 }
 
 /** A link's access settings: label, login, email addresses, max uses, a fixed participant id. */
-function AccessForm({ client, invite, onDone }: { client: ResearcherApi; invite: CoderInviteResponse; onDone: () => void }) {
-  const update = useUpdateInviteMutation(client);
+function AccessForm({ client, invite, onDone }: { client: ResearcherApi; invite: LinkResponse; onDone: () => void }) {
+  const update = useUpdateLinkMutation(client);
   const [label, setLabel] = useState(invite.label);
-  const [auth, setAuth] = useState<CoderInviteWrite["auth"]>(invite.auth);
+  const [auth, setAuth] = useState<LinkWrite["auth"]>(invite.auth);
   const [emails, setEmails] = useState((invite.emails ?? []).join(", "));
   const [maxUses, setMaxUses] = useState(invite.maxUses === undefined ? "" : String(invite.maxUses));
   const [participantId, setParticipantId] = useState(invite.participantId ?? "");

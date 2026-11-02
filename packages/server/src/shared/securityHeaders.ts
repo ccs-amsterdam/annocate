@@ -41,7 +41,7 @@ export function securityHeaders(options: SecurityHeaderOptions = {}): Middleware
     await next();
     const h = c.res.headers;
     h.set("X-Content-Type-Options", "nosniff");
-    // Invite links carry their secret in the URL: other sites get only the origin.
+    // Links carry their secret in the URL: other sites get only the origin.
     h.set("Referrer-Policy", "strict-origin-when-cross-origin");
     h.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
     h.set("Cross-Origin-Opener-Policy", "same-origin");

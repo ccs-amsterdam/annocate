@@ -8,7 +8,7 @@ export interface CoderRow {
   job_id: number;
   email: string | null;
   participant_id: string | null;
-  invite_id: number | null;
+  link_id: number | null;
   assignments: CoderAssignments;
   ended: SessionEnd | null;
   deletion_request: DeletionRequest | null;
@@ -24,7 +24,7 @@ export function toCoder(row: CoderRow): Coder {
     ended: row.ended,
     deletionRequest: row.deletion_request,
     session: { ...row.session, ...(row.participant_id ? { participant: row.participant_id } : {}) },
-    inviteId: row.invite_id,
+    linkId: row.link_id,
     email: row.email,
   };
 }

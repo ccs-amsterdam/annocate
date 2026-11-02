@@ -20,7 +20,7 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
   });
   await api(request, "PUT", `/job/${job.id}/deployment`, { codebookId: codebook.id });
   await api(request, "POST", `/job/${job.id}/units`, { units: [{ externalId: "a2", data: { text: "Second text" } }] });
-  const [link] = await api<{ secret: string }[]>(request, "GET", `/job/${job.id}/invites`);
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/job/${job.id}/links`);
 
   // A coder gets only the deployed unit
   const coder = await (await browser.newContext()).newPage();

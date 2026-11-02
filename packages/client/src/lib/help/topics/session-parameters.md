@@ -44,7 +44,7 @@ Every value of a link parameter gets its own link under Deploy › Links,
 labelled with the value. With two link parameters, every combination gets a
 link: `condition` (a, b) and `class` (1, 2, 3) make six links. Tick **Only
 some combinations** to list the combinations you need. See
-[Links](invitations.md).
+[Links](links.md).
 
 Use link parameters when *you* decide who gets which value: a link per
 class, a link per expert coder's set, or an experiment in which you send
@@ -55,7 +55,7 @@ each condition's link to other people. When the value should be drawn
 
 | Value | What it is |
 | --- | --- |
-| `$session.participant` | The participant id (see below, and [Links](invitations.md#participant-ids)) |
+| `$session.participant` | The participant id (see below, and [Links](links.md#participant-ids)) |
 | `$session.source` | The `?source=` of any link, if given: where a coder came from (a newsletter, a QR code). Never required |
 | `$session.email` | The email the coder logged in with, if any |
 

@@ -163,7 +163,7 @@ test("an ::html field shows in its sandboxed frame, sized by its script, within 
     },
     publish: true,
   });
-  const [invite] = await api<{ secret: string }[]>(request, "GET", `/job/${job.id}/invites`);
+  const [invite] = await api<{ secret: string }[]>(request, "GET", `/job/${job.id}/links`);
   await page.goto(`/?deployment=${job.id}&invite=${invite.secret}`);
   await question(page, "Seen it?");
   const frame = page.locator("iframe[sandbox]");

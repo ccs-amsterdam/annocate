@@ -8,15 +8,15 @@ import {
   sessionItem,
   setParameters,
   type CodebookItem,
-  type CoderInviteResponse,
+  type LinkResponse,
 } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { groupSets } from "./sets.js";
 import { codebookItems } from "./codebooks.js";
 import { HttpError } from "./http.js";
 
-/** A row of `invites`: a link (docs/plans/sets-and-session-parameters.md §4). */
-export interface InviteRow {
+/** A row of `links`: a link (docs/plans/sets-and-session-parameters.md §4). */
+export interface LinkRow {
   id: number;
   job_id: number;
   label: string;
@@ -33,12 +33,12 @@ export interface InviteRow {
   retired_at: Date | null;
 }
 
-export function toInviteResponse(row: InviteRow): CoderInviteResponse {
+export function toLinkResponse(row: LinkRow): LinkResponse {
   return {
     id: row.id,
     jobId: row.job_id,
     label: row.label,
-    auth: row.auth as CoderInviteResponse["auth"],
+    auth: row.auth as LinkResponse["auth"],
     secret: row.secret,
     uses: row.uses,
     ...(row.emails ? { emails: row.emails } : {}),
@@ -93,8 +93,8 @@ export async function syncLinks(sql: Sql, jobId: number, options: { secrets?: st
   const parsed = deployed ? CodebookItemsSchema.safeParse(codebookItems(deployed)) : null;
   if (!parsed?.success) return 0;
   const wanted = await linksOf(sql, jobId, parsed.data, true);
-  const rows = await sql.query<Pick<InviteRow, "id" | "link_key" | "retired_at">>(
-    "SELECT id, link_key, retired_at FROM invites WHERE job_id = $1 ORDER BY id",
+  const rows = await sql.query<Pick<LinkRow, "id" | "link_key" | "retired_at">>(
+    "SELECT id, link_key, retired_at FROM links WHERE job_id = $1 ORDER BY id",
     [jobId],
   );
   const byKey = new Map<string, (typeof rows)[number]>();
@@ -110,15 +110,15 @@ export async function syncLinks(sql: Sql, jobId: number, options: { secrets?: st
     }
     const row = await one<{ id: number }>(
       sql,
-      "INSERT INTO invites (job_id, label, auth, secret, params, link_key) VALUES ($1, $2, 'none', $3, $4, $5) RETURNING id",
+      "INSERT INTO links (job_id, label, auth, secret, params, link_key) VALUES ($1, $2, 'none', $3, $4, $5) RETURNING id",
       [jobId, linkLabel(values), secrets.shift() ?? randomBytes(16).toString("hex"), JSON.stringify(values), key],
     );
     byKey.set(key, { id: row!.id, link_key: key, retired_at: null });
     keep.add(row!.id);
   }
   const keepIds = [...keep];
-  await sql.query("UPDATE invites SET retired_at = NULL WHERE job_id = $1 AND id = ANY($2) AND retired_at IS NOT NULL", [jobId, keepIds]);
-  await sql.query("UPDATE invites SET retired_at = now() WHERE job_id = $1 AND NOT (id = ANY($2)) AND retired_at IS NULL", [jobId, keepIds]);
+  await sql.query("UPDATE links SET retired_at = NULL WHERE job_id = $1 AND id = ANY($2) AND retired_at IS NOT NULL", [jobId, keepIds]);
+  await sql.query("UPDATE links SET retired_at = now() WHERE job_id = $1 AND NOT (id = ANY($2)) AND retired_at IS NULL", [jobId, keepIds]);
   return keep.size;
 }
 
@@ -132,11 +132,11 @@ export interface LinkInfo {
 /** Known links, by secret, for a minute (read on every coder request). */
 const links = new Map<string, { info: LinkInfo; until: number }>();
 
-/** The invite of a link, as far as `LinkInfo` goes; null for an unknown secret. */
+/** The link of a link, as far as `LinkInfo` goes; null for an unknown secret. */
 export async function linkInfo(sql: Sql, secret: string): Promise<LinkInfo | null> {
   let cached = links.get(secret);
   if (!cached || cached.until < Date.now()) {
-    const row = await one<{ job_id: number; auth: string; emails: string[] | null }>(sql, "SELECT job_id, auth, emails FROM invites WHERE secret = $1", [
+    const row = await one<{ job_id: number; auth: string; emails: string[] | null }>(sql, "SELECT job_id, auth, emails FROM links WHERE secret = $1", [
       secret,
     ]);
     if (!row) return null; // not cached: anyone can send any secret

@@ -120,7 +120,7 @@ export type DeploymentStatus = z.infer<typeof DeploymentStatusSchema>;
  * Researcher `POST /job/:jobId/deployment/preview`: a preview of the job's
  * latest codebook (deployed or not), run as deployment `<jobId>.preview`.
  * Coders and answers stay in the server's memory; nothing is stored. The
- * client uses `token` like an invite secret (`x-invite-secret`).
+ * client uses `token` like a link secret (`x-link-secret`).
  */
 export const PreviewSessionSchema = z.object({
   deploymentId: z.string(),

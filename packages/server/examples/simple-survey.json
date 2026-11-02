@@ -3,7 +3,7 @@
   "title": "A simple survey",
   "description": "A short survey about news use: question types for surveys, a condition that only asks a follow-up to some respondents, and an end item that screens out respondents under 18. No units. With example answers from 3 respondents.",
   "tryThis": [
-    "Open the invitation link in a private window, and fill in the survey once as someone under 18.",
+    "Open the link in a private window, and fill in the survey once as someone under 18.",
     "Look at the condition and the end item in the codebook (Codebook tab).",
     "Download the results: survey answers are in coders.csv."
   ],

@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { CoderInviteResponse, MeResponse } from "@annotinder/contracts";
+import type { LinkResponse, MeResponse } from "@annotinder/contracts";
 import type { ServerApi } from "../../api/serverApi";
 import { ServerAdmin } from "./server/ServerAdmin";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
@@ -11,7 +11,7 @@ import type { SaveFn } from "./CodebookEditor";
 import { UnitsPage } from "./units/UnitsPage";
 import { CodersPanel } from "./CodersPanel";
 import { ResultsPanel } from "./ResultsPanel";
-import { InvitationsPanel } from "./InvitationsPanel";
+import { LinksPanel } from "./LinksPanel";
 import { JobOverview, JobSettingsPage } from "./overview/JobOverview";
 import { JobPreview } from "./JobPreview";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
@@ -38,11 +38,11 @@ import { PendingDeployBar } from "./PendingDeployBar";
 import { openHelp } from "../../help/helpStore";
 
 /** The job's pages. Preview is opened with the Preview Job button, not from the tabs. */
-type TabId = "Overview" | "Codebook" | "Units" | "Invitations" | "Coders" | "Results" | "Settings" | "Preview";
+type TabId = "Overview" | "Codebook" | "Units" | "Links" | "Coders" | "Results" | "Settings" | "Preview";
 
 /**
  * The tabs, grouped: designing the job (codebook, units), deploying it
- * (invitations, coders), its results, and settings. A group with more than
+ * (links, coders), its results, and settings. A group with more than
  * one page shows them as sub tabs.
  */
 const GROUPS: { label: string; icon: typeof LayoutDashboard; pages: { id: TabId; label: string; icon: typeof LayoutDashboard }[] }[] = [
@@ -59,7 +59,7 @@ const GROUPS: { label: string; icon: typeof LayoutDashboard; pages: { id: TabId;
     label: "Deploy",
     icon: Send,
     pages: [
-      { id: "Invitations", label: "Links", icon: Link2 },
+      { id: "Links", label: "Links", icon: Link2 },
       { id: "Coders", label: "Coders", icon: Users },
     ],
   },
@@ -72,7 +72,7 @@ const TAB_HELP: Record<TabId, string> = {
   Overview: "overview",
   Codebook: "codebook-editor",
   Units: "uploading-units",
-  Invitations: "invitations",
+  Links: "links",
   Coders: "coders-and-progress",
   Results: "results",
   Settings: "overview",
@@ -86,7 +86,7 @@ export function AdminApp({
   baseUrl,
   initialJobId,
   queryClient,
-  inviteUrl,
+  linkUrl,
   coderApiUrl,
   server,
   me,
@@ -100,8 +100,8 @@ export function AdminApp({
   me?: MeResponse | null;
   initialJobId?: number;
   queryClient?: QueryClient;
-  /** Builds the link coders open for an invite (host-app specific). */
-  inviteUrl?: (invite: CoderInviteResponse) => string;
+  /** Builds the URL coders open for a link (host-app specific). */
+  linkUrl?: (invite: LinkResponse) => string;
   /** Where coder sessions run (`<url>/d/...`), for previews; normally the client's own origin (""), since their cookies are same-origin. */
   coderApiUrl?: string;
 }) {
@@ -111,7 +111,7 @@ export function AdminApp({
         client={client}
         baseUrl={baseUrl}
         initialJobId={initialJobId}
-        inviteUrl={inviteUrl}
+        linkUrl={linkUrl}
         coderApiUrl={coderApiUrl}
         server={server}
         initialMe={me ?? null}
@@ -125,7 +125,7 @@ function AdminAppInner({
   client,
   baseUrl,
   initialJobId,
-  inviteUrl,
+  linkUrl,
   coderApiUrl,
   server,
   initialMe,
@@ -133,7 +133,7 @@ function AdminAppInner({
   client: ResearcherApi;
   baseUrl: string;
   initialJobId?: number;
-  inviteUrl?: (invite: CoderInviteResponse) => string;
+  linkUrl?: (invite: LinkResponse) => string;
   coderApiUrl?: string;
   server?: ServerApi;
   initialMe: MeResponse | null;
@@ -199,7 +199,7 @@ function AdminAppInner({
       client={jobClient}
       rootClient={client}
       baseUrl={baseUrl}
-      inviteUrl={inviteUrl}
+      linkUrl={linkUrl}
       coderApiUrl={coderApiUrl}
       tab={tab}
       onTabChange={setTab}
@@ -215,7 +215,7 @@ function JobAdminView({
   client,
   rootClient,
   baseUrl,
-  inviteUrl,
+  linkUrl,
   coderApiUrl,
   tab,
   onTabChange,
@@ -229,7 +229,7 @@ function JobAdminView({
   client: ResearcherApi;
   rootClient: ResearcherApi;
   baseUrl: string;
-  inviteUrl?: (invite: CoderInviteResponse) => string;
+  linkUrl?: (invite: LinkResponse) => string;
   coderApiUrl?: string;
   tab: TabId;
   onTabChange: (tab: TabId) => void;
@@ -408,7 +408,7 @@ function JobAdminView({
           />
         )}
         {tab === "Units" && <UnitsPage client={client} />}
-        {tab === "Invitations" && <InvitationsPanel client={client} baseUrl={baseUrl} inviteUrl={inviteUrl} />}
+        {tab === "Links" && <LinksPanel client={client} baseUrl={baseUrl} linkUrl={linkUrl} />}
         {tab === "Coders" && <CodersPanel client={client} />}
         {tab === "Results" && <ResultsPanel client={client} />}
         {tab === "Preview" && <JobPreview client={client} coderApiUrl={coderApiUrl} />}

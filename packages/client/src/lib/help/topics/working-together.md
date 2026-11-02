@@ -32,7 +32,7 @@ accident.
 
 Give people the smallest role that lets them do their work. Coders are not
 on this list: they never log in to the job's management, they come in through
-a [link](invitations.md).
+a [link](links.md).
 
 ## Editing together
 

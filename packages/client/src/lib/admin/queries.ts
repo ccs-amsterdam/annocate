@@ -6,8 +6,8 @@ import type {
   CoderDeletion,
   CodebookResponse,
   CodebookWrite,
-  CoderInviteWrite,
-  CoderInviteResponse,
+  LinkWrite,
+  LinkResponse,
   CoderProgress,
   DeleteCoders,
   JobUser,
@@ -57,7 +57,7 @@ export const keys = {
   deploymentStatus: (jobId?: number) => ["admin", "job", jobId ?? "current", "deployment", "status"] as const,
   pending: (jobId?: number) => ["admin", "job", jobId ?? "current", "deployment", "pending"] as const,
   deploymentVersions: (jobId?: number) => ["admin", "job", jobId ?? "current", "deployment", "versions"] as const,
-  invites: (jobId?: number) => ["admin", "job", jobId ?? "current", "invites"] as const,
+  links: (jobId?: number) => ["admin", "job", jobId ?? "current", "links"] as const,
   overview: (jobId?: number) => ["admin", "job", jobId ?? "current", "overview"] as const,
 };
 
@@ -296,29 +296,29 @@ export function useCoderDeletionMutations(client: ResearcherApi) {
   };
 }
 
-export function useInvitesQuery(client: ResearcherApi): UseQueryResult<CoderInviteResponse[]> {
-  return useQuery({ queryKey: keys.invites(client.jobId), queryFn: () => client.listInvites(), refetchInterval: 30_000 });
+export function useLinksQuery(client: ResearcherApi): UseQueryResult<LinkResponse[]> {
+  return useQuery({ queryKey: keys.links(client.jobId), queryFn: () => client.listLinks(), refetchInterval: 30_000 });
 }
 
 /** Change, revoke or renew a link; each refreshes the link list. */
-function useInviteMutation<T, V>(client: ResearcherApi, mutationFn: (vars: V) => Promise<T>) {
+function useLinkMutation<T, V>(client: ResearcherApi, mutationFn: (vars: V) => Promise<T>) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.invites(client.jobId) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.links(client.jobId) }),
   });
 }
 
-export function useUpdateInviteMutation(client: ResearcherApi) {
-  return useInviteMutation(client, ({ id, body }: { id: number; body: CoderInviteWrite }) => client.updateInvite(id, body));
+export function useUpdateLinkMutation(client: ResearcherApi) {
+  return useLinkMutation(client, ({ id, body }: { id: number; body: LinkWrite }) => client.updateLink(id, body));
 }
 
-export function useRevokeInviteMutation(client: ResearcherApi) {
-  return useInviteMutation(client, (id: number) => client.revokeInvite(id));
+export function useRevokeLinkMutation(client: ResearcherApi) {
+  return useLinkMutation(client, (id: number) => client.revokeLink(id));
 }
 
-export function useRenewInviteSecretMutation(client: ResearcherApi) {
-  return useInviteMutation(client, (id: number) => client.renewInviteSecret(id));
+export function useRenewLinkSecretMutation(client: ResearcherApi) {
+  return useLinkMutation(client, (id: number) => client.renewLinkSecret(id));
 }
 
 export function useOverviewQuery(client: ResearcherApi): UseQueryResult<JobOverview> {
@@ -424,7 +424,7 @@ export function usePublishMutation(client: ResearcherApi): UseMutationResult<Dep
       void queryClient.invalidateQueries({ queryKey: keys.pending(client.jobId) });
       void queryClient.invalidateQueries({ queryKey: keys.deploymentVersions(client.jobId) });
       void queryClient.invalidateQueries({ queryKey: keys.overview(client.jobId) });
-      void queryClient.invalidateQueries({ queryKey: keys.invites(client.jobId) });
+      void queryClient.invalidateQueries({ queryKey: keys.links(client.jobId) });
       void queryClient.invalidateQueries({ queryKey: keys.sets(client.jobId) });
       void queryClient.invalidateQueries({ queryKey: ["admin", "job", client.jobId ?? "current", "codebook"] });
       return queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) });

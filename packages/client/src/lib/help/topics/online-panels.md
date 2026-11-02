@@ -46,7 +46,7 @@ The participant id then appears in the Coders tab and as `participant_id` in
 the results. It also keeps sessions apart: a participant who opens the link
 again on the same device continues their session, and one who opens it on
 another device is told they already started (see
-[Participant ids](invitations.md#participant-ids)).
+[Participant ids](links.md#participant-ids)).
 
 ## Values from the link
 

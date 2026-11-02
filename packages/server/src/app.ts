@@ -31,7 +31,7 @@ import { coders } from "./researcher/coders.js";
 import { deploymentPreview } from "./researcher/deployment.preview.js";
 import { deploymentStatus } from "./researcher/deployment.status.js";
 import { deployment } from "./researcher/deployment.js";
-import { invites } from "./researcher/invites.js";
+import { links } from "./researcher/links.js";
 import { job } from "./researcher/job.$id.js";
 import { jobUsers } from "./researcher/job.$id.users.js";
 import { jobs } from "./researcher/job.js";
@@ -159,7 +159,7 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   app.route("/", unit(server));
   app.route("/", sets(server));
   app.route("/", coders(server));
-  app.route("/", invites(server));
+  app.route("/", links(server));
   app.route("/", overview(server));
   app.route("/", deployment(server));
   app.route("/", deploymentStatus(server));

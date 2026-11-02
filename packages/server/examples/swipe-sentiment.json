@@ -4,7 +4,7 @@
   "description": "Coders swipe news headlines left (negative), right (positive) or up (neutral). The 20 units are divided over 3 coders, plus 5 overlap units every coder gets, to compare their answers. With example answers from 3 coders, who disagree on some overlap units.",
   "tryThis": [
     "Download the results (Results tab) to see what the example coders' answers look like.",
-    "Open the invitation link in a private window: you get one of the three sets, with the overlap units spread in between.",
+    "Open the link in a private window: you get one of the three sets, with the overlap units spread in between.",
     "Look at the unit loop in the codebook (Codebook tab): it gives each coder one of the sets."
   ],
   "name": "Sentiment by swiping",

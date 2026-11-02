@@ -52,13 +52,13 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
 
   const [previewKey, setPreviewKey] = useState(() => `preview-${client.jobId}-${Date.now()}`);
   const [preview, setPreview] = useState<PreviewSession | null>(null);
-  const [creatingInvite, setCreatingInvite] = useState(false);
+  const [creatingLink, setCreatingLink] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    async function initPreviewInvite() {
-      setCreatingInvite(true);
+    async function initPreviewLink() {
+      setCreatingLink(true);
       setError(null);
       try {
         const session = await client.createPreview();
@@ -71,12 +71,12 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
         }
       } finally {
         if (!cancelled) {
-          setCreatingInvite(false);
+          setCreatingLink(false);
         }
       }
     }
 
-    initPreviewInvite();
+    initPreviewLink();
     return () => {
       cancelled = true;
     };
@@ -275,7 +275,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
           size="sm"
           onClick={handleReset}
           className="gap-1.5 text-xs font-semibold"
-          disabled={creatingInvite}
+          disabled={creatingLink}
         >
           <RotateCcw className="h-3.5 w-3.5" />
           Reset preview session
@@ -284,7 +284,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
 
       {/* Preview Container */}
       <div className="flex flex-1 items-center justify-center overflow-auto p-2 sm:p-6 bg-muted/20 rounded-2xl">
-        {creatingInvite ? (
+        {creatingLink ? (
           <div className="flex h-64 items-center justify-center">
             <p className="text-sm text-muted-foreground animate-pulse">Initializing preview session...</p>
           </div>
@@ -299,7 +299,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
               <JobRunner
                 key={previewKey}
                 baseUrl={`${coderApiUrl}/d/${preview.deploymentId}`}
-                inviteSecret={preview.token}
+                linkSecret={preview.token}
                 newSession={wasReset}
                 preview={true}
               />
@@ -318,7 +318,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
                 <JobRunner
                   key={previewKey}
                   baseUrl={`${coderApiUrl}/d/${preview.deploymentId}`}
-                  inviteSecret={preview.token}
+                  linkSecret={preview.token}
                   newSession={wasReset}
                   preview={true}
                 />
@@ -347,7 +347,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
                 <JobRunner
                   key={previewKey}
                   baseUrl={`${coderApiUrl}/d/${preview.deploymentId}`}
-                  inviteSecret={preview.token}
+                  linkSecret={preview.token}
                   newSession={wasReset}
                   preview={true}
                 />

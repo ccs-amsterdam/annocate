@@ -33,7 +33,7 @@ analysis, researchers group coders by participant id or email when they want
 to merge sessions of the same person. The system itself never merges
 sessions.
 
-## 3. Links (invites)
+## 3. Links
 
 Links are made by deploying the codebook, one per combination of its link
 parameter values (`docs/architecture.md` §7); the researcher sets who may

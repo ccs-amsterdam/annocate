@@ -456,7 +456,7 @@ pass with per-slot memoization:
 ## 7. Admin UI
 
 `components/admin/AdminApp.tsx` is a tabbed shell, grouped: Overview,
-Design (Codebook, Units), Deploy (Invitations, Coders), Results (Download),
+Design (Codebook, Units), Deploy (Links, Coders), Results (Download),
 Settings; a group with several pages shows them as sub tabs. Preview opens
 from the Preview Job button. It uses a `ResearcherApi`
 (`api/httpResearcherApi.ts`).
@@ -664,7 +664,7 @@ from the Preview Job button. It uses a `ResearcherApi`
 - **Settings** (`JobSettingsPage`): `TeamSettings.tsx`, who has access and
   their role (the list keeps at least one admin), and the job settings
   (rename, archive, keep sessions open, delete).
-- **Invitations** (`InvitationsPanel.tsx`): the links deploying made,
+- **Links** (`LinksPanel.tsx`): the links deploying made,
   one per combination of the codebook's link parameter values, with their
   values, uses and status, and the URL parameters a link takes (copied
   with placeholders). Per link: label, login requirement, allowed emails,

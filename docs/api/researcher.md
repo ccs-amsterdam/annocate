@@ -2,7 +2,7 @@
 
 Served by the **server** at `/job/...`, called by the client's **researcher
 UI** (`ResearcherApi`), and by scripts (R, Python) and other systems (AmCAT):
-managing jobs, codebooks, units and sets, links (invites), deploying and progress.
+managing jobs, codebooks, units and sets, links, deploying and progress.
 
 - Contracts: `researcherEndpoints` in
   [`contracts/src/endpoints/researcher.ts`](../../packages/contracts/src/endpoints/researcher.ts).
@@ -106,10 +106,10 @@ response checked against its contract schema.
 | [putSetGroup](#putsetgroup) | `PUT /job/:jobId/sets/:group` | WRITE | `SetGroupWriteSchema` | `SetGroupResponseSchema` |
 | [deleteSetGroup](#deletesetgroup) | `DELETE /job/:jobId/sets/:group` | WRITE | – | – |
 | **Links and coders** | | | | |
-| [listInvites](#listinvites) | `GET /job/:jobId/invites` | WRITE | – | `CoderInviteResponseSchema[]` |
-| [updateInvite](#updateinvite) | `PUT /job/:jobId/invites/:id` | WRITE | `CoderInviteWriteSchema` | `CoderInviteResponseSchema` |
-| [revokeInvite](#revokeinvite) | `POST /job/:jobId/invites/:id/revoke` | WRITE | – | `CoderInviteResponseSchema` |
-| [renewInviteSecret](#newinvitesecret) | `POST /job/:jobId/invites/:id/secret` | WRITE | – | `CoderInviteResponseSchema` |
+| [listLinks](#listlinks) | `GET /job/:jobId/links` | WRITE | – | `LinkResponseSchema[]` |
+| [updateLink](#updatelink) | `PUT /job/:jobId/links/:id` | WRITE | `LinkWriteSchema` | `LinkResponseSchema` |
+| [revokeLink](#revokelink) | `POST /job/:jobId/links/:id/revoke` | WRITE | – | `LinkResponseSchema` |
+| [renewLinkSecret](#renewlinksecret) | `POST /job/:jobId/links/:id/secret` | WRITE | – | `LinkResponseSchema` |
 | [listCoders](#listcoders) | `GET /job/:jobId/coders` | READ | – | `CoderProgressSchema[]` |
 | [deleteCoders](#deletecoders) | `POST /job/:jobId/coders/delete` | ADMIN | `DeleteCodersSchema` | `DeleteCodersResponseSchema` |
 | [postponeDeletion](#postponedeletion) | `POST /job/:jobId/coders/:id/deletion-request/postpone` | ADMIN | – | – |
@@ -424,37 +424,37 @@ Splitting units into sets (`s1..sN`, plus `_overlap`) is done by the client
 ## Links and coders
 
 Schemas: [`contracts/src/coder.ts`](../../packages/contracts/src/coder.ts).
-Implementation: [`researcher/invites.ts`](../../packages/server/src/researcher/invites.ts), [`shared/invites.ts`](../../packages/server/src/shared/invites.ts), [`coders.ts`](../../packages/server/src/researcher/coders.ts), [`shared/progress.ts`](../../packages/server/src/shared/progress.ts).
+Implementation: [`researcher/links.ts`](../../packages/server/src/researcher/links.ts), [`shared/links.ts`](../../packages/server/src/shared/links.ts), [`coders.ts`](../../packages/server/src/researcher/coders.ts), [`shared/progress.ts`](../../packages/server/src/shared/progress.ts).
 See [`docs/coder-identity.md`](../coder-identity.md) for what links do.
 
-Links (invites) are not created by hand: deploying makes one per
+Links are not created by hand: deploying makes one per
 combination of the codebook's link parameter values (one if it has none),
 and deploying set changes syncs them ([putDeployment](#putdeployment)): links follow the deployed sets. A link no
 longer made is **retired** (`retiredAt`), never deleted: new coders get 403
 `link_inactive`, coders who started keep working. It comes back, with the
 same secret, if its combination returns.
 
-### listInvites
+### listLinks
 
-`GET /job/:jobId/invites` → `CoderInviteResponseSchema[]`, active links
+`GET /job/:jobId/links` → `LinkResponseSchema[]`, active links
 first, with `params` (the link parameter values it carries), `uses`,
 `created`, `revokedAt` and `retiredAt`.
 
-### updateInvite
+### updateLink
 
-`PUT /job/:jobId/invites/:id` (`CoderInviteWriteSchema`) →
-`CoderInviteResponseSchema`. Who may use the link: `label`, `auth`
+`PUT /job/:jobId/links/:id` (`LinkWriteSchema`) →
+`LinkResponseSchema`. Who may use the link: `label`, `auth`
 (`none`, `optional`, `required`), `emails`, `maxUses` and a fixed
 `participantId`. Full replace of these settings.
 
-### revokeInvite
+### revokeLink
 
-`POST /job/:jobId/invites/:id/revoke` → `CoderInviteResponseSchema`. No new
+`POST /job/:jobId/links/:id/revoke` → `LinkResponseSchema`. No new
 coders from this link; coders who already started keep working.
 
-### renewInviteSecret
+### renewLinkSecret
 
-`POST /job/:jobId/invites/:id/secret` → `CoderInviteResponseSchema`. A new
+`POST /job/:jobId/links/:id/secret` → `LinkResponseSchema`. A new
 secret: the old address stops working (e.g. it was shared too widely);
 coders who already started keep working.
 
@@ -568,7 +568,7 @@ deployed.
 `POST /job/:jobId/deployment/preview` → `PreviewSessionSchema`. A preview of
 the latest codebook (deployed or not), as deployment `<jobId>.preview`:
 the real units, but coders and answers kept in memory only. The token (an
-HMAC with the server's secret, valid 12 hours) is used like an invite
+HMAC with the server's secret, valid 12 hours) is used like a link
 secret. A latest codebook with validation issues can't be previewed: the
 preview's coder API answers 409 `codebook_invalid`.
 

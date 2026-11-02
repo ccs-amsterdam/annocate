@@ -61,10 +61,10 @@ export interface Coder {
   ended: SessionEnd | null;
   /** Set once the coder asked for their answers to be deleted (`Store.requestDeletion`; not part of `CoderWrite`). */
   deletionRequest: DeletionRequest | null;
-  /** `$session` values: `participant` (if any) and the URL parameters the invite required. Fixed when the coder starts. */
+  /** `$session` values: `participant` (if any) and the URL parameters the link required. Fixed when the coder starts. */
   session: Record<string, string>;
-  /** The invite (link) the coder joined with. */
-  inviteId: number | null;
+  /** The link (link) the coder joined with. */
+  linkId: number | null;
   /** The email the session is linked to (the coder logged in once, docs/coder-identity.md §5); null without. */
   email: string | null;
 }
@@ -76,7 +76,7 @@ export interface ResolveCoderRequest {
   /** The device's details, stored when the device joins a session. */
   device?: DeviceDetails;
   /** Required the first time a coder key is seen, to create the coder from an invite. */
-  inviteSecret?: string;
+  linkSecret?: string;
   /** The page's URL parameters: the participant id and the codebook's URL parameters (`sessionValues`). */
   urlParams?: Record<string, string>;
   /** What the deployed codebook asks of a new session (its Session item; set by the runtime). */
@@ -91,12 +91,12 @@ export interface ResolveCoderRequest {
   /**
    * Reads the verified email of the device's login, if any. Asked only when
    * it matters, so coding needs no login lookups: to link a session to its
-   * email, once, where the invite takes logins (`linkable`); and on a device
+   * email, once, where the link takes logins (`linkable`); and on a device
    * without a session here, to find the email's session in this job
    * (docs/coder-identity.md §5).
    */
   login?: () => Promise<{ email: string } | null>;
-  /** The invite takes logins: a session without an email gets linked to the login. */
+  /** The link takes logins: a session without an email gets linked to the login. */
   linkable?: boolean;
   /** The job is paused: sessions that exist go on, no new ones start (409 `job_paused`). */
   paused?: boolean;

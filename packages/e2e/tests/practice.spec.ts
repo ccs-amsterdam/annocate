@@ -57,7 +57,7 @@ test("a practice unit gives feedback when wrong; a wrong gold unit ends the sess
     ],
   });
   await api(request, "PUT", `/job/${job.id}/deployment`, { codebookId: codebook.id });
-  const links = await api<{ secret: string; params: Record<string, string> }[]>(request, "GET", `/job/${job.id}/invites`);
+  const links = await api<{ secret: string; params: Record<string, string> }[]>(request, "GET", `/job/${job.id}/links`);
   const s1 = links.find((l) => l.params.part === "s1")!;
 
   const coder = await (await browser.newContext()).newPage();

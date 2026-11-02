@@ -91,7 +91,7 @@ export interface FromExampleOptions {
   ownerId: number | null;
   /** They become the job's ADMIN; null: no job users (development headers). */
   ownerEmail: string | null;
-  /** Fixed invite secrets, in order (the development demo's `demo-secret`); random otherwise. */
+  /** Fixed link secrets, in order (the development demo's `demo-secret`); random otherwise. */
   secrets?: string[];
 }
 
@@ -108,7 +108,7 @@ export async function createJobFromExample(db: Sql, id: string, options: FromExa
   if (issues.length > 0) throw new Error(`examples/${id}.json: ${issues.map((i) => i.message).join("; ")}`);
 
   return db.transaction(async (tx) => {
-    const { job, codebookId, unitIds, firstInvite } = await createJobFromRecipe(
+    const { job, codebookId, unitIds, firstLink } = await createJobFromRecipe(
       tx,
       { ...example, name: options.name ?? example.name },
       { ownerId: options.ownerId, ownerEmail: options.ownerEmail, origin: id, secrets: options.secrets },
@@ -131,8 +131,8 @@ export async function createJobFromExample(db: Sql, id: string, options: FromExa
     for (const [i, coder] of example.answers.entries()) {
       const coderId = (await one<{ id: number }>(
         tx,
-        "INSERT INTO coders (job_id, participant_id, invite_id, ended) VALUES ($1, $2, $3, $4) RETURNING id",
-        [job.id, `Example coder ${i + 1}`, firstInvite, JSON.stringify({ outcome: "complete", at: new Date() })],
+        "INSERT INTO coders (job_id, participant_id, link_id, ended) VALUES ($1, $2, $3, $4) RETURNING id",
+        [job.id, `Example coder ${i + 1}`, firstLink, JSON.stringify({ outcome: "complete", at: new Date() })],
       ))!.id;
       const values = Object.fromEntries(Object.entries(coder.variables).map(([name, short]) => [name, answerValue(short)]));
       for (const [name, value] of Object.entries(values)) check(name, coderTypes.get(name) as AnyVariableType | undefined, value);

@@ -64,7 +64,7 @@ coded, make a new set or use all units.
 ## Links hold who may take part
 
 Which links exist follows from the design: deploying makes a link per
-value of its link parameters (see [Links](invitations.md)). Everything
+value of its link parameters (see [Links](links.md)). Everything
 about specific people is set on the links themselves:
 
 - who may use a link: a login, a list of email addresses;

@@ -128,7 +128,7 @@ monaco.languages.registerCompletionItemProvider(LANGUAGE, {
         ref[1] === "unit"
           ? current.fields.map((n) => item(n, "unit field"))
           : ref[1] === "session"
-            ? [item("participant", "the participant id, if the invitation has one")]
+            ? [item("participant", "the participant id, if the link has one")]
             : current.questions.map((n) => item(`${n}.value`, "answer", monaco.languages.CompletionItemKind.Variable));
       return { suggestions: names };
     }

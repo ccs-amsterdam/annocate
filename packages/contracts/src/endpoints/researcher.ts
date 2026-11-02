@@ -5,7 +5,7 @@ import { CodebookWriteSchema, CodebookResponseSchema, CodebookMetaSchema } from 
 import { UnitsCreateBodySchema, UnitMetaSchema, UnitPageSchema, UnitResponseSchema } from "../unit.js";
 import { UnitFieldSchema, UnitsSpecSchema } from "../unitFields.js";
 import { SetGroupResponseSchema, SetGroupWriteSchema } from "../sets.js";
-import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema, CoderDeletionSchema, DeleteCodersSchema, DeleteCodersResponseSchema } from "../coder.js";
+import { CoderProgressSchema, LinkWriteSchema, LinkResponseSchema, CoderDeletionSchema, DeleteCodersSchema, DeleteCodersResponseSchema } from "../coder.js";
 import { JobOverviewSchema } from "../overview.js";
 import {
   ApiKeyCreatedSchema,
@@ -80,7 +80,7 @@ export const researcherEndpoints = {
   listJobs: { method: "GET", path: "/job", request: z.void(), response: z.array(JobResponseSchema) },
   createJob: { method: "POST", path: "/job", request: JobWriteSchema, response: JobResponseSchema },
   listExamples: { method: "GET", path: "/examples", request: z.void(), response: z.array(ExampleSummarySchema) },
-  /** A new job from an example: units, codebook (deployed), invitation and example answers. */
+  /** A new job from an example: units, codebook (deployed), link and example answers. */
   createJobFromExample: { method: "POST", path: "/job/from-example", request: JobFromExampleSchema, response: JobResponseSchema },
   /** A new job from a recipe (the setup wizard): units, set groups, a codebook (a draft unless `publish`; deploying makes its links). */
   createJobFromRecipe: { method: "POST", path: "/job/from-recipe", request: RecipeSchema, response: JobResponseSchema },
@@ -175,31 +175,31 @@ export const researcherEndpoints = {
     request: z.void(),
     response: z.array(CoderDeletionSchema),
   },
-  listInvites: {
+  listLinks: {
     method: "GET",
-    path: "/job/:jobId/invites",
+    path: "/job/:jobId/links",
     request: z.void(),
-    response: z.array(CoderInviteResponseSchema),
+    response: z.array(LinkResponseSchema),
   },
   /** A link's access settings (label, login, emails, max uses, participant id). Links themselves come from the deployed codebook. */
-  updateInvite: {
+  updateLink: {
     method: "PUT",
-    path: "/job/:jobId/invites/:id",
-    request: CoderInviteWriteSchema,
-    response: CoderInviteResponseSchema,
+    path: "/job/:jobId/links/:id",
+    request: LinkWriteSchema,
+    response: LinkResponseSchema,
   },
-  revokeInvite: {
+  revokeLink: {
     method: "POST",
-    path: "/job/:jobId/invites/:id/revoke",
+    path: "/job/:jobId/links/:id/revoke",
     request: z.void(),
-    response: CoderInviteResponseSchema,
+    response: LinkResponseSchema,
   },
   /** A new secret for a link (the old link stops working; coders who started keep their sessions). */
-  renewInviteSecret: {
+  renewLinkSecret: {
     method: "POST",
-    path: "/job/:jobId/invites/:id/secret",
+    path: "/job/:jobId/links/:id/secret",
     request: z.void(),
-    response: CoderInviteResponseSchema,
+    response: LinkResponseSchema,
   },
   getOverview: { method: "GET", path: "/job/:jobId/overview", request: z.void(), response: JobOverviewSchema },
 

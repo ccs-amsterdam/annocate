@@ -33,7 +33,7 @@ case.)
                 ▼ /job/...                             ▼ /d/<deploymentId>/...
  ┌─────────────────────────────────────────────────────────────────────┐
  │ server (TypeScript, packages/server)                                │
- │  researcher API: jobs, codebooks, units, sets, links (invites),     │
+ │  researcher API: jobs, codebooks, units, sets, links,               │
  │    deployment, progress, results                                    │
  │  runtime (per deployment): distribution, leases, validation;        │
  │    state in the database, only the deployment spec in memory        │
@@ -127,7 +127,7 @@ bump `deployments.revision` for that
 to; requests with an older one get 409 `codebook_changed`, and the client
 loads the session again (`api/coder.md`).
 
-**Coder links.** Links (invites) are made by deploying: one per
+**Coder links.** Links are made by deploying: one per
 combination of the codebook's link parameter values (§7). They point at the
 client with the deployment id (the job id) and the link's secret; the
 client calls `/d/<jobId>/...`.
@@ -159,7 +159,7 @@ client calls `/d/<jobId>/...`.
 **Researcher preview.** `POST /job/:jobId/deployment/preview` returns
 deployment id `<jobId>.preview` and a token signed with the server's secret
 (`ANNOTINDER_SECRET`; random per process if not set, so previews then end
-with a restart). The client opens it like an invite. The runtime runs the
+with a restart). The client opens it like a link. The runtime runs the
 latest codebook (checked on every request, so edits show at once) with the
 real units, but keeps coders and answers in memory (`preview.ts`): a
 preview stores nothing, and is gone when the server forgets the deployment.
@@ -392,7 +392,7 @@ All are `$session.<name>`, stored on the coder when the session starts.
 Built in: `$session.participant`, `$session.source` (an optional
 `?source=` on any link) and `$session.email` (the login's email).
 
-**Links** (invites; stored on the server, never in the codebook) are made
+**Links** (links; stored on the server, never in the codebook) are made
 by deploying: one per combination of link parameter values (one if there
 are none; above 500 deploying needs `confirmLinks`, at most 2000), keyed by
 their values so a link keeps its secret across versions. Set changes sync

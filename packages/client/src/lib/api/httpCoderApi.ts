@@ -79,10 +79,10 @@ export interface CoderApi {
 export interface HttpCoderApiConfig {
   /** Base URL of the coder API including the deployment, e.g. "/d/42" (same origin as the client). */
   baseUrl: string;
-  /** The invite link: creates the coder on first use (and says which URL parameter is the participant id). */
-  inviteSecret?: string;
+  /** The link: creates the coder on first use (and says which URL parameter is the participant id). */
+  linkSecret?: string;
   /**
-   * The page's other query parameters: the participant id, the invite's
+   * The page's other query parameters: the participant id, the link's
    * required URL parameters, and the codebook's `url_param` auto variables.
    * The server stores the ones it needs when the coder starts.
    */
@@ -97,9 +97,9 @@ export interface HttpCoderApiConfig {
 /** Required on every coder API request: cross-site forms can't send it (CSRF). */
 const CLIENT_HEADERS = { "x-annotinder": "1" };
 
-function scopeHeaders(scope: { inviteSecret?: string }): Record<string, string> {
+function scopeHeaders(scope: { linkSecret?: string }): Record<string, string> {
   const headers: Record<string, string> = {};
-  if (scope.inviteSecret) headers["x-invite-secret"] = scope.inviteSecret;
+  if (scope.linkSecret) headers["x-link-secret"] = scope.linkSecret;
   return headers;
 }
 

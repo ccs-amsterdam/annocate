@@ -3,7 +3,7 @@
   "title": "Experiment with annotations: a tour",
   "description": "A tour of AnnoTinder's question types and features: survey questions, a random experiment that changes the layout and the questions, conditions, and a unit loop with swiping, choices, a scale and span annotation.",
   "tryThis": [
-    "Open the invitation link (Invitations tab) in a private window, and code as a participant would.",
+    "Open the link (Links tab) in a private window, and code as a participant would.",
     "Open the codebook (Codebook tab) to see how each feature is set up.",
     "Code twice, as a beginner and as an expert, to see the conditions at work."
   ],

@@ -8,7 +8,7 @@ import { useJobUsersMutation, useJobUsersQuery } from "../../../admin/queries";
 
 const ROLES: { value: Role; label: string; help: string }[] = [
   { value: "READ", label: "Read", help: "sees the job and downloads the results" },
-  { value: "WRITE", label: "Write", help: "also edits the codebook, units and invitations" },
+  { value: "WRITE", label: "Write", help: "also edits the codebook, units and links" },
   { value: "ADMIN", label: "Admin", help: "also manages access, resets and deletes data" },
 ];
 

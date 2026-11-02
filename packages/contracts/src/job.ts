@@ -36,7 +36,7 @@ export type JobResponse = z.infer<typeof JobResponseSchema>;
 
 /**
  * An example job AnnoTinder ships (`GET /examples`): a codebook with units,
- * an invitation and sometimes example answers, to try and adapt
+ * a link and sometimes example answers, to try and adapt
  * (docs/plans/examples.md).
  */
 export const ExampleSummarySchema = z.object({
@@ -58,8 +58,8 @@ export const JobFromExampleSchema = z.object({
 export type JobFromExample = z.infer<typeof JobFromExampleSchema>;
 
 /**
- * A "job user" manages the job (create/edit codebooks, units, invite
- * coders, ...). Distinct from a "coder", who annotates via an invite/access
+ * A "job user" manages the job (create/edit codebooks, units, link
+ * coders, ...). Distinct from a "coder", who annotates via a link/access
  * link (see coder.ts). Whole-resource replace via `PUT /job/:id/users`.
  */
 export const JobUserSchema = z.object({

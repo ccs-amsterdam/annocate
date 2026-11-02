@@ -19,7 +19,7 @@ server serves two APIs.
 
 | API | Called by | For | Contracts | Spec |
 |---|---|---|---|---|
-| **researcher API** | client: researcher UI (`ResearcherApi`); scripts (R, Python); other systems | managing jobs: codebooks, units, invitations, deploying, progress | `researcherEndpoints` | [researcher.md](researcher.md) |
+| **researcher API** | client: researcher UI (`ResearcherApi`); scripts (R, Python); other systems | managing jobs: codebooks, units, links, deploying, progress | `researcherEndpoints` | [researcher.md](researcher.md) |
 | **coder API** | client: annotator (`HttpCoderApi`, `JobManager`) | coding: session, next unit, submitting answers | `coderEndpoints` | [coder.md](coder.md) |
 | **admin API** | client: server admin page (`ServerApi`) | accounts: roles, registration, plans and limits, blocking, suspending jobs | `adminEndpoints` | [admin.md](admin.md) |
 
@@ -39,7 +39,7 @@ each entry `{ method, path, request, response }` with zod schemas.
 | API | How |
 |---|---|
 | researcher API | The session cookie from logging in (same origin, with `x-annotinder: 1`), or a personal API key (`authorization: Bearer <key>`, also from other origins: CORS is allowed). The user's role per job is `READ`, `WRITE` or `ADMIN`. Development servers (`ANNOTINDER_DEV_AUTH=1`) also accept `x-dev-role` / `x-dev-email` headers. See [researcher.md](researcher.md). |
-| coder API | A session cookie the server sets (httpOnly, same origin as the client), created from an invite secret. No CORS. [coder.md#sessions-and-headers](coder.md#sessions-and-headers) |
+| coder API | A session cookie the server sets (httpOnly, same origin as the client), created from a link secret. No CORS. [coder.md#sessions-and-headers](coder.md#sessions-and-headers) |
 
 ## Deployment ids
 

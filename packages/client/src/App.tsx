@@ -24,8 +24,8 @@ const devApi = new HttpResearcherApi({ baseUrl: SERVER_URL, devRole: "ADMIN", de
 
 type View = "admin" | "annotate";
 
-/** An invitation's link: this app, with the deployment and the invite secret. */
-function inviteLink(invite: { jobId: number; secret: string }): string {
+/** A link's URL: this app, with the deployment and the link secret (the `invite` parameter: links already sent out keep working). */
+function linkUrlOf(invite: { jobId: number; secret: string }): string {
   return `${window.location.origin}${window.location.pathname}?deployment=${invite.jobId}&invite=${invite.secret}`;
 }
 
@@ -54,7 +54,7 @@ function ResearcherView({ dev, me }: { dev: boolean; me: MeResponse | null }) {
     <AdminApp
       client={api}
       baseUrl={SERVER_URL}
-      inviteUrl={inviteLink}
+      linkUrl={linkUrlOf}
       coderApiUrl={CODER_API_URL}
       server={new ServerApi(api)}
       me={who}
@@ -71,7 +71,7 @@ function App() {
   const coderLink = params.has("invite") || params.has("transfer");
   const deploymentId = params.get("deployment") ?? "1";
   const transferToken = params.get("transfer") ?? undefined;
-  // Everything else in the URL goes to the server: the participant id and other parameters the invite requires, and `url_param` auto variables.
+  // Everything else in the URL goes to the server: the participant id and other parameters the link requires, and `url_param` auto variables.
   const urlParams = useMemo(() => {
     const rest = Object.fromEntries(params);
     for (const own of ["invite", "deployment", "transfer", "view"]) delete rest[own];
@@ -87,7 +87,7 @@ function App() {
   const [view, setView] = useState<View>(coderLink ? "annotate" : "admin");
   const researcher = useResearcher();
   // Development: the demo job (seed.ts) without a link, and both views side by side.
-  const inviteSecret = params.get("invite") ?? (researcher.dev ? "demo-secret" : undefined);
+  const linkSecret = params.get("invite") ?? (researcher.dev ? "demo-secret" : undefined);
   // The researcher UI follows the theme too (the coder UI applies it itself).
   useTheme();
 
@@ -156,7 +156,7 @@ function App() {
         ) : (
           <JobRunner
             baseUrl={`${CODER_API_URL}/d/${deploymentId}`}
-            inviteSecret={inviteSecret}
+            linkSecret={linkSecret}
             urlParams={urlParams}
             transferToken={transferToken}
             onTransferRedeemed={clearTransfer}

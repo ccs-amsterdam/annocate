@@ -5,14 +5,14 @@ import { HttpCoderApi } from "../api/httpCoderApi";
 // sees it: page scripts can't leak it. The server derives this job's
 // session key from it, the deployment and the participant id. A session
 // only moves to another device through a one-time transfer link (or a
-// login). A participant id or invite link alone never resumes an earlier
+// login). A participant id or link alone never resumes an earlier
 // session.
 
-/** Which job and invite a page belongs to. */
+/** Which job and link a page belongs to. */
 export interface CoderSessionScope {
   /** Server base URL including the deployment, e.g. `/d/42` (same origin as the client). */
   baseUrl: string;
-  inviteSecret?: string;
+  linkSecret?: string;
 }
 
 /**
