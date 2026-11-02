@@ -1,6 +1,6 @@
 # Plan: viewing a design from its file (reproducibility)
 
-Status: proposed 2026-11-02, not started. Open questions in §6.
+Status: agreed 2026-11-02, not started. Decisions in §6.
 
 A study is reproducible when anyone with the design file can see what coders
 saw, years later, without an account or a server. So:
@@ -22,7 +22,7 @@ saw, years later, without an account or a server. So:
 {
   "format": "annotinder-design",
   "formatVersion": 1,          // the design schema (contracts); bumped on breaking changes
-  "client": "1.4.0",           // the client the study ran on (or the one that exported it)
+  "client": { "release": "1.4.0", "commit": "a1b2c3d" }, // the client the study ran on
   "exportedAt": "2026-11-02T10:00:00Z",
   "name": "Pilot",
   "design": { "items": [...], "session": {...}, "units": { "fields": [...] } }
@@ -112,10 +112,11 @@ saw, years later, without an account or a server. So:
    "open in version" flow.
 5. Answers from the export: per coder, read-only.
 
-## 6. Open questions
+## 6. Decided (2026-11-02)
 
-- **The `client` value:** should it be the release version (needs proper
-  versioning, now `0.0.0`) or the git commit as well? Proposed: both, with
-  the release for people and the commit for exactness.
-- **Single-file viewer in every results export, or on request?**
-- **Hosting:** on our own domain, or GitHub Pages under the project?
+- **`client` records both labels:** the release (for people) and the git
+  commit (for exactness), e.g. `"client": { "release": "1.4.0", "commit": "a1b2c3d" }`.
+  This needs real release versioning; the packages are at `0.0.0` now.
+- **Single-file viewer:** on request (a download per release, or an option
+  in the results export), not in every export.
+- **Hosting:** on our own domain (`viewer.annotinder.org/<release>/`).
