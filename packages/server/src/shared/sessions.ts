@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { one, type Sql } from "../db.js";
 import type { User } from "./accounts.js";
 
-// Researcher sessions (migrations/0003_sessions.sql): a random key in an
+// Researcher sessions (the `sessions` table): a random key in an
 // httpOnly cookie, its hash in the database. Sliding: each use pushes the
 // expiry out again, at most once an hour.
 

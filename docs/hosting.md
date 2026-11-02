@@ -21,8 +21,11 @@ docker compose --profile tls up -d --build
 ```
 
 The database schema is created and updated when the server starts
-(`packages/server/migrations`). Until the first release the migrations may
-be reset: a test server's data then has to be thrown away.
+(`packages/server/migrations`). Migrations only add: a new release's
+schema changes are new numbered files, applied in order, and a database
+from an earlier release is updated in place. (Before the first release the
+migrations were reset to one, `0001_init.sql`: a test server from before
+that has to start with a new database.)
 
 `GET /health` answers `{ ok: true, service, release, commit }` when the
 server runs (the image's health check uses it).

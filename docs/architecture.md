@@ -483,7 +483,7 @@ How it works:
 ### 8.4 Units: drafts and versions
 
 Everything is a draft until deployed (`plans/design.md` §5), units and
-sets too (migration 0026):
+sets too:
 
 - **Values** (`unit_values`): every field value once per job, by content
   (sha256, as 32 bytes: md5 pairs can be made on purpose). Field names are

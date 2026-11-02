@@ -128,9 +128,10 @@ codings grow. That is plenty at a realistic pace. Beyond it, see
    download turns it off (`security.md` §4).
 7. **Rate limiting**: in the server, counted in an unlogged Postgres table
    (`security.md` §3); generous defaults.
-8. **Migration reset** — the migrations (`packages/server/migrations`,
-   0001–0020) are reset to one initial migration before the release, as
-   planned. Any test server's data is lost then.
+8. **Migration reset** — done (2026-11-02): the migrations are one
+   `0001_init.sql`, the schema as it was, with the foreign keys it lacked
+   (answers to coders and units, coders to links, deployments to design
+   versions, unit serves to units). From here on migrations only add.
 
 ## 3. Open items (work)
 
@@ -158,9 +159,9 @@ From the security review, low:
   `part_{$var.x}` accepts any unitset named `part_*`; a bare `{$var.x}`
   accepts every unitset. Fix: when the variable has options, check against
   the possible names.
-- A coder deleted while their request is in flight could leave orphan
-  coder-level answers: `annotation_values.coder_id` has no foreign key.
-  Fix: a foreign key with `ON DELETE CASCADE` (part of the migration reset).
+- Done (2026-11-02): `annotation_values.coder_id` has a foreign key with
+  `ON DELETE CASCADE` (the migration reset), so a coder deleted while a
+  request is in flight can't leave orphan answers.
 - `coder_deletions` keeps the deleted coder's email and participant id, so
   "delete for good" still keeps who was deleted. **Decide** whether that
   log is intended.
@@ -196,8 +197,8 @@ Development and tests:
    A breaking change to the design schema bumps `DESIGN_FORMAT_VERSION`.
 1. Read `security.md` (second factor, headers, rate limits) before
    inviting anyone outside the team.
-2. Reset the migrations (§2 item 8), with the `annotation_values` foreign
-   key from §3.
+2. Done: the migrations are reset (§2 item 8), with the `annotation_values`
+   foreign key from §3.
 3. Run one server process at first (previews and answer limits are
    per-process). Put a proxy in front with TLS, and set
    `ANNOTINDER_TRUST_PROXY=1` (the compose file does).
