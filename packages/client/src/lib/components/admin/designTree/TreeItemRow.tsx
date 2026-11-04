@@ -159,15 +159,15 @@ function ItemLabel({
   return (
     <>
       <ItemIcon item={item} />
-      {item.type === "condition" && !item.label?.trim() ? (
+      {item.type === "condition" ? (
         // Conditions have no name: shown by their condition, unless they have a label.
         <span
           className={cn(
-            "truncate px-1.5 py-0.5 font-medium text-secondary-dark/90",
+            "truncate px-1.5 py-0.5 font-medium font-mono text-foreground/50",
             parseSimpleCondition(item.condition.script) ? "text-sm" : "font-mono text-xs",
           )}
         >
-          if {describeCondition(item.condition)}
+          {itemTitle(item)}
         </span>
       ) : (
         <span className={cn("truncate px-1.5 py-0.5", selected ? "font-semibold" : "font-medium")}>
