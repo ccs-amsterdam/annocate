@@ -103,7 +103,7 @@ export function EditorToolbar({
         {status}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {!readOnly && (
           <div className="flex items-center">
             <Button type="button" variant="ghost" size="icon-sm" onClick={onUndo} disabled={!canUndo} title="Undo" aria-label="Undo">
