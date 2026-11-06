@@ -184,3 +184,19 @@ export const RedeemTransferSchema = z.object({ token: z.string().min(1) });
 
 /** Response for `POST /transfer/redeem`: empty; the server sets the session cookie on the new device. */
 export const RedeemTransferResponseSchema = z.object({});
+
+/**
+ * A study the coder takes part in, for the annotator's home (`/code`):
+ * this device's session in a deployment (`GET /d/<id>/summary`), or a
+ * logged-in coder's sessions on any device (`GET /coder/sessions`).
+ * `ended`: how it ended (null: still going); `units`: units finished.
+ */
+export const CoderStudySchema = z.object({
+  deployment: z.string(),
+  name: z.string(),
+  started: z.coerce.date(),
+  lastActive: z.coerce.date(),
+  ended: z.enum(["screenout", "complete", "quit"]).nullable(),
+  units: z.number().int().nonnegative(),
+});
+export type CoderStudy = z.infer<typeof CoderStudySchema>;

@@ -62,7 +62,7 @@ confusion at a panel company over a leaked link.
 
 - **The device id.** A browser gets one random device id, the first time
   a link accepts it, in a cookie: `annotinder_device`, `HttpOnly`,
-  `SameSite=Lax`, `Secure` over https, `Path=/d`, 400 days. One cookie for
+  `SameSite=Lax`, `Secure` over https, `Path=/api/d`, 400 days. One cookie for
   all jobs, so cookies don't pile up for coders who do many jobs.
 - **The session in a job.** The server derives the device's key for a job
   on every request: SHA-256 of device id, deployment and participant id (the
@@ -149,6 +149,14 @@ confusion at a panel company over a leaked link.
   id was used before. They learn nothing else.
 - **Anonymous links on a new device** simply start a new session. There is
   nothing to detect.
+
+- **The annotator's home** (`/code`) lists the studies this browser takes
+  part in, to continue them: the browser remembers the studies it opened
+  (deployment and URL parameters, never a link's secret) and asks each for
+  its session (`GET /d/<id>/summary`), since the server keeps a device's
+  sessions apart per study and can't list them. A logged-in coder also
+  sees their sessions on other devices, by email (`GET /coder/sessions`).
+  The list shows each job's name.
 
 ## 5. Coder login (implemented, 2026-10-28)
 

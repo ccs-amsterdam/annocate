@@ -15,6 +15,7 @@ import type { Sql } from "./db.js";
 import { CLIENT_VERSION } from "./version.js";
 import type { Env, Server } from "./context.js";
 import { coderApi } from "./coder.js";
+import { coderAccount } from "./coderAccount.js";
 import { Deployments } from "./runtime/registry.js";
 import { DEFAULT_RUNTIME_OPTIONS, type RuntimeOptions } from "./runtime/runtime.js";
 import type { Store } from "./runtime/store.js";
@@ -141,7 +142,9 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   for (const path of ["/job/*", "/me/*", "/admin/*"]) api.use(path, rateLimit(limiter, "researcher", { key: accountKey }));
 
   // Coder API (coder.ts): same origin as the client, no CORS.
+  api.use("/coder/*", rateLimit(limiter, "coder", { memory: true }));
   api.route("/d/:deployment", coderApi(server));
+  api.route("/", coderAccount(server));
 
   // Researcher API (researcher/): full paths, API keys (researcher/auth.ts).
   // CORS, so a client on another origin (e.g. the Vite dev server) can call it.

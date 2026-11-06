@@ -6,6 +6,7 @@ import { getCookie } from "hono/cookie";
 import { linkInfo } from "./shared/links.js";
 import { userForSession } from "./shared/sessions.js";
 import { deviceDetails } from "./shared/devices.js";
+import { coderStudies } from "./shared/coderStudies.js";
 import { SESSION_COOKIE } from "./researcher/login.js";
 import { coderKey, newDeviceId, readDevice, requireClientHeader, writeDevice } from "./runtime/session.js";
 import type { Coder, DeploymentRuntime } from "./runtime/runtime.js";
@@ -47,6 +48,25 @@ export function coderApi(server: Server): Hono {
     );
     writeDevice(c, device);
     return c.json({});
+  });
+
+  // This device's session here, for the annotator's home: never starts one (docs/api/coder.md).
+  app.get("/summary", async (c) => {
+    requireClientHeader(c);
+    const deploymentId = c.req.param("deployment")!;
+    const device = readDevice(c);
+    if (!device || !/^\d+$/.test(deploymentId)) throw new HttpError(404, "No session here");
+    const runtime = await server.deployments.get(deploymentId);
+    const participantParam = runtime.participantParam;
+    const urlParams = Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));
+    const participant = participantParam ? urlParams[participantParam]?.trim() || undefined : undefined;
+    const key = await coderKey(device, deploymentId, participant);
+    const [study] = await coderStudies(server.db, "c.job_id = $1 AND c.id = (SELECT coder_id FROM coder_devices WHERE key_hash = $2)", [
+      Number(deploymentId),
+      key,
+    ]);
+    if (!study) throw new HttpError(404, "No session here");
+    return c.json(study);
   });
 
   const session = new Hono<Env>();

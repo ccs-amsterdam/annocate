@@ -110,6 +110,11 @@ new session starts empty: it doesn't include the earlier answers.
 
 ## Continuing on another device
 
+Coders find the studies they started in this browser at **Annotate**
+(`/code`), with the job's name and how far they got, and continue them
+from there without the link. Logged-in coders also see their studies on
+other devices.
+
 On the device where they started, coders click the monitor-and-phone icon
 in the top bar (**Continue on another device**). It shows a QR code and a link.
 Scanning or opening it on the other device continues the same session

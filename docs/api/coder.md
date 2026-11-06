@@ -87,6 +87,26 @@ units in a loop that depends on them (contracts `loopDependencies`).
 Assigns the coder's `auto` variables they don't have yet (`random` or
 `balanced`).
 
+### getSummary
+
+`GET /summary` → `CoderStudySchema`: this device's session in the
+deployment, for the annotator's home (`/code`): the job's name, when it
+started and was last active, how it ended (`ended`: `complete`,
+`screenout`, `quit`; null while it goes on) and the units answered. 404
+without a session; never starts one. The device's key includes the
+participant id, so `x-url-params` with it finds the session of a link
+that carries one. The server can't list a device's studies (its keys are
+per study, §4 of coder-identity.md): the browser remembers which it
+opened (`client/src/lib/session/studies.ts`) and asks each.
+
+### listSessions (outside deployments)
+
+`GET /api/coder/sessions` → `CoderStudySchema[]` (contracts
+`coderAccountEndpoints`): a logged-in coder's studies, on any device: the
+sessions their login's email is linked to. 401 `auth_required` without a
+login. Continuing one on a new device logs in there (`coder-identity.md`
+§5).
+
 ### getNextUnits
 
 `GET /loop/:loop/next?count=<k>&branch=<i>` → `NextUnitsResponseSchema` (`{ units }`)

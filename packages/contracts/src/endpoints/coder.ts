@@ -3,6 +3,7 @@ import { CoderUnitResponseSchema } from "../unit.js";
 import { PostUnitVariablesSchema, PostCoderVariablesSchema, VariableValueSchema } from "../variableValue.js";
 import {
   SessionResponseSchema,
+  CoderStudySchema,
   EndSessionSchema,
   EndSessionResponseSchema,
   QuitSessionSchema,
@@ -46,6 +47,12 @@ export type SubmitUnitResponse = z.infer<typeof SubmitUnitResponseSchema>;
 
 export const coderEndpoints = {
   getSession: { method: "GET", path: "/session", request: z.void(), response: SessionResponseSchema },
+  /**
+   * This device's session in the deployment, summarized for the annotator's
+   * home (404 without one). Never starts a session. `x-url-params` with the
+   * participant id finds the session of a link that carries one.
+   */
+  getSummary: { method: "GET", path: "/summary", request: z.void(), response: CoderStudySchema },
   getNextUnits: {
     method: "GET",
     path: "/loop/:loop/next",
@@ -98,3 +105,11 @@ export const coderEndpoints = {
 } as const;
 
 export type CoderEndpointName = keyof typeof coderEndpoints;
+
+/**
+ * Outside a deployment (`/api/coder/...`): a logged-in coder's studies on
+ * any device, by their login's email (401 without a login).
+ */
+export const coderAccountEndpoints = {
+  listSessions: { method: "GET", path: "/coder/sessions", request: z.void(), response: z.array(CoderStudySchema) },
+} as const;

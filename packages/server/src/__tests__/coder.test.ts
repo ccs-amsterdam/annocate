@@ -17,6 +17,7 @@ import type { RuntimeOptions } from "../runtime/runtime.js";
 import { DbStore, type Store } from "../runtime/store.js";
 import { ensureUser } from "../shared/accounts.js";
 import { createSession } from "../shared/sessions.js";
+import { SESSION_COOKIE } from "../researcher/login.js";
 
 // End-to-end: client -> server -> database, through the app's fetch handler
 // (no sockets). A new app on the same database is a restart.
@@ -1792,5 +1793,37 @@ describe("special units per coder", () => {
     const routed = coders.find((x) => x.finished.main_loop === 2)!;
     expect(routed.special).toEqual({ gold: { done: 1, total: 1 } });
     expect(coders.filter((x) => x.id !== routed.id).map((x) => x.special)).toEqual([{}]);
+  });
+});
+
+describe("the annotator's home", () => {
+  it("summarizes this device's session in a deployment, never another device's, and never starts one", async () => {
+    const c = coder("home");
+    const unit = (await c.next())!;
+    expect((await c.submit(unit.id, demo("positive"))).status).toBe(200);
+    const summary = await send("home", "/summary");
+    expect(summary.status).toBe(200);
+    expect(await summary.json()).toMatchObject({ deployment: "1", name: expect.any(String), ended: null, units: 1 });
+    // Another device: no session here (and asking doesn't make one)
+    expect((await send("elsewhere", "/summary")).status).toBe(404);
+    const elsewhere = coder("elsewhere");
+    await elsewhere.session();
+    expect(await (await send("elsewhere", "/summary")).json()).toMatchObject({ units: 0 });
+  });
+
+  it("lists a logged-in coder's sessions, by their login's email, on any device", async () => {
+    const c = coder("laptop");
+    await c.session();
+    const user = await ensureUser(db, "coder@uni.nl");
+    await db.query("UPDATE coders SET email = 'coder@uni.nl' WHERE id = (SELECT max(id) FROM coders)");
+    const sessions = (cookie?: string) =>
+      server.request("/api/coder/sessions", { headers: { "x-annotinder": "1", ...(cookie ? { cookie: `${SESSION_COOKIE}=${cookie}` } : {}) } });
+    expect((await sessions()).status).toBe(401);
+    const res = await sessions(await createSession(db, user.id));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([expect.objectContaining({ deployment: "1", ended: null, units: 0 })]);
+    // Someone else's login sees none of them
+    const other = await ensureUser(db, "other@uni.nl");
+    expect(await (await sessions(await createSession(db, other.id))).json()).toEqual([]);
   });
 });

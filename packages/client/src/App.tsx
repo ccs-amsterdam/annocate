@@ -220,7 +220,7 @@ const codeHomeRoute = createRoute({
   component: function CodeHome() {
     return (
       <WithHeader>
-        <CodeHomePage dev={useResearcher().dev} />
+        <CodeHomePage apiUrl={API_URL} dev={useResearcher().dev} />
       </WithHeader>
     );
   },

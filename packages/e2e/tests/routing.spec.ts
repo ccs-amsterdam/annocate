@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 import type { JobResponse } from "@annotinder/contracts";
-import { api } from "./helpers";
+import { answers, api, coders, fromExample, question } from "./helpers";
 
 // The app's pages have URLs (docs/client.md §1): a reload stays where it
 // was, and leaving the editor with unsaved edits asks first.
@@ -38,4 +38,25 @@ test("a job's tabs are URLs: a reload stays; leaving unsaved edits asks first", 
   await expect(page.getByRole("heading", { name: "Unsaved Changes" })).toBeVisible();
   await page.getByRole("button", { name: "Discard changes" }).click();
   await expect(page).toHaveURL(new RegExp(`/research/jobs/${job.id}/overview$`));
+});
+
+test("the annotator's home lists the studies this browser takes part in, to continue them", async ({ page, request }) => {
+  const { job, link } = await fromExample(request, "swipe-sentiment");
+  const examples = (await coders(request, job.id)).map((c) => c.id);
+  await page.goto("/code");
+  await expect(page.getByText("Start from a link")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Your studies" })).toHaveCount(0);
+
+  // Code a unit through the link, then go home: the study is there
+  await page.goto(link);
+  await question(page, "Is this headline good news or bad news?");
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(async () => (await answers(request, job.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null).length).toBe(1);
+  await page.goto("/code");
+  const card = page.getByRole("link", { name: new RegExp(job.name) });
+  await expect(card).toContainText("1 unit done");
+  // Continue: the same session, without the link
+  await card.click();
+  await expect(page).toHaveURL(new RegExp(`/code/${job.id}$`));
+  await question(page, "Is this headline good news or bad news?");
 });
