@@ -217,6 +217,16 @@ function JobRunnerContent({
     return () => window.removeEventListener("beforeunload", warn);
   }, [unsaved]);
 
+  // The study's public title names the browser tab
+  useEffect(() => {
+    if (!snapshot.title) return;
+    const before = document.title;
+    document.title = snapshot.title;
+    return () => {
+      document.title = before;
+    };
+  }, [snapshot.title]);
+
   // A practice unit answered right: a check, briefly, over the next unit.
   const [rightSeen, setRightSeen] = useState(0);
   const rightFlash = snapshot.practiceRight > rightSeen;
@@ -475,6 +485,7 @@ function JobRunnerContent({
             </PopoverTrigger>
             <PopoverContent align="start" className="w-80 p-0 shadow-lg">
               <div className="flex flex-col max-h-[80vh]">
+                {snapshot.title && <p className="border-b border-border/60 px-3.5 py-2.5 text-sm font-semibold text-foreground">{snapshot.title}</p>}
                 <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/60 text-xs font-semibold text-muted-foreground bg-muted/30">
                   <span className="uppercase tracking-wider">Navigation</span>
                   <span className="font-mono text-[11px]">

@@ -90,7 +90,9 @@ Assigns the coder's `auto` variables they don't have yet (`random` or
 ### getSummary
 
 `GET /summary` → `CoderStudySchema`: this device's session in the
-deployment, for the annotator's home (`/code`): the job's name, when it
+deployment, for the annotator's home (`/code`): the study's public title
+(`title`: the deployed design's `session.public.title`, null without one;
+never the job's name, which is private), when it
 started and was last active, how it ended (`ended`: `complete`,
 `screenout`, `quit`; null while it goes on) and the units answered. 404
 without a session; never starts one. The device's key includes the

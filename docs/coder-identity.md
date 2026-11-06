@@ -156,7 +156,9 @@ confusion at a panel company over a leaked link.
   its session (`GET /d/<id>/summary`), since the server keeps a device's
   sessions apart per study and can't list them. A logged-in coder also
   sees their sessions on other devices, by email (`GET /coder/sessions`).
-  The list shows each job's name.
+  The list shows each study's public title (the design's
+  `session.public.title`), never the job's name: that is private, and may
+  say what the study is about.
 
 ## 5. Coder login (implemented, 2026-10-28)
 

@@ -74,7 +74,7 @@ function StudyCard({ entry }: { entry: StudyEntry }) {
       className="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{study.name}</p>
+        <p className="truncate font-medium">{study.title ?? "Untitled study"}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {study.units > 0 ? `${study.units} unit${study.units === 1 ? "" : "s"} done · ` : ""}
           last active {when(study.lastActive)}

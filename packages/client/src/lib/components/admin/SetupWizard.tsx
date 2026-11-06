@@ -3,6 +3,7 @@ import type { JobResponse, UnitField } from "@annotinder/contracts";
 import { Check, FlaskConical, ListChecks, MessageSquareText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "cn";
 import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
@@ -167,6 +168,13 @@ function StartStep({ a, set }: StepProps) {
       <label className="block text-xs font-medium text-muted-foreground">
         Job name
         <Input className="mt-1" autoFocus value={a.name} onChange={(e) => set({ name: e.target.value })} placeholder="e.g. News pilot" />
+      </label>
+      <label className="block text-xs font-medium text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          Title coders see (optional)
+          <InfoTip label="About the title coders see">The job name stays private; coders see this title instead, or &quot;Untitled study&quot;.</InfoTip>
+        </span>
+        <Input className="mt-1" value={a.publicTitle} onChange={(e) => set({ publicTitle: e.target.value })} placeholder={a.name.trim() || "e.g. Reading the news"} />
       </label>
       <Intro>Choose one or more. You can change everything later in the editor.</Intro>
       <div className="grid gap-2 sm:grid-cols-3">

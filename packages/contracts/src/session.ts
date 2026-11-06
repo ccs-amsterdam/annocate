@@ -193,7 +193,8 @@ export const RedeemTransferResponseSchema = z.object({});
  */
 export const CoderStudySchema = z.object({
   deployment: z.string(),
-  name: z.string(),
+  /** The deployed design's public title (`session.public.title`); null without one. Never the job's name, which is private. */
+  title: z.string().nullable(),
   started: z.coerce.date(),
   lastActive: z.coerce.date(),
   ended: z.enum(["screenout", "complete", "quit"]).nullable(),

@@ -48,6 +48,12 @@
   ],
   "design": {
     "note": "Example: labeling actors",
+    "session": {
+      "params": [],
+      "public": {
+        "title": "Who acts in the news?"
+      }
+    },
     "items": [
       {
         "type": "unit_loop",

@@ -111,7 +111,8 @@ new session starts empty: it doesn't include the earlier answers.
 ## Continuing on another device
 
 Coders find the studies they started in this browser at **Annotate**
-(`/code`), with the job's name and how far they got, and continue them
+(`/code`), with the study's public title (set at the top of the
+Session item; the job's own name stays private) and how far they got, and continue them
 from there without the link. Logged-in coders also see their studies on
 other devices.
 

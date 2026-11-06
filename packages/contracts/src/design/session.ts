@@ -128,6 +128,13 @@ export type ParticipantParam = z.infer<typeof ParticipantParamSchema>;
  * participant id's URL parameter, and, if not every combination of the link
  * parameters is wanted, the combinations to make links for.
  */
+/** What coders see about a study (`session.public`). */
+export const PublicInfoSchema = z.object({
+  /** The study's title, as coders see it. */
+  title: z.string().trim().min(1).max(200),
+});
+export type PublicInfo = z.infer<typeof PublicInfoSchema>;
+
 export const SessionItemSchema = z.object({
   type: z.literal("session"),
   label: z.string().optional(),
@@ -140,6 +147,12 @@ export const SessionItemSchema = z.object({
    * most this many sessions. A link's own limit (the deployment's) overrides it.
    */
   maxUses: z.number().int().positive().optional(),
+  /**
+   * What coders see about the study (the annotator home, the coding screen):
+   * its title. The job's name stays private (it may tell what the study is
+   * about). Room for a description or thumbnail later.
+   */
+  public: PublicInfoSchema.optional(),
 });
 export type SessionItem = z.infer<typeof SessionItemSchema>;
 

@@ -60,6 +60,12 @@
   ],
   "design": {
     "note": "Example: survey with annotations",
+    "session": {
+      "params": [],
+      "public": {
+        "title": "News and you"
+      }
+    },
     "items": [
       {
         "type": "question",

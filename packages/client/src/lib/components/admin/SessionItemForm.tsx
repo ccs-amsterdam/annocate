@@ -59,6 +59,27 @@ export function SessionItemForm({
 
   return (
     <div className="flex flex-col gap-5">
+      <section className="flex flex-col gap-1.5">
+        <label htmlFor="public-title" className="flex items-center gap-1.5 text-xs font-semibold">
+          Public title
+          <InfoTip label="About the public title">
+            What coders see as the study&apos;s name: on their list of studies (the annotator home) and while coding. The job&apos;s own
+            name stays private, so it can say what the study is about. Without a title, coders see &quot;Untitled study&quot;.
+          </InfoTip>
+        </label>
+        <Input
+          id="public-title"
+          className="h-8 text-sm"
+          maxLength={200}
+          placeholder="e.g. Reading the news"
+          value={item.public?.title ?? ""}
+          onChange={(e) => {
+            const next: SessionItem = { ...item, public: { ...item.public, title: e.target.value } };
+            if (!e.target.value) delete next.public;
+            onChange(next);
+          }}
+        />
+      </section>
       <section className="flex flex-col gap-2">
         <h3 className="flex items-center gap-1.5 text-xs font-semibold">
           Session parameters

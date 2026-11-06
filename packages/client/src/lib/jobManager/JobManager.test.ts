@@ -33,7 +33,7 @@ function unitVar(name: string): InLoopQuestionItem {
 
 function session(items: TopLevelItem[]): SessionResponse {
   return {
-    codebook: { id: 1, note: null, items, immutable: false, created: new Date() } as SessionResponse["codebook"],
+    codebook: { id: 1, title: null, items } as SessionResponse["codebook"],
     progress: [],
   } as unknown as SessionResponse;
 }

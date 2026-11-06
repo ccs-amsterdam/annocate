@@ -1803,7 +1803,13 @@ describe("the annotator's home", () => {
     expect((await c.submit(unit.id, demo("positive"))).status).toBe(200);
     const summary = await send("home", "/summary");
     expect(summary.status).toBe(200);
-    expect(await summary.json()).toMatchObject({ deployment: "1", name: expect.any(String), ended: null, units: 1 });
+    // The deployed design's public title, never the job's name (which is private)
+    const first = (await summary.json()) as { title: unknown };
+    expect(first).toMatchObject({ deployment: "1", title: "A tour of AnnoTinder", ended: null, units: 1 });
+    expect(JSON.stringify(first)).not.toContain(((await db.query<{ name: string }>("SELECT name FROM jobs WHERE id = 1"))[0]).name);
+    // Without one: none
+    await db.query("UPDATE design_versions SET session = session - 'public' WHERE id = (SELECT design_version_id FROM deployments WHERE job_id = 1)");
+    expect(await (await send("home", "/summary")).json()).toMatchObject({ title: null });
     // Another device: no session here (and asking doesn't make one)
     expect((await send("elsewhere", "/summary")).status).toBe(404);
     const elsewhere = coder("elsewhere");

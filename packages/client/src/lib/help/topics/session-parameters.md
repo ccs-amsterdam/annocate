@@ -22,6 +22,13 @@ There are two kinds:
 The values are stored with the session when it starts, so coders can come
 back without them, and they appear in the results (`coders.csv`).
 
+## Public title
+
+At the top of the Session item: the **Public title**, what coders see as
+the study's name, on their list of studies and in the coding screen's
+menu and browser tab. The job's own name stays private, so it can say what
+the study is about. Without one, coders see "Untitled study".
+
 ## Values
 
 A parameter's values are one of:

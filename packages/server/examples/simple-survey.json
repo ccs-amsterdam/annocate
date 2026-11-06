@@ -11,6 +11,12 @@
   "publish": true,
   "design": {
     "note": "Example: a simple survey",
+    "session": {
+      "params": [],
+      "public": {
+        "title": "A short survey"
+      }
+    },
     "items": [
       {
         "type": "question",

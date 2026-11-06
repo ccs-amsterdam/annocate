@@ -89,6 +89,8 @@ export interface SetupUnits {
 
 export interface SetupAnswers {
   name: string;
+  /** The title coders see (the design's `session.public.title`); empty: none. */
+  publicTitle: string;
   parts: SetupParts;
   experiment: SetupExperiment;
   /** Annotation: the units (null: uploaded later), how a unit is shown, and who codes what. */
@@ -108,6 +110,7 @@ export interface SetupAnswers {
 
 export const DEFAULT_SETUP: SetupAnswers = {
   name: "",
+  publicTitle: "",
   parts: { annotate: true, survey: false, experiment: false },
   experiment: { name: "condition", conditions: ["control", "treatment"], assign: "balanced" },
   units: null,
@@ -386,6 +389,9 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
     });
     if (lists.includes("after")) items.push(...parseQuestions(a.questions.after).map(unspecified));
   }
+  // The title coders see, only when given
+  const title = a.publicTitle.trim();
+  if (title) session = { ...(session ?? { params: [] }), public: { title } };
   return {
     name: a.name.trim(),
     units: (a.units?.units ?? []).map((u) => ({ id: u.externalId, data: u.data })),

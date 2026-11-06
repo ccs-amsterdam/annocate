@@ -31,6 +31,8 @@ export type CoderTopLevelItem =
 /** The coder codebook of a deployed (or previewed) design version. */
 export const CoderCodebookSchema = z.object({
   id: IdSchema,
+  /** The study's public title (the design's `session.public.title`); null without one. */
+  title: z.string().nullable(),
   items: z.custom<CoderTopLevelItem[]>((v) => Array.isArray(v)),
 });
 export type CoderCodebook = z.infer<typeof CoderCodebookSchema>;

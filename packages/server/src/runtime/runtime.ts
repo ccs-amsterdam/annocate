@@ -207,7 +207,7 @@ export class DeploymentRuntime {
     this.applySets(spec);
     this.shownFields = shownUnitFields(items);
     this.questions = collectQuestions(items).questions;
-    this.coderCodebook = { id: spec.design.id, items: resolveRedirects(toCoderItems(items), spec.redirectUrls) };
+    this.coderCodebook = { id: spec.design.id, title: sessionItem(items)?.public?.title ?? null, items: resolveRedirects(toCoderItems(items), spec.redirectUrls) };
   }
 
   private applySets(spec: DeploymentSpec): void {

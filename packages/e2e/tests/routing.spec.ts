@@ -53,10 +53,27 @@ test("the annotator's home lists the studies this browser takes part in, to cont
   await page.keyboard.press("ArrowRight");
   await expect.poll(async () => (await answers(request, job.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null).length).toBe(1);
   await page.goto("/code");
-  const card = page.getByRole("link", { name: new RegExp(job.name) });
+  // Shown by the design's public title, never the job's (private) name
+  const card = page.getByRole("link", { name: /Good news, bad news/ });
+  await expect(page.getByText(job.name)).toHaveCount(0);
   await expect(card).toContainText("1 unit done");
   // Continue: the same session, without the link
   await card.click();
   await expect(page).toHaveURL(new RegExp(`/code/${job.id}$`));
   await question(page, "Is this headline good news or bad news?");
+});
+
+test("on a phone the editor shows one pane at a time: the tree, then an item with a way back", async ({ page, request }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const { job } = await fromExample(request, "simple-survey");
+  await page.goto(`/research/jobs/${job.id}/editor`);
+  const tree = page.getByText(/^Items \(\d+\)$/);
+  await expect(tree).toBeVisible();
+  // Open the session item: its form, full width, without the tree
+  await page.getByRole("button", { name: /^Session/ }).first().click();
+  await expect(page.getByLabel("Public title", { exact: true })).toHaveValue("A short survey");
+  await expect(tree).toBeHidden();
+  await page.getByRole("button", { name: "Back to the items" }).click();
+  await expect(tree).toBeVisible();
+  await expect(page.getByLabel("Public title", { exact: true })).toHaveCount(0);
 });

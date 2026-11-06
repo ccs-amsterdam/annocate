@@ -180,6 +180,12 @@
   ],
   "design": {
     "note": "Example: sentiment by swiping",
+    "session": {
+      "params": [],
+      "public": {
+        "title": "Good news, bad news"
+      }
+    },
     "items": [
       {
         "type": "unit_loop",
