@@ -122,7 +122,8 @@ export function DesignTreeView({
 
   return (
     <DesignTreeProvider value={state}>
-      {!readOnly && (
+      {/* Only while moving or with items ticked (or to add the first item); how to edit is behind the tree's info icon */}
+      {!readOnly && (moving || ticked.length > 0 || items.length === 0) && (
         <div className="sticky top-0 z-10 flex min-h-9 flex-wrap items-center gap-2 bg-card px-1 pb-1 text-xs text-muted-foreground">
           {moving ? (
             <>
@@ -156,8 +157,6 @@ export function DesignTreeView({
                 <X className="h-3.5 w-3.5" />
               </Button>
             </>
-          ) : items.length > 0 ? (
-            <span>Hover an item to add one below it, or tick items to move or delete them.</span>
           ) : (
             <AddItemMenu
               label="Add item"

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { CircleDot, FilePen, History, Sparkles } from "lucide-react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import type { DesignEditorMode } from "./DesignEditor";
 
 interface DesignStatusBannerProps {
@@ -43,16 +44,16 @@ export function DesignStatusBanner({
       <Banner
         tone="history"
         icon={History}
-        title={`Viewing v${openNumber}${openIsLive ? ", the live version" : ", an older version"}`}
+        title={`Viewing v${openNumber}${openIsLive ? " · live" : " · older version"} · read only`}
         actions={
           <>
             {onRestore && (
-              <Button size="sm" variant="outline" onClick={onRestore}>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onRestore}>
                 Restore as draft
               </Button>
             )}
             {onBackToCurrent && (
-              <Button size="sm" onClick={onBackToCurrent}>
+              <Button size="sm" className="h-7 text-xs" onClick={onBackToCurrent}>
                 Back to {draftNumber !== null ? "draft" : "current version"}
               </Button>
             )}
@@ -70,7 +71,7 @@ export function DesignStatusBanner({
       <Banner
         tone="live"
         icon={CircleDot}
-        title={openIsLive ? `v${openNumber} is live: coders are using it` : `v${openNumber} was deployed before`}
+        title={openIsLive ? `v${openNumber} · live` : `v${openNumber} · deployed before`}
       >
         It can't be changed anymore, so your edits are saved as a new draft.
         {openIsLive && ` Coders keep using v${openNumber} until you publish the draft.`}
@@ -82,7 +83,7 @@ export function DesignStatusBanner({
     <Banner
       tone="draft"
       icon={FilePen}
-      title={`Draft v${openNumber}: not live yet`}
+      title={`Draft v${openNumber} · not live yet`}
     >
       {liveNumber !== null
         ? `Coders are using v${liveNumber} until you deploy this draft.`
@@ -92,11 +93,12 @@ export function DesignStatusBanner({
 }
 
 const TONES = {
-  live: { box: "border-primary bg-primary/10", icon: "text-primary" },
-  draft: { box: "border-amber-500 bg-amber-500/10", icon: "text-amber-600 dark:text-amber-400" },
-  history: { box: "border-slate-400 bg-slate-500/10", icon: "text-slate-600 dark:text-slate-300" },
+  live: { box: "border-primary/40 bg-primary/10", icon: "text-primary" },
+  draft: { box: "border-amber-500/50 bg-amber-500/10", icon: "text-amber-600 dark:text-amber-400" },
+  history: { box: "border-slate-400/60 bg-slate-500/10", icon: "text-slate-600 dark:text-slate-300" },
 };
 
+/** A compact status chip: the title on one line, the explanation behind an info icon, actions beside it. */
 function Banner({
   tone,
   icon: Icon,
@@ -111,16 +113,13 @@ function Banner({
   children: ReactNode;
 }) {
   return (
-    <div
-      role="status"
-      className={cn("flex flex-wrap items-center gap-3 rounded-lg border-l-4 px-4 py-2.5", TONES[tone].box)}
-    >
-      <Icon className={cn("h-5 w-5 shrink-0", TONES[tone].icon)} />
-      <div className="min-w-0 flex-1 text-sm">
-        <div className="font-semibold text-foreground">{title}</div>
-        <div className="text-foreground/80">{children}</div>
-      </div>
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+    <div role="status" className="flex min-w-0 flex-wrap items-center gap-2">
+      <span className={cn("inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium text-foreground", TONES[tone].box)}>
+        <Icon className={cn("h-3.5 w-3.5 shrink-0", TONES[tone].icon)} />
+        <span className="truncate">{title}</span>
+        <InfoTip label="About this version">{children}</InfoTip>
+      </span>
+      {actions && <div className="flex shrink-0 items-center gap-1.5">{actions}</div>}
     </div>
   );
 }

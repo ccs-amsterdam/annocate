@@ -153,8 +153,9 @@ export function DesignEditor({
   }
 
   return (
-    <div className="flex h-full flex-col gap-3">
+    <div className="flex h-full min-h-0 flex-col gap-2">
       <EditorToolbar
+        status={banner}
         mode={mode}
         view={view}
         onViewChange={setView}
@@ -191,8 +192,6 @@ export function DesignEditor({
         }}
       />
 
-      {banner}
-
       {draft.saveError && <p className="text-sm text-destructive">{draft.saveError.message}</p>}
 
       <Dialog open={draft.conflict !== null} onOpenChange={(open) => !open && draft.dismissConflict()}>
@@ -222,11 +221,11 @@ export function DesignEditor({
       </Dialog>
 
       {view === "json" ? (
-        <div className="flex-1 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-hidden">
           <DesignJsonEditor items={draft.cleanItems} onChange={draft.replaceAll} disabled={readOnly} />
         </div>
       ) : (
-        <div className={cn("grid flex-1 gap-4 overflow-hidden", wide ? "grid-cols-[1fr_1.15fr_1fr]" : "grid-cols-2")}>
+        <div className={cn("grid min-h-0 flex-1 gap-3 overflow-hidden", wide ? "grid-cols-[1fr_1.15fr_1fr]" : "grid-cols-2")}>
           <TreePanel draft={draft} readOnly={readOnly} />
           <ItemPanel client={client} draft={draft} readOnly={readOnly} warnings={warnings} previewBeside={wide} />
           {wide && <PreviewPanel client={client} draft={draft} />}

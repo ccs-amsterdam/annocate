@@ -1,3 +1,4 @@
+import { InfoTip } from "@/components/ui/info-tip";
 import { flattenTree } from "../../../codebook/tree";
 import { DesignTreeView } from "../DesignTreeView";
 import type { DesignDraft } from "./useDesignDraft";
@@ -5,11 +6,12 @@ import type { DesignDraft } from "./useDesignDraft";
 /** Left column of the visual editor: the item tree. */
 export function TreePanel({ draft, readOnly }: { draft: DesignDraft; readOnly: boolean }) {
   return (
-    <div className="flex flex-col gap-2 overflow-auto rounded-xl border border-border bg-card px-1 pt-3 shadow-xs">
-      <div className="flex items-center justify-between border-b border-border/60 pb-2">
-        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          Codebook Items ({flattenTree(draft.items).length})
-        </span>
+    <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card px-1 pt-2 shadow-xs">
+      <div className="flex items-center gap-1 border-b border-border/60 px-2 pb-1.5">
+        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Items ({flattenTree(draft.items).length})</span>
+        {!readOnly && draft.items.length > 0 && (
+          <InfoTip label="How to edit the tree">Hover an item to add one below it, or tick items to move or delete them.</InfoTip>
+        )}
       </div>
 
       {draft.items.length === 0 && (
@@ -18,7 +20,7 @@ export function TreePanel({ draft, readOnly }: { draft: DesignDraft; readOnly: b
         </p>
       )}
 
-      <div className="flex-1 scroll-pt-10 overflow-y-auto">
+      <div className="min-h-0 flex-1 scroll-pt-10 overflow-y-auto">
         <DesignTreeView
           items={draft.items}
           selected={draft.selected}

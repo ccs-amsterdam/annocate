@@ -193,8 +193,8 @@ export function DesignManager({
   }
 
   return (
-    <div className="flex h-full flex-col gap-3">
-      <div className="flex-1 overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <DesignEditor
           key={`${openId ?? "new"}:${editorEpoch}`}
           client={client}

@@ -52,7 +52,7 @@ describe("help topics", () => {
         else if (anchor && !headingIds(topic.body).has(anchor)) problems.push(`${file}: no heading #${anchor} in ${slug}`);
       }
       // Topic maps (AdminApp's TAB_HELP): `Name: "slug"` entries
-      for (const block of source.matchAll(/_HELP[^=]*=\s*\{([^}]*)\}/g)) {
+      for (const block of source.matchAll(/const \w*_HELP[^=]*=\s*\{([^}]*)\}/g)) {
         for (const [, slug] of block[1].matchAll(/:\s*"([^"]+)"/g)) if (!helpTopic(parseHelpTarget(slug).slug)) problems.push(`${file}: no topic ${slug}`);
       }
     }

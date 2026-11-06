@@ -44,7 +44,8 @@ describe("DesignTreeView", () => {
     expect(html).toContain("sentiment");
     expect(html.match(/Add an item below/g)).toHaveLength(3);
     expect(html).toContain('aria-label="Select consent"');
-    expect(html).toContain("tick items to move or delete");
+    // How to edit is behind the tree's info icon (TreePanel), not a line above the items
+    expect(html).not.toContain("tick items to move or delete");
   });
 
   it("has no actions on a read-only codebook", () => {

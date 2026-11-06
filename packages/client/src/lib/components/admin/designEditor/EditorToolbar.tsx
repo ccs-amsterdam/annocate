@@ -1,5 +1,6 @@
 import { AlertCircle, AlertTriangle, ChevronDown, Code2, FileDown, History, Redo2, Rocket, RotateCcw, Sliders, Undo2, type LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { IconButton } from "@/components/ui/icon-button";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SegmentedToggle } from "./SegmentedToggle";
@@ -18,6 +19,8 @@ export interface EditorIssue {
 
 interface EditorToolbarProps {
   mode: DesignEditorMode;
+  /** Which version is open and whether coders use it (DesignStatusBanner), shown beside the view toggle. */
+  status?: ReactNode;
   view: EditorView;
   onViewChange: (view: EditorView) => void;
   /** Problems that block saving. */
@@ -71,14 +74,15 @@ export function EditorToolbar({
   onPublish,
   onOpenVersions,
   onExport,
+  status,
 }: EditorToolbarProps) {
   const [exportOpen, setExportOpen] = useState(false);
   const readOnly = mode === "history";
   const canPublish = !readOnly && valid && (dirty || mode === "draft");
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 pb-3">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <IssuesMenu issues={errors} label="issue" icon={AlertCircle} tone="bg-destructive/10 text-destructive" onOpen={onOpenIssue} />
         <IssuesMenu
           issues={warnings}
@@ -96,6 +100,7 @@ export function EditorToolbar({
             { value: "json", label: "JSON", icon: Code2 },
           ]}
         />
+        {status}
       </div>
 
       <div className="flex items-center gap-2">
@@ -114,10 +119,7 @@ export function EditorToolbar({
         {onExport && (
           <Popover open={exportOpen} onOpenChange={setExportOpen}>
             <PopoverTrigger asChild>
-              <Button type="button" variant="outline" size="sm" className="flex items-center gap-1.5">
-                <FileDown className="h-3.5 w-3.5" />
-                Export
-              </Button>
+              <IconButton icon={FileDown} label="Export" />
             </PopoverTrigger>
             <PopoverContent align="end" className="flex w-72 flex-col gap-1 p-1">
               <button type="button" className="rounded px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => {
@@ -141,10 +143,7 @@ export function EditorToolbar({
         )}
 
         {onOpenVersions && (
-          <Button type="button" variant="outline" size="sm" onClick={onOpenVersions} className="flex items-center gap-1.5">
-            <History className="h-3.5 w-3.5" />
-            Versions
-          </Button>
+          <IconButton icon={History} label="Versions" onClick={onOpenVersions} />
         )}
 
         {!readOnly && (

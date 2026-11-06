@@ -16,6 +16,8 @@ import { JobOverview, JobSettingsPage } from "./overview/JobOverview";
 import { JobPreview } from "./JobPreview";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
+import { CollapsibleHeader } from "../../hooks/useCollapsingChrome";
 import {
   ChevronLeft,
   LayoutDashboard,
@@ -292,116 +294,105 @@ function JobAdminView({
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background">
-      {/* Top Header / Breadcrumb */}
-      <header className="border-b border-border bg-card/60 px-4 py-3 backdrop-blur-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => requestNavigation(onBackToJobs)}
-              className="gap-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              All Jobs
-            </Button>
-            <span className="text-muted-foreground/50">/</span>
-
-            {/* Job Switcher Dropdown / Name */}
-            <div className="flex items-center gap-2">
+      {/* The job's header: back, which job, its sections; hides while scrolling down (useCollapsingChrome) */}
+      <CollapsibleHeader>
+        <header className="border-b border-border bg-card/60 px-3 backdrop-blur-sm sm:px-4">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
+            <div className="flex min-w-0 items-center gap-1">
+              <IconButton icon={ChevronLeft} label="All jobs" onClick={() => requestNavigation(onBackToJobs)} />
               <select
+                aria-label="Job"
                 value={client.jobId}
                 onChange={(e) => {
                   const newId = Number(e.target.value);
                   requestNavigation(() => onSwitchJob(newId));
                 }}
-                className="rounded-md border border-input bg-background px-2 py-1 text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                className="max-w-[16rem] truncate rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-input focus:border-input focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 {allJobsQuery.data?.map((j) => (
                   <option key={j.id} value={j.id}>
-                    {j.name} (#{j.id})
+                    {j.name}
                   </option>
                 ))}
               </select>
-
               {job?.archived && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                   <Archive className="h-3 w-3" /> Archived
                 </span>
               )}
             </div>
-          </div>
 
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={() => openHelp(TAB_HELP[tab])} className="gap-1.5 text-xs text-muted-foreground">
-              <CircleHelp className="h-3.5 w-3.5" />
-              Help
-            </Button>
-            <Button
-              variant={tab === "Preview" ? "default" : "outline"}
-              size="sm"
-              onClick={() => requestNavigation(() => onTabChange("Preview"))}
-              className="gap-1.5 text-xs"
-            >
-              <Play className="h-3.5 w-3.5 fill-current" />
-              Preview Job
-            </Button>
-          </div>
-        </div>
-
-        {/* Tab Navigation: the groups, and the active group's pages */}
-        <nav className="mt-3 flex gap-1 overflow-x-auto border-t border-border/40 pt-2" aria-label="Job">
-          {GROUPS.map((g) => {
-            const Icon = g.icon;
-            const active = g.pages.some((p) => p.id === tab);
-            return (
-              <button
-                key={g.label}
-                type="button"
-                aria-current={active ? "page" : undefined}
-                onClick={() => requestNavigation(() => onTabChange(g.pages[0].id))}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
-                  active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {g.label}
-              </button>
-            );
-          })}
-        </nav>
-        {(() => {
-          const group = GROUPS.find((g) => g.pages.some((p) => p.id === tab));
-          if (!group || group.pages.length < 2) return null;
-          return (
-            <nav className="mt-2 flex gap-1 overflow-x-auto" aria-label={group.label}>
-              {group.pages.map((p) => {
-                const Icon = p.icon;
-                const active = p.id === tab;
+            {/* The sections */}
+            <nav className="flex gap-0.5 overflow-x-auto" aria-label="Job">
+              {GROUPS.map((g) => {
+                const Icon = g.icon;
+                const active = g.pages.some((p) => p.id === tab);
                 return (
                   <button
-                    key={p.id}
+                    key={g.label}
                     type="button"
                     aria-current={active ? "page" : undefined}
-                    onClick={() => requestNavigation(() => onTabChange(p.id))}
-                    className={`flex items-center gap-1.5 border-b-2 px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap ${
-                      active ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                    onClick={() => requestNavigation(() => onTabChange(g.pages[0].id))}
+                    className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
+                      active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
-                    {p.label}
+                    {g.label}
                   </button>
                 );
               })}
             </nav>
-          );
-        })()}
-      </header>
+
+            <div className="ml-auto flex items-center gap-1">
+              <IconButton icon={CircleHelp} label="Help" onClick={() => openHelp(TAB_HELP[tab])} />
+              <Button
+                variant={tab === "Preview" ? "default" : "outline"}
+                size="sm"
+                onClick={() => requestNavigation(() => onTabChange("Preview"))}
+                className="h-8 gap-1.5 text-xs"
+              >
+                <Play className="h-3.5 w-3.5 fill-current" />
+                Preview
+              </Button>
+            </div>
+          </div>
+          {/* The active section's pages */}
+          {(() => {
+            const group = GROUPS.find((g) => g.pages.some((p) => p.id === tab));
+            if (!group || group.pages.length < 2) return null;
+            return (
+              <nav className="-mb-px flex gap-1 overflow-x-auto" aria-label={group.label}>
+                {group.pages.map((p) => {
+                  const Icon = p.icon;
+                  const active = p.id === tab;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      aria-current={active ? "page" : undefined}
+                      onClick={() => requestNavigation(() => onTabChange(p.id))}
+                      className={`flex items-center gap-1.5 border-b-2 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
+                        active ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </nav>
+            );
+          })()}
+        </header>
+      </CollapsibleHeader>
 
       {/* Main Tab Content */}
-      <main className="flex-1 overflow-auto p-4 sm:p-6">
+      {/* The editor fills the height, its panes scroll on their own; other pages scroll as a whole */}
+      <main className={tab === "Editor" ? "flex min-h-0 flex-1 flex-col overflow-hidden px-3 pt-2 pb-3 sm:px-4" : "min-h-0 flex-1 overflow-auto p-4 sm:p-6"}>
         {banner}
-        <PendingDeployBar client={client} />
+        {/* The editor has its own Deploy */}
+        {tab !== "Editor" && <PendingDeployBar client={client} />}
         {tab === "Overview" && (
           <JobOverview
             client={client}

@@ -1,3 +1,4 @@
+import { CollapsibleHeader, CollapsingChrome } from "./lib/hooks/useCollapsingChrome";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import {
   Link,
@@ -67,7 +68,7 @@ function AppHeader() {
   const nav = "rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
   const active = { className: "bg-muted text-foreground" };
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 shadow-sm">
+    <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 shadow-sm">
       <div className="flex flex-1 items-center gap-3">
         <Link to="/" className="flex items-center gap-2" aria-label="AnnoTinder home">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground">A</span>
@@ -94,11 +95,14 @@ function AppHeader() {
 
 /** A page with the app's header. */
 function WithHeader({ children }: { children: ReactNode }) {
+  // Scrolling down anywhere on the page hides the headers; scrolling up shows them (useCollapsingChrome)
   return (
-    <div className="flex h-screen flex-col overflow-clip bg-background text-foreground">
-      <AppHeader />
-      <div className="flex-1 overflow-auto">{children}</div>
-    </div>
+    <CollapsingChrome className="flex h-screen flex-col overflow-clip bg-background text-foreground">
+      <CollapsibleHeader>
+        <AppHeader />
+      </CollapsibleHeader>
+      <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+    </CollapsingChrome>
   );
 }
 

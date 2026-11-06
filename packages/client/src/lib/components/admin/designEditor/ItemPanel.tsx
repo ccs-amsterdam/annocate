@@ -45,16 +45,13 @@ export function ItemPanel({
   const itemWarnings = item ? warnings.filter((w) => w.item === itemTitle(item)) : [];
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+    <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs">
       {item ? (
-        <div className="flex h-full flex-col overflow-hidden">
-          <div className="flex items-center justify-between border-b border-border/80 bg-muted/30 p-3">
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Item Type</span>
-              <span className="mt-0.5 inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-semibold capitalize text-foreground shadow-2xs">
-                {item.type.replace("_", " ")}
-              </span>
-            </div>
+        <div className="flex h-full min-h-0 flex-col overflow-hidden">
+          <div className="flex items-center justify-between gap-2 border-b border-border/80 bg-muted/30 px-3 py-1.5">
+            <span className="inline-flex items-center rounded-md border border-border bg-background px-2 py-0.5 text-xs font-semibold capitalize text-foreground shadow-2xs" title="Item type">
+              {item.type.replace("_", " ")}
+            </span>
 
             <SegmentedToggle
               value={pane}
@@ -68,7 +65,7 @@ export function ItemPanel({
             />
           </div>
 
-          <div className={`flex-1 p-4 ${pane === "json" ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
+          <div className={`min-h-0 flex-1 p-4 ${pane === "json" ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
             {itemWarnings.length > 0 && (
               <ul className="mb-3 space-y-1 rounded-md bg-amber-500/10 p-2 text-xs text-foreground">
                 {itemWarnings.map((w) => (
@@ -177,7 +174,7 @@ function variableNames(items: TopLevelItem[]) {
 export function PreviewPanel({ client, draft }: { client: ResearcherApi; draft: DesignDraft }) {
   const item = draft.selectedItem;
   return (
-    <div className="flex flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-col overflow-hidden">
       {item ? (
         <ItemPreview key={getItemKey(item)} client={client} draft={draft} item={item} />
       ) : (
