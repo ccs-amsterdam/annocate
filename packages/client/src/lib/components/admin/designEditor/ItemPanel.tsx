@@ -9,12 +9,13 @@ import {
   type DesignItem,
   type TopLevelItem,
 } from "@annotinder/contracts";
-import { AlertTriangle, Code2, Edit3, Eye } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Code2, Edit3, Eye } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useSetGroupsQuery, useUnitFieldsQuery } from "../../../admin/queries";
 import { enclosingLoop, flattenTree, isInsideUnitLoop, issueIsAbout, itemPath } from "../../../codebook/tree";
 import { itemTitle } from "../../../codebook/conditions";
 import { ItemForm } from "../ItemForm";
+import { Button } from "@/components/ui/button";
 import { ItemPreview } from "./ItemPreview";
 import { getItemKey } from "../designTree/utils";
 import { SegmentedToggle } from "./SegmentedToggle";
@@ -31,6 +32,7 @@ export function ItemPanel({
   readOnly,
   warnings,
   previewBeside = false,
+  onBack,
 }: {
   client: ResearcherApi;
   draft: DesignDraft;
@@ -38,6 +40,8 @@ export function ItemPanel({
   warnings: UnitFieldWarning[];
   /** The preview has its own column (wide screens): no Preview pane here. */
   previewBeside?: boolean;
+  /** Narrow screens: back to the tree (the panes are shown one at a time). */
+  onBack?: () => void;
 }) {
   const [chosenPane, setPane] = useState<ItemPane>("edit");
   const pane: ItemPane = previewBeside && chosenPane === "preview" ? "edit" : chosenPane;
@@ -49,6 +53,12 @@ export function ItemPanel({
       {item ? (
         <div className="flex h-full min-h-0 flex-col overflow-hidden">
           <div className="flex items-center justify-between gap-2 border-b border-border/80 bg-muted/30 px-3 py-1.5">
+            {onBack && (
+              <Button type="button" variant="ghost" size="sm" className="-ml-2 h-7 gap-1 px-2" onClick={onBack} aria-label="Back to the items">
+                <ArrowLeft className="h-4 w-4" />
+                Items
+              </Button>
+            )}
             <span className="inline-flex items-center rounded-md border border-border bg-background px-2 py-0.5 text-xs font-semibold capitalize text-foreground shadow-2xs" title="Item type">
               {item.type.replace("_", " ")}
             </span>

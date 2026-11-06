@@ -67,6 +67,8 @@ interface DesignEditorProps {
  */
 /** Wide enough for the tree, the form and the preview side by side. */
 const WIDE_SCREEN = "(min-width: 1500px)";
+/** Phones: one pane at a time, the tree first; an item's form opens full width, with a way back. */
+const NARROW_SCREEN = "(max-width: 767px)";
 
 export function DesignEditor({
   client,
@@ -86,6 +88,9 @@ export function DesignEditor({
   const readOnly = mode === "history";
   const draft = useDesignDraft({ client, version, readOnly, onSaved, restore });
   const wide = useMediaQuery(WIDE_SCREEN);
+  const narrow = useMediaQuery(NARROW_SCREEN);
+  // On a narrow screen: the selected item, else the tree (Back deselects)
+  const showItemOnly = narrow && draft.selectedItem !== null;
   const [view, setView] = useState<EditorView>("tree");
   const unitFieldsQuery = useUnitFieldsQuery(client);
   const jobName = useJobQuery(client).data?.name;
@@ -225,9 +230,18 @@ export function DesignEditor({
           <DesignJsonEditor items={draft.cleanItems} onChange={draft.replaceAll} disabled={readOnly} />
         </div>
       ) : (
-        <div className={cn("grid min-h-0 flex-1 gap-3 overflow-hidden", wide ? "grid-cols-[1fr_1.15fr_1fr]" : "grid-cols-2")}>
-          <TreePanel draft={draft} readOnly={readOnly} />
-          <ItemPanel client={client} draft={draft} readOnly={readOnly} warnings={warnings} previewBeside={wide} />
+        <div className={cn("grid min-h-0 flex-1 gap-3 overflow-hidden", narrow ? "grid-cols-1" : wide ? "grid-cols-[1fr_1.15fr_1fr]" : "grid-cols-2")}>
+          {!showItemOnly && <TreePanel draft={draft} readOnly={readOnly} />}
+          {(!narrow || showItemOnly) && (
+            <ItemPanel
+              client={client}
+              draft={draft}
+              readOnly={readOnly}
+              warnings={warnings}
+              previewBeside={wide}
+              onBack={narrow ? () => draft.select(null) : undefined}
+            />
+          )}
           {wide && <PreviewPanel client={client} draft={draft} />}
         </div>
       )}
