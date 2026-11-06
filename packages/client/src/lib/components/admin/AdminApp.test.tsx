@@ -70,13 +70,13 @@ const stubClient: ResearcherApi = {
 
 describe("AdminApp", () => {
   it("renders the JobList view without throwing while jobs query is pending", () => {
-    const html = renderToStaticMarkup(<AdminApp client={stubClient} baseUrl="http://localhost:8787" />);
+    const html = renderToStaticMarkup(<AdminApp client={stubClient} location={{ page: "jobs" }} onNavigate={() => {}} />);
     expect(html).toContain("Loading jobs");
   });
 
   it("renders a selected job view without throwing", () => {
     const html = renderToStaticMarkup(
-      <AdminApp client={stubClient} initialJobId={1} baseUrl="http://localhost:8787" />,
+      <AdminApp client={stubClient} location={{ page: "job", jobId: 1, tab: "Overview" }} onNavigate={() => {}} />,
     );
     expect(html).toContain("Design");
     expect(html).toContain("Deploy");

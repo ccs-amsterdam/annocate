@@ -15,7 +15,7 @@ export async function api<T>(request: APIRequestContext, method: string, path: s
 export async function fromExample(request: APIRequestContext, example: string): Promise<{ job: JobResponse; link: string }> {
   const job = await api<JobResponse>(request, "POST", "/job/from-example", { example });
   const [invite] = await api<{ secret: string }[]>(request, "GET", `/job/${job.id}/links`);
-  return { job, link: `/?deployment=${job.id}&invite=${invite.secret}` };
+  return { job, link: `/code/${job.id}?link=${invite.secret}` };
 }
 
 export async function answers(request: APIRequestContext, jobId: number): Promise<AnnotationRow[]> {

@@ -39,10 +39,9 @@ const redemptions = new Map<string, Promise<void>>();
  * of the link).
  */
 export function defaultTransferUrl(token: string): string {
+  // This page (`/code/<deployment>`), with only the transfer token
   const url = new URL(window.location.href);
-  const deployment = url.searchParams.get("deployment");
   url.search = "";
-  if (deployment) url.searchParams.set("deployment", deployment);
   url.searchParams.set("transfer", token);
   return url.toString();
 }
@@ -69,4 +68,9 @@ export async function loginAvailable(): Promise<boolean> {
 /** Logs out (to log in with another account). */
 export async function logOut(): Promise<void> {
   await fetch("/api/auth/logout", { method: "POST", headers: { "x-annotinder": "1" }, credentials: "same-origin" });
+}
+
+/** A coder link's URL (`/code/<deployment>?link=<secret>`): what researchers send coders (docs/coder-identity.md). */
+export function codeLinkUrl(deploymentId: number, secret: string): string {
+  return `${window.location.origin}/code/${deploymentId}?link=${encodeURIComponent(secret)}`;
 }

@@ -6,7 +6,7 @@ import { api } from "./helpers";
 // with a draft codebook, opened in the editor to specify the questions.
 
 test("annotation with an experiment: a set of units per condition, questions before, per unit and after", async ({ page, request }) => {
-  await page.goto("/");
+  await page.goto("/research");
   await page.getByRole("button", { name: /Create new job/ }).click();
   await page.getByRole("menuitem", { name: /Guided setup/ }).click();
   await page.getByLabel("Job name").fill("Framing study");
@@ -76,7 +76,7 @@ test("annotation with an experiment: a set of units per condition, questions bef
 });
 
 test("a survey alone: questions by name, no units", async ({ page, request }) => {
-  await page.goto("/");
+  await page.goto("/research");
   await page.getByRole("button", { name: /Create new job/ }).click();
   await page.getByRole("menuitem", { name: /Guided setup/ }).click();
   await page.getByLabel("Job name").fill("Opinion survey");
@@ -94,7 +94,7 @@ test("a survey alone: questions by name, no units", async ({ page, request }) =>
 });
 
 test("crowd coding with an overlap; the loop's units are set by the wizard", async ({ page, request }) => {
-  await page.goto("/");
+  await page.goto("/research");
   await page.getByRole("button", { name: /Create new job/ }).click();
   await page.getByRole("menuitem", { name: /Guided setup/ }).click();
   await page.getByLabel("Job name").fill("Crowd pilot");

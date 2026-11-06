@@ -480,7 +480,7 @@ async function findOrCreateCoder(
   const emails = link.emails?.length ? link.emails.map((e) => e.toLowerCase()) : null;
   if ((link.auth === "required" || emails) && !login) throw new HttpError(401, "This link requires login", "auth_required");
   if (emails && login && !emails.includes(login.email.toLowerCase())) {
-    throw new HttpError(403, "This link is for other email addresses", "email_not_invited");
+    throw new HttpError(403, "This link is for other email addresses", "email_not_allowed");
   }
   // Revoked or retired: no new sessions, also not for a known participant (existing sessions go on).
   if (link.revoked_at !== null) throw new HttpError(401, "This link has been revoked");

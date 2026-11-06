@@ -40,7 +40,7 @@ test("a coder continues on another device with the transfer link", async ({ page
   await page.getByRole("button", { name: "Continue on another device" }).click();
   const transferLink = await page.locator("input[readonly]").inputValue();
   expect(transferLink).toContain("transfer=");
-  expect(transferLink).not.toContain("invite=");
+  expect(transferLink).not.toContain("link=");
 
   const phone = await (await browser.newContext()).newPage();
   await phone.goto(transferLink);

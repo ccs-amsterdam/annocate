@@ -114,7 +114,7 @@ In R, with the httr2 package:
 ```r
 library(httr2)
 
-server <- "https://annotinder.example.org"
+server <- "https://annotinder.example.org/api"
 job <- 12
 api <- function(path) {
   request(server) |>
@@ -189,7 +189,7 @@ The same in Python, with requests:
 ```python
 import os, requests
 
-server, job = "https://annotinder.example.org", 12
+server, job = "https://annotinder.example.org/api", 12
 headers = {"Authorization": f"Bearer {os.environ['ANNOTINDER_KEY']}"}
 
 rows, after = [], None

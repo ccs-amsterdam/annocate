@@ -288,7 +288,7 @@ function JobRunnerContent({
     return <LoginNotice />;
   }
 
-  if (snapshot.phase === "error" && snapshot.errorCode === "email_not_invited") {
+  if (snapshot.phase === "error" && snapshot.errorCode === "email_not_allowed") {
     return (
       <SessionNotice title="This email address has no access to this study">
         <p>The researchers invited specific email addresses, and the account you are logged in with isn&apos;t one of them.</p>

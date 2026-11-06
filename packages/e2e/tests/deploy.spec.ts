@@ -24,13 +24,13 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
 
   // A coder gets only the deployed unit
   const coder = await (await browser.newContext()).newPage();
-  await coder.goto(`/?deployment=${job.id}&invite=${link.secret}`);
+  await coder.goto(`/code/${job.id}?link=${link.secret}`);
   await expect(coder.getByText("First text")).toBeVisible();
   await coder.getByRole("button", { name: "1 politics" }).click();
   await expect(coder.getByText(/completed|Thank you/i).first()).toBeVisible();
 
   // The researcher sees what isn't deployed, and deploys the units
-  await page.goto("/");
+  await page.goto("/research");
   await page.getByText("Draft units").click();
   await expect(page.getByText(/Not deployed yet:.*1 added/)).toBeVisible();
   await page.getByRole("button", { name: "Deploy…" }).click();
@@ -43,7 +43,7 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
 
   // A new coder gets both
   const second = await (await browser.newContext()).newPage();
-  await second.goto(`/?deployment=${job.id}&invite=${link.secret}`);
+  await second.goto(`/code/${job.id}?link=${link.secret}`);
   await expect(second.getByText("First text")).toBeVisible();
   await second.getByRole("button", { name: "1 politics" }).click();
   await expect(second.getByText("Second text")).toBeVisible();
@@ -70,7 +70,7 @@ test("the design's unit fields: how the codebook uses each, removing an unused o
     ],
   });
 
-  await page.goto("/");
+  await page.goto("/research");
   await page.getByText("Field use").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
   await page.getByRole("button", { name: "Units", exact: true }).click();
@@ -90,7 +90,7 @@ test("export: the codebook as a document (what coders see), and the design file"
   await api(request, "POST", `/job/${job.id}/design`, {
     items: [{ type: "question", name: "age", variable: { type: "numeric", question: "How old are you?", min: 18 } }],
   });
-  await page.goto("/");
+  await page.goto("/research");
   await page.getByText("Codebook export").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
   const exported = async (choice: RegExp) => {
@@ -132,7 +132,7 @@ test("panel return links are settings of the run, filled in for coders", async (
       { type: "end", name: "done", outcome: "complete", redirectSetting: "panel_done" },
     ],
   });
-  await page.goto("/");
+  await page.goto("/research");
   await page.getByText("Panel run").click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByLabel("URL for panel_done").fill("https://panel.example/done");
@@ -147,7 +147,7 @@ test("a link per value of a URL parameter, built in the browser", async ({ page,
     items: [{ type: "question", name: "ok", variable: { type: "confirm", question: "Ready?" } }],
   });
   await api(request, "PUT", `/job/${job.id}/deployment`, { designVersionId: codebook.id });
-  await page.goto("/");
+  await page.goto("/research");
   await page.getByText("Schools").click();
   await page.getByRole("button", { name: "Deploy", exact: true }).click();
   await page.getByRole("button", { name: "Links", exact: true }).click();

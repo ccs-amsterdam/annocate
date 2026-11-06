@@ -7,7 +7,7 @@ import { answers, api, question } from "./helpers";
 // link per set, and a coder gets their link's set, with the overlap.
 
 test("a sets column makes a group; a link per set; a coder codes their link's set and the overlap", async ({ page, request, browser }) => {
-  await page.goto("/");
+  await page.goto("/research");
   await page.getByRole("button", { name: /Create new job/ }).click();
   await page.getByRole("menuitem", { name: /Empty job/ }).click();
   await page.getByPlaceholder(/Sentiment Analysis/).fill("Expert coders");
@@ -60,7 +60,7 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
 
   // A coder with the s2 link: the overlap unit, then their own
   const coder = await (await browser.newContext()).newPage();
-  await coder.goto(`/?deployment=${job.id}&invite=${s2.secret}`);
+  await coder.goto(`/code/${job.id}?link=${s2.secret}`);
   for (const text of ["Shared text", "Second text"]) {
     await question(coder, "Topic?");
     await expect(coder.getByText(text)).toBeVisible();

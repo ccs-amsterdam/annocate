@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DesignVersion } from "@annotinder/contracts";
 import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
 import {
@@ -29,6 +29,10 @@ interface DesignManagerProps {
   initialVersionId?: number | null;
   /** Unsaved edits from an earlier session to continue with (localBackup.ts): opens their version. */
   restore?: DesignBackup | null;
+  /** The version to open by its number (v1, v2, ...: the URL's `?version=`), if not `initialVersionId`. */
+  initialVersion?: number;
+  /** The open version changed: its number, or undefined for the current version (the URL follows). */
+  onVersionChange?: (version: number | undefined) => void;
 }
 
 /**
@@ -40,17 +44,37 @@ interface DesignManagerProps {
  * version, if not yet deployed), and everything else is read-only history.
  * Deploying makes the draft live, which also freezes it.
  */
-export function DesignManager({ client, onDirtyChange, registerSave, initialVersionId = null, restore = null }: DesignManagerProps) {
+export function DesignManager({
+  client,
+  onDirtyChange,
+  registerSave,
+  initialVersionId = null,
+  restore = null,
+  initialVersion,
+  onVersionChange,
+}: DesignManagerProps) {
   const designVersionsQuery = useDesignVersionsQuery(client);
   const deploymentQuery = useDeploymentQuery(client);
   const designVersions = designVersionsQuery.data ?? [];
   const versions = describeVersions(designVersions, deploymentQuery.data?.designVersionId ?? null);
 
   // The version shown in the editor; null follows the current version (draft, else latest)
-  const [selectedId, setSelectedId] = useState<number | null>(restore ? restore.designVersionId : initialVersionId);
+  // (undefined: the URL's version number, `initialVersion`, once the versions are known)
+  const [chosenId, setSelectedId] = useState<number | null | undefined>(
+    restore ? restore.designVersionId : initialVersionId !== null ? initialVersionId : initialVersion !== undefined ? undefined : null,
+  );
+  const urlId = designVersionsQuery.data ? (designVersionsQuery.data[(initialVersion ?? 0) - 1]?.id ?? null) : undefined;
+  const selectedId = chosenId !== undefined ? chosenId : urlId === undefined ? null : urlId === versions.currentId ? null : urlId;
+  const fromUrl = chosenId === undefined && urlId === undefined;
   // The backup is used by the first editor only: later ones start from what is saved
   const [pendingRestore, setPendingRestore] = useState(restore);
-  const openId = selectedId ?? versions.currentId;
+  // The open version, in the URL (the current one: none)
+  const shownNumber = selectedId === null ? undefined : (versions.numberOf(selectedId) ?? undefined);
+  useEffect(() => {
+    if (!fromUrl) onVersionChange?.(shownNumber);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the open version changes
+  }, [shownNumber, fromUrl]);
+  const openId = fromUrl ? null : (selectedId ?? versions.currentId);
   const openQuery = useDesignVersionQuery(client, openId);
   const liveQuery = useDesignVersionQuery(client, versions.liveId);
 
@@ -159,7 +183,7 @@ export function DesignManager({ client, onDirtyChange, registerSave, initialVers
     setEditorEpoch((n) => n + 1);
   }
 
-  if (designVersionsQuery.isLoading || deploymentQuery.isLoading || (openId !== null && !openVersion)) {
+  if (fromUrl || designVersionsQuery.isLoading || deploymentQuery.isLoading || (openId !== null && !openVersion)) {
     return (
       <div className="flex h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin text-primary" />

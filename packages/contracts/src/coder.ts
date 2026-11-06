@@ -10,7 +10,7 @@ import { VariableValueSchema } from "./variableValue.js";
 export const CoderResponseSchema = z.object({
   id: IdSchema,
   jobId: IdSchema,
-  /** Present if the coder authenticated (e.g. via an email-linked invite); absent for fully anonymous coders. */
+  /** Present if the coder authenticated (e.g. via a link that requires a login); absent for fully anonymous coders. */
   email: z.string().email().optional(),
   variables: z.record(z.string(), VariableValueSchema),
 });
@@ -25,7 +25,7 @@ export const CoderProgressSchema = z.object({
   /** The link the coder came in through; null for coders from before this was recorded. */
   linkId: IdSchema.nullable(),
   linkLabel: z.string().nullable(),
-  /** When the coder was created (first opened the invite); null if unknown. */
+  /** When the coder was created (first opened the link); null if unknown. */
   started: z.coerce.date().nullable(),
   /** Their latest answer; null if they haven't answered anything yet. */
   lastActive: z.coerce.date().nullable(),
@@ -40,7 +40,7 @@ export const CoderProgressSchema = z.object({
    * routing, or in loops without a group).
    */
   special: z.partialRecord(z.enum(["overlap", "gold", "practice"]), z.object({ done: z.number().int().nonnegative(), total: z.number().int().nonnegative() })),
-  /** Coder-level values: answers outside unit loops, and `auto` variables (invite presets, random, URL). */
+  /** Coder-level values: answers outside unit loops, and `auto` variables (link presets, random, URL). */
   variables: z.record(z.string(), VariableValueSchema),
   /** Set if the coder's session ended at an `end` item (screened out or complete), or they quit. */
   ended: SessionEndSchema.nullable(),

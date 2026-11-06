@@ -23,6 +23,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@simplewebauthn/browser": "14.0.0",
     "@tanstack/react-query": "^5.62.8",
+    "@tanstack/react-router": "1.170.46",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "cn": "^0.3.0",

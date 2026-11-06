@@ -31,7 +31,7 @@ export async function finishedPerLoop(sql: Sql, jobId: number): Promise<Map<stri
   return result;
 }
 
-/** `GET /coders`: every coder of the job with their invite, activity and finished units. */
+/** `GET /coders`: every coder of the job with their link, activity and finished units. */
 export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderProgress[]> {
   const coders = await sql.query<{
     id: number;

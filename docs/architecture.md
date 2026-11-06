@@ -249,7 +249,7 @@ units:
   value names: a set-typed link or URL parameter of the group (§7), the
   `participant` id, or the login `email` (login required; only emails that
   are set names of the group can start, others get 403
-  `email_not_invited`). A value that names no set gives no units.
+  `email_not_allowed`). A value that names no set gives no units.
 
 **Overlap.** The group's `_overlap` units, which every coder of the branch
 codes in full besides their own units, e.g. for intercoder reliability

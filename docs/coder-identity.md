@@ -170,11 +170,11 @@ on another device. Code: `coder.ts` (the session middleware),
 - **Required.** `required` (or an `emails` list) without a login: 401
   `auth_required`; the client offers the login, which comes back to the same
   page, and the new session gets the email. A login not on the `emails`
-  list: 403 `email_not_invited`.
+  list: 403 `email_not_allowed`.
 - **Sets by email.** A codebook whose unit loop assigns sets by the login's
   email (`from: { session: "email" }`) requires login on every link, and
   only emails that are set names of that group can start; others get 403
-  `email_not_invited` ("This email address has no access to this study").
+  `email_not_allowed` ("This email address has no access to this study").
 - **Optional.** `GET /session` says `canLogIn` (the server offers a login,
   the link is `optional`, the session has no email). Logging in links the
   email to the session on this device.

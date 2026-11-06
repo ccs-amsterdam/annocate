@@ -37,7 +37,7 @@ server sends no CORS headers for these paths.
 Headers:
 
 - `x-annotinder: 1` on every request (CSRF: cross-site forms can't send it);
-- `x-link-secret` from the URL (the link): create the coder on first
+- `x-link-secret` from the URL (the link, `/code/<deployment>?link=<secret>`): create the coder on first
   use. A retired link (no longer part of the deployed design) is 403
   `link_inactive` for new sessions;
 - `x-url-params`: the page's other query parameters. They hold the URL
@@ -52,7 +52,7 @@ Headers:
 - the login cookie (`annotinder_session`, from `/auth/login`): read only to
   link the session to its email once, or to find the email's session on a
   new device (`coder-identity.md` §5); 401 `auth_required` where a login is
-  required, 403 `email_not_invited` for a login not on the link's list, or
+  required, 403 `email_not_allowed` for a login not on the link's list, or
   (sets assigned by email) not among the group's set names;
 - `x-annotinder-version`: the `version` of the loaded session (below).
 

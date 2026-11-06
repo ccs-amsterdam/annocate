@@ -75,7 +75,7 @@ export interface ResolveCoderRequest {
   coderKey: string;
   /** The device's details, stored when the device joins a session. */
   device?: DeviceDetails;
-  /** Required the first time a coder key is seen, to create the coder from an invite. */
+  /** Required the first time a coder key is seen, to create the coder from a link. */
   linkSecret?: string;
   /** The page's URL parameters: the participant id and the codebook's URL parameters (`sessionValues`). */
   urlParams?: Record<string, string>;

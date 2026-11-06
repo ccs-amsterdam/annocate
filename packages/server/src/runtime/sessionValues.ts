@@ -22,7 +22,7 @@ const fits = (value: string, pattern?: string) => !pattern || new RegExp(`^(?:${
  * required URL parameter or one with a value the codebook doesn't accept is
  * refused (400 `url_param_missing` / `url_param_invalid`), so such a link
  * doesn't start. With email-assigned sets, only their emails may start
- * (401 `auth_required` without a login, 403 `email_not_invited`).
+ * (401 `auth_required` without a login, 403 `email_not_allowed`).
  */
 export function sessionValues(
   rules: SessionRules,
@@ -71,7 +71,7 @@ export function sessionValues(
     if (!email) throw new HttpError(401, "This study requires login", "auth_required");
     const lower = email.toLowerCase();
     const known = rules.emailGroups.every((g) => rules.setsOf(g).some((s) => s.toLowerCase() === lower));
-    if (!known) throw new HttpError(403, "This email address has no access to this study", "email_not_invited");
+    if (!known) throw new HttpError(403, "This email address has no access to this study", "email_not_allowed");
   }
   return { participantId, session };
 }

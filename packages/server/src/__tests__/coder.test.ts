@@ -510,7 +510,7 @@ describe("assigned sets", () => {
       devices.set(device, { cookies: new Map([["annotinder_session", await createSession(db, user.id)]]), invite: null });
     };
     await login("stranger", "c@example.org");
-    expect(await (await send("stranger", "/session", {}, { "x-link-secret": "demo-secret" })).json()).toMatchObject({ code: "email_not_invited" });
+    expect(await (await send("stranger", "/session", {}, { "x-link-secret": "demo-secret" })).json()).toMatchObject({ code: "email_not_allowed" });
     await login("b", "B@example.org");
     expect((await coder("b").next())!.externalId).toBe("unit-2");
   });
@@ -1055,7 +1055,7 @@ describe("coder login", () => {
     const secret = await link({ emails: ["b@example.org"] });
     expect(await session("nobody", secret)).toMatchObject({ status: 401, body: { code: "auth_required" } });
     await loggedIn("other", "a@example.org");
-    expect(await session("other", secret)).toMatchObject({ status: 403, body: { code: "email_not_invited" } });
+    expect(await session("other", secret)).toMatchObject({ status: 403, body: { code: "email_not_allowed" } });
     await loggedIn("invited", "b@example.org");
     expect((await session("invited", secret)).status).toBe(200);
   });

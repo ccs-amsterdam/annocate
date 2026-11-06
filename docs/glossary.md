@@ -51,8 +51,8 @@ public researcher API, so the R/Python clients follow):
    `design_conflict`. Kept: the coder API's `codebook_changed` and the
    session's `codebook` (that is the coders' codebook).
 2. Done: `/invites` → `/links`, table `invites` → `links`, `CoderInvite*` → `Link*`.
-   Kept: the coder URL parameter `?invite=<secret>` (links already sent out
-   keep working) and the error code `email_not_invited`.
+   Coder links are `/code/<deployment>?link=<secret>`; a link that only
+   some emails may use answers `email_not_allowed` to others.
 3. Done: `unitset` → `set` in `SourceStatus` and the distribution tables.
 4. Done: client `codebook/` holds the coding runtime (templates, conditions,
    expressions, the item tree); the editor's helpers moved to `design/`

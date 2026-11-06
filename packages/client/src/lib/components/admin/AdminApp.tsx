@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { LinkResponse, MeResponse } from "@annotinder/contracts";
+import type { MeResponse } from "@annotinder/contracts";
 import type { ServerApi } from "../../api/serverApi";
 import { ServerAdmin } from "./server/ServerAdmin";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
@@ -38,7 +38,33 @@ import { PendingDeployBar } from "./PendingDeployBar";
 import { openHelp } from "../../help/helpStore";
 
 /** The job's pages. Preview is opened with the Preview Job button, not from the tabs. */
-type TabId = "Overview" | "Editor" | "Units" | "Links" | "Coders" | "Results" | "Settings" | "Preview";
+export type TabId = "Overview" | "Editor" | "Units" | "Links" | "Coders" | "Results" | "Settings" | "Preview";
+
+/** Each page's name in the URL (`/research/jobs/<id>/<slug>`). */
+export const TAB_SLUGS: Record<TabId, string> = {
+  Overview: "overview",
+  Editor: "editor",
+  Units: "units",
+  Links: "links",
+  Coders: "coders",
+  Results: "results",
+  Settings: "settings",
+  Preview: "preview",
+};
+
+/**
+ * Where the researcher is (the app's URL, router.tsx): the jobs, the server
+ * admin's page, or a job's page (the editor on a version: its number, v1, v2, ...).
+ */
+export type AdminLocation = { page: "jobs" } | { page: "server" } | { page: "job"; jobId: number; tab: TabId; version?: number };
+
+/**
+ * Asks before leaving a page with unsaved edits (when `when`), e.g. the
+ * router's blocker: `blocked` while it waits for an answer, then `proceed`
+ * or `stay`. Without one (tests), nothing is asked.
+ */
+export type LeaveGuard = (when: boolean) => { blocked: boolean; proceed: () => void; stay: () => void };
+const noGuard: LeaveGuard = () => ({ blocked: false, proceed: () => {}, stay: () => {} });
 
 /**
  * The tabs, grouped: designing the job (codebook, units), deploying it
@@ -83,25 +109,24 @@ const defaultQueryClient = new QueryClient();
 
 export function AdminApp({
   client,
-  baseUrl,
-  initialJobId,
+  location,
+  onNavigate,
+  useLeaveGuard = noGuard,
   queryClient,
-  linkUrl,
   coderApiUrl,
   server,
   me,
 }: {
   client: ResearcherApi;
-  /** The researcher API's base URL. */
-  baseUrl: string;
   /** Accounts and the server admin's page (docs/accounts.md); without it, neither is shown. */
   server?: ServerApi;
   /** Who is logged in: their account role and limits. */
   me?: MeResponse | null;
-  initialJobId?: number;
+  /** Where the researcher is, and going elsewhere (`replace`: without a history entry). */
+  location: AdminLocation;
+  onNavigate: (to: AdminLocation, options?: { replace?: boolean }) => void;
+  useLeaveGuard?: LeaveGuard;
   queryClient?: QueryClient;
-  /** Builds the URL coders open for a link (host-app specific). */
-  linkUrl?: (invite: LinkResponse) => string;
   /** Where coder sessions run (`<url>/d/...`), for previews; normally the client's own origin (""), since their cookies are same-origin. */
   coderApiUrl?: string;
 }) {
@@ -109,9 +134,9 @@ export function AdminApp({
     <QueryClientProvider client={queryClient ?? defaultQueryClient}>
       <AdminAppInner
         client={client}
-        baseUrl={baseUrl}
-        initialJobId={initialJobId}
-        linkUrl={linkUrl}
+        location={location}
+        onNavigate={onNavigate}
+        useLeaveGuard={useLeaveGuard}
         coderApiUrl={coderApiUrl}
         server={server}
         initialMe={me ?? null}
@@ -123,25 +148,24 @@ export function AdminApp({
 
 function AdminAppInner({
   client,
-  baseUrl,
-  initialJobId,
-  linkUrl,
+  location,
+  onNavigate,
+  useLeaveGuard,
   coderApiUrl,
   server,
   initialMe,
 }: {
   client: ResearcherApi;
-  baseUrl: string;
-  initialJobId?: number;
-  linkUrl?: (invite: LinkResponse) => string;
+  location: AdminLocation;
+  onNavigate: (to: AdminLocation, options?: { replace?: boolean }) => void;
+  useLeaveGuard: LeaveGuard;
   coderApiUrl?: string;
   server?: ServerApi;
   initialMe: MeResponse | null;
 }) {
-  const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId ?? null);
+  const selectedJobId = location.page === "job" ? location.jobId : null;
   const [me, setMe] = useState(initialMe);
-  const [serverPage, setServerPage] = useState(false);
-  const [tab, setTab] = useState<TabId>("Overview");
+  const serverPage = location.page === "server";
   // Unsaved codebook edits from an earlier session (localBackup.ts), read once
   const [backup, setBackup] = useState(() => readBackup());
   const [restore, setRestore] = useState<DesignBackup | null>(null);
@@ -150,8 +174,7 @@ function AdminAppInner({
       client={client}
       backup={backup}
       onContinue={() => {
-        setSelectedJobId(backup.jobId);
-        setTab("Editor");
+        onNavigate({ page: "job", jobId: backup.jobId, tab: "Editor" });
         setRestore(backup);
         setBackup(null);
       }}
@@ -169,23 +192,20 @@ function AdminAppInner({
     return client.forJob(selectedJobId);
   }, [client, selectedJobId]);
 
-  if (selectedJobId === null || !jobClient) {
+  if (location.page !== "job" || !jobClient) {
     return (
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         {banner}
         {serverPage && server ? (
-          <ServerAdmin server={server} onBack={() => setServerPage(false)} />
+          <ServerAdmin server={server} onBack={() => onNavigate({ page: "jobs" })} />
         ) : (
           <JobList
             client={client}
-            onSelectJob={(id, open) => {
-              setSelectedJobId(id);
-              if (open === "editor") setTab("Editor");
-            }}
+            onSelectJob={(id, open) => onNavigate({ page: "job", jobId: id, tab: open === "editor" ? "Editor" : "Overview" })}
             me={me}
             server={server}
             onMe={setMe}
-            onOpenServerAdmin={() => setServerPage(true)}
+            onOpenServerAdmin={() => onNavigate({ page: "server" })}
           />
         )}
       </div>
@@ -198,13 +218,14 @@ function AdminAppInner({
       restore={restore && restore.jobId === selectedJobId ? restore : null}
       client={jobClient}
       rootClient={client}
-      baseUrl={baseUrl}
-      linkUrl={linkUrl}
       coderApiUrl={coderApiUrl}
-      tab={tab}
-      onTabChange={setTab}
-      onBackToJobs={() => setSelectedJobId(null)}
-      onSwitchJob={(id) => setSelectedJobId(id)}
+      tab={location.tab}
+      version={location.version}
+      onTabChange={(tab) => onNavigate({ page: "job", jobId: location.jobId, tab })}
+      onVersionChange={(version) => onNavigate({ page: "job", jobId: location.jobId, tab: "Editor", version }, { replace: true })}
+      onBackToJobs={() => onNavigate({ page: "jobs" })}
+      onSwitchJob={(id) => onNavigate({ page: "job", jobId: id, tab: location.tab === "Preview" ? "Overview" : location.tab })}
+      useLeaveGuard={useLeaveGuard}
     />
   );
 }
@@ -214,13 +235,14 @@ function JobAdminView({
   restore,
   client,
   rootClient,
-  baseUrl,
-  linkUrl,
   coderApiUrl,
   tab,
+  version,
   onTabChange,
+  onVersionChange,
   onBackToJobs,
   onSwitchJob,
+  useLeaveGuard,
 }: {
   /** Offers unsaved codebook edits from an earlier session, if any. */
   banner: ReactNode;
@@ -228,20 +250,23 @@ function JobAdminView({
   restore: DesignBackup | null;
   client: ResearcherApi;
   rootClient: ResearcherApi;
-  baseUrl: string;
-  linkUrl?: (invite: LinkResponse) => string;
   coderApiUrl?: string;
   tab: TabId;
+  /** The editor's version (its number), from the URL. */
+  version?: number;
   onTabChange: (tab: TabId) => void;
+  onVersionChange: (version: number | undefined) => void;
   onBackToJobs: () => void;
   onSwitchJob: (jobId: number) => void;
+  useLeaveGuard: LeaveGuard;
 }) {
   const jobQuery = useJobQuery(client);
   const allJobsQuery = useJobsQuery(rootClient);
   const job = jobQuery.data;
 
   const [isDesignDirty, setIsDesignDirty] = useState(false);
-  const [pendingNav, setPendingNav] = useState<(() => void) | null>(null);
+  // Leaving the editor with unsaved edits (a tab, another job, the browser's back button): asked first
+  const leave = useLeaveGuard(isDesignDirty && tab === "Editor");
   const saveDesign = useRef<SaveFn | null>(null);
   // A design version to open, from the overview; `n` remounts the manager on each request
   const [designTarget, setDesignTarget] = useState<{ id: number; n: number } | null>(null);
@@ -254,9 +279,7 @@ function JobAdminView({
     try {
       await saveDesign.current?.();
       setIsDesignDirty(false);
-      const nav = pendingNav;
-      setPendingNav(null);
-      nav?.();
+      leave.proceed();
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -264,13 +287,8 @@ function JobAdminView({
     }
   }
 
-  function requestNavigation(action: () => void) {
-    if (isDesignDirty && tab === "Editor") {
-      setPendingNav(() => action);
-    } else {
-      action();
-    }
-  }
+  // Navigation goes through the URL; the guard asks first when the editor has unsaved edits
+  const requestNavigation = (action: () => void) => action();
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background">
@@ -399,6 +417,8 @@ function JobAdminView({
           <DesignManager
             key={`${designTarget?.n ?? 0}:${restore?.at ?? ""}`}
             initialVersionId={designTarget?.id ?? null}
+            initialVersion={version}
+            onVersionChange={onVersionChange}
             restore={restore}
             client={client}
             onDirtyChange={setIsDesignDirty}
@@ -408,7 +428,7 @@ function JobAdminView({
           />
         )}
         {tab === "Units" && <UnitsPage client={client} />}
-        {tab === "Links" && <LinksPanel client={client} baseUrl={baseUrl} linkUrl={linkUrl} />}
+        {tab === "Links" && <LinksPanel client={client} />}
         {tab === "Coders" && <CodersPanel client={client} />}
         {tab === "Results" && <ResultsPanel client={client} />}
         {tab === "Preview" && <JobPreview client={client} coderApiUrl={coderApiUrl} />}
@@ -416,20 +436,18 @@ function JobAdminView({
 
       {/* Unsaved Changes Confirmation Modal */}
       <UnsavedChangesDialog
-        open={pendingNav !== null}
+        open={leave.blocked}
         isSaving={savingDesign}
         error={saveError}
         onCancel={() => {
-          setPendingNav(null);
+          leave.stay();
           setSaveError(null);
         }}
         onDiscard={() => {
           clearBackup();
           setIsDesignDirty(false);
-          const nav = pendingNav;
-          setPendingNav(null);
           setSaveError(null);
-          nav?.();
+          leave.proceed();
         }}
         onSave={saveAndNavigate}
       />

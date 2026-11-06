@@ -7,7 +7,7 @@ import { api, question } from "./helpers";
 // running out of health ends the session at a screen-out.
 
 test("a practice question gives feedback when wrong, answered again until right; a wrong gold unit ends the session at a screen-out", async ({ page, request, browser }) => {
-  await page.goto("/");
+  await page.goto("/research");
   await page.getByRole("button", { name: /Create new job/ }).click();
   await page.getByRole("menuitem", { name: /Empty job/ }).click();
   await page.getByPlaceholder(/Sentiment Analysis/).fill("Checked coders");
@@ -61,7 +61,7 @@ test("a practice question gives feedback when wrong, answered again until right;
   const s1 = links.find((l) => l.params.part === "s1")!;
 
   const coder = await (await browser.newContext()).newPage();
-  await coder.goto(`/?deployment=${job.id}&invite=${s1.secret}`);
+  await coder.goto(`/code/${job.id}?link=${s1.secret}`);
 
   // The practice unit, answered wrongly: feedback with the question, and answering again until right
   await question(coder, "Topic?");
@@ -115,7 +115,7 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
     ],
   });
 
-  await page.goto("/");
+  await page.goto("/research");
   await page.getByText("Gold answers").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
   await page.getByRole("button", { name: /^Unit loop/ }).click();

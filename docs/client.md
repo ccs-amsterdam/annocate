@@ -5,11 +5,27 @@ Status: current (2026-10-26). Server-side design lives in
 
 ## 1. Packaging
 
-- `packages/client` builds the app the server serves (`src/App.tsx`: the
-  researcher UI, and the coding screen for coder links; on a development
-  server without login also a dev badge and the demo job's coding screen).
+- `packages/client` builds the app the server serves. `src/App.tsx` holds
+  its routes (TanStack Router, routes in code; plain query strings: values
+  stay strings):
+
+  | URL | Page |
+  | --- | --- |
+  | `/` | Welcome: what AnnoTinder is, the researcher and annotator sections (`pages/WelcomePage.tsx`) |
+  | `/research` | The researcher UI: the jobs |
+  | `/research/jobs/<id>/<tab>` | A job's page (`overview`, `editor`, `units`, `links`, `coders`, `results`, `settings`, `preview`); the editor's `?version=<n>` (v1, v2, ...) |
+  | `/research/admin` | The server admin's page |
+  | `/code` | The annotator's home: studies on this device (`pages/CodeHomePage.tsx`) |
+  | `/code/<deployment>?link=<secret>` | Coding (`pages/CodePage.tsx`, no app header): a coder link, with the URL parameters it takes; `?transfer=<token>` continues on another device; without either, this device's session |
+
+  A reload stays where it was. The researcher section is one `AdminApp`
+  under a layout route: its place comes from the URL (`AdminLocation`)
+  and it navigates through `onNavigate`; leaving the editor with unsaved
+  edits asks first (the router's blocker, `useLeaveGuard`, with the
+  editor's dialog; also on reload or closing the tab).
 - **Components, not routes.** `JobRunner` (coding) and `AdminApp`
-  (research management) are plain components without a router dependency;
+  (research management) are plain components without a router dependency
+  (`AdminApp` gets its place and navigation as props);
   `AdminApp` brings its own TanStack `QueryClientProvider` unless it is
   given a `queryClient`. So they could be embedded in another React app
   (e.g. AmCAT) later, as a component library build; there is none now,
@@ -17,8 +33,8 @@ Status: current (2026-10-26). Server-side design lives in
 - **Hosting.** The client and the server always share an origin: coder and
   researcher sessions are httpOnly cookies (`coder-identity.md` §4, §7).
   In production the server serves the client (`docs/hosting.md`); in
-  development, Vite proxies `/d`, `/job`, `/me`, `/auth`, `/admin` and `/examples` to
-  the server. Only scripts with API keys call the server from elsewhere.
+  development, Vite proxies `/api` to the server (all its APIs are under
+  `/api`; everything else is the app). Only scripts with API keys call the server from elsewhere.
 
 ## 2. JobManager (coding runtime)
 

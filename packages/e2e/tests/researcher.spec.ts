@@ -17,7 +17,7 @@ async function downloadZip(page: Page): Promise<Record<string, string>> {
 const csvRows = (csv: string) => csv.replace(/^﻿/, "").trim().split(/\r?\n/);
 
 test("a job from an example: the dialog, the overview note, and its results in the download", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/research");
   await page.getByRole("button", { name: /Create new job/ }).click();
   await page.getByRole("menuitem", { name: /From an example/ }).click();
   await page.getByRole("button", { name: /Sentiment by swiping/ }).click();
@@ -35,7 +35,7 @@ test("a job from an example: the dialog, the overview note, and its results in t
 
 test("your first job, as the help describes it: units, a codebook, publish, invite, code", async ({ page, request, browser }) => {
   // 1. Create a job
-  await page.goto("/");
+  await page.goto("/research");
   await page.getByRole("button", { name: /Create new job/ }).click();
   await page.getByRole("menuitem", { name: /Empty job/ }).click();
   await page.getByPlaceholder(/Sentiment Analysis/).fill("News pilot");
@@ -105,7 +105,7 @@ test("your first job, as the help describes it: units, a codebook, publish, invi
 
   // A coder codes the three articles
   const coder = await (await browser.newContext()).newPage();
-  await coder.goto(`/?deployment=${job.id}&invite=${invite.secret}`);
+  await coder.goto(`/code/${job.id}?link=${invite.secret}`);
   for (const topic of ["Disasters", "Politics", "Sports"]) {
     await question(coder, "What is this article mainly about?");
     await coder.getByRole("button", { name: new RegExp(topic) }).click();

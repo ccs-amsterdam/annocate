@@ -309,7 +309,7 @@ function RequestsTab({ server }: { server: ServerApi }) {
 }
 
 /** The link a researcher invite is used with: this app, which redeems it after login. */
-const inviteLink = (secret: string) => `${window.location.origin}${window.location.pathname}?researcherInvite=${secret}`;
+const inviteLink = (secret: string) => `${window.location.origin}/research?researcherInvite=${secret}`;
 
 function InvitesTab({ server }: { server: ServerApi }) {
   const invites = useQuery({ queryKey: ["admin", "server", "invites"], queryFn: () => server.listInvites() });

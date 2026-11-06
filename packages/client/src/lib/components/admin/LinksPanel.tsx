@@ -28,14 +28,10 @@ import { formatWhen } from "../../admin/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HelpButton } from "../../help/HelpButton";
-
-type LinkUrl = (invite: LinkResponse) => string;
+import { codeLinkUrl } from "../../session/coderSession";
 
 interface LinksPanelProps {
   client: ResearcherApi;
-  baseUrl: string;
-  /** Builds the URL coders open for a link (host-app specific). */
-  linkUrl?: LinkUrl;
 }
 
 /**
@@ -46,7 +42,7 @@ interface LinksPanelProps {
  * retired, never deleted: coders and their answers refer to the link they
  * came from.
  */
-export function LinksPanel({ client, baseUrl, linkUrl }: LinksPanelProps) {
+export function LinksPanel({ client }: LinksPanelProps) {
   const linksQuery = useLinksQuery(client);
   const deployment = useDeploymentQuery(client).data;
   const codebook = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data;
@@ -62,7 +58,7 @@ export function LinksPanel({ client, baseUrl, linkUrl }: LinksPanelProps) {
     ...(session?.params ?? []).filter((p) => p.kind === "url" && p.default === undefined).map((p) => `${sessionParamKey(p)}=<${p.name}>`),
   ];
   const linkOf = (invite: LinkResponse) => {
-    const url = linkUrl ? linkUrl(invite) : `${baseUrl}/invite/${invite.secret}`;
+    const url = codeLinkUrl(invite.jobId, invite.secret);
     return urlParams.length ? `${url}${url.includes("?") ? "&" : "?"}${urlParams.join("&")}` : url;
   };
   // Loops whose sets are assigned by the login's email: only those emails may code.

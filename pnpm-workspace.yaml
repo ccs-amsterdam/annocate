@@ -5,6 +5,8 @@ allowBuilds:
 # Dependencies at least two weeks old: the newest @peculiar/asn1-* (from
 # @simplewebauthn/server) was too recent when it was added.
 overrides:
+  seroval: 1.6.12
+  seroval-plugins: 1.6.12
   "@peculiar/asn1-android": 2.11.0
   "@peculiar/asn1-asym-key": 2.11.0
   "@peculiar/asn1-cms": 2.11.0

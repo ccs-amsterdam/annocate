@@ -283,7 +283,7 @@ export class DeploymentRuntime {
   // --- coders -----------------------------------------------------------------
 
   /**
-   * The coder for a coder key, created on first use (from the invite, with
+   * The coder for a coder key, created on first use (from the link, with
    * participant id / new-session confirmation, see docs/coder-identity.md).
    * Read from the database on every request: one indexed query.
    */

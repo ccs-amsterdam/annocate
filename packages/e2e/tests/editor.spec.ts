@@ -9,7 +9,7 @@ test("writing a codebook in the editor, as the help describes it, and saving it"
   await api(request, "POST", `/job/${job.id}/units`, {
     units: [{ externalId: "a1", data: { headline: "Storm hits the coast", text: "Heavy rain." } }],
   });
-  await page.goto("/");
+  await page.goto("/research");
   await page.getByText("Editor test").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
 

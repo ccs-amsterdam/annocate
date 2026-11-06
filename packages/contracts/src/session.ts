@@ -140,7 +140,7 @@ export const CoderErrorCodeSchema = z.enum([
    * The coder's login isn't one of the link's email addresses, or (sets by
    * email) not one of the group's sets: "This email address has no access to this study".
    */
-  "email_not_invited",
+  "email_not_allowed",
   /** The link is no longer part of the deployed design (e.g. its set was removed): no new sessions. */
   "link_inactive",
   /** Transfer token unknown, used or expired. */
