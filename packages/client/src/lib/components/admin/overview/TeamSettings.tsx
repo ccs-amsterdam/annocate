@@ -3,12 +3,13 @@ import { Plus, Trash2 } from "lucide-react";
 import type { JobUser, Role } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InfoTip } from "@/components/ui/info-tip";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useJobUsersMutation, useJobUsersQuery } from "../../../admin/queries";
 
 const ROLES: { value: Role; label: string; help: string }[] = [
   { value: "READ", label: "Read", help: "sees the job and downloads the results" },
-  { value: "WRITE", label: "Write", help: "also edits the codebook, units and links" },
+  { value: "WRITE", label: "Write", help: "also edits the design, units and links" },
   { value: "ADMIN", label: "Admin", help: "also manages access, resets and deletes data" },
 ];
 
@@ -87,17 +88,18 @@ export function TeamSettings({ client }: { client: ResearcherApi }) {
         <Button type="submit" size="sm" variant="outline" disabled={save.isPending || !email.trim()}>
           <Plus className="h-3.5 w-3.5" /> Add
         </Button>
+        <InfoTip label="About roles">
+          <ul>
+            {ROLES.map((r) => (
+              <li key={r.value}>
+                <strong className="font-medium text-foreground">{r.label}</strong>: {r.help}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2">People log in with this email address. They see the job once they have logged in.</p>
+        </InfoTip>
       </form>
-      <ul className="text-[11px] text-muted-foreground">
-        {ROLES.map((r) => (
-          <li key={r.value}>
-            <strong className="font-medium text-foreground">{r.label}</strong>: {r.help}
-          </li>
-        ))}
-      </ul>
-      <p className="text-[11px] text-muted-foreground">
-        People log in with this email address. They see the job once they have logged in.
-      </p>
+
       {save.isError && <p className="text-sm text-destructive">{save.error.message}</p>}
     </div>
   );

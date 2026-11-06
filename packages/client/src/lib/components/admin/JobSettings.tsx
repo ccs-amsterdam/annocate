@@ -2,6 +2,7 @@ import { useState } from "react";
 import { designItems, redirectSettings, type JobResponse } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useDesignVersionQuery, useDesignVersionsQuery, useCreateJobMutation, useDeleteJobMutation, useJobQuery, useUpdateJobMutation } from "../../admin/queries";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2 } from "lucide-react";
@@ -116,22 +117,24 @@ function JobEditForm({
             onChange={(e) => setKeepOpen(e.target.checked)}
             className="mt-0.5 rounded border-input text-primary focus:ring-primary h-4 w-4"
           />
-          <span>
+          <span className="flex items-center gap-1">
             Keep finished sessions open
-            <span className="block text-xs text-muted-foreground">
-              Off (recommended): once coders finish, they can go back for 15 minutes; then their answers can&apos;t be looked at
-              or changed, also not by someone who gets into their account or device later.
-            </span>
+            <InfoTip label="About keeping sessions open">
+              Off (recommended): once coders finish, they can go back for 15 minutes; then their answers can&apos;t be looked at or
+              changed, also not by someone who gets into their account or device later.
+            </InfoTip>
           </span>
         </label>
 
         {settingNames.length > 0 && (
           <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1 text-sm font-medium text-foreground">Panel return links</legend>
-            <p className="text-xs text-muted-foreground">
-              End items send coders on to these. They belong to this run (a panel gives each study its own links), not to the design,
-              and take effect without deploying. May use $var and $session values.
-            </p>
+            <legend className="mb-1 flex items-center gap-1 text-sm font-medium text-foreground">
+              Panel return links
+              <InfoTip label="About panel return links">
+                End items send coders on to these. They belong to this run (a panel gives each study its own links), not to the design, and
+                take effect without deploying. May use $var and $session values.
+              </InfoTip>
+            </legend>
             {settingNames.map((setting) => (
               <label key={setting} className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
                 <span className="font-mono">{setting}</span>
@@ -159,25 +162,25 @@ function JobEditForm({
       </form>
 
       {/* Danger Zone */}
-      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 shadow-sm">
-        <h3 className="text-sm font-semibold text-destructive">Danger Zone</h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Deleting this job will permanently remove all associated designVersions, units, and coder annotations.
-        </p>
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 shadow-sm">
+        <h3 className="flex items-center gap-1 text-sm font-semibold text-destructive">
+          Delete this job
+          <InfoTip label="About deleting">Deleting this job permanently removes its design versions, units, coders and their answers.</InfoTip>
+        </h3>
 
         {!showConfirmDelete ? (
           <Button
             type="button"
             variant="destructive"
             size="sm"
-            className="mt-4 gap-1.5"
+            className="mt-3 gap-1.5"
             onClick={() => setShowConfirmDelete(true)}
           >
             <Trash2 className="h-4 w-4" />
             Delete Job
           </Button>
         ) : (
-          <div className="mt-4 flex items-center gap-2">
+          <div className="mt-3 flex items-center gap-2">
             <Button
               type="button"
               variant="destructive"

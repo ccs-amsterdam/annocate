@@ -21,6 +21,7 @@ import {
   variablesTable,
 } from "../../admin/exportData";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../help/HelpButton";
 
 /** Every row of a paged researcher API list. */
@@ -147,8 +148,8 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
         <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
           <div className="flex items-center gap-2 font-medium">
             <FileArchive className="h-4 w-4 text-primary" /> All data (zip)
-          </div>
-          <ul className="list-disc pl-5 text-xs text-muted-foreground">
+            <InfoTip label="What's in the zip">
+          <ul className="list-disc pl-4">
             <li>
               <strong>annotations.csv</strong>: a row per unit and coder, with a column per question (a scale: per item)
             </li>
@@ -173,32 +174,39 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
               <strong>variables.csv</strong>: per design version, each question&apos;s options and labels
             </li>
             <li>
+              <strong>designs/v&lt;n&gt;.json</strong>: each design version as a whole, with the AnnoTinder version it ran on
+            </li>
+            <li>
               <strong>README.txt</strong>: what the columns mean
             </li>
           </ul>
+          <p className="mt-2">CSV files (UTF-8). Scripts (R, Python) can get the same data from the API with an API key (account menu).</p>
+            </InfoTip>
+          </div>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={withLabels} onChange={(e) => setWithLabels(e.target.checked)} />
-            Add label columns (the label each coder saw, next to the stored value)
+            Add label columns (the label each coder saw)
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={withReset} onChange={(e) => setWithReset(e.target.checked)} />
             Include answers that were reset (reset_answers.csv)
           </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={spreadsheetSafe} onChange={(e) => setSpreadsheetSafe(e.target.checked)} />
-            Safe to open in a spreadsheet: text starting with =, +, - or @ gets a leading &apos; so it can&apos;t run as a formula
-            (README.txt says how to remove it in R or Python)
-          </label>
+          <div className="flex items-center gap-1">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={spreadsheetSafe} onChange={(e) => setSpreadsheetSafe(e.target.checked)} />
+              Safe to open in a spreadsheet
+            </label>
+            <InfoTip label="About spreadsheet-safe files">
+              Text starting with =, +, - or @ gets a leading &apos; so it can&apos;t run as a formula (README.txt says how to remove it in R or
+              Python).
+            </InfoTip>
+          </div>
           <Button className="self-start" disabled={busy !== null} onClick={() => void download()}>
             <Download className="mr-1 h-4 w-4" /> Download zip
           </Button>
           {busy && <p className="text-sm text-muted-foreground">{busy}</p>}
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
-
-        <p className="text-xs text-muted-foreground">
-          CSV files (UTF-8). Scripts (R, Python) can get the same data from the API with an API key (account menu).
-        </p>
       </section>
     </div>
   );

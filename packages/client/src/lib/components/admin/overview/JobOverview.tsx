@@ -76,8 +76,6 @@ export function JobOverview({ client, onNavigate, onOpenDesign }: JobOverviewPro
         </div>
       </Card>
 
-      {deployment && <DeployHistory client={client} numberOf={versions.numberOf} />}
-
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
           label="Units"
@@ -122,6 +120,9 @@ export function JobOverview({ client, onNavigate, onOpenDesign }: JobOverviewPro
           )}
         </Card>
       </div>
+
+      {/* What each deploy changed: history, so last */}
+      {deployment && <DeployHistory client={client} numberOf={versions.numberOf} />}
 
       {overview && overview.groups.length > 0 && (
         <Card title="Set groups">

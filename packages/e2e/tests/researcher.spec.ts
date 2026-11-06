@@ -20,7 +20,7 @@ test("a job from an example: the dialog, the overview note, and its results in t
   await page.goto("/research");
   await page.getByRole("button", { name: /Create new job/ }).click();
   await page.getByRole("menuitem", { name: /From an example/ }).click();
-  await page.getByRole("button", { name: /Sentiment by swiping/ }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /Sentiment by swiping/ }).click();
   await page.getByRole("button", { name: "Create job" }).click();
   await expect(page.getByText(/Made from the example/)).toBeVisible();
 

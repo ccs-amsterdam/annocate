@@ -14,6 +14,7 @@ import {
 } from "@annotinder/contracts";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../help/HelpButton";
 import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
@@ -61,15 +62,15 @@ export function SessionItemForm({
       <section className="flex flex-col gap-2">
         <h3 className="flex items-center gap-1.5 text-xs font-semibold">
           Session parameters
+          <InfoTip label="About session parameters">
+            Values a session starts with, used as <span className="font-mono">$session.name</span> in conditions, texts and to assign sets.
+            A <strong>link parameter</strong> is fixed in the link: every value (or combination of values) gets its own link on the Links
+            page. A <strong>URL parameter</strong> is added to a link by whoever shares it (e.g. <span className="font-mono">?wave=2</span>).
+            Built in: <span className="font-mono">$session.participant</span>, <span className="font-mono">$session.source</span> (the
+            optional <span className="font-mono">?source=</span> of any link) and <span className="font-mono">$session.email</span>.
+          </InfoTip>
           <HelpButton topic="session-parameters" label="Help: session parameters" />
         </h3>
-        <p className="text-[11px] text-muted-foreground">
-          Values a session starts with, used as <span className="font-mono">$session.name</span> in conditions, texts and to assign sets.
-          A <strong>link parameter</strong> is fixed in the link: every value (or combination of values) gets its own link on the Links
-          page. A <strong>URL parameter</strong> is added to a link by whoever shares it (e.g. <span className="font-mono">?wave=2</span>).
-          Built in: <span className="font-mono">$session.participant</span>, <span className="font-mono">$session.source</span> (the
-          optional <span className="font-mono">?source=</span> of any link) and <span className="font-mono">$session.email</span>.
-        </p>
         {params.map((param, i) => (
           <ParamEditor
             key={i}
@@ -142,7 +143,12 @@ export function SessionItemForm({
 
       <section className="flex flex-col gap-1">
         <label className="flex flex-col gap-1 text-xs font-semibold">
-          Sessions per link (sample size)
+          <span className="flex items-center gap-1">
+            Sessions per link (sample size)
+            <InfoTip label="About the sample size per link">
+              Each link takes at most this many sessions, e.g. 40 per condition. A link&apos;s own limit (Deploy, Links) overrides it.
+            </InfoTip>
+          </span>
           <Input
             type="number"
             min={1}
@@ -156,9 +162,6 @@ export function SessionItemForm({
             }}
           />
         </label>
-        <span className="text-[11px] text-muted-foreground">
-          Each link takes at most this many sessions, e.g. 40 per condition. A link&apos;s own limit (Deploy, Links) overrides it.
-        </span>
       </section>
 
       <section className="flex flex-col gap-2">
@@ -195,10 +198,10 @@ export function SessionItemForm({
                 onChange={(e) => onChange({ ...item, participant: { ...item.participant!, pattern: e.target.value || undefined } })}
               />
             </label>
-            <p className="w-full text-[11px] text-muted-foreground">
+            <InfoTip label="About participant ids">
               Required to start: a link without it, or with a value not matching the pattern, is refused. A participant id is a label, not a
               password: the same id on another device starts a new session (after asking).
-            </p>
+            </InfoTip>
           </div>
         )}
       </section>

@@ -28,6 +28,8 @@ import { formatWhen } from "../../admin/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HelpButton } from "../../help/HelpButton";
+import { IconButton } from "@/components/ui/icon-button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { codeLinkUrl } from "../../session/coderSession";
 
 interface LinksPanelProps {
@@ -76,14 +78,14 @@ export function LinksPanel({ client }: LinksPanelProps) {
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-2">
         <h2 className="flex items-center gap-1.5 text-lg font-medium">
-          Links <HelpButton topic="links" label="Help: links" />
+          Links
+          <InfoTip label="About links">
+            Deploying the design makes its links: one, or one per value of each link parameter (and per combination) in its Session item,
+            e.g. a link per set of a group. Deployed sets get links; links whose value is gone are retired. Here you set who may use a link.
+            Revoking stops new coders from joining with it; coders who already started keep working.
+          </InfoTip>
+          <HelpButton topic="links" label="Help: links" />
         </h2>
-        <p className="text-xs text-muted-foreground">
-          Deploying the design makes its links: one, or one per value of each link parameter (and per combination) in its
-          Session item, e.g. a link per set of a group. Deployed sets get links; links whose value is gone are
-          retired. Here you set who may use a link. Revoking stops new coders from joining with it; coders who already started keep
-          working.
-        </p>
         {urlParams.length > 0 && (
           <p className="text-xs text-muted-foreground">
             Links take these URL parameters (filled in by whoever shares them, e.g. a panel):{" "}
@@ -201,31 +203,25 @@ function LinkRow({ client, invite, link }: { client: ResearcherApi; invite: Link
         <td className="p-2 whitespace-nowrap text-muted-foreground">{formatWhen(invite.created)}</td>
         <td className="p-2">
           <div className="flex justify-end gap-1">
-            <Button size="sm" variant="ghost" title="Who may use this link" onClick={() => setEditing(!editing)}>
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              title="A new link: the old one stops working (coders who started keep working)"
+            <IconButton icon={Pencil} iconClassName="h-3.5 w-3.5" label="Who may use this link" onClick={() => setEditing(!editing)} />
+            <IconButton
+              icon={KeyRound}
+              iconClassName="h-3.5 w-3.5"
+              label="New link (the old one stops working; coders who started keep working)"
               disabled={renew.isPending || status === "retired"}
               onClick={() => confirm(`Make a new link for "${invite.label}"? The current link stops working.`) && renew.mutate(invite.id)}
-            >
-              <KeyRound className="h-3.5 w-3.5" />
-            </Button>
+            />
             {status !== "revoked" && status !== "retired" && (
-              <Button
-                size="sm"
-                variant="ghost"
-                title="Stop new coders from joining with this link"
+              <IconButton
+                icon={Ban}
+                iconClassName="h-3.5 w-3.5"
+                label="Revoke: stop new coders from joining with this link"
+                className="hover:text-destructive"
                 disabled={revoke.isPending}
                 onClick={() =>
                   confirm(`Revoke "${invite.label}"? New coders can't join with it; started coders keep working.`) && revoke.mutate(invite.id)
                 }
-              >
-                <Ban className="mr-1 h-3.5 w-3.5" />
-                Revoke
-              </Button>
+              />
             )}
           </div>
           {error && <p className="mt-1 text-xs text-destructive">{error.message}</p>}

@@ -528,60 +528,68 @@ function LayoutTab({
         />
       </Section>
 
-      <ColourScheme layout={layout} onChange={(next) => onChange({ ...loop, layout: next })} />
+      {/* Optional: open by itself when in use */}
+      <details className="group rounded-md border border-border/70 px-3 py-2" open={snippets.length > 0 || layout.colorScheme !== undefined}>
+        <summary className="cursor-pointer select-none text-xs font-medium text-muted-foreground hover:text-foreground">
+          More layout options: colours, snippets
+        </summary>
+        <div className="mt-3 flex flex-col gap-4">
+          <ColourScheme layout={layout} onChange={(next) => onChange({ ...loop, layout: next })} />
 
-      <Section title="Snippets" topic="snippets">
-        {snippets.map(([name, value], i) => (
-          <div key={i} className="flex flex-col gap-1 rounded-md border border-border p-2">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xs text-muted-foreground">[[</span>
-              <Input
-                aria-label="Snippet name"
-                className="h-7 w-48 font-mono text-xs"
-                value={name}
-                placeholder="name"
-                onChange={(e) => {
-                  const renamed = e.target.value;
-                  // A name another snippet has would merge them: not taken.
-                  if (snippets.some(([n], j) => j !== i && n === renamed)) return;
-                  setSnippets(snippets.map((c, j) => (j === i ? [renamed, c[1]] : c)));
-                }}
-              />
-              <span className="font-mono text-xs text-muted-foreground">]]</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="ml-auto"
-                aria-label={`Remove ${name}`}
-                onClick={() => setSnippets(snippets.filter((_, j) => j !== i))}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-            <Textarea
-              aria-label={`Text of ${name}`}
-              className="field-sizing-content max-h-60 min-h-12 font-mono text-xs"
-              rows={2}
-              value={value}
-              onChange={(e) => setSnippets(snippets.map((c, j) => (j === i ? [c[0], e.target.value] : c)))}
-            />
-          </div>
-        ))}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="w-fit"
-          onClick={() => {
-            let n = snippets.length + 1;
-            while (snippets.some(([c]) => c === `snippet_${n}`)) n++;
-            setSnippets([...snippets, [`snippet_${n}`, ""]]);
-          }}
-        >
-          <Plus className="h-3.5 w-3.5" /> Snippet
-        </Button>
-      </Section>
+          <Section title="Snippets" topic="snippets">
+            {snippets.map(([name, value], i) => (
+              <div key={i} className="flex flex-col gap-1 rounded-md border border-border p-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-muted-foreground">[[</span>
+                  <Input
+                    aria-label="Snippet name"
+                    className="h-7 w-48 font-mono text-xs"
+                    value={name}
+                    placeholder="name"
+                    onChange={(e) => {
+                      const renamed = e.target.value;
+                      // A name another snippet has would merge them: not taken.
+                      if (snippets.some(([n], j) => j !== i && n === renamed)) return;
+                      setSnippets(snippets.map((c, j) => (j === i ? [renamed, c[1]] : c)));
+                    }}
+                  />
+                  <span className="font-mono text-xs text-muted-foreground">]]</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="ml-auto"
+                    aria-label={`Remove ${name}`}
+                    onClick={() => setSnippets(snippets.filter((_, j) => j !== i))}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <Textarea
+                  aria-label={`Text of ${name}`}
+                  className="field-sizing-content max-h-60 min-h-12 font-mono text-xs"
+                  rows={2}
+                  value={value}
+                  onChange={(e) => setSnippets(snippets.map((c, j) => (j === i ? [c[0], e.target.value] : c)))}
+                />
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-fit"
+              onClick={() => {
+                let n = snippets.length + 1;
+                while (snippets.some(([c]) => c === `snippet_${n}`)) n++;
+                setSnippets([...snippets, [`snippet_${n}`, ""]]);
+              }}
+            >
+              <Plus className="h-3.5 w-3.5" /> Snippet
+            </Button>
+          </Section>
+        </div>
+      </details>
     </div>
   );
 }

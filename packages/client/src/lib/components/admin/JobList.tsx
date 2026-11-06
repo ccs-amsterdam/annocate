@@ -5,6 +5,7 @@ import { ResearcherAccess } from "./account/ResearcherAccess";
 import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
 import { useCreateJobMutation, useDeleteJobMutation, useJobsQuery } from "../../admin/queries";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, FolderOpen, Trash2, Calendar, Archive, Shield, Sparkles, Wand2, ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -79,23 +80,20 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1.5">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Jobs</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage annotation jobs, designVersions, units, and coders.{" "}
-            <HelpButton topic="overview" className="align-middle">
-              New here? Read the guide
-            </HelpButton>
-          </p>
+          <HelpButton topic="overview" label="Help: getting started" className="align-middle" />
         </div>
-        <div className="flex flex-wrap gap-2">
-          {me?.role === "admin" && onOpenServerAdmin && (
-            <Button variant="outline" onClick={onOpenServerAdmin} className="w-fit gap-2">
-              <Shield className="h-4 w-4" />
-              Server admin
-            </Button>
-          )}
+        {/* Search & Filter Toolbar */}
+        {jobs.length > 0 && (
+          <div className="relative w-full max-w-xs sm:ml-4">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search jobs..." aria-label="Search jobs" className="h-9 pl-9" />
+          </div>
+        )}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {me?.role === "admin" && onOpenServerAdmin && <IconButton icon={Shield} label="Server admin" variant="outline" className="h-9 w-9" onClick={onOpenServerAdmin} />}
           {canCreate && (
             <CreateJobMenu onWizard={() => setShowWizard(true)} onExample={() => setShowExamples(true)} onEmpty={() => setShowCreateModal(true)} />
           )}
@@ -104,18 +102,6 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
 
       {me && server && onMe && <ResearcherAccess server={server} me={me} onMe={onMe} />}
 
-      {/* Search & Filter Toolbar */}
-      {jobs.length > 0 && (
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search jobs..."
-            className="pl-9"
-          />
-        </div>
-      )}
 
       {/* Jobs List */}
       {filteredJobs.length === 0 ? (
@@ -155,70 +141,38 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
           {filteredJobs.map((job) => (
             <div
               key={job.id}
+              role="link"
+              tabIndex={0}
+              aria-label={`Open ${job.name}`}
               onClick={() => onSelectJob(job.id)}
-              className="group relative flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/50 hover:shadow-md cursor-pointer"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onSelectJob(job.id);
+              }}
+              className="group relative flex cursor-pointer flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <div>
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                    #{job.id}
-                  </span>
-                  {job.archived ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground font-medium">
-                      <Archive className="h-3 w-3" /> Archived
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary font-medium">
-                      Active
-                    </span>
-                  )}
-                </div>
-
-                <h3 className="mt-3 text-lg font-semibold tracking-tight text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                  {job.name}
-                </h3>
-
-                <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span>
-                    Created{" "}
-                    {job.created
-                      ? new Date(job.created).toLocaleDateString(undefined, {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })
-                      : "Recently"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-5 flex items-center justify-between border-t border-border/60 pt-3">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="gap-1.5 text-xs text-primary font-medium hover:bg-primary/10 p-0 h-auto"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectJob(job.id);
-                  }}
-                >
-                  <FolderOpen className="h-3.5 w-3.5" />
-                  Open job
-                </Button>
-
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                  title="Delete job"
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="line-clamp-2 text-base font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary">{job.name}</h3>
+                <IconButton
+                  icon={Trash2}
+                  label={`Delete job ${job.name}`}
+                  className="-mr-2 -mt-1 h-7 w-7 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                  iconClassName="h-3.5 w-3.5"
                   onClick={(e) => {
                     e.stopPropagation();
                     setJobToDelete(job);
                   }}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                />
+              </div>
+              <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5" />
+                <span>
+                  {job.created ? new Date(job.created).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "Recently"}
+                </span>
+                {job.archived && (
+                  <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-medium">
+                    <Archive className="h-3 w-3" /> Archived
+                  </span>
+                )}
               </div>
             </div>
           ))}

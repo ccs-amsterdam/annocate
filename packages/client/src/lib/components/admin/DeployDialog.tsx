@@ -4,6 +4,7 @@ import { AlertTriangle, Loader2, Rocket } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { diffDesigns, summarizeChanges, valueChanges, type DesignChange } from "../../design/diff";
+import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../help/HelpButton";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { usePendingChangesQuery } from "../../admin/queries";
@@ -176,16 +177,17 @@ export function DeployDialog({ client, open, version, versionNumber, live, liveN
                 {hasUnitChanges && !useUnits && <p className="text-xs text-muted-foreground">The units stay drafts, for a later deploy.</p>}
               </section>
 
-              <section>
-                <h4 className="mb-1.5 flex items-center gap-1.5 font-semibold text-foreground">
-                  What happens <HelpButton topic="changing-a-live-design" label="Help: changing a live design" />
-                </h4>
-                <ul className="list-disc space-y-1 pl-5 text-foreground/80">
-                  <li>{firstDeploy ? "Coders can start." : "Coders who are working now switch to it when they next save an answer; new coders start with it."}</li>
-                  {!firstDeploy && <li>Answers already given stay linked to the design version and unit versions they were given with.</li>}
-                  {deployDesign && <li>Design v{versionNumber} becomes read only. To change it later, you edit a new draft and deploy that.</li>}
-                </ul>
-              </section>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                What happens when you deploy
+                <InfoTip label="What happens when you deploy">
+                  <ul className="list-disc space-y-1 pl-4">
+                    <li>{firstDeploy ? "Coders can start." : "Coders who are working now switch to it when they next save an answer; new coders start with it."}</li>
+                    {!firstDeploy && <li>Answers already given stay linked to the design version and unit versions they were given with.</li>}
+                    {deployDesign && <li>Design v{versionNumber} becomes read only. To change it later, you edit a new draft and deploy that.</li>}
+                  </ul>
+                </InfoTip>
+                <HelpButton topic="changing-a-live-design" label="Help: changing a live design" />
+              </div>
 
               {state.step === "error" && <p className="text-destructive">{state.message}</p>}
             </div>

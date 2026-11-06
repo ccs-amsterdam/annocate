@@ -1,3 +1,4 @@
+import { InfoTip } from "@/components/ui/info-tip";
 import {
   NOMINAL_LAYOUTS,
   NUMERIC_LAYOUTS,
@@ -136,6 +137,7 @@ export function VariableTypeForm({
         <>
           <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
           <OptionsEditor swipe max={3} options={v.options} onChange={(options) => onChange({ ...v, options })} />
+          <div className="flex items-center gap-1">
           <label className="flex items-center gap-2 text-xs">
             <input
               type="checkbox"
@@ -147,9 +149,10 @@ export function VariableTypeForm({
                 onChange(next);
               }}
             />
-            In a unit loop: show the unit on a card while this question is asked
-            <span className="text-muted-foreground">(otherwise as it is, so the layout doesn&apos;t change between questions)</span>
+            Show the unit on a card while this question is asked
           </label>
+          <InfoTip label="About the card">In a unit loop. Without a card the unit is shown as it is, so the layout doesn&apos;t change between questions.</InfoTip>
+          </div>
         </>
       );
     }

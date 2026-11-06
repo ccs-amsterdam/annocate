@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useCoderDeletionMutations, useCoderDeletionsQuery, useCodersQuery } from "../../admin/queries";
 import { formatWhen } from "../../admin/format";
+import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../help/HelpButton";
 import { ResetAnswersDialog, type ResetScope } from "./ResetAnswersDialog";
 
@@ -49,7 +50,11 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-1.5 text-lg font-medium">
-          Coders <HelpButton topic="coders-and-progress" label="Help: following progress" />
+          Coders
+          <InfoTip label="About the counts">
+            Finished units count, per loop of the live design, the units where a coder answered every question of the loop.
+          </InfoTip>
+          <HelpButton topic="coders-and-progress" label="Help: following progress" />
         </h2>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setResetting({ label: "" })}>
@@ -98,10 +103,6 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
           {postponed === 1 ? "1 coder's" : `${postponed} coders'`} data still to be deleted (marked &ldquo;deletion requested&rdquo; below).
         </p>
       )}
-      <p className="text-xs text-muted-foreground">
-        Finished units count, per loop of the live codebook, the units where a coder answered every question of the
-        loop.
-      </p>
 
       {codersQuery.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading coders...</p>

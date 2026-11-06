@@ -21,8 +21,8 @@ export function ExamplesDialog({ client, onCreated, onClose }: { client: Researc
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl border border-border bg-card p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-foreground">New job from an example</h2>
+      <div role="dialog" aria-modal="true" aria-labelledby="examples-title" className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl border border-border bg-card p-6 shadow-xl">
+        <h2 id="examples-title" className="text-lg font-semibold text-foreground">New job from an example</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           An example makes a ready job: units, a deployed design and a link, sometimes with example answers. It is yours
           to try, change and delete.

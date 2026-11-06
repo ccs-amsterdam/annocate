@@ -39,11 +39,11 @@ export function PendingDeployBar({ client, includeDesign = false }: { client: Re
 
   const parts = [unitsChanged && `units ${describeUnitChanges(units)}`, draftId !== null && `design draft v${versions.numberOf(draftId)}`].filter(Boolean);
   return (
-    <div role="status" className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-sm">
+    <div role="status" className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-sky-500/40 bg-sky-500/10 px-3 py-1.5 text-sm">
       <span>
-        <strong>Not deployed yet:</strong> {parts.join("; ")}. Coders get what is deployed.
+        <strong>Not deployed yet:</strong> {parts.join("; ")}.
       </span>
-      <Button size="sm" className="ml-auto" onClick={() => setOpen(true)}>
+      <Button size="sm" className="ml-auto h-7" onClick={() => setOpen(true)}>
         <Rocket className="mr-1.5 h-4 w-4" /> Deploy…
       </Button>
       {open && (
