@@ -26,24 +26,24 @@ const researcher = (path: string, init: RequestInit = {}) =>
 
 describe("example jobs", () => {
   it("lists the catalogue", async () => {
-    const examples = ExampleSummarySchema.array().parse(await (await researcher("/examples")).json());
+    const examples = ExampleSummarySchema.array().parse(await (await researcher("/api/examples")).json());
     expect(examples.map((e) => e.id).sort()).toEqual(["actor-spans", "simple-experiment", "simple-survey", "survey-annotations", "swipe-sentiment", "tour"]);
   });
 
   it.each(listExamples().map((e) => e.id))("%s makes a job that can be coded, with its example answers", async (id) => {
-    const res = await researcher("/job/from-example", { method: "POST", body: JSON.stringify({ example: id }) });
+    const res = await researcher("/api/job/from-example", { method: "POST", body: JSON.stringify({ example: id }) });
     expect(res.status).toBe(201);
     const job = JobResponseSchema.parse(await res.json());
     expect(job.origin).toBe(id);
 
     // The researcher owns it, and it is deployed with an invitation
-    expect((await researcher(`/job/${job.id}`)).status).toBe(200);
-    const [invite] = (await (await researcher(`/job/${job.id}/links`)).json()) as { secret: string }[];
-    expect((await (await researcher(`/job/${job.id}/deployment`)).json()) as { active: boolean }).toMatchObject({ active: true });
+    expect((await researcher(`/api/job/${job.id}`)).status).toBe(200);
+    const [invite] = (await (await researcher(`/api/job/${job.id}/links`)).json()) as { secret: string }[];
+    expect((await (await researcher(`/api/job/${job.id}/deployment`)).json()) as { active: boolean }).toMatchObject({ active: true });
 
     // Example answers: every coder's answers are in the download
-    const coders = CoderProgressSchema.array().parse(await (await researcher(`/job/${job.id}/coders`)).json());
-    const page = AnnotationPageSchema.parse(await (await researcher(`/job/${job.id}/annotations?limit=10000`)).json());
+    const coders = CoderProgressSchema.array().parse(await (await researcher(`/api/job/${job.id}/coders`)).json());
+    const page = AnnotationPageSchema.parse(await (await researcher(`/api/job/${job.id}/annotations?limit=10000`)).json());
     const answered = new Set(page.annotations.map((a: AnnotationRow) => a.coderId));
     expect(coders.every((c) => answered.has(c.id))).toBe(true);
     // Their finished units count (every question of the loop answered)
@@ -51,16 +51,16 @@ describe("example jobs", () => {
     if (units > 0) expect(coders.some((c) => Object.values(c.finished).some((n) => n > 0))).toBe(true);
 
     // A coder can start
-    const coder = await app.request(`/d/${job.id}/session`, { headers: { "x-annotinder": "1", "x-link-secret": invite.secret } });
+    const coder = await app.request(`/api/d/${job.id}/session`, { headers: { "x-annotinder": "1", "x-link-secret": invite.secret } });
     expect(coder.status).toBe(200);
   });
 
   it("counts against the researcher's limit on jobs", async () => {
     const plan = await db.query<{ id: number }>("INSERT INTO plans (name, limits) VALUES ('One', '{\"jobs\": 1}') RETURNING id");
     await db.query("UPDATE users SET plan_id = $1", [plan[0].id]);
-    expect((await researcher("/job/from-example", { method: "POST", body: JSON.stringify({ example: "nope" }) })).status).toBe(404);
-    expect((await researcher("/job/from-example", { method: "POST", body: JSON.stringify({ example: "tour" }) })).status).toBe(201);
-    const second = await researcher("/job/from-example", { method: "POST", body: JSON.stringify({ example: "tour" }) });
+    expect((await researcher("/api/job/from-example", { method: "POST", body: JSON.stringify({ example: "nope" }) })).status).toBe(404);
+    expect((await researcher("/api/job/from-example", { method: "POST", body: JSON.stringify({ example: "tour" }) })).status).toBe(201);
+    const second = await researcher("/api/job/from-example", { method: "POST", body: JSON.stringify({ example: "tour" }) });
     expect(await second.json()).toMatchObject({ code: "limit_reached" });
   });
 });
@@ -96,7 +96,7 @@ describe("jobs from a recipe", () => {
     ],
     design: { items },
   };
-  const post = (body: object) => researcher("/job/from-recipe", { method: "POST", body: JSON.stringify(body) });
+  const post = (body: object) => researcher("/api/job/from-recipe", { method: "POST", body: JSON.stringify(body) });
   const jobCount = async () => (await db.query<{ n: number }>("SELECT count(*)::int AS n FROM jobs"))[0].n;
 
   it("makes the units, set groups and a draft design; deploying makes its links", async () => {
@@ -104,7 +104,7 @@ describe("jobs from a recipe", () => {
     expect(res.status).toBe(201);
     const job = JobResponseSchema.parse(await res.json());
     expect(job.name).toBe("From the wizard");
-    const groups = (await (await researcher(`/job/${job.id}/sets`)).json()) as { name: string; sets: { name: string; unitIds: number[] }[] }[];
+    const groups = (await (await researcher(`/api/job/${job.id}/sets`)).json()) as { name: string; sets: { name: string; unitIds: number[] }[] }[];
     expect(groups.map((g) => [g.name, g.sets.map((s) => [s.name, s.unitIds.length])])).toEqual([
       [
         "condition",
@@ -115,10 +115,10 @@ describe("jobs from a recipe", () => {
       ],
     ]);
     // A draft with a question to specify: saved, not deployed
-    const designVersions = (await (await researcher(`/job/${job.id}/design`)).json()) as { items: unknown[] }[];
+    const designVersions = (await (await researcher(`/api/job/${job.id}/design`)).json()) as { items: unknown[] }[];
     expect(designVersions).toHaveLength(1);
-    expect(await (await researcher(`/job/${job.id}/deployment`)).json()).toBeNull();
-    expect(((await (await researcher(`/job/${job.id}/links`)).json()) as unknown[]).length).toBe(0);
+    expect(await (await researcher(`/api/job/${job.id}/deployment`)).json()).toBeNull();
+    expect(((await (await researcher(`/api/job/${job.id}/links`)).json()) as unknown[]).length).toBe(0);
 
     // Published (the question specified): one open link
     const specified = structuredClone(items);
@@ -126,7 +126,7 @@ describe("jobs from a recipe", () => {
     const published = await post({ ...recipe, design: { items: specified }, publish: true });
     expect(published.status, await published.clone().text()).toBe(201);
     const { id } = JobResponseSchema.parse(await published.json());
-    expect(((await (await researcher(`/job/${id}/links`)).json()) as { label: string }[]).map((l) => l.label)).toEqual(["Open link"]);
+    expect(((await (await researcher(`/api/job/${id}/links`)).json()) as { label: string }[]).map((l) => l.label)).toEqual(["Open link"]);
   });
 
   it("publishes only a valid codebook; a refused recipe leaves nothing", async () => {

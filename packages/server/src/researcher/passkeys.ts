@@ -56,7 +56,7 @@ export function passkeys(server: Server): Hono<Env> {
 
   async function setChallenge(c: Context, value: Challenge) {
     await setSignedCookie(c, CHALLENGE_COOKIE, JSON.stringify(value), server.secret, {
-      path: "/auth/passkey",
+      path: "/api/auth/passkey",
       httpOnly: true,
       sameSite: "Strict",
       secure: secure(c),
@@ -65,7 +65,7 @@ export function passkeys(server: Server): Hono<Env> {
   }
   async function takeChallenge(c: Context, kind: Challenge["kind"], userId: number): Promise<string> {
     const raw = await getSignedCookie(c, server.secret, CHALLENGE_COOKIE);
-    deleteCookie(c, CHALLENGE_COOKIE, { path: "/auth/passkey" });
+    deleteCookie(c, CHALLENGE_COOKIE, { path: "/api/auth/passkey" });
     const value = raw ? (JSON.parse(raw) as Challenge) : null;
     if (!value || value.kind !== kind || value.userId !== userId) throw new HttpError(400, "No passkey request in progress: try again", "passkey_failed");
     return value.challenge;

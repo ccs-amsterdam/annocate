@@ -58,10 +58,10 @@ function browser() {
       request(path, { ...init, headers: { "content-type": "application/json", "x-annotinder": "1", ...init.headers } }),
     /** Logs in with these ID token claims; returns where the server sends the browser at the end. */
     async logIn(claims: Record<string, unknown>, returnTo = "/jobs?x=1") {
-      const start = await request(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`);
+      const start = await request(`/api/auth/login?returnTo=${encodeURIComponent(returnTo)}`);
       expect(start.status).toBe(302);
       const { code, state } = issuer.approve(start.headers.get("location")!, claims);
-      const done = await request(`/auth/callback?code=${code}&state=${state}`);
+      const done = await request(`/api/auth/callback?code=${code}&state=${state}`);
       expect(done.status).toBe(302);
       return done.headers.get("location")!;
     },
@@ -72,15 +72,15 @@ const verified = { email: "Jane@Uni.nl", email_verified: true };
 
 describe("researcher login", () => {
   it("tells the client login is available", async () => {
-    expect(await (await app.request("/auth/options")).json()).toEqual({ login: true, devAuth: false });
-    expect(await (await createApp(db).request("/auth/options")).json()).toEqual({ login: false, devAuth: false });
+    expect(await (await app.request("/api/auth/options")).json()).toEqual({ login: true, devAuth: false });
+    expect(await (await createApp(db).request("/api/auth/options")).json()).toEqual({ login: false, devAuth: false });
   });
 
   it("sends the browser to the provider with PKCE, state and nonce", async () => {
-    const res = await browser().request("/auth/login");
+    const res = await browser().request("/api/auth/login");
     const url = new URL(res.headers.get("location")!);
     expect(url.origin + url.pathname).toBe(`${ISSUER}/authorize`);
-    expect(url.searchParams.get("redirect_uri")).toBe(`${PUBLIC_URL}/auth/callback`);
+    expect(url.searchParams.get("redirect_uri")).toBe(`${PUBLIC_URL}/api/auth/callback`);
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
     expect(url.searchParams.get("scope")).toBe("openid email");
     for (const p of ["state", "nonce", "code_challenge"]) expect(url.searchParams.get(p)).toBeTruthy();
@@ -91,23 +91,23 @@ describe("researcher login", () => {
     const b = browser();
     expect(await b.logIn(verified)).toBe("/jobs?x=1");
     expect(b.cookies.has("annotinder_session")).toBe(true);
-    expect(await (await b.api("/me")).json()).toMatchObject({ email: "jane@uni.nl", role: "researcher" });
+    expect(await (await b.api("/api/me")).json()).toMatchObject({ email: "jane@uni.nl", role: "researcher" });
 
     // Their jobs: the same user as an API key for the same address.
-    expect((await b.api("/job", { method: "POST", body: JSON.stringify({ name: "Mine" }) })).status).toBe(201);
-    expect(((await (await b.api("/job")).json()) as unknown[]).length).toBe(1);
+    expect((await b.api("/api/job", { method: "POST", body: JSON.stringify({ name: "Mine" }) })).status).toBe(201);
+    expect(((await (await b.api("/api/job")).json()) as unknown[]).length).toBe(1);
 
     // A second login (another device, another login method) is the same user.
     const other = browser();
     await other.logIn({ email: "jane@uni.nl", email_verified: true, sub: "other-sub" });
-    expect(((await (await other.api("/job")).json()) as unknown[]).length).toBe(1);
+    expect(((await (await other.api("/api/job")).json()) as unknown[]).length).toBe(1);
   });
 
   it("needs the CSRF header with the session cookie", async () => {
     const b = browser();
     await b.logIn(verified);
-    expect((await b.request("/me")).status).toBe(401);
-    expect((await b.request("/job", { method: "POST", body: JSON.stringify({ name: "x" }) })).status).toBe(401);
+    expect((await b.request("/api/me")).status).toBe(401);
+    expect((await b.request("/api/job", { method: "POST", body: JSON.stringify({ name: "x" }) })).status).toBe(401);
   });
 
   it("refuses unverified email addresses", async () => {
@@ -122,25 +122,25 @@ describe("researcher login", () => {
     const b = browser();
     // Logged in, but without a second factor: only GET /me (and coding)
     expect(await b.logIn({ ...verified, amr: ["pwd"] })).toBe("/jobs?x=1");
-    expect(await (await b.api("/me")).json()).toMatchObject({ role: "admin", twoFactor: { mode: "oidc", required: true } });
-    const job = await b.api("/job", { method: "POST", body: JSON.stringify({ name: "x" }) });
+    expect(await (await b.api("/api/me")).json()).toMatchObject({ role: "admin", twoFactor: { mode: "oidc", required: true } });
+    const job = await b.api("/api/job", { method: "POST", body: JSON.stringify({ name: "x" }) });
     expect(job.status).toBe(403);
     expect(await job.json()).toMatchObject({ code: "mfa_required" });
-    expect((await b.api("/me/keys")).status).toBe(403);
+    expect((await b.api("/api/me/keys")).status).toBe(403);
 
     expect(await b.logIn({ ...verified, amr: ["pwd", "otp"] })).toBe("/jobs?x=1");
-    expect(await (await b.api("/me")).json()).toMatchObject({ twoFactor: { required: false } });
-    expect((await b.api("/job", { method: "POST", body: JSON.stringify({ name: "x" }) })).status).toBe(201);
+    expect(await (await b.api("/api/me")).json()).toMatchObject({ twoFactor: { required: false } });
+    expect((await b.api("/api/job", { method: "POST", body: JSON.stringify({ name: "x" }) })).status).toBe(201);
   });
 
   it("an API key made without a second factor counts as a login without one when the server turns it on", async () => {
     app = newApp("none", ["jane@uni.nl"]);
     const b = browser();
     await b.logIn({ ...verified, amr: ["pwd"] });
-    const made = await b.api("/me/keys", { method: "POST", body: JSON.stringify({ label: "script" }) });
+    const made = await b.api("/api/me/keys", { method: "POST", body: JSON.stringify({ label: "script" }) });
     expect(made.status).toBe(201);
     const { key } = (await made.json()) as { key: string };
-    const asKey = () => app.request("/job", { headers: { authorization: `Bearer ${key}` } });
+    const asKey = () => app.request("/api/job", { headers: { authorization: `Bearer ${key}` } });
     expect((await asKey()).status).toBe(200);
     // The server now requires a second factor: this key doesn't have one
     app = newApp("oidc", ["jane@uni.nl"]);
@@ -148,7 +148,7 @@ describe("researcher login", () => {
     // One made by the server's operator (the keys command) does
     const user = (await db.query<{ id: number }>("SELECT id FROM users WHERE email = 'jane@uni.nl'"))[0];
     const operator = (await createApiKey(db, user.id, "operator", true)).key;
-    expect((await app.request("/job", { headers: { authorization: `Bearer ${operator}` } })).status).toBe(200);
+    expect((await app.request("/api/job", { headers: { authorization: `Bearer ${operator}` } })).status).toBe(200);
   });
 
   it("requires a passkey checked by AnnoTinder (annotinder): add one, confirm with it, recover, reset", async () => {
@@ -157,49 +157,49 @@ describe("researcher login", () => {
     const key = softAuthenticator(PUBLIC_URL);
     // The provider's second factor doesn't count here
     await b.logIn({ ...verified, amr: ["pwd", "otp"] });
-    expect(await (await b.api("/me")).json()).toMatchObject({ twoFactor: { mode: "annotinder", required: true, passkeys: 0 } });
-    expect((await b.api("/job")).status).toBe(403);
+    expect(await (await b.api("/api/me")).json()).toMatchObject({ twoFactor: { mode: "annotinder", required: true, passkeys: 0 } });
+    expect((await b.api("/api/job")).status).toBe(403);
 
     // The first passkey, right after login: it confirms the session, and comes with recovery codes
-    const options = (await (await b.api("/auth/passkey/register/options", { method: "POST" })).json()) as { challenge: string };
-    const added = await b.api("/auth/passkey/register", { method: "POST", body: JSON.stringify({ response: key.register(options), name: "Laptop" }) });
+    const options = (await (await b.api("/api/auth/passkey/register/options", { method: "POST" })).json()) as { challenge: string };
+    const added = await b.api("/api/auth/passkey/register", { method: "POST", body: JSON.stringify({ response: key.register(options), name: "Laptop" }) });
     expect(added.status, await added.clone().text()).toBe(200);
     const { recoveryCodes } = (await added.json()) as { recoveryCodes: string[] };
     expect(recoveryCodes).toHaveLength(10);
-    expect(await (await b.api("/me")).json()).toMatchObject({ twoFactor: { required: false, passkeys: 1 } });
-    expect((await b.api("/job")).status).toBe(200);
+    expect(await (await b.api("/api/me")).json()).toMatchObject({ twoFactor: { required: false, passkeys: 1 } });
+    expect((await b.api("/api/job")).status).toBe(200);
 
     // A new login: confirmed with the passkey (a replayed or foreign response is refused)
     await b.logIn(verified);
-    expect((await b.api("/job")).status).toBe(403);
+    expect((await b.api("/api/job")).status).toBe(403);
     // Another passkey can't be added without confirming first
-    expect((await b.api("/auth/passkey/register/options", { method: "POST" })).status).toBe(403);
-    const login = (await (await b.api("/auth/passkey/login/options", { method: "POST" })).json()) as { challenge: string };
+    expect((await b.api("/api/auth/passkey/register/options", { method: "POST" })).status).toBe(403);
+    const login = (await (await b.api("/api/auth/passkey/login/options", { method: "POST" })).json()) as { challenge: string };
     const stranger = softAuthenticator(PUBLIC_URL);
-    const wrong = await b.api("/auth/passkey/login", { method: "POST", body: JSON.stringify({ response: stranger.authenticate(login) }) });
+    const wrong = await b.api("/api/auth/passkey/login", { method: "POST", body: JSON.stringify({ response: stranger.authenticate(login) }) });
     expect(wrong.status).toBe(400);
-    const again = (await (await b.api("/auth/passkey/login/options", { method: "POST" })).json()) as { challenge: string };
-    expect((await b.api("/auth/passkey/login", { method: "POST", body: JSON.stringify({ response: key.authenticate(again) }) })).status).toBe(204);
-    expect((await b.api("/job")).status).toBe(200);
-    expect(((await (await b.api("/me/passkeys")).json()) as { name: string }[]).map((p) => p.name)).toEqual(["Laptop"]);
-    expect((await b.api("/me/passkeys/1", { method: "DELETE" })).status).toBe(409); // not the only one
+    const again = (await (await b.api("/api/auth/passkey/login/options", { method: "POST" })).json()) as { challenge: string };
+    expect((await b.api("/api/auth/passkey/login", { method: "POST", body: JSON.stringify({ response: key.authenticate(again) }) })).status).toBe(204);
+    expect((await b.api("/api/job")).status).toBe(200);
+    expect(((await (await b.api("/api/me/passkeys")).json()) as { name: string }[]).map((p) => p.name)).toEqual(["Laptop"]);
+    expect((await b.api("/api/me/passkeys/1", { method: "DELETE" })).status).toBe(409); // not the only one
 
     // A lost passkey: a recovery code confirms, once
     await b.logIn(verified);
-    const recover = (code: string) => b.api("/auth/passkey/recover", { method: "POST", body: JSON.stringify({ code }) });
+    const recover = (code: string) => b.api("/api/auth/passkey/recover", { method: "POST", body: JSON.stringify({ code }) });
     expect((await recover("nope-nope-nope")).status).toBe(400);
     expect((await recover(recoveryCodes[0].toUpperCase())).status).toBe(204);
-    expect((await b.api("/job")).status).toBe(200);
+    expect((await b.api("/api/job")).status).toBe(200);
     await b.logIn(verified);
     expect((await recover(recoveryCodes[0])).status).toBe(400);
 
     // An admin reset: passkeys and sessions gone; the next login adds a new passkey
     const admin = createApp(db, { devAuth: true });
     const [{ id }] = await db.query<{ id: number }>("SELECT id FROM users WHERE email = 'jane@uni.nl'");
-    expect((await admin.request(`/admin/users/${id}/reset-passkeys`, { method: "POST", headers: { "x-dev-role": "ADMIN", "x-dev-email": "root@uni.nl" } })).status).toBe(204);
-    expect((await b.api("/me")).status).toBe(401);
+    expect((await admin.request(`/api/admin/users/${id}/reset-passkeys`, { method: "POST", headers: { "x-dev-role": "ADMIN", "x-dev-email": "root@uni.nl" } })).status).toBe(204);
+    expect((await b.api("/api/me")).status).toBe(401);
     await b.logIn(verified);
-    expect(await (await b.api("/me")).json()).toMatchObject({ twoFactor: { required: true, passkeys: 0 } });
+    expect(await (await b.api("/api/me")).json()).toMatchObject({ twoFactor: { required: true, passkeys: 0 } });
     const log = await db.query<{ event: string }>("SELECT event FROM security_log WHERE user_id = $1 ORDER BY id", [id]);
     expect(log.map((l) => l.event)).toEqual([
       "passkey_added",
@@ -215,7 +215,7 @@ describe("researcher login", () => {
     const role = async (email: string) => {
       const b = browser();
       await b.logIn({ ...verified, email });
-      return ((await (await b.api("/me")).json()) as { role: string }).role;
+      return ((await (await b.api("/api/me")).json()) as { role: string }).role;
     };
     app = newApp("none", ["boss@uni.nl"]);
     expect(await role("anyone@gmail.com")).toBe("user");
@@ -230,7 +230,7 @@ describe("researcher login", () => {
     await db.query(`UPDATE server_settings SET registration = '{"open": false, "requests": true}'`);
     const b = browser();
     await b.logIn({ ...verified, email: "student@gmail.com" });
-    const res = await b.api("/job", { method: "POST", body: JSON.stringify({ name: "x" }) });
+    const res = await b.api("/api/job", { method: "POST", body: JSON.stringify({ name: "x" }) });
     expect(res.status).toBe(403);
     expect(await res.json()).toMatchObject({ code: "researcher_required" });
   });
@@ -239,19 +239,19 @@ describe("researcher login", () => {
     const b = browser();
     await b.logIn(verified);
     await db.query("UPDATE users SET blocked_at = now()");
-    expect((await b.api("/me")).status).toBe(401);
+    expect((await b.api("/api/me")).status).toBe(401);
     expect(await b.logIn(verified)).toContain("loginError=blocked");
   });
 
   it("refuses callbacks it didn't start, replayed codes and foreign return addresses", async () => {
     const b = browser();
     // No login started: no login cookie.
-    expect((await b.request("/auth/callback?code=x&state=y")).headers.get("location")).toBe("/?loginError=login_failed");
+    expect((await b.request("/api/auth/callback?code=x&state=y")).headers.get("location")).toBe("/?loginError=login_failed");
 
     // A state that doesn't match the login cookie.
-    const start = await b.request("/auth/login");
+    const start = await b.request("/api/auth/login");
     const { code } = issuer.approve(start.headers.get("location")!, verified);
-    expect((await b.request(`/auth/callback?code=${code}&state=forged`)).headers.get("location")).toContain("loginError=login_failed");
+    expect((await b.request(`/api/auth/callback?code=${code}&state=forged`)).headers.get("location")).toContain("loginError=login_failed");
 
     // Return addresses stay on this origin.
     expect(await browser().logIn(verified, "https://evil.example/")).toBe("/");
@@ -262,11 +262,11 @@ describe("researcher login", () => {
     const b = browser();
     await b.logIn(verified);
     const session = b.cookies.get("annotinder_session")!;
-    expect((await b.request("/auth/logout", { method: "POST" })).status).toBe(403); // CSRF header
-    expect((await b.api("/auth/logout", { method: "POST" })).status).toBe(204);
+    expect((await b.request("/api/auth/logout", { method: "POST" })).status).toBe(403); // CSRF header
+    expect((await b.api("/api/auth/logout", { method: "POST" })).status).toBe(204);
     expect(b.cookies.has("annotinder_session")).toBe(false);
     // The old cookie, replayed: gone on the server too.
-    const res = await app.request("/me", { headers: { cookie: `annotinder_session=${session}`, "x-annotinder": "1" } });
+    const res = await app.request("/api/me", { headers: { cookie: `annotinder_session=${session}`, "x-annotinder": "1" } });
     expect(res.status).toBe(401);
   });
 });

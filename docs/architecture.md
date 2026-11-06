@@ -536,7 +536,7 @@ Other open points:
 | `contracts/src/sets.ts` | Set groups and sets, set columns, `splitIntoSets` |
 | `contracts/src/deployment.ts` | Deployment, reset, status and preview schemas (researcher API) |
 | `contracts/src/endpoints/` | The two API registries: researcher, coder ([docs/api](api/README.md)) |
-| `server/src/app.ts` | Hono app: researcher API (`/job`, `/me`, `/auth`), admin API (`/admin`), coder API (`/d/<deploymentId>`), `/health`, and the built client (`ANNOTINDER_CLIENT_DIR`) |
+| `server/src/app.ts` | Hono app: everything API under `/api`: researcher API (`/api/job`, `/api/me`, `/api/auth`), admin API (`/api/admin`), coder API (`/api/d/<deploymentId>`), `/api/health`; and the built client (`ANNOTINDER_CLIENT_DIR`) |
 | `server/src/coder.ts` | The coder API routes: session cookie, coder resolution, units, answers, transfers |
 | `server/src/researcher/` | The researcher API, one file per path; `auth.ts` (sessions, API keys, dev headers), `login.ts` (`/auth/...`) |
 | `server/src/oidc.ts`, `shared/accounts.ts`, `shared/sessions.ts` | Researcher login with an OpenID Connect provider, users and API keys, sessions |

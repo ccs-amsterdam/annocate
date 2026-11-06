@@ -5,7 +5,7 @@ import type { AnnotationRow, CoderProgress, JobResponse } from "@annotinder/cont
 export const DEV_HEADERS = { "x-dev-role": "ADMIN", "x-dev-email": "dev@example.com", "content-type": "application/json" };
 
 export async function api<T>(request: APIRequestContext, method: string, path: string, data?: unknown): Promise<T> {
-  const res = await request.fetch(path, { method, headers: DEV_HEADERS, data: data === undefined ? undefined : JSON.stringify(data) });
+  const res = await request.fetch(`/api${path}`, { method, headers: DEV_HEADERS, data: data === undefined ? undefined : JSON.stringify(data) });
   expect(res.ok(), `${method} ${path}: ${res.status()} ${await res.text()}`).toBe(true);
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;

@@ -18,7 +18,7 @@ const THINK_MS = Number(process.env.THINK_MS ?? 1000);
 const DEV = { "content-type": "application/json", "x-dev-role": "ADMIN", "x-dev-email": "load@example.com" };
 
 async function api(method, path, body) {
-  const res = await fetch(BASE + path, { method, headers: DEV, body: body === undefined ? undefined : JSON.stringify(body) });
+  const res = await fetch(`${BASE}/api${path}`, { method, headers: DEV, body: body === undefined ? undefined : JSON.stringify(body) });
   if (!res.ok) throw new Error(`${method} ${path}: ${res.status} ${await res.text()}`);
   return res.status === 204 ? null : res.json();
 }
@@ -71,7 +71,7 @@ function coderClient(jobId, secret) {
   let cookie = "";
   return async function call(name, method, path, body) {
     const t = performance.now();
-    const res = await fetch(`${BASE}/d/${jobId}${path}`, {
+    const res = await fetch(`${BASE}/api/d/${jobId}${path}`, {
       method,
       headers: { "content-type": "application/json", "x-annotinder": "1", "x-link-secret": secret, ...(cookie ? { cookie } : {}) },
       body: body === undefined ? undefined : JSON.stringify(body),

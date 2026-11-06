@@ -57,7 +57,7 @@ export interface AppOptions {
   /**
    * Researcher login with an OpenID Connect provider (oidc.ts). `publicUrl`
    * is where browsers reach this server (and the client), e.g.
-   * `https://annotinder.com`; the provider redirects to `<publicUrl>/auth/callback`.
+   * `https://annotinder.com`; the provider redirects to `<publicUrl>/api/auth/callback`.
    */
   login?: { oidc: OidcOptions; publicUrl: string };
   /** Emails that are admins (docs/accounts.md). */
@@ -99,7 +99,7 @@ export function createApp(db: Sql, options: AppOptions = {}) {
 
   const app = new Hono<Env>();
   app.use("*", securityHeaders({ frameAncestors: options.frameAncestors, https: options.https ?? false }));
-  app.onError((err, c) => {
+  const onError = (err: Error, c: Context) => {
     if (err instanceof HttpError) return c.json({ error: err.message, ...(err.code ? { code: err.code } : {}) }, err.status);
     // Postgres: a malformed or out-of-range value in a parameter (e.g. an id in the path).
     const pgCode = (err as { code?: unknown }).code;
@@ -108,64 +108,75 @@ export function createApp(db: Sql, options: AppOptions = {}) {
     if (pgCode === "23505") return c.json({ error: "Already exists" }, 409);
     console.error(err);
     return c.json({ error: "Internal error" }, 500);
-  });
-  app.get("/health", (c) => c.json({ ok: true, service: "annotinder", ...CLIENT_VERSION }));
+  };
+  app.onError(onError);
+
+  // The APIs, all under /api (contracts endpoint paths are relative to it)
+  const api = new Hono<Env>();
+  api.onError(onError);
+  api.get("/health", (c) => c.json({ ok: true, service: "annotinder", ...CLIENT_VERSION }));
 
   // Request bodies: a coder sends one unit's answers at a time; a researcher
   // may upload all units at once (each unit is also checked against the
   // server's unit size, shared/limits.ts).
   const tooLarge = (c: Context) => c.json({ error: "The request is too large", code: "request_too_large" }, 413);
-  app.use("/d/*", bodyLimit({ maxSize: 2 * 1024 * 1024, onError: tooLarge }));
-  app.use("/job/*", bodyLimit({ maxSize: 256 * 1024 * 1024, onError: tooLarge }));
-  app.use("/admin/*", bodyLimit({ maxSize: 1024 * 1024, onError: tooLarge }));
-  app.use("/me/*", bodyLimit({ maxSize: 64 * 1024, onError: tooLarge }));
+  api.use("/d/*", bodyLimit({ maxSize: 2 * 1024 * 1024, onError: tooLarge }));
+  api.use("/job/*", bodyLimit({ maxSize: 256 * 1024 * 1024, onError: tooLarge }));
+  api.use("/admin/*", bodyLimit({ maxSize: 1024 * 1024, onError: tooLarge }));
+  api.use("/me/*", bodyLimit({ maxSize: 64 * 1024, onError: tooLarge }));
 
   // Rate limits (docs/security.md): generous, against floods and guessing.
   const limiter = options.rateLimits ? new RateLimiter(db, { ...DEFAULT_RATE_LIMITS, ...options.rateLimits }, options.trustProxy ?? false) : null;
-  app.use("/d/*", rateLimit(limiter, "coder", { memory: true }));
-  app.use("/d/*", rateLimit(limiter, "coderStart", { when: (c) => !readDevice(c) }));
-  app.use("/d/*", rateLimit(limiter, "transfer", { when: (c) => c.req.path.endsWith("/transfer/redeem") }));
+  api.use("/d/*", rateLimit(limiter, "coder", { memory: true }));
+  api.use("/d/*", rateLimit(limiter, "coderStart", { when: (c) => !readDevice(c) }));
+  api.use("/d/*", rateLimit(limiter, "transfer", { when: (c) => c.req.path.endsWith("/transfer/redeem") }));
   // Logins, and confirming one with a passkey or a recovery code (against guessing)
-  for (const path of ["/auth/login", "/auth/callback", "/auth/passkey/*"]) app.use(path, rateLimit(limiter, "login"));
+  for (const path of ["/auth/login", "/auth/callback", "/auth/passkey/*"]) api.use(path, rateLimit(limiter, "login"));
   // Per account: the API key or login session (hashed: no secrets in the table), else per address.
   const accountKey = (c: Context) => {
     const credential = c.req.header("authorization") ?? getCookie(c, SESSION_COOKIE);
     return credential ? `account:${createHash("sha256").update(credential).digest("hex").slice(0, 32)}` : null;
   };
   // ("/job/*" also matches "/job")
-  for (const path of ["/job/*", "/me/*", "/admin/*"]) app.use(path, rateLimit(limiter, "researcher", { key: accountKey }));
+  for (const path of ["/job/*", "/me/*", "/admin/*"]) api.use(path, rateLimit(limiter, "researcher", { key: accountKey }));
 
   // Coder API (coder.ts): same origin as the client, no CORS.
-  app.route("/d/:deployment", coderApi(server));
+  api.route("/d/:deployment", coderApi(server));
 
   // Researcher API (researcher/): full paths, API keys (researcher/auth.ts).
   // CORS, so a client on another origin (e.g. the Vite dev server) can call it.
   // Cookies are same-origin only: CORS here is for API keys.
-  for (const path of ["/job", "/job/*", "/me", "/me/*", "/admin/*"]) app.use(path, cors());
-  app.route("/", login(server));
-  app.route("/", passkeys(server));
-  app.route("/", me(server));
-  app.route("/", admin(server));
+  for (const path of ["/job", "/job/*", "/me", "/me/*", "/admin/*"]) api.use(path, cors());
   // Order matters: units/fields and units/page before units/:id.
-  app.route("/", examples(server));
-  app.route("/", jobs(server));
-  app.route("/", job(server));
-  app.route("/", jobUsers(server));
-  app.route("/", designVersions(server));
-  app.route("/", designVersion(server));
-  app.route("/", units(server));
-  app.route("/", unitsFields(server));
-  app.route("/", unitsPage(server));
-  app.route("/", unit(server));
-  app.route("/", sets(server));
-  app.route("/", coders(server));
-  app.route("/", links(server));
-  app.route("/", overview(server));
-  app.route("/", deployment(server));
-  app.route("/", deploymentStatus(server));
-  app.route("/", deploymentPreview(server));
-  app.route("/", annotationsReset(server));
-  app.route("/", annotations(server));
+  for (const routes of [
+    login,
+    passkeys,
+    me,
+    admin,
+    examples,
+    jobs,
+    job,
+    jobUsers,
+    designVersions,
+    designVersion,
+    units,
+    unitsFields,
+    unitsPage,
+    unit,
+    sets,
+    coders,
+    links,
+    overview,
+    deployment,
+    deploymentStatus,
+    deploymentPreview,
+    annotationsReset,
+    annotations,
+  ])
+    api.route("/", routes(server));
+  // Anything else under /api: not found, as JSON (never the app)
+  api.all("*", (c) => c.json({ error: "Not found" }, 404));
+  app.route("/api", api);
 
   if (options.clientDir) {
     const root = options.clientDir;
@@ -175,12 +186,9 @@ export function createApp(db: Sql, options: AppOptions = {}) {
       if (c.res.ok) c.header("cache-control", "public, max-age=31536000, immutable");
     });
     app.use("*", serveStatic({ root }));
-    // Everything else that isn't an API path is the app (it reads its state from the URL).
-    app.get("*", async (c, next) => (API_PATH.test(c.req.path) ? next() : serveStatic({ path: join(root, "index.html") })(c, next)));
+    // Everything else outside /api is the app (it reads its state from the URL).
+    app.get("*", serveStatic({ path: join(root, "index.html") }));
   }
 
   return app;
 }
-
-/** Paths of the server's APIs (also what Vite forwards in development: client/vite.config.ts). */
-const API_PATH = /^\/(d|job|me|auth|admin|examples|health)(\/|$)/;

@@ -1,6 +1,6 @@
 # Coder API
 
-Served by the **server**, called by the client's **annotator**
+Served by the **server** under `/api/d/<deploymentId>` (the paths below are relative to it), called by the client's **annotator**
 (`HttpCoderApi`, driven by `JobManager`).
 
 - Contracts: `coderEndpoints` in

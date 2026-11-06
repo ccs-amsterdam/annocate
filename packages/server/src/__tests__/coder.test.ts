@@ -67,7 +67,7 @@ async function send(name: string, path: string, init: RequestInit = {}, headers:
   let device = devices.get(name);
   if (!device) devices.set(name, (device = { cookies: new Map(), invite: null }));
   const cookie = [...device.cookies].map(([k, v]) => `${k}=${v}`).join("; ");
-  const res = await app().request(`/d/1${path}`, {
+  const res = await app().request(`/api/d/1${path}`, {
     ...init,
     headers: {
       "content-type": "application/json",
@@ -189,8 +189,8 @@ describe("coder flow", () => {
 
   it("returns 404 for unknown or undeployed jobs", async () => {
     const headers = { "x-annotinder": "1", "x-link-secret": "demo-secret" };
-    expect((await server.request("/d/other/session", { headers })).status).toBe(404);
-    expect((await server.request("/d/99/session", { headers })).status).toBe(404);
+    expect((await server.request("/api/d/other/session", { headers })).status).toBe(404);
+    expect((await server.request("/api/d/99/session", { headers })).status).toBe(404);
   });
 
   it("rebuilds its state from the database after a restart", async () => {
@@ -206,7 +206,7 @@ describe("coder flow", () => {
 
   it("skips units that were deleted (once that is deployed)", async () => {
     const unit3 = await unitByExternalId("unit-3");
-    expect((await server.request(`/job/1/units/${unit3.id}`, { method: "DELETE", headers: adminHeaders })).status).toBe(204);
+    expect((await server.request(`/api/job/1/units/${unit3.id}`, { method: "DELETE", headers: adminHeaders })).status).toBe(204);
     await deployDrafts();
 
     const c = coder("coder-a");
@@ -230,7 +230,7 @@ const sentimentQuestion = {
  * deployment response.
  */
 async function redeploy(loop: object, extraItems: object[] = []): Promise<DeploymentResponse> {
-  const res = await server.request("/job/1/design", {
+  const res = await server.request("/api/job/1/design", {
     method: "POST",
     headers: adminHeaders,
     body: JSON.stringify({
@@ -251,7 +251,7 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
   });
   expect(res.status).toBe(201);
   const codebook = (await res.json()) as { id: number };
-  const deploy = await server.request("/job/1/deployment", {
+  const deploy = await server.request("/api/job/1/deployment", {
     method: "PUT",
     headers: adminHeaders,
     body: JSON.stringify({ designVersionId: codebook.id, units: true }),
@@ -262,8 +262,8 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
 
 /** Deploys the draft units and sets with the deployed codebook (docs/plans/design.md §5). */
 async function deployDrafts(): Promise<DeploymentResponse> {
-  const current = (await (await server.request("/job/1/deployment", { headers: adminHeaders })).json()) as { designVersionId: number };
-  const res = await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: current.designVersionId, units: true }) });
+  const current = (await (await server.request("/api/job/1/deployment", { headers: adminHeaders })).json()) as { designVersionId: number };
+  const res = await server.request("/api/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: current.designVersionId, units: true }) });
   expect(res.status, await res.clone().text()).toBe(200);
   return (await res.json()) as DeploymentResponse;
 }
@@ -280,9 +280,9 @@ async function draftUnit(id: number): Promise<{ externalId: string; data: UnitDa
 /** Adds a set to a group (group `g` by default), replacing a set of that name. Returns its unit ids. */
 async function createSet(name: string, externalIds: string[], group = "g") {
   const ids = await Promise.all(externalIds.map(async (e) => (await unitByExternalId(e)).id));
-  const groups = (await (await server.request("/job/1/sets", { headers: adminHeaders })).json()) as { name: string; sets: { name: string }[] }[];
+  const groups = (await (await server.request("/api/job/1/sets", { headers: adminHeaders })).json()) as { name: string; sets: { name: string }[] }[];
   const sets = (groups.find((g) => g.name === group)?.sets ?? []).filter((s) => s.name !== name);
-  const res = await server.request(`/job/1/sets/${group}`, {
+  const res = await server.request(`/api/job/1/sets/${group}`, {
     method: "PUT",
     headers: adminHeaders,
     body: JSON.stringify({ sets: [...sets, { name, unitIds: ids }] }),
@@ -293,7 +293,7 @@ async function createSet(name: string, externalIds: string[], group = "g") {
 
 /** The deployed codebook's links: params -> secret. */
 async function links(): Promise<{ id: number; secret: string; params: Record<string, string>; retiredAt: string | null }[]> {
-  return (await (await server.request("/job/1/links", { headers: adminHeaders })).json()) as never;
+  return (await (await server.request("/api/job/1/links", { headers: adminHeaders })).json()) as never;
 }
 
 let extraLinks = 0;
@@ -308,7 +308,7 @@ async function link(settings: { auth?: string; emails?: string[]; participantId?
     "INSERT INTO links (job_id, label, auth, secret, link_key) VALUES (1, 'x', 'none', $1, $2) RETURNING id",
     [secret, JSON.stringify(["test", extraLinks])],
   );
-  const res = await server.request(`/job/1/links/${id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ label: "x", ...settings }) });
+  const res = await server.request(`/api/job/1/links/${id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ label: "x", ...settings }) });
   expect(res.status).toBe(200);
   return secret;
 }
@@ -345,7 +345,7 @@ describe("shared queues", () => {
     const unit = await d.next();
     expect(unit!.id).not.toBe(firstUnits[0]);
 
-    const status = (await (await server.request("/job/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
+    const status = (await (await server.request("/api/job/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
     expect(status.version).toBe(2);
     expect(status.sources).toEqual([
       expect.objectContaining({ loop: "main_loop", set: "__all__", mode: "dynamic", completeUnits: 1, leasedUnits: 1, codings: 3, coders: 4 }),
@@ -442,7 +442,7 @@ describe("assigned sets", () => {
     expect((await coder("b").next())!.externalId).toBe("unit-1");
     // A set that no longer exists: routed again.
     await createSet("s1", ["unit-3"], "h");
-    await server.request("/job/1/sets/g", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ sets: [{ name: "s2", unitIds: [(await unitByExternalId("unit-2")).id] }] }) });
+    await server.request("/api/job/1/sets/g", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ sets: [{ name: "s2", unitIds: [(await unitByExternalId("unit-2")).id] }] }) });
     await deployDrafts();
     expect((await coder("b").next())!.externalId).toBe("unit-2");
   });
@@ -485,7 +485,7 @@ describe("assigned sets", () => {
     expect((await links()).filter((l) => !l.retiredAt)).toHaveLength(2);
     expect((await deployDrafts()).links).toBe(3);
     expect((await links()).filter((l) => !l.retiredAt)).toHaveLength(3);
-    await server.request("/job/1/sets/g", {
+    await server.request("/api/job/1/sets/g", {
       method: "PUT",
       headers: adminHeaders,
       body: JSON.stringify({ sets: [{ name: "s2", unitIds: [(await unitByExternalId("unit-2")).id] }, { name: "s3", unitIds: [(await unitByExternalId("unit-3")).id] }] }),
@@ -497,7 +497,7 @@ describe("assigned sets", () => {
     // The demo link (no link parameters before) is retired too: the codebook makes only set links now
     expect((await send("demo", "/session", {}, { "x-link-secret": "demo-secret" })).status).toBe(403);
     // A group the codebook uses can't be deleted
-    expect((await server.request("/job/1/sets/g", { method: "DELETE", headers: adminHeaders })).status).toBe(409);
+    expect((await server.request("/api/job/1/sets/g", { method: "DELETE", headers: adminHeaders })).status).toBe(409);
   });
 
   it("takes the set from the login's email: only those emails may start", async () => {
@@ -524,7 +524,7 @@ describe("assigned sets", () => {
     const deployed = await deployDrafts();
     expect((await coder("early").next())!.id).toBe(set[0]);
     // A new version that changed the units, not the codebook
-    const versions = (await (await server.request("/job/1/deployment/versions", { headers: adminHeaders })).json()) as { version: number; changes: unknown }[];
+    const versions = (await (await server.request("/api/job/1/deployment/versions", { headers: adminHeaders })).json()) as { version: number; changes: unknown }[];
     expect(versions[0]).toMatchObject({ version: deployed.version, changes: { design: false, units: { added: 0, changed: 0, removed: 0, sets: true } } });
     // With the release (and commit) it ran on
     expect(versions[0]).toMatchObject({ client: { release: RELEASE, commit: expect.any(String) } });
@@ -538,13 +538,13 @@ describe("assigned sets", () => {
       await c.submit(u.id, sentiment("positive"));
     }
     const { data: before } = await draftUnit((await unitByExternalId("unit-1")).id);
-    const upload = await server.request("/job/1/units", {
+    const upload = await server.request("/api/job/1/units", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({ units: [{ externalId: "unit-new", data: { ...before, text: "New" } }] }),
     });
     expect(upload.status, await upload.clone().text()).toBe(201);
-    const pending = (await (await server.request("/job/1/deployment/pending", { headers: adminHeaders })).json()) as { units: object };
+    const pending = (await (await server.request("/api/job/1/deployment/pending", { headers: adminHeaders })).json()) as { units: object };
     expect(pending.units).toEqual({ added: 1, changed: 0, removed: 0, sets: false });
     expect(await c.next()).toBeNull();
     await deployDrafts();
@@ -632,7 +632,7 @@ describe("sessions", () => {
     expect(set).toMatch(/^annotinder_device=/);
     expect(set).toContain("HttpOnly");
     expect(set).toContain("SameSite=Lax");
-    expect(set).toContain("Path=/d");
+    expect(set).toContain("Path=/api/d");
 
     const deviceId = devices.get("browser")!.cookies.get("annotinder_device")!;
     const { coderId } = (await res.json()) as SessionResponse;
@@ -658,12 +658,12 @@ describe("sessions", () => {
     const rows = await db.query<{ device_id: number | null }>("SELECT DISTINCT device_id FROM annotation_values WHERE unit_id = $1", [unit!.id]);
     expect(rows).toHaveLength(1);
     expect(rows[0].device_id).not.toBeNull();
-    const listed = (await (await server.request("/job/1/devices", { headers: adminHeaders })).json()) as { id: number }[];
+    const listed = (await (await server.request("/api/job/1/devices", { headers: adminHeaders })).json()) as { id: number }[];
     expect(listed.map((d) => d.id)).toContain(rows[0].device_id);
   });
 
   it("refuses requests without the client header (CSRF)", async () => {
-    const res = await server.request("/d/1/session", { headers: { "x-link-secret": "demo-secret" } });
+    const res = await server.request("/api/d/1/session", { headers: { "x-link-secret": "demo-secret" } });
     expect(res.status).toBe(403);
   });
 
@@ -686,7 +686,7 @@ describe("sessions", () => {
 
   it("knows a deployment by one spelling only", async () => {
     for (const id of ["01", "0001.preview", "1e3", "99999999999"]) {
-      const res = await server.request(`/d/${id}/session`, { headers: { "x-annotinder": "1", "x-link-secret": "demo-secret" } });
+      const res = await server.request(`/api/d/${id}/session`, { headers: { "x-annotinder": "1", "x-link-secret": "demo-secret" } });
       expect(res.status).toBe(404);
     }
   });
@@ -731,7 +731,7 @@ describe("URL parameters", () => {
     // Kept without the other parameters, also after a restart (the participant id is part of the device's session key)
     server = restart();
     expect(((await (await send("u4", "/session", {}, { "x-url-params": "PROLIFIC_PID=ab12" })).json()) as SessionResponse).session).toEqual(ok.session);
-    const coders = (await (await server.request("/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[];
+    const coders = (await (await server.request("/api/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[];
     expect(coders.find((c) => c.participantId === "ab12")?.session, JSON.stringify(coders)).toEqual({ study: "s1", src: "mail", wave: "1", source: "newsletter" });
   });
 });
@@ -751,22 +751,22 @@ describe("quitting and deleting a coder's data", () => {
     expect((await send("quitter", "/loop/1/next", {}, link)).status).toBe(409);
 
     const listed = async () =>
-      ((await (await server.request("/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[]).find((c) => c.participantId === "P77");
+      ((await (await server.request("/api/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[]).find((c) => c.participantId === "P77");
     const before = (await listed())!;
     expect(before.deletionRequest).toMatchObject({ at: expect.any(String) });
-    expect((await server.request(`/job/1/coders/${before.id}/deletion-request/postpone`, { method: "POST", headers: adminHeaders })).status).toBe(204);
+    expect((await server.request(`/api/job/1/coders/${before.id}/deletion-request/postpone`, { method: "POST", headers: adminHeaders })).status).toBe(204);
     expect((await listed())!.deletionRequest).toMatchObject({ postponedAt: expect.any(String) });
 
-    const del = await server.request("/job/1/coders/delete", { method: "POST", headers: adminHeaders, body: JSON.stringify({ participantIds: ["P77"] }) });
+    const del = await server.request("/api/job/1/coders/delete", { method: "POST", headers: adminHeaders, body: JSON.stringify({ participantIds: ["P77"] }) });
     expect(await del.json()).toEqual({ coderIds: [before.id], answers: 1 });
     expect(await listed()).toBeUndefined();
-    const log = await (await server.request("/job/1/coders/deletions", { headers: adminHeaders })).json();
+    const log = await (await server.request("/api/job/1/coders/deletions", { headers: adminHeaders })).json();
     expect(log).toEqual([
       expect.objectContaining({ coderId: before.id, participantId: "P77", requestedAt: expect.any(String), deletedAt: expect.any(String), answers: 1 }),
     ]);
     expect((await db.query("SELECT 1 FROM annotation_values WHERE coder_id = $1", [before.id])).length).toBe(0);
     // Nothing matches: nothing deleted
-    const none = await server.request("/job/1/coders/delete", { method: "POST", headers: adminHeaders, body: JSON.stringify({ emails: ["x@y.z"] }) });
+    const none = await server.request("/api/job/1/coders/delete", { method: "POST", headers: adminHeaders, body: JSON.stringify({ emails: ["x@y.z"] }) });
     expect(await none.json()).toEqual({ coderIds: [], answers: 0 });
   });
 });
@@ -774,7 +774,7 @@ describe("quitting and deleting a coder's data", () => {
 describe("practice and gold units", () => {
   it("practice units come first, with their checks; gold units are checked silently, and health running out ends the session", async () => {
     const { data: base } = await draftUnit((await unitByExternalId("unit-1")).id);
-    const upload = await server.request("/job/1/units", {
+    const upload = await server.request("/api/job/1/units", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({
@@ -831,7 +831,7 @@ describe("practice and gold units", () => {
     expect(await submit(g2.id, "positive")).toEqual({ end: "low_quality" }); // wrong again: health 0
     expect((await c.session()).ended).toMatchObject({ item: "low_quality", outcome: "screenout" });
     // The Coders tab counts the special units each coder finished
-    const coders = (await (await server.request("/job/1/coders", { headers: adminHeaders })).json()) as { ended: unknown; special: object }[];
+    const coders = (await (await server.request("/api/job/1/coders", { headers: adminHeaders })).json()) as { ended: unknown; special: object }[];
     expect(coders.find((x) => x.ended)?.special).toEqual({ practice: { done: 1, total: 1 }, gold: { done: 2, total: 2 } });
   });
 });
@@ -874,7 +874,7 @@ describe("auto questions", () => {
     // ... and per wave
     expect(await start("w3", "f", "2")).toEqual([{ value: "a" }]);
     // A stratify name that is no question before it, or no session value: an issue
-    const bad = await server.request("/job/1/design", {
+    const bad = await server.request("/api/job/1/design", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({
@@ -913,9 +913,9 @@ describe("coder-level answers", () => {
     expect(ageRow.device_id).not.toBeNull();
 
     // In the download too, without a unit; and on the coder
-    const page = (await (await server.request("/job/1/annotations", { headers: adminHeaders })).json()) as { annotations: { unitId: number | null; variable: string; assigned: boolean }[] };
+    const page = (await (await server.request("/api/job/1/annotations", { headers: adminHeaders })).json()) as { annotations: { unitId: number | null; variable: string; assigned: boolean }[] };
     expect(page.annotations.filter((a) => a.unitId === null).map((a) => a.variable).sort()).toEqual(["age", "city", "group"]);
-    const coders = (await (await server.request("/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[];
+    const coders = (await (await server.request("/api/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[];
     expect(coders[0].variables).toMatchObject({ age: value(31), city: value("Utrecht") });
     // A reload (a restart of the runtime) reads them back
     server = restart();
@@ -928,9 +928,9 @@ describe("pausing a job", () => {
     const c = coder("working");
     const [first, second] = await c.batch(2);
     const before = (await c.session()).version;
-    const deployment = (await (await server.request("/job/1/deployment", { headers: adminHeaders })).json()) as { designVersionId: number };
+    const deployment = (await (await server.request("/api/job/1/deployment", { headers: adminHeaders })).json()) as { designVersionId: number };
     const pause = (active: boolean) =>
-      server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: deployment.designVersionId, active }) });
+      server.request("/api/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: deployment.designVersionId, active }) });
     await pause(false);
     expect((await c.session()).version).toBe(before); // no reload for coders
     // What they have open is saved
@@ -990,7 +990,7 @@ describe("response times", () => {
       body: JSON.stringify({ unitId: unit!.id, variables: sentiment("positive"), timings: { sentiment: timing(4000), other: timing(1) } }),
     })).status).toBe(200);
 
-    const page = (await (await server.request("/job/1/annotations", { headers: adminHeaders })).json()) as {
+    const page = (await (await server.request("/api/job/1/annotations", { headers: adminHeaders })).json()) as {
       annotations: { unitId: number | null; variable: string; timing: unknown; servedAt: string | null }[];
     };
     const byVariable = Object.fromEntries(page.annotations.map((a) => [a.variable, a]));
@@ -1047,7 +1047,7 @@ describe("coder login", () => {
     // A transfer link works too
     expect((await send("phone", "/transfer", { method: "POST" })).status).toBe(200);
 
-    const coders = (await (await server.request("/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[];
+    const coders = (await (await server.request("/api/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[];
     expect(coders.find((c) => c.id === phone.body.coderId)?.email).toBe("a@example.org");
   });
 
@@ -1204,7 +1204,7 @@ describe("rebuilding from the database", () => {
     units: [{ mode: "shared", until: { agree: 2, on: "sentiment" }, maxCoders: 3 }],
   };
   const status = async () =>
-    (await (await server.request("/job/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
+    (await (await server.request("/api/job/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
 
   it("keeps saturation the same across a restart with an agreement rule", async () => {
     await redeploy({
@@ -1317,7 +1317,7 @@ describe("finished units follow the current codebook", () => {
     await c.submit(first!.id, sentiment("negative"));
     expect((await c.next())!.id).not.toBe(first!.id);
 
-    const res = await server.request("/job/1/annotations/reset", {
+    const res = await server.request("/api/job/1/annotations/reset", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({ variables: ["sentiment"], unitIds: [first!.id] }),
@@ -1360,7 +1360,7 @@ describe("state in the database, not in memory", () => {
     await c.submit(unit.id, demo("neutral"));
     const { externalId, data } = await draftUnit(unit.id);
     const upload = { units: [{ externalId, data: { ...data, text: "fixed" } }], overwriteCoded: true };
-    expect((await server.request("/job/1/units", { method: "POST", headers: adminHeaders, body: JSON.stringify(upload) })).status).toBe(201);
+    expect((await server.request("/api/job/1/units", { method: "POST", headers: adminHeaders, body: JSON.stringify(upload) })).status).toBe(201);
     const back = async () => ((await (await c.call(`/loop/1/units/${unit.id}`)).json()) as CoderUnitResponse).data.text;
     expect(await back()).toBe(data.text);
     await deployDrafts();
@@ -1379,8 +1379,8 @@ describe("state in the database, not in memory", () => {
     expect((await phone.session()).coderId).toBe((await c.session()).coderId);
     // Pausing the job on one process is seen at once by the other
     server = other;
-    const deployment = (await (await server.request("/job/1/deployment", { headers: adminHeaders })).json()) as { designVersionId: number };
-    await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: deployment.designVersionId, active: false }) });
+    const deployment = (await (await server.request("/api/job/1/deployment", { headers: adminHeaders })).json()) as { designVersionId: number };
+    await server.request("/api/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: deployment.designVersionId, active: false }) });
     server = first;
     expect((await c.call("/loop/1/next")).status).toBe(409);
   });
@@ -1439,7 +1439,7 @@ describe("unit versions", () => {
       )
     )[0]?.data;
   const upload = (units: object[], extra: object) =>
-    server.request("/job/1/units", { method: "POST", headers: adminHeaders, body: JSON.stringify({ units, ...extra }) });
+    server.request("/api/job/1/units", { method: "POST", headers: adminHeaders, body: JSON.stringify({ units, ...extra }) });
 
   it("records the version of a unit each coder saw, also when it changed after it was served", async () => {
     const c = coder("hash");
@@ -1469,7 +1469,7 @@ describe("unit versions", () => {
     expect((await coder("b").next())!.data.text).toBe("edited");
     expect((await versionOf(unit.id))?.text).toBe(row.data.text);
 
-    const page = (await (await server.request("/job/1/unit-versions", { headers: adminHeaders })).json()) as { versions: { unitId: number; data: UnitData }[] };
+    const page = (await (await server.request("/api/job/1/unit-versions", { headers: adminHeaders })).json()) as { versions: { unitId: number; data: UnitData }[] };
     expect(page.versions.filter((v) => v.unitId === unit.id).map((v) => v.data.text)).toEqual([row.data.text, "edited"]);
   });
 
@@ -1484,7 +1484,7 @@ describe("unit versions", () => {
 describe("unit versions are made by deploys", () => {
   const count = async (sql: string, params: unknown[] = []) => (await db.query<{ n: number }>(sql, params))[0].n;
   const upload = async (units: object[]) => {
-    const res = await server.request("/job/1/units", { method: "POST", headers: adminHeaders, body: JSON.stringify({ units, overwrite: true, overwriteCoded: true }) });
+    const res = await server.request("/api/job/1/units", { method: "POST", headers: adminHeaders, body: JSON.stringify({ units, overwrite: true, overwriteCoded: true }) });
     expect(res.status, await res.clone().text()).toBe(201);
   };
 
@@ -1522,7 +1522,7 @@ describe("deployment settings", () => {
     expect(deployed.warnings).toContainEqual(expect.stringContaining("'panel_done', which has no URL yet"));
     expect(JSON.stringify((await coder("first").session()).codebook.items)).not.toContain("redirectUrl");
     // The URL is a setting of the job: coders get it without a new version
-    const put = await server.request("/job/1", {
+    const put = await server.request("/api/job/1", {
       method: "PUT",
       headers: adminHeaders,
       body: JSON.stringify({ name: "Demo job", redirectUrls: { panel_done: "https://panel.example/done?id=$session.participant" } }),
@@ -1543,14 +1543,14 @@ describe("review regressions", () => {
     await redeploy({}, [session, end]);
     // An upload with a new column after the deploy: the new draft keeps the session
     const { data } = await draftUnit((await unitByExternalId("unit-1")).id);
-    const upload = await server.request("/job/1/units", { method: "POST", headers: adminHeaders, body: JSON.stringify({ units: [{ externalId: "n1", data: { ...data, extra: "x" } }] }) });
+    const upload = await server.request("/api/job/1/units", { method: "POST", headers: adminHeaders, body: JSON.stringify({ units: [{ externalId: "n1", data: { ...data, extra: "x" } }] }) });
     expect(upload.status).toBe(201);
-    const list = (await (await server.request("/job/1/design", { headers: adminHeaders })).json()) as { id: number }[];
-    const draft = (await (await server.request(`/job/1/design/${list.at(-1)!.id}`, { headers: adminHeaders })).json()) as { session: unknown };
+    const list = (await (await server.request("/api/job/1/design", { headers: adminHeaders })).json()) as { id: number }[];
+    const draft = (await (await server.request(`/api/job/1/design/${list.at(-1)!.id}`, { headers: adminHeaders })).json()) as { session: unknown };
     expect(draft.session).toMatchObject({ params: [{ name: "wave" }] });
     // An empty set is a change to deploy, and reaches the live sets
     await createSet("empty", []);
-    const pending = (await (await server.request("/job/1/deployment/pending", { headers: adminHeaders })).json()) as { units: { sets: boolean } };
+    const pending = (await (await server.request("/api/job/1/deployment/pending", { headers: adminHeaders })).json()) as { units: { sets: boolean } };
     expect(pending.units.sets).toBe(true);
     const deployed = await deployDrafts();
     const live = (await db.query<{ name: string }>("SELECT name FROM unit_sets WHERE job_id = 1 AND live AND name = 'empty'"));
@@ -1562,51 +1562,51 @@ describe("review regressions", () => {
 describe("unit fields in the design", () => {
   it("keeps the session next to the items, not among them", async () => {
     const session = { params: [{ name: "wave", kind: "url", values: { list: [{ value: "1" }] } }] };
-    const post = (body: object) => server.request("/job/1/design", { method: "POST", headers: adminHeaders, body: JSON.stringify(body) });
+    const post = (body: object) => server.request("/api/job/1/design", { method: "POST", headers: adminHeaders, body: JSON.stringify(body) });
     expect((await post({ items: [{ type: "session", ...session }] })).status).toBe(400);
     const created = (await (await post({ items: [], session })).json()) as { id: number; items: unknown[]; session: unknown };
     expect(created).toMatchObject({ items: [], session });
     // A write without `session` keeps it; null clears it
     const put = async (body: object) =>
-      (await (await server.request(`/job/1/design/${created.id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify(body) })).json()) as { session: unknown };
+      (await (await server.request(`/api/job/1/design/${created.id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify(body) })).json()) as { session: unknown };
     expect((await put({ items: [] })).session).toEqual(session);
     expect((await put({ items: [], session: null })).session).toBeNull();
   });
 
   it("are declared by uploads in the draft design, kept by codebook writes, and required to deploy", async () => {
     const { data } = await draftUnit((await unitByExternalId("unit-1")).id);
-    const upload = await server.request("/job/1/units", {
+    const upload = await server.request("/api/job/1/units", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({ units: [{ externalId: "with-extra", data: { ...data, source: "wire" } }] }),
     });
     expect(upload.status, await upload.clone().text()).toBe(201);
     // The deployed version is frozen: the new field goes into a new draft
-    const list = (await (await server.request("/job/1/design", { headers: adminHeaders })).json()) as { id: number; note: string | null }[];
+    const list = (await (await server.request("/api/job/1/design", { headers: adminHeaders })).json()) as { id: number; note: string | null }[];
     const draft = list.at(-1)!;
     expect(draft.note).toBe("Unit fields from an upload");
-    const get = async (id: number) => (await (await server.request(`/job/1/design/${id}`, { headers: adminHeaders })).json()) as { items: unknown[]; units: { fields: { name: string; type: string }[] } };
+    const get = async (id: number) => (await (await server.request(`/api/job/1/design/${id}`, { headers: adminHeaders })).json()) as { items: unknown[]; units: { fields: { name: string; type: string }[] } };
     expect((await get(draft.id)).units.fields).toContainEqual({ name: "source", type: "text" });
     // A write without `units` keeps them
     const items = (await get(draft.id)).items;
-    await server.request(`/job/1/design/${draft.id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ items }) });
+    await server.request(`/api/job/1/design/${draft.id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ items }) });
     expect((await get(draft.id)).units.fields.map((f) => f.name)).toContain("source");
     // A codebook using a field the design doesn't declare can't be deployed
-    const created = await server.request("/job/1/design", {
+    const created = await server.request("/api/job/1/design", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({ items: [{ type: "unit_loop", units: [{ mode: "all" }], layout: { template: "$unit.nowhere" }, children: [sentimentQuestion] }] }),
     });
     const { id } = (await created.json()) as { id: number };
-    const deploy = await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: id }) });
+    const deploy = await server.request("/api/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: id }) });
     expect(deploy.status).toBe(400);
     expect(await deploy.json()).toMatchObject({ code: "undeclared_fields" });
 
     // Declared on the Units page (PUT /units/fields): then it deploys. Removing an unused field drops it from the draft units.
-    const putFields = (fields: object[]) => server.request("/job/1/units/fields", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ fields }) });
+    const putFields = (fields: object[]) => server.request("/api/job/1/units/fields", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ fields }) });
     const fields = (await get(id)).units.fields;
     expect((await putFields([...fields, { name: "nowhere", type: "number" }])).status).toBe(200);
-    expect((await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: id }) })).status).toBe(200);
+    expect((await server.request("/api/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: id }) })).status).toBe(200);
     const unit = await unitByExternalId("with-extra");
     expect((await draftUnit(unit.id)).data.source).toBe("wire");
     const kept = [...fields.filter((f) => f.name !== "source"), { name: "nowhere", type: "number" }];
@@ -1620,7 +1620,7 @@ describe("unit fields in the design", () => {
 
 describe("researcher preview", () => {
   const draft = async (note: string) => {
-    const res = await server.request("/job/1/design", {
+    const res = await server.request("/api/job/1/design", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({
@@ -1631,7 +1631,7 @@ describe("researcher preview", () => {
     expect(res.status).toBe(201);
   };
   const openPreview = async () => {
-    const res = await server.request("/job/1/deployment/preview", { method: "POST", headers: adminHeaders });
+    const res = await server.request("/api/job/1/deployment/preview", { method: "POST", headers: adminHeaders });
     expect(res.status).toBe(200);
     return (await res.json()) as { deploymentId: string; token: string };
   };
@@ -1639,7 +1639,7 @@ describe("researcher preview", () => {
   const previewer = (deploymentId: string, token: string) => {
     let cookie = "";
     return async (path: string, init: RequestInit = {}) => {
-      const res = await server.request(`/d/${deploymentId}${path}`, {
+      const res = await server.request(`/api/d/${deploymentId}${path}`, {
         ...init,
         headers: { "content-type": "application/json", "x-annotinder": "1", "x-link-secret": token, cookie },
       });
@@ -1705,7 +1705,7 @@ describe("end items", () => {
     expect(answers.status).toBe(409);
 
     // Researchers see how the session ended.
-    const coders = (await (await server.request("/job/1/coders", { headers: adminHeaders })).json()) as { ended: unknown }[];
+    const coders = (await (await server.request("/api/job/1/coders", { headers: adminHeaders })).json()) as { ended: unknown }[];
     expect(coders[0].ended).toMatchObject({ item: "screen_out_young", outcome: "screenout" });
   });
 
@@ -1751,7 +1751,7 @@ describe("end items", () => {
   });
 
   it("a job can keep finished sessions open", async () => {
-    await server.request("/job/1", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ name: "Demo", keepSessionsOpen: true }) });
+    await server.request("/api/job/1", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ name: "Demo", keepSessionsOpen: true }) });
     await redeploy({});
     const c = coder("keeper");
     const unit = await c.next();
@@ -1770,7 +1770,7 @@ describe("end items", () => {
 describe("special units per coder", () => {
   it("count the special sets of the coder's own set group, not of other groups", async () => {
     const { data: base } = await draftUnit((await unitByExternalId("unit-1")).id);
-    const upload = await server.request("/job/1/units", {
+    const upload = await server.request("/api/job/1/units", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({ units: ["g1", "g2"].map((externalId) => ({ externalId, data: { ...base, sentiment_gold: "neutral" } })) }),
@@ -1788,7 +1788,7 @@ describe("special units per coder", () => {
     }
     // A coder who never asked for units: not routed, so no special sets yet
     await coder("idle").session();
-    const coders = (await (await server.request("/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[];
+    const coders = (await (await server.request("/api/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[];
     const routed = coders.find((x) => x.finished.main_loop === 2)!;
     expect(routed.special).toEqual({ gold: { done: 1, total: 1 } });
     expect(coders.filter((x) => x.id !== routed.id).map((x) => x.special)).toEqual([{}]);

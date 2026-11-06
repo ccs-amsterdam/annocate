@@ -14,8 +14,8 @@ import { useTheme } from "./lib/context/theme";
 // same-origin only); in development Vite serves it and forwards the API
 // paths (vite.config.ts). On a development server (development auth, no
 // login) it also offers the demo job's coding screen without a link.
-const SERVER_URL = "";
-const CODER_API_URL = "";
+const SERVER_URL = "/api";
+const CODER_API_URL = "/api";
 
 /** Logged-in researchers: the session cookie. */
 const sessionApi = new HttpResearcherApi({ baseUrl: SERVER_URL });

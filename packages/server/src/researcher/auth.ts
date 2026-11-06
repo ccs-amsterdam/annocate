@@ -28,7 +28,7 @@ import { SESSION_COOKIE } from "./login.js";
 const ROLE_RANK: Record<Role, number> = { READ: 0, WRITE: 1, ADMIN: 2 };
 
 /** What still works in a suspended job besides reading: deleting it, or coders' data. */
-const SUSPENDED_ALLOWED = [/^\/job\/\d+$/, /^\/job\/\d+\/coders\/delete$/, /^\/job\/\d+\/coders\/\d+\/deletion-request\/postpone$/];
+const SUSPENDED_ALLOWED = [/^\/api\/job\/\d+$/, /^\/api\/job\/\d+\/coders\/delete$/, /^\/api\/job\/\d+\/coders\/\d+\/deletion-request\/postpone$/];
 
 /** Ids are Postgres INTEGERs. */
 const MAX_ID = 2 ** 31 - 1;

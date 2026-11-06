@@ -20,7 +20,7 @@ export default defineConfig({
   },
   webServer: {
     command: "./start-server.sh",
-    url: `http://localhost:${port}/health`,
+    url: `http://localhost:${port}/api/health`,
     timeout: 180_000,
     reuseExistingServer: false,
     stdout: "pipe",

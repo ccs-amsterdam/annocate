@@ -217,7 +217,7 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
   OpenID Connect provider, configured by its issuer URL (e.g. a self-hosted
   Authentik that handles social logins and email magic links). The server
   runs the authorization code flow with PKCE itself (`/auth/login`,
-  `/auth/callback`), so tokens never reach the browser, checks the ID token,
+  `/api/auth/callback`), so tokens never reach the browser, checks the ID token,
   and starts its own session: a random key in an httpOnly cookie, its hash
   in the `sessions` table, 14 days, sliding. Every request with the cookie
   needs the `x-annotinder: 1` header (CSRF), as on the coder API. The
@@ -242,7 +242,7 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
 - **Account roles** (user, researcher, admin), who becomes a researcher,
   and limits: `accounts.md`.
 - **Setting up a provider** (e.g. Authentik):
-  - redirect URI `<ANNOTINDER_PUBLIC_URL>/auth/callback`, scopes `openid
+  - redirect URI `<ANNOTINDER_PUBLIC_URL>/api/auth/callback`, scopes `openid
     email`, a confidential client (client id and secret);
   - `email_verified` must reflect a real check (social logins whose
     provider verified the address, magic links after the link was opened);

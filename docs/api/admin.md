@@ -1,7 +1,7 @@
 # Admin API
 
 The server admin's endpoints (account role `admin`, `docs/accounts.md`),
-under `/admin/...`, with the researcher API's authentication (session
+under `/api/admin/...`, with the researcher API's authentication (session
 cookie or API key; a required second factor applies). Called by the
 client's server admin page (`ServerAdmin.tsx`, through `api/serverApi.ts`).
 

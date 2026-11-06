@@ -10,7 +10,7 @@ import { HttpCoderApi } from "../api/httpCoderApi";
 
 /** Which job and link a page belongs to. */
 export interface CoderSessionScope {
-  /** Server base URL including the deployment, e.g. `/d/42` (same origin as the client). */
+  /** Server base URL including the deployment, e.g. `/api/d/42` (same origin as the client). */
   baseUrl: string;
   linkSecret?: string;
 }
@@ -53,13 +53,13 @@ export function defaultTransferUrl(token: string): string {
 
 /** Where the browser goes to log in; it comes back to this page. */
 export function coderLoginUrl(): string {
-  return `/auth/login?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+  return `/api/auth/login?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`;
 }
 
 /** Whether this server offers login at all. */
 export async function loginAvailable(): Promise<boolean> {
   try {
-    const res = await fetch("/auth/options", { credentials: "same-origin" });
+    const res = await fetch("/api/auth/options", { credentials: "same-origin" });
     return res.ok && ((await res.json()) as { login?: boolean }).login === true;
   } catch {
     return false;
@@ -68,5 +68,5 @@ export async function loginAvailable(): Promise<boolean> {
 
 /** Logs out (to log in with another account). */
 export async function logOut(): Promise<void> {
-  await fetch("/auth/logout", { method: "POST", headers: { "x-annotinder": "1" }, credentials: "same-origin" });
+  await fetch("/api/auth/logout", { method: "POST", headers: { "x-annotinder": "1" }, credentials: "same-origin" });
 }

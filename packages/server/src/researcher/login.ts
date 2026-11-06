@@ -8,8 +8,8 @@ import { applyRegistration, ensureUser } from "../shared/accounts.js";
 import { createSession, deleteSession, SESSION_TTL_MS } from "../shared/sessions.js";
 import { CLIENT_HEADER } from "../runtime/session.js";
 
-// Researcher login (oidc.ts): `/auth/login` sends the browser to the
-// provider, `/auth/callback` takes it back and starts our own session: an
+// Researcher login (oidc.ts): `/api/auth/login` sends the browser to the
+// provider, `/api/auth/callback` takes it back and starts our own session: an
 // httpOnly cookie for the whole origin. The client is served from this
 // server's origin (in development, Vite proxies to it).
 
@@ -36,7 +36,7 @@ const secure = (c: Context) => new URL(c.req.url).protocol === "https:" || c.req
 export function login(server: Server): Hono<Env> {
   const app = new Hono<Env>();
   const { oidc, publicUrl } = server.login ?? {};
-  const redirectUri = publicUrl ? `${publicUrl}/auth/callback` : "";
+  const redirectUri = publicUrl ? `${publicUrl}/api/auth/callback` : "";
 
   app.get("/auth/options", (c) => c.json({ login: !!oidc, devAuth: server.devAuth }));
 
@@ -44,7 +44,7 @@ export function login(server: Server): Hono<Env> {
     if (!oidc) return c.json({ error: "Login is not configured on this server" }, 404);
     const { url, state } = await oidc.start(redirectUri, safeReturnTo(c.req.query("returnTo")));
     await setSignedCookie(c, LOGIN_COOKIE, JSON.stringify(state), server.secret, {
-      path: "/auth",
+      path: "/api/auth",
       httpOnly: true,
       sameSite: "Lax", // sent along when the provider redirects back
       secure: secure(c),
@@ -56,7 +56,7 @@ export function login(server: Server): Hono<Env> {
   app.get("/auth/callback", async (c) => {
     if (!oidc) return c.json({ error: "Login is not configured on this server" }, 404);
     const raw = await getSignedCookie(c, server.secret, LOGIN_COOKIE);
-    deleteCookie(c, LOGIN_COOKIE, { path: "/auth" });
+    deleteCookie(c, LOGIN_COOKIE, { path: "/api/auth" });
     const state = parseLoginState(raw);
     const back = (path: string, error?: LoginError) => {
       const url = new URL(path, publicUrl);

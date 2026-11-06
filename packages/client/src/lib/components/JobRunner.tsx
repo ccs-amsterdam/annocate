@@ -44,7 +44,7 @@ import {
 } from "lucide-react";
 
 export interface JobRunnerProps {
-  /** Server URL including the deployment, e.g. `/d/42` (same origin as the client). */
+  /** Server URL including the deployment, e.g. `/api/d/42` (same origin as the client). */
   baseUrl: string;
   linkSecret?: string;
   /** The page's other query parameters: the participant id and other parameters the link requires, and `url_param` auto variables (stored by the server when the coder starts). */

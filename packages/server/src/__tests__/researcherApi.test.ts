@@ -41,7 +41,7 @@ async function call<N extends ResearcherEndpointName>(
 ): Promise<{ status: number; data: z.output<(typeof researcherEndpoints)[N]["response"]> }> {
   const endpoint: Endpoint = researcherEndpoints[name];
   const path = endpoint.path.replace(/:(\w+)/g, (_, p: string) => String(params[p]));
-  const res = await app.request(path + query, {
+  const res = await app.request(`/api${path}${query}`, {
     method: endpoint.method,
     headers: { "content-type": "application/json", ...(key ? { authorization: `Bearer ${key}` } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -80,7 +80,7 @@ async function setUpJob(key: string): Promise<{ jobId: number; unitIds: number[]
 async function code(jobId: number, invite: string, answer: string): Promise<void> {
   let cookie = "";
   const send = async (path: string, init: RequestInit = {}) => {
-    const res = await app.request(`/d/${jobId}${path}`, {
+    const res = await app.request(`/api/d/${jobId}${path}`, {
       ...init,
       headers: { "content-type": "application/json", "x-annotinder": "1", "x-link-secret": invite, cookie },
     });
@@ -100,7 +100,7 @@ describe("authentication", () => {
   it("needs an API key; development headers only work when enabled", async () => {
     expect((await call(null, "getMe")).status).toBe(401);
     expect((await call("atk_wrong", "getMe")).status).toBe(401);
-    const res = await app.request("/job", { headers: { "x-dev-role": "ADMIN" } });
+    const res = await app.request("/api/job", { headers: { "x-dev-role": "ADMIN" } });
     expect(res.status).toBe(401);
 
     const key = await keyFor("Researcher@Uni.nl");

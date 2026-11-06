@@ -34,7 +34,7 @@ export function newDeviceId(): string {
 /** Sets (or renews) the device cookie, for the whole coder API. */
 export function writeDevice(c: Context, deviceId: string): void {
   setCookie(c, DEVICE_COOKIE, deviceId, {
-    path: "/d",
+    path: "/api/d",
     httpOnly: true,
     sameSite: "Lax",
     // Plain http only in local development (behind a TLS proxy: its X-Forwarded-Proto).

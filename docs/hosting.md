@@ -27,7 +27,7 @@ from an earlier release is updated in place. (Before the first release the
 migrations were reset to one, `0001_init.sql`: a test server from before
 that has to start with a new database.)
 
-`GET /health` answers `{ ok: true, service, release, commit }` when the
+`GET /api/health` answers `{ ok: true, service, release, commit }` when the
 server runs (the image's health check uses it).
 
 **Versions.** Each deployment records the release and commit it ran on
@@ -47,7 +47,7 @@ checkout finds it itself).
 
 | Variable | What |
 | --- | --- |
-| `ANNOTINDER_PUBLIC_URL` | Where browsers reach AnnoTinder, e.g. `https://annotinder.example.org` (no trailing slash). The login callback is `<ANNOTINDER_PUBLIC_URL>/auth/callback` |
+| `ANNOTINDER_PUBLIC_URL` | Where browsers reach AnnoTinder, e.g. `https://annotinder.example.org` (no trailing slash). The login callback is `<ANNOTINDER_PUBLIC_URL>/api/auth/callback` |
 | `ANNOTINDER_SECRET` | Signs login state and preview links. A long random string (`openssl rand -base64 48`); without it these end with every restart |
 | `DATABASE_URL` | Postgres, e.g. `postgres://user:pass@host:5432/annotinder`. The compose file sets it from `POSTGRES_PASSWORD`. Without it the server uses PGlite in `PGLITE_DIR` (development) |
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | Researcher login (below). Without them nobody can log in |
@@ -72,7 +72,7 @@ Connect provider: Zitadel, Authentik, Keycloak, or a hosted one (Google,
 Microsoft).
 
 - Register a confidential web client with redirect URI
-  `<ANNOTINDER_PUBLIC_URL>/auth/callback`, scope `openid email`.
+  `<ANNOTINDER_PUBLIC_URL>/api/auth/callback`, scope `openid email`.
 - The provider must verify email addresses: AnnoTinder keys accounts on the
   email and refuses a login without `email_verified: true`.
 - For `ANNOTINDER_2FA=oidc`, the provider must report the second factor

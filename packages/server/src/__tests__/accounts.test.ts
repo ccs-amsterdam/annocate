@@ -28,7 +28,7 @@ type Name = keyof typeof endpoints;
 async function call(key: string, name: Name, params: Record<string, string | number> = {}, body?: unknown) {
   const endpoint = endpoints[name];
   const path = endpoint.path.replace(/:(\w+)/g, (_, p: string) => encodeURIComponent(String(params[p])));
-  const res = await app.request(path, {
+  const res = await app.request(`/api${path}`, {
     method: endpoint.method,
     headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
     body: body === undefined ? undefined : JSON.stringify(body),

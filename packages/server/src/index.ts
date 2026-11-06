@@ -66,7 +66,7 @@ const app = createApp(db, {
 
 const server = serve({ fetch: app.fetch, port }, (info) => {
   console.log(`@annotinder/server listening on http://localhost:${info.port} (${describeDatabase()})`);
-  console.log(login ? `  researcher login: ${login.oidc.issuer}, callback ${login.publicUrl}/auth/callback` : "  researcher login: not configured (OIDC_ISSUER)");
+  console.log(login ? `  researcher login: ${login.oidc.issuer}, callback ${login.publicUrl}/api/auth/callback` : "  researcher login: not configured (OIDC_ISSUER)");
   console.log(`  admins: ${admins.filter((a) => a.trim()).join(", ") || "none named (ANNOTINDER_ADMINS)"}; second factor for researchers: ${{ none: "not required", annotinder: "a passkey (AnnoTinder)", oidc: "from the login provider" }[twoFactor]}`);
   console.log(clientDir ? `  client: ${clientDir}` : "  client: not served here (ANNOTINDER_CLIENT_DIR; in development Vite serves it)");
   if (devAuth) console.warn("  development auth headers accepted (ANNOTINDER_DEV_AUTH=1): never on a reachable server");

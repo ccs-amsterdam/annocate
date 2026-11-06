@@ -10,7 +10,7 @@ The annotinder server: one Hono app on one database.
   Spec: [docs/api/coder.md](../../docs/api/coder.md).
 - the **admin API** (`/admin/...`): server settings, users, plans. Spec:
   [docs/api/admin.md](../../docs/api/admin.md).
-- login (`/auth/...`), the account (`/me`), `/health`, and the built client
+- login (`/api/auth/...`), the account (`/api/me`), `/api/health` (all APIs under `/api`), and the built client
   (`ANNOTINDER_CLIENT_DIR`, [docs/hosting.md](../../docs/hosting.md)).
 
 How it works: [docs/architecture.md](../../docs/architecture.md).

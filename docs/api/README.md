@@ -10,7 +10,7 @@ server serves two APIs.
  │ scripts (R, Python), AmCAT      │   │                              │
  └────────────────┬────────────────┘   └───────────────┬──────────────┘
                   │ researcher API                      │ coder API
-                  │ /job/..., /me, /auth/...            │ /d/<deploymentId>/...
+                  │ /api/job/..., /api/me, /api/auth/...│ /api/d/<deploymentId>/...
                   ▼                                     ▼
  ┌─────────────────────────────────────────────────────────────────────┐
  │ server                                                              │
@@ -25,6 +25,11 @@ server serves two APIs.
 
 The registries are in `packages/contracts/src/endpoints/`: one file per API,
 each entry `{ method, path, request, response }` with zod schemas.
+
+**All APIs are under `/api`.** The paths in the registries and in these
+documents are relative to it: `GET /job` is
+`https://annotinder.example.org/api/job`. Everything outside `/api` is the
+app (its pages, e.g. `/research/...` and `/code/...`).
 
 ## Where they are implemented
 

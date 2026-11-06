@@ -1,6 +1,6 @@
 # Researcher API
 
-Served by the **server** at `/job/...`, called by the client's **researcher
+Served by the **server** at `/api/job/...` (the paths below are relative to `/api`), called by the client's **researcher
 UI** (`ResearcherApi`), and by scripts (R, Python) and other systems (AmCAT):
 managing jobs, design versions, units and sets, links, deploying and progress.
 
@@ -146,7 +146,7 @@ and clears its cookie.
 
 Logging in itself is not a JSON endpoint: the browser opens
 `GET /auth/login?returnTo=<path on this origin>`, which redirects to the
-provider; the provider redirects back to `/auth/callback`, which starts the
+provider; the provider redirects back to `/api/auth/callback`, which starts the
 session and redirects to `returnTo`. A refused login comes back with
 `?loginError=email_unverified|blocked|login_failed`
 (`LoginErrorSchema`). Logging in also applies the server's registration

@@ -37,7 +37,7 @@ have leaked. The list shows when each key was last used.
 
 The API lives at the same address as AnnoTinder itself: if you open
 AnnoTinder at `https://annotinder.example.org`, a script asks for
-`https://annotinder.example.org/job` to list your jobs. Every request sends
+`https://annotinder.example.org/api/job` to list your jobs. Every request sends
 the key in a header:
 
 ```text
@@ -53,7 +53,7 @@ Most paths start with the job's number, `/job/<id>/...`. A script finds it
 by listing the jobs:
 
 ```text
-curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/job
+curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/api/job
 ```
 
 ```json
