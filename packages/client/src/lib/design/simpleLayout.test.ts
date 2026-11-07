@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateDesignItems } from "@annotinder/contracts";
-import { guessSimpleLayout, parseSimpleLayout, simpleTemplate } from "./simpleLayout";
+import { keepFields, parseSimpleLayout, placeField, placedFields, removeField, simpleTemplate } from "./simpleLayout";
 
 describe("simple layouts", () => {
   it("write a template and read it back", () => {
@@ -25,8 +25,27 @@ describe("simple layouts", () => {
     expect(parseSimpleLayout("::: text\n$unit.text\n:::")).toBeNull();
   });
 
-  it("guess the title and byline by name", () => {
-    expect(guessSimpleLayout(["headline", "source", "text"])).toEqual({ title: "headline", byline: "source", body: ["text"] });
-    expect(guessSimpleLayout(["text", "notes"])).toEqual({ body: ["text", "notes"] });
+  it("place a field: one in the title or byline (replacing), any number in the body, taken from where it was", () => {
+    let layout = placeField({ body: [] }, "headline", "title");
+    expect(layout).toEqual({ title: "headline", body: [] });
+    layout = placeField(layout, "source", "title");
+    expect(layout).toEqual({ title: "source", body: [] });
+    layout = placeField(placeField(layout, "text", "body"), "notes", "body");
+    expect(layout.body).toEqual(["text", "notes"]);
+    // From the body to the byline, and before another body field
+    layout = placeField(layout, "notes", "byline");
+    expect(layout).toEqual({ title: "source", byline: "notes", body: ["text"] });
+    layout = placeField(layout, "headline", "body", 0);
+    expect(layout.body).toEqual(["headline", "text"]);
+    // Moving down in the body: before the field at `at`, as the body is now
+    expect(placeField({ body: ["a", "b", "c"] }, "a", "body", 2).body).toEqual(["b", "a", "c"]);
+    expect(placedFields(layout)).toEqual(["source", "notes", "headline", "text"]);
+  });
+
+  it("remove a field, and keep only fields that exist", () => {
+    const layout = { title: "headline", byline: "source", body: ["text", "notes"] };
+    expect(removeField(layout, "source")).toEqual({ title: "headline", body: ["text", "notes"] });
+    expect(removeField(layout, "notes")).toEqual({ title: "headline", byline: "source", body: ["text"] });
+    expect(keepFields(layout, ["text", "source"])).toEqual({ byline: "source", body: ["text"] });
   });
 });

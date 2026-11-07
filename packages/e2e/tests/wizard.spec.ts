@@ -34,9 +34,10 @@ test("annotation with an experiment: a set of units per condition, questions bef
   await page.getByRole("group", { name: "treatment" }).getByRole("checkbox", { name: "treatment" }).check();
   await page.getByRole("button", { name: "Next" }).click();
 
-  // How coders see a unit: the text as body, group not shown (the preview shows the first unit)
-  await page.getByRole("button", { name: "Body: group" }).hover();
-  await page.getByRole("button", { name: "Remove group from the body" }).click();
+  // How coders see a unit: an empty sketch; the text as body (a click on the field), group not shown
+  await expect(page.getByRole("button", { name: "Body: choose a field" })).toBeVisible();
+  await page.getByRole("button", { name: "Add text to the body" }).click();
+  await expect(page.getByRole("button", { name: "Body: text" })).toBeVisible();
   await expect(page.getByText("A neutral report.")).toBeVisible();
   await page.getByRole("button", { name: "Next" }).click();
 
@@ -113,8 +114,12 @@ test("crowd coding with an overlap; the loop's units are set by the wizard", asy
   await page.getByLabel("Overlap in").selectOption("units");
   await page.getByLabel("Overlap size").fill("2");
   await page.getByRole("button", { name: "Next" }).click();
-  // The headline was guessed as the title
+  // The headline dragged to the title; the text chosen for the body from its menu
+  await page.getByRole("button", { name: "Add headline to the body" }).dragTo(page.getByRole("button", { name: "Title: choose a field" }));
   await expect(page.getByRole("button", { name: "Title: headline" })).toBeVisible();
+  await page.getByRole("button", { name: "Body: choose a field" }).click();
+  await page.getByRole("menuitem", { name: "text" }).click();
+  await expect(page.getByRole("button", { name: "Body: text" })).toBeVisible();
   await page.getByRole("button", { name: "Next" }).click();
   await page.getByLabel("Questions about each unit").fill("sentiment");
   // Gold units check the question silently; the units have no answer column yet

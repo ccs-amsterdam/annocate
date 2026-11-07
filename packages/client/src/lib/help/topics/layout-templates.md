@@ -8,9 +8,11 @@ summary: How a unit is shown to coders - one markdown text with the unit's data 
 Every unit loop has a **layout**: the text coders see above the questions, for
 each unit. You find it on the loop's **Layout** tab in the codebook editor.
 
-Most layouts are a title, a byline and a body: the Layout tab starts as a
-sketch of a document, where you click a place (title, byline, body) to put
-a field there; the body takes any number of fields, in order. Behind the form is a
+Most layouts are a title, a byline and a body: the Layout tab starts as an
+empty sketch of a document, with the unit fields beside it. Click a place
+(title, byline, body) to choose a field for it, drag a field onto a place,
+or click a field to add it to the body. The title and byline take one field
+each; the body any number, in order (move them up or down, or drag them). Behind the form is a
 template, and **Advanced** opens it: write it yourself for anything more
 (styles, blocks, conditions, snippets). A template that is more than a
 title, byline and body stays in the template editor.

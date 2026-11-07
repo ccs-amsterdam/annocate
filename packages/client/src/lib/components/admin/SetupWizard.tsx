@@ -27,7 +27,7 @@ import {
   type SetupOverlap,
   type SetupParts,
 } from "../../admin/setupRecipe";
-import { guessSimpleLayout } from "../../design/simpleLayout";
+import { keepFields } from "../../design/simpleLayout";
 import { CsvUnitsForm } from "./units/UploadUnits";
 import { HelpButton } from "../../help/HelpButton";
 import { LayoutDesigner, UnitPreview } from "./LayoutDesigner";
@@ -59,13 +59,12 @@ export function SetupWizard({ client, onCreated, onClose }: { client: Researcher
   const create = useCreateStudyFromRecipeMutation(client);
   const set = (patch: Partial<SetupAnswers>) => setA((prev) => ({ ...prev, ...patch }));
 
-  // The units come from the CSV form; the layout starts from a guess by the text fields' names.
+  // The units come from the CSV form; the layout starts empty (the researcher places the fields) and keeps what still exists.
   const onCsv = useCallback((result: CsvUnits | null) => {
     setCsv(result);
     setA((prev) => {
       const units = result && result.errors.length === 0 ? { fields: result.fields, units: result.units } : null;
-      const textFields = units ? units.fields.filter((f) => f.type === "text").map((f) => f.name) : [];
-      return { ...prev, units, layout: guessSimpleLayout(textFields) };
+      return { ...prev, units, layout: keepFields(prev.layout, units ? units.fields.map((f) => f.name) : []) };
     });
   }, []);
 
@@ -419,18 +418,19 @@ function OverlapInput({ overlap, units, onChange }: { overlap: SetupOverlap; uni
 
 function LayoutStep({ a, set }: StepProps) {
   const fields = (a.units?.fields ?? []).map((f) => f.name);
+  const types = Object.fromEntries((a.units?.fields ?? []).map((f) => [f.name, f.type]));
   const first = a.units?.units[0];
   return (
     <>
       <Intro>
-        Click a place in the sketch to put a field there: a title, a byline, and the body. The editor&apos;s Layout tab can change
-        this later, or (Advanced) write the layout as a template.
+        Choose what coders see of each unit: click a place (title, byline, body) to put a field there, or drag a field onto it.
+        The editor&apos;s Layout tab can change this later.
       </Intro>
       <div className="grid gap-4 sm:grid-cols-2">
         <section className="space-y-2">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Layout</h3>
           {fields.length > 0 ? (
-            <LayoutDesigner layout={a.layout} fields={fields} onChange={(layout) => set({ layout })} />
+            <LayoutDesigner layout={a.layout} fields={fields} types={types} onChange={(layout) => set({ layout })} />
           ) : (
             <p className="text-sm text-muted-foreground">Upload units first (or choose their fields in the editor later).</p>
           )}

@@ -213,5 +213,7 @@ describe("setup wizard recipes", () => {
     });
     expect(setupProblems(groups)).toEqual(["Choose the units of treatment"]);
     expect(setupProblems(setup({ units: null, distribution: defaultDistribution("sets") }))).toEqual(["Assigning sets needs the units now"]);
+    // With units, something of each unit is shown
+    expect(setupProblems(setup({ layout: { body: [] } }))).toEqual(["Choose what coders see of each unit (How coders see a unit)"]);
   });
 });

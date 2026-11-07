@@ -36,7 +36,7 @@ import { ConditionEditor } from "./ConditionEditor";
 import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
 import { HelpButton } from "../../help/HelpButton";
-import { guessSimpleLayout, parseSimpleLayout, simpleTemplate } from "../../design/simpleLayout";
+import { parseSimpleLayout, simpleTemplate } from "../../design/simpleLayout";
 import { LayoutDesigner } from "./LayoutDesigner";
 import { GenerateSets } from "./units/GenerateSets";
 import { AnswerKeyDialog, type AnswerKeyQuestion } from "./units/AnswerKeyDialog";
@@ -484,7 +484,8 @@ function LayoutTab({
               title="Replaces this template with a title, byline and body chosen in a form"
               onClick={() => {
                 if (!confirm("Replace this template with the simple form (title, byline, body)?")) return;
-                setLayout({ template: simpleTemplate(guessSimpleLayout(unitFields)) });
+                // An empty sketch: the researcher places the fields
+                setLayout({ template: "" });
                 setAdvanced(false);
               }}
               className="cursor-pointer text-xs text-muted-foreground hover:text-foreground"

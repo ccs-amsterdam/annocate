@@ -53,11 +53,41 @@ export function parseSimpleLayout(template: string): SimpleLayout | null {
   return layout;
 }
 
-/** A first guess from the units' fields: a title, a byline and the body by their names; otherwise every text field as body. */
-export function guessSimpleLayout(textFields: string[]): SimpleLayout {
-  const find = (pattern: RegExp) => textFields.find((f) => pattern.test(f));
-  const title = find(/^(title|headline|heading|kop)$/i);
-  const byline = find(/^(byline|author|source|date|bron)$/i);
-  const body = textFields.filter((f) => f !== title && f !== byline);
-  return { ...(title ? { title } : {}), ...(byline ? { byline } : {}), body };
+/** A place in the sketch: title and byline hold one field, the body any number. */
+export type LayoutSlot = "title" | "byline" | "body";
+
+/** The fields a layout shows, in order. */
+export function placedFields(layout: SimpleLayout): string[] {
+  return [layout.title, layout.byline, ...layout.body].filter((f): f is string => !!f);
+}
+
+/** The layout without `field`, wherever it was. */
+export function removeField(layout: SimpleLayout, field: string): SimpleLayout {
+  const next: SimpleLayout = { ...layout, body: layout.body.filter((f) => f !== field) };
+  if (next.title === field) delete next.title;
+  if (next.byline === field) delete next.byline;
+  return next;
+}
+
+/**
+ * Puts `field` in a place, taking it from where it was: in the title or
+ * byline it replaces the field there (which goes back to the unplaced
+ * ones); in the body it goes before position `at` (default: last).
+ */
+export function placeField(layout: SimpleLayout, field: string, slot: LayoutSlot, at?: number): SimpleLayout {
+  if (slot !== "body") return { ...removeField(layout, field), [slot]: field };
+  // The position counts the body as it is, so moving a field down keeps its target
+  const from = layout.body.indexOf(field);
+  const next = removeField(layout, field);
+  let index = at ?? next.body.length;
+  if (from >= 0 && at !== undefined && from < at) index -= 1;
+  index = Math.max(0, Math.min(index, next.body.length));
+  return { ...next, body: [...next.body.slice(0, index), field, ...next.body.slice(index)] };
+}
+
+/** The layout with only the fields that exist (e.g. after other units were uploaded). */
+export function keepFields(layout: SimpleLayout, fields: readonly string[]): SimpleLayout {
+  return placedFields(layout)
+    .filter((f) => !fields.includes(f))
+    .reduce(removeField, layout);
 }

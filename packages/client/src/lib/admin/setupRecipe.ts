@@ -1,5 +1,5 @@
 import { DEFAULT_RATE, OVERLAP_SET, RESERVED_SETS, SharedBranchSchema, seededShuffle, type RecipeInput, type SessionSpec, type SharedBranch, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
-import { simpleTemplate, type SimpleLayout } from "../design/simpleLayout";
+import { placedFields, simpleTemplate, type SimpleLayout } from "../design/simpleLayout";
 
 // The setup wizard (docs/plans/setup-wizard.md) as data: what the
 // researcher chose, and the recipe it makes. The wizard asks no question
@@ -260,6 +260,8 @@ export function setupProblems(a: SetupAnswers): string[] {
   if (a.parts.annotate && parseQuestions(a.questions.unit).length === 0) problems.push("Add at least one question about each unit");
   if (!a.parts.annotate && parseQuestions(a.questions.before).length === 0) problems.push("Add at least one question");
   if (a.parts.annotate) problems.push(...distributionProblems(a));
+  // With units: something of each unit is shown
+  if (a.parts.annotate && a.units && placedFields(a.layout).length === 0) problems.push("Choose what coders see of each unit (How coders see a unit)");
   return problems;
 }
 
