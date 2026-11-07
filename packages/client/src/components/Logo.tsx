@@ -17,9 +17,12 @@ export function Logo({ className = "h-7 w-7 text-wood", title }: { className?: s
   return (
     <svg viewBox="0 0 64 64" className={className} fill="currentColor" role={title ? "img" : undefined} aria-hidden={title ? undefined : true}>
       {title && <title>{title}</title>}
-      {LOGO_PATHS.map((d) => (
-        <path key={d} d={d} />
-      ))}
+      {/* Centred and inset like an icon (the twigs span y 9.6–57.4): sits on the text line, not above or below it */}
+      <g transform="translate(32 32) scale(0.82) translate(-32 -33.5)">
+        {LOGO_PATHS.map((d) => (
+          <path key={d} d={d} />
+        ))}
+      </g>
     </svg>
   );
 }
