@@ -24,6 +24,8 @@ import { useTheme } from "./lib/context/theme";
 import { WelcomePage } from "./pages/WelcomePage";
 import { CodeHomePage } from "./pages/CodeHomePage";
 import { CodePage } from "./pages/CodePage";
+import { Logo } from "./components/Logo";
+import { Popover, PopoverContent, PopoverTrigger } from "./components/ui/popover";
 
 // The app (docs/client.md): a welcome page, the researcher section
 // (/research) and the coder section (/code). The server serves it
@@ -65,18 +67,41 @@ const useResearcher = () => useContext(ResearcherContext)!;
 /** The app's header (not on coding screens): home, the two sections, the account. */
 function AppHeader() {
   const researcher = useResearcher();
-  const nav = "rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
-  const active = { className: "bg-muted text-foreground" };
+  // The active section: the wood accent underneath (one of the few places wood is used)
+  const nav =
+    "rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
+  const active = { className: "bg-muted text-foreground shadow-[inset_0_-2px_0_var(--wood)]" };
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 shadow-sm">
       <div className="flex flex-1 items-center gap-3">
-        <Link to="/" className="flex items-center gap-2" aria-label="AnnoTinder home">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground">A</span>
-          <span className="hidden font-heading text-lg font-bold tracking-tight text-foreground sm:inline">AnnoTinder</span>
+        {/* Wide screens: the logo is the home link; narrow ones: it opens the sections (the mark reads as a menu icon) */}
+        <Link to="/" className="hidden items-center gap-2 rounded-md sm:flex" aria-label="AnnoTinder home">
+          <Logo className="h-7 w-7 text-wood" />
+          <span className="font-heading text-lg font-bold tracking-tight text-foreground">AnnoTinder</span>
         </Link>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button type="button" className="rounded-md p-1 hover:bg-muted sm:hidden" aria-label="Menu">
+              <Logo className="h-7 w-7 text-wood" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="flex w-48 flex-col gap-0.5 p-1">
+            {(
+              [
+                ["/", "Home"],
+                ["/research", "Research"],
+                ["/code", "Code"],
+              ] as const
+            ).map(([to, label]) => (
+              <Link key={to} to={to} activeOptions={{ exact: to !== "/research" }} className={`${nav} text-left`} activeProps={active}>
+                {label}
+              </Link>
+            ))}
+          </PopoverContent>
+        </Popover>
         {researcher.dev && <span className="hidden rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground sm:inline">dev mode</span>}
       </div>
-      <nav className="flex items-center gap-1" aria-label="Sections">
+      <nav className="hidden items-center gap-1 sm:flex" aria-label="Sections">
         <Link to="/research" className={nav} activeProps={active}>
           Research
         </Link>

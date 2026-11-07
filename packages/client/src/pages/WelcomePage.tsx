@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, FileCheck2, FlaskConical, Layers, PenTool, Sparkles, Users } from "lucide-react";
+import { ArrowRight, FileCheck2, FlaskConical, Layers, PenTool, Users } from "lucide-react";
+import { Logo } from "../components/Logo";
 import type { LucideIcon } from "lucide-react";
 
 const FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
@@ -25,11 +26,9 @@ export function WelcomePage() {
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:py-16">
       <section className="text-center">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
-          <Sparkles className="h-3.5 w-3.5 text-primary" />
-          Open-source annotation for research
-        </span>
-        <h1 className="mt-5 font-heading text-4xl font-bold tracking-tight sm:text-5xl">AnnoTinder</h1>
+        <Logo className="mx-auto h-16 w-16 text-wood" />
+        <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight sm:text-5xl">AnnoTinder</h1>
+        <p className="mt-2 text-sm font-medium text-muted-foreground">Open-source annotation for research</p>
         <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
           Design a coding task or a survey, share a link, and collect clean, documented data: quick for coders, transparent for researchers.
         </p>

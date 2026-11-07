@@ -38,6 +38,19 @@
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
 
+  --color-bar: var(--bar);
+  --color-bar-foreground: var(--bar-foreground);
+  --color-wood: var(--wood);
+  --color-wood-foreground: var(--wood-foreground);
+  --color-ember: var(--ember);
+  --color-ember-foreground: var(--ember-foreground);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -62,7 +75,7 @@
     border-color: var(--color-gray-200, currentcolor);
   }
 
-  /* Thin scrollbars in the primary colour, everywhere (Monaco's: monacoSetup.ts). */
+  /* Thin scrollbars, in the primary colour, everywhere (Monaco's: monacoSetup.ts). */
   * {
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, var(--primary) 45%, transparent) transparent;
@@ -81,148 +94,115 @@
   }
   :root,
   .light {
-    /* Ported from old/src/app/globals.css -- Annotinder's teal brand theme,
-       instead of the unbranded shadcn scaffold default. */
-    --background: hsl(240 10% 99%);
-
-    --foreground: hsl(222.2 84% 10%);
-
+    /* Charcoal and warm stone (docs/philosophy.md: tinder): charcoal for
+       primary actions, stone neutrals, and two accents used sparingly:
+       wood (the logo, the active section, focus) and ember (live). */
+    --background: hsl(40 14% 99%);
+    --foreground: hsl(30 6% 11%);
     --card: hsl(0 0% 100%);
-
-    --card-foreground: hsl(222.2 84% 4.9%);
-
+    --card-foreground: hsl(30 6% 11%);
     --popover: hsl(0 0% 100%);
+    --popover-foreground: hsl(30 6% 11%);
 
-    --popover-foreground: hsl(222.2 84% 10%);
+    /* Charcoal; -light for hover on light surfaces, -dark for text and icons */
+    --primary: hsl(36 5% 16%);
+    --primary-foreground: hsl(40 20% 98%);
+    --primary-light: hsl(36 4% 30%);
+    --primary-dark: hsl(36 6% 12%);
 
-    --primary: hsl(174 50% 45%);
+    /* Stone; -dark is the wood accent's deeper text tone */
+    --secondary: hsl(36 12% 94%);
+    --secondary-foreground: hsl(30 6% 15%);
+    --secondary-dark: hsl(30 52% 33%);
 
-    --primary-foreground: hsl(222.2 47.4% 0%);
+    --muted: hsl(36 12% 94%);
+    --muted-foreground: hsl(30 5% 42%);
+    --accent: hsl(36 14% 93%);
+    --accent-foreground: hsl(30 6% 15%);
 
-    --primary-light: hsl(174 50% 35%);
+    --destructive: hsl(0 72% 51%);
+    --border: hsl(36 10% 87%);
+    --input: hsl(36 9% 80%);
+    --ring: hsl(30 52% 35%);
 
-    --primary-dark: hsl(174 50% 30%);
+    /* The coding screen's top bar: charcoal */
+    --bar: hsl(36 5% 16%);
+    --bar-foreground: hsl(40 20% 98%);
 
-    --secondary: hsl(39 100% 80%);
+    /* The accents */
+    --wood: hsl(30 52% 35%);
+    --wood-foreground: hsl(40 20% 98%);
+    --ember: hsl(21 90% 40%);
+    --ember-foreground: hsl(40 20% 98%);
 
-    --secondary-foreground: hsl(222.2 47.4% 10%);
-
-    --secondary-dark: hsl(39 90% 45%);
-
-    --muted: hsl(174 20% 80%);
-
-    --muted-foreground: hsl(0.4 16.3% 46.9%);
-
-    --accent: hsl(174 40% 96.1%);
-
-    --accent-foreground: hsl(174 47.4% 11.2%);
-
-    --destructive: hsl(0 84.2% 60.2%);
-
-    --border: hsl(214.3 31.8% 80.4%);
-
-    --input: hsl(214.3 31.8% 80.4%);
-
-    --ring: hsl(174 80% 30%);
-
-    --chart-1: oklch(0.87 0 0);
-
-    --chart-2: oklch(0.556 0 0);
-
-    --chart-3: oklch(0.439 0 0);
-
-    --chart-4: oklch(0.371 0 0);
-
-    --chart-5: oklch(0.269 0 0);
+    --chart-1: hsl(30 52% 35%);
+    --chart-2: hsl(36 5% 30%);
+    --chart-3: hsl(21 90% 48%);
+    --chart-4: hsl(36 8% 60%);
+    --chart-5: hsl(30 40% 70%);
 
     --radius: 0.625rem;
 
-    --sidebar: oklch(0.985 0 0);
-
-    --sidebar-foreground: oklch(0.145 0 0);
-
-    --sidebar-primary: oklch(0.205 0 0);
-
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-
-    --sidebar-accent: oklch(0.97 0 0);
-
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-
-    --sidebar-border: oklch(0.922 0 0);
-
-    --sidebar-ring: oklch(0.708 0 0)
+    --sidebar: hsl(40 14% 98%);
+    --sidebar-foreground: hsl(30 6% 11%);
+    --sidebar-primary: hsl(36 5% 16%);
+    --sidebar-primary-foreground: hsl(40 20% 98%);
+    --sidebar-accent: hsl(36 12% 94%);
+    --sidebar-accent-foreground: hsl(30 6% 15%);
+    --sidebar-border: hsl(36 10% 87%);
+    --sidebar-ring: hsl(30 52% 35%)
   }
   .dark {
-    /* Dark grey with a hint of blue, the same teal; borders and muted
-       surfaces a few steps lighter than the background. */
-    --background: hsl(220 10% 10%);
+    /* Warm charcoal surfaces; primary turns to ash (light buttons with
+       charcoal text); the accents lighten so they read on dark. */
+    --background: hsl(30 6% 8%);
+    --foreground: hsl(40 10% 92%);
+    --card: hsl(30 5% 11%);
+    --card-foreground: hsl(40 10% 92%);
+    --popover: hsl(30 5% 12%);
+    --popover-foreground: hsl(40 10% 92%);
 
-    --foreground: hsl(210 20% 94%);
+    --primary: hsl(40 8% 86%);
+    --primary-foreground: hsl(30 6% 10%);
+    --primary-light: hsl(40 10% 94%);
+    --primary-dark: hsl(40 8% 80%);
 
-    --card: hsl(220 10% 14%);
+    --secondary: hsl(30 5% 17%);
+    --secondary-foreground: hsl(40 10% 92%);
+    --secondary-dark: hsl(31 45% 62%);
 
-    --card-foreground: hsl(210 20% 94%);
-
-    --popover: hsl(220 10% 15%);
-
-    --popover-foreground: hsl(210 20% 94%);
-
-    --primary: hsl(174 50% 45%);
-
-    --primary-foreground: hsl(220 20% 8%);
-
-    --primary-light: hsl(174 50% 60%);
-
-    --primary-dark: hsl(174 50% 50%);
-
-    --secondary: hsl(39 45% 30%);
-
-    --secondary-foreground: hsl(39 100% 92%);
-
-    --secondary-dark: hsl(39 100% 80%);
-
-    --muted: hsl(220 8% 22%);
-
-    --muted-foreground: hsl(215 12% 66%);
-
-    --accent: hsl(174 25% 18%);
-
-    --accent-foreground: hsl(174 40% 90%);
+    --muted: hsl(30 5% 16%);
+    --muted-foreground: hsl(36 6% 64%);
+    --accent: hsl(30 5% 18%);
+    --accent-foreground: hsl(40 10% 94%);
 
     --destructive: hsl(0 72% 58%);
+    --border: hsl(30 5% 21%);
+    --input: hsl(30 5% 27%);
+    --ring: hsl(31 45% 56%);
 
-    --border: hsl(220 8% 25%);
+    --bar: hsl(30 5% 13%);
+    --bar-foreground: hsl(40 10% 92%);
 
-    --input: hsl(220 8% 30%);
+    --wood: hsl(31 45% 56%);
+    --wood-foreground: hsl(30 6% 10%);
+    --ember: hsl(27 96% 61%);
+    --ember-foreground: hsl(30 6% 10%);
 
-    --ring: hsl(174 60% 50%);
+    --chart-1: hsl(31 45% 56%);
+    --chart-2: hsl(40 8% 80%);
+    --chart-3: hsl(27 96% 61%);
+    --chart-4: hsl(36 6% 50%);
+    --chart-5: hsl(30 35% 35%);
 
-    --chart-1: oklch(0.87 0 0);
-
-    --chart-2: oklch(0.556 0 0);
-
-    --chart-3: oklch(0.439 0 0);
-
-    --chart-4: oklch(0.371 0 0);
-
-    --chart-5: oklch(0.269 0 0);
-
-    --sidebar: oklch(0.205 0 0);
-
-    --sidebar-foreground: oklch(0.985 0 0);
-
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-
-    --sidebar-accent: oklch(0.269 0 0);
-
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-
-    --sidebar-border: oklch(1 0 0 / 10%);
-
-    --sidebar-ring: oklch(0.556 0 0)
+    --sidebar: hsl(30 5% 11%);
+    --sidebar-foreground: hsl(40 10% 92%);
+    --sidebar-primary: hsl(40 8% 86%);
+    --sidebar-primary-foreground: hsl(30 6% 10%);
+    --sidebar-accent: hsl(30 5% 18%);
+    --sidebar-accent-foreground: hsl(40 10% 94%);
+    --sidebar-border: hsl(30 5% 21%);
+    --sidebar-ring: hsl(31 45% 56%)
   }
   * {
     @apply border-border outline-ring/50;

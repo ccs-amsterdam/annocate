@@ -338,7 +338,7 @@ export function StudyPreview({ client, coderApiUrl = "" }: StudyPreviewProps) {
               <div className="flex h-8 w-full items-center gap-1.5 border-b border-border bg-muted px-3 shrink-0">
                 <div className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
                 <div className="h-2.5 w-2.5 rounded-full bg-amber-500/60" />
-                <div className="h-2.5 w-2.5 rounded-full bg-teal-500/60" />
+                <div className="h-2.5 w-2.5 rounded-full bg-ember/70" />
                 <span className="mx-auto text-[11px] font-mono text-muted-foreground">
                   Annotinder Preview ({desktopWidth} × {desktopHeight})
                 </span>

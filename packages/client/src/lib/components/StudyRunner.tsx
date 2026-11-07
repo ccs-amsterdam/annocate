@@ -77,7 +77,7 @@ function CoderSettingsMenu() {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-primary-foreground hover:bg-primary-foreground/15 transition-colors cursor-pointer"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-bar-foreground hover:bg-bar-foreground/15 transition-colors cursor-pointer"
           title="Coder Settings"
           aria-label="Coder Settings"
         >
@@ -468,7 +468,7 @@ function StudyRunnerContent({
         </div>
       )}
       {/* Top Header / Progress Bar */}
-      <header className="flex h-11 shrink-0 items-center justify-between border-b border-primary/20 bg-primary px-3 sm:px-4 text-primary-foreground shadow-sm">
+      <header className="flex h-11 shrink-0 items-center justify-between border-b border-bar-foreground/10 bg-bar px-3 sm:px-4 text-bar-foreground shadow-sm">
         {/* Left Section: Menu Popover, Global Position Counter, Back/Forward Chevrons */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Overview Dropdown Menu */}
@@ -476,7 +476,7 @@ function StudyRunnerContent({
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-primary-foreground hover:bg-primary-foreground/15 transition-colors cursor-pointer"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-bar-foreground hover:bg-bar-foreground/15 transition-colors cursor-pointer"
                 title="Overview & Navigation"
                 aria-label="Overview & Navigation"
               >
@@ -632,7 +632,7 @@ function StudyRunnerContent({
           {/* Global position counter with minimum width so adjacent chevrons don't jump around */}
           {currentPositionLabel && (
             <span
-              className="inline-flex items-center justify-center min-w-[3.25rem] h-7 px-2 rounded-md bg-primary-foreground/15 font-mono text-xs font-semibold text-primary-foreground select-none"
+              className="inline-flex items-center justify-center min-w-[3.25rem] h-7 px-2 rounded-md bg-bar-foreground/15 font-mono text-xs font-semibold text-bar-foreground select-none"
               title={`Question ${currentPositionLabel}`}
             >
               {currentPositionLabel}
@@ -645,7 +645,7 @@ function StudyRunnerContent({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-primary-foreground hover:bg-primary-foreground/15 disabled:opacity-30 cursor-pointer"
+              className="h-7 w-7 text-bar-foreground hover:bg-bar-foreground/15 disabled:opacity-30 cursor-pointer"
               disabled={!snapshot.navigation.canGoBack}
               onClick={() => {
                 setNavDirection("previous");
@@ -659,7 +659,7 @@ function StudyRunnerContent({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-primary-foreground hover:bg-primary-foreground/15 disabled:opacity-30 cursor-pointer"
+              className="h-7 w-7 text-bar-foreground hover:bg-bar-foreground/15 disabled:opacity-30 cursor-pointer"
               disabled={!snapshot.navigation.canGoForward}
               onClick={() => {
                 setNavDirection("next");
@@ -897,7 +897,7 @@ function TransferMenu({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-primary-foreground hover:bg-primary-foreground/15 transition-colors cursor-pointer"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-bar-foreground hover:bg-bar-foreground/15 transition-colors cursor-pointer"
           title="Continue on another device"
           aria-label="Continue on another device"
         >

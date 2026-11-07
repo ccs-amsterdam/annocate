@@ -93,9 +93,9 @@ export function DesignStatusBanner({
 }
 
 const TONES = {
-  live: { box: "border-primary/40 bg-primary/10", icon: "text-primary" },
+  live: { box: "border-ember/40 bg-ember/10", icon: "text-ember" },
   draft: { box: "border-amber-500/50 bg-amber-500/10", icon: "text-amber-600 dark:text-amber-400" },
-  history: { box: "border-slate-400/60 bg-slate-500/10", icon: "text-slate-600 dark:text-slate-300" },
+  history: { box: "border-border bg-muted", icon: "text-muted-foreground" },
 };
 
 /** A compact status chip: the title on one line, the explanation behind an info icon, actions beside it. */

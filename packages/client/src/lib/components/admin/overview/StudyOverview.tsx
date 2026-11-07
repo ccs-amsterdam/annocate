@@ -163,7 +163,7 @@ function LiveStatus({ live, active, since }: { live: boolean; active: boolean; s
   const [Icon, label, detail, className] = !live
     ? [CircleOff, "Not deployed", "Coders can't start yet", "text-muted-foreground"]
     : active
-      ? [CircleDot, "Live", `Since ${formatWhen(since)}`, "text-primary"]
+      ? [CircleDot, "Live", `Since ${formatWhen(since)}`, "text-ember"]
       : [PauseCircle, "Paused", "Coders get no new units", "text-amber-600 dark:text-amber-400"];
   return (
     <div className="flex items-center gap-2.5">

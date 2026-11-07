@@ -34,7 +34,7 @@ export function QuitMenu({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-primary-foreground hover:bg-primary-foreground/15 transition-colors cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-bar-foreground hover:bg-bar-foreground/15 transition-colors cursor-pointer"
             title="Stop"
             aria-label="Stop"
           >

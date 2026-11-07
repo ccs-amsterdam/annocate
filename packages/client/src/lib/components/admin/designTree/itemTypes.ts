@@ -34,7 +34,7 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     label: "Question",
     description: "Prompt coder for an answer",
     icon: HelpCircle,
-    color: "text-[var(--iconcolor,theme(colors.blue.500))]",
+    color: "text-[var(--iconcolor,var(--color-muted-foreground))]",
   },
   unit_loop: {
     label: "Unit Loop",
