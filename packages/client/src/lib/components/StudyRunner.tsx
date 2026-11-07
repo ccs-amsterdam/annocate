@@ -23,6 +23,7 @@ import { QuitMenu } from "./QuitMenu";
 import { SwipeCard, SwipeProvider, SwipeSurface } from "./SwipeCard";
 import { buildValues } from "./answerFields/answerValue";
 import { Button } from "@/components/ui/button";
+import { LogoSmoke } from "@/components/Logo";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   AlertTriangle,
@@ -271,9 +272,8 @@ function StudyRunnerContent({
 
   if (snapshot.phase === "loading") {
     return (
-      <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-3 p-8 text-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm font-medium text-muted-foreground">Loading session...</p>
+      <div className="flex h-full min-h-[300px] flex-col items-center justify-center p-8 text-center">
+        <LogoSmoke label="Loading session…" />
       </div>
     );
   }
@@ -803,9 +803,8 @@ function CoderSessionGate(props: StudyRunnerProps) {
   }
   if (!session.ready) {
     return (
-      <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-3 p-8 text-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm font-medium text-muted-foreground">Loading session...</p>
+      <div className="flex h-full min-h-[300px] flex-col items-center justify-center p-8 text-center">
+        <LogoSmoke label="Loading session…" />
       </div>
     );
   }

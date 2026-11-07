@@ -9,6 +9,6 @@ describe("StudyRunner menu bar and settings integration", () => {
         baseUrl="http://localhost:3000"
       />
     );
-    expect(html).toContain("Loading session...");
+    expect(html).toContain("Loading session…");
   });
 });

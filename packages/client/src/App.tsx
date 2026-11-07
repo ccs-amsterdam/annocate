@@ -24,7 +24,7 @@ import { useTheme } from "./lib/context/theme";
 import { WelcomePage } from "./pages/WelcomePage";
 import { CodeHomePage } from "./pages/CodeHomePage";
 import { CodePage } from "./pages/CodePage";
-import { Logo } from "./components/Logo";
+import { Logo, LogoSmoke } from "./components/Logo";
 import { Popover, PopoverContent, PopoverTrigger } from "./components/ui/popover";
 
 // The app (docs/client.md): a welcome page, the researcher section
@@ -163,7 +163,12 @@ const SLUG_TABS = Object.fromEntries(Object.entries(TAB_SLUGS).map(([tab, slug])
 function ResearchPage({ location }: { location: AdminLocation }) {
   const researcher = useResearcher();
   const navigate = useNavigate();
-  if (!researcher.state) return null;
+  if (!researcher.state)
+    return (
+      <div className="flex h-full min-h-[300px] items-center justify-center p-8">
+        <LogoSmoke label="Loading…" />
+      </div>
+    );
   const onNavigate = (to: AdminLocation, options?: { replace?: boolean }) => {
     const replace = options?.replace ?? false;
     if (to.page === "studies") void navigate({ to: "/research", replace });

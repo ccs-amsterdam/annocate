@@ -44,6 +44,9 @@
   --color-wood-foreground: var(--wood-foreground);
   --color-ember: var(--ember);
   --color-ember-foreground: var(--ember-foreground);
+  --color-leaf: var(--leaf);
+  --color-leaf-foreground: var(--leaf-foreground);
+  --color-leaf-strong: var(--leaf-strong);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -96,7 +99,8 @@
   .light {
     /* Charcoal and warm stone (docs/philosophy.md: tinder): charcoal for
        primary actions, stone neutrals, and two accents used sparingly:
-       wood (the logo, the active section, focus) and ember (live). */
+       wood (the logo, the active section, focus), leaf (the logo's dry
+       eucalyptus leaf; practice markers) and ember (live). */
     --background: hsl(40 14% 99%);
     --foreground: hsl(30 6% 11%);
     --card: hsl(0 0% 100%);
@@ -134,6 +138,11 @@
     --wood-foreground: hsl(40 20% 98%);
     --ember: hsl(21 90% 40%);
     --ember-foreground: hsl(40 20% 98%);
+    /* Dry eucalyptus: fills and icons (3.3:1 on white, as graphics); text on
+       it is charcoal (5.3:1); text in leaf colour uses -strong (5.4:1) */
+    --leaf: hsl(101 14% 51%);
+    --leaf-foreground: hsl(30 6% 10%);
+    --leaf-strong: hsl(101 17% 38%);
 
     --chart-1: hsl(30 52% 35%);
     --chart-2: hsl(36 5% 30%);
@@ -188,6 +197,9 @@
     --wood-foreground: hsl(30 6% 10%);
     --ember: hsl(27 96% 61%);
     --ember-foreground: hsl(30 6% 10%);
+    --leaf: hsl(97 19% 65%);
+    --leaf-foreground: hsl(30 6% 10%);
+    --leaf-strong: hsl(97 19% 65%);
 
     --chart-1: hsl(31 45% 56%);
     --chart-2: hsl(40 8% 80%);
@@ -473,5 +485,32 @@
     font-size: 0.875rem;
     line-height: 1.5;
     color: var(--foreground);
+  }
+}
+
+/* The logo's smoke (Logo.tsx, `smoke`): each wisp drawn upwards, drifting
+   and fading, on a loop; the second half a beat later. Muted, like smoke. */
+.logo-smoke {
+  color: var(--muted-foreground);
+}
+.logo-smoke path {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: logoSmoke 2.6s ease-out infinite;
+}
+.logo-smoke path:nth-child(2) {
+  animation-delay: 1.3s;
+}
+@keyframes logoSmoke {
+  0% { stroke-dashoffset: 60; opacity: 0; transform: translate(0, 2px); }
+  15% { opacity: 0.9; }
+  70% { stroke-dashoffset: 0; opacity: 0.6; }
+  100% { stroke-dashoffset: -30; opacity: 0; transform: translate(1.5px, -6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-smoke path {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 0.6;
   }
 }

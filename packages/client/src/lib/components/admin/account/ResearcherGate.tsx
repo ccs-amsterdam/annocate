@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { LogoSmoke } from "@/components/Logo";
 import type { AuthOptions, LoginError, MeResponse } from "@annotinder/contracts";
 import { ResearcherApiError, type ResearcherApi } from "../../../api/httpResearcherApi";
 import { Button } from "@/components/ui/button";
@@ -58,7 +59,12 @@ export function ResearcherGate({ client, children }: { client: ResearcherApi; ch
     return <SecondFactorGate client={client} me={state.me} onConfirmed={reload} />;
   }
   if (state.status === "in") return <>{children(state.me)}</>;
-  if (state.status === "loading") return <p className="p-6 text-sm text-muted-foreground">Loading…</p>;
+  if (state.status === "loading")
+    return (
+      <div className="flex h-full min-h-[300px] items-center justify-center p-8">
+        <LogoSmoke label="Loading…" />
+      </div>
+    );
   if (state.status === "error") return <p className="p-6 text-sm text-destructive">Can't reach the server: {state.message}</p>;
 
   function logIn() {

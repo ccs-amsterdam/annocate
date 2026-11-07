@@ -26,7 +26,7 @@ export function WelcomePage() {
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:py-16">
       <section className="text-center">
-        <Logo className="mx-auto h-16 w-16 text-wood" />
+        <Logo smoke className="mx-auto h-16 w-16 text-wood" />
         <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight sm:text-5xl">AnnoTinder</h1>
         <p className="mt-2 text-sm font-medium text-muted-foreground">Open-source annotation for research</p>
         <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
@@ -54,7 +54,7 @@ export function WelcomePage() {
       <section className="mt-12 grid gap-6 sm:grid-cols-3">
         {FEATURES.map(({ icon: Icon, title, text }) => (
           <div key={title}>
-            <Icon className="h-5 w-5 text-primary" />
+            <Icon className="h-5 w-5 text-leaf-strong" />
             <h2 className="mt-2 text-sm font-semibold">{title}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{text}</p>
           </div>

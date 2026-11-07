@@ -82,7 +82,11 @@ function StudyCard({ entry }: { entry: StudyEntry }) {
         </p>
       </div>
       {ended ? (
-        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${
+            study.ended === "complete" ? "bg-leaf/20 font-medium text-leaf-strong" : "bg-muted text-muted-foreground"
+          }`}
+        >
           <CircleCheck className="h-3.5 w-3.5" />
           {ended}
         </span>
