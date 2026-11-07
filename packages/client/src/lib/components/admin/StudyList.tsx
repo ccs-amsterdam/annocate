@@ -105,7 +105,7 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
 
       {/* Studies List */}
       {filteredStudies.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border p-12 text-center">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card p-12 text-center">
           <div className="rounded-full bg-primary/10 p-4 text-primary">
             <FolderOpen className="h-8 w-8" />
           </div>
@@ -148,7 +148,7 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
               onKeyDown={(e) => {
                 if (e.key === "Enter") onSelectStudy(study.id);
               }}
-              className="group relative flex cursor-pointer flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="group relative flex cursor-pointer flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-wood/50 hover:bg-wood/5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <div className="flex items-start justify-between gap-2">
                 <h3 className="line-clamp-2 text-base font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary">{study.name}</h3>

@@ -122,7 +122,7 @@ function AppHeader() {
 function WithHeader({ children }: { children: ReactNode }) {
   // Scrolling down anywhere on the page hides the headers; scrolling up shows them (useCollapsingChrome)
   return (
-    <CollapsingChrome className="flex h-screen flex-col overflow-clip bg-background text-foreground">
+    <CollapsingChrome className="flex h-screen flex-col overflow-clip bg-page text-foreground">
       <CollapsibleHeader>
         <AppHeader />
       </CollapsibleHeader>

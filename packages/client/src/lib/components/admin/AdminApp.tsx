@@ -293,7 +293,7 @@ function StudyAdminView({
   const requestNavigation = (action: () => void) => action();
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-background">
+    <div className="flex h-full flex-col overflow-hidden bg-page">
       {/* The study's header: back, which study, its sections; hides while scrolling down (useCollapsingChrome) */}
       <CollapsibleHeader>
         <header className="border-b border-border bg-card/60 px-3 backdrop-blur-sm sm:px-4">
@@ -334,7 +334,7 @@ function StudyAdminView({
                     aria-current={active ? "page" : undefined}
                     onClick={() => requestNavigation(() => onTabChange(g.pages[0].id))}
                     className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
-                      active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      active ? "bg-wood/15 text-foreground ring-1 ring-inset ring-wood/30" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />

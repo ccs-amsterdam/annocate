@@ -51,7 +51,7 @@ export function StudyOverview({ client, onNavigate, onOpenDesign }: StudyOvervie
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4">
       <ExampleNotice client={client} />
-      <Card title="Status">
+      <Card title="Status" tone={deployment?.active ? "leaf" : undefined}>
         <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
           <LiveStatus live={deployment !== null} active={deployment?.active ?? false} since={deployment?.updated ?? null} />
           {deployment && <LiveControls client={client} deployment={deployment} />}
@@ -243,9 +243,10 @@ function StatTile({
   );
 }
 
-function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
+function Card({ title, subtitle, tone, children }: { title: string; subtitle?: string; tone?: "leaf"; children: ReactNode }) {
+  // tone "leaf": a positive state (the study is live), as a faint tint of the palette's green
   return (
-    <section className="rounded-xl border border-border bg-card p-4 shadow-xs">
+    <section className={`rounded-xl border p-4 shadow-xs ${tone === "leaf" ? "border-leaf/40 bg-leaf/10" : "border-border bg-card"}`}>
       <header className="mb-3">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
@@ -270,13 +271,14 @@ function DeployHistory({ client, numberOf }: { client: ResearcherApi; numberOf: 
   return (
     <Card title="Deploys" subtitle="What each deploy made live">
       <ol className="flex flex-col gap-1 text-sm">
-        {versions.slice(0, 8).map((v) => {
+        {versions.slice(0, 8).map((v, i) => {
           const parts = [
             v.changes.design && `design v${numberOf(v.designVersionId) ?? "?"}`,
             v.changes.units && `units: ${describeUnitChanges(v.changes.units)}`,
           ].filter(Boolean);
           return (
-            <li key={v.version} className="flex flex-wrap items-baseline gap-x-2">
+            // The current deploy: a faint leaf tint
+            <li key={v.version} className={`flex flex-wrap items-baseline gap-x-2 rounded-md px-2 py-0.5 ${i === 0 ? "bg-leaf/10" : ""}`}>
               <span className="font-mono text-xs text-muted-foreground">#{v.version}</span>
               <span>{parts.length > 0 ? parts.join("; ") : "settings only"}</span>
               <span className="text-xs text-muted-foreground">{formatWhen(v.created)}</span>

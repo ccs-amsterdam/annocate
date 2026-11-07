@@ -87,7 +87,14 @@ export function SetupWizard({ client, onCreated, onClose }: { client: Researcher
           <h2 className="text-lg font-semibold text-foreground">Guided setup</h2>
           <ol className="mt-2 flex flex-wrap gap-x-1 gap-y-1 text-xs">
             {steps.map((s, i) => (
-              <li key={s} className={cn("flex items-center gap-1", i === at ? "font-semibold text-primary" : i < at ? "text-foreground" : "text-muted-foreground")}>
+              <li
+                key={s}
+                className={cn(
+                  "flex items-center gap-1 rounded-full px-2 py-0.5",
+                  // Done steps: a leaf tint; the current one: wood
+                  i === at ? "bg-wood/15 font-semibold text-foreground" : i < at ? "bg-leaf/15 text-leaf-strong" : "text-muted-foreground",
+                )}
+              >
                 {i > 0 && <span className="text-muted-foreground">/</span>}
                 {i < at && <Check className="h-3 w-3" />}
                 {STEP_TITLES[s]}

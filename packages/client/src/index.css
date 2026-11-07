@@ -44,6 +44,7 @@
   --color-wood-foreground: var(--wood-foreground);
   --color-ember: var(--ember);
   --color-ember-foreground: var(--ember-foreground);
+  --color-page: var(--page);
   --color-leaf: var(--leaf);
   --color-leaf-foreground: var(--leaf-foreground);
   --color-leaf-strong: var(--leaf-strong);
@@ -101,6 +102,9 @@
        primary actions, stone neutrals, and two accents used sparingly:
        wood (the logo, the active section, focus), leaf (the logo's dry
        eucalyptus leaf; practice markers) and ember (live). */
+    /* The page around the content: warm paper. Content surfaces (cards,
+       panels, inputs, the coding screen's units) stay white. */
+    --page: hsl(38 30% 94%);
     --background: hsl(40 14% 99%);
     --foreground: hsl(30 6% 11%);
     --card: hsl(0 0% 100%);
@@ -164,6 +168,7 @@
   .dark {
     /* Warm charcoal surfaces; primary turns to ash (light buttons with
        charcoal text); the accents lighten so they read on dark. */
+    --page: hsl(28 9% 6%);
     --background: hsl(30 6% 8%);
     --foreground: hsl(40 10% 92%);
     --card: hsl(30 5% 11%);

@@ -71,7 +71,10 @@ function StudyCard({ entry }: { entry: StudyEntry }) {
   return (
     <a
       href={continueUrl(entry)}
-      className="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      // A finished study: a faint leaf tint
+      className={`group flex items-center gap-3 rounded-xl border px-4 py-3 shadow-sm transition-colors hover:border-wood/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+        study.ended === "complete" ? "border-leaf/40 bg-leaf/10" : "border-border bg-card"
+      }`}
     >
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{study.title ?? "Untitled study"}</p>

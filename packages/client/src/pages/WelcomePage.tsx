@@ -24,6 +24,7 @@ const FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
 /** The start page (`/`): what AnnoTinder is, and the way into the researcher and coder sections. */
 export function WelcomePage() {
   return (
+    <div className="min-h-full">
     <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:py-16">
       <section className="text-center">
         <Logo smoke className="mx-auto h-16 w-16 text-wood" />
@@ -61,6 +62,7 @@ export function WelcomePage() {
         ))}
       </section>
     </main>
+    </div>
   );
 }
 

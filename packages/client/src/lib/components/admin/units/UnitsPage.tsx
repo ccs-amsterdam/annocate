@@ -15,6 +15,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ResetAnswersDialog, type ResetScope } from "../ResetAnswersDialog";
 import { Button } from "@/components/ui/button";
+import { cn } from "cn";
 import { FieldsPanel } from "./FieldsPanel";
 import { UploadUnits } from "./UploadUnits";
 import { SplitIntoSets } from "./SplitIntoSets";
@@ -377,7 +378,11 @@ function UnitTable({
         </thead>
         <tbody>
           {units.map((unit) => (
-            <tr key={unit.id} className="border-b align-top last:border-0">
+            <tr
+              key={unit.id}
+              // Practice units: a faint leaf tint
+              className={cn("border-b align-top last:border-0", groups.some((g) => (cells.get(g)?.get(unit.id) ?? "").split(";").some((cell) => cell.split("#")[0].trim() === "_practice")) && "bg-leaf/10")}
+            >
               <td className="p-2">
                 <input
                   type="checkbox"

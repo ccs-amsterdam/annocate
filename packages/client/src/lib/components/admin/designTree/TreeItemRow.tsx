@@ -116,7 +116,7 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
         onClick={() => tree.select(key)}
         className={cn("flex min-w-0 pl-1 flex-1 rounded  cursor-pointer items-center gap-1 text-left",
 
-          tree.selected === key ? "bg-muted" : "")}
+          tree.selected === key ? "bg-wood/15" : "")}
       >
         <ItemLabel item={item} selected={tree.selected === key} issue={tree.getIssue(item)} changed={tree.isChanged(item)} />
       </button>
@@ -126,7 +126,7 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
           <ActionButton
             icon={LayoutTemplate}
             title="Layout: how a unit is shown"
-            className={cn(tree.selected === key && loopTab === "layout" && "bg-muted text-foreground")}
+            className={cn(tree.selected === key && loopTab === "layout" && "bg-wood/15 text-foreground")}
             onClick={() => {
               setLoopTab("layout");
               tree.select(key);
@@ -135,7 +135,7 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
           <ActionButton
             icon={Layers}
             title="Units: which units coders get"
-            className={cn(tree.selected === key && loopTab === "units" && "bg-muted text-foreground")}
+            className={cn(tree.selected === key && loopTab === "units" && "bg-wood/15 text-foreground")}
             onClick={() => {
               setLoopTab("units");
               tree.select(key);
