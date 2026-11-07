@@ -1,34 +1,45 @@
-# AnnoTinder: Annotation as measurement
-
-!! 
-No longer sure about subtitle. That annotation is measurement is a common perspective. My point is to say that the annotator is part of this measurement. So the annotatiom is not a measurement of a text. its a measurement of the relation between the annotator and the text)
-!!
+# AnnoTinder
 
 Draft, to be edited. The source for the README, the welcome page and the
 "About AnnoTinder" help topic.
 
-Annotation is the process of adding notes to a (multimodal) text.
-As a research method, this helps us translate raw texts into quantitative representations that can be compared and analyzed.
-So annotation is a form of measurement.
+Annotation is the process of adding notes to a (multimodal) text. As a
+research method, it helps us translate raw texts into quantitative
+representations that can be compared and analyzed. Annotation is thus a
+form of measurement.
 
-What is commonly left out of the equation, is the annotator.
-Annotations are indeed measurements, but not just measurememts of texts.
-They are also, and sometimes primarily, measurements lf the annotator.
-This means annotations can be used to study people, but also that annotators are confounders in the measurement of texts.
-If Dutch people tend to annotate a thunderstorm as a mild shower, that tells you something about The Netherlands, and you should take this into account when they tell you to just take the bike.
+What is commonly left out of the equation is the annotator. Annotations
+are indeed measurements, but not just measurements of texts. They are
+also, and sometimes primarily, measurements of the annotator. This means
+that annotations can be used to study people, but also that annotators are
+confounders in the measurement of texts. If Dutch people tend to annotate
+a thunderstorm as a mild shower, that tells you something about the
+Netherlands, and you should take it into account when they tell you to
+just take the bike.
 
-AnnoTinder was designed to capture this dual meausurement. It views an annotation as a relation between an observer and a text. 
+AnnoTinder was designed to capture this dual measurement. It views an
+annotation as a relation between an observer and a text, and it integrates
+research designs for measuring people with designs for measuring texts.
 
-It integrates research designs for measuring people with designs for measuring texts.
+Survey and experimental research have developed many solid practices for
+measuring people: their perspectives, emotions, attitudes, and more.
 
-survey and experimental researrch has developed many solid practices for measuring people. Their pespextivea, emotions, attitudes, and...
+Content analysis research has developed ways to take the annotator out of
+the equation: by training people to follow transparent and reproducible
+protocols, and by striving to reduce disagreement between annotators as
+much as possible.
 
-content analysis bresearch has developed ways to take the annotator out of the equation. bybtraini g people to follow transparent and reproducible protocols, and striving to reduce disagreements between annotators as musmch as possible.
-
-[explaim how annotinder combines these designs]
-
-
-
+AnnoTinder brings both traditions into one design. From content analysis
+it takes the protocol: a codebook, training with feedback (practice
+units), checks against known answers (gold units), and overlap between
+coders to measure agreement. From survey and experimental research it
+takes the participant: questions about coders before and after coding,
+randomly assigned conditions, links for panels, and respect for people's
+time and their right to withdraw. Because both live in one study, you
+decide where the annotator stands: as noise to reduce (train, check,
+aggregate), as a variable to account for (record who saw what, model coder
+effects), or as the subject of study (vary what coders see, compare how
+groups read the same texts).
 
 1. **Coding is measurement.** Every answer comes with what the coder saw
    (the exact unit version and design version), when, and how long it
@@ -53,3 +64,16 @@ A researcher runs a **study**. Its **design** says what **coders** do: the
 questions, the **units** they code and how units are handed out. Coders
 start from a **link**; what coders see of a design is its **codebook**.
 See `glossary.md`.
+
+## Open questions
+
+- **Slogan.** Not decided. "Annotation as measurement" is the common view;
+  the point here is that an annotation measures the relation between
+  annotator and text. Candidates so far: "Every annotation measures two
+  things" (doesn't quite capture it), something playing on "annotations
+  are people".
+- **The name.** AnnoTinder started as a joke (a swiping annotation tool).
+  Keep the name, but in the branding relate it to the real meaning of
+  tinder: something kindling-related.
+- **Phenomenology.** There may be an interesting phenomenological element
+  here (annotation as an experience of a text); not worked out yet.
