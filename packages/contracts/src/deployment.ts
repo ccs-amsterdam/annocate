@@ -2,7 +2,7 @@ import { z } from "zod";
 import { ClientVersionSchema } from "./version.js";
 import { IdSchema } from "./common.js";
 
-// Deploying a job (researcher API): which codebook coders get, its status,
+// Deploying a study (researcher API): which codebook coders get, its status,
 // and previews. The coder side is the coder API (endpoints/coder.ts).
 // Everything is a draft until deployed (docs/plans/design.md §5): a
 // deployed version is a codebook with a snapshot of the units and sets.
@@ -25,7 +25,7 @@ export const DeploymentChangesSchema = z.object({
 });
 export type DeploymentChanges = z.infer<typeof DeploymentChangesSchema>;
 
-/** `GET /job/:jobId/deployment/versions`: the deployed versions, newest first. */
+/** `GET /study/:studyId/deployment/versions`: the deployed versions, newest first. */
 export const DeploymentVersionSchema = z.object({
   version: z.number().int().positive(),
   designVersionId: IdSchema,
@@ -36,7 +36,7 @@ export const DeploymentVersionSchema = z.object({
 });
 export type DeploymentVersion = z.infer<typeof DeploymentVersionSchema>;
 
-/** `GET /job/:jobId/deployment/pending`: what deploying the drafts would change. */
+/** `GET /study/:studyId/deployment/pending`: what deploying the drafts would change. */
 export const PendingChangesSchema = z.object({
   /** The draft units against the deployed ones (all added when nothing is deployed). */
   units: UnitChangesSchema,
@@ -45,7 +45,7 @@ export const PendingChangesSchema = z.object({
 });
 export type PendingChanges = z.infer<typeof PendingChangesSchema>;
 
-/** Researcher-facing: `PUT /job/:jobId/deployment`. */
+/** Researcher-facing: `PUT /study/:studyId/deployment`. */
 export const DeploymentWriteSchema = z.object({
   /** The codebook coders get (the deployed one: keep it). */
   designVersionId: IdSchema,
@@ -66,7 +66,7 @@ export const DeploymentWriteSchema = z.object({
 export type DeploymentWrite = z.infer<typeof DeploymentWriteSchema>;
 
 export const DeploymentResponseSchema = DeploymentWriteSchema.omit({ units: true }).extend({
-  jobId: IdSchema,
+  studyId: IdSchema,
   /** Bumped on every change. */
   version: z.number().int().positive(),
   updated: z.coerce.date(),
@@ -81,7 +81,7 @@ export const DeploymentResponseSchema = DeploymentWriteSchema.omit({ units: true
 export type DeploymentResponse = z.infer<typeof DeploymentResponseSchema>;
 
 /**
- * Researcher-facing: `POST /job/:jobId/annotations/reset`. Retires the live
+ * Researcher-facing: `POST /study/:studyId/annotations/reset`. Retires the live
  * values of these variables (e.g. all questions of a loop), optionally only
  * for some units or coders. Nothing is deleted: retired values stay for
  * analysis, and the units count as unfinished again.
@@ -120,8 +120,8 @@ export const DeploymentStatusSchema = z.object({
 export type DeploymentStatus = z.infer<typeof DeploymentStatusSchema>;
 
 /**
- * Researcher `POST /job/:jobId/deployment/preview`: a preview of the job's
- * latest codebook (deployed or not), run as deployment `<jobId>.preview`.
+ * Researcher `POST /study/:studyId/deployment/preview`: a preview of the study's
+ * latest codebook (deployed or not), run as deployment `<studyId>.preview`.
  * Coders and answers stay in the server's memory; nothing is stored. The
  * client uses `token` like a link secret (`x-link-secret`).
  */

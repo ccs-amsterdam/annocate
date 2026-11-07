@@ -490,8 +490,8 @@ export function deletedCodersTable(deletions: CoderDeletion[]): Table {
 }
 
 /** What the files in the download are, for the README. */
-export function readme(job: string, exported: Date, labels: boolean, spreadsheetSafe = true): string {
-  return `Data of ${job}, downloaded ${exported.toISOString()} from AnnoTinder.
+export function readme(study: string, exported: Date, labels: boolean, spreadsheetSafe = true): string {
+  return `Data of ${study}, downloaded ${exported.toISOString()} from AnnoTinder.
 
 annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
                  version the coder saw (unit_version_id), the coder, when they

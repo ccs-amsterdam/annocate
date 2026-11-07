@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Reopen } from "@annotinder/contracts";
-import type { SessionEnding } from "../jobManager/JobManager";
+import type { SessionEnding } from "../studyManager/StudyManager";
 import { TemplateMarkdown } from "./TemplateMarkdown";
 import { QuitDialog } from "./QuitMenu";
 
@@ -10,7 +10,7 @@ import { QuitDialog } from "./QuitMenu";
 const REDIRECT_DELAY = 3;
 
 interface SessionEndProps {
-  /** The `end` item the session ended at; null when the coder simply finished the job. */
+  /** The `end` item the session ended at; null when the coder simply finished the study. */
   ending: SessionEnding | null;
   /** The coder quit (instead of finishing or reaching an `end` item). */
   quit?: boolean;
@@ -50,7 +50,7 @@ export function SessionEnd({ ending, quit = false, deletionRequested = false, on
           {screenout || quit ? <LogOut className="h-10 w-10" /> : <CheckCircle2 className="h-10 w-10" />}
         </div>
         <h2 className="mt-4 text-xl font-bold tracking-tight text-foreground">
-          {quit ? "You quit this job" : screenout ? "Thank you" : "Job Complete!"}
+          {quit ? "You quit this study" : screenout ? "Thank you" : "Study Complete!"}
         </h2>
         {quit ? (
           <p className="mt-2 text-sm text-muted-foreground">Thank you for your time. You can close this page.</p>
@@ -60,7 +60,7 @@ export function SessionEnd({ ending, quit = false, deletionRequested = false, on
           </div>
         ) : (
           <p className="mt-2 text-sm text-muted-foreground">
-            {screenout ? "This is the end of the job for you." : "You've completed all available units. Thank you for your contributions!"}
+            {screenout ? "This is the end of the study for you." : "You've completed all available units. Thank you for your contributions!"}
           </p>
         )}
         {redirect && (

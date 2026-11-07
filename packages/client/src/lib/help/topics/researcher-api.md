@@ -27,7 +27,7 @@ A script logs in with a personal **API key**:
    **Create**.
 3. Copy the key (it starts with `atk_`). It is shown only once.
 
-A key acts as you, in every job you have a role in. Treat it like a
+A key acts as you, in every study you have a role in. Treat it like a
 password: don't put it in a script you share or in a public repository.
 Store it in an environment variable instead (in R, in your `.Renviron`
 file), and click **Revoke** next to a key you no longer need, or that may
@@ -37,7 +37,7 @@ have leaked. The list shows when each key was last used.
 
 The API lives at the same address as AnnoTinder itself: if you open
 AnnoTinder at `https://annotinder.example.org`, a script asks for
-`https://annotinder.example.org/api/job` to list your jobs. Every request sends
+`https://annotinder.example.org/api/study` to list your studies. Every request sends
 the key in a header:
 
 ```text
@@ -46,14 +46,14 @@ Authorization: Bearer atk_...
 
 Requests and responses are JSON. Errors come back with a status code and
 an `error` message: `401` (no valid key), `403` (you have no, or not enough,
-role in this job), `404` (not found), `409` (not allowed now, such as a unit
+role in this study), `404` (not found), `409` (not allowed now, such as a unit
 id that already exists).
 
-Most paths start with the job's number, `/job/<id>/...`. A script finds it
-by listing the jobs:
+Most paths start with the study's number, `/study/<id>/...`. A script finds it
+by listing the studies:
 
 ```text
-curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/api/job
+curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/api/study
 ```
 
 ```json
@@ -64,30 +64,30 @@ curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/a
 
 | Task | Request |
 | --- | --- |
-| List your jobs, create a job | `GET /job`, `POST /job` with `{ "name": ... }` |
-| Upload units (at most 200 per request) | `POST /job/<id>/units` |
-| List the job's fields | `GET /job/<id>/units/fields` |
-| List set groups, replace or delete a group | `GET /job/<id>/sets`; `PUT`, `DELETE /job/<id>/sets/<group>` |
-| Save a design version | `POST /job/<id>/design` with `{ "items": [...], "note": ... }` |
-| Deploy: a design version and the draft units and sets (this makes its links) | `PUT /job/<id>/deployment` with `{ "designVersionId": ..., "units": true }` (without `units`, the deployed units stay) |
-| What deploying would change; the deployed versions | `GET /job/<id>/deployment/pending`, `GET /job/<id>/deployment/versions` |
-| List links, or change who may use one | `GET /job/<id>/links`; `PUT /job/<id>/links/<link id>` |
-| Coders, with their answers outside unit loops | `GET /job/<id>/coders` |
-| Answers in unit loops, a page at a time | `GET /job/<id>/annotations` |
-| Units as coders saw them, a page at a time | `GET /job/<id>/unit-versions` |
+| List your studies, create a study | `GET /study`, `POST /study` with `{ "name": ... }` |
+| Upload units (at most 200 per request) | `POST /study/<id>/units` |
+| List the study's fields | `GET /study/<id>/units/fields` |
+| List set groups, replace or delete a group | `GET /study/<id>/sets`; `PUT`, `DELETE /study/<id>/sets/<group>` |
+| Save a design version | `POST /study/<id>/design` with `{ "items": [...], "note": ... }` |
+| Deploy: a design version and the draft units and sets (this makes its links) | `PUT /study/<id>/deployment` with `{ "designVersionId": ..., "units": true }` (without `units`, the deployed units stay) |
+| What deploying would change; the deployed versions | `GET /study/<id>/deployment/pending`, `GET /study/<id>/deployment/versions` |
+| List links, or change who may use one | `GET /study/<id>/links`; `PUT /study/<id>/links/<link id>` |
+| Coders, with their answers outside unit loops | `GET /study/<id>/coders` |
+| Answers in unit loops, a page at a time | `GET /study/<id>/annotations` |
+| Units as coders saw them, a page at a time | `GET /study/<id>/unit-versions` |
 
-What you may do depends on your role in the job, as on the pages: reading
+What you may do depends on your role in the study, as on the pages: reading
 units, design versions and answers needs any role; changing them, and seeing
 links and coders, needs a role that may edit; deploying needs the
-job's admin role.
+study's admin role.
 
 A design version is the same JSON as in the codebook editor's JSON view: write it
-in the editor, copy it, and a script can save it to another job. (The API
-still calls a design version a codebook: `/job/<id>/design`, `designVersionId`.)
+in the editor, copy it, and a script can save it to another study. (The API
+still calls a design version a codebook: `/study/<id>/design`, `designVersionId`.)
 
 ## Uploading units
 
-`POST /job/<id>/units` takes up to 200 units per request:
+`POST /study/<id>/units` takes up to 200 units per request:
 
 ```json
 {
@@ -99,7 +99,7 @@ still calls a design version a codebook: `/job/<id>/design`, `designVersionId`.)
 ```
 
 The rules are those of [uploading a CSV](uploading-units.md): the first
-upload sets the job's fields and their types (text, number or true/false,
+upload sets the study's fields and their types (text, number or true/false,
 from the JSON values), later uploads must give every existing field a value
 of its type (`null` for empty) and may add fields. An id that already exists
 is refused, unless you add `"overwrite": true`; replacing a unit that was
@@ -115,7 +115,7 @@ In R, with the httr2 package:
 library(httr2)
 
 server <- "https://annotinder.example.org/api"
-job <- 12
+study <- 12
 api <- function(path) {
   request(server) |>
     req_url_path_append(path) |>
@@ -130,22 +130,22 @@ units <- lapply(seq_len(nrow(articles)), function(i) list(
 
 # 200 units per request
 for (batch in split(units, ceiling(seq_along(units) / 200))) {
-  api(sprintf("job/%d/units", job)) |>
+  api(sprintf("study/%d/units", study)) |>
     req_body_json(list(units = unname(batch))) |>
     req_perform()
 }
 ```
 
-A [set group](sets.md) is written as a whole: `PUT /job/<id>/sets/<group>`
+A [set group](sets.md) is written as a whole: `PUT /study/<id>/sets/<group>`
 replaces the group's sets. Each set is a name with a list of AnnoTinder's
 own unit ids (`id` in the response to the upload, or from
-`GET /job/<id>/units`); with `"ordered": true` coders get them in that
+`GET /study/<id>/units`); with `"ordered": true` coders get them in that
 order:
 
 ```r
-uploaded <- api(sprintf("job/%d/units", job)) |> req_perform() |> resp_body_json()
+uploaded <- api(sprintf("study/%d/units", study)) |> req_perform() |> resp_body_json()
 ids <- sapply(uploaded, \(u) u$id)
-api(sprintf("job/%d/sets/pilot", job)) |>
+api(sprintf("study/%d/sets/pilot", study)) |>
   req_method("PUT") |>
   req_body_json(list(sets = list(list(name = "pilot", unitIds = as.list(head(ids, 50)))))) |>
   req_perform()
@@ -155,7 +155,7 @@ A group can't be deleted while the deployed or latest design version uses it.
 
 ## Downloading answers
 
-`GET /job/<id>/annotations` gives every answer, one row per coder,
+`GET /study/<id>/annotations` gives every answer, one row per coder,
 question and unit (`unitId` is `null` for questions outside unit loops;
 `assigned: true` marks [auto questions](auto.md)), in the order they were written, a page at a time
 (up to `limit` rows, at most 10000). Pass the page's `next` as `after` to get
@@ -165,7 +165,7 @@ the next page, until `next` is `null`:
 annotations <- list()
 after <- NULL
 repeat {
-  page <- api(sprintf("job/%d/annotations", job)) |>
+  page <- api(sprintf("study/%d/annotations", study)) |>
     req_url_query(after = after, limit = 10000) |>
     req_perform() |>
     resp_body_json()
@@ -189,13 +189,13 @@ The same in Python, with requests:
 ```python
 import os, requests
 
-server, job = "https://annotinder.example.org/api", 12
+server, study = "https://annotinder.example.org/api", 12
 headers = {"Authorization": f"Bearer {os.environ['ANNOTINDER_KEY']}"}
 
 rows, after = [], None
 while True:
     params = {"limit": 10000} | ({"after": after} if after is not None else {})
-    page = requests.get(f"{server}/job/{job}/annotations", headers=headers, params=params).json()
+    page = requests.get(f"{server}/study/{study}/annotations", headers=headers, params=params).json()
     rows += page["annotations"]
     if page["next"] is None:
         break
@@ -222,7 +222,7 @@ Two things the download on the **Results** tab doesn't have:
   when that happened.
 
 Answers outside unit loops are rows too (`unitId` `null`), and also come
-with the coders, from `GET /job/<id>/coders`: each coder's `variables`, in
+with the coders, from `GET /study/<id>/coders`: each coder's `variables`, in
 the same form.
 
 > For most analyses, the [results download](results.md) is easier: it turns

@@ -24,7 +24,7 @@ interface QuestionProps {
   unitVariables?: Record<string, VariableValue>;
   /** Any previously submitted answer for this question -- for review or editing */
   initialValue?: VariableValue;
-  /** The question and instruction texts with their values filled in (JobManager); without, values show their source. */
+  /** The question and instruction texts with their values filled in (StudyManager); without, values show their source. */
   texts?: QuestionTexts | null;
 }
 

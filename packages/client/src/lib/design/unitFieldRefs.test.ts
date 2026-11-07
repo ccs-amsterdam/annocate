@@ -36,7 +36,7 @@ describe("unknownUnitFields", () => {
     ]);
   });
 
-  it("checks nothing while the job has no units, unless asked to (to locate undeclared fields)", () => {
+  it("checks nothing while the study has no units, unless asked to (to locate undeclared fields)", () => {
     expect(unknownUnitFields(items, [])).toEqual([]);
     expect(unknownUnitFields(items, [], true).map((w) => w.field)).toContain("topic");
   });

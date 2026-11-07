@@ -152,7 +152,7 @@ describe("Question dispatcher", () => {
     expect(renderToStaticMarkup(<SwipeSurface>unit text</SwipeSurface>)).not.toContain("data-swipe-surface");
   });
 
-  it("renders span (wrapped in SpanAnnotationProvider, as JobRunner does)", () => {
+  it("renders span (wrapped in SpanAnnotationProvider, as StudyRunner does)", () => {
     const item: QuestionItem = {
       name: "span_q",
       type: "question",

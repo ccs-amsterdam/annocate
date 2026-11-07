@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { DesignWriteSchema, sessionItem, type DesignConflict } from "@annotinder/contracts";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
-import { requireJobUser } from "./auth.js";
+import { requireStudyUser } from "./auth.js";
 import { toDesignVersion, type DesignVersionRow } from "../shared/designVersions.js";
 
 /** The 409 for a save based on an older revision (contracts `DesignConflictSchema`). */
@@ -20,18 +20,18 @@ export function designVersion(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  const get = (jobId: number, id: number) => one<DesignVersionRow>(db, "SELECT * FROM design_versions WHERE job_id = $1 AND id = $2", [jobId, id]);
+  const get = (studyId: number, id: number) => one<DesignVersionRow>(db, "SELECT * FROM design_versions WHERE study_id = $1 AND id = $2", [studyId, id]);
 
-  app.get("/job/:jobId/design/:id", requireJobUser(server, "READ"), async (c) => {
-    const row = await get(c.get("jobId"), Number(c.req.param("id")));
+  app.get("/study/:studyId/design/:id", requireStudyUser(server, "READ"), async (c) => {
+    const row = await get(c.get("studyId"), Number(c.req.param("id")));
     if (!row) return c.json({ error: "Design version not found" }, 404);
     return c.json(toDesignVersion(row));
   });
 
-  app.put("/job/:jobId/design/:id", requireJobUser(server, "WRITE"), async (c) => {
-    const jobId = c.get("jobId");
+  app.put("/study/:studyId/design/:id", requireStudyUser(server, "WRITE"), async (c) => {
+    const studyId = c.get("studyId");
     const id = Number(c.req.param("id"));
-    const existing = await get(jobId, id);
+    const existing = await get(studyId, id);
     if (!existing) return c.json({ error: "Design version not found" }, 404);
     if (existing.immutable) return c.json({ error: "Design version is deployed and cannot be edited" }, 409);
 
@@ -46,12 +46,12 @@ export function designVersion(server: Server): Hono<Env> {
     const row = await one<DesignVersionRow>(
       db,
       `UPDATE design_versions SET note = $1, items = $2, units = COALESCE($7::jsonb, units), session = COALESCE($8::jsonb, session), public = CASE WHEN $9 THEN $10::jsonb ELSE public END, updated = now(), updated_by = $3, revision = revision + 1
-       WHERE job_id = $4 AND id = $5 AND NOT immutable AND ($6::int IS NULL OR revision = $6) RETURNING *`,
+       WHERE study_id = $4 AND id = $5 AND NOT immutable AND ($6::int IS NULL OR revision = $6) RETURNING *`,
       [
         parsed.data.note ?? null,
         JSON.stringify(parsed.data.items),
-        c.get("jobUser")?.email ?? null,
-        jobId,
+        c.get("studyUser")?.email ?? null,
+        studyId,
         id,
         revision ?? null,
         parsed.data.units ? JSON.stringify(parsed.data.units) : null,
@@ -64,21 +64,21 @@ export function designVersion(server: Server): Hono<Env> {
     );
     if (!row) {
       // Deployed or saved by someone else meanwhile.
-      const now = await get(jobId, id);
+      const now = await get(studyId, id);
       if (now && !now.immutable) return c.json(conflict(now), 409);
       return c.json({ error: "Design version is deployed and cannot be edited" }, 409);
     }
     return c.json(toDesignVersion(row));
   });
 
-  app.delete("/job/:jobId/design/:id", requireJobUser(server, "WRITE"), async (c) => {
-    const jobId = c.get("jobId");
+  app.delete("/study/:studyId/design/:id", requireStudyUser(server, "WRITE"), async (c) => {
+    const studyId = c.get("studyId");
     const id = Number(c.req.param("id"));
-    const existing = await get(jobId, id);
+    const existing = await get(studyId, id);
     if (!existing) return c.json({ error: "Design version not found" }, 404);
     if (existing.immutable) return c.json({ error: "Design version is deployed and cannot be deleted" }, 409);
 
-    await db.query("DELETE FROM design_versions WHERE job_id = $1 AND id = $2 AND NOT immutable", [jobId, id]);
+    await db.query("DELETE FROM design_versions WHERE study_id = $1 AND id = $2 AND NOT immutable", [studyId, id]);
     return c.body(null, 204);
   });
 

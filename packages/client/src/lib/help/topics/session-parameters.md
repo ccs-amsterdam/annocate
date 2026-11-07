@@ -26,7 +26,7 @@ back without them, and they appear in the results (`coders.csv`).
 
 At the top of the Study entry: the **Public title**, what coders see as
 the study's name, on their list of studies and in the coding screen's
-menu and browser tab. The job's own name stays private, so it can say what
+menu and browser tab. The study's own name stays private, so it can say what
 the study is about. Without one, coders see "Untitled study".
 
 ## Values

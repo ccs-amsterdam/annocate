@@ -9,7 +9,7 @@ Coders (or participants) open a link and start right
 away, without an account (unless the link asks them to
 [log in](links.md#login)). This page describes what they see
 and can do, so you can write instructions for them and know what to expect.
-The quickest way to see it for yourself is **Preview Job** at the top right (see
+The quickest way to see it for yourself is **Preview Study** at the top right (see
 [Preview, save and deploy](previewing-and-publishing.md#previewing)).
 
 ## The coding screen
@@ -45,7 +45,7 @@ From left to right:
 
 | Element | What it does |
 | --- | --- |
-| Menu (three lines) | Opens the **Navigation** list: all steps of the job, with a tick for the ones done |
+| Menu (three lines) | Opens the **Navigation** list: all steps of the study, with a tick for the ones done |
 | Position, e.g. `2` or `4.1` | Where the coder is: the 2nd step, or the 1st question of the loop that is the 4th step |
 | **<** and **>** | Go back and forward |
 | Monitor-and-phone icon | **Continue on another device** (below) |
@@ -112,7 +112,7 @@ new session starts empty: it doesn't include the earlier answers.
 
 Coders find the studies they started in this browser at **Annotate**
 (`/code`), with the study's public title (set at the top of the
-Study entry; the job's own name stays private) and how far they got, and continue them
+Study entry; the study's own name stays private) and how far they got, and continue them
 from there without the link. Logged-in coders also see their studies on
 other devices.
 
@@ -181,7 +181,7 @@ The door icon at the top right offers three ways out:
 - **Stop for now** explains how to continue later: open the same link on the
   same device and browser, or first use **Continue on another device**.
   Nothing is lost: answers are saved as the coder goes.
-- **Quit this job** ends the session for good, after a confirmation. The
+- **Quit this study** ends the session for good, after a confirmation. The
   answers so far are kept.
 - **Quit and ask to delete my answers** ends the session and asks you, the
   researcher, to delete the coder's answers. The coder confirms by typing a
@@ -190,7 +190,7 @@ The door icon at the top right offers three ways out:
 
 ## The end
 
-When coders finish the last item, they see **Job Complete!** with a thank
+When coders finish the last item, they see **Study Complete!** with a thank
 you. The last screen also has **Ask to delete my answers**, for coders who
 want to withdraw after finishing. An [end item](end-items.md) can end the session earlier, with your own
 message and, for online panels, a redirect back to the panel after a few
@@ -206,4 +206,4 @@ device or login doesn't see their answers. For 15 minutes after finishing
 my answers**, for a coder who notices a mistake.
 
 To let coders always return to their answers, tick **Keep finished
-sessions open** on the job's **Settings** tab.
+sessions open** on the study's **Settings** tab.

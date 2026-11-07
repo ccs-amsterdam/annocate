@@ -2,11 +2,11 @@
 title: Following progress
 section: Coders
 order: 3
-summary: The Overview and Coders tabs - whether the job is live, how many coders started, answers per day and how far each loop and coder got.
+summary: The Overview and Coders tabs - whether the study is live, how many coders started, answers per day and how far each loop and coder got.
 ---
 
 While coders work, two tabs tell you how it goes. The **Overview** tab shows
-the job as a whole: is it live, how much has been coded, and how far each
+the study as a whole: is it live, how much has been coded, and how far each
 unit loop is. The **Coders** tab shows every coder: when they started, when
 they were last active and how many units they finished. Both refresh
 by themselves while open (the Overview every 30 seconds, the Coders tab
@@ -33,7 +33,7 @@ as they were).
 
 | Tile | Big number | Below it |
 | --- | --- | --- |
-| **Units** | Units in the job | The number of set groups |
+| **Units** | Units in the study | The number of set groups |
 | **Coders started** | Coders who answered at least one question (assigned values don't count) | All coders who opened a link, and how many were active in the last 24 hours |
 | **Finished codings** | Units finished, counted per coder: a unit two coders finished counts twice | All answers given, and when the last one was |
 | **Active links** | Links that are not revoked, retired or used up | All links |
@@ -56,13 +56,13 @@ out units (see [Handing out units](unit-distribution.md)):
 
 - **Crowd coding**: the unit was coded by enough coders (or
   enough agreed), so it goes to no one else. The bar reaching the end means
-  the job is done.
+  the study is done.
 - **Everyone codes everything** and **Assign sets**: every
   coder who got this set finished the unit. A coder who stopped halfway
   keeps the bar from filling up, so read it together with the Coders tab.
 
 A set appears here once the first coder was given units from it; a loop
-over all units of the job shows *all units*. Progress is counted for
+over all units of the study shows *all units*. Progress is counted for
 the live design version.
 
 ## The Coders tab
@@ -150,7 +150,7 @@ that coders had finished unfinished again until they answer it (see
 
 ## Previews don't count
 
-When you try the job in **Preview**, you are a coder too, but nothing you
+When you try the study in **Preview**, you are a coder too, but nothing you
 do is stored: previews don't appear on these tabs or in the results, and
 they don't take units from shared queues. To test the real thing, use a real
 link, and leave those test sessions out of your analysis.

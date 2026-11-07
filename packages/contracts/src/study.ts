@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { IdSchema, RoleSchema } from "./common.js";
 
-/** A "job", the sole top-level entity in the new data model (CONTRACTS.md). */
-export const JobWriteSchema = z.object({
+/** A "study", the sole top-level entity in the new data model (CONTRACTS.md). */
+export const StudyWriteSchema = z.object({
   name: z.string().min(1).max(256),
   archived: z.boolean().optional().default(false),
   /**
@@ -20,22 +20,22 @@ export const JobWriteSchema = z.object({
    */
   redirectUrls: z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).max(64), z.string().max(2000)).optional(),
 });
-export type JobWrite = z.infer<typeof JobWriteSchema>;
+export type StudyWrite = z.infer<typeof StudyWriteSchema>;
 
-export const JobResponseSchema = JobWriteSchema.extend({
+export const StudyResponseSchema = StudyWriteSchema.extend({
   id: IdSchema,
   created: z.coerce.date(),
   keepSessionsOpen: z.boolean(),
   redirectUrls: z.record(z.string(), z.string()),
-  /** Set when a server admin suspended the job: no coding and no changes (reading and deleting data still work). */
+  /** Set when a server admin suspended the study: no coding and no changes (reading and deleting data still work). */
   suspendedAt: z.coerce.date().nullable().optional(),
-  /** The example the job was made from (`ExampleSummary.id`), if any. */
+  /** The example the study was made from (`ExampleSummary.id`), if any. */
   origin: z.string().nullable().optional(),
 });
-export type JobResponse = z.infer<typeof JobResponseSchema>;
+export type StudyResponse = z.infer<typeof StudyResponseSchema>;
 
 /**
- * An example job AnnoTinder ships (`GET /examples`): a codebook with units,
+ * An example study AnnoTinder ships (`GET /examples`): a codebook with units,
  * a link and sometimes example answers, to try and adapt
  * (docs/plans/examples.md).
  */
@@ -45,29 +45,29 @@ export const ExampleSummarySchema = z.object({
   title: z.string(),
   /** What it shows. */
   description: z.string(),
-  /** What to try with the job made from it. */
+  /** What to try with the study made from it. */
   tryThis: z.array(z.string()),
 });
 export type ExampleSummary = z.infer<typeof ExampleSummarySchema>;
 
-/** Body of `POST /job/from-example`: which example, and the new job's name (default: the example's). */
-export const JobFromExampleSchema = z.object({
+/** Body of `POST /study/from-example`: which example, and the new study's name (default: the example's). */
+export const StudyFromExampleSchema = z.object({
   example: z.string().min(1),
   name: z.string().min(1).max(256).optional(),
 });
-export type JobFromExample = z.infer<typeof JobFromExampleSchema>;
+export type StudyFromExample = z.infer<typeof StudyFromExampleSchema>;
 
 /**
- * A "job user" manages the job (create/edit design versions, units, link
+ * A "study user" manages the study (create/edit design versions, units, link
  * coders, ...). Distinct from a "coder", who annotates via a link/access
- * link (see coder.ts). Whole-resource replace via `PUT /job/:id/users`.
+ * link (see coder.ts). Whole-resource replace via `PUT /study/:id/users`.
  */
-export const JobUserSchema = z.object({
+export const StudyUserSchema = z.object({
   email: z.string().email(),
   role: RoleSchema,
 });
-export type JobUser = z.infer<typeof JobUserSchema>;
+export type StudyUser = z.infer<typeof StudyUserSchema>;
 
-export const JobUsersWriteSchema = z.object({
-  users: z.array(JobUserSchema),
+export const StudyUsersWriteSchema = z.object({
+  users: z.array(StudyUserSchema),
 });

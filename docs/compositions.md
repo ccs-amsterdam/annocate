@@ -6,8 +6,8 @@ from R and Python, and the R and Python packages, are not.
 Annotinder has two parts:
 
 - **server** (`packages/server`): one Node program. The researcher API
-  (jobs, codebooks, units, sets, links, deployments, results) and the
-  coder API for coders (`/d/<jobId>`): distribution, validation, sessions.
+  (studies, codebooks, units, sets, links, deployments, results) and the
+  coder API for coders (`/d/<studyId>`): distribution, validation, sessions.
   It owns the data, in Postgres: a Postgres server (`DATABASE_URL`), or
   PGlite (Postgres compiled to WebAssembly, in process) for tests and
   development.
@@ -15,7 +15,7 @@ Annotinder has two parts:
   Always served from the server's origin (session cookies).
 
 Other systems (AmCAT, R, Python) are **clients of the researcher API**: they
-push units, a codebook and job settings, and download annotations (maybe
+push units, a codebook and study settings, and download annotations (maybe
 later: a webhook that posts batches of annotations).
 
 The products below are compositions of these parts, not separate code. New
@@ -32,17 +32,17 @@ or project on its own infrastructure (Node and Postgres). For data that must
 stay in-house, and for teams.
 
 **Local coding from R and Python** (below): R or Python hosts the data, the
-browser runs the job. For developing a codebook with a live preview, and a
+browser runs the study. For developing a codebook with a live preview, and a
 researcher coding their own data. One coder.
 
 **R package and Python module**: both things in one package: a client of
-the researcher API of any annotinder server (jobs, units, codebooks,
+the researcher API of any annotinder server (studies, units, codebooks,
 downloading annotations; the API is the public contract,
 `docs/api/researcher.md`), and the host for local coding.
 
 ## Local coding from R and Python (the plan)
 
-R (or Python) hosts a job on the researcher's machine, with the data in R
+R (or Python) hosts a study on the researcher's machine, with the data in R
 objects, and coders use the normal client. It should behave exactly like a
 server, including several coders (a team on one network coding into the
 researcher's R session), so no feature needs a "not in R" note.
@@ -84,7 +84,7 @@ R (a second copy of the runtime); R starting Postgres or Node (an install
 most R users don't have).
 
 **Fallback**, if V8 turns out not to work on some platform: the runtime in
-the browser, over three endpoints R serves (`GET /job`, `GET /annotations`,
+the browser, over three endpoints R serves (`GET /study`, `GET /annotations`,
 `POST /annotations`). Features then behave as on a server for one coder;
 several coders at once are not possible.
 

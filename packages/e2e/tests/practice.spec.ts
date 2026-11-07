@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import type { JobResponse } from "@annotinder/contracts";
+import type { StudyResponse } from "@annotinder/contracts";
 import { api, question } from "./helpers";
 
 // Practice and gold units (docs/plans/special-sets.md): a practice question
@@ -8,12 +8,12 @@ import { api, question } from "./helpers";
 
 test("a practice question gives feedback when wrong, answered again until right; a wrong gold unit ends the session at a screen-out", async ({ page, request, browser }) => {
   await page.goto("/research");
-  await page.getByRole("button", { name: /Create new job/ }).click();
-  await page.getByRole("menuitem", { name: /Empty job/ }).click();
+  await page.getByRole("button", { name: /Create new study/ }).click();
+  await page.getByRole("menuitem", { name: /Empty study/ }).click();
   await page.getByPlaceholder(/Sentiment Analysis/).fill("Checked coders");
-  await page.getByRole("button", { name: "Create Job" }).click();
+  await page.getByRole("button", { name: "Create Study" }).click();
   await expect(page.getByRole("button", { name: "Overview" })).toBeVisible();
-  const job = (await api<JobResponse[]>(request, "GET", "/job")).find((j) => j.name === "Checked coders")!;
+  const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "Checked coders")!;
 
   // Units with a sets column and answer columns
   await page.getByRole("button", { name: "Design", exact: true }).click();
@@ -35,7 +35,7 @@ test("a practice question gives feedback when wrong, answered again until right;
   await page.getByRole("button", { name: /Upload 4 units/ }).click();
   await expect(page.getByRole("button", { name: /^s1 1$/ })).toBeVisible();
 
-  const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/design`, {
+  const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
     session: { params: [{ name: "part", kind: "link", values: { sets: "part" } }] },
     items: [
       {
@@ -56,12 +56,12 @@ test("a practice question gives feedback when wrong, answered again until right;
       { type: "end", name: "low_quality", outcome: "screenout", message: "Sorry, this study is over for you." },
     ],
   });
-  await api(request, "PUT", `/job/${job.id}/deployment`, { designVersionId: codebook.id });
-  const links = await api<{ secret: string; params: Record<string, string> }[]>(request, "GET", `/job/${job.id}/links`);
+  await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: codebook.id });
+  const links = await api<{ secret: string; params: Record<string, string> }[]>(request, "GET", `/study/${study.id}/links`);
   const s1 = links.find((l) => l.params.part === "s1")!;
 
   const coder = await (await browser.newContext()).newPage();
-  await coder.goto(`/code/${job.id}?link=${s1.secret}`);
+  await coder.goto(`/code/${study.id}?link=${s1.secret}`);
 
   // The practice unit, answered wrongly: feedback with the question, and answering again until right
   await question(coder, "Topic?");
@@ -89,21 +89,21 @@ test("a practice question gives feedback when wrong, answered again until right;
 });
 
 test("the right answers of gold units, written in the loop editor", async ({ page, request }) => {
-  const job = await api<JobResponse>(request, "POST", "/job", { name: "Gold answers" });
-  const units = await api<{ id: number; externalId: string }[]>(request, "POST", `/job/${job.id}/units`, {
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Gold answers" });
+  const units = await api<{ id: number; externalId: string }[]>(request, "POST", `/study/${study.id}/units`, {
     units: [
       { externalId: "u1", data: { text: "Own text" } },
       { externalId: "g1", data: { text: "An election report" } },
     ],
   });
   const id = (externalId: string) => units.find((u) => u.externalId === externalId)!.id;
-  await api(request, "PUT", `/job/${job.id}/sets/part`, {
+  await api(request, "PUT", `/study/${study.id}/sets/part`, {
     sets: [
       { name: "s1", unitIds: [id("u1")] },
       { name: "_gold", unitIds: [id("g1")] },
     ],
   });
-  await api(request, "POST", `/job/${job.id}/design`, {
+  await api(request, "POST", `/study/${study.id}/design`, {
     items: [
       {
         type: "unit_loop",
@@ -131,6 +131,6 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
   await dialog.getByRole("button", { name: /Save 1 unit/ }).click();
   await expect(dialog).toBeHidden();
 
-  const page1 = await api<{ units: { externalId: string; data: Record<string, unknown> }[] }>(request, "GET", `/job/${job.id}/units/page?offset=0&limit=10`);
+  const page1 = await api<{ units: { externalId: string; data: Record<string, unknown> }[] }>(request, "GET", `/study/${study.id}/units/page?offset=0&limit=10`);
   expect(page1.units.find((u) => u.externalId === "g1")!.data.topic_gold).toBe("politics|other");
 });

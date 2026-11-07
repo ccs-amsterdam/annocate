@@ -6,7 +6,7 @@ import { cn } from "cn";
 
 /**
  * Renders a unit's layout (docs/client.md §3): its template, with the
- * values already evaluated (`renderTemplate`, done by `JobManager`). `focus`
+ * values already evaluated (`renderTemplate`, done by `StudyManager`). `focus`
  * (the question's focus, or a span question's fields) are ids of elements
  * (`data-field`): they are marked, and the first is scrolled into view and
  * briefly highlighted when the question comes up; with `focusDim` the rest

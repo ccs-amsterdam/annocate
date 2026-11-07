@@ -7,7 +7,7 @@ schemas, their inferred TypeScript types, and small pure helper functions
 runtime code, no HTTP client, no React.
 
 The server (`packages/server`) implements the three APIs: the researcher
-API (jobs, codebooks, units, publishing; used by the researcher UI, R,
+API (studies, codebooks, units, publishing; used by the researcher UI, R,
 Python and other systems), the coder API (used by coders' browsers) and the
 admin API (server admins). Types the
 server uses internally (e.g. what its runtime reads from the database) live
@@ -91,5 +91,5 @@ Not modeled in this package: the contract never sees credentials.
   client never sees the session key.
 - **Researchers**: the session cookie after login (with `x-annotinder: 1`),
   or a personal API key, `authorization: Bearer <key>` (`account.ts`); the
-  role per job is in job users (`job.ts`). Development servers also accept
+  role per study is in study users (`study.ts`). Development servers also accept
   `x-dev-role` / `x-dev-email` headers.

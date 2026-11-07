@@ -5,24 +5,24 @@ import type { Store } from "./store.js";
 import { previewSessionValues } from "./sessionValues.js";
 import type { Coder as StoredCoder, Coding, Lease, CoderValue, CoderAssignments, CoderValuesWrite, Finished, FinishedRequest, AnnotationWrite, ResolveCoderRequest, ResolvedCoder, Transfer } from "./types.js";
 
-// Researcher previews (`<jobId>.preview`, contracts PreviewSessionSchema):
+// Researcher previews (`<studyId>.preview`, contracts PreviewSessionSchema):
 // the latest codebook and the real units come from the database, but coders
 // and answers stay here, in memory. Nothing a preview does is stored, and it
 // is gone when the server forgets the deployment.
 
-/** A preview token (the link secret of a preview): `preview.<jobId>.<expiresAtMs>.<HMAC>`. */
-export function previewToken(secret: string, jobId: number, expiresAt: number): string {
-  return `preview.${jobId}.${expiresAt}.${sign(secret, jobId, expiresAt)}`;
+/** A preview token (the link secret of a preview): `preview.<studyId>.<expiresAtMs>.<HMAC>`. */
+export function previewToken(secret: string, studyId: number, expiresAt: number): string {
+  return `preview.${studyId}.${expiresAt}.${sign(secret, studyId, expiresAt)}`;
 }
 
-export function verifyPreviewToken(secret: string, jobId: number, token: string, now: number): boolean {
+export function verifyPreviewToken(secret: string, studyId: number, token: string, now: number): boolean {
   const match = /^preview\.(\d+)\.(\d+)\.([0-9a-f]{64})$/.exec(token);
-  if (!match || Number(match[1]) !== jobId || Number(match[2]) <= now) return false;
-  return timingSafeEqual(Buffer.from(sign(secret, jobId, Number(match[2]))), Buffer.from(match[3]));
+  if (!match || Number(match[1]) !== studyId || Number(match[2]) <= now) return false;
+  return timingSafeEqual(Buffer.from(sign(secret, studyId, Number(match[2]))), Buffer.from(match[3]));
 }
 
-function sign(secret: string, jobId: number, expiresAt: number): string {
-  return createHmac("sha256", secret).update(`preview.${jobId}.${expiresAt}`).digest("hex");
+function sign(secret: string, studyId: number, expiresAt: number): string {
+  return createHmac("sha256", secret).update(`preview.${studyId}.${expiresAt}`).digest("hex");
 }
 
 interface Coder extends StoredCoder {
@@ -42,7 +42,7 @@ export class PreviewStore implements Store {
     private db: Store,
     /** What preview tokens are signed with. */
     private secret: string,
-    private jobId: number,
+    private studyId: number,
     private now: () => number = () => Date.now(),
   ) {}
 
@@ -60,7 +60,7 @@ export class PreviewStore implements Store {
     if (known) return { coder: { ...known }, deviceId: null };
     const valid =
       request.linkSecret !== undefined &&
-      verifyPreviewToken(this.secret, this.jobId, request.linkSecret, this.now());
+      verifyPreviewToken(this.secret, this.studyId, request.linkSecret, this.now());
     if (!valid) throw new HttpError(401, "This preview link has expired; open the preview again");
     const coder: Coder = {
       coderId: this.coders.size + 1,

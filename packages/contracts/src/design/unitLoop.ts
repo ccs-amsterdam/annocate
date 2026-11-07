@@ -21,7 +21,7 @@ export function supportsAgreement(variable: AnyVariableType): boolean {
   return (variable.type === "nominal" && !variable.multiple) || variable.type === "ordinal" || variable.type === "annotinder";
 }
 
-/** The key for "every unit in the job" (the server's sets are keyed `group/set`, `setKey`). */
+/** The key for "every unit in the study" (the server's sets are keyed `group/set`, `setKey`). */
 export const ALL_UNITS_SET = "__all__";
 
 /** How long a coder of an `assign` branch with a drawn set keeps their set without finishing it or being active (ms). */
@@ -121,7 +121,7 @@ const branchBase = {
   when: ConditionSchema.optional(),
 };
 
-/** `all`: every coder of the branch codes every unit (of the job, or of one set). */
+/** `all`: every coder of the branch codes every unit (of the study, or of one set). */
 export const AllUnitsBranchSchema = z.object({
   ...branchBase,
   mode: z.literal("all"),
@@ -129,7 +129,7 @@ export const AllUnitsBranchSchema = z.object({
 });
 
 /**
- * `shared`: the units (of the job, or of one set) are shared among coders:
+ * `shared`: the units (of the study, or of one set) are shared among coders:
  * a queue that hands each unit out until it is done, either when
  * `until.coders` coders coded it, or when `until.agree` coders gave the
  * same answer to the question `until.on` -- and in any case once

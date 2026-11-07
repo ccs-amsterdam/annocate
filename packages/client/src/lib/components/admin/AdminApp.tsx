@@ -4,16 +4,16 @@ import type { MeResponse } from "@annotinder/contracts";
 import type { ServerApi } from "../../api/serverApi";
 import { ServerAdmin } from "./server/ServerAdmin";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useJobQuery, useJobsQuery } from "../../admin/queries";
-import { JobList } from "./JobList";
+import { useStudyQuery, useStudiesQuery } from "../../admin/queries";
+import { StudyList } from "./StudyList";
 import { DesignManager } from "./DesignManager";
 import type { SaveFn } from "./DesignEditor";
 import { UnitsPage } from "./units/UnitsPage";
 import { CodersPanel } from "./CodersPanel";
 import { ResultsPanel } from "./ResultsPanel";
 import { LinksPanel } from "./LinksPanel";
-import { JobOverview, JobSettingsPage } from "./overview/JobOverview";
-import { JobPreview } from "./JobPreview";
+import { StudyOverview, StudySettingsPage } from "./overview/StudyOverview";
+import { StudyPreview } from "./StudyPreview";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
@@ -39,10 +39,10 @@ import { HelpDialog } from "../../help/HelpDialog";
 import { PendingDeployBar } from "./PendingDeployBar";
 import { openHelp } from "../../help/helpStore";
 
-/** The job's pages. Preview is opened with the Preview Job button, not from the tabs. */
+/** The study's pages. Preview is opened with the Preview Study button, not from the tabs. */
 export type TabId = "Overview" | "Editor" | "Units" | "Links" | "Coders" | "Results" | "Settings" | "Preview";
 
-/** Each page's name in the URL (`/research/jobs/<id>/<slug>`). */
+/** Each page's name in the URL (`/research/studies/<id>/<slug>`). */
 export const TAB_SLUGS: Record<TabId, string> = {
   Overview: "overview",
   Editor: "editor",
@@ -55,10 +55,10 @@ export const TAB_SLUGS: Record<TabId, string> = {
 };
 
 /**
- * Where the researcher is (the app's URL, router.tsx): the jobs, the server
- * admin's page, or a job's page (the editor on a version: its number, v1, v2, ...).
+ * Where the researcher is (the app's URL, router.tsx): the studies, the server
+ * admin's page, or a study's page (the editor on a version: its number, v1, v2, ...).
  */
-export type AdminLocation = { page: "jobs" } | { page: "server" } | { page: "job"; jobId: number; tab: TabId; version?: number };
+export type AdminLocation = { page: "studies" } | { page: "server" } | { page: "study"; studyId: number; tab: TabId; version?: number };
 
 /**
  * Asks before leaving a page with unsaved edits (when `when`), e.g. the
@@ -69,7 +69,7 @@ export type LeaveGuard = (when: boolean) => { blocked: boolean; proceed: () => v
 const noGuard: LeaveGuard = () => ({ blocked: false, proceed: () => {}, stay: () => {} });
 
 /**
- * The tabs, grouped: designing the job (codebook, units), deploying it
+ * The tabs, grouped: designing the study (codebook, units), deploying it
  * (links, coders), its results, and settings. A group with more than
  * one page shows them as sub tabs.
  */
@@ -165,7 +165,7 @@ function AdminAppInner({
   server?: ServerApi;
   initialMe: MeResponse | null;
 }) {
-  const selectedJobId = location.page === "job" ? location.jobId : null;
+  const selectedStudyId = location.page === "study" ? location.studyId : null;
   const [me, setMe] = useState(initialMe);
   const serverPage = location.page === "server";
   // Unsaved codebook edits from an earlier session (localBackup.ts), read once
@@ -176,7 +176,7 @@ function AdminAppInner({
       client={client}
       backup={backup}
       onContinue={() => {
-        onNavigate({ page: "job", jobId: backup.jobId, tab: "Editor" });
+        onNavigate({ page: "study", studyId: backup.studyId, tab: "Editor" });
         setRestore(backup);
         setBackup(null);
       }}
@@ -188,22 +188,22 @@ function AdminAppInner({
     />
   );
 
-  // If a job is selected, create a client scoped to that job
-  const jobClient = useMemo(() => {
-    if (selectedJobId === null) return null;
-    return client.forJob(selectedJobId);
-  }, [client, selectedJobId]);
+  // If a study is selected, create a client scoped to that study
+  const studyClient = useMemo(() => {
+    if (selectedStudyId === null) return null;
+    return client.forStudy(selectedStudyId);
+  }, [client, selectedStudyId]);
 
-  if (location.page !== "job" || !jobClient) {
+  if (location.page !== "study" || !studyClient) {
     return (
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         {banner}
         {serverPage && server ? (
-          <ServerAdmin server={server} onBack={() => onNavigate({ page: "jobs" })} />
+          <ServerAdmin server={server} onBack={() => onNavigate({ page: "studies" })} />
         ) : (
-          <JobList
+          <StudyList
             client={client}
-            onSelectJob={(id, open) => onNavigate({ page: "job", jobId: id, tab: open === "editor" ? "Editor" : "Overview" })}
+            onSelectStudy={(id, open) => onNavigate({ page: "study", studyId: id, tab: open === "editor" ? "Editor" : "Overview" })}
             me={me}
             server={server}
             onMe={setMe}
@@ -215,24 +215,24 @@ function AdminAppInner({
   }
 
   return (
-    <JobAdminView
+    <StudyAdminView
       banner={banner}
-      restore={restore && restore.jobId === selectedJobId ? restore : null}
-      client={jobClient}
+      restore={restore && restore.studyId === selectedStudyId ? restore : null}
+      client={studyClient}
       rootClient={client}
       coderApiUrl={coderApiUrl}
       tab={location.tab}
       version={location.version}
-      onTabChange={(tab) => onNavigate({ page: "job", jobId: location.jobId, tab })}
-      onVersionChange={(version) => onNavigate({ page: "job", jobId: location.jobId, tab: "Editor", version }, { replace: true })}
-      onBackToJobs={() => onNavigate({ page: "jobs" })}
-      onSwitchJob={(id) => onNavigate({ page: "job", jobId: id, tab: location.tab === "Preview" ? "Overview" : location.tab })}
+      onTabChange={(tab) => onNavigate({ page: "study", studyId: location.studyId, tab })}
+      onVersionChange={(version) => onNavigate({ page: "study", studyId: location.studyId, tab: "Editor", version }, { replace: true })}
+      onBackToStudies={() => onNavigate({ page: "studies" })}
+      onSwitchStudy={(id) => onNavigate({ page: "study", studyId: id, tab: location.tab === "Preview" ? "Overview" : location.tab })}
       useLeaveGuard={useLeaveGuard}
     />
   );
 }
 
-function JobAdminView({
+function StudyAdminView({
   banner,
   restore,
   client,
@@ -242,8 +242,8 @@ function JobAdminView({
   version,
   onTabChange,
   onVersionChange,
-  onBackToJobs,
-  onSwitchJob,
+  onBackToStudies,
+  onSwitchStudy,
   useLeaveGuard,
 }: {
   /** Offers unsaved codebook edits from an earlier session, if any. */
@@ -258,16 +258,16 @@ function JobAdminView({
   version?: number;
   onTabChange: (tab: TabId) => void;
   onVersionChange: (version: number | undefined) => void;
-  onBackToJobs: () => void;
-  onSwitchJob: (jobId: number) => void;
+  onBackToStudies: () => void;
+  onSwitchStudy: (studyId: number) => void;
   useLeaveGuard: LeaveGuard;
 }) {
-  const jobQuery = useJobQuery(client);
-  const allJobsQuery = useJobsQuery(rootClient);
-  const job = jobQuery.data;
+  const studyQuery = useStudyQuery(client);
+  const allStudiesQuery = useStudiesQuery(rootClient);
+  const study = studyQuery.data;
 
   const [isDesignDirty, setIsDesignDirty] = useState(false);
-  // Leaving the editor with unsaved edits (a tab, another job, the browser's back button): asked first
+  // Leaving the editor with unsaved edits (a tab, another study, the browser's back button): asked first
   const leave = useLeaveGuard(isDesignDirty && tab === "Editor");
   const saveDesign = useRef<SaveFn | null>(null);
   // A design version to open, from the overview; `n` remounts the manager on each request
@@ -294,28 +294,28 @@ function JobAdminView({
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background">
-      {/* The job's header: back, which job, its sections; hides while scrolling down (useCollapsingChrome) */}
+      {/* The study's header: back, which study, its sections; hides while scrolling down (useCollapsingChrome) */}
       <CollapsibleHeader>
         <header className="border-b border-border bg-card/60 px-3 backdrop-blur-sm sm:px-4">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
             <div className="flex min-w-0 items-center gap-1">
-              <IconButton icon={ChevronLeft} label="All jobs" onClick={() => requestNavigation(onBackToJobs)} />
+              <IconButton icon={ChevronLeft} label="All studies" onClick={() => requestNavigation(onBackToStudies)} />
               <select
-                aria-label="Job"
-                value={client.jobId}
+                aria-label="Study"
+                value={client.studyId}
                 onChange={(e) => {
                   const newId = Number(e.target.value);
-                  requestNavigation(() => onSwitchJob(newId));
+                  requestNavigation(() => onSwitchStudy(newId));
                 }}
                 className="max-w-[16rem] truncate rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-input focus:border-input focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                {allJobsQuery.data?.map((j) => (
+                {allStudiesQuery.data?.map((j) => (
                   <option key={j.id} value={j.id}>
                     {j.name}
                   </option>
                 ))}
               </select>
-              {job?.archived && (
+              {study?.archived && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                   <Archive className="h-3 w-3" /> Archived
                 </span>
@@ -323,7 +323,7 @@ function JobAdminView({
             </div>
 
             {/* The sections */}
-            <nav className="flex gap-0.5 overflow-x-auto" aria-label="Job">
+            <nav className="flex gap-0.5 overflow-x-auto" aria-label="Study">
               {GROUPS.map((g) => {
                 const Icon = g.icon;
                 const active = g.pages.some((p) => p.id === tab);
@@ -394,7 +394,7 @@ function JobAdminView({
         {/* The editor has its own Deploy */}
         {tab !== "Editor" && <PendingDeployBar client={client} />}
         {tab === "Overview" && (
-          <JobOverview
+          <StudyOverview
             client={client}
             onNavigate={onTabChange}
             onOpenDesign={(id) => {
@@ -403,7 +403,7 @@ function JobAdminView({
             }}
           />
         )}
-        {tab === "Settings" && <JobSettingsPage client={client} onDeleted={onBackToJobs} />}
+        {tab === "Settings" && <StudySettingsPage client={client} onDeleted={onBackToStudies} />}
         {tab === "Editor" && (
           <DesignManager
             key={`${designTarget?.n ?? 0}:${restore?.at ?? ""}`}
@@ -422,7 +422,7 @@ function JobAdminView({
         {tab === "Links" && <LinksPanel client={client} />}
         {tab === "Coders" && <CodersPanel client={client} />}
         {tab === "Results" && <ResultsPanel client={client} />}
-        {tab === "Preview" && <JobPreview client={client} coderApiUrl={coderApiUrl} />}
+        {tab === "Preview" && <StudyPreview client={client} coderApiUrl={coderApiUrl} />}
       </main>
 
       {/* Unsaved Changes Confirmation Modal */}
@@ -458,8 +458,8 @@ function BackupBanner({
   onContinue: () => void;
   onDiscard: () => void;
 }) {
-  const jobs = useJobsQuery(client);
-  const job = jobs.data?.find((j) => j.id === backup.jobId);
+  const studies = useStudiesQuery(client);
+  const study = studies.data?.find((j) => j.id === backup.studyId);
   const when = new Date(backup.at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500 bg-amber-500/10 px-4 py-3 text-sm">
@@ -468,7 +468,7 @@ function BackupBanner({
         <div>
           <p className="font-semibold text-foreground">You have unsaved changes in the codebook editor</p>
           <p className="text-muted-foreground">
-            In {job ? `"${job.name}"` : `job #${backup.jobId}`}, from {when}. They were kept in this browser.
+            In {study ? `"${study.name}"` : `study #${backup.studyId}`}, from {when}. They were kept in this browser.
           </p>
         </div>
       </div>

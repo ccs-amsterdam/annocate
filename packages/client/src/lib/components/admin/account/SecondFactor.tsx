@@ -86,7 +86,7 @@ export function SecondFactorGate({ client, me, onConfirmed }: { client: Research
       <>
         <h1 className="font-heading text-lg font-bold">Log in with a second factor</h1>
         <p className="text-sm text-muted-foreground">
-          This server asks for two-factor authentication to manage jobs, and your login ({me.email}) didn&apos;t use one. Set it up
+          This server asks for two-factor authentication to manage studies, and your login ({me.email}) didn&apos;t use one. Set it up
           with your login provider, then log out and in again. Coding works without it.
         </p>
       </>
@@ -104,9 +104,9 @@ export function SecondFactorGate({ client, me, onConfirmed }: { client: Research
       <>
         <h1 className="font-heading text-lg font-bold">Add a passkey</h1>
         <p className="text-sm text-muted-foreground">
-          To manage jobs on this server you confirm each login with a <strong>passkey</strong>: your device&apos;s fingerprint, face
+          To manage studies on this server you confirm each login with a <strong>passkey</strong>: your device&apos;s fingerprint, face
           or PIN, or a security key. It is a second lock besides your login ({me.email}): someone who gets into your email or login
-          account still can&apos;t reach your jobs. Coding works without it.
+          account still can&apos;t reach your studies. Coding works without it.
         </p>
         <label className="flex flex-col gap-1 text-xs font-medium">
           Name (to recognise it later)
@@ -206,7 +206,7 @@ export function PasskeysDialog({ client, onClose }: { client: ResearcherApi; onC
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Passkeys</DialogTitle>
-          <DialogDescription>Each login to manage jobs is confirmed with one of these. Keep at least two, on different devices or synced.</DialogDescription>
+          <DialogDescription>Each login to manage studies is confirmed with one of these. Keep at least two, on different devices or synced.</DialogDescription>
         </DialogHeader>
         {codes ? (
           <>

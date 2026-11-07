@@ -3,15 +3,15 @@ import { DesignItemsSchema, SetGroupWriteSchema, branchGroups, setParameters, un
 import type { Sql } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { designVersionItems } from "../shared/designVersions.js";
-import { requireJobUser } from "./auth.js";
+import { requireStudyUser } from "./auth.js";
 import { deleteSetGroup, listSetGroups, putSetGroup } from "../shared/sets.js";
 
 /** Whether the deployed or latest codebook uses a group (a loop's set, or a link or URL parameter's values). */
-async function groupInUse(sql: Sql, jobId: number, group: string): Promise<boolean> {
+async function groupInUse(sql: Sql, studyId: number, group: string): Promise<boolean> {
   const rows = await sql.query<{ items: unknown; session: unknown }>(
-    `SELECT items, session FROM design_versions WHERE job_id = $1 AND (id = (SELECT design_version_id FROM deployments WHERE job_id = $1)
-       OR id = (SELECT max(id) FROM design_versions WHERE job_id = $1))`,
-    [jobId],
+    `SELECT items, session FROM design_versions WHERE study_id = $1 AND (id = (SELECT design_version_id FROM deployments WHERE study_id = $1)
+       OR id = (SELECT max(id) FROM design_versions WHERE study_id = $1))`,
+    [studyId],
   );
   return rows.some((row) => {
     const parsed = DesignItemsSchema.safeParse(designVersionItems(row));
@@ -29,23 +29,23 @@ export function sets(server: Server): Hono<Env> {
   const app = new Hono<Env>();
 
   // ?live=true: the deployed sets (what links and coders get)
-  app.get("/job/:jobId/sets", requireJobUser(server, "READ"), async (c) => c.json(await listSetGroups(db, c.get("jobId"), c.req.query("live") === "true")));
+  app.get("/study/:studyId/sets", requireStudyUser(server, "READ"), async (c) => c.json(await listSetGroups(db, c.get("studyId"), c.req.query("live") === "true")));
 
-  app.put("/job/:jobId/sets/:group", requireJobUser(server, "WRITE"), async (c) => {
+  app.put("/study/:studyId/sets/:group", requireStudyUser(server, "WRITE"), async (c) => {
     const parsed = SetGroupWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
-    const jobId = c.get("jobId");
+    const studyId = c.get("studyId");
     const group = c.req.param("group")!;
-    await db.transaction((tx) => putSetGroup(tx, jobId, group, parsed.data.sets));
-    const stored = (await listSetGroups(db, jobId)).find((g) => g.name === group) ?? { name: group, sets: [] };
+    await db.transaction((tx) => putSetGroup(tx, studyId, group, parsed.data.sets));
+    const stored = (await listSetGroups(db, studyId)).find((g) => g.name === group) ?? { name: group, sets: [] };
     return c.json(stored);
   });
 
-  app.delete("/job/:jobId/sets/:group", requireJobUser(server, "WRITE"), async (c) => {
-    const jobId = c.get("jobId");
+  app.delete("/study/:studyId/sets/:group", requireStudyUser(server, "WRITE"), async (c) => {
+    const studyId = c.get("studyId");
     const group = c.req.param("group")!;
-    if (await groupInUse(db, jobId, group)) return c.json({ error: `The design uses group '${group}': change it first` }, 409);
-    const deleted = await db.transaction((tx) => deleteSetGroup(tx, jobId, group));
+    if (await groupInUse(db, studyId, group)) return c.json({ error: `The design uses group '${group}': change it first` }, 409);
+    const deleted = await db.transaction((tx) => deleteSetGroup(tx, studyId, group));
     if (!deleted) return c.json({ error: "Group not found" }, 404);
     return c.body(null, 204);
   });

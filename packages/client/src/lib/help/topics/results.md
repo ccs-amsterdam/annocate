@@ -10,7 +10,7 @@ answered so far, as CSV files in a zip. You can download as often as you
 like, also while coding is still going on: each download has all answers up
 to that moment.
 
-The zip is named after the job and the date, such as
+The zip is named after the study and the date, such as
 `news_tone_2026-10-27.zip`, and contains:
 
 | File | A row per | What is in it |
@@ -96,7 +96,7 @@ A row per coder who started.
 | `deletion_requested` | When the coder asked for their answers to be deleted, if they did and you haven't deleted them yet (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)) |
 | `session.<name>` | The URL parameters the link required (the participant id is `participant_id`) |
 | `finished_<loop>` | How many units they finished in each unit loop, such as `finished_News items` |
-| `overlap_finished`, `gold_finished`, `practice_finished` | How many units of the deployed `_overlap`, `_gold` and `_practice` sets they finished, if the job has them (see [Overlap, gold and practice units](special-units.md)) |
+| `overlap_finished`, `gold_finished`, `practice_finished` | How many units of the deployed `_overlap`, `_gold` and `_practice` sets they finished, if the study has them (see [Overlap, gold and practice units](special-units.md)) |
 | one column per question | Their answers outside unit loops, and their [auto questions](auto.md) (experimental group, URL parameter variables) |
 
 Answers outside unit loops (consent, background questions, a survey's
@@ -145,7 +145,7 @@ browser measured it:
 A browser can be tampered with; the server can't. So use `server_ms` to
 check the browser's times: `exceeds_server` marks a manipulated (or
 broken) browser. Answers that are too fast show in both. Times include
-reading the unit, so compare within a job, not across very different
+reading the unit, so compare within a study, not across very different
 units.
 
 ## variables.csv

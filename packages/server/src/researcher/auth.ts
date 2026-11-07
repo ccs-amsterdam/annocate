@@ -15,20 +15,20 @@ import { SESSION_COOKIE } from "./login.js";
 //   can't send it, so it blocks CSRF.
 // - API keys: `authorization: Bearer <key>` (shared/accounts.ts).
 //
-// Both identify a user by email; their role in a job is in `job_users`,
+// Both identify a user by email; their role in a study is in `study_users`,
 // their account role (user, researcher, admin) on the user
 // (docs/accounts.md). With a second factor required (`twoFactor`), a login
 // without one only gets `GET /me` and the passkey routes (API keys count as
 // with one: making one needs it).
 // - Development only (`devAuth`, ANNOTINDER_DEV_AUTH=1): plain
 //   `x-dev-role` / `x-dev-email` headers, checked against nothing but
-//   `job_users`, and `x-dev-account-role` (default admin). A job without job
+//   `study_users`, and `x-dev-account-role` (default admin). A study without study
 //   users lets any dev role through. Never enable this on a reachable server.
 
 const ROLE_RANK: Record<Role, number> = { READ: 0, WRITE: 1, ADMIN: 2 };
 
-/** What still works in a suspended job besides reading: deleting it, or coders' data. */
-const SUSPENDED_ALLOWED = [/^\/api\/job\/\d+$/, /^\/api\/job\/\d+\/coders\/delete$/, /^\/api\/job\/\d+\/coders\/\d+\/deletion-request\/postpone$/];
+/** What still works in a suspended study besides reading: deleting it, or coders' data. */
+const SUSPENDED_ALLOWED = [/^\/api\/study\/\d+$/, /^\/api\/study\/\d+\/coders\/delete$/, /^\/api\/study\/\d+\/coders\/\d+\/deletion-request\/postpone$/];
 
 /** Ids are Postgres INTEGERs. */
 const MAX_ID = 2 ** 31 - 1;
@@ -65,16 +65,16 @@ async function authenticate(c: Context, server: Server): Promise<Researcher | nu
   return null;
 }
 
-/** The researcher's role in a job, if any. */
-async function roleIn(server: Server, researcher: Researcher, jobId: number): Promise<Role | null> {
-  const row = await one<{ role: Role }>(server.db, "SELECT role FROM job_users WHERE job_id = $1 AND email = $2", [
-    jobId,
+/** The researcher's role in a study, if any. */
+async function roleIn(server: Server, researcher: Researcher, studyId: number): Promise<Role | null> {
+  const row = await one<{ role: Role }>(server.db, "SELECT role FROM study_users WHERE study_id = $1 AND email = $2", [
+    studyId,
     researcher.email,
   ]);
   if (!researcher.devRole) return row?.role ?? null;
-  // Development: a job without job users lets any role through; otherwise the
+  // Development: a study without study users lets any role through; otherwise the
   // header can't claim more than was granted.
-  if (!row) return (await one(server.db, "SELECT 1 FROM job_users WHERE job_id = $1", [jobId])) ? null : researcher.devRole;
+  if (!row) return (await one(server.db, "SELECT 1 FROM study_users WHERE study_id = $1", [studyId])) ? null : researcher.devRole;
   return ROLE_RANK[row.role] < ROLE_RANK[researcher.devRole] ? null : researcher.devRole;
 }
 
@@ -101,31 +101,31 @@ export function requireResearcher(server: Server, { role, withoutMfa = false }: 
 }
 
 /**
- * Middleware: an authenticated researcher with at least `minRole` in the job
- * of the `:jobId` path param. 401 without (valid) credentials, 404 for an
- * unknown job, 403 without the role.
+ * Middleware: an authenticated researcher with at least `minRole` in the study
+ * of the `:studyId` path param. 401 without (valid) credentials, 404 for an
+ * unknown study, 403 without the role.
  */
-export function requireJobUser(server: Server, minRole: Role) {
+export function requireStudyUser(server: Server, minRole: Role) {
   return async (c: Context<Env>, next: Next) => {
     const researcher = await authenticate(c, server);
     if (!researcher) return c.json({ error: "Unauthorized" }, 401);
     if (lacksMfa(server, researcher)) return c.json(MFA_REQUIRED, 403);
 
-    const raw = c.req.param("jobId");
-    const jobId = raw ? Number(raw) : NaN;
-    if (!Number.isInteger(jobId) || jobId <= 0 || jobId > MAX_ID) return c.json({ error: "Invalid job id" }, 400);
-    const job = await one<{ suspended_at: Date | null }>(server.db, "SELECT suspended_at FROM jobs WHERE id = $1", [jobId]);
-    if (!job) return c.json({ error: "Job not found" }, 404);
-    // Suspended by a server admin: reading, and deleting data or the job, still work.
-    if (job.suspended_at && c.req.method !== "GET" && !SUSPENDED_ALLOWED.some((p) => p.test(c.req.path))) {
-      return c.json({ error: "A server admin suspended this job: it can't be changed", code: "job_suspended" }, 403);
+    const raw = c.req.param("studyId");
+    const studyId = raw ? Number(raw) : NaN;
+    if (!Number.isInteger(studyId) || studyId <= 0 || studyId > MAX_ID) return c.json({ error: "Invalid study id" }, 400);
+    const study = await one<{ suspended_at: Date | null }>(server.db, "SELECT suspended_at FROM studies WHERE id = $1", [studyId]);
+    if (!study) return c.json({ error: "Study not found" }, 404);
+    // Suspended by a server admin: reading, and deleting data or the study, still work.
+    if (study.suspended_at && c.req.method !== "GET" && !SUSPENDED_ALLOWED.some((p) => p.test(c.req.path))) {
+      return c.json({ error: "A server admin suspended this study: it can't be changed", code: "study_suspended" }, 403);
     }
 
-    const role = await roleIn(server, researcher, jobId);
+    const role = await roleIn(server, researcher, studyId);
     if (!role || ROLE_RANK[role] < ROLE_RANK[minRole]) return c.json({ error: "Forbidden" }, 403);
     c.set("researcher", researcher);
-    c.set("jobUser", { email: researcher.email, role });
-    c.set("jobId", jobId);
+    c.set("studyUser", { email: researcher.email, role });
+    c.set("studyId", studyId);
     await next();
   };
 }

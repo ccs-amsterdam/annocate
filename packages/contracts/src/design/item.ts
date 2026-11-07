@@ -51,7 +51,7 @@ export const EndItemSchema = ItemBaseSchema.extend({
     .optional()
     .describe("Where to send the coder, e.g. a panel's return link. May contain $var references (filled in URL-encoded)."),
   redirectSetting: SafeNameSchema.optional().describe(
-    "Instead of redirectUrl: the name of a deployment setting holding the URL (the job's settings), for a link that differs per run, such as a panel's.",
+    "Instead of redirectUrl: the name of a deployment setting holding the URL (the study's settings), for a link that differs per run, such as a panel's.",
   ),
 });
 export type EndItem = z.infer<typeof EndItemSchema>;

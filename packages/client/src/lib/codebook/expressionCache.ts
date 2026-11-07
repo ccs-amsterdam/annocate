@@ -21,7 +21,7 @@ interface CacheEntry {
  * evaluated before with the same script and equal dependency values, the
  * cached result is reused without invoking QuickJS again.
  *
- * One instance is owned per `JobManager` (i.e. per coder session) and
+ * One instance is owned per `StudyManager` (i.e. per coder session) and
  * shared across condition evaluation (`tree.ts`) and template rendering
  * (`renderTemplate.ts`). Invalidates itself across units/steps: a template
  * expression using a unit field simply misses once the next unit's value

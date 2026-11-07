@@ -7,7 +7,7 @@ Complements `docs/architecture.md`.
 ## 1. Principles
 
 - **A login provider proves who someone is; the server decides whether they
-  get in** (job roles, the link's rules). The server keeps no passwords:
+  get in** (study roles, the link's rules). The server keeps no passwords:
   identity is a verified email address from the provider (§7).
 - **Only authentication unlocks earlier work from another device.** An id
   that comes from a link (a participant id in a survey URL, or one hidden in
@@ -20,9 +20,9 @@ Complements `docs/architecture.md`.
 
 | Term | What it is | Where it lives |
 | --- | --- | --- |
-| **Coder** (`coderId`) | One annotation session in a job: a set of answers, unit assignments and progress. Everything (annotations, routing, distribution) is keyed by `coderId`. Shown to coders as "your session". | database |
-| **Device id** | Random secret the server gives a browser once, for all jobs, in an httpOnly cookie (`annotinder_device`), so page scripts never see it. Never stored by the server. | the coder's browser (httpOnly cookie) |
-| **Device key** | A device's key for its session in one job: SHA-256 of device id, deployment and participant id. The database stores only this, so nothing links one device's sessions across jobs. A session has one per device that joined it. | database (`coder_devices`) |
+| **Coder** (`coderId`) | One annotation session in a study: a set of answers, unit assignments and progress. Everything (annotations, routing, distribution) is keyed by `coderId`. Shown to coders as "your session". | database |
+| **Device id** | Random secret the server gives a browser once, for all studies, in an httpOnly cookie (`annotinder_device`), so page scripts never see it. Never stored by the server. | the coder's browser (httpOnly cookie) |
+| **Device key** | A device's key for its session in one study: SHA-256 of device id, deployment and participant id. The database stores only this, so nothing links one device's sessions across studies. A session has one per device that joined it. | database (`coder_devices`) |
 | **Participant id** | External label from the researcher or a panel company, e.g. a Prolific/Qualtrics participant id. It is fixed on a personal link (`participantId`), or taken from a URL parameter the design's Study entry names (`participant: { param, pattern? }`, e.g. `PROLIFIC_PID`). Never a credential. | database (on the coder) |
 | **Linked email** | A verified email address from a login (§5), linked to the session once. Lets the coder continue on another device by logging in there. | database (`coders.email`) |
 | **Transfer link** | One-time, short-lived link that adds another device to the session. | database (`transfers`, token hash only; 15 min) |
@@ -63,18 +63,18 @@ confusion at a panel company over a leaked link.
 - **The device id.** A browser gets one random device id, the first time
   a link accepts it, in a cookie: `annotinder_device`, `HttpOnly`,
   `SameSite=Lax`, `Secure` over https, `Path=/api/d`, 400 days. One cookie for
-  all jobs, so cookies don't pile up for coders who do many jobs.
-- **The session in a job.** The server derives the device's key for a job
+  all studies, so cookies don't pile up for coders who do many studies.
+- **The session in a study.** The server derives the device's key for a study
   on every request: SHA-256 of device id, deployment and participant id (the
   server reads the participant id from the URL parameters the client sends,
   `x-url-params`, using the participant parameter of the codebook's Session
   item). Including the participant id keeps participants apart on
   a shared lab computer. The database stores only the key, in
   `coder_devices` (one row per device of a session), never the device id:
-  sessions of one device in different jobs can't be linked from stored
+  sessions of one device in different studies can't be linked from stored
   data. The device id is long and random, so no secret is needed (rotating
   `ANNOTINDER_SECRET` logs no coder out). Each request finds the session
-  by its key: one indexed query. Everything the job needs from the link and the URL
+  by its key: one indexed query. Everything the study needs from the link and the URL
   (the link's parameter values, the participant id, the codebook's URL
   parameters and `source`) is stored when the coder starts, so the link and
   URL details can be forgotten.
@@ -83,7 +83,7 @@ confusion at a panel company over a leaked link.
   browser and operating system (`shared/devices.ts`), not the user agent
   itself. Each answer records the device it was given on
   (`annotation_values.device_id`); researchers get them with
-  `GET /job/:jobId/devices` and in the export (`devices.csv`).
+  `GET /study/:studyId/devices` and in the export (`devices.csv`).
 - **Session values.** The design's Study entry declares the link and
   URL parameters (`architecture.md` §7): the participant id's (`participant:
   { param, pattern? }`) and others (e.g. a panel's study and session ids).
@@ -110,7 +110,7 @@ confusion at a panel company over a leaked link.
   2. The client shows it as a link and a QR code.
   3. Opening the link on the new device calls
      `POST /d/:deployment/transfer/redeem`, which adds that device to the
-     session: its keys for this job (without a participant id, as the
+     session: its keys for this study (without a participant id, as the
      transfer link carries none, and with the session's participant id, for
      when it comes back with the participant's link). Both devices can now
      continue the same session.
@@ -119,7 +119,7 @@ confusion at a panel company over a leaked link.
   used.
 - **Offer the link early** (not built). Switching devices halfway is rare
   (panel participants finish in one sitting), so "Continue on another
-  device" stays in the menu. For long jobs, the client also offers it once
+  device" stays in the menu. For long studies, the client also offers it once
   at the start: "Want to finish later on another device? Save this link."
   It is optional and asks nothing of the coder. It needs a link that stays
   valid longer than a 15-minute transfer token (e.g. a long-lived transfer
@@ -150,14 +150,14 @@ confusion at a panel company over a leaked link.
 - **Anonymous links on a new device** simply start a new session. There is
   nothing to detect.
 
-- **The annotator's home** (`/code`) lists the studies this browser takes
+- **The coder home** (`/code`) lists the studies this browser takes
   part in, to continue them: the browser remembers the studies it opened
   (deployment and URL parameters, never a link's secret) and asks each for
   its session (`GET /d/<id>/summary`), since the server keeps a device's
   sessions apart per study and can't list them. A logged-in coder also
   sees their sessions on other devices, by email (`GET /coder/sessions`).
   The list shows each study's public title (the design's
-  `public.title`), never the job's name: that is private, and may
+  `public.title`), never the study's name: that is private, and may
   say what the study is about.
 
 ## 5. Coder login (implemented, 2026-10-28)
@@ -172,7 +172,7 @@ on another device. Code: `coder.ts` (the session middleware),
 
 - **When a login is read.** Only when it matters: on links with
   `auth: "optional"` or `"required"` (or an `emails` list) while the
-  session has no email yet, and on a device without a session in this job
+  session has no email yet, and on a device without a session in this study
   (to find the email's session). A session with an email, or on a link
   without login, never looks at the login: no lookups while coding. A
   link with `auth: "none"` ignores a login (a researcher trying their own
@@ -188,17 +188,17 @@ on another device. Code: `coder.ts` (the session middleware),
 - **Optional.** `GET /session` says `canLogIn` (the server offers a login,
   the link is `optional`, the session has no email). Logging in links the
   email to the session on this device.
-- **Another device.** Logging in on a device without a session in this job
+- **Another device.** Logging in on a device without a session in this study
   finds the email's session and adds the device to it (as a transfer link
   does). This also works without the link.
-- **One session per email in a job.** If the email already has a session in
-  this job, a device that started its own and then logs in continues the
+- **One session per email in a study.** If the email already has a session in
+  this study, a device that started its own and then logs in continues the
   email's session instead (its own stays, unlinked).
 - **Accounts.** Logging in creates a user (`users`) as for researchers,
   with the account role `user` (`accounts.md`).
 
 Possible later: a system with its own login (e.g. AmCAT) vouches for a
-coder with a short signed assertion `{ job, subject, exp }`, so coders don't
+coder with a short signed assertion `{ study, subject, exp }`, so coders don't
 log in twice.
 
 ## 6. Open points
@@ -206,9 +206,9 @@ log in twice.
 - **Removing a device.** A session's devices each have their own key, so a
   device could be removed from a session (e.g. a lost phone). Not built:
   no reason yet.
-- **"My jobs".** A list of the jobs a device or account took part in. If
+- **"My studies".** A list of the studies a device or account took part in. If
   wanted, the device's list lives in the browser only (the server can't
-  link a device's jobs, on purpose); an account's would be the sessions
+  link a device's studies, on purpose); an account's would be the sessions
   linked to its email.
 - **A long-lived "continue later" link** (§4, "Offer the link early"):
   a longer-lived transfer token, one per session, revocable from the device that has the session. Should it be
@@ -239,15 +239,15 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
   user is found or created by their (lowercased) email; `sub` is not used.
   So switching or adding providers keeps everyone's account, and logging in
   with Google and with a magic link for the same address is the same user.
-  Roles in jobs (`job_users`) and API keys belong to that user.
+  Roles in studies (`study_users`) and API keys belong to that user.
 - **Accepted risk: whoever controls the mailbox controls the account.** That
   holds for any system with email login or email recovery. A recycled
   address (an institution giving an old address to someone new) inherits
-  its previous owner's job roles. Job admins see who has a role and can
+  its previous owner's study roles. Study admins see who has a role and can
   remove it.
 - **Two-factor authentication is recommended; a server can require it.**
   `ANNOTINDER_2FA` requires a passkey checked by AnnoTinder (`annotinder`)
-  or the provider's second factor (`oidc`) for managing jobs and the
+  or the provider's second factor (`oidc`) for managing studies and the
   server; logging in and coding work without (`security.md` §1).
 - **Account roles** (user, researcher, admin), who becomes a researcher,
   and limits: `accounts.md`.
@@ -275,7 +275,7 @@ accident or as a way to undo paid work.
 - *Stop for now*: nothing changes on the server. The dialog explains how to
   continue: the same link on the same device and browser (§4), or a
   transfer link first.
-- *Quit this job*: `POST /quit` ends the session (`ended: { outcome:
+- *Quit this study*: `POST /quit` ends the session (`ended: { outcome:
   "quit", at }`, no item); answers so far are kept.
 - *Quit and ask to delete my answers*: `POST /quit { requestDeletion: true
   }` also records `coders.deletion_request = { at }`. The coder types a
@@ -289,12 +289,12 @@ proof of identity: it comes from the session itself. Coders without a
 participant id or login can't be identified otherwise.
 
 **Researcher side** (Coders tab): open requests are listed first, with
-*Delete now* or *Delete later* (`POST /job/:jobId/coders/:id/deletion-request/postpone`:
+*Delete now* or *Delete later* (`POST /study/:studyId/coders/:id/deletion-request/postpone`:
 `postponedAt` is added; the request is no longer brought up but stays, and
 the row stays marked, until the data is deleted). Declining isn't offered:
 whether research data is exempt is for the researcher's protocol, not a
 button. Any coder's data can
-be deleted (`POST /job/:jobId/coders/delete { coderIds?, participantIds?,
+be deleted (`POST /study/:studyId/coders/delete { coderIds?, participantIds?,
 emails? }`, ADMIN): the coders rows (device keys, participant id, coder-level
 answers, routing, the request) and all their `annotation_values`, also
 retired ones; `units.coded` is recomputed. Unit versions stay (unit content).
@@ -303,7 +303,7 @@ deleted coder's browser later starts a new session
 from its link. Every deletion is logged (`coder_deletions`: coder id,
 participant id, email, requested, deleted, by whom, answer count), so the
 researcher can delete the coder from earlier downloads too
-(`GET /job/:jobId/coders/deletions`, the Coders tab, and
+(`GET /study/:studyId/coders/deletions`, the Coders tab, and
 `deleted_coders.csv` in the export).
 
 The export has `ended` = `quit`, a `deletion_requested` column (when the
@@ -315,9 +315,9 @@ session and deletion by participant id or email.
 
 ## 9. Closing finished sessions (implemented, 2026-10-28)
 
-A session that ended (an `end` item, finishing the job, or quitting) is
-**closed** unless its job keeps sessions open (`jobs.keep_sessions_open`,
-off by default; job settings). So researchers can trust finished data
+A session that ended (an `end` item, finishing the study, or quitting) is
+**closed** unless its study keeps sessions open (`studies.keep_sessions_open`,
+off by default; study settings). So researchers can trust finished data
 won't change, and someone who later gets into a coder's login or device
 doesn't get their answers.
 
@@ -330,7 +330,7 @@ doesn't get their answers.
   without an item, outcome `complete`); before, only the client knew.
 - **Going back**: after completing (not after a screenout, quitting or
   asking for deletion), the coder can go back for 15 minutes
-  (`REOPEN_MS`; always, if the job keeps sessions open): `POST /reopen`
+  (`REOPEN_MS`; always, if the study keeps sessions open): `POST /reopen`
   opens the session again and the client lands on the last question.
   `reopen` in `POST /end`'s response and in `GET /session` says whether and
   until when.
@@ -348,7 +348,7 @@ time per unit) and for spotting bad faith (clicking through). Not shown in
 the UI yet; in the download (`timings.csv`, and per unit in
 `annotations.csv`). Mentioned on the privacy help page.
 
-- **The browser measures, per question** (`client/src/lib/jobManager/timing.ts`,
+- **The browser measures, per question** (`client/src/lib/studyManager/timing.ts`,
   `AnswerTimingSchema`): the time until its first answer (`firstMs`), on
   screen over all visits (`totalMs`), with the page hidden (`hiddenMs`:
   another tab, a minimized window; apart from `totalMs`), and how often

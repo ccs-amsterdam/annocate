@@ -79,7 +79,7 @@ function agreementQuestions(items: DesignItem[]): string[] {
 
 /** The modes, named as in the setup wizard (admin/setupRecipe.ts `DISTRIBUTIONS`). */
 const MODES: { value: UnitMode; label: string; help: string }[] = [
-  { value: "all", label: "Everyone codes everything", help: "Every coder codes every unit (of the job, or of one set)." },
+  { value: "all", label: "Everyone codes everything", help: "Every coder codes every unit (of the study, or of one set)." },
   {
     value: "shared",
     label: "Crowd coding",
@@ -184,11 +184,11 @@ export function UnitLoopForm({
   screenouts?: string[];
   /** For "Generate sets…" (absent: not offered). */
   client?: ResearcherApi;
-  /** The job's set groups. */
+  /** The study's set groups. */
   groups: SetGroupResponse[];
   /** The codebook's set-typed session parameters (name -> group): where an assigned set can come from. */
   setParams?: Map<string, string>;
-  /** The job's unit fields, for completions in the template. */
+  /** The study's unit fields, for completions in the template. */
   unitFields: string[];
   /** Coder-level questions before the loop: what branch conditions may use. */
   coderQuestions: { name: string; variable: AnyVariableType }[];
@@ -779,7 +779,7 @@ function AssignSettings({
         Group
         {groups.length === 0 ? (
           <span className="text-[11px] font-normal text-muted-foreground">
-            This job has no set groups yet: make one on the Units page (a sets column when uploading, or Split into sets).
+            This study has no set groups yet: make one on the Units page (a sets column when uploading, or Split into sets).
           </span>
         ) : (
           <select

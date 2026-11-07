@@ -4,12 +4,12 @@ import { DeletionRequestSchema, SessionEndSchema } from "./session.js";
 import { VariableValueSchema } from "./variableValue.js";
 
 /**
- * A coder: someone annotating a job via a link/access link. Distinct from
- * a "job user" (see job.ts). Job-scoped identity (CONTRACTS.md).
+ * A coder: someone annotating a study via a link/access link. Distinct from
+ * a "study user" (see study.ts). Study-scoped identity (CONTRACTS.md).
  */
 export const CoderResponseSchema = z.object({
   id: IdSchema,
-  jobId: IdSchema,
+  studyId: IdSchema,
   /** Present if the coder authenticated (e.g. via a link that requires a login); absent for fully anonymous coders. */
   email: z.string().email().optional(),
   variables: z.record(z.string(), VariableValueSchema),
@@ -52,7 +52,7 @@ export const CoderProgressSchema = z.object({
 export type CoderProgress = z.infer<typeof CoderProgressSchema>;
 
 /**
- * Body for `POST /job/:jobId/coders/delete`: which coders' data to delete,
+ * Body for `POST /study/:studyId/coders/delete`: which coders' data to delete,
  * by id, participant id or email (any combination; at least one). Deletes
  * the coders and all their answers, also reset ones, for good.
  */
@@ -67,7 +67,7 @@ export const DeleteCodersSchema = z
   });
 export type DeleteCoders = z.infer<typeof DeleteCodersSchema>;
 
-/** Response of `POST /job/:jobId/coders/delete`: the coders deleted, and how many answers they had. */
+/** Response of `POST /study/:studyId/coders/delete`: the coders deleted, and how many answers they had. */
 export const DeleteCodersResponseSchema = z.object({
   coderIds: z.array(z.number().int().positive()),
   answers: z.number().int().nonnegative(),
@@ -75,7 +75,7 @@ export const DeleteCodersResponseSchema = z.object({
 export type DeleteCodersResponse = z.infer<typeof DeleteCodersResponseSchema>;
 
 /**
- * A deleted coder, from the job's deletion log (`GET /job/:jobId/coders/deletions`).
+ * A deleted coder, from the study's deletion log (`GET /study/:studyId/coders/deletions`).
  * Kept after the data is gone, so researchers can delete the same coder from
  * results they downloaded earlier: it has the identifiers those results use.
  */
@@ -121,7 +121,7 @@ export type LinkWrite = z.input<typeof LinkWriteSchema>;
 
 export const LinkResponseSchema = LinkWriteSchema.extend({
   id: IdSchema,
-  jobId: IdSchema,
+  studyId: IdSchema,
   /** Opaque secret used to build the link URL; not the same as a coder session token. */
   secret: z.string(),
   /** Number of coders created from this link so far. */

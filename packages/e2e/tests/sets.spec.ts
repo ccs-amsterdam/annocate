@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import type { JobResponse, SetGroupResponse } from "@annotinder/contracts";
+import type { StudyResponse, SetGroupResponse } from "@annotinder/contracts";
 import { answers, api, question } from "./helpers";
 
 // Sets and links (docs/plans/sets-and-session-parameters.md): a sets column
@@ -8,12 +8,12 @@ import { answers, api, question } from "./helpers";
 
 test("a sets column makes a group; a link per set; a coder codes their link's set and the overlap", async ({ page, request, browser }) => {
   await page.goto("/research");
-  await page.getByRole("button", { name: /Create new job/ }).click();
-  await page.getByRole("menuitem", { name: /Empty job/ }).click();
+  await page.getByRole("button", { name: /Create new study/ }).click();
+  await page.getByRole("menuitem", { name: /Empty study/ }).click();
   await page.getByPlaceholder(/Sentiment Analysis/).fill("Expert coders");
-  await page.getByRole("button", { name: "Create Job" }).click();
+  await page.getByRole("button", { name: "Create Study" }).click();
   await expect(page.getByRole("button", { name: "Overview" })).toBeVisible();
-  const job = (await api<JobResponse[]>(request, "GET", "/job")).find((j) => j.name === "Expert coders")!;
+  const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "Expert coders")!;
 
   // Units, with a sets column: its name is the group
   await page.getByRole("button", { name: "Design", exact: true }).click();
@@ -28,7 +28,7 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
   await page.getByLabel("Type of part").selectOption("sets");
   await page.getByRole("button", { name: /Upload 3 units/ }).click();
   await expect(page.getByRole("button", { name: /^s2 1$/ })).toBeVisible();
-  const [group] = await api<SetGroupResponse[]>(request, "GET", `/job/${job.id}/sets`);
+  const [group] = await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`);
   expect(group.name).toBe("part");
   expect(group.sets.map((s) => [s.name, s.unitIds.length])).toEqual([
     ["_overlap", 1],
@@ -37,7 +37,7 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
   ]);
 
   // A codebook that gives each set its own link, with the overlap first
-  const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/design`, {
+  const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
     session: { params: [{ name: "part", kind: "link", values: { sets: "part" } }] },
     items: [
       {
@@ -48,26 +48,26 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
       },
     ],
   });
-  await api(request, "PUT", `/job/${job.id}/deployment`, { designVersionId: codebook.id });
+  await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: codebook.id });
 
   // The Links tab lists a link per set
   await page.getByRole("button", { name: "Deploy", exact: true }).click();
   await page.getByRole("button", { name: "Links", exact: true }).click();
   await expect(page.getByRole("cell", { name: "part=s1" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "part=s2" })).toBeVisible();
-  const links = await api<{ secret: string; params: Record<string, string> }[]>(request, "GET", `/job/${job.id}/links`);
+  const links = await api<{ secret: string; params: Record<string, string> }[]>(request, "GET", `/study/${study.id}/links`);
   const s2 = links.find((l) => l.params.part === "s2")!;
 
   // A coder with the s2 link: the overlap unit, then their own
   const coder = await (await browser.newContext()).newPage();
-  await coder.goto(`/code/${job.id}?link=${s2.secret}`);
+  await coder.goto(`/code/${study.id}?link=${s2.secret}`);
   for (const text of ["Shared text", "Second text"]) {
     await question(coder, "Topic?");
     await expect(coder.getByText(text)).toBeVisible();
     await coder.getByRole("button", { name: /politics/ }).click();
   }
   await expect(coder.getByText(/completed|Thank you/i).first()).toBeVisible();
-  await expect.poll(async () => (await answers(request, job.id)).length).toBe(2);
+  await expect.poll(async () => (await answers(request, study.id)).length).toBe(2);
 
   // More units, without the sets column: added to the existing sets on request
   await page.getByRole("button", { name: "Design", exact: true }).click();
@@ -81,7 +81,7 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
   await page.getByLabel("New units in group part").selectOption("distribute");
   await page.getByRole("button", { name: /Upload 2 units/ }).click();
   await expect
-    .poll(async () => (await api<SetGroupResponse[]>(request, "GET", `/job/${job.id}/sets`))[0].sets.map((s) => [s.name, s.unitIds.length]))
+    .poll(async () => (await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`))[0].sets.map((s) => [s.name, s.unitIds.length]))
     .toEqual([
       ["_overlap", 1],
       ["s1", 2],

@@ -71,7 +71,7 @@ export function ResearcherGate({ client, children }: { client: ResearcherApi; ch
   return (
     <div className="flex h-full items-center justify-center p-6">
       <div className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <h1 className="font-heading text-lg font-bold">Log in to manage jobs</h1>
+        <h1 className="font-heading text-lg font-bold">Log in to manage studies</h1>
         {loginError && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{LOGIN_ERRORS[loginError]}</p>}
         {state.options?.login ? (
           <>
@@ -80,7 +80,7 @@ export function ResearcherGate({ client, children }: { client: ResearcherApi; ch
             </Button>
             <p className="flex gap-2 text-xs text-muted-foreground">
               <ShieldCheck className="h-4 w-4 shrink-0" />
-              We recommend turning on two-factor authentication with your login provider, especially for jobs with sensitive data.
+              We recommend turning on two-factor authentication with your login provider, especially for studies with sensitive data.
             </p>
           </>
         ) : (

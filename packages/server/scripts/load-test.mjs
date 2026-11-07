@@ -1,4 +1,4 @@
-// Load test (docs/hosting.md "Capacity"): one job with UNITS units in a
+// Load test (docs/hosting.md "Capacity"): one study with UNITS units in a
 // shared queue (until 2 coders, at most 2), CODERS simulated coders at once.
 // Each starts a session, answers a coder-level question, then fetches
 // batches of BATCH units and submits them, with THINK_MS (+-50%) per unit,
@@ -7,7 +7,7 @@
 // Against a server with development auth (never a reachable one), e.g.
 //   DATABASE_URL=postgres://... ANNOTINDER_DEV_AUTH=1 ANNOTINDER_RATE_LIMITS=off PORT=8797 pnpm --filter @annotinder/server exec tsx src/index.ts
 //   BASE=http://localhost:8797 CODERS=300 THINK_MS=10000 node packages/server/scripts/load-test.mjs
-// JOB and SECRET reuse a job (and its invite) from an earlier run.
+// STUDY and SECRET reuse a study (and its invite) from an earlier run.
 
 const BASE = process.env.BASE ?? "http://localhost:8797";
 const UNITS = Number(process.env.UNITS ?? 10000);
@@ -28,13 +28,13 @@ const timing = { firstMs: 800, totalMs: 1200, hiddenMs: 0, edits: 1 };
 
 async function setUp() {
   const t0 = Date.now();
-  const job = await api("POST", "/job", { name: `Load ${new Date().toISOString()}` });
+  const study = await api("POST", "/study", { name: `Load ${new Date().toISOString()}` });
   for (let i = 0; i < UNITS; i += 200) {
     const units = [];
     for (let j = i; j < Math.min(UNITS, i + 200); j++) {
       units.push({ externalId: `u${j}`, data: { headline: `Headline ${j}`, text: `Some text of unit ${j}. `.repeat(20) } });
     }
-    await api("POST", `/job/${job.id}/units`, { units });
+    await api("POST", `/study/${study.id}/units`, { units });
   }
   const items = [
     {
@@ -53,11 +53,11 @@ async function setUp() {
       ],
     },
   ];
-  const codebook = await api("POST", `/job/${job.id}/design`, { items });
-  await api("PUT", `/job/${job.id}/deployment`, { designVersionId: codebook.id, active: true });
-  const invite = await api("POST", `/job/${job.id}/links`, { label: "load", auth: "none" });
-  console.log(`setup: job ${job.id}, ${UNITS} units in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
-  return { jobId: job.id, secret: invite.secret };
+  const codebook = await api("POST", `/study/${study.id}/design`, { items });
+  await api("PUT", `/study/${study.id}/deployment`, { designVersionId: codebook.id, active: true });
+  const invite = await api("POST", `/study/${study.id}/links`, { label: "load", auth: "none" });
+  console.log(`setup: study ${study.id}, ${UNITS} units in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+  return { studyId: study.id, secret: invite.secret };
 }
 
 const stats = new Map(); // name -> latencies (ms)
@@ -67,11 +67,11 @@ function record(name, ms) {
   stats.get(name).push(ms);
 }
 
-function coderClient(jobId, secret) {
+function coderClient(studyId, secret) {
   let cookie = "";
   return async function call(name, method, path, body) {
     const t = performance.now();
-    const res = await fetch(`${BASE}/api/d/${jobId}${path}`, {
+    const res = await fetch(`${BASE}/api/d/${studyId}${path}`, {
       method,
       headers: { "content-type": "application/json", "x-annotinder": "1", "x-link-secret": secret, ...(cookie ? { cookie } : {}) },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -91,8 +91,8 @@ function coderClient(jobId, secret) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function coder(jobId, secret, until, n) {
-  const call = coderClient(jobId, secret);
+async function coder(studyId, secret, until, n) {
+  const call = coderClient(studyId, secret);
   // Coders don't all arrive at once
   await sleep(Math.random() * 10_000);
   const session = await call("session", "GET", "/session");
@@ -123,10 +123,10 @@ function pct(sorted, p) {
   return sorted[Math.min(sorted.length - 1, Math.floor((sorted.length * p) / 100))];
 }
 
-const { jobId, secret } = process.env.JOB ? { jobId: Number(process.env.JOB), secret: process.env.SECRET } : await setUp();
+const { studyId, secret } = process.env.STUDY ? { studyId: Number(process.env.STUDY), secret: process.env.SECRET } : await setUp();
 const start = Date.now();
 const until = start + DURATION;
-const done = await Promise.all(Array.from({ length: CODERS }, (_, i) => coder(jobId, secret, until, i)));
+const done = await Promise.all(Array.from({ length: CODERS }, (_, i) => coder(studyId, secret, until, i)));
 const seconds = (Date.now() - start) / 1000;
 
 console.log(`\n${CODERS} coders, batch ${BATCH}, think ~${THINK_MS}ms, ${seconds.toFixed(0)}s: ${done.reduce((a, b) => a + b, 0)} units submitted`);
@@ -137,4 +137,4 @@ for (const [name, list] of stats) {
   console.log(`${name.padEnd(12)} ${String(s.length).padStart(6)} ${f(pct(s, 50))} ${f(pct(s, 95))} ${f(pct(s, 99))} ${f(s[s.length - 1])}`);
 }
 for (const [key, n] of errors) console.log(`error x${n}: ${key}`);
-console.log(JSON.stringify({ jobId, secret }));
+console.log(JSON.stringify({ studyId, secret }));

@@ -8,7 +8,7 @@ import type { Oidc } from "./oidc.js";
 /** What every endpoint gets (built in app.ts). */
 export interface Server {
   db: Sql;
-  /** The runtimes of deployed jobs and previews, in memory (runtime/registry.ts). */
+  /** The runtimes of deployed studies and previews, in memory (runtime/registry.ts). */
   deployments: Deployments;
   /** Accept development auth headers (researcher/auth.ts). Never on a reachable server. */
   devAuth: boolean;
@@ -29,9 +29,9 @@ export interface Server {
 /** Hono context variables, set by the auth middleware. */
 export interface Env {
   Variables: {
-    jobId: number;
+    studyId: number;
     /** Researcher API only (researcher/auth.ts). */
     researcher: Researcher;
-    jobUser?: { email: string; role: Role };
+    studyUser?: { email: string; role: Role };
   };
 }

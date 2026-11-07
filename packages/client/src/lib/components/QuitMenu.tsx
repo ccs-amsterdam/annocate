@@ -11,7 +11,7 @@ type Choice = "pause" | "quit" | "delete";
 const CONFIRM_WORD = "delete";
 
 /**
- * "Stop": the coder's ways out of a job (docs/coder-identity.md §8): stop
+ * "Stop": the coder's ways out of a study (docs/coder-identity.md §8): stop
  * for now (and how to continue), quit for good, or quit and ask for their
  * answers to be deleted. Deletion is a request the researcher decides on:
  * they may already hold the data, and an automatic deletion could undo paid
@@ -43,7 +43,7 @@ export function QuitMenu({
         </PopoverTrigger>
         <PopoverContent align="end" className="w-64 p-1.5 shadow-lg">
           <MenuItem title="Stop for now" detail="Continue later where you left off." onClick={() => setChoice("pause")} />
-          <MenuItem title="Quit this job" detail="Stop for good. Your answers so far are kept." onClick={() => setChoice("quit")} />
+          <MenuItem title="Quit this study" detail="Stop for good. Your answers so far are kept." onClick={() => setChoice("quit")} />
           <MenuItem
             title="Quit and ask to delete my answers"
             detail="Stop for good, and ask the researchers to delete your answers."
@@ -131,7 +131,7 @@ export function QuitDialog({
         {choice === "quit" && (
           <>
             <DialogHeader>
-              <DialogTitle>Quit this job?</DialogTitle>
+              <DialogTitle>Quit this study?</DialogTitle>
               <DialogDescription>You won&apos;t be able to continue afterwards.</DialogDescription>
             </DialogHeader>
             <p className="text-sm text-foreground">
@@ -156,7 +156,7 @@ export function QuitDialog({
             </DialogHeader>
             <div className="space-y-2 text-sm text-foreground">
               <p>
-                The researchers get a request to delete all your answers to this job. They decide on it: they may already have
+                The researchers get a request to delete all your answers to this study. They decide on it: they may already have
                 downloaded the answers, or need them under the terms of the study (for instance when you were paid for taking
                 part).
               </p>

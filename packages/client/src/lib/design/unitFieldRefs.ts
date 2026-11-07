@@ -41,7 +41,7 @@ function conditionReferences(condition: Condition | undefined): Reference[] {
  * loop (layout template with its snippets, conditions, question texts), and
  * the `column` of span questions. Warnings, not
  * errors: units may still be uploaded after the codebook is written.
- * Nothing to check while the job has no units (`fields` empty), unless
+ * Nothing to check while the study has no units (`fields` empty), unless
  * `always` (to locate the uses of fields the design doesn't declare).
  */
 export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[], always = false): UnitFieldWarning[] {

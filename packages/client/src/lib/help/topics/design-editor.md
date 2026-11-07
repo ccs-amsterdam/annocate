@@ -106,10 +106,10 @@ third column, and the **Preview** view is gone.
 ### The preview
 
 For a question outside a loop, the preview shows the question. For a loop,
-or a question in one, it shows a unit of the job with the loop's layout,
+or a question in one, it shows a unit of the study with the loop's layout,
 and controls above it:
 
-- **Unit**, with arrows: step through the job's units, to check the layout
+- **Unit**, with arrows: step through the study's units, to check the layout
   with short, long and odd ones.
 - **On screen**: the question coders are at. It matters for layouts that
   change while coders go through a unit's questions (`::: from`, see
@@ -117,8 +117,8 @@ and controls above it:
 - A picker for each question that the layout uses, with its options and
   *(no answer)*: try how the layout looks after each answer.
 
-This preview shows a single item. To try the whole job as a coder, use
-**Preview Job** at the top right (see
+This preview shows a single item. To try the whole study as a coder, use
+**Preview Study** at the top right (see
 [Preview, save and deploy](previewing-and-publishing.md#previewing)).
 
 ## Errors and warnings
@@ -160,7 +160,7 @@ browser also asks before you close or reload the page.
 A second after each change, the editor copies your unsaved changes to your
 browser's storage. If the browser closes or crashes, the next time you open
 AnnoTinder in that browser a banner says **You have unsaved codebook
-changes**, for which job and from when:
+changes**, for which study and from when:
 
 - **Continue editing** opens the codebook with your changes, still unsaved:
   look them over and save.
@@ -172,7 +172,7 @@ It is a safety net, not a replacement for saving.
 
 ## Working with co-editors
 
-Everyone with access to the job (see [Working together](working-together.md))
+Everyone with access to the study (see [Working together](working-together.md))
 edits the same draft. Your unsaved changes
 are yours alone; once you save, others see them when they open the
 codebook.
@@ -192,7 +192,7 @@ To avoid this, agree who edits when, and save often.
 
 **JSON** in the toolbar (next to **Visual**) shows the whole design as
 one JSON document: useful for an overview, for copying a design between
-jobs, or for larger edits such as renaming many things at once. The editor
+studies, or for larger edits such as renaming many things at once. The editor
 completes property names, checks the structure, and explains a property
 when you hover over it. **Fold details** collapses the details of
 questions and layouts so that only the structure remains; **Unfold all**

@@ -6,7 +6,7 @@ import { simpleTemplate, type SimpleLayout } from "../design/simpleLayout";
 // details: questions are made by name, with no answer type yet, to specify
 // in the editor.
 
-/** Which parts the job has. An experiment alone is a survey with an experiment. */
+/** Which parts the study has. An experiment alone is a survey with an experiment. */
 export interface SetupParts {
   annotate: boolean;
   survey: boolean;
@@ -237,7 +237,7 @@ export function distributionSets(d: SetupDistribution, units: SetupUnits | null)
 /** What stops the wizard at a step; empty: fine. */
 export function setupProblems(a: SetupAnswers): string[] {
   const problems: string[] = [];
-  if (!a.name.trim()) problems.push("Give the job a name");
+  if (!a.name.trim()) problems.push("Give the study a name");
   if (!a.parts.annotate && !a.parts.survey && !a.parts.experiment) problems.push("Choose at least one of annotate, survey or experiment");
   const lists = questionLists(a.parts);
   const names = new Map<string, number>();
@@ -304,7 +304,7 @@ const unspecified = (q: SetupQuestion) => ({
 });
 
 /**
- * The recipe for `POST /job/from-recipe`: a draft design, the units and
+ * The recipe for `POST /study/from-recipe`: a draft design, the units and
  * their sets. Deploying makes the links (one, or one per set when sets
  * are handed out by link).
  */

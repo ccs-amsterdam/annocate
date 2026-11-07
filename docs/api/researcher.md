@@ -1,8 +1,8 @@
 # Researcher API
 
-Served by the **server** at `/api/job/...` (the paths below are relative to `/api`), called by the client's **researcher
+Served by the **server** at `/api/study/...` (the paths below are relative to `/api`), called by the client's **researcher
 UI** (`ResearcherApi`), and by scripts (R, Python) and other systems (AmCAT):
-managing jobs, design versions, units and sets, links, deploying and progress.
+managing studies, design versions, units and sets, links, deploying and progress.
 
 - Contracts: `researcherEndpoints` in
   [`contracts/src/endpoints/researcher.ts`](../../packages/contracts/src/endpoints/researcher.ts).
@@ -33,11 +33,11 @@ dev` does) also accepts `x-dev-role` / `x-dev-email` (and
 `x-dev-account-role`, default `admin`) headers instead of a key, which the
 dev shell's researcher UI uses. Never on a reachable server.
 
-**Roles.** A user has a role per job (job users): `READ` < `WRITE` <
-`ADMIN`. The role column below is the minimum. Whoever creates a job is its
+**Roles.** A user has a role per study (study users): `READ` < `WRITE` <
+`ADMIN`. The role column below is the minimum. Whoever creates a study is its
 `ADMIN`, and its owner. Apart from that, each user has an **account role**
-on the server (`docs/accounts.md`): `user` (codes; works on jobs they have
-a role in), `researcher` (also creates jobs, within their limits), `admin`
+on the server (`docs/accounts.md`): `user` (codes; works on studies they have
+a role in), `researcher` (also creates studies, within their limits), `admin`
 (also the [admin API](admin.md)).
 
 **Second factor.** A server with `ANNOTINDER_2FA` set (`annotinder`:
@@ -47,18 +47,18 @@ that didn't give the second factor, except `GET /me` (which says so in
 §1). API keys count as having one (making one needs it). Too many requests:
 429 `rate_limited` (`security.md` §3).
 
-**Limits.** Adding units, and creating a job, can be refused with 403
-`limit_reached` (the job owner's limits), and a unit larger than the server
-allows with 413 `unit_too_large`. A job a server admin suspended refuses
-changes with 403 `job_suspended` (reading, deleting coders' data and
-deleting the job still work).
+**Limits.** Adding units, and creating a study, can be refused with 403
+`limit_reached` (the study owner's limits), and a unit larger than the server
+allows with 413 `unit_too_large`. A study a server admin suspended refuses
+changes with 403 `study_suspended` (reading, deleting coders' data and
+deleting the study still work).
 
 **Errors** are `{ error, code? }` with a 4xx/5xx status: 400 invalid body or
-parameter, 401 no valid API key, 403 no (sufficient) role in the job (or
+parameter, 401 no valid API key, 403 no (sufficient) role in the study (or
 account role: `researcher_required`), 404 not found, 409 not allowed in
 this state (e.g. editing a deployed design version), 413 too large.
 
-**From R or Python**: everything a script needs is here: create a job,
+**From R or Python**: everything a script needs is here: create a study,
 upload units ([createUnits](#createunits)) and a design version, deploy it
 (which makes its links), send coders a link, then download the annotations ([listAnnotations](#listannotations))
 and the coders with their coder-level answers ([listCoders](#listcoders)).
@@ -76,56 +76,56 @@ response checked against its contract schema.
 | [listApiKeys](#listapikeys) | `GET /me/keys` | any | – | `ApiKeyResponseSchema[]` |
 | [createApiKey](#createapikey) | `POST /me/keys` | any | `ApiKeyWriteSchema` | `ApiKeyCreatedSchema` |
 | [revokeApiKey](#revokeapikey) | `POST /me/keys/:id/revoke` | any | – | `ApiKeyResponseSchema` |
-| **Jobs** | | | | |
-| [listJobs](#listjobs) | `GET /job` | any | – | `JobResponseSchema[]` |
-| [createJob](#createjob) | `POST /job` | any | `JobWriteSchema` | `JobResponseSchema` |
+| **Studies** | | | | |
+| [listStudies](#liststudies) | `GET /study` | any | – | `StudyResponseSchema[]` |
+| [createStudy](#createstudy) | `POST /study` | any | `StudyWriteSchema` | `StudyResponseSchema` |
 | [listExamples](#listexamples) | `GET /examples` | any | – | `ExampleSummarySchema[]` |
-| [createJobFromExample](#createjobfromexample) | `POST /job/from-example` | any | `JobFromExampleSchema` | `JobResponseSchema` |
-| [createJobFromRecipe](#createjobfromrecipe) | `POST /job/from-recipe` | any | `RecipeSchema` | `JobResponseSchema` |
-| [getJob](#getjob) | `GET /job/:id` | READ | – | `JobResponseSchema` |
-| [updateJob](#updatejob) | `PUT /job/:id` | ADMIN | `JobWriteSchema` | `JobResponseSchema` |
-| [deleteJob](#deletejob) | `DELETE /job/:id` | ADMIN | – | – |
-| [getJobUsers](#getjobusers) | `GET /job/:id/users` | ADMIN | – | `JobUserSchema[]` |
-| [putJobUsers](#putjobusers) | `PUT /job/:id/users` | ADMIN | `JobUsersWriteSchema` | – |
-| [getOverview](#getoverview) | `GET /job/:jobId/overview` | READ | – | `JobOverviewSchema` |
+| [createStudyFromExample](#createstudyfromexample) | `POST /study/from-example` | any | `StudyFromExampleSchema` | `StudyResponseSchema` |
+| [createStudyFromRecipe](#createstudyfromrecipe) | `POST /study/from-recipe` | any | `RecipeSchema` | `StudyResponseSchema` |
+| [getStudy](#getstudy) | `GET /study/:id` | READ | – | `StudyResponseSchema` |
+| [updateStudy](#updatestudy) | `PUT /study/:id` | ADMIN | `StudyWriteSchema` | `StudyResponseSchema` |
+| [deleteStudy](#deletestudy) | `DELETE /study/:id` | ADMIN | – | – |
+| [getStudyUsers](#getstudyusers) | `GET /study/:id/users` | ADMIN | – | `StudyUserSchema[]` |
+| [putStudyUsers](#putstudyusers) | `PUT /study/:id/users` | ADMIN | `StudyUsersWriteSchema` | – |
+| [getOverview](#getoverview) | `GET /study/:studyId/overview` | READ | – | `StudyOverviewSchema` |
 | **Codebooks** | | | | |
-| [listDesignVersions](#listdesignversions) | `GET /job/:jobId/design` | READ | – | `DesignVersionMetaSchema[]` |
-| [getDesignVersion](#getdesignversion) | `GET /job/:jobId/design/:id` | READ | – | `DesignVersionSchema` |
-| [createDesignVersion](#createdesignversion) | `POST /job/:jobId/design` | WRITE | `DesignWriteSchema` | `DesignVersionSchema` |
-| [updateDesignVersion](#updatedesignversion) | `PUT /job/:jobId/design/:id` | WRITE | `DesignWriteSchema` | `DesignVersionSchema` |
-| [deleteDesignVersion](#deletedesignversion) | `DELETE /job/:jobId/design/:id` | WRITE | – | – |
+| [listDesignVersions](#listdesignversions) | `GET /study/:studyId/design` | READ | – | `DesignVersionMetaSchema[]` |
+| [getDesignVersion](#getdesignversion) | `GET /study/:studyId/design/:id` | READ | – | `DesignVersionSchema` |
+| [createDesignVersion](#createdesignversion) | `POST /study/:studyId/design` | WRITE | `DesignWriteSchema` | `DesignVersionSchema` |
+| [updateDesignVersion](#updatedesignversion) | `PUT /study/:studyId/design/:id` | WRITE | `DesignWriteSchema` | `DesignVersionSchema` |
+| [deleteDesignVersion](#deletedesignversion) | `DELETE /study/:studyId/design/:id` | WRITE | – | – |
 | **Units and sets** | | | | |
-| [listUnits](#listunits) | `GET /job/:jobId/units` | READ | – | `UnitMetaSchema[]` |
-| [getUnitFields](#getunitfields) | `GET /job/:jobId/units/fields` | READ | – | `UnitFieldSchema[]` |
-| [putUnitFields](#putunitfields) | `PUT /job/:jobId/units/fields` | WRITE | `UnitsSpecSchema` | `UnitFieldSchema[]` |
-| [listUnitPage](#listunitpage) | `GET /job/:jobId/units/page` | READ | – | `UnitPageSchema` |
-| [getUnit](#getunit) | `GET /job/:jobId/units/:id` | READ | – | `UnitResponseSchema` |
-| [createUnits](#createunits) | `POST /job/:jobId/units` | WRITE | `UnitsCreateBodySchema` | `UnitResponseSchema[]` |
-| [deleteUnit](#deleteunit) | `DELETE /job/:jobId/units/:id` | WRITE | – | – |
-| [listSetGroups](#listsetgroups) | `GET /job/:jobId/sets` | READ | – | `SetGroupResponseSchema[]` |
-| [putSetGroup](#putsetgroup) | `PUT /job/:jobId/sets/:group` | WRITE | `SetGroupWriteSchema` | `SetGroupResponseSchema` |
-| [deleteSetGroup](#deletesetgroup) | `DELETE /job/:jobId/sets/:group` | WRITE | – | – |
+| [listUnits](#listunits) | `GET /study/:studyId/units` | READ | – | `UnitMetaSchema[]` |
+| [getUnitFields](#getunitfields) | `GET /study/:studyId/units/fields` | READ | – | `UnitFieldSchema[]` |
+| [putUnitFields](#putunitfields) | `PUT /study/:studyId/units/fields` | WRITE | `UnitsSpecSchema` | `UnitFieldSchema[]` |
+| [listUnitPage](#listunitpage) | `GET /study/:studyId/units/page` | READ | – | `UnitPageSchema` |
+| [getUnit](#getunit) | `GET /study/:studyId/units/:id` | READ | – | `UnitResponseSchema` |
+| [createUnits](#createunits) | `POST /study/:studyId/units` | WRITE | `UnitsCreateBodySchema` | `UnitResponseSchema[]` |
+| [deleteUnit](#deleteunit) | `DELETE /study/:studyId/units/:id` | WRITE | – | – |
+| [listSetGroups](#listsetgroups) | `GET /study/:studyId/sets` | READ | – | `SetGroupResponseSchema[]` |
+| [putSetGroup](#putsetgroup) | `PUT /study/:studyId/sets/:group` | WRITE | `SetGroupWriteSchema` | `SetGroupResponseSchema` |
+| [deleteSetGroup](#deletesetgroup) | `DELETE /study/:studyId/sets/:group` | WRITE | – | – |
 | **Links and coders** | | | | |
-| [listLinks](#listlinks) | `GET /job/:jobId/links` | WRITE | – | `LinkResponseSchema[]` |
-| [updateLink](#updatelink) | `PUT /job/:jobId/links/:id` | WRITE | `LinkWriteSchema` | `LinkResponseSchema` |
-| [revokeLink](#revokelink) | `POST /job/:jobId/links/:id/revoke` | WRITE | – | `LinkResponseSchema` |
-| [renewLinkSecret](#renewlinksecret) | `POST /job/:jobId/links/:id/secret` | WRITE | – | `LinkResponseSchema` |
-| [listCoders](#listcoders) | `GET /job/:jobId/coders` | READ | – | `CoderProgressSchema[]` |
-| [deleteCoders](#deletecoders) | `POST /job/:jobId/coders/delete` | ADMIN | `DeleteCodersSchema` | `DeleteCodersResponseSchema` |
-| [postponeDeletion](#postponedeletion) | `POST /job/:jobId/coders/:id/deletion-request/postpone` | ADMIN | – | – |
-| [listCoderDeletions](#listcoderdeletions) | `GET /job/:jobId/coders/deletions` | READ | – | `CoderDeletionSchema[]` |
+| [listLinks](#listlinks) | `GET /study/:studyId/links` | WRITE | – | `LinkResponseSchema[]` |
+| [updateLink](#updatelink) | `PUT /study/:studyId/links/:id` | WRITE | `LinkWriteSchema` | `LinkResponseSchema` |
+| [revokeLink](#revokelink) | `POST /study/:studyId/links/:id/revoke` | WRITE | – | `LinkResponseSchema` |
+| [renewLinkSecret](#renewlinksecret) | `POST /study/:studyId/links/:id/secret` | WRITE | – | `LinkResponseSchema` |
+| [listCoders](#listcoders) | `GET /study/:studyId/coders` | READ | – | `CoderProgressSchema[]` |
+| [deleteCoders](#deletecoders) | `POST /study/:studyId/coders/delete` | ADMIN | `DeleteCodersSchema` | `DeleteCodersResponseSchema` |
+| [postponeDeletion](#postponedeletion) | `POST /study/:studyId/coders/:id/deletion-request/postpone` | ADMIN | – | – |
+| [listCoderDeletions](#listcoderdeletions) | `GET /study/:studyId/coders/deletions` | READ | – | `CoderDeletionSchema[]` |
 | **Deploying** | | | | |
-| [getDeployment](#getdeployment) | `GET /job/:jobId/deployment` | READ | – | `DeploymentResponseSchema \| null` |
-| [putDeployment](#putdeployment) | `PUT /job/:jobId/deployment` | ADMIN | `DeploymentWriteSchema` | `DeploymentResponseSchema` |
-| [getPendingChanges](#getpendingchanges) | `GET /job/:jobId/deployment/pending` | READ | – | `PendingChangesSchema` |
-| [listDeploymentVersions](#listdeploymentversions) | `GET /job/:jobId/deployment/versions` | READ | – | `DeploymentVersionSchema[]` |
-| [getDeploymentStatus](#getdeploymentstatus) | `GET /job/:jobId/deployment/status` | READ | – | `DeploymentStatusSchema` |
-| [createPreview](#createpreview) | `POST /job/:jobId/deployment/preview` | WRITE | – | `PreviewSessionSchema` |
-| [resetAnnotations](#resetannotations) | `POST /job/:jobId/annotations/reset` | ADMIN | `ResetAnnotationsSchema` | `{ retired }` |
+| [getDeployment](#getdeployment) | `GET /study/:studyId/deployment` | READ | – | `DeploymentResponseSchema \| null` |
+| [putDeployment](#putdeployment) | `PUT /study/:studyId/deployment` | ADMIN | `DeploymentWriteSchema` | `DeploymentResponseSchema` |
+| [getPendingChanges](#getpendingchanges) | `GET /study/:studyId/deployment/pending` | READ | – | `PendingChangesSchema` |
+| [listDeploymentVersions](#listdeploymentversions) | `GET /study/:studyId/deployment/versions` | READ | – | `DeploymentVersionSchema[]` |
+| [getDeploymentStatus](#getdeploymentstatus) | `GET /study/:studyId/deployment/status` | READ | – | `DeploymentStatusSchema` |
+| [createPreview](#createpreview) | `POST /study/:studyId/deployment/preview` | WRITE | – | `PreviewSessionSchema` |
+| [resetAnnotations](#resetannotations) | `POST /study/:studyId/annotations/reset` | ADMIN | `ResetAnnotationsSchema` | `{ retired }` |
 | **Annotations** | | | | |
-| [listAnnotations](#listannotations) | `GET /job/:jobId/annotations` | READ | query `AnnotationsQuerySchema` | `AnnotationPageSchema` |
-| [listUnitVersions](#listunitversions) | `GET /job/:jobId/unit-versions` | READ | query `UnitVersionsQuerySchema` | `UnitVersionPageSchema` |
-| [listDevices](#listdevices) | `GET /job/:jobId/devices` | READ | – | `DeviceSchema[]` |
+| [listAnnotations](#listannotations) | `GET /study/:studyId/annotations` | READ | query `AnnotationsQuerySchema` | `AnnotationPageSchema` |
+| [listUnitVersions](#listunitversions) | `GET /study/:studyId/unit-versions` | READ | query `UnitVersionsQuerySchema` | `UnitVersionPageSchema` |
+| [listDevices](#listdevices) | `GET /study/:studyId/devices` | READ | – | `DeviceSchema[]` |
 
 ## Account
 
@@ -155,7 +155,7 @@ rules (`docs/accounts.md`): it can make a user a researcher or an admin.
 ### getMe
 
 `GET /me` → `MeResponseSchema`: the email the request is authenticated as,
-their account `role`, their `limits` and `usage` (jobs they own and their
+their account `role`, their `limits` and `usage` (studies they own and their
 units), an open `researcherRequest`, whether the server takes requests
 (`canRequestResearcher`), and `mfaRequired` (this login lacks a second
 factor the server requires: nothing else works until they log in with one).
@@ -190,45 +190,45 @@ in this response.
 `POST /me/keys/:id/revoke` → `ApiKeyResponseSchema`. The key stops working
 at once. 404 if it isn't one of your keys.
 
-## Jobs
+## Studies
 
-Schemas: [`contracts/src/job.ts`](../../packages/contracts/src/job.ts), [`overview.ts`](../../packages/contracts/src/overview.ts).
-Implementation: [`researcher/job.ts`](../../packages/server/src/researcher/job.ts), [`job.$id.ts`](../../packages/server/src/researcher/job.$id.ts), [`job.$id.users.ts`](../../packages/server/src/researcher/job.$id.users.ts), overview in [`overview.ts`](../../packages/server/src/researcher/overview.ts) / [`shared/progress.ts`](../../packages/server/src/shared/progress.ts).
+Schemas: [`contracts/src/study.ts`](../../packages/contracts/src/study.ts), [`overview.ts`](../../packages/contracts/src/overview.ts).
+Implementation: [`researcher/study.ts`](../../packages/server/src/researcher/study.ts), [`study.$id.ts`](../../packages/server/src/researcher/study.$id.ts), [`study.$id.users.ts`](../../packages/server/src/researcher/study.$id.users.ts), overview in [`overview.ts`](../../packages/server/src/researcher/overview.ts) / [`shared/progress.ts`](../../packages/server/src/shared/progress.ts).
 
-### listJobs
+### listStudies
 
-`GET /job` → `JobResponseSchema[]`. The jobs the user has a role in (with
-development headers: all jobs).
+`GET /study` → `StudyResponseSchema[]`. The studies the user has a role in (with
+development headers: all studies).
 
-### createJob
+### createStudy
 
-`POST /job` → `JobResponseSchema` (201). Needs the account role
-`researcher` (403 `researcher_required`), within their `jobs` limit (403
+`POST /study` → `StudyResponseSchema` (201). Needs the account role
+`researcher` (403 `researcher_required`), within their `studies` limit (403
 `limit_reached`). The creator owns it and becomes its `ADMIN`.
-(With development headers the job has no job users, which lets any
+(With development headers the study has no study users, which lets any
 development role in.)
 
 ### listExamples
 
-`GET /examples` → `ExampleSummarySchema[]`: the example jobs this server
+`GET /examples` → `ExampleSummarySchema[]`: the example studies this server
 ships (`packages/server/examples/<id>.json`): id, category, title, what it
 shows and what to try (`docs/plans/examples.md`).
 
-### createJobFromExample
+### createStudyFromExample
 
-`POST /job/from-example` (`{ example, name? }`) → `JobResponseSchema`
-(201): a new job from an example, like `createJob` (the same role, limits
+`POST /study/from-example` (`{ example, name? }`) → `StudyResponseSchema`
+(201): a new study from an example, like `createStudy` (the same role, limits
 and ownership): its units and sets, its design deployed (which makes
 its links), and its example answers (coders named "Example coder n").
-The job's `origin` is the example's id. 404 for an unknown example.
+The study's `origin` is the example's id. 404 for an unknown example.
 
-### createJobFromRecipe
+### createStudyFromRecipe
 
-`POST /job/from-recipe` → `JobResponseSchema` (201): a new job from a
+`POST /study/from-recipe` → `StudyResponseSchema` (201): a new study from a
 recipe (`contracts/src/recipe.ts`), as the setup wizard writes one, like
-`createJob` (the same role, limits and ownership), in one transaction:
+`createStudy` (the same role, limits and ownership), in one transaction:
 
-- `units` (`{ id, data }`; the first unit's fields become the job's) and
+- `units` (`{ id, data }`; the first unit's fields become the study's) and
   `sets`: set groups by the units' ids (`[{ group, sets: [{ name, units,
   ordered? }] }]`);
 - `design` (`{ note?, public?, session?, items }`): the first version, saved as a draft that
@@ -237,48 +237,48 @@ recipe (`contracts/src/recipe.ts`), as the setup wizard writes one, like
 
 A recipe has no links: deploying its design makes them. 400
 `recipe_invalid` for a unit id used twice, a set naming an unknown unit, a
-group defined twice, or a design to deploy that has issues; nothing is created then. Example jobs are recipes too
+group defined twice, or a design to deploy that has issues; nothing is created then. Example studies are recipes too
 (`packages/server/examples/`), with example answers.
 
-### getJob
+### getStudy
 
-`GET /job/:id` → `JobResponseSchema`.
+`GET /study/:id` → `StudyResponseSchema`.
 
-### updateJob
+### updateStudy
 
-`PUT /job/:id` → `JobResponseSchema`. Rename, set `archived` (hidden from
+`PUT /study/:id` → `StudyResponseSchema`. Rename, set `archived` (hidden from
 active lists), `keepSessionsOpen`: finished coder sessions stay open
 (off by default: `docs/coder-identity.md` §9), or `redirectUrls`: the
 deployment settings end items' `redirectSetting` names, e.g. a panel's
 return links (`docs/plans/design.md` §4); coders get them at once, without
-a deploy. `JobResponseSchema` also has
-`suspendedAt` (a server admin suspended the job).
+a deploy. `StudyResponseSchema` also has
+`suspendedAt` (a server admin suspended the study).
 
-### deleteJob
+### deleteStudy
 
-`DELETE /job/:id` → 204. Removes the job and everything in it.
+`DELETE /study/:id` → 204. Removes the study and everything in it.
 
-### getJobUsers
+### getStudyUsers
 
-`GET /job/:id/users` → `JobUserSchema[]`: email and role per user.
+`GET /study/:id/users` → `StudyUserSchema[]`: email and role per user.
 
-### putJobUsers
+### putStudyUsers
 
-`PUT /job/:id/users` → 204. Replaces the whole list; it must keep at least one `ADMIN` (400 otherwise). Emails are stored lowercased, as accounts are; an email twice in the list is a 400.
+`PUT /study/:id/users` → 204. Replaces the whole list; it must keep at least one `ADMIN` (400 otherwise). Emails are stored lowercased, as accounts are; an email twice in the list is a 400.
 
 ### getOverview
 
-`GET /job/:jobId/overview` → `JobOverviewSchema`. Counts for the overview
+`GET /study/:studyId/overview` → `StudyOverviewSchema`. Counts for the overview
 page: units, set groups with their sets' sizes (`groups: [{ name, sets:
 [{ name, units }] }]`), coders (total, started, active in the last
 24 hours), live answers, finished codings for the live design's loops, and
 answers per day for the last 30 days. "Finished": every question of the
 loop has a live answer.
-Index answers by (job, created) to keep the per-day count cheap.
+Index answers by (study, created) to keep the per-day count cheap.
 
 ## Codebooks
 
-Versions of the job's design, in order of creation. One is **live** (the
+Versions of the study's design, in order of creation. One is **live** (the
 deployment's); the latest, if unpublished, is the **draft**
 ([`docs/client.md`](../client.md) §7).
 Schemas: [`contracts/src/design/designVersion.ts`](../../packages/contracts/src/design/designVersion.ts).
@@ -286,16 +286,16 @@ Implementation: [`researcher/design.ts`](../../packages/server/src/researcher/de
 
 ### listDesignVersions
 
-`GET /job/:jobId/design` → `DesignVersionMetaSchema[]` (id, note, created,
+`GET /study/:studyId/design` → `DesignVersionMetaSchema[]` (id, note, created,
 immutable), oldest first: the position is the version number.
 
 ### getDesignVersion
 
-`GET /job/:jobId/design/:id` → `DesignVersionSchema`: the whole document.
+`GET /study/:studyId/design/:id` → `DesignVersionSchema`: the whole document.
 
 ### createDesignVersion
 
-`POST /job/:jobId/design` → `DesignVersionSchema` (201). A new version.
+`POST /study/:studyId/design` → `DesignVersionSchema` (201). A new version.
 The body is always the full document, with an optional `note` (what
 changed). A draft may be saved while it doesn't pass validation (work in
 progress): `items` only has to be a list (`DraftItemsSchema`). The response says whether it is `valid`
@@ -312,7 +312,7 @@ a left-out `session`, `public` or `units` is kept; `public: null` removes it.
 
 ### updateDesignVersion
 
-`PUT /job/:jobId/design/:id` → `DesignVersionSchema`. Full replace of
+`PUT /study/:studyId/design/:id` → `DesignVersionSchema`. Full replace of
 items and note; bumps `revision`. 409 once `immutable` (deployed). With
 `revision` (the revision the edits are based on): 409
 `DesignConflictSchema` (`code: "design_conflict"`, who saved when) if
@@ -321,7 +321,7 @@ save overwrites.
 
 ### deleteDesignVersion
 
-`DELETE /job/:jobId/design/:id` → 204. Deletes a draft (for everyone; the
+`DELETE /study/:studyId/design/:id` → 204. Deletes a draft (for everyone; the
 editor offers this only in the versions dialog). 409 once `immutable`.
 
 ## Units and sets
@@ -329,7 +329,7 @@ editor offers this only in the versions dialog). 409 once `immutable`.
 Schemas: [`contracts/src/unit.ts`](../../packages/contracts/src/unit.ts), [`unitFields.ts`](../../packages/contracts/src/unitFields.ts), [`sets.ts`](../../packages/contracts/src/sets.ts).
 Implementation: [`researcher/units*.ts`](../../packages/server/src/researcher/), [`sets.ts`](../../packages/server/src/researcher/sets.ts).
 
-**Unit fields.** All units of a job have the same fields, each `text`,
+**Unit fields.** All units of a study have the same fields, each `text`,
 `number` or `boolean`; values are stored typed (`42`, not `"42"`), and `null`
 is an empty value of any type. The first upload sets the fields
 (`fieldsOfUnits` in `unitFields.ts`). A later upload must give every
@@ -342,12 +342,12 @@ types of CSV columns (`inferFieldType`) and send typed values.
 
 ### listUnits
 
-`GET /job/:jobId/units` → `UnitMetaSchema[]`: id, external id and content
+`GET /study/:studyId/units` → `UnitMetaSchema[]`: id, external id and content
 hash of every unit, without data.
 
 ### getUnitFields
 
-`GET /job/:jobId/units/fields` → `UnitFieldSchema[]`: the job's fields, in
+`GET /study/:studyId/units/fields` → `UnitFieldSchema[]`: the study's fields, in
 column order: the latest design version's `units.fields`, the design's
 one specification of them (`docs/plans/design.md` §3). Match this static
 path (and `/units/page`) before `/units/:id`.
@@ -360,7 +360,7 @@ keeps the fields; deploying a design version that uses an undeclared field is 40
 
 ### putUnitFields
 
-`PUT /job/:jobId/units/fields` (`{ fields }`) → `UnitFieldSchema[]`: replaces
+`PUT /study/:studyId/units/fields` (`{ fields }`) → `UnitFieldSchema[]`: replaces
 the draft design's fields. Declare a field the design uses, retype one
 (400 if a unit's value doesn't fit), describe one, or remove one the
 design doesn't use (409 if it does): its values leave the draft units
@@ -368,19 +368,19 @@ design doesn't use (409 if it does): its values leave the draft units
 
 ### listUnitPage
 
-`GET /job/:jobId/units/page?offset=0&limit=50&group=&set=` → `UnitPageSchema`:
+`GET /study/:studyId/units/page?offset=0&limit=50&group=&set=` → `UnitPageSchema`:
 a page of units with their data (`limit` at most 200) and the `total`. All
 units by id, or with `group` and `set` that set's units in the set's order
 (404 for an unknown set).
 
 ### getUnit
 
-`GET /job/:jobId/units/:id` → `UnitResponseSchema`, with `data`.
+`GET /study/:studyId/units/:id` → `UnitResponseSchema`, with `data`.
 
 ### createUnits
 
-`POST /job/:jobId/units` → `UnitResponseSchema[]` (201). Up to 200 per
-call, all or nothing. Every unit's data must fit the job's fields (400 with
+`POST /study/:studyId/units` → `UnitResponseSchema[]` (201). Up to 200 per
+call, all or nothing. Every unit's data must fit the study's fields (400 with
 the first problem, e.g. `Unit 'u3': Field 'n' is number, got text`); the
 first upload sets them, later ones may add fields. An existing external id is a 409, unless
 `overwrite: true`; a unit that was coded (`coded`) also needs
@@ -392,36 +392,36 @@ version (a new content hash), once they are deployed
 
 ### deleteUnit
 
-`DELETE /job/:jobId/units/:id` → 204. Takes the unit out of the draft
+`DELETE /study/:studyId/units/:id` → 204. Takes the unit out of the draft
 (coders keep it until the next deploy). A unit that was deployed or coded
 is kept for those, and comes back when uploaded again. Deleting the last
 unit resets the fields.
 
 **Sets.** Units belong to named sets within set groups (table
-`unit_sets (job_id, grp, set_name, unit_id, position)`;
+`unit_sets (study_id, grp, set_name, unit_id, position)`;
 `docs/plans/sets-and-session-parameters.md` §1). A group's name is like a
 field name; set names are at most 128 characters, without `;` or `#`.
 `_overlap` is reserved: the group's overlap units. A unit can be in several
 sets of a group. Sets are not part of the unit's data (moving a unit is no
-new unit version), and a change applies to running jobs at once and syncs
-the job's links (a link per set of a group).
+new unit version), and a change applies to running studies at once and syncs
+the study's links (a link per set of a group).
 
 ### listSetGroups
 
-`GET /job/:jobId/sets` → `SetGroupResponseSchema[]`: per group its sets,
+`GET /study/:studyId/sets` → `SetGroupResponseSchema[]`: per group its sets,
 each with its unit ids in order and `ordered` (positions were given). The
 draft's sets; `?live=true`: the deployed ones (what coders and links get).
 
 ### putSetGroup
 
-`PUT /job/:jobId/sets/:group` (`{ sets: [{ name, unitIds, ordered? }] }`)
+`PUT /study/:studyId/sets/:group` (`{ sets: [{ name, unitIds, ordered? }] }`)
 → `SetGroupResponseSchema`. Makes or replaces the whole group. The unit ids
 in order: the order coders get them in, for loops that don't shuffle. Only
-the job's own units (400 otherwise).
+the study's own units (400 otherwise).
 
 ### deleteSetGroup
 
-`DELETE /job/:jobId/sets/:group` → 204. 409 while the deployed or latest
+`DELETE /study/:studyId/sets/:group` → 204. 409 while the deployed or latest
 design uses the group (a loop's set, or a set-typed session parameter).
 
 Splitting units into sets (`s1..sN`, plus `_overlap`) is done by the client
@@ -443,35 +443,35 @@ same secret, if its combination returns.
 
 ### listLinks
 
-`GET /job/:jobId/links` → `LinkResponseSchema[]`, active links
+`GET /study/:studyId/links` → `LinkResponseSchema[]`, active links
 first, with `params` (the link parameter values it carries), `uses`,
 `created`, `revokedAt` and `retiredAt`.
 
 ### updateLink
 
-`PUT /job/:jobId/links/:id` (`LinkWriteSchema`) →
+`PUT /study/:studyId/links/:id` (`LinkWriteSchema`) →
 `LinkResponseSchema`. Who may use the link: `label`, `auth`
 (`none`, `optional`, `required`), `emails`, `maxUses` and a fixed
 `participantId`. Full replace of these settings.
 
 ### revokeLink
 
-`POST /job/:jobId/links/:id/revoke` → `LinkResponseSchema`. No new
+`POST /study/:studyId/links/:id/revoke` → `LinkResponseSchema`. No new
 coders from this link; coders who already started keep working.
 
 ### renewLinkSecret
 
-`POST /job/:jobId/links/:id/secret` → `LinkResponseSchema`. A new
+`POST /study/:studyId/links/:id/secret` → `LinkResponseSchema`. A new
 secret: the old address stops working (e.g. it was shared too widely);
 coders who already started keep working.
 
 ### listCoders
 
-`GET /job/:jobId/coders` → `CoderProgressSchema[]`: per coder the link,
+`GET /study/:studyId/coders` → `CoderProgressSchema[]`: per coder the link,
 participant id, started, last active, live answers, finished units per
 loop of the live design version, `special`: the units of the deployed
 `_overlap`, `_gold` and `_practice` sets they finished, of how many (for
-the kinds the job has), `variables`: their coder-level values
+the kinds the study has), `variables`: their coder-level values
 (answers outside unit loops, and `auto` variables: random or balanced
 conditions), `session`: their `$session` values (link and URL parameters,
 `source`), `ended`: how the
@@ -482,9 +482,9 @@ researcher chose to delete later), or null.
 
 ### deleteCoders
 
-`POST /job/:jobId/coders/delete` (`DeleteCodersSchema`: `{ coderIds?,
+`POST /study/:studyId/coders/delete` (`DeleteCodersSchema`: `{ coderIds?,
 participantIds?, emails? }`, at least one) → `{ coderIds, answers }`. ADMIN.
-Deletes the matching coders of the job and all their answers, also reset
+Deletes the matching coders of the study and all their answers, also reset
 ones, for good (a participant withdrew; docs/coder-identity.md §8). Units
 nobody has answers for any more can be deleted again; unit versions stay.
 Each deleted coder is logged (listCoderDeletions); `deletedBy` is the
@@ -492,13 +492,13 @@ researcher's email.
 
 ### postponeDeletion
 
-`POST /job/:jobId/coders/:id/deletion-request/postpone` → 204 (404 without a
+`POST /study/:studyId/coders/:id/deletion-request/postpone` → 204 (404 without a
 request). ADMIN. Delete later: sets `postponedAt` on the request, which the
 UI then no longer brings up. The request stays until the coder is deleted.
 
 ### listCoderDeletions
 
-`GET /job/:jobId/coders/deletions` → `CoderDeletionSchema[]`, newest first:
+`GET /study/:studyId/coders/deletions` → `CoderDeletionSchema[]`, newest first:
 per deleted coder `coderId`, `participantId`, `email`, `requestedAt` (if
 they asked), `deletedAt`, `deletedBy` and `answers` (rows deleted). Kept
 after the data is gone, with the ids downloaded results use, so the coder
@@ -506,19 +506,19 @@ can be deleted from those too.
 
 ## Deploying
 
-These change or read what coders get; status and preview go to the job's
+These change or read what coders get; status and preview go to the study's
 runtime (`server.deployments`). Schemas:
 [`contracts/src/deployment.ts`](../../packages/contracts/src/deployment.ts).
 Implementation: [`researcher/deployment*.ts`](../../packages/server/src/researcher/), [`shared/deployments.ts`](../../packages/server/src/shared/deployments.ts), [`runtime/registry.ts`](../../packages/server/src/runtime/registry.ts).
 
 ### getDeployment
 
-`GET /job/:jobId/deployment` → `DeploymentResponseSchema | null`: the live
+`GET /study/:studyId/deployment` → `DeploymentResponseSchema | null`: the live
 design version id, `active`, `version`; null if never deployed.
 
 ### putDeployment
 
-`PUT /job/:jobId/deployment` → `DeploymentResponseSchema`. Deploy a
+`PUT /study/:studyId/deployment` → `DeploymentResponseSchema`. Deploy a
 design version, with the draft units and sets if `units: true`
 (default false: the deployed ones stay, so a new design version or a pause deploys
 no units by accident; the first deploy always takes the draft's),
@@ -534,7 +534,7 @@ or pause/resume with `active`. Units and sets are drafts until deployed
    and resuming don't: coders don't reload), record the version with what
    it changed ([listDeploymentVersions](#listdeploymentversions)), and make
    the design version immutable;
-4. sync the job's links: one per combination of the design's link
+4. sync the study's links: one per combination of the design's link
    parameter values; links no longer made are retired. Above 500 links this
    needs `confirmLinks: true` (409 `confirm_links` otherwise), and more
    than 2000 is 400 `too_many_links`. The response's `links` is the number
@@ -543,7 +543,7 @@ or pause/resume with `active`. Units and sets are drafts until deployed
    its next request.
 
 Paused (`active: false`): coders save what they have open, but get no new
-units and no new sessions (409 `job_paused`; the coding screen says the
+units and no new sessions (409 `study_paused`; the coding screen says the
 study is paused) until it is resumed.
 
 Return `warnings` the researcher should see, e.g. a loop that gained
@@ -552,14 +552,14 @@ with fewer overlap units than a loop expects.
 
 ### getPendingChanges
 
-`GET /job/:jobId/deployment/pending` → `PendingChangesSchema`: what
+`GET /study/:studyId/deployment/pending` → `PendingChangesSchema`: what
 deploying the drafts would change: `units` (`added`, `changed`, `removed`,
 and whether the `sets` differ; all added before the first deploy) and
 `designVersionId`, the latest design version if it isn't the deployed one.
 
 ### listDeploymentVersions
 
-`GET /job/:jobId/deployment/versions` → `DeploymentVersionSchema[]`,
+`GET /study/:studyId/deployment/versions` → `DeploymentVersionSchema[]`,
 newest first: each deployed version with its design version and what it changed
 (`changes.design`, `changes.units`: null when the units stayed), and the
 client it ran on (`client: { release, commit }`; null for deployments
@@ -568,15 +568,15 @@ contracts `DesignFileSchema`) is built from `getDesignVersion` and this.
 
 ### getDeploymentStatus
 
-`GET /job/:jobId/deployment/status` → `DeploymentStatusSchema`: per loop
+`GET /study/:studyId/deployment/status` → `DeploymentStatusSchema`: per loop
 and set (`set`: `group/set`, or `__all__` for all units) the units complete, started and leased, codings and coders,
 computed on demand. 404 if not
 deployed.
 
 ### createPreview
 
-`POST /job/:jobId/deployment/preview` → `PreviewSessionSchema`. A preview of
-the latest design version (deployed or not), as deployment `<jobId>.preview`:
+`POST /study/:studyId/deployment/preview` → `PreviewSessionSchema`. A preview of
+the latest design version (deployed or not), as deployment `<studyId>.preview`:
 the real units, but coders and answers kept in memory only. The token (an
 HMAC with the server's secret, valid 12 hours) is used like a link
 secret. A latest design version with validation issues can't be previewed: the
@@ -584,7 +584,7 @@ preview's coder API answers 409 `design_invalid`.
 
 ### resetAnnotations
 
-`POST /job/:jobId/annotations/reset` → `{ retired }`. Retires the live values
+`POST /study/:studyId/annotations/reset` → `{ retired }`. Retires the live values
 of these variables (optionally only some units or coders): kept for
 analysis, but they no longer count, so the units are coded again. Bumps
 the deployment's `annotationEpoch`: runtimes re-read it and derive the
@@ -597,7 +597,7 @@ Implementation: [`researcher/annotations.ts`](../../packages/server/src/research
 
 ### listAnnotations
 
-`GET /job/:jobId/annotations?after=&limit=&retired=` → `AnnotationPageSchema`:
+`GET /study/:studyId/annotations?after=&limit=&retired=` → `AnnotationPageSchema`:
 one row per answer: unit, coder and variable (`value` is a
 `VariableValue`), with the unit's `externalId`, the coder's
 `participantId`, the design version it was answered under, the unit
@@ -623,7 +623,7 @@ or balanced groups), marked `assigned`.
 
 ### listUnitVersions
 
-`GET /job/:jobId/unit-versions?after=&limit=` → `UnitVersionPageSchema`:
+`GET /study/:studyId/unit-versions?after=&limit=` → `UnitVersionPageSchema`:
 units as coders saw them (`architecture.md` §8.4), one row per version:
 the unit's id and `externalId`, a `hash`, the `data` shown (only the
 fields the design used), and when it was first shown. Paged like
@@ -631,7 +631,7 @@ annotations. Join answers on `unitVersionId`.
 
 ### listDevices
 
-`GET /job/:jobId/devices` → `DeviceSchema[]`: the devices coders used
+`GET /study/:studyId/devices` → `DeviceSchema[]`: the devices coders used
 (`coder-identity.md` §4), each with its coder, coarse `type` (phone,
 tablet, desktop), `browser`, `os`, and when it joined the session. Answers
 carry the device they were given on (`deviceId` in `listAnnotations`).

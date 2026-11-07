@@ -47,7 +47,7 @@
         "name": "article",
         "variable": {
           "type": "confirm",
-          "question": "Please read this article carefully.\n\n## New wind farm planned off the coast\n\nThe government announced plans for a wind farm with forty turbines, twelve kilometres off the coast. Construction is to start in two years.\n\n::: if $var.condition.is('economic')\nThe project will cost 1.2 billion euros and is expected to create six hundred jobs in the region. Economists expect electricity prices to fall slightly once the turbines are running.\n::: else\nFisherman Kees Jansen, whose family has fished these waters for four generations, worries about his future. \"Nobody has asked us where we are supposed to go,\" he says.\n:::\n\nThe plans will be discussed in parliament next month.",
+          "question": "Please read this article carefully.\n\n## New wind farm planned off the coast\n\nThe government announced plans for a wind farm with forty turbines, twelve kilometres off the coast. Construction is to start in two years.\n\n::: if $var.condition.is('economic')\nThe project will cost 1.2 billion euros and is expected to create six hundred studies in the region. Economists expect electricity prices to fall slightly once the turbines are running.\n::: else\nFisherman Kees Jansen, whose family has fished these waters for four generations, worries about his future. \"Nobody has asked us where we are supposed to go,\" he says.\n:::\n\nThe plans will be discussed in parliament next month.",
           "instruction": "Click the button when you have read the article."
         }
       },
@@ -129,8 +129,8 @@
           "question": "What was the article mostly about?",
           "options": [
             {
-              "value": "costs_jobs",
-              "label": "Costs and jobs"
+              "value": "costs_studies",
+              "label": "Costs and studies"
             },
             {
               "value": "fishermen",
@@ -169,7 +169,7 @@
           "worried": 1,
           "angry": 1
         },
-        "manipulation_check": "costs_jobs"
+        "manipulation_check": "costs_studies"
       }
     },
     {
@@ -209,7 +209,7 @@
           "worried": 1,
           "angry": 1
         },
-        "manipulation_check": "costs_jobs"
+        "manipulation_check": "costs_studies"
       }
     },
     {

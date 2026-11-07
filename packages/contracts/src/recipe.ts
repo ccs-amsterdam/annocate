@@ -5,17 +5,17 @@ import { UnitDataSchema } from "./common.js";
 import { SetGroupNameSchema, SetNameSchema } from "./sets.js";
 
 /**
- * A recipe: everything a new job starts with, in one document
- * (docs/plans/setup-wizard.md). Example jobs are recipes (with example
+ * A recipe: everything a new study starts with, in one document
+ * (docs/plans/setup-wizard.md). Example studies are recipes (with example
  * answers), the setup wizard writes one, and later templates will be
- * recipes without units. `POST /job/from-recipe` makes a job from it in
- * one transaction; afterwards it is an ordinary job. Its links follow from
+ * recipes without units. `POST /study/from-recipe` makes a study from it in
+ * one transaction; afterwards it is an ordinary study. Its links follow from
  * its design once deployed.
  */
 export const RecipeSchema = z.object({
-  /** The new job's name. */
+  /** The new study's name. */
   name: z.string().min(1).max(256),
-  /** Units: your id, and the fields (the first unit's fields are the job's, as with an upload). */
+  /** Units: your id, and the fields (the first unit's fields are the study's, as with an upload). */
   units: z.array(z.object({ id: z.string().min(1), data: UnitDataSchema })).default([]),
   /** Set groups, by the units' ids (a set's units in order; `ordered`: that order was given). */
   sets: z

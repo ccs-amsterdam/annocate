@@ -115,13 +115,13 @@ type AutoVariable = Extract<VariableType, { type: "auto" }>;
 export const REOPEN_MS = 15 * 60 * 1000;
 
 /**
- * The coder runtime of one deployed job (docs/architecture.md §3).
+ * The coder runtime of one deployed study (docs/architecture.md §3).
  * Everything it works with is in the database and read per request: the
  * coder, their answers, units, finished codings (`unit_codings`) and the
  * leases of shared queues (`unit_leases`). Decisions that count other
  * coders (a shared queue's next unit, a set, a balanced group) run under a
  * database lock (`Store.locked`), so any number of server processes can
- * serve the same job. In memory only the deployment spec, re-read when its
+ * serve the same study. In memory only the deployment spec, re-read when its
  * stamp changes.
  *
  * "Finished" is always relative to the current codebook: every question of
@@ -186,7 +186,7 @@ export class DeploymentRuntime {
           // Panel return links are deployment settings: they change without a new version
           this.coderCodebook = { ...this.coderCodebook, items: resolveRedirects(toCoderItems(this.spec.design.items as TopLevelItem[]), spec.redirectUrls) };
         }
-        // Only once read: a failed read (e.g. a suspended job) is tried again next time.
+        // Only once read: a failed read (e.g. a suspended study) is tried again next time.
         this.stamp = stamp;
       } finally {
         this.refreshing = null;
@@ -375,7 +375,7 @@ export class DeploymentRuntime {
     const [endValues, codings] = await Promise.all([this.endValues(coder, values), this.store.listCodings({ coderId: coder.coderId })]);
     return {
       coderId: coder.coderId,
-      jobId: this.spec.jobId,
+      studyId: this.spec.studyId,
       // Only what coding needs (contracts toCoderItems): not how units are handed out
       codebook: this.coderCodebook,
       version: this.spec.version,
@@ -409,7 +409,7 @@ export class DeploymentRuntime {
    */
   async endSession(coder: Coder, item?: string, unit?: EndUnit): Promise<{ reopen: Reopen }> {
     if (coder.ended) return { reopen: this.reopen(coder) };
-    // Without an item: the coder went through the whole job.
+    // Without an item: the coder went through the whole study.
     const end = item === undefined ? null : findEndItem(this.spec.design.items, item);
     if (item !== undefined && !end) throw new HttpError(400, `No end item '${item}'`);
     if (unit && (!this.loops.has(unit.loop) || Object.keys(await this.store.unitAnswers(coder.coderId, unit.id)).length === 0)) {
@@ -422,7 +422,7 @@ export class DeploymentRuntime {
 
   /**
    * Whether an ended session can be opened again: after completing it,
-   * within `REOPEN_MS` (always, if the job keeps sessions open). Not after a
+   * within `REOPEN_MS` (always, if the study keeps sessions open). Not after a
    * screenout (the answers that screened the coder out stay), quitting, or
    * asking for deletion.
    */
@@ -442,7 +442,7 @@ export class DeploymentRuntime {
     await this.store.setEnded(coder.coderId, null);
   }
 
-  /** An ended session is closed, unless the job keeps sessions open: the coder gets only what the end screen shows. */
+  /** An ended session is closed, unless the study keeps sessions open: the coder gets only what the end screen shows. */
   private closed(coder: Coder): boolean {
     return coder.ended !== null && !this.spec.keepSessionsOpen;
   }
@@ -540,7 +540,7 @@ export class DeploymentRuntime {
       let units = this.unitsOf(setKey(group, set));
       const max = "max" in s ? s.max : undefined;
       if (max !== undefined && units.length > max) {
-        units = "pick" in s && s.pick === "random" ? seededShuffle(units, this.spec.jobId).slice(0, max) : units.slice(0, max);
+        units = "pick" in s && s.pick === "random" ? seededShuffle(units, this.spec.studyId).slice(0, max) : units.slice(0, max);
       }
       return units.length > 0 ? [{ set: setKey(group, set), units, placement: s.placement, every: s.every, rest: s.rest }] : [];
     });
@@ -703,7 +703,7 @@ export class DeploymentRuntime {
    */
   async nextUnits(coder: Coder, loopName: string, choice: BranchChoice = {}, count = 1): Promise<CoderUnitResponse[]> {
     this.assertOpen(coder);
-    if (!this.spec.active) throw new HttpError(409, "This study is paused", "job_paused");
+    if (!this.spec.active) throw new HttpError(409, "This study is paused", "study_paused");
     const info = this.loops.get(loopName);
     if (!info) throw new HttpError(404, `No unit loop '${loopName}'`);
     const route = await this.route(coder, info, choice);
@@ -742,7 +742,7 @@ export class DeploymentRuntime {
           order: info.loop.order ?? "sequential",
           maxUnits: route.branch.mode === "shared" ? route.branch.maxUnits : undefined,
           minUnits: route.branch.mode === "shared" ? route.branch.minUnits : undefined,
-          seed: this.spec.jobId * 1000,
+          seed: this.spec.studyId * 1000,
           now,
         });
         if (!next) break;

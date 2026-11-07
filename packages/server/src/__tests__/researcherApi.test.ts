@@ -19,7 +19,7 @@ beforeEach(async () => {
 });
 
 async function keyFor(email: string): Promise<string> {
-  // Researchers: they create jobs in these tests.
+  // Researchers: they create studies in these tests.
   const user = await ensureUser(db, email);
   await db.query("UPDATE users SET role = 'researcher' WHERE id = $1", [user.id]);
   return (await createApiKey(db, user.id, "test", true)).key;
@@ -57,30 +57,30 @@ const question = (name: string) => ({
   variable: { type: "nominal", question: "?", options: [{ value: "yes" }, { value: "no" }] },
 });
 
-/** A job with two units and a one-question loop, deployed; returns its id. */
-async function setUpJob(key: string): Promise<{ jobId: number; unitIds: number[]; invite: string }> {
-  const job = (await call(key, "createJob", {}, { name: "From R" })).data;
+/** A study with two units and a one-question loop, deployed; returns its id. */
+async function setUpStudy(key: string): Promise<{ studyId: number; unitIds: number[]; invite: string }> {
+  const study = (await call(key, "createStudy", {}, { name: "From R" })).data;
   const units = (
-    await call(key, "createUnits", { jobId: job.id }, { units: [{ externalId: "a", data: { text: "one" } }, { externalId: "b", data: { text: "two" } }] })
+    await call(key, "createUnits", { studyId: study.id }, { units: [{ externalId: "a", data: { text: "one" } }, { externalId: "b", data: { text: "two" } }] })
   ).data;
   const codebook = (
-    await call(key, "createDesignVersion", { jobId: job.id }, {
+    await call(key, "createDesignVersion", { studyId: study.id }, {
       items: [
         { type: "unit_loop", label: "loop", units: [{ mode: "all" }], layout: { template: "" }, children: [question("q")] },
       ],
     })
   ).data;
-  expect((await call(key, "putDeployment", { jobId: job.id }, { designVersionId: codebook.id })).status).toBe(200);
-  // Deploying made the job's link
-  const [invite] = (await call(key, "listLinks", { jobId: job.id })).data;
-  return { jobId: job.id, unitIds: units.map((u) => u.id), invite: invite.secret };
+  expect((await call(key, "putDeployment", { studyId: study.id }, { designVersionId: codebook.id })).status).toBe(200);
+  // Deploying made the study's link
+  const [invite] = (await call(key, "listLinks", { studyId: study.id })).data;
+  return { studyId: study.id, unitIds: units.map((u) => u.id), invite: invite.secret };
 }
 
 /** A coder (own session cookie) who codes every unit of the loop with `answer`. */
-async function code(jobId: number, invite: string, answer: string): Promise<void> {
+async function code(studyId: number, invite: string, answer: string): Promise<void> {
   let cookie = "";
   const send = async (path: string, init: RequestInit = {}) => {
-    const res = await app.request(`/api/d/${jobId}${path}`, {
+    const res = await app.request(`/api/d/${studyId}${path}`, {
       ...init,
       headers: { "content-type": "application/json", "x-annotinder": "1", "x-link-secret": invite, cookie },
     });
@@ -100,7 +100,7 @@ describe("authentication", () => {
   it("needs an API key; development headers only work when enabled", async () => {
     expect((await call(null, "getMe")).status).toBe(401);
     expect((await call("atk_wrong", "getMe")).status).toBe(401);
-    const res = await app.request("/api/job", { headers: { "x-dev-role": "ADMIN" } });
+    const res = await app.request("/api/study", { headers: { "x-dev-role": "ADMIN" } });
     expect(res.status).toBe(401);
 
     const key = await keyFor("Researcher@Uni.nl");
@@ -129,16 +129,16 @@ describe("authentication", () => {
   });
 });
 
-describe("jobs and roles", () => {
-  it("makes the creator ADMIN, and shows each researcher only their jobs", async () => {
+describe("studies and roles", () => {
+  it("makes the creator ADMIN, and shows each researcher only their studies", async () => {
     const alice = await keyFor("alice@uni.nl");
     const bob = await keyFor("bob@uni.nl");
-    const { jobId } = await setUpJob(alice);
+    const { studyId } = await setUpStudy(alice);
 
-    expect((await call(alice, "listJobs")).data.map((j) => j.id)).toEqual([jobId]);
-    expect((await call(bob, "listJobs")).data).toEqual([]);
-    expect((await call(bob, "getJob", { id: jobId, jobId })).status).toBe(403);
-    expect((await call(alice, "getJob", { id: 999, jobId: 999 })).status).toBe(404);
+    expect((await call(alice, "listStudies")).data.map((j) => j.id)).toEqual([studyId]);
+    expect((await call(bob, "listStudies")).data).toEqual([]);
+    expect((await call(bob, "getStudy", { id: studyId, studyId })).status).toBe(403);
+    expect((await call(alice, "getStudy", { id: 999, studyId: 999 })).status).toBe(404);
 
     // Alice gives Bob read access (emails don't depend on case): he can download, not deploy.
     const users = [
@@ -146,27 +146,27 @@ describe("jobs and roles", () => {
       { email: "Bob@Uni.nl", role: "READ" },
     ];
     const twice = [...users, { email: "bob@uni.nl", role: "WRITE" }];
-    expect((await call(alice, "putJobUsers", { id: jobId, jobId }, { users: twice })).status).toBe(400);
-    expect((await call(alice, "putJobUsers", { id: jobId, jobId }, { users })).status).toBe(204);
-    expect((await call(bob, "listJobs")).data.map((j) => j.id)).toEqual([jobId]);
-    expect((await call(bob, "listAnnotations", { jobId })).status).toBe(200);
-    expect((await call(bob, "putDeployment", { jobId }, { designVersionId: 1 })).status).toBe(403);
+    expect((await call(alice, "putStudyUsers", { id: studyId, studyId }, { users: twice })).status).toBe(400);
+    expect((await call(alice, "putStudyUsers", { id: studyId, studyId }, { users })).status).toBe(204);
+    expect((await call(bob, "listStudies")).data.map((j) => j.id)).toEqual([studyId]);
+    expect((await call(bob, "listAnnotations", { studyId })).status).toBe(200);
+    expect((await call(bob, "putDeployment", { studyId }, { designVersionId: 1 })).status).toBe(403);
   });
 });
 
 describe("downloading annotations", () => {
   it("pages through every value in the order written, with unit and coder ids", async () => {
     const key = await keyFor("r@uni.nl");
-    const { jobId, unitIds, invite } = await setUpJob(key);
-    await code(jobId, invite, "yes");
-    await code(jobId, invite, "no");
+    const { studyId, unitIds, invite } = await setUpStudy(key);
+    await code(studyId, invite, "yes");
+    await code(studyId, invite, "no");
 
     const rows = [];
     let after: number | null = null;
     let pages = 0;
     do {
       const query: string = `?limit=3${after !== null ? `&after=${after}` : ""}`;
-      const page = (await call(key, "listAnnotations", { jobId }, undefined, query)).data;
+      const page = (await call(key, "listAnnotations", { studyId }, undefined, query)).data;
       rows.push(...page.annotations);
       after = page.next;
       pages++;
@@ -181,24 +181,24 @@ describe("downloading annotations", () => {
     expect(rows[0]).not.toHaveProperty("retiredAt");
 
     // Coder-level values and progress come with the coders.
-    const coders = (await call(key, "listCoders", { jobId })).data;
+    const coders = (await call(key, "listCoders", { studyId })).data;
     expect(coders.map((c) => c.finished.loop)).toEqual([2, 2]);
     expect(coders[0].variables).toEqual({});
   });
 
   it("leaves out reset values unless asked for", async () => {
     const key = await keyFor("r@uni.nl");
-    const { jobId, unitIds, invite } = await setUpJob(key);
-    await code(jobId, invite, "yes");
-    const reset = await call(key, "resetAnnotations", { jobId }, { variables: ["q"], unitIds: [unitIds[0]] });
+    const { studyId, unitIds, invite } = await setUpStudy(key);
+    await code(studyId, invite, "yes");
+    const reset = await call(key, "resetAnnotations", { studyId }, { variables: ["q"], unitIds: [unitIds[0]] });
     expect(reset.data).toEqual({ retired: 1 });
 
-    expect((await call(key, "listAnnotations", { jobId })).data.annotations.map((r) => r.unitId)).toEqual([unitIds[1]]);
-    const all = (await call(key, "listAnnotations", { jobId }, undefined, "?retired=true")).data.annotations;
+    expect((await call(key, "listAnnotations", { studyId })).data.annotations.map((r) => r.unitId)).toEqual([unitIds[1]]);
+    const all = (await call(key, "listAnnotations", { studyId }, undefined, "?retired=true")).data.annotations;
     expect(all).toHaveLength(2);
     expect(all.find((r) => r.unitId === unitIds[0])?.retiredAt).toBeInstanceOf(Date);
     expect(all.find((r) => r.unitId === unitIds[1])?.retiredAt).toBeNull();
 
-    expect((await call(key, "listAnnotations", { jobId }, undefined, "?limit=0")).status).toBe(400);
+    expect((await call(key, "listAnnotations", { studyId }, undefined, "?limit=0")).status).toBe(400);
   });
 });

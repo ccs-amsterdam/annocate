@@ -1,11 +1,11 @@
 import { expect, test } from "./fixtures";
 import { answers, api, coders, fromExample, question } from "./helpers";
 
-// Coders at work, in a real browser, on jobs made from the examples.
+// Coders at work, in a real browser, on studies made from the examples.
 
 test("a coder swipes through their set with the arrow keys; every answer is saved", async ({ page, request }) => {
-  const { job, link } = await fromExample(request, "swipe-sentiment");
-  const examples = (await coders(request, job.id)).map((c) => c.id);
+  const { study, link } = await fromExample(request, "swipe-sentiment");
+  const examples = (await coders(request, study.id)).map((c) => c.id);
   await page.goto(link);
   // 5 own units + 5 overlap units, by keyboard (right: good news)
   for (let i = 0; i < 10; i++) {
@@ -14,15 +14,15 @@ test("a coder swipes through their set with the arrow keys; every answer is save
     await page.waitForTimeout(400);
   }
   await expect(page.getByText(/completed|Thank you/i).first()).toBeVisible();
-  const mine = (await answers(request, job.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null);
+  const mine = (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null);
   expect(mine).toHaveLength(10);
   expect(new Set(mine.map((a) => a.unitId)).size).toBe(10);
 });
 
 test("a swipe starts anywhere on the screen, and 1, 2, 3 answer too", async ({ page, request }) => {
-  const { job, link } = await fromExample(request, "swipe-sentiment");
-  const examples = (await coders(request, job.id)).map((c) => c.id);
-  const mine = async () => (await answers(request, job.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null);
+  const { study, link } = await fromExample(request, "swipe-sentiment");
+  const examples = (await coders(request, study.id)).map((c) => c.id);
+  const mine = async () => (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null);
   await page.goto(link);
   await question(page, "Is this headline good news or bad news?");
   await page.waitForTimeout(500);
@@ -42,8 +42,8 @@ test("a swipe starts anywhere on the screen, and 1, 2, 3 answer too", async ({ p
 });
 
 test("a respondent under 18 is screened out; an adult fills in the whole survey, follow-up included", async ({ page, request, browser }) => {
-  const { job, link } = await fromExample(request, "simple-survey");
-  const examples = (await coders(request, job.id)).map((c) => c.id);
+  const { study, link } = await fromExample(request, "simple-survey");
+  const examples = (await coders(request, study.id)).map((c) => c.id);
 
   await page.goto(link);
   await page.getByRole("button", { name: "I confirm", exact: true }).click();
@@ -73,22 +73,22 @@ test("a respondent under 18 is screened out; an adult fills in the whole survey,
   await adult.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(adult.getByText("Thank you for taking part!")).toBeVisible();
 
-  const rows = (await answers(request, job.id)).filter((a) => !examples.includes(a.coderId));
+  const rows = (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId));
   const byVariable = (name: string) => rows.filter((a) => a.variable === name).map((a) => a.value.values?.map((v) => v.value));
   expect(byVariable("age").sort()).toEqual([[15], [30]]);
   expect(byVariable("social_platform")).toEqual([["instagram"]]);
-  const ended = (await coders(request, job.id)).filter((c) => !examples.includes(c.id)).map((c) => c.ended?.outcome).sort();
+  const ended = (await coders(request, study.id)).filter((c) => !examples.includes(c.id)).map((c) => c.ended?.outcome).sort();
   expect(ended).toEqual(["complete", "screenout"]);
 });
 
 test("a participant in the experiment reads their version of the article and answers", async ({ page, request }) => {
-  const { job, link } = await fromExample(request, "simple-experiment");
-  const examples = (await coders(request, job.id)).map((c) => c.id);
+  const { study, link } = await fromExample(request, "simple-experiment");
+  const examples = (await coders(request, study.id)).map((c) => c.id);
   await page.goto(link);
   await page.getByRole("button", { name: "I confirm", exact: true }).click();
   await question(page, "New wind farm planned off the coast");
   // One of the two versions, never both
-  const economic = await page.getByText("six hundred jobs").isVisible();
+  const economic = await page.getByText("six hundred studies").isVisible();
   const human = await page.getByText("Kees Jansen").isVisible();
   expect(economic !== human).toBe(true);
   await page.getByRole("button", { name: "I confirm", exact: true }).click();
@@ -97,18 +97,18 @@ test("a participant in the experiment reads their version of the article and ans
     await page.getByRole("radiogroup", { name: row }).getByRole("radio", { name: "a little" }).click();
   }
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.getByRole("button", { name: economic ? /Costs and jobs/ : /fisherman/ }).click();
+  await page.getByRole("button", { name: economic ? /Costs and studies/ : /fisherman/ }).click();
   await expect(page.getByText(/the wind farm is not real/)).toBeVisible();
 
-  const rows = (await answers(request, job.id)).filter((a) => !examples.includes(a.coderId));
+  const rows = (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId));
   const condition = rows.find((a) => a.variable === "condition");
   expect(condition?.assigned).toBe(true);
   expect(condition?.value.values?.[0].value).toBe(economic ? "economic" : "human_interest");
 });
 
 test("a coder selects actors in a text and labels them", async ({ page, request }) => {
-  const { job, link } = await fromExample(request, "actor-spans");
-  const examples = (await coders(request, job.id)).map((c) => c.id);
+  const { study, link } = await fromExample(request, "actor-spans");
+  const examples = (await coders(request, study.id)).map((c) => c.id);
   await page.goto(link);
   await question(page, "Select every person and organisation mentioned in the text.");
   // Select "Anna de Wit" by dragging over the words (once the unit has slid in)
@@ -142,13 +142,13 @@ test("a coder selects actors in a text and labels them", async ({ page, request 
   await page.getByRole("button", { name: /Person/ }).first().click();
   await page.getByRole("button", { name: "Done (1)" }).click();
   await question(page, "Select every person and organisation mentioned in the text.");
-  await expect.poll(async () => (await answers(request, job.id)).filter((x) => !examples.includes(x.coderId)).length).toBe(1);
-  const [row] = (await answers(request, job.id)).filter((x) => !examples.includes(x.coderId));
+  await expect.poll(async () => (await answers(request, study.id)).filter((x) => !examples.includes(x.coderId)).length).toBe(1);
+  const [row] = (await answers(request, study.id)).filter((x) => !examples.includes(x.coderId));
   expect(row.value.spans).toMatchObject([{ value: "person", field: "text", slices: [{ text: "Anna de Wit" }] }]);
 });
 
 test("an ::html field shows in its sandboxed frame, sized by its script, within the page's security policy", async ({ page, request }) => {
-  const job = await api<{ id: number }>(request, "POST", "/job/from-recipe", {
+  const study = await api<{ id: number }>(request, "POST", "/study/from-recipe", {
     name: "HTML unit",
     units: [{ id: "h1", data: { table: "<table><tr><th>Party</th><th>Seats</th></tr><tr><td>A</td><td>12</td></tr></table><p>Below</p>" } }],
     design: {
@@ -163,8 +163,8 @@ test("an ::html field shows in its sandboxed frame, sized by its script, within 
     },
     publish: true,
   });
-  const [invite] = await api<{ secret: string }[]>(request, "GET", `/job/${job.id}/links`);
-  await page.goto(`/code/${job.id}?link=${invite.secret}`);
+  const [invite] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  await page.goto(`/code/${study.id}?link=${invite.secret}`);
   await question(page, "Seen it?");
   const frame = page.locator("iframe[sandbox]");
   await expect(frame).toBeVisible();

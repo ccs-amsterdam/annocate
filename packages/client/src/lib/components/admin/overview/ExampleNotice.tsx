@@ -1,30 +1,30 @@
 import { useState } from "react";
 import { ChevronDown, Sparkles, X } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useExamplesQuery, useJobQuery } from "../../../admin/queries";
+import { useExamplesQuery, useStudyQuery } from "../../../admin/queries";
 
-const dismissedKey = (jobId: number) => `annotinder.exampleNotice.${jobId}`;
+const dismissedKey = (studyId: number) => `annotinder.exampleNotice.${studyId}`;
 
-function isDismissed(jobId: number): boolean {
+function isDismissed(studyId: number): boolean {
   try {
-    return localStorage.getItem(dismissedKey(jobId)) === "1";
+    return localStorage.getItem(dismissedKey(studyId)) === "1";
   } catch {
     return false;
   }
 }
 
 /**
- * On a job made from an example (docs/plans/examples.md): which example,
+ * On a study made from an example (docs/plans/examples.md): which example,
  * and what to try, until the researcher closes it (remembered in this
  * browser).
  */
 export function ExampleNotice({ client }: { client: ResearcherApi }) {
-  const job = useJobQuery(client).data ?? null;
-  const origin = job?.origin ?? null;
+  const study = useStudyQuery(client).data ?? null;
+  const origin = study?.origin ?? null;
   const examples = useExamplesQuery(client, origin !== null).data ?? [];
-  const [dismissed, setDismissed] = useState(() => (job ? isDismissed(job.id) : false));
+  const [dismissed, setDismissed] = useState(() => (study ? isDismissed(study.id) : false));
   const example = examples.find((e) => e.id === origin);
-  if (!job || !example || dismissed || isDismissed(job.id)) return null;
+  if (!study || !example || dismissed || isDismissed(study.id)) return null;
 
   return (
     <section className="relative rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5">
@@ -34,7 +34,7 @@ export function ExampleNotice({ client }: { client: ResearcherApi }) {
         aria-label="Close"
         onClick={() => {
           try {
-            localStorage.setItem(dismissedKey(job.id), "1");
+            localStorage.setItem(dismissedKey(study.id), "1");
           } catch {
             // Not remembered: it comes back next time
           }
@@ -60,7 +60,7 @@ export function ExampleNotice({ client }: { client: ResearcherApi }) {
           ))}
         </ul>
         <p className="mt-2 text-xs text-muted-foreground">
-          It is an ordinary job: change anything. Example answers are from coders named &ldquo;Example coder&rdquo;; delete them on the
+          It is an ordinary study: change anything. Example answers are from coders named &ldquo;Example coder&rdquo;; delete them on the
           Coders tab before real coding starts.
         </p>
       </details>

@@ -153,7 +153,7 @@ function ApiKeysDialog({ client, onClose }: { client: ResearcherApi; onClose: ()
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>API keys</DialogTitle>
-          <DialogDescription>For scripts (R, Python) and other systems: they act as you, in every job you have a role in.</DialogDescription>
+          <DialogDescription>For scripts (R, Python) and other systems: they act as you, in every study you have a role in.</DialogDescription>
         </DialogHeader>
         {created && (
           <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/40 p-3">

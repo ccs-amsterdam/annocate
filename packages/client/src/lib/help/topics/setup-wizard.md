@@ -2,18 +2,18 @@
 title: Guided setup
 section: Getting started
 order: 2.5
-summary: Setting up a job quickly - what the guided setup asks, what it makes, and what only the codebook editor does.
+summary: Setting up a study quickly - what the guided setup asks, what it makes, and what only the codebook editor does.
 ---
 
-**Guided setup** (on the **Jobs** page, under **Create new job**) is the
-quick way to a working job. It asks a few questions, makes the job, and
-opens it in the codebook editor. From then on the job is like any other:
+**Guided setup** (on the **Studies** page, under **Create new study**) is the
+quick way to a working study. It asks a few questions, makes the study, and
+opens it in the codebook editor. From then on the study is like any other:
 everything it made can be changed in the editor, and the editor can do
 much more (below).
 
 ## What it asks
 
-1. **What do you want to do?** The job's name, and one or more of:
+1. **What do you want to do?** The study's name, and one or more of:
    **Annotate units** (coders get units one by one), **Ask questions** (a
    survey: questions asked once), **Experiment** (participants get a
    condition). An experiment alone is set up as questions with an
@@ -41,7 +41,7 @@ much more (below).
 
 It then makes the units, their [sets](sets.md) (a group `sets`), and a
 design draft, and opens the editor. These are all drafts: deploying them
-makes the job's links (an open link, or a link per set) and lets coders start.
+makes the study's links (an open link, or a link per set) and lets coders start.
 
 ## What to do next
 

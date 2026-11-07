@@ -1,5 +1,5 @@
 import { useCallback, useState, type ReactNode } from "react";
-import type { JobResponse, UnitField } from "@annotinder/contracts";
+import type { StudyResponse, UnitField } from "@annotinder/contracts";
 import { Check, FlaskConical, ListChecks, MessageSquareText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "cn";
 import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
-import { useCreateJobFromRecipeMutation } from "../../admin/queries";
+import { useCreateStudyFromRecipeMutation } from "../../admin/queries";
 import type { CsvUnits } from "../../admin/csv";
 import {
   DEFAULT_SETUP,
@@ -33,9 +33,9 @@ import { HelpButton } from "../../help/HelpButton";
 import { LayoutDesigner, UnitPreview } from "./LayoutDesigner";
 import { SharedSettings } from "./UnitLoopForm";
 
-// The setup wizard (docs/plans/setup-wizard.md): what the job does, the
+// The setup wizard (docs/plans/setup-wizard.md): what the study does, the
 // experiment's conditions, the units and how they are shown, the names of
-// the questions, and who codes what. It makes a recipe (admin/setupRecipe.ts); the job then
+// the questions, and who codes what. It makes a recipe (admin/setupRecipe.ts); the study then
 // opens in the codebook editor, where the questions get their answer types.
 
 type Step = "start" | "experiment" | "units" | "distribution" | "layout" | "questions" | "create";
@@ -52,11 +52,11 @@ const STEP_TITLES: Record<Step, string> = {
 
 const NO_FIELDS: UnitField[] = [];
 
-export function SetupWizard({ client, onCreated, onClose }: { client: ResearcherApi; onCreated: (job: JobResponse) => void; onClose: () => void }) {
+export function SetupWizard({ client, onCreated, onClose }: { client: ResearcherApi; onCreated: (study: StudyResponse) => void; onClose: () => void }) {
   const [a, setA] = useState<SetupAnswers>(DEFAULT_SETUP);
   const [step, setStep] = useState<Step>("start");
   const [csv, setCsv] = useState<CsvUnits | null>(null);
-  const create = useCreateJobFromRecipeMutation(client);
+  const create = useCreateStudyFromRecipeMutation(client);
   const set = (patch: Partial<SetupAnswers>) => setA((prev) => ({ ...prev, ...patch }));
 
   // The units come from the CSV form; the layout starts from a guess by the text fields' names.
@@ -126,7 +126,7 @@ export function SetupWizard({ client, onCreated, onClose }: { client: Researcher
               </Button>
             ) : (
               <Button onClick={() => create.mutate(setupRecipe(a), { onSuccess: onCreated })} disabled={problems.length > 0 || create.isPending}>
-                {create.isPending ? "Creating..." : "Create job"}
+                {create.isPending ? "Creating..." : "Create study"}
               </Button>
             )}
           </div>
@@ -160,19 +160,19 @@ function StartStep({ a, set }: StepProps) {
   return (
     <>
       <p className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs text-foreground">
-        The guided setup makes a job quickly: what it does, the units, who codes what, how a unit looks, and the names of your
+        The guided setup makes a study quickly: what it does, the units, who codes what, how a unit looks, and the names of your
         questions. It then opens in the editor, where you specify the questions and can add what the setup leaves out
         (conditions, agreement, personal or panel links, and more).{" "}
         <HelpButton topic="setup-wizard">What only the editor does</HelpButton>
       </p>
       <label className="block text-xs font-medium text-muted-foreground">
-        Job name
+        Study name
         <Input className="mt-1" autoFocus value={a.name} onChange={(e) => set({ name: e.target.value })} placeholder="e.g. News pilot" />
       </label>
       <label className="block text-xs font-medium text-muted-foreground">
         <span className="flex items-center gap-1.5">
           Title coders see (optional)
-          <InfoTip label="About the title coders see">The job name stays private; coders see this title instead, or &quot;Untitled study&quot;.</InfoTip>
+          <InfoTip label="About the title coders see">The study name stays private; coders see this title instead, or &quot;Untitled study&quot;.</InfoTip>
         </span>
         <Input className="mt-1" value={a.publicTitle} onChange={(e) => set({ publicTitle: e.target.value })} placeholder={a.name.trim() || "e.g. Reading the news"} />
       </label>
@@ -245,7 +245,7 @@ function UnitsStep({ a, set, onCsv }: StepProps & { onCsv: (result: CsvUnits | n
     <>
       <Intro>Upload the units coders work on, or skip this and upload them later on the Units tab.</Intro>
       <div className="space-y-3 rounded-lg border border-border p-3">
-        <CsvUnitsForm jobFields={NO_FIELDS} onResult={onCsv} />
+        <CsvUnitsForm studyFields={NO_FIELDS} onResult={onCsv} />
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={a.order === "random"} onChange={(ev) => set({ order: ev.target.checked ? "random" : "sequential" })} />
@@ -572,7 +572,7 @@ function CreateStep({ a, problems }: { a: SetupAnswers; problems: string[] }) {
   const lists = questionLists(a.parts);
   const count = (list: "before" | "unit" | "after") => parseQuestions(a.questions[list]).length;
   const d = a.distribution;
-  const lines: string[] = [`A job named "${a.name.trim()}".`];
+  const lines: string[] = [`A study named "${a.name.trim()}".`];
   if (a.parts.experiment) {
     lines.push(`Participants get a condition (${a.experiment.name}): ${a.experiment.conditions.filter(Boolean).join(", ")}, ${a.experiment.assign === "balanced" ? "balanced" : "at random"}.`);
   }
@@ -598,7 +598,7 @@ function CreateStep({ a, problems }: { a: SetupAnswers; problems: string[] }) {
       <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm text-foreground">
         <p className="font-medium">Next, in the codebook editor</p>
         <p className="mt-1 text-muted-foreground">
-          The job opens on its Editor tab. Questions marked <em>to specify</em> need an answer type: select each one and choose
+          The study opens on its Editor tab. Questions marked <em>to specify</em> need an answer type: select each one and choose
           it. Then save, preview, and deploy; coders can start once it is deployed.
         </p>
       </div>

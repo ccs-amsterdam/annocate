@@ -27,10 +27,10 @@ export function GenerateSets({ client, groups, onCreated }: { client: Researcher
         <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Generate sets</DialogTitle>
-            <DialogDescription>Split the job&apos;s units into a new group of sets, optionally with overlap units.</DialogDescription>
+            <DialogDescription>Split the study&apos;s units into a new group of sets, optionally with overlap units.</DialogDescription>
           </DialogHeader>
           {units.length === 0 ? (
-            <p className="text-sm text-muted-foreground">This job has no units yet: upload them on the Units page first.</p>
+            <p className="text-sm text-muted-foreground">This study has no units yet: upload them on the Units page first.</p>
           ) : (
             <SplitIntoSets
               client={client}

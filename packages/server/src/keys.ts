@@ -25,7 +25,7 @@ if (!["create", "list", "revoke"].includes(command ?? "") || !values.email) {
 const db = await openDatabase();
 try {
   const user = await ensureUser(db, values.email);
-  // The account role (docs/accounts.md): a researcher creates jobs, an admin manages the server.
+  // The account role (docs/accounts.md): a researcher creates studies, an admin manages the server.
   if (values.role) {
     if (!["user", "researcher", "admin"].includes(values.role)) throw new Error("--role is user, researcher or admin");
     await db.query("UPDATE users SET role = $1 WHERE id = $2", [values.role, user.id]);

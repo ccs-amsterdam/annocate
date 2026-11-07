@@ -11,7 +11,7 @@ import { HelpButton } from "../../../help/HelpButton";
  * optionally `_overlap` units every coder of the group codes too (e.g. for
  * intercoder reliability). The split happens here (`splitIntoSets`,
  * shuffled with a seed); the server just stores the group. Units added to
- * the job later are not added to it.
+ * the study later are not added to it.
  */
 export function SplitIntoSets({
   client,

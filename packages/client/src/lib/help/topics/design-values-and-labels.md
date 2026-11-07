@@ -127,5 +127,5 @@ item starts a new one.
 - It doesn't recode earlier answers when you change a value. Recoding is part
   of your analysis, where it is documented.
 - It doesn't keep labels in several languages. To code in two languages,
-  make a question per language, or one job per language, with the same
+  make a question per language, or one study per language, with the same
   values.

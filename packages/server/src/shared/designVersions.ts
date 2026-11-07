@@ -14,7 +14,7 @@ import {
 /** A row of `design_versions`: a version of the design. */
 export interface DesignVersionRow {
   id: number;
-  job_id: number;
+  study_id: number;
   note: string | null;
   items: unknown;
   units: unknown;
@@ -73,5 +73,5 @@ export function toDesignVersionMeta(row: DesignVersionRow): DesignVersionMeta {
 
 /** A stored codebook as served. */
 export function toDesignVersion(row: DesignVersionRow): DesignVersion {
-  return { ...toDesignVersionMeta(row), jobId: row.job_id, items: storedItems(row), units: designVersionUnits(row), session: designVersionSession(row), public: designVersionPublic(row) };
+  return { ...toDesignVersionMeta(row), studyId: row.study_id, items: storedItems(row), units: designVersionUnits(row), session: designVersionSession(row), public: designVersionPublic(row) };
 }

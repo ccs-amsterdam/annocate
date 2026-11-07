@@ -17,11 +17,11 @@ language, breaks down for:
   that no single client can own.
 - **Validating annotations.** You can't trust the client.
 
-So the server (TypeScript) runs the job: distribution, validation, sessions.
+So the server (TypeScript) runs the study: distribution, validation, sessions.
 Other systems (AmCAT, R, Python) don't run a server of their own: they use
 the researcher API to push units, codebooks and settings, and to download
 annotations. (An earlier design split the server into a "db server" in any
-language and a "job server"; it was merged back on 2026-10-26, since that
+language and a "study server"; it was merged back on 2026-10-26, since that
 split cost an API and a trust scheme between the two and served no real
 case.)
 
@@ -30,10 +30,10 @@ case.)
 ```
       researcher, R, Python, AmCAT                   coder
                 │ researcher API                       │ coder API
-                ▼ /job/...                             ▼ /d/<deploymentId>/...
+                ▼ /study/...                             ▼ /d/<deploymentId>/...
  ┌─────────────────────────────────────────────────────────────────────┐
  │ server (TypeScript, packages/server)                                │
- │  researcher API: jobs, codebooks, units, sets, links,               │
+ │  researcher API: studies, codebooks, units, sets, links,               │
  │    deployment, progress, results                                    │
  │  runtime (per deployment): distribution, leases, validation;        │
  │    state in the database, only the deployment spec in memory        │
@@ -45,15 +45,15 @@ The server serves two APIs; [`docs/api/`](api/README.md) has the overview
 and a page per API, with a section per endpoint.
 
 - the **researcher API** (`researcherEndpoints`, [spec](api/researcher.md)),
-  at `/job/...`, `/me` and `/auth/...`: used by the client's researcher UI
+  at `/study/...`, `/me` and `/auth/...`: used by the client's researcher UI
   (session cookie after logging in), scripts (R, Python) and other systems
   (API keys). Login and keys: `coder-identity.md` §7.
 - the **coder API** (`coderEndpoints`, [spec](api/coder.md)), at
-  `/d/<deploymentId>/...`: used by the client's annotator. A deployment id is
-  the job id, or `<jobId>.preview` for a researcher preview. No CORS: the
+  `/d/<deploymentId>/...`: used by the client's coding screen. A deployment id is
+  the study id, or `<studyId>.preview` for a researcher preview. No CORS: the
   session is an httpOnly cookie on the client's origin (`coder.ts`).
 
-**The runtime** (`src/runtime/`) runs a deployed job for coders. It:
+**The runtime** (`src/runtime/`) runs a deployed study for coders. It:
 
 - resolves coders and serves the session and codebook;
 - decides which unit a coder gets next, following the codebook's unit
@@ -62,13 +62,13 @@ and a page per API, with a section per endpoint.
 - validates annotations against the codebook;
 - writes them to the database;
 - keeps only the deployment spec in memory (§3): any number of server
-  processes can serve a job.
+  processes can serve a study.
 
 It reads and writes through a `Store` (`store.ts`): `DbStore` for the
 database, `PreviewStore` for previews.
 
 **client.** The researcher UI (`ResearcherApi`) talks to the researcher API,
-the annotator (`HttpCoderApi`, `JobManager`) to the coder API. The client
+the coding screen (`HttpCoderApi`, `StudyManager`) to the coder API. The client
 and the server share an origin, since sessions are httpOnly cookies; in
 development, Vite proxies the server's paths.
 
@@ -83,7 +83,7 @@ development, Vite proxies the server's paths.
    keeps only the deployment spec, re-read when the deployment's stamp
    changes (version, annotation epoch, `revision`, suspension: one small
    query per request; researcher changes bump `revision`). So any number of
-   server processes can serve the same job
+   server processes can serve the same study
    (§10 has what is left).
 3. **Decisions that count other coders run under a lock.** Picking from a
    shared queue (and leasing the unit), drawing a balanced set (`assign` mode)
@@ -116,12 +116,12 @@ the client, so the server stores only ciphertext (`plans/encryption.md`).
 
 ## 5. Lifecycle
 
-**Deploy.** A researcher calls `PUT /job/:jobId/deployment` with
+**Deploy.** A researcher calls `PUT /study/:studyId/deployment` with
 `{ designVersionId, units, active }`: the codebook, with the draft units and
 sets (new unit versions, §8.4) or the deployed ones. The server bumps the
 deployment `version` when either changed, and freezes the codebook. Every
 runtime checks the deployment's stamp on each request and re-reads it when
-it changed; other changes coders' runtimes read (job settings, resets)
+it changed; other changes coders' runtimes read (study settings, resets)
 bump `deployments.revision` for that
 (`Deployments.refresh`). Coders' browsers send the version their codebook belongs
 to; requests with an older one get 409 `codebook_changed`, and the client
@@ -129,8 +129,8 @@ loads the session again (`api/coder.md`).
 
 **Coder links.** Links are made by deploying: one per
 combination of the codebook's link parameter values (§7). They point at the
-client with the deployment id (the job id) and the link's secret; the
-client calls `/d/<jobId>/...`.
+client with the deployment id (the study id) and the link's secret; the
+client calls `/d/<studyId>/...`.
 
 **Coder session.**
 
@@ -152,19 +152,19 @@ client calls `/d/<jobId>/...`.
 4. **`POST /variables/unit`.** The runtime checks that the unit was assigned
    to this coder, validates the variables, and writes them (and the
    codings they finish) to the database. The client sends answers in the
-   background, one post at a time, in order (`JobManager.save`): the coder
+   background, one post at a time, in order (`StudyManager.save`): the coder
    goes on at once. A failure for lack of a connection is tried again; the
    end of the session waits until everything is saved.
 
-**Researcher preview.** `POST /job/:jobId/deployment/preview` returns
-deployment id `<jobId>.preview` and a token signed with the server's secret
+**Researcher preview.** `POST /study/:studyId/deployment/preview` returns
+deployment id `<studyId>.preview` and a token signed with the server's secret
 (`ANNOTINDER_SECRET`; random per process if not set, so previews then end
 with a restart). The client opens it like a link. The runtime runs the
 latest codebook (checked on every request, so edits show at once) with the
 real units, but keeps coders and answers in memory (`preview.ts`): a
 preview stores nothing, and is gone when the server forgets the deployment.
 
-**Researcher status.** `GET /job/:jobId/deployment/status`: units complete /
+**Researcher status.** `GET /study/:studyId/deployment/status`: units complete /
 started / leased, codings and coders.
 
 ## 6. Distribution: the codebook describes the process
@@ -210,7 +210,7 @@ units:
 
 **Modes:**
 
-- **`all`**: every coder of the branch codes every unit (of the job, or of
+- **`all`**: every coder of the branch codes every unit (of the study, or of
   `set`).
 - **`shared`**: a queue shared by all coders of the branch, over all units
   or one `set`:
@@ -319,15 +319,15 @@ units:
 
 ### 6.2 Sets are explicit
 
-Sets are stored lists, not recipes. That way adding units to a job never
+Sets are stored lists, not recipes. That way adding units to a study never
 changes an existing distribution. Units belong to named sets within **set
-groups** (`unit_sets (job_id, grp, set_name, unit_id, position)`): a group
+groups** (`unit_sets (study_id, grp, set_name, unit_id, position)`): a group
 is like a column of the units, each unit's cell naming its set(s) (`s1`,
 `s1;s2`, `s1#3` with a position). A CSV upload can have such a column
 (type **sets**). `_overlap` is reserved: the group's overlap units. Sets
 are not part of a unit's data, so moving a unit is no new unit version.
 The researcher UI's "Split units into sets" makes a group (in the client,
-then stored with `PUT /job/:jobId/sets/:group`):
+then stored with `PUT /study/:studyId/sets/:group`):
 
 - shuffle the units with a seed;
 - set aside an overlap (a number or a fraction) as `_overlap`;
@@ -439,7 +439,7 @@ between visits when distribution is dynamic.
 
 ### 8.2 What happens when the codebook changes
 
-A researcher deploys a new design version for a running job. Answers are
+A researcher deploys a new design version for a running study. Answers are
 keyed by question name, and the server and client always check them
 against the **current** codebook (`validateAnswer`, shared via contracts):
 
@@ -474,7 +474,7 @@ How it works:
   new answer). Coders get them back first, with their earlier answers, and
   answer only what's new. Deploying such a codebook returns a warning with
   the number of affected codings.
-- **Reset** (`POST /job/:jobId/annotations/reset { variables, unitIds?,
+- **Reset** (`POST /study/:studyId/annotations/reset { variables, unitIds?,
   coderIds? }`, a researcher action): retires live values instead of
   deleting them. The units are unfinished again; the old values stay for
   analysis. It bumps the deployment's `annotationEpoch`, so the runtime
@@ -485,9 +485,9 @@ How it works:
 Everything is a draft until deployed (`plans/design.md` §5), units and
 sets too:
 
-- **Values** (`unit_values`): every field value once per job, by content
+- **Values** (`unit_values`): every field value once per study, by content
   (sha256, as 32 bytes: md5 pairs can be made on purpose). Field names are
-  numbered per job (`unit_field_names`).
+  numbered per study (`unit_field_names`).
 - **The draft** (`unit_draft`): each unit's working copy, field -> value,
   overwritten freely; `units.in_draft` says whether a unit is in it.
   Uploads, deletes and set changes only change the draft; a preview runs it.
@@ -536,7 +536,7 @@ Other open points:
 | `contracts/src/sets.ts` | Set groups and sets, set columns, `splitIntoSets` |
 | `contracts/src/deployment.ts` | Deployment, reset, status and preview schemas (researcher API) |
 | `contracts/src/endpoints/` | The two API registries: researcher, coder ([docs/api](api/README.md)) |
-| `server/src/app.ts` | Hono app: everything API under `/api`: researcher API (`/api/job`, `/api/me`, `/api/auth`), admin API (`/api/admin`), coder API (`/api/d/<deploymentId>`), `/api/health`; and the built client (`ANNOTINDER_CLIENT_DIR`) |
+| `server/src/app.ts` | Hono app: everything API under `/api`: researcher API (`/api/study`, `/api/me`, `/api/auth`), admin API (`/api/admin`), coder API (`/api/d/<deploymentId>`), `/api/health`; and the built client (`ANNOTINDER_CLIENT_DIR`) |
 | `server/src/coder.ts` | The coder API routes: session cookie, coder resolution, units, answers, transfers |
 | `server/src/researcher/` | The researcher API, one file per path; `auth.ts` (sessions, API keys, dev headers), `login.ts` (`/auth/...`) |
 | `server/src/oidc.ts`, `shared/accounts.ts`, `shared/sessions.ts` | Researcher login with an OpenID Connect provider, users and API keys, sessions |
@@ -568,9 +568,9 @@ Roughly in order:
    Previews keep their coders and answers in one process's memory
    (`preview.ts`): with several processes a preview needs them in the
    database (marked as preview data, deleted when it expires), or its
-   requests routed to one process. A job's limit on answers is counted per
-   process between reads (once a minute), so a job can pass it by a little.
-   Rough load for a large crowd job (1000 coders at once, a unit every 20 s,
+   requests routed to one process. A study's limit on answers is counted per
+   process between reads (once a minute), so a study can pass it by a little.
+   Rough load for a large crowd study (1000 coders at once, a unit every 20 s,
    batches of 5): ~50 submits, ~10 locked picks and ~60 coder lookups per
    second, well within one modest Postgres; size the connection pools so
    all processes together stay under `max_connections`.
@@ -622,7 +622,7 @@ Roughly in order:
     UI (IndexedDB), compared by ids and hashes.
 
 13. **Planned, not built** (`plans/`): gold checks, question loops, example
-    jobs, passkeys as a second layer with a login shared with AmCAT, and
+    studies, passkeys as a second layer with a login shared with AmCAT, and
     (on hold) encrypting answers in the browser.
 
 Smaller things worth an issue: a swipe-card UI for the `annotinder` answer

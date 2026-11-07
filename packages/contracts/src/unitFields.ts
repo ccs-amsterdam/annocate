@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { UnitData, UnitDataValue } from "./common.js";
 
 /**
- * A job's unit fields (docs/client.md §7, "Units"): every unit has the
+ * A study's unit fields (docs/client.md §7, "Units"): every unit has the
  * same fields, each with a type. The server takes them from the first
  * upload (`fieldsOfUnits`) and checks later uploads against them
  * (`checkUnitData`); deleting all units resets them. Values are stored typed,
@@ -21,7 +21,7 @@ export const UnitFieldSchema = z.object({
 export type UnitField = z.infer<typeof UnitFieldSchema>;
 
 /**
- * The design's units (docs/plans/design.md §3): the job's unit fields and
+ * The design's units (docs/plans/design.md §3): the study's unit fields and
  * their types, the one specification of them. Uploads write it (new
  * columns are added); the codebook's `$unit` references must be declared.
  */
@@ -31,7 +31,7 @@ export type UnitsSpec = z.infer<typeof UnitsSpecSchema>;
 /**
  * What a new field may be called: letters, digits and underscores, not
  * starting with a digit, so design versions can refer to it as `$unit.<name>`.
- * (Fields of older jobs may have other names.)
+ * (Fields of older studies may have other names.)
  */
 export const UNIT_FIELD_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
@@ -116,7 +116,7 @@ export function addedFields(units: UnitData[], fields: UnitField[]): { fields: U
   return added;
 }
 
-/** Why a unit's data doesn't fit the job's fields, or null if it does: the same fields, with fitting values. */
+/** Why a unit's data doesn't fit the study's fields, or null if it does: the same fields, with fitting values. */
 export function checkUnitData(data: UnitData, fields: UnitField[]): string | null {
   const known = new Map(fields.map((f) => [f.name, f.type]));
   for (const [name, value] of Object.entries(data)) {

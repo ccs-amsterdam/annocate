@@ -6,9 +6,9 @@ import type { AnswerTiming, DesignVersion, DeletionRequest, SessionEnd, UnitData
 // part of any API: coders get what the coder API (contracts
 // `coderEndpoints`) returns.
 
-/** Everything the runtime needs to run a deployed job, minus unit content. */
+/** Everything the runtime needs to run a deployed study, minus unit content. */
 export interface DeploymentSpec {
-  jobId: number;
+  studyId: number;
   version: number;
   active: boolean;
   design: DesignVersion;
@@ -21,7 +21,7 @@ export interface DeploymentSpec {
    * researcher resets units), so it reloads what it derived from them.
    */
   annotationEpoch: number;
-  /** The job keeps finished sessions open (else they close: docs/coder-identity.md §9). */
+  /** The study keeps finished sessions open (else they close: docs/coder-identity.md §9). */
   keepSessionsOpen: boolean;
   /** Deployment settings: the URL per `redirectSetting` name of end items (docs/plans/design.md §4). */
   redirectUrls: Record<string, string>;
@@ -92,13 +92,13 @@ export interface ResolveCoderRequest {
    * Reads the verified email of the device's login, if any. Asked only when
    * it matters, so coding needs no login lookups: to link a session to its
    * email, once, where the link takes logins (`linkable`); and on a device
-   * without a session here, to find the email's session in this job
+   * without a session here, to find the email's session in this study
    * (docs/coder-identity.md §5).
    */
   login?: () => Promise<{ email: string } | null>;
   /** The link takes logins: a session without an email gets linked to the login. */
   linkable?: boolean;
-  /** The job is paused: sessions that exist go on, no new ones start (409 `job_paused`). */
+  /** The study is paused: sessions that exist go on, no new ones start (409 `study_paused`). */
   paused?: boolean;
 }
 

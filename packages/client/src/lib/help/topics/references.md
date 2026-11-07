@@ -48,7 +48,7 @@ end items inside the loop.
 
 Fields keep the type they were uploaded with: a number field is a number, so
 `{{ $unit.likes > 100 }}` compares numbers (see [Scripts](scripts.md)). A
-reference to a field that doesn't exist in the job's units gets a warning in
+reference to a field that doesn't exist in the study's units gets a warning in
 the editor (not an error, because you may upload the units later).
 
 ## Answers: $var

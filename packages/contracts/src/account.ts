@@ -3,15 +3,15 @@ import { IdSchema } from "./common.js";
 
 // Researchers and their API keys (researcher API, docs/api/researcher.md).
 // A researcher is a user, identified by their verified email; what they may
-// do in a job is their role there (job users, job.ts). The researcher UI
+// do in a study is their role there (study users, study.ts). The researcher UI
 // uses a session cookie from logging in (`/auth/login`, an OpenID Connect
 // provider); scripts (R, Python) and other systems use a personal API key:
 // `authorization: Bearer <key>`.
 
 /**
  * What a user may do on this server (docs/accounts.md), apart from their
- * roles in jobs: `user` codes and works on jobs they were given a role in;
- * `researcher` also creates jobs (within their limits); `admin` also manages
+ * roles in studies: `user` codes and works on studies they were given a role in;
+ * `researcher` also creates studies (within their limits); `admin` also manages
  * users, limits and registration. Each includes the ones before it.
  */
 export const AccountRoleSchema = z.enum(["user", "researcher", "admin"]);
@@ -26,21 +26,21 @@ export function accountRoleAtLeast(role: AccountRole, min: AccountRole): boolean
 const limit = z.number().int().nonnegative().nullable().optional();
 
 /**
- * Limits for a researcher: jobs they own, units per job and in all their
- * jobs, coders per job, answer rows per job. Missing or null: no limit.
+ * Limits for a researcher: studies they own, units per study and in all their
+ * studies, coders per study, answer rows per study. Missing or null: no limit.
  * They apply when something is created; nothing is deleted when they shrink.
  */
 export const LimitsSchema = z.object({
-  jobs: limit,
-  unitsPerJob: limit,
+  studies: limit,
+  unitsPerStudy: limit,
   units: limit,
-  codersPerJob: limit,
-  answersPerJob: limit,
+  codersPerStudy: limit,
+  answersPerStudy: limit,
 });
 export type Limits = z.infer<typeof LimitsSchema>;
 
-/** How much of their limits a researcher uses (jobs they own). */
-export const UsageSchema = z.object({ jobs: z.number().int(), units: z.number().int() });
+/** How much of their limits a researcher uses (studies they own). */
+export const UsageSchema = z.object({ studies: z.number().int(), units: z.number().int() });
 export type Usage = z.infer<typeof UsageSchema>;
 
 /** `GET /me`: who the request is authenticated as. */

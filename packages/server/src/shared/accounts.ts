@@ -129,7 +129,7 @@ export async function applyRegistration(sql: Sql, user: User, admins: readonly s
 
 // ---- limits ------------------------------------------------------------------
 
-const LIMIT_KEYS = ["jobs", "unitsPerJob", "units", "codersPerJob", "answersPerJob"] as const;
+const LIMIT_KEYS = ["studies", "unitsPerStudy", "units", "codersPerStudy", "answersPerStudy"] as const;
 
 /** The more generous of two limits (null: no limit). */
 const generous = (a: number | null, b: number | null) => (a === null || b === null ? null : Math.max(a, b));
@@ -165,12 +165,12 @@ export async function effectiveLimits(sql: Sql, userId: number): Promise<Limits>
   return limits;
 }
 
-/** What a user's owned jobs hold. */
-export async function usage(sql: Sql, userId: number): Promise<{ jobs: number; units: number }> {
-  const row = await one<{ jobs: number; units: number }>(
+/** What a user's owned studies hold. */
+export async function usage(sql: Sql, userId: number): Promise<{ studies: number; units: number }> {
+  const row = await one<{ studies: number; units: number }>(
     sql,
-    `SELECT (SELECT count(*)::int FROM jobs WHERE owner_id = $1) AS jobs,
-            (SELECT count(*)::int FROM units u JOIN jobs j ON j.id = u.job_id WHERE j.owner_id = $1 AND u.in_draft) AS units`,
+    `SELECT (SELECT count(*)::int FROM studies WHERE owner_id = $1) AS studies,
+            (SELECT count(*)::int FROM units u JOIN studies j ON j.id = u.study_id WHERE j.owner_id = $1 AND u.in_draft) AS units`,
     [userId],
   );
   return row!;

@@ -120,7 +120,7 @@ unit loops can be reset. To keep the reset answers in your download, tick
   instead.
 - **Adding a question costs your coders time**: all their finished units
   come back. If the new question only matters from now on, consider a new
-  loop or a new job instead.
+  loop or a new study instead.
 - **Write a version note** for every deploy that says what changed and
   why. Report the changes, and the moment they were made, in your methods
   section.

@@ -91,7 +91,7 @@ export function ItemForm({
   item: DesignItem;
   /** For "Generate sets…" in a loop's form. */
   client?: ResearcherApi;
-  /** The job's set groups (loops' sets, session parameters with a group's sets). */
+  /** The study's set groups (loops' sets, session parameters with a group's sets). */
   groups: SetGroupResponse[];
   /** The codebook's set-typed session parameters (name -> group). */
   setParams?: Map<string, string>;
@@ -102,7 +102,7 @@ export function ItemForm({
   availableQuestions?: { name: string; variable: AnyVariableType }[];
   /** The item is inside a unit loop (conditions may use `$unit`). */
   inLoop?: boolean;
-  /** The job's unit fields (completions in a loop's template). */
+  /** The study's unit fields (completions in a loop's template). */
   unitFields?: string[];
   /** For a question in a loop: the names its layout shows ("Show field"), and what span questions can select in. */
   loopNames?: { shown: string[]; selectable: string[] };
@@ -293,7 +293,7 @@ function EndItemFields({
           }}
         >
           <option value="">Nowhere: they stay on the end screen</option>
-          <option value="setting">A panel's return link (set per run, in the job's Settings)</option>
+          <option value="setting">A panel's return link (set per run, in the study's Settings)</option>
           <option value="url">This URL</option>
         </select>
         {item.redirectSetting !== undefined && (
@@ -306,7 +306,7 @@ function EndItemFields({
               className="w-60 font-mono text-xs"
             />
             <span className="text-[11px] text-muted-foreground">
-              The URL itself goes in the job&apos;s Settings, under this name: a panel gives each run its own links.
+              The URL itself goes in the study&apos;s Settings, under this name: a panel gives each run its own links.
             </span>
           </>
         )}

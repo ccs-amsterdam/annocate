@@ -95,7 +95,7 @@ export const PostUnitVariablesSchema = z.object({
 });
 
 /**
- * Body for `POST /variables/coder`: the coder's job-level (non-unit)
+ * Body for `POST /variables/coder`: the coder's study-level (non-unit)
  * answers as the client has them; the server writes those that changed.
  */
 export const PostCoderVariablesSchema = z.object({

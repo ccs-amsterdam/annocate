@@ -1,5 +1,5 @@
 import { listSetGroups } from "./sets.js";
-import type { CoderProgress, DeletionRequest, JobOverview, SessionEnd } from "@annotinder/contracts";
+import type { CoderProgress, DeletionRequest, StudyOverview, SessionEnd } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { getDeployment, loopVariables } from "./deployments.js";
 import { coderValues } from "./coders.js";
@@ -11,28 +11,28 @@ const ACTIVITY_DAYS = 30;
  * Coder id -> units finished, per loop of the live codebook: every question
  * of the loop has a live answer (the rule of `listFinished`).
  */
-export async function finishedPerLoop(sql: Sql, jobId: number): Promise<Map<string, Map<number, number>>> {
+export async function finishedPerLoop(sql: Sql, studyId: number): Promise<Map<string, Map<number, number>>> {
   const result = new Map<string, Map<number, number>>();
-  const deployment = await getDeployment(sql, jobId);
+  const deployment = await getDeployment(sql, studyId);
   if (!deployment) return result;
-  for (const [loop, questions] of await loopVariables(sql, jobId, deployment.designVersionId)) {
+  for (const [loop, questions] of await loopVariables(sql, studyId, deployment.designVersionId)) {
     const variables = [...new Set(questions)];
     if (variables.length === 0) continue;
     const rows = await sql.query<{ coderId: number; n: number }>(
       `SELECT coder_id AS "coderId", COUNT(*)::int AS n FROM (
          SELECT unit_id, coder_id FROM annotation_values
-         WHERE job_id = $1 AND unit_id IS NOT NULL AND retired_at IS NULL AND variable = ANY($2)
+         WHERE study_id = $1 AND unit_id IS NOT NULL AND retired_at IS NULL AND variable = ANY($2)
          GROUP BY unit_id, coder_id HAVING COUNT(DISTINCT variable) = $3
        ) finished GROUP BY coder_id`,
-      [jobId, variables, variables.length],
+      [studyId, variables, variables.length],
     );
     result.set(loop, new Map(rows.map((r) => [r.coderId, r.n])));
   }
   return result;
 }
 
-/** `GET /coders`: every coder of the job with their link, activity and finished units. */
-export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderProgress[]> {
+/** `GET /coders`: every coder of the study with their link, activity and finished units. */
+export async function listCoderProgress(sql: Sql, studyId: number): Promise<CoderProgress[]> {
   const coders = await sql.query<{
     id: number;
     email: string | null;
@@ -48,34 +48,34 @@ export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderP
     `SELECT c.id, c.email, c.participant_id AS "participantId", c.link_id AS "linkId", c.created, i.label AS "linkLabel",
        c.ended, c.deletion_request AS "deletionRequest", c.session, c.assignments
      FROM coders c LEFT JOIN links i ON i.id = c.link_id
-     WHERE c.job_id = $1 ORDER BY c.id`,
-    [jobId],
+     WHERE c.study_id = $1 ORDER BY c.id`,
+    [studyId],
   );
   const activity = new Map(
     (
       await sql.query<{ coderId: number; answers: number; lastActive: Date }>(
         `SELECT coder_id AS "coderId", COUNT(*)::int AS answers, MAX(updated) AS "lastActive" FROM annotation_values
-         WHERE job_id = $1 AND retired_at IS NULL AND NOT assigned GROUP BY coder_id`,
-        [jobId],
+         WHERE study_id = $1 AND retired_at IS NULL AND NOT assigned GROUP BY coder_id`,
+        [studyId],
       )
     ).map((r) => [r.coderId, r]),
   );
-  const finished = await finishedPerLoop(sql, jobId);
-  const values = await coderValues(sql, jobId);
+  const finished = await finishedPerLoop(sql, studyId);
+  const values = await coderValues(sql, studyId);
   // Special sets as deployed, per group: their size, and per coder the units of them finished. A coder
   // counts the special sets of the groups they were routed to (their assignments are `group/set`).
   const kinds = { _overlap: "overlap", _gold: "gold", _practice: "practice" } as const;
   type Kind = keyof typeof kinds;
   const sizes = await sql.query<{ grp: string; name: Kind; total: number }>(
     `SELECT s.grp, s.name, COUNT(m.unit_id)::int AS total FROM unit_sets s LEFT JOIN unit_set_members m ON m.set_id = s.id
-     WHERE s.job_id = $1 AND s.live AND s.name IN ('_overlap', '_gold', '_practice') GROUP BY s.grp, s.name`,
-    [jobId],
+     WHERE s.study_id = $1 AND s.live AND s.name IN ('_overlap', '_gold', '_practice') GROUP BY s.grp, s.name`,
+    [studyId],
   );
   const doneRows = await sql.query<{ coderId: number; grp: string; name: Kind; done: number }>(
     `SELECT c.coder_id AS "coderId", s.grp, s.name, COUNT(DISTINCT c.unit_id)::int AS done FROM unit_codings c
        JOIN unit_set_members m ON m.unit_id = c.unit_id JOIN unit_sets s ON s.id = m.set_id
-     WHERE c.job_id = $1 AND s.live AND s.name IN ('_overlap', '_gold', '_practice') GROUP BY c.coder_id, s.grp, s.name`,
-    [jobId],
+     WHERE c.study_id = $1 AND s.live AND s.name IN ('_overlap', '_gold', '_practice') GROUP BY c.coder_id, s.grp, s.name`,
+    [studyId],
   );
   const special = (coderId: number, assignments: Record<string, { set?: string }>) => {
     const groups = new Set(
@@ -114,44 +114,44 @@ export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderP
 }
 
 /** `GET /overview`: counts and the last 30 days of activity. */
-export async function jobOverview(sql: Sql, jobId: number, now = new Date()): Promise<JobOverview> {
-  const count = async (text: string, ...args: unknown[]) => (await one<{ n: number }>(sql, text, [jobId, ...args]))!.n;
+export async function studyOverview(sql: Sql, studyId: number, now = new Date()): Promise<StudyOverview> {
+  const count = async (text: string, ...args: unknown[]) => (await one<{ n: number }>(sql, text, [studyId, ...args]))!.n;
   const dayAgo = new Date(now.getTime() - DAY_MS);
 
-  const groups = (await listSetGroups(sql, jobId)).map((g) => ({ name: g.name, sets: g.sets.map((s) => ({ name: s.name, units: s.unitIds.length })) }));
+  const groups = (await listSetGroups(sql, studyId)).map((g) => ({ name: g.name, sets: g.sets.map((s) => ({ name: s.name, units: s.unitIds.length })) }));
   const lastActivity = (
-    await one<{ last: Date | null }>(sql, "SELECT MAX(updated) AS last FROM annotation_values WHERE job_id = $1 AND retired_at IS NULL AND NOT assigned", [jobId])
+    await one<{ last: Date | null }>(sql, "SELECT MAX(updated) AS last FROM annotation_values WHERE study_id = $1 AND retired_at IS NULL AND NOT assigned", [studyId])
   )!.last;
 
   let codings = 0;
-  for (const perCoder of (await finishedPerLoop(sql, jobId)).values()) for (const n of perCoder.values()) codings += n;
+  for (const perCoder of (await finishedPerLoop(sql, studyId)).values()) for (const n of perCoder.values()) codings += n;
 
   return {
-    units: await count("SELECT COUNT(*)::int AS n FROM units WHERE job_id = $1 AND in_draft"),
+    units: await count("SELECT COUNT(*)::int AS n FROM units WHERE study_id = $1 AND in_draft"),
     groups,
     coders: {
-      total: await count("SELECT COUNT(*)::int AS n FROM coders WHERE job_id = $1"),
-      started: await count("SELECT COUNT(DISTINCT coder_id)::int AS n FROM annotation_values WHERE job_id = $1 AND retired_at IS NULL AND NOT assigned"),
+      total: await count("SELECT COUNT(*)::int AS n FROM coders WHERE study_id = $1"),
+      started: await count("SELECT COUNT(DISTINCT coder_id)::int AS n FROM annotation_values WHERE study_id = $1 AND retired_at IS NULL AND NOT assigned"),
       activeLastDay: await count(
-        "SELECT COUNT(DISTINCT coder_id)::int AS n FROM annotation_values WHERE job_id = $1 AND retired_at IS NULL AND NOT assigned AND updated >= $2",
+        "SELECT COUNT(DISTINCT coder_id)::int AS n FROM annotation_values WHERE study_id = $1 AND retired_at IS NULL AND NOT assigned AND updated >= $2",
         dayAgo,
       ),
     },
-    answers: await count("SELECT COUNT(*)::int AS n FROM annotation_values WHERE job_id = $1 AND retired_at IS NULL AND NOT assigned"),
+    answers: await count("SELECT COUNT(*)::int AS n FROM annotation_values WHERE study_id = $1 AND retired_at IS NULL AND NOT assigned"),
     codings,
     lastActivity,
-    activity: await activityPerDay(sql, jobId, now),
+    activity: await activityPerDay(sql, studyId, now),
   };
 }
 
 /** Answers given per day (UTC; by creation, including ones retired later), with empty days filled in. */
-async function activityPerDay(sql: Sql, jobId: number, now: Date): Promise<JobOverview["activity"]> {
+async function activityPerDay(sql: Sql, studyId: number, now: Date): Promise<StudyOverview["activity"]> {
   const days: string[] = [];
   for (let i = ACTIVITY_DAYS - 1; i >= 0; i--) days.push(new Date(now.getTime() - i * DAY_MS).toISOString().slice(0, 10));
   const rows = await sql.query<{ day: string; answers: number; coders: number }>(
     `SELECT to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day, COUNT(*)::int AS answers, COUNT(DISTINCT coder_id)::int AS coders
-     FROM annotation_values WHERE job_id = $1 AND NOT assigned AND created >= $2 GROUP BY day`,
-    [jobId, new Date(`${days[0]}T00:00:00Z`)],
+     FROM annotation_values WHERE study_id = $1 AND NOT assigned AND created >= $2 GROUP BY day`,
+    [studyId, new Date(`${days[0]}T00:00:00Z`)],
   );
   const byDay = new Map(rows.map((r) => [r.day, r]));
   return days.map((day) => ({ day, answers: byDay.get(day)?.answers ?? 0, coders: byDay.get(day)?.coders ?? 0 }));

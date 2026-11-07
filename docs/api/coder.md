@@ -1,7 +1,7 @@
 # Coder API
 
-Served by the **server** under `/api/d/<deploymentId>` (the paths below are relative to it), called by the client's **annotator**
-(`HttpCoderApi`, driven by `JobManager`).
+Served by the **server** under `/api/d/<deploymentId>` (the paths below are relative to it), called by the client's **coding screen**
+(`HttpCoderApi`, driven by `StudyManager`).
 
 - Contracts: `coderEndpoints` in
   [`contracts/src/endpoints/coder.ts`](../../packages/contracts/src/endpoints/coder.ts);
@@ -30,7 +30,7 @@ All paths are under `/d/<deploymentId>`, e.g. `/d/42/session`
 ## Sessions and headers
 
 The session comes from an httpOnly device cookie set by the server
-(`annotinder_device`, one for all jobs; the session in a job is derived from
+(`annotinder_device`, one for all studies; the session in a study is derived from
 it, `coder-identity.md` §4), so the client must be served from the server's
 origin (in development, Vite proxies to the server). The
 server sends no CORS headers for these paths.
@@ -90,9 +90,9 @@ Assigns the coder's `auto` variables they don't have yet (`random` or
 ### getSummary
 
 `GET /summary` → `CoderStudySchema`: this device's session in the
-deployment, for the annotator's home (`/code`): the study's public title
+deployment, for the coder home (`/code`): the study's public title
 (`title`: the deployed design's `public.title`, null without one;
-never the job's name, which is private), when it
+never the study's name, which is private), when it
 started and was last active, how it ended (`ended`: `complete`,
 `screenout`, `quit`; null while it goes on) and the units answered. 404
 without a session; never starts one. The device's key includes the
@@ -123,7 +123,7 @@ shared queue with leases) and the overlap, in order. The ones they haven't
 finished come first, so asking again returns the same ones until they are
 answered: the client asks for a batch and again before it runs out. In a
 shared queue each is leased to the coder (a lease they hold is renewed).
-Empty: the coder is done with the loop. 409 while the job is paused
+Empty: the coder is done with the loop. 409 while the study is paused
 (`active: false`).
 
 A branch can add the group's **practice** and **gold** units
@@ -198,13 +198,13 @@ questions (as saved: the client saves its answers first) and the same
 
 `POST /end` (`EndSessionSchema`: `{ item?, unit? }`) → `EndSessionResponseSchema` (`{ reopen }`)
 
-The coder reached this `end` item, or (without `item`) finished the job:
+The coder reached this `end` item, or (without `item`) finished the study:
 the session is over. The server stores the item and its outcome from the
 codebook (`screenout` or `complete`; without an item `complete`; 400 if the
 codebook has no such end item). An end inside a unit loop names the unit it
 was reached on, `unit: { loop, id }` (400 unless the coder answered it; the
 client saves the unit first). Afterwards units and answers are refused with
-409 `session_ended`, and the session is closed unless the job keeps
+409 `session_ended`, and the session is closed unless the study keeps
 sessions open (`coder-identity.md` §9): `GET /session` returns `ended` and
 only `endValues` (what the end screen shows), and `getLoopUnit` answers 409
 `session_closed`. `reopen`: whether, and until when, the coder can go back

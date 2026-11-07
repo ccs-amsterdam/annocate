@@ -6,7 +6,7 @@ summary: End items end a coder's session early or on purpose - screened out or c
 ---
 
 Normally a session ends when the coder has gone through the whole codebook:
-they see *"Job Complete!"* and that's it. An **end item** ends the session
+they see *"Study Complete!"* and that's it. An **end item** ends the session
 at a point you choose, says how it ended, and can send the coder on to
 another website. You need one when:
 
@@ -55,7 +55,7 @@ completed, and both from those who simply stopped.
 | Outcome | Use for | Heading the coder sees |
 | --- | --- | --- |
 | **Screened out (not eligible)** | No consent, not in the target group, failed attention check | *Thank you* |
-| **Complete** | The coder did what was asked | *Job Complete!* |
+| **Complete** | The coder did what was asked | *Study Complete!* |
 
 Sessions that end without an end item (the coder reached the end of the
 codebook) have an empty `ended` column. If you need to know who completed,
@@ -65,7 +65,7 @@ the end of the codebook.
 ## What the coder sees
 
 The last screen shows the heading, then your message, or if there is none,
-a standard sentence (*"This is the end of the job for you."* for a
+a standard sentence (*"This is the end of the study for you."* for a
 screenout). With a redirect link there is a **Continue** button, and the
 coder is sent on automatically after three seconds.
 

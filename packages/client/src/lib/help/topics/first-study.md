@@ -1,11 +1,11 @@
 ---
-title: Your first job
+title: Your first study
 section: Getting started
 order: 2
-summary: Step by step from an empty job to coders at work - units, a small codebook, a layout, preview, deploy, links, results.
+summary: Step by step from an empty study to coders at work - units, a small codebook, a layout, preview, deploy, links, results.
 ---
 
-This page walks you through a complete, small job: coders read news
+This page walks you through a complete, small study: coders read news
 articles and say what each one is about and how negative or positive it is.
 It takes about fifteen minutes. Every step links to a page with more detail,
 but you don't need those to get through it.
@@ -20,29 +20,29 @@ a002,Minister resigns,"The minister of finance stepped down after weeks of criti
 a003,Local team wins cup,"Thousands celebrated in the city centre after the final."
 ```
 
-## 1. Create a job
+## 1. Create a study
 
-> To look around first, choose **Create new job** → **From an example** on
-> the **Jobs** page: it makes a ready job (units, a deployed design, a
+> To look around first, choose **Create new study** → **From an example** on
+> the **Studies** page: it makes a ready study (units, a deployed design, a
 > link, and often example answers) to try and change. Its overview
 > says what to try.
 >
-> **Create new job** → **Guided setup** does steps 1 to 3 below in one go: say
+> **Create new study** → **Guided setup** does steps 1 to 3 below in one go: say
 > whether you annotate units, ask questions or run an experiment, upload
-> the units, choose who codes what, and name your questions. The job then
+> the units, choose who codes what, and name your questions. The study then
 > opens in the codebook editor, with each question marked *to specify*:
 > choose its answer type there (step 3), then continue with step 4. See
 > [Guided setup](setup-wizard.md) for what it does and what only the editor
 > does.
 
-1. On the **Jobs** page, click **Create new job**, then **Empty job**.
-2. Give it a name under **Job Name**, for example *News pilot*, and click
-   **Create Job**.
+1. On the **Studies** page, click **Create new study**, then **Empty study**.
+2. Give it a name under **Study Name**, for example *News pilot*, and click
+   **Create Study**.
 
-The job opens on its **Overview** tab. The tabs along the top group the
+The study opens on its **Overview** tab. The tabs along the top group the
 steps below: **Design** (the **Codebook** and **Units**), **Deploy**
-(**Links** and **Coders**), **Results**, and the job's **Settings**.
-**Preview Job** at the top right tries the job as a coder.
+(**Links** and **Coders**), **Results**, and the study's **Settings**.
+**Preview Study** at the top right tries the study as a coder.
 
 ## 2. Upload the units
 
@@ -142,8 +142,8 @@ Click **Save** above the tree. Your design is now saved as a **draft**
 toolbar shows a red count of issues, click it to see what to fix; you can
 save with issues, but not preview or deploy.
 
-Click **Preview Job** at the top right. You
-now code the job as a coder would, with your real units, on a phone-sized
+Click **Preview Study** at the top right. You
+now code the study as a coder would, with your real units, on a phone-sized
 screen (switch to **Desktop** for a larger one). Nothing you answer in a
 preview is stored. Check that the questions read well and the units look
 right; go back to the **Editor** tab to change things, save, and preview
@@ -159,7 +159,7 @@ the sets are drafts until you deploy them again. See
 
 ## 7. Send coders a link
 
-Deploying made a link for the job: you don't create links by hand.
+Deploying made a link for the study: you don't create links by hand.
 
 1. Open the **Links** tab.
 2. Optionally, click the pencil icon to give the link a label (e.g. *Pilot
@@ -170,8 +170,8 @@ Anyone who opens the link starts their own session. See
 [Links](links.md) for who may use a link, limits and participant
 ids, and [What coders see](coder-experience.md) for the coder's side.
 
-> Test the job with **Preview**, not with the link. Opening the
-> link yourself makes you a coder of the job, and your answers end up in
+> Test the study with **Preview**, not with the link. Opening the
+> link yourself makes you a coder of the study, and your answers end up in
 > the results.
 
 ## 8. Follow progress and download results

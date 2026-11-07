@@ -19,13 +19,13 @@ design shareable and easy to report.
 
 | Mode | Who gets what | Typical use |
 | --- | --- | --- |
-| **Everyone codes everything** | Every coder codes every unit (of the job, or of one set) | Small samples, reliability tests, survey experiments |
+| **Everyone codes everything** | Every coder codes every unit (of the study, or of one set) | Small samples, reliability tests, survey experiments |
 | **Crowd coding** | One queue for all coders: each unit until enough coders coded it | Large samples, crowd coding |
 | **Assign sets** | Each coder gets one set of a group | Dividing a sample into fixed parts, a part per named coder |
 
 ### Everyone codes everything
 
-Every coder codes every unit under **Units**: **All units** of the job, or
+Every coder codes every unit under **Units**: **All units** of the study, or
 one set of a group.
 
 Use it when every unit should be coded by every coder: a reliability test

@@ -89,7 +89,7 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
         </Button>
       </header>
 
-      {panel === "upload" && <UploadUnits client={client} jobFields={fields} onDone={() => setPanel(null)} />}
+      {panel === "upload" && <UploadUnits client={client} studyFields={fields} onDone={() => setPanel(null)} />}
 
       <SetsBar
         client={client}

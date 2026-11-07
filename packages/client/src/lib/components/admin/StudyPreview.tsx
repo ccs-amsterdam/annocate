@@ -3,11 +3,11 @@ import type { PreviewSession } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useDesignVersionsQuery, useDeploymentQuery, useUnitsQuery } from "../../admin/queries";
 import { describeVersions } from "../../design/versions";
-import { JobRunner } from "../JobRunner";
+import { StudyRunner } from "../StudyRunner";
 import { Button } from "@/components/ui/button";
 import { Smartphone, Monitor, RotateCcw, AlertCircle, Maximize2 } from "lucide-react";
 
-interface JobPreviewProps {
+interface StudyPreviewProps {
   client: ResearcherApi;
   /** Where coder sessions run (`<url>/d/...`); normally the client's own origin (""): session cookies are same-origin. */
   coderApiUrl?: string;
@@ -33,12 +33,12 @@ const DESKTOP_PRESETS: DimensionPreset[] = [
 ];
 
 /**
- * Runs the job's latest codebook (the draft, else the live version) in a device frame. The
+ * Runs the study's latest codebook (the draft, else the live version) in a device frame. The
  * server runs it as a preview deployment: coders and answers stay in its
  * memory, nothing is stored. Each preview session gets a
  * fresh token, and with it a fresh coder.
  */
-export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
+export function StudyPreview({ client, coderApiUrl = "" }: StudyPreviewProps) {
   const designVersionsQuery = useDesignVersionsQuery(client);
   const deploymentQuery = useDeploymentQuery(client);
   const unitsQuery = useUnitsQuery(client);
@@ -50,7 +50,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
   const [desktopHeight, setDesktopHeight] = useState<number>(768);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
 
-  const [previewKey, setPreviewKey] = useState(() => `preview-${client.jobId}-${Date.now()}`);
+  const [previewKey, setPreviewKey] = useState(() => `preview-${client.studyId}-${Date.now()}`);
   const [preview, setPreview] = useState<PreviewSession | null>(null);
   const [creatingLink, setCreatingLink] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +86,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
   const [wasReset, setWasReset] = useState(false);
   const handleReset = () => {
     setWasReset(true);
-    setPreviewKey(`preview-${client.jobId}-${Date.now()}`);
+    setPreviewKey(`preview-${client.studyId}-${Date.now()}`);
   };
 
   const designVersions = designVersionsQuery.data ?? [];
@@ -100,7 +100,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
   if (designVersionsQuery.isLoading || unitsQuery.isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <p className="text-sm text-muted-foreground animate-pulse">Loading job preview...</p>
+        <p className="text-sm text-muted-foreground animate-pulse">Loading study preview...</p>
       </div>
     );
   }
@@ -111,9 +111,9 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-600">
           <AlertCircle className="h-6 w-6" />
         </div>
-        <h3 className="mt-4 text-base font-semibold text-foreground">Job Not Ready For Preview</h3>
+        <h3 className="mt-4 text-base font-semibold text-foreground">Study Not Ready For Preview</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          To preview how this job looks and works for annotators, you need:
+          To preview how this study looks and works for coders, you need:
         </p>
         <ul className="mt-3 text-left text-sm space-y-2 bg-muted/50 p-4 rounded-lg">
           <li className="flex items-center gap-2">
@@ -296,7 +296,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
           isFullScreen ? (
             /* Responsive Full Width */
             <div className="h-full w-full overflow-hidden rounded-xl border border-border bg-background shadow-lg">
-              <JobRunner
+              <StudyRunner
                 key={previewKey}
                 baseUrl={`${coderApiUrl}/d/${preview.deploymentId}`}
                 linkSecret={preview.token}
@@ -315,7 +315,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
                 <div className="h-3.5 w-24 rounded-full bg-slate-950" />
               </div>
               <div className="flex-1 overflow-auto">
-                <JobRunner
+                <StudyRunner
                   key={previewKey}
                   baseUrl={`${coderApiUrl}/d/${preview.deploymentId}`}
                   linkSecret={preview.token}
@@ -344,7 +344,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
                 </span>
               </div>
               <div className="flex-1 overflow-auto">
-                <JobRunner
+                <StudyRunner
                   key={previewKey}
                   baseUrl={`${coderApiUrl}/d/${preview.deploymentId}`}
                   linkSecret={preview.token}

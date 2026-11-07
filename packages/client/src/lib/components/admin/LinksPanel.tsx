@@ -37,7 +37,7 @@ interface LinksPanelProps {
 }
 
 /**
- * The job's links (docs/plans/sets-and-session-parameters.md §4): made from
+ * The study's links (docs/plans/sets-and-session-parameters.md §4): made from
  * the deployed design, one per combination of its link parameters'
  * values. Here their access settings (label, login, emails, max uses), and
  * revoking or renewing a link. Links the codebook no longer makes are
@@ -60,7 +60,7 @@ export function LinksPanel({ client }: LinksPanelProps) {
     ...(session?.params ?? []).filter((p) => p.kind === "url" && p.default === undefined).map((p) => `${sessionParamKey(p)}=<${p.name}>`),
   ];
   const linkOf = (invite: LinkResponse) => {
-    const url = codeLinkUrl(invite.jobId, invite.secret);
+    const url = codeLinkUrl(invite.studyId, invite.secret);
     return urlParams.length ? `${url}${url.includes("?") ? "&" : "?"}${urlParams.join("&")}` : url;
   };
   // Loops whose sets are assigned by the login's email: only those emails may code.

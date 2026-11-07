@@ -16,7 +16,7 @@ how you give different coders different units: a part per coder, a set per
 experimental condition, a set per named coder.
 
 You don't need sets for a simple study: a loop can use **all units** of the
-job. You manage sets on the **Units** tab.
+study. You manage sets on the **Units** tab.
 
 ## Seeing sets
 
@@ -65,7 +65,7 @@ units each. Then, in a unit loop, choose **Assign sets** with this group
 
 You can also do this from the codebook editor: a unit loop's **Units** tab has
 **Generate sets…** next to the group or set to choose, which splits the
-job's units into a new group and selects it.
+study's units into a new group and selects it.
 
 The shuffle uses a random seed, so splitting twice gives different sets.
 That is fine: the sets are stored, and the split is not made again.
@@ -123,5 +123,5 @@ also while coding runs.
 
 ## Deleting a group
 
-Click the bin icon next to the group. Its units stay in the job. A group
+Click the bin icon next to the group. Its units stay in the study. A group
 can't be deleted while the deployed or latest design version uses it.

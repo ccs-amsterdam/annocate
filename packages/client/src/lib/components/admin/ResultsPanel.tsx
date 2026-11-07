@@ -4,7 +4,7 @@ import { designFile, type AnnotationRow, type TopLevelItem, type UnitVersion } f
 import { describeVersions } from "../../design/versions";
 import { Download, FileArchive } from "lucide-react";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useCodersQuery, useDeploymentQuery, useJobQuery } from "../../admin/queries";
+import { useCodersQuery, useDeploymentQuery, useStudyQuery } from "../../admin/queries";
 import {
   Labels,
   annotationsTable,
@@ -49,14 +49,14 @@ function save(bytes: Uint8Array, filename: string, type: string) {
 }
 
 /**
- * Downloading the job's data (docs/client.md §7, "Results"): one zip with
+ * Downloading the study's data (docs/client.md §7, "Results"): one zip with
  * the annotations, coders, the unit versions coded and the codebook's
  * variables as CSV files, and a README, built in the browser from the
  * researcher API.
  */
 export function ResultsPanel({ client }: { client: ResearcherApi }) {
   const coders = useCodersQuery(client);
-  const job = useJobQuery(client).data;
+  const study = useStudyQuery(client).data;
   const deployment = useDeploymentQuery(client).data;
   const [withLabels, setWithLabels] = useState(true);
   const [withReset, setWithReset] = useState(false);
@@ -65,7 +65,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
   const [error, setError] = useState<string | null>(null);
 
   const finished = (coders.data ?? []).reduce((n, c) => n + Object.values(c.finished).reduce((a, b) => a + b, 0), 0);
-  const name = job?.name ?? `job ${client.jobId}`;
+  const name = study?.name ?? `study ${client.studyId}`;
 
   async function download() {
     setError(null);

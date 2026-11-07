@@ -30,11 +30,11 @@ export type CsvUpload = CsvUnits & { setGroups: CsvSetGroup[] };
 /**
  * Uploading units from a CSV (docs/client.md §7, "Units"): choose a file,
  * then per column whether and as which field it is uploaded, and its type.
- * Columns named like a field of the job are linked to it (and keep its
+ * Columns named like a field of the study are linked to it (and keep its
  * type); "Use column names" gives every other column its own (valid) name.
  * Values are checked against the types before anything is uploaded.
  */
-export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherApi; jobFields: UnitField[]; onDone: () => void }) {
+export function UploadUnits({ client, studyFields, onDone }: { client: ResearcherApi; studyFields: UnitField[]; onDone: () => void }) {
   const createUnits = useCreateUnitsMutation(client);
   const putGroup = usePutSetGroupMutation(client);
   const existingUnits = useUnitsQuery(client).data ?? [];
@@ -83,7 +83,7 @@ export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherA
 
   return (
     <Section onCancel={onDone}>
-      <CsvUnitsForm jobFields={jobFields} allowSets onResult={setResult} />
+      <CsvUnitsForm studyFields={studyFields} allowSets onResult={setResult} />
       {result && replaced.length > 0 && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} />
@@ -167,11 +167,11 @@ export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherA
  * or null without a file. Also the setup wizard's units step.
  */
 export function CsvUnitsForm({
-  jobFields,
+  studyFields,
   allowSets = false,
   onResult,
 }: {
-  jobFields: UnitField[];
+  studyFields: UnitField[];
   /** Offer the "sets" column type (a set group per column). */
   allowSets?: boolean;
   onResult: (result: CsvUpload | null) => void;
@@ -186,7 +186,7 @@ export function CsvUnitsForm({
     if (!csv) return null;
     // One column is the units' ids (its type in the table)
     if (idColumn < 0) return { fields: [], units: [], errors: ["Choose the column with each unit's id: set its type to Unit id"], setGroups: [] };
-    const units = csvToUnits(csv.headers, csv.rows, idColumn, mapping, jobFields);
+    const units = csvToUnits(csv.headers, csv.rows, idColumn, mapping, studyFields);
     const errors = [...units.errors];
     const setGroups = Object.entries(setColumns).map(([column, group]) => {
       if (!SetGroupNameSchema.safeParse(group).success) errors.push(`Group name "${group}": letters, digits and _, starting with a letter`);
@@ -199,7 +199,7 @@ export function CsvUnitsForm({
     const twice = groups.find((g, i) => groups.indexOf(g) !== i);
     if (twice) errors.push(`Two sets columns make group ${twice}`);
     return { ...units, errors, setGroups };
-  }, [csv, idColumn, mapping, jobFields, setColumns]);
+  }, [csv, idColumn, mapping, studyFields, setColumns]);
   useEffect(() => onResult(result), [result, onResult]);
 
   async function handleFile(file: File) {
@@ -214,7 +214,7 @@ export function CsvUnitsForm({
     const id = parsed.headers.findIndex((h) => /^(id|externalid|external_id)$/i.test(h.trim()));
     const idAt = Math.max(0, id);
     setIdColumn(idAt);
-    setMapping(initialMapping(parsed.headers, parsed.rows, jobFields).map((m) => (m.column === idAt ? { ...m, field: "" } : m)));
+    setMapping(initialMapping(parsed.headers, parsed.rows, studyFields).map((m) => (m.column === idAt ? { ...m, field: "" } : m)));
   }
 
   if (!csv || !result) {
@@ -230,9 +230,9 @@ export function CsvUnitsForm({
     );
   }
 
-  const problems = mappingProblems(csv.rows, mapping, jobFields);
+  const problems = mappingProblems(csv.rows, mapping, studyFields);
   const mapped = new Set(mapping.map((m) => m.field).filter(Boolean));
-  const unmappedFields = jobFields.filter((f) => !mapped.has(f.name));
+  const unmappedFields = studyFields.filter((f) => !mapped.has(f.name));
   const setColumn = (i: number, next: Partial<ColumnMapping>) => setMapping(mapping.map((m, j) => (j === i ? { ...m, ...next } : m)));
 
   return (
@@ -252,7 +252,7 @@ export function CsvUnitsForm({
         <div className="flex items-center justify-between gap-2">
           <h4 className="text-sm font-medium">Columns to upload</h4>
           <div className="flex gap-1">
-            <Button size="sm" variant="outline" onClick={() => setMapping(assignAllColumns(csv.headers, csv.rows, mapping, jobFields, idColumn))}>
+            <Button size="sm" variant="outline" onClick={() => setMapping(assignAllColumns(csv.headers, csv.rows, mapping, studyFields, idColumn))}>
               <Wand2 className="mr-1 h-3.5 w-3.5" /> Use column names
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setMapping(mapping.map((m) => ({ ...m, field: "" })))}>
@@ -261,7 +261,7 @@ export function CsvUnitsForm({
           </div>
         </div>
         <datalist id="unit-field-names">
-          {jobFields.map((f) => (
+          {studyFields.map((f) => (
             <option key={f.name} value={f.name} />
           ))}
         </datalist>
@@ -283,7 +283,7 @@ export function CsvUnitsForm({
                   header={csv.headers[m.column]}
                   samples={csv.rows.slice(0, 3).map((r) => r[m.column] ?? "")}
                   mapping={m}
-                  existing={jobFields.find((f) => f.name === m.field)}
+                  existing={studyFields.find((f) => f.name === m.field)}
                   isId={m.column === idColumn}
                   group={allowSets ? setColumns[m.column] : undefined}
                   allowSets={allowSets}
@@ -318,7 +318,7 @@ export function CsvUnitsForm({
         )}
         <p className="text-[11px] text-muted-foreground">
           Field names: letters, digits and _, so a codebook can show them as <code>$unit.name</code>. A column named like a
-          field of this job is uploaded as that field, with its type.
+          field of this study is uploaded as that field, with its type.
           {allowSets && (
             <>
               {" "}
@@ -428,7 +428,7 @@ function ColumnRow({
   header: string;
   samples: string[];
   mapping: ColumnMapping;
-  /** The job's field this column is uploaded as, if it exists. */
+  /** The study's field this column is uploaded as, if it exists. */
   existing: UnitField | undefined;
   isId: boolean;
   /** For a sets column: the group it makes. */
@@ -471,7 +471,7 @@ function ColumnRow({
       </td>
       <td className="p-1.5">
         {existing && !isId && !isSets ? (
-          <span className="inline-flex h-8 items-center gap-1 text-muted-foreground" title="A field of this job keeps its type">
+          <span className="inline-flex h-8 items-center gap-1 text-muted-foreground" title="A field of this study keeps its type">
             {existing.type} <span className="text-[10px]">(existing field)</span>
           </span>
         ) : (

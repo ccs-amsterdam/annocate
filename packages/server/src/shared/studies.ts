@@ -1,6 +1,6 @@
-import type { JobResponse } from "@annotinder/contracts";
+import type { StudyResponse } from "@annotinder/contracts";
 
-export interface JobRow {
+export interface StudyRow {
   id: number;
   name: string;
   archived: boolean;
@@ -12,7 +12,7 @@ export interface JobRow {
   redirect_urls: Record<string, string>;
 }
 
-export function toJobResponse(row: JobRow): JobResponse {
+export function toStudyResponse(row: StudyRow): StudyResponse {
   return {
     id: row.id,
     name: row.name,

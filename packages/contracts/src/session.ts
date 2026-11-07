@@ -5,7 +5,7 @@ import { VariableValueSchema } from "./variableValue.js";
 
 /**
  * Per-unit_loop progress: the unit ids this coder has finished in that loop,
- * in the order they were coded. Which unit comes next is decided by the job
+ * in the order they were coded. Which unit comes next is decided by the study
  * server (`GET /loop/:loop/next`).
  */
 export const SetProgressSchema = z.object({
@@ -57,13 +57,13 @@ export type DeletionRequest = z.infer<typeof DeletionRequestSchema>;
 export const QuitSessionSchema = z.object({ requestDeletion: z.boolean().default(false) });
 export type QuitSession = z.infer<typeof QuitSessionSchema>;
 
-/** Body for `POST /end`: the `end` item the coder reached; without one, they finished the job. */
+/** Body for `POST /end`: the `end` item the coder reached; without one, they finished the study. */
 export const EndSessionSchema = z.object({ item: z.string().min(1).optional(), unit: EndUnitSchema.optional() });
 
 /**
  * Whether the coder can go back after the session ended (`POST /reopen`):
  * null: not (screened out, quit, or the 15 minutes after finishing are
- * over); `until` null: always (the job keeps sessions open).
+ * over); `until` null: always (the study keeps sessions open).
  */
 export const ReopenSchema = z.object({ until: z.coerce.date().nullable() }).nullable();
 export type Reopen = z.infer<typeof ReopenSchema>;
@@ -76,7 +76,7 @@ export type EndSessionResponse = z.infer<typeof EndSessionResponseSchema>;
  * What an ended session's end screen shows, after a reload: the values its
  * message and redirect link use (`$var`, and with an end inside a unit loop
  * the unit's `$unit` fields and answers). A session that ended gets no more
- * than this, unless its job keeps sessions open.
+ * than this, unless its study keeps sessions open.
  */
 export const EndValuesSchema = z.object({
   variables: z.record(z.string(), VariableValueSchema),
@@ -88,7 +88,7 @@ export type EndSession = z.infer<typeof EndSessionSchema>;
 /** Response for `GET /session`. */
 export const SessionResponseSchema = z.object({
   coderId: IdSchema,
-  jobId: IdSchema,
+  studyId: IdSchema,
   /** The deployed codebook coders get now: its coder codebook (only what coding needs). */
   codebook: CoderCodebookSchema,
   /**
@@ -151,7 +151,7 @@ export const CoderErrorCodeSchema = z.enum([
   "branch_required",
   /** The coder reached an `end` item or quit: no more units or answers. */
   "session_ended",
-  /** The session ended and its job closes finished sessions: its answers can't be looked at again. */
+  /** The session ended and its study closes finished sessions: its answers can't be looked at again. */
   "session_closed",
   /** Preview only: the latest codebook has issues, so it can't run. */
   "design_invalid",
@@ -159,12 +159,12 @@ export const CoderErrorCodeSchema = z.enum([
   "url_param_missing",
   /** A URL parameter's value isn't one the codebook accepts (its values, pattern or length). */
   "url_param_invalid",
-  /** The researchers paused the job: no new sessions or units until they resume it (what is open can be saved). */
-  "job_paused",
-  /** An admin suspended the job (docs/accounts.md). */
-  "job_suspended",
-  /** The job reached its owner's limit on coders or answers. */
-  "job_full",
+  /** The researchers paused the study: no new sessions or units until they resume it (what is open can be saved). */
+  "study_paused",
+  /** An admin suspended the study (docs/accounts.md). */
+  "study_suspended",
+  /** The study reached its owner's limit on coders or answers. */
+  "study_full",
   /** An answer is larger than the server allows. */
   "answer_too_large",
   /** The request body is larger than the server allows. */
@@ -186,7 +186,7 @@ export const RedeemTransferSchema = z.object({ token: z.string().min(1) });
 export const RedeemTransferResponseSchema = z.object({});
 
 /**
- * A study the coder takes part in, for the annotator's home (`/code`):
+ * A study the coder takes part in, for the coder home (`/code`):
  * this device's session in a deployment (`GET /d/<id>/summary`), or a
  * logged-in coder's sessions on any device (`GET /coder/sessions`).
  * `ended`: how it ended (null: still going); `units`: units finished.

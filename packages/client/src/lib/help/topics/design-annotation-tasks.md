@@ -161,7 +161,7 @@ the data harder to interpret. See
   sentences of one text. See [Order](unit-distribution.md#order).
 - **Limit the work per coder.** Coding quality drops after an hour or so of
   concentrated work. Coders can stop and resume later, on the same device or
-  another one, so long jobs can be spread over days. For crowd coding, cap
+  another one, so long studies can be spread over days. For crowd coding, cap
   the units per coder: **Units per coder, at most** in a
   [shared queue](shared-queues.md), or split the units into smaller
   [sets](sets.md).
@@ -207,7 +207,7 @@ fit too:
 - It doesn't compute agreement or combine coders' answers: that is part of
   your analysis.
 - It has no adjudication step in which a supervisor resolves disagreements.
-  You can make one: a second job (or loop) in which an expert codes the units
+  You can make one: a second study (or loop) in which an expert codes the units
   coders disagreed on.
 - It doesn't score coders against gold units, or exclude them automatically
   for low agreement.

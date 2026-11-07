@@ -122,7 +122,7 @@ export function TemplateInsertMenu({
           {(step === "headline" || step === "text" || step === "image") && (
             <>
               {back("Which field?")}
-              {list(fields, "This job's units have no fields yet: upload units first.", (f) => insert(fieldSnippet[step](f)))}
+              {list(fields, "This study's units have no fields yet: upload units first.", (f) => insert(fieldSnippet[step](f)))}
             </>
           )}
           {step === "snippet" && (

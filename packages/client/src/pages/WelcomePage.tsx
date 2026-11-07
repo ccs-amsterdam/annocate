@@ -20,7 +20,7 @@ const FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
   },
 ];
 
-/** The start page (`/`): what AnnoTinder is, and the way into the researcher and annotator sections. */
+/** The start page (`/`): what AnnoTinder is, and the way into the researcher and coder sections. */
 export function WelcomePage() {
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:py-16">
@@ -40,15 +40,15 @@ export function WelcomePage() {
           to="/research"
           icon={FlaskConical}
           title="I'm a researcher"
-          text="Create jobs, upload units, design what coders see, deploy and download the results."
-          action="Go to your jobs"
+          text="Create studies, upload units, design what coders see, deploy and download the results."
+          action="Go to your studies"
         />
         <EntryCard
           to="/code"
           icon={PenTool}
-          title="I'm an annotator"
+          title="I'm a coder"
           text="Continue the studies you take part in on this device. New studies start from the link a researcher gave you."
-          action="Go to annotating"
+          action="Go to coding"
         />
       </section>
 

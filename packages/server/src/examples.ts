@@ -15,13 +15,13 @@ import { one, type Sql } from "./db.js";
 import { collectCoderVariables, collectLoops } from "./runtime/designItems.js";
 import { putCoderValues } from "./shared/coders.js";
 import { HttpError } from "./shared/http.js";
-import type { JobRow } from "./shared/jobs.js";
-import { createJobFromRecipe } from "./shared/recipes.js";
+import type { StudyRow } from "./shared/studies.js";
+import { createStudyFromRecipe } from "./shared/recipes.js";
 
-// Example jobs (docs/plans/examples.md): recipes (shared/recipes.ts) that
+// Example studies (docs/plans/examples.md): recipes (shared/recipes.ts) that
 // ship with AnnoTinder, as files in `examples/<id>.json`, with a deployed
-// codebook and sometimes example answers. Making a job from one gives an
-// ordinary job, to try and adapt.
+// codebook and sometimes example answers. Making a study from one gives an
+// ordinary study, to try and adapt.
 
 const EXAMPLES_DIR = new URL("../examples/", import.meta.url);
 
@@ -43,7 +43,7 @@ const ExampleFileSchema = RecipeSchema.extend({
   title: z.string(),
   description: z.string(),
   tryThis: z.array(z.string()),
-  /** Example answers: coders (named "Example coder n" in the job) and what they answered, outside loops and per unit. */
+  /** Example answers: coders (named "Example coder n" in the study) and what they answered, outside loops and per unit. */
   answers: z
     .array(
       z.object({
@@ -87,20 +87,20 @@ export function answerValue(short: ShortAnswer): VariableValue {
 
 export interface FromExampleOptions {
   name?: string;
-  /** The researcher who owns the job (null: none, e.g. the development demo). */
+  /** The researcher who owns the study (null: none, e.g. the development demo). */
   ownerId: number | null;
-  /** They become the job's ADMIN; null: no job users (development headers). */
+  /** They become the study's ADMIN; null: no study users (development headers). */
   ownerEmail: string | null;
   /** Fixed link secrets, in order (the development demo's `demo-secret`); random otherwise. */
   secrets?: string[];
 }
 
 /**
- * Makes a job from an example (its recipe), with its example answers, in
+ * Makes a study from an example (its recipe), with its example answers, in
  * one transaction: within the owner's limits on units (the caller checks
- * the number of jobs).
+ * the number of studies).
  */
-export async function createJobFromExample(db: Sql, id: string, options: FromExampleOptions): Promise<JobRow> {
+export async function createStudyFromExample(db: Sql, id: string, options: FromExampleOptions): Promise<StudyRow> {
   const example = examples().get(id);
   if (!example) throw new HttpError(404, `No example '${id}'`);
   const items = DesignItemsSchema.parse(example.design.items) as TopLevelItem[];
@@ -108,7 +108,7 @@ export async function createJobFromExample(db: Sql, id: string, options: FromExa
   if (issues.length > 0) throw new Error(`examples/${id}.json: ${issues.map((i) => i.message).join("; ")}`);
 
   return db.transaction(async (tx) => {
-    const { job, designVersionId, unitIds, firstLink } = await createJobFromRecipe(
+    const { study, designVersionId, unitIds, firstLink } = await createStudyFromRecipe(
       tx,
       { ...example, name: options.name ?? example.name },
       { ownerId: options.ownerId, ownerEmail: options.ownerEmail, origin: id, secrets: options.secrets },
@@ -131,16 +131,16 @@ export async function createJobFromExample(db: Sql, id: string, options: FromExa
     for (const [i, coder] of example.answers.entries()) {
       const coderId = (await one<{ id: number }>(
         tx,
-        "INSERT INTO coders (job_id, participant_id, link_id, ended) VALUES ($1, $2, $3, $4) RETURNING id",
-        [job.id, `Example coder ${i + 1}`, firstLink, JSON.stringify({ outcome: "complete", at: new Date() })],
+        "INSERT INTO coders (study_id, participant_id, link_id, ended) VALUES ($1, $2, $3, $4) RETURNING id",
+        [study.id, `Example coder ${i + 1}`, firstLink, JSON.stringify({ outcome: "complete", at: new Date() })],
       ))!.id;
       const values = Object.fromEntries(Object.entries(coder.variables).map(([name, short]) => [name, answerValue(short)]));
       for (const [name, value] of Object.entries(values)) check(name, coderTypes.get(name) as AnyVariableType | undefined, value);
       const isAuto = (name: string) => coderTypes.get(name)?.type === "auto";
       const assigned = Object.fromEntries(Object.entries(values).filter(([name]) => isAuto(name)));
       const answered = Object.fromEntries(Object.entries(values).filter(([name]) => !isAuto(name)));
-      await putCoderValues(tx, job.id, { coderId, values: assigned, assigned: true, designVersionId });
-      await putCoderValues(tx, job.id, { coderId, values: answered, designVersionId });
+      await putCoderValues(tx, study.id, { coderId, values: assigned, assigned: true, designVersionId });
+      await putCoderValues(tx, study.id, { coderId, values: answered, designVersionId });
 
       for (const [externalId, answers] of Object.entries(coder.units)) {
         // A finished unit: every question of a loop answered (`skip` for hidden ones)
@@ -154,14 +154,14 @@ export async function createJobFromExample(db: Sql, id: string, options: FromExa
           const value = answerValue(short);
           check(name, unitTypes.get(name), value);
           await tx.query(
-            `INSERT INTO annotation_values (job_id, unit_id, coder_id, variable, value, design_version_id, unit_version_id, created, updated)
+            `INSERT INTO annotation_values (study_id, unit_id, coder_id, variable, value, design_version_id, unit_version_id, created, updated)
              VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())`,
-            [job.id, uid, coderId, name, JSON.stringify(value), designVersionId, version],
+            [study.id, uid, coderId, name, JSON.stringify(value), designVersionId, version],
           );
         }
         await tx.query("UPDATE units SET coded = true WHERE id = $1", [uid]);
       }
     }
-    return job;
+    return study;
   });
 }

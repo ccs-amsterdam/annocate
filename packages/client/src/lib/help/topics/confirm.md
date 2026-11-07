@@ -9,7 +9,7 @@ A **Confirm** question shows its text and a single button: **I confirm**.
 There is nothing to choose; clicking the button moves the coder on. Use it
 whenever you want coders to read something before they continue:
 
-- **Instructions** at the start of a job, or before a new part of it.
+- **Instructions** at the start of a study, or before a new part of it.
 - **Information and consent** in a survey experiment.
 - **A check in a unit loop**: *I have read the whole article* before the
   questions about it.

@@ -48,11 +48,11 @@ export const UnitSetSchema = z.object({
 });
 export type UnitSet = z.infer<typeof UnitSetSchema>;
 
-/** Body of `PUT /job/:jobId/sets/:group`: the group's sets (replacing what it had). */
+/** Body of `PUT /study/:studyId/sets/:group`: the group's sets (replacing what it had). */
 export const SetGroupWriteSchema = z.object({ sets: z.array(UnitSetSchema) });
 export type SetGroupWrite = z.input<typeof SetGroupWriteSchema>;
 
-/** A group with its sets (`GET /job/:jobId/sets`). */
+/** A group with its sets (`GET /study/:studyId/sets`). */
 export const SetGroupResponseSchema = z.object({ name: SetGroupNameSchema, sets: z.array(UnitSetSchema) });
 export type SetGroupResponse = z.infer<typeof SetGroupResponseSchema>;
 

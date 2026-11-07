@@ -11,7 +11,7 @@ import {
 } from "../../../admin/queries";
 import { describeVersions } from "../../../design/versions";
 import { formatWhen } from "../../../admin/format";
-import { JobSettings } from "../JobSettings";
+import { StudySettings } from "../StudySettings";
 import { ActivityChart } from "./ActivityChart";
 import { LoopProgress } from "./LoopProgress";
 import { LiveControls } from "./LiveControls";
@@ -21,7 +21,7 @@ import { describeUnitChanges } from "../DeployDialog";
 
 export type OverviewTarget = "Units" | "Links" | "Coders";
 
-interface JobOverviewProps {
+interface StudyOverviewProps {
   client: ResearcherApi;
   onNavigate: (tab: OverviewTarget) => void;
   /** Opens the Editor tab on this version. */
@@ -29,11 +29,11 @@ interface JobOverviewProps {
 }
 
 /**
- * The job's front page (docs/client.md §7): whether it's live, which
+ * The study's front page (docs/client.md §7): whether it's live, which
  * design versions are live and in draft, units, coders, activity and
- * progress. The job's settings are on their own tab (`JobSettingsPage`).
+ * progress. The study's settings are on their own tab (`StudySettingsPage`).
  */
-export function JobOverview({ client, onNavigate, onOpenDesign }: JobOverviewProps) {
+export function StudyOverview({ client, onNavigate, onOpenDesign }: StudyOverviewProps) {
   const overviewQuery = useOverviewQuery(client);
   const deploymentQuery = useDeploymentQuery(client);
   const designVersionsQuery = useDesignVersionsQuery(client);
@@ -145,15 +145,15 @@ export function JobOverview({ client, onNavigate, onOpenDesign }: JobOverviewPro
   );
 }
 
-/** The job's Settings tab: who has access, and the job's settings (name, sessions, archive, delete). */
-export function JobSettingsPage({ client, onDeleted }: { client: ResearcherApi; onDeleted?: () => void }) {
+/** The study's Settings tab: who has access, and the study's settings (name, sessions, archive, delete). */
+export function StudySettingsPage({ client, onDeleted }: { client: ResearcherApi; onDeleted?: () => void }) {
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4">
-      <Card title="Who has access" subtitle="People who can see and work on this job">
+      <Card title="Who has access" subtitle="People who can see and work on this study">
         <TeamSettings client={client} />
       </Card>
       <Card title="Settings">
-        <JobSettings client={client} onDeleted={onDeleted} />
+        <StudySettings client={client} onDeleted={onDeleted} />
       </Card>
     </div>
   );

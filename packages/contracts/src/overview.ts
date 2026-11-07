@@ -1,10 +1,10 @@
 import { z } from "zod";
 
 /**
- * Researcher-facing `GET /job/:jobId/overview`: counts for the job's overview
+ * Researcher-facing `GET /study/:studyId/overview`: counts for the study's overview
  * page. Answers are unit-level variable values that are live (not retired).
  */
-export const JobOverviewSchema = z.object({
+export const StudyOverviewSchema = z.object({
   units: z.number().int().nonnegative(),
   /** The set groups, with their sets' sizes. */
   groups: z.array(z.object({ name: z.string(), sets: z.array(z.object({ name: z.string(), units: z.number().int().nonnegative() })) })),
@@ -33,4 +33,4 @@ export const JobOverviewSchema = z.object({
     }),
   ),
 });
-export type JobOverview = z.infer<typeof JobOverviewSchema>;
+export type StudyOverview = z.infer<typeof StudyOverviewSchema>;

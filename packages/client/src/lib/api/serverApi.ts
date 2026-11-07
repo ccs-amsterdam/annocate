@@ -1,8 +1,8 @@
 import {
   adminEndpoints,
   researcherEndpoints,
-  type AdminJob,
-  type AdminJobUpdate,
+  type AdminStudy,
+  type AdminStudyUpdate,
   type AdminLogEntry,
   type AdminUser,
   type AdminUserCreate,
@@ -94,11 +94,11 @@ export class ServerApi {
   revokeInvite(id: number): Promise<ResearcherInvite> {
     return this.api.call("POST", this.path(adminEndpoints.revokeResearcherInvite.path, { id }));
   }
-  listJobs(): Promise<AdminJob[]> {
-    return this.api.call("GET", adminEndpoints.listAdminJobs.path);
+  listStudies(): Promise<AdminStudy[]> {
+    return this.api.call("GET", adminEndpoints.listAdminStudies.path);
   }
-  updateJob(id: number, update: AdminJobUpdate): Promise<AdminJob> {
-    return this.api.call("PUT", this.path(adminEndpoints.updateAdminJob.path, { id }), update);
+  updateStudy(id: number, update: AdminStudyUpdate): Promise<AdminStudy> {
+    return this.api.call("PUT", this.path(adminEndpoints.updateAdminStudy.path, { id }), update);
   }
   listLog(): Promise<AdminLogEntry[]> {
     return this.api.call("GET", adminEndpoints.listAdminLog.path);

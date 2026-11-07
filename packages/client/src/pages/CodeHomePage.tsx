@@ -10,7 +10,7 @@ function when(date: Date): string {
 }
 
 /**
- * The annotator section's home (`/code`): the studies this browser (or the
+ * The coder section's home (`/code`): the studies this browser (or the
  * logged-in coder, on any device) takes part in, to continue them; and how
  * to start one: from the link a researcher gives you.
  */
@@ -26,7 +26,7 @@ export function CodeHomePage({ apiUrl, dev = false }: { apiUrl: string; dev?: bo
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 py-10">
-      <h1 className="font-heading text-2xl font-bold tracking-tight">Annotate</h1>
+      <h1 className="font-heading text-2xl font-bold tracking-tight">Code</h1>
       {studies === null ? (
         <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Looking for your studies…
@@ -57,7 +57,7 @@ export function CodeHomePage({ apiUrl, dev = false }: { apiUrl: string; dev?: bo
         <p className="mt-4 text-center text-xs text-muted-foreground">
           Development server:{" "}
           <Link to="/code/$deployment" params={{ deployment: "1" }} search={{ link: "demo-secret" }} className="underline">
-            try the demo job
+            try the demo study
           </Link>
         </p>
       )}

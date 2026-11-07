@@ -10,8 +10,8 @@ import {
   redeemTransfer,
   type CoderSessionScope,
 } from "../session/coderSession";
-import { useJobManager } from "../jobManager/useJobManager";
-import type { JobManagerNavigation } from "../jobManager/JobManager";
+import { useStudyManager } from "../studyManager/useStudyManager";
+import type { StudyManagerNavigation } from "../studyManager/StudyManager";
 import { SpanAnnotationProvider } from "../context/SpanAnnotationContext";
 import { CoderSettingsProvider, useCoderSettings } from "../context/CoderSettingsContext";
 import { Question } from "./Question";
@@ -43,7 +43,7 @@ import {
   CircleCheck,
 } from "lucide-react";
 
-export interface JobRunnerProps {
+export interface StudyRunnerProps {
   /** Server URL including the deployment, e.g. `/api/d/42` (same origin as the client). */
   baseUrl: string;
   linkSecret?: string;
@@ -61,7 +61,7 @@ export interface JobRunnerProps {
   newSession?: boolean;
 }
 
-interface ContentProps extends JobRunnerProps {
+interface ContentProps extends StudyRunnerProps {
   newSession: boolean;
   onStartNewSession: () => void;
 }
@@ -153,7 +153,7 @@ function CoderSettingsMenu() {
 }
 
 /** Computed scalar position for monotonic forward/backward detection */
-function computeGlobalPosition(nav: JobManagerNavigation): number {
+function computeGlobalPosition(nav: StudyManagerNavigation): number {
   const phaseIdx = nav.currentPhaseIndex;
   const phase = nav.phases[phaseIdx];
   if (!phase) return 0;
@@ -167,13 +167,13 @@ function computeGlobalPosition(nav: JobManagerNavigation): number {
 
 /**
  * Top-level component that boots a coder session against the server and
- * renders the current step, driven by JobManager (docs/client.md §2).
+ * renders the current step, driven by StudyManager (docs/client.md §2).
  *
  * Implements a mobile-first responsive 2-pane layout:
  * - Top pane: scrollable unit content/document
  * - Bottom pane: docked, thumb-friendly question & answer options
  */
-function JobRunnerContent({
+function StudyRunnerContent({
   baseUrl,
   linkSecret,
   urlParams,
@@ -189,7 +189,7 @@ function JobRunnerContent({
     () => new HttpCoderApi({ baseUrl, linkSecret, urlParams: JSON.parse(urlParamsKey), newSession }),
     [baseUrl, linkSecret, urlParamsKey, newSession],
   );
-  const { manager, snapshot } = useJobManager(coderApi);
+  const { manager, snapshot } = useStudyManager(coderApi);
   const [menuOpen, setMenuOpen] = useState(false);
   const [navDirection, setNavDirection] = useState<"next" | "previous">("next");
 
@@ -282,7 +282,7 @@ function JobRunnerContent({
     return <ParticipantElsewhere onStartNewSession={onStartNewSession} />;
   }
 
-  if (snapshot.phase === "error" && snapshot.errorCode === "job_paused") {
+  if (snapshot.phase === "error" && snapshot.errorCode === "study_paused") {
     return (
       <SessionNotice title="This study is paused">
         <p>The researchers paused it for a while. Anything you answered is saved, and you can continue where you left off once it goes on.</p>
@@ -752,7 +752,7 @@ function JobRunnerContent({
   );
 }
 
-export function JobRunner(props: JobRunnerProps) {
+export function StudyRunner(props: StudyRunnerProps) {
   return (
     <CoderSettingsProvider>
       <CoderSessionGate {...props} />
@@ -766,7 +766,7 @@ export function JobRunner(props: JobRunnerProps) {
  * request. The server finds the session by the device cookie, set on the
  * first visit. See docs/coder-identity.md §4.
  */
-function CoderSessionGate(props: JobRunnerProps) {
+function CoderSessionGate(props: StudyRunnerProps) {
   const { baseUrl, linkSecret, transferToken, onTransferRedeemed, newSession = false } = props;
   const scope = useMemo<CoderSessionScope>(
     () => ({ baseUrl, linkSecret }),
@@ -814,7 +814,7 @@ function CoderSessionGate(props: JobRunnerProps) {
   const startNewSession = () => setSession((s) => ({ ...s, generation: s.generation + 1, newSession: true }));
 
   return (
-    <JobRunnerContent
+    <StudyRunnerContent
       key={session.generation}
       {...props}
       newSession={session.newSession}
@@ -938,7 +938,7 @@ function TransferMenu({
         )}
         {login && (
           <p className="border-t pt-2.5 text-[11px] text-muted-foreground">
-            Or open this job&apos;s link on the other device and log in there as <strong>{login}</strong>.
+            Or open this study&apos;s link on the other device and log in there as <strong>{login}</strong>.
           </p>
         )}
         {canLogIn && (

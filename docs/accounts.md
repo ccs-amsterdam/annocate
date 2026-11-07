@@ -5,21 +5,21 @@ people log in) and `api/admin.md` (the endpoints).
 
 AnnoTinder is meant to be hosted for many researchers: a public server,
 and servers for groups that need stability or stricter data protection. A
-server decides who may create jobs, how much they may store, and who
+server decides who may create studies, how much they may store, and who
 manages that.
 
 ## 1. Two kinds of roles
 
-- **Job roles** (`job_users`: `READ`, `WRITE`, `ADMIN`): what someone may
-  do in one job. Unchanged.
+- **Study roles** (`study_users`: `READ`, `WRITE`, `ADMIN`): what someone may
+  do in one study. Unchanged.
 - **Account roles** (`users.role`): what someone may do on the server.
-  - `user`: anyone who logged in. Codes, and works on jobs they were given
-    a job role in (a student assistant editing a codebook is a user with
-    `WRITE` on that job).
-  - `researcher`: also creates jobs, and owns them (their limits apply).
+  - `user`: anyone who logged in. Codes, and works on studies they were given
+    a study role in (a student assistant editing a codebook is a user with
+    `WRITE` on that study).
+  - `researcher`: also creates studies, and owns them (their limits apply).
   - `admin`: also manages accounts, limits and registration (`api/admin.md`).
 
-So "can edit jobs" is a job role, and "can create jobs" an account role.
+So "can edit studies" is a study role, and "can create studies" an account role.
 Coders need no account at all, unless an invitation asks them to log in
 (`coder-identity.md` §5).
 
@@ -42,19 +42,19 @@ Domain rules rely on verified email addresses: logins without
 
 ## 3. Limits
 
-Per researcher, from a **plan** (`plans`: `jobs`, `unitsPerJob`, `units`,
-`codersPerJob`, `answersPerJob`; missing or null is no limit):
+Per researcher, from a **plan** (`plans`: `studies`, `unitsPerStudy`, `units`,
+`codersPerStudy`, `answersPerStudy`; missing or null is no limit):
 
 1. their own plan (`users.plan_id`), else
 2. the most generous of their email domains' plans, else
 3. the server's default plan (`server_settings.default_plan_id`);
 
-then their personal overrides (`users.limits`). A job's limits are its
-owner's (`jobs.owner_id`); jobs without an owner have none.
+then their personal overrides (`users.limits`). A study's limits are its
+owner's (`studies.owner_id`); studies without an owner have none.
 
-Checked when something is added (`shared/limits.ts`): creating a job, an
-upload with new units, a new coder (`job_full`; existing coders go on),
-answers (the job's answer rows, counted at most once a minute per server
+Checked when something is added (`shared/limits.ts`): creating a study, an
+upload with new units, a new coder (`study_full`; existing coders go on),
+answers (the study's answer rows, counted at most once a minute per server
 process, so the limit is approximate). Nothing is removed when limits shrink.
 
 Server-wide (`server_settings`): the largest unit (`unit_bytes`, default
@@ -64,15 +64,15 @@ coders, 256 MB for researchers' uploads).
 
 ## 4. Admins
 
-Admins see accounts and what jobs hold (counts), not job data; to work in a
-job they need a job role like anyone else. They can:
+Admins see accounts and what studies hold (counts), not study data; to work in a
+study they need a study role like anyone else. They can:
 
 - change roles, plans and limits; add users before their first login;
 - **block** a user: sessions end, logins are refused (`loginError=blocked`),
   API keys stop working;
-- **suspend** a job: coders are refused (`job_suspended`), researchers can't
+- **suspend** a study: coders are refused (`study_suspended`), researchers can't
   change it, but can still read and download data, delete coders' data and
-  delete the job; move a job to another **owner**.
+  delete the study; move a study to another **owner**.
 
 Every admin change is logged (`admin_log`).
 

@@ -10,17 +10,17 @@ import { ResearcherApiError } from "../../../api/httpResearcherApi";
 import { formatWhen } from "../../../admin/format";
 import { HelpButton } from "../../../help/HelpButton";
 
-const TABS = ["Users", "Requests", "Invites", "Plans", "Registration", "Jobs", "Log"] as const;
+const TABS = ["Users", "Requests", "Invites", "Plans", "Registration", "Studies", "Log"] as const;
 type Tab = (typeof TABS)[number];
 
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
 
 const LIMITS: { key: keyof Limits; label: string }[] = [
-  { key: "jobs", label: "Jobs" },
-  { key: "unitsPerJob", label: "Units per job" },
-  { key: "units", label: "Units in all jobs" },
-  { key: "codersPerJob", label: "Coders per job" },
-  { key: "answersPerJob", label: "Answers per job" },
+  { key: "studies", label: "Studies" },
+  { key: "unitsPerStudy", label: "Units per study" },
+  { key: "units", label: "Units in all studies" },
+  { key: "codersPerStudy", label: "Coders per study" },
+  { key: "answersPerStudy", label: "Answers per study" },
 ];
 
 const errorText = (e: unknown) => (e instanceof ResearcherApiError ? e.reason : e instanceof Error ? e.message : String(e));
@@ -29,8 +29,8 @@ const limitText = (v: number | null | undefined) => (v == null ? "no limit" : v.
 /**
  * The server admin's page (docs/accounts.md): users and their roles and
  * limits, requests to become a researcher, researcher invite links, plans,
- * registration and size settings, jobs (suspend, owner) and the log of admin
- * actions. Admins don't see job data here.
+ * registration and size settings, studies (suspend, owner) and the log of admin
+ * actions. Admins don't see study data here.
  */
 export function ServerAdmin({ server, onBack }: { server: ServerApi; onBack: () => void }) {
   const [tab, setTab] = useState<Tab>("Users");
@@ -39,7 +39,7 @@ export function ServerAdmin({ server, onBack }: { server: ServerApi; onBack: () 
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="ghost" size="sm" onClick={onBack}>
-          <ChevronLeft className="h-4 w-4" /> All jobs
+          <ChevronLeft className="h-4 w-4" /> All studies
         </Button>
         <h1 className="flex items-center gap-1.5 text-2xl font-bold tracking-tight">
           Server admin <HelpButton topic="server-admin" label="Help: server admin" />
@@ -65,7 +65,7 @@ export function ServerAdmin({ server, onBack }: { server: ServerApi; onBack: () 
       {tab === "Invites" && <InvitesTab server={server} />}
       {tab === "Plans" && <PlansTab server={server} />}
       {tab === "Registration" && <RegistrationTab server={server} />}
-      {tab === "Jobs" && <JobsTab server={server} />}
+      {tab === "Studies" && <StudiesTab server={server} />}
       {tab === "Log" && <LogTab server={server} />}
     </div>
   );
@@ -122,7 +122,7 @@ function UsersTab({ server }: { server: ServerApi }) {
         <AddUser server={server} plans={plans.data ?? []} />
       </div>
       <ErrorLine error={update.error} />
-      <Table head={["Email", "Role", "Plan", "Limits", "Jobs", "Last login", ""]}>
+      <Table head={["Email", "Role", "Plan", "Limits", "Studies", "Last login", ""]}>
         {(users.data ?? []).map((u) => (
           <tr key={u.id} className={`border-b last:border-0 ${u.blockedAt ? "opacity-60" : ""}`}>
             <td className="p-2">
@@ -152,10 +152,10 @@ function UsersTab({ server }: { server: ServerApi }) {
             </td>
             <td className="p-2">
               <button type="button" className="cursor-pointer text-xs text-primary underline underline-offset-2" onClick={() => setLimitsOf(u)}>
-                {Object.keys(u.limits).length > 0 ? "Own limits…" : `${u.effectiveLimits.jobs == null ? "∞" : u.effectiveLimits.jobs} jobs…`}
+                {Object.keys(u.limits).length > 0 ? "Own limits…" : `${u.effectiveLimits.studies == null ? "∞" : u.effectiveLimits.studies} studies…`}
               </button>
             </td>
-            <td className="p-2 tabular-nums">{u.jobs}</td>
+            <td className="p-2 tabular-nums">{u.studies}</td>
             <td className="p-2 whitespace-nowrap text-muted-foreground">{formatWhen(u.lastLogin)}</td>
             <td className="p-2 text-right">
               <Button
@@ -591,21 +591,21 @@ function Domains({ server, plans }: { server: ServerApi; plans: Plan[] }) {
   );
 }
 
-// ---- jobs and log --------------------------------------------------------------
+// ---- studies and log --------------------------------------------------------------
 
-function JobsTab({ server }: { server: ServerApi }) {
-  const jobs = useQuery({ queryKey: ["admin", "server", "jobs"], queryFn: () => server.listJobs() });
+function StudiesTab({ server }: { server: ServerApi }) {
+  const studies = useQuery({ queryKey: ["admin", "server", "studies"], queryFn: () => server.listStudies() });
   const invalidate = useInvalidate();
-  const update = useMutation({ mutationFn: (v: { id: number; body: Parameters<ServerApi["updateJob"]>[1] }) => server.updateJob(v.id, v.body), onSuccess: invalidate });
+  const update = useMutation({ mutationFn: (v: { id: number; body: Parameters<ServerApi["updateStudy"]>[1] }) => server.updateStudy(v.id, v.body), onSuccess: invalidate });
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">
-        What each job holds, not its data. A suspended job takes no coders and can&apos;t be changed; its researchers can still read
+        What each study holds, not its data. A suspended study takes no coders and can&apos;t be changed; its researchers can still read
         and delete its data.
       </p>
       <ErrorLine error={update.error} />
-      <Table head={["Job", "Owner", "Units", "Coders", "Answers", "Created", ""]}>
-        {(jobs.data ?? []).map((j) => (
+      <Table head={["Study", "Owner", "Units", "Coders", "Answers", "Created", ""]}>
+        {(studies.data ?? []).map((j) => (
           <tr key={j.id} className="border-b last:border-0">
             <td className="p-2">
               #{j.id} {j.name}
@@ -634,7 +634,7 @@ function JobsTab({ server }: { server: ServerApi }) {
                 size="xs"
                 variant={j.suspendedAt ? "outline" : "ghost"}
                 onClick={() => {
-                  if (j.suspendedAt || confirm(`Suspend job #${j.id}? Coders are refused, and its researchers can't change it.`)) {
+                  if (j.suspendedAt || confirm(`Suspend study #${j.id}? Coders are refused, and its researchers can't change it.`)) {
                     update.mutate({ id: j.id, body: { suspended: !j.suspendedAt } });
                   }
                 }}

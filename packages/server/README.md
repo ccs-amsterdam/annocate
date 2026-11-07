@@ -2,7 +2,7 @@
 
 The annotinder server: one Hono app on one database.
 
-- the **researcher API** (`/job/...`): jobs, design versions, units, sets,
+- the **researcher API** (`/study/...`): studies, design versions, units, sets,
   links, deploying, progress. Used by the client's researcher UI, and
   by scripts (R, Python) and other systems (AmCAT). Spec:
   [docs/api/researcher.md](../../docs/api/researcher.md).
@@ -16,7 +16,7 @@ The annotinder server: one Hono app on one database.
 How it works: [docs/architecture.md](../../docs/architecture.md).
 
 ```sh
-pnpm dev:server   # from the repo root: http://localhost:8787, seeded with a demo job
+pnpm dev:server   # from the repo root: http://localhost:8787, seeded with a demo study
 pnpm reset-db     # recreate and reseed the local database
 ```
 
@@ -26,7 +26,7 @@ lists them. For development: without `DATABASE_URL` the server uses PGlite
 `.pglite` in this package), so no Postgres install is needed; `pnpm reset-db`
 only resets PGlite. `pnpm dev` ([`src/dev.ts`](src/dev.ts)) also sets
 `ANNOTINDER_DEV_AUTH=1` (development auth headers for the researcher UI)
-and `ANNOTINDER_DEMO=1` (a demo job in an empty database). With login
+and `ANNOTINDER_DEMO=1` (a demo study in an empty database). With login
 settings (`OIDC_*`) in development, plain http issuers work on localhost
 only.
 
@@ -45,9 +45,9 @@ pnpm --filter @annotinder/server keys revoke --email a@uni.nl --id 3
 ```
 
 The key is printed once. `--role` sets the user's account role: only a
-researcher can create jobs (and becomes their ADMIN), and an admin also
-the server's settings. With it, they give others a role in a job
-(`PUT /job/:id/users`), and make or revoke their own keys (`/me/keys`).
+researcher can create studies (and becomes their ADMIN), and an admin also
+the server's settings. With it, they give others a role in a study
+(`PUT /study/:id/users`), and make or revoke their own keys (`/me/keys`).
 
 ## Code
 
@@ -59,7 +59,7 @@ the server's settings. With it, they give others a role in a job
   [`oidc.ts`](src/oidc.ts)), API keys, and on development servers
   `x-dev-*` headers.
 - [`src/coder.ts`](src/coder.ts): the coder API.
-- [`src/runtime/`](src/runtime/): runs deployed jobs: unit distribution
+- [`src/runtime/`](src/runtime/): runs deployed studies: unit distribution
   (state in `unit_codings` and `unit_leases`, under database locks),
   validation, sessions, previews (in memory). It reads and writes the
   database through [`store.ts`](src/runtime/store.ts).

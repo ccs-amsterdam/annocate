@@ -11,11 +11,11 @@ Status: current (2026-10-26). Server-side design lives in
 
   | URL | Page |
   | --- | --- |
-  | `/` | Welcome: what AnnoTinder is, the researcher and annotator sections (`pages/WelcomePage.tsx`) |
-  | `/research` | The researcher UI: the jobs |
-  | `/research/jobs/<id>/<tab>` | A job's page (`overview`, `editor`, `units`, `links`, `coders`, `results`, `settings`, `preview`); the editor's `?version=<n>` (v1, v2, ...) |
+  | `/` | Welcome: what AnnoTinder is, the researcher and coder sections (`pages/WelcomePage.tsx`) |
+  | `/research` | The researcher UI: the studies |
+  | `/research/studies/<id>/<tab>` | A study's page (`overview`, `editor`, `units`, `links`, `coders`, `results`, `settings`, `preview`); the editor's `?version=<n>` (v1, v2, ...) |
   | `/research/admin` | The server admin's page |
-  | `/code` | The annotator's home: studies on this device (`pages/CodeHomePage.tsx`) |
+  | `/code` | The coder home: studies on this device (`pages/CodeHomePage.tsx`) |
   | `/code/<deployment>?link=<secret>` | Coding (`pages/CodePage.tsx`, no app header): a coder link, with the URL parameters it takes; `?transfer=<token>` continues on another device; without either, this device's session |
 
   A reload stays where it was. The researcher section is one `AdminApp`
@@ -23,7 +23,7 @@ Status: current (2026-10-26). Server-side design lives in
   and it navigates through `onNavigate`; leaving the editor with unsaved
   edits asks first (the router's blocker, `useLeaveGuard`, with the
   editor's dialog; also on reload or closing the tab).
-- **Components, not routes.** `JobRunner` (coding) and `AdminApp`
+- **Components, not routes.** `StudyRunner` (coding) and `AdminApp`
   (research management) are plain components without a router dependency
   (`AdminApp` gets its place and navigation as props);
   `AdminApp` brings its own TanStack `QueryClientProvider` unless it is
@@ -36,10 +36,10 @@ Status: current (2026-10-26). Server-side design lives in
   development, Vite proxies `/api` to the server (all its APIs are under
   `/api`; everything else is the app). Only scripts with API keys call the server from elsewhere.
 
-## 2. JobManager (coding runtime)
+## 2. StudyManager (coding runtime)
 
-`src/lib/jobManager/JobManager.ts` is a framework-agnostic state machine;
-`useJobManager` binds it to React with `useSyncExternalStore`.
+`src/lib/studyManager/StudyManager.ts` is a framework-agnostic state machine;
+`useStudyManager` binds it to React with `useSyncExternalStore`.
 
 - It talks only to the `CoderApi` interface (`api/httpCoderApi.ts`). Tests
   use stubs.
@@ -62,12 +62,12 @@ Status: current (2026-10-26). Server-side design lives in
   (network, 5xx, 408, 429) is tried again, later and later (up to 30 s);
   another failure stops saving and shows an error. The outbox is emptied
   before `/end` and `/quit`. The snapshot has `unsaved` and `retrying`;
-  `JobRunner` says "Not saved yet: no connection" and asks before the page
+  `StudyRunner` says "Not saved yet: no connection" and asks before the page
   is closed with unsaved answers.
 - **Frozen answers.** Coder-level answers a loop depends on (contracts
   `loopDependencies`) are frozen once a unit in that loop is saved
   (`session.frozen`, `currentFrozen`): shown read-only with "Continue".
-- **Response times.** `QuestionTimer` (`jobManager/timing.ts`) times each
+- **Response times.** `QuestionTimer` (`studyManager/timing.ts`) times each
   question; the timings go with the posts (`coder-identity.md` §10).
 - An `end` item that is reached is the last step: it tells the server and
   deploys the ending (§4 "End items"). Reaching the end without one also
@@ -79,7 +79,7 @@ Status: current (2026-10-26). Server-side design lives in
   so far. Relation questions need it to find sibling span answers.
 - **A new design version while coding**: the server answers 409
   `codebook_changed` to any request made under the old version (except
-  `/session` and `/transfer`; `api/coder.md`). `JobManager` then loads the
+  `/session` and `/transfer`; `api/coder.md`). `StudyManager` then loads the
   session again, as after a reload, and returns to the unit the coder had
   open. Answers to units not yet saved (the open one, and finished ones
   still in the outbox) are kept as far as they fit the new version; a
@@ -169,7 +169,7 @@ A template is read in two steps: first the **text is put together**
 - How (`codebook/renderTemplate.ts`, `codebook/templateValues.ts`): a
   pre-pass (`parseTemplate` in contracts) replaces every value with a
   placeholder of private-use characters. One that stands alone on its line
-  becomes its own block, like a leaf directive. `JobManager` evaluates the
+  becomes its own block, like a leaf directive. `StudyManager` evaluates the
   values (cached, §6). A remark plugin turns the placeholders into
   `<template-value>` elements, rendered by type: a React text node, nested
   markdown, an `<img>`, or `SelectableText`. Placeholders in link and image
@@ -199,7 +199,7 @@ A template is read in two steps: first the **text is put together**
   - `style <css>`: the content in a `<div>` with that inline CSS (a React
     style object: per property, so it can't add selectors or run code;
     `position: fixed/sticky` is refused so text stays in the unit area).
-    Researchers are trusted with how their job looks.
+    Researchers are trusted with how their study looks.
   - A bare `:::` closes the innermost block and must have as many colons
     as its opening fence, so nested blocks use more colons outside.
     Fence lines are not text; fences in code stay literal.
@@ -211,7 +211,7 @@ A template is read in two steps: first the **text is put together**
   sits between two marker paragraphs that `remarkTemplateValues` turns
   into a `<template-style>` element, and a typed block becomes one value
   (its content's values put in as they are) after the template's own.
-  `JobManager` passes the question on screen and the loop's question
+  `StudyManager` passes the question on screen and the loop's question
   order for `from`.
 - **`colorScheme`** (optional, `light` or `dark`): the unit is always
   shown in those colours (with its own background), whatever the coder
@@ -322,7 +322,7 @@ the buttons answer directly.
 ### Span and relation answers
 
 - Span and relation questions are ordinary steps in the question flow, not
-  a separate "annotation mode". `JobRunner` mounts a `SpanAnnotationProvider`
+  a separate "annotation mode". `StudyRunner` mounts a `SpanAnnotationProvider`
   around every unit (keyed per unit). The fields span questions select in
   are always `SelectableText` (§3, "Selectable text"); only the active
   span question's fields can select.
@@ -348,7 +348,7 @@ An `end` item ends the coder's session when the coder reaches it, usually
 inside a condition: `outcome` `screenout` or `complete`, an optional
 `message` (a template) and an optional `redirectUrl`, e.g. a panel
 company's return link, whose `$var` references are filled in URL-encoded.
-`JobManager` tells the server (`POST /end`; in a loop after saving the
+`StudyManager` tells the server (`POST /end`; in a loop after saving the
 unit) and shows the ending (`SessionEnd.tsx`, redirecting after a few
 seconds). The server stores the outcome; the session then refuses units and
 answers (409 `session_ended`), and a reload shows the ending again (a
@@ -444,7 +444,7 @@ question exists and comes before this point (not the question itself, not
 inside the condition's own children, not in another loop); the property or
 method fits its type; `$unit` and snippets (`[[name]]`) only inside a loop (unknown
 snippets are an error; unknown `$unit` fields are a warning in the editor, once the
-job has units); branch `when` and end item redirect URLs
+study has units); branch `when` and end item redirect URLs
 only use coder-level `$var` refs from before the loop (and `$session`
 names the Study entry declares, or built-in ones); span fields shown
 as plain text, as described in §3. In simple conditions the helper arguments are checked too:
@@ -465,7 +465,7 @@ pass with per-slot memoization:
 - `codebook/expressionCache.ts`: `ExpressionCache.evaluate(key, script,
   scope)` re-runs QuickJS only when the script or one of those values
   changed.
-- `JobManager` owns one cache per session and passes it to step
+- `StudyManager` owns one cache per session and passes it to step
   computation, branch choice and template rendering. Changing units needs
   no explicit invalidation: dependency values change, so entries miss.
 
@@ -474,7 +474,7 @@ pass with per-slot memoization:
 `components/admin/AdminApp.tsx` is a tabbed shell, grouped: Overview,
 Design (Codebook, Units), Deploy (Links, Coders), Results (Download),
 Settings; a group with several pages shows them as sub tabs. Preview opens
-from the Preview Job button. It uses a `ResearcherApi`
+from the Preview Study button. It uses a `ResearcherApi`
 (`api/httpResearcherApi.ts`).
 
 - **Login**: `account/ResearcherGate.tsx` shows its children to a logged-in
@@ -484,11 +484,11 @@ from the Preview Job button. It uses a `ResearcherApi`
   (`docs/coder-identity.md` §7). The app (`App.tsx`) uses them when the
   server has login, and development headers on a development server (no
   login, development auth).
-- **Accounts**: `JobList` lets only researchers create jobs;
+- **Accounts**: `StudyList` lets only researchers create studies;
   `account/ResearcherAccess.tsx` handles researcher invite links and
   requests. `AdminApp`'s `server` prop (`ServerApi`) opens the server admin
   page for admins (`server/ServerAdmin.tsx`: users, plans, registration,
-  jobs, admin log; `docs/accounts.md`).
+  studies, admin log; `docs/accounts.md`).
 
 - **Codebook editor**: edits the whole document in memory, validated
   client-side with the contract's `validateDesignItems`, and saved as a
@@ -498,7 +498,7 @@ from the Preview Job button. It uses a `ResearcherApi`
     which are items of their own), or as a preview. On screens at least
     1500px wide the preview is a third column next to the form
     (`PreviewPanel`) instead of a pane. The preview (`ItemPreview.tsx`)
-    shows a loop with the job's units (one at a time), a picker for the
+    shows a loop with the study's units (one at a time), a picker for the
     question on screen (for `::: from`), and answer pickers for the
     questions with options the layout uses (for `::: if` and values). The tree shows
     questions with the icon of their answer type, unit loops with their
@@ -661,9 +661,9 @@ from the Preview Job button. It uses a `ResearcherApi`
   checked before uploading, with the values that don't fit), or the type
   **sets**: a set group named after the column (cells `s1`, `s1;s2`,
   `s1#3`), which replaces that group. A column named
-  like a field of the job is linked to it and keeps its type; "Use column
+  like a field of the study is linked to it and keeps its type; "Use column
   names" gives every other column its own name, made valid
-  (`toUnitFieldName`). Fields of the job that no column gives are empty, and
+  (`toUnitFieldName`). Fields of the study that no column gives are empty, and
   new names add fields. A preview shows the first units as stored; a paged table with a column per field and per set
   group; pick a set of a group to see its units in order (`?group=&set=`);
   "Split units into sets" makes a group with `s1..sN` and `_overlap` (done
@@ -677,8 +677,8 @@ from the Preview Job button. It uses a `ResearcherApi`
   design versions (open them in the editor), unit/coder/link counts, set groups with their sets' sizes,
   answers per day (`GET /overview`), progress per loop
   (`GET /deployment/status`). `LiveControls.tsx`: pause or resume.
-- **Settings** (`JobSettingsPage`): `TeamSettings.tsx`, who has access and
-  their role (the list keeps at least one admin), and the job settings
+- **Settings** (`StudySettingsPage`): `TeamSettings.tsx`, who has access and
+  their role (the list keeps at least one admin), and the study settings
   (rename, archive, keep sessions open, delete).
 - **Links** (`LinksPanel.tsx`): the links deploying made,
   one per combination of the codebook's link parameter values, with their
@@ -723,11 +723,11 @@ from the Preview Job button. It uses a `ResearcherApi`
   the data) also get a `_json` column with the whole answer (spans with
   field and slice offsets, relations with span ids, a list of values).
   UTF-8 with a byte order mark,
-  so spreadsheet programs read it. Large jobs would be better served by a
+  so spreadsheet programs read it. Large studies would be better served by a
   streaming download from the server (later).
-- **Preview** runs the job's latest codebook (deployed or not) as
-  deployment `<jobId>.preview`, with a token from
-  `POST /job/:jobId/deployment/preview`. Coders and answers stay in the
+- **Preview** runs the study's latest codebook (deployed or not) as
+  deployment `<studyId>.preview`, with a token from
+  `POST /study/:studyId/deployment/preview`. Coders and answers stay in the
   server's memory; nothing is stored (`architecture.md` §5).
 
 ## 8. Tooling notes

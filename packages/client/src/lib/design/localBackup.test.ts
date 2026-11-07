@@ -16,15 +16,15 @@ beforeEach(() => {
   } as Storage;
 });
 
-const backup = (jobId: number, designVersionId: number | null): DesignBackup => ({ jobId, designVersionId, revision: 2, items: [], saved: [], at: 1 });
+const backup = (studyId: number, designVersionId: number | null): DesignBackup => ({ studyId, designVersionId, revision: 2, items: [], saved: [], at: 1 });
 
 describe("local backup", () => {
   it("keeps one backup, cleared only by its own codebook", () => {
     writeBackup(backup(1, 5));
-    expect(readBackup()).toMatchObject({ jobId: 1, designVersionId: 5, revision: 2 });
-    clearBackup({ jobId: 1, designVersionId: 6 });
+    expect(readBackup()).toMatchObject({ studyId: 1, designVersionId: 5, revision: 2 });
+    clearBackup({ studyId: 1, designVersionId: 6 });
     expect(readBackup()).not.toBeNull();
-    clearBackup({ jobId: 1, designVersionId: 5 });
+    clearBackup({ studyId: 1, designVersionId: 5 });
     expect(readBackup()).toBeNull();
   });
 

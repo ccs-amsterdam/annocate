@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { UnitsCreateBodySchema, addedFields, checkUnitData, fieldUsage, type UnitField } from "@annotinder/contracts";
 import { designVersionItems } from "../shared/designVersions.js";
 import type { Server, Env } from "../context.js";
-import { requireJobUser } from "./auth.js";
+import { requireStudyUser } from "./auth.js";
 import { checkUnitUpload } from "../shared/limits.js";
 import { draftUnits, getUnitFields, latestDesignVersion, saveUnits, setUnitFields, toUnitMeta, toUnitResponse, unitCount } from "../shared/units.js";
 
@@ -10,8 +10,8 @@ export function units(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/units", requireJobUser(server, "READ"), async (c) => {
-    const rows = await draftUnits(db, "u.job_id = $1", [c.get("jobId")]);
+  app.get("/study/:studyId/units", requireStudyUser(server, "READ"), async (c) => {
+    const rows = await draftUnits(db, "u.study_id = $1", [c.get("studyId")]);
     return c.json(rows.map(toUnitMeta));
   });
 
@@ -22,17 +22,17 @@ export function units(server: Server): Hono<Env> {
   // have no value for them); every declared field must be given (null for
   // empty). The first upload (no units yet) takes its types from the values,
   // and drops declared fields it lacks that the codebook doesn't use.
-  app.post("/job/:jobId/units", requireJobUser(server, "WRITE"), async (c) => {
+  app.post("/study/:studyId/units", requireStudyUser(server, "WRITE"), async (c) => {
     const parsed = UnitsCreateBodySchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
-    const jobId = c.get("jobId");
+    const studyId = c.get("studyId");
     const { units, overwrite, overwriteCoded } = parsed.data;
 
-    const firstUpload = (await unitCount(db, jobId)) === 0;
-    const declared = await getUnitFields(db, jobId);
+    const firstUpload = (await unitCount(db, studyId)) === 0;
+    const declared = await getUnitFields(db, studyId);
     let known: UnitField[] = declared;
     if (firstUpload) {
-      const latest = await latestDesignVersion(db, jobId);
+      const latest = await latestDesignVersion(db, studyId);
       const used = latest ? fieldUsage(designVersionItems(latest)) : new Map();
       const given = new Set(units.flatMap((u) => Object.keys(u.data)));
       known = declared.filter((f) => used.has(f.name) && !given.has(f.name));
@@ -53,12 +53,12 @@ export function units(server: Server): Hono<Env> {
       if (problem) return c.json({ error: `Unit '${unit.externalId}': ${problem}` }, 400);
     }
 
-    const existingRows = await draftUnits(db, "u.job_id = $1 AND u.external_id = ANY($2)", [
-      jobId,
+    const existingRows = await draftUnits(db, "u.study_id = $1 AND u.external_id = ANY($2)", [
+      studyId,
       units.map((u) => u.externalId),
     ]);
     const existing = new Map(existingRows.map((row) => [row.external_id, row]));
-    await checkUnitUpload(db, jobId, units, new Set(units.filter((u) => !existing.has(u.externalId)).map((u) => u.externalId)).size);
+    await checkUnitUpload(db, studyId, units, new Set(units.filter((u) => !existing.has(u.externalId)).map((u) => u.externalId)).size);
     for (const unit of units) {
       const row = existing.get(unit.externalId);
       if (!row) continue;
@@ -74,9 +74,9 @@ export function units(server: Server): Hono<Env> {
     }
 
     const created = await db.transaction(async (tx) => {
-      if (JSON.stringify(fields) !== JSON.stringify(declared)) await setUnitFields(tx, jobId, fields);
-      const ids = await saveUnits(tx, jobId, units);
-      const rows = await draftUnits(tx, "u.job_id = $1 AND u.id = ANY($2)", [jobId, [...ids.values()]]);
+      if (JSON.stringify(fields) !== JSON.stringify(declared)) await setUnitFields(tx, studyId, fields);
+      const ids = await saveUnits(tx, studyId, units);
+      const rows = await draftUnits(tx, "u.study_id = $1 AND u.id = ANY($2)", [studyId, [...ids.values()]]);
       const byId = new Map(rows.map((r) => [r.id, r]));
       return units.map((u) => toUnitResponse(byId.get(ids.get(u.externalId)!)!));
     });

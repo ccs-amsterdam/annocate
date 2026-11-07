@@ -198,7 +198,7 @@ describe("setup wizard recipes", () => {
 
   it("say what is missing or wrong", () => {
     expect(setupProblems(setup({ name: "", parts: { annotate: false, survey: false, experiment: false }, questions: { before: [], unit: [], after: [] } }))).toEqual([
-      "Give the job a name",
+      "Give the study a name",
       "Choose at least one of annotate, survey or experiment",
       "Add at least one question",
     ]);

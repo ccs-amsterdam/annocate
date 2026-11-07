@@ -7,14 +7,14 @@ summary: Upload the material to code from a CSV file - ids, fields and their typ
 
 **Units** are the material coders code: news articles, tweets, survey
 answers, image links. You upload them as a CSV file on the **Units** tab of a
-job. Each row becomes a unit, and the columns you choose become its
+study. Each row becomes a unit, and the columns you choose become its
 **fields**, which a codebook shows with `$unit.<field>`, for example
 `$unit.headline`.
 
 A small file is enough to start: you can upload more units at any time, and
 add new columns later. Uploaded units are a draft until you deploy them
-(**Deploy…** in the bar at the top of the job). Then loops over all units of
-the job hand out the new units, also while coding runs, without changing the
+(**Deploy…** in the bar at the top of the study). Then loops over all units of
+the study hand out the new units, also while coding runs, without changing the
 design.
 
 ## Preparing the file
@@ -43,7 +43,7 @@ a002,Minister resigns,Morning Post,"The minister of finance stepped down after w
 > Only upload what coders may see, plus what you need to recognize the
 > units. Coders only ever receive the fields the codebook shows (see
 > [What coders get](#what-coders-get)), but keeping personal data out of the
-> job altogether is safest.
+> study altogether is safest.
 
 ## Uploading step by step
 
@@ -113,7 +113,7 @@ such a column replaces the group's sets. See
 
 ## Uploading more units later
 
-All units of a job have the same fields. The first upload sets them; later
+All units of a study have the same fields. The first upload sets them; later
 uploads add to them:
 
 - A column named like an existing field is uploaded as that field and keeps
@@ -123,7 +123,7 @@ uploads add to them:
 - If no column is uploaded as an existing field, AnnoTinder warns you: the
   new units get empty values there.
 
-You can see the job's fields, with an icon for their type, at the top of the
+You can see the study's fields, with an icon for their type, at the top of the
 **Units** tab. They are part of the design: **Details**
 shows per field how the codebook uses it (*shown* to coders, *sent, not
 shown* when only conditions use it, *server only* for gold and practice
@@ -134,7 +134,7 @@ design can't be deployed until its fields are declared.
 
 ## Replacing units
 
-If the file has ids that the job already has, AnnoTinder asks before it
+If the file has ids that the study already has, AnnoTinder asks before it
 replaces them: tick **Replace the … units that already exist (same id)**.
 Use this to fix a typo or a broken text.
 

@@ -111,7 +111,7 @@ export function DeployDialog({ client, open, version, versionNumber, live, liveN
               <DialogTitle>Deploy changes?</DialogTitle>
               <DialogDescription>
                 {firstDeploy
-                  ? "Nothing is deployed yet: after this, coders can start the job."
+                  ? "Nothing is deployed yet: after this, coders can start the study."
                   : `Coders use v${liveNumber} now. Everything you edit is a draft until you deploy it; what you leave out stays a draft.`}
               </DialogDescription>
             </DialogHeader>

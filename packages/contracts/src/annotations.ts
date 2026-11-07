@@ -2,13 +2,13 @@ import { z } from "zod";
 import { IdSchema, UnitDataSchema } from "./common.js";
 import { AnswerTimingSchema, VariableValueSchema } from "./variableValue.js";
 
-// Downloading annotations (researcher API `GET /job/:jobId/annotations`):
+// Downloading annotations (researcher API `GET /study/:studyId/annotations`):
 // one row per answer: unit (or none, for answers outside unit loops and
 // values the server assigned), coder and variable, in the order they were
 // first written, a page at a time. Coder-level values also come with the
-// coders (`GET /job/:jobId/coders`, `variables`).
+// coders (`GET /study/:studyId/coders`, `variables`).
 
-/** Query of `GET /job/:jobId/annotations`. */
+/** Query of `GET /study/:studyId/annotations`. */
 export const AnnotationsQuerySchema = z.object({
   /** `next` of the previous page; omit for the first page. */
   after: z.coerce.number().int().nonnegative().optional(),
@@ -77,7 +77,7 @@ export const UnitVersionSchema = z.object({
 });
 export type UnitVersion = z.infer<typeof UnitVersionSchema>;
 
-/** Query of `GET /job/:jobId/unit-versions`: pages, like annotations. */
+/** Query of `GET /study/:studyId/unit-versions`: pages, like annotations. */
 export const UnitVersionsQuerySchema = z.object({
   after: z.coerce.number().int().nonnegative().optional(),
   limit: z.coerce.number().int().min(1).max(10000).default(1000),
@@ -92,7 +92,7 @@ export const UnitVersionPageSchema = z.object({
 export type UnitVersionPage = z.infer<typeof UnitVersionPageSchema>;
 
 /**
- * A device a coder used (`GET /job/:jobId/devices`): coarse details from the
+ * A device a coder used (`GET /study/:studyId/devices`): coarse details from the
  * browser (docs/coder-identity.md §4), when it joined the session. A session
  * has several when the coder continued on another device.
  */

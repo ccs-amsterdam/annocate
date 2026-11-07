@@ -23,7 +23,7 @@ export interface PendingSpan {
  * fields (docs/client.md §4: annotation should be integrated with the
  * question flow, not a separate "annotation mode").
  *
- * `JobRunner` mounts one `SpanAnnotationProvider` wrapping both `UnitFields`
+ * `StudyRunner` mounts one `SpanAnnotationProvider` wrapping both `UnitFields`
  * and the answer form whenever the current step is a `span` question.
  */
 export interface SpanAnnotationState {

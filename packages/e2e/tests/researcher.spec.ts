@@ -1,7 +1,7 @@
 import { type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { unzipSync, strFromU8 } from "fflate";
-import type { JobResponse } from "@annotinder/contracts";
+import type { StudyResponse } from "@annotinder/contracts";
 import { answers, api, question } from "./helpers";
 
 // The researcher UI, in a real browser (development login).
@@ -16,12 +16,12 @@ async function downloadZip(page: Page): Promise<Record<string, string>> {
 
 const csvRows = (csv: string) => csv.replace(/^﻿/, "").trim().split(/\r?\n/);
 
-test("a job from an example: the dialog, the overview note, and its results in the download", async ({ page }) => {
+test("a study from an example: the dialog, the overview note, and its results in the download", async ({ page }) => {
   await page.goto("/research");
-  await page.getByRole("button", { name: /Create new job/ }).click();
+  await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /From an example/ }).click();
   await page.getByRole("dialog").getByRole("button", { name: /Sentiment by swiping/ }).click();
-  await page.getByRole("button", { name: "Create job" }).click();
+  await page.getByRole("button", { name: "Create study" }).click();
   await expect(page.getByText(/Made from the example/)).toBeVisible();
 
   const files = await downloadZip(page);
@@ -33,15 +33,15 @@ test("a job from an example: the dialog, the overview note, and its results in t
   expect(csvRows(files["coders.csv"])).toHaveLength(1 + 3);
 });
 
-test("your first job, as the help describes it: units, a codebook, publish, invite, code", async ({ page, request, browser }) => {
-  // 1. Create a job
+test("your first study, as the help describes it: units, a codebook, publish, invite, code", async ({ page, request, browser }) => {
+  // 1. Create a study
   await page.goto("/research");
-  await page.getByRole("button", { name: /Create new job/ }).click();
-  await page.getByRole("menuitem", { name: /Empty job/ }).click();
+  await page.getByRole("button", { name: /Create new study/ }).click();
+  await page.getByRole("menuitem", { name: /Empty study/ }).click();
   await page.getByPlaceholder(/Sentiment Analysis/).fill("News pilot");
-  await page.getByRole("button", { name: "Create Job" }).click();
+  await page.getByRole("button", { name: "Create Study" }).click();
   await expect(page.getByRole("button", { name: "Overview" })).toBeVisible();
-  const job = (await api<JobResponse[]>(request, "GET", "/job")).find((j) => j.name === "News pilot")!;
+  const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "News pilot")!;
 
   // 2. Upload the units
   await page.getByRole("button", { name: "Design", exact: true }).click();
@@ -59,10 +59,10 @@ test("your first job, as the help describes it: units, a codebook, publish, invi
   });
   await page.getByRole("button", { name: /Use column names/ }).click();
   await page.getByRole("button", { name: /Upload 3 units/ }).click();
-  await expect.poll(async () => (await api<unknown[]>(request, "GET", `/job/${job.id}/units`)).length).toBe(3);
+  await expect.poll(async () => (await api<unknown[]>(request, "GET", `/study/${study.id}/units`)).length).toBe(3);
 
   // 3-6. A codebook (written through the API: the editor has its own unit tests), published
-  const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/design`, {
+  const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
     note: "v1",
     items: [
       {
@@ -91,9 +91,9 @@ test("your first job, as the help describes it: units, a codebook, publish, invi
   await page.getByRole("button", { name: "Editor", exact: true }).click();
   await page.getByRole("button", { name: "Deploy…", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Deploy", exact: true }).click();
-  await expect.poll(async () => (await api<{ designVersionId: number } | null>(request, "GET", `/job/${job.id}/deployment`))?.designVersionId).toBe(codebook.id);
+  await expect.poll(async () => (await api<{ designVersionId: number } | null>(request, "GET", `/study/${study.id}/deployment`))?.designVersionId).toBe(codebook.id);
 
-  // 7. Link coders: publishing made the job's link; give it a label
+  // 7. Link coders: publishing made the study's link; give it a label
   await page.getByRole("button", { name: "Deploy", exact: true }).click();
   await page.getByRole("button", { name: "Links", exact: true }).click();
   await expect(page.getByText("Open link")).toBeVisible();
@@ -101,17 +101,17 @@ test("your first job, as the help describes it: units, a codebook, publish, invi
   await page.getByLabel("Label").fill("Pilot coders");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("Pilot coders")).toBeVisible();
-  const [invite] = await api<{ secret: string }[]>(request, "GET", `/job/${job.id}/links`);
+  const [invite] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
 
   // A coder codes the three articles
   const coder = await (await browser.newContext()).newPage();
-  await coder.goto(`/code/${job.id}?link=${invite.secret}`);
+  await coder.goto(`/code/${study.id}?link=${invite.secret}`);
   for (const topic of ["Disasters", "Politics", "Sports"]) {
     await question(coder, "What is this article mainly about?");
     await coder.getByRole("button", { name: new RegExp(topic) }).click();
   }
   await expect(coder.getByText(/completed|Thank you/i).first()).toBeVisible();
-  await expect.poll(async () => (await answers(request, job.id)).length).toBe(3);
+  await expect.poll(async () => (await answers(request, study.id)).length).toBe(3);
 
   // 8. The download has them
   const files = await downloadZip(page);

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import {
-  AdminJobSchema,
-  AdminJobUpdateSchema,
+  AdminStudySchema,
+  AdminStudyUpdateSchema,
   AdminLogEntrySchema,
   AdminUserCreateSchema,
   AdminUserSchema,
@@ -48,8 +48,8 @@ export const adminEndpoints = {
   createResearcherInvite: { method: "POST", path: "/admin/researcher-invites", request: ResearcherInviteWriteSchema, response: ResearcherInviteSchema },
   revokeResearcherInvite: { method: "POST", path: "/admin/researcher-invites/:id/revoke", request: z.void(), response: ResearcherInviteSchema },
 
-  listAdminJobs: { method: "GET", path: "/admin/jobs", request: z.void(), response: z.array(AdminJobSchema) },
-  updateAdminJob: { method: "PUT", path: "/admin/jobs/:id", request: AdminJobUpdateSchema, response: AdminJobSchema },
+  listAdminStudies: { method: "GET", path: "/admin/studies", request: z.void(), response: z.array(AdminStudySchema) },
+  updateAdminStudy: { method: "PUT", path: "/admin/studies/:id", request: AdminStudyUpdateSchema, response: AdminStudySchema },
 
   /** Newest first, at most 500. */
   listAdminLog: { method: "GET", path: "/admin/log", request: z.void(), response: z.array(AdminLogEntrySchema) },

@@ -12,11 +12,11 @@ you can write your data management plan, your ethics application and your
 participant information accurately.
 
 In short: AnnoTinder stores what the study needs and little more. Coders
-don't need an account, and nothing is shared outside the job.
+don't need an account, and nothing is shared outside the study.
 
 ## What is stored
 
-Everything of a job is stored on the AnnoTinder server you use:
+Everything of a study is stored on the AnnoTinder server you use:
 
 | What | Includes |
 | --- | --- |
@@ -35,10 +35,10 @@ URL parameters other than the ones the design asks for (an
 id if the link takes it from the URL). The web server in front of
 AnnoTinder may keep ordinary access logs; ask whoever runs it.
 
-A browser keeps one random device id (a cookie) for all jobs, but
-AnnoTinder stores only a code derived from it per job. So the stored data
-can't tell that one device took part in two jobs: an anonymous job stays
-anonymous, also next to a job where the same person gave their name or
+A browser keeps one random device id (a cookie) for all studies, but
+AnnoTinder stores only a code derived from it per study. So the stored data
+can't tell that one device took part in two studies: an anonymous study stays
+anonymous, also next to a study where the same person gave their name or
 participant id.
 
 The server sees units and answers as they are, like any web application that
@@ -76,7 +76,7 @@ you publish.
 
 Coders don't create accounts. When a coder opens a link, the server
 starts a **session** for them. The browser keeps one random device id (a
-cookie); for this job the server stores only a code derived from it. So the
+cookie); for this study the server stores only a code derived from it. So the
 same browser continues the same session later, for up to about a year (as
 long as browsers keep cookies), and even a copy of the database doesn't let
 anyone take over sessions.
@@ -111,7 +111,7 @@ To run the study, a coder's browser gets:
   sent.
 - **Only the units they are given**, a few at a time (the next ones are
   loaded ahead). A coder can go back to units they coded, but can't browse
-  the job's units.
+  the study's units.
 
 Conditions, including which group of a loop a coder belongs to, are worked
 out in the coder's browser. The server checks that the units a coder asks
@@ -121,12 +121,12 @@ answers is meant to organise honest coders, not to keep material secret.
 Random and balanced group assignment, session values from the link, and
 assigned sets are decided on the server: coders can't change their own group.
 
-> If some coders must never see some material, put it in a separate job
+> If some coders must never see some material, put it in a separate study
 > with its own links.
 
 ## What researchers see
 
-Everyone with access to the job sees its units, design, coders and answers.
+Everyone with access to the study sees its units, design, coders and answers.
 The **Coders** tab lists each session with its participant id (or a
 number), link, start time and progress. The download contains the same
 information as the tables above. See [Downloading results](results.md).
@@ -136,13 +136,13 @@ preview ends.
 
 ## Removing data
 
-- **Delete Job** (on the job's **Settings** tab) deletes the
-  job with everything in it: units, design versions, links, coders and
+- **Delete Study** (on the study's **Settings** tab) deletes the
+  study with everything in it: units, design versions, links, coders and
   answers.
 - **Deleting a coder's data** (on the **Coders** tab) deletes one coder,
   found by participant id or email, with all their answers. Coders can ask
   for it themselves, from the coding screen; you decide on such requests
   (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)).
 
-Download the results before deleting a job, and delete jobs you no longer
+Download the results before deleting a study, and delete studies you no longer
 need: data that isn't stored can't leak.

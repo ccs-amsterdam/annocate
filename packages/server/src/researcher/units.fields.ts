@@ -1,37 +1,37 @@
 import { Hono } from "hono";
 import { UnitsSpecSchema, fieldUsage, typeOfValue, unitFieldNameError, type UnitDataValue } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
-import { requireJobUser } from "./auth.js";
+import { requireStudyUser } from "./auth.js";
 import { designVersionItems } from "../shared/designVersions.js";
 import { dropDraftFields, getUnitFields, latestDesignVersion, setUnitFields } from "../shared/units.js";
 
 // The design's unit fields (docs/plans/design.md §3).
-// Static path: mounted before units.$id.ts so `/job/:jobId/units/fields` is not read as a unit id.
+// Static path: mounted before units.$id.ts so `/study/:studyId/units/fields` is not read as a unit id.
 export function unitsFields(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/units/fields", requireJobUser(server, "READ"), async (c) => c.json(await getUnitFields(db, c.get("jobId"))));
+  app.get("/study/:studyId/units/fields", requireStudyUser(server, "READ"), async (c) => c.json(await getUnitFields(db, c.get("studyId"))));
 
   // Declare, retype, describe, or remove fields. A removed field's values
   // leave the draft units (deployed versions keep them); a retyped field's
   // values must fit its new type.
-  app.put("/job/:jobId/units/fields", requireJobUser(server, "WRITE"), async (c) => {
+  app.put("/study/:studyId/units/fields", requireStudyUser(server, "WRITE"), async (c) => {
     const parsed = UnitsSpecSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
-    const jobId = c.get("jobId");
+    const studyId = c.get("studyId");
     const { fields } = parsed.data;
     const names = fields.map((f) => f.name);
     const twice = names.find((n, i) => names.indexOf(n) !== i);
     if (twice !== undefined) return c.json({ error: `Field '${twice}' is given twice` }, 400);
-    const before = await getUnitFields(db, jobId);
+    const before = await getUnitFields(db, studyId);
     for (const f of fields) {
       const problem = before.some((b) => b.name === f.name) ? null : unitFieldNameError(f.name);
       if (problem) return c.json({ error: `Field name '${f.name}': ${problem}` }, 400);
     }
 
     const removed = before.filter((b) => !names.includes(b.name)).map((b) => b.name);
-    const latest = await latestDesignVersion(db, jobId);
+    const latest = await latestDesignVersion(db, studyId);
     const used = latest ? fieldUsage(designVersionItems(latest)) : new Map();
     const inUse = removed.filter((name) => used.has(name));
     if (inUse.length > 0) return c.json({ error: `The design uses ${inUse.join(", ")}: change it first` }, 409);
@@ -43,18 +43,18 @@ export function unitsFields(server: Server): Hono<Env> {
       const rows = await db.query<{ external_id: string; value: UnitDataValue }>(
         `SELECT u.external_id, val.value FROM units u JOIN unit_draft d ON d.unit_id = u.id
          JOIN unit_field_names n ON n.id = d.field_id JOIN unit_values val ON val.id = d.value_id
-         WHERE u.job_id = $1 AND n.name = $2`,
-        [jobId, f.name],
+         WHERE u.study_id = $1 AND n.name = $2`,
+        [studyId, f.name],
       );
       const misfit = rows.find((r) => typeOfValue(r.value) !== null && typeOfValue(r.value) !== f.type);
       if (misfit) return c.json({ error: `Unit '${misfit.external_id}': its ${f.name} (${JSON.stringify(misfit.value)}) isn't ${f.type}` }, 400);
     }
 
     await db.transaction(async (tx) => {
-      await dropDraftFields(tx, jobId, removed);
-      await setUnitFields(tx, jobId, fields);
+      await dropDraftFields(tx, studyId, removed);
+      await setUnitFields(tx, studyId, fields);
     });
-    return c.json(await getUnitFields(db, jobId));
+    return c.json(await getUnitFields(db, studyId));
   });
 
   return app;

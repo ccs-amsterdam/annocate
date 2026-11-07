@@ -2,7 +2,7 @@
 title: Online panels and crowd coding
 section: Coders
 order: 2
-summary: Run a job with participants from Prolific, MTurk or another panel - ids in the link, screenouts, completion links and sample sizes.
+summary: Run a study with participants from Prolific, MTurk or another panel - ids in the link, screenouts, completion links and sample sizes.
 ---
 
 Online panels and crowd-working platforms (Prolific, MTurk, CloudResearch,
@@ -99,7 +99,7 @@ End: done                 complete → panel's completion link
 A panel gives every study its own links, so they belong to the run, not to
 the design: in the end item, choose **Then send coders to**: *A panel's
 return link*, and give it a name (e.g. `panel_complete`). Put the links
-themselves in the job's **Settings**, under **Panel return links**; they
+themselves in the study's **Settings**, under **Panel return links**; they
 take effect at once, without deploying, and someone who reuses your design
 fills in their own. Deploying warns about a name without a link. (A fixed
 link, the same for every run, can go in the end item itself: *This URL*.)

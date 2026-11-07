@@ -49,7 +49,7 @@ function optionsOf(variable: AnyVariableType | undefined): { value: OptionValue;
 
 /**
  * The live preview of the selected item (docs/client.md §7, "Preview"):
- * for a loop (or an item in one) with a unit of the job, the question on
+ * for a loop (or an item in one) with a unit of the study, the question on
  * screen (for `::: from` blocks) and answers to the questions the layout
  * uses (for `::: if` blocks and values).
  */

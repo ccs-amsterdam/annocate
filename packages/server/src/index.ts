@@ -9,7 +9,7 @@ import { createApp } from "./app.js";
 // PGLITE_DIR (a local PGlite database, default .pglite in this package);
 // ANNOTINDER_SECRET (signs login state and preview tokens; random per process if not set);
 // ANNOTINDER_CLIENT_DIR (the built client, served from this server);
-// ANNOTINDER_DEMO=1 (an empty database gets the demo job: development);
+// ANNOTINDER_DEMO=1 (an empty database gets the demo study: development);
 // ANNOTINDER_DEV_AUTH=1 (accept development auth headers: local only);
 // docs/hosting.md has the full list.
 // researcher login: OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET,
@@ -23,8 +23,8 @@ import { createApp } from "./app.js";
 
 const port = Number(process.env.PORT ?? 8787);
 const db = await openDatabase();
-// Development: an empty database gets a demo job.
-if (process.env.ANNOTINDER_DEMO === "1" && !(await one(db, "SELECT 1 FROM jobs LIMIT 1"))) await seed(db);
+// Development: an empty database gets a demo study.
+if (process.env.ANNOTINDER_DEMO === "1" && !(await one(db, "SELECT 1 FROM studies LIMIT 1"))) await seed(db);
 
 const devAuth = process.env.ANNOTINDER_DEV_AUTH === "1";
 const { OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, ANNOTINDER_PUBLIC_URL } = process.env;

@@ -40,7 +40,7 @@ export interface BranchChoice {
 }
 
 /**
- * Client-side abstraction over "however we talk to a job's backend" (docs/client.md §2). `HttpCoderApi` is the only implementation for now
+ * Client-side abstraction over "however we talk to a study's backend" (docs/client.md §2). `HttpCoderApi` is the only implementation for now
  * (talking to the server's coder API, packages/server); a future
  * design/offline variant (for Storybook-like isolated component dev) can
  * implement the same interface without a network round-trip.
@@ -66,7 +66,7 @@ export interface CoderApi {
   postCoderVariables(variables: Record<string, VariableValue>, timings?: Record<string, AnswerTiming>): Promise<void>;
   /** The coder reached an `auto` question: its value, assigned by the server (once). */
   assignAuto(name: string): Promise<VariableValue>;
-  /** The coder reached an `end` item (`unit`: the unit an end inside a unit loop was reached on), or without one finished the job. */
+  /** The coder reached an `end` item (`unit`: the unit an end inside a unit loop was reached on), or without one finished the study. */
   endSession(item?: string, unit?: EndUnit): Promise<EndSessionResponse>;
   /** Goes back after finishing, while the server allows it (`reopen`). */
   reopenSession(): Promise<void>;

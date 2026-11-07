@@ -1,14 +1,14 @@
 import { expect, test } from "./fixtures";
-import { RELEASE, type JobResponse } from "@annotinder/contracts";
+import { RELEASE, type StudyResponse } from "@annotinder/contracts";
 import { api } from "./helpers";
 
 // Everything is a draft until deployed (docs/plans/design.md §5): units and
 // sets too. Coders get the deployed snapshot.
 
 test("new units are drafts until deployed: the bar, the dialog, and then coders get them", async ({ page, request, browser }) => {
-  const job = await api<JobResponse>(request, "POST", "/job", { name: "Draft units" });
-  await api(request, "POST", `/job/${job.id}/units`, { units: [{ externalId: "a1", data: { text: "First text" } }] });
-  const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/design`, {
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Draft units" });
+  await api(request, "POST", `/study/${study.id}/units`, { units: [{ externalId: "a1", data: { text: "First text" } }] });
+  const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
     items: [
       {
         type: "unit_loop",
@@ -18,13 +18,13 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
       },
     ],
   });
-  await api(request, "PUT", `/job/${job.id}/deployment`, { designVersionId: codebook.id });
-  await api(request, "POST", `/job/${job.id}/units`, { units: [{ externalId: "a2", data: { text: "Second text" } }] });
-  const [link] = await api<{ secret: string }[]>(request, "GET", `/job/${job.id}/links`);
+  await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: codebook.id });
+  await api(request, "POST", `/study/${study.id}/units`, { units: [{ externalId: "a2", data: { text: "Second text" } }] });
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
 
   // A coder gets only the deployed unit
   const coder = await (await browser.newContext()).newPage();
-  await coder.goto(`/code/${job.id}?link=${link.secret}`);
+  await coder.goto(`/code/${study.id}?link=${link.secret}`);
   await expect(coder.getByText("First text")).toBeVisible();
   await coder.getByRole("button", { name: "1 politics" }).click();
   await expect(coder.getByText(/completed|Thank you/i).first()).toBeVisible();
@@ -38,23 +38,23 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
   await expect(dialog.getByText("Units and sets: 1 added")).toBeVisible();
   await dialog.getByRole("button", { name: "Deploy", exact: true }).click();
   await expect(page.getByText(/Not deployed yet/)).toBeHidden();
-  const versions = await api<{ version: number; changes: unknown }[]>(request, "GET", `/job/${job.id}/deployment/versions`);
+  const versions = await api<{ version: number; changes: unknown }[]>(request, "GET", `/study/${study.id}/deployment/versions`);
   expect(versions[0]).toMatchObject({ version: 2, changes: { design: false, units: { added: 1 } } });
 
   // A new coder gets both
   const second = await (await browser.newContext()).newPage();
-  await second.goto(`/code/${job.id}?link=${link.secret}`);
+  await second.goto(`/code/${study.id}?link=${link.secret}`);
   await expect(second.getByText("First text")).toBeVisible();
   await second.getByRole("button", { name: "1 politics" }).click();
   await expect(second.getByText("Second text")).toBeVisible();
 });
 
 test("the design's unit fields: how the codebook uses each, removing an unused one", async ({ page, request }) => {
-  const job = await api<JobResponse>(request, "POST", "/job", { name: "Field use" });
-  await api(request, "POST", `/job/${job.id}/units`, { units: [{ externalId: "a1", data: { text: "Hello", year: 2020, note: "x" } }] });
-  const [draft] = await api<{ id: number }[]>(request, "GET", `/job/${job.id}/design`);
-  const { units } = await api<{ units: unknown }>(request, "GET", `/job/${job.id}/design/${draft.id}`);
-  await api(request, "PUT", `/job/${job.id}/design/${draft.id}`, {
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Field use" });
+  await api(request, "POST", `/study/${study.id}/units`, { units: [{ externalId: "a1", data: { text: "Hello", year: 2020, note: "x" } }] });
+  const [draft] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
+  const { units } = await api<{ units: unknown }>(request, "GET", `/study/${study.id}/design/${draft.id}`);
+  await api(request, "PUT", `/study/${study.id}/design/${draft.id}`, {
     units,
     items: [
       {
@@ -82,12 +82,12 @@ test("the design's unit fields: how the codebook uses each, removing an unused o
   page.once("dialog", (d) => void d.accept());
   await page.getByRole("button", { name: "Remove field note" }).click();
   await expect(row("note")).toHaveCount(0);
-  expect((await api<{ name: string }[]>(request, "GET", `/job/${job.id}/units/fields`)).map((f) => f.name)).toEqual(["text", "year"]);
+  expect((await api<{ name: string }[]>(request, "GET", `/study/${study.id}/units/fields`)).map((f) => f.name)).toEqual(["text", "year"]);
 });
 
 test("export: the codebook as a document (what coders see), and the design file", async ({ page, request }) => {
-  const job = await api<JobResponse>(request, "POST", "/job", { name: "Codebook export" });
-  await api(request, "POST", `/job/${job.id}/design`, {
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Codebook export" });
+  await api(request, "POST", `/study/${study.id}/design`, {
     items: [{ type: "question", name: "age", variable: { type: "numeric", question: "How old are you?", min: 18 } }],
   });
   await page.goto("/research");
@@ -125,8 +125,8 @@ test("export: the codebook as a document (what coders see), and the design file"
 });
 
 test("panel return links are settings of the run, filled in for coders", async ({ page, request }) => {
-  const job = await api<JobResponse>(request, "POST", "/job", { name: "Panel run" });
-  await api(request, "POST", `/job/${job.id}/design`, {
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Panel run" });
+  await api(request, "POST", `/study/${study.id}/design`, {
     items: [
       { type: "question", name: "ok", variable: { type: "confirm", question: "Ready?" } },
       { type: "end", name: "done", outcome: "complete", redirectSetting: "panel_done" },
@@ -137,16 +137,16 @@ test("panel return links are settings of the run, filled in for coders", async (
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByLabel("URL for panel_done").fill("https://panel.example/done");
   await page.getByRole("button", { name: "Save Changes" }).click();
-  await expect.poll(async () => (await api<JobResponse>(request, "GET", `/job/${job.id}`)).redirectUrls).toEqual({ panel_done: "https://panel.example/done" });
+  await expect.poll(async () => (await api<StudyResponse>(request, "GET", `/study/${study.id}`)).redirectUrls).toEqual({ panel_done: "https://panel.example/done" });
 });
 
 test("a link per value of a URL parameter, built in the browser", async ({ page, request }) => {
-  const job = await api<JobResponse>(request, "POST", "/job", { name: "Schools" });
-  const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/design`, {
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Schools" });
+  const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
     session: { params: [{ name: "school", kind: "url", values: { list: [{ value: "north" }, { value: "south" }] } }] },
     items: [{ type: "question", name: "ok", variable: { type: "confirm", question: "Ready?" } }],
   });
-  await api(request, "PUT", `/job/${job.id}/deployment`, { designVersionId: codebook.id });
+  await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: codebook.id });
   await page.goto("/research");
   await page.getByText("Schools").click();
   await page.getByRole("button", { name: "Deploy", exact: true }).click();

@@ -3,11 +3,11 @@ import { getCookie, setCookie } from "hono/cookie";
 import { HttpError } from "../shared/http.js";
 
 // Coder sessions (docs/coder-identity.md §4): a browser keeps one random
-// device id in an httpOnly cookie, for every job, so page scripts (and XSS)
-// never see it. Its key for a session in a job is the hash of the device id,
+// device id in an httpOnly cookie, for every study, so page scripts (and XSS)
+// never see it. Its key for a session in a study is the hash of the device id,
 // the deployment and the participant id (a shared lab computer keeps
 // participants apart). The database stores only that hash, never the device
-// id: so nothing links one device's sessions across jobs.
+// id: so nothing links one device's sessions across studies.
 
 /** Every coder API request must carry this header: a cross-site form or image can't, so it blocks CSRF. */
 export const CLIENT_HEADER = "x-annotinder";

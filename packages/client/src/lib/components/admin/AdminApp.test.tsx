@@ -4,18 +4,18 @@ import { AdminApp } from "./AdminApp";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 
 const stubClient: ResearcherApi = {
-  jobId: 1,
-  forJob: () => stubClient,
-  listJobs: () => new Promise(() => {}),
+  studyId: 1,
+  forStudy: () => stubClient,
+  listStudies: () => new Promise(() => {}),
   listExamples: async () => [],
-  createJobFromExample: () => new Promise(() => {}),
-  createJobFromRecipe: () => new Promise(() => {}),
-  createJob: () => new Promise(() => {}),
-  deleteJob: () => new Promise(() => {}),
-  getJob: () => new Promise(() => {}),
-  updateJob: () => new Promise(() => {}),
-  getJobUsers: () => new Promise(() => {}),
-  putJobUsers: () => new Promise(() => {}),
+  createStudyFromExample: () => new Promise(() => {}),
+  createStudyFromRecipe: () => new Promise(() => {}),
+  createStudy: () => new Promise(() => {}),
+  deleteStudy: () => new Promise(() => {}),
+  getStudy: () => new Promise(() => {}),
+  updateStudy: () => new Promise(() => {}),
+  getStudyUsers: () => new Promise(() => {}),
+  putStudyUsers: () => new Promise(() => {}),
   listDesignVersions: () => new Promise(() => {}),
   getDesignVersion: () => new Promise(() => {}),
   createDesignVersion: () => new Promise(() => {}),
@@ -69,14 +69,14 @@ const stubClient: ResearcherApi = {
 };
 
 describe("AdminApp", () => {
-  it("renders the JobList view without throwing while jobs query is pending", () => {
-    const html = renderToStaticMarkup(<AdminApp client={stubClient} location={{ page: "jobs" }} onNavigate={() => {}} />);
-    expect(html).toContain("Loading jobs");
+  it("renders the StudyList view without throwing while studies query is pending", () => {
+    const html = renderToStaticMarkup(<AdminApp client={stubClient} location={{ page: "studies" }} onNavigate={() => {}} />);
+    expect(html).toContain("Loading studies");
   });
 
-  it("renders a selected job view without throwing", () => {
+  it("renders a selected study view without throwing", () => {
     const html = renderToStaticMarkup(
-      <AdminApp client={stubClient} location={{ page: "job", jobId: 1, tab: "Overview" }} onNavigate={() => {}} />,
+      <AdminApp client={stubClient} location={{ page: "study", studyId: 1, tab: "Overview" }} onNavigate={() => {}} />,
     );
     expect(html).toContain("Design");
     expect(html).toContain("Deploy");

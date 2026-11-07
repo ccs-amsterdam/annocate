@@ -114,6 +114,6 @@ exactly so:
   advertisement, in experiments;
 - score cards and other small designs built from a unit's numbers.
 
-Prefer markdown when it can do the job. Markdown follows the coder's light
+Prefer markdown when it can do the study. Markdown follows the coder's light
 or dark mode and the app's fonts, fits phone screens by itself, and its text
 can be selected by [span questions](span.md): text in a frame can't.

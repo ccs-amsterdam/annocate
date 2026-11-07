@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { JobRunner } from "../lib/components/JobRunner";
+import { StudyRunner } from "../lib/components/StudyRunner";
 import { rememberStudy } from "../lib/session/studies";
 
 /**
@@ -22,14 +22,14 @@ export function CodePage({
 }) {
   // Everything else in the URL goes to the server: the parameters the link takes, and `url_param` auto variables.
   const { link, transfer, ...urlParams } = search;
-  // The annotator's home lists the studies this browser opened (not the link's secret)
+  // The coder home lists the studies this browser opened (not the link's secret)
   const paramsKey = JSON.stringify(urlParams);
   useEffect(() => {
     rememberStudy({ deployment, params: JSON.parse(paramsKey) as Record<string, string> });
   }, [deployment, paramsKey]);
   return (
     <div className="h-screen overflow-hidden bg-background text-foreground">
-      <JobRunner
+      <StudyRunner
         baseUrl={`${apiUrl}/d/${encodeURIComponent(deployment)}`}
         linkSecret={link}
         urlParams={urlParams}

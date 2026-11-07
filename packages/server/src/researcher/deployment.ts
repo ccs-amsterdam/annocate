@@ -3,7 +3,7 @@ import { DeploymentWriteSchema, designErrors, redirectSettings, undeclaredFields
 import { designVersionItems, designVersionUnits, itemsValid, type DesignVersionRow } from "../shared/designVersions.js";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
-import { requireJobUser } from "./auth.js";
+import { requireStudyUser } from "./auth.js";
 import { deploymentVersions, getDeployment, pendingChanges, putDeployment } from "../shared/deployments.js";
 import { checkLinkCount, syncLinks } from "../shared/links.js";
 import { setWarnings } from "../shared/sets.js";
@@ -12,16 +12,16 @@ export function deployment(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/deployment", requireJobUser(server, "READ"), async (c) => c.json(await getDeployment(db, c.get("jobId"))));
-  app.get("/job/:jobId/deployment/pending", requireJobUser(server, "READ"), async (c) => c.json(await pendingChanges(db, c.get("jobId"))));
-  app.get("/job/:jobId/deployment/versions", requireJobUser(server, "READ"), async (c) => c.json(await deploymentVersions(db, c.get("jobId"))));
+  app.get("/study/:studyId/deployment", requireStudyUser(server, "READ"), async (c) => c.json(await getDeployment(db, c.get("studyId"))));
+  app.get("/study/:studyId/deployment/pending", requireStudyUser(server, "READ"), async (c) => c.json(await pendingChanges(db, c.get("studyId"))));
+  app.get("/study/:studyId/deployment/versions", requireStudyUser(server, "READ"), async (c) => c.json(await deploymentVersions(db, c.get("studyId"))));
 
-  app.put("/job/:jobId/deployment", requireJobUser(server, "ADMIN"), async (c) => {
+  app.put("/study/:studyId/deployment", requireStudyUser(server, "ADMIN"), async (c) => {
     const parsed = DeploymentWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-    const jobId = c.get("jobId");
-    const codebook = await one<DesignVersionRow>(db, "SELECT * FROM design_versions WHERE job_id = $1 AND id = $2", [jobId, parsed.data.designVersionId]);
+    const studyId = c.get("studyId");
+    const codebook = await one<DesignVersionRow>(db, "SELECT * FROM design_versions WHERE study_id = $1 AND id = $2", [studyId, parsed.data.designVersionId]);
     if (!codebook) return c.json({ error: "Design version not found" }, 404);
     // Drafts may be saved with issues; coders only ever get a valid codebook.
     const errors = designErrors(designVersionItems(codebook));
@@ -34,23 +34,23 @@ export function deployment(server: Server): Hono<Env> {
       return c.json({ error: `The design uses unit fields it doesn't declare: ${undeclared.join(", ")}`, code: "undeclared_fields" }, 400);
     }
     // The units it runs: the drafts (`units`, and always the first time), or the deployed ones.
-    const current = await one(db, "SELECT 1 FROM deployments WHERE job_id = $1", [jobId]);
+    const current = await one(db, "SELECT 1 FROM deployments WHERE study_id = $1", [studyId]);
     const live = !parsed.data.units && !!current;
     // Links follow the codebook's link parameters (docs/plans/sets-and-session-parameters.md §4).
-    await checkLinkCount(db, jobId, designVersionItems(codebook), parsed.data.confirmLinks ?? false, live);
+    await checkLinkCount(db, studyId, designVersionItems(codebook), parsed.data.confirmLinks ?? false, live);
     const deployed = await db.transaction(async (tx) => {
-      const result = await putDeployment(tx, jobId, parsed.data);
-      const job = await one<{ redirect_urls: Record<string, string> }>(tx, "SELECT redirect_urls FROM jobs WHERE id = $1", [jobId]);
+      const result = await putDeployment(tx, studyId, parsed.data);
+      const study = await one<{ redirect_urls: Record<string, string> }>(tx, "SELECT redirect_urls FROM studies WHERE id = $1", [studyId]);
       // Panel return links are deployment settings: say which ones are missing
-      const unset = redirectSettings(designVersionItems(codebook)).filter((name) => !job?.redirect_urls?.[name]);
+      const unset = redirectSettings(designVersionItems(codebook)).filter((name) => !study?.redirect_urls?.[name]);
       const warnings = [
         ...(result.warnings ?? []),
-        ...(await setWarnings(tx, jobId, designVersionItems(codebook), live)),
-        ...unset.map((name) => `End items send coders on with the setting '${name}', which has no URL yet: set it in the job's Settings.`),
+        ...(await setWarnings(tx, studyId, designVersionItems(codebook), live)),
+        ...unset.map((name) => `End items send coders on with the setting '${name}', which has no URL yet: set it in the study's Settings.`),
       ];
-      return { ...result, links: await syncLinks(tx, jobId), ...(warnings.length > 0 ? { warnings } : {}) };
+      return { ...result, links: await syncLinks(tx, studyId), ...(warnings.length > 0 ? { warnings } : {}) };
     });
-    await server.deployments.refresh(jobId);
+    await server.deployments.refresh(studyId);
     return c.json(deployed);
   });
 

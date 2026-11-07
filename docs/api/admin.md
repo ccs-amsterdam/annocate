@@ -12,7 +12,7 @@ client's server admin page (`ServerAdmin.tsx`, through `api/serverApi.ts`).
   with [`shared/accounts.ts`](../../packages/server/src/shared/accounts.ts) (registration, limits)
   and [`shared/limits.ts`](../../packages/server/src/shared/limits.ts) (checks).
 
-Admins don't get job data here: no codebooks, units or answers. Every
+Admins don't get study data here: no codebooks, units or answers. Every
 change is written to the admin log (`listAdminLog`). Non-admins get 403
 `admin_required`.
 
@@ -35,8 +35,8 @@ change is written to the admin log (`listAdminLog`). Non-admins get 403
 | listResearcherInvites | `GET /admin/researcher-invites` | – | `ResearcherInviteSchema[]` |
 | createResearcherInvite | `POST /admin/researcher-invites` | `ResearcherInviteWriteSchema` | `ResearcherInviteSchema` (201) |
 | revokeResearcherInvite | `POST /admin/researcher-invites/:id/revoke` | – | `ResearcherInviteSchema` |
-| listAdminJobs | `GET /admin/jobs` | – | `AdminJobSchema[]` |
-| updateAdminJob | `PUT /admin/jobs/:id` | `AdminJobUpdateSchema` | `AdminJobSchema` |
+| listAdminStudies | `GET /admin/studies` | – | `AdminStudySchema[]` |
+| updateAdminStudy | `PUT /admin/studies/:id` | `AdminStudyUpdateSchema` | `AdminStudySchema` |
 | listAdminLog | `GET /admin/log` | – | `AdminLogEntrySchema[]` (newest 500) |
 
 Notes:
@@ -53,6 +53,6 @@ Notes:
   block themselves or take away their own admin role (409).
 - **createUser**: adds a user before they first log in (or changes the
   role of an existing one).
-- **updateAdminJob**: `suspended` (the runtime is dropped, coders get 403
-  `job_suspended`), `owner` (a researcher's email: whose limits the job
+- **updateAdminStudy**: `suspended` (the runtime is dropped, coders get 403
+  `study_suspended`), `owner` (a researcher's email: whose limits the study
   counts against).

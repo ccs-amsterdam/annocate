@@ -2,7 +2,7 @@
 title: What is AnnoTinder?
 section: Getting started
 order: 1
-summary: The main ideas - jobs, designs, units, coders - and how they fit together.
+summary: The main ideas - studies, designs, units, coders - and how they fit together.
 ---
 
 AnnoTinder is a tool for **annotation**: people (coders) read or look at
@@ -15,9 +15,9 @@ It is built for research: the same codebook gives every coder the same task on
 every device, everything that coders saw and answered is kept, and a design
 can be shared so others can repeat the study.
 
-## The parts of a job
+## The parts of a study
 
-Everything belongs to a **job**: one study or coding project. A job has:
+Everything belongs to a **study**: one study or coding project. A study has:
 
 | Part | What it is | Where |
 | --- | --- | --- |
@@ -60,7 +60,7 @@ Thank you             the end
 
 ## From draft to coders
 
-1. **Create a job** and upload your units (a CSV file).
+1. **Create a study** and upload your units (a CSV file).
 2. **Write the codebook** in the codebook editor. Save as often as you like:
    a saved design version is a draft only you and your co-editors see.
    Uploaded units are drafts too.
@@ -77,7 +77,7 @@ was given under. See [Preview, save and deploy](previewing-and-publishing.md).
 
 ## Where to go next
 
-- [Your first job](first-job.md) walks through these steps.
+- [Your first study](first-study.md) walks through these steps.
 - [Layout templates](layout-templates.md) explains how units are shown.
 - [Handing out units](unit-distribution.md) explains how units are divided
   among coders.

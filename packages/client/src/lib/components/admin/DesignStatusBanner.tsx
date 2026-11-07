@@ -87,7 +87,7 @@ export function DesignStatusBanner({
     >
       {liveNumber !== null
         ? `Coders are using v${liveNumber} until you deploy this draft.`
-        : "Nothing is deployed yet, so coders can't start this job. Deploy when it's ready."}
+        : "Nothing is deployed yet, so coders can't start this study. Deploy when it's ready."}
     </Banner>
   );
 }

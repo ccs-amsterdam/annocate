@@ -157,7 +157,7 @@ export function QuestionPreview({
                 Shown when: <code className="rounded bg-muted px-1.5 py-0.5 font-mono">{describeCondition(item.condition)}</code>
               </p>
               <p className="mt-3 text-xs text-muted-foreground">
-                Condition items do not display a visible card to annotators; their rules or script decide which items are shown.
+                Condition items do not display a visible card to coders; their rules or script decide which items are shown.
               </p>
             </div>
           )}
@@ -169,7 +169,7 @@ export function QuestionPreview({
 
 /**
  * The layout with its values evaluated against the unit (and the preview
- * answers), like JobManager does while coding. Values using answers that
+ * answers), like StudyManager does while coding. Values using answers that
  * aren't set render as empty.
  */
 function useRenderedLayout(

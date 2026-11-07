@@ -1,15 +1,15 @@
 import { expect, test } from "./fixtures";
-import type { DesignVersion, JobResponse, SetGroupResponse } from "@annotinder/contracts";
+import type { DesignVersion, StudyResponse, SetGroupResponse } from "@annotinder/contracts";
 import { api } from "./helpers";
 
-// The setup wizard (docs/plans/setup-wizard.md): through its steps to a job
+// The setup wizard (docs/plans/setup-wizard.md): through its steps to a study
 // with a draft codebook, opened in the editor to specify the questions.
 
 test("annotation with an experiment: a set of units per condition, questions before, per unit and after", async ({ page, request }) => {
   await page.goto("/research");
-  await page.getByRole("button", { name: /Create new job/ }).click();
+  await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /Guided setup/ }).click();
-  await page.getByLabel("Job name").fill("Framing study");
+  await page.getByLabel("Study name").fill("Framing study");
   // Annotate is on; add the experiment
   await page.getByRole("button", { name: /Experiment/ }).click();
   await page.getByRole("button", { name: "Next" }).click();
@@ -46,18 +46,18 @@ test("annotation with an experiment: a set of units per condition, questions bef
   await page.getByLabel("Questions after the units").fill("comments");
   await page.getByRole("button", { name: "Next" }).click();
   await expect(page.getByText("3 units, showing text.")).toBeVisible();
-  await page.getByRole("button", { name: "Create job" }).click();
+  await page.getByRole("button", { name: "Create study" }).click();
 
   // The editor, with the questions to specify
   await expect(page.getByText("to specify")).toHaveCount(4);
-  const job = (await api<JobResponse[]>(request, "GET", "/job")).find((j) => j.name === "Framing study")!;
-  const [group] = await api<SetGroupResponse[]>(request, "GET", `/job/${job.id}/sets`);
+  const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "Framing study")!;
+  const [group] = await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`);
   expect(group.sets.map((s) => [s.name, s.unitIds.length])).toEqual([
     ["control", 1],
     ["treatment", 2],
   ]);
-  const [draft] = await api<DesignVersion[]>(request, "GET", `/job/${job.id}/design`);
-  const items = (await api<DesignVersion>(request, "GET", `/job/${job.id}/design/${draft.id}`)).items as {
+  const [draft] = await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`);
+  const items = (await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${draft.id}`)).items as {
     name?: string;
     type: string;
     variable?: { type: string; question?: string };
@@ -77,27 +77,27 @@ test("annotation with an experiment: a set of units per condition, questions bef
 
 test("a survey alone: questions by name, no units", async ({ page, request }) => {
   await page.goto("/research");
-  await page.getByRole("button", { name: /Create new job/ }).click();
+  await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /Guided setup/ }).click();
-  await page.getByLabel("Job name").fill("Opinion survey");
+  await page.getByLabel("Study name").fill("Opinion survey");
   await page.getByRole("button", { name: /Annotate units/ }).click();
   await page.getByRole("button", { name: /Ask questions/ }).click();
   await page.getByRole("button", { name: "Next" }).click();
   await page.getByLabel("Questions").fill("age\nDo you trust the news?");
   await page.getByRole("button", { name: "Next" }).click();
-  await page.getByRole("button", { name: "Create job" }).click();
+  await page.getByRole("button", { name: "Create study" }).click();
   await expect(page.getByText("to specify")).toHaveCount(2);
-  const job = (await api<JobResponse[]>(request, "GET", "/job")).find((j) => j.name === "Opinion survey")!;
-  expect(await api<unknown[]>(request, "GET", `/job/${job.id}/units`)).toEqual([]);
+  const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "Opinion survey")!;
+  expect(await api<unknown[]>(request, "GET", `/study/${study.id}/units`)).toEqual([]);
   // A draft: its link comes when it is published
-  expect((await api<unknown[]>(request, "GET", `/job/${job.id}/links`)).length).toBe(0);
+  expect((await api<unknown[]>(request, "GET", `/study/${study.id}/links`)).length).toBe(0);
 });
 
 test("crowd coding with an overlap; the loop's units are set by the wizard", async ({ page, request }) => {
   await page.goto("/research");
-  await page.getByRole("button", { name: /Create new job/ }).click();
+  await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /Guided setup/ }).click();
-  await page.getByLabel("Job name").fill("Crowd pilot");
+  await page.getByLabel("Study name").fill("Crowd pilot");
   await page.getByRole("button", { name: "Next" }).click();
   await page.locator("input[type=file]").setInputFiles({
     name: "units.csv",
@@ -121,11 +121,11 @@ test("crowd coding with an overlap; the loop's units are set by the wizard", asy
   await page.getByLabel("gold sentiment").check();
   await expect(page.getByText("no sentiment_gold yet")).toBeVisible();
   await page.getByRole("button", { name: "Next" }).click();
-  await page.getByRole("button", { name: "Create job" }).click();
+  await page.getByRole("button", { name: "Create study" }).click();
 
-  const job = (await api<JobResponse[]>(request, "GET", "/job")).find((j) => j.name === "Crowd pilot")!;
-  const [draft] = await api<DesignVersion[]>(request, "GET", `/job/${job.id}/design`);
-  const [loop] = (await api<DesignVersion>(request, "GET", `/job/${job.id}/design/${draft.id}`)).items as { units: unknown[]; layout: { template: string } }[];
+  const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "Crowd pilot")!;
+  const [draft] = await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`);
+  const [loop] = (await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${draft.id}`)).items as { units: unknown[]; layout: { template: string } }[];
   expect(loop.units).toEqual([
     {
       mode: "shared",
@@ -137,7 +137,7 @@ test("crowd coding with an overlap; the loop's units are set by the wizard", asy
     },
   ]);
   expect(loop.layout.template).toBe("# $unit.headline\n\n$unit.text");
-  const [group] = await api<SetGroupResponse[]>(request, "GET", `/job/${job.id}/sets`);
+  const [group] = await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`);
   expect(group.sets.map((s) => [s.name, s.unitIds.length])).toEqual([
     ["_overlap", 2],
     ["queue", 8],

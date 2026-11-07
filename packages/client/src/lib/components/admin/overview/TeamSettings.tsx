@@ -1,34 +1,34 @@
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import type { JobUser, Role } from "@annotinder/contracts";
+import type { StudyUser, Role } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InfoTip } from "@/components/ui/info-tip";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useJobUsersMutation, useJobUsersQuery } from "../../../admin/queries";
+import { useStudyUsersMutation, useStudyUsersQuery } from "../../../admin/queries";
 
 const ROLES: { value: Role; label: string; help: string }[] = [
-  { value: "READ", label: "Read", help: "sees the job and downloads the results" },
+  { value: "READ", label: "Read", help: "sees the study and downloads the results" },
   { value: "WRITE", label: "Write", help: "also edits the design, units and links" },
   { value: "ADMIN", label: "Admin", help: "also manages access, resets and deletes data" },
 ];
 
 /**
- * Who has access to the job, and with which role (docs/client.md §7): only
- * admins of the job see and change it. The list is saved as a whole; it
+ * Who has access to the study, and with which role (docs/client.md §7): only
+ * admins of the study see and change it. The list is saved as a whole; it
  * always keeps an admin.
  */
 export function TeamSettings({ client }: { client: ResearcherApi }) {
-  const usersQuery = useJobUsersQuery(client);
-  const save = useJobUsersMutation(client);
+  const usersQuery = useStudyUsersQuery(client);
+  const save = useStudyUsersMutation(client);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("WRITE");
 
   if (usersQuery.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
-  if (usersQuery.isError) return <p className="text-sm text-muted-foreground">Only admins of this job can see and change who has access.</p>;
+  if (usersQuery.isError) return <p className="text-sm text-muted-foreground">Only admins of this study can see and change who has access.</p>;
   const users = usersQuery.data ?? [];
   const admins = users.filter((u) => u.role === "ADMIN").length;
-  const update = (next: JobUser[]) => save.mutate(next);
+  const update = (next: StudyUser[]) => save.mutate(next);
 
   return (
     <div className="flex max-w-xl flex-col gap-3">
@@ -43,7 +43,7 @@ export function TeamSettings({ client }: { client: ResearcherApi }) {
                 className="h-8 rounded-md border border-input bg-background px-2 text-xs"
                 value={u.role}
                 disabled={save.isPending || lastAdmin}
-                title={lastAdmin ? "A job needs at least one admin" : undefined}
+                title={lastAdmin ? "A study needs at least one admin" : undefined}
                 onChange={(e) => update(users.map((x) => (x.email === u.email ? { ...x, role: e.target.value as Role } : x)))}
               >
                 {ROLES.map((r) => (
@@ -58,7 +58,7 @@ export function TeamSettings({ client }: { client: ResearcherApi }) {
                 aria-label={`Remove ${u.email}`}
                 disabled={save.isPending || lastAdmin}
                 onClick={() => {
-                  if (confirm(`Remove ${u.email}'s access to this job?`)) update(users.filter((x) => x.email !== u.email));
+                  if (confirm(`Remove ${u.email}'s access to this study?`)) update(users.filter((x) => x.email !== u.email));
                 }}
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -96,7 +96,7 @@ export function TeamSettings({ client }: { client: ResearcherApi }) {
               </li>
             ))}
           </ul>
-          <p className="mt-2">People log in with this email address. They see the job once they have logged in.</p>
+          <p className="mt-2">People log in with this email address. They see the study once they have logged in.</p>
         </InfoTip>
       </form>
 

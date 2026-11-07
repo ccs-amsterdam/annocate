@@ -62,7 +62,7 @@ checkout finds it itself).
 | `PGPOOL_MAX` | Database connections per server process (default 20) |
 | `PGLITE_DIR` | Without `DATABASE_URL`: where the PGlite database lives (development; default `.pglite` in `packages/server`) |
 | `ANNOTINDER_CLIENT_DIR` | The built client; set in the image |
-| `ANNOTINDER_DEMO` | `1`: an empty database gets the demo job. Development only |
+| `ANNOTINDER_DEMO` | `1`: an empty database gets the demo study. Development only |
 | `ANNOTINDER_DEV_AUTH` | `1`: accept development auth headers. **Never on a reachable server** |
 
 ## Login provider
@@ -99,16 +99,16 @@ docker compose up -d --build
 
 ## Several server processes
 
-The server keeps only each live job's deployment (codebook, sets,
+The server keeps only each live study's deployment (codebook, sets,
 settings) in memory, so several
 processes can share one database (`architecture.md` §3), e.g. compose
 replicas behind a proxy. Exceptions: researcher previews live in one
-process's memory, and a job's limit on answers is counted per process.
+process's memory, and a study's limit on answers is counted per process.
 
 ## Capacity
 
-`packages/server/scripts/load-test.mjs` simulates coders on one job. On a
-4-core machine with Postgres 17 in Docker, one server process, a job of
+`packages/server/scripts/load-test.mjs` simulates coders on one study. On a
+4-core machine with Postgres 17 in Docker, one server process, a study of
 10,000 units in a shared queue (until 2 coders, at most 2), batches of 5
 units:
 
@@ -122,5 +122,5 @@ units one pick at a time (it holds a lock while it decides), and a pick
 reads the queue's codings: about 25 picks per second at 10k units and
 ~12k codings, fewer as codings grow (`architecture.md` §10, item 11). That is
 far more than coders at a realistic pace need (300 coders at 10 s per unit
-and batches of 5: 6 picks per second); jobs without a shared queue
+and batches of 5: 6 picks per second); studies without a shared queue
 don't take that lock.

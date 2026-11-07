@@ -78,7 +78,7 @@ affects. Removing a question,
 or changing conditions or order, leaves finished units finished.
 
 This is a choice with a trade-off: your data stays complete (every finished
-unit has an answer to every question), but adding a question to a running job
+unit has an answer to every question), but adding a question to a running study
 costs coders time. AnnoTinder can't yet add a question *without* reopening
 finished units. See
 [Changing a design while coding runs](changing-a-live-design.md).

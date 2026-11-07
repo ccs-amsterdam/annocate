@@ -1,18 +1,18 @@
 import { useState } from "react";
-import type { JobResponse } from "@annotinder/contracts";
+import type { StudyResponse } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
-import { useCreateJobFromExampleMutation, useExamplesQuery } from "../../admin/queries";
+import { useCreateStudyFromExampleMutation, useExamplesQuery } from "../../admin/queries";
 
 /**
- * "New job from an example" (docs/plans/examples.md): the examples by
- * category; the chosen one becomes an ordinary job, deployed, with an
+ * "New study from an example" (docs/plans/examples.md): the examples by
+ * category; the chosen one becomes an ordinary study, deployed, with an
  * link and sometimes example answers.
  */
-export function ExamplesDialog({ client, onCreated, onClose }: { client: ResearcherApi; onCreated: (job: JobResponse) => void; onClose: () => void }) {
+export function ExamplesDialog({ client, onCreated, onClose }: { client: ResearcherApi; onCreated: (study: StudyResponse) => void; onClose: () => void }) {
   const examplesQuery = useExamplesQuery(client);
-  const create = useCreateJobFromExampleMutation(client);
+  const create = useCreateStudyFromExampleMutation(client);
   const [chosen, setChosen] = useState<string | null>(null);
   const [name, setName] = useState("");
   const examples = examplesQuery.data ?? [];
@@ -22,9 +22,9 @@ export function ExamplesDialog({ client, onCreated, onClose }: { client: Researc
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in">
       <div role="dialog" aria-modal="true" aria-labelledby="examples-title" className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl border border-border bg-card p-6 shadow-xl">
-        <h2 id="examples-title" className="text-lg font-semibold text-foreground">New job from an example</h2>
+        <h2 id="examples-title" className="text-lg font-semibold text-foreground">New study from an example</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          An example makes a ready job: units, a deployed design and a link, sometimes with example answers. It is yours
+          An example makes a ready study: units, a deployed design and a link, sometimes with example answers. It is yours
           to try, change and delete.
         </p>
         <div className="mt-4 flex-1 space-y-4 overflow-y-auto pr-1">
@@ -65,7 +65,7 @@ export function ExamplesDialog({ client, onCreated, onClose }: { client: Researc
           }}
         >
           <label className="block text-xs font-medium text-muted-foreground">
-            Job name
+            Study name
             <Input className="mt-1" value={name} disabled={!example} onChange={(e) => setName(e.target.value)} placeholder="Choose an example first" />
           </label>
           {create.isError && (
@@ -76,7 +76,7 @@ export function ExamplesDialog({ client, onCreated, onClose }: { client: Researc
               Cancel
             </Button>
             <Button type="submit" disabled={!example || !name.trim() || create.isPending}>
-              {create.isPending ? "Creating..." : "Create job"}
+              {create.isPending ? "Creating..." : "Create study"}
             </Button>
           </div>
         </form>

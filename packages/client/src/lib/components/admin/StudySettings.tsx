@@ -1,37 +1,37 @@
 import { useState } from "react";
-import { designItems, redirectSettings, type JobResponse } from "@annotinder/contracts";
+import { designItems, redirectSettings, type StudyResponse } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useDesignVersionQuery, useDesignVersionsQuery, useCreateJobMutation, useDeleteJobMutation, useJobQuery, useUpdateJobMutation } from "../../admin/queries";
+import { useDesignVersionQuery, useDesignVersionsQuery, useCreateStudyMutation, useDeleteStudyMutation, useStudyQuery, useUpdateStudyMutation } from "../../admin/queries";
 import { InfoTip } from "@/components/ui/info-tip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2 } from "lucide-react";
 
 /**
- * Job settings (docs/client.md §7), shown at the bottom of the overview: edit
- * the job name, toggle archived status, keep finished sessions open, or
- * delete the job.
+ * Study settings (docs/client.md §7), shown at the bottom of the overview: edit
+ * the study name, toggle archived status, keep finished sessions open, or
+ * delete the study.
  */
-export function JobSettings({
+export function StudySettings({
   client,
   onDeleted,
 }: {
   client: ResearcherApi;
   onDeleted?: () => void;
 }) {
-  const jobQuery = useJobQuery(client);
-  const createJob = useCreateJobMutation(client);
+  const studyQuery = useStudyQuery(client);
+  const createStudy = useCreateStudyMutation(client);
 
-  if (jobQuery.isLoading) return <p className="text-sm text-muted-foreground">Loading job...</p>;
+  if (studyQuery.isLoading) return <p className="text-sm text-muted-foreground">Loading study...</p>;
 
-  if (!jobQuery.data) {
-    return <CreateJobForm createJob={createJob} />;
+  if (!studyQuery.data) {
+    return <CreateStudyForm createStudy={createStudy} />;
   }
 
-  return <JobEditForm key={jobQuery.data.id} job={jobQuery.data} client={client} onDeleted={onDeleted} />;
+  return <StudyEditForm key={studyQuery.data.id} study={studyQuery.data} client={client} onDeleted={onDeleted} />;
 }
 
-function CreateJobForm({ createJob }: { createJob: ReturnType<typeof useCreateJobMutation> }) {
+function CreateStudyForm({ createStudy }: { createStudy: ReturnType<typeof useCreateStudyMutation> }) {
   const [name, setName] = useState("");
 
   return (
@@ -39,16 +39,16 @@ function CreateJobForm({ createJob }: { createJob: ReturnType<typeof useCreateJo
       className="flex max-w-sm flex-col gap-3"
       onSubmit={(e) => {
         e.preventDefault();
-        createJob.mutate({ name, archived: false });
+        createStudy.mutate({ name, archived: false });
       }}
     >
-      <h2 className="text-lg font-medium">Create job</h2>
-      <p className="text-sm text-muted-foreground">Enter a job name to get started.</p>
-      <Input placeholder="Job name" value={name} onChange={(e) => setName(e.target.value)} required />
-      <Button type="submit" disabled={createJob.isPending}>
-        {createJob.isPending ? "Creating..." : "Create job"}
+      <h2 className="text-lg font-medium">Create study</h2>
+      <p className="text-sm text-muted-foreground">Enter a study name to get started.</p>
+      <Input placeholder="Study name" value={name} onChange={(e) => setName(e.target.value)} required />
+      <Button type="submit" disabled={createStudy.isPending}>
+        {createStudy.isPending ? "Creating..." : "Create study"}
       </Button>
-      {createJob.isError && <p className="text-sm text-destructive">{createJob.error.message}</p>}
+      {createStudy.isError && <p className="text-sm text-destructive">{createStudy.error.message}</p>}
     </form>
   );
 }
@@ -61,29 +61,29 @@ const setUrls = (urls: Record<string, string>) =>
       .sort(([a], [b]) => a.localeCompare(b)),
   );
 
-function JobEditForm({
-  job,
+function StudyEditForm({
+  study,
   client,
   onDeleted,
 }: {
-  job: JobResponse;
+  study: StudyResponse;
   client: ResearcherApi;
   onDeleted?: () => void;
 }) {
-  const updateJob = useUpdateJobMutation(client);
-  const deleteJob = useDeleteJobMutation(client);
-  const [name, setName] = useState(job.name);
-  const [archived, setArchived] = useState(job.archived);
-  const [keepOpen, setKeepOpen] = useState(job.keepSessionsOpen);
+  const updateStudy = useUpdateStudyMutation(client);
+  const deleteStudy = useDeleteStudyMutation(client);
+  const [name, setName] = useState(study.name);
+  const [archived, setArchived] = useState(study.archived);
+  const [keepOpen, setKeepOpen] = useState(study.keepSessionsOpen);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
-  const [redirects, setRedirects] = useState<Record<string, string>>(job.redirectUrls ?? {});
+  const [redirects, setRedirects] = useState<Record<string, string>>(study.redirectUrls ?? {});
   // The end items' redirect settings in the latest design version, and any URL already set
   const designVersions = useDesignVersionsQuery(client).data ?? [];
   const latest = useDesignVersionQuery(client, designVersions.at(-1)?.id ?? null).data;
-  const settingNames = [...new Set([...(latest ? redirectSettings(designItems(latest)) : []), ...Object.keys(job.redirectUrls ?? {})])];
+  const settingNames = [...new Set([...(latest ? redirectSettings(designItems(latest)) : []), ...Object.keys(study.redirectUrls ?? {})])];
   // Compared as saved: without empty URLs, in any key order (the server stores JSONB)
-  const redirectsDirty = JSON.stringify(setUrls(redirects)) !== JSON.stringify(setUrls(job.redirectUrls ?? {}));
-  const dirty = name !== job.name || archived !== job.archived || keepOpen !== job.keepSessionsOpen || redirectsDirty;
+  const redirectsDirty = JSON.stringify(setUrls(redirects)) !== JSON.stringify(setUrls(study.redirectUrls ?? {}));
+  const dirty = name !== study.name || archived !== study.archived || keepOpen !== study.keepSessionsOpen || redirectsDirty;
 
   return (
     <div className="max-w-md space-y-6">
@@ -92,11 +92,11 @@ function JobEditForm({
         onSubmit={(e) => {
           e.preventDefault();
           const redirectUrls = setUrls(redirects);
-          updateJob.mutate({ id: job.id, body: { name, archived, keepSessionsOpen: keepOpen, redirectUrls } });
+          updateStudy.mutate({ id: study.id, body: { name, archived, keepSessionsOpen: keepOpen, redirectUrls } });
         }}
       >
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1">Job Name</label>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Study Name</label>
           <Input value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
 
@@ -151,12 +151,12 @@ function JobEditForm({
         )}
 
         <div className="pt-2">
-          <Button type="submit" disabled={!dirty || updateJob.isPending}>
-            {updateJob.isPending ? "Saving..." : "Save Changes"}
+          <Button type="submit" disabled={!dirty || updateStudy.isPending}>
+            {updateStudy.isPending ? "Saving..." : "Save Changes"}
           </Button>
         </div>
-        {updateJob.isError && <p className="text-sm text-destructive">{updateJob.error.message}</p>}
-        {updateJob.isSuccess && !dirty && (
+        {updateStudy.isError && <p className="text-sm text-destructive">{updateStudy.error.message}</p>}
+        {updateStudy.isSuccess && !dirty && (
           <p className="text-xs text-primary font-medium">Settings saved successfully.</p>
         )}
       </form>
@@ -164,8 +164,8 @@ function JobEditForm({
       {/* Danger Zone */}
       <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 shadow-sm">
         <h3 className="flex items-center gap-1 text-sm font-semibold text-destructive">
-          Delete this job
-          <InfoTip label="About deleting">Deleting this job permanently removes its design versions, units, coders and their answers.</InfoTip>
+          Delete this study
+          <InfoTip label="About deleting">Deleting this study permanently removes its design versions, units, coders and their answers.</InfoTip>
         </h3>
 
         {!showConfirmDelete ? (
@@ -177,7 +177,7 @@ function JobEditForm({
             onClick={() => setShowConfirmDelete(true)}
           >
             <Trash2 className="h-4 w-4" />
-            Delete Job
+            Delete Study
           </Button>
         ) : (
           <div className="mt-3 flex items-center gap-2">
@@ -185,29 +185,29 @@ function JobEditForm({
               type="button"
               variant="destructive"
               size="sm"
-              disabled={deleteJob.isPending}
+              disabled={deleteStudy.isPending}
               onClick={() => {
-                deleteJob.mutate(job.id, {
+                deleteStudy.mutate(study.id, {
                   onSuccess: () => {
                     onDeleted?.();
                   },
                 });
               }}
             >
-              {deleteJob.isPending ? "Deleting..." : "Confirm Delete"}
+              {deleteStudy.isPending ? "Deleting..." : "Confirm Delete"}
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={() => setShowConfirmDelete(false)}
-              disabled={deleteJob.isPending}
+              disabled={deleteStudy.isPending}
             >
               Cancel
             </Button>
           </div>
         )}
-        {deleteJob.isError && <p className="mt-2 text-xs text-destructive">{deleteJob.error.message}</p>}
+        {deleteStudy.isError && <p className="mt-2 text-xs text-destructive">{deleteStudy.error.message}</p>}
       </div>
     </div>
   );

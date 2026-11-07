@@ -9,7 +9,7 @@ import type { TopLevelItem } from "@annotinder/contracts";
 const STORAGE_KEY = "annotinder:design-backup";
 
 export interface DesignBackup {
-  jobId: number;
+  studyId: number;
   /** The version being edited; null for a new codebook. */
   designVersionId: number | null;
   /** The saved revision the edits are based on (for the save conflict check). */
@@ -26,7 +26,7 @@ export function readBackup(): DesignBackup | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const backup = JSON.parse(raw) as DesignBackup;
-    return typeof backup.jobId === "number" && Array.isArray(backup.items) && Array.isArray(backup.saved) ? backup : null;
+    return typeof backup.studyId === "number" && Array.isArray(backup.items) && Array.isArray(backup.saved) ? backup : null;
   } catch {
     return null;
   }
@@ -41,12 +41,12 @@ export function writeBackup(backup: DesignBackup): void {
   }
 }
 
-/** Clears the backup; with a job and codebook, only if it is theirs. */
-export function clearBackup(of?: { jobId: number; designVersionId: number | null }): void {
+/** Clears the backup; with a study and codebook, only if it is theirs. */
+export function clearBackup(of?: { studyId: number; designVersionId: number | null }): void {
   try {
     if (of) {
       const backup = readBackup();
-      if (!backup || backup.jobId !== of.jobId || backup.designVersionId !== of.designVersionId) return;
+      if (!backup || backup.studyId !== of.studyId || backup.designVersionId !== of.designVersionId) return;
     }
     localStorage.removeItem(STORAGE_KEY);
   } catch {

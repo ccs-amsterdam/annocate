@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The server the end-to-end tests run against: a fresh PGlite database,
-# development auth (no login), the demo job, and the built client served by
+# development auth (no login), the demo study, and the built client served by
 # the server itself, as in production (docs/hosting.md).
 set -euo pipefail
 cd "$(dirname "$0")/../.."

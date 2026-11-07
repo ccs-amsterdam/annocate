@@ -76,9 +76,9 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
   const savedSerialized = useMemo(() => JSON.stringify(stripKeys(saved)), [saved]);
   // Errors and warnings. Drafts can be saved with errors; deploying needs none.
   // Plus the unit fields it uses that the design doesn't declare (docs/plans/design.md §3): the open
-  // version's fields, as the server checks them at deploy (a new design gets the job's current fields)
-  const jobFields = useUnitFieldsQuery(client).data;
-  const declared = version ? version.units.fields : jobFields;
+  // version's fields, as the server checks them at deploy (a new design gets the study's current fields)
+  const studyFields = useUnitFieldsQuery(client).data;
+  const declared = version ? version.units.fields : studyFields;
   const undeclared = useMemo(() => (declared ? undeclaredFields(cleanItems, declared) : []), [cleanItems, declared]);
   const validationIssues = useMemo(() => {
     const issues: DesignIssue[] = validateDesignItems(cleanItems);
@@ -107,7 +107,7 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
   useWarnBeforeUnload(dirty);
 
   // A copy of unsaved edits in the browser, in case it closes (localBackup.ts)
-  const backupOf = useMemo(() => ({ jobId: client.jobId ?? 0, designVersionId: version?.id ?? null }), [client.jobId, version?.id]);
+  const backupOf = useMemo(() => ({ studyId: client.studyId ?? 0, designVersionId: version?.id ?? null }), [client.studyId, version?.id]);
   useEffect(() => {
     if (readOnly) return;
     if (!dirty) {

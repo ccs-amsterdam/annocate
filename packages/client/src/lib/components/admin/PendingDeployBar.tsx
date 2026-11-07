@@ -9,7 +9,7 @@ import { DeployDialog, describeUnitChanges } from "./DeployDialog";
 
 /**
  * Everything is a draft until deployed (docs/plans/design.md §5): when a
- * deployed job's drafts differ from what coders get, says what differs and
+ * deployed study's drafts differ from what coders get, says what differs and
  * opens the deploy dialog. Draft units and sets are ticked there; a
  * design draft is offered, not ticked (it's deployed from the editor
  * as a rule).
@@ -28,7 +28,7 @@ export function PendingDeployBar({ client, includeDesign = false }: { client: Re
   const updateDesignVersion = useUpdateDesignVersionMutation(client);
   const [open, setOpen] = useState(false);
 
-  // The versions are needed to number them (and not take a deployed job for a first deploy)
+  // The versions are needed to number them (and not take a deployed study for a first deploy)
   if (!deployment || !pending || !designVersionsQuery.data) return null;
   const units = pending.units;
   const unitsChanged = units.added > 0 || units.changed > 0 || units.removed > 0 || units.sets;

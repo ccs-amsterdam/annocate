@@ -8,7 +8,7 @@ summary: Why a design never contains unit ids or coders, why sets are lists, and
 An AnnoTinder design describes *how* a study runs: the questions, the
 conditions, how units are shown, and the rules by which units are handed out.
 It never says *which* units or *which* people. Those live next to it, in the
-job: the units, their sets and the links.
+study: the units, their sets and the links.
 
 This split is deliberate. A design that holds only the process can be
 shared with a paper, reviewed, and run again by someone else, on their own
@@ -24,7 +24,7 @@ units and with their own coders.
 
 ## The design names, but never binds
 
-The design may *name* things that only get a meaning in the job:
+The design may *name* things that only get a meaning in the study:
 
 - **A set**: *every coder codes the units of set `gold`*. Which units are
   in `gold` is decided by the set, not the design.
@@ -79,10 +79,10 @@ coders.
 
 To give someone your design, open the codebook editor, switch to the
 **JSON** view, and copy the whole text. They paste it into the **JSON** view
-of a job of their own. Scripts can do the same through the
+of a study of their own. Scripts can do the same through the
 [researcher API](researcher-api.md).
 
-For the design to run in another job, that job needs:
+For the design to run in another study, that study needs:
 
 - **units with the fields the design uses**, with the same names
   (`$unit.headline` needs a `headline` field). The design declares them, so

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { Server, Env } from "../context.js";
-import { requireJobUser } from "./auth.js";
+import { requireStudyUser } from "./auth.js";
 
 const PREVIEW_TTL_MS = 12 * 60 * 60_000;
 
@@ -9,10 +9,10 @@ const PREVIEW_TTL_MS = 12 * 60 * 60_000;
 export function deploymentPreview(server: Server): Hono<Env> {
   const app = new Hono<Env>();
 
-  app.post("/job/:jobId/deployment/preview", requireJobUser(server, "WRITE"), (c) => {
-    const jobId = c.get("jobId");
+  app.post("/study/:studyId/deployment/preview", requireStudyUser(server, "WRITE"), (c) => {
+    const studyId = c.get("studyId");
     const expiresAt = Date.now() + PREVIEW_TTL_MS;
-    return c.json({ deploymentId: `${jobId}.preview`, token: server.deployments.previewToken(jobId, expiresAt), expiresAt: new Date(expiresAt) });
+    return c.json({ deploymentId: `${studyId}.preview`, token: server.deployments.previewToken(studyId, expiresAt), expiresAt: new Date(expiresAt) });
   });
 
   return app;

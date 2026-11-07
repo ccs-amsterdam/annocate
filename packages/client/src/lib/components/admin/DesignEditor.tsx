@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { codebookMarkdown } from "../../design/codebookMarkdown";
 import { RELEASE, designFile, splitDesignItems, type DesignVersion } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useJobQuery, useUnitFieldsQuery } from "../../admin/queries";
+import { useStudyQuery, useUnitFieldsQuery } from "../../admin/queries";
 import { unknownUnitFields } from "../../design/unitFieldRefs";
 import { DesignJsonEditor } from "./DesignJsonEditor";
 import { useDesignDraft } from "./designEditor/useDesignDraft";
@@ -93,7 +93,7 @@ export function DesignEditor({
   const showItemOnly = narrow && draft.selectedItem !== null;
   const [view, setView] = useState<EditorView>("tree");
   const unitFieldsQuery = useUnitFieldsQuery(client);
-  const jobName = useJobQuery(client).data?.name;
+  const studyName = useStudyQuery(client).data?.name;
   // Warnings, not errors: units may still be uploaded after the design is written
   // (Fields the design doesn't declare are errors already, at the same items)
   const warnings = useMemo(
@@ -191,7 +191,7 @@ export function DesignEditor({
           const { items, session, public: info } = splitDesignItems(draft.cleanItems);
           const file = designFile(
             { items, session, public: info, units: version?.units ?? { fields: [] }, note: version?.note ?? null },
-            { name: jobName ?? "design", version: versionNumber ?? null, client: client_ },
+            { name: studyName ?? "design", version: versionNumber ?? null, client: client_ },
           );
           download(JSON.stringify(file, null, 2), "design.json", "application/json");
         }}

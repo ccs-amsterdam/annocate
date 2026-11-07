@@ -4,8 +4,8 @@ import { AccountRoleSchema, LimitsSchema } from "./account.js";
 
 // The server admin's API (`/admin/...`, account role `admin`;
 // docs/accounts.md): registration, plans and limits, users, researcher
-// invites and requests, jobs (suspend, owner) and the log of admin actions.
-// Admins don't see job data: no design versions, units or answers.
+// invites and requests, studies (suspend, owner) and the log of admin actions.
+// Admins don't see study data: no design versions, units or answers.
 
 /**
  * Who becomes a researcher: `open`: anyone who logs in (with a verified
@@ -68,8 +68,8 @@ export const AdminUserSchema = z.object({
   blockedAt: z.coerce.date().nullable(),
   created: z.coerce.date(),
   lastLogin: z.coerce.date().nullable(),
-  /** Jobs they own. */
-  jobs: z.number().int(),
+  /** Studies they own. */
+  studies: z.number().int(),
 });
 export type AdminUser = z.infer<typeof AdminUserSchema>;
 
@@ -127,8 +127,8 @@ export const ResearcherInviteSchema = z.object({
 });
 export type ResearcherInvite = z.infer<typeof ResearcherInviteSchema>;
 
-/** A job as admins see it: no data, only what it holds. */
-export const AdminJobSchema = z.object({
+/** A study as admins see it: no data, only what it holds. */
+export const AdminStudySchema = z.object({
   id: IdSchema,
   name: z.string(),
   owner: z.string().nullable(),
@@ -139,15 +139,15 @@ export const AdminJobSchema = z.object({
   coders: z.number().int(),
   answers: z.number().int(),
 });
-export type AdminJob = z.infer<typeof AdminJobSchema>;
+export type AdminStudy = z.infer<typeof AdminStudySchema>;
 
-/** `PUT /admin/jobs/:id`: suspend (no coding, no changes; reading and deleting data still work) or move to another owner. */
-export const AdminJobUpdateSchema = z.object({
+/** `PUT /admin/studies/:id`: suspend (no coding, no changes; reading and deleting data still work) or move to another owner. */
+export const AdminStudyUpdateSchema = z.object({
   suspended: z.boolean().optional(),
   /** The new owner's email: a researcher on this server. */
   owner: z.string().email().optional(),
 });
-export type AdminJobUpdate = z.infer<typeof AdminJobUpdateSchema>;
+export type AdminStudyUpdate = z.infer<typeof AdminStudyUpdateSchema>;
 
 /** One admin action. */
 export const AdminLogEntrySchema = z.object({

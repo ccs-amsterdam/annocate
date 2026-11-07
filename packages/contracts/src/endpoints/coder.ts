@@ -34,7 +34,7 @@ export type NextUnitQuery = z.infer<typeof NextUnitQuerySchema>;
 
 /**
  * The coder API (docs/api/coder.md): served by the server under
- * `/d/<deploymentId>`, called by the client's annotator (`HttpCoderApi`).
+ * `/d/<deploymentId>`, called by the client's coding screen (`HttpCoderApi`).
  * Paths are relative to that base: a coder is tied to one deployment by the
  * URL, and to one coder by their session cookie.
  */
@@ -48,7 +48,7 @@ export type SubmitUnitResponse = z.infer<typeof SubmitUnitResponseSchema>;
 export const coderEndpoints = {
   getSession: { method: "GET", path: "/session", request: z.void(), response: SessionResponseSchema },
   /**
-   * This device's session in the deployment, summarized for the annotator's
+   * This device's session in the deployment, summarized for the coder's
    * home (404 without one). Never starts a session. `x-url-params` with the
    * participant id finds the session of a link that carries one.
    */

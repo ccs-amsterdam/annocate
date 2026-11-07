@@ -66,7 +66,7 @@ export function SessionItemForm({
         <label htmlFor="public-title" className="flex items-center gap-1.5 text-xs font-semibold">
           Public title
           <InfoTip label="About the public title">
-            What coders see as the study&apos;s name: on their list of studies (the annotator home) and while coding. The study&apos;s own
+            What coders see as the study&apos;s name: on their list of studies (the coder home) and while coding. The study&apos;s own
             name stays private, so it can say what the study is about. Without a title, coders see &quot;Untitled study&quot;.
           </InfoTip>
         </label>

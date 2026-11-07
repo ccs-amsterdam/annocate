@@ -111,7 +111,7 @@ That protects coders and your data, also when the HTML comes from data you
 didn't write yourself (scraped web pages, for example). The cost: the frame
 doesn't follow the app's fonts or dark mode, and images must be included in
 the HTML itself. See [HTML in a layout](html.md). Prefer markdown when it can
-do the job.
+do the study.
 
 ## Scripts in a sandbox
 

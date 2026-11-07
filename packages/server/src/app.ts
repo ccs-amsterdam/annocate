@@ -33,9 +33,9 @@ import { deploymentPreview } from "./researcher/deployment.preview.js";
 import { deploymentStatus } from "./researcher/deployment.status.js";
 import { deployment } from "./researcher/deployment.js";
 import { links } from "./researcher/links.js";
-import { job } from "./researcher/job.$id.js";
-import { jobUsers } from "./researcher/job.$id.users.js";
-import { jobs } from "./researcher/job.js";
+import { study } from "./researcher/study.$id.js";
+import { studyUsers } from "./researcher/study.$id.users.js";
+import { studies } from "./researcher/study.js";
 import { examples } from "./researcher/examples.js";
 import { overview } from "./researcher/overview.js";
 import { unit } from "./researcher/units.$id.js";
@@ -82,7 +82,7 @@ export interface AppOptions {
 }
 
 /**
- * The server: the researcher API (`/job/...`) and the coder API for coders
+ * The server: the researcher API (`/study/...`) and the coder API for coders
  * (`/d/<deploymentId>/...`), on one database. A new app on the same
  * database is a restart: runtimes rebuild from the database.
  */
@@ -122,7 +122,7 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   // server's unit size, shared/limits.ts).
   const tooLarge = (c: Context) => c.json({ error: "The request is too large", code: "request_too_large" }, 413);
   api.use("/d/*", bodyLimit({ maxSize: 2 * 1024 * 1024, onError: tooLarge }));
-  api.use("/job/*", bodyLimit({ maxSize: 256 * 1024 * 1024, onError: tooLarge }));
+  api.use("/study/*", bodyLimit({ maxSize: 256 * 1024 * 1024, onError: tooLarge }));
   api.use("/admin/*", bodyLimit({ maxSize: 1024 * 1024, onError: tooLarge }));
   api.use("/me/*", bodyLimit({ maxSize: 64 * 1024, onError: tooLarge }));
 
@@ -138,8 +138,8 @@ export function createApp(db: Sql, options: AppOptions = {}) {
     const credential = c.req.header("authorization") ?? getCookie(c, SESSION_COOKIE);
     return credential ? `account:${createHash("sha256").update(credential).digest("hex").slice(0, 32)}` : null;
   };
-  // ("/job/*" also matches "/job")
-  for (const path of ["/job/*", "/me/*", "/admin/*"]) api.use(path, rateLimit(limiter, "researcher", { key: accountKey }));
+  // ("/study/*" also matches "/study")
+  for (const path of ["/study/*", "/me/*", "/admin/*"]) api.use(path, rateLimit(limiter, "researcher", { key: accountKey }));
 
   // Coder API (coder.ts): same origin as the client, no CORS.
   api.use("/coder/*", rateLimit(limiter, "coder", { memory: true }));
@@ -149,7 +149,7 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   // Researcher API (researcher/): full paths, API keys (researcher/auth.ts).
   // CORS, so a client on another origin (e.g. the Vite dev server) can call it.
   // Cookies are same-origin only: CORS here is for API keys.
-  for (const path of ["/job", "/job/*", "/me", "/me/*", "/admin/*"]) api.use(path, cors());
+  for (const path of ["/study", "/study/*", "/me", "/me/*", "/admin/*"]) api.use(path, cors());
   // Order matters: units/fields and units/page before units/:id.
   for (const routes of [
     login,
@@ -157,9 +157,9 @@ export function createApp(db: Sql, options: AppOptions = {}) {
     me,
     admin,
     examples,
-    jobs,
-    job,
-    jobUsers,
+    studies,
+    study,
+    studyUsers,
     designVersions,
     designVersion,
     units,

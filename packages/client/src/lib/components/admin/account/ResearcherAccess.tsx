@@ -19,7 +19,7 @@ function dropInviteFromUrl(): void {
 }
 
 /**
- * The account part of the jobs page (docs/accounts.md): a user who isn't a
+ * The account part of the studies page (docs/accounts.md): a user who isn't a
  * researcher yet sees how to become one (a request, or an invite link they
  * opened); a researcher sees what they use of their limits.
  */
@@ -38,7 +38,7 @@ export function ResearcherAccess({ server, me, onMe }: { server: ServerApi; me: 
       .redeemResearcherInvite(secret)
       .then((next) => {
         onMe(next);
-        setNotice({ ok: true, text: "Welcome: you are a researcher on this server now, and can create jobs." });
+        setNotice({ ok: true, text: "Welcome: you are a researcher on this server now, and can create studies." });
       })
       .catch((e: unknown) => setNotice({ ok: false, text: e instanceof ResearcherApiError ? e.reason : String(e) }))
       .finally(dropInviteFromUrl);
@@ -49,9 +49,9 @@ export function ResearcherAccess({ server, me, onMe }: { server: ServerApi; me: 
   );
 
   if (me.role !== "user") {
-    const { jobs, units } = me.limits;
+    const { studies, units } = me.limits;
     const parts = [
-      jobs != null && `${me.usage.jobs} of ${jobs} jobs`,
+      studies != null && `${me.usage.studies} of ${studies} studies`,
       units != null && `${me.usage.units.toLocaleString()} of ${units.toLocaleString()} units`,
     ].filter(Boolean);
     return (
@@ -66,10 +66,10 @@ export function ResearcherAccess({ server, me, onMe }: { server: ServerApi; me: 
     <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5">
       {noticeLine}
       <h2 className="flex items-center gap-1.5 font-medium">
-        Creating jobs needs a researcher account <HelpButton topic="accounts" label="Help: accounts" />
+        Creating studies needs a researcher account <HelpButton topic="accounts" label="Help: accounts" />
       </h2>
       <p className="text-sm text-muted-foreground">
-        You can code, and work on jobs that researchers shared with you (they appear below). To create your own jobs, become a
+        You can code, and work on studies that researchers shared with you (they appear below). To create your own studies, become a
         researcher: with an invite link from this server&apos;s admins{me.canRequestResearcher ? ", or by asking here" : ""}.
       </p>
       {me.researcherRequest ? (

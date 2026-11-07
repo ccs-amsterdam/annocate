@@ -1,7 +1,7 @@
 import { CoderStudySchema, type CoderStudy } from "@annotinder/contracts";
 import { z } from "zod";
 
-// The studies this browser took part in, for the annotator's home (`/code`):
+// The studies this browser took part in, for the coder home (`/code`):
 // the server keeps a device's sessions apart per study (docs/coder-identity.md
 // §4: it can't list them), so the browser remembers which studies it opened,
 // and asks each for its session's summary. Only the deployment and the URL

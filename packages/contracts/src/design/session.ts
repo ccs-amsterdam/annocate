@@ -125,7 +125,7 @@ export type ParticipantParam = z.infer<typeof ParticipantParamSchema>;
 
 /**
  * What coders see about a study (the design's `public`, docs/plans/design.md
- * §2): its title, on the annotator home and the coding screen. The study's
+ * §2): its title, on the coder home and the coding screen. The study's
  * own name stays private (it may tell what the study is about). Room for a
  * description or a thumbnail later.
  */

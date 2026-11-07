@@ -75,7 +75,7 @@ export type DesignVersionMeta = z.infer<typeof DesignVersionMetaSchema>;
 
 /** Full codebook document as returned by the server. A draft's items may not pass validation (`valid`). */
 export const DesignVersionSchema = DesignVersionMetaSchema.extend({
-  jobId: IdSchema,
+  studyId: IdSchema,
   items: z.custom<TopLevelItem[]>((v) => Array.isArray(v)),
   units: UnitsSpecSchema,
   session: z.custom<SessionSpec>((v) => v !== null && typeof v === "object"),

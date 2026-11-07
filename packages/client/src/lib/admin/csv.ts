@@ -81,7 +81,7 @@ export function parseCsv(text: string): { headers: string[]; rows: string[][] } 
 
 /**
  * How a CSV column is uploaded: as the field `field` (empty: not uploaded)
- * of type `type`. A field the job already has keeps its type.
+ * of type `type`. A field the study already has keeps its type.
  */
 export interface ColumnMapping {
   /** The column's index in the CSV. */
@@ -98,13 +98,13 @@ export function columnTypes(headers: string[], rows: string[][]): UnitFieldType[
 
 /**
  * The starting mapping: a column whose name (or its valid form,
- * `toUnitFieldName`) is a field of the job is linked to it; the others are
+ * `toUnitFieldName`) is a field of the study is linked to it; the others are
  * not uploaded until given a name.
  */
-export function initialMapping(headers: string[], rows: string[][], jobFields: UnitField[]): ColumnMapping[] {
+export function initialMapping(headers: string[], rows: string[][], studyFields: UnitField[]): ColumnMapping[] {
   const types = columnTypes(headers, rows);
   return headers.map((header, column) => {
-    const field = jobFields.find((f) => f.name === header || f.name === toUnitFieldName(header));
+    const field = studyFields.find((f) => f.name === header || f.name === toUnitFieldName(header));
     return field ? { column, field: field.name, type: field.type } : { column, field: "", type: types[column] };
   });
 }
@@ -117,15 +117,15 @@ export function assignAllColumns(
   headers: string[],
   rows: string[][],
   mapping: ColumnMapping[],
-  jobFields: UnitField[],
+  studyFields: UnitField[],
   idColumn = -1,
 ): ColumnMapping[] {
   const types = columnTypes(headers, rows);
   const taken = new Set(mapping.map((m) => m.field).filter(Boolean));
   return mapping.map((m) => {
     if (m.field || m.column === idColumn) return m;
-    const existing = jobFields.find((f) => f.name === toUnitFieldName(headers[m.column]) && !taken.has(f.name));
-    const field = existing ? existing.name : toUnitFieldName(headers[m.column], new Set([...taken, ...jobFields.map((f) => f.name)]));
+    const existing = studyFields.find((f) => f.name === toUnitFieldName(headers[m.column]) && !taken.has(f.name));
+    const field = existing ? existing.name : toUnitFieldName(headers[m.column], new Set([...taken, ...studyFields.map((f) => f.name)]));
     taken.add(field);
     return { ...m, field, type: existing ? existing.type : types[m.column] };
   });
@@ -138,10 +138,10 @@ export function badValues(rows: string[][], column: number, type: UnitFieldType)
 }
 
 /** What is wrong with each column's mapping (null: nothing): its name, a duplicate, or values that don't fit the type. */
-export function mappingProblems(rows: string[][], mapping: ColumnMapping[], jobFields: UnitField[]): (string | null)[] {
+export function mappingProblems(rows: string[][], mapping: ColumnMapping[], studyFields: UnitField[]): (string | null)[] {
   return mapping.map((m) => {
     if (!m.field) return null;
-    const existing = jobFields.find((f) => f.name === m.field);
+    const existing = studyFields.find((f) => f.name === m.field);
     if (!existing) {
       const nameError = unitFieldNameError(m.field);
       if (nameError) return `Field name: ${nameError}`;
@@ -155,7 +155,7 @@ export function mappingProblems(rows: string[][], mapping: ColumnMapping[], jobF
 }
 
 export interface CsvUnits {
-  /** The fields the units will have: the job's, plus the new ones. */
+  /** The fields the units will have: the study's, plus the new ones. */
   fields: UnitField[];
   units: UnitCreate[];
   /** Problems that block the upload. */
@@ -165,7 +165,7 @@ export interface CsvUnits {
 /**
  * Converts parsed CSV rows to typed units (contracts unitFields.ts) by the
  * mapping: each uploaded column becomes a field, parsed as its type (a
- * job's field keeps its type). Fields of the job that no column is uploaded
+ * study's field keeps its type). Fields of the study that no column is uploaded
  * as are empty (null). Empty number/boolean cells become null.
  */
 export function csvToUnits(
@@ -173,19 +173,19 @@ export function csvToUnits(
   rows: string[][],
   idColumn: number,
   mapping: ColumnMapping[],
-  jobFields: UnitField[] = [],
+  studyFields: UnitField[] = [],
 ): CsvUnits {
   const uploaded = mapping.filter((m) => m.field);
-  const errors = mappingProblems(rows, mapping, jobFields)
+  const errors = mappingProblems(rows, mapping, studyFields)
     .map((problem, i) => problem && `${headers[mapping[i].column]}: ${problem}`)
     .filter((e): e is string => e !== null);
   if (uploaded.length === 0) errors.push("Choose at least one column to upload");
-  const typeOf = (m: ColumnMapping) => jobFields.find((f) => f.name === m.field)?.type ?? m.type;
-  const added = uploaded.filter((m) => !jobFields.some((f) => f.name === m.field)).map((m) => ({ name: m.field, type: m.type }));
-  const fields = [...jobFields, ...added];
+  const typeOf = (m: ColumnMapping) => studyFields.find((f) => f.name === m.field)?.type ?? m.type;
+  const added = uploaded.filter((m) => !studyFields.some((f) => f.name === m.field)).map((m) => ({ name: m.field, type: m.type }));
+  const fields = [...studyFields, ...added];
 
   const units = rows.map((row) => {
-    const data: UnitData = Object.fromEntries(jobFields.map((f) => [f.name, null]));
+    const data: UnitData = Object.fromEntries(studyFields.map((f) => [f.name, null]));
     for (const m of uploaded) data[m.field] = parseFieldValue(row[m.column] ?? "", typeOf(m)) ?? null;
     return { externalId: (row[idColumn] ?? "").trim(), data };
   });

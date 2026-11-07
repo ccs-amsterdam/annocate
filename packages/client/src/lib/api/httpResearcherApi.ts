@@ -1,11 +1,11 @@
 import {
   researcherEndpoints,
-  type JobWrite,
+  type StudyWrite,
   type ExampleSummary,
-  type JobFromExample,
+  type StudyFromExample,
   type RecipeInput,
-  type JobResponse,
-  type JobUser,
+  type StudyResponse,
+  type StudyUser,
   type DeleteCoders,
   type ResetAnnotations,
   type DeleteCodersResponse,
@@ -31,7 +31,7 @@ import {
   type ClientVersion,
   type DeploymentWrite,
   type PendingChanges,
-  type JobOverview,
+  type StudyOverview,
   type MeResponse,
   type Passkey,
   type ApiKeyResponse,
@@ -43,7 +43,7 @@ import {
   type AuthOptions,
 } from "@annotinder/contracts";
 
-/** A failed researcher API request, with its HTTP status (401: not logged in, 403: no role in the job). */
+/** A failed researcher API request, with its HTTP status (401: not logged in, 403: no role in the study). */
 export class ResearcherApiError extends Error {
   constructor(
     readonly status: number,
@@ -68,17 +68,17 @@ export class ResearcherApiError extends Error {
 }
 
 /**
- * Client-side abstraction over the job-management ("admin") side of the API
+ * Client-side abstraction over the study-management ("admin") side of the API
  * (docs/client.md §7) -- distinct from `CoderApi` (api/httpCoderApi.ts),
  * which is the coder-facing, annotation-time interface.
  *
- * Supports listing, creating, and selecting jobs. Per-job resources (design versions,
- * units, set groups, coders) are accessed via a job-scoped client created by
- * calling `client.forJob(jobId)`.
+ * Supports listing, creating, and selecting studies. Per-study resources (design versions,
+ * units, set groups, coders) are accessed via a study-scoped client created by
+ * calling `client.forStudy(studyId)`.
  */
 export interface ResearcherApi {
-  readonly jobId?: number;
-  forJob(jobId: number): ResearcherApi;
+  readonly studyId?: number;
+  forStudy(studyId: number): ResearcherApi;
 
   /** How researchers can sign in on this server (no authentication needed). */
   getAuthOptions(): Promise<AuthOptions>;
@@ -102,19 +102,19 @@ export interface ResearcherApi {
   createApiKey(label: string): Promise<ApiKeyCreated>;
   revokeApiKey(id: number): Promise<ApiKeyResponse>;
 
-  listJobs(): Promise<JobResponse[]>;
-  getJob(id?: number): Promise<JobResponse | null>;
-  createJob(body: JobWrite): Promise<JobResponse>;
-  /** The example jobs AnnoTinder ships (docs/plans/examples.md). */
+  listStudies(): Promise<StudyResponse[]>;
+  getStudy(id?: number): Promise<StudyResponse | null>;
+  createStudy(body: StudyWrite): Promise<StudyResponse>;
+  /** The example studies AnnoTinder ships (docs/plans/examples.md). */
   listExamples(): Promise<ExampleSummary[]>;
-  /** A new job from an example: units, a deployed codebook, a link and example answers. */
-  createJobFromExample(body: JobFromExample): Promise<JobResponse>;
-  /** A new job from a recipe (the setup wizard): units, set groups, a codebook (a draft unless `publish`; deploying makes its links). */
-  createJobFromRecipe(body: RecipeInput): Promise<JobResponse>;
-  updateJob(id: number, body: JobWrite): Promise<JobResponse>;
-  deleteJob(id: number): Promise<void>;
-  getJobUsers(id: number): Promise<JobUser[]>;
-  putJobUsers(id: number, users: JobUser[]): Promise<void>;
+  /** A new study from an example: units, a deployed codebook, a link and example answers. */
+  createStudyFromExample(body: StudyFromExample): Promise<StudyResponse>;
+  /** A new study from a recipe (the setup wizard): units, set groups, a codebook (a draft unless `publish`; deploying makes its links). */
+  createStudyFromRecipe(body: RecipeInput): Promise<StudyResponse>;
+  updateStudy(id: number, body: StudyWrite): Promise<StudyResponse>;
+  deleteStudy(id: number): Promise<void>;
+  getStudyUsers(id: number): Promise<StudyUser[]>;
+  putStudyUsers(id: number, users: StudyUser[]): Promise<void>;
 
   listDesignVersions(): Promise<DesignVersionMeta[]>;
   getDesignVersion(id: number): Promise<DesignVersion>;
@@ -123,7 +123,7 @@ export interface ResearcherApi {
   deleteDesignVersion(id: number): Promise<void>;
 
   listUnits(): Promise<UnitMeta[]>;
-  /** The job's unit fields (set by the first upload); empty without units. */
+  /** The study's unit fields (set by the first upload); empty without units. */
   getUnitFields(): Promise<UnitField[]>;
   putUnitFields(fields: UnitField[]): Promise<UnitField[]>;
   /** A page of units with data: all units, or one set's (of a group) in its order. */
@@ -144,7 +144,7 @@ export interface ResearcherApi {
   deleteCoders(select: DeleteCoders): Promise<DeleteCodersResponse>;
   /** Deletes later: the coder's deletion request stays, but is no longer brought up (ADMIN). */
   postponeDeletion(coderId: number): Promise<void>;
-  /** The job's deletion log, newest first. */
+  /** The study's deletion log, newest first. */
   listCoderDeletions(): Promise<CoderDeletion[]>;
   /** The links (made from the deployed codebook), active ones first. */
   listLinks(): Promise<LinkResponse[]>;
@@ -155,8 +155,8 @@ export interface ResearcherApi {
   /** A new secret: the old link stops working. */
   renewLinkSecret(id: number): Promise<LinkResponse>;
 
-  /** Counts and activity for the job's overview page. */
-  getOverview(): Promise<JobOverview>;
+  /** Counts and activity for the study's overview page. */
+  getOverview(): Promise<StudyOverview>;
 
   /** The live design version (what coders get); null if nothing was deployed yet. */
   getDeployment(): Promise<DeploymentResponse | null>;
@@ -166,7 +166,7 @@ export interface ResearcherApi {
   listDeploymentVersions(): Promise<DeploymentVersion[]>;
   /** The server's (and its client's) release and commit (`GET /health`): what a design file exported now records. */
   getServerVersion(): Promise<ClientVersion>;
-  /** Progress of the live job, per loop and set. */
+  /** Progress of the live study, per loop and set. */
   getDeploymentStatus(): Promise<DeploymentStatus>;
   /** Retires live answers, so units are coded again (ADMIN). */
   resetAnnotations(body: ResetAnnotations): Promise<{ retired: number }>;
@@ -194,27 +194,27 @@ export interface HttpResearcherApiConfig {
   /** Development auth headers instead of a key; only accepted by a server with ANNOTINDER_DEV_AUTH=1. */
   devRole?: "ADMIN" | "WRITE" | "READ";
   devEmail?: string;
-  /** Optional job ID to scope per-job requests (design versions, units, etc.). */
-  jobId?: number;
+  /** Optional study ID to scope per-study requests (design versions, units, etc.). */
+  studyId?: number;
 }
 
 /** Talks to a real server implementing the `@annotinder/contracts` admin endpoints over HTTP. */
 export class HttpResearcherApi implements ResearcherApi {
   constructor(private config: HttpResearcherApiConfig) {}
 
-  get jobId(): number | undefined {
-    return this.config.jobId;
+  get studyId(): number | undefined {
+    return this.config.studyId;
   }
 
-  forJob(jobId: number): ResearcherApi {
-    return new HttpResearcherApi({ ...this.config, jobId });
+  forStudy(studyId: number): ResearcherApi {
+    return new HttpResearcherApi({ ...this.config, studyId });
   }
 
-  private requireJobId(): number {
-    if (this.config.jobId === undefined) {
-      throw new Error("ResearcherApi must be scoped to a jobId (e.g. client.forJob(id)) to access job resources");
+  private requireStudyId(): number {
+    if (this.config.studyId === undefined) {
+      throw new Error("ResearcherApi must be scoped to a studyId (e.g. client.forStudy(id)) to access study resources");
     }
-    return this.config.jobId;
+    return this.config.studyId;
   }
 
   private headers(): Record<string, string> {
@@ -314,101 +314,101 @@ export class HttpResearcherApi implements ResearcherApi {
   async listAnnotations(query: AnnotationsQuery = {}): Promise<AnnotationPage> {
     const params = new URLSearchParams();
     for (const [name, value] of Object.entries(query)) if (value !== undefined) params.set(name, String(value));
-    const path = researcherEndpoints.listAnnotations.path.replace(":jobId", String(this.requireJobId()));
+    const path = researcherEndpoints.listAnnotations.path.replace(":studyId", String(this.requireStudyId()));
     return this.request(params.size ? `${path}?${params}` : path);
   }
 
   async listDevices(): Promise<Device[]> {
-    return this.request(this.jobPath(researcherEndpoints.listDevices.path));
+    return this.request(this.studyPath(researcherEndpoints.listDevices.path));
   }
 
   async listUnitVersions(query: UnitVersionsQuery = {}): Promise<UnitVersionPage> {
     const params = new URLSearchParams();
     for (const [name, value] of Object.entries(query)) if (value !== undefined) params.set(name, String(value));
-    const path = researcherEndpoints.listUnitVersions.path.replace(":jobId", String(this.requireJobId()));
+    const path = researcherEndpoints.listUnitVersions.path.replace(":studyId", String(this.requireStudyId()));
     return this.request(params.size ? `${path}?${params}` : path);
   }
 
-  async listJobs(): Promise<JobResponse[]> {
-    return this.request(researcherEndpoints.listJobs.path);
+  async listStudies(): Promise<StudyResponse[]> {
+    return this.request(researcherEndpoints.listStudies.path);
   }
 
-  async getJob(id?: number): Promise<JobResponse | null> {
-    const targetId = id ?? this.config.jobId;
+  async getStudy(id?: number): Promise<StudyResponse | null> {
+    const targetId = id ?? this.config.studyId;
     if (targetId === undefined) {
-      const jobs = await this.listJobs();
-      return jobs[0] ?? null;
+      const studies = await this.listStudies();
+      return studies[0] ?? null;
     }
     try {
-      return await this.request<JobResponse>(researcherEndpoints.getJob.path.replace(":id", String(targetId)));
+      return await this.request<StudyResponse>(researcherEndpoints.getStudy.path.replace(":id", String(targetId)));
     } catch (err) {
       if (err instanceof Error && /\(404\)/.test(err.message)) return null;
       throw err;
     }
   }
 
-  async createJob(body: JobWrite): Promise<JobResponse> {
-    return this.request(researcherEndpoints.createJob.path, { method: "POST", body: JSON.stringify(body) });
+  async createStudy(body: StudyWrite): Promise<StudyResponse> {
+    return this.request(researcherEndpoints.createStudy.path, { method: "POST", body: JSON.stringify(body) });
   }
 
   async listExamples(): Promise<ExampleSummary[]> {
     return this.request(researcherEndpoints.listExamples.path);
   }
 
-  async createJobFromExample(body: JobFromExample): Promise<JobResponse> {
-    return this.request(researcherEndpoints.createJobFromExample.path, { method: "POST", body: JSON.stringify(body) });
+  async createStudyFromExample(body: StudyFromExample): Promise<StudyResponse> {
+    return this.request(researcherEndpoints.createStudyFromExample.path, { method: "POST", body: JSON.stringify(body) });
   }
 
-  async createJobFromRecipe(body: RecipeInput): Promise<JobResponse> {
-    return this.request(researcherEndpoints.createJobFromRecipe.path, { method: "POST", body: JSON.stringify(body) });
+  async createStudyFromRecipe(body: RecipeInput): Promise<StudyResponse> {
+    return this.request(researcherEndpoints.createStudyFromRecipe.path, { method: "POST", body: JSON.stringify(body) });
   }
 
-  async updateJob(id: number, body: JobWrite): Promise<JobResponse> {
-    return this.request(researcherEndpoints.updateJob.path.replace(":id", String(id)), {
+  async updateStudy(id: number, body: StudyWrite): Promise<StudyResponse> {
+    return this.request(researcherEndpoints.updateStudy.path.replace(":id", String(id)), {
       method: "PUT",
       body: JSON.stringify(body),
     });
   }
 
-  async deleteJob(id: number): Promise<void> {
-    await this.request(researcherEndpoints.deleteJob.path.replace(":id", String(id)), { method: "DELETE" });
+  async deleteStudy(id: number): Promise<void> {
+    await this.request(researcherEndpoints.deleteStudy.path.replace(":id", String(id)), { method: "DELETE" });
   }
 
-  async getJobUsers(id: number): Promise<JobUser[]> {
-    return this.request(researcherEndpoints.getJobUsers.path.replace(":id", String(id)));
+  async getStudyUsers(id: number): Promise<StudyUser[]> {
+    return this.request(researcherEndpoints.getStudyUsers.path.replace(":id", String(id)));
   }
 
-  async putJobUsers(id: number, users: JobUser[]): Promise<void> {
-    await this.request(researcherEndpoints.putJobUsers.path.replace(":id", String(id)), {
+  async putStudyUsers(id: number, users: StudyUser[]): Promise<void> {
+    await this.request(researcherEndpoints.putStudyUsers.path.replace(":id", String(id)), {
       method: "PUT",
       body: JSON.stringify({ users }),
     });
   }
 
   async listDesignVersions(): Promise<DesignVersionMeta[]> {
-    const jobId = this.requireJobId();
-    return this.request(researcherEndpoints.listDesignVersions.path.replace(":jobId", String(jobId)));
+    const studyId = this.requireStudyId();
+    return this.request(researcherEndpoints.listDesignVersions.path.replace(":studyId", String(studyId)));
   }
 
   async getDesignVersion(id: number): Promise<DesignVersion> {
-    const jobId = this.requireJobId();
+    const studyId = this.requireStudyId();
     return this.request(
-      researcherEndpoints.getDesignVersion.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
+      researcherEndpoints.getDesignVersion.path.replace(":studyId", String(studyId)).replace(":id", String(id)),
     );
   }
 
   async createDesignVersion(body: DesignWrite): Promise<DesignVersion> {
-    const jobId = this.requireJobId();
-    return this.request(researcherEndpoints.createDesignVersion.path.replace(":jobId", String(jobId)), {
+    const studyId = this.requireStudyId();
+    return this.request(researcherEndpoints.createDesignVersion.path.replace(":studyId", String(studyId)), {
       method: "POST",
       body: JSON.stringify(body),
     });
   }
 
   async updateDesignVersion(id: number, body: DesignWrite): Promise<DesignVersion> {
-    const jobId = this.requireJobId();
+    const studyId = this.requireStudyId();
     return this.request(
-      researcherEndpoints.updateDesignVersion.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
+      researcherEndpoints.updateDesignVersion.path.replace(":studyId", String(studyId)).replace(":id", String(id)),
       {
         method: "PUT",
         body: JSON.stringify(body),
@@ -417,24 +417,24 @@ export class HttpResearcherApi implements ResearcherApi {
   }
 
   async deleteDesignVersion(id: number): Promise<void> {
-    const jobId = this.requireJobId();
+    const studyId = this.requireStudyId();
     await this.request(
-      researcherEndpoints.deleteDesignVersion.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
+      researcherEndpoints.deleteDesignVersion.path.replace(":studyId", String(studyId)).replace(":id", String(id)),
       { method: "DELETE" },
     );
   }
 
   async listUnits(): Promise<UnitMeta[]> {
-    const jobId = this.requireJobId();
-    return this.request(researcherEndpoints.listUnits.path.replace(":jobId", String(jobId)));
+    const studyId = this.requireStudyId();
+    return this.request(researcherEndpoints.listUnits.path.replace(":studyId", String(studyId)));
   }
 
   async getUnitFields(): Promise<UnitField[]> {
-    return this.request(this.jobPath(researcherEndpoints.getUnitFields.path));
+    return this.request(this.studyPath(researcherEndpoints.getUnitFields.path));
   }
 
   async putUnitFields(fields: UnitField[]): Promise<UnitField[]> {
-    return this.request(this.jobPath(researcherEndpoints.putUnitFields.path), { method: "PUT", body: JSON.stringify({ fields }) });
+    return this.request(this.studyPath(researcherEndpoints.putUnitFields.path), { method: "PUT", body: JSON.stringify({ fields }) });
   }
 
   async listUnitPage(query: { offset: number; limit: number; group?: string; set?: string }): Promise<UnitPage> {
@@ -443,102 +443,102 @@ export class HttpResearcherApi implements ResearcherApi {
       params.set("group", query.group);
       params.set("set", query.set);
     }
-    return this.request(`${this.jobPath(researcherEndpoints.listUnitPage.path)}?${params}`);
+    return this.request(`${this.studyPath(researcherEndpoints.listUnitPage.path)}?${params}`);
   }
 
   async getUnit(id: number): Promise<UnitResponse> {
-    const jobId = this.requireJobId();
-    return this.request(researcherEndpoints.getUnit.path.replace(":jobId", String(jobId)).replace(":id", String(id)));
+    const studyId = this.requireStudyId();
+    return this.request(researcherEndpoints.getUnit.path.replace(":studyId", String(studyId)).replace(":id", String(id)));
   }
 
   async createUnits(body: UnitsCreateBody): Promise<UnitResponse[]> {
-    const jobId = this.requireJobId();
-    return this.request(researcherEndpoints.createUnits.path.replace(":jobId", String(jobId)), {
+    const studyId = this.requireStudyId();
+    return this.request(researcherEndpoints.createUnits.path.replace(":studyId", String(studyId)), {
       method: "POST",
       body: JSON.stringify(body),
     });
   }
 
   async deleteUnit(id: number): Promise<void> {
-    const jobId = this.requireJobId();
-    await this.request(researcherEndpoints.deleteUnit.path.replace(":jobId", String(jobId)).replace(":id", String(id)), {
+    const studyId = this.requireStudyId();
+    await this.request(researcherEndpoints.deleteUnit.path.replace(":studyId", String(studyId)).replace(":id", String(id)), {
       method: "DELETE",
     });
   }
 
   async listSetGroups(live = false): Promise<SetGroupResponse[]> {
-    return this.request(this.jobPath(researcherEndpoints.listSetGroups.path) + (live ? "?live=true" : ""));
+    return this.request(this.studyPath(researcherEndpoints.listSetGroups.path) + (live ? "?live=true" : ""));
   }
 
   async putSetGroup(group: string, body: SetGroupWrite): Promise<SetGroupResponse> {
-    return this.request(this.jobPath(researcherEndpoints.putSetGroup.path).replace(":group", encodeURIComponent(group)), {
+    return this.request(this.studyPath(researcherEndpoints.putSetGroup.path).replace(":group", encodeURIComponent(group)), {
       method: "PUT",
       body: JSON.stringify(body),
     });
   }
 
   async deleteSetGroup(group: string): Promise<void> {
-    await this.request(this.jobPath(researcherEndpoints.deleteSetGroup.path).replace(":group", encodeURIComponent(group)), { method: "DELETE" });
+    await this.request(this.studyPath(researcherEndpoints.deleteSetGroup.path).replace(":group", encodeURIComponent(group)), { method: "DELETE" });
   }
 
   async listCoders(): Promise<CoderProgress[]> {
-    const jobId = this.requireJobId();
-    return this.request(researcherEndpoints.listCoders.path.replace(":jobId", String(jobId)));
+    const studyId = this.requireStudyId();
+    return this.request(researcherEndpoints.listCoders.path.replace(":studyId", String(studyId)));
   }
 
   async deleteCoders(select: DeleteCoders): Promise<DeleteCodersResponse> {
-    const jobId = this.requireJobId();
-    return this.request(researcherEndpoints.deleteCoders.path.replace(":jobId", String(jobId)), { method: "POST", body: JSON.stringify(select) });
+    const studyId = this.requireStudyId();
+    return this.request(researcherEndpoints.deleteCoders.path.replace(":studyId", String(studyId)), { method: "POST", body: JSON.stringify(select) });
   }
 
   async postponeDeletion(coderId: number): Promise<void> {
-    await this.request(this.jobPath(researcherEndpoints.postponeDeletion.path, coderId), { method: "POST" });
+    await this.request(this.studyPath(researcherEndpoints.postponeDeletion.path, coderId), { method: "POST" });
   }
 
   async listCoderDeletions(): Promise<CoderDeletion[]> {
-    return this.request(this.jobPath(researcherEndpoints.listCoderDeletions.path));
+    return this.request(this.studyPath(researcherEndpoints.listCoderDeletions.path));
   }
 
-  private jobPath(path: string, id?: number): string {
-    const withJob = path.replace(":jobId", String(this.requireJobId()));
-    return id === undefined ? withJob : withJob.replace(":id", String(id));
+  private studyPath(path: string, id?: number): string {
+    const withStudy = path.replace(":studyId", String(this.requireStudyId()));
+    return id === undefined ? withStudy : withStudy.replace(":id", String(id));
   }
 
   async listLinks(): Promise<LinkResponse[]> {
-    return this.request(this.jobPath(researcherEndpoints.listLinks.path));
+    return this.request(this.studyPath(researcherEndpoints.listLinks.path));
   }
 
   async updateLink(id: number, body: LinkWrite): Promise<LinkResponse> {
-    return this.request(this.jobPath(researcherEndpoints.updateLink.path, id), { method: "PUT", body: JSON.stringify(body) });
+    return this.request(this.studyPath(researcherEndpoints.updateLink.path, id), { method: "PUT", body: JSON.stringify(body) });
   }
 
   async revokeLink(id: number): Promise<LinkResponse> {
-    return this.request(this.jobPath(researcherEndpoints.revokeLink.path, id), { method: "POST" });
+    return this.request(this.studyPath(researcherEndpoints.revokeLink.path, id), { method: "POST" });
   }
 
   async renewLinkSecret(id: number): Promise<LinkResponse> {
-    return this.request(this.jobPath(researcherEndpoints.renewLinkSecret.path, id), { method: "POST" });
+    return this.request(this.studyPath(researcherEndpoints.renewLinkSecret.path, id), { method: "POST" });
   }
 
-  async getOverview(): Promise<JobOverview> {
-    return this.request(this.jobPath(researcherEndpoints.getOverview.path));
+  async getOverview(): Promise<StudyOverview> {
+    return this.request(this.studyPath(researcherEndpoints.getOverview.path));
   }
 
   async getDeploymentStatus(): Promise<DeploymentStatus> {
-    return this.request(this.jobPath(researcherEndpoints.getDeploymentStatus.path));
+    return this.request(this.studyPath(researcherEndpoints.getDeploymentStatus.path));
   }
 
   async resetAnnotations(body: ResetAnnotations): Promise<{ retired: number }> {
-    return this.request(this.jobPath(researcherEndpoints.resetAnnotations.path), { method: "POST", body: JSON.stringify(body) });
+    return this.request(this.studyPath(researcherEndpoints.resetAnnotations.path), { method: "POST", body: JSON.stringify(body) });
   }
 
   async getDeployment(): Promise<DeploymentResponse | null> {
-    const jobId = this.requireJobId();
-    return this.request(researcherEndpoints.getDeployment.path.replace(":jobId", String(jobId)));
+    const studyId = this.requireStudyId();
+    return this.request(researcherEndpoints.getDeployment.path.replace(":studyId", String(studyId)));
   }
 
   async getPendingChanges(): Promise<PendingChanges> {
-    return this.request(this.jobPath(researcherEndpoints.getPendingChanges.path));
+    return this.request(this.studyPath(researcherEndpoints.getPendingChanges.path));
   }
 
   async getServerVersion(): Promise<ClientVersion> {
@@ -547,19 +547,19 @@ export class HttpResearcherApi implements ResearcherApi {
   }
 
   async listDeploymentVersions(): Promise<DeploymentVersion[]> {
-    return this.request(this.jobPath(researcherEndpoints.listDeploymentVersions.path));
+    return this.request(this.studyPath(researcherEndpoints.listDeploymentVersions.path));
   }
 
   async putDeployment(body: DeploymentWrite): Promise<DeploymentResponse> {
-    const jobId = this.requireJobId();
-    return this.request(researcherEndpoints.putDeployment.path.replace(":jobId", String(jobId)), {
+    const studyId = this.requireStudyId();
+    return this.request(researcherEndpoints.putDeployment.path.replace(":studyId", String(studyId)), {
       method: "PUT",
       body: JSON.stringify(body),
     });
   }
 
   async createPreview(): Promise<PreviewSession> {
-    const jobId = this.requireJobId();
-    return this.request(researcherEndpoints.createPreview.path.replace(":jobId", String(jobId)), { method: "POST" });
+    const studyId = this.requireStudyId();
+    return this.request(researcherEndpoints.createPreview.path.replace(":studyId", String(studyId)), { method: "POST" });
   }
 }

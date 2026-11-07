@@ -6,8 +6,8 @@ import { DbStore, type Store } from "./store.js";
 import { PreviewStore, previewToken } from "./preview.js";
 
 /**
- * Lazily loads one DeploymentRuntime per deployment, in memory: `<jobId>`,
- * or `<jobId>.preview` for a researcher preview. Runtimes rebuild
+ * Lazily loads one DeploymentRuntime per deployment, in memory: `<studyId>`,
+ * or `<studyId>.preview` for a researcher preview. Runtimes rebuild
  * themselves from the database, so after a restart the first request for a
  * deployment simply loads it again. Deployments unused for
  * `deploymentIdleMs` are dropped.
@@ -25,7 +25,7 @@ export class Deployments {
   ) {}
 
   async get(deploymentId: string): Promise<DeploymentRuntime> {
-    // One spelling per job (no leading zeros): each id is a runtime in memory.
+    // One spelling per study (no leading zeros): each id is a runtime in memory.
     const match = /^([1-9]\d{0,9})(\.preview)?$/.exec(deploymentId);
     if (!match) throw new HttpError(404, `Unknown deployment '${deploymentId}'`);
     const now = this.options.now();
@@ -38,11 +38,11 @@ export class Deployments {
       cached.usedAt = now;
       return cached.runtime;
     }
-    const jobId = Number(match[1]);
-    const created = match[2] ? this.previewRuntime(deploymentId, jobId) : new DeploymentRuntime(deploymentId, this.wrapStore(new DbStore(this.db, jobId)), this.options);
+    const studyId = Number(match[1]);
+    const created = match[2] ? this.previewRuntime(deploymentId, studyId) : new DeploymentRuntime(deploymentId, this.wrapStore(new DbStore(this.db, studyId)), this.options);
     const loading = created.load().then(() => created);
     this.runtimes.set(deploymentId, { runtime: loading, usedAt: now });
-    // Don't cache failures (e.g. job not deployed): retry on the next request.
+    // Don't cache failures (e.g. study not deployed): retry on the next request.
     loading.catch(() => {
       if (this.runtimes.get(deploymentId)?.runtime === loading) this.runtimes.delete(deploymentId);
     });
@@ -50,40 +50,40 @@ export class Deployments {
   }
 
   /**
-   * Something coders' runtimes read changed (units, set groups, job settings,
+   * Something coders' runtimes read changed (units, set groups, study settings,
    * a reset): bumps the deployment's revision, so every server process
    * re-reads it on its next request (`DeploymentRuntime.refresh`). Returns
    * the deployment's version.
    */
-  async refresh(jobId: number): Promise<number | null> {
-    const row = await one<{ version: number }>(this.db, "UPDATE deployments SET revision = revision + 1 WHERE job_id = $1 RETURNING version", [jobId]);
+  async refresh(studyId: number): Promise<number | null> {
+    const row = await one<{ version: number }>(this.db, "UPDATE deployments SET revision = revision + 1 WHERE study_id = $1 RETURNING version", [studyId]);
     return row?.version ?? null;
   }
 
-  async status(jobId: number): Promise<DeploymentStatus> {
-    const runtime = await this.get(String(jobId));
+  async status(studyId: number): Promise<DeploymentStatus> {
+    const runtime = await this.get(String(studyId));
     await runtime.refresh();
     return runtime.status();
   }
 
-  previewToken(jobId: number, expiresAt: number): string {
-    return previewToken(this.secret, jobId, expiresAt);
+  previewToken(studyId: number, expiresAt: number): string {
+    return previewToken(this.secret, studyId, expiresAt);
   }
 
-  /** Forgets a job's deployment and preview, e.g. when the job is deleted. */
-  drop(jobId: number): void {
-    this.runtimes.delete(String(jobId));
-    this.runtimes.delete(`${jobId}.preview`);
+  /** Forgets a study's deployment and preview, e.g. when the study is deleted. */
+  drop(studyId: number): void {
+    this.runtimes.delete(String(studyId));
+    this.runtimes.delete(`${studyId}.preview`);
   }
 
   /**
    * A researcher preview (preview.ts): the latest codebook, checked on every
    * request so edits show right away, and coders and answers kept in memory.
    */
-  private previewRuntime(deploymentId: string, jobId: number): DeploymentRuntime {
+  private previewRuntime(deploymentId: string, studyId: number): DeploymentRuntime {
     return new DeploymentRuntime(
       deploymentId,
-      this.wrapStore(new PreviewStore(new DbStore(this.db, jobId, true), this.secret, jobId, this.options.now)),
+      this.wrapStore(new PreviewStore(new DbStore(this.db, studyId, true), this.secret, studyId, this.options.now)),
       this.options,
     );
   }

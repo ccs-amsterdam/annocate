@@ -26,7 +26,7 @@ import { renderTemplate, staticTemplate, type RenderedTemplate } from "../codebo
 import type { QuestionTexts } from "../components/Question";
 import { QuestionTimer } from "./timing";
 
-export type JobManagerPhase =
+export type StudyManagerPhase =
   | "loading"
   | "user_variable"
   | "unit_variable"
@@ -63,7 +63,7 @@ export interface NavigationPhase {
   questions?: NavigationUnitQuestion[];
 }
 
-export interface JobManagerNavigation {
+export interface StudyManagerNavigation {
   canGoBack: boolean;
   canGoForward: boolean;
   phases: NavigationPhase[];
@@ -73,8 +73,8 @@ export interface JobManagerNavigation {
   maxReachedTopIndex: number;
 }
 
-export interface JobManagerSnapshot {
-  phase: JobManagerPhase;
+export interface StudyManagerSnapshot {
+  phase: StudyManagerPhase;
   currentItem: DesignItem | null;
   currentUnit: CoderUnitResponse | null;
   currentUnitLayout: UnitLayout | null;
@@ -108,7 +108,7 @@ export interface JobManagerSnapshot {
   unsaved: number;
   /** Saving failed for lack of a connection (or a server hiccup): it is tried again. */
   retrying: boolean;
-  navigation: JobManagerNavigation;
+  navigation: StudyManagerNavigation;
   /**
    * A practice question answered wrongly (special-sets.md §2): the feedback,
    * shown with the question. With `retry` the coder answers again until
@@ -128,7 +128,7 @@ export interface SessionEnding {
   redirectUrl: string | null;
 }
 
-export type JobManagerListener = () => void;
+export type StudyManagerListener = () => void;
 
 /**
  * A unit in a loop's history. Units finished in an earlier visit (resumed
@@ -189,7 +189,7 @@ function findEnd(items: (TopLevelItem | InLoopItem)[], name: string): EndItem | 
   return null;
 }
 
-/** Answers waiting to be saved (`JobManager.save`). */
+/** Answers waiting to be saved (`StudyManager.save`). */
 interface OutboxItem {
   /** What it saves: a newer item with the same key replaces one still waiting. */
   key: string;
@@ -243,7 +243,7 @@ function plainLabel(text: string): string {
  * (docs/client.md §2), supporting full forwards/backwards navigation,
  * phase jumping, and editing previously submitted answers.
  */
-export class JobManager {
+export class StudyManager {
   /** The coder codebook (contracts `CoderCodebook`): only what coding needs. */
   private items: CoderTopLevelItem[] = [];
 
@@ -262,7 +262,7 @@ export class JobManager {
   /** Per loop key, the coder-level questions it depends on (frozen once a unit there is saved). */
   private dependencies = new Map<string, string[]>();
   private coderApi: CoderApi;
-  private listeners: Set<JobManagerListener> = new Set();
+  private listeners: Set<StudyManagerListener> = new Set();
   private expressionCache = new ExpressionCache();
 
   /** Every question in the codebook, for building `$var` scopes. */
@@ -317,7 +317,7 @@ export class JobManager {
   private readonly timer: QuestionTimer;
   private readonly retryMs: (attempt: number) => number;
 
-  private snapshot: JobManagerSnapshot = {
+  private snapshot: StudyManagerSnapshot = {
     phase: "loading",
     currentItem: null,
     currentUnit: null,
@@ -364,11 +364,11 @@ export class JobManager {
     this.retryMs = options.retryMs ?? ((attempt) => Math.min(30_000, 1000 * 2 ** (attempt - 1)));
   }
 
-  getSnapshot(): JobManagerSnapshot {
+  getSnapshot(): StudyManagerSnapshot {
     return this.snapshot;
   }
 
-  subscribe(listener: JobManagerListener): () => void {
+  subscribe(listener: StudyManagerListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
@@ -1162,7 +1162,7 @@ export class JobManager {
 
   /**
    * The coder reached an `end` item (inside a unit loop: on `unit`), or
-   * without one the end of the job: tells the server, and shows the ending.
+   * without one the end of the study: tells the server, and shows the ending.
    */
   private async reachEnd(item: EndItem | null, scope: ReferenceScope, unit?: EndUnit): Promise<void> {
     // Everything is saved before the session ends (the server accepts nothing after).
@@ -1175,7 +1175,7 @@ export class JobManager {
   /**
    * The values an ending is shown with again, after a reload: the coder's,
    * and for an end inside a unit loop also the unit's data and answers (as
-   * when it was reached). Without the unit (e.g. no longer in the job), the
+   * when it was reached). Without the unit (e.g. no longer in the study), the
    * coder's only.
    */
   private endScope(values: EndValues | null): ReferenceScope {
@@ -1428,7 +1428,7 @@ export class JobManager {
     await this.publishLoopStep();
   }
 
-  private buildNavigation(): JobManagerNavigation {
+  private buildNavigation(): StudyManagerNavigation {
     const phases: NavigationPhase[] = this.topSteps.map((step, idx) => {
       const isCurrent = idx === this.topIndex;
       const isCompleted = idx < this.topIndex;
@@ -1487,7 +1487,7 @@ export class JobManager {
     };
   }
 
-  private publish(next: Partial<JobManagerSnapshot>): void {
+  private publish(next: Partial<StudyManagerSnapshot>): void {
     // After the server ended the session, its ending stays on screen
     if (this.serverEnded && this.snapshot.phase === "finished" && next.phase !== undefined && next.phase !== "finished") return;
     // Navigation (canGoBack etc.) depends on the new phase, so set that first.

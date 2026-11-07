@@ -5,7 +5,7 @@ order: 1
 summary: The links coders open to start - made from the design, with who may use them, participant ids and a maximum number of uses.
 ---
 
-Coders start a job by opening a **link**. You find the links under
+Coders start a study by opening a **link**. You find the links under
 **Deploy** › **Links**. One link can be shared with many coders (in an email
 to your student assistants, or on a crowd-coding platform), or each coder
 or group can get their own.
@@ -23,7 +23,7 @@ Coders can only start once a design version is deployed (see
 
 ## When links change
 
-Links follow the deployed design and the job's deployed sets:
+Links follow the deployed design and the study's deployed sets:
 
 - deploying a design with other link parameters makes the links it
   needs, and **retires** links it no longer makes;

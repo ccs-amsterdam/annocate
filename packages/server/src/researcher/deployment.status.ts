@@ -1,16 +1,16 @@
 import { Hono } from "hono";
 import type { Server, Env } from "../context.js";
-import { requireJobUser } from "./auth.js";
+import { requireStudyUser } from "./auth.js";
 import { getDeployment } from "../shared/deployments.js";
 
 export function deploymentStatus(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/deployment/status", requireJobUser(server, "READ"), async (c) => {
-    const jobId = c.get("jobId");
-    if (!(await getDeployment(db, jobId))) return c.json({ error: "Job is not deployed" }, 404);
-    return c.json(await server.deployments.status(jobId));
+  app.get("/study/:studyId/deployment/status", requireStudyUser(server, "READ"), async (c) => {
+    const studyId = c.get("studyId");
+    if (!(await getDeployment(db, studyId))) return c.json({ error: "Study is not deployed" }, 404);
+    return c.json(await server.deployments.status(studyId));
   });
 
   return app;

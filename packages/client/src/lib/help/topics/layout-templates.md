@@ -49,7 +49,7 @@ There are three kinds of values:
 | `{{ ... }}` | The result of a small script, for anything else (see [Scripts](scripts.md)) |
 
 The editor helps you: type `$` and it lists the unit fields and questions you
-can use. Fields that don't exist in the job's units are marked with a warning,
+can use. Fields that don't exist in the study's units are marked with a warning,
 so a typo doesn't go unnoticed.
 
 ```example
@@ -110,7 +110,7 @@ $unit.photo::image
 ```
 
 > Images come from wherever their URL points to. Use URLs that stay
-> available for as long as the job runs.
+> available for as long as the study runs.
 
 A suffix also works after a script: `{{ $unit.text.toUpperCase() }}::markdown`.
 It goes *after* the closing `}}`, never inside it.

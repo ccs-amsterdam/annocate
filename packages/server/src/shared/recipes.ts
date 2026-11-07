@@ -2,30 +2,30 @@ import { DesignItemsSchema, EMPTY_SESSION, addedFields, designItems, checkUnitDa
 import { one, type Sql } from "../db.js";
 import { putDeployment } from "./deployments.js";
 import { HttpError } from "./http.js";
-import type { JobRow } from "./jobs.js";
+import type { StudyRow } from "./studies.js";
 import { checkUnitUpload } from "./limits.js";
 import { checkLinkCount, syncLinks } from "./links.js";
 import { putSetGroup } from "./sets.js";
 import { saveUnits } from "./units.js";
 
-// Recipes (contracts recipe.ts, docs/plans/setup-wizard.md): a new job's
+// Recipes (contracts recipe.ts, docs/plans/setup-wizard.md): a new study's
 // units, set groups and first codebook in one document; deploying it makes
 // its links (shared/links.ts `syncLinks`). Example
-// jobs and the setup wizard both make jobs through here.
+// studies and the setup wizard both make studies through here.
 
 export interface RecipeOptions {
-  /** The researcher who owns the job (null: none, e.g. the development demo). */
+  /** The researcher who owns the study (null: none, e.g. the development demo). */
   ownerId: number | null;
-  /** They become the job's ADMIN; null: no job users (development headers). */
+  /** They become the study's ADMIN; null: no study users (development headers). */
   ownerEmail: string | null;
-  /** The example the job came from (`jobs.origin`). */
+  /** The example the study came from (`studies.origin`). */
   origin?: string;
   /** Fixed link secrets, in order (the development demo's `demo-secret`); random otherwise. */
   secrets?: string[];
 }
 
-export interface MadeJob {
-  job: JobRow;
+export interface MadeStudy {
+  study: StudyRow;
   designVersionId: number;
   /** Database ids of the recipe's units, by their ids in the recipe. */
   unitIds: Map<string, number>;
@@ -36,23 +36,23 @@ export interface MadeJob {
 const invalid = (message: string) => new HttpError(400, message, "recipe_invalid");
 
 /**
- * Makes a job from a recipe, within the transaction `tx` (the caller's, so
- * it can add to the job, as examples add answers). Within the owner's
- * limits on units; the caller checks the number of jobs.
+ * Makes a study from a recipe, within the transaction `tx` (the caller's, so
+ * it can add to the study, as examples add answers). Within the owner's
+ * limits on units; the caller checks the number of studies.
  */
-export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: RecipeOptions): Promise<MadeJob> {
+export async function createStudyFromRecipe(tx: Sql, recipe: Recipe, options: RecipeOptions): Promise<MadeStudy> {
   // A deployed codebook must pass validation; a draft may have issues (questions to specify).
   if (recipe.publish) {
     const parsed = DesignItemsSchema.safeParse(designItems(recipe.design));
     if (!parsed.success) throw invalid(`The design can't be deployed: ${parsed.error.issues.map((i) => i.message).join("; ")}`);
   }
 
-  const job = (await one<JobRow>(tx, "INSERT INTO jobs (name, owner_id, origin) VALUES ($1, $2, $3) RETURNING *", [
+  const study = (await one<StudyRow>(tx, "INSERT INTO studies (name, owner_id, origin) VALUES ($1, $2, $3) RETURNING *", [
     recipe.name,
     options.ownerId,
     options.origin ?? null,
   ]))!;
-  if (options.ownerEmail) await tx.query("INSERT INTO job_users (job_id, email, role) VALUES ($1, $2, 'ADMIN')", [job.id, options.ownerEmail]);
+  if (options.ownerEmail) await tx.query("INSERT INTO study_users (study_id, email, role) VALUES ($1, $2, 'ADMIN')", [study.id, options.ownerEmail]);
 
   // Units
   const unitIds = new Map<string, number>();
@@ -72,12 +72,12 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
     }
     await checkUnitUpload(
       tx,
-      job.id,
+      study.id,
       recipe.units.map((u) => ({ externalId: u.id, data: u.data })),
       recipe.units.length,
     );
     fields = added.fields;
-    for (const [id, unitId] of await saveUnits(tx, job.id, recipe.units.map((u) => ({ externalId: u.id, data: u.data })))) unitIds.set(id, unitId);
+    for (const [id, unitId] of await saveUnits(tx, study.id, recipe.units.map((u) => ({ externalId: u.id, data: u.data })))) unitIds.set(id, unitId);
   }
   const unitId = (id: string) => {
     const found = unitIds.get(id);
@@ -92,7 +92,7 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
   for (const group of recipe.sets) {
     await putSetGroup(
       tx,
-      job.id,
+      study.id,
       group.group,
       group.sets.map((set) => ({ name: set.name, unitIds: set.units.map(unitId), ordered: set.ordered })),
     );
@@ -100,8 +100,8 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
 
   // The codebook: deployed, or the first draft
   // With the units' fields (docs/plans/design.md §3)
-  const designVersionId = (await one<{ id: number }>(tx, "INSERT INTO design_versions (job_id, note, items, units, session, public) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id", [
-    job.id,
+  const designVersionId = (await one<{ id: number }>(tx, "INSERT INTO design_versions (study_id, note, items, units, session, public) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id", [
+    study.id,
     recipe.design.note ?? null,
     JSON.stringify(recipe.design.items),
     JSON.stringify({ fields }),
@@ -110,10 +110,10 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
   ]))!.id;
   let firstLink: number | null = null;
   if (recipe.publish) {
-    await putDeployment(tx, job.id, { designVersionId, active: true, units: true });
-    await checkLinkCount(tx, job.id, designItems(recipe.design) as DesignItem[], true, true);
-    await syncLinks(tx, job.id, { secrets: options.secrets });
-    firstLink = (await one<{ id: number }>(tx, "SELECT id FROM links WHERE job_id = $1 ORDER BY id LIMIT 1", [job.id]))?.id ?? null;
+    await putDeployment(tx, study.id, { designVersionId, active: true, units: true });
+    await checkLinkCount(tx, study.id, designItems(recipe.design) as DesignItem[], true, true);
+    await syncLinks(tx, study.id, { secrets: options.secrets });
+    firstLink = (await one<{ id: number }>(tx, "SELECT id FROM links WHERE study_id = $1 ORDER BY id LIMIT 1", [study.id]))?.id ?? null;
   }
-  return { job, designVersionId, unitIds, firstLink };
+  return { study, designVersionId, unitIds, firstLink };
 }

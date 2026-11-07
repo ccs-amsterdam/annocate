@@ -21,7 +21,7 @@ interface Env {
 
 /**
  * The coder API (contracts `coderEndpoints`, docs/api/coder.md), under
- * `/d/<deploymentId>`: `<jobId>`, or `<jobId>.preview`. The client's
+ * `/d/<deploymentId>`: `<studyId>`, or `<studyId>.preview`. The client's
  * `HttpCoderApi` uses `/d/<deploymentId>` as its base URL.
  *
  * No CORS: the client is served from this server's origin, so the browser
@@ -38,7 +38,7 @@ export function coderApi(server: Server): Hono {
     const body = await parseBody(c, RedeemTransferSchema);
     const deploymentId = c.req.param("deployment")!;
     const runtime = await server.deployments.get(deploymentId);
-    // A suspended or deleted job (stamp changed in another process) takes no new devices.
+    // A suspended or deleted study (stamp changed in another process) takes no new devices.
     await runtime.refresh();
     const device = readDevice(c) ?? newDeviceId();
     await runtime.redeemTransfer(
@@ -50,7 +50,7 @@ export function coderApi(server: Server): Hono {
     return c.json({});
   });
 
-  // This device's session here, for the annotator's home: never starts one (docs/api/coder.md).
+  // This device's session here, for the coder home: never starts one (docs/api/coder.md).
   app.get("/summary", async (c) => {
     requireClientHeader(c);
     const deploymentId = c.req.param("deployment")!;
@@ -61,7 +61,7 @@ export function coderApi(server: Server): Hono {
     const urlParams = Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));
     const participant = participantParam ? urlParams[participantParam]?.trim() || undefined : undefined;
     const key = await coderKey(device, deploymentId, participant);
-    const [study] = await coderStudies(server.db, "c.job_id = $1 AND c.id = (SELECT coder_id FROM coder_devices WHERE key_hash = $2)", [
+    const [study] = await coderStudies(server.db, "c.study_id = $1 AND c.id = (SELECT coder_id FROM coder_devices WHERE key_hash = $2)", [
       Number(deploymentId),
       key,
     ]);

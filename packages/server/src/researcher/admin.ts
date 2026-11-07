@@ -2,7 +2,7 @@ import { securityLog } from "../shared/passkeys.js";
 import { Hono, type Context } from "hono";
 import { randomBytes } from "node:crypto";
 import {
-  AdminJobUpdateSchema,
+  AdminStudyUpdateSchema,
   AdminUserCreateSchema,
   AdminUserUpdateSchema,
   DomainRuleWriteSchema,
@@ -12,7 +12,7 @@ import {
   ResearcherRequestDecisionSchema,
   ServerSettingsSchema,
   type AccountRole,
-  type AdminJob,
+  type AdminStudy,
   type AdminUser,
   type Limits,
   type ResearcherInvite,
@@ -24,7 +24,7 @@ import { HttpError } from "../shared/http.js";
 import { effectiveLimits, getSettings } from "../shared/accounts.js";
 
 // The server admin's API (contracts admin.ts, docs/accounts.md): account
-// role `admin`. Admins manage accounts and jobs, never job data: nothing
+// role `admin`. Admins manage accounts and studies, never study data: nothing
 // here returns design versions, units or answers. Every change is logged.
 
 interface UserRow {
@@ -36,10 +36,10 @@ interface UserRow {
   blocked_at: Date | null;
   created: Date;
   last_login: Date | null;
-  jobs: number;
+  studies: number;
 }
 
-const USER_SELECT = `SELECT u.*, (SELECT count(*)::int FROM jobs j WHERE j.owner_id = u.id) AS jobs FROM users u`;
+const USER_SELECT = `SELECT u.*, (SELECT count(*)::int FROM studies j WHERE j.owner_id = u.id) AS studies FROM users u`;
 
 async function toAdminUser(sql: Sql, row: UserRow): Promise<AdminUser> {
   return {
@@ -52,7 +52,7 @@ async function toAdminUser(sql: Sql, row: UserRow): Promise<AdminUser> {
     blockedAt: row.blocked_at,
     created: row.created,
     lastLogin: row.last_login,
-    jobs: row.jobs,
+    studies: row.studies,
   };
 }
 
@@ -84,13 +84,13 @@ const toInvite = (row: InviteRow): ResearcherInvite => ({
   revokedAt: row.revoked_at,
 });
 
-const JOB_SELECT = `SELECT j.id, j.name, j.created, j.archived, j.suspended_at, o.email AS owner,
-  (SELECT count(*)::int FROM units WHERE job_id = j.id AND in_draft) AS units,
-  (SELECT count(*)::int FROM coders WHERE job_id = j.id) AS coders,
-  (SELECT count(*)::int FROM annotation_values WHERE job_id = j.id) AS answers
-  FROM jobs j LEFT JOIN users o ON o.id = j.owner_id`;
+const STUDY_SELECT = `SELECT j.id, j.name, j.created, j.archived, j.suspended_at, o.email AS owner,
+  (SELECT count(*)::int FROM units WHERE study_id = j.id AND in_draft) AS units,
+  (SELECT count(*)::int FROM coders WHERE study_id = j.id) AS coders,
+  (SELECT count(*)::int FROM annotation_values WHERE study_id = j.id) AS answers
+  FROM studies j LEFT JOIN users o ON o.id = j.owner_id`;
 
-const toAdminJob = (row: Omit<AdminJob, "suspendedAt"> & { suspended_at: Date | null }): AdminJob => ({
+const toAdminStudy = (row: Omit<AdminStudy, "suspendedAt"> & { suspended_at: Date | null }): AdminStudy => ({
   id: row.id,
   name: row.name,
   owner: row.owner,
@@ -308,27 +308,27 @@ export function admin(server: Server): Hono<Env> {
     return c.json(toInvite((await one<InviteRow>(db, `${INVITE_SELECT} WHERE i.id = $1`, [id]))!));
   });
 
-  // ---- jobs --------------------------------------------------------------------
+  // ---- studies --------------------------------------------------------------------
 
-  app.get("/admin/jobs", async (c) => c.json((await db.query<Parameters<typeof toAdminJob>[0]>(`${JOB_SELECT} ORDER BY j.id DESC`)).map(toAdminJob)));
+  app.get("/admin/studies", async (c) => c.json((await db.query<Parameters<typeof toAdminStudy>[0]>(`${STUDY_SELECT} ORDER BY j.id DESC`)).map(toAdminStudy)));
 
-  app.put("/admin/jobs/:id", async (c) => {
+  app.put("/admin/studies/:id", async (c) => {
     const id = Number(c.req.param("id"));
-    const update = await body(c, AdminJobUpdateSchema);
-    const job = await one<{ name: string }>(db, "SELECT name FROM jobs WHERE id = $1", [id]);
-    if (!job) throw new HttpError(404, "Job not found");
+    const update = await body(c, AdminStudyUpdateSchema);
+    const study = await one<{ name: string }>(db, "SELECT name FROM studies WHERE id = $1", [id]);
+    if (!study) throw new HttpError(404, "Study not found");
     if (update.owner !== undefined) {
       const owner = await one<{ id: number; role: AccountRole }>(db, "SELECT id, role FROM users WHERE email = $1", [update.owner.toLowerCase()]);
       if (!owner || owner.role === "user") throw new HttpError(400, "The new owner must be a researcher on this server");
-      await db.query("UPDATE jobs SET owner_id = $1 WHERE id = $2", [owner.id, id]);
+      await db.query("UPDATE studies SET owner_id = $1 WHERE id = $2", [owner.id, id]);
     }
     if (update.suspended !== undefined) {
-      await db.query(`UPDATE jobs SET suspended_at = ${update.suspended ? "COALESCE(suspended_at, now())" : "NULL"} WHERE id = $1`, [id]);
+      await db.query(`UPDATE studies SET suspended_at = ${update.suspended ? "COALESCE(suspended_at, now())" : "NULL"} WHERE id = $1`, [id]);
       // Coders are refused from now on (the runtime loads again, runtime/store.ts).
       server.deployments.drop(id);
     }
-    await log(c, update.suspended === true ? "suspend job" : update.suspended === false ? "resume job" : "update job", `#${id} ${job.name}`, update);
-    return c.json(toAdminJob((await one<Parameters<typeof toAdminJob>[0]>(db, `${JOB_SELECT} WHERE j.id = $1`, [id]))!));
+    await log(c, update.suspended === true ? "suspend study" : update.suspended === false ? "resume study" : "update study", `#${id} ${study.name}`, update);
+    return c.json(toAdminStudy((await one<Parameters<typeof toAdminStudy>[0]>(db, `${STUDY_SELECT} WHERE j.id = $1`, [id]))!));
   });
 
   app.get("/admin/log", async (c) => c.json(await db.query("SELECT at, admin, action, target, details FROM admin_log ORDER BY id DESC LIMIT 500")));

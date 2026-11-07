@@ -35,7 +35,7 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
   const coders = sortByActivity(codersQuery.data ?? []);
   // Loops of the live codebook (every coder has the same keys)
   const loops = Object.keys(coders[0]?.finished ?? {});
-  // The special sets the job has (overlap, gold, practice): units of them each coder finished
+  // The special sets the study has (overlap, gold, practice): units of them each coder finished
   const specials = (["overlap", "gold", "practice"] as const).filter((kind) => coders.some((c) => c.special?.[kind]));
   const requests = coders.filter((c) => c.deletionRequest && !c.deletionRequest.postponedAt);
   const postponed = coders.filter((c) => c.deletionRequest?.postponedAt).length;
@@ -283,7 +283,7 @@ function DeleteByIdDialog({
           {wanted.length === 0
             ? "A participant id can belong to several sessions (e.g. on two devices): all are found."
             : matches.length === 0
-              ? "No coder of this job has these ids."
+              ? "No coder of this study has these ids."
               : `Found: ${matches.map(coderName).join(", ")} (${matches.length} session${matches.length === 1 ? "" : "s"})`}
         </p>
         <DialogFooter>

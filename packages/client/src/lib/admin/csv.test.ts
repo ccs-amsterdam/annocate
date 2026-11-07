@@ -60,18 +60,18 @@ describe("csvToUnits", () => {
     expect(result.errors).toEqual([]);
   });
 
-  it("links columns to the job's fields, leaves unmapped fields empty, and reports what doesn't fit", () => {
-    const jobFields = [
+  it("links columns to the study's fields, leaves unmapped fields empty, and reports what doesn't fit", () => {
+    const studyFields = [
       { name: "text", type: "text" as const },
       { name: "count", type: "number" as const },
       { name: "source", type: "text" as const },
     ];
-    const mapping = initialMapping(headers, rows, jobFields);
+    const mapping = initialMapping(headers, rows, studyFields);
     expect(mapping.map((m) => m.field)).toEqual(["", "text", "count", "", ""]);
-    const result = csvToUnits(headers, rows, 0, mapping, jobFields);
+    const result = csvToUnits(headers, rows, 0, mapping, studyFields);
     expect(result.units[0].data).toEqual({ text: "hello", count: 42, source: null });
 
-    const bad = csvToUnits(["id", "count"], [["1", "many"], ["2", "n/a"]], 0, [{ column: 1, field: "count", type: "text" }], jobFields);
+    const bad = csvToUnits(["id", "count"], [["1", "many"], ["2", "n/a"]], 0, [{ column: 1, field: "count", type: "text" }], studyFields);
     expect(bad.errors).toEqual(["count: 2 values aren't numbers ('many', 'n/a')"]);
     const names = csvToUnits(headers, rows, 0, [
       { column: 1, field: "a b", type: "text" },

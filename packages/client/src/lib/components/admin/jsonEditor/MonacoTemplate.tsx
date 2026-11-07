@@ -6,7 +6,7 @@ import { useTheme } from "../../../context/theme";
 
 /** What a unit template can refer to, for completions. */
 export interface TemplateNames {
-  /** The job's unit fields. */
+  /** The study's unit fields. */
   fields: string[];
   /** The loop's snippets. */
   snippets: string[];

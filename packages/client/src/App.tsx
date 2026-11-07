@@ -26,7 +26,7 @@ import { CodeHomePage } from "./pages/CodeHomePage";
 import { CodePage } from "./pages/CodePage";
 
 // The app (docs/client.md): a welcome page, the researcher section
-// (/research) and the annotator section (/code). The server serves it
+// (/research) and the coder section (/code). The server serves it
 // for every path outside /api (docs/hosting.md), on its own origin
 // (session cookies are same-origin only); in development Vite serves it
 // and forwards /api (vite.config.ts).
@@ -81,7 +81,7 @@ function AppHeader() {
           Research
         </Link>
         <Link to="/code" activeOptions={{ exact: true }} className={nav} activeProps={active}>
-          Annotate
+          Code
         </Link>
       </nav>
       <div className="flex flex-1 justify-end">
@@ -141,12 +141,12 @@ function ResearchPage({ location }: { location: AdminLocation }) {
   if (!researcher.state) return null;
   const onNavigate = (to: AdminLocation, options?: { replace?: boolean }) => {
     const replace = options?.replace ?? false;
-    if (to.page === "jobs") void navigate({ to: "/research", replace });
+    if (to.page === "studies") void navigate({ to: "/research", replace });
     else if (to.page === "server") void navigate({ to: "/research/admin", replace });
     else
       void navigate({
-        to: "/research/jobs/$jobId/$tab",
-        params: { jobId: String(to.jobId), tab: TAB_SLUGS[to.tab] },
+        to: "/research/studies/$studyId/$tab",
+        params: { studyId: String(to.studyId), tab: TAB_SLUGS[to.tab] },
         search: to.version !== undefined ? { version: String(to.version) } : {},
         replace,
       });
@@ -179,11 +179,11 @@ function ResearchPage({ location }: { location: AdminLocation }) {
 function ResearchLayout() {
   const { pathname, search } = useLocation();
   const parts = pathname.replace(/\/+$/, "").split("/").slice(2);
-  let location: AdminLocation = { page: "jobs" };
+  let location: AdminLocation = { page: "studies" };
   if (parts[0] === "admin") location = { page: "server" };
-  else if (parts[0] === "jobs" && Number(parts[1]) > 0) {
+  else if (parts[0] === "studies" && Number(parts[1]) > 0) {
     const version = Number((search as StringSearch).version);
-    location = { page: "job", jobId: Number(parts[1]), tab: SLUG_TABS[parts[2]] ?? "Overview", ...(Number.isInteger(version) && version > 0 ? { version } : {}) };
+    location = { page: "study", studyId: Number(parts[1]), tab: SLUG_TABS[parts[2]] ?? "Overview", ...(Number.isInteger(version) && version > 0 ? { version } : {}) };
   }
   return <ResearchPage location={location} />;
 }
@@ -206,16 +206,16 @@ const welcomeRoute = createRoute({
 const researchRoute = createRoute({ getParentRoute: () => rootRoute, path: "/research", component: ResearchLayout });
 const researchIndexRoute = createRoute({ getParentRoute: () => researchRoute, path: "/" });
 const serverAdminRoute = createRoute({ getParentRoute: () => researchRoute, path: "/admin" });
-const jobRoute = createRoute({
+const studyRoute = createRoute({
   getParentRoute: () => researchRoute,
-  path: "/jobs/$jobId",
+  path: "/studies/$studyId",
   beforeLoad: ({ params }) => {
-    throw redirect({ to: "/research/jobs/$jobId/$tab", params: { jobId: params.jobId, tab: "overview" }, replace: true });
+    throw redirect({ to: "/research/studies/$studyId/$tab", params: { studyId: params.studyId, tab: "overview" }, replace: true });
   },
 });
-const jobTabRoute = createRoute({
+const studyTabRoute = createRoute({
   getParentRoute: () => researchRoute,
-  path: "/jobs/$jobId/$tab",
+  path: "/studies/$studyId/$tab",
   validateSearch: (search: Record<string, unknown>): { version?: string } => (typeof search.version === "string" ? { version: search.version } : {}),
 });
 const codeHomeRoute = createRoute({
@@ -254,7 +254,7 @@ const codeRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   welcomeRoute,
-  researchRoute.addChildren([researchIndexRoute, serverAdminRoute, jobRoute, jobTabRoute]),
+  researchRoute.addChildren([researchIndexRoute, serverAdminRoute, studyRoute, studyTabRoute]),
   codeHomeRoute,
   codeRoute,
 ]);

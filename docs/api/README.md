@@ -1,16 +1,16 @@
 # The APIs: how the parts talk
 
 Annotinder has two parts: the **client** (browser) and the **server**
-(TypeScript, `packages/server`; stores everything and runs the jobs). The
+(TypeScript, `packages/server`; stores everything and runs the studies). The
 server serves two APIs.
 
 ```
  ┌─────────────────────────────────┐   ┌──────────────────────────────┐
- │ researcher UI (ResearcherApi)   │   │ annotator (HttpCoderApi)     │
+ │ researcher UI (ResearcherApi)   │   │ coding screen (HttpCoderApi) │
  │ scripts (R, Python), AmCAT      │   │                              │
  └────────────────┬────────────────┘   └───────────────┬──────────────┘
                   │ researcher API                      │ coder API
-                  │ /api/job/..., /api/me, /api/auth/...│ /api/d/<deploymentId>/...
+                  │ /api/study/..., /api/me, /api/auth/...│ /api/d/<deploymentId>/...
                   ▼                                     ▼
  ┌─────────────────────────────────────────────────────────────────────┐
  │ server                                                              │
@@ -19,16 +19,16 @@ server serves two APIs.
 
 | API | Called by | For | Contracts | Spec |
 |---|---|---|---|---|
-| **researcher API** | client: researcher UI (`ResearcherApi`); scripts (R, Python); other systems | managing jobs: codebooks, units, links, deploying, progress | `researcherEndpoints` | [researcher.md](researcher.md) |
-| **coder API** | client: annotator (`HttpCoderApi`, `JobManager`) | coding: session, next unit, submitting answers | `coderEndpoints` | [coder.md](coder.md) |
-| **admin API** | client: server admin page (`ServerApi`) | accounts: roles, registration, plans and limits, blocking, suspending jobs | `adminEndpoints` | [admin.md](admin.md) |
+| **researcher API** | client: researcher UI (`ResearcherApi`); scripts (R, Python); other systems | managing studies: codebooks, units, links, deploying, progress | `researcherEndpoints` | [researcher.md](researcher.md) |
+| **coder API** | client: coding screen (`HttpCoderApi`, `StudyManager`) | coding: session, next unit, submitting answers | `coderEndpoints` | [coder.md](coder.md) |
+| **admin API** | client: server admin page (`ServerApi`) | accounts: roles, registration, plans and limits, blocking, suspending studies | `adminEndpoints` | [admin.md](admin.md) |
 
 The registries are in `packages/contracts/src/endpoints/`: one file per API,
 each entry `{ method, path, request, response }` with zod schemas.
 
 **All APIs are under `/api`.** The paths in the registries and in these
-documents are relative to it: `GET /job` is
-`https://annotinder.example.org/api/job`. Everything outside `/api` is the
+documents are relative to it: `GET /study` is
+`https://annotinder.example.org/api/study`. Everything outside `/api` is the
 app (its pages, e.g. `/research/...` and `/code/...`).
 
 ## Where they are implemented
@@ -43,13 +43,13 @@ app (its pages, e.g. `/research/...` and `/code/...`).
 
 | API | How |
 |---|---|
-| researcher API | The session cookie from logging in (same origin, with `x-annotinder: 1`), or a personal API key (`authorization: Bearer <key>`, also from other origins: CORS is allowed). The user's role per job is `READ`, `WRITE` or `ADMIN`. Development servers (`ANNOTINDER_DEV_AUTH=1`) also accept `x-dev-role` / `x-dev-email` headers. See [researcher.md](researcher.md). |
+| researcher API | The session cookie from logging in (same origin, with `x-annotinder: 1`), or a personal API key (`authorization: Bearer <key>`, also from other origins: CORS is allowed). The user's role per study is `READ`, `WRITE` or `ADMIN`. Development servers (`ANNOTINDER_DEV_AUTH=1`) also accept `x-dev-role` / `x-dev-email` headers. See [researcher.md](researcher.md). |
 | coder API | A session cookie the server sets (httpOnly, same origin as the client), created from a link secret. No CORS. [coder.md#sessions-and-headers](coder.md#sessions-and-headers) |
 
 ## Deployment ids
 
-A deployed job runs as a **deployment**, identified by the job id, e.g.
-`/d/42/session`. A researcher preview runs as `<jobId>.preview`.
+A deployed study runs as a **deployment**, identified by the study id, e.g.
+`/d/42/session`. A researcher preview runs as `<studyId>.preview`.
 
 ## Machine-readable spec
 

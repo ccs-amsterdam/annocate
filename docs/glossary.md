@@ -7,7 +7,7 @@ keeps the word "codebook", "In code" says why.
 
 | Term | Meaning | Not |
 | --- | --- | --- |
-| **Job** | A study in AnnoTinder: its design, units, deployment and results. | project, study (in UI text: "job") |
+| **Study** | What a researcher runs in AnnoTinder: its design, units, deployments, links and results. Coders take part in it. | job, project |
 | **Design** | Everything someone repeating the study needs (`plans/design.md`): the **unit fields**, the **session** (URL and link parameters, participant id, sample size per link) and the **items** (questions, unit loops with who codes which units, conditions, end items). Versioned. | "codebook" for the whole |
 | **Design version** (v1, v2, ...) | A saved state of the design. The latest one is the **draft** until it is deployed; deployed versions are frozen. | "codebook version" |
 | **Codebook** | The part of the design coders see: questions with their instructions and options, layouts, conditions, end messages. What the coding client gets (the *coder codebook*) and what **Export** writes (`codebook.md`), e.g. for a paper. The **Editor** tab (Design › Editor) edits the design's items and session. | the whole design; a version |
@@ -20,10 +20,10 @@ keeps the word "codebook", "In code" says why.
 | **Deploy** | Make drafts live: a design version, and/or the draft units and sets. One dialog, one verb. | "publish" |
 | **Deployment** | What coders get now (a design version with the deployed units and sets, active or paused) and its **settings**: panel return links, who may use each link, a link's own limit. | |
 | **Link** | What coders open to start a session; made from the design's link parameters when deploying, with who may use it. | "invite", "invitation" in UI text |
-| **Coder** | Anyone coding: a person with a **session** in a job. | annotator, participant (except below) |
+| **Coder** | Anyone coding: a person with a **session** in a study. | annotator, participant (except below) |
 | **Participant id** | A label for the coder from a panel (e.g. `PROLIFIC_PID`); never a key. | |
-| **Public title** | What coders see as the study's name (the annotator home, the coding screen): the design's `public.title`. The job's name is private. | the job's name |
-| **Session** | (1) A coder's run through a job. (2) The design's `session`: the values a session starts with (`$session.<name>`), and the parameters that set them. | |
+| **Public title** | What coders see as the study's name (the coder home, the coding screen): the design's `public.title`. The study's name is private. | the study's name |
+| **Session** | (1) A coder's run through a study. (2) The design's `session`: the values a session starts with (`$session.<name>`), and the parameters that set them. | |
 | **Preview** | Trying the drafts as a coder; nothing is stored. | test run |
 
 ## 2. In code
@@ -45,7 +45,7 @@ coders' part:
 So code and API say what the app says (decided 2026-11-02; they change the
 public researcher API, so the R/Python clients follow):
 
-1. Done: `/job/:id/codebook` → `/job/:id/design`, table `codebooks` →
+1. Done: `/job/:id/codebook` → `/job/:id/design` (now `/study/:id/design`, item 6), table `codebooks` →
    `design_versions`, `CodebookResponse`/`CodebookWrite`/`CodebookMeta` →
    `DesignVersion`/`DesignWrite`/`DesignVersionMeta`, `codebookId` →
    `designVersionId` (deployments, answers, exports), `codebook_conflict` →
@@ -69,3 +69,12 @@ public researcher API, so the R/Python clients follow):
    `diffDesigns`, help topics `design-editor`, `changing-a-live-design`,
    `design-reproducible`. The local backup key is now
    `annotinder:design-backup`.
+6. Done (2026-11-07): job → study everywhere, as AnnoTinder measures how
+   coders interpret units rather than having them do work
+   (`philosophy.md`): the API (`/api/study/...`, `StudyResponse`,
+   `listStudies`, error codes `study_paused`, `study_suspended`,
+   `study_full`), the database (`studies`, `study_users`, `study_id`;
+   migration 0003), plan limits (`studies`, `unitsPerStudy`,
+   `codersPerStudy`, `answersPerStudy`), the client (`/research/studies/...`,
+   `StudyManager`, `StudyRunner`) and the docs. Coders stay coders: the
+   welcome page and header say Coder and Code.

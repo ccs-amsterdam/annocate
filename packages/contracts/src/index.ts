@@ -28,7 +28,7 @@ export * from "./unit.js";
 export * from "./unitFields.js";
 export * from "./sets.js";
 export * from "./answerKey.js";
-export * from "./job.js";
+export * from "./study.js";
 export * from "./recipe.js";
 export * from "./coder.js";
 export * from "./variableValue.js";

@@ -5,7 +5,7 @@ import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useDeploymentActiveMutation } from "../../../admin/queries";
 
 /**
- * Controls of the live job (docs/client.md §7, "Overview"): pause it (coders
+ * Controls of the live study (docs/client.md §7, "Overview"): pause it (coders
  * get no new units; units they hold can still be finished) or resume it.
  */
 export function LiveControls({ client, deployment }: { client: ResearcherApi; deployment: DeploymentResponse }) {
@@ -20,7 +20,7 @@ export function LiveControls({ client, deployment }: { client: ResearcherApi; de
           disabled={setActive.isPending}
           onClick={() => {
             const pausing = deployment.active;
-            if (pausing && !confirm("Pause the job? Coders get no new units until you resume it; units they have open can still be finished.")) return;
+            if (pausing && !confirm("Pause the study? Coders get no new units until you resume it; units they have open can still be finished.")) return;
             setActive.mutate({ designVersionId: deployment.designVersionId, active: !pausing });
           }}
         >

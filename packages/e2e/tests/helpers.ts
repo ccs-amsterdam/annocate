@@ -1,5 +1,5 @@
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
-import type { AnnotationRow, CoderProgress, JobResponse } from "@annotinder/contracts";
+import type { AnnotationRow, CoderProgress, StudyResponse } from "@annotinder/contracts";
 
 /** The researcher API, as the development user (the test server takes development auth headers). */
 export const DEV_HEADERS = { "x-dev-role": "ADMIN", "x-dev-email": "dev@example.com", "content-type": "application/json" };
@@ -11,19 +11,19 @@ export async function api<T>(request: APIRequestContext, method: string, path: s
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
-/** A new job from an example, and the link of its (first) link. */
-export async function fromExample(request: APIRequestContext, example: string): Promise<{ job: JobResponse; link: string }> {
-  const job = await api<JobResponse>(request, "POST", "/job/from-example", { example });
-  const [invite] = await api<{ secret: string }[]>(request, "GET", `/job/${job.id}/links`);
-  return { job, link: `/code/${job.id}?link=${invite.secret}` };
+/** A new study from an example, and the link of its (first) link. */
+export async function fromExample(request: APIRequestContext, example: string): Promise<{ study: StudyResponse; link: string }> {
+  const study = await api<StudyResponse>(request, "POST", "/study/from-example", { example });
+  const [invite] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  return { study, link: `/code/${study.id}?link=${invite.secret}` };
 }
 
-export async function answers(request: APIRequestContext, jobId: number): Promise<AnnotationRow[]> {
-  return (await api<{ annotations: AnnotationRow[] }>(request, "GET", `/job/${jobId}/annotations?limit=10000`)).annotations;
+export async function answers(request: APIRequestContext, studyId: number): Promise<AnnotationRow[]> {
+  return (await api<{ annotations: AnnotationRow[] }>(request, "GET", `/study/${studyId}/annotations?limit=10000`)).annotations;
 }
 
-export async function coders(request: APIRequestContext, jobId: number): Promise<CoderProgress[]> {
-  return api<CoderProgress[]>(request, "GET", `/job/${jobId}/coders`);
+export async function coders(request: APIRequestContext, studyId: number): Promise<CoderProgress[]> {
+  return api<CoderProgress[]>(request, "GET", `/study/${studyId}/coders`);
 }
 
 /** Answers of coders who aren't example coders. */

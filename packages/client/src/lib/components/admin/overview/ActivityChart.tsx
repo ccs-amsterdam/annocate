@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { JobOverview } from "@annotinder/contracts";
+import type { StudyOverview } from "@annotinder/contracts";
 
-type Day = JobOverview["activity"][number];
+type Day = StudyOverview["activity"][number];
 
 const dayLabel = (day: string) =>
   new Date(`${day}T00:00:00Z`).toLocaleDateString(undefined, { day: "numeric", month: "short", timeZone: "UTC" });

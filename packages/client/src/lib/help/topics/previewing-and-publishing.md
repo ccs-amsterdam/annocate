@@ -2,7 +2,7 @@
 title: Preview, save and deploy
 section: Getting started
 order: 3
-summary: Drafts and deployed design versions, saving, the versions dialog, previewing a job, and what deploying does to coders who are at work.
+summary: Drafts and deployed design versions, saving, the versions dialog, previewing a study, and what deploying does to coders who are at work.
 ---
 
 A design goes through three stages: your **unsaved changes** in the
@@ -24,7 +24,7 @@ given under.
 **Units and sets work the same way.** Uploading units, replacing them,
 deleting them or changing sets changes the draft: coders keep getting the
 units as they were deployed, and **Preview** shows the drafts. A bar at the
-top of the job says what isn't deployed yet, with **Deploy…**. Every answer
+top of the study says what isn't deployed yet, with **Deploy…**. Every answer
 stays linked to the version of the unit its coder saw.
 
 ## Saving
@@ -74,8 +74,8 @@ history.
 
 ## Previewing
 
-Click **Preview Job** at the top right. You
-then code the job as a coder would, with the job's real units:
+Click **Preview Study** at the top right. You
+then code the study as a coder would, with the study's real units:
 
 - The preview runs the **latest saved version**: the draft if there is one,
   otherwise the live version. A label above it says which (*Previewing v3
@@ -98,11 +98,11 @@ save, and open the preview again.
 
 > The editor also has a preview of the selected item, which shows your
 > unsaved changes at once. See [The codebook editor](design-editor.md).
-> Use it while writing, and the full preview to try the whole job.
+> Use it while writing, and the full preview to try the whole study.
 
 ## Deploying
 
-Click **Deploy…** in the toolbar, or in the bar at the top of the job.
+Click **Deploy…** in the toolbar, or in the bar at the top of the study.
 Unsaved changes are saved first. A draft with issues can't be deployed.
 
 The **Deploy changes?** dialog has two parts, each with a checkbox: the
@@ -126,7 +126,7 @@ list warnings from the server, for instance that a loop gained questions
 and finished units become unfinished again. See
 [Changing a design while coding runs](changing-a-live-design.md).
 
-The first deploy is what lets coders start, and it makes the job's links
+The first deploy is what lets coders start, and it makes the study's links
 (see [Links](links.md)): until then, there is no link to open.
 
 ## What coders experience when you deploy
