@@ -52,7 +52,7 @@ another device is told they already started (see
 
 Panels often send more than the participant id, for instance a study id and
 a session id, and want some of them back in the return link. Add them to the
-Session item as **URL parameters**: a name for the design (`study`), the
+Study entry as **URL parameters**: a name for the design (`study`), the
 **URL key** as the panel sends it (`STUDY_ID`), and its values (any value,
 optionally with a pattern; or a list). Without a default a URL parameter is
 required.

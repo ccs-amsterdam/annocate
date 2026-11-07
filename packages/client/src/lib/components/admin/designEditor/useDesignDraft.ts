@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   undeclaredFields,
   designItems,
-  splitSession,
+  splitDesignItems,
   DesignConflictSchema,
   validateDesignItems,
   type DesignConflict,
@@ -57,8 +57,8 @@ interface UseDesignDraftOptions {
  */
 export function useDesignDraft({ client, version, readOnly, onSaved, restore }: UseDesignDraftOptions) {
   const [items, setItemsState] = useState<TopLevelItem[]>(() =>
-    // The session is edited as the first item (contracts designItems), stored next to the items
-    restore ? ensureKeys(restore.items) : ensureKeys(version ? (designItems(version) as TopLevelItem[]) : []),
+    // The Study entry (session and public info) is edited as the first item (contracts designItems), stored next to the items
+    ensureKeys(restore ? restore.items : (designItems(version ?? { items: [] }) as TopLevelItem[])),
   );
   const [selected, setSelected] = useState<string | null>(null);
   // The items as last saved (with the same keys), to tell what changed and to revert to
@@ -156,18 +156,14 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
 
   function insertAt(position: TreePosition, type: ItemType) {
     const item = createItem(type);
-    // The Session item is always first
-    if (type === "session") {
-      setItems(ensureKeys([item as TopLevelItem, ...items]));
-      setSelected(item._key);
-      return;
-    }
     setItems(ensureKeys(insertAtPosition(items, position, item)));
     setSelected(item._key);
   }
 
   /** Items (and what is inside them) deleted, after asking. */
-  function remove(keys: string[]): boolean {
+  function remove(requested: string[]): boolean {
+    // The Study entry stays
+    const keys = requested.filter((key) => findItem(items, key)?.type !== "session");
     if (keys.length === 0) return false;
     const what = keys.length === 1 ? "this item" : `these ${keys.length} items`;
     if (!confirm(`Delete ${what} and everything inside?`)) return false;
@@ -179,7 +175,8 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
 
   /** Items (topmost selected, in design order) moved to a position. */
   function move(keys: string[], position: TreePosition) {
-    setItems(moveAllTo(items, keys, position));
+    // The Study entry stays first
+    setItems(moveAllTo(items, keys.filter((key) => findItem(items, key)?.type !== "session"), position));
   }
 
   function update(key: string, next: DesignItem) {
@@ -206,9 +203,9 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
         version && !version.immutable
           ? await updateDesignVersion.mutateAsync({
               id: version.id,
-              body: { note: version.note ?? undefined, ...splitSession(cleanItems), revision: overwrite ? undefined : revision },
+              body: { note: version.note ?? undefined, ...splitDesignItems(cleanItems), revision: overwrite ? undefined : revision },
             })
-          : await createDesignVersion.mutateAsync(splitSession(cleanItems));
+          : await createDesignVersion.mutateAsync(splitDesignItems(cleanItems));
       setSaved(sent);
       setRevision(result.revision);
       clearBackup(backupOf);

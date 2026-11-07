@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { DraftItemsSchema } from "./design/designVersion.js";
-import { SessionSpecSchema } from "./design/session.js";
+import { PublicInfoSchema, SessionSpecSchema } from "./design/session.js";
 import { UnitDataSchema } from "./common.js";
 import { SetGroupNameSchema, SetNameSchema } from "./sets.js";
 
@@ -27,7 +27,7 @@ export const RecipeSchema = z.object({
     )
     .default([]),
   /** The first design version: a draft, or deployed with `publish` (then it must pass validation). */
-  design: z.object({ note: z.string().max(1000).optional(), items: DraftItemsSchema, session: SessionSpecSchema.optional() }),
+  design: z.object({ note: z.string().max(1000).optional(), public: PublicInfoSchema.optional(), session: SessionSpecSchema.optional(), items: DraftItemsSchema }),
   /** Deploy the design, so coders can start right away (examples). Default: a draft. */
   publish: z.boolean().default(false),
 });

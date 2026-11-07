@@ -354,7 +354,7 @@ seconds). The server stores the outcome; the session then refuses units and
 answers (409 `session_ended`), and a reload shows the ending again (a
 closed session: 409 `session_closed`, `coder-identity.md` §9).
 
-### Session item
+### Study entry
 
 The codebook's `session` item (at most one, always first) is never shown
 to coders: it declares the session's link and URL parameters and the
@@ -397,7 +397,7 @@ instruction texts, conditions and redirect links
 | `$var.<q>.values` | all items' values, in item order | scale |
 | `$var.<q>.items.<item>.value`, `.label` | one item | scale |
 | `$var.<q>.answered` | answered and not skipped | any |
-| `$session.participant`, `.source`, `.email`, `$session.<name>` | the session's participant id, `?source=`, login email, and the link and URL parameters the codebook's Session item declares (strings; empty when absent) | |
+| `$session.participant`, `.source`, `.email`, `$session.<name>` | the session's participant id, `?source=`, login email, and the link and URL parameters the design's Study entry declares (strings; empty when absent) | |
 
 Using `.value` on a multiple-answer question or `.values` on a single one
 is a validation error, and so is the old `.code`. A numeric answer's label
@@ -446,7 +446,7 @@ method fits its type; `$unit` and snippets (`[[name]]`) only inside a loop (unkn
 snippets are an error; unknown `$unit` fields are a warning in the editor, once the
 job has units); branch `when` and end item redirect URLs
 only use coder-level `$var` refs from before the loop (and `$session`
-names the Session item declares, or built-in ones); span fields shown
+names the Study entry declares, or built-in ones); span fields shown
 as plain text, as described in §3. In simple conditions the helper arguments are checked too:
 their number, and that they are values of the question's options (numeric:
 numbers within its range). In advanced scripts references are checked,
@@ -686,7 +686,7 @@ from the Preview Job button. It uses a `ResearcherApi`
   with placeholders). Per link: label, login requirement, allowed emails,
   max uses and a fixed participant id; revoke (no new coders) or a new
   secret. Retired links are listed separately. There is no "create": the
-  codebook's Session item (`SessionItemForm.tsx`) declares the link and URL
+  codebook's Study entry (`SessionItemForm.tsx`) declares the link and URL
   parameters and the participant id's URL parameter.
 - **Coders**: per coder the link, started, last active, answers,
   finished units per loop of the live codebook, and how the session ended

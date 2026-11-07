@@ -89,7 +89,7 @@ export interface SetupUnits {
 
 export interface SetupAnswers {
   name: string;
-  /** The title coders see (the design's `session.public.title`); empty: none. */
+  /** The title coders see (the design's `public.title`); empty: none. */
   publicTitle: string;
   parts: SetupParts;
   experiment: SetupExperiment;
@@ -391,11 +391,10 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
   }
   // The title coders see, only when given
   const title = a.publicTitle.trim();
-  if (title) session = { ...(session ?? { params: [] }), public: { title } };
   return {
     name: a.name.trim(),
     units: (a.units?.units ?? []).map((u) => ({ id: u.externalId, data: u.data })),
     sets: groups.map((g) => ({ ...g, sets: g.sets.filter((s) => s.units.length > 0) })),
-    design: { note: "Made with the setup wizard", items, ...(session ? { session } : {}) },
+    design: { note: "Made with the setup wizard", ...(title ? { public: { title } } : {}), ...(session ? { session } : {}), items },
   };
 }

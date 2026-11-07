@@ -28,16 +28,19 @@ A shared study is a design plus its units (or a template CSV).
 
 ```json
 {
+  "public":  { "title": "..." },
+  "session": { "params": [...], "participant": {...}, "maxUses": 100 },
   "units":   { "fields": [ { "name": "text", "type": "text" }, ... ] },
-  "session": { "public": { "title": "..." }, "params": [...], "targets": {...} },
   "items":   [ questions, loops (with their branches' distribution), conditions, end items ]
 }
 ```
 
-The Session item leaves `items` for the top-level `session`. Its `public`
-part is what coders see about the study: the title (later perhaps a
-description or thumbnail); the job's name stays private. Distribution
-stays in the loop branches (it depends on their conditions).
+`public` is what coders see about the study: the title (later perhaps a
+description or thumbnail); the study's name stays private. `session` is
+how a coder's session starts, always there (`{ "params": [] }` without
+parameters). The editor shows both as one Study entry at the top of the
+tree (always there, not moved or deleted). Distribution stays in the loop
+branches (it depends on their conditions).
 
 ## 3. Unit fields: one specification, in the design
 

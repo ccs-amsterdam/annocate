@@ -98,7 +98,7 @@ them; units a coder already got stay theirs.
 ## Sets and links
 
 A design can give each set of a group its own link, by a **link
-parameter** with the group's sets in the design's Session item (see
+parameter** with the group's sets in the design's Study entry (see
 [Session parameters](session-parameters.md)). A loop that assigns sets
 "named by the link" then gives coders of each link that link's set. A new
 set gets its link when it is deployed; a removed set's link is retired when

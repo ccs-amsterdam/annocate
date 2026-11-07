@@ -95,7 +95,9 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
         tree.moving && ticked && "ring-1 ring-primary/40",
       )}
     >
-      {!tree.readOnly && (
+      {/* The Study entry is always there, first: not moved or deleted */}
+      {!tree.readOnly && item.type === "session" && <span className="h-3.5 w-3.5 mr-px shrink-0" aria-hidden />}
+      {!tree.readOnly && item.type !== "session" && (
         <input
           type="checkbox"
           aria-label={`Select ${rowTitle(item)}`}

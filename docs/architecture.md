@@ -531,7 +531,7 @@ Other open points:
 | Where | What |
 | --- | --- |
 | `contracts/src/design/unitLoop.ts` | `unit_loop` branches: modes, overlap, `when`, set references |
-| `contracts/src/design/session.ts` | The Session item: link and URL parameters, combinations |
+| `contracts/src/design/session.ts` | The Study entry: link and URL parameters, combinations |
 | `contracts/src/design/references.ts`, `condition.ts` | `$unit`/`$var` references, template parsing, scopes; conditions (scripts), helper methods, simple conditions |
 | `contracts/src/sets.ts` | Set groups and sets, set columns, `splitIntoSets` |
 | `contracts/src/deployment.ts` | Deployment, reset, status and preview schemas (researcher API) |

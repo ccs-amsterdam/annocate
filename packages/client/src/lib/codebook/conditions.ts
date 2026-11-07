@@ -96,6 +96,6 @@ export function readableCondition(condition: SimpleCondition, nested = false): s
 export function itemTitle(item: DesignItem): string {
   if (item.type === "condition") return item.label?.trim() || `if ${describeCondition(item.condition)}`;
   if (item.type === "unit_loop") return item.label?.trim() || "Unit loop";
-  if (item.type === "session") return item.label?.trim() || "Session";
+  if (item.type === "session") return "Study";
   return item.name;
 }

@@ -25,7 +25,8 @@ test("writing a codebook in the editor, as the help describes it, and saving it"
   await expect(page.getByText("to specify")).toHaveCount(0);
 
   // The first question, inside the loop: the row's "+", then where, then what
-  await page.getByRole("button", { name: "Add an item below" }).first().click();
+  // (the first row is the Study entry, always there; the loop is the second)
+  await page.getByRole("button", { name: "Add an item below" }).nth(1).click();
   await page.getByRole("button", { name: "Inside News articles" }).click();
   await page.getByRole("button", { name: /^Question/ }).first().click();
   await page.getByPlaceholder("e.g. sentiment, age").fill("topic");

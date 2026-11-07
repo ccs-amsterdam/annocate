@@ -48,11 +48,11 @@
   ],
   "design": {
     "note": "Example: labeling actors",
+    "public": {
+      "title": "Who acts in the news?"
+    },
     "session": {
-      "params": [],
-      "public": {
-        "title": "Who acts in the news?"
-      }
+      "params": []
     },
     "items": [
       {

@@ -4,7 +4,7 @@ import { emptyDb } from "./testDb.js";
 import { createApp } from "../app.js";
 import { DbStore } from "../runtime/store.js";
 import { HttpError } from "../shared/http.js";
-import { splitSession, type DesignItem, type VariableValue } from "@annotinder/contracts";
+import { splitDesignItems, type DesignItem, type VariableValue } from "@annotinder/contracts";
 
 let db: Sql;
 let app: ReturnType<typeof createApp>;
@@ -301,7 +301,7 @@ describe("links, coder progress and overview", () => {
     const question = (name: string) => ({ type: "question", name, variable: { type: "confirm", question: "?" } });
     const loop = { type: "unit_loop", label: "l", units: [{ mode: "all" }], layout: { template: "" }, children: [question("q1"), question("q2")] };
     const publish = async (items: object[], confirmLinks?: boolean) => {
-      const codebook = await json(await app.request(`/api/job/${job.id}/design`, { method: "POST", headers: adminHeaders, body: JSON.stringify(splitSession(items)) }));
+      const codebook = await json(await app.request(`/api/job/${job.id}/design`, { method: "POST", headers: adminHeaders, body: JSON.stringify(splitDesignItems(items)) }));
       return app.request(`/api/job/${job.id}/deployment`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: codebook.id, confirmLinks }) });
     };
     expect((await publish(session ? [session, loop] : [loop])).status).toBe(200);

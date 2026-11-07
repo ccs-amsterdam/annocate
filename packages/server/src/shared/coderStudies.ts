@@ -10,7 +10,7 @@ import type { Sql } from "../db.js";
  */
 export async function coderStudies(sql: Sql, where: string, params: unknown[]): Promise<CoderStudy[]> {
   const rows = await sql.query<{ job_id: number; title: string | null; created: Date; ended: SessionEnd | null; units: number; last_active: Date | null }>(
-    `SELECT c.job_id, dv.session->'public'->>'title' AS title, c.created, c.ended,
+    `SELECT c.job_id, dv.public->>'title' AS title, c.created, c.ended,
        (SELECT count(DISTINCT a.unit_id)::int FROM annotation_values a WHERE a.coder_id = c.id AND a.unit_id IS NOT NULL AND a.retired_at IS NULL) AS units,
        (SELECT max(a.updated) FROM annotation_values a WHERE a.coder_id = c.id) AS last_active
      FROM coders c JOIN jobs j ON j.id = c.job_id JOIN deployments d ON d.job_id = c.job_id

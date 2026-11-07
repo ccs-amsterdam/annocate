@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { UnitsSpecSchema } from "./unitFields.js";
 import { DesignItemsSchema } from "./design/designVersion.js";
-import { SessionSpecSchema } from "./design/session.js";
+import { EMPTY_SESSION, PublicInfoSchema, SessionSpecSchema } from "./design/session.js";
 
 /**
  * The release of AnnoTinder (server, client and contracts are released
@@ -27,7 +27,7 @@ export const DESIGN_FORMAT_VERSION = 1;
 
 /**
  * A design file (`design.json`, docs/plans/design-viewer.md §1): a whole
- * design version (items, session, unit fields), with the format and the
+ * design version (public info, session, unit fields, items), with the format and the
  * client it ran on (a deployment's) or was exported from.
  */
 export const DesignFileSchema = z.object({
@@ -35,21 +35,22 @@ export const DesignFileSchema = z.object({
   formatVersion: z.number().int().positive(),
   client: ClientVersionSchema,
   exportedAt: z.coerce.date(),
-  /** The job's name, and the version as people see it (v1, v2, ...; null: not numbered, e.g. a new draft). */
+  /** The study's name, and the version as people see it (v1, v2, ...; null: not numbered, e.g. a new draft). */
   name: z.string(),
   version: z.number().int().positive().nullable(),
   note: z.string().nullable(),
   design: z.object({
-    items: DesignItemsSchema,
-    session: SessionSpecSchema.nullable(),
+    public: PublicInfoSchema.nullable(),
+    session: SessionSpecSchema,
     units: UnitsSpecSchema,
+    items: DesignItemsSchema,
   }),
 });
 export type DesignFile = z.infer<typeof DesignFileSchema>;
 
-/** A design file for a design version (its items, session and unit fields). */
+/** A design file for a design version (its public info, session, unit fields and items). */
 export function designFile(
-  design: { items: unknown[]; session: unknown; units: { fields: unknown[] }; note?: string | null },
+  design: { items: unknown[]; session: unknown; public: unknown; units: { fields: unknown[] }; note?: string | null },
   meta: { name: string; version: number | null; client: ClientVersion; exportedAt?: Date },
 ): DesignFile {
   return {
@@ -60,6 +61,6 @@ export function designFile(
     name: meta.name,
     version: meta.version,
     note: design.note ?? null,
-    design: { items: design.items, session: design.session ?? null, units: design.units } as DesignFile["design"],
+    design: { public: design.public ?? null, session: design.session ?? EMPTY_SESSION, units: design.units, items: design.items } as DesignFile["design"],
   };
 }

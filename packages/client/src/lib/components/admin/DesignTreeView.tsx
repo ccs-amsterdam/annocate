@@ -118,12 +118,14 @@ export function DesignTreeView({
   };
 
   const end: TreePosition = { into: null };
+  // Nothing yet but the Study entry (always there): the first item is added from the bar
+  const empty = items.every((item) => item.type === "session");
   const count = ticked.length === 1 ? "1 item" : `${ticked.length} items`;
 
   return (
     <DesignTreeProvider value={state}>
-      {/* Only while moving or with items ticked (or to add the first item); how to edit is behind the tree's info icon */}
-      {!readOnly && (moving || ticked.length > 0 || items.length === 0) && (
+      {/* Only while moving or with items ticked (or to add the first item after the Study entry); how to edit is behind the tree's info icon */}
+      {!readOnly && (moving || ticked.length > 0 || empty) && (
         <div className="sticky top-0 z-10 flex min-h-9 flex-wrap items-center gap-2 bg-card px-1 pb-1 text-xs text-muted-foreground">
           {moving ? (
             <>

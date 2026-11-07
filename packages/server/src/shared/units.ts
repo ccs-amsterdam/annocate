@@ -1,4 +1,4 @@
-import type { UnitChanges, UnitData, UnitField, UnitMeta, UnitResponse } from "@annotinder/contracts";
+import { EMPTY_SESSION, type UnitChanges, type UnitData, type UnitField, type UnitMeta, type UnitResponse } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { designVersionUnits, type DesignVersionRow } from "./designVersions.js";
 
@@ -77,13 +77,14 @@ export async function setUnitFields(sql: Sql, jobId: number, fields: UnitField[]
   if (latest && !latest.immutable) {
     await sql.query("UPDATE design_versions SET units = $1 WHERE id = $2", [units, latest.id]);
   } else {
-    // A copy of the latest version (items and session), with the new fields
-    await sql.query("INSERT INTO design_versions (job_id, note, items, units, session) VALUES ($1, $2, $3, $4, $5)", [
+    // A copy of the latest version (items, session, public info), with the new fields
+    await sql.query("INSERT INTO design_versions (job_id, note, items, units, session, public) VALUES ($1, $2, $3, $4, $5, $6)", [
       jobId,
       latest ? "Unit fields from an upload" : null,
       JSON.stringify(latest?.items ?? []),
       units,
-      latest?.session ? JSON.stringify(latest.session) : null,
+      JSON.stringify(latest?.session ?? EMPTY_SESSION),
+      latest?.public ? JSON.stringify(latest.public) : null,
     ]);
   }
 }

@@ -70,7 +70,7 @@ test("on a phone the editor shows one pane at a time: the tree, then an item wit
   const tree = page.getByText(/^Items \(\d+\)$/);
   await expect(tree).toBeVisible();
   // Open the session item: its form, full width, without the tree
-  await page.getByRole("button", { name: /^Session/ }).first().click();
+  await page.getByRole("button", { name: /^Study/ }).first().click();
   await expect(page.getByLabel("Public title", { exact: true })).toHaveValue("A short survey");
   await expect(tree).toBeHidden();
   await page.getByRole("button", { name: "Back to the items" }).click();

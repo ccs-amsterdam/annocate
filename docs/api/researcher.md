@@ -231,7 +231,7 @@ recipe (`contracts/src/recipe.ts`), as the setup wizard writes one, like
 - `units` (`{ id, data }`; the first unit's fields become the job's) and
   `sets`: set groups by the units' ids (`[{ group, sets: [{ name, units,
   ordered? }] }]`);
-- `design` (`{ note?, items, session? }`): the first version, saved as a draft that
+- `design` (`{ note?, public?, session?, items }`): the first version, saved as a draft that
   may have issues (e.g. questions without an answer type yet). With
   `publish: true` it is deployed, and must then pass validation.
 
@@ -300,8 +300,15 @@ The body is always the full document, with an optional `note` (what
 changed). A draft may be saved while it doesn't pass validation (work in
 progress): `items` only has to be a list (`DraftItemsSchema`). The response says whether it is `valid`
 (`DesignItemsSchema`: nesting rules, unique names, references), which
-deploying and previewing require. Codebooks also have `updated`,
+deploying and previewing require. Versions also have `updated`,
 `updatedBy` (the email of who saved last) and `revision`.
+
+A design version is `{ public, session, units, items }`: `public` what
+coders see about the study (`{ title }`, or null), `session` how a coder's
+session starts (link and URL parameters, participant id, combinations,
+sample size; `{ params: [] }` without), `units.fields` the declared unit
+fields, `items` the questions, loops, conditions and end items. On `PUT`,
+a left-out `session`, `public` or `units` is kept; `public: null` removes it.
 
 ### updateDesignVersion
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { codebookMarkdown } from "../../design/codebookMarkdown";
-import { RELEASE, designFile, splitSession, type DesignVersion } from "@annotinder/contracts";
+import { RELEASE, designFile, splitDesignItems, type DesignVersion } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useJobQuery, useUnitFieldsQuery } from "../../admin/queries";
 import { unknownUnitFields } from "../../design/unitFieldRefs";
@@ -188,9 +188,9 @@ export function DesignEditor({
           }
           // The whole design as a design file (contracts version.ts), as edited now, with this server's release
           const client_ = await client.getServerVersion().catch(() => ({ release: RELEASE, commit: "unknown" }));
-          const { items, session } = splitSession(draft.cleanItems);
+          const { items, session, public: info } = splitDesignItems(draft.cleanItems);
           const file = designFile(
-            { items, session: session ?? null, units: version?.units ?? { fields: [] }, note: version?.note ?? null },
+            { items, session, public: info, units: version?.units ?? { fields: [] }, note: version?.note ?? null },
             { name: jobName ?? "design", version: versionNumber ?? null, client: client_ },
           );
           download(JSON.stringify(file, null, 2), "design.json", "application/json");

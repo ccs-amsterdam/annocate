@@ -23,7 +23,7 @@ Complements `docs/architecture.md`.
 | **Coder** (`coderId`) | One annotation session in a job: a set of answers, unit assignments and progress. Everything (annotations, routing, distribution) is keyed by `coderId`. Shown to coders as "your session". | database |
 | **Device id** | Random secret the server gives a browser once, for all jobs, in an httpOnly cookie (`annotinder_device`), so page scripts never see it. Never stored by the server. | the coder's browser (httpOnly cookie) |
 | **Device key** | A device's key for its session in one job: SHA-256 of device id, deployment and participant id. The database stores only this, so nothing links one device's sessions across jobs. A session has one per device that joined it. | database (`coder_devices`) |
-| **Participant id** | External label from the researcher or a panel company, e.g. a Prolific/Qualtrics participant id. It is fixed on a personal link (`participantId`), or taken from a URL parameter the codebook's Session item names (`participant: { param, pattern? }`, e.g. `PROLIFIC_PID`). Never a credential. | database (on the coder) |
+| **Participant id** | External label from the researcher or a panel company, e.g. a Prolific/Qualtrics participant id. It is fixed on a personal link (`participantId`), or taken from a URL parameter the design's Study entry names (`participant: { param, pattern? }`, e.g. `PROLIFIC_PID`). Never a credential. | database (on the coder) |
 | **Linked email** | A verified email address from a login (§5), linked to the session once. Lets the coder continue on another device by logging in there. | database (`coders.email`) |
 | **Transfer link** | One-time, short-lived link that adds another device to the session. | database (`transfers`, token hash only; 15 min) |
 
@@ -44,7 +44,7 @@ started go on. Two independent settings:
 |  | `auth: "none"` | `auth: "required"` (or `"optional"`) |
 | --- | --- | --- |
 | **no participant id** | anyone with the link starts a new session | login first; the same login resumes the same coder on any device |
-| **participant id** (`participantId` fixed on the link, or the Session item's `participant: { param, pattern? }` + `?<param>=…`) | new session, labelled with the participant id | login first; the participant id is a label next to the identity |
+| **participant id** (`participantId` fixed on the link, or the Study entry's `participant: { param, pattern? }` + `?<param>=…`) | new session, labelled with the participant id | login first; the participant id is a label next to the identity |
 
 `optional` lets the coder choose: log in to be able to resume elsewhere, or
 continue anonymously. `emails` (an allowlist; it makes login required) and
@@ -84,7 +84,7 @@ confusion at a panel company over a leaked link.
   itself. Each answer records the device it was given on
   (`annotation_values.device_id`); researchers get them with
   `GET /job/:jobId/devices` and in the export (`devices.csv`).
-- **Session values.** The codebook's Session item declares the link and
+- **Session values.** The design's Study entry declares the link and
   URL parameters (`architecture.md` §7): the participant id's (`participant:
   { param, pattern? }`) and others (e.g. a panel's study and session ids).
   A new session without a required one, or with a value that doesn't fit
@@ -157,7 +157,7 @@ confusion at a panel company over a leaked link.
   sessions apart per study and can't list them. A logged-in coder also
   sees their sessions on other devices, by email (`GET /coder/sessions`).
   The list shows each study's public title (the design's
-  `session.public.title`), never the job's name: that is private, and may
+  `public.title`), never the job's name: that is private, and may
   say what the study is about.
 
 ## 5. Coder login (implemented, 2026-10-28)

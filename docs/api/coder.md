@@ -41,7 +41,7 @@ Headers:
   use. A retired link (no longer part of the deployed design) is 403
   `link_inactive` for new sessions;
 - `x-url-params`: the page's other query parameters. They hold the URL
-  parameters the codebook's Session item declares, its participant id
+  parameters the design's Study entry declares, its participant id
   parameter, and the optional `source` (stored on the coder as `$session`
   values, with the link's own parameter values; at most 256 characters
   each; a missing or invalid one is 400 `url_param_missing` /
@@ -78,7 +78,7 @@ variables (including assigned `auto` variables), and `ended` if the
 session ended at an `end` item. The coder codebook has only what coding
 needs: unit loops keep their layout, questions, order and per branch only
 its `when` condition (the client sends the branch index; the server works
-out the units); no modes, sets or overlap, no Session item, no researcher
+out the units); no modes, sets or overlap, no Study entry, no researcher
 notes, and `auto` questions only with their options. Creates the coder and session on first
 use. `login`: the email of the login the session belongs to, or null;
 `canLogIn`: the link offers a login the coder hasn't used. `frozen`: the
@@ -91,7 +91,7 @@ Assigns the coder's `auto` variables they don't have yet (`random` or
 
 `GET /summary` → `CoderStudySchema`: this device's session in the
 deployment, for the annotator's home (`/code`): the study's public title
-(`title`: the deployed design's `session.public.title`, null without one;
+(`title`: the deployed design's `public.title`, null without one;
 never the job's name, which is private), when it
 started and was last active, how it ended (`ended`: `complete`,
 `screenout`, `quit`; null while it goes on) and the units answered. 404

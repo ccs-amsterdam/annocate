@@ -26,10 +26,12 @@ const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 const valuesKind = (values: SessionValues) => ("list" in values ? "list" : "sets" in values ? "sets" : "open");
 
 /**
- * The codebook's Session item (docs/plans/sets-and-session-parameters.md
+ * The design's Study entry, always first in the editor: its public info
+ * (the title coders see) and its session (docs/plans/sets-and-session-parameters.md
  * §3): link parameters (a link per combination of their values), URL
- * parameters (added to a link by whoever shares it, e.g. a panel), and the
- * participant id's URL parameter. All are `$session.<name>` values.
+ * parameters (added to a link by whoever shares it, e.g. a panel), the
+ * participant id's URL parameter and the sample size per link. Session
+ * values are `$session.<name>`.
  */
 export function SessionItemForm({
   item,
@@ -59,11 +61,12 @@ export function SessionItemForm({
 
   return (
     <div className="flex flex-col gap-5">
+      <h2 className="-mb-3 text-sm font-semibold">Public</h2>
       <section className="flex flex-col gap-1.5">
         <label htmlFor="public-title" className="flex items-center gap-1.5 text-xs font-semibold">
           Public title
           <InfoTip label="About the public title">
-            What coders see as the study&apos;s name: on their list of studies (the annotator home) and while coding. The job&apos;s own
+            What coders see as the study&apos;s name: on their list of studies (the annotator home) and while coding. The study&apos;s own
             name stays private, so it can say what the study is about. Without a title, coders see &quot;Untitled study&quot;.
           </InfoTip>
         </label>
@@ -80,6 +83,13 @@ export function SessionItemForm({
           }}
         />
       </section>
+      <h2 className="-mb-3 flex items-center gap-1.5 border-t border-border pt-4 text-sm font-semibold">
+        Session
+        <InfoTip label="About the session">
+          How a coder&apos;s session starts: the links and their parameters, URL parameters from a panel, the participant id, and the
+          sample size per link.
+        </InfoTip>
+      </h2>
       <section className="flex flex-col gap-2">
         <h3 className="flex items-center gap-1.5 text-xs font-semibold">
           Session parameters

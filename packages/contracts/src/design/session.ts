@@ -124,17 +124,25 @@ export const ParticipantParamSchema = z.object({ param: UrlParamNameSchema, patt
 export type ParticipantParam = z.infer<typeof ParticipantParamSchema>;
 
 /**
- * The codebook's Session item (at most one, first): its parameters, the
- * participant id's URL parameter, and, if not every combination of the link
- * parameters is wanted, the combinations to make links for.
+ * What coders see about a study (the design's `public`, docs/plans/design.md
+ * §2): its title, on the annotator home and the coding screen. The study's
+ * own name stays private (it may tell what the study is about). Room for a
+ * description or a thumbnail later.
  */
-/** What coders see about a study (`session.public`). */
 export const PublicInfoSchema = z.object({
   /** The study's title, as coders see it. */
   title: z.string().trim().min(1).max(200),
 });
 export type PublicInfo = z.infer<typeof PublicInfoSchema>;
 
+/**
+ * The Study entry: the design's `session` (its parameters, the participant
+ * id's URL parameter, and, if not every combination of the link parameters
+ * is wanted, the combinations to make links for) and its `public` info, as
+ * the first item of the design's items (`designItems`). Validation, the
+ * runtime and the editor work on it there; it is stored as the design's
+ * `session` and `public` (`splitDesignItems`).
+ */
 export const SessionItemSchema = z.object({
   type: z.literal("session"),
   label: z.string().optional(),
@@ -147,41 +155,44 @@ export const SessionItemSchema = z.object({
    * most this many sessions. A link's own limit (the deployment's) overrides it.
    */
   maxUses: z.number().int().positive().optional(),
-  /**
-   * What coders see about the study (the annotator home, the coding screen):
-   * its title. The job's name stays private (it may tell what the study is
-   * about). Room for a description or thumbnail later.
-   */
+  /** The design's `public` (stored apart from the session). */
   public: PublicInfoSchema.optional(),
 });
 export type SessionItem = z.infer<typeof SessionItemSchema>;
 
 /**
- * The design's `session` (docs/plans/design.md §2): the Session item's
- * content, stored next to the items. Editors and validation work on the
- * items with it as their first item (`designItems`).
+ * The design's `session` (docs/plans/design.md §2): how a coder's session
+ * starts. Always there; without parameters `{ params: [] }`.
  */
-export const SessionSpecSchema = SessionItemSchema.omit({ type: true });
+export const SessionSpecSchema = SessionItemSchema.omit({ type: true, public: true });
 export type SessionSpec = z.infer<typeof SessionSpecSchema>;
 
-/** A design's items with its session as the first item (the Session item): what validation, the runtime and the editor work on. */
-export function designItems<T>(design: { items: readonly T[]; session?: SessionSpec | null }): (T | SessionItem)[] {
-  return design.session ? [{ type: "session", ...design.session }, ...design.items] : [...design.items];
+/** A session without parameters: the default. */
+export const EMPTY_SESSION: SessionSpec = { params: [] };
+
+/**
+ * A design's items with the Study entry (its session and public info) as
+ * the first item: what validation, the runtime and the editor work on.
+ */
+export function designItems<T>(design: { items: readonly T[]; session?: SessionSpec | null; public?: PublicInfo | null }): (T | SessionItem)[] {
+  const study: SessionItem = { type: "session", ...(design.session ?? EMPTY_SESSION), ...(design.public ? { public: design.public } : {}) };
+  return [study, ...design.items];
 }
 
-/** The other way round: a Session item out of the items, into `session`. */
-export function splitSession<T>(items: readonly T[]): { items: T[]; session: SessionSpec | null } {
+/** The other way round: the Study entry out of the items, into the design's `session` and `public`. */
+export function splitDesignItems<T>(items: readonly T[]): { items: T[]; session: SessionSpec; public: PublicInfo | null } {
   const found = items.find((i) => (i as { type?: unknown } | null)?.type === "session") as SessionItem | undefined;
-  if (!found) return { items: [...items], session: null };
-  const session: Partial<SessionItem> = { ...found };
-  delete session.type;
-  return { items: items.filter((i) => i !== (found as unknown)), session: session as SessionSpec };
+  const rest = items.filter((i) => i !== (found as unknown));
+  if (!found) return { items: rest, session: EMPTY_SESSION, public: null };
+  const { type: _type, public: info, ...session } = found;
+  void _type;
+  return { items: rest, session: session as SessionSpec, public: info ?? null };
 }
 
 /** The URL key of a URL parameter. */
 export const sessionParamKey = (p: SessionParam) => p.param ?? p.name;
 
-/** The codebook's Session item, if it has one. */
+/** The Study entry among a design's items (`designItems`), if there. */
 export function sessionItem(items: readonly unknown[]): SessionItem | null {
   const found = items.find((i) => (i as { type?: unknown } | null)?.type === "session");
   return (found as SessionItem | undefined) ?? null;

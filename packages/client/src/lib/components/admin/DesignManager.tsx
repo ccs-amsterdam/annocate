@@ -146,7 +146,7 @@ export function DesignManager({
     requestNavigation(async () => {
       try {
         const source = await client.getDesignVersion(id);
-        const body = { items: source.items, session: source.session };
+        const body = { items: source.items, session: source.session, public: source.public };
         if (versions.draftId !== null) {
           await updateDesignVersion.mutateAsync({ id: versions.draftId, body });
           setSelectedId(null);

@@ -42,9 +42,10 @@ describe("setup wizard recipes", () => {
 
   it("the title coders see goes into the session, only when given", () => {
     expect(setupRecipe(setup({})).design.session).toBeUndefined();
-    expect(setupRecipe(setup({ publicTitle: "  Reading the news " })).design.session).toEqual({ params: [], public: { title: "Reading the news" } });
+    expect(setupRecipe(setup({ publicTitle: "  Reading the news " })).design.public).toEqual({ title: "Reading the news" });
     const links = setup({ publicTitle: "News", distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null, handOut: "links" } });
-    expect(setupRecipe(links).design.session).toMatchObject({ params: [{ name: "set" }], public: { title: "News" } });
+    expect(setupRecipe(links).design.session).toMatchObject({ params: [{ name: "set" }] });
+    expect(setupRecipe(links).design.public).toEqual({ title: "News" });
   });
 
   it("everyone codes everything: a loop over all units, laid out as chosen", () => {

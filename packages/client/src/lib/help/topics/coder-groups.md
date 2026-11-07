@@ -64,7 +64,7 @@ each participant's group in the `group` column of `coders.csv`. The setup
 wizard's **Experimental groups** makes exactly this.
 
 When *you* decide the condition per link instead (two panel studies, or a
-link per class), make `condition` a link parameter of the Session item and
+link per class), make `condition` a link parameter of the Study entry and
 use `$session.condition.is("treatment")` in the conditions, or, simpler,
 **Assign sets** named by the link.
 

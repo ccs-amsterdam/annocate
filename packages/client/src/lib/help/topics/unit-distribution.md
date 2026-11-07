@@ -71,7 +71,7 @@ coders than sets, every set gets coded more than once.
 
 To give each set its own link, so *you* decide who gets which set (a few
 expert coders, each their own part), add a **link parameter** with the
-group's sets to the design's Session item, and choose **Named by the link
+group's sets to the design's Study entry, and choose **Named by the link
 or URL**: deploying makes a link per set, and a new set gets its link once
 it is deployed. A coder whose value names no set gets no units in this loop.
 

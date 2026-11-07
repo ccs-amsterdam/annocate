@@ -8,7 +8,7 @@ import type {
   UnitData,
   VariableValue,
 } from "@annotinder/contracts";
-import { RELEASE, splitSession } from "@annotinder/contracts";
+import { RELEASE, splitDesignItems } from "@annotinder/contracts";
 import type { Sql } from "../db.js";
 import { emptyDb } from "./testDb.js";
 import { seed } from "../seed.js";
@@ -237,7 +237,7 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
     body: JSON.stringify({
       note: "v2",
       // A Session item among them goes into `session` (docs/plans/design.md §2)
-      ...splitSession([
+      ...splitDesignItems([
         ...extraItems,
         {
           type: "unit_loop",
@@ -1561,17 +1561,20 @@ describe("review regressions", () => {
 });
 
 describe("unit fields in the design", () => {
-  it("keeps the session next to the items, not among them", async () => {
+  it("keeps the session and public info next to the items, not among them", async () => {
     const session = { params: [{ name: "wave", kind: "url", values: { list: [{ value: "1" }] } }] };
     const post = (body: object) => server.request("/api/job/1/design", { method: "POST", headers: adminHeaders, body: JSON.stringify(body) });
     expect((await post({ items: [{ type: "session", ...session }] })).status).toBe(400);
     const created = (await (await post({ items: [], session })).json()) as { id: number; items: unknown[]; session: unknown };
     expect(created).toMatchObject({ items: [], session });
-    // A write without `session` keeps it; null clears it
+    // A write without `session` keeps it; `public` without: kept, null: removed
     const put = async (body: object) =>
       (await (await server.request(`/api/job/1/design/${created.id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify(body) })).json()) as { session: unknown };
     expect((await put({ items: [] })).session).toEqual(session);
-    expect((await put({ items: [], session: null })).session).toBeNull();
+    expect((await put({ items: [], session: { params: [] } })).session).toEqual({ params: [] });
+    expect((await put({ items: [], public: { title: "News" } }) as unknown as { public: unknown }).public).toEqual({ title: "News" });
+    expect((await put({ items: [] }) as unknown as { public: unknown }).public).toEqual({ title: "News" });
+    expect((await put({ items: [], public: null }) as unknown as { public: unknown }).public).toBeNull();
   });
 
   it("are declared by uploads in the draft design, kept by codebook writes, and required to deploy", async () => {
@@ -1808,7 +1811,7 @@ describe("the annotator's home", () => {
     expect(first).toMatchObject({ deployment: "1", title: "A tour of AnnoTinder", ended: null, units: 1 });
     expect(JSON.stringify(first)).not.toContain(((await db.query<{ name: string }>("SELECT name FROM jobs WHERE id = 1"))[0]).name);
     // Without one: none
-    await db.query("UPDATE design_versions SET session = session - 'public' WHERE id = (SELECT design_version_id FROM deployments WHERE job_id = 1)");
+    await db.query("UPDATE design_versions SET public = NULL WHERE id = (SELECT design_version_id FROM deployments WHERE job_id = 1)");
     expect(await (await send("home", "/summary")).json()).toMatchObject({ title: null });
     // Another device: no session here (and asking doesn't make one)
     expect((await send("elsewhere", "/summary")).status).toBe(404);

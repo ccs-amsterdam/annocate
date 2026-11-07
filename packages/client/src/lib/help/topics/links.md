@@ -12,7 +12,7 @@ or group can get their own.
 
 Links are made by **deploying the design**: you don't create them by
 hand. A design without link parameters makes one link. A design whose
-Session item has **link parameters** makes a link per value, or per
+Study entry has **link parameters** makes a link per value, or per
 combination of values: a link per set of a group, per experimental
 condition, per panel. See [Session parameters](session-parameters.md).
 That way the design describes which links exist and what each one means,
@@ -39,7 +39,7 @@ active"*; coders who already started with it keep working.
 
 Deploying a design that makes more than 500 links asks you to confirm;
 at most 2000 links are possible. List the combinations you need in the
-Session item instead of every combination.
+Study entry instead of every combination.
 
 ## Who may use a link
 
@@ -68,7 +68,7 @@ other data you have on the same people.
 - **No participant id**: coders are anonymous; the Coders tab shows a number.
 - **Fixed participant id**: everyone who uses the link gets the id you set
   on it. Use it for personal links.
-- **Participant id from a URL parameter**: set in the design's Session item
+- **Participant id from a URL parameter**: set in the design's Study entry
   (see [Session parameters](session-parameters.md)). The id is taken from the
   link itself, from the parameter you name (`participant`, or a panel's own
   such as `PROLIFIC_PID`). The copied links end in

@@ -117,7 +117,7 @@ order.
 | `$session.participant` | The participant id, if the link gives one |
 | `$session.source` | The `?source=` of the link, if given |
 | `$session.email` | The email the coder logged in with, if any |
-| `$session.<name>` | A link or URL parameter of the design's Session item, e.g. a condition per link or a panel's study id |
+| `$session.<name>` | A link or URL parameter of the design's Study entry, e.g. a condition per link or a panel's study id |
 
 The design's **Session** item declares the parameters, so the editor
 checks the names. A session without a value (such as `source`) gives an

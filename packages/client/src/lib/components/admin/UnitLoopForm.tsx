@@ -829,9 +829,9 @@ function AssignSettings({
           : branch.from.session === "email"
             ? `Only the ${sets.length} email addresses that are set names of this group can code: coders log in, and other emails get "This email address has no access to this study".`
             : branch.from.session === "participant"
-              ? "The participant id (from the link's URL parameter, see the Session item) names the set. Coders whose id is no set get no units here."
+              ? "The participant id (from the link's URL parameter, see the Study entry) names the set. Coders whose id is no set get no units here."
               : `Each set gets its own link (Deploy, Links), made from the link parameter ${branch.from.session}.`}
-        {"draw" in branch.from && params.length === 0 && " To give each set its own link instead, add a link parameter with this group's sets to the Session item."}
+        {"draw" in branch.from && params.length === 0 && " To give each set its own link instead, add a link parameter with this group's sets to the Study entry."}
       </p>
     </div>
   );

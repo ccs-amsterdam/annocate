@@ -1,4 +1,4 @@
-import { DesignItemsSchema, addedFields, designItems, checkUnitData, type DesignItem, type Recipe, type UnitData, type UnitField } from "@annotinder/contracts";
+import { DesignItemsSchema, EMPTY_SESSION, addedFields, designItems, checkUnitData, type DesignItem, type Recipe, type UnitData, type UnitField } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { putDeployment } from "./deployments.js";
 import { HttpError } from "./http.js";
@@ -100,12 +100,13 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
 
   // The codebook: deployed, or the first draft
   // With the units' fields (docs/plans/design.md §3)
-  const designVersionId = (await one<{ id: number }>(tx, "INSERT INTO design_versions (job_id, note, items, units, session) VALUES ($1, $2, $3, $4, $5) RETURNING id", [
+  const designVersionId = (await one<{ id: number }>(tx, "INSERT INTO design_versions (job_id, note, items, units, session, public) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id", [
     job.id,
     recipe.design.note ?? null,
     JSON.stringify(recipe.design.items),
     JSON.stringify({ fields }),
-    recipe.design.session ? JSON.stringify(recipe.design.session) : null,
+    JSON.stringify(recipe.design.session ?? EMPTY_SESSION),
+    recipe.design.public ? JSON.stringify(recipe.design.public) : null,
   ]))!.id;
   let firstLink: number | null = null;
   if (recipe.publish) {

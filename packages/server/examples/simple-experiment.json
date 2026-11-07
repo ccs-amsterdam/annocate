@@ -11,11 +11,11 @@
   "publish": true,
   "design": {
     "note": "Example: a simple experiment",
+    "public": {
+      "title": "A short study"
+    },
     "session": {
-      "params": [],
-      "public": {
-        "title": "A short study"
-      }
+      "params": []
     },
     "items": [
       {

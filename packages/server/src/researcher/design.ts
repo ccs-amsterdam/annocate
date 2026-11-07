@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { DesignWriteSchema, sessionItem } from "@annotinder/contracts";
+import { DesignWriteSchema, EMPTY_SESSION, sessionItem } from "@annotinder/contracts";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
@@ -19,18 +19,19 @@ export function designVersions(server: Server): Hono<Env> {
     const parsed = DesignWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-    if (sessionItem(parsed.data.items)) return c.json({ error: "The session goes in `session`, not among the items" }, 400);
+    if (sessionItem(parsed.data.items)) return c.json({ error: "The session and public info go in `session` and `public`, not among the items" }, 400);
     // The unit fields, unless given: the latest version's (docs/plans/design.md §3)
     const units = parsed.data.units ?? (await getUnitFields(db, c.get("jobId")).then((fields) => ({ fields })));
     const row = await one<DesignVersionRow>(
       db,
-      "INSERT INTO design_versions (job_id, note, items, units, session, updated_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+      "INSERT INTO design_versions (job_id, note, items, units, session, public, updated_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
       [
         c.get("jobId"),
         parsed.data.note ?? null,
         JSON.stringify(parsed.data.items),
         JSON.stringify(units),
-        parsed.data.session ? JSON.stringify(parsed.data.session) : null,
+        JSON.stringify(parsed.data.session ?? EMPTY_SESSION),
+        parsed.data.public ? JSON.stringify(parsed.data.public) : null,
         c.get("jobUser")?.email ?? null,
       ],
     );

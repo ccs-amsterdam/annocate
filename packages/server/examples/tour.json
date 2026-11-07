@@ -34,11 +34,11 @@
   ],
   "design": {
     "note": "Demo: a tour of AnnoTinder's question types and features",
+    "public": {
+      "title": "A tour of AnnoTinder"
+    },
     "session": {
-      "params": [],
-      "public": {
-        "title": "A tour of AnnoTinder"
-      }
+      "params": []
     },
     "items": [
       {

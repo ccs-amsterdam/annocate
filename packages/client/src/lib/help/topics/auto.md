@@ -60,7 +60,7 @@ over parts of the units.
 A value from the web address the coder opened (such as a panel's
 `PROLIFIC_PID`), or one fixed per link, is a
 [session parameter](session-parameters.md), declared in the design's
-Session item: `$session.PROLIFIC_PID`, `$session.condition`. It is stored
+Study entry: `$session.PROLIFIC_PID`, `$session.condition`. It is stored
 when the session starts, like the value of an auto question, and works in the same
 places: conditions, texts, end items' return links.
 

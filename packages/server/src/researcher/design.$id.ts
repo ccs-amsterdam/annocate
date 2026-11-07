@@ -38,14 +38,14 @@ export function designVersion(server: Server): Hono<Env> {
     const parsed = DesignWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-    if (sessionItem(parsed.data.items)) return c.json({ error: "The session goes in `session`, not among the items" }, 400);
+    if (sessionItem(parsed.data.items)) return c.json({ error: "The session and public info go in `session` and `public`, not among the items" }, 400);
     // Saved by someone else since the edits started: don't overwrite their work.
     const { revision } = parsed.data;
     if (revision !== undefined && revision !== existing.revision) return c.json(conflict(existing), 409);
 
     const row = await one<DesignVersionRow>(
       db,
-      `UPDATE design_versions SET note = $1, items = $2, units = COALESCE($7::jsonb, units), session = CASE WHEN $9 THEN $8::jsonb ELSE session END, updated = now(), updated_by = $3, revision = revision + 1
+      `UPDATE design_versions SET note = $1, items = $2, units = COALESCE($7::jsonb, units), session = COALESCE($8::jsonb, session), public = CASE WHEN $9 THEN $10::jsonb ELSE public END, updated = now(), updated_by = $3, revision = revision + 1
        WHERE job_id = $4 AND id = $5 AND NOT immutable AND ($6::int IS NULL OR revision = $6) RETURNING *`,
       [
         parsed.data.note ?? null,
@@ -55,9 +55,11 @@ export function designVersion(server: Server): Hono<Env> {
         id,
         revision ?? null,
         parsed.data.units ? JSON.stringify(parsed.data.units) : null,
+        // Left out: kept
         parsed.data.session ? JSON.stringify(parsed.data.session) : null,
         // Left out: kept; null: none
-        parsed.data.session !== undefined,
+        parsed.data.public !== undefined,
+        parsed.data.public ? JSON.stringify(parsed.data.public) : null,
       ],
     );
     if (!row) {

@@ -2,8 +2,10 @@ import {
   UnitsSpecSchema,
   designErrors,
   designItems,
+  EMPTY_SESSION,
   type DesignVersionMeta,
   type DesignVersion,
+  type PublicInfo,
   type SessionSpec,
   type TopLevelItem,
   type UnitsSpec,
@@ -17,6 +19,7 @@ export interface DesignVersionRow {
   items: unknown;
   units: unknown;
   session: unknown;
+  public: unknown;
   created: Date;
   updated: Date;
   updated_by: string | null;
@@ -29,14 +32,19 @@ function storedItems(row: Pick<DesignVersionRow, "items">): TopLevelItem[] {
   return (Array.isArray(row.items) ? row.items : []) as TopLevelItem[];
 }
 
-/** A stored codebook's session (docs/plans/design.md §2). */
-export function designVersionSession(row: Pick<DesignVersionRow, "session">): SessionSpec | null {
-  return (row.session as SessionSpec | null) ?? null;
+/** A stored design version's session (docs/plans/design.md §2): always there. */
+export function designVersionSession(row: Pick<DesignVersionRow, "session">): SessionSpec {
+  return (row.session as SessionSpec | null) ?? EMPTY_SESSION;
 }
 
-/** A stored codebook's items with its session as the first item: what validation, links and the runtime work on. */
-export function designVersionItems(row: Pick<DesignVersionRow, "items" | "session">): TopLevelItem[] {
-  return designItems({ items: storedItems(row), session: designVersionSession(row) }) as TopLevelItem[];
+/** A stored design version's public info (what coders see about the study), if any. */
+export function designVersionPublic(row: Partial<Pick<DesignVersionRow, "public">>): PublicInfo | null {
+  return (row.public as PublicInfo | null | undefined) ?? null;
+}
+
+/** A stored design version's items with the Study entry (session, public info) first: what validation, links and the runtime work on. */
+export function designVersionItems(row: Pick<DesignVersionRow, "items" | "session"> & Partial<Pick<DesignVersionRow, "public">>): TopLevelItem[] {
+  return designItems({ items: storedItems(row), session: designVersionSession(row), public: designVersionPublic(row) }) as TopLevelItem[];
 }
 
 /** A stored codebook's unit fields (docs/plans/design.md §3). */
@@ -45,9 +53,9 @@ export function designVersionUnits(row: Pick<DesignVersionRow, "units">): UnitsS
   return parsed.success ? parsed.data : { fields: [] };
 }
 
-/** Whether the items pass validation, as required to deploy or preview them. */
+/** Whether a design's items (with the Study entry) pass validation and ask something, as required to deploy or preview them. */
 export function itemsValid(items: unknown[]): boolean {
-  return items.length > 0 && designErrors(items).length === 0;
+  return items.some((i) => (i as { type?: unknown } | null)?.type !== "session") && designErrors(items).length === 0;
 }
 
 export function toDesignVersionMeta(row: DesignVersionRow): DesignVersionMeta {
@@ -65,5 +73,5 @@ export function toDesignVersionMeta(row: DesignVersionRow): DesignVersionMeta {
 
 /** A stored codebook as served. */
 export function toDesignVersion(row: DesignVersionRow): DesignVersion {
-  return { ...toDesignVersionMeta(row), jobId: row.job_id, items: storedItems(row), units: designVersionUnits(row), session: designVersionSession(row) };
+  return { ...toDesignVersionMeta(row), jobId: row.job_id, items: storedItems(row), units: designVersionUnits(row), session: designVersionSession(row), public: designVersionPublic(row) };
 }

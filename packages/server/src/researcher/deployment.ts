@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { DeploymentWriteSchema, designErrors, redirectSettings, undeclaredFields } from "@annotinder/contracts";
-import { designVersionItems, designVersionUnits, type DesignVersionRow } from "../shared/designVersions.js";
+import { designVersionItems, designVersionUnits, itemsValid, type DesignVersionRow } from "../shared/designVersions.js";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
@@ -25,7 +25,7 @@ export function deployment(server: Server): Hono<Env> {
     if (!codebook) return c.json({ error: "Design version not found" }, 404);
     // Drafts may be saved with issues; coders only ever get a valid codebook.
     const errors = designErrors(designVersionItems(codebook));
-    if (errors.length > 0 || designVersionItems(codebook).length === 0) {
+    if (errors.length > 0 || !itemsValid(designVersionItems(codebook))) {
       return c.json({ error: "Fix the design's issues before deploying it", issues: errors }, 400);
     }
     // The unit fields it uses must be declared (docs/plans/design.md §3)

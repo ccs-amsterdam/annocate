@@ -22,7 +22,7 @@ keeps the word "codebook", "In code" says why.
 | **Link** | What coders open to start a session; made from the design's link parameters when deploying, with who may use it. | "invite", "invitation" in UI text |
 | **Coder** | Anyone coding: a person with a **session** in a job. | annotator, participant (except below) |
 | **Participant id** | A label for the coder from a panel (e.g. `PROLIFIC_PID`); never a key. | |
-| **Public title** | What coders see as the study's name (the annotator home, the coding screen): the design's `session.public.title`. The job's name is private. | the job's name |
+| **Public title** | What coders see as the study's name (the annotator home, the coding screen): the design's `public.title`. The job's name is private. | the job's name |
 | **Session** | (1) A coder's run through a job. (2) The design's `session`: the values a session starts with (`$session.<name>`), and the parameters that set them. | |
 | **Preview** | Trying the drafts as a coder; nothing is stored. | test run |
 

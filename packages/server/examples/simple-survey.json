@@ -11,11 +11,11 @@
   "publish": true,
   "design": {
     "note": "Example: a simple survey",
+    "public": {
+      "title": "A short survey"
+    },
     "session": {
-      "params": [],
-      "public": {
-        "title": "A short survey"
-      }
+      "params": []
     },
     "items": [
       {

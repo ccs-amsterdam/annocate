@@ -80,7 +80,7 @@ export function LinksPanel({ client }: LinksPanelProps) {
         <h2 className="flex items-center gap-1.5 text-lg font-medium">
           Links
           <InfoTip label="About links">
-            Deploying the design makes its links: one, or one per value of each link parameter (and per combination) in its Session item,
+            Deploying the design makes its links: one, or one per value of each link parameter (and per combination) in its Study entry,
             e.g. a link per set of a group. Deployed sets get links; links whose value is gone are retired. Here you set who may use a link.
             Revoking stops new coders from joining with it; coders who already started keep working.
           </InfoTip>

@@ -1,20 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { designItems, sessionItem, splitSession, type SessionSpec } from "./session.js";
+import { designItems, sessionItem, splitDesignItems, type SessionSpec } from "./session.js";
 
-describe("the design's session", () => {
+describe("the design's Study entry (session and public info)", () => {
   const session: SessionSpec = { params: [{ name: "part", kind: "link", values: { list: [{ value: "a" }, { value: "b" }] } }] };
   const question = { type: "question", name: "q" };
 
   it("is the first item of the design's items, and comes out again", () => {
-    const items = designItems({ items: [question], session });
-    expect(items).toEqual([{ type: "session", ...session }, question]);
+    const items = designItems({ items: [question], session, public: { title: "News" } });
+    expect(items).toEqual([{ type: "session", ...session, public: { title: "News" } }, question]);
     expect(sessionItem(items)?.params).toEqual(session.params);
-    expect(splitSession(items)).toEqual({ items: [question], session });
+    expect(splitDesignItems(items)).toEqual({ items: [question], session, public: { title: "News" } });
   });
 
-  it("is absent without one", () => {
-    expect(designItems({ items: [question], session: null })).toEqual([question]);
-    expect(splitSession([question])).toEqual({ items: [question], session: null });
+  it("is always there: without settings, an empty session and no public info", () => {
+    expect(designItems({ items: [question] })).toEqual([{ type: "session", params: [] }, question]);
+    expect(splitDesignItems([question])).toEqual({ items: [question], session: { params: [] }, public: null });
   });
 });
 

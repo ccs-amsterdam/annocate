@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { IdSchema } from "../common.js";
 import { UnitsSpecSchema } from "../unitFields.js";
-import { SessionSpecSchema, type SessionSpec } from "./session.js";
+import { PublicInfoSchema, SessionSpecSchema, type PublicInfo, type SessionSpec } from "./session.js";
 import { TopLevelItemSchema, type TopLevelItem } from "./item.js";
 import { semanticIssues } from "./validation.js";
 
@@ -37,11 +37,16 @@ export const DesignWriteSchema = z.object({
    */
   units: UnitsSpecSchema.optional(),
   /**
-   * The session (docs/plans/design.md §2): URL and link parameters, the
-   * participant id, link combinations. Null or absent: none. Not an item:
-   * `items` can't hold a Session item.
+   * What coders see about the study: its title. `POST`: absent or null,
+   * none. `PUT`: absent keeps it, null removes it.
    */
-  session: SessionSpecSchema.nullable().optional(),
+  public: PublicInfoSchema.nullable().optional(),
+  /**
+   * The session (docs/plans/design.md §2): URL and link parameters, the
+   * participant id, link combinations. `POST`: absent, no parameters.
+   * `PUT`: absent keeps it. Not an item: `items` can't hold it.
+   */
+  session: SessionSpecSchema.optional(),
   /**
    * `PUT` only: the revision the edits are based on. If the draft was saved
    * since (by someone else), the server answers 409 `design_conflict`
@@ -73,7 +78,8 @@ export const DesignVersionSchema = DesignVersionMetaSchema.extend({
   jobId: IdSchema,
   items: z.custom<TopLevelItem[]>((v) => Array.isArray(v)),
   units: UnitsSpecSchema,
-  session: z.custom<SessionSpec | null>((v) => v === null || typeof v === "object"),
+  session: z.custom<SessionSpec>((v) => v !== null && typeof v === "object"),
+  public: z.custom<PublicInfo | null>((v) => v === null || typeof v === "object"),
 });
 export type DesignVersion = z.infer<typeof DesignVersionSchema>;
 
