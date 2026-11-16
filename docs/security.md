@@ -61,9 +61,16 @@ Never for a server other people use.
 | --- | --- |
 | Shared OIDC provider | Logins come from the lab's shared provider (its issuer is in `SHARED_OIDC_ISSUERS`, `shared/warnings.ts`): no sensitive data on this server. Can't be turned off. |
 | No 2FA signal | Researchers logged in recently without the 2FA claim, so they can't work: check the provider's 2FA and `OIDC_MFA_CLAIM`. |
+| Migration not finished | `OIDC_PREVIOUS_*` is set: until `OIDC_PREVIOUS_UNTIL`, how many users haven't linked their login at the new provider (marked "not linked" in *Users*); after it, remove those settings. |
 
-Logins (with their provider and whether they used a second factor) are
-written to `security_log`.
+**Who someone is**: their login at the provider (`iss` + `sub`), not their
+email address; roles go to users, or to users with a verified email at a
+domain. Safeguards keep a later owner of an email address from getting
+someone's roles (dormant users, invitations expire after 3 months):
+`accounts.md` §1–2.
+
+Logins (with their provider and whether they used a second factor) and
+linked logins (`identity_linked`) are written to `security_log`.
 
 ## 2. Headers
 
@@ -158,6 +165,7 @@ answer to it.
 | --- | --- |
 | `OIDC_HOST`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | The login provider (§1) |
 | `OIDC_MFA_CLAIM` | Which claim counts as a second factor: `amr:mfa` (default) or `acr:<value>` (§1) |
+| `OIDC_PREVIOUS_*`, `OIDC_PREVIOUS_UNTIL` | The previous login provider while moving to another (`accounts.md` "Changing providers") |
 | `AUTH_STEP_UP_MAX_AGE` | Seconds a second factor stays fresh for sensitive actions (default 600, §1) |
 | `AUTH_DEV_MODE` | `1`: development headers, localhost only (§1) |
 | `ANNOTINDER_PUBLIC_URL` | Where browsers reach the server (the login callback); an `https` address turns on HSTS |

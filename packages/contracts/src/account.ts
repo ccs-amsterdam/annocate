@@ -62,16 +62,18 @@ export const MeResponseSchema = z.object({
    * work without logging in again (step-up); null: they need a new login now.
    */
   twoFactor: z.object({ required: z.boolean(), freshUntil: z.coerce.date().nullable() }),
+  /**
+   * While the server moves to another login provider: this user hasn't
+   * linked their login there yet (`/auth/login?link=1`), so they lose access
+   * after the previous provider's end date (docs/accounts.md "Changing providers").
+   */
+  linkNeeded: z.boolean(),
 });
 export type MeResponse = z.infer<typeof MeResponseSchema>;
 
 /** `POST /me/researcher-request`: ask an admin to become a researcher. */
 export const ResearcherRequestWriteSchema = z.object({ message: z.string().max(2000).default("") });
 export type ResearcherRequestWrite = z.infer<typeof ResearcherRequestWriteSchema>;
-
-/** `POST /me/researcher-invite`: redeem a researcher invite link. */
-export const RedeemResearcherInviteSchema = z.object({ secret: z.string().min(1) });
-export type RedeemResearcherInvite = z.infer<typeof RedeemResearcherInviteSchema>;
 
 /** `POST /me/keys`. */
 export const ApiKeyWriteSchema = z.object({
@@ -107,6 +109,12 @@ export type ApiKeyCreated = z.infer<typeof ApiKeyCreatedSchema>;
 export const AuthOptionsSchema = z.object({
   login: z.boolean(),
   devMode: z.boolean(),
+  /**
+   * While the server moves to another login provider: the previous one can
+   * still be used (`/auth/login?provider=previous`) until `until`
+   * (docs/accounts.md "Changing providers"). Null otherwise.
+   */
+  previous: z.object({ until: z.coerce.date() }).nullable(),
 });
 export type AuthOptions = z.infer<typeof AuthOptionsSchema>;
 
@@ -117,5 +125,7 @@ export const LoginErrorSchema = z.enum([
   "login_failed",
   /** A login for a sensitive action (step-up) without a second factor, or not recent. */
   "step_up_failed",
+  /** Linking a new login to this account failed: it belongs to another account, or nobody was logged in. */
+  "link_failed",
 ]);
 export type LoginError = z.infer<typeof LoginErrorSchema>;

@@ -4,7 +4,7 @@ import { one } from "../db.js";
 import { HttpError } from "../shared/http.js";
 import type { Env, Server } from "../context.js";
 import { getCookie } from "hono/cookie";
-import { userForKey } from "../shared/accounts.js";
+import { ensureUser, userForKey } from "../shared/accounts.js";
 import { userForSession } from "../shared/sessions.js";
 import { CLIENT_HEADER } from "../runtime/session.js";
 import { isFresh, SESSION_COOKIE } from "./login.js";
@@ -16,22 +16,27 @@ import { isFresh, SESSION_COOKIE } from "./login.js";
 //   can't send it, so it blocks CSRF.
 // - API keys: `authorization: Bearer <key>` (shared/accounts.ts).
 //
-// Both identify a user by email; their role in a study is in `study_users`,
-// their account role (user, researcher, admin) on the user
-// (docs/accounts.md). Researcher access needs a login with a second factor
+// Both identify a user (an identity at the login provider, docs/accounts.md);
+// their role in a study and their account role (user, researcher, admin)
+// come from `roles` (`study_role()`, `account_role()`). Researcher access needs a login with a second factor
 // (the provider's, `OIDC_MFA_CLAIM`): a login without one only gets
 // `GET /me` and logging out. API keys count as with one (making one needs
 // it), but never do sensitive actions (`requireSensitive`): those need a
 // web session whose second factor is recent (step-up).
 // - Development only (`devMode`, AUTH_DEV_MODE=1): plain
-//   `x-dev-role` / `x-dev-email` headers, checked against nothing but
-//   `study_users`, and `x-dev-account-role` (default admin). A study without study
-//   users lets any dev role through. Never enable this on a reachable server.
+//   `x-dev-role` / `x-dev-email` headers (a registered user with that email),
+//   checked against nothing but the study's roles, and `x-dev-account-role`
+//   (default admin). A study without user roles lets any dev role through.
+//   Never on a reachable server (index.ts: localhost only).
 
 const ROLE_RANK: Record<Role, number> = { READ: 0, WRITE: 1, ADMIN: 2 };
 
 /** What still works in a suspended study besides reading: deleting it, or coders' data. */
-const SUSPENDED_ALLOWED = [/^\/api\/study\/\d+$/, /^\/api\/study\/\d+\/coders\/delete$/, /^\/api\/study\/\d+\/coders\/\d+\/deletion-request\/postpone$/];
+const SUSPENDED_ALLOWED = [
+  /^\/api\/study\/\d+$/,
+  /^\/api\/study\/\d+\/coders\/delete$/,
+  /^\/api\/study\/\d+\/coders\/\d+\/deletion-request\/postpone$/,
+];
 
 /** Ids are Postgres INTEGERs. */
 const MAX_ID = 2 ** 31 - 1;
@@ -39,8 +44,7 @@ const MAX_ID = 2 ** 31 - 1;
 /** Who a researcher request is from. */
 export interface Researcher {
   email: string;
-  /** Not set for development headers. */
-  userId?: number;
+  userId: number;
   /** What they may do on this server. */
   accountRole: AccountRole;
   /** How the request authenticated: a web session, an API key, or development headers. */
@@ -57,37 +61,54 @@ async function authenticate(c: Context, server: Server): Promise<Researcher | nu
   const bearer = /^Bearer (.+)$/.exec(c.req.header("authorization") ?? "")?.[1];
   if (bearer) {
     const user = await userForKey(server.db, bearer.trim());
-    return user ? { email: user.email, userId: user.id, accountRole: user.role, via: "key", mfa: true, authTime: null } : null;
+    return user
+      ? { email: user.email, userId: user.id, accountRole: user.role, via: "key", mfa: true, authTime: null }
+      : null;
   }
   const session = getCookie(c, SESSION_COOKIE);
   if (session && c.req.header(CLIENT_HEADER) === "1") {
     const user = await userForSession(server.db, session);
-    if (user) return { email: user.email, userId: user.id, accountRole: user.role, via: "session", mfa: user.mfa, authTime: user.authTime };
+    if (user)
+      return {
+        email: user.email,
+        userId: user.id,
+        accountRole: user.role,
+        via: "session",
+        mfa: user.mfa,
+        authTime: user.authTime,
+      };
   }
   const devRole = c.req.header("x-dev-role") as Role | undefined;
   if (server.devMode && devRole && devRole in ROLE_RANK) {
     const accountRole = (c.req.header("x-dev-account-role") as AccountRole | undefined) ?? "admin";
-    return { email: c.req.header("x-dev-email") ?? "dev@localhost", devRole, accountRole, via: "dev", mfa: true, authTime: null };
+    const user = await ensureUser(server.db, c.req.header("x-dev-email") ?? "dev@localhost");
+    return { email: user.email, userId: user.id, devRole, accountRole, via: "dev", mfa: true, authTime: null };
   }
   return null;
 }
 
 /** The researcher's role in a study, if any. */
 async function roleIn(server: Server, researcher: Researcher, studyId: number): Promise<Role | null> {
-  const row = await one<{ role: Role }>(server.db, "SELECT role FROM study_users WHERE study_id = $1 AND email = $2", [
+  const row = await one<{ role: Role | null }>(server.db, "SELECT study_role($1, $2) AS role", [
     studyId,
-    researcher.email,
+    researcher.userId,
   ]);
   if (!researcher.devRole) return row?.role ?? null;
-  // Development: a study without study users lets any role through; otherwise the
+  // Development: a study without user roles lets any role through; otherwise the
   // header can't claim more than was granted.
-  if (!row) return (await one(server.db, "SELECT 1 FROM study_users WHERE study_id = $1", [studyId])) ? null : researcher.devRole;
+  if (!row?.role)
+    return (await one(server.db, "SELECT 1 FROM roles WHERE study_id = $1 AND user_id IS NOT NULL", [studyId]))
+      ? null
+      : researcher.devRole;
   return ROLE_RANK[row.role] < ROLE_RANK[researcher.devRole] ? null : researcher.devRole;
 }
 
 /** Whether this login lacks the second factor researcher access needs. */
 export const lacksMfa = (researcher: Researcher) => !researcher.mfa;
-const MFA_REQUIRED = { error: "Researcher access needs a login with a second factor: log in again with one", code: "mfa_required" } as const;
+const MFA_REQUIRED = {
+  error: "Researcher access needs a login with a second factor: log in again with one",
+  code: "mfa_required",
+} as const;
 
 /** Until when a researcher may do sensitive actions without logging in again; null: not now (docs/security.md "Step-up"). */
 export function freshUntil(server: Server, researcher: Researcher): Date | null {
@@ -104,7 +125,8 @@ export function freshUntil(server: Server, researcher: Researcher): Date | null 
  * `?stepUp=1`). Development headers pass. Call after authentication.
  */
 export function checkSensitive(server: Server, researcher: Researcher): void {
-  if (researcher.via === "key") throw new HttpError(403, "This can't be done with an API key: use the web client", "not_with_api_key");
+  if (researcher.via === "key")
+    throw new HttpError(403, "This can't be done with an API key: use the web client", "not_with_api_key");
   if (!freshUntil(server, researcher)) {
     throw new HttpError(403, "Confirm it's you: log in again with your second factor to do this", "step_up_required");
   }
@@ -123,7 +145,10 @@ export function requireSensitive(server: Server) {
  * `role`, at least that account role (403). A login without a required
  * second factor is refused (403 `mfa_required`) unless `withoutMfa`.
  */
-export function requireResearcher(server: Server, { role, withoutMfa = false }: { role?: AccountRole; withoutMfa?: boolean } = {}) {
+export function requireResearcher(
+  server: Server,
+  { role, withoutMfa = false }: { role?: AccountRole; withoutMfa?: boolean } = {},
+) {
   return async (c: Context<Env>, next: Next) => {
     const researcher = await authenticate(c, server);
     if (!researcher) return c.json({ error: "Unauthorized" }, 401);
@@ -149,12 +174,20 @@ export function requireStudyUser(server: Server, minRole: Role) {
 
     const raw = c.req.param("studyId");
     const studyId = raw ? Number(raw) : NaN;
-    if (!Number.isInteger(studyId) || studyId <= 0 || studyId > MAX_ID) return c.json({ error: "Invalid study id" }, 400);
-    const study = await one<{ suspended_at: Date | null }>(server.db, "SELECT suspended_at FROM studies WHERE id = $1", [studyId]);
+    if (!Number.isInteger(studyId) || studyId <= 0 || studyId > MAX_ID)
+      return c.json({ error: "Invalid study id" }, 400);
+    const study = await one<{ suspended_at: Date | null }>(
+      server.db,
+      "SELECT suspended_at FROM studies WHERE id = $1",
+      [studyId],
+    );
     if (!study) return c.json({ error: "Study not found" }, 404);
     // Suspended by a server admin: reading, and deleting data or the study, still work.
     if (study.suspended_at && c.req.method !== "GET" && !SUSPENDED_ALLOWED.some((p) => p.test(c.req.path))) {
-      return c.json({ error: "A server admin suspended this study: it can't be changed", code: "study_suspended" }, 403);
+      return c.json(
+        { error: "A server admin suspended this study: it can't be changed", code: "study_suspended" },
+        403,
+      );
     }
 
     const role = await roleIn(server, researcher, studyId);

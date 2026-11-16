@@ -1,11 +1,25 @@
 import { z } from "zod";
-import { StudyWriteSchema, StudyResponseSchema, StudyUsersWriteSchema, StudyUserSchema, ExampleSummarySchema, StudyFromExampleSchema } from "../study.js";
+import {
+  StudyWriteSchema,
+  StudyResponseSchema,
+  StudyUsersWriteSchema,
+  StudyUserResponseSchema,
+  ExampleSummarySchema,
+  StudyFromExampleSchema,
+} from "../study.js";
 import { RecipeSchema } from "../recipe.js";
 import { DesignWriteSchema, DesignVersionSchema, DesignVersionMetaSchema } from "../design/designVersion.js";
 import { UnitsCreateBodySchema, UnitMetaSchema, UnitPageSchema, UnitResponseSchema } from "../unit.js";
 import { UnitFieldSchema, UnitsSpecSchema } from "../unitFields.js";
 import { SetGroupResponseSchema, SetGroupWriteSchema } from "../sets.js";
-import { CoderProgressSchema, LinkWriteSchema, LinkResponseSchema, CoderDeletionSchema, DeleteCodersSchema, DeleteCodersResponseSchema } from "../coder.js";
+import {
+  CoderProgressSchema,
+  LinkWriteSchema,
+  LinkResponseSchema,
+  CoderDeletionSchema,
+  DeleteCodersSchema,
+  DeleteCodersResponseSchema,
+} from "../coder.js";
 import { StudyOverviewSchema } from "../overview.js";
 import {
   ApiKeyCreatedSchema,
@@ -13,10 +27,15 @@ import {
   ApiKeyWriteSchema,
   AuthOptionsSchema,
   MeResponseSchema,
-  RedeemResearcherInviteSchema,
   ResearcherRequestWriteSchema,
 } from "../account.js";
-import { AnnotationPageSchema, AnnotationsQuerySchema, DeviceSchema, UnitVersionPageSchema, UnitVersionsQuerySchema } from "../annotations.js";
+import {
+  AnnotationPageSchema,
+  AnnotationsQuerySchema,
+  DeviceSchema,
+  UnitVersionPageSchema,
+  UnitVersionsQuerySchema,
+} from "../annotations.js";
 import {
   DeploymentWriteSchema,
   DeploymentResponseSchema,
@@ -47,9 +66,12 @@ export const researcherEndpoints = {
   logout: { method: "POST", path: "/auth/logout", request: z.void(), response: z.void() },
   getMe: { method: "GET", path: "/me", request: z.void(), response: MeResponseSchema },
   /** Ask an admin to become a researcher (when the server takes requests). */
-  requestResearcher: { method: "POST", path: "/me/researcher-request", request: ResearcherRequestWriteSchema, response: MeResponseSchema },
-  /** Become a researcher with an invite link's secret. */
-  redeemResearcherInvite: { method: "POST", path: "/me/researcher-invite", request: RedeemResearcherInviteSchema, response: MeResponseSchema },
+  requestResearcher: {
+    method: "POST",
+    path: "/me/researcher-request",
+    request: ResearcherRequestWriteSchema,
+    response: MeResponseSchema,
+  },
   listApiKeys: { method: "GET", path: "/me/keys", request: z.void(), response: z.array(ApiKeyResponseSchema) },
   /** Sensitive (like deleting answers or admin roles): a web session with a recent second factor (step-up, 403 `step_up_required`), never an API key (403 `not_with_api_key`). */
   createApiKey: { method: "POST", path: "/me/keys", request: ApiKeyWriteSchema, response: ApiKeyCreatedSchema },
@@ -60,13 +82,28 @@ export const researcherEndpoints = {
   createStudy: { method: "POST", path: "/study", request: StudyWriteSchema, response: StudyResponseSchema },
   listExamples: { method: "GET", path: "/examples", request: z.void(), response: z.array(ExampleSummarySchema) },
   /** A new study from an example: units, codebook (deployed), link and example answers. */
-  createStudyFromExample: { method: "POST", path: "/study/from-example", request: StudyFromExampleSchema, response: StudyResponseSchema },
+  createStudyFromExample: {
+    method: "POST",
+    path: "/study/from-example",
+    request: StudyFromExampleSchema,
+    response: StudyResponseSchema,
+  },
   /** A new study from a recipe (the setup wizard): units, set groups, a codebook (a draft unless `publish`; deploying makes its links). */
-  createStudyFromRecipe: { method: "POST", path: "/study/from-recipe", request: RecipeSchema, response: StudyResponseSchema },
+  createStudyFromRecipe: {
+    method: "POST",
+    path: "/study/from-recipe",
+    request: RecipeSchema,
+    response: StudyResponseSchema,
+  },
   getStudy: { method: "GET", path: "/study/:id", request: z.void(), response: StudyResponseSchema },
   updateStudy: { method: "PUT", path: "/study/:id", request: StudyWriteSchema, response: StudyResponseSchema },
   deleteStudy: { method: "DELETE", path: "/study/:id", request: z.void(), response: z.void() },
-  getStudyUsers: { method: "GET", path: "/study/:id/users", request: z.void(), response: z.array(StudyUserSchema) },
+  getStudyUsers: {
+    method: "GET",
+    path: "/study/:id/users",
+    request: z.void(),
+    response: z.array(StudyUserResponseSchema),
+  },
   putStudyUsers: { method: "PUT", path: "/study/:id/users", request: StudyUsersWriteSchema, response: z.void() },
 
   listDesignVersions: {
@@ -127,12 +164,27 @@ export const researcherEndpoints = {
 
   /** The set groups (docs/plans/sets-and-session-parameters.md §1), each with its sets in order. */
   /** The draft's set groups; `?live=true`: the deployed ones. */
-  listSetGroups: { method: "GET", path: "/study/:studyId/sets", request: z.void(), response: z.array(SetGroupResponseSchema) },
+  listSetGroups: {
+    method: "GET",
+    path: "/study/:studyId/sets",
+    request: z.void(),
+    response: z.array(SetGroupResponseSchema),
+  },
   /** Makes or replaces a group (its sets). Republished links follow (link parameters with the group's sets). */
-  putSetGroup: { method: "PUT", path: "/study/:studyId/sets/:group", request: SetGroupWriteSchema, response: SetGroupResponseSchema },
+  putSetGroup: {
+    method: "PUT",
+    path: "/study/:studyId/sets/:group",
+    request: SetGroupWriteSchema,
+    response: SetGroupResponseSchema,
+  },
   deleteSetGroup: { method: "DELETE", path: "/study/:studyId/sets/:group", request: z.void(), response: z.void() },
 
-  listCoders: { method: "GET", path: "/study/:studyId/coders", request: z.void(), response: z.array(CoderProgressSchema) },
+  listCoders: {
+    method: "GET",
+    path: "/study/:studyId/coders",
+    request: z.void(),
+    response: z.array(CoderProgressSchema),
+  },
   /** Deletes coders and all their answers for good (e.g. a participant withdrew), by id, participant id or email (ADMIN). */
   deleteCoders: {
     method: "POST",
@@ -196,9 +248,19 @@ export const researcherEndpoints = {
     response: DeploymentResponseSchema,
   },
   /** What deploying the drafts would change (docs/plans/design.md §5). */
-  getPendingChanges: { method: "GET", path: "/study/:studyId/deployment/pending", request: z.void(), response: PendingChangesSchema },
+  getPendingChanges: {
+    method: "GET",
+    path: "/study/:studyId/deployment/pending",
+    request: z.void(),
+    response: PendingChangesSchema,
+  },
   /** The deployed versions, newest first. */
-  listDeploymentVersions: { method: "GET", path: "/study/:studyId/deployment/versions", request: z.void(), response: z.array(DeploymentVersionSchema) },
+  listDeploymentVersions: {
+    method: "GET",
+    path: "/study/:studyId/deployment/versions",
+    request: z.void(),
+    response: z.array(DeploymentVersionSchema),
+  },
   getDeploymentStatus: {
     method: "GET",
     path: "/study/:studyId/deployment/status",

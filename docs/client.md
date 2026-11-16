@@ -485,9 +485,12 @@ from the Preview Study button. It uses a `ResearcherApi`
   server has login, and development headers on a development server (no
   login, development auth).
 - **Accounts**: `StudyList` lets only researchers create studies;
-  `account/ResearcherAccess.tsx` handles researcher invite links and
-  requests. `AdminApp`'s `server` prop (`ServerApi`) opens the server admin
-  page for admins (`server/ServerAdmin.tsx`: users, plans, registration,
+  `account/ResearcherAccess.tsx` handles requests to become a researcher;
+  `account/ResearcherGate.tsx` the login screen (with the previous login
+  provider while the server moves to another) and the banner asking to
+  link a new login. `AdminApp`'s `server` prop (`ServerApi`) opens the
+  server admin page for admins (`server/ServerAdmin.tsx`: hardening
+  warnings, users with invitations and safeguards, plans, registration,
   studies, admin log; `docs/accounts.md`).
 
 - **Codebook editor**: edits the whole document in memory, validated

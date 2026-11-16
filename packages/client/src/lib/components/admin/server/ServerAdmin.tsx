@@ -1,16 +1,23 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AccountRole, AdminUser, Limits, Plan, ServerSettings } from "@annotinder/contracts";
-import { AlertTriangle, Ban, Check, ChevronLeft, Copy, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Ban, Check, ChevronLeft, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { ServerApi } from "../../../api/serverApi";
 import { ResearcherApiError } from "../../../api/httpResearcherApi";
 import { formatWhen } from "../../../admin/format";
 import { HelpButton } from "../../../help/HelpButton";
 
-const TABS = ["Users", "Requests", "Invites", "Plans", "Registration", "Studies", "Log"] as const;
+const TABS = ["Users", "Requests", "Plans", "Registration", "Studies", "Log"] as const;
 type Tab = (typeof TABS)[number];
 
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
@@ -23,12 +30,13 @@ const LIMITS: { key: keyof Limits; label: string }[] = [
   { key: "answersPerStudy", label: "Answers per study" },
 ];
 
-const errorText = (e: unknown) => (e instanceof ResearcherApiError ? e.reason : e instanceof Error ? e.message : String(e));
+const errorText = (e: unknown) =>
+  e instanceof ResearcherApiError ? e.reason : e instanceof Error ? e.message : String(e);
 const limitText = (v: number | null | undefined) => (v == null ? "no limit" : v.toLocaleString());
 
 /**
  * The server admin's page (docs/accounts.md): users and their roles and
- * limits, requests to become a researcher, researcher invite links, plans,
+ * limits (invited by email until their first login), requests to become a researcher, plans,
  * registration and size settings, studies (suspend, owner) and the log of admin
  * actions. Admins don't see study data here.
  */
@@ -48,7 +56,11 @@ export function ServerAdmin({ server, onBack }: { server: ServerApi; onBack: () 
       </div>
       {/* Hardening warnings (docs/security.md): what makes this server less secure */}
       {(warnings.data ?? []).map((w) => (
-        <div key={w.code} role="alert" className="flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+        <div
+          key={w.code}
+          role="alert"
+          className="flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm"
+        >
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
           <span>{w.message}</span>
         </div>
@@ -63,14 +75,17 @@ export function ServerAdmin({ server, onBack }: { server: ServerApi; onBack: () 
           >
             {t}
             {t === "Requests" && (requests.data?.length ?? 0) > 0 && (
-              <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold text-white">{requests.data!.length}</span>
+              <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold text-white">
+                {requests.data!.length}
+              </span>
             )}
           </button>
         ))}
       </div>
-      {tab === "Users" && <UsersTab server={server} />}
+      {tab === "Users" && (
+        <UsersTab server={server} migrating={(warnings.data ?? []).some((w) => w.code === "migration_not_finished")} />
+      )}
       {tab === "Requests" && <RequestsTab server={server} />}
-      {tab === "Invites" && <InvitesTab server={server} />}
       {tab === "Plans" && <PlansTab server={server} />}
       {tab === "Registration" && <RegistrationTab server={server} />}
       {tab === "Studies" && <StudiesTab server={server} />}
@@ -113,12 +128,16 @@ function ErrorLine({ error }: { error: unknown }) {
 
 // ---- users -------------------------------------------------------------------
 
-function UsersTab({ server }: { server: ServerApi }) {
+function UsersTab({ server, migrating }: { server: ServerApi; migrating: boolean }) {
   const [q, setQ] = useState("");
   const users = useQuery({ queryKey: ["admin", "server", "users", q], queryFn: () => server.listUsers(q) });
   const plans = usePlans(server);
   const invalidate = useInvalidate();
-  const update = useMutation({ mutationFn: (v: { id: number; body: Parameters<ServerApi["updateUser"]>[1] }) => server.updateUser(v.id, v.body), onSuccess: invalidate });
+  const update = useMutation({
+    mutationFn: (v: { id: number; body: Parameters<ServerApi["updateUser"]>[1] }) => server.updateUser(v.id, v.body),
+    onSuccess: invalidate,
+  });
+  const withdraw = useMutation({ mutationFn: (id: number) => server.deleteInvitation(id), onSuccess: invalidate });
   const [limitsOf, setLimitsOf] = useState<AdminUser | null>(null);
   const planName = (id: number | null) => plans.data?.find((p) => p.id === id)?.name;
 
@@ -128,26 +147,46 @@ function UsersTab({ server }: { server: ServerApi }) {
         <Input className="max-w-xs" placeholder="Search by email" value={q} onChange={(e) => setQ(e.target.value)} />
         <AddUser server={server} plans={plans.data ?? []} />
       </div>
-      <ErrorLine error={update.error} />
+      <ErrorLine error={update.error ?? withdraw.error} />
       <Table head={["Email", "Role", "Plan", "Limits", "Studies", "Last login", ""]}>
         {(users.data ?? []).map((u) => (
           <tr key={u.id} className={`border-b last:border-0 ${u.blockedAt ? "opacity-60" : ""}`}>
             <td className="p-2">
               {u.email}
               {u.blockedAt && <span className="ml-1.5 text-xs text-destructive">blocked</span>}
+              <UserStatus
+                user={u}
+                migrating={migrating}
+                onRestore={() => update.mutate({ id: u.id, body: { restoreRoles: true } })}
+              />
             </td>
             <td className="p-2">
-              <select className={selectClass} value={u.role} onChange={(e) => update.mutate({ id: u.id, body: { role: e.target.value as AccountRole } })}>
+              <select
+                className={selectClass}
+                value={u.role}
+                title={
+                  u.roleVia === "domain"
+                    ? "Researcher by their email domain"
+                    : u.roleVia === "everyone"
+                      ? "Researcher by open registration"
+                      : undefined
+                }
+                onChange={(e) => update.mutate({ id: u.id, body: { role: e.target.value as AccountRole } })}
+              >
                 <option value="user">User</option>
                 <option value="researcher">Researcher</option>
                 <option value="admin">Admin</option>
               </select>
+              {u.roleVia === "domain" && <span className="ml-1 text-xs text-muted-foreground">(domain)</span>}
+              {u.roleVia === "everyone" && <span className="ml-1 text-xs text-muted-foreground">(open)</span>}
             </td>
             <td className="p-2">
               <select
                 className={selectClass}
                 value={u.planId ?? ""}
-                onChange={(e) => update.mutate({ id: u.id, body: { planId: e.target.value === "" ? null : Number(e.target.value) } })}
+                onChange={(e) =>
+                  update.mutate({ id: u.id, body: { planId: e.target.value === "" ? null : Number(e.target.value) } })
+                }
               >
                 <option value="">Default (or domain)</option>
                 {(plans.data ?? []).map((p) => (
@@ -158,24 +197,46 @@ function UsersTab({ server }: { server: ServerApi }) {
               </select>
             </td>
             <td className="p-2">
-              <button type="button" className="cursor-pointer text-xs text-primary underline underline-offset-2" onClick={() => setLimitsOf(u)}>
-                {Object.keys(u.limits).length > 0 ? "Own limits…" : `${u.effectiveLimits.studies == null ? "∞" : u.effectiveLimits.studies} studies…`}
+              <button
+                type="button"
+                className="cursor-pointer text-xs text-primary underline underline-offset-2"
+                onClick={() => setLimitsOf(u)}
+              >
+                {Object.keys(u.limits).length > 0
+                  ? "Own limits…"
+                  : `${u.effectiveLimits.studies == null ? "∞" : u.effectiveLimits.studies} studies…`}
               </button>
             </td>
             <td className="p-2 tabular-nums">{u.studies}</td>
             <td className="p-2 whitespace-nowrap text-muted-foreground">{formatWhen(u.lastLogin)}</td>
-            <td className="p-2 text-right">
-              <Button
-                size="xs"
-                variant={u.blockedAt ? "outline" : "ghost"}
-                onClick={() => {
-                  if (u.blockedAt || confirm(`Block ${u.email}? They are logged out, and can't log in or use API keys until unblocked.`)) {
-                    update.mutate({ id: u.id, body: { blocked: !u.blockedAt } });
-                  }
-                }}
-              >
-                <Ban className="h-3.5 w-3.5" /> {u.blockedAt ? "Unblock" : "Block"}
-              </Button>
+            <td className="p-2 text-right whitespace-nowrap">
+              {!u.registered && (
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => confirm(`Withdraw the invitation of ${u.email}?`) && withdraw.mutate(u.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Withdraw
+                </Button>
+              )}
+              {u.registered && (
+                <Button
+                  size="xs"
+                  variant={u.blockedAt ? "outline" : "ghost"}
+                  onClick={() => {
+                    if (
+                      u.blockedAt ||
+                      confirm(
+                        `Block ${u.email}? They are logged out, and can't log in or use API keys until unblocked.`,
+                      )
+                    ) {
+                      update.mutate({ id: u.id, body: { blocked: !u.blockedAt } });
+                    }
+                  }}
+                >
+                  <Ban className="h-3.5 w-3.5" /> {u.blockedAt ? "Unblock" : "Block"}
+                </Button>
+              )}
             </td>
           </tr>
         ))}
@@ -185,10 +246,73 @@ function UsersTab({ server }: { server: ServerApi }) {
           user={limitsOf}
           planName={planName(limitsOf.planId) ?? "Default (or domain)"}
           onClose={() => setLimitsOf(null)}
-          onSave={(limits) => update.mutate({ id: limitsOf.id, body: { limits } }, { onSuccess: () => setLimitsOf(null) })}
+          onSave={(limits) =>
+            update.mutate({ id: limitsOf.id, body: { limits } }, { onSuccess: () => setLimitsOf(null) })
+          }
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Where a user's account stands (docs/accounts.md): invited and not logged
+ * in yet (or too late: the invitation expired), roles the safeguards turned
+ * off (restorable), no second factor at their latest login, and, while
+ * moving to another login provider, not linked yet.
+ */
+function UserStatus({ user, migrating, onRestore }: { user: AdminUser; migrating: boolean; onRestore: () => void }) {
+  const badge = "ml-1.5 rounded px-1 py-px text-[10px] font-medium";
+  return (
+    <>
+      {!user.registered &&
+        (user.invitationExpired ? (
+          <span
+            className={`${badge} bg-destructive/10 text-destructive`}
+            title="Not claimed within 3 months: their roles won't apply at login, until restored"
+          >
+            invitation expired
+          </span>
+        ) : (
+          <span
+            className={`${badge} bg-muted text-muted-foreground`}
+            title="Their first login with this (verified) email address claims the account"
+          >
+            invited
+          </span>
+        ))}
+      {migrating && user.registered && !user.linked && (
+        <span
+          className={`${badge} bg-amber-500/15 text-amber-700`}
+          title="Hasn't linked a login at the new login provider yet"
+        >
+          not linked
+        </span>
+      )}
+      {user.registered && !user.hasMfa && (
+        <span
+          className={`${badge} bg-amber-500/15 text-amber-700`}
+          title="Their latest login didn't use a second factor"
+        >
+          no 2FA
+        </span>
+      )}
+      {user.rolesDisabled > 0 && (
+        <button
+          type="button"
+          className={`${badge} cursor-pointer bg-amber-500/15 text-amber-700 hover:underline`}
+          title="The safeguards turned off roles of theirs (back after a year without a second factor, or an invitation claimed late). Click to restore them."
+          onClick={() =>
+            confirm(
+              `Restore ${user.rolesDisabled} role(s) of ${user.email}? Only if you're sure this is still the same person.`,
+            ) && onRestore()
+          }
+        >
+          <RotateCcw className="mr-0.5 inline h-2.5 w-2.5" />
+          {user.rolesDisabled} role{user.rolesDisabled === 1 ? "" : "s"} off
+        </button>
+      )}
+    </>
   );
 }
 
@@ -197,7 +321,10 @@ function AddUser({ server, plans }: { server: ServerApi; plans: Plan[] }) {
   const [role, setRole] = useState<AccountRole>("researcher");
   const [planId, setPlanId] = useState<number | null>(null);
   const invalidate = useInvalidate();
-  const add = useMutation({ mutationFn: () => server.createUser({ email, role, planId }), onSuccess: () => (setEmail(""), invalidate()) });
+  const add = useMutation({
+    mutationFn: () => server.createUser({ email, role, planId }),
+    onSuccess: () => (setEmail(""), invalidate()),
+  });
   return (
     <form
       className="flex flex-wrap items-center gap-1.5"
@@ -206,13 +333,23 @@ function AddUser({ server, plans }: { server: ServerApi; plans: Plan[] }) {
         add.mutate();
       }}
     >
-      <Input className="h-8 w-56 text-xs" type="email" placeholder="Add a user by email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <Input
+        className="h-8 w-56 text-xs"
+        type="email"
+        placeholder="Invite by email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
       <select className={selectClass} value={role} onChange={(e) => setRole(e.target.value as AccountRole)}>
         <option value="user">User</option>
         <option value="researcher">Researcher</option>
         <option value="admin">Admin</option>
       </select>
-      <select className={selectClass} value={planId ?? ""} onChange={(e) => setPlanId(e.target.value === "" ? null : Number(e.target.value))}>
+      <select
+        className={selectClass}
+        value={planId ?? ""}
+        onChange={(e) => setPlanId(e.target.value === "" ? null : Number(e.target.value))}
+      >
         <option value="">Default plan</option>
         {plans.map((p) => (
           <option key={p.id} value={p.id}>
@@ -221,7 +358,7 @@ function AddUser({ server, plans }: { server: ServerApi; plans: Plan[] }) {
         ))}
       </select>
       <Button size="sm" type="submit" disabled={!email || add.isPending}>
-        <Plus className="h-3.5 w-3.5" /> Add
+        <Plus className="h-3.5 w-3.5" /> Invite
       </Button>
       <ErrorLine error={add.error} />
     </form>
@@ -229,9 +366,24 @@ function AddUser({ server, plans }: { server: ServerApi; plans: Plan[] }) {
 }
 
 /** A user's own limits, on top of their plan: empty takes the plan's. */
-function LimitsDialog({ user, planName, onClose, onSave }: { user: AdminUser; planName: string; onClose: () => void; onSave: (limits: Limits) => void }) {
+function LimitsDialog({
+  user,
+  planName,
+  onClose,
+  onSave,
+}: {
+  user: AdminUser;
+  planName: string;
+  onClose: () => void;
+  onSave: (limits: Limits) => void;
+}) {
   const [values, setValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries(LIMITS.map(({ key }) => [key, user.limits[key] === undefined ? "" : user.limits[key] === null ? "none" : String(user.limits[key])])),
+    Object.fromEntries(
+      LIMITS.map(({ key }) => [
+        key,
+        user.limits[key] === undefined ? "" : user.limits[key] === null ? "none" : String(user.limits[key]),
+      ]),
+    ),
   );
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -246,7 +398,11 @@ function LimitsDialog({ user, planName, onClose, onSave }: { user: AdminUser; pl
           {LIMITS.map(({ key, label }) => (
             <div key={key} className="contents">
               <span>{label}</span>
-              <Input className="h-8 text-xs" value={values[key]} onChange={(e) => setValues({ ...values, [key]: e.target.value })} />
+              <Input
+                className="h-8 text-xs"
+                value={values[key]}
+                onChange={(e) => setValues({ ...values, [key]: e.target.value })}
+              />
               <span className="text-xs text-muted-foreground">now {limitText(user.effectiveLimits[key])}</span>
             </div>
           ))}
@@ -274,13 +430,17 @@ function LimitsDialog({ user, planName, onClose, onSave }: { user: AdminUser; pl
   );
 }
 
-// ---- requests and invites ------------------------------------------------------
+// ---- requests -----------------------------------------------------------------
 
 function RequestsTab({ server }: { server: ServerApi }) {
   const requests = useQuery({ queryKey: ["admin", "server", "requests"], queryFn: () => server.listRequests() });
   const invalidate = useInvalidate();
-  const decide = useMutation({ mutationFn: (v: { userId: number; approve: boolean }) => server.decideRequest(v.userId, v.approve), onSuccess: invalidate });
-  if ((requests.data ?? []).length === 0) return <p className="text-sm text-muted-foreground">No open requests to become a researcher.</p>;
+  const decide = useMutation({
+    mutationFn: (v: { userId: number; approve: boolean }) => server.decideRequest(v.userId, v.approve),
+    onSuccess: invalidate,
+  });
+  if ((requests.data ?? []).length === 0)
+    return <p className="text-sm text-muted-foreground">No open requests to become a researcher.</p>;
   return (
     <div className="flex flex-col gap-2">
       <ErrorLine error={decide.error} />
@@ -303,102 +463,30 @@ function RequestsTab({ server }: { server: ServerApi }) {
   );
 }
 
-/** The link a researcher invite is used with: this app, which redeems it after login. */
-const inviteLink = (secret: string) => `${window.location.origin}/research?researcherInvite=${secret}`;
-
-function InvitesTab({ server }: { server: ServerApi }) {
-  const invites = useQuery({ queryKey: ["admin", "server", "invites"], queryFn: () => server.listInvites() });
-  const plans = usePlans(server);
-  const invalidate = useInvalidate();
-  const [label, setLabel] = useState("");
-  const [planId, setPlanId] = useState<number | null>(null);
-  const [days, setDays] = useState(14);
-  const create = useMutation({ mutationFn: () => server.createInvite({ label, planId, days }), onSuccess: () => (setLabel(""), invalidate()) });
-  const revoke = useMutation({ mutationFn: (id: number) => server.revokeInvite(id), onSuccess: invalidate });
-  const [copied, setCopied] = useState<number | null>(null);
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-sm text-muted-foreground">
-        Whoever logs in with an invite link becomes a researcher (once), with the invite&apos;s plan if they have none of their own.
-      </p>
-      <form
-        className="flex flex-wrap items-center gap-1.5"
-        onSubmit={(e) => {
-          e.preventDefault();
-          create.mutate();
-        }}
-      >
-        <Input className="h-8 w-56 text-xs" placeholder="For whom, e.g. Jane (UvA)" value={label} onChange={(e) => setLabel(e.target.value)} />
-        <select className={selectClass} value={planId ?? ""} onChange={(e) => setPlanId(e.target.value === "" ? null : Number(e.target.value))}>
-          <option value="">Default plan</option>
-          {(plans.data ?? []).map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-        <label className="flex items-center gap-1 text-xs">
-          valid for
-          <Input type="number" min={1} max={365} className="h-8 w-16 text-xs" value={days} onChange={(e) => setDays(Number(e.target.value) || 14)} />
-          days
-        </label>
-        <Button size="sm" type="submit" disabled={!label || create.isPending}>
-          <Plus className="h-3.5 w-3.5" /> Create link
-        </Button>
-      </form>
-      <ErrorLine error={create.error ?? revoke.error} />
-      <Table head={["For", "Plan", "Status", "Created", ""]}>
-        {(invites.data ?? []).map((i) => {
-          const open = !i.usedAt && !i.revokedAt && new Date(i.expires) > new Date();
-          return (
-            <tr key={i.id} className="border-b last:border-0">
-              <td className="p-2">{i.label}</td>
-              <td className="p-2 text-muted-foreground">{plans.data?.find((p) => p.id === i.planId)?.name ?? "Default"}</td>
-              <td className="p-2 text-xs">
-                {i.usedAt ? `used by ${i.usedBy ?? "?"}` : i.revokedAt ? "revoked" : open ? `open until ${new Date(i.expires).toLocaleDateString()}` : "expired"}
-              </td>
-              <td className="p-2 whitespace-nowrap text-muted-foreground">
-                {formatWhen(i.created)} by {i.createdBy}
-              </td>
-              <td className="p-2 text-right whitespace-nowrap">
-                {open && (
-                  <>
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      onClick={() => void navigator.clipboard?.writeText(inviteLink(i.secret)).then(() => setCopied(i.id))}
-                    >
-                      {copied === i.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} Copy link
-                    </Button>
-                    <Button size="xs" variant="ghost" onClick={() => revoke.mutate(i.id)}>
-                      Revoke
-                    </Button>
-                  </>
-                )}
-              </td>
-            </tr>
-          );
-        })}
-      </Table>
-    </div>
-  );
-}
-
 // ---- plans and registration --------------------------------------------------
 
 function PlansTab({ server }: { server: ServerApi }) {
   const plans = usePlans(server);
   const settings = useQuery({ queryKey: ["admin", "server", "settings"], queryFn: () => server.getSettings() });
   const invalidate = useInvalidate();
-  const create = useMutation({ mutationFn: () => server.createPlan({ name: `Plan ${(plans.data?.length ?? 0) + 1}`, limits: {} }), onSuccess: invalidate });
+  const create = useMutation({
+    mutationFn: () => server.createPlan({ name: `Plan ${(plans.data?.length ?? 0) + 1}`, limits: {} }),
+    onSuccess: invalidate,
+  });
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">
-        A plan is a set of limits. Researchers get the default plan (Registration), their email domain&apos;s, or the one set on
-        them; an empty field is no limit. Limits apply when something is added: nothing is removed when they shrink.
+        A plan is a set of limits. Researchers get the default plan (Registration), their email domain&apos;s, or the
+        one set on them; an empty field is no limit. Limits apply when something is added: nothing is removed when they
+        shrink.
       </p>
       {(plans.data ?? []).map((p) => (
-        <PlanRow key={`${p.id}-${JSON.stringify(p)}`} server={server} plan={p} isDefault={settings.data?.defaultPlanId === p.id} />
+        <PlanRow
+          key={`${p.id}-${JSON.stringify(p)}`}
+          server={server}
+          plan={p}
+          isDefault={settings.data?.defaultPlanId === p.id}
+        />
       ))}
       <Button size="sm" variant="outline" className="w-fit" onClick={() => create.mutate()}>
         <Plus className="h-3.5 w-3.5" /> Add plan
@@ -418,7 +506,12 @@ function PlanRow({ server, plan, isDefault }: { server: ServerApi; plan: Plan; i
     mutationFn: () =>
       server.updatePlan(plan.id, {
         name,
-        limits: Object.fromEntries(LIMITS.map(({ key }) => [key, values[key].trim() === "" ? null : Math.max(0, Math.floor(Number(values[key])) || 0)])),
+        limits: Object.fromEntries(
+          LIMITS.map(({ key }) => [
+            key,
+            values[key].trim() === "" ? null : Math.max(0, Math.floor(Number(values[key])) || 0),
+          ]),
+        ),
       }),
     onSuccess: invalidate,
   });
@@ -432,7 +525,12 @@ function PlanRow({ server, plan, isDefault }: { server: ServerApi; plan: Plan; i
           <Button size="xs" onClick={() => save.mutate()} disabled={save.isPending}>
             Save
           </Button>
-          <Button size="xs" variant="ghost" aria-label={`Delete ${plan.name}`} onClick={() => confirm(`Delete plan ${plan.name}?`) && remove.mutate()}>
+          <Button
+            size="xs"
+            variant="ghost"
+            aria-label={`Delete ${plan.name}`}
+            onClick={() => confirm(`Delete plan ${plan.name}?`) && remove.mutate()}
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </span>
@@ -463,7 +561,12 @@ function RegistrationTab({ server }: { server: ServerApi }) {
   if (!settings.data) return <p className="text-sm text-muted-foreground">Loading…</p>;
   return (
     <div className="flex flex-col gap-6">
-      <SettingsForm key={JSON.stringify(settings.data)} server={server} settings={settings.data} plans={plans.data ?? []} />
+      <SettingsForm
+        key={JSON.stringify(settings.data)}
+        server={server}
+        settings={settings.data}
+        plans={plans.data ?? []}
+      />
       <Domains server={server} plans={plans.data ?? []} />
     </div>
   );
@@ -486,7 +589,9 @@ function SettingsForm({ server, settings, plans }: { server: ServerApi; settings
         />
         <span>
           Anyone who logs in
-          <span className="block text-xs text-muted-foreground">For a public server. Otherwise: email domains (below), invite links, requests, or you.</span>
+          <span className="block text-xs text-muted-foreground">
+            For a public server. Otherwise: email domains (below), invitations by email (Users), requests, or you.
+          </span>
         </span>
       </label>
       <label className="flex items-start gap-2 text-sm">
@@ -498,13 +603,19 @@ function SettingsForm({ server, settings, plans }: { server: ServerApi; settings
         />
         <span>
           Users can ask to become a researcher
-          <span className="block text-xs text-muted-foreground">Requests appear under Requests, for an admin to approve.</span>
+          <span className="block text-xs text-muted-foreground">
+            Requests appear under Requests, for an admin to approve.
+          </span>
         </span>
       </label>
       <h2 className="mt-2 font-medium">Limits</h2>
       <div className="grid w-fit grid-cols-[auto_10rem] items-center gap-x-3 gap-y-2 text-sm">
         <span>Default plan</span>
-        <select className={selectClass} value={draft.defaultPlanId ?? ""} onChange={(e) => setDraft({ ...draft, defaultPlanId: e.target.value === "" ? null : Number(e.target.value) })}>
+        <select
+          className={selectClass}
+          value={draft.defaultPlanId ?? ""}
+          onChange={(e) => setDraft({ ...draft, defaultPlanId: e.target.value === "" ? null : Number(e.target.value) })}
+        >
           <option value="">None (no limits)</option>
           {plans.map((p) => (
             <option key={p.id} value={p.id}>
@@ -513,12 +624,25 @@ function SettingsForm({ server, settings, plans }: { server: ServerApi; settings
           ))}
         </select>
         <span>Largest unit (KB)</span>
-        <Input type="number" min={1} className="h-8 text-xs" value={kb(draft.unitBytes)} onChange={(e) => setDraft({ ...draft, unitBytes: Math.max(1, Number(e.target.value) || 1) * 1024 })} />
+        <Input
+          type="number"
+          min={1}
+          className="h-8 text-xs"
+          value={kb(draft.unitBytes)}
+          onChange={(e) => setDraft({ ...draft, unitBytes: Math.max(1, Number(e.target.value) || 1) * 1024 })}
+        />
         <span>Largest answer (KB)</span>
-        <Input type="number" min={1} className="h-8 text-xs" value={kb(draft.answerBytes)} onChange={(e) => setDraft({ ...draft, answerBytes: Math.max(1, Number(e.target.value) || 1) * 1024 })} />
+        <Input
+          type="number"
+          min={1}
+          className="h-8 text-xs"
+          value={kb(draft.answerBytes)}
+          onChange={(e) => setDraft({ ...draft, answerBytes: Math.max(1, Number(e.target.value) || 1) * 1024 })}
+        />
       </div>
       <p className="text-xs text-muted-foreground">
-        Unit and answer sizes hold for everyone: they keep units (e.g. images pasted in as text) and answers from filling the server.
+        Unit and answer sizes hold for everyone: they keep units (e.g. images pasted in as text) and answers from
+        filling the server.
       </p>
       <Button className="w-fit" size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
         Save
@@ -532,7 +656,8 @@ function Domains({ server, plans }: { server: ServerApi; plans: Plan[] }) {
   const domains = useQuery({ queryKey: ["admin", "server", "domains"], queryFn: () => server.listDomains() });
   const invalidate = useInvalidate();
   const put = useMutation({
-    mutationFn: (v: { domain: string; researcher: boolean; planId: number | null }) => server.putDomain(v.domain, { researcher: v.researcher, planId: v.planId }),
+    mutationFn: (v: { domain: string; researcher: boolean; planId: number | null }) =>
+      server.putDomain(v.domain, { researcher: v.researcher, planId: v.planId }),
     onSuccess: invalidate,
   });
   const remove = useMutation({ mutationFn: (domain: string) => server.deleteDomain(domain), onSuccess: invalidate });
@@ -541,18 +666,26 @@ function Domains({ server, plans }: { server: ServerApi; plans: Plan[] }) {
     <section className="flex flex-col gap-3 rounded-lg border p-4">
       <h2 className="font-medium">Email domains</h2>
       <p className="text-xs text-muted-foreground">
-        Users with an email address at a domain can become researchers when they log in, and get the domain&apos;s plan (e.g. a
-        university&apos;s). <code>uni.nl</code> is that domain; <code>*.uni.nl</code> also its subdomains.
+        Users with an email address at a domain can become researchers when they log in, and get the domain&apos;s plan
+        (e.g. a university&apos;s). <code>uni.nl</code> is that domain; <code>*.uni.nl</code> also its subdomains.
       </p>
       <Table head={["Domain", "Makes researchers", "Plan", ""]}>
         {(domains.data ?? []).map((d) => (
           <tr key={d.domain} className="border-b last:border-0">
             <td className="p-2 font-mono text-xs">{d.domain}</td>
             <td className="p-2">
-              <input type="checkbox" checked={d.researcher} onChange={(e) => put.mutate({ ...d, researcher: e.target.checked })} />
+              <input
+                type="checkbox"
+                checked={d.researcher}
+                onChange={(e) => put.mutate({ ...d, researcher: e.target.checked })}
+              />
             </td>
             <td className="p-2">
-              <select className={selectClass} value={d.planId ?? ""} onChange={(e) => put.mutate({ ...d, planId: e.target.value === "" ? null : Number(e.target.value) })}>
+              <select
+                className={selectClass}
+                value={d.planId ?? ""}
+                onChange={(e) => put.mutate({ ...d, planId: e.target.value === "" ? null : Number(e.target.value) })}
+              >
                 <option value="">None</option>
                 {plans.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -562,7 +695,12 @@ function Domains({ server, plans }: { server: ServerApi; plans: Plan[] }) {
               </select>
             </td>
             <td className="p-2 text-right">
-              <Button size="xs" variant="ghost" aria-label={`Remove ${d.domain}`} onClick={() => remove.mutate(d.domain)}>
+              <Button
+                size="xs"
+                variant="ghost"
+                aria-label={`Remove ${d.domain}`}
+                onClick={() => remove.mutate(d.domain)}
+              >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </td>
@@ -576,7 +714,12 @@ function Domains({ server, plans }: { server: ServerApi; plans: Plan[] }) {
           put.mutate({ domain, researcher: true, planId: null }, { onSuccess: () => setDomain("") });
         }}
       >
-        <Input className="h-8 w-56 text-xs" placeholder="uni.nl or *.uni.nl" value={domain} onChange={(e) => setDomain(e.target.value)} />
+        <Input
+          className="h-8 w-56 text-xs"
+          placeholder="uni.nl or *.uni.nl"
+          value={domain}
+          onChange={(e) => setDomain(e.target.value)}
+        />
         <Button size="sm" type="submit" disabled={!domain}>
           <Plus className="h-3.5 w-3.5" /> Add domain
         </Button>
@@ -591,12 +734,15 @@ function Domains({ server, plans }: { server: ServerApi; plans: Plan[] }) {
 function StudiesTab({ server }: { server: ServerApi }) {
   const studies = useQuery({ queryKey: ["admin", "server", "studies"], queryFn: () => server.listStudies() });
   const invalidate = useInvalidate();
-  const update = useMutation({ mutationFn: (v: { id: number; body: Parameters<ServerApi["updateStudy"]>[1] }) => server.updateStudy(v.id, v.body), onSuccess: invalidate });
+  const update = useMutation({
+    mutationFn: (v: { id: number; body: Parameters<ServerApi["updateStudy"]>[1] }) => server.updateStudy(v.id, v.body),
+    onSuccess: invalidate,
+  });
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">
-        What each study holds, not its data. A suspended study takes no coders and can&apos;t be changed; its researchers can still read
-        and delete its data.
+        What each study holds, not its data. A suspended study takes no coders and can&apos;t be changed; its
+        researchers can still read and delete its data.
       </p>
       <ErrorLine error={update.error} />
       <Table head={["Study", "Owner", "Units", "Coders", "Answers", "Created", ""]}>
@@ -629,7 +775,10 @@ function StudiesTab({ server }: { server: ServerApi }) {
                 size="xs"
                 variant={j.suspendedAt ? "outline" : "ghost"}
                 onClick={() => {
-                  if (j.suspendedAt || confirm(`Suspend study #${j.id}? Coders are refused, and its researchers can't change it.`)) {
+                  if (
+                    j.suspendedAt ||
+                    confirm(`Suspend study #${j.id}? Coders are refused, and its researchers can't change it.`)
+                  ) {
                     update.mutate({ id: j.id, body: { suspended: !j.suspendedAt } });
                   }
                 }}
@@ -654,7 +803,9 @@ function LogTab({ server }: { server: ServerApi }) {
           <td className="p-2">{e.admin}</td>
           <td className="p-2">{e.action}</td>
           <td className="p-2">{e.target}</td>
-          <td className="p-2 font-mono text-[11px] break-all text-muted-foreground">{Object.keys(e.details).length ? JSON.stringify(e.details) : ""}</td>
+          <td className="p-2 font-mono text-[11px] break-all text-muted-foreground">
+            {Object.keys(e.details).length ? JSON.stringify(e.details) : ""}
+          </td>
         </tr>
       ))}
     </Table>

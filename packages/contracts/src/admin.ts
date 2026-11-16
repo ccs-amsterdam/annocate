@@ -3,14 +3,16 @@ import { IdSchema } from "./common.js";
 import { AccountRoleSchema, LimitsSchema } from "./account.js";
 
 // The server admin's API (`/admin/...`, account role `admin`;
-// docs/accounts.md): registration, plans and limits, users, researcher
-// invites and requests, studies (suspend, owner) and the log of admin actions.
+// docs/accounts.md): registration, plans and limits, users (and inviting
+// them by email), requests to become a researcher, studies (suspend, owner)
+// and the log of admin actions.
 // Admins don't see study data: no design versions, units or answers.
 
 /**
  * Who becomes a researcher: `open`: anyone who logs in (with a verified
- * email); `requests`: users may ask, and an admin decides. Besides these:
- * email domains (`DomainRule`), researcher invite links, and admins.
+ * email: a researcher role for everyone); `requests`: users may ask, and an
+ * admin decides. Besides these: email domains (`DomainRule`), and admins
+ * inviting or adding users (`AdminUserCreate`).
  */
 export const RegistrationSchema = z.object({
   open: z.boolean(),
@@ -58,7 +60,27 @@ export type DomainRule = z.infer<typeof DomainRuleSchema>;
 export const AdminUserSchema = z.object({
   id: IdSchema,
   email: z.string(),
+  /** Their account role (from their own role, their email domain, or open registration). */
   role: AccountRoleSchema,
+  /** Where `role` comes from: their own (`user`), their email `domain`, or `everyone` (open registration); null: no role. */
+  roleVia: z.enum(["user", "domain", "everyone"]).nullable(),
+  /**
+   * False: invited (by email) and not logged in yet: their first login with
+   * a verified email at this address claims the account and its roles,
+   * within 3 months of the invitation (`invitationExpired` after that).
+   */
+  registered: z.boolean(),
+  invitationExpired: z.boolean(),
+  /**
+   * Roles of their own (server and studies) that the safeguards turned off:
+   * given before they came back after a year away without a second factor,
+   * or an invitation claimed too late. `restoreRoles` turns them on again.
+   */
+  rolesDisabled: z.number().int(),
+  /** Their latest login used a second factor. */
+  hasMfa: z.boolean(),
+  /** While moving to another login provider: whether they linked their login there. */
+  linked: z.boolean(),
   /** Their own plan (else the domain's or the default). */
   planId: IdSchema.nullable(),
   /** Per-limit overrides on top of the plan. */
@@ -73,7 +95,10 @@ export const AdminUserSchema = z.object({
 });
 export type AdminUser = z.infer<typeof AdminUserSchema>;
 
-/** `POST /admin/users`: add a user before they first log in (e.g. a researcher). */
+/**
+ * `POST /admin/users`: invite someone by email (a shadow user, claimed at
+ * their first login within 3 months), or give a user with that email a role.
+ */
 export const AdminUserCreateSchema = z.object({
   email: z.string().email(),
   role: AccountRoleSchema,
@@ -87,6 +112,8 @@ export const AdminUserUpdateSchema = z.object({
   planId: IdSchema.nullable().optional(),
   limits: LimitsSchema.optional(),
   blocked: z.boolean().optional(),
+  /** Turns their own roles on again (server and studies) after the safeguards turned them off (`rolesDisabled`). */
+  restoreRoles: z.literal(true).optional(),
 });
 export type AdminUserUpdate = z.infer<typeof AdminUserUpdateSchema>;
 
@@ -102,30 +129,6 @@ export type ResearcherRequest = z.infer<typeof ResearcherRequestSchema>;
 /** `POST /admin/requests/:userId`: approve (the user becomes a researcher) or deny. */
 export const ResearcherRequestDecisionSchema = z.object({ approve: z.boolean() });
 export type ResearcherRequestDecision = z.infer<typeof ResearcherRequestDecisionSchema>;
-
-/** `POST /admin/researcher-invites`: a link that makes whoever logs in with it a researcher, once. */
-export const ResearcherInviteWriteSchema = z.object({
-  /** Who it is for, e.g. "Jane (UvA)". */
-  label: z.string().min(1).max(256),
-  planId: IdSchema.nullable().optional(),
-  /** Days it stays valid (default 14). */
-  days: z.number().int().min(1).max(365).default(14),
-});
-export type ResearcherInviteWrite = z.infer<typeof ResearcherInviteWriteSchema>;
-
-export const ResearcherInviteSchema = z.object({
-  id: IdSchema,
-  secret: z.string(),
-  label: z.string(),
-  planId: IdSchema.nullable(),
-  createdBy: z.string(),
-  created: z.coerce.date(),
-  expires: z.coerce.date(),
-  usedBy: z.string().nullable(),
-  usedAt: z.coerce.date().nullable(),
-  revokedAt: z.coerce.date().nullable(),
-});
-export type ResearcherInvite = z.infer<typeof ResearcherInviteSchema>;
 
 /** A study as admins see it: no data, only what it holds. */
 export const AdminStudySchema = z.object({

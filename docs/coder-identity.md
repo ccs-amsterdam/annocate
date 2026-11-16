@@ -234,16 +234,17 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
   provider's tokens are not kept: we never call it on the researcher's
   behalf. Logging out ends our session (`POST /auth/logout`), not the
   provider's.
-- **Identity is the verified email address.** The provider MUST verify
-  email addresses: a login without `email_verified: true` is refused. The
-  user is found or created by their (lowercased) email; `sub` is not used.
-  So switching or adding providers keeps everyone's account, and logging in
-  with Google and with a magic link for the same address is the same user.
-  Roles in studies (`study_users`) and API keys belong to that user.
-- **Accepted risk: whoever controls the mailbox controls the account.** That
-  holds for any system with email login or email recovery. A recycled
-  address (an institution giving an old address to someone new) inherits
-  its previous owner's study roles. Study admins see who has a role and can
+- **Identity is the login, not the email address** (lab Authentication
+  standard; `accounts.md` §1). The provider MUST verify email addresses: a
+  login without `email_verified: true` is refused. The user is their
+  identity at the provider (`iss` + `sub`); the email is updated from each
+  login. Roles given to an email address before its owner logged in are
+  claimed by their first login (within 3 months); roles and API keys
+  belong to the user. Changing providers: account linking or re-claiming
+  by email (`accounts.md` "Changing providers").
+- **Reassigned email addresses**: a later owner of an address doesn't get
+  the previous owner's account (another `sub`), and the safeguards keep
+  them from old invitations. Study admins see who has a role and can
   remove it.
 - **Two-factor authentication is required** for managing studies and the
   server: the login provider's, as it signals it (`OIDC_MFA_CLAIM`);

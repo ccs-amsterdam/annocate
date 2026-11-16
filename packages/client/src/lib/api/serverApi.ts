@@ -12,8 +12,6 @@ import {
   type MeResponse,
   type Plan,
   type PlanWrite,
-  type ResearcherInvite,
-  type ResearcherInviteWrite,
   type ResearcherRequest,
   type ServerSettings,
   type ServerWarning,
@@ -36,9 +34,6 @@ export class ServerApi {
   }
   requestResearcher(message: string): Promise<MeResponse> {
     return this.api.call("POST", researcherEndpoints.requestResearcher.path, { message });
-  }
-  redeemResearcherInvite(secret: string): Promise<MeResponse> {
-    return this.api.call("POST", researcherEndpoints.redeemResearcherInvite.path, { secret });
   }
 
   getSettings(): Promise<ServerSettings> {
@@ -74,6 +69,10 @@ export class ServerApi {
   createUser(user: AdminUserCreate): Promise<AdminUser> {
     return this.api.call("POST", adminEndpoints.createUser.path, user);
   }
+  /** Withdraws an invitation: a user who hasn't logged in yet. */
+  deleteInvitation(id: number): Promise<void> {
+    return this.api.call("DELETE", this.path(adminEndpoints.deleteInvitation.path, { id }));
+  }
   getWarnings(): Promise<ServerWarning[]> {
     return this.api.call("GET", adminEndpoints.getWarnings.path);
   }
@@ -85,15 +84,6 @@ export class ServerApi {
   }
   decideRequest(userId: number, approve: boolean): Promise<void> {
     return this.api.call("POST", this.path(adminEndpoints.decideResearcherRequest.path, { userId }), { approve });
-  }
-  listInvites(): Promise<ResearcherInvite[]> {
-    return this.api.call("GET", adminEndpoints.listResearcherInvites.path);
-  }
-  createInvite(invite: ResearcherInviteWrite): Promise<ResearcherInvite> {
-    return this.api.call("POST", adminEndpoints.createResearcherInvite.path, invite);
-  }
-  revokeInvite(id: number): Promise<ResearcherInvite> {
-    return this.api.call("POST", this.path(adminEndpoints.revokeResearcherInvite.path, { id }));
   }
   listStudies(): Promise<AdminStudy[]> {
     return this.api.call("GET", adminEndpoints.listAdminStudies.path);

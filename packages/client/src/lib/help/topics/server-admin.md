@@ -24,28 +24,40 @@ The list shows every account, most recently logged in first. Per user:
   or *none* for no limit.
 - **Block**: logs them out, and stops their logins and API keys until
   unblocked. Their studies stay.
+- Marks: *invited* (not logged in yet), *invitation expired*, *no 2FA*
+  (their latest login lacked the second factor), *not linked* (while
+  moving to another login provider) and *roles off* (see below).
 
-**Add a user** to make someone a researcher (or admin) before they first
-log in.
+**Invite** someone by email to make them a researcher (or admin) before
+they first log in: their first login with that address (verified by the
+login provider) gets the role, within 3 months. **Withdraw** an invitation
+that wasn't used. Accounts are logins, not addresses: when someone's
+address changes at the login provider, their account follows it.
+
+**Roles off**: to keep a later owner of an email address from getting
+someone's roles, AnnoTinder turns roles off for an invitation used after 3
+months, and for someone back after more than a year whose login lacks the
+second factor. Click the mark to restore them, if you're sure it's still
+the same person.
 
 ## Who becomes a researcher
 
 Under **Registration**:
 
 - **Anyone who logs in**: for a public server.
-- **Email domains**: users with an address at one of these domains become
-  researchers when they log in. `uni.nl` is that domain only; `*.uni.nl`
+- **Email domains**: users with a verified address at one of these domains
+  are researchers (while their address is there). `uni.nl` is that domain only; `*.uni.nl`
   also its subdomains (`fsw.uni.nl`). A domain can also give a plan, for
   instance a university's larger one. The login provider must verify email
   addresses, as AnnoTinder requires anyway.
 - **Requests**: users ask on the studies page; you approve or deny them under
   **Requests**.
-- **Invite links**: under **Invites**, a link for one person, valid for a
-  number of days, optionally with a plan. Whoever logs in with it becomes a
-  researcher.
+- **Invitations**: under **Users**, by email address, optionally with a
+  plan.
 
-A login only ever raises a role. If you lower someone's role, it stays
-lowered (unless the rules make them a researcher again, e.g. their domain).
+Lowering someone's role takes away the role you (or an invitation) gave
+them; they are still a researcher if the rules say so (their domain, or
+anyone who logs in).
 
 ## Plans and limits
 
@@ -77,5 +89,8 @@ again, then repeat the action. API keys can never do them.
 
 The top of this page lists what makes the server less secure: logins from
 the lab's **shared login provider** (then this server must not hold
-sensitive data), or researchers logging in **without the second factor
-signal** (check the provider's two-factor settings and `OIDC_MFA_CLAIM`).
+sensitive data), researchers logging in **without the second factor
+signal** (check the provider's two-factor settings and `OIDC_MFA_CLAIM`),
+or a **move to another login provider** (`OIDC_PREVIOUS_*`): how many
+users haven't linked their new login yet, and, after its end date, to
+remove the old provider's settings.

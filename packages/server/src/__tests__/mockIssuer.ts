@@ -8,6 +8,7 @@ import { Hono } from "hono";
 // send back.
 
 export const ISSUER = "https://idp.test";
+const DEFAULT_ISSUER = ISSUER;
 export const CLIENT_ID = "annotinder";
 export const CLIENT_SECRET = "s3cret";
 
@@ -18,7 +19,7 @@ interface Grant {
   redirectUri: string;
 }
 
-export function mockIssuer() {
+export function mockIssuer(ISSUER = DEFAULT_ISSUER) {
   const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
   const jwk = { ...publicKey.export({ format: "jwk" }), kid: "k1", alg: "ES256", use: "sig" };
   const grants = new Map<string, Grant>();
@@ -62,7 +63,16 @@ export function mockIssuer() {
       access_token: "at",
       token_type: "Bearer",
       expires_in: 300,
-      id_token: idToken({ iss: ISSUER, aud: CLIENT_ID, sub: "user-1", iat: now, exp: now + 300, auth_time: now, nonce: grant.nonce, ...grant.claims }),
+      id_token: idToken({
+        iss: ISSUER,
+        aud: CLIENT_ID,
+        sub: "user-1",
+        iat: now,
+        exp: now + 300,
+        auth_time: now,
+        nonce: grant.nonce,
+        ...grant.claims,
+      }),
     });
   });
 

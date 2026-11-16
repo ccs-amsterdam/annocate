@@ -7,5 +7,10 @@ import { createStudyFromExample } from "./examples.js";
  * development server's coder home links to it: /code/1?link=demo-secret).
  */
 export async function seed(db: Sql): Promise<void> {
-  await createStudyFromExample(db, "tour", { name: "Demo study", ownerId: null, ownerEmail: null, secrets: ["demo-secret"] });
+  await createStudyFromExample(db, "tour", {
+    name: "Demo study",
+    ownerId: null,
+    ownerIsAdmin: false,
+    secrets: ["demo-secret"],
+  });
 }

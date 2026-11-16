@@ -6,6 +6,7 @@ import {
   type RecipeInput,
   type StudyResponse,
   type StudyUser,
+  type StudyUserResponse,
   type DeleteCoders,
   type ResetAnnotations,
   type DeleteCodersResponse,
@@ -66,6 +67,12 @@ export class ResearcherApiError extends Error {
   }
 }
 
+export interface LoginUrlOptions {
+  stepUp?: boolean;
+  previous?: boolean;
+  link?: boolean;
+}
+
 /**
  * Client-side abstraction over the study-management ("admin") side of the API
  * (docs/client.md §7) -- distinct from `CoderApi` (api/httpCoderApi.ts),
@@ -86,9 +93,12 @@ export interface ResearcherApi {
   /**
    * Where the browser goes to log in; it comes back to `returnTo` (a path on
    * this origin). `stepUp`: a login for a sensitive action, with a fresh
-   * second factor (docs/security.md "Step-up").
+   * second factor (docs/security.md "Step-up"). While the server moves to
+   * another login provider (docs/accounts.md "Changing providers"):
+   * `previous`, log in with the old one; `link`, add a login at the new
+   * one to the logged-in account.
    */
-  loginUrl(returnTo: string, options?: { stepUp?: boolean }): string;
+  loginUrl(returnTo: string, options?: LoginUrlOptions): string;
   /** Who the client is authenticated as. */
   getMe(): Promise<MeResponse>;
   listApiKeys(): Promise<ApiKeyResponse[]>;
@@ -107,7 +117,7 @@ export interface ResearcherApi {
   createStudyFromRecipe(body: RecipeInput): Promise<StudyResponse>;
   updateStudy(id: number, body: StudyWrite): Promise<StudyResponse>;
   deleteStudy(id: number): Promise<void>;
-  getStudyUsers(id: number): Promise<StudyUser[]>;
+  getStudyUsers(id: number): Promise<StudyUserResponse[]>;
   putStudyUsers(id: number, users: StudyUser[]): Promise<void>;
 
   listDesignVersions(): Promise<DesignVersionMeta[]>;
@@ -229,7 +239,11 @@ export class HttpResearcherApi implements ResearcherApi {
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
-    const res = await fetch(`${this.config.baseUrl}${path}`, { ...init, headers: this.headers(), credentials: "same-origin" });
+    const res = await fetch(`${this.config.baseUrl}${path}`, {
+      ...init,
+      headers: this.headers(),
+      credentials: "same-origin",
+    });
     if (!res.ok) {
       const body = await res.text();
       let parsed: unknown;
@@ -242,7 +256,9 @@ export class HttpResearcherApi implements ResearcherApi {
       // A sensitive action needs a recent second factor: log in again, back to this page (then do it again)
       if (error.code === "step_up_required" && typeof window !== "undefined" && !this.config.devRole) {
         if (window.confirm("To do this, confirm it's you: log in again with your second factor, then try once more.")) {
-          window.location.assign(this.loginUrl(window.location.pathname + window.location.search + window.location.hash, { stepUp: true }));
+          window.location.assign(
+            this.loginUrl(window.location.pathname + window.location.search + window.location.hash, { stepUp: true }),
+          );
         }
       }
       throw error;
@@ -259,8 +275,9 @@ export class HttpResearcherApi implements ResearcherApi {
     await this.request(researcherEndpoints.logout.path, { method: "POST" });
   }
 
-  loginUrl(returnTo: string, options: { stepUp?: boolean } = {}): string {
-    return `${this.config.baseUrl}/auth/login?returnTo=${encodeURIComponent(returnTo)}${options.stepUp ? "&stepUp=1" : ""}`;
+  loginUrl(returnTo: string, options: LoginUrlOptions = {}): string {
+    const extra = `${options.stepUp ? "&stepUp=1" : ""}${options.previous ? "&provider=previous" : ""}${options.link ? "&link=1" : ""}`;
+    return `${this.config.baseUrl}/auth/login?returnTo=${encodeURIComponent(returnTo)}${extra}`;
   }
 
   async getMe(): Promise<MeResponse> {
@@ -324,7 +341,10 @@ export class HttpResearcherApi implements ResearcherApi {
   }
 
   async createStudyFromExample(body: StudyFromExample): Promise<StudyResponse> {
-    return this.request(researcherEndpoints.createStudyFromExample.path, { method: "POST", body: JSON.stringify(body) });
+    return this.request(researcherEndpoints.createStudyFromExample.path, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
   }
 
   async createStudyFromRecipe(body: RecipeInput): Promise<StudyResponse> {
@@ -342,7 +362,7 @@ export class HttpResearcherApi implements ResearcherApi {
     await this.request(researcherEndpoints.deleteStudy.path.replace(":id", String(id)), { method: "DELETE" });
   }
 
-  async getStudyUsers(id: number): Promise<StudyUser[]> {
+  async getStudyUsers(id: number): Promise<StudyUserResponse[]> {
     return this.request(researcherEndpoints.getStudyUsers.path.replace(":id", String(id)));
   }
 
@@ -402,7 +422,10 @@ export class HttpResearcherApi implements ResearcherApi {
   }
 
   async putUnitFields(fields: UnitField[]): Promise<UnitField[]> {
-    return this.request(this.studyPath(researcherEndpoints.putUnitFields.path), { method: "PUT", body: JSON.stringify({ fields }) });
+    return this.request(this.studyPath(researcherEndpoints.putUnitFields.path), {
+      method: "PUT",
+      body: JSON.stringify({ fields }),
+    });
   }
 
   async listUnitPage(query: { offset: number; limit: number; group?: string; set?: string }): Promise<UnitPage> {
@@ -416,7 +439,9 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async getUnit(id: number): Promise<UnitResponse> {
     const studyId = this.requireStudyId();
-    return this.request(researcherEndpoints.getUnit.path.replace(":studyId", String(studyId)).replace(":id", String(id)));
+    return this.request(
+      researcherEndpoints.getUnit.path.replace(":studyId", String(studyId)).replace(":id", String(id)),
+    );
   }
 
   async createUnits(body: UnitsCreateBody): Promise<UnitResponse[]> {
@@ -429,9 +454,12 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async deleteUnit(id: number): Promise<void> {
     const studyId = this.requireStudyId();
-    await this.request(researcherEndpoints.deleteUnit.path.replace(":studyId", String(studyId)).replace(":id", String(id)), {
-      method: "DELETE",
-    });
+    await this.request(
+      researcherEndpoints.deleteUnit.path.replace(":studyId", String(studyId)).replace(":id", String(id)),
+      {
+        method: "DELETE",
+      },
+    );
   }
 
   async listSetGroups(live = false): Promise<SetGroupResponse[]> {
@@ -439,14 +467,20 @@ export class HttpResearcherApi implements ResearcherApi {
   }
 
   async putSetGroup(group: string, body: SetGroupWrite): Promise<SetGroupResponse> {
-    return this.request(this.studyPath(researcherEndpoints.putSetGroup.path).replace(":group", encodeURIComponent(group)), {
-      method: "PUT",
-      body: JSON.stringify(body),
-    });
+    return this.request(
+      this.studyPath(researcherEndpoints.putSetGroup.path).replace(":group", encodeURIComponent(group)),
+      {
+        method: "PUT",
+        body: JSON.stringify(body),
+      },
+    );
   }
 
   async deleteSetGroup(group: string): Promise<void> {
-    await this.request(this.studyPath(researcherEndpoints.deleteSetGroup.path).replace(":group", encodeURIComponent(group)), { method: "DELETE" });
+    await this.request(
+      this.studyPath(researcherEndpoints.deleteSetGroup.path).replace(":group", encodeURIComponent(group)),
+      { method: "DELETE" },
+    );
   }
 
   async listCoders(): Promise<CoderProgress[]> {
@@ -456,7 +490,10 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async deleteCoders(select: DeleteCoders): Promise<DeleteCodersResponse> {
     const studyId = this.requireStudyId();
-    return this.request(researcherEndpoints.deleteCoders.path.replace(":studyId", String(studyId)), { method: "POST", body: JSON.stringify(select) });
+    return this.request(researcherEndpoints.deleteCoders.path.replace(":studyId", String(studyId)), {
+      method: "POST",
+      body: JSON.stringify(select),
+    });
   }
 
   async postponeDeletion(coderId: number): Promise<void> {
@@ -477,7 +514,10 @@ export class HttpResearcherApi implements ResearcherApi {
   }
 
   async updateLink(id: number, body: LinkWrite): Promise<LinkResponse> {
-    return this.request(this.studyPath(researcherEndpoints.updateLink.path, id), { method: "PUT", body: JSON.stringify(body) });
+    return this.request(this.studyPath(researcherEndpoints.updateLink.path, id), {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
   }
 
   async revokeLink(id: number): Promise<LinkResponse> {
@@ -497,7 +537,10 @@ export class HttpResearcherApi implements ResearcherApi {
   }
 
   async resetAnnotations(body: ResetAnnotations): Promise<{ retired: number }> {
-    return this.request(this.studyPath(researcherEndpoints.resetAnnotations.path), { method: "POST", body: JSON.stringify(body) });
+    return this.request(this.studyPath(researcherEndpoints.resetAnnotations.path), {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
   }
 
   async getDeployment(): Promise<DeploymentResponse | null> {
@@ -528,6 +571,8 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async createPreview(): Promise<PreviewSession> {
     const studyId = this.requireStudyId();
-    return this.request(researcherEndpoints.createPreview.path.replace(":studyId", String(studyId)), { method: "POST" });
+    return this.request(researcherEndpoints.createPreview.path.replace(":studyId", String(studyId)), {
+      method: "POST",
+    });
   }
 }

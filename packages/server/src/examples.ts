@@ -61,7 +61,9 @@ let catalogue: Map<string, ExampleFile> | null = null;
 function examples(): Map<string, ExampleFile> {
   if (!catalogue) {
     catalogue = new Map();
-    for (const file of readdirSync(EXAMPLES_DIR).filter((f) => f.endsWith(".json")).sort()) {
+    for (const file of readdirSync(EXAMPLES_DIR)
+      .filter((f) => f.endsWith(".json"))
+      .sort()) {
       const parsed = ExampleFileSchema.safeParse(JSON.parse(readFileSync(new URL(file, EXAMPLES_DIR), "utf8")));
       if (!parsed.success) throw new Error(`examples/${file}: ${parsed.error.message}`);
       catalogue.set(file.replace(/\.json$/, ""), parsed.data);
@@ -72,7 +74,13 @@ function examples(): Map<string, ExampleFile> {
 
 /** The catalogue (`GET /examples`). */
 export function listExamples(): ExampleSummary[] {
-  return [...examples()].map(([id, e]) => ({ id, category: e.category, title: e.title, description: e.description, tryThis: e.tryThis }));
+  return [...examples()].map(([id, e]) => ({
+    id,
+    category: e.category,
+    title: e.title,
+    description: e.description,
+    tryThis: e.tryThis,
+  }));
 }
 
 /** An answer as stored, from its short form in an example file. */
@@ -82,15 +90,19 @@ export function answerValue(short: ShortAnswer): VariableValue {
   if ("done" in short) return VariableValueSchema.parse(short);
   if ("spans" in short) return VariableValueSchema.parse({ done: true, skip: false, ...short });
   // item -> value: a scale
-  return { done: true, skip: false, values: Object.entries(short).map(([item, value]) => ({ item, value: value as string | number })) };
+  return {
+    done: true,
+    skip: false,
+    values: Object.entries(short).map(([item, value]) => ({ item, value: value as string | number })),
+  };
 }
 
 export interface FromExampleOptions {
   name?: string;
   /** The researcher who owns the study (null: none, e.g. the development demo). */
   ownerId: number | null;
-  /** They become the study's ADMIN; null: no study users (development headers). */
-  ownerEmail: string | null;
+  /** The owner becomes the study's ADMIN (false: no user roles, development headers). */
+  ownerIsAdmin: boolean;
   /** Fixed link secrets, in order (the development demo's `demo-secret`); random otherwise. */
   secrets?: string[];
 }
@@ -111,7 +123,7 @@ export async function createStudyFromExample(db: Sql, id: string, options: FromE
     const { study, designVersionId, unitIds, firstLink } = await createStudyFromRecipe(
       tx,
       { ...example, name: options.name ?? example.name },
-      { ownerId: options.ownerId, ownerEmail: options.ownerEmail, origin: id, secrets: options.secrets },
+      { ownerId: options.ownerId, ownerIsAdmin: options.ownerIsAdmin, origin: id, secrets: options.secrets },
     );
     const unitId = (externalId: string) => {
       const found = unitIds.get(externalId);
@@ -134,8 +146,11 @@ export async function createStudyFromExample(db: Sql, id: string, options: FromE
         "INSERT INTO coders (study_id, participant_id, link_id, ended) VALUES ($1, $2, $3, $4) RETURNING id",
         [study.id, `Example coder ${i + 1}`, firstLink, JSON.stringify({ outcome: "complete", at: new Date() })],
       ))!.id;
-      const values = Object.fromEntries(Object.entries(coder.variables).map(([name, short]) => [name, answerValue(short)]));
-      for (const [name, value] of Object.entries(values)) check(name, coderTypes.get(name) as AnyVariableType | undefined, value);
+      const values = Object.fromEntries(
+        Object.entries(coder.variables).map(([name, short]) => [name, answerValue(short)]),
+      );
+      for (const [name, value] of Object.entries(values))
+        check(name, coderTypes.get(name) as AnyVariableType | undefined, value);
       const isAuto = (name: string) => coderTypes.get(name)?.type === "auto";
       const assigned = Object.fromEntries(Object.entries(values).filter(([name]) => isAuto(name)));
       const answered = Object.fromEntries(Object.entries(values).filter(([name]) => !isAuto(name)));
@@ -149,7 +164,11 @@ export async function createStudyFromExample(db: Sql, id: string, options: FromE
         }
         const uid = unitId(externalId);
         // The deployed version of the unit, as coders' answers point to theirs
-        const version = (await one<{ id: number }>(tx, "SELECT id FROM unit_versions WHERE unit_id = $1 AND to_deploy IS NULL", [uid]))!.id;
+        const version = (await one<{ id: number }>(
+          tx,
+          "SELECT id FROM unit_versions WHERE unit_id = $1 AND to_deploy IS NULL",
+          [uid],
+        ))!.id;
         for (const [name, short] of Object.entries(answers)) {
           const value = answerValue(short);
           check(name, unitTypes.get(name), value);

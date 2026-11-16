@@ -32,11 +32,9 @@ change is written to the admin log (`listAdminLog`). Non-admins get 403
 | listUsers | `GET /admin/users?q=` | – | `AdminUserSchema[]` (at most 200) |
 | createUser | `POST /admin/users` | `AdminUserCreateSchema` | `AdminUserSchema` (201) |
 | updateUser | `PUT /admin/users/:id` | `AdminUserUpdateSchema` | `AdminUserSchema` |
+| deleteInvitation | `DELETE /admin/users/:id` | – | – (409 for a registered user) |
 | listResearcherRequests | `GET /admin/requests` | – | `ResearcherRequestSchema[]` |
 | decideResearcherRequest | `POST /admin/requests/:userId` | `{ approve }` | – |
-| listResearcherInvites | `GET /admin/researcher-invites` | – | `ResearcherInviteSchema[]` |
-| createResearcherInvite | `POST /admin/researcher-invites` | `ResearcherInviteWriteSchema` | `ResearcherInviteSchema` (201) |
-| revokeResearcherInvite | `POST /admin/researcher-invites/:id/revoke` | – | `ResearcherInviteSchema` |
 | listAdminStudies | `GET /admin/studies` | – | `AdminStudySchema[]` |
 | updateAdminStudy | `PUT /admin/studies/:id` | `AdminStudyUpdateSchema` | `AdminStudySchema` |
 | listAdminLog | `GET /admin/log` | – | `AdminLogEntrySchema[]` (newest 500) |
@@ -44,21 +42,36 @@ change is written to the admin log (`listAdminLog`). Non-admins get 403
 Notes:
 
 - **warnings**: what makes the server less secure (`shared_provider`,
-  `no_2fa_signal`; `security.md` §1 "Hardening warnings").
-- **settings**: `registration` (`open`: anyone who logs in becomes a
-  researcher; `requests`: users can ask), `defaultPlanId`, and the largest
+  `no_2fa_signal`, `migration_not_finished`; `security.md` §1 "Hardening
+  warnings").
+- **settings**: `registration` (`open`: every user with an email address
+  is a researcher, a role row for everyone; `requests`: users can ask), `defaultPlanId`, and the largest
   unit (`unitBytes`) and answer (`answerBytes`), in bytes of JSON.
 - **domains**: `uni.nl` matches that domain, `*.uni.nl` also its
-  subdomains. `researcher`: users there become researchers when they log
-  in; `planId`: their plan (the most generous of several).
+  subdomains. `researcher`: users with a verified email there are
+  researchers (a role row by domain, `docs/accounts.md` §2); `planId`:
+  their plan (the most generous of several).
 - **updateUser**: fields left out stay. `limits` replaces the user's
   overrides (`{}` clears them; `null` for a limit is no limit). `blocked`
   ends their sessions; API keys stop working while blocked. An admin can't
   block themselves or take away their own admin role (409). Giving or
   taking the `admin` role is sensitive: 403 `step_up_required` or
   `not_with_api_key`.
-- **createUser**: adds a user before they first log in (or changes the
-  role of an existing one). With role `admin`: sensitive, as above.
+- **listUsers**: per user also where their account role comes from
+  (`roleVia`: their own role, their `domain`, or `everyone`), whether they
+  logged in yet (`registered`; else an invitation, `invitationExpired`
+  after 3 months), roles the safeguards turned off (`rolesDisabled`),
+  whether their latest login had the second factor (`hasMfa`), and, while
+  the server moves to another login provider, whether they linked a login
+  there (`linked`).
+- **createUser**: invites an email address: the role goes to the user who
+  has it now, else to a shadow user that their first login claims
+  (`docs/accounts.md` §1; the same address again is the same invitation).
+  With role `admin`: sensitive, as above.
+- **updateUser** `restoreRoles`: turns the roles the safeguards turned off
+  on again (server and studies).
+- **deleteInvitation**: withdraws an invitation (a user who hasn't logged
+  in yet), with its roles.
 - **updateAdminStudy**: `suspended` (the runtime is dropped, coders get 403
   `study_suspended`), `owner` (a researcher's email: whose limits the study
   counts against).

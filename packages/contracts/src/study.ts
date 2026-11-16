@@ -18,7 +18,15 @@ export const StudyWriteSchema = z.object({
    * link, which differs per run. May contain `$var` and `$session`
    * references, like an end item's own URL. Left out: unchanged.
    */
-  redirectUrls: z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).max(64), z.string().max(2000)).optional(),
+  redirectUrls: z
+    .record(
+      z
+        .string()
+        .regex(/^[A-Za-z_][A-Za-z0-9_]*$/)
+        .max(64),
+      z.string().max(2000),
+    )
+    .optional(),
 });
 export type StudyWrite = z.infer<typeof StudyWriteSchema>;
 
@@ -65,8 +73,22 @@ export type StudyFromExample = z.infer<typeof StudyFromExampleSchema>;
 export const StudyUserSchema = z.object({
   email: z.string().email(),
   role: RoleSchema,
+  /** Writing: turn this user's role on again after the safeguards turned it off (`disabled`); its date counts from now. */
+  restore: z.literal(true).optional(),
 });
 export type StudyUser = z.infer<typeof StudyUserSchema>;
+
+/**
+ * A study user as listed: `pending`: invited by email, not logged in yet
+ * (their first login claims the role, within 3 months); `disabled`: the
+ * safeguards turned the role off (an expired invitation, or a dormant user):
+ * save it with `restore` to turn it on again.
+ */
+export const StudyUserResponseSchema = StudyUserSchema.omit({ restore: true }).extend({
+  pending: z.boolean(),
+  disabled: z.boolean(),
+});
+export type StudyUserResponse = z.infer<typeof StudyUserResponseSchema>;
 
 export const StudyUsersWriteSchema = z.object({
   users: z.array(StudyUserSchema),

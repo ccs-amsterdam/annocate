@@ -24,7 +24,8 @@ Depending on the server, you are a researcher as soon as you log in (a
 public server, or an email address at your university's domain), or you
 become one:
 
-- with an **invite link** from the server's admins: open it and log in;
+- when the server's admins **invite** your email address: log in with it
+  (within 3 months);
 - by **asking**: on the studies page, write who you are and what you want to
   code. An admin approves the request.
 
@@ -55,3 +56,11 @@ Some actions ask you to confirm it's you (step-up): making or revoking API
 keys, deleting answers, coders' data or a study, and giving or taking admin
 roles. You log in again (your provider may ask for your second factor),
 then do the action once more. API keys can't do these at all.
+
+## Your account is your login
+
+Your account is your login at the login provider, not your email address:
+if your address changes there, you keep your account and studies. When a
+server moves to another login provider, the login page offers the previous
+one for a while; log in with it once and **link** your new login when
+asked, so your account stays yours.

@@ -4,7 +4,7 @@ import type { z } from "zod";
 import type { Sql } from "../db.js";
 import { createApp } from "../app.js";
 import { createSession } from "../shared/sessions.js";
-import { createApiKey, ensureUser } from "../shared/accounts.js";
+import { createApiKey, ensureUser, setServerRole } from "../shared/accounts.js";
 import { emptyDb } from "./testDb.js";
 
 // The researcher API the way a script (R, Python) or another system uses it:
@@ -22,7 +22,7 @@ beforeEach(async () => {
 async function keyFor(email: string): Promise<string> {
   // Researchers: they create studies in these tests.
   const user = await ensureUser(db, email);
-  await db.query("UPDATE users SET role = 'researcher' WHERE id = $1", [user.id]);
+  await setServerRole(db, user.id, "researcher");
   return (await createApiKey(db, user.id, "test")).key;
 }
 
@@ -55,7 +55,11 @@ async function call<N extends ResearcherEndpointName>(
     method: endpoint.method,
     headers: {
       "content-type": "application/json",
-      ...(key?.startsWith("session ") ? { cookie: `annotinder_session=${key.slice(8)}`, "x-annotinder": "1" } : key ? { authorization: `Bearer ${key}` } : {}),
+      ...(key?.startsWith("session ")
+        ? { cookie: `annotinder_session=${key.slice(8)}`, "x-annotinder": "1" }
+        : key
+          ? { authorization: `Bearer ${key}` }
+          : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -74,14 +78,35 @@ const question = (name: string) => ({
 async function setUpStudy(key: string): Promise<{ studyId: number; unitIds: number[]; invite: string }> {
   const study = (await call(key, "createStudy", {}, { name: "From R" })).data;
   const units = (
-    await call(key, "createUnits", { studyId: study.id }, { units: [{ externalId: "a", data: { text: "one" } }, { externalId: "b", data: { text: "two" } }] })
+    await call(
+      key,
+      "createUnits",
+      { studyId: study.id },
+      {
+        units: [
+          { externalId: "a", data: { text: "one" } },
+          { externalId: "b", data: { text: "two" } },
+        ],
+      },
+    )
   ).data;
   const codebook = (
-    await call(key, "createDesignVersion", { studyId: study.id }, {
-      items: [
-        { type: "unit_loop", label: "loop", units: [{ mode: "all" }], layout: { template: "" }, children: [question("q")] },
-      ],
-    })
+    await call(
+      key,
+      "createDesignVersion",
+      { studyId: study.id },
+      {
+        items: [
+          {
+            type: "unit_loop",
+            label: "loop",
+            units: [{ mode: "all" }],
+            layout: { template: "" },
+            children: [question("q")],
+          },
+        ],
+      },
+    )
   ).data;
   expect((await call(key, "putDeployment", { studyId: study.id }, { designVersionId: codebook.id })).status).toBe(200);
   // Deploying made the study's link
@@ -105,7 +130,14 @@ async function code(studyId: number, invite: string, answer: string): Promise<vo
     const unit = ((await (await send("/loop/1/next")).json()) as { units: { id: number }[] }).units[0];
     if (!unit) return;
     const variables = { q: { done: true, values: [{ value: answer }] } };
-    expect((await send("/variables/unit", { method: "POST", body: JSON.stringify({ unitId: unit.id, loop: "1", variables }) })).status).toBe(200);
+    expect(
+      (
+        await send("/variables/unit", {
+          method: "POST",
+          body: JSON.stringify({ unitId: unit.id, loop: "1", variables }),
+        })
+      ).status,
+    ).toBe(200);
   }
 }
 
@@ -117,7 +149,11 @@ describe("authentication", () => {
     expect(res.status).toBe(401);
 
     const key = await keyFor("Researcher@Uni.nl");
-    expect((await call(key, "getMe")).data).toMatchObject({ email: "researcher@uni.nl", role: "researcher", researcherRequest: null });
+    expect((await call(key, "getMe")).data).toMatchObject({
+      email: "researcher@uni.nl",
+      role: "researcher",
+      researcherRequest: null,
+    });
   });
 
   it("manages a researcher's own keys; a revoked key stops working", async () => {
@@ -208,10 +244,17 @@ describe("downloading annotations", () => {
     const { studyId, unitIds, invite } = await setUpStudy(key);
     await code(studyId, invite, "yes");
     // Resetting answers is sensitive: a web session, not the key
-    const reset = await call(await sessionFor("r@uni.nl"), "resetAnnotations", { studyId }, { variables: ["q"], unitIds: [unitIds[0]] });
+    const reset = await call(
+      await sessionFor("r@uni.nl"),
+      "resetAnnotations",
+      { studyId },
+      { variables: ["q"], unitIds: [unitIds[0]] },
+    );
     expect(reset.data).toEqual({ retired: 1 });
 
-    expect((await call(key, "listAnnotations", { studyId })).data.annotations.map((r) => r.unitId)).toEqual([unitIds[1]]);
+    expect((await call(key, "listAnnotations", { studyId })).data.annotations.map((r) => r.unitId)).toEqual([
+      unitIds[1],
+    ]);
     const all = (await call(key, "listAnnotations", { studyId }, undefined, "?retired=true")).data.annotations;
     expect(all).toHaveLength(2);
     expect(all.find((r) => r.unitId === unitIds[0])?.retiredAt).toBeInstanceOf(Date);

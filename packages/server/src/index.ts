@@ -3,7 +3,7 @@ import { one } from "./db.js";
 import { describeDatabase, openDatabase } from "./database.js";
 import { seed } from "./seed.js";
 import { createApp } from "./app.js";
-import { parseMfaClaim } from "./oidc.js";
+import { parseMfaClaim, type MfaClaim } from "./oidc.js";
 
 // Node entry point. PORT (default 8787); HOST (where to listen; default all
 // addresses, in development mode localhost only); DATABASE_URL (Postgres),
@@ -32,7 +32,9 @@ const devMode = process.env.AUTH_DEV_MODE === "1";
 const LOOPBACK = ["localhost", "127.0.0.1", "::1"];
 const host = process.env.HOST?.trim() || (devMode ? "localhost" : undefined);
 if (devMode && !LOOPBACK.includes(host ?? "")) {
-  throw new Error(`AUTH_DEV_MODE needs the server to listen on localhost only (HOST=${host ?? "all addresses"}): development mode is never for a server other people use`);
+  throw new Error(
+    `AUTH_DEV_MODE needs the server to listen on localhost only (HOST=${host ?? "all addresses"}): development mode is never for a server other people use`,
+  );
 }
 
 const db = await openDatabase();
@@ -40,18 +42,46 @@ const db = await openDatabase();
 if (process.env.ANNOTINDER_DEMO === "1" && !(await one(db, "SELECT 1 FROM studies LIMIT 1"))) await seed(db);
 
 const { OIDC_HOST, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, ANNOTINDER_PUBLIC_URL } = process.env;
+// Moving to another provider: the previous one, accepted until OIDC_PREVIOUS_UNTIL (docs/accounts.md "Changing providers")
+const { OIDC_PREVIOUS_HOST, OIDC_PREVIOUS_CLIENT_ID, OIDC_PREVIOUS_CLIENT_SECRET, OIDC_PREVIOUS_UNTIL } = process.env;
+let previous:
+  { oidc: { issuer: string; clientId: string; clientSecret: string; mfaClaim: MfaClaim }; until: Date } | undefined;
+if (OIDC_PREVIOUS_HOST) {
+  const until = new Date(OIDC_PREVIOUS_UNTIL ?? "");
+  if (!OIDC_PREVIOUS_CLIENT_ID || !OIDC_PREVIOUS_CLIENT_SECRET || Number.isNaN(until.getTime())) {
+    throw new Error(
+      "OIDC_PREVIOUS_HOST needs OIDC_PREVIOUS_CLIENT_ID, OIDC_PREVIOUS_CLIENT_SECRET and OIDC_PREVIOUS_UNTIL (a date)",
+    );
+  }
+  previous = {
+    oidc: {
+      issuer: OIDC_PREVIOUS_HOST,
+      clientId: OIDC_PREVIOUS_CLIENT_ID,
+      clientSecret: OIDC_PREVIOUS_CLIENT_SECRET,
+      mfaClaim: parseMfaClaim(process.env.OIDC_PREVIOUS_MFA_CLAIM),
+    },
+    until,
+  };
+}
 const login =
   OIDC_HOST && OIDC_CLIENT_ID && OIDC_CLIENT_SECRET
     ? {
-        oidc: { issuer: OIDC_HOST, clientId: OIDC_CLIENT_ID, clientSecret: OIDC_CLIENT_SECRET, mfaClaim: parseMfaClaim(process.env.OIDC_MFA_CLAIM) },
+        oidc: {
+          issuer: OIDC_HOST,
+          clientId: OIDC_CLIENT_ID,
+          clientSecret: OIDC_CLIENT_SECRET,
+          mfaClaim: parseMfaClaim(process.env.OIDC_MFA_CLAIM),
+        },
         publicUrl: ANNOTINDER_PUBLIC_URL ?? `http://localhost:${port}`,
+        ...(previous ? { previous } : {}),
       }
     : undefined;
 if (login && !process.env.ANNOTINDER_SECRET) {
   console.warn("ANNOTINDER_SECRET is not set: logins in progress and previews end with a restart");
 }
 const stepUpMaxAge = Number(process.env.AUTH_STEP_UP_MAX_AGE ?? 600);
-if (!Number.isInteger(stepUpMaxAge) || stepUpMaxAge <= 0) throw new Error("AUTH_STEP_UP_MAX_AGE must be a number of seconds");
+if (!Number.isInteger(stepUpMaxAge) || stepUpMaxAge <= 0)
+  throw new Error("AUTH_STEP_UP_MAX_AGE must be a number of seconds");
 const admins = (process.env.ANNOTINDER_ADMINS ?? "").split(",");
 const clientDir = process.env.ANNOTINDER_CLIENT_DIR || undefined;
 const frameAncestors = (process.env.ANNOTINDER_FRAME_ANCESTORS ?? "").split(/[\s,]+/).filter(Boolean);
@@ -74,10 +104,19 @@ const app = createApp(db, {
 
 const server = serve({ fetch: app.fetch, port, ...(host ? { hostname: host } : {}) }, (info) => {
   console.log(`@annotinder/server listening on http://localhost:${info.port} (${describeDatabase()})`);
-  console.log(login ? `  researcher login: ${login.oidc.issuer} (second factor: ${process.env.OIDC_MFA_CLAIM ?? "amr:mfa"}), callback ${login.publicUrl}/api/auth/callback` : "  researcher login: not configured (OIDC_HOST)");
+  console.log(
+    login
+      ? `  researcher login: ${login.oidc.issuer} (second factor: ${process.env.OIDC_MFA_CLAIM ?? "amr:mfa"}), callback ${login.publicUrl}/api/auth/callback`
+      : "  researcher login: not configured (OIDC_HOST)",
+  );
   console.log(`  admins: ${admins.filter((a) => a.trim()).join(", ") || "none named (ANNOTINDER_ADMINS)"}`);
-  console.log(clientDir ? `  client: ${clientDir}` : "  client: not served here (ANNOTINDER_CLIENT_DIR; in development Vite serves it)");
-  if (devMode) console.warn(`  development mode (AUTH_DEV_MODE=1): development auth headers accepted, listening on ${host} only`);
+  console.log(
+    clientDir
+      ? `  client: ${clientDir}`
+      : "  client: not served here (ANNOTINDER_CLIENT_DIR; in development Vite serves it)",
+  );
+  if (devMode)
+    console.warn(`  development mode (AUTH_DEV_MODE=1): development auth headers accepted, listening on ${host} only`);
 });
 
 const shutdown = () => {

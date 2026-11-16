@@ -40,7 +40,11 @@ const sessionApi = new HttpResearcherApi({ baseUrl: API_URL });
 const devApi = new HttpResearcherApi({ baseUrl: API_URL, devRole: "ADMIN", devEmail: "dev@example.com" });
 const servers = new Map([sessionApi, devApi].map((api) => [api, new ServerApi(api)]));
 
-type Researcher = { state: { options: AuthOptions; me: MeResponse | null } | null; dev: boolean; api: HttpResearcherApi };
+type Researcher = {
+  state: { options: AuthOptions; me: MeResponse | null } | null;
+  dev: boolean;
+  api: HttpResearcherApi;
+};
 
 /**
  * Who is using the app as a researcher: a logged-in researcher (session
@@ -51,7 +55,7 @@ function useResearcherState(): Researcher {
   const [state, setState] = useState<Researcher["state"]>(null);
   useEffect(() => {
     void (async () => {
-      const options = await sessionApi.getAuthOptions().catch(() => ({ login: false, devMode: false }));
+      const options = await sessionApi.getAuthOptions().catch(() => ({ login: false, devMode: false, previous: null }));
       const api = !options.login && options.devMode ? devApi : sessionApi;
       const me = await api.getMe().catch(() => null);
       setState({ options, me });
@@ -93,13 +97,23 @@ function AppHeader() {
                 ["/code", "Code"],
               ] as const
             ).map(([to, label]) => (
-              <Link key={to} to={to} activeOptions={{ exact: to !== "/research" }} className={`${nav} text-left`} activeProps={active}>
+              <Link
+                key={to}
+                to={to}
+                activeOptions={{ exact: to !== "/research" }}
+                className={`${nav} text-left`}
+                activeProps={active}
+              >
                 {label}
               </Link>
             ))}
           </PopoverContent>
         </Popover>
-        {researcher.dev && <span className="hidden rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground sm:inline">dev mode</span>}
+        {researcher.dev && (
+          <span className="hidden rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground sm:inline">
+            dev mode
+          </span>
+        )}
       </div>
       <nav className="hidden items-center gap-1 sm:flex" aria-label="Sections">
         <Link to="/research" className={nav} activeProps={active}>
@@ -111,7 +125,12 @@ function AppHeader() {
       </nav>
       <div className="flex flex-1 justify-end">
         {researcher.state && (
-          <AccountMenu client={researcher.api} me={researcher.state.me} dev={researcher.dev} canLogIn={researcher.state.options.login} />
+          <AccountMenu
+            client={researcher.api}
+            me={researcher.state.me}
+            dev={researcher.dev}
+            canLogIn={researcher.state.options.login}
+          />
         )}
       </div>
     </header>
@@ -157,7 +176,10 @@ const useRouterLeaveGuard: LeaveGuard = (when) => {
   };
 };
 
-const SLUG_TABS = Object.fromEntries(Object.entries(TAB_SLUGS).map(([tab, slug]) => [slug, tab as TabId])) as Record<string, TabId>;
+const SLUG_TABS = Object.fromEntries(Object.entries(TAB_SLUGS).map(([tab, slug]) => [slug, tab as TabId])) as Record<
+  string,
+  TabId
+>;
 
 /** The researcher section: behind a login if the server has one, else with development headers. */
 function ResearchPage({ location }: { location: AdminLocation }) {
@@ -195,7 +217,11 @@ function ResearchPage({ location }: { location: AdminLocation }) {
   return (
     <WithHeader>
       <div className="flex h-full flex-col overflow-hidden">
-        {researcher.dev ? admin(devApi, researcher.state.me) : <ResearcherGate client={sessionApi}>{(who) => admin(sessionApi, who)}</ResearcherGate>}
+        {researcher.dev ? (
+          admin(devApi, researcher.state.me)
+        ) : (
+          <ResearcherGate client={sessionApi}>{(who) => admin(sessionApi, who)}</ResearcherGate>
+        )}
       </div>
     </WithHeader>
   );
@@ -213,7 +239,12 @@ function ResearchLayout() {
   if (parts[0] === "admin") location = { page: "server" };
   else if (parts[0] === "studies" && Number(parts[1]) > 0) {
     const version = Number((search as StringSearch).version);
-    location = { page: "study", studyId: Number(parts[1]), tab: SLUG_TABS[parts[2]] ?? "Overview", ...(Number.isInteger(version) && version > 0 ? { version } : {}) };
+    location = {
+      page: "study",
+      studyId: Number(parts[1]),
+      tab: SLUG_TABS[parts[2]] ?? "Overview",
+      ...(Number.isInteger(version) && version > 0 ? { version } : {}),
+    };
   }
   return <ResearchPage location={location} />;
 }
@@ -240,13 +271,18 @@ const studyRoute = createRoute({
   getParentRoute: () => researchRoute,
   path: "/studies/$studyId",
   beforeLoad: ({ params }) => {
-    throw redirect({ to: "/research/studies/$studyId/$tab", params: { studyId: params.studyId, tab: "overview" }, replace: true });
+    throw redirect({
+      to: "/research/studies/$studyId/$tab",
+      params: { studyId: params.studyId, tab: "overview" },
+      replace: true,
+    });
   },
 });
 const studyTabRoute = createRoute({
   getParentRoute: () => researchRoute,
   path: "/studies/$studyId/$tab",
-  validateSearch: (search: Record<string, unknown>): { version?: string } => (typeof search.version === "string" ? { version: search.version } : {}),
+  validateSearch: (search: Record<string, unknown>): { version?: string } =>
+    typeof search.version === "string" ? { version: search.version } : {},
 });
 const codeHomeRoute = createRoute({
   getParentRoute: () => rootRoute,

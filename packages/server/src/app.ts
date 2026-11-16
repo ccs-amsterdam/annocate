@@ -59,7 +59,7 @@ export interface AppOptions {
    * is where browsers reach this server (and the client), e.g.
    * `https://annotinder.com`; the provider redirects to `<publicUrl>/api/auth/callback`.
    */
-  login?: { oidc: OidcOptions; publicUrl: string };
+  login?: { oidc: OidcOptions; publicUrl: string; previous?: { oidc: OidcOptions; until: Date } };
   /** Emails that are admins (docs/accounts.md). */
   admins?: string[];
   /** How recent (seconds) a login's second factor must be for sensitive actions (`AUTH_STEP_UP_MAX_AGE`, default 600). */
@@ -91,7 +91,15 @@ export function createApp(db: Sql, options: AppOptions = {}) {
     db,
     deployments: new Deployments(db, secret, { ...DEFAULT_RUNTIME_OPTIONS, ...options.runtime }, options.wrapStore),
     devMode: options.devMode ?? false,
-    login: options.login ? { oidc: new Oidc(options.login.oidc), publicUrl: options.login.publicUrl.replace(/\/$/, "") } : null,
+    login: options.login
+      ? {
+          oidc: new Oidc(options.login.oidc),
+          publicUrl: options.login.publicUrl.replace(/\/$/, ""),
+          previous: options.login.previous
+            ? { oidc: new Oidc(options.login.previous.oidc), until: options.login.previous.until }
+            : null,
+        }
+      : null,
     secret,
     admins: (options.admins ?? []).map((e) => e.trim().toLowerCase()).filter(Boolean),
     stepUpMaxAge: options.stepUpMaxAge ?? 600,
@@ -100,7 +108,8 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   const app = new Hono<Env>();
   app.use("*", securityHeaders({ frameAncestors: options.frameAncestors, https: options.https ?? false }));
   const onError = (err: Error, c: Context) => {
-    if (err instanceof HttpError) return c.json({ error: err.message, ...(err.code ? { code: err.code } : {}) }, err.status);
+    if (err instanceof HttpError)
+      return c.json({ error: err.message, ...(err.code ? { code: err.code } : {}) }, err.status);
     // Postgres: a malformed or out-of-range value in a parameter (e.g. an id in the path).
     const pgCode = (err as { code?: unknown }).code;
     if (pgCode === "22P02" || pgCode === "22003") return c.json({ error: "Invalid parameter" }, 400);
@@ -126,19 +135,22 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   api.use("/me/*", bodyLimit({ maxSize: 64 * 1024, onError: tooLarge }));
 
   // Rate limits (docs/security.md): generous, against floods and guessing.
-  const limiter = options.rateLimits ? new RateLimiter(db, { ...DEFAULT_RATE_LIMITS, ...options.rateLimits }, options.trustProxy ?? false) : null;
+  const limiter = options.rateLimits
+    ? new RateLimiter(db, { ...DEFAULT_RATE_LIMITS, ...options.rateLimits }, options.trustProxy ?? false)
+    : null;
   api.use("/d/*", rateLimit(limiter, "coder", { memory: true }));
   api.use("/d/*", rateLimit(limiter, "coderStart", { when: (c) => !readDevice(c) }));
   api.use("/d/*", rateLimit(limiter, "transfer", { when: (c) => c.req.path.endsWith("/transfer/redeem") }));
   // Logins, and confirming one with a passkey or a recovery code (against guessing)
-  for (const path of ["/auth/login", "/auth/callback", "/auth/passkey/*"]) api.use(path, rateLimit(limiter, "login"));
+  for (const path of ["/auth/login", "/auth/callback"]) api.use(path, rateLimit(limiter, "login"));
   // Per account: the API key or login session (hashed: no secrets in the table), else per address.
   const accountKey = (c: Context) => {
     const credential = c.req.header("authorization") ?? getCookie(c, SESSION_COOKIE);
     return credential ? `account:${createHash("sha256").update(credential).digest("hex").slice(0, 32)}` : null;
   };
   // ("/study/*" also matches "/study")
-  for (const path of ["/study/*", "/me/*", "/admin/*"]) api.use(path, rateLimit(limiter, "researcher", { key: accountKey }));
+  for (const path of ["/study/*", "/me/*", "/admin/*"])
+    api.use(path, rateLimit(limiter, "researcher", { key: accountKey }));
 
   // Coder API (coder.ts): same origin as the client, no CORS.
   api.use("/coder/*", rateLimit(limiter, "coder", { memory: true }));

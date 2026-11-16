@@ -52,6 +52,7 @@ checkout finds it itself).
 | `DATABASE_URL` | Postgres, e.g. `postgres://user:pass@host:5432/annotinder`. The compose file sets it from `POSTGRES_PASSWORD`. Without it the server uses PGlite in `PGLITE_DIR` (development) |
 | `OIDC_HOST`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | Researcher login (below): the provider's issuer, the client ID and secret. Without them nobody can log in |
 | `OIDC_MFA_CLAIM` | Which ID token claim counts as a second factor: `amr:mfa` (default) or `acr:<value>`. `security.md` §1 |
+| `OIDC_PREVIOUS_HOST`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_MFA_CLAIM`, `OIDC_PREVIOUS_UNTIL` | While moving to another login provider: the previous one, accepted until `OIDC_PREVIOUS_UNTIL` (a date) so users can link their new login. `accounts.md` "Changing providers" |
 | `AUTH_STEP_UP_MAX_AGE` | Seconds a login's second factor stays fresh for sensitive actions (default 600). `security.md` §1 |
 | `ANNOTINDER_ADMINS` | Comma-separated emails that get the admin role when they log in: the server's first admins (`accounts.md`) |
 | `ANNOTINDER_TRUST_PROXY` | `1`: behind a proxy (Caddy, nginx) that sets `X-Forwarded-For`: rate limits count the client's address from it. Only when the server can't be reached except through the proxy |
@@ -79,6 +80,11 @@ Microsoft).
   §1): verified email addresses (`email_verified: true`), a second factor
   it signals in the ID token (`OIDC_MFA_CLAIM`), and step-up (`max_age`,
   `auth_time`). Researcher access always needs the second factor.
+- Users are their login at the provider (`iss` + `sub`), not their email
+  address. To move to another provider, keep the old one for a while
+  (`OIDC_PREVIOUS_*`) so users link their new login, or have users
+  re-claim their account by email (`pnpm --filter @annotinder/server
+  identities reset --yes`): `accounts.md` "Changing providers".
 
 Security settings (second factor, headers, rate limits, framing):
 `security.md`.

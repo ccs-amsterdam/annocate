@@ -16,7 +16,8 @@
     "test": "vitest run --passWithNoTests",
     "lint": "eslint .",
     "db:reset": "tsx src/reset.ts",
-    "keys": "tsx src/keys.ts"
+    "keys": "tsx src/keys.ts",
+    "identities": "tsx src/identities.ts"
   },
   "dependencies": {
     "@annotinder/contracts": "workspace:*",

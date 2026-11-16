@@ -76,7 +76,6 @@ response checked against its contract schema.
 | [logout](#logout) | `POST /auth/logout` | none | – | – |
 | [getMe](#getme) | `GET /me` | any | – | `MeResponseSchema` |
 | [requestResearcher](#requestresearcher) | `POST /me/researcher-request` | any | `ResearcherRequestWriteSchema` | `MeResponseSchema` |
-| [redeemResearcherInvite](#redeemresearcherinvite) | `POST /me/researcher-invite` | any | `RedeemResearcherInviteSchema` | `MeResponseSchema` |
 | [listApiKeys](#listapikeys) | `GET /me/keys` | any | – | `ApiKeyResponseSchema[]` |
 | [createApiKey](#createapikey) | `POST /me/keys` | any | `ApiKeyWriteSchema` | `ApiKeyCreatedSchema` |
 | [revokeApiKey](#revokeapikey) | `POST /me/keys/:id/revoke` | any | – | `ApiKeyResponseSchema` |
@@ -89,7 +88,7 @@ response checked against its contract schema.
 | [getStudy](#getstudy) | `GET /study/:id` | READ | – | `StudyResponseSchema` |
 | [updateStudy](#updatestudy) | `PUT /study/:id` | ADMIN | `StudyWriteSchema` | `StudyResponseSchema` |
 | [deleteStudy](#deletestudy) | `DELETE /study/:id` | ADMIN | – | – |
-| [getStudyUsers](#getstudyusers) | `GET /study/:id/users` | ADMIN | – | `StudyUserSchema[]` |
+| [getStudyUsers](#getstudyusers) | `GET /study/:id/users` | ADMIN | – | `StudyUserResponseSchema[]` |
 | [putStudyUsers](#putstudyusers) | `PUT /study/:id/users` | ADMIN | `StudyUsersWriteSchema` | – |
 | [getOverview](#getoverview) | `GET /study/:studyId/overview` | READ | – | `StudyOverviewSchema` |
 | **Codebooks** | | | | |
@@ -140,8 +139,9 @@ Implementation: [`researcher/me.ts`](../../packages/server/src/researcher/me.ts)
 ### getAuthOptions
 
 `GET /auth/options` → `AuthOptionsSchema`, without authentication: whether
-this server has login (`login`) and accepts development headers
-(`devAuth`).
+this server has login (`login`), accepts development headers (`devMode`),
+and, while it moves to another login provider, until when the previous one
+is accepted (`previous: { until }`, else null).
 
 ### logout
 
@@ -152,9 +152,14 @@ Logging in itself is not a JSON endpoint: the browser opens
 `GET /auth/login?returnTo=<path on this origin>`, which redirects to the
 provider; the provider redirects back to `/api/auth/callback`, which starts the
 session and redirects to `returnTo`. A refused login comes back with
-`?loginError=email_unverified|blocked|login_failed|step_up_failed`
-(`LoginErrorSchema`). Logging in also applies the server's registration
-rules (`docs/accounts.md`): it can make a user a researcher or an admin.
+`?loginError=email_unverified|blocked|login_failed|step_up_failed|link_failed`
+(`LoginErrorSchema`). Options: `stepUp=1` (a fresh second factor for
+sensitive actions, `docs/security.md` §1); `provider=previous` (the
+previous login provider, until `previous.until`); `link=1` (with a session:
+adds the login at the current provider to this account, account linking;
+`link_failed` if that login is someone else's). The login is the user of
+that identity (`iss` + `sub`), or claims an invitation for its verified
+email (`docs/accounts.md` §1).
 
 ### getMe
 
@@ -171,14 +176,6 @@ null: they need a step-up login now).
 `POST /me/researcher-request` (`{ message }`) → `MeResponseSchema`: asks
 the server's admins to become a researcher. 403 if the server takes no
 requests, 409 for researchers.
-
-### redeemResearcherInvite
-
-`POST /me/researcher-invite` (`{ secret }`) → `MeResponseSchema`: a
-researcher invite link (from an admin) makes the user a researcher, with
-its plan if they have none of their own. Works once; 404 `invite_invalid`
-for an unknown, used, revoked or expired link. The researcher UI does this
-for `?researcherInvite=<secret>` after logging in.
 
 ### listApiKeys
 
@@ -268,11 +265,14 @@ a deploy. `StudyResponseSchema` also has
 
 ### getStudyUsers
 
-`GET /study/:id/users` → `StudyUserSchema[]`: email and role per user.
+`GET /study/:id/users` → `StudyUserResponseSchema[]`: email and role per
+user; `pending`: invited, not logged in yet; `disabled`: the safeguards
+turned the role off (an invitation older than 3 months, or a user back
+after a year without a second factor; `docs/accounts.md` §2).
 
 ### putStudyUsers
 
-`PUT /study/:id/users` → 204. Replaces the whole list; it must keep at least one `ADMIN` (400 otherwise). Emails are stored lowercased, as accounts are; an email twice in the list is a 400.
+`PUT /study/:id/users` → 204. Replaces the whole list; it must keep at least one `ADMIN` (400 otherwise). Emails are stored lowercased, as accounts are; an email twice in the list is a 400. The role goes to the user who has the address now, or to an invitation (a shadow user) that their first login claims. `restore: true` on an entry turns a `disabled` role on again. A change in who is `ADMIN` is sensitive: a web session with a recent second factor (403 `step_up_required`), never an API key (403 `not_with_api_key`).
 
 ### getOverview
 

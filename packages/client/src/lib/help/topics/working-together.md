@@ -14,10 +14,20 @@ the results. Each has a **role** in the study.
 On the study's **Settings** tab, **Who has access** lists the people of the study and
 their roles. Only admins of the study see this list and can change it.
 
-- **Add** someone with their email address and a role. They see the study
-  once they log in to AnnoTinder with that address.
+- **Add** someone with their email address and a role. If they have logged
+  in before, the role is theirs at once; otherwise they are *invited*, and
+  see the study once they log in with that address (verified by their login
+  provider) within 3 months. An unused invitation *expires*.
+- The role belongs to the person, not the address: if their address changes
+  at their login provider, they keep their access.
+- A role can be *turned off* to protect the study, when an invitation
+  expired or someone comes back after more than a year without a second
+  factor. **Restore** turns it on again: only if you're sure the address is
+  still theirs.
 - Change a role with the select next to their name.
 - Remove someone with the bin icon.
+- Making someone an admin of the study, or taking it away, asks you to
+  confirm it's you (step-up, see [Accounts and limits](accounts.md)).
 
 A study always keeps at least one admin, so it can't lose its last one by
 accident.

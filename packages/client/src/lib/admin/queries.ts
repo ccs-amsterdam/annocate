@@ -1,4 +1,10 @@
-import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import type {
   DesignVersionMeta,
   DeploymentVersion,
@@ -11,6 +17,7 @@ import type {
   CoderProgress,
   DeleteCoders,
   StudyUser,
+  StudyUserResponse,
   ResetAnnotations,
   UnitResponse,
   DeploymentResponse,
@@ -45,7 +52,8 @@ export const keys = {
   study: (id?: number) => ["admin", "study", id ?? "current"] as const,
   studyUsers: (id: number) => ["admin", "study", id, "users"] as const,
   designVersions: (studyId?: number) => ["admin", "study", studyId ?? "current", "designVersions"] as const,
-  designVersion: (studyId: number | undefined, id: number) => ["admin", "study", studyId ?? "current", "designVersion", id] as const,
+  designVersion: (studyId: number | undefined, id: number) =>
+    ["admin", "study", studyId ?? "current", "designVersion", id] as const,
   // Fields and pages share the units prefix: invalidating units refreshes them too
   units: (studyId?: number) => ["admin", "study", studyId ?? "current", "units"] as const,
   unitFields: (studyId?: number) => ["admin", "study", studyId ?? "current", "units", "fields"] as const,
@@ -89,7 +97,9 @@ export function useExamplesQuery(client: ResearcherApi, enabled = true): UseQuer
   return useQuery({ queryKey: keys.examples, queryFn: () => client.listExamples(), staleTime: Infinity, enabled });
 }
 
-export function useCreateStudyFromExampleMutation(client: ResearcherApi): UseMutationResult<StudyResponse, Error, StudyFromExample> {
+export function useCreateStudyFromExampleMutation(
+  client: ResearcherApi,
+): UseMutationResult<StudyResponse, Error, StudyFromExample> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: StudyFromExample) => client.createStudyFromExample(body),
@@ -100,7 +110,9 @@ export function useCreateStudyFromExampleMutation(client: ResearcherApi): UseMut
   });
 }
 
-export function useCreateStudyFromRecipeMutation(client: ResearcherApi): UseMutationResult<StudyResponse, Error, RecipeInput> {
+export function useCreateStudyFromRecipeMutation(
+  client: ResearcherApi,
+): UseMutationResult<StudyResponse, Error, RecipeInput> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: RecipeInput) => client.createStudyFromRecipe(body),
@@ -252,7 +264,10 @@ export function useDeleteUnitMutation(client: ResearcherApi): UseMutationResult<
 
 /** The draft's set groups, or (`live`) the deployed ones. */
 export function useSetGroupsQuery(client: ResearcherApi, live = false): UseQueryResult<SetGroupResponse[]> {
-  return useQuery({ queryKey: [...keys.sets(client.studyId), live ? "live" : "draft"], queryFn: () => client.listSetGroups(live) });
+  return useQuery({
+    queryKey: [...keys.sets(client.studyId), live ? "live" : "draft"],
+    queryFn: () => client.listSetGroups(live),
+  });
 }
 
 /** Changing the draft's sets changes what deploying would change, and the overview. */
@@ -269,8 +284,12 @@ function useSetGroupMutation<T, V>(client: ResearcherApi, mutationFn: (vars: V) 
   });
 }
 
-export function usePutSetGroupMutation(client: ResearcherApi): UseMutationResult<SetGroupResponse, Error, { group: string; body: SetGroupWrite }> {
-  return useSetGroupMutation(client, ({ group, body }: { group: string; body: SetGroupWrite }) => client.putSetGroup(group, body));
+export function usePutSetGroupMutation(
+  client: ResearcherApi,
+): UseMutationResult<SetGroupResponse, Error, { group: string; body: SetGroupWrite }> {
+  return useSetGroupMutation(client, ({ group, body }: { group: string; body: SetGroupWrite }) =>
+    client.putSetGroup(group, body),
+  );
 }
 
 export function useDeleteSetGroupMutation(client: ResearcherApi): UseMutationResult<void, Error, string> {
@@ -278,7 +297,11 @@ export function useDeleteSetGroupMutation(client: ResearcherApi): UseMutationRes
 }
 
 export function useCodersQuery(client: ResearcherApi): UseQueryResult<CoderProgress[]> {
-  return useQuery({ queryKey: keys.coders(client.studyId), queryFn: () => client.listCoders(), refetchInterval: 10_000 });
+  return useQuery({
+    queryKey: keys.coders(client.studyId),
+    queryFn: () => client.listCoders(),
+    refetchInterval: 10_000,
+  });
 }
 
 /** The study's deletion log: coders whose data was deleted. */
@@ -322,7 +345,11 @@ export function useRenewLinkSecretMutation(client: ResearcherApi) {
 }
 
 export function useOverviewQuery(client: ResearcherApi): UseQueryResult<StudyOverview> {
-  return useQuery({ queryKey: keys.overview(client.studyId), queryFn: () => client.getOverview(), refetchInterval: 30_000 });
+  return useQuery({
+    queryKey: keys.overview(client.studyId),
+    queryFn: () => client.getOverview(),
+    refetchInterval: 30_000,
+  });
 }
 
 /** Progress of the live study; errors are not retried. */
@@ -343,7 +370,11 @@ export function usePendingChangesQuery(client: ResearcherApi, enabled = true): U
 
 /** The deployed versions, newest first. */
 export function useDeploymentVersionsQuery(client: ResearcherApi, enabled = true): UseQueryResult<DeploymentVersion[]> {
-  return useQuery({ queryKey: keys.deploymentVersions(client.studyId), queryFn: () => client.listDeploymentVersions(), enabled });
+  return useQuery({
+    queryKey: keys.deploymentVersions(client.studyId),
+    queryFn: () => client.listDeploymentVersions(),
+    enabled,
+  });
 }
 
 /** The live design version; null if the study was never deployed. */
@@ -357,7 +388,7 @@ export function useDeploymentQuery(client: ResearcherApi): UseQueryResult<Deploy
  * design versions are refetched too.
  */
 /** The study's users and their roles (ADMIN only: others get an error). */
-export function useStudyUsersQuery(client: ResearcherApi): UseQueryResult<StudyUser[]> {
+export function useStudyUsersQuery(client: ResearcherApi): UseQueryResult<StudyUserResponse[]> {
   const studyId = client.studyId!;
   return useQuery({ queryKey: keys.studyUsers(studyId), queryFn: () => client.getStudyUsers(studyId), retry: false });
 }
@@ -373,7 +404,9 @@ export function useStudyUsersMutation(client: ResearcherApi): UseMutationResult<
 }
 
 /** Pauses (no new units for coders) or resumes the live study, keeping its codebook. */
-export function useDeploymentActiveMutation(client: ResearcherApi): UseMutationResult<DeploymentResponse, Error, { designVersionId: number; active: boolean }> {
+export function useDeploymentActiveMutation(
+  client: ResearcherApi,
+): UseMutationResult<DeploymentResponse, Error, { designVersionId: number; active: boolean }> {
   const queryClient = useQueryClient();
   return useMutation({
     // Keeps the deployed units, and their links (confirmed at deploy): pausing deploys nothing
@@ -386,7 +419,9 @@ export function useDeploymentActiveMutation(client: ResearcherApi): UseMutationR
 }
 
 /** Retires answers so units are coded again; refreshes everything that counts answers. */
-export function useResetAnswersMutation(client: ResearcherApi): UseMutationResult<{ retired: number }, Error, ResetAnnotations> {
+export function useResetAnswersMutation(
+  client: ResearcherApi,
+): UseMutationResult<{ retired: number }, Error, ResetAnnotations> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: ResetAnnotations) => client.resetAnnotations(body),
@@ -396,7 +431,11 @@ export function useResetAnswersMutation(client: ResearcherApi): UseMutationResul
 
 /** One unit with its data. */
 export function useUnitQuery(client: ResearcherApi, id: number | null): UseQueryResult<UnitResponse> {
-  return useQuery({ queryKey: [...keys.units(client.studyId), "one", id], queryFn: () => client.getUnit(id!), enabled: id !== null });
+  return useQuery({
+    queryKey: [...keys.units(client.studyId), "one", id],
+    queryFn: () => client.getUnit(id!),
+    enabled: id !== null,
+  });
 }
 
 /** What to deploy: a codebook (the deployed one: keep it), and the draft units and sets (default) or not. */
@@ -411,13 +450,24 @@ export interface DeployVars {
  * many links (contracts CONFIRM_LINKS) the server asks to confirm (409
  * `confirm_links`): deploy again with `confirmLinks`.
  */
-export function usePublishMutation(client: ResearcherApi): UseMutationResult<DeploymentResponse, Error, number | DeployVars> {
+export function usePublishMutation(
+  client: ResearcherApi,
+): UseMutationResult<DeploymentResponse, Error, number | DeployVars> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (vars: number | DeployVars) => {
-      const { designVersionId, confirmLinks, units = false } = typeof vars === "number" ? { designVersionId: vars } : vars;
+      const {
+        designVersionId,
+        confirmLinks,
+        units = false,
+      } = typeof vars === "number" ? { designVersionId: vars } : vars;
       const current = queryClient.getQueryData<DeploymentResponse | null>(keys.deployment(client.studyId));
-      return client.putDeployment({ designVersionId, units, active: current?.active ?? true, ...(confirmLinks ? { confirmLinks } : {}) });
+      return client.putDeployment({
+        designVersionId,
+        units,
+        active: current?.active ?? true,
+        ...(confirmLinks ? { confirmLinks } : {}),
+      });
     },
     onSuccess: (deployment) => {
       queryClient.setQueryData(keys.deployment(client.studyId), deployment);
@@ -426,7 +476,9 @@ export function usePublishMutation(client: ResearcherApi): UseMutationResult<Dep
       void queryClient.invalidateQueries({ queryKey: keys.overview(client.studyId) });
       void queryClient.invalidateQueries({ queryKey: keys.links(client.studyId) });
       void queryClient.invalidateQueries({ queryKey: keys.sets(client.studyId) });
-      void queryClient.invalidateQueries({ queryKey: ["admin", "study", client.studyId ?? "current", "designVersion"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["admin", "study", client.studyId ?? "current", "designVersion"],
+      });
       return queryClient.invalidateQueries({ queryKey: keys.designVersions(client.studyId) });
     },
   });

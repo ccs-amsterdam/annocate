@@ -11,9 +11,12 @@ and checked, what needs a decision, and what is open. Items marked
   (`api/coder.md`). Stateless apart from each live job's deployment spec:
   several processes can share a database (`architecture.md` §3), with the
   exceptions in §4 below.
-- **Accounts**: OIDC login, API keys, roles (user / researcher / admin),
-  registration rules, plans and limits, admin UI, audit log, MFA via the
-  provider's `amr` (`accounts.md`).
+- **Accounts**: per the lab's Authentication standard (2026-11-16): OIDC
+  login with the provider's second factor always, step-up for sensitive
+  actions, API keys that never do them; identities (`iss` + `sub`), roles
+  by user or email domain, invitations by email (JIT claiming) with the
+  safeguards, changing providers (account linking, re-claiming); plans
+  and limits, admin UI, audit log (`accounts.md`, `security.md`).
 - **Coding**: question types, unit loops with four distribution modes,
   batches of units with answers saved in the background, soft pause,
   closing sessions, quitting and deletion requests, transfer to another
@@ -107,10 +110,10 @@ codings grow. That is plenty at a realistic pace. Beyond it, see
 
 ## 2. Decisions (decided 2026-10-31, built unless noted)
 
-1. **Second factor**: `ANNOTINDER_2FA = none | annotinder | oidc`. With
-   `annotinder` (recommended) AnnoTinder checks a passkey itself, with
-   recovery codes and admin resets (`security.md` §1). Researchers always
-   log in through the OIDC provider. Not built: step-up, the AmCAT login.
+1. **Second factor**: superseded (2026-11-16) by the lab's Authentication
+   standard: always the provider's (`OIDC_MFA_CLAIM`), no setting to turn
+   it off outside development mode, step-up for sensitive actions; no
+   passkeys of AnnoTinder's own (`security.md` §1).
 2. **Optional-login links link a login**: decided as intended. Whoever has
    the session on their device may link a login's email to it.
 3. **A participant id on a new device**: the coder is told to continue on
@@ -151,10 +154,9 @@ From the review list:
 
 From the security review, low:
 
-- Done (2026-11-02): API keys record whether they were made with a second
-  factor (`api_keys.mfa`); a key made without one counts as a login
-  without one when `ANNOTINDER_2FA` is on. Keys made by the server's
-  operator (`keys` command) count as having one.
+- Done (2026-11-16): API keys are made only in a web session with a recent
+  second factor (or by the server's operator, `keys` command), and never
+  do sensitive actions (`security.md` §1).
 - The routing check for unitset templates is wider than documented.
   `part_{$var.x}` accepts any unitset named `part_*`; a bare `{$var.x}`
   accepts every unitset. Fix: when the variable has options, check against
@@ -198,12 +200,15 @@ Development and tests:
 1. Read `security.md` (second factor, headers, rate limits) before
    inviting anyone outside the team.
 2. Done: the migrations are reset (§2 item 8), with the `annotation_values`
-   foreign key from §3.
+   foreign key from §3. **To do**: fold migrations `0004_provider_2fa` and
+   `0005_identities_roles` (the Authentication standard) into the initial
+   schema before the release; their data conversion (users become shadow
+   users, re-claimed by email) is then unneeded.
 3. Run one server process at first (previews and answer limits are
    per-process). Put a proxy in front with TLS, and set
    `ANNOTINDER_TRUST_PROXY=1` (the compose file does).
-4. Set `ANNOTINDER_SECRET`, `ANNOTINDER_2FA=annotinder` and
-   `ANNOTINDER_ADMINS`. Never set `ANNOTINDER_DEV_AUTH` or
+4. Set `ANNOTINDER_SECRET` and `ANNOTINDER_ADMINS`, and a login provider
+   that meets the standard (`hosting.md`). Never set `AUTH_DEV_MODE` or
    `ANNOTINDER_DEMO`.
 5. Back up the database daily (`hosting.md` "Backups"), and test a restore
    once.

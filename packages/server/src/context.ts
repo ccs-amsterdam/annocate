@@ -11,8 +11,12 @@ export interface Server {
   deployments: Deployments;
   /** Development mode (`AUTH_DEV_MODE`): development auth headers (researcher/auth.ts), on this machine only (index.ts refuses otherwise). */
   devMode: boolean;
-  /** Researcher login (researcher/login.ts); null when no provider is configured. */
-  login: { oidc: Oidc; publicUrl: string } | null;
+  /**
+   * Researcher login (researcher/login.ts); null when no provider is
+   * configured. `previous`: the provider being moved away from
+   * (`OIDC_PREVIOUS_*`), accepted until `until` (docs/accounts.md "Changing providers").
+   */
+  login: { oidc: Oidc; publicUrl: string; previous: { oidc: Oidc; until: Date } | null } | null;
   /** Signs short-lived cookies and preview tokens. */
   secret: string;
   /** Emails that are admins on this server (`ANNOTINDER_ADMINS`), lowercased; admins can make more. */

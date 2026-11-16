@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 import { describeDatabase, openDatabase } from "./database.js";
-import { createApiKey, ensureUser, listApiKeys, revokeApiKey } from "./shared/accounts.js";
+import { createApiKey, ensureUser, listApiKeys, revokeApiKey, setServerRole } from "./shared/accounts.js";
 
 // Managing researchers' API keys from the server's machine, e.g. to give
 // the first researcher a key (there is no researcher login yet):
@@ -18,7 +18,9 @@ const { positionals, values } = parseArgs({
 });
 const command = positionals[0];
 if (!["create", "list", "revoke"].includes(command ?? "") || !values.email) {
-  console.error("Usage: keys create|list|revoke --email <email> [--label <label>] [--id <key id>] [--role user|researcher|admin]");
+  console.error(
+    "Usage: keys create|list|revoke --email <email> [--label <label>] [--id <key id>] [--role user|researcher|admin]",
+  );
   process.exit(1);
 }
 
@@ -28,7 +30,7 @@ try {
   // The account role (docs/accounts.md): a researcher creates studies, an admin manages the server.
   if (values.role) {
     if (!["user", "researcher", "admin"].includes(values.role)) throw new Error("--role is user, researcher or admin");
-    await db.query("UPDATE users SET role = $1 WHERE id = $2", [values.role, user.id]);
+    await setServerRole(db, user.id, values.role as "user" | "researcher" | "admin", "keys command");
   }
   console.error(`${describeDatabase()}, user ${user.email}`);
   if (command === "create") {
@@ -38,7 +40,9 @@ try {
     console.log(key.key);
   } else if (command === "list") {
     for (const key of await listApiKeys(db, user.id)) {
-      const state = key.revokedAt ? `revoked ${key.revokedAt.toISOString()}` : `last used ${key.lastUsed?.toISOString() ?? "never"}`;
+      const state = key.revokedAt
+        ? `revoked ${key.revokedAt.toISOString()}`
+        : `last used ${key.lastUsed?.toISOString() ?? "never"}`;
       console.log(`${key.id}\t${key.prefix}…\t${key.label}\t${state}`);
     }
   } else {
