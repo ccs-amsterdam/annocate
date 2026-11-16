@@ -1,4 +1,3 @@
-import { securityLog } from "../shared/passkeys.js";
 import { Hono, type Context } from "hono";
 import { randomBytes } from "node:crypto";
 import {
@@ -19,7 +18,8 @@ import {
 } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import type { Server, Env } from "../context.js";
-import { requireResearcher } from "./auth.js";
+import { checkSensitive, requireResearcher } from "./auth.js";
+import { serverWarnings } from "../shared/warnings.js";
 import { HttpError } from "../shared/http.js";
 import { effectiveLimits, getSettings } from "../shared/accounts.js";
 
@@ -121,7 +121,9 @@ export function admin(server: Server): Hono<Env> {
       JSON.stringify(details),
     ]);
 
-  // ---- settings ----------------------------------------------------------------
+  // ---- warnings and settings ---------------------------------------------------
+
+  app.get("/admin/warnings", async (c) => c.json(await serverWarnings(server)));
 
   app.get("/admin/settings", async (c) => c.json(await getSettings(db)));
 
@@ -213,6 +215,7 @@ export function admin(server: Server): Hono<Env> {
 
   app.post("/admin/users", async (c) => {
     const user = await body(c, AdminUserCreateSchema);
+    if (user.role === "admin") checkSensitive(server, c.get("researcher"));
     const email = user.email.trim().toLowerCase();
     const row = await one<{ id: number }>(
       db,
@@ -231,6 +234,8 @@ export function admin(server: Server): Hono<Env> {
     if (id === c.get("researcher").userId && (update.blocked || (update.role && update.role !== "admin"))) {
       throw new HttpError(409, "You can't block yourself or take away your own admin role");
     }
+    // Giving or taking the admin role is sensitive (researcher/auth.ts)
+    if (update.role && update.role !== before.role && (update.role === "admin" || before.role === "admin")) checkSensitive(server, c.get("researcher"));
     await db.transaction(async (tx) => {
       if (update.role) await tx.query("UPDATE users SET role = $1 WHERE id = $2", [update.role, id]);
       if (update.planId !== undefined) await tx.query("UPDATE users SET plan_id = $1 WHERE id = $2", [update.planId, id]);
@@ -244,21 +249,6 @@ export function admin(server: Server): Hono<Env> {
     });
     await log(c, update.blocked === true ? "block user" : update.blocked === false ? "unblock user" : "update user", before.email, update);
     return c.json(await userById(id));
-  });
-
-  // After checking who they are out of band (never by email alone): they add a new passkey at their next login.
-  app.post("/admin/users/:id/reset-passkeys", async (c) => {
-    const id = Number(c.req.param("id"));
-    const user = await userById(id);
-    await db.transaction(async (tx) => {
-      await tx.query("DELETE FROM passkeys WHERE user_id = $1", [id]);
-      await tx.query("DELETE FROM recovery_codes WHERE user_id = $1", [id]);
-      // Their sessions end: the next login starts with a new passkey.
-      await tx.query("DELETE FROM sessions WHERE user_id = $1", [id]);
-      await securityLog(tx, id, "passkeys_reset", { by: c.get("researcher").email });
-    });
-    await log(c, "reset passkeys", user.email);
-    return c.body(null, 204);
   });
 
   // ---- becoming a researcher ---------------------------------------------------

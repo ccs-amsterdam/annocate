@@ -2,7 +2,8 @@
 
 The server admin's endpoints (account role `admin`, `docs/accounts.md`),
 under `/api/admin/...`, with the researcher API's authentication (session
-cookie or API key; a required second factor applies). Called by the
+cookie or API key; the second factor applies, and the sensitive actions
+below need a recent one in a web session, never an API key: `security.md` §1). Called by the
 client's server admin page (`ServerAdmin.tsx`, through `api/serverApi.ts`).
 
 - Contracts: `adminEndpoints` in
@@ -18,6 +19,7 @@ change is written to the admin log (`listAdminLog`). Non-admins get 403
 
 | Endpoint | | Request | Response |
 |---|---|---|---|
+| getWarnings | `GET /admin/warnings` | – | `ServerWarningSchema[]` |
 | getSettings | `GET /admin/settings` | – | `ServerSettingsSchema` |
 | putSettings | `PUT /admin/settings` | `ServerSettingsSchema` | `ServerSettingsSchema` |
 | listPlans | `GET /admin/plans` | – | `PlanSchema[]` |
@@ -41,6 +43,8 @@ change is written to the admin log (`listAdminLog`). Non-admins get 403
 
 Notes:
 
+- **warnings**: what makes the server less secure (`shared_provider`,
+  `no_2fa_signal`; `security.md` §1 "Hardening warnings").
 - **settings**: `registration` (`open`: anyone who logs in becomes a
   researcher; `requests`: users can ask), `defaultPlanId`, and the largest
   unit (`unitBytes`) and answer (`answerBytes`), in bytes of JSON.
@@ -50,9 +54,11 @@ Notes:
 - **updateUser**: fields left out stay. `limits` replaces the user's
   overrides (`{}` clears them; `null` for a limit is no limit). `blocked`
   ends their sessions; API keys stop working while blocked. An admin can't
-  block themselves or take away their own admin role (409).
+  block themselves or take away their own admin role (409). Giving or
+  taking the `admin` role is sensitive: 403 `step_up_required` or
+  `not_with_api_key`.
 - **createUser**: adds a user before they first log in (or changes the
-  role of an existing one).
+  role of an existing one). With role `admin`: sensitive, as above.
 - **updateAdminStudy**: `suspended` (the runtime is dropped, coders get 403
   `study_suspended`), `owner` (a researcher's email: whose limits the study
   counts against).

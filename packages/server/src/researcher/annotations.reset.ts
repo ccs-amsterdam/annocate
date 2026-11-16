@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { ResetAnnotationsSchema, type ResetAnnotations } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
-import { requireStudyUser } from "./auth.js";
+import { requireSensitive, requireStudyUser } from "./auth.js";
 import type { Sql } from "../db.js";
 
 // Reset: retire the live values of these variables (e.g. a loop's
@@ -10,7 +10,7 @@ export function annotationsReset(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.post("/study/:studyId/annotations/reset", requireStudyUser(server, "ADMIN"), async (c) => {
+  app.post("/study/:studyId/annotations/reset", requireStudyUser(server, "ADMIN"), requireSensitive(server), async (c) => {
     const parsed = ResetAnnotationsSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     const studyId = c.get("studyId");

@@ -13,7 +13,7 @@ docs live in `docs/`:
 - `docs/coder-identity.md`: identity, sessions, invitations and login
   (coders and researchers), deleting a coder's data, response times.
 - `docs/accounts.md`: account roles, becoming a researcher, limits, admins.
-- `docs/security.md`: the second factor (passkeys), security headers, rate
+- `docs/security.md`: login and the second factor (the lab's Authentication standard), security headers, rate
   limits, exported data.
 - `docs/client.md`: client design decisions (layout, question types and
   answers, references and conditions, admin UI).

@@ -2,7 +2,7 @@ import { Hono, type Context } from "hono";
 import { ApiKeyWriteSchema, RedeemResearcherInviteSchema, ResearcherRequestWriteSchema, type MeResponse } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
 import { one } from "../db.js";
-import { lacksMfa, requireResearcher } from "./auth.js";
+import { freshUntil, lacksMfa, requireResearcher, requireSensitive } from "./auth.js";
 import { HttpError } from "../shared/http.js";
 import { createApiKey, effectiveLimits, ensureUser, getSettings, listApiKeys, revokeApiKey, usage } from "../shared/accounts.js";
 
@@ -27,11 +27,7 @@ export function me(server: Server): Hono<Env> {
       usage: await usage(db, id),
       researcherRequest: request ? { at: request.at } : null,
       canRequestResearcher: (await getSettings(db)).registration.requests,
-      twoFactor: {
-        mode: server.twoFactor,
-        required: lacksMfa(server, researcher),
-        passkeys: server.twoFactor === "annotinder" ? (await one<{ n: number }>(db, "SELECT count(*)::int AS n FROM passkeys WHERE user_id = $1", [id]))!.n : 0,
-      },
+      twoFactor: { required: lacksMfa(researcher), freshUntil: freshUntil(server, researcher) },
     };
   }
 
@@ -76,14 +72,14 @@ export function me(server: Server): Hono<Env> {
 
   app.get("/me/keys", signedIn, async (c) => c.json(await listApiKeys(db, await userId(c))));
 
-  app.post("/me/keys", signedIn, async (c) => {
+  // Sensitive: only in a web session with a recent second factor (step-up), never with an API key
+  app.post("/me/keys", signedIn, requireSensitive(server), async (c) => {
     const parsed = ApiKeyWriteSchema.safeParse(await c.req.json().catch(() => undefined));
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
-    // The key has a second factor if the login that makes it has one
-    return c.json(await createApiKey(db, await userId(c), parsed.data.label, c.get("researcher").mfa), 201);
+    return c.json(await createApiKey(db, await userId(c), parsed.data.label), 201);
   });
 
-  app.post("/me/keys/:id/revoke", signedIn, async (c) => {
+  app.post("/me/keys/:id/revoke", signedIn, requireSensitive(server), async (c) => {
     const key = await revokeApiKey(db, await userId(c), Number(c.req.param("id")));
     if (!key) return c.json({ error: "API key not found" }, 404);
     return c.json(key);

@@ -1,12 +1,13 @@
 import type { Context, Next } from "hono";
 import { accountRoleAtLeast, type AccountRole, type Role } from "@annotinder/contracts";
 import { one } from "../db.js";
+import { HttpError } from "../shared/http.js";
 import type { Env, Server } from "../context.js";
 import { getCookie } from "hono/cookie";
 import { userForKey } from "../shared/accounts.js";
 import { userForSession } from "../shared/sessions.js";
 import { CLIENT_HEADER } from "../runtime/session.js";
-import { SESSION_COOKIE } from "./login.js";
+import { isFresh, SESSION_COOKIE } from "./login.js";
 
 // Researcher authentication (docs/api/researcher.md).
 //
@@ -17,10 +18,12 @@ import { SESSION_COOKIE } from "./login.js";
 //
 // Both identify a user by email; their role in a study is in `study_users`,
 // their account role (user, researcher, admin) on the user
-// (docs/accounts.md). With a second factor required (`twoFactor`), a login
-// without one only gets `GET /me` and the passkey routes (API keys count as
-// with one: making one needs it).
-// - Development only (`devAuth`, ANNOTINDER_DEV_AUTH=1): plain
+// (docs/accounts.md). Researcher access needs a login with a second factor
+// (the provider's, `OIDC_MFA_CLAIM`): a login without one only gets
+// `GET /me` and logging out. API keys count as with one (making one needs
+// it), but never do sensitive actions (`requireSensitive`): those need a
+// web session whose second factor is recent (step-up).
+// - Development only (`devMode`, AUTH_DEV_MODE=1): plain
 //   `x-dev-role` / `x-dev-email` headers, checked against nothing but
 //   `study_users`, and `x-dev-account-role` (default admin). A study without study
 //   users lets any dev role through. Never enable this on a reachable server.
@@ -40,8 +43,12 @@ export interface Researcher {
   userId?: number;
   /** What they may do on this server. */
   accountRole: AccountRole;
-  /** The login used a second factor (API keys: yes). */
+  /** How the request authenticated: a web session, an API key, or development headers. */
+  via: "session" | "key" | "dev";
+  /** The login used a second factor (API keys: yes, see above). */
   mfa: boolean;
+  /** Sessions: when the provider authenticated the user with the second factor (step-up). */
+  authTime: Date | null;
   /** Development headers only: the role the request claims. */
   devRole?: Role;
 }
@@ -50,17 +57,17 @@ async function authenticate(c: Context, server: Server): Promise<Researcher | nu
   const bearer = /^Bearer (.+)$/.exec(c.req.header("authorization") ?? "")?.[1];
   if (bearer) {
     const user = await userForKey(server.db, bearer.trim());
-    return user ? { email: user.email, userId: user.id, accountRole: user.role, mfa: user.mfa } : null;
+    return user ? { email: user.email, userId: user.id, accountRole: user.role, via: "key", mfa: true, authTime: null } : null;
   }
   const session = getCookie(c, SESSION_COOKIE);
   if (session && c.req.header(CLIENT_HEADER) === "1") {
     const user = await userForSession(server.db, session);
-    if (user) return { email: user.email, userId: user.id, accountRole: user.role, mfa: user.mfa };
+    if (user) return { email: user.email, userId: user.id, accountRole: user.role, via: "session", mfa: user.mfa, authTime: user.authTime };
   }
   const devRole = c.req.header("x-dev-role") as Role | undefined;
-  if (server.devAuth && devRole && devRole in ROLE_RANK) {
+  if (server.devMode && devRole && devRole in ROLE_RANK) {
     const accountRole = (c.req.header("x-dev-account-role") as AccountRole | undefined) ?? "admin";
-    return { email: c.req.header("x-dev-email") ?? "dev@localhost", devRole, accountRole, mfa: true };
+    return { email: c.req.header("x-dev-email") ?? "dev@localhost", devRole, accountRole, via: "dev", mfa: true, authTime: null };
   }
   return null;
 }
@@ -78,9 +85,38 @@ async function roleIn(server: Server, researcher: Researcher, studyId: number): 
   return ROLE_RANK[row.role] < ROLE_RANK[researcher.devRole] ? null : researcher.devRole;
 }
 
-/** Whether the server requires a second factor and this login lacks one. */
-export const lacksMfa = (server: Server, researcher: Researcher) => server.twoFactor !== "none" && !researcher.mfa;
-const MFA_REQUIRED = { error: "This server requires a second factor for researcher access", code: "mfa_required" } as const;
+/** Whether this login lacks the second factor researcher access needs. */
+export const lacksMfa = (researcher: Researcher) => !researcher.mfa;
+const MFA_REQUIRED = { error: "Researcher access needs a login with a second factor: log in again with one", code: "mfa_required" } as const;
+
+/** Until when a researcher may do sensitive actions without logging in again; null: not now (docs/security.md "Step-up"). */
+export function freshUntil(server: Server, researcher: Researcher): Date | null {
+  if (researcher.via === "dev") return new Date(Date.now() + server.stepUpMaxAge * 1000);
+  if (researcher.via !== "session" || !isFresh(researcher, server.stepUpMaxAge)) return null;
+  return new Date(researcher.authTime!.getTime() + server.stepUpMaxAge * 1000);
+}
+
+/**
+ * Checks a sensitive action (creating or revoking API keys, deleting
+ * answers or coders' data, deleting a study, giving or taking admin roles):
+ * never with an API key (403 `not_with_api_key`), and only with a recent
+ * second factor (403 `step_up_required`: the client logs in again with
+ * `?stepUp=1`). Development headers pass. Call after authentication.
+ */
+export function checkSensitive(server: Server, researcher: Researcher): void {
+  if (researcher.via === "key") throw new HttpError(403, "This can't be done with an API key: use the web client", "not_with_api_key");
+  if (!freshUntil(server, researcher)) {
+    throw new HttpError(403, "Confirm it's you: log in again with your second factor to do this", "step_up_required");
+  }
+}
+
+/** Middleware: `checkSensitive` for every request of the route (after an authentication middleware). */
+export function requireSensitive(server: Server) {
+  return async (c: Context<Env>, next: Next) => {
+    checkSensitive(server, c.get("researcher"));
+    await next();
+  };
+}
 
 /**
  * Middleware: an authenticated user (401 otherwise), as `researcher`; with
@@ -91,7 +127,7 @@ export function requireResearcher(server: Server, { role, withoutMfa = false }: 
   return async (c: Context<Env>, next: Next) => {
     const researcher = await authenticate(c, server);
     if (!researcher) return c.json({ error: "Unauthorized" }, 401);
-    if (!withoutMfa && lacksMfa(server, researcher)) return c.json(MFA_REQUIRED, 403);
+    if (!withoutMfa && lacksMfa(researcher)) return c.json(MFA_REQUIRED, 403);
     if (role && !accountRoleAtLeast(researcher.accountRole, role)) {
       return c.json({ error: `This needs a ${role} account`, code: `${role}_required` }, 403);
     }
@@ -109,7 +145,7 @@ export function requireStudyUser(server: Server, minRole: Role) {
   return async (c: Context<Env>, next: Next) => {
     const researcher = await authenticate(c, server);
     if (!researcher) return c.json({ error: "Unauthorized" }, 401);
-    if (lacksMfa(server, researcher)) return c.json(MFA_REQUIRED, 403);
+    if (lacksMfa(researcher)) return c.json(MFA_REQUIRED, 403);
 
     const raw = c.req.param("studyId");
     const studyId = raw ? Number(raw) : NaN;

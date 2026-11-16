@@ -47,7 +47,11 @@ unit as text).
 
 ## Two-factor authentication
 
-A server can require a second factor (such as an authenticator app or a
-passkey) for managing studies. Logging in without one then only lets you code.
-Set the second factor up with your login provider, then log out and in
-again.
+Managing studies needs a second factor (such as an authenticator app or a
+passkey) at your login provider. Logging in without one only lets you code:
+set it up with your login provider, then log in again.
+
+Some actions ask you to confirm it's you (step-up): making or revoking API
+keys, deleting answers, coders' data or a study, and giving or taking admin
+roles. You log in again (your provider may ask for your second factor),
+then do the action once more. API keys can't do these at all.

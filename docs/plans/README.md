@@ -13,7 +13,7 @@ what exists.
 | [design-viewer.md](design-viewer.md): reproducibility: a design file with its format and client version, a browser-only viewer to go through a design as coders did (placeholder units, the export's units, later a coder's answers), versioned viewers per release | Agreed, not started |
 | [gold-checks.md](gold-checks.md): hidden unit fields, and checking coders against known answers | Superseded by special-sets.md, except hidden fields and server-side checks |
 | [question-loops.md](question-loops.md): the same questions once per value of a list | Idea, not designed in detail |
-| [passkeys.md](passkeys.md): passkeys as a second factor checked by AnnoTinder, and a login shared with AmCAT | Passkeys built (`ANNOTINDER_2FA=annotinder`); step-up and the AmCAT login not |
+| [passkeys.md](passkeys.md): passkeys as a second factor checked by AnnoTinder, and a login shared with AmCAT | Superseded (2026-11-16): the second factor is the login provider's, per the lab's Authentication standard (`security.md` §1); AnnoTinder's passkeys were removed |
 | [encryption.md](encryption.md): encrypting participants' answers in the browser | On hold |
 
 Local coding from R and Python is planned in `../compositions.md`.

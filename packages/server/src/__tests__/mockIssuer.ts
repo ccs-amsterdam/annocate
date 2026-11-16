@@ -62,7 +62,7 @@ export function mockIssuer() {
       access_token: "at",
       token_type: "Bearer",
       expires_in: 300,
-      id_token: idToken({ iss: ISSUER, aud: CLIENT_ID, sub: "user-1", iat: now, exp: now + 300, nonce: grant.nonce, ...grant.claims }),
+      id_token: idToken({ iss: ISSUER, aud: CLIENT_ID, sub: "user-1", iat: now, exp: now + 300, auth_time: now, nonce: grant.nonce, ...grant.claims }),
     });
   });
 

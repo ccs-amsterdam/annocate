@@ -9,5 +9,5 @@ pnpm --filter @annotinder/client exec vite build --logLevel error
 data=$(mktemp -d)
 trap 'rm -rf "$data"' EXIT
 cd packages/server
-PORT="${E2E_PORT:-8799}" PGLITE_DIR="$data" ANNOTINDER_DEV_AUTH=1 ANNOTINDER_DEMO=1 \
+PORT="${E2E_PORT:-8799}" PGLITE_DIR="$data" AUTH_DEV_MODE=1 ANNOTINDER_DEMO=1 \
   ANNOTINDER_CLIENT_DIR="$(cd ../client/dist && pwd)" ANNOTINDER_SECRET=e2e npx tsx src/index.ts

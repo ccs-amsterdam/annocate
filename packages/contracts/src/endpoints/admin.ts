@@ -15,6 +15,7 @@ import {
   ResearcherRequestDecisionSchema,
   ResearcherRequestSchema,
   ServerSettingsSchema,
+  ServerWarningSchema,
 } from "../admin.js";
 
 /**
@@ -22,6 +23,8 @@ import {
  * the researcher API's authentication. Every change is logged (`listAdminLog`).
  */
 export const adminEndpoints = {
+  /** What makes this server less secure (docs/security.md "Hardening warnings"). */
+  getWarnings: { method: "GET", path: "/admin/warnings", request: z.void(), response: z.array(ServerWarningSchema) },
   getSettings: { method: "GET", path: "/admin/settings", request: z.void(), response: ServerSettingsSchema },
   putSettings: { method: "PUT", path: "/admin/settings", request: ServerSettingsSchema, response: ServerSettingsSchema },
 
@@ -37,9 +40,8 @@ export const adminEndpoints = {
   /** `?q=` filters by email; at most 200, most recent logins first. */
   listUsers: { method: "GET", path: "/admin/users", request: z.void(), response: z.array(AdminUserSchema) },
   createUser: { method: "POST", path: "/admin/users", request: AdminUserCreateSchema, response: AdminUserSchema },
+  /** Giving or taking the admin role is sensitive: a web session with a recent second factor, never an API key. */
   updateUser: { method: "PUT", path: "/admin/users/:id", request: AdminUserUpdateSchema, response: AdminUserSchema },
-  /** Removes a user's passkeys and recovery codes (after checking who they are out of band): they add a new passkey at their next login. */
-  resetPasskeys: { method: "POST", path: "/admin/users/:id/reset-passkeys", request: z.void(), response: z.void() },
 
   listResearcherRequests: { method: "GET", path: "/admin/requests", request: z.void(), response: z.array(ResearcherRequestSchema) },
   decideResearcherRequest: { method: "POST", path: "/admin/requests/:userId", request: ResearcherRequestDecisionSchema, response: z.void() },

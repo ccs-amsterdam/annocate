@@ -28,8 +28,8 @@ Implementation: [`researcher/auth.ts`](../../packages/server/src/researcher/auth
 [`shared/accounts.ts`](../../packages/server/src/shared/accounts.ts),
 [`shared/sessions.ts`](../../packages/server/src/shared/sessions.ts).
 
-Development only: a server started with `ANNOTINDER_DEV_AUTH=1` (as `pnpm
-dev` does) also accepts `x-dev-role` / `x-dev-email` (and
+Development only: a server started with `AUTH_DEV_MODE=1` (as `pnpm
+dev` does; localhost only) also accepts `x-dev-role` / `x-dev-email` (and
 `x-dev-account-role`, default `admin`) headers instead of a key, which the
 dev shell's researcher UI uses. Never on a reachable server.
 
@@ -40,11 +40,15 @@ on the server (`docs/accounts.md`): `user` (codes; works on studies they have
 a role in), `researcher` (also creates studies, within their limits), `admin`
 (also the [admin API](admin.md)).
 
-**Second factor.** A server with `ANNOTINDER_2FA` set (`annotinder`:
-passkeys, `oidc`: the provider's) answers 403 `mfa_required` to a login
-that didn't give the second factor, except `GET /me` (which says so in
-`twoFactor`) and the passkey routes (`/auth/passkey/...`, `security.md`
-§1). API keys count as having one (making one needs it). Too many requests:
+**Second factor.** Researcher access needs a login with the provider's
+second factor: a session without one gets 403 `mfa_required`, except
+`GET /me` (which says so in `twoFactor`) and logging out (`security.md` §1).
+API keys count as having one. **Sensitive actions** (creating or revoking
+API keys, resetting answers, deleting coders' data or a study, changing a
+study's ADMINs or the server admin role) need a web session whose second
+factor is at most `AUTH_STEP_UP_MAX_AGE` seconds old: 403
+`step_up_required` otherwise (log in again with `/auth/login?stepUp=1`),
+and API keys never do them: 403 `not_with_api_key`. Too many requests:
 429 `rate_limited` (`security.md` §3).
 
 **Limits.** Adding units, and creating a study, can be refused with 403
@@ -148,7 +152,7 @@ Logging in itself is not a JSON endpoint: the browser opens
 `GET /auth/login?returnTo=<path on this origin>`, which redirects to the
 provider; the provider redirects back to `/api/auth/callback`, which starts the
 session and redirects to `returnTo`. A refused login comes back with
-`?loginError=email_unverified|blocked|login_failed`
+`?loginError=email_unverified|blocked|login_failed|step_up_failed`
 (`LoginErrorSchema`). Logging in also applies the server's registration
 rules (`docs/accounts.md`): it can make a user a researcher or an admin.
 
@@ -157,8 +161,10 @@ rules (`docs/accounts.md`): it can make a user a researcher or an admin.
 `GET /me` → `MeResponseSchema`: the email the request is authenticated as,
 their account `role`, their `limits` and `usage` (studies they own and their
 units), an open `researcherRequest`, whether the server takes requests
-(`canRequestResearcher`), and `mfaRequired` (this login lacks a second
-factor the server requires: nothing else works until they log in with one).
+(`canRequestResearcher`), and `twoFactor`: `required` (this login lacks the
+provider's second factor: nothing else works until they log in with one) and
+`freshUntil` (until when sensitive actions work without logging in again;
+null: they need a step-up login now).
 
 ### requestResearcher
 
@@ -183,12 +189,14 @@ themselves: the server stores only a hash.
 ### createApiKey
 
 `POST /me/keys` → `ApiKeyCreatedSchema` (201): a new key, `key` shown only
-in this response.
+in this response. Sensitive: a web session with a recent second factor
+(403 `step_up_required`), never an API key (403 `not_with_api_key`). Keys
+never do sensitive actions.
 
 ### revokeApiKey
 
 `POST /me/keys/:id/revoke` → `ApiKeyResponseSchema`. The key stops working
-at once. 404 if it isn't one of your keys.
+at once. 404 if it isn't one of your keys. Sensitive, as `createApiKey`.
 
 ## Studies
 

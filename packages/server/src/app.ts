@@ -1,5 +1,3 @@
-import { passkeys } from "./researcher/passkeys.js";
-import type { TwoFactorMode } from "@annotinder/contracts";
 import { createHash } from "node:crypto";
 import { getCookie } from "hono/cookie";
 import { DEFAULT_RATE_LIMITS, RateLimiter, rateLimit, type RateLimits } from "./shared/rateLimit.js";
@@ -51,10 +49,11 @@ export interface AppOptions {
   /** Tests: observe or alter what the runtime reads and writes. */
   wrapStore?: (store: Store) => Store;
   /**
-   * Accept development auth headers (`x-dev-role`) for the researcher API
-   * (researcher/auth.ts). For local development and tests only.
+   * Development mode (`AUTH_DEV_MODE`): development auth headers
+   * (`x-dev-role`) for the researcher API (researcher/auth.ts). For local
+   * development and tests only.
    */
-  devAuth?: boolean;
+  devMode?: boolean;
   /**
    * Researcher login with an OpenID Connect provider (oidc.ts). `publicUrl`
    * is where browsers reach this server (and the client), e.g.
@@ -63,8 +62,8 @@ export interface AppOptions {
   login?: { oidc: OidcOptions; publicUrl: string };
   /** Emails that are admins (docs/accounts.md). */
   admins?: string[];
-  /** Researcher access needs a login with a second factor. */
-  twoFactor?: TwoFactorMode;
+  /** How recent (seconds) a login's second factor must be for sensitive actions (`AUTH_STEP_UP_MAX_AGE`, default 600). */
+  stepUpMaxAge?: number;
   /**
    * The built client (`packages/client/dist`): served from this server, so
    * coders and researchers reach one origin (session cookies). Without it
@@ -91,11 +90,11 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   const server: Server = {
     db,
     deployments: new Deployments(db, secret, { ...DEFAULT_RUNTIME_OPTIONS, ...options.runtime }, options.wrapStore),
-    devAuth: options.devAuth ?? false,
+    devMode: options.devMode ?? false,
     login: options.login ? { oidc: new Oidc(options.login.oidc), publicUrl: options.login.publicUrl.replace(/\/$/, "") } : null,
     secret,
     admins: (options.admins ?? []).map((e) => e.trim().toLowerCase()).filter(Boolean),
-    twoFactor: options.twoFactor ?? "none",
+    stepUpMaxAge: options.stepUpMaxAge ?? 600,
   };
 
   const app = new Hono<Env>();
@@ -153,7 +152,6 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   // Order matters: units/fields and units/page before units/:id.
   for (const routes of [
     login,
-    passkeys,
     me,
     admin,
     examples,

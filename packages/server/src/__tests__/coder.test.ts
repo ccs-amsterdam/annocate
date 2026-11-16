@@ -17,6 +17,9 @@ import type { RuntimeOptions } from "../runtime/runtime.js";
 import { DbStore, type Store } from "../runtime/store.js";
 import { ensureUser } from "../shared/accounts.js";
 import { createSession } from "../shared/sessions.js";
+
+/** A coder's login: a verified email, no second factor needed. */
+const CODER_LOGIN = { mfa: false, authTime: null, issuer: "https://idp.test" };
 import { SESSION_COOKIE } from "../researcher/login.js";
 
 // End-to-end: client -> server -> database, through the app's fetch handler
@@ -46,7 +49,7 @@ function recording(store: Store): Store {
 
 /** A (re)started server on the same database: empty memory. */
 function restart(runtime: Partial<RuntimeOptions> = {}) {
-  return createApp(db, { secret: "test-secret", runtime, wrapStore: recording, devAuth: true });
+  return createApp(db, { secret: "test-secret", runtime, wrapStore: recording, devMode: true });
 }
 
 beforeEach(async () => {
@@ -388,7 +391,7 @@ describe("shared queues under concurrency", () => {
           };
         },
       });
-    server = createApp(db, { secret: "test-secret", wrapStore: racing, devAuth: true });
+    server = createApp(db, { secret: "test-secret", wrapStore: racing, devMode: true });
     await redeploy({ units: [{ mode: "shared", until: { coders: 1 }, maxCoders: 1 }] });
     const a = coder("a");
     const unitA = (await a.next())!;
@@ -508,7 +511,7 @@ describe("assigned sets", () => {
     expect(await (await send("anon", "/session", {}, { "x-link-secret": "demo-secret" })).json()).toMatchObject({ code: "auth_required" });
     const login = async (device: string, email: string) => {
       const user = await ensureUser(db, email);
-      devices.set(device, { cookies: new Map([["annotinder_session", await createSession(db, user.id)]]), invite: null });
+      devices.set(device, { cookies: new Map([["annotinder_session", await createSession(db, user.id, CODER_LOGIN)]]), invite: null });
     };
     await login("stranger", "c@example.org");
     expect(await (await send("stranger", "/session", {}, { "x-link-secret": "demo-secret" })).json()).toMatchObject({ code: "email_not_allowed" });
@@ -1021,7 +1024,7 @@ describe("coder login", () => {
   /** A device logged in as this email (the researcher login's session cookie). */
   async function loggedIn(device: string, email: string) {
     const user = await ensureUser(db, email);
-    devices.set(device, { cookies: new Map([["annotinder_session", await createSession(db, user.id)]]), invite: null });
+    devices.set(device, { cookies: new Map([["annotinder_session", await createSession(db, user.id, CODER_LOGIN)]]), invite: null });
   }
   const session = async (device: string, secret: string | null) => {
     const res = await send(device, "/session", {}, secret ? { "x-link-secret": secret } : {});
@@ -1066,7 +1069,7 @@ describe("coder login", () => {
     const before = await session("tablet", secret);
     expect(before.body.login).toBeNull();
     const user = await ensureUser(db, "c@example.org");
-    devices.get("tablet")!.cookies.set("annotinder_session", await createSession(db, user.id));
+    devices.get("tablet")!.cookies.set("annotinder_session", await createSession(db, user.id, CODER_LOGIN));
     const after = await session("tablet", secret);
     expect(after.body).toMatchObject({ coderId: before.body.coderId, login: "c@example.org" });
     await loggedIn("desktop", "c@example.org");
@@ -1076,7 +1079,7 @@ describe("coder login", () => {
     const own = await session("phone", secret);
     expect(own.body.coderId).not.toBe(before.body.coderId);
     const phoneUser = await ensureUser(db, "c@example.org");
-    devices.get("phone")!.cookies.set("annotinder_session", await createSession(db, phoneUser.id));
+    devices.get("phone")!.cookies.set("annotinder_session", await createSession(db, phoneUser.id, CODER_LOGIN));
     expect((await session("phone", secret)).body.coderId).toBe(before.body.coderId);
 
     // The demo link takes no logins: an anonymous session as always
@@ -1828,11 +1831,11 @@ describe("the coder home", () => {
     const sessions = (cookie?: string) =>
       server.request("/api/coder/sessions", { headers: { "x-annotinder": "1", ...(cookie ? { cookie: `${SESSION_COOKIE}=${cookie}` } : {}) } });
     expect((await sessions()).status).toBe(401);
-    const res = await sessions(await createSession(db, user.id));
+    const res = await sessions(await createSession(db, user.id, CODER_LOGIN));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([expect.objectContaining({ deployment: "1", ended: null, units: 0 })]);
     // Someone else's login sees none of them
     const other = await ensureUser(db, "other@uni.nl");
-    expect(await (await sessions(await createSession(db, other.id))).json()).toEqual([]);
+    expect(await (await sessions(await createSession(db, other.id, CODER_LOGIN))).json()).toEqual([]);
   });
 });

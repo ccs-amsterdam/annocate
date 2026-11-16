@@ -3,6 +3,7 @@ import { researcherEndpoints, type ResearcherEndpointName } from "@annotinder/co
 import type { z } from "zod";
 import type { Sql } from "../db.js";
 import { createApp } from "../app.js";
+import { createSession } from "../shared/sessions.js";
 import { createApiKey, ensureUser } from "../shared/accounts.js";
 import { emptyDb } from "./testDb.js";
 
@@ -22,7 +23,16 @@ async function keyFor(email: string): Promise<string> {
   // Researchers: they create studies in these tests.
   const user = await ensureUser(db, email);
   await db.query("UPDATE users SET role = 'researcher' WHERE id = $1", [user.id]);
-  return (await createApiKey(db, user.id, "test", true)).key;
+  return (await createApiKey(db, user.id, "test")).key;
+}
+
+/**
+ * A web session with a recent second factor (as after a step-up login), as
+ * a credential for `call`: sensitive actions need one (researcher/auth.ts).
+ */
+async function sessionFor(email: string): Promise<string> {
+  const user = await ensureUser(db, email);
+  return `session ${await createSession(db, user.id, { mfa: true, authTime: new Date(), issuer: "https://idp.test" })}`;
 }
 
 type Endpoint = (typeof researcherEndpoints)[ResearcherEndpointName];
@@ -43,7 +53,10 @@ async function call<N extends ResearcherEndpointName>(
   const path = endpoint.path.replace(/:(\w+)/g, (_, p: string) => String(params[p]));
   const res = await app.request(`/api${path}${query}`, {
     method: endpoint.method,
-    headers: { "content-type": "application/json", ...(key ? { authorization: `Bearer ${key}` } : {}) },
+    headers: {
+      "content-type": "application/json",
+      ...(key?.startsWith("session ") ? { cookie: `annotinder_session=${key.slice(8)}`, "x-annotinder": "1" } : key ? { authorization: `Bearer ${key}` } : {}),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const text = await res.text();
@@ -109,7 +122,10 @@ describe("authentication", () => {
 
   it("manages a researcher's own keys; a revoked key stops working", async () => {
     const key = await keyFor("r@uni.nl");
-    const created = await call(key, "createApiKey", {}, { label: "laptop" });
+    // Keys are made and revoked in a web session with a recent second factor, never with a key
+    expect((await call(key, "createApiKey", {}, { label: "laptop" })).status).toBe(403);
+    const session = await sessionFor("r@uni.nl");
+    const created = await call(session, "createApiKey", {}, { label: "laptop" });
     expect(created.status).toBe(201);
     const second = created.data.key;
     expect(second).toMatch(/^atk_/);
@@ -120,12 +136,13 @@ describe("authentication", () => {
     expect(JSON.stringify(listed)).not.toContain(second); // never the key itself
     expect(listed[0].lastUsed).not.toBeNull(); // used above
 
-    expect((await call(key, "revokeApiKey", { id: created.data.id })).data.revokedAt).not.toBeNull();
+    expect((await call(key, "revokeApiKey", { id: created.data.id })).status).toBe(403);
+    expect((await call(session, "revokeApiKey", { id: created.data.id })).data.revokedAt).not.toBeNull();
     expect((await call(second, "getMe")).status).toBe(401);
     expect((await call(key, "getMe")).status).toBe(200);
     // Not someone else's key
-    const other = await keyFor("other@uni.nl");
-    expect((await call(other, "revokeApiKey", { id: listed[0].id })).status).toBe(404);
+    await keyFor("other@uni.nl");
+    expect((await call(await sessionFor("other@uni.nl"), "revokeApiKey", { id: listed[0].id })).status).toBe(404);
   });
 });
 
@@ -190,7 +207,8 @@ describe("downloading annotations", () => {
     const key = await keyFor("r@uni.nl");
     const { studyId, unitIds, invite } = await setUpStudy(key);
     await code(studyId, invite, "yes");
-    const reset = await call(key, "resetAnnotations", { studyId }, { variables: ["q"], unitIds: [unitIds[0]] });
+    // Resetting answers is sensitive: a web session, not the key
+    const reset = await call(await sessionFor("r@uni.nl"), "resetAnnotations", { studyId }, { variables: ["q"], unitIds: [unitIds[0]] });
     expect(reset.data).toEqual({ retired: 1 });
 
     expect((await call(key, "listAnnotations", { studyId })).data.annotations.map((r) => r.unitId)).toEqual([unitIds[1]]);

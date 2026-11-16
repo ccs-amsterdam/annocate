@@ -32,8 +32,8 @@ try {
   }
   console.error(`${describeDatabase()}, user ${user.email}`);
   if (command === "create") {
-    // Made on the server by its operator: counts as having a second factor
-    const key = await createApiKey(db, user.id, values.label ?? "API key", true);
+    // Made on the server by its operator; like any key, it never does sensitive actions (researcher/auth.ts)
+    const key = await createApiKey(db, user.id, values.label ?? "API key");
     console.error(`Created key ${key.id} (${key.label}). It is shown only now:`);
     console.log(key.key);
   } else if (command === "list") {

@@ -622,7 +622,7 @@ Roughly in order:
     UI (IndexedDB), compared by ids and hashes.
 
 13. **Planned, not built** (`plans/`): gold checks, question loops, example
-    studies, passkeys as a second layer with a login shared with AmCAT, and
+    studies, a login shared with AmCAT, and
     (on hold) encrypting answers in the browser.
 
 Smaller things worth an issue: a swipe-card UI for the `annotinder` answer

@@ -50,20 +50,22 @@ checkout finds it itself).
 | `ANNOTINDER_PUBLIC_URL` | Where browsers reach AnnoTinder, e.g. `https://annotinder.example.org` (no trailing slash). The login callback is `<ANNOTINDER_PUBLIC_URL>/api/auth/callback` |
 | `ANNOTINDER_SECRET` | Signs login state and preview links. A long random string (`openssl rand -base64 48`); without it these end with every restart |
 | `DATABASE_URL` | Postgres, e.g. `postgres://user:pass@host:5432/annotinder`. The compose file sets it from `POSTGRES_PASSWORD`. Without it the server uses PGlite in `PGLITE_DIR` (development) |
-| `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | Researcher login (below). Without them nobody can log in |
+| `OIDC_HOST`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | Researcher login (below): the provider's issuer, the client ID and secret. Without them nobody can log in |
+| `OIDC_MFA_CLAIM` | Which ID token claim counts as a second factor: `amr:mfa` (default) or `acr:<value>`. `security.md` §1 |
+| `AUTH_STEP_UP_MAX_AGE` | Seconds a login's second factor stays fresh for sensitive actions (default 600). `security.md` §1 |
 | `ANNOTINDER_ADMINS` | Comma-separated emails that get the admin role when they log in: the server's first admins (`accounts.md`) |
-| `ANNOTINDER_2FA` | Second factor for researcher access: `none`, `annotinder` (a passkey checked by AnnoTinder; recommended) or `oidc` (the provider's, its `amr`). `security.md` §1 |
 | `ANNOTINDER_TRUST_PROXY` | `1`: behind a proxy (Caddy, nginx) that sets `X-Forwarded-For`: rate limits count the client's address from it. Only when the server can't be reached except through the proxy |
 | `ANNOTINDER_RATE_LIMITS` | `off`: no rate limits (e.g. for a load test from one machine). On by default (`security.md`) |
 | `ANNOTINDER_FRAME_ANCESTORS` | Origins (space or comma separated) that may show AnnoTinder in a frame besides itself, e.g. AmCAT's `https://amcat.example.org` |
 | `POSTGRES_PASSWORD` | Compose only: the database password |
 | `ANNOTINDER_DOMAIN` | Compose `tls` profile only: the domain Caddy gets a certificate for |
 | `PORT` | Default 8787 |
+| `HOST` | Where to listen; default all addresses (in development mode: localhost) |
 | `PGPOOL_MAX` | Database connections per server process (default 20) |
 | `PGLITE_DIR` | Without `DATABASE_URL`: where the PGlite database lives (development; default `.pglite` in `packages/server`) |
 | `ANNOTINDER_CLIENT_DIR` | The built client; set in the image |
 | `ANNOTINDER_DEMO` | `1`: an empty database gets the demo study. Development only |
-| `ANNOTINDER_DEV_AUTH` | `1`: accept development auth headers. **Never on a reachable server** |
+| `AUTH_DEV_MODE` | `1`: development auth headers instead of a login. The server refuses to start unless it listens on localhost only. **Never for a server other people use** |
 
 ## Login provider
 
@@ -73,11 +75,10 @@ Microsoft).
 
 - Register a confidential web client with redirect URI
   `<ANNOTINDER_PUBLIC_URL>/api/auth/callback`, scope `openid email`.
-- The provider must verify email addresses: AnnoTinder keys accounts on the
-  email and refuses a login without `email_verified: true`.
-- For `ANNOTINDER_2FA=oidc`, the provider must report the second factor
-  in the ID token's `amr` claim (e.g. `mfa`, `otp`, `hwk`, `swk`; RFC 8176).
-  With `annotinder` it doesn't matter: AnnoTinder checks a passkey itself.
+- The provider must meet the lab's Authentication standard (`security.md`
+  §1): verified email addresses (`email_verified: true`), a second factor
+  it signals in the ID token (`OIDC_MFA_CLAIM`), and step-up (`max_age`,
+  `auth_time`). Researcher access always needs the second factor.
 
 Security settings (second factor, headers, rate limits, framing):
 `security.md`.

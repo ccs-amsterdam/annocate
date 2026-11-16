@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { Server, Env } from "../context.js";
-import { requireStudyUser } from "./auth.js";
+import { requireSensitive, requireStudyUser } from "./auth.js";
 import { listCoderProgress } from "../shared/progress.js";
 import { deleteCoders, listCoderDeletions, postponeDeletion } from "../shared/coderDeletion.js";
 import { DeleteCodersSchema } from "@annotinder/contracts";
@@ -12,7 +12,7 @@ export function coders(server: Server): Hono<Env> {
 
   app.get("/study/:studyId/coders", requireStudyUser(server, "READ"), async (c) => c.json(await listCoderProgress(db, c.get("studyId"))));
 
-  app.post("/study/:studyId/coders/delete", requireStudyUser(server, "ADMIN"), async (c) => {
+  app.post("/study/:studyId/coders/delete", requireStudyUser(server, "ADMIN"), requireSensitive(server), async (c) => {
     const parsed = DeleteCodersSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     const studyId = c.get("studyId");

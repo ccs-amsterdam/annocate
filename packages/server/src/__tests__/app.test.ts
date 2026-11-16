@@ -18,7 +18,7 @@ async function json(res: Response): Promise<any> {
 
 beforeEach(async () => {
   db = await emptyDb();
-  app = createApp(db, { devAuth: true });
+  app = createApp(db, { devMode: true });
 });
 
 async function createStudy(name = "Test study") {
@@ -425,7 +425,7 @@ describe("security headers", () => {
 
 describe("rate limits", () => {
   it("count per kind and address (or account) per minute, in the database; 429 with Retry-After", async () => {
-    const limited = createApp(db, { devAuth: true, rateLimits: { coderStart: 2, researcher: 3 } });
+    const limited = createApp(db, { devMode: true, rateLimits: { coderStart: 2, researcher: 3 } });
     const start = () => limited.request("/api/d/1/session", { headers: { "x-annotinder": "1", "x-link-secret": "nope" } });
     expect((await start()).status).not.toBe(429); // refused for other reasons (no such study), but counted
     expect((await start()).status).not.toBe(429);

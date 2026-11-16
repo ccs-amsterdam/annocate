@@ -3,6 +3,7 @@ import { adminEndpoints, researcherEndpoints, type AccountRole } from "@annotind
 import type { Sql } from "../db.js";
 import { createApp } from "../app.js";
 import { createApiKey, ensureUser } from "../shared/accounts.js";
+import { createSession } from "../shared/sessions.js";
 import { emptyDb } from "./testDb.js";
 
 // Accounts (docs/accounts.md): account roles, becoming a researcher, limits,
@@ -19,7 +20,13 @@ beforeEach(async () => {
 async function keyFor(email: string, role: AccountRole): Promise<string> {
   const user = await ensureUser(db, email);
   await db.query("UPDATE users SET role = $1 WHERE id = $2", [role, user.id]);
-  return (await createApiKey(db, user.id, "test", true)).key;
+  return (await createApiKey(db, user.id, "test")).key;
+}
+
+/** A web session with a recent second factor (as after a step-up login): for sensitive actions (researcher/auth.ts). */
+async function sessionFor(email: string): Promise<string> {
+  const user = await ensureUser(db, email);
+  return `session ${await createSession(db, user.id, { mfa: true, authTime: new Date(), issuer: "https://idp.test" })}`;
 }
 
 const endpoints = { ...researcherEndpoints, ...adminEndpoints };
@@ -30,7 +37,10 @@ async function call(key: string, name: Name, params: Record<string, string | num
   const path = endpoint.path.replace(/:(\w+)/g, (_, p: string) => encodeURIComponent(String(params[p])));
   const res = await app.request(`/api${path}`, {
     method: endpoint.method,
-    headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+    headers: {
+      "content-type": "application/json",
+      ...(key.startsWith("session ") ? { cookie: `annotinder_session=${key.slice(8)}`, "x-annotinder": "1" } : { authorization: `Bearer ${key}` }),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const text = await res.text();
@@ -134,7 +144,9 @@ describe("admin", () => {
     expect((await call(r, "createUnits", { studyId: study.id }, { units: [{ externalId: "a", data: {} }] })).data).toMatchObject({ code: "study_suspended" });
     expect((await call(r, "getStudy", { id: study.id })).data).toMatchObject({ suspendedAt: expect.any(Date) });
     expect((await call(admin, "listUnits", { studyId: study.id })).status).toBe(403);
-    expect((await call(r, "deleteStudy", { id: study.id })).status).toBe(204);
+    // Deleting a study is sensitive: not with the key, in a web session with a recent second factor
+    expect((await call(r, "deleteStudy", { id: study.id })).data).toMatchObject({ code: "not_with_api_key" });
+    expect((await call(await sessionFor("r@uni.nl"), "deleteStudy", { id: study.id })).status).toBe(204);
 
     const log = (await call(admin, "listAdminLog")).data as { action: string }[];
     expect(log.map((e) => e.action)).toContain("suspend study");

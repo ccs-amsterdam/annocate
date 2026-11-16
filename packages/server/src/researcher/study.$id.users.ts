@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { StudyUsersWriteSchema } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
-import { requireStudyUser } from "./auth.js";
+import { checkSensitive, requireStudyUser } from "./auth.js";
 
 export function studyUsers(server: Server): Hono<Env> {
   const { db } = server;
@@ -24,6 +24,10 @@ export function studyUsers(server: Server): Hono<Env> {
     if (twice) return c.json({ error: `${twice} is in the list twice` }, 400);
 
     const studyId = c.get("studyId");
+    // Giving or taking the study's ADMIN role is sensitive (researcher/auth.ts): not with an API key, and with a recent second factor
+    const admins = (list: { email: string; role: string }[]) => list.filter((u) => u.role === "ADMIN").map((u) => u.email).sort().join("\n");
+    const before = await db.query<{ email: string; role: string }>("SELECT email, role FROM study_users WHERE study_id = $1", [studyId]);
+    if (admins(before) !== admins(users)) checkSensitive(server, c.get("researcher"));
     await db.transaction(async (tx) => {
       await tx.query("DELETE FROM study_users WHERE study_id = $1", [studyId]);
       for (const user of users) {

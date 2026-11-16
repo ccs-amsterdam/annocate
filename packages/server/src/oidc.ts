@@ -1,23 +1,38 @@
 import * as client from "openid-client";
 
-// Researcher login with an OpenID Connect provider (docs/coder-identity.md
-// "Researcher login"): any provider, configured by its issuer URL. The
+// Researcher login with an OpenID Connect provider, following the lab's
+// Authentication standard (docs/security.md "Login"): any provider that
+// verifies email addresses (`email_verified`), signals a second factor
+// (`OIDC_MFA_CLAIM`), and supports step-up (`max_age`, `auth_time`). The
 // provider only proves who someone is; the session is ours
-// (shared/sessions.ts). Identity is the verified email address: the
-// provider MUST verify addresses, and a login without `email_verified: true`
-// is refused.
+// (shared/sessions.ts). The identity is the provider (`iss`) and the user
+// there (`sub`); the email address is how people find each other.
+
+/**
+ * Which claim counts as a second factor (`OIDC_MFA_CLAIM`): `amr:<value>`,
+ * the `amr` list contains it (default `amr:mfa`), or `acr:<value>`, `acr`
+ * equals it (e.g. SURFconext's assurance level).
+ */
+export type MfaClaim = { claim: "amr" | "acr"; value: string };
+
+/** Parses `OIDC_MFA_CLAIM`; throws on anything else. */
+export function parseMfaClaim(raw: string | undefined): MfaClaim {
+  const text = (raw ?? "amr:mfa").trim();
+  const match = /^(amr|acr):(.+)$/.exec(text);
+  if (!match) throw new Error(`OIDC_MFA_CLAIM must be amr:<value> or acr:<value>, not "${text}"`);
+  return { claim: match[1] as "amr" | "acr", value: match[2] };
+}
 
 export interface OidcOptions {
-  /** The provider's issuer URL, e.g. `https://auth.example.org/application/o/annotinder/`. */
+  /** The provider's issuer URL (`OIDC_HOST`), e.g. `https://auth.example.org/realms/idp`. */
   issuer: string;
   clientId: string;
   clientSecret: string;
+  /** Default `amr:mfa`. */
+  mfaClaim?: MfaClaim;
   /** Tests: how to reach the provider; also allows plain http. */
   fetch?: typeof fetch;
 }
-
-/** `amr` values that mean a second factor was used (RFC 8176). */
-const SECOND_FACTORS = new Set(["mfa", "otp", "hwk", "swk", "sc", "fpt", "face", "iris"]);
 
 /** What the login flow keeps between redirect and callback (in a signed cookie). */
 export interface LoginState {
@@ -25,15 +40,34 @@ export interface LoginState {
   nonce: string;
   verifier: string;
   returnTo: string;
+  /** Which provider: the current one, or the previous one during a migration. */
+  provider: "current" | "previous";
+  /** A login for a sensitive action: it must come with a fresh second factor (`max_age`). */
+  stepUp?: boolean;
+  /** Linking this login to the account of the user logged in at the start (docs/security.md "Changing providers"). */
+  linkUserId?: number;
 }
 
-/** `mfa`: the login used a second factor (the ID token's `amr` claim). */
-export type LoginResult = { email: string; mfa: boolean } | { error: "email_unverified" | "login_failed" };
+/**
+ * A login: who (`iss` + `sub`), their verified email, whether it used a
+ * second factor (`mfa`, per `OIDC_MFA_CLAIM`), and when they authenticated
+ * (`authTime`; null if the provider doesn't say).
+ */
+export type LoginResult =
+  | { iss: string; sub: string; email: string; mfa: boolean; authTime: Date | null }
+  | { error: "email_unverified" | "login_failed" };
 
 export class Oidc {
   private config: Promise<client.Configuration> | null = null;
+  readonly mfaClaim: MfaClaim;
 
-  constructor(private options: OidcOptions) {}
+  constructor(private options: OidcOptions) {
+    this.mfaClaim = options.mfaClaim ?? { claim: "amr", value: "mfa" };
+  }
+
+  get issuer(): string {
+    return this.options.issuer;
+  }
 
   /** Discovered once, retried after a failure (provider down at startup). */
   private configuration(): Promise<client.Configuration> {
@@ -53,10 +87,14 @@ export class Oidc {
     return this.config;
   }
 
-  /** Where to send the browser, and what to remember until the callback. */
-  async start(redirectUri: string, returnTo: string): Promise<{ url: URL; state: LoginState }> {
+  /**
+   * Where to send the browser, and what to remember until the callback.
+   * `maxAge` (seconds): the provider must have authenticated the user that
+   * recently, else it asks again (step-up).
+   */
+  async start(redirectUri: string, login: Omit<LoginState, "state" | "nonce" | "verifier">, maxAge?: number): Promise<{ url: URL; state: LoginState }> {
     const verifier = client.randomPKCECodeVerifier();
-    const state: LoginState = { state: client.randomState(), nonce: client.randomNonce(), verifier, returnTo };
+    const state: LoginState = { ...login, state: client.randomState(), nonce: client.randomNonce(), verifier };
     const url = client.buildAuthorizationUrl(await this.configuration(), {
       redirect_uri: redirectUri,
       scope: "openid email",
@@ -64,6 +102,7 @@ export class Oidc {
       code_challenge_method: "S256",
       state: state.state,
       nonce: state.nonce,
+      ...(maxAge !== undefined ? { max_age: String(maxAge) } : {}),
     });
     return { url, state };
   }
@@ -84,7 +123,9 @@ export class Oidc {
       return { error: "login_failed" };
     }
     if (!claims || typeof claims.email !== "string" || claims.email_verified !== true) return { error: "email_unverified" };
-    const amr = Array.isArray(claims.amr) ? claims.amr : [];
-    return { email: claims.email, mfa: amr.some((method) => SECOND_FACTORS.has(String(method))) };
+    const { claim, value } = this.mfaClaim;
+    const mfa = claim === "amr" ? Array.isArray(claims.amr) && claims.amr.map(String).includes(value) : claims.acr === value;
+    const authTime = typeof claims.auth_time === "number" ? new Date(claims.auth_time * 1000) : null;
+    return { iss: claims.iss, sub: claims.sub, email: claims.email.trim().toLowerCase(), mfa, authTime };
   }
 }

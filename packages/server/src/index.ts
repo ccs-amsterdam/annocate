@@ -1,50 +1,58 @@
-import type { TwoFactorMode } from "@annotinder/contracts";
 import { serve } from "@hono/node-server";
 import { one } from "./db.js";
 import { describeDatabase, openDatabase } from "./database.js";
 import { seed } from "./seed.js";
 import { createApp } from "./app.js";
+import { parseMfaClaim } from "./oidc.js";
 
-// Node entry point. PORT (default 8787); DATABASE_URL (Postgres), or else
-// PGLITE_DIR (a local PGlite database, default .pglite in this package);
-// ANNOTINDER_SECRET (signs login state and preview tokens; random per process if not set);
-// ANNOTINDER_CLIENT_DIR (the built client, served from this server);
-// ANNOTINDER_DEMO=1 (an empty database gets the demo study: development);
-// ANNOTINDER_DEV_AUTH=1 (accept development auth headers: local only);
-// docs/hosting.md has the full list.
-// researcher login: OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET,
-// ANNOTINDER_PUBLIC_URL (where browsers reach the server);
+// Node entry point. PORT (default 8787); HOST (where to listen; default all
+// addresses, in development mode localhost only); DATABASE_URL (Postgres),
+// or else PGLITE_DIR (a local PGlite database, default .pglite in this
+// package); ANNOTINDER_SECRET (signs login state and preview tokens; random
+// per process if not set); ANNOTINDER_CLIENT_DIR (the built client, served
+// from this server); ANNOTINDER_DEMO=1 (an empty database gets the demo
+// study: development). docs/hosting.md has the full list.
+//
+// Researcher login, as in the lab's Authentication standard (docs/security.md):
+// OIDC_HOST (the provider's issuer), OIDC_CLIENT_ID, OIDC_CLIENT_SECRET,
+// OIDC_MFA_CLAIM (amr:mfa, default, or acr:<value>), AUTH_STEP_UP_MAX_AGE
+// (seconds, default 600), and during a move to another provider
+// OIDC_PREVIOUS_HOST, OIDC_PREVIOUS_CLIENT_ID, OIDC_PREVIOUS_CLIENT_SECRET,
+// OIDC_PREVIOUS_MFA_CLAIM, OIDC_PREVIOUS_UNTIL; AUTH_DEV_MODE=1 (development
+// headers instead of a login: refused unless the server listens on localhost
+// only); ANNOTINDER_PUBLIC_URL (where browsers reach the server);
 // ANNOTINDER_ADMINS (comma-separated emails: the server's first admins);
-// ANNOTINDER_2FA=none|annotinder|oidc (who checks researchers' second factor:
-//   nobody, AnnoTinder with passkeys, or the login provider; docs/security.md);
 // ANNOTINDER_FRAME_ANCESTORS (origins that may frame AnnoTinder, e.g. AmCAT's);
 // ANNOTINDER_TRUST_PROXY=1 (behind a proxy: client addresses from X-Forwarded-For);
 // ANNOTINDER_RATE_LIMITS=off (no rate limits; docs/security.md).
 
 const port = Number(process.env.PORT ?? 8787);
+const devMode = process.env.AUTH_DEV_MODE === "1";
+// Development mode only on this machine: never on a server other people reach.
+const LOOPBACK = ["localhost", "127.0.0.1", "::1"];
+const host = process.env.HOST?.trim() || (devMode ? "localhost" : undefined);
+if (devMode && !LOOPBACK.includes(host ?? "")) {
+  throw new Error(`AUTH_DEV_MODE needs the server to listen on localhost only (HOST=${host ?? "all addresses"}): development mode is never for a server other people use`);
+}
+
 const db = await openDatabase();
 // Development: an empty database gets a demo study.
 if (process.env.ANNOTINDER_DEMO === "1" && !(await one(db, "SELECT 1 FROM studies LIMIT 1"))) await seed(db);
 
-const devAuth = process.env.ANNOTINDER_DEV_AUTH === "1";
-const { OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, ANNOTINDER_PUBLIC_URL } = process.env;
+const { OIDC_HOST, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, ANNOTINDER_PUBLIC_URL } = process.env;
 const login =
-  OIDC_ISSUER && OIDC_CLIENT_ID && OIDC_CLIENT_SECRET
+  OIDC_HOST && OIDC_CLIENT_ID && OIDC_CLIENT_SECRET
     ? {
-        oidc: {
-          issuer: OIDC_ISSUER,
-          clientId: OIDC_CLIENT_ID,
-          clientSecret: OIDC_CLIENT_SECRET,
-        },
+        oidc: { issuer: OIDC_HOST, clientId: OIDC_CLIENT_ID, clientSecret: OIDC_CLIENT_SECRET, mfaClaim: parseMfaClaim(process.env.OIDC_MFA_CLAIM) },
         publicUrl: ANNOTINDER_PUBLIC_URL ?? `http://localhost:${port}`,
       }
     : undefined;
 if (login && !process.env.ANNOTINDER_SECRET) {
   console.warn("ANNOTINDER_SECRET is not set: logins in progress and previews end with a restart");
 }
+const stepUpMaxAge = Number(process.env.AUTH_STEP_UP_MAX_AGE ?? 600);
+if (!Number.isInteger(stepUpMaxAge) || stepUpMaxAge <= 0) throw new Error("AUTH_STEP_UP_MAX_AGE must be a number of seconds");
 const admins = (process.env.ANNOTINDER_ADMINS ?? "").split(",");
-const twoFactor = (process.env.ANNOTINDER_2FA ?? "none") as TwoFactorMode;
-if (!["none", "annotinder", "oidc"].includes(twoFactor)) throw new Error("ANNOTINDER_2FA must be none, annotinder or oidc");
 const clientDir = process.env.ANNOTINDER_CLIENT_DIR || undefined;
 const frameAncestors = (process.env.ANNOTINDER_FRAME_ANCESTORS ?? "").split(/[\s,]+/).filter(Boolean);
 const https = ANNOTINDER_PUBLIC_URL?.startsWith("https://") ?? false;
@@ -53,10 +61,10 @@ const rateLimits = process.env.ANNOTINDER_RATE_LIMITS === "off" ? undefined : {}
 const trustProxy = process.env.ANNOTINDER_TRUST_PROXY === "1";
 const app = createApp(db, {
   secret: process.env.ANNOTINDER_SECRET,
-  devAuth,
+  devMode,
   login,
   admins,
-  twoFactor,
+  stepUpMaxAge,
   clientDir,
   frameAncestors,
   https,
@@ -64,12 +72,12 @@ const app = createApp(db, {
   trustProxy,
 });
 
-const server = serve({ fetch: app.fetch, port }, (info) => {
+const server = serve({ fetch: app.fetch, port, ...(host ? { hostname: host } : {}) }, (info) => {
   console.log(`@annotinder/server listening on http://localhost:${info.port} (${describeDatabase()})`);
-  console.log(login ? `  researcher login: ${login.oidc.issuer}, callback ${login.publicUrl}/api/auth/callback` : "  researcher login: not configured (OIDC_ISSUER)");
-  console.log(`  admins: ${admins.filter((a) => a.trim()).join(", ") || "none named (ANNOTINDER_ADMINS)"}; second factor for researchers: ${{ none: "not required", annotinder: "a passkey (AnnoTinder)", oidc: "from the login provider" }[twoFactor]}`);
+  console.log(login ? `  researcher login: ${login.oidc.issuer} (second factor: ${process.env.OIDC_MFA_CLAIM ?? "amr:mfa"}), callback ${login.publicUrl}/api/auth/callback` : "  researcher login: not configured (OIDC_HOST)");
+  console.log(`  admins: ${admins.filter((a) => a.trim()).join(", ") || "none named (ANNOTINDER_ADMINS)"}`);
   console.log(clientDir ? `  client: ${clientDir}` : "  client: not served here (ANNOTINDER_CLIENT_DIR; in development Vite serves it)");
-  if (devAuth) console.warn("  development auth headers accepted (ANNOTINDER_DEV_AUTH=1): never on a reachable server");
+  if (devMode) console.warn(`  development mode (AUTH_DEV_MODE=1): development auth headers accepted, listening on ${host} only`);
 });
 
 const shutdown = () => {

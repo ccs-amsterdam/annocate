@@ -33,7 +33,6 @@ import {
   type PendingChanges,
   type StudyOverview,
   type MeResponse,
-  type Passkey,
   type ApiKeyResponse,
   type ApiKeyCreated,
   type AnnotationPage,
@@ -84,19 +83,14 @@ export interface ResearcherApi {
   getAuthOptions(): Promise<AuthOptions>;
   /** Ends the login session (session cookie). */
   logout(): Promise<void>;
-  /** Where the browser goes to log in; it comes back to `returnTo` (a path on this origin). */
-  loginUrl(returnTo: string): string;
+  /**
+   * Where the browser goes to log in; it comes back to `returnTo` (a path on
+   * this origin). `stepUp`: a login for a sensitive action, with a fresh
+   * second factor (docs/security.md "Step-up").
+   */
+  loginUrl(returnTo: string, options?: { stepUp?: boolean }): string;
   /** Who the client is authenticated as. */
   getMe(): Promise<MeResponse>;
-  /** Passkeys (ANNOTINDER_2FA=annotinder): the WebAuthn ceremonies' options and results are @simplewebauthn's JSON. */
-  passkeyRegisterOptions(): Promise<unknown>;
-  passkeyRegister(response: unknown, name: string): Promise<{ recoveryCodes: string[] | null }>;
-  passkeyLoginOptions(): Promise<unknown>;
-  passkeyLogin(response: unknown): Promise<void>;
-  passkeyRecover(code: string): Promise<void>;
-  listPasskeys(): Promise<Passkey[]>;
-  deletePasskey(id: number): Promise<void>;
-  renewRecoveryCodes(): Promise<{ recoveryCodes: string[] }>;
   listApiKeys(): Promise<ApiKeyResponse[]>;
   /** A new API key: `key` is returned only this once. */
   createApiKey(label: string): Promise<ApiKeyCreated>;
@@ -191,7 +185,7 @@ export interface HttpResearcherApiConfig {
    * client's origin (baseUrl "").
    */
   apiKey?: string;
-  /** Development auth headers instead of a key; only accepted by a server with ANNOTINDER_DEV_AUTH=1. */
+  /** Development auth headers instead of a key; only accepted by a server in development mode (AUTH_DEV_MODE=1). */
   devRole?: "ADMIN" | "WRITE" | "READ";
   devEmail?: string;
   /** Optional study ID to scope per-study requests (design versions, units, etc.). */
@@ -244,7 +238,14 @@ export class HttpResearcherApi implements ResearcherApi {
       } catch {
         parsed = undefined;
       }
-      throw new ResearcherApiError(res.status, `Request to ${path} failed (${res.status}): ${body}`, parsed);
+      const error = new ResearcherApiError(res.status, `Request to ${path} failed (${res.status}): ${body}`, parsed);
+      // A sensitive action needs a recent second factor: log in again, back to this page (then do it again)
+      if (error.code === "step_up_required" && typeof window !== "undefined" && !this.config.devRole) {
+        if (window.confirm("To do this, confirm it's you: log in again with your second factor, then try once more.")) {
+          window.location.assign(this.loginUrl(window.location.pathname + window.location.search + window.location.hash, { stepUp: true }));
+        }
+      }
+      throw error;
     }
     if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;
@@ -258,45 +259,12 @@ export class HttpResearcherApi implements ResearcherApi {
     await this.request(researcherEndpoints.logout.path, { method: "POST" });
   }
 
-  /** Where the browser goes to log in; it comes back to `returnTo` (a path on this origin). */
-  loginUrl(returnTo: string): string {
-    return `${this.config.baseUrl}/auth/login?returnTo=${encodeURIComponent(returnTo)}`;
+  loginUrl(returnTo: string, options: { stepUp?: boolean } = {}): string {
+    return `${this.config.baseUrl}/auth/login?returnTo=${encodeURIComponent(returnTo)}${options.stepUp ? "&stepUp=1" : ""}`;
   }
 
   async getMe(): Promise<MeResponse> {
     return this.request(researcherEndpoints.getMe.path);
-  }
-
-  async passkeyRegisterOptions(): Promise<unknown> {
-    return this.request(researcherEndpoints.passkeyRegisterOptions.path, { method: "POST" });
-  }
-
-  async passkeyRegister(response: unknown, name: string): Promise<{ recoveryCodes: string[] | null }> {
-    return this.request(researcherEndpoints.passkeyRegister.path, { method: "POST", body: JSON.stringify({ response, name }) });
-  }
-
-  async passkeyLoginOptions(): Promise<unknown> {
-    return this.request(researcherEndpoints.passkeyLoginOptions.path, { method: "POST" });
-  }
-
-  async passkeyLogin(response: unknown): Promise<void> {
-    await this.request(researcherEndpoints.passkeyLogin.path, { method: "POST", body: JSON.stringify({ response }) });
-  }
-
-  async passkeyRecover(code: string): Promise<void> {
-    await this.request(researcherEndpoints.passkeyRecover.path, { method: "POST", body: JSON.stringify({ code }) });
-  }
-
-  async listPasskeys(): Promise<Passkey[]> {
-    return this.request(researcherEndpoints.listPasskeys.path);
-  }
-
-  async deletePasskey(id: number): Promise<void> {
-    await this.request(researcherEndpoints.deletePasskey.path.replace(":id", String(id)), { method: "DELETE" });
-  }
-
-  async renewRecoveryCodes(): Promise<{ recoveryCodes: string[] }> {
-    return this.request(researcherEndpoints.renewRecoveryCodes.path, { method: "POST" });
   }
 
   async listApiKeys(): Promise<ApiKeyResponse[]> {

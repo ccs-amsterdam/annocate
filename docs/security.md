@@ -4,53 +4,66 @@ What AnnoTinder does to protect researchers' data and coders, and the
 settings that go with it. Hosting: `hosting.md`. Accounts and roles:
 `accounts.md`. Coders' sessions: `coder-identity.md`.
 
-## 1. Second factor for researchers
+## 1. Login, second factor and step-up
 
-Researchers log in with a login provider (OpenID Connect, e.g. Zitadel,
-Authentik or a university's). That is the first factor. `ANNOTINDER_2FA`
-decides who checks the second one:
+AnnoTinder follows the Societal Analytics Lab's Authentication standard
+(the lab-infra repository, `docs/auth.md`), shared with AmCAT.
 
-| `ANNOTINDER_2FA` | Second factor |
+**The login provider.** Researchers log in with an OpenID Connect provider
+(`OIDC_HOST`): ideally the institution's, managed by a security team with a
+helpdesk for account recovery (the lab's shared provider is only for
+servers without sensitive data). AnnoTinder runs the login on the server
+(authorization code flow with PKCE) and keeps its own session: a signed,
+http-only cookie on its own origin. The provider must, and AnnoTinder checks
+each of these itself, because providers don't always do what was asked:
+
+| Requirement | What the provider does |
 | --- | --- |
-| `none` (default) | None required |
-| `annotinder` (recommended) | A **passkey**, checked by AnnoTinder itself |
-| `oidc` | The login provider's own second factor, as it reports it (the ID token's `amr` claim) |
+| **Verified email** | `"email_verified": true` in the ID token. Without it the login is refused. |
+| **A second factor, signalled** | 2FA, and a claim saying it was used: `OIDC_MFA_CLAIM`, `amr:mfa` (default) or `acr:<value>` (e.g. SURFconext's `acr:http://test.surfconext.nl/assurance/loa2`). |
+| **Step-up** | Honours `max_age`, and returns `auth_time` in the ID token. |
 
-Coding never needs one. A login without the required second factor only
-gets `GET /me`, the passkey routes and logging out (403 `mfa_required`
-otherwise). A key made with a second factor counts as having one (creating a key needs it once the setting is on); a key made before, without one, does not.
+**The second factor is always required** for researcher access: there is no
+setting without it (outside development mode). A login without the 2FA
+claim only gets `GET /me` and logging out (403 `mfa_required`); the client
+asks to turn on 2FA at the provider and log in again. Coding never needs a
+second factor, nor a login. Account recovery (a lost phone) is the
+provider's: AnnoTinder has no second factor of its own.
 
-**Why `annotinder`.** With `oidc`, both factors are the provider's: someone
-who gets into a researcher's provider account (or the email it sends codes
-to) has both. A passkey checked by AnnoTinder is an independent second
-lock. A passkey is a key pair kept on the researcher's device (or synced by
-their password manager) and unlocked with a fingerprint, face or PIN, so it
-is two factors in itself, and it can't be phished: it only works on
-AnnoTinder's own address.
+**Step-up for sensitive actions.** These need a web session whose second
+factor is at most `AUTH_STEP_UP_MAX_AGE` seconds old (default 600):
 
-**How it works** (`researcher/passkeys.ts`, with SimpleWebAuthn):
+- creating or revoking API keys;
+- resetting answers (`POST /study/:id/annotations/reset`), deleting coders'
+  data (`POST /study/:id/coders/delete`), deleting a study;
+- giving or taking the admin role: a study's ADMINs (`PUT /study/:id/users`
+  when its ADMINs change) and the server admin role (`/admin/users`).
 
-- **First login**: before anything else, the researcher adds a passkey. It
-  comes with 10 **recovery codes**, shown once.
-- **Every login** is confirmed with a passkey (or a recovery code). The
-  confirmation is stored on the login session (`sessions.mfa`).
-- **More passkeys** (account menu, *Passkeys*): only from a confirmed
-  session, so someone who got into the provider account can't add their
-  own. The last passkey can't be removed.
-- **A lost passkey**: a recovery code (each works once), then add a new
-  passkey. No codes left: a server admin resets the user's passkeys
-  (*Server admin*, *Users*, *Reset passkeys*) after checking who they are
-  in another way than email (e.g. a video call). The reset ends their
-  sessions; they add a new passkey at the next login. **Never by email**:
-  the mailbox is usually the first factor.
-- Passkeys need `ANNOTINDER_PUBLIC_URL` (the passkey is bound to its
-  host name) and a login provider.
-- Every passkey added or removed, recovery code made, used or refused, and
-  reset is written to `security_log`.
+Otherwise the server answers 403 `step_up_required`, and the client sends
+the researcher to log in again with `?stepUp=1`: the server asks the
+provider for `max_age`, then checks the new ID token's 2FA claim and
+`auth_time` itself (`loginError=step_up_failed` if they don't hold).
 
-Not built yet (`plans/passkeys.md`): step-up (a fresh passkey for
-sensitive actions), expiring API keys, emailing users about security
-events, and a login shared with AmCAT.
+**API keys** are for other clients (R, Python): made and revoked only in the
+web client with a fresh second factor, and they never do the sensitive
+actions above (403 `not_with_api_key`). A key counts as having the second
+factor for everything else. The server's operator can make one on the
+command line (`pnpm keys create`).
+
+**Development mode** (`AUTH_DEV_MODE=1`): development headers
+(`x-dev-role`, `x-dev-email`) instead of a login. The server refuses to
+start in development mode unless it listens on localhost only (`HOST`).
+Never for a server other people use.
+
+**Hardening warnings** (*Server admin*, top of the page; `GET /admin/warnings`):
+
+| Warning | Meaning |
+| --- | --- |
+| Shared OIDC provider | Logins come from the lab's shared provider (its issuer is in `SHARED_OIDC_ISSUERS`, `shared/warnings.ts`): no sensitive data on this server. Can't be turned off. |
+| No 2FA signal | Researchers logged in recently without the 2FA claim, so they can't work: check the provider's 2FA and `OIDC_MFA_CLAIM`. |
+
+Logins (with their provider and whether they used a second factor) are
+written to `security_log`.
 
 ## 2. Headers
 
@@ -96,7 +109,7 @@ timings are for that, `coder-identity.md` §10). Per minute
 | --- | --- | --- |
 | Coder requests from a browser without a session (new sessions, guessed links) | address | 300 |
 | Redeeming "continue on another device" tokens | address | 30 |
-| Logging in, confirming with a passkey or a recovery code | address | 60 |
+| Logging in | address | 60 |
 | The researcher API | account (API key or login), else address | 1200 |
 | All coder requests (in memory, per process) | address | 10,000 |
 
@@ -143,9 +156,12 @@ answer to it.
 
 | Variable | |
 | --- | --- |
-| `ANNOTINDER_2FA` | `none`, `annotinder` (passkeys; recommended) or `oidc` (§1) |
-| `ANNOTINDER_PUBLIC_URL` | Needed for passkeys; an `https` address turns on HSTS |
+| `OIDC_HOST`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | The login provider (§1) |
+| `OIDC_MFA_CLAIM` | Which claim counts as a second factor: `amr:mfa` (default) or `acr:<value>` (§1) |
+| `AUTH_STEP_UP_MAX_AGE` | Seconds a second factor stays fresh for sensitive actions (default 600, §1) |
+| `AUTH_DEV_MODE` | `1`: development headers, localhost only (§1) |
+| `ANNOTINDER_PUBLIC_URL` | Where browsers reach the server (the login callback); an `https` address turns on HSTS |
 | `ANNOTINDER_FRAME_ANCESTORS` | Origins that may frame AnnoTinder (§2) |
 | `ANNOTINDER_TRUST_PROXY` | `1` behind a proxy that sets `X-Forwarded-For` (§3) |
 | `ANNOTINDER_RATE_LIMITS` | `off`: no rate limits (§3) |
-| `ANNOTINDER_SECRET` | Signs login state, passkey challenges and preview links |
+| `ANNOTINDER_SECRET` | Signs login state and preview links |

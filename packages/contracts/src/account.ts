@@ -44,10 +44,6 @@ export const UsageSchema = z.object({ studies: z.number().int(), units: z.number
 export type Usage = z.infer<typeof UsageSchema>;
 
 /** `GET /me`: who the request is authenticated as. */
-/** Who checks the second factor for researcher access: nobody, AnnoTinder (passkeys), or the login provider. */
-export const TwoFactorModeSchema = z.enum(["none", "annotinder", "oidc"]);
-export type TwoFactorMode = z.infer<typeof TwoFactorModeSchema>;
-
 export const MeResponseSchema = z.object({
   email: z.string(),
   role: AccountRoleSchema,
@@ -56,31 +52,18 @@ export const MeResponseSchema = z.object({
   usage: UsageSchema,
   /** A request to become a researcher, if they made one that wasn't decided yet. */
   researcherRequest: z.object({ at: z.coerce.date() }).nullable(),
-  /** Whether users may ask to become researchers here (else: an invite link, or an admin). */
+  /** Whether users may ask to become researchers here (else: an admin adds them). */
   canRequestResearcher: z.boolean(),
   /**
-   * The second factor for researcher access (`ANNOTINDER_2FA`): `mode` is
-   * who checks it (`none`, `annotinder`: a passkey here, `oidc`: the login
-   * provider). `required`: this login hasn't given it yet: only coding,
-   * `GET /me`, the passkey routes and logging out work. `passkeys`: how many
-   * the user has (`annotinder` mode; 0: they must add one first).
+   * The second factor, which the login provider checks (docs/security.md).
+   * `required`: this login didn't use one: only coding, `GET /me` and
+   * logging out work (log in again with a second factor). `freshUntil`:
+   * until when sensitive actions (API keys, deleting answers, admin roles)
+   * work without logging in again (step-up); null: they need a new login now.
    */
-  twoFactor: z.object({ mode: TwoFactorModeSchema, required: z.boolean(), passkeys: z.number().int().nonnegative() }),
+  twoFactor: z.object({ required: z.boolean(), freshUntil: z.coerce.date().nullable() }),
 });
 export type MeResponse = z.infer<typeof MeResponseSchema>;
-
-/** `POST /auth/passkey/register`: the browser's registration response, and a name for the passkey. */
-export const PasskeyRegisterSchema = z.object({ response: z.unknown(), name: z.string().trim().min(1).max(64).default("Passkey") });
-export type PasskeyRegister = z.input<typeof PasskeyRegisterSchema>;
-
-/** A passkey of the user (`GET /me/passkeys`). */
-export const PasskeySchema = z.object({
-  id: z.number().int(),
-  name: z.string(),
-  created: z.coerce.date(),
-  lastUsed: z.coerce.date().nullable(),
-});
-export type Passkey = z.infer<typeof PasskeySchema>;
 
 /** `POST /me/researcher-request`: ask an admin to become a researcher. */
 export const ResearcherRequestWriteSchema = z.object({ message: z.string().max(2000).default("") });
@@ -118,14 +101,21 @@ export type ApiKeyCreated = z.infer<typeof ApiKeyCreatedSchema>;
 /**
  * `GET /auth/options` (no authentication): how researchers can sign in here.
  * `login`: the server has an OpenID Connect provider (`/auth/login`).
- * `devAuth`: it accepts development headers (`x-dev-role`).
+ * `devMode`: development mode (`AUTH_DEV_MODE`): development headers
+ * (`x-dev-role`) instead of logging in, on this machine only.
  */
 export const AuthOptionsSchema = z.object({
   login: z.boolean(),
-  devAuth: z.boolean(),
+  devMode: z.boolean(),
 });
 export type AuthOptions = z.infer<typeof AuthOptionsSchema>;
 
 /** Why a login was refused, as `?loginError=` on the page the researcher returns to. */
-export const LoginErrorSchema = z.enum(["email_unverified", "blocked", "login_failed"]);
+export const LoginErrorSchema = z.enum([
+  "email_unverified",
+  "blocked",
+  "login_failed",
+  /** A login for a sensitive action (step-up) without a second factor, or not recent. */
+  "step_up_failed",
+]);
 export type LoginError = z.infer<typeof LoginErrorSchema>;

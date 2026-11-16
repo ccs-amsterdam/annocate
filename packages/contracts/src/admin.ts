@@ -158,3 +158,19 @@ export const AdminLogEntrySchema = z.object({
   details: z.record(z.string(), z.unknown()),
 });
 export type AdminLogEntry = z.infer<typeof AdminLogEntrySchema>;
+
+/**
+ * Something that makes this server less secure, shown to server admins
+ * (the lab's Authentication standard, "Server hardening warnings"):
+ * `shared_provider`: logins come from the lab's shared OIDC provider, so the
+ * server must not hold sensitive data (this can't be turned off);
+ * `no_2fa_signal`: recent researcher logins came without the second factor
+ * signal (`OIDC_MFA_CLAIM`), so they can't do anything but log out;
+ * `migration_not_finished`: the previous provider is still configured after
+ * `OIDC_PREVIOUS_UNTIL`.
+ */
+export const ServerWarningSchema = z.object({
+  code: z.enum(["shared_provider", "no_2fa_signal", "migration_not_finished"]),
+  message: z.string(),
+});
+export type ServerWarning = z.infer<typeof ServerWarningSchema>;

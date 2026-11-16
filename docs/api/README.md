@@ -43,7 +43,7 @@ app (its pages, e.g. `/research/...` and `/code/...`).
 
 | API | How |
 |---|---|
-| researcher API | The session cookie from logging in (same origin, with `x-annotinder: 1`), or a personal API key (`authorization: Bearer <key>`, also from other origins: CORS is allowed). The user's role per study is `READ`, `WRITE` or `ADMIN`. Development servers (`ANNOTINDER_DEV_AUTH=1`) also accept `x-dev-role` / `x-dev-email` headers. See [researcher.md](researcher.md). |
+| researcher API | The session cookie from logging in (same origin, with `x-annotinder: 1`), or a personal API key (`authorization: Bearer <key>`, also from other origins: CORS is allowed). The user's role per study is `READ`, `WRITE` or `ADMIN`. Development servers (`AUTH_DEV_MODE=1`, localhost only) also accept `x-dev-role` / `x-dev-email` headers. See [researcher.md](researcher.md). |
 | coder API | A session cookie the server sets (httpOnly, same origin as the client), created from a link secret. No CORS. [coder.md#sessions-and-headers](coder.md#sessions-and-headers) |
 
 ## Deployment ids

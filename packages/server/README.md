@@ -25,7 +25,7 @@ lists them. For development: without `DATABASE_URL` the server uses PGlite
 (Postgres compiled to WebAssembly, in process) in `PGLITE_DIR` (default
 `.pglite` in this package), so no Postgres install is needed; `pnpm reset-db`
 only resets PGlite. `pnpm dev` ([`src/dev.ts`](src/dev.ts)) also sets
-`ANNOTINDER_DEV_AUTH=1` (development auth headers for the researcher UI)
+`AUTH_DEV_MODE=1` (development auth headers for the researcher UI; localhost only)
 and `ANNOTINDER_DEMO=1` (a demo study in an empty database). With login
 settings (`OIDC_*`) in development, plain http issuers work on localhost
 only.

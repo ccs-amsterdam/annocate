@@ -6,12 +6,17 @@ import { one } from "../db.js";
 import type { LoginState } from "../oidc.js";
 import { applyRegistration, ensureUser } from "../shared/accounts.js";
 import { createSession, deleteSession, SESSION_TTL_MS } from "../shared/sessions.js";
+import { securityLog } from "../shared/securityLog.js";
 import { CLIENT_HEADER } from "../runtime/session.js";
 
 // Researcher login (oidc.ts): `/api/auth/login` sends the browser to the
 // provider, `/api/auth/callback` takes it back and starts our own session: an
 // httpOnly cookie for the whole origin. The client is served from this
-// server's origin (in development, Vite proxies to it).
+// server's origin (in development, Vite proxies to it). `?stepUp=1`: a login
+// for a sensitive action: the provider must authenticate the user again
+// unless it did so within `AUTH_STEP_UP_MAX_AGE` (`max_age`), and the server
+// checks the ID token's `auth_time` and second factor itself, because
+// providers don't always do what was asked.
 
 export const SESSION_COOKIE = "annotinder_session";
 const LOGIN_COOKIE = "annotinder_login";
@@ -33,16 +38,29 @@ function parseLoginState(raw: string | false | undefined): LoginState | null {
 
 const secure = (c: Context) => new URL(c.req.url).protocol === "https:" || c.req.header("x-forwarded-proto") === "https";
 
+/** Clock difference with the provider we allow when checking `auth_time`. */
+const CLOCK_SKEW_MS = 60_000;
+
+/** Whether a login's second factor is recent enough for sensitive actions (step-up). */
+export function isFresh(login: { mfa: boolean; authTime: Date | null }, maxAgeSeconds: number, now = Date.now()): boolean {
+  return login.mfa && login.authTime !== null && now - login.authTime.getTime() <= maxAgeSeconds * 1000 + CLOCK_SKEW_MS;
+}
+
 export function login(server: Server): Hono<Env> {
   const app = new Hono<Env>();
   const { oidc, publicUrl } = server.login ?? {};
   const redirectUri = publicUrl ? `${publicUrl}/api/auth/callback` : "";
 
-  app.get("/auth/options", (c) => c.json({ login: !!oidc, devAuth: server.devAuth }));
+  app.get("/auth/options", (c) => c.json({ login: !!oidc, devMode: server.devMode }));
 
   app.get("/auth/login", async (c) => {
     if (!oidc) return c.json({ error: "Login is not configured on this server" }, 404);
-    const { url, state } = await oidc.start(redirectUri, safeReturnTo(c.req.query("returnTo")));
+    const stepUp = c.req.query("stepUp") === "1";
+    const { url, state } = await oidc.start(
+      redirectUri,
+      { returnTo: safeReturnTo(c.req.query("returnTo")), provider: "current", ...(stepUp ? { stepUp } : {}) },
+      stepUp ? server.stepUpMaxAge : undefined,
+    );
     await setSignedCookie(c, LOGIN_COOKIE, JSON.stringify(state), server.secret, {
       path: "/api/auth",
       httpOnly: true,
@@ -74,14 +92,17 @@ export function login(server: Server): Hono<Env> {
 
     const user = await applyRegistration(server.db, await ensureUser(server.db, result.email), server.admins);
     if (await one(server.db, "SELECT 1 FROM users WHERE id = $1 AND blocked_at IS NOT NULL", [user.id])) return back(state.returnTo, "blocked");
-    // The provider's second factor counts only when it is the one this server relies on (`oidc`).
-    setCookie(c, SESSION_COOKIE, await createSession(server.db, user.id, server.twoFactor === "oidc" && result.mfa), {
+    const login = { mfa: result.mfa, authTime: result.authTime, issuer: result.iss };
+    await securityLog(server.db, user.id, "login", { issuer: result.iss, mfa: result.mfa, ...(state.stepUp ? { stepUp: true } : {}) });
+    setCookie(c, SESSION_COOKIE, await createSession(server.db, user.id, login), {
       path: "/",
       httpOnly: true,
       sameSite: "Lax",
       secure: secure(c),
       maxAge: SESSION_TTL_MS / 1000,
     });
+    // A step-up login must bring a recent second factor (checked here, whatever the provider did with max_age)
+    if (state.stepUp && !isFresh(login, server.stepUpMaxAge)) return back(state.returnTo, "step_up_failed");
     return back(state.returnTo);
   });
 

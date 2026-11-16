@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { StudyWriteSchema } from "@annotinder/contracts";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
-import { requireStudyUser } from "./auth.js";
+import { requireSensitive, requireStudyUser } from "./auth.js";
 import { toStudyResponse, type StudyRow } from "../shared/studies.js";
 
 export function study(server: Server): Hono<Env> {
@@ -36,7 +36,7 @@ export function study(server: Server): Hono<Env> {
   });
 
   // Deleting the study cascades to all of its rows (migrations/).
-  app.delete("/study/:studyId", requireStudyUser(server, "ADMIN"), async (c) => {
+  app.delete("/study/:studyId", requireStudyUser(server, "ADMIN"), requireSensitive(server), async (c) => {
     await db.query("DELETE FROM studies WHERE id = $1", [c.get("studyId")]);
     server.deployments.drop(c.get("studyId"));
     return c.body(null, 204);

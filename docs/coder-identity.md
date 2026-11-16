@@ -245,10 +245,10 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
   address (an institution giving an old address to someone new) inherits
   its previous owner's study roles. Study admins see who has a role and can
   remove it.
-- **Two-factor authentication is recommended; a server can require it.**
-  `ANNOTINDER_2FA` requires a passkey checked by AnnoTinder (`annotinder`)
-  or the provider's second factor (`oidc`) for managing studies and the
-  server; logging in and coding work without (`security.md` §1).
+- **Two-factor authentication is required** for managing studies and the
+  server: the login provider's, as it signals it (`OIDC_MFA_CLAIM`);
+  sensitive actions need it recent (step-up). Logging in and coding work
+  without (`security.md` §1).
 - **Account roles** (user, researcher, admin), who becomes a researcher,
   and limits: `accounts.md`.
 - **Setting up a provider** (e.g. Authentik):

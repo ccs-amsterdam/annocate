@@ -64,10 +64,18 @@ researcher.
 
 ## Second factor
 
-Set `ANNOTINDER_2FA=annotinder` to require a **passkey** for managing studies
-and the server (recommended, certainly for servers with sensitive data):
-researchers add one at their first login and confirm every login with it.
-Coding never requires it. A researcher who lost their passkey uses a
-recovery code; without codes, **Reset passkeys** on the **Users** tab
-removes them, after you checked who they are another way than by email.
-`ANNOTINDER_2FA=oidc` relies on the login provider's second factor instead.
+Managing studies and the server always needs a login with the login
+provider's second factor (which claim says so: `OIDC_MFA_CLAIM`). Coding
+never requires it. A researcher who lost their second factor turns to the
+login provider's helpdesk: AnnoTinder has none of its own.
+
+Sensitive actions (API keys, deleting answers, coders' data or a study, and
+giving or taking admin roles) ask for a recent second factor: you log in
+again, then repeat the action. API keys can never do them.
+
+## Warnings
+
+The top of this page lists what makes the server less secure: logins from
+the lab's **shared login provider** (then this server must not hold
+sensitive data), or researchers logging in **without the second factor
+signal** (check the provider's two-factor settings and `OIDC_MFA_CLAIM`).

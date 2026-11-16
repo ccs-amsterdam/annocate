@@ -78,14 +78,12 @@ Every admin change is logged (`admin_log`).
 
 ## 5. Second factor
 
-`ANNOTINDER_2FA` decides who checks the second factor for researcher and
-admin access: nobody (`none`), AnnoTinder with passkeys (`annotinder`,
-recommended), or the login provider (`oidc`, the ID token's `amr`). A login
-without it still works for coding, and `GET /me` says so (`twoFactor`). The
-session records it (`sessions.mfa`); API keys count as having one, since
-making one needs it. Passkeys, recovery codes and admin resets:
-`security.md` §1. Still planned (`plans/passkeys.md`): step-up for
-sensitive actions, and AnnoTinder reading AmCAT's login cookie.
+Researcher and admin access always needs the login provider's second
+factor (`OIDC_MFA_CLAIM`); a login without it still works for coding, and
+`GET /me` says so (`twoFactor`). The session records it (`sessions.mfa`,
+`sessions.auth_time`). Sensitive actions (API keys, deleting answers or
+coders' data or a study, admin roles) need it recent (step-up), and never
+work with an API key: `security.md` §1.
 
 ## 6. Open points
 

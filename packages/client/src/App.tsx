@@ -51,13 +51,13 @@ function useResearcherState(): Researcher {
   const [state, setState] = useState<Researcher["state"]>(null);
   useEffect(() => {
     void (async () => {
-      const options = await sessionApi.getAuthOptions().catch(() => ({ login: false, devAuth: false }));
-      const api = !options.login && options.devAuth ? devApi : sessionApi;
+      const options = await sessionApi.getAuthOptions().catch(() => ({ login: false, devMode: false }));
+      const api = !options.login && options.devMode ? devApi : sessionApi;
       const me = await api.getMe().catch(() => null);
       setState({ options, me });
     })();
   }, []);
-  const dev = state !== null && !state.options.login && state.options.devAuth;
+  const dev = state !== null && !state.options.login && state.options.devMode;
   return { state, dev, api: dev ? devApi : sessionApi };
 }
 

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AccountRole, AdminUser, Limits, Plan, ServerSettings } from "@annotinder/contracts";
-import { Ban, Check, ChevronLeft, Copy, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Ban, Check, ChevronLeft, Copy, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -35,6 +35,7 @@ const limitText = (v: number | null | undefined) => (v == null ? "no limit" : v.
 export function ServerAdmin({ server, onBack }: { server: ServerApi; onBack: () => void }) {
   const [tab, setTab] = useState<Tab>("Users");
   const requests = useQuery({ queryKey: ["admin", "server", "requests"], queryFn: () => server.listRequests() });
+  const warnings = useQuery({ queryKey: ["admin", "server", "warnings"], queryFn: () => server.getWarnings() });
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -45,6 +46,13 @@ export function ServerAdmin({ server, onBack }: { server: ServerApi; onBack: () 
           Server admin <HelpButton topic="server-admin" label="Help: server admin" />
         </h1>
       </div>
+      {/* Hardening warnings (docs/security.md): what makes this server less secure */}
+      {(warnings.data ?? []).map((w) => (
+        <div key={w.code} role="alert" className="flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <span>{w.message}</span>
+        </div>
+      ))}
       <div className="flex flex-wrap gap-1 border-b">
         {TABS.map((t) => (
           <button
@@ -110,7 +118,6 @@ function UsersTab({ server }: { server: ServerApi }) {
   const users = useQuery({ queryKey: ["admin", "server", "users", q], queryFn: () => server.listUsers(q) });
   const plans = usePlans(server);
   const invalidate = useInvalidate();
-  const resetPasskeys = useMutation({ mutationFn: (id: number) => server.resetPasskeys(id), onSuccess: invalidate });
   const update = useMutation({ mutationFn: (v: { id: number; body: Parameters<ServerApi["updateUser"]>[1] }) => server.updateUser(v.id, v.body), onSuccess: invalidate });
   const [limitsOf, setLimitsOf] = useState<AdminUser | null>(null);
   const planName = (id: number | null) => plans.data?.find((p) => p.id === id)?.name;
@@ -168,18 +175,6 @@ function UsersTab({ server }: { server: ServerApi }) {
                 }}
               >
                 <Ban className="h-3.5 w-3.5" /> {u.blockedAt ? "Unblock" : "Block"}
-              </Button>
-              <Button
-                size="xs"
-                variant="ghost"
-                title="For a user who lost their passkeys and recovery codes: they add a new passkey at their next login"
-                onClick={() => {
-                  if (confirm(`Reset the passkeys of ${u.email}? Only after checking who they are another way than by email (e.g. a video call). They are logged out, and add a new passkey at their next login.`)) {
-                    resetPasskeys.mutate(u.id);
-                  }
-                }}
-              >
-                Reset passkeys
               </Button>
             </td>
           </tr>

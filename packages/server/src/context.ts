@@ -1,4 +1,3 @@
-import type { TwoFactorMode } from "@annotinder/contracts";
 import type { Sql } from "./db.js";
 import type { Role } from "@annotinder/contracts";
 import type { Deployments } from "./runtime/registry.js";
@@ -10,20 +9,16 @@ export interface Server {
   db: Sql;
   /** The runtimes of deployed studies and previews, in memory (runtime/registry.ts). */
   deployments: Deployments;
-  /** Accept development auth headers (researcher/auth.ts). Never on a reachable server. */
-  devAuth: boolean;
+  /** Development mode (`AUTH_DEV_MODE`): development auth headers (researcher/auth.ts), on this machine only (index.ts refuses otherwise). */
+  devMode: boolean;
   /** Researcher login (researcher/login.ts); null when no provider is configured. */
   login: { oidc: Oidc; publicUrl: string } | null;
   /** Signs short-lived cookies and preview tokens. */
   secret: string;
   /** Emails that are admins on this server (`ANNOTINDER_ADMINS`), lowercased; admins can make more. */
   admins: readonly string[];
-  /**
-   * Who checks the second factor for researcher access (`ANNOTINDER_2FA`):
-   * nobody, AnnoTinder (passkeys), or the login provider (its `amr`). Coding
-   * never needs one.
-   */
-  twoFactor: TwoFactorMode;
+  /** How recent (seconds) a login's second factor must be for sensitive actions (`AUTH_STEP_UP_MAX_AGE`, default 600). */
+  stepUpMaxAge: number;
 }
 
 /** Hono context variables, set by the auth middleware. */

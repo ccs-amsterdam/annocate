@@ -1,5 +1,6 @@
-// `pnpm dev`: the server with development auth headers (so the dev shell's
-// researcher UI works without an API key) and the demo study in an empty database.
-process.env.ANNOTINDER_DEV_AUTH ??= "1";
+// `pnpm dev`: the server in development mode (development auth headers on
+// localhost only, so the researcher UI works without a login) and the demo
+// study in an empty database.
+process.env.AUTH_DEV_MODE ??= "1";
 process.env.ANNOTINDER_DEMO ??= "1";
 await import("./index.js");
