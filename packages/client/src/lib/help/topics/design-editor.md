@@ -58,7 +58,7 @@ Two marks can appear after an item:
 
 Hover over a row and click the **+** at its right. A new item goes **below
 that row**: after the item, or for a loop or condition, at the top of what
-is inside it. Then choose the type: **Question**, **Unit Loop** (only
+is inside it. Then choose the type: **Question**, **Unit loop** (only
 outside loops: loops can't be nested), **Condition** or **End** (an
 [end item](end-items.md)).
 

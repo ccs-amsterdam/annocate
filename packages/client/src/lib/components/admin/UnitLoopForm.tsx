@@ -835,7 +835,7 @@ function OverlapEditor({
       </div>
       {on && group && units === 0 && (
         <p className="text-[11px] text-amber-700 dark:text-amber-400">
-          Group {group.name} has no {OVERLAP_SET} units yet: add them (a set named {OVERLAP_SET}) on the Units page.
+          No units are marked {OVERLAP_SET} yet: mark them in a set column on the Units page.
         </p>
       )}
       {on && units > 0 && (
@@ -960,7 +960,7 @@ function SpecialSetNote({ group, set, what }: { group: SetGroupResponse | undefi
   const units = group.sets.find((s) => s.name === set)?.unitIds.length ?? 0;
   return units === 0 ? (
     <p className="text-[11px] text-amber-700 dark:text-amber-400">
-      Group {group.name} has no {set} units yet: add them (a set named {set}) on the Units page.
+      No units are marked {set} yet: mark them in a set column on the Units page.
     </p>
   ) : (
     <p className="text-[11px] text-muted-foreground">

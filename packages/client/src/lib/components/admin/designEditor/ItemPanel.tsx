@@ -19,6 +19,7 @@ import { ItemForm } from "../ItemForm";
 import { Button } from "@/components/ui/button";
 import { ItemPreview } from "./ItemPreview";
 import { getItemKey } from "../designTree/utils";
+import { ITEM_TYPES } from "../designTree/itemTypes";
 import { SegmentedToggle } from "./SegmentedToggle";
 import { shareSources } from "../../../design/assignment";
 import { ItemJsonEditor } from "./ItemJsonEditor";
@@ -61,8 +62,8 @@ export function ItemPanel({
                 Items
               </Button>
             )}
-            <span className="inline-flex items-center rounded-md border border-border bg-background px-2 py-0.5 text-xs font-semibold capitalize text-foreground shadow-2xs" title="Item type">
-              {item.type.replace("_", " ")}
+            <span className="inline-flex items-center rounded-md border border-border bg-background px-2 py-0.5 text-xs font-semibold text-foreground shadow-2xs" title="Item type">
+              {ITEM_TYPES[item.type]?.label ?? item.type}
             </span>
 
             <SegmentedToggle

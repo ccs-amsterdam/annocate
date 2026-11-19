@@ -63,7 +63,7 @@ on the right the form of the item you select.
 **A unit loop.** Questions about units go inside a *unit loop*: the loop
 asks its questions for every unit a coder gets.
 
-1. Click **Add item**, then **Unit Loop**.
+1. Click **Add item**, then **Unit loop**.
 2. In the loop's form, type a **Label (optional)** such as *News articles*.
    Coders see it in their menu.
 

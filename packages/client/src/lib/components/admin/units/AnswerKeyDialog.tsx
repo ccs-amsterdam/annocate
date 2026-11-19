@@ -211,7 +211,7 @@ export function AnswerKeyDialog({
             Group {group}, set {set}: {units ? `${ready} of ${units.length} have answers for every checked question` : "loading…"}. Coders never see these columns.
           </DialogDescription>
         </DialogHeader>
-        {units && units.length === 0 && <p className="text-sm">Group {group} has no {set} units yet: add them (a set named {set}) on the Units page.</p>}
+        {units && units.length === 0 && <p className="text-sm">No units in column {group} are marked {set} yet: mark them on the Units page.</p>}
         {unit && (
           <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
             <div className="flex items-center gap-2 text-sm">

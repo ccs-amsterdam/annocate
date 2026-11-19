@@ -17,7 +17,7 @@ studies: some questions about the coder, then a loop over the units.
 
 ## Adding a loop
 
-In the codebook editor, click **+** in the tree and choose **Unit Loop**. A
+In the codebook editor, click **+** in the tree and choose **Unit loop**. A
 new loop is empty: add its questions with **+**, choosing a place inside the
 loop, or move existing questions into it. A loop needs at least one item.
 
