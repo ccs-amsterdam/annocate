@@ -1,6 +1,8 @@
 # Plan: special sets (overlap rate, gold, practice)
 
-Status: agreed 2026-10-31, being built in this order: (0) the coder
+Status: built; partly replaced (2026-11-19) by `unit-assignment.md`: the
+special sets belong to set columns, and a loop places those of the
+session's columns. Agreed 2026-10-31, built in this order: (0) the coder
 codebook (done), (1) practice and gold (done: placements `first`, `last`,
 `spread`; the rate comes with step 5; coders continue after a wrong
 practice answer), (2) "Create gold values" (done: a dialog from the loop's Practice and Gold sections), (3) help

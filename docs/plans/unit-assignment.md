@@ -1,6 +1,17 @@
 # Plan: assigning units (coders and conditions)
 
-Status: agreed 2026-11-19, being built. Replaces the loop modes (`all`,
+Status: built (2026-11-19, steps 1–4). Deviations from the text below:
+
+- The random condition is an answer type (`random_condition`, with `draw`,
+  `options?`, `units?`) of a question, not a new item kind; the editor
+  shows it as "Random condition".
+- The coder and condition values are per session (`$session`), but a
+  coder's routing in a loop is still stored per branch fingerprint
+  (`coders.assignments`, `architecture.md` §6.2), holding the share's key.
+- Migration `0006_unit_assignment.sql` has the same number as the MCP
+  branch's `0006_oauth.sql`: renumber one when merging.
+
+Replaces the loop modes (`all`,
 `shared`, `assign`), set-backed link parameters (`values: {sets: group}`),
 `auto` variables as such, and per-link sign-in settings. Keeps the
 distribution engine and the special sets of `special-sets.md`.

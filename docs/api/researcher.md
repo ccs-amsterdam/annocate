@@ -209,7 +209,9 @@ development headers: all studies).
 
 `POST /study` → `StudyResponseSchema` (201). Needs the account role
 `researcher` (403 `researcher_required`), within their `studies` limit (403
-`limit_reached`). The creator owns it and becomes its `ADMIN`.
+`limit_reached`). The creator owns it and becomes its `ADMIN`. Optional
+`signIn` (`off` by default, `optional`, `required`): whether coders sign in
+(`docs/coder-identity.md`), a setting of the study, not of links.
 (With development headers the study has no study users, which lets any
 development role in.)
 
@@ -234,15 +236,17 @@ recipe (`contracts/src/recipe.ts`), as the setup wizard writes one, like
 `createStudy` (the same role, limits and ownership), in one transaction:
 
 - `units` (`{ id, data }`; the first unit's fields become the study's) and
-  `sets`: set groups by the units' ids (`[{ group, sets: [{ name, units,
-  ordered? }] }]`);
+  `sets`: set columns by the units' ids (`[{ group, sets: [{ name, units,
+  ordered? }] }]`, `group` the column's name);
+- `signIn` (optional, as in `createStudy`);
 - `design` (`{ note?, public?, session?, items }`): the first version, saved as a draft that
   may have issues (e.g. questions without an answer type yet). With
   `publish: true` it is deployed, and must then pass validation.
 
 A recipe has no links: deploying its design makes them. 400
 `recipe_invalid` for a unit id used twice, a set naming an unknown unit, a
-group defined twice, or a design to deploy that has issues; nothing is created then. Example studies are recipes too
+column defined twice, or a design to deploy that has issues or fails the
+deploy's errors ([putDeployment](#putdeployment)); nothing is created then. Example studies are recipes too
 (`packages/server/examples/`), with example answers.
 
 ### getStudy
@@ -252,7 +256,8 @@ group defined twice, or a design to deploy that has issues; nothing is created t
 ### updateStudy
 
 `PUT /study/:id` → `StudyResponseSchema`. Rename, set `archived` (hidden from
-active lists), `keepSessionsOpen`: finished coder sessions stay open
+active lists), `signIn` (`off`, `optional`, `required`; the deploy dialog
+asks for it at the first deploy, and email coders need `required`), `keepSessionsOpen`: finished coder sessions stay open
 (off by default: `docs/coder-identity.md` §9), or `redirectUrls`: the
 deployment settings end items' `redirectSetting` names, e.g. a panel's
 return links (`docs/plans/design.md` §4); coders get them at once, without
@@ -277,7 +282,7 @@ after a year without a second factor; `docs/accounts.md` §2).
 ### getOverview
 
 `GET /study/:studyId/overview` → `StudyOverviewSchema`. Counts for the overview
-page: units, set groups with their sets' sizes (`groups: [{ name, sets:
+page: units, set columns with their values' sizes (`groups: [{ name, sets:
 [{ name, units }] }]`), coders (total, started, active in the last
 24 hours), live answers, finished codings for the live design's loops, and
 answers per day for the last 30 days. "Finished": every question of the
@@ -405,34 +410,38 @@ version (a new content hash), once they are deployed
 is kept for those, and comes back when uploaded again. Deleting the last
 unit resets the fields.
 
-**Sets.** Units belong to named sets within set groups (table
-`unit_sets (study_id, grp, set_name, unit_id, position)`;
-`docs/plans/sets-and-session-parameters.md` §1). A group's name is like a
-field name; set names are at most 128 characters, without `;` or `#`.
-`_overlap` is reserved: the group's overlap units. A unit can be in several
-sets of a group. Sets are not part of the unit's data (moving a unit is no
-new unit version), and a change applies to running studies at once and syncs
-the study's links (a link per set of a group).
+**Set columns.** A set column is a unit field of type `set`; its values
+are named sets of units (tables `unit_sets`, `unit_set_members`;
+`docs/plans/unit-assignment.md`). The endpoints call a column a *group* and
+its values *sets*. A column's name is like a field name; values are at most
+128 characters, without `;` or `#`. `_overlap`, `_practice` and `_gold` are
+reserved: the column's special units. A unit can have several values of a
+column. Sets are not part of the unit's data (changing them is no new unit
+version). They are drafts: coders and links get them when they are
+deployed with `units: true`.
 
 ### listSetGroups
 
-`GET /study/:studyId/sets` → `SetGroupResponseSchema[]`: per group its sets,
+`GET /study/:studyId/sets` → `SetGroupResponseSchema[]`: per column its values,
 each with its unit ids in order and `ordered` (positions were given). The
 draft's sets; `?live=true`: the deployed ones (what coders and links get).
 
 ### putSetGroup
 
 `PUT /study/:studyId/sets/:group` (`{ sets: [{ name, unitIds, ordered? }] }`)
-→ `SetGroupResponseSchema`. Makes or replaces the whole group. The unit ids
-in order: the order coders get them in, for loops that don't shuffle. Only
-the study's own units (400 otherwise).
+→ `SetGroupResponseSchema`. Makes or replaces the whole column, and
+declares it in the draft as a unit field of type `set` (409 if a field of
+another type has the name). The unit ids in order: the order coders get
+them in, for loops in set order. Only the study's own units (400
+otherwise).
 
 ### deleteSetGroup
 
 `DELETE /study/:studyId/sets/:group` → 204. 409 while the deployed or latest
-design uses the group (a loop's set, or a set-typed session parameter).
+design uses the column (the session's coders, a condition linked to units,
+or a loop's filter).
 
-Splitting units into sets (`s1..sN`, plus `_overlap`) is done by the client
+Filling a column (values given or `s1..sN`, plus `_overlap`) is done by the client
 (`splitIntoSets` in `sets.ts`), which then writes the group with
 [putSetGroup](#putsetgroup): the server only stores sets.
 
@@ -442,9 +451,11 @@ Schemas: [`contracts/src/coder.ts`](../../packages/contracts/src/coder.ts).
 Implementation: [`researcher/links.ts`](../../packages/server/src/researcher/links.ts), [`shared/links.ts`](../../packages/server/src/shared/links.ts), [`coders.ts`](../../packages/server/src/researcher/coders.ts), [`shared/progress.ts`](../../packages/server/src/shared/progress.ts).
 See [`docs/coder-identity.md`](../coder-identity.md) for what links do.
 
-Links are not created by hand: deploying makes one per
-combination of the design's link parameter values (one if it has none),
-and deploying set changes syncs them ([putDeployment](#putdeployment)): links follow the deployed sets. A link no
+Links are not created by hand: deploying makes one per non-email coder ×
+value of each condition assigned by link × combination of the design's
+link parameter values (one if there are none), and deploying set column
+changes syncs them ([putDeployment](#putdeployment)): links follow the
+deployed sets. A link no
 longer made is **retired** (`retiredAt`), never deleted: new coders get 403
 `link_inactive`, coders who started keep working. It comes back, with the
 same secret, if its combination returns.
@@ -458,9 +469,9 @@ first, with `params` (the link parameter values it carries), `uses`,
 ### updateLink
 
 `PUT /study/:studyId/links/:id` (`LinkWriteSchema`) →
-`LinkResponseSchema`. Who may use the link: `label`, `auth`
-(`none`, `optional`, `required`), `emails`, `maxUses` and a fixed
-`participantId`. Full replace of these settings.
+`LinkResponseSchema`. The link's `label`, `maxUses` and a fixed
+`participantId`. Full replace of these settings. Sign-in is the study's
+`signIn` ([updateStudy](#updatestudy)), not a link's.
 
 ### revokeLink
 
@@ -534,7 +545,11 @@ or pause/resume with `active`. Units and sets are drafts until deployed
 (`docs/plans/design.md` §5):
 
 1. check that the design version passes validation (400 with `issues` if not:
-   drafts may be saved with issues, coders only get valid designs);
+   drafts may be saved with issues, coders only get valid designs), and
+   check it against the set columns (400 `assignment_invalid` with the
+   errors: a column the design names that isn't a set column, coders
+   mixing email addresses and names, fixed condition values missing from
+   their column; `shared/sets.ts` `assignmentChecks`);
 2. with `units`: new versions of the units the draft changed (versions
    they replace that no answer points to are deleted), and the draft's
    sets become the deployed ones;
@@ -542,8 +557,9 @@ or pause/resume with `active`. Units and sets are drafts until deployed
    and resuming don't: coders don't reload), record the version with what
    it changed ([listDeploymentVersions](#listdeploymentversions)), and make
    the design version immutable;
-4. sync the study's links: one per combination of the design's link
-   parameter values; links no longer made are retired. Above 500 links this
+4. sync the study's links: one per non-email coder × link-assigned
+   condition value × combination of link parameter values; links no
+   longer made are retired. Above 500 links this
    needs `confirmLinks: true` (409 `confirm_links` otherwise), and more
    than 2000 is 400 `too_many_links`. The response's `links` is the number
    of active links;
@@ -555,8 +571,10 @@ units and no new sessions (409 `study_paused`; the coding screen says the
 study is paused) until it is resumed.
 
 Return `warnings` the researcher should see, e.g. a loop that gained
-questions, which makes units coders finished unfinished again, or a group
-with fewer overlap units than a loop expects.
+questions, which makes units coders finished unfinished again, a column
+without values, units no session gets, column values a condition doesn't
+list, fewer overlap units than a loop expects, or an end item's redirect
+setting without a URL.
 
 ### getPendingChanges
 

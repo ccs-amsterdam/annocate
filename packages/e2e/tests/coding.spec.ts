@@ -88,7 +88,7 @@ test("a participant in the experiment reads their version of the article and ans
   await page.getByRole("button", { name: "I confirm", exact: true }).click();
   await question(page, "New wind farm planned off the coast");
   // One of the two versions, never both
-  const economic = await page.getByText("six hundred studies").isVisible();
+  const economic = await page.getByText("six hundred jobs").isVisible();
   const human = await page.getByText("Kees Jansen").isVisible();
   expect(economic !== human).toBe(true);
   await page.getByRole("button", { name: "I confirm", exact: true }).click();
@@ -97,7 +97,7 @@ test("a participant in the experiment reads their version of the article and ans
     await page.getByRole("radiogroup", { name: row }).getByRole("radio", { name: "a little" }).click();
   }
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.getByRole("button", { name: economic ? /Costs and studies/ : /fisherman/ }).click();
+  await page.getByRole("button", { name: economic ? /Costs and jobs/ : /fisherman/ }).click();
   await expect(page.getByText(/the wind farm is not real/)).toBeVisible();
 
   const rows = (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId));

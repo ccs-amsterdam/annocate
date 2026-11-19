@@ -49,6 +49,8 @@ const ExampleFileSchema = RecipeSchema.extend({
       z.object({
         variables: z.record(z.string(), ShortAnswerSchema).default({}),
         units: z.record(z.string(), z.record(z.string(), ShortAnswerSchema)).default({}),
+        /** The coder's `$session` values, e.g. `{ coder: "anna" }`: they start from the link that carries them. */
+        session: z.record(z.string(), z.string()).default({}),
       }),
     )
     .default([]),
@@ -140,11 +142,18 @@ export async function createStudyFromExample(db: Sql, id: string, options: FromE
       const errors = validateAnswer(name, type, value);
       if (errors.length > 0) throw new Error(`examples/${id}.json: ${errors.join("; ")}`);
     };
+    const links = await tx.query<{ id: number; params: Record<string, string> }>(
+      "SELECT id, params FROM links WHERE study_id = $1 AND retired_at IS NULL ORDER BY id",
+      [study.id],
+    );
     for (const [i, coder] of example.answers.entries()) {
+      // The link whose values the coder's session has (their coder, a condition by link)
+      const link = links.find((l) => Object.entries(l.params).every(([name, value]) => coder.session[name] === value));
+      if (Object.keys(coder.session).length > 0 && !link) throw new Error(`examples/${id}.json: no link for example coder ${i + 1}'s session`);
       const coderId = (await one<{ id: number }>(
         tx,
-        "INSERT INTO coders (study_id, participant_id, link_id, ended) VALUES ($1, $2, $3, $4) RETURNING id",
-        [study.id, `Example coder ${i + 1}`, firstLink, JSON.stringify({ outcome: "complete", at: new Date() })],
+        "INSERT INTO coders (study_id, participant_id, link_id, session, ended) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+        [study.id, `Example coder ${i + 1}`, link?.id ?? firstLink, JSON.stringify(coder.session), JSON.stringify({ outcome: "complete", at: new Date() })],
       ))!.id;
       const values = Object.fromEntries(
         Object.entries(coder.variables).map(([name, short]) => [name, answerValue(short)]),

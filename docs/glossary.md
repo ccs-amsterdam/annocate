@@ -8,18 +8,26 @@ keeps the word "codebook", "In code" says why.
 | Term | Meaning | Not |
 | --- | --- | --- |
 | **Study** | What a researcher runs in AnnoTinder: its design, units, deployments, links and results. Coders take part in it. | job, project |
-| **Design** | Everything someone repeating the study needs (`plans/design.md`): the **unit fields**, the **session** (URL and link parameters, participant id, sample size per link) and the **items** (questions, unit loops with who codes which units, conditions, end items). Versioned. | "codebook" for the whole |
+| **Design** | Everything someone repeating the study needs (`plans/design.md`): the **unit fields**, the **session** (coders, assigned conditions, URL and link parameters, participant id) and the **items** (questions, random conditions, unit loops, Show if items, end items). Versioned. | "codebook" for the whole |
 | **Design version** (v1, v2, ...) | A saved state of the design. The latest one is the **draft** until it is deployed; deployed versions are frozen. | "codebook version" |
 | **Codebook** | The part of the design coders see: questions with their instructions and options, layouts, conditions, end messages. What the coding client gets (the *coder codebook*) and what **Export** writes (`codebook.md`), e.g. for a paper. The **Editor** tab (Design › Editor) edits the design's items and session. | the whole design; a version |
 | **Item** | An entry of the design: a question, unit loop, condition, end item, or the session (shown as the first item in the editor). | |
 | **Question** | An item coders answer; its **answer type** (`variable` in the JSON, e.g. `nominal`) says how. Its answers are a column in the results. | "variable" in UI text |
 | **Unit** | A thing coders code, with **unit fields** (declared in the design). | document, item |
 | **Unit version** | A unit's content as deployed; answers point to the version their coder saw. Draft edits make no versions. | |
-| **Set**, **set group** | A named list of units within a group (e.g. `s1` in group `part`); `_overlap`, `_practice`, `_gold` are special sets. | "unitset" |
+| **Set column** | A unit field of type `set` that says who or which group a unit is for (e.g. `coder`, `framing`); each cell lists the unit's values (`anna;bob`, `_overlap`). Stored as a *set group* (`unit_sets`; the sets endpoints say `group`). | "set group" in UI text |
+| **Set** | One value of a set column: the units whose cell holds it, in order. `_overlap`, `_practice`, `_gold` are special sets, for every share. | "unitset" |
+| **Coders** (of a design) | The design's `session.coders`: a set column whose values are coders; each gets the units of their value (`$session.coder`). Names: a link per coder; email addresses: one link with sign-in. | |
+| **Assigned condition** | A condition in `session.conditions`, set when the session starts: by link, or drawn (balanced or random). `$session.<name>`. | |
+| **Random condition** | An item (answer type `random_condition`) drawn when the coder reaches it, never asked. `$var.<name>`. | "auto question" |
+| **Linked to units** | A condition (assigned or random) whose value also selects units: those with its value in a set column. | |
+| **Share** | The units a session gets: those whose cells hold its coder and linked conditions' values in each column (plus `_overlap`). A loop works within it. | |
+| **Show if** | An item (`show_if`) whose children only show when its condition holds. | "condition" for the item |
+| **Sign-in** | A study setting (`signIn`: off, optional, required): whether coders log in. | per-link login |
 | **Draft** | Anything not deployed yet: the latest design version if it isn't deployed, and units and sets as edited. | |
 | **Deploy** | Make drafts live: a design version, and/or the draft units and sets. One dialog, one verb. | "publish" |
-| **Deployment** | What coders get now (a design version with the deployed units and sets, active or paused) and its **settings**: panel return links, who may use each link, a link's own limit. | |
-| **Link** | What coders open to start a session; made from the design's link parameters when deploying, with who may use it. | "invite", "invitation" in UI text |
+| **Deployment** | What coders get now (a design version with the deployed units and sets, active or paused) and its **settings**: panel return links, sign-in, a link's own limit. | |
+| **Link** | What coders open to start a session; made when deploying, one per coder (by name) × condition assigned by link × link parameter combination. | "invite", "invitation" in UI text |
 | **Coder** | Anyone coding: a person with a **session** in a study. | annotator, participant (except below) |
 | **Participant id** | A label for the coder from a panel (e.g. `PROLIFIC_PID`); never a key. | |
 | **Public title** | What coders see as the study's name (the coder home, the coding screen): the design's `public.title`. The study's name is private. | the study's name |

@@ -52,7 +52,7 @@ Status: current (2026-10-26). Server-side design lives in
   (`currentUnitTemplate`, `currentTexts` on the snapshot), because
   evaluation is async and rendering is not.
 - It chooses the unit loop branch for the coder and tells the server
-  (`architecture.md` §6.1).
+  (`architecture.md` §6.2).
 - **Units in batches.** It asks for a loop's units a few at a time
   (`getNextUnits`, `UNIT_BATCH` 5) and keeps a queue per loop, refilled in
   the background when 2 are left (`fetchNextUnit`, `fillQueue`).
@@ -264,7 +264,7 @@ as in SPSS or Stata value labels:
 | `scale` | `items` rated on the same ordinal `options` (a Likert battery) | `values: [{ item, value }]`, one per item |
 | `annotinder` | swipe a card: 2 or 3 options, in the order left, right, up | `values: [{ value }]` |
 | `confirm` | a button | nothing besides `done` |
-| `auto` | assigned, not asked (random or balanced) | `values: [{ value }]` |
+| `random_condition` | drawn, not asked (random or balanced; optionally linked to a set column) | `options: [{ value }]` |
 | `span` | select text in the unit (loops only) | `spans: [{ id, field, value, slices }]` |
 | `relation` | link two spans (loops only) | `relations: [{ id, fromId, toId, value }]` |
 
@@ -357,8 +357,9 @@ closed session: 409 `session_closed`, `coder-identity.md` §9).
 ### Study entry
 
 The codebook's `session` item (at most one, always first) is never shown
-to coders: it declares the session's link and URL parameters and the
-participant id's URL parameter (`architecture.md` §7). The server reads
+to coders: it declares the session's coders and assigned conditions
+(`architecture.md` §6.1), its link and URL parameters and the participant
+id's URL parameter (§7). The server reads
 them when a session starts; the client only sees the values, as
 `$session.<name>`. The editor's form is `SessionItemForm.tsx`. The editor
 doesn't show it as an item in the tree: above the tree, `SessionHeader.tsx`
@@ -384,7 +385,7 @@ engine can run later. That suits reproducibility. Simple conditions don't
 need a JS engine at all: they are evaluated in plain TypeScript (below).
 
 All conditions are evaluated on the client, including unit loop branches;
-the server is only told the chosen branch (`architecture.md` §6.1).
+the server is only told the chosen branch (`architecture.md` §6.2).
 
 ### References and conditions
 
@@ -395,7 +396,7 @@ instruction texts, conditions and redirect links
 | Reference | Meaning | Questions |
 | --- | --- | --- |
 | `$unit.<field>` | unit data column (inside a unit loop) | |
-| `$var.<q>.value`, `.label` | the answer; `null` when unanswered | single nominal, ordinal, numeric, swipe, auto |
+| `$var.<q>.value`, `.label` | the answer; `null` when unanswered | single nominal, ordinal, numeric, swipe, random_condition |
 | `$var.<q>.values`, `.labels` | the answers; `[]` when unanswered | nominal with `multiple`, span, relation |
 | `$var.<q>.texts` | the selected texts | span |
 | `$var.<q>.values` | all items' values, in item order | scale |
@@ -416,7 +417,7 @@ Every method is false (`count()`: 0) while the question is unanswered.
 
 | Question | Methods |
 | --- | --- |
-| single (nominal, swipe, auto) | `is(v)`, `isAny(v1, v2, ...)` |
+| single (nominal, swipe, random_condition) | `is(v)`, `isAny(v1, v2, ...)` |
 | ordinal, scale items (`$var.q.items.x`) | also `gt(v)`, `gte(v)`, `lt(v)`, `lte(v)` |
 | nominal with `multiple` | `has(v)`, `hasAny(...)`, `hasAll(...)`, `count()` |
 | numeric | `eq(n)`, `gt(n)`, `gte(n)`, `lt(n)`, `lte(n)`, `between(a, b)` |
@@ -512,13 +513,13 @@ from the Preview Study button. It uses a `ResearcherApi`
     question on screen (for `::: from`), and answer pickers for the
     questions with options the layout uses (for `::: if` and values). The tree shows
     questions with the icon of their answer type, unit loops with their
-    set and mode (or "n coder groups"), and conditions by their condition, or by
+    filter and whether it is crowd coding (or "n coder groups"), and conditions by their condition, or by
     their optional `label`. Conditions and unit loops have no name
     (names of questions are variables, of end items the stored way a
     session ended): a loop is identified by its position and shows its
     label, or "Unit loop" (with its set next to it; messages and
     exports, which have no tree, say "Unit loop <n>", `architecture.md`
-    §6.1). New loops and conditions start empty.
+    §6.2). New loops and conditions start empty.
     Adding: a row's + (on hover) adds an item below it: after an item, at
     the top of a loop or condition's children. Only the end of a container
     is ambiguous (after its last item, or inside an empty container, is
@@ -575,12 +576,13 @@ from the Preview Study button. It uses a `ResearcherApi`
 
   Unit loops have two tabs (`UnitLoopForm.tsx`), Layout first; a loop's
   row in the tree has a button for each, which opens the loop on it
-  (`designEditor/loopTab.ts`). **Units**: per branch
-  which units coders get (Everyone codes everything, Crowd coding, Assign
-  sets; `architecture.md` §6.1) with that mode's settings (All units or a
-  set; for Assign sets the group and where a coder's set comes from), the
-  overlap (the group's `_overlap` units: first, last, spread or disabled),
-  and the loop's order. "Different units for different coder groups"
+  (`designEditor/loopTab.ts`). **Units**: a line saying what a session
+  gets (from the Session's coders and linked conditions), then per branch
+  which of those units (all, or only/except values of a set column;
+  `architecture.md` §6.2), "Share the units among coders" (crowd coding,
+  with its criteria), the special units (overlap, practice, gold: first,
+  last, spread, rate or disabled), and the loop's order. A new loop
+  starts "to specify", with a button "Code the session's units". "Different units for different coder groups"
   turns on branches, where every branch but the last has a condition
   ("if", "else if") and the last is "otherwise". **Layout**: the template,
   in Monaco (lazy, as the JSON editors: `jsonEditor/MonacoTemplate.tsx`)
@@ -669,31 +671,35 @@ from the Preview Study button. It uses a `ResearcherApi`
   or drop a file, pick the id column, then per column whether it is
   uploaded and as which field, and its type (inferred from the values;
   checked before uploading, with the values that don't fit), or the type
-  **sets**: a set group named after the column (cells `s1`, `s1;s2`,
-  `s1#3`), which replaces that group. A column named
+  **set**: a set column (cells `anna`, `anna;bob`, `anna#3`, `_overlap`,
+  `_practice`, `_gold`), which replaces that column's values. A column named
   like a field of the study is linked to it and keeps its type; "Use column
   names" gives every other column its own name, made valid
   (`toUnitFieldName`). Fields of the study that no column gives are empty, and
   new names add fields. A preview shows the first units as stored; a paged table with a column per field and per set
-  group; pick a set of a group to see its units in order (`?group=&set=`);
-  "Split units into sets" makes a group with `s1..sN` and `_overlap` (done
-  client-side with `splitIntoSets`, `SplitIntoSets.tsx`). Selected units
-  can be put in a set or removed from the shown one, and their answers
-  reset; a group can be deleted while no codebook uses it. Clicking a unit's id shows it
+  column; pick a value of a column to see its units in order (`?group=&set=`);
+  "Fill a set column" divides the units over given values with an
+  `_overlap` (done client-side with `splitIntoSets`, `SplitIntoSets.tsx`).
+  Selected units can be put in a value or removed from the shown one, and
+  their answers reset; a column can be deleted while no deployed or latest
+  design uses it. Clicking a unit's id shows it
   in full.
   A coded unit can only be replaced by uploading it again, after a warning (its answers keep the version their coder saw). The codebook editor warns about `$unit.x`
   references to fields that don't exist (`design/unitFieldRefs.ts`).
 - **Overview** (`overview/`): live/paused/unpublished, the live and draft
-  design versions (open them in the editor), unit/coder/link counts, set groups with their sets' sizes,
+  design versions (open them in the editor), unit/coder/link counts, set columns with their values' sizes,
   answers per day (`GET /overview`), progress per loop
   (`GET /deployment/status`). `LiveControls.tsx`: pause or resume.
 - **Settings** (`StudySettingsPage`): `TeamSettings.tsx`, who has access and
   their role (the list keeps at least one admin), and the study settings
-  (rename, archive, keep sessions open, delete).
-- **Links** (`LinksPanel.tsx`): the links deploying made,
-  one per combination of the codebook's link parameter values, with their
-  values, uses and status, and the URL parameters a link takes (copied
-  with placeholders). Per link: label, login requirement, allowed emails,
+  (rename, archive, keep sessions open, sign-in: off, optional or
+  required, delete). The first deploy asks for sign-in
+  (`DeployDialog.tsx`; required when the coders are email addresses) and
+  shows the deploy's errors and warnings.
+- **Links** (`LinksPanel.tsx`): the links deploying made, one per
+  non-email coder × value of each condition assigned by link × combination
+  of link parameter values, with their values, uses and status, and the
+  URL parameters a link takes (copied with placeholders). Per link: label,
   max uses and a fixed participant id; revoke (no new coders) or a new
   secret. Retired links are listed separately. There is no "create": the
   codebook's Study entry (`SessionItemForm.tsx`) declares the link and URL

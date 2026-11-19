@@ -1,11 +1,11 @@
 {
   "category": "Simple annotation",
   "title": "Sentiment by swiping",
-  "description": "Coders swipe news headlines left (negative), right (positive) or up (neutral). The 20 units are divided over 3 coders, plus 5 overlap units every coder gets, to compare their answers. With example answers from 3 coders, who disagree on some overlap units.",
+  "description": "Coders swipe news headlines left (negative), right (positive) or up (neutral). The 20 units are divided over 3 coders (Anna, Bob and Carla, a link each), plus 5 overlap units every coder gets, to compare their answers. With example answers from the 3 coders, who disagree on some overlap units.",
   "tryThis": [
-    "Download the results (Results tab) to see what the example coders' answers look like.",
-    "Open the link in a private window: you get one of the three parts, with the overlap units spread in between.",
-    "Look at the Study entry in the codebook (Codebook tab): the condition 'part' gives each session one of the parts (column 'parts'), drawn when it starts."
+    "Download the results (Results tab) to see what the example coders' answers look like: session.coder says who coded what.",
+    "Open a coder's link (Deploy › Links) in a private window: you get that coder's 5 units, with the 5 overlap units spread in between.",
+    "See who codes what: the set column 'coder' on the Units tab, and 'Units are divided over coders' in the editor's Session."
   ],
   "name": "Sentiment by swiping",
   "publish": true,
@@ -49,7 +49,7 @@
     {
       "id": "news-07",
       "data": {
-        "headline": "Factory closes, two hundred workers lose their studies"
+        "headline": "Factory closes, two hundred workers lose their jobs"
       }
     },
     {
@@ -133,10 +133,10 @@
   ],
   "sets": [
     {
-      "group": "parts",
+      "group": "coder",
       "sets": [
         {
-          "name": "s1",
+          "name": "anna",
           "units": [
             "news-06",
             "news-07",
@@ -146,7 +146,7 @@
           ]
         },
         {
-          "name": "s2",
+          "name": "bob",
           "units": [
             "news-11",
             "news-12",
@@ -156,7 +156,7 @@
           ]
         },
         {
-          "name": "s3",
+          "name": "carla",
           "units": [
             "news-16",
             "news-17",
@@ -185,15 +185,9 @@
     },
     "session": {
       "params": [],
-      "conditions": [
-        {
-          "name": "part",
-          "values": "free",
-          "assign": "random",
-          "units": "parts",
-          "description": "Which part of the headlines the session codes: drawn when it starts, balanced."
-        }
-      ]
+      "coders": {
+        "column": "coder"
+      }
     },
     "items": [
       {
@@ -273,6 +267,9 @@
         "news-10": {
           "sentiment": "positive"
         }
+      },
+      "session": {
+        "coder": "anna"
       }
     },
     {
@@ -307,6 +304,9 @@
         "news-15": {
           "sentiment": "negative"
         }
+      },
+      "session": {
+        "coder": "bob"
       }
     },
     {
@@ -341,6 +341,9 @@
         "news-20": {
           "sentiment": "positive"
         }
+      },
+      "session": {
+        "coder": "carla"
       }
     }
   ]

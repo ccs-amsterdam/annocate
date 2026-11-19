@@ -20,7 +20,7 @@ All paths are under `/d/<deploymentId>`, e.g. `/d/42/session`
 | [getLoopUnit](#getloopunit) | `GET /loop/:loop/units/:unitId` | – | `CoderUnitResponseSchema` |
 | [postUnitVariables](#postunitvariables) | `POST /variables/unit` | `PostUnitVariablesSchema` | `SubmitUnitResponseSchema` |
 | [postCoderVariables](#postcodervariables) | `POST /variables/coder` | `PostCoderVariablesSchema` | – |
-| [assignAuto](#assignauto) | `POST /variables/auto/:name` | – | `{ value }` |
+| [drawCondition](#drawcondition) | `POST /variables/condition/:name` | – | `{ value }` |
 | [createTransfer](#createtransfer) | `POST /transfer` | – | `TransferResponseSchema` |
 | [redeemTransfer](#redeemtransfer) | `POST /transfer/redeem` | `RedeemTransferSchema` | `RedeemTransferResponseSchema` |
 | [endSession](#endsession) | `POST /end` | `EndSessionSchema` | `EndSessionResponseSchema` |
@@ -51,9 +51,11 @@ Headers:
   participant that already has one;
 - the login cookie (`annotinder_session`, from `/auth/login`): read only to
   link the session to its email once, or to find the email's session on a
-  new device (`coder-identity.md` §5); 401 `auth_required` where a login is
-  required, 403 `email_not_allowed` for a login not on the link's list, or
-  (sets assigned by email) not among the group's set names;
+  new device (`coder-identity.md` §5). Where the study's `signIn` is
+  `required`, or the coders are email addresses, a new session needs a
+  login: 401 `auth_required` without one, 403 `email_not_allowed` for an
+  email that isn't one of the coders. A link whose coder or condition value
+  no longer exists: 403 `link_inactive`;
 - `x-annotinder-version`: the `version` of the loaded session (below).
 
 **New design versions.** `GET /session` returns the deployment's
@@ -74,18 +76,18 @@ Errors are `{ error, code? }`, with `code` from `CoderErrorCodeSchema`. See
 
 The **coder codebook** (`CoderCodebookSchema`, contracts `toCoderItems`)
 and its `version`, per-loop progress and the coder's
-variables (including assigned `auto` variables), and `ended` if the
+variables (including drawn random conditions), and `ended` if the
 session ended at an `end` item. The coder codebook has only what coding
 needs: unit loops keep their layout, questions, order and per branch only
 its `when` condition (the client sends the branch index; the server works
-out the units); no modes, sets or overlap, no Study entry, no researcher
-notes, and `auto` questions only with their options. Creates the coder and session on first
-use. `login`: the email of the login the session belongs to, or null;
+out the units); no filters, criteria or special units, no Study entry, no
+researcher notes, and random conditions only with their options. Creates
+the coder and session on first use, with its `$session` values: the link's
+coder and conditions, conditions drawn at the start, link and URL
+parameters. `login`: the email of the login the session belongs to, or null;
 `canLogIn`: the link offers a login the coder hasn't used. `frozen`: the
 coder-level answers that can't change any more, because the coder coded
 units in a loop that depends on them (contracts `loopDependencies`).
-Assigns the coder's `auto` variables they don't have yet (`random` or
-`balanced`).
 
 ### getSummary
 
@@ -126,7 +128,7 @@ shared queue each is leased to the coder (a lease they hold is renewed).
 Empty: the coder is done with the loop. 409 while the study is paused
 (`active: false`).
 
-A branch can add the group's **practice** and **gold** units
+A branch can add the session's columns' **practice** and **gold** units
 (`docs/plans/special-sets.md`) among the coder's own, like the overlap.
 Their answer columns (`<question>_practice`, `<question>_practice_message`,
 `<question>_gold`) are not in the unit's data. A practice unit's data has
@@ -138,14 +140,15 @@ feedback, and with `retry` asks again until right. Gold and overlap units
 look like any other; gold cells never leave the server.
 
 The client chooses the branch (`NextUnitQuerySchema`): the index of the
-first branch in the loop's `units` whose `when` holds. The server picks the
-set (the branch's fixed set, or in `assign` mode a drawn set or the one a
-session value names; 400 for an unknown branch, 409 if a set doesn't
-exist) and stores the routing (`{ set: "group/set", at }`); afterwards the
-parameter is ignored (routing is sticky, `architecture.md` §6.1). Without
-it, a loop with a single unconditional branch routes by itself; other loops
-answer 409 with code `branch_required`. A coder whose session value names
-no set of the group gets no units in the loop.
+first branch in the loop's `units` whose `when` holds (400 for an unknown
+branch). The server works out the units: the session's units (its coder
+and linked conditions; a linked random condition the coder doesn't have
+yet is drawn now), within the branch's filter, and stores the routing per
+branch fingerprint; afterwards the parameter is ignored (routing is
+sticky, `architecture.md` §6.2). Without it, a loop with a single
+unconditional branch routes by itself; other loops answer 409 with code
+`branch_required`. A session whose values select no units gets none in the
+loop.
 
 ### getLoopUnit
 
@@ -177,22 +180,24 @@ client shows it). A gold unit's response never says right or wrong.
 The coder-level answers (survey questions outside loops), all of them as
 the client has them. The server writes a row for each answer that changed
 (answer rows without a unit, like unit answers); values the server
-assigned (`auto` questions) and frozen answers (`frozen` in the session)
+drew (random conditions) and frozen answers (`frozen` in the session)
 are left as they are. `timings`: for the
 questions visited since the last post, how long the coder took; an
 answer that didn't change gets its timing updated.
 
-### assignAuto
+### drawCondition
 
-`POST /variables/auto/:name` → `{ value }` (a `VariableValue`)
+`POST /variables/condition/:name` → `{ value }` (a `VariableValue`)
 
-The coder reached the `auto` question `name` in the codebook's flow (the
-client evaluates conditions): the server assigns its value now, once, and
-returns it; reached again, the same value. `random` draws by weight;
-`balanced` takes the option the fewest coders who reached it have, under a
-lock, counting with `stratify` only coders with the same answers to those
-questions (as saved: the client saves its answers first) and the same
-`session.<name>` values. 404 for a name that is no `auto` question.
+The coder reached the random condition `name` in the codebook's flow (the
+client evaluates conditions): the server draws its value now, once, and
+returns it; reached again, the same value. `draw: "random"` draws by
+weight; `"balanced"` takes the option the fewest coders who reached it
+have, under a lock, counting with `stratify` only coders with the same
+answers to those questions (as saved: the client saves its answers first)
+and the same `session.<name>` values. A condition linked to units without
+`options` draws from its column's values (409 while the column has none).
+404 for a name that is no random condition.
 
 ### endSession
 

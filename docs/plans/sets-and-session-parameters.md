@@ -1,6 +1,12 @@
 # Plan: set groups, session parameters and generated links
 
-Status (2026-10-30): agreed in discussion; being built (§8 tracks it).
+Status (2026-10-30): agreed in discussion; built (§8 tracks it). Largely
+replaced (2026-11-19) by `unit-assignment.md`: set groups are now set
+columns (a unit field of type `set`), loop modes and set-backed link
+parameters gave way to the session's coders and conditions, `auto`
+variables to random conditions, and per-link login to the study's sign-in
+setting. Kept: sets as stored lists, `_overlap`, link and URL parameters,
+generated and retired links.
 
 ## Why
 

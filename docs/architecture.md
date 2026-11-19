@@ -138,11 +138,11 @@ client calls `/d/<studyId>/...`.
    of the device cookie's id, the deployment and the participant id, see
    `coder-identity.md` §4) and link
    secret, creating the coder if needed and storing its `$session` values
-   (the link's parameter values, URL parameters, `source`, §7); on every
+   (the link's parameter values, URL parameters, `source`, the coder and
+   assigned conditions, §6.1, §7); on every
    request after that, one query finds it.
-2. **`GET /session`.** Assigns any missing server-side `auto` variables
-   (§7), then returns the codebook, per-loop progress, and the coder's
-   variables (so client-side conditions can use assigned variables).
+2. **`GET /session`.** Returns the codebook, per-loop progress, and the
+   coder's variables (so client-side conditions can use drawn values).
 3. **`GET /loop/:loop/next?count=k`.** On the first call for a loop, the
    runtime routes the coder to a branch (§6) and stores that. It then picks
    the coder's next k units (unfinished ones first) and, in a shared queue,
@@ -169,248 +169,226 @@ started / leased, codings and coders.
 
 ## 6. Distribution: the codebook describes the process
 
-**Principle.** The codebook can name parameters, but never bind them. The
-codebook is meant to be shared and reproduced. So it describes *how* units
+**Principle.** The design can name parameters, but never bind them. The
+design is meant to be shared and reproduced. So it describes *how* units
 are distributed, but it never contains unit ids or who the coders are.
 There are three layers:
 
 | Layer | Contains | Shared/reproducible? |
 | --- | --- | --- |
-| Codebook | questions, conditions, `unit_loop` distribution, session parameters; refers to set groups and sets by name and to coders only via coder-level variables and `$session` values | yes |
-| Sets | per group, named sets of units in order (e.g. group `parts`: `s1`..`s5`, `_overlap`) | data, not process |
-| Links | made from the codebook's link parameters, with access rules (login, emails, max uses, a fixed participant id) | no (stored on the server only) |
+| Design | questions, `show_if` items, `unit_loop` filters and criteria, the session (coders, conditions, link and URL parameters); refers to set columns and their values by name, and to coders only via `$session` values and coder-level answers | yes |
+| Set columns | per column, named sets of units in order (e.g. column `coder`: `anna`, `bob`, `_overlap`) | data, not process |
+| Links | made from the design's coders, conditions assigned by link and link parameters, with a label, max uses and a fixed participant id | no (stored on the server only) |
 
-### 6.1 Unit loops
+The full model, and why: `plans/unit-assignment.md`.
+
+### 6.1 A session's units
+
+Decided once per session, for the whole study (contracts
+`design/session.ts`, `sessionShare` in the runtime):
+
+```yaml
+session:
+  coders: { column: coder }                       # units divided over coders
+  conditions:
+    - { name: framing, values: [control, experiment], assign: link, units: framing }
+    - { name: set, values: free, assign: random, draw: balanced, units: set }
+```
+
+- **Coders** (`coders.column`): a set column whose values are coders.
+  All values email addresses: one link, sign-in required, a session's
+  coder is its login's address (others get 403 `email_not_allowed`). No
+  email addresses: a link per value. A mix is a deploy error. The value is
+  `$session.coder`.
+- **Assigned conditions**: `values` a list or `"free"` (the linked
+  column's values). `assign: "link"` makes a link per value;
+  `assign: "random"` draws when the session is created: `draw: "balanced"`
+  (the value fewest sessions have, counting finished sessions and those
+  active in the last 24 hours, under a lock per condition) or `"random"`.
+  The value is `$session.<name>`.
+- **Random conditions** (a `random_condition` answer type, §7) are drawn
+  when reached; with `units` they also select units, for the loops after
+  them.
+
+A session's units are the units whose cell holds the session's value in
+every linked column (its coder, and each linked condition), including each
+column's `_overlap` units. Without linked columns: all units.
+
+### 6.2 Unit loops
 
 Defined in `contracts/src/design/unitLoop.ts`. A loop has branches (the
-first whose `when` matches is used; no match = no units). Each branch has a
-**mode**, which says which units a coder gets, and (in `shared` and
-`assign`) an **overlap**:
+first whose `when` matches is used; no match = no units); each works
+within the session's units:
 
 ```yaml
 type: unit_loop
 label: News items        # optional: shown in the editor, progress and exports
 order: random            # sequential (default, the set's order) | random: each coder their own order
 units:
-  - when:                                # a condition on coder-level questions or $session values
-      script: $var.group.is("treatment")
-    mode: all                            # every coder codes every unit of the set
-    set: { group: condition, set: treatment }   # omit for all units
-  - mode: shared                         # a queue: each unit until N coders coded it, or N agree
-    set: { group: parts, set: queue }    # optional; omit for all units
-    until: { agree: 3, on: sentiment }   # or { coders: 1 }
-    maxCoders: 5
-    maxUnits: 100                        # per coder
-    overlap: { placement: spread }       # the group's _overlap units
-  - mode: assign                         # each coder gets one set of a group
-    group: parts
-    from: { draw: balanced }             # or { draw: random }, or { session: <name> | participant | email }
-    overlap: { placement: spread, expect: 50 }   # required: first | last | spread | disabled
+  - when: { script: $var.reads_dutch.is("yes") }    # optional
+    filter: { column: phase, only: [post] }          # optional: only | except, on a set column
+    criteria:                                        # optional: a shared queue (crowd coding)
+      until: { agree: 3, on: sentiment }             # or codersPerUnit: { min: 1 }
+      codersPerUnit: { max: 5 }
+      unitsPerCoder: { max: 100 }
+    overlap: { placement: spread, expect: 50 }       # first | last | spread | rate | disabled
+    practice: { placement: first, questions: [sentiment] }
+    gold: { placement: rate, every: 10, questions: [sentiment] }
 ```
 
-**Modes:**
-
-- **`all`**: every coder of the branch codes every unit (of the study, or of
-  `set`).
-- **`shared`**: a queue shared by all coders of the branch, over all units
-  or one `set`:
-  - A unit is **done** once `until.coders` coders finished it, or once
+- **No criteria**: every coder codes all the branch's units once.
+- **`filter`**: only (or all except) the session's units with given values
+  of a set column: a pre and a post loop on a `phase` column, or a loop
+  over the `_overlap` units first.
+- **`criteria`**: a queue shared by the sessions with the same units
+  (the same coder and condition values), within the filter:
+  - A unit is **done** once `codersPerUnit.min` coders finished it, or once
     `until.agree` of them gave the same answer to `until.on` (a question of
-    the loop with one categorical answer: nominal without `multiple`,
-    ordinal, swipe). It is also done, regardless, once `maxCoders` coders
-    finished it. `maxCoders` is required with `agree`, so a unit nobody
-    agrees on isn't coded forever.
-  - `maxUnits` caps the units per coder (besides the overlap).
-  - **Open slots** are codings still needed, capped by `maxCoders`, minus
-    active leases. This prevents over-assignment while coders are working.
-  - Without open slots, a coder gets any unit that isn't **full**
-    (`isFull`): finished codings below `maxCoders` (leases don't count;
-    without `maxCoders`, below `until.coders`) and, with `agree`, not
-    agreed on. Least coded first (codings plus leases). So a coder only
+    the loop with one categorical answer). It is also done, regardless,
+    once `codersPerUnit.max` coders finished it; `max` is required with
+    `until`, so a unit nobody agrees on isn't coded forever.
+  - `unitsPerCoder.max` caps the units per coder (besides special units).
+  - **Open slots** are codings still needed, capped by
+    `codersPerUnit.max`, minus active leases. Without open slots, a coder
+    gets any unit that isn't **full**, least coded first. So a coder only
     gets nothing when every unit is full (`Reach` in
     `runtime/distribution.ts`).
-  - `minUnits`: while a coder has fewer units, `maxCoders` gives way too:
-    any unit not agreed on (`agree`), or any unit (`coders`), least coded
-    first.
-  - **Leases** last `leaseSeconds` (default 900). An expired lease frees the
-    slot. A coder asking for "next" while holding leases gets the same units
-    again (their leases renewed), so a reload is safe. Finishing a unit
-    drops the coder's lease on it (in the same transaction as the coding);
-    a pick therefore reads the leases before the codings, so a unit
-    finished in between is seen as a coding.
+  - `unitsPerCoder.min`: while a coder has fewer units, the maximum gives
+    way too.
+  - **Leases** last `leaseSeconds` (default 900). A coder asking for "next"
+    while holding leases gets the same units again, so a reload is safe.
   - **`priority`:** `cover` (default) prefers least-coded units;
     `saturate` prefers units closest to done.
-- **`assign`**: each coder gets one set of `group` (its sets besides
-  `_overlap`). `from` says which: `{ draw: "balanced" }`, the set with the
-  fewest coders so far (the first of those; a coder counts for their set if
-  they finished it, or were routed or finished a unit in the last 24 hours,
-  `SET_ACTIVITY_MS`, so the set of a coder who dropped out is handed out
-  again); `{ draw: "random" }`; or `{ session: name }`, the set a session
-  value names: a set-typed link or URL parameter of the group (§7), the
-  `participant` id, or the login `email` (login required; only emails that
-  are set names of the group can start, others get 403
-  `email_not_allowed`). A value that names no set gives no units.
 
-**Overlap.** The group's `_overlap` units, which every coder of the branch
-codes in full besides their own units, e.g. for intercoder reliability
-(and gold units). `placement`: `first`, `last`, `spread` evenly through
-them, or `disabled`; required in `assign` mode (a deliberate choice), and
-in `shared` mode only with a `set`. Optional: `expect` (a deploy warning
-when the group has fewer overlap units), and `max` with `pick` (`first` or
-a seeded `random` draw) to use at most that many. A coder's own set leaves
-out units that are also overlap units. Spreading needs to know how many
-units a coder gets: their set's size, or in `shared` mode `maxUnits`
-(required there for `spread`). If a coder runs out of own units sooner,
-the overlap units left come at the end.
+**Special units.** `_overlap`, `_practice` and `_gold` of the session's
+columns (practice and gold of any set column) are mixed into the coder's
+own units by `placement`: `first`, `last`, `spread` evenly (needs the
+number of units a coder gets: with criteria, `unitsPerCoder.max`), `rate`
+(about one in `every`), or `disabled`. Overlap options: `expect` (a deploy
+warning when there are fewer) and `max` with `pick` (`first` or a seeded
+`random` draw). See `plans/special-sets.md` for practice and gold.
 
 The pools behind this are internal (`server/src/runtime/distribution.ts`):
-a branch is a pool for the coder's own units (a queue in `shared` mode,
-else fixed) and a fixed pool for the overlap.
+a branch is a pool for the coder's own units (a queue with criteria, else
+fixed) and fixed pools for the special units.
 
-**`when`.** The same condition as a `condition` item (a script,
-`client.md` "References and conditions"), on coder-level questions from
-before the loop, and `$session` values. Sets are named literally (no
-references): to route by an answer, use a branch per value. Codebook
-validation checks both.
+**`when`.** The same condition as a `show_if` item, on coder-level answers
+from before the loop and `$session` values. Codebook validation checks it.
 
 **The client chooses the branch.** When it enters a loop, the client
 evaluates the branches in order, takes the first that matches, and asks
-`GET /loop/:loop/next?branch=<i>`. The runtime checks that the branch
-exists, takes its set (the branch's own, or in `assign` mode drawn or named
-by a session value), checks that it exists, and stores it. A loop with a
-single unconditional branch routes without the parameter; any other loop
-answers 409 `branch_required` until the client chooses. This way the server never needs the answers a branch
-depends on, which is what end-to-end encryption needs (`plans/encryption.md`,
-"Routing on answers").
+`GET /loop/:loop/next?branch=<i>`. A loop with a single unconditional
+branch routes without the parameter; any other loop answers 409
+`branch_required` until the client chooses. This way the server never needs
+the answers a branch depends on (`plans/encryption.md`, "Routing on
+answers").
 
 *Trust trade-off.* A coder can choose their own branch, by sending another
-branch index. The server only guarantees that a coder gets units of a
-branch the codebook could route *someone* to. Routing by `when` is a
-convenience for the researcher, not access control; the set in `assign`
-mode is decided by the server. `auto` assignment (random, balanced) and
-`$session` values themselves stay on the server, so a coder can't change
-their stored group; only which branch they ask for.
+branch index. Routing by `when` is a convenience, not access control. The
+session's own units (coder, conditions) and random conditions are decided
+and stored by the server, so a coder can't change them.
 
-**Routing is sticky.** The coder's set is stored per coder by the
-branch's fingerprint (`branchFingerprint`: a hash of its mode, its set or
-group, and where an assigned set comes from), with when (`assignments`,
-e.g. `{ "assign-1k3x9": { set: "parts/s2", at: … } }`), and later choices
-are ignored. A coder who later changes an answer used in `when` keeps their
-units, as long as the codebook still has a branch with that
-fingerprint. So relabelling, moving or reordering loops moves nobody;
-changing which units a branch hands out routes its coders again. Two loops
-whose branches hand out the same units share the routing (the same set in
-both).
+**Routing is sticky.** A coder's branch is stored per coder by the
+branch's fingerprint (`branchFingerprint`: a hash of its filter and whether
+it has criteria) in `coders.assignments`, and later choices are ignored. So
+relabelling, moving or reordering loops moves nobody; changing which units
+a branch hands out routes its coders again. The units themselves are
+recomputed from the session's values on each request.
 
 **Loops have no name.** Within one design version a loop is identified by
 its position (`unitLoops`: `"1"`, `"2"`, ...): the coder API's
 `/loop/:loop/...`, progress per loop, and the runtime's queues and leases.
-All of that is rebuilt when a version is deployed. Answers and "finished"
-don't depend on it either: they are keyed by the loop's questions (§8.2).
-The optional `label` is for people: the editor, progress and exports.
+Answers and "finished" don't depend on it: they are keyed by the loop's
+questions (§8.2). The optional `label` is for people.
 
-The example "1000 units, until 5 coders agree, max 100 per coder" is:
-
-```yaml
-order: random
-units:
-  - { mode: shared, until: { agree: 5, on: sentiment }, maxCoders: 10, maxUnits: 100 }
-```
-
-### 6.2 Sets are explicit
+### 6.3 Set columns are explicit
 
 Sets are stored lists, not recipes. That way adding units to a study never
-changes an existing distribution. Units belong to named sets within **set
-groups** (`unit_sets (study_id, grp, set_name, unit_id, position)`): a group
-is like a column of the units, each unit's cell naming its set(s) (`s1`,
-`s1;s2`, `s1#3` with a position). A CSV upload can have such a column
-(type **sets**). `_overlap` is reserved: the group's overlap units. Sets
-are not part of a unit's data, so moving a unit is no new unit version.
-The researcher UI's "Split units into sets" makes a group (in the client,
-then stored with `PUT /study/:studyId/sets/:group`):
+changes an existing distribution. A **set column** is a unit field of type
+`set` in the design (`units.fields`), stored as a set group of the same
+name (`unit_sets`, `unit_set_members`, draft and `live`): each unit's cell
+names its values (`anna`, `anna;bob`, `anna#3` with a position, `_overlap`,
+`_practice`, `_gold`). A CSV upload can have such a column; it isn't part
+of a unit's data, so changing it is no new unit version. Writing a set
+column (`PUT /study/:studyId/sets/:column`) declares it in the draft design.
 
-- shuffle the units with a seed;
-- set aside an overlap (a number or a fraction) as `_overlap`;
-- split the rest into `s1..sN`.
+"Fill a set column" in the researcher UI shuffles the units with a seed,
+sets aside an overlap, and divides the rest over the given values (a pure
+function, `splitIntoSets` in contracts `sets.ts`).
 
-The splitting logic is a pure function, `splitIntoSets` in contracts
-(`sets.ts`).
+**Deploy checks** (errors stop the deploy, warnings are shown):
+- errors: a column the design names that isn't a set column; coders mixing
+  email addresses and names; fixed condition values missing from their
+  column;
+- warnings: a column without values; units no session gets; column values
+  a condition doesn't list; the overlap, practice and gold checks.
 
 ## 7. Coder variables, session parameters and links
 
-**`auto` variables** are assigned, never asked, and never changed afterwards.
-They are assigned when the coder *reaches* them in the codebook's flow: the
-client (which evaluates the conditions) saves the answers so far, then asks
-the server (`POST /variables/auto/:name`), and goes on with the value.
-Coders screened out before an auto question never get a value, so they
-don't count in the balance.
+**Random conditions** (`random_condition`) are drawn, never asked, and
+never changed afterwards. They are drawn when the coder *reaches* them in
+the design's flow: the client saves the answers so far, then asks the
+server (`POST /variables/condition/:name`), and goes on with the value.
+Coders screened out before one never get a value, so they don't count in
+the balance.
 
-- `random`: weighted draw from `options` (server).
-- `balanced`: the option fewest coders have so far (server), e.g. to
-  spread coders over experimental groups. (To spread coders over sets of
-  units, use a loop in `assign` mode.) Counted in the database, under a lock
-  per variable (§3). With `stratify` (earlier coder-level questions,
-  `session.<name>` values), only coders with the same values count:
-  balanced within groups.
+- `draw: "random"`: weighted draw from `options` (server).
+- `draw: "balanced"`: the value fewest coders have so far (server),
+  counted in the database under a lock per variable (§3). With `stratify`
+  (earlier coder-level questions, `session.<name>` values), only coders
+  with the same values count: balanced within groups.
+- With `units`, the value also selects the coder's units in the loops after
+  it (`options` optional: then the column's values). A linked random
+  condition reached by no path before a loop that needs it is drawn then.
 
-Values from the link or URL are session parameters, not `auto` variables
-(below).
-
-The server refuses to let the client overwrite assigned variables.
-`POST /variables/coder` keeps the stored values.
+The server refuses to let the client overwrite drawn values.
 
 **Frozen answers.** A coder-level answer a unit loop depends on (the loop's
 layout, questions, conditions or branches refer to it: contracts
-`loopDependencies`) is frozen once the coder coded a unit in that loop:
-changing it would change what those units were coded with.
+`loopDependencies`) is frozen once the coder coded a unit in that loop.
 `annotation_values.frozen` is set when a unit is submitted; later values
-for it are ignored, and the coding screen shows it read-only (`frozen` in
-the session).
+for it are ignored, and the coding screen shows it read-only.
 
-**Session parameters.** The codebook's **Session** item (`type:
-"session"`, at most one, always first) declares what a link carries and
+**The session.** The design's `session` (edited above the item tree)
+declares the coders and conditions (§6.1), and what a link carries and
 what may be added to it:
 
 ```yaml
-type: session
-params:
-  - { name: part, kind: link, values: { sets: parts } }          # a link per set of group parts
-  - { name: study, kind: url, param: STUDY_ID, values: { open: { pattern: "[0-9a-f]{24}" } } }
-participant: { param: PROLIFIC_PID }                               # the participant id from the URL
-combinations: [...]                                                # optional: only these link combinations
+session:
+  params:
+    - { name: class, kind: link, values: { list: [{ value: "1" }, { value: "2" }] } }
+    - { name: study, kind: url, param: STUDY_ID, values: { open: { pattern: "[0-9a-f]{24}" } } }
+  participant: { param: PROLIFIC_PID }     # the participant id from the URL
+  combinations: [...]                      # optional: only these link combinations
 ```
 
-- **Link parameters** (`kind: "link"`) are fixed in the link; values are a
-  `list` (`{ value, label? }`) or the sets of a group (`{ sets: group }`).
+- **Link parameters** (`kind: "link"`) are fixed in the link; values a
+  `list` (`{ value, label? }`).
 - **URL parameters** (`kind: "url"`) are added to a link by whoever shares
   it: URL key `param` (default the name), required unless they have a
-  `default`, values a `list`, the sets of a group, or `open` (optional
-  `pattern`). At most 256 characters. A missing required value is 400
-  `url_param_missing`, one that doesn't fit 400 `url_param_invalid`.
+  `default`, values a `list` or `open` (optional `pattern`, checked for
+  catastrophic backtracking). At most 256 characters. A missing required
+  value is 400 `url_param_missing`, one that doesn't fit 400
+  `url_param_invalid`.
 
 All are `$session.<name>`, stored on the coder when the session starts.
 Built in: `$session.participant`, `$session.source` (an optional
-`?source=` on any link) and `$session.email` (the login's email).
+`?source=` on any link), `$session.email` (the login's email) and
+`$session.coder`.
 
-**Links** (links; stored on the server, never in the codebook) are made
-by deploying: one per combination of link parameter values (one if there
-are none; above 500 deploying needs `confirmLinks`, at most 2000), keyed by
-their values so a link keeps its secret across versions. Set changes sync
-them too. A combination no longer made is **retired** (403 `link_inactive`
-for new coders; coders who started keep working), never deleted. The
-researcher sets only who may use a link:
+**Links** (stored on the server, never in the design) are made by
+deploying: one per non-email coder × value of each condition assigned by
+link × combination of link parameters (one if there are none; above 500
+deploying needs `confirmLinks`, at most 2000), keyed by their values so a
+link keeps its secret across versions. Changes to the set columns sync them
+too. A combination no longer made is **retired** (403 `link_inactive` for
+new coders; coders who started keep working), never deleted. The
+researcher sets only a link's label, `maxUses` and a fixed participant id.
 
-```json
-{ "label": "Alice", "auth": "required", "emails": ["alice@uni.nl"], "maxUses": 1 }
-```
-
-- **Routing a specific coder.** A link per set (a link parameter with
-  `values: { sets: parts }` and an `assign` loop `from: { session: "part" }`)
-  gives that link's coders its set, and the codebook never learns who they
-  are.
-- **Enforcement.** `maxUses` is enforced; links that require login, or
-  list email addresses, take only those logins. Participant ids and login:
-  `docs/coder-identity.md`.
+**Sign-in** is a setting of the study (`studies.sign_in`: `off`,
+`optional`, `required`), not of links: chosen at the first deploy. Email
+coders force `required`. Participant ids and login:
+`docs/coder-identity.md`.
 
 ## 8. Resuming, and codebook updates
 
@@ -450,7 +428,7 @@ against the **current** codebook (`validateAnswer`, shared via contracts):
 | Option values changed (an answer's value removed) | stay finished; the answer is dropped from view and asked again if the coder navigates back and resubmits | asked again |
 | Question renamed | = removed + added | = removed + added |
 | Conditions / order changed | stay finished | follow the new codebook |
-| Distribution changed | routing kept if a branch with the same fingerprint still exists, else re-routed (§6.1) | new rules apply |
+| Distribution changed | routing kept if a branch with the same fingerprint still exists, else re-routed (§6.2) | new rules apply |
 
 How it works:
 
@@ -543,7 +521,7 @@ Other open points:
 | `server/src/shared/` | Database queries shared by both APIs (deployments, finished units, units, coders, ...) |
 | `server/migrations/`, `src/db.ts` | The data model (numbered SQL migrations) and the database (`Sql`: `pg` or PGlite) |
 | `server/src/runtime/registry.ts` | `Deployments`: lazily loads one runtime per deployment; failures aren't cached; revision bumps, status, preview tokens |
-| `server/src/runtime/runtime.ts` | `DeploymentRuntime`: spec, routing, distribution under locks, auto variables, status |
+| `server/src/runtime/runtime.ts` | `DeploymentRuntime`: spec, routing, distribution under locks, random conditions, status |
 | `server/src/runtime/store.ts` | `Store`: what the runtime reads and writes; `DbStore` on the database |
 | `server/src/runtime/types.ts` | The runtime's internal types (spec, coder, annotations, finished rows) |
 | `server/src/runtime/session.ts` | Coder session cookies, CSRF header |
@@ -606,10 +584,10 @@ Roughly in order:
     values, items, and the arguments of helpers in simple conditions. Running codebook conditions (QuickJS)
     server-side, to reject answers to questions the coder should never
     have seen, would be the next step. Conditions and branch choice run on
-    the client today (§6.1), which keeps client-side encryption of answers
+    the client today (§6.2), which keeps client-side encryption of answers
     possible (`plans/encryption.md`).
 11. **Scale.** A pick from a shared queue reads the loop's finished codings
-    and leases (bounded by units x `maxCoders`), under the queue's lock
+    and leases (bounded by units x `codersPerUnit.max`), under the queue's lock
     (taken in turn within a process before a connection is used, so
     waiting picks don't hold the pool). Measured (`hosting.md` "Capacity"):
     with 10k units and ~12k codings a pick takes ~40 ms, most of it reading
