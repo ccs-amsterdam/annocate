@@ -238,10 +238,20 @@ recipe (`contracts/src/recipe.ts`), as the setup wizard writes one, like
 - `units` (`{ id, data }`; the first unit's fields become the study's) and
   `sets`: set columns by the units' ids (`[{ group, sets: [{ name, units,
   ordered? }] }]`, `group` the column's name);
-- `signIn` (optional, as in `createStudy`);
-- `design` (`{ note?, public?, session?, items }`): the first version, saved as a draft that
+- `signIn`, `keepSessionsOpen`, `redirectUrls` (optional, as in
+  `updateStudy`);
+- `design` (`{ note?, public?, session?, units?, items }`): the first version, saved as a draft that
   may have issues (e.g. questions without an answer type yet). With
-  `publish: true` it is deployed, and must then pass validation.
+  `publish: true` it is deployed, and must then pass validation. `units`:
+  the unit fields, declared (types, descriptions, in their order), as a
+  study or design file has them; the units' values must fit them, and
+  fields only the units have are added after them.
+
+A **study file** (`study.json` in the results download, contracts
+`StudyFileSchema`: `{ format: "annotinder-study", formatVersion, client,
+exportedAt, recipe }`) is a recipe of a study as it is: its units with their
+current data, set columns, the design the editor works on and its
+settings; the client's "New study from a file" sends its recipe here.
 
 A recipe has no links: deploying its design makes them. 400
 `recipe_invalid` for a unit id used twice, a set naming an unknown unit, a

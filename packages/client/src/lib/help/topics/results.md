@@ -23,6 +23,7 @@ The zip is named after the study and the date, such as
 | `devices.csv` | device | the devices coders used (kind, browser, operating system) |
 | `timings.csv` | answer | how long coders took per question |
 | `deleted_coders.csv` | deleted coder | coders whose data was deleted, to delete them from earlier downloads too |
+| `study.json` | | the study as it is now (units, set columns, design, settings), to make a copy of it: **Create new study** → **From a file**, here or on another server |
 | `README.txt` | | what the columns mean |
 
 The files are UTF-8, with a marker at the start so that spreadsheet programs

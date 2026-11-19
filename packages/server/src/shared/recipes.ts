@@ -67,26 +67,33 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
       ownerId: options.ownerId,
       origin: options.origin ?? null,
       signIn: recipe.signIn ?? "off",
+      keepSessionsOpen: recipe.keepSessionsOpen ?? false,
+      redirectUrls: recipe.redirectUrls ?? {},
     })
     .returning();
   const study = made!;
   if (options.ownerId !== null && options.ownerIsAdmin)
     await tx.insert(roles).values({ role: "ADMIN", studyId: study.id, userId: options.ownerId });
 
-  // Units
+  // Units, with the declared fields (a study file's) and those the units add
   const unitIds = new Map<string, number>();
-  let fields: UnitField[] = [];
+  const declared = recipe.design.units?.fields ?? [];
+  const names = declared.map((f) => f.name);
+  const declaredTwice = names.find((n, i) => names.indexOf(n) !== i);
+  if (declaredTwice !== undefined) throw invalid(`Unit field '${declaredTwice}' is declared twice`);
+  let fields: UnitField[] = declared.filter((f) => f.type !== "set");
   if (recipe.units.length > 0) {
     const ids = recipe.units.map((u) => u.id);
     const twice = ids.find((id, i) => ids.indexOf(id) !== i);
     if (twice !== undefined) throw invalid(`Unit id '${twice}' is used twice`);
     const added = addedFields(
       recipe.units.map((u) => u.data as UnitData),
-      [],
+      declared,
     );
     if ("error" in added) throw invalid(added.error);
+    const all = [...declared, ...added.fields];
     for (const unit of recipe.units) {
-      const problem = checkUnitData(unit.data as UnitData, added.fields);
+      const problem = checkUnitData(unit.data as UnitData, all);
       if (problem) throw invalid(`Unit '${unit.id}': ${problem}`);
     }
     await checkUnitUpload(
@@ -95,7 +102,7 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
       recipe.units.map((u) => ({ externalId: u.id, data: u.data })),
       recipe.units.length,
     );
-    fields = added.fields;
+    fields = [...fields, ...added.fields];
     for (const [id, unitId] of await saveUnits(
       tx,
       study.id,
@@ -124,8 +131,18 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
       { declare: false },
     );
   }
-  // Set columns are fields of type set
-  fields = [...fields, ...groups.map((name) => ({ name, type: "set" as const }))];
+  // Set columns are fields of type set: the declared ones (with their descriptions), then the others
+  const declaredSets = declared.filter((f) => f.type === "set");
+  fields = [
+    ...fields,
+    ...declaredSets,
+    ...groups
+      .filter((name) => !declaredSets.some((f) => f.name === name))
+      .map((name) => ({ name, type: "set" as const })),
+  ];
+  // Declared fields in their order, the others after them (a stable sort)
+  const place = (name: string) => (names.includes(name) ? names.indexOf(name) : names.length);
+  fields.sort((a, b) => place(a.name) - place(b.name));
 
   // The design: deployed, or the first draft
   // With the units' fields (docs/architecture.md §8.4)

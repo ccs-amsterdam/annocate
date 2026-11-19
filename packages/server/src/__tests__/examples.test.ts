@@ -197,6 +197,55 @@ describe("studies from a recipe", () => {
     expect(await studyCount()).toBe(0);
   });
 
+  it("a study file's recipe: declared unit fields (types, descriptions, order) and the study's settings", async () => {
+    const res = await post({
+      ...recipe,
+      units: [
+        { id: "a", data: { text: "one", picture: "https://example.org/a.png", extra: 1 } },
+        { id: "b", data: { text: "two", picture: "https://example.org/b.png", extra: 2 } },
+      ],
+      design: {
+        items,
+        units: {
+          fields: [
+            { name: "condition", type: "set", description: "The experimental condition" },
+            { name: "picture", type: "text", description: "Where the picture is" },
+            { name: "text", type: "text", description: "The article" },
+          ],
+        },
+      },
+      keepSessionsOpen: true,
+      signIn: "optional",
+      redirectUrls: { panel: "https://panel.example/done" },
+    });
+    expect(res.status, await res.clone().text()).toBe(201);
+    const study = StudyResponseSchema.parse(await res.json());
+    expect(study).toMatchObject({
+      keepSessionsOpen: true,
+      signIn: "optional",
+      redirectUrls: { panel: "https://panel.example/done" },
+    });
+    const [{ units: spec }] = await query<{ units: { fields: unknown[] } }>(
+      db,
+      "SELECT units FROM design_versions WHERE study_id = $1",
+      [study.id],
+    );
+    // Declared ones in their order, then a field only the units have
+    expect(spec.fields).toEqual([
+      { name: "condition", type: "set", description: "The experimental condition" },
+      { name: "picture", type: "text", description: "Where the picture is" },
+      { name: "text", type: "text", description: "The article" },
+      { name: "extra", type: "number" },
+    ]);
+    // Values that don't fit a declared type are refused
+    const wrong = await post({
+      ...recipe,
+      design: { items, units: { fields: [{ name: "text", type: "number" }] } },
+    });
+    expect(wrong.status).toBe(400);
+    expect(await wrong.json()).toMatchObject({ code: "recipe_invalid", error: expect.stringContaining("'text'") });
+  });
+
   it("counts against the researcher's limit on studies", async () => {
     const plan = await query<{ id: number }>(
       db,

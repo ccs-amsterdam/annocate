@@ -682,6 +682,10 @@ timings.csv      Response times, a row per answer: as the coder's browser
 deleted_coders.csv  Coders whose data was deleted from AnnoTinder (for
                  instance a participant who withdrew), by coder_id and
                  participant_id: delete them from earlier downloads too.
+study.json       The study as it is now, to make a copy of it (here or on
+                 another server: New study › From a file): its units with
+                 their current data, set columns, the design the editor
+                 works on, and settings. Not the coders or their answers.
 reset_answers.csv  (if included) Answers a researcher reset, a row per
                  answer, with when it was given (answered) and reset
                  (reset_at). Units are coded again after a reset; the new

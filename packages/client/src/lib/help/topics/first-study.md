@@ -27,6 +27,11 @@ a003,Local team wins cup,"Thousands celebrated in the city centre after the fina
 > link, and often example answers) to try and change. Its overview
 > says what to try.
 >
+> To copy a study you have, from this or another server, choose **Create new
+> study** → **From a file** and pick its download (the zip from Results).
+> Units, set columns, design and settings come along; coders and answers
+> don't.
+>
 > **Create new study** → **Guided setup** does steps 1 to 3 below in one go: say
 > whether you annotate units, ask questions or run an experiment, upload
 > the units, choose who codes what, and name your questions. The study then

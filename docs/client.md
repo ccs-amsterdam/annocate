@@ -518,6 +518,10 @@ from the Preview Study button. It uses a `ResearcherApi`
   server admin page for admins (`server/ServerAdmin.tsx`: hardening
   warnings, users with invitations and safeguards, plans, registration,
   studies, admin log; `docs/accounts.md`).
+- **From a file** (`ImportStudyDialog.tsx`, `lib/admin/studyFile.ts`): a
+  copy of a study from its download (the zip's `study.json`), or a study
+  from a design file; it shows what the file holds, then sends it as a
+  recipe and opens the new study in the editor (`docs/examples.md`).
 - **Guided setup** (`SetupWizard.tsx`, `lib/admin/setupRecipe.ts`): a
   short way to the skeleton of a new study, next to "From an example" and
   an empty study on the studies page. It writes only what the editor

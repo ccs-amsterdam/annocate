@@ -2,8 +2,9 @@
 
 A **recipe** (contracts `recipe.ts`) is everything a new study starts
 with, in one document: units, set columns (by the units' ids), the first
-design version (a draft, or deployed with `publish`), and the study's
-sign-in setting. `POST /study/from-recipe` makes a study from one in a
+design version (a draft, or deployed with `publish`, with its declared unit
+fields), and the study's settings (sign-in, keeping sessions open, redirect
+URLs). `POST /study/from-recipe` makes a study from one in a
 single transaction (`server/src/shared/recipes.ts`), with the same role,
 limits and ownership checks as creating a study. Afterwards it is an
 ordinary study: nothing records how it was made except `origin` for an
@@ -17,6 +18,15 @@ Two things make recipes:
 - **The setup wizard** builds a recipe in the browser
   (`client/src/lib/admin/setupRecipe.ts`; `client.md` §7, "Guided setup").
   The server knows nothing about wizard steps.
+- **A study's download** has one: `study.json` (contracts
+  `StudyFileSchema`, built in `client/src/lib/admin/studyFile.ts`), the
+  study as it is: units with their current data, set columns, the design
+  the editor works on (the draft, else the latest version) and the
+  settings. **Create new study › From a file** reads it from the zip and
+  makes a copy, here or on another server, without coders, answers or
+  links (deploying makes the links). It also takes a design file
+  (`designs/v<n>.json`, or Export › Design file in the editor): a study with
+  that design and no units.
 
 ## Example studies
 

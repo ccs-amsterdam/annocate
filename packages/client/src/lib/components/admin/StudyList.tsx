@@ -9,6 +9,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import {
   Plus,
+  FileUp,
   Search,
   FolderOpen,
   Trash2,
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ExamplesDialog } from "./ExamplesDialog";
+import { ImportStudyDialog } from "./ImportStudyDialog";
 import { SetupWizard } from "./SetupWizard";
 import { HelpButton } from "../../help/HelpButton";
 
@@ -45,6 +47,7 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showExamples, setShowExamples] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [newStudyName, setNewStudyName] = useState("");
   const [studyToDelete, setStudyToDelete] = useState<StudyResponse | null>(null);
 
@@ -121,6 +124,7 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
             <CreateStudyMenu
               onWizard={() => setShowWizard(true)}
               onExample={() => setShowExamples(true)}
+              onImport={() => setShowImport(true)}
               onEmpty={() => setShowCreateModal(true)}
             />
           )}
@@ -224,6 +228,17 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
         />
       )}
 
+      {showImport && (
+        <ImportStudyDialog
+          client={client}
+          onClose={() => setShowImport(false)}
+          onCreated={(study) => {
+            setShowImport(false);
+            onSelectStudy(study.id, "editor");
+          }}
+        />
+      )}
+
       {showWizard && (
         <SetupWizard
           client={client}
@@ -322,14 +337,16 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
   );
 }
 
-/** "Create new study": the guided setup, an example, or an empty study. */
+/** "Create new study": the guided setup, an example, a file (a download or a design), or an empty study. */
 function CreateStudyMenu({
   onWizard,
   onExample,
+  onImport,
   onEmpty,
 }: {
   onWizard: () => void;
   onExample: () => void;
+  onImport: () => void;
   onEmpty: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -367,6 +384,12 @@ function CreateStudyMenu({
           onWizard,
         )}
         {item(<Sparkles className="h-4 w-4" />, "From an example", "A ready study to try and change.", onExample)}
+        {item(
+          <FileUp className="h-4 w-4" />,
+          "From a file",
+          "A copy of a study from its download, or a design file.",
+          onImport,
+        )}
         {item(<Plus className="h-4 w-4" />, "Empty study", "Start from scratch in the editor.", onEmpty)}
       </PopoverContent>
     </Popover>

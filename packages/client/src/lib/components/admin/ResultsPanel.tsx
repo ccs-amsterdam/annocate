@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../help/HelpButton";
+import { buildStudyFile } from "../../admin/studyFile";
 
 /** Every row of a paged researcher API list. */
 async function allPages<T>(
@@ -122,6 +123,15 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
         );
       }
 
+      // The study as it is now, to import as a copy (study.json)
+      setBusy("Loading units…");
+      const copy = study
+        ? await buildStudyFile(client, study, {
+            liveId: deployment?.designVersionId ?? null,
+            onProgress: (n) => setBusy(`Loading units: ${n}…`),
+          })
+        : null;
+
       const liveId = deployment?.designVersionId ?? null;
       const order = questionOrder(liveId === null ? undefined : designVersions.get(liveId));
       const live = liveId === null ? undefined : designVersions.get(liveId);
@@ -144,6 +154,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
         "units.csv": strToU8(toCsv(unitsTable(versions, annotations, await client.listSetGroups()), spreadsheetSafe)),
         "variables.csv": strToU8(toCsv(variablesTable(designVersions, numbers.numberOf), spreadsheetSafe)),
         ...designs,
+        ...(copy ? { "study.json": strToU8(JSON.stringify(copy, null, 2)) } : {}),
         ...(withReset
           ? {
               "reset_answers.csv": strToU8(
@@ -207,6 +218,10 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
                 <li>
                   <strong>designs/v&lt;n&gt;.json</strong>: each design version as a whole, with the AnnoTinder version
                   it ran on
+                </li>
+                <li>
+                  <strong>study.json</strong>: the study as it is now (units, sets, design, settings), to make a copy of
+                  it: Create new study › From a file
                 </li>
                 <li>
                   <strong>README.txt</strong>: what the columns mean
