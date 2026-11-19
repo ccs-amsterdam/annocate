@@ -208,7 +208,7 @@ session:
 - **Assigned conditions**: `values` a list or `"free"` (the linked
   column's values). `assign: "link"` makes a link per value;
   `assign: "random"` draws when the session is created: `draw: "balanced"`
-  (the value fewest sessions have, counting finished sessions and those
+  (the value fewest sessions have, a tie broken at random, counting finished sessions and those
   active in the last 24 hours, under a lock per condition) or `"random"`.
   The value is `$session.<name>`.
 - **Computed variables** (`type: "computed"`, `variable.type: "random"`, §7)
@@ -344,7 +344,7 @@ Coders screened out before one never get a value, so they don't count in
 the balance.
 
 - `draw: "random"`: weighted draw from `options` (server).
-- `draw: "balanced"`: the value fewest coders have so far (server),
+- `draw: "balanced"`: the value fewest coders have so far, a tie broken at random (server),
   counted in the database under a lock per variable (§3). With `stratify`
   (earlier coder-level questions, `session.<name>` values), only coders
   with the same values count: balanced within groups.

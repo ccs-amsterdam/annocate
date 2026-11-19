@@ -64,9 +64,6 @@ To do on the server (the guide's steps):
      OAuth endpoints 600);
    - whether study admins see the MCP connections of their study's users;
    - whether a read-only connection requires the `READ` role.
-3. **Balanced draws on a tie**: a balanced condition or computed variable
-   gives the first value among those with the fewest sessions. **Decide**
-   whether a tie should be broken at random.
 4. **The deletion log** (`coder_deletions`) keeps a deleted coder's email
    and participant id, so "delete for good" still records who was
    deleted. **Decide** whether that is intended.

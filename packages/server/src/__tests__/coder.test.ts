@@ -50,9 +50,18 @@ function recording(store: Store): Store {
   });
 }
 
-/** A (re)started server on the same database: empty memory. */
+/**
+ * A (re)started server on the same database: empty memory. Draws are
+ * predictable: `random` is 0 (a balanced tie goes to the first value) unless
+ * a test sets it.
+ */
 function restart(runtime: Partial<RuntimeOptions> = {}) {
-  return createApp(db, { secret: "test-secret", runtime, wrapStore: recording, devMode: true });
+  return createApp(db, {
+    secret: "test-secret",
+    runtime: { random: () => 0, ...runtime },
+    wrapStore: recording,
+    devMode: true,
+  });
 }
 
 beforeEach(async () => {
@@ -1387,6 +1396,35 @@ describe("auto questions", () => {
       }),
     });
     expect(((await bad.json()) as { valid: boolean }).valid).toBe(false);
+  });
+});
+
+describe("balanced draws", () => {
+  it("break a tie at random, for computed items and for conditions drawn at the start", async () => {
+    const computed = {
+      type: "computed",
+      name: "arm",
+      variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }, { value: "c" }] },
+    };
+    await redeploy({}, [computed]);
+    // random() near 1: the last of the tied values; then only the values with the fewest are candidates
+    server = restart({ random: () => 0.99 });
+    expect(await reach(coder("x1"), "arm")).toEqual([{ value: "c" }]);
+    expect(await reach(coder("x2"), "arm")).toEqual([{ value: "b" }]);
+    server = restart({ random: () => 0 });
+    expect(await reach(coder("x3"), "arm")).toEqual([{ value: "a" }]);
+    expect(await reach(coder("x4"), "arm")).toEqual([{ value: "a" }]);
+
+    // A condition drawn at the start
+    await createSet("a", ["unit-1"], "framing");
+    await createSet("b", ["unit-2"], "framing");
+    await redeploy({}, [
+      sessionItem({ conditions: [{ name: "framing", values: "free", assign: "random", units: "framing" }] }),
+    ]);
+    const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
+    server = restart({ random: () => 0.99 });
+    expect((await coder("y1", secret).session()).session).toEqual({ framing: "b" });
+    expect((await coder("y2", secret).session()).session).toEqual({ framing: "a" });
   });
 });
 

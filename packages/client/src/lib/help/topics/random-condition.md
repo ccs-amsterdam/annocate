@@ -34,7 +34,7 @@ Under **Drawn**, choose how the value is assigned:
 | Drawn | The coder gets |
 | --- | --- |
 | **Random** | One of the options, at random. Give options a **weight** to make some more likely: weights 2 and 1 give about two thirds and one third |
-| **Balanced (the value fewest coders have)** | The option that the fewest coders have so far, so groups stay as equal as possible. Ties go to the first option in the list |
+| **Balanced (the value fewest coders have)** | The option that the fewest coders have so far, so groups stay as equal as possible. A tie is broken at random |
 
 The **Options** list the values the question can take, each with a value
 and an optional label, as for a [nominal question](nominal-and-ordinal.md).

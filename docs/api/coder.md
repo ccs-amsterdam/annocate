@@ -193,7 +193,7 @@ the design's flow (the client evaluates conditions): the server draws its
 value now, once, and
 returns it; reached again, the same value. `draw: "random"` draws by
 weight; `"balanced"` takes the option the fewest coders who reached it
-have, under a lock, counting with `stratify` only coders with the same
+have (a tie broken at random), under a lock, counting with `stratify` only coders with the same
 answers to those questions (as saved: the client saves its answers first)
 and the same `session.<name>` values. A random variable linked to units without
 `options` draws from its column's values (409 while the column has none).

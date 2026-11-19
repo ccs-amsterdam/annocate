@@ -68,6 +68,7 @@ import {
   type LoopInfo,
   type VariableType,
 } from "./designItems.js";
+import { leastUsed } from "./draws.js";
 
 /** Stored coder-level answers as plain values. */
 const plainValues = (values: Record<string, CoderValue>) =>
@@ -350,7 +351,12 @@ export class DeploymentRuntime {
    * Read from the database on every request: one indexed query.
    */
   resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder> {
-    return this.store.resolveCoder({ ...request, paused: !this.spec.active, sessionRules: this.sessionRules });
+    return this.store.resolveCoder({
+      ...request,
+      paused: !this.spec.active,
+      sessionRules: this.sessionRules,
+      random: this.options.random,
+    });
   }
 
   /**
@@ -417,7 +423,18 @@ export class DeploymentRuntime {
       const others = (await store.coderValuesOf([name, ...stratify.filter((s) => !s.startsWith("session."))]))
         .filter((c) => stratum(c.values, c.session) === mine)
         .map((c) => c.values[name]);
-      const value = singleValue(DeploymentRuntime.leastUsed(options, others));
+      const counts = new Map<string, number>();
+      for (const taken of others) {
+        const v = valueOf(taken);
+        if (v !== undefined) counts.set(v, (counts.get(v) ?? 0) + 1);
+      }
+      const value = singleValue(
+        leastUsed(
+          options.map((o) => o.value),
+          (v) => counts.get(v) ?? 0,
+          this.options.random,
+        ),
+      );
       await put(store, value);
       return value;
     });
@@ -432,16 +449,6 @@ export class DeploymentRuntime {
       if (r < 0) return o.value;
     }
     return options[options.length - 1].value;
-  }
-
-  /** The option the fewest coders have (the first of those). */
-  private static leastUsed(options: { value: string }[], taken: VariableValue[]): string {
-    const counts = new Map(options.map((o) => [o.value, 0]));
-    for (const answer of taken) {
-      const value = valueOf(answer);
-      if (value !== undefined && counts.has(value)) counts.set(value, counts.get(value)! + 1);
-    }
-    return options.reduce((best, o) => (counts.get(o.value)! < counts.get(best.value)! ? o : best)).value;
   }
 
   /** A one-time token that lets another device continue this coder's session (docs/coder-identity.md §4). */
@@ -729,9 +736,7 @@ export class DeploymentRuntime {
    * A route's special units (docs/architecture.md §6.2): its practice,
    * overlap and gold units, for those the loop places.
    */
-  private specialUnits(
-    route: Route,
-  ): {
+  private specialUnits(route: Route): {
     set: string;
     units: number[];
     placement: "first" | "last" | "spread" | "rate";

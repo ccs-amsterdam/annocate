@@ -40,6 +40,7 @@ import type {
   Transfer,
   Unit,
 } from "./types.js";
+import { leastUsed } from "./draws.js";
 
 /**
  * What the runtime reads from and writes to the database, for one study: the
@@ -610,7 +611,8 @@ async function knownCoder(db: Db, studyId: number, coderKey: string): Promise<Kn
     .from(coderDevices)
     .innerJoin(coders, eq(coders.id, coderDevices.coderId))
     .where(eq(coderDevices.keyHash, coderKey));
-  if (known && known.coder.studyId !== studyId) throw new HttpError(403, "This session belongs to another study", "coder_key_invalid");
+  if (known && known.coder.studyId !== studyId)
+    throw new HttpError(403, "This session belongs to another study", "coder_key_invalid");
   return known ?? null;
 }
 
@@ -680,7 +682,8 @@ async function findOrCreateCoder(
     if (used.length === 0) throw new HttpError(403, "This link has been used up", "link_used_up");
   }
   // Conditions drawn at the start: balanced ones under a lock, counting the sessions that count (`computeVariable`)
-  for (const draw of draws) session[draw.name] = await computeVariable(db, studyId, draw);
+  for (const draw of draws)
+    session[draw.name] = await computeVariable(db, studyId, draw, request.random ?? Math.random);
   const [created] = await db
     .insert(coders)
     .values({ studyId, email: login?.email.toLowerCase() ?? null, participantId, linkId: link.id, session })
@@ -691,15 +694,16 @@ async function findOrCreateCoder(
 
 /**
  * A condition's value for a new session (`assign: "random"`): drawn at
- * random, or balanced: the value the fewest sessions have (the first of
- * those), under a lock (released with the transaction that creates the
+ * random, or balanced: the value the fewest sessions have (a tie broken at
+ * random), under a lock (released with the transaction that creates the
  * session). Sessions that completed count, and those that haven't ended
  * and started or finished a unit in the last 24 hours (contracts
  * SET_ACTIVITY_MS): values of sessions that dropped out are handed out again.
  */
-async function computeVariable(db: Db, studyId: number, draw: SessionDraw): Promise<string> {
+async function computeVariable(db: Db, studyId: number, draw: SessionDraw, random: () => number): Promise<string> {
   if (draw.values.length === 0) throw new HttpError(409, `Condition '${draw.name}' has no values yet`);
-  if (draw.draw === "random") return draw.values[Math.floor(Math.random() * draw.values.length)]!;
+  if (draw.draw === "random")
+    return draw.values[Math.min(draw.values.length - 1, Math.floor(random() * draw.values.length))]!;
   await advisoryLock(db, `${studyId}/session/${draw.name}`);
   const since = new Date(Date.now() - SET_ACTIVITY_MS);
   const value = sql<string>`${coders.session}->>${draw.name}::text`;
@@ -718,7 +722,7 @@ async function computeVariable(db: Db, studyId: number, draw: SessionDraw): Prom
     .where(and(eq(coders.studyId, studyId), sql`${value} IS NOT NULL`, counting))
     .groupBy(sql`1`); // the value (by position: its parameter is another each time it's written)
   const counts = new Map(found.map((r) => [r.value, r.n]));
-  return draw.values.reduce((best, v) => ((counts.get(v) ?? 0) < (counts.get(best) ?? 0) ? v : best));
+  return leastUsed(draw.values, (v) => counts.get(v) ?? 0, random);
 }
 
 /** Per database and key, the last call in line (`inTurn`). */

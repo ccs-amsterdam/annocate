@@ -88,6 +88,8 @@ export interface ResolveCoderRequest {
   urlParams?: Record<string, string>;
   /** What the deployed codebook asks of a new session (its Session item; set by the runtime). */
   sessionRules?: SessionRules;
+  /** Draws conditions at the start (set by the runtime; default `Math.random`). */
+  random?: () => number;
   /**
    * The coder confirmed starting a new session although their participant
    * id already has one (on another device). Without it: 409
