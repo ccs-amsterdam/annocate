@@ -72,7 +72,7 @@ const login =
           clientSecret: OIDC_CLIENT_SECRET,
           mfaClaim: parseMfaClaim(process.env.OIDC_MFA_CLAIM),
         },
-        publicUrl: ANNOTINDER_PUBLIC_URL ?? `http://localhost:${port}`,
+        publicUrl: ANNOTINDER_PUBLIC_URL || `http://localhost:${port}`,
         ...(previous ? { previous } : {}),
       }
     : undefined;
@@ -90,7 +90,8 @@ const https = ANNOTINDER_PUBLIC_URL?.startsWith("https://") ?? false;
 const rateLimits = process.env.ANNOTINDER_RATE_LIMITS === "off" ? undefined : {};
 const trustProxy = process.env.ANNOTINDER_TRUST_PROXY === "1";
 const app = createApp(db, {
-  secret: process.env.ANNOTINDER_SECRET,
+  // An empty value counts as unset (a random secret), never as an empty signing key
+  secret: process.env.ANNOTINDER_SECRET || undefined,
   devMode,
   login,
   admins,

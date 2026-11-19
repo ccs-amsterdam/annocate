@@ -129,6 +129,8 @@ test("crowd coding with an overlap; the loop's units are set by the wizard", asy
   await expect(page.getByText("no sentiment_gold yet")).toBeVisible();
   await page.getByRole("button", { name: "Next" }).click();
   await page.getByRole("button", { name: "Create study" }).click();
+  // The study's page opens once it is created
+  await expect(page).toHaveURL(/\/research\/studies\/\d+\//);
 
   const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "Crowd pilot")!;
   const [draft] = await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`);

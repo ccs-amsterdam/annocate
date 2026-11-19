@@ -17,6 +17,8 @@ export function openDatabase(): Promise<Database> {
 export function describeDatabase(): string {
   const url = process.env.DATABASE_URL;
   if (!url) return `PGlite in ${process.env.PGLITE_DIR ?? DEFAULT_PGLITE_DIR}`;
+  // Not every valid connection string is a WHATWG URL (e.g. a socket: postgres://user@/db?host=/run/postgresql)
+  if (!URL.canParse(url)) return "Postgres";
   const parsed = new URL(url);
-  return `Postgres at ${parsed.host}${parsed.pathname}`;
+  return `Postgres at ${parsed.host || parsed.searchParams.get("host") || "localhost"}${parsed.pathname}`;
 }
