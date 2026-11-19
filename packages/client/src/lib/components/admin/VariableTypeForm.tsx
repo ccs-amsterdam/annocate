@@ -208,7 +208,7 @@ export function VariableTypeForm({
             </div>
           )}
           <OptionsEditor
-            options={v.options}
+            options={v.options ?? []}
             onChange={(options) => onChange({ ...v, options })}
             extra={
               v.draw === "random"

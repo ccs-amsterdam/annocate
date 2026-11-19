@@ -133,18 +133,13 @@ test("crowd coding with an overlap; the loop's units are set by the wizard", asy
   const [loop] = (await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${draft.id}`)).items as { units: unknown[]; layout: { template: string } }[];
   expect(loop.units).toEqual([
     {
-      mode: "shared",
-      set: { group: "sets", set: "queue" },
-      until: { coders: 2 },
-      maxCoders: 2,
+      criteria: { codersPerUnit: { min: 2, max: 2 } },
       overlap: { placement: "rate", every: 10, rest: "end" },
       gold: { placement: "rate", every: 10, questions: ["sentiment"] },
     },
   ]);
   expect(loop.layout.template).toBe("# $unit.headline\n\n$unit.text");
   const [group] = await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`);
-  expect(group.sets.map((s) => [s.name, s.unitIds.length])).toEqual([
-    ["_overlap", 2],
-    ["queue", 8],
-  ]);
+  // The overlap: everyone's, in a set column of its own (the queue is all units)
+  expect(group.sets.map((s) => [s.name, s.unitIds.length])).toEqual([["_overlap", 2]]);
 });

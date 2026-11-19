@@ -75,7 +75,6 @@ export function ItemForm({
   item,
   client,
   groups,
-  setParams,
   sessionValueNames = [],
   unitVariableNames = [],
   availableQuestions = [],
@@ -94,7 +93,6 @@ export function ItemForm({
   /** The study's set groups (loops' sets, session parameters with a group's sets). */
   groups: SetGroupResponse[];
   /** The codebook's set-typed session parameters (name -> group). */
-  setParams?: Map<string, string>;
   /** The `$session` names (declared and built-in). */
   sessionValueNames?: string[];
   unitVariableNames?: string[];
@@ -207,7 +205,6 @@ export function ItemForm({
           loop={item as UnitLoopItem}
           client={client}
           groups={groups}
-          setParams={setParams}
           unitFields={unitFields}
           coderQuestions={availableQuestions}
           screenouts={screenouts}

@@ -1,7 +1,7 @@
 import type { UnitField } from "@annotinder/contracts";
-import { Hash, ToggleLeft, Type } from "lucide-react";
+import { Hash, Tags, ToggleLeft, Type } from "lucide-react";
 
-const ICON = { text: Type, number: Hash, boolean: ToggleLeft };
+const ICON = { text: Type, number: Hash, boolean: ToggleLeft, set: Tags };
 
 /** A unit field's name with an icon for its type. */
 export function FieldBadge({ field }: { field: UnitField }) {

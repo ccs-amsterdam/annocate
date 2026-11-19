@@ -1,15 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
-  OVERLAP_SET,
+  coderAccess,
   designItems,
   sessionItem,
   sessionParamKey,
-  unitLoops,
   type LinkResponse,
-  type LinkWrite,
   type SessionItem,
   type SessionParam,
-  type SetGroupResponse,
   type TopLevelItem,
 } from "@annotinder/contracts";
 import { Ban, Check, Copy, KeyRound, Pencil } from "lucide-react";
@@ -23,7 +20,6 @@ import {
   useSetGroupsQuery,
   useUpdateLinkMutation,
 } from "../../admin/queries";
-import { loginAvailable } from "../../session/coderSession";
 import { formatWhen } from "../../admin/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,12 +59,10 @@ export function LinksPanel({ client }: LinksPanelProps) {
     const url = codeLinkUrl(invite.studyId, invite.secret);
     return urlParams.length ? `${url}${url.includes("?") ? "&" : "?"}${urlParams.join("&")}` : url;
   };
-  // Loops whose sets are assigned by the login's email: only those emails may code.
-  const emailGroups = [
-    ...new Set(
-      unitLoops(items).flatMap(({ loop }) => loop.units.flatMap((b) => (b.mode === "assign" && "session" in b.from && b.from.session === "email" ? [b.group] : []))),
-    ),
-  ];
+  // Coders by email address: only those addresses may code, and they sign in.
+  const coderColumn = session?.coders?.column;
+  const coderValues = coderColumn ? (groups.find((g) => g.name === coderColumn)?.sets ?? []).map((s) => s.name).filter((n) => !n.startsWith("_")) : [];
+  const emailCoders = coderValues.length > 0 && coderAccess(coderValues) === "email";
 
   const links = linksQuery.data ?? [];
   const active = links.filter((l) => !l.retiredAt);
@@ -93,15 +87,12 @@ export function LinksPanel({ client }: LinksPanelProps) {
             <span className="font-mono">source=…</span> ($session.source).
           </p>
         )}
-        {emailGroups.map((group) => {
-          const n = groups.find((g) => g.name === group)?.sets.filter((s) => s.name !== OVERLAP_SET).length ?? 0;
-          return (
-            <p key={group} className="rounded-md border border-amber-500 bg-amber-500/10 p-2.5 text-xs">
-              Sets of group <span className="font-mono">{group}</span> are assigned by email: only the {n} email addresses that are its
-              set names can code. Coders log in; other email addresses get &quot;This email address has no access to this study&quot;.
-            </p>
-          );
-        })}
+        {emailCoders && (
+          <p className="rounded-md border border-amber-500 bg-amber-500/10 p-2.5 text-xs">
+            The coders (column <span className="font-mono">{coderColumn}</span>) are email addresses: only those {coderValues.length} can code.
+            Coders sign in; other email addresses get &quot;This email address has no access to this study&quot;.
+          </p>
+        )}
         {linksQuery.isLoading ? (
           <p className="text-sm text-muted-foreground">Loading links...</p>
         ) : active.length === 0 ? (
@@ -113,7 +104,7 @@ export function LinksPanel({ client }: LinksPanelProps) {
         )}
       </section>
 
-      {active.length > 0 && <LinksPerValue session={session} groups={groups} links={active.map((l) => ({ label: l.label ?? "", link: linkOf(l) }))} />}
+      {active.length > 0 && <LinksPerValue session={session} links={active.map((l) => ({ label: l.label ?? "", link: linkOf(l) }))} />}
 
       {retired.length > 0 && (
         <section className="flex flex-col gap-2">
@@ -170,10 +161,9 @@ const STATUS_STYLE: Record<LinkStatus, string> = {
   retired: "bg-muted text-muted-foreground",
 };
 
-/** Who may use a link, in a few words. */
+/** Who may use a link, in a few words (sign-in is the study's setting). */
 function accessOf(invite: LinkResponse): string {
-  const login = invite.emails?.length ? `${invite.emails.length} email${invite.emails.length === 1 ? "" : "s"}` : invite.auth === "none" ? "anyone" : `login ${invite.auth}`;
-  return [login, invite.participantId ? `participant ${invite.participantId}` : null].filter(Boolean).join(" · ");
+  return invite.participantId ? `participant ${invite.participantId}` : "anyone";
 }
 
 function LinkRow({ client, invite, link }: { client: ResearcherApi; invite: LinkResponse; link: string }) {
@@ -238,27 +228,18 @@ function LinkRow({ client, invite, link }: { client: ResearcherApi; invite: Link
   );
 }
 
-/** A link's access settings: label, login, email addresses, max uses, a fixed participant id. */
+/** A link's settings: label, max uses, a fixed participant id. */
 function AccessForm({ client, invite, onDone }: { client: ResearcherApi; invite: LinkResponse; onDone: () => void }) {
   const update = useUpdateLinkMutation(client);
   const [label, setLabel] = useState(invite.label);
-  const [auth, setAuth] = useState<LinkWrite["auth"]>(invite.auth);
-  const [emails, setEmails] = useState((invite.emails ?? []).join(", "));
   const [maxUses, setMaxUses] = useState(invite.maxUses === undefined ? "" : String(invite.maxUses));
   const [participantId, setParticipantId] = useState(invite.participantId ?? "");
-  // Whether this server offers login (coders log in like researchers); null while unknown.
-  const [login, setLogin] = useState<boolean | null>(null);
-  useEffect(() => {
-    void loginAvailable().then(setLogin);
-  }, []);
 
   async function save() {
     await update.mutateAsync({
       id: invite.id,
       body: {
         label,
-        auth,
-        emails: auth !== "none" && emails.trim() ? emails.split(/[\s,;]+/).filter(Boolean) : undefined,
         maxUses: maxUses === "" ? undefined : Number(maxUses),
         participantId: participantId.trim() || undefined,
       },
@@ -270,20 +251,6 @@ function AccessForm({ client, invite, onDone }: { client: ResearcherApi; invite:
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <Input aria-label="Label" className="w-64" placeholder="Label" value={label} onChange={(e) => setLabel(e.target.value)} />
-        <select
-          aria-label="Login"
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-          value={auth}
-          onChange={(e) => setAuth(e.target.value as typeof auth)}
-        >
-          <option value="none">No login</option>
-          <option value="optional" disabled={login === false}>
-            Login optional{login === false ? " (this server has no login)" : ""}
-          </option>
-          <option value="required" disabled={login === false}>
-            Login required{login === false ? " (this server has no login)" : ""}
-          </option>
-        </select>
         <Input aria-label="Max uses" type="number" min={1} className="w-32" placeholder="Max uses" value={maxUses} onChange={(e) => setMaxUses(e.target.value)} />
         <Input
           aria-label="Fixed participant id"
@@ -293,16 +260,9 @@ function AccessForm({ client, invite, onDone }: { client: ResearcherApi; invite:
           onChange={(e) => setParticipantId(e.target.value)}
         />
       </div>
-      {auth !== "none" && (
-        <Input
-          placeholder="Only these email addresses (optional), e.g. ann@uni.nl, bob@uni.nl: coders log in to show who they are"
-          value={emails}
-          onChange={(e) => setEmails(e.target.value)}
-        />
-      )}
       <p className="text-[11px] text-muted-foreground">
-        Without login, work stays on the device it was started on; coders can move it with &quot;Continue on another device&quot;. With
-        login, coders continue on any device by logging in there. A participant id is a label, never a way back into a session.{" "}
+        Whether coders sign in is a setting of the study. Without sign-in, work stays on the device it was started on; coders can move
+        it with &quot;Continue on another device&quot;. Signed in, coders continue on any device by signing in there. A participant id is a label, never a way back into a session.{" "}
         <HelpButton topic="online-panels" className="align-middle">
           Online panels
         </HelpButton>
@@ -341,30 +301,23 @@ function CopyLink({ link, disabled }: { link: string; disabled: boolean }) {
 }
 
 /**
- * URL parameters with known values (a list, or a group's sets): a link per
+ * URL parameters with known values (a list): a link per
  * value, built here from the links (nothing is stored), e.g. to hand each
  * school or panel its own (docs/plans/special-sets.md §4). Other URL
  * parameters keep their placeholders.
  */
 function LinksPerValue({
   session,
-  groups,
   links,
 }: {
   session: SessionItem | null;
-  groups: SetGroupResponse[];
   links: { label: string; link: string }[];
 }) {
   const [param, setParam] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const params = (session?.params ?? []).filter((p) => p.kind === "url" && !("open" in p.values));
   if (params.length === 0) return null;
-  const valuesOf = (p: SessionParam): string[] =>
-    "list" in p.values
-      ? p.values.list.map((v) => String(v.value))
-      : "sets" in p.values
-        ? (groups.find((g) => g.name === (p.values as { sets: string }).sets)?.sets ?? []).map((s) => s.name).filter((n) => !n.startsWith("_"))
-        : [];
+  const valuesOf = (p: SessionParam): string[] => ("list" in p.values ? p.values.list.map((v) => String(v.value)) : []);
   const chosen = params.find((p) => p.name === param) ?? null;
   const rows = chosen
     ? links.flatMap(({ label, link }) =>

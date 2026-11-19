@@ -20,7 +20,7 @@ function confirm(name: string): TopLevelQuestionItem {
 }
 
 function unitLoop(name: string, children: InLoopItem[]): UnitLoopItem {
-  return { label: name, type: "unit_loop", units: [{ mode: "all" }], layout: { template: "" }, children };
+  return { label: name, type: "unit_loop", units: [{}], layout: { template: "" }, children };
 }
 
 function unitVar(name: string): InLoopQuestionItem {
@@ -485,10 +485,10 @@ describe("choosing a unit loop branch", () => {
     type: "unit_loop",
     label: "main",
     units: [
-      { when: { script: `$var.role.is("expert")` }, mode: "all", set: { group: "g", set: "hard" } },
-      { when: { script: "$var.slot.value === '2'" }, mode: "all", set: { group: "g", set: "part_2" } },
-      { when: { script: "$var.slot.value === '3'" }, mode: "assign", group: "g", from: { draw: "balanced" }, overlap: { placement: "first" } },
-      { mode: "all" },
+      { when: { script: `$var.role.is("expert")` }, filter: { column: "g", only: ["hard"] } },
+      { when: { script: "$var.slot.value === '2'" }, filter: { column: "g", only: ["part_2"] } },
+      { when: { script: "$var.slot.value === '3'" }, overlap: { placement: "first" } },
+      {},
     ],
     layout: { template: "" },
     children: [unitVar("q1")],
@@ -541,7 +541,7 @@ describe("rendering templates", () => {
       {
         type: "unit_loop",
         label: "main",
-        units: [{ mode: "all" }],
+        units: [{}],
         layout: { template: "# $unit.title\n\n[[intro]] $unit.title", snippets: { intro: "Hello" } },
         children: [
           { type: "question", name: "q1", variable: { type: "confirm", question: "As a $var.role.value, is **$unit.title** news?" } },

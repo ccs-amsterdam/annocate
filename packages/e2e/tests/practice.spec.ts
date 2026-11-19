@@ -36,16 +36,12 @@ test("a practice question gives feedback when wrong, answered again until right;
   await expect(page.getByRole("button", { name: /^s1 1$/ })).toBeVisible();
 
   const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
-    session: { params: [{ name: "part", kind: "link", values: { sets: "part" } }] },
+    session: { params: [], coders: { column: "part" } },
     items: [
       {
         type: "unit_loop",
         units: [
           {
-            mode: "assign",
-            group: "part",
-            from: { session: "part" },
-            overlap: { placement: "disabled" },
             practice: { placement: "first", questions: ["topic"] },
             gold: { placement: "last", questions: ["topic"], health: { start: 1, wrong: -1, end: "low_quality" } },
           },
@@ -58,7 +54,7 @@ test("a practice question gives feedback when wrong, answered again until right;
   });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: codebook.id });
   const links = await api<{ secret: string; params: Record<string, string> }[]>(request, "GET", `/study/${study.id}/links`);
-  const s1 = links.find((l) => l.params.part === "s1")!;
+  const s1 = links.find((l) => l.params.coder === "s1")!;
 
   const coder = await (await browser.newContext()).newPage();
   await coder.goto(`/code/${study.id}?link=${s1.secret}`);
@@ -108,7 +104,7 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
       {
         type: "unit_loop",
         name: "articles",
-        units: [{ mode: "assign", group: "part", from: { draw: "balanced" }, overlap: { placement: "disabled" }, gold: { placement: "last", questions: ["topic"] } }],
+        units: [{ gold: { placement: "last", questions: ["topic"] } }],
         layout: { template: "$unit.text" },
         children: [{ type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] } }],
       },

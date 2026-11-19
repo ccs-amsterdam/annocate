@@ -97,20 +97,15 @@ export function itemAtPath(items: (TopLevelItem | InLoopItem)[], path: (string |
   return found;
 }
 
-/** What a unit loop goes over, for the codebook tree: its set and mode, or the number of coder groups (branches). */
+/** What a unit loop goes over, for the codebook tree: its filter and whether it is shared, or the number of coder groups (branches). */
 export function loopUnitsSummary(loop: UnitLoopItem): string {
   const branches = Array.isArray(loop.units) ? loop.units : [];
   if (branches.length !== 1) return branches.length > 1 ? `${branches.length} coder groups` : "";
   const branch = branches[0];
-  if (branch.mode === "assign") {
-    const from = "draw" in branch.from ? (branch.from.draw === "balanced" ? "drawn, balanced" : "drawn at random") : `by ${branch.from.session}`;
-    const overlap = branch.overlap.placement === "disabled" ? "" : " + overlap";
-    return `a set of ${branch.group} (${from})${overlap}`;
-  }
-  const units = branch.set ? `set ${branch.set.set} of ${branch.set.group}` : "all units";
-  if (branch.mode === "all") return units;
+  const filter = branch.filter;
+  const units = filter ? `${filter.column} ${filter.only ? "" : "not "}${(filter.only ?? filter.except ?? []).join(", ")}` : "the session's units";
   const overlap = branch.overlap && branch.overlap.placement !== "disabled" ? " + overlap" : "";
-  return `${units}, shared${overlap}`;
+  return `${units}${branch.criteria ? ", shared" : ""}${overlap}`;
 }
 
 /**

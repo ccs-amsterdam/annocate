@@ -23,7 +23,7 @@ const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 
 /** What a parameter's values are, as a select value. */
-const valuesKind = (values: SessionValues) => ("list" in values ? "list" : "sets" in values ? "sets" : "open");
+const valuesKind = (values: SessionValues) => ("list" in values ? "list" : "open");
 
 /**
  * The design's Study entry, always first in the editor: its public info
@@ -70,14 +70,14 @@ export function SessionItemForm({
         </InfoTip>
       </h2>
       <p className="text-xs text-muted-foreground">
-        Values a session starts with, for conditions, texts and assigning sets. You don&apos;t make the links yourself: deploying makes a link
+        Values a session starts with, for conditions and texts. You don&apos;t make the links yourself: deploying makes a link
         for every value of a link parameter (or combination of values), listed under Deploy › Links.
       </p>
       <section className="flex flex-col gap-2">
         <h3 className="flex items-center gap-1.5 text-xs font-semibold">
           Parameters
           <InfoTip label="About session parameters">
-            Values a session starts with, used as <span className="font-mono">$session.name</span> in conditions, texts and to assign sets.
+            Values a session starts with, used as <span className="font-mono">$session.name</span> in conditions and texts.
             A <strong>link parameter</strong> is fixed in the link: every value (or combination of values) gets its own link on the Links
             page. A <strong>URL parameter</strong> is added to a link by whoever shares it (e.g. <span className="font-mono">?wave=2</span>).
             Built in: <span className="font-mono">$session.participant</span>, <span className="font-mono">$session.source</span> (the
@@ -89,7 +89,6 @@ export function SessionItemForm({
           <ParamEditor
             key={i}
             param={param}
-            groups={groups}
             issues={issuesAt(issues, "params", i)}
             onChange={(next) => setParam(i, next)}
             onRemove={() => onChange({ ...item, params: params.filter((_, j) => j !== i) })}
@@ -227,13 +226,11 @@ export function SessionItemForm({
 
 function ParamEditor({
   param,
-  groups,
   issues,
   onChange,
   onRemove,
 }: {
   param: SessionParam;
-  groups: SetGroupResponse[];
   issues: DesignIssue[];
   onChange: (param: SessionParam) => void;
   onRemove: () => void;
@@ -270,12 +267,11 @@ function ParamEditor({
             value={kind}
             onChange={(e) =>
               setValues(
-                e.target.value === "list" ? { list: [{ value: "a" }] } : e.target.value === "sets" ? { sets: groups[0]?.name ?? "" } : { open: {} },
+                e.target.value === "list" ? { list: [{ value: "a" }] } : { open: {} },
               )
             }
           >
             <option value="list">From a list</option>
-            <option value="sets">The sets of a group</option>
             {param.kind === "url" && <option value="open">Any value</option>}
           </select>
         </label>
@@ -285,24 +281,6 @@ function ParamEditor({
       </div>
 
       {"list" in param.values && <ListValues values={param.values.list.map((v) => v.value)} onChange={(list) => setValues({ list: list.map((value) => ({ value })) })} />}
-      {"sets" in param.values && (
-        <label className={labelClass}>
-          Group
-          <select className={`${selectClass} w-fit font-normal`} value={param.values.sets} onChange={(e) => setValues({ sets: e.target.value })}>
-            {!groups.some((g) => "sets" in param.values && g.name === param.values.sets) && (
-              <option value={param.values.sets}>{param.values.sets || "Choose a group…"}</option>
-            )}
-            {groups.map((g) => (
-              <option key={g.name} value={g.name}>
-                {g.name} ({g.sets.filter((s) => s.name !== OVERLAP_SET).length} sets)
-              </option>
-            ))}
-          </select>
-          <span className="text-[11px] font-normal text-muted-foreground">
-            A loop can assign the set this names (Assign sets: named by the link or URL). New sets get links when they are deployed.
-          </span>
-        </label>
-      )}
       {"open" in param.values && (
         <label className={labelClass}>
           Pattern (optional)

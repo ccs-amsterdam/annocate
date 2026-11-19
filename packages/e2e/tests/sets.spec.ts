@@ -3,8 +3,8 @@ import type { StudyResponse, SetGroupResponse } from "@annotinder/contracts";
 import { answers, api, question } from "./helpers";
 
 // Sets and links (docs/plans/sets-and-session-parameters.md): a sets column
-// in the CSV makes a group, a link parameter with the group's sets makes a
-// link per set, and a coder gets their link's set, with the overlap.
+// in the CSV makes a set column; as the design's coder column it makes a link
+// per value (coder), and a coder gets their units, with the overlap.
 
 test("a sets column makes a group; a link per set; a coder codes their link's set and the overlap", async ({ page, request, browser }) => {
   await page.goto("/research");
@@ -36,13 +36,13 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
     ["s2", 1],
   ]);
 
-  // A codebook that gives each set its own link, with the overlap first
+  // A codebook whose coders are the column's values: a link each, with the overlap first
   const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
-    session: { params: [{ name: "part", kind: "link", values: { sets: "part" } }] },
+    session: { params: [], coders: { column: "part" } },
     items: [
       {
         type: "unit_loop",
-        units: [{ mode: "assign", group: "part", from: { session: "part" }, overlap: { placement: "first" } }],
+        units: [{ overlap: { placement: "first" } }],
         layout: { template: "$unit.text" },
         children: [{ type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] } }],
       },
@@ -53,10 +53,10 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
   // The Links tab lists a link per set
   await page.getByRole("button", { name: "Deploy", exact: true }).click();
   await page.getByRole("button", { name: "Links", exact: true }).click();
-  await expect(page.getByRole("cell", { name: "part=s1" })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "part=s2" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "coder=s1" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "coder=s2" })).toBeVisible();
   const links = await api<{ secret: string; params: Record<string, string> }[]>(request, "GET", `/study/${study.id}/links`);
-  const s2 = links.find((l) => l.params.part === "s2")!;
+  const s2 = links.find((l) => l.params.coder === "s2")!;
 
   // A coder with the s2 link: the overlap unit, then their own
   const coder = await (await browser.newContext()).newPage();

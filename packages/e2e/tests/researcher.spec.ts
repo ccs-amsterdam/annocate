@@ -68,7 +68,7 @@ test("your first study, as the help describes it: units, a codebook, publish, in
       {
         type: "unit_loop",
         label: "News articles",
-        units: [{ mode: "all" }],
+        units: [{}],
         layout: { template: "# $unit.headline\n\n$unit.text" },
         children: [
           {

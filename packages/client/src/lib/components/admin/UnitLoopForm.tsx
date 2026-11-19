@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Code, Plus, Split, Trash2 } from "lucide-react";
 import { cn } from "cn";
 import {
@@ -14,17 +14,15 @@ import {
   type GoldSettings,
   type PracticeSettings,
   type AnyVariableType,
-  type AssignBranch,
+  type Criteria,
   type DesignItem,
   type DesignIssue,
   type OverlapSettings,
   type SetGroupResponse,
-  type SetRef,
-  type SharedBranch,
   type UnitBranch,
+  type UnitFilter,
   type UnitLayout,
   type UnitLoopItem,
-  type UnitMode,
 } from "@annotinder/contracts";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -38,7 +36,6 @@ import { issuesAt } from "./issues";
 import { HelpButton } from "../../help/HelpButton";
 import { parseSimpleLayout, simpleTemplate } from "../../design/simpleLayout";
 import { LayoutDesigner } from "./LayoutDesigner";
-import { GenerateSets } from "./units/GenerateSets";
 import { AnswerKeyDialog, type AnswerKeyQuestion } from "./units/AnswerKeyDialog";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 
@@ -77,77 +74,20 @@ function agreementQuestions(items: DesignItem[]): string[] {
   });
 }
 
-/** The modes, named as in the setup wizard (admin/setupRecipe.ts `DISTRIBUTIONS`). */
-const MODES: { value: UnitMode; label: string; help: string }[] = [
-  { value: "all", label: "Everyone codes everything", help: "Every coder codes every unit (of the study, or of one set)." },
-  {
-    value: "shared",
-    label: "Crowd coding",
-    help: "A shared queue: each unit goes to coders until enough coded it (or agree), and then to no one else.",
-  },
-  {
-    value: "assign",
-    label: "Assign sets",
-    help: "Each coder gets one set of a group: drawn here, or named by their link, URL, participant id or login.",
-  },
-];
+/** A branch that hands out all the session's units, once. */
+const defaultBranch = (): UnitBranch => ({});
 
-/** A branch in another mode, keeping its condition (and set, where the mode has one). */
-function switchMode(branch: UnitBranch, mode: UnitMode, groups: SetGroupResponse[]): UnitBranch {
-  const common = branch.when ? { when: branch.when } : {};
-  const set = branch.mode !== "assign" && branch.set ? { set: branch.set } : {};
-  switch (mode) {
-    case "all":
-      return { ...common, ...set, mode };
-    case "shared":
-      return { ...common, ...set, mode, until: { coders: 1 }, maxCoders: 1 };
-    case "assign": {
-      const group = branch.mode === "assign" ? branch.group : branch.set?.group ?? groups[0]?.name ?? "";
-      // The overlap spread through the coder's units: best practice (first inflates reliability)
-      return { ...common, mode, group, from: { draw: "balanced" }, overlap: { placement: "spread" } };
-    }
-  }
-}
-
-const defaultBranch = (): UnitBranch => ({ mode: "all" });
-
-/** A loop whose distribution isn't set: what that means, and the choice. */
-function UnsetUnits({ onChoose }: { onChoose: (mode: UnitMode) => void }) {
-  const id = useId();
+/** A loop whose units aren't set: the session's units, once (the default). */
+function UnsetUnits({ onChoose }: { onChoose: () => void }) {
   return (
     <div className="flex flex-col gap-3">
       <p className="rounded-md border border-amber-500/60 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300">
-        Which units coders get isn't set yet. Choose how they are handed out: the form then shows the settings. The design
-        can be saved like this, but not previewed or deployed.
+        Which units coders get isn&apos;t set yet. By default a session codes all its units once: the units of its coder and
+        conditions (see the Study entry).
       </p>
-      <div className={labelClass}>
-        <span className="flex items-center gap-1.5">
-          <label htmlFor={id}>Who codes which units</label>
-          <HelpButton topic="unit-distribution" label="Help: unit distribution" />
-        </span>
-        <select
-          id={id}
-          className={`${selectClass} w-fit border-amber-500`}
-          value=""
-          onChange={(e) => onChoose(e.target.value as UnitMode)}
-        >
-          <option value="" disabled>
-            Choose...
-          </option>
-          {MODES.map((m) => (
-            <option key={m.value} value={m.value}>
-              {m.label}
-            </option>
-          ))}
-        </select>
-        <ul className="list-disc pl-4 text-[11px] font-normal text-muted-foreground">
-          {MODES.map((m) => (
-            <li key={m.value}>
-              <span className="font-medium text-foreground">{m.label}:</span> {m.help}
-            </li>
-          ))}
-        </ul>
-      </div>
+      <Button type="button" variant="outline" size="sm" className="w-fit" onClick={onChoose}>
+        Code the session&apos;s units
+      </Button>
     </div>
   );
 }
@@ -171,7 +111,6 @@ export function UnitLoopForm({
   loop,
   client,
   groups,
-  setParams = new Map(),
   unitFields,
   coderQuestions,
   screenouts = [],
@@ -186,8 +125,6 @@ export function UnitLoopForm({
   client?: ResearcherApi;
   /** The study's set groups. */
   groups: SetGroupResponse[];
-  /** The codebook's set-typed session parameters (name -> group): where an assigned set can come from. */
-  setParams?: Map<string, string>;
   /** The study's unit fields, for completions in the template. */
   unitFields: string[];
   /** Coder-level questions before the loop: what branch conditions may use. */
@@ -226,7 +163,6 @@ export function UnitLoopForm({
           loop={loop}
           client={client}
           groups={groups}
-          setParams={setParams}
           coderQuestions={coderQuestions}
           screenouts={screenouts}
           validationIssues={validationIssues}
@@ -267,7 +203,6 @@ function UnitsTab({
   loop,
   client,
   groups,
-  setParams,
   coderQuestions,
   screenouts,
   validationIssues,
@@ -276,7 +211,6 @@ function UnitsTab({
   loop: UnitLoopItem;
   client?: ResearcherApi;
   groups: SetGroupResponse[];
-  setParams: Map<string, string>;
   coderQuestions: { name: string; variable: AnyVariableType }[];
   screenouts: string[];
   validationIssues: DesignIssue[];
@@ -286,7 +220,7 @@ function UnitsTab({
   const checkable = checkableQuestions(loop.children as DesignItem[]);
   const setBranches = (units: UnitBranch[]) => onChange({ ...loop, units });
   // Not set yet (the setup wizard's "decide later", or a new loop): choose how first.
-  if (!loop.units?.length) return <UnsetUnits onChoose={(mode) => setBranches([switchMode(defaultBranch(), mode, groups)])} />;
+  if (!loop.units?.length) return <UnsetUnits onChoose={() => setBranches([defaultBranch()])} />;
   const branches = loop.units;
   const setBranch = (b: number, branch: UnitBranch) => setBranches(branches.map((x, i) => (i === b ? branch : x)));
 
@@ -313,7 +247,6 @@ function UnitsTab({
       branch={branches[b]}
       client={client}
       groups={groups}
-      setParams={setParams}
       agreeable={agreeable}
       checkable={checkable}
       answerKey={client && loop.layout ? { client, layout: loop.layout } : undefined}
@@ -595,12 +528,24 @@ function LayoutTab({
   );
 }
 
-/** One branch's units: its mode and settings, and the overlap. */
+/**
+ * The special sets of every set column as one group: practice and gold
+ * units of any column are everyone's; the overlap counts here are an upper
+ * bound (a session gets those of its own columns).
+ */
+function allColumns(groups: SetGroupResponse[]): SetGroupResponse | undefined {
+  if (groups.length === 0) return undefined;
+  const union = (set: string) => [...new Set(groups.flatMap((g) => g.sets.find((s) => s.name === set)?.unitIds ?? []))];
+  return {
+    name: "(all set columns)",
+    sets: [OVERLAP_SET, PRACTICE_SET, GOLD_SET].map((name) => ({ name, unitIds: union(name), ordered: false })),
+  };
+}
+
+/** One branch's units: its filter, criteria (a shared queue), and the special units. */
 function BranchEditor({
   branch,
-  client,
   groups,
-  setParams,
   agreeable,
   checkable,
   answerKey,
@@ -612,253 +557,159 @@ function BranchEditor({
   answerKey?: AnswerKeyContext;
   client?: ResearcherApi;
   groups: SetGroupResponse[];
-  setParams: Map<string, string>;
   agreeable: string[];
   checkable: AnswerKeyQuestion[];
   screenouts: string[];
   issues: DesignIssue[];
   onChange: (branch: UnitBranch) => void;
 }) {
-  const mode = MODES.find((m) => m.value === branch.mode)!;
-  const modeId = useId();
-  // The group whose `_overlap` set this branch can take
-  const overlapGroup = branch.mode === "assign" ? branch.group : branch.mode === "shared" ? branch.set?.group : undefined;
+  const special = allColumns(groups);
+  // The column with practice or gold units (their right answers are edited by column)
+  const columnWith = (set: string) => groups.find((g) => g.sets.some((s) => s.name === set && s.unitIds.length > 0)) ?? groups[0];
+  const canSpread = !branch.criteria || branch.criteria.unitsPerCoder?.max !== undefined;
+  const without = (key: keyof UnitBranch) => {
+    const next = { ...branch };
+    delete next[key];
+    return next;
+  };
   return (
     <div className="flex flex-col gap-3">
-      <div className={labelClass}>
-        <span className="flex items-center gap-1.5">
-          <label htmlFor={modeId}>Who codes which units</label>
-          <HelpButton topic="unit-distribution" label="Help: unit distribution" />
-        </span>
-        <select
-          id={modeId}
-          className={`${selectClass} w-fit`}
-          value={branch.mode}
-          onChange={(e) => onChange(switchMode(branch, e.target.value as UnitMode, groups))}
-        >
-          {MODES.map((m) => (
-            <option key={m.value} value={m.value}>
-              {m.label}
-            </option>
-          ))}
-        </select>
-        <span className="text-[11px] font-normal text-muted-foreground">{mode.help}</span>
-      </div>
-
-      {(branch.mode === "all" || branch.mode === "shared") && (
-        <label className={labelClass}>
-          Units
-          <SetSelect
-            groups={groups}
-            value={branch.set}
-            onChange={(set) => {
-              const next = { ...branch, set };
-              if (!set) {
-                delete next.set;
-                if (next.mode === "shared") {
-                  delete next.overlap;
-                  delete next.practice;
-                  delete next.gold;
-                }
-              }
-              onChange(next);
-            }}
-          />
-          {client && (
-            <GenerateSets
-              client={client}
-              groups={groups}
-              onCreated={(group) => onChange({ ...branch, set: { group, set: "s1" } } as UnitBranch)}
-            />
-          )}
-        </label>
-      )}
-      {branch.mode === "shared" && <SharedSettings branch={branch} agreeable={agreeable} onChange={onChange} />}
-      {branch.mode === "assign" && <AssignSettings branch={branch} client={client} groups={groups} setParams={setParams} onChange={onChange} />}
-
-      {overlapGroup !== undefined && branch.mode !== "all" && (
-        <OverlapEditor
-          overlap={branch.overlap}
-          required={branch.mode === "assign"}
-          group={groups.find((g) => g.name === overlapGroup)}
-          canSpread={branch.mode !== "shared" || branch.maxUnits !== undefined}
-          onChange={(overlap) => {
-            const next = { ...branch, overlap } as UnitBranch;
-            if (!overlap && next.mode === "shared") delete next.overlap;
-            onChange(next);
-          }}
+      <p className="text-[11px] text-muted-foreground">
+        A session gets the units of its coder and conditions (the Study entry); this loop hands out those, or some of them.
+        <HelpButton topic="unit-distribution" label="Help: unit distribution" />
+      </p>
+      <FilterEditor groups={groups} filter={branch.filter} onChange={(filter) => onChange(filter ? { ...branch, filter } : without("filter"))} />
+      <label className="flex items-center gap-2 text-xs font-semibold">
+        <input
+          type="checkbox"
+          checked={!!branch.criteria}
+          onChange={(e) => onChange(e.target.checked ? { ...branch, criteria: { codersPerUnit: { min: 1 } } } : without("criteria"))}
         />
+        Share the units among coders (crowd coding): each unit until enough coders coded it
+      </label>
+      {branch.criteria && (
+        <SharedSettings criteria={branch.criteria} agreeable={agreeable} onChange={(criteria) => onChange({ ...branch, criteria })} />
       )}
-      {overlapGroup !== undefined && branch.mode !== "all" && (
-        <>
-          <PracticeEditor
-            practice={branch.practice}
-            group={groups.find((g) => g.name === overlapGroup)}
-            checkable={checkable}
-            answerKey={answerKey}
-            canSpread={branch.mode !== "shared" || branch.maxUnits !== undefined}
-            onChange={(practice) => {
-              const next = { ...branch, practice } as AssignBranch | SharedBranch;
-              if (!practice) delete next.practice;
-              onChange(next);
-            }}
-          />
-          <GoldEditor
-            gold={branch.gold}
-            group={groups.find((g) => g.name === overlapGroup)}
-            checkable={checkable}
-            answerKey={answerKey}
-            screenouts={screenouts}
-            canSpread={branch.mode !== "shared" || branch.maxUnits !== undefined}
-            onChange={(gold) => {
-              const next = { ...branch, gold } as AssignBranch | SharedBranch;
-              if (!gold) delete next.gold;
-              onChange(next);
-            }}
-          />
-        </>
-      )}
-
+      <OverlapEditor
+        overlap={branch.overlap}
+        required={false}
+        group={special}
+        canSpread={canSpread}
+        onChange={(overlap) => onChange(overlap ? { ...branch, overlap } : without("overlap"))}
+      />
+      <PracticeEditor
+        practice={branch.practice}
+        group={columnWith(PRACTICE_SET)}
+        checkable={checkable}
+        answerKey={answerKey}
+        canSpread={canSpread}
+        onChange={(practice) => onChange(practice ? { ...branch, practice } : without("practice"))}
+      />
+      <GoldEditor
+        gold={branch.gold}
+        group={columnWith(GOLD_SET)}
+        checkable={checkable}
+        answerKey={answerKey}
+        screenouts={screenouts}
+        canSpread={canSpread}
+        onChange={(gold) => onChange(gold ? { ...branch, gold } : without("gold"))}
+      />
       <IssueList issues={issues.filter((issue) => !issue.path.includes("when"))} />
     </div>
   );
 }
 
-/** Every unit, or one set of a group (its `_overlap` units are not a set to choose). */
-function SetSelect({ groups, value, onChange }: { groups: SetGroupResponse[]; value: SetRef | undefined; onChange: (set: SetRef | undefined) => void }) {
-  const known = !value || groups.some((g) => g.name === value.group && g.sets.some((s) => s.name === value.set));
+/** A loop's filter: none, or only / except some values of a set column. */
+function FilterEditor({ groups, filter, onChange }: { groups: SetGroupResponse[]; filter: UnitFilter | undefined; onChange: (filter: UnitFilter | undefined) => void }) {
+  const values = filter ? (filter.only ?? filter.except ?? []) : [];
+  const column = groups.find((g) => g.name === filter?.column);
   return (
-    <select
-      className={`${selectClass} w-fit font-normal ${known ? "" : "border-destructive"}`}
-      value={value ? `${value.group}/${value.set}` : ""}
-      onChange={(e) => {
-        const at = e.target.value.indexOf("/");
-        onChange(at < 0 ? undefined : { group: e.target.value.slice(0, at), set: e.target.value.slice(at + 1) });
-      }}
-    >
-      <option value="">All units</option>
-      {!known && value && <option value={`${value.group}/${value.set}`}>{`${value.set} (${value.group}: not found)`}</option>}
-      {groups.map((g) => (
-        <optgroup key={g.name} label={`Group ${g.name}`}>
-          {g.sets
-            .filter((s) => s.name !== OVERLAP_SET)
-            .map((s) => (
-              <option key={s.name} value={`${g.name}/${s.name}`}>
-                {s.name} ({s.unitIds.length} units)
-              </option>
-            ))}
-        </optgroup>
-      ))}
-    </select>
-  );
-}
-
-/** Where an assigned set comes from, as a select value. */
-const fromValue = (from: AssignBranch["from"]) => ("draw" in from ? `draw:${from.draw}` : `session:${from.session}`);
-
-/** An `assign` branch: the group, and how a coder's set is chosen. */
-function AssignSettings({
-  branch,
-  client,
-  groups,
-  setParams,
-  onChange,
-}: {
-  branch: AssignBranch;
-  client?: ResearcherApi;
-  groups: SetGroupResponse[];
-  setParams: Map<string, string>;
-  onChange: (branch: UnitBranch) => void;
-}) {
-  const group = groups.find((g) => g.name === branch.group);
-  const sets = group?.sets.filter((s) => s.name !== OVERLAP_SET) ?? [];
-  const params = [...setParams].filter(([, g]) => g === branch.group).map(([name]) => name);
-  const from = fromValue(branch.from);
-  return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-wrap items-end gap-2">
       <label className={labelClass}>
-        Group
-        {groups.length === 0 ? (
-          <span className="text-[11px] font-normal text-muted-foreground">
-            This study has no set groups yet: make one on the Units page (a sets column when uploading, or Split into sets).
-          </span>
-        ) : (
-          <select
-            className={`${selectClass} w-fit font-normal ${group ? "" : "border-destructive"}`}
-            value={branch.group}
-            onChange={(e) => onChange({ ...branch, group: e.target.value })}
-          >
-            {!group && <option value={branch.group}>{branch.group || "Choose a group…"}</option>}
-            {groups.map((g) => (
-              <option key={g.name} value={g.name}>
-                {g.name} ({g.sets.filter((s) => s.name !== OVERLAP_SET).length} sets)
-              </option>
-            ))}
-          </select>
-        )}
-        {client && <GenerateSets client={client} groups={groups} onCreated={(group) => onChange({ ...branch, group })} />}
-      </label>
-      <label className={labelClass}>
-        A coder&apos;s set is
+        Units
         <select
           className={`${selectClass} w-fit font-normal`}
-          value={from}
+          value={filter ? (filter.only ? "only" : "except") : ""}
           onChange={(e) => {
-            const [kind, value] = e.target.value.split(":") as [string, string];
-            onChange({ ...branch, from: kind === "draw" ? { draw: value as "balanced" | "random" } : { session: value } });
+            const kind = e.target.value;
+            if (!kind) return onChange(undefined);
+            const col = filter?.column ?? groups[0]?.name ?? "";
+            onChange(kind === "only" ? { column: col, only: values.length ? values : [""] } : { column: col, except: values.length ? values : [""] });
           }}
         >
-          <option value="draw:balanced">Drawn: the set with the fewest coders</option>
-          <option value="draw:random">Drawn at random</option>
-          {params.map((p) => (
-            <option key={p} value={`session:${p}`}>
-              Named by the link or URL: $session.{p}
-            </option>
-          ))}
-          {"session" in branch.from && !["participant", "email", ...params].includes(branch.from.session) && (
-            <option value={from}>$session.{branch.from.session} (not a parameter with this group&apos;s sets)</option>
-          )}
-          <option value="session:participant">The coder&apos;s participant id</option>
-          <option value="session:email">The coder&apos;s login email</option>
+          <option value="">All the session&apos;s units</option>
+          <option value="only">Only those with a value of a set column</option>
+          <option value="except">Except those with a value of a set column</option>
         </select>
       </label>
-      <p className="text-[11px] text-muted-foreground">
-        {"draw" in branch.from
-          ? branch.from.draw === "balanced"
-            ? "Drawn here: each new coder gets the set with the fewest coders (coders who stop count for 24 hours)."
-            : "Drawn here: each new coder gets a set at random."
-          : branch.from.session === "email"
-            ? `Only the ${sets.length} email addresses that are set names of this group can code: coders log in, and other emails get "This email address has no access to this study".`
-            : branch.from.session === "participant"
-              ? "The participant id (from the link's URL parameter, see the Study entry) names the set. Coders whose id is no set get no units here."
-              : `Each set gets its own link (Deploy, Links), made from the link parameter ${branch.from.session}.`}
-        {"draw" in branch.from && params.length === 0 && " To give each set its own link instead, add a link parameter with this group's sets to the Study entry."}
-      </p>
+      {filter && (
+        <>
+          <label className={labelClass}>
+            Column
+            <select
+              className={`${selectClass} w-fit font-normal ${column ? "" : "border-destructive"}`}
+              value={filter.column}
+              onChange={(e) => onChange({ ...filter, column: e.target.value })}
+            >
+              {!column && <option value={filter.column}>{filter.column || "Choose…"}</option>}
+              {groups.map((g) => (
+                <option key={g.name} value={g.name}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={labelClass}>
+            Values (comma separated)
+            <Input
+              className="h-8 w-48 text-xs font-normal"
+              value={values.join(", ")}
+              placeholder={column?.sets.map((s) => s.name).join(", ")}
+              onChange={(e) => {
+                const list = e.target.value.split(",").map((v) => v.trim());
+                onChange(filter.only ? { ...filter, only: list } : { ...filter, except: list });
+              }}
+            />
+          </label>
+        </>
+      )}
     </div>
   );
 }
 
 const numberOrUndefined = (v: string) => (v === "" ? undefined : Number(v));
 
+/** A range without empty ends; undefined when both are empty. */
+function range(min: number | undefined, max: number | undefined) {
+  const out = { ...(min !== undefined ? { min } : {}), ...(max !== undefined ? { max } : {}) };
+  return Object.keys(out).length ? out : undefined;
+}
+
 /**
- * A shared queue's numbers as a small grid: units per coder (min, max), and
- * coders per unit or agreement per unit (the `until` rule, and max coders).
+ * A shared queue's numbers (contracts Criteria) as a small grid: units per
+ * coder (min, max), and coders per unit or agreement per unit.
  */
 export function SharedSettings({
-  branch,
+  criteria,
   agreeable,
   onChange,
   allowAgreement = true,
 }: {
-  branch: SharedBranch;
+  criteria: Criteria;
   agreeable: string[];
-  onChange: (b: UnitBranch) => void;
+  onChange: (c: Criteria) => void;
   /** Offer "agreement per unit" (not in the setup wizard: it needs a question with options). */
   allowAgreement?: boolean;
 }) {
-  const agree = "agree" in branch.until;
-  const needed = agree && "agree" in branch.until ? branch.until.agree : "coders" in branch.until ? branch.until.coders : 1;
+  const until = criteria.until;
+  const needed = until ? until.agree : (criteria.codersPerUnit?.min ?? 1);
+  const maxCoders = criteria.codersPerUnit?.max;
   const numberInput = "h-8 w-full text-xs";
+  const set = (next: Partial<Criteria>) => {
+    const merged: Criteria = { ...criteria, ...next };
+    for (const key of Object.keys(merged) as (keyof Criteria)[]) if (merged[key] === undefined) delete merged[key];
+    onChange(merged);
+  };
   return (
     <div className="flex flex-col gap-3 text-xs">
       <div className="grid grid-cols-[auto_5.5rem_5.5rem_1fr] items-center gap-x-2 gap-y-1.5">
@@ -874,53 +725,52 @@ export function SharedSettings({
           className={numberInput}
           aria-label="Min units per coder"
           title="While a coder has fewer, they also get units past the most coders per unit, as long as coders don't agree on them yet"
-          value={branch.minUnits ?? ""}
+          value={criteria.unitsPerCoder?.min ?? ""}
           placeholder="none"
-          onChange={(e) => onChange({ ...branch, minUnits: numberOrUndefined(e.target.value) })}
+          onChange={(e) => set({ unitsPerCoder: range(numberOrUndefined(e.target.value), criteria.unitsPerCoder?.max) })}
         />
         <Input
           type="number"
           min={1}
           className={numberInput}
           aria-label="Max units per coder"
-          value={branch.maxUnits ?? ""}
+          value={criteria.unitsPerCoder?.max ?? ""}
           placeholder="no limit"
-          onChange={(e) => onChange({ ...branch, maxUnits: numberOrUndefined(e.target.value) })}
+          onChange={(e) => set({ unitsPerCoder: range(criteria.unitsPerCoder?.min, numberOrUndefined(e.target.value)) })}
         />
         <span />
 
         {!allowAgreement ? (
           <span className="font-semibold">Coders per unit</span>
         ) : (
-        <select
-          className={selectClass}
-          aria-label="Each unit is coded until"
-          value={agree ? "agree" : "coders"}
-          onChange={(e) => {
-            const n = Math.max(2, needed);
-            onChange({
-              ...branch,
-              until: e.target.value === "agree" ? { agree: n, on: agreeable[0] ?? "" } : { coders: needed },
-              // Agreement needs room for disagreement: at most is above the agreeing coders
-              ...(e.target.value === "agree" && (branch.maxCoders === undefined || branch.maxCoders < n) ? { maxCoders: Math.max(3, n + 1) } : {}),
-            });
-          }}
-        >
-          <option value="coders">Coders per unit</option>
-          <option value="agree">Agreement per unit</option>
-        </select>
+          <select
+            className={selectClass}
+            aria-label="Each unit is coded until"
+            value={until ? "agree" : "coders"}
+            onChange={(e) => {
+              const n = Math.max(2, needed);
+              if (e.target.value === "agree") {
+                // Agreement needs room for disagreement: at most is above the agreeing coders
+                set({ until: { agree: n, on: agreeable[0] ?? "" }, codersPerUnit: { max: maxCoders === undefined || maxCoders < n ? Math.max(3, n + 1) : maxCoders } });
+              } else set({ until: undefined, codersPerUnit: range(needed, maxCoders) });
+            }}
+          >
+            <option value="coders">Coders per unit</option>
+            <option value="agree">Agreement per unit</option>
+          </select>
         )}
         <Input
           type="number"
-          min={agree ? 2 : 1}
+          min={until ? 2 : 1}
           className={numberInput}
-          aria-label={agree ? "Coders who must agree" : "Coders per unit"}
+          aria-label={until ? "Coders who must agree" : "Coders per unit"}
           value={needed}
           onChange={(e) => {
             const n = Number(e.target.value) || 1;
-            // Max coders can't be below the number needed: it follows upwards.
-            const maxCoders = branch.maxCoders !== undefined && branch.maxCoders < n ? n : branch.maxCoders;
-            onChange({ ...branch, maxCoders, until: agree && "on" in branch.until ? { agree: n, on: branch.until.on } : { coders: n } });
+            // The most coders can't be below the number needed: it follows upwards.
+            const max = maxCoders !== undefined && maxCoders < n ? n : maxCoders;
+            if (until) set({ until: { ...until, agree: n }, codersPerUnit: range(undefined, max) });
+            else set({ codersPerUnit: range(n, max) });
           }}
         />
         <Input
@@ -928,20 +778,20 @@ export function SharedSettings({
           min={1}
           className={numberInput}
           aria-label="Max coders per unit"
-          value={branch.maxCoders ?? ""}
-          placeholder={agree ? "required" : "= at least"}
-          onChange={(e) => onChange({ ...branch, maxCoders: numberOrUndefined(e.target.value) })}
+          value={maxCoders ?? ""}
+          placeholder={until ? "required" : "= at least"}
+          onChange={(e) => set({ codersPerUnit: range(until ? undefined : criteria.codersPerUnit?.min, numberOrUndefined(e.target.value)) })}
         />
-        {agree && "on" in branch.until ? (
+        {until ? (
           <span className="flex items-center gap-1.5">
             agree on
             <select
               className={selectClass}
               aria-label="Question coders agree on"
-              value={branch.until.on}
-              onChange={(e) => onChange({ ...branch, until: { ...branch.until, on: e.target.value } as SharedBranch["until"] })}
+              value={until.on}
+              onChange={(e) => set({ until: { ...until, on: e.target.value } })}
             >
-              {!agreeable.includes(branch.until.on) && <option value={branch.until.on}>{branch.until.on || "(choose a question)"}</option>}
+              {!agreeable.includes(until.on) && <option value={until.on}>{until.on || "(choose a question)"}</option>}
               {agreeable.map((n) => (
                 <option key={n} value={n}>
                   {n}
@@ -954,7 +804,7 @@ export function SharedSettings({
         )}
       </div>
       <p className="text-[11px] text-muted-foreground">
-        {agree
+        {until
           ? "A unit is done once the least number of coders agree on the question, or the most coders coded it."
           : "A unit is done once the least number of coders coded it. When no unit needs more, coders get units up to the most."}
       </p>
@@ -962,8 +812,8 @@ export function SharedSettings({
         Priority
         <select
           className={`${selectClass} w-fit`}
-          value={branch.priority ?? "cover"}
-          onChange={(e) => onChange({ ...branch, priority: e.target.value as SharedBranch["priority"] })}
+          value={criteria.priority ?? "cover"}
+          onChange={(e) => set({ priority: e.target.value as Criteria["priority"] })}
         >
           <option value="cover">Cover all units first</option>
           <option value="saturate">Finish units first</option>

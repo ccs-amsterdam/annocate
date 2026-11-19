@@ -59,10 +59,10 @@ export function ItemPreview({ client, draft, item }: { client: ResearcherApi; dr
   const order = loop ? loopQuestionNames(loop) : [];
 
   const [unitIndex, setUnitIndex] = useState(0);
-  // Units from a set: by default the loop's own (its first branch's set, if it has a fixed one)
+  // Units from a set: by default the loop's own (the first value its first branch's filter takes, if any)
   const sets = (useSetGroupsQuery(client).data ?? []).flatMap((g) => g.sets.map((set) => ({ group: g.name, set: set.name, key: `${g.name}/${set.name}` })));
   const branch = loop?.units?.[0];
-  const loopSet = branch && branch.mode !== "assign" && branch.set ? `${branch.set.group}/${branch.set.set}` : null;
+  const loopSet = branch?.filter?.only?.length ? `${branch.filter.column}/${branch.filter.only[0]}` : null;
   const [chosenSet, setChosenSet] = useState<string | null | undefined>(undefined);
   const setKey = chosenSet === undefined ? (sets.some((s) => s.key === loopSet) ? loopSet : null) : chosenSet;
   const chosen = sets.find((s) => s.key === setKey);

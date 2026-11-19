@@ -332,7 +332,7 @@ function DistributionStep({ a, set }: StepProps) {
 
         {d.mode === "crowd" && (
           <>
-            <SharedSettings branch={d.shared} agreeable={[]} allowAgreement={false} onChange={(shared) => update({ shared: shared as typeof d.shared })} />
+            <SharedSettings criteria={d.shared} agreeable={[]} allowAgreement={false} onChange={(shared) => update({ shared })} />
             <p className="text-xs text-muted-foreground">
               Coding until coders agree on a question is set in the editor, once the question has its answer type.{" "}
               <HelpButton topic="setup-wizard">What only the editor does</HelpButton>
@@ -562,11 +562,13 @@ function distributionSummary(d: SetupDistribution): string {
     case "all":
       return "Every coder codes every unit.";
     case "sets":
-      return `${d.source === "split" ? `The units in ${d.sets} sets` : `A set per value of ${d.column}`}, one per coder${overlap}; ${d.handOut === "links" ? "a link per set" : "each new coder gets the set with the fewest coders"}.`;
+      return `${d.source === "split" ? `The units in ${d.sets} sets` : `A set per value of ${d.column}`}, one per coder${overlap}; ${d.handOut === "links" ? "a link per set" : "each new session gets the set with the fewest sessions"}.`;
     case "crowd": {
       const until = d.shared.until;
-      const rule = "agree" in until ? `${until.agree} coders agree${until.on ? ` on ${until.on}` : ""}` : `${until.coders} coder${until.coders > 1 ? "s" : ""} coded it`;
-      return `Crowd coding: each unit until ${rule}${d.shared.maxCoders ? `, at most ${d.shared.maxCoders} coders` : ""}${overlap}.`;
+      const coders = d.shared.codersPerUnit?.min ?? 1;
+      const rule = until ? `${until.agree} coders agree${until.on ? ` on ${until.on}` : ""}` : `${coders} coder${coders > 1 ? "s" : ""} coded it`;
+      const max = d.shared.codersPerUnit?.max;
+      return `Crowd coding: each unit until ${rule}${max ? `, at most ${max} coders` : ""}${overlap}.`;
     }
     case "groups":
       return `Each condition codes its own units (by ${d.column}).`;

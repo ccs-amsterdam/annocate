@@ -1,4 +1,4 @@
-import { DEFAULT_RATE, OVERLAP_SET, RESERVED_SETS, SharedBranchSchema, seededShuffle, type RecipeInput, type SessionSpec, type SharedBranch, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
+import { CriteriaSchema, DEFAULT_RATE, OVERLAP_SET, RESERVED_SETS, seededShuffle, type Criteria, type RecipeInput, type SessionSpec, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
 import { placedFields, simpleTemplate, type SimpleLayout } from "../design/simpleLayout";
 
 // The setup wizard (docs/plans/setup-wizard.md) as data: what the
@@ -31,17 +31,17 @@ export type SetupDistribution =
   | { mode: "all" }
   /**
    * The units in sets, each coder one set: `split` into `sets` sets, or one
-   * set per value of `column`. Handed out by a link per set
-   * (`links`), or by one link giving each new coder the set with the fewest
-   * coders (`rotate`).
+   * set per value of `column`. Handed out by a link per set (`links`: the
+   * sets are the coders), or by one link giving each new session the set
+   * with the fewest sessions (`rotate`: a condition drawn at the start).
    */
   | { mode: "sets"; source: "split" | "column"; sets: number; column: string; overlap: SetupOverlap; handOut: "links" | "rotate" }
   /**
-   * Crowd coding: a shared queue, with the settings the editor's form has
-   * (`shared`: until N coders or N agree, max coders, units per coder,
-   * priority; its set is set by the wizard), and optionally overlap units.
+   * Crowd coding: a shared queue, with the criteria the editor's form has
+   * (`shared`: coders per unit or agreement, units per coder, priority),
+   * and optionally overlap units.
    */
-  | { mode: "crowd"; shared: SharedBranch; overlap: SetupOverlap }
+  | { mode: "crowd"; shared: Criteria; overlap: SetupOverlap }
   /** A set per experimental condition: the units whose `column` has one of the condition's values. */
   | { mode: "groups"; column: string; values: Record<string, string[]> }
   /** Decided later in the editor: the loop's units are not set. */
@@ -76,7 +76,7 @@ export function defaultDistribution(mode: SetupDistribution["mode"], columns: st
     case "sets":
       return { mode, source: "split", sets: 2, column: columns[0] ?? "", overlap: null, handOut: "rotate" };
     case "crowd":
-      return { mode, shared: { mode: "shared", until: { coders: 1 }, maxCoders: 1 }, overlap: null };
+      return { mode, shared: { codersPerUnit: { min: 1, max: 1 } }, overlap: null };
     case "groups":
       return { mode, column: columns[0] ?? "", values: {} };
   }
@@ -282,7 +282,7 @@ export function distributionProblems(a: SetupAnswers): string[] {
   }
   if (d.mode === "crowd") {
     // The queue's own rules; the question to agree on may be chosen later, in the editor.
-    const parsed = SharedBranchSchema.safeParse(d.shared);
+    const parsed = CriteriaSchema.safeParse(d.shared);
     if (!parsed.success) problems.push(...parsed.error.issues.filter((i) => i.path.join(".") !== "until.on").map((i) => i.message));
   }
   if (d.mode === "groups") {
@@ -331,34 +331,22 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
     let branches: object[] = [];
     switch (d.mode) {
       case "all":
-        branches = [{ mode: "all" }];
+        branches = [{}];
         break;
       case "sets":
         groups.push({ group: WIZARD_GROUP, sets: [...sets, ...overlapSet] });
-        branches = [
-          {
-            mode: "assign",
-            group: WIZARD_GROUP,
-            from: d.handOut === "links" ? { session: "set" } : { draw: "balanced" },
-            // Spread: best practice (first inflates reliability: coders are fresh and careful)
-            overlap: { placement: overlap.length > 0 ? "spread" : "disabled" },
-          },
-        ];
-        // A link per set: a link parameter with the group's sets
-        if (d.handOut === "links") session = { params: [{ name: "set", kind: "link", values: { sets: WIZARD_GROUP } }] };
+        // Spread: best practice (first inflates reliability: coders are fresh and careful)
+        branches = [overlap.length > 0 ? { overlap: { placement: "spread" } } : {}];
+        // A link per set: the sets are the coders. Else one link: a set drawn when a session starts (the fewest sessions).
+        session =
+          d.handOut === "links"
+            ? { params: [], coders: { column: WIZARD_GROUP } }
+            : { params: [], conditions: [{ name: WIZARD_GROUP, values: "free", assign: "random", units: WIZARD_GROUP }] };
         break;
       case "crowd":
-        if (overlap.length > 0 || a.checks.gold.length > 0 || a.checks.practice.length > 0) {
-          groups.push({ group: WIZARD_GROUP, sets: [{ name: "queue", units: sets[0]?.units ?? (a.units?.units ?? []).map((u) => u.externalId) }, ...overlapSet] });
-          // Spread needs the units per coder (max); without it the overlap comes last
-          branches = [
-            {
-              ...d.shared,
-              set: { group: WIZARD_GROUP, set: "queue" },
-              ...(overlap.length > 0 ? { overlap: { placement: "rate", every: DEFAULT_RATE, rest: "end" } } : {}),
-            },
-          ];
-        } else branches = [d.shared];
+        // The overlap: everyone's (a column's _overlap, without a column dividing the units)
+        if (overlap.length > 0) groups.push({ group: WIZARD_GROUP, sets: overlapSet });
+        branches = [{ criteria: d.shared, ...(overlap.length > 0 ? { overlap: { placement: "rate", every: DEFAULT_RATE, rest: "end" } } : {}) }];
         break;
       case "groups":
         // A set per condition, and a coder group per condition that codes its set
@@ -371,8 +359,7 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
         });
         branches = conditions.map((condition) => ({
           when: { script: `$var.${a.experiment.name}.is(${JSON.stringify(condition)})` },
-          mode: "all",
-          set: { group: WIZARD_GROUP, set: setName(condition) },
+          filter: { column: WIZARD_GROUP, only: [setName(condition)] },
         }));
         break;
       case "later":
@@ -381,10 +368,8 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
     items.push({
       type: "unit_loop",
       label: "Units",
-      // Gold and practice checks on the group's special sets (assign sets, crowd coding over a set)
-      units: hasSetGroup(d)
-        ? branches.map((b) => ("group" in b || "set" in b ? withChecks(b, a.checks, parseQuestions(a.questions.unit).map((q) => q.name)) : b))
-        : branches,
+      // Gold and practice checks on the special units (assign sets, crowd coding)
+      units: hasSetGroup(d) ? branches.map((b) => withChecks(b, a.checks, parseQuestions(a.questions.unit).map((q) => q.name))) : branches,
       ...(a.order === "random" ? { order: "random" } : {}),
       layout: { template: layoutTemplate(a.layout) },
       children: parseQuestions(a.questions.unit).map(unspecified),

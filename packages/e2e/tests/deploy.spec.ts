@@ -12,7 +12,7 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
     items: [
       {
         type: "unit_loop",
-        units: [{ mode: "all" }],
+        units: [{}],
         layout: { template: "$unit.text" },
         children: [{ type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] } }],
       },
@@ -59,7 +59,7 @@ test("the design's unit fields: how the codebook uses each, removing an unused o
     items: [
       {
         type: "unit_loop",
-        units: [{ mode: "all" }],
+        units: [{}],
         layout: { template: "$unit.text" },
         children: [
           { type: "show_if", condition: { script: "$unit.year > 2000" }, children: [

@@ -121,7 +121,7 @@ describe("itemEdit", () => {
       const loop: TopLevelItem = {
         type: "unit_loop",
         ...{ _key: "loop" },
-        units: [{ mode: "all" }],
+        units: [{}],
         layout: { template: "" },
         children: [
           {
@@ -140,7 +140,7 @@ describe("itemEdit", () => {
     const loop: TopLevelItem = {
       type: "unit_loop",
       ...{ _key: "loop" },
-      units: [{ mode: "all" }],
+      units: [{}],
       layout: { template: "" },
       children: [
         {
@@ -166,7 +166,7 @@ describe("itemEdit", () => {
       const spanLoop: TopLevelItem = {
         type: "unit_loop",
         ...{ _key: "loop" },
-        units: [{ mode: "all" }],
+        units: [{}],
         layout: { template: "" },
         children: [
           {
@@ -240,7 +240,7 @@ describe("itemEdit", () => {
     // a, loop[ c[ x ] ], b
     const tree = (): TopLevelItem[] => [
       q("a") as TopLevelItem,
-      { _key: "loop", type: "unit_loop", units: [{ mode: "all" }], layout: { template: "text" }, children: [cond("c", [q("x")])] } as unknown as TopLevelItem,
+      { _key: "loop", type: "unit_loop", units: [{}], layout: { template: "text" }, children: [cond("c", [q("x")])] } as unknown as TopLevelItem,
       q("b") as TopLevelItem,
       cond("empty"),
     ];

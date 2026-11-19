@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   sessionNames,
-  setParameters,
   availableQuestions,
   itemName,
   templateNames,
@@ -135,7 +134,6 @@ function ItemEditForm({
   const key = getItemKey(item);
 
   const { unitVariableNames } = useMemo(() => variableNames(items), [items]);
-  const setParams = useMemo(() => setParameters(cleanItems), [cleanItems]);
   // What references may use at this item: the same rules as validation
   const available = useMemo(() => availableQuestions(cleanItems, itemPath(items, key) ?? []), [cleanItems, items, key]);
   const loop = enclosingLoop(items, item);
@@ -152,7 +150,6 @@ function ItemEditForm({
         item={item}
         client={readOnly ? undefined : client}
         groups={groupsQuery.data ?? []}
-        setParams={setParams}
         sessionValueNames={sessionNames(cleanItems)}
         unitVariableNames={unitVariableNames}
         availableQuestions={available}

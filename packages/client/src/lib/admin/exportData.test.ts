@@ -129,7 +129,7 @@ describe("data download", () => {
       [
         {
           type: "unit_loop",
-          units: [{ mode: "all" }],
+          units: [{}],
           layout: { template: "" },
           children: [{ type: "question", name: "sentiment", variable: { type: "nominal", question: "?", options: [{ value: "pos", label }, { value: "neg" }] } }],
         },
