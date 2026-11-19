@@ -45,7 +45,7 @@ test("your first study, as the help describes it: units, a codebook, publish, in
 
   // 2. Upload the units
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("button", { name: "Units", exact: true }).click();
+  await page.getByRole("button", { name: /Open the units/ }).click();
   await page.getByRole("button", { name: /Upload CSV/ }).click();
   await page.locator("input[type=file]").setInputFiles({
     name: "articles.csv",

@@ -17,7 +17,7 @@ test("a practice question gives feedback when wrong, answered again until right;
 
   // Units with a sets column and answer columns
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("button", { name: "Units", exact: true }).click();
+  await page.getByRole("button", { name: /Open the units/ }).click();
   await page.getByRole("button", { name: /Upload CSV/ }).click();
   await page.locator("input[type=file]").setInputFiles({
     name: "units.csv",
@@ -118,6 +118,7 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
   await page.goto("/research");
   await page.getByText("Gold answers").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
+  await page.getByRole("button", { name: /Open the editor/ }).click();
   await page.getByRole("button", { name: /^Unit loop/ }).click();
   await page.getByRole("tab", { name: /Units/ }).click();
   await page.getByRole("button", { name: "Create gold values…" }).click();

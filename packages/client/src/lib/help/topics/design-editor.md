@@ -11,6 +11,11 @@ page explains the editor itself. What the items mean is on their own pages:
 [Questions](questions.md), [Unit loops](unit-loops.md),
 [Conditions](conditions.md) and [Ending a session](end-items.md).
 
+**Design** opens with two cards: **Editor** (the codebook: which version
+coders use, whether there is a draft, how many questions and loops) and
+**Units** (how many units, and their columns with their types). Click one
+to open it; the tabs below the menu then switch between the two.
+
 From top to bottom, the tab has:
 
 - the **toolbar**: the number of issues and warnings, **Visual** or

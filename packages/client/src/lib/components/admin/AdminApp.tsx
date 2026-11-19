@@ -38,13 +38,15 @@ import { clearBackup, readBackup, type DesignBackup } from "../../design/localBa
 import { HelpDialog } from "../../help/HelpDialog";
 import { PendingDeployBar } from "./PendingDeployBar";
 import { openHelp } from "../../help/helpStore";
+import { DesignLanding } from "./DesignLanding";
 
 /** The study's pages. Preview is opened with the Preview Study button, not from the tabs. */
-export type TabId = "Overview" | "Editor" | "Units" | "Links" | "Coders" | "Results" | "Settings" | "Preview";
+export type TabId = "Overview" | "Design" | "Editor" | "Units" | "Links" | "Coders" | "Results" | "Settings" | "Preview";
 
 /** Each page's name in the URL (`/research/studies/<id>/<slug>`). */
 export const TAB_SLUGS: Record<TabId, string> = {
   Overview: "overview",
+  Design: "design",
   Editor: "editor",
   Units: "units",
   Links: "links",
@@ -71,13 +73,20 @@ const noGuard: LeaveGuard = () => ({ blocked: false, proceed: () => {}, stay: ()
 /**
  * The tabs, grouped: designing the study (codebook, units), deploying it
  * (links, coders), its results, and settings. A group with more than
- * one page shows them as sub tabs.
+ * one page shows them as sub tabs. A group with a `start` page opens there
+ * (Design: cards for its pages), without sub tabs.
  */
-const GROUPS: { label: string; icon: typeof LayoutDashboard; pages: { id: TabId; label: string; icon: typeof LayoutDashboard }[] }[] = [
+const GROUPS: {
+  label: string;
+  icon: typeof LayoutDashboard;
+  start?: TabId;
+  pages: { id: TabId; label: string; icon: typeof LayoutDashboard }[];
+}[] = [
   { label: "Overview", icon: LayoutDashboard, pages: [{ id: "Overview", label: "Overview", icon: LayoutDashboard }] },
   {
     label: "Design",
     icon: PencilRuler,
+    start: "Design",
     pages: [
       { id: "Editor", label: "Editor", icon: BookOpen },
       { id: "Units", label: "Units", icon: Layers },
@@ -98,6 +107,7 @@ const GROUPS: { label: string; icon: typeof LayoutDashboard; pages: { id: TabId;
 /** The help topic the Help button opens on each tab. */
 const TAB_HELP: Record<TabId, string> = {
   Overview: "overview",
+  Design: "design-editor",
   Editor: "design-editor",
   Units: "uploading-units",
   Links: "links",
@@ -326,13 +336,13 @@ function StudyAdminView({
             <nav className="flex gap-0.5 overflow-x-auto" aria-label="Study">
               {GROUPS.map((g) => {
                 const Icon = g.icon;
-                const active = g.pages.some((p) => p.id === tab);
+                const active = g.start === tab || g.pages.some((p) => p.id === tab);
                 return (
                   <button
                     key={g.label}
                     type="button"
                     aria-current={active ? "page" : undefined}
-                    onClick={() => requestNavigation(() => onTabChange(g.pages[0].id))}
+                    onClick={() => requestNavigation(() => onTabChange(g.start ?? g.pages[0].id))}
                     className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
                       active ? "bg-wood/15 text-foreground ring-1 ring-inset ring-wood/30" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
@@ -418,6 +428,7 @@ function StudyAdminView({
             }}
           />
         )}
+        {tab === "Design" && <DesignLanding client={client} onOpen={(page) => onTabChange(page)} />}
         {tab === "Units" && <UnitsPage client={client} />}
         {tab === "Links" && <LinksPanel client={client} />}
         {tab === "Coders" && <CodersPanel client={client} />}

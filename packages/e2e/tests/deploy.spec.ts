@@ -73,7 +73,7 @@ test("the design's unit fields: how the codebook uses each, removing an unused o
   await page.goto("/research");
   await page.getByText("Field use").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("button", { name: "Units", exact: true }).click();
+  await page.getByRole("button", { name: /Open the units/ }).click();
   await page.getByRole("button", { name: "Details" }).click();
   const row = (name: string) => page.locator("tr", { has: page.locator("td.font-mono", { hasText: new RegExp(`^${name}$`) }) });
   await expect(row("text")).toContainText("shown");
@@ -93,6 +93,7 @@ test("export: the codebook as a document (what coders see), and the design file"
   await page.goto("/research");
   await page.getByText("Codebook export").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
+  await page.getByRole("button", { name: /Open the editor/ }).click();
   const exported = async (choice: RegExp) => {
     const download = page.waitForEvent("download");
     await page.getByRole("button", { name: "Export" }).click();

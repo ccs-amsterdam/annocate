@@ -23,6 +23,8 @@ test("a study's tabs are URLs: a reload stays; leaving unsaved edits asks first"
   await page.getByText("Routed study").click();
   await expect(page).toHaveURL(new RegExp(`/research/studies/${study.id}/overview$`));
   await page.getByRole("button", { name: "Design", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/research/studies/${study.id}/design$`));
+  await page.getByRole("button", { name: /Open the editor/ }).click();
   await expect(page).toHaveURL(new RegExp(`/research/studies/${study.id}/editor$`));
   await page.reload();
   await expect(page.getByRole("button", { name: /Add item/ })).toBeVisible();
@@ -37,7 +39,8 @@ test("a study's tabs are URLs: a reload stays; leaving unsaved edits asks first"
   await page.goBack();
   await expect(page.getByRole("heading", { name: "Unsaved Changes" })).toBeVisible();
   await page.getByRole("button", { name: "Discard changes" }).click();
-  await expect(page).toHaveURL(new RegExp(`/research/studies/${study.id}/overview$`));
+  // Back to the Design section's start, where the editor was opened
+  await expect(page).toHaveURL(new RegExp(`/research/studies/${study.id}/design$`));
 });
 
 test("the coder home lists the studies this browser takes part in, to continue them", async ({ page, request }) => {
