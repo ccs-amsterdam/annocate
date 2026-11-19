@@ -136,13 +136,14 @@ column of `coders.csv`, so you can check the panel's list against yours.
 
 ## Experimental conditions
 
-For a survey experiment, give each participant a condition with an
-[auto question](random-condition.md) (**Random draw** or **Balanced**), and show
-different material with conditions or `::: if` blocks. If the panel assigns
-the condition (for example two panel studies, one per condition), make the
-condition a **link parameter** with the conditions as its values: deploying
-makes a link per condition, to give each panel study its own (see
-[Session parameters](session-parameters.md)).
+For a survey experiment, give each participant a condition: an **assigned
+condition** drawn at the start (balanced or at random), or a
+[random condition](random-condition.md) drawn after some questions. Show
+different material with [Show if](conditions.md) or `::: if` blocks. If the
+panel assigns the condition (for example two panel studies, one per
+condition), assign it **by link**: deploying makes a link per condition, to
+give each panel study its own. See
+[Experimental conditions](experimental-conditions.md).
 
 ## How many participants?
 
@@ -167,9 +168,9 @@ loop, they are sent back right away. Watch the **Progress** on the Overview
 tab (see [Following progress](coders-and-progress.md)) and stop recruiting
 once the units are complete.
 
-For a survey experiment where everyone judges the same few messages, use
-**Everyone codes everything** instead, possibly with the order **Random (each coder their
-own order)**.
+For a survey experiment where everyone judges the same few messages, don't
+share the units: every participant codes them all, possibly with the order
+**Random (each coder their own order)**.
 
 ## Before you launch
 

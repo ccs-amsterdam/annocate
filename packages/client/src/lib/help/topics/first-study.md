@@ -119,9 +119,9 @@ Select the loop in the tree. Its form has two tabs:
   title, byline and body (styles, blocks, conditions), click **Advanced**
   and write the template yourself. See [Layout templates](layout-templates.md).
 - **Units**: which units coders get. A new loop has none chosen yet (it is
-  marked *to specify*): under **Who codes which units**, choose **Everyone codes
-  everything**, with **Units** left at **All units**: every coder gets every unit. That is what
-  we want here. See [Handing out units](unit-distribution.md).
+  marked *to specify*): click **Code the session's units**. Without
+  coders or conditions in the design, every coder gets every unit. That
+  is what we want here. See [Handing out units](unit-distribution.md).
 
 Try the layout right here, with your own text:
 

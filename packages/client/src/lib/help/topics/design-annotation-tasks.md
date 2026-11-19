@@ -128,7 +128,7 @@ button to go on.
 1. **Preview** the codebook yourself, on your real units, at phone and desktop
    size. Nothing is stored. See [Preview, save and deploy](previewing-and-publishing.md).
 2. **Pilot** with two or three coders on the same 30 to 50 units: a pilot
-   set that every coder codes in full (**Everyone codes everything**, with that set, see
+   set that every coder codes in full (a loop with only the `pilot` units, see
    [Intercoder reliability designs](overlap.md#intercoder-reliability-designs)).
    Talk through the
    disagreements and revise the definitions, not just the answers.

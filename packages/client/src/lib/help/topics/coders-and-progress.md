@@ -33,7 +33,7 @@ as they were).
 
 | Tile | Big number | Below it |
 | --- | --- | --- |
-| **Units** | Units in the study | The number of set groups |
+| **Units** | Units in the study | The number of set columns |
 | **Coders started** | Coders who answered at least one question (assigned values don't count) | All coders who opened a link, and how many were active in the last 24 hours |
 | **Finished codings** | Units finished, counted per coder: a unit two coders finished counts twice | All answers given, and when the last one was |
 | **Active links** | Links that are not revoked, retired or used up | All links |
@@ -49,20 +49,21 @@ came in.
 
 ### Progress
 
-Per unit loop, and per set within it, a bar with the number of
+Per unit loop, and per share within it (a coder, a condition, or *all
+units*), a bar with the number of
 **complete** units out of all units, and the number of coders who were
 given units from it. What *complete* means depends on how the loop hands
 out units (see [Handing out units](unit-distribution.md)):
 
-- **Crowd coding**: the unit was coded by enough coders (or
+- **Crowd coding** (a shared queue): the unit was coded by enough coders (or
   enough agreed), so it goes to no one else. The bar reaching the end means
   the study is done.
-- **Everyone codes everything** and **Assign sets**: every
-  coder who got this set finished the unit. A coder who stopped halfway
+- **Otherwise** (every coder codes all their units): every coder who got
+  these units finished the unit. A coder who stopped halfway
   keeps the bar from filling up, so read it together with the Coders tab.
 
-A set appears here once the first coder was given units from it; a loop
-over all units of the study shows *all units*. Progress is counted for
+A share appears here once the first coder was given units from it; a
+loop over all units of the study shows *all units*. Progress is counted for
 the live design version.
 
 ## The Coders tab

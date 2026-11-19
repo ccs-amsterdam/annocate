@@ -5,13 +5,13 @@ order: 7
 summary: Units every coder codes (overlap), units with a known answer checked silently (gold) or with feedback (practice) - written in your CSV, or made in AnnoTinder.
 ---
 
-Three sets of a group have a special meaning. A loop that **assigns sets**
-of the group, or a **crowd coding** queue over one of its sets, can mix them
-in with each coder's own units:
+Three values of a [set column](sets.md) have a special meaning. Every unit
+loop mixes them in with each coder's own units, wherever the units come
+from (all units, divided over coders, or a condition's):
 
 | Set | Its units | Coders notice |
 | --- | --- | --- |
-| `_overlap` | coded by every coder of the group: to compare coders (reliability) | nothing |
+| `_overlap` | coded by every coder: to compare coders (reliability) | nothing |
 | `_gold` | have a known answer: coders are checked silently | nothing, unless they fail (below) |
 | `_practice` | have a known answer: coders are told when they are wrong | feedback per question, answer again |
 
@@ -20,8 +20,8 @@ unit is checked twice, and a practice unit tells coders the answer.
 
 ## Write them in your units
 
-The most direct way: a **sets column** in your CSV (see
-[Sets and set groups](sets.md#a-sets-column-in-your-csv)), and a column
+The most direct way: a **set column** in your CSV (see
+[Set columns](sets.md#a-sets-column-in-your-csv)), and a column
 with the right answer for each question you check. The right answer to the
 question `sentiment` goes in the column `sentiment_gold` (gold units) or
 `sentiment_practice` (practice units); a practice unit's own feedback in
@@ -36,15 +36,15 @@ a4,The factory closed.,_gold,negative,,
 a5,A new park opens.,_practice,,positive,It is good news for the neighbourhood.
 ```
 
-Upload it and choose **sets** as the type of the `part` column. Coders never
+Upload it and choose **set** as the type of the `part` column. Coders never
 get the answer columns: the Units page shows them as *server only*.
 
 ## Or let AnnoTinder make them
 
-- **Overlap**: **Split units into sets** on the Units tab, with an overlap
-  of, say, 10%, sets aside a random `_overlap` set. See [Overlap](overlap.md).
-- **Gold and practice units**: put units in the set `_gold` or `_practice`
-  (select them on the Units tab and add them to the set).
+- **Overlap**: **Fill a set column** on the Units tab, with an overlap of,
+  say, 10%, sets aside a random `_overlap` part. See [Overlap](overlap.md).
+- **Gold and practice units**: give units the value `_gold` or `_practice`
+  in a set column (select them on the Units tab and **Put in**).
 - **Right answers**: in the unit loop's **Units** tab, turn on **Gold** or
   **Practice**, tick the questions to check, and click **Create gold values…**
   (or **Write practice answers…**). It goes through the units with the

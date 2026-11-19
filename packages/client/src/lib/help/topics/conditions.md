@@ -188,5 +188,5 @@ Above the `::: if` line, the editor shows the condition in words with an
 
 Which units a coder gets can also depend on their answers: that is set in
 the unit loop's **Coder groups** (see
-[Different units for different coders](coder-groups.md)), with the same
+[Coder groups in a loop](coder-groups.md)), with the same
 rules editor.

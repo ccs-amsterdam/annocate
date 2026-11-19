@@ -31,7 +31,7 @@ Everything of a study is stored on the AnnoTinder server you use:
 What AnnoTinder itself does **not** store about coders: their name, their
 email address (unless the link has them [log in](links.md#login)), their IP address, details of their device beyond its kind, browser and operating system, or
 URL parameters other than the ones the design asks for (an
-[auto question](random-condition.md) that reads a URL parameter, and the participant
+[random condition](random-condition.md) that reads a URL parameter, and the participant
 id if the link takes it from the URL). The web server in front of
 AnnoTinder may keep ordinary access logs; ask whoever runs it.
 

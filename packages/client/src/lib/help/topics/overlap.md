@@ -6,33 +6,32 @@ summary: Overlap units that every coder codes besides their own set - for interc
 ---
 
 An **overlap** is a set of units that every coder codes in full, besides
-their own units. When coders divide the work (each their own set, or a
+their own units. When coders divide the work (each their own units, or a
 shared queue), the overlap gives you units that *all* of them coded, so you
 can compare them: for intercoder reliability, or to check coders against
 units with a known answer.
 
-The overlap of a group is its set `_overlap` (see
-[Sets and set groups](sets.md)). A loop that **assigns sets** of the
-group, or a **crowd coding** queue over one of its sets, can add it.
+The overlap is the value `_overlap` in a [set column](sets.md): the
+column the design divides units over (its coders, or a condition linked to
+units). To have only *some* coders code a unit, write their values
+together instead: `anna;bob`.
 
 ## Setting it up
 
-1. Make the overlap units. The easiest way is **Split units into sets** on
-   the **Units** tab with an **overlap** of, say, 10%: it sets aside a random
-   `_overlap` set and splits the rest into sets. Or give units the set
-   `_overlap` in a sets column of your CSV.
-2. In the unit loop, choose where the overlap units go, under **Overlap**:
-   **Spread through them** by default (see below). With **Assign sets**
-   choose **Disabled** for no overlap.
+1. Mark the overlap units. The easiest way is **Fill a set column** on the
+   **Units** tab with an **overlap** of, say, 10%: it sets aside a random
+   `_overlap` part and divides the rest. Or write `_overlap` in the column
+   of your CSV.
+2. In the unit loop, under **Overlap**, choose where the overlap units go:
+   **Spread through them** by default (see below), or **Disabled** for no
+   overlap in this loop.
 3. Optionally, **Recommended**: how many overlap units you want. Deploying
-   warns when the group has fewer. **At most** limits how many a coder gets:
+   warns when there are fewer. **At most** limits how many a coder gets:
    **the first ones**, or **a random draw** (the same units for every coder,
    so they can be compared).
 
-A unit in `_overlap` is not one of a coder's own units: it comes once, as
-overlap. With the overlap **Disabled**, the `_overlap` set plays no part. The
-loop's form warns when the overlap is on but the group has no `_overlap`
-units.
+An overlap unit comes once per coder, as overlap. With the overlap
+**Disabled**, the `_overlap` units play no part in the loop.
 
 ## Placement
 
@@ -84,12 +83,12 @@ coder too.
 
 A common design for a content analysis with student coders:
 
-1. **Pilot**: two or three coders code the same 50 units (**Everyone codes everything**,
-   with a `pilot` set). Compute reliability, discuss the disagreements, improve the
+1. **Pilot**: two or three coders code the same 50 units (a loop with only
+   the `pilot` value of a `phase` column, without dividing units). Compute reliability, discuss the disagreements, improve the
    codebook and the coder instructions. Repeat if needed.
-2. **Main coding**: split the sample into a set per coder, plus an overlap
-   of about 10% (and at least 50 to 100 units). **Assign sets**, with the
-   overlap spread through them.
+2. **Main coding**: divide the sample over the coders, plus an overlap of
+   about 10% (and at least 50 to 100 units), with the overlap spread through
+   their units (see [Giving each coder their own units](own-units.md)).
 3. **Report** the reliability on the overlap units, such as Krippendorff's
    alpha, which compares all coders on the same units.
 
@@ -106,13 +105,6 @@ coders agree, which hides disagreement.
 ## Gold units
 
 **Gold units** are units with a known answer, for example coded by the
-research team or experts. Put them in the `_overlap` set, and every coder
-codes them. In the analysis, compare each coder's answers to the known answers to
-see which coders are accurate, to exclude coders who clearly didn't do the
-task (common in crowd coding), or to train coders before the real work.
-
-AnnoTinder doesn't score gold units itself: you compare the answers with
-your key after downloading the [results](results.md). For a check *during*
-the session, such as an attention check that ends the session of
-participants who fail it, use a question with a condition and an end item:
-see [Ending a session](end-items.md).
+research team. Mark them `_gold` instead of `_overlap`: every coder codes
+them, AnnoTinder checks the answers, and coders who get too many wrong can
+be stopped. See [Overlap, gold and practice units](special-units.md).

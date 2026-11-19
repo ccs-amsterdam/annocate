@@ -5,18 +5,21 @@ order: 4
 summary: Crowd coding (units shared among coders) - how many codings a unit needs, agreement rules, limits per coder, priority and what it means for analysis.
 ---
 
-With **Crowd coding**, all coders draw from one queue of units.
+With **crowd coding**, coders draw from one queue of units.
 Each unit is handed out until it is **done**, and then to no one else. You
 decide when a unit is done: when a number of coders coded it, or when a
 number of coders gave the same answer.
 
-This is the mode for large samples and for crowd coding: you don't need to
+This is the way for large samples and for crowd coding: you don't need to
 know in advance how many coders will come, or how many units each will do.
 Coders who do more simply code more units, and the queue makes sure the
 codings are spread over the units.
 
-You set it on the loop's **Units** tab: choose **Crowd coding** under **Who codes which units**, and pick the
-**Units**: **All units**, or one set of a group.
+You set it on the loop's **Units** tab: tick **Share the units among
+coders**. The queue holds the loop's units within the session's: all units,
+or, when the design divides units (see
+[Handing out units](unit-distribution.md)), the units of the coder's
+condition, shared with the others in that condition.
 
 ## The settings
 
@@ -137,7 +140,7 @@ gets one of them anyway, or a unit that isn't full yet (see [Near the end
 of the queue](#near-the-end-of-the-queue)), rather than nothing.
 
 The 15 minutes can be changed in the codebook editor's JSON view, as
-`leaseSeconds` in the loop's `units` (one entry per coder group; default `900`), for instance
+`leaseSeconds` in the loop's `criteria` (per coder group; default `900`), for instance
 for units that take long to code.
 
 ## What this means for analysis

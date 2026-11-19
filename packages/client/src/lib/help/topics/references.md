@@ -135,7 +135,7 @@ empty text. See [Session parameters](session-parameters.md).
 | Coder group conditions of a loop | No | Coder-level questions only | Yes | Yes |
 
 Coder group conditions give different coders different units: see
-[Different units for different coders](coder-groups.md). In redirect links
+[Coder groups in a loop](coder-groups.md). In redirect links
 the values are URL-encoded: see [Ending a session](end-items.md).
 
 In texts and layouts, `$var` and `$unit` show their value as text. Inside

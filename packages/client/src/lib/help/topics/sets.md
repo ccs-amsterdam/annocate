@@ -1,127 +1,95 @@
 ---
-title: Sets and set groups
+title: Set columns
 section: Units and distribution
 order: 2
-summary: Sets of units in groups - for giving different coders different units, overlap units, and a link per set.
+summary: Set columns in your units - which coder or condition each unit is for, overlap, practice and gold units, and filling a column.
 ---
 
-A **set** is a named list of units, such as `s1`, `pilot` or
-`alice@uni.nl`. Sets come in **groups**: a group is one way of dividing
-your units, like a column in a spreadsheet. A group `parts` might have the
-sets `s1` to `s4`; a group `language` the sets `nl` and `en`. A unit can be
-in any number of sets, and in sets of different groups.
+A **set column** is a column of your units that says who or which group a
+unit is for: a `coder` column with coder names, a `framing` column with
+`control` and `experiment`, a `phase` column with `pre` and `post`. Each
+value of the column is a **set**: the units whose cell holds it.
 
-A unit loop names the set or group its coders get units from, so sets are
-how you give different coders different units: a part per coder, a set per
-experimental condition, a set per named coder.
+The design uses set columns by name:
 
-You don't need sets for a simple study: a loop can use **all units** of the
-study. You manage sets on the **Units** tab.
+- **Units divided over coders** (in **Session**): each coder gets the units
+  of their value (see [Giving each coder their own units](own-units.md)).
+- **A condition linked to units**: each session gets the units of its
+  condition (see [Experimental conditions](experimental-conditions.md)).
+- **A loop's filter**: only (or all except) units with certain values,
+  such as a pre-test loop and a post-test loop (see
+  [Handing out units](unit-distribution.md)).
 
-## Seeing sets
-
-Above the table of units is **All units**, and a row per group with a button
-per set and its number of units. Click a set to see its units, in the set's
-order. The table has a column per group, showing each unit's sets in it,
-just like a sets column in a CSV (below).
+You don't need a set column for a simple study: without one, every session
+gets all units.
 
 ## A sets column in your CSV
 
-The easiest way to make a group is a column in the file you upload. When you
-upload units, give the column the type **Sets**: its name becomes the
-group's name, and each cell names the unit's sets:
+The easiest way is a column in the file you upload, with the column type
+**set**. Its name is the column's name in the design; each cell lists the
+unit's values:
 
 | Cell | Means |
 | --- | --- |
-| `s1` | the unit is in set `s1` |
-| `s1;s2` | in `s1` and in `s2` |
-| `s1#3` | in `s1`, as its third unit (the set's order) |
-| *(empty)* | in no set of this group |
+| `anna` | for `anna` |
+| `anna;bob` | for `anna` and for `bob` |
+| `_overlap` | for everyone: every coder or condition codes it |
+| `_practice` | a practice unit, for everyone (see [Overlap, gold and practice units](special-units.md)) |
+| `_gold` | a gold unit, for everyone |
+| `anna#3` | for `anna`, as her third unit (the order, for loops in set order) |
+| *(empty)* | for nobody: deploying warns about such units |
 
-Set names can't contain `;` or `#`. Names starting with `_` are reserved:
-`_overlap` is the group's [overlap](overlap.md), units every coder of the
-group codes besides their own set. Uploading the file again replaces the
-group's sets.
+Values can't contain `;` or `#`. Names starting with `_` are the special
+ones above. A column's name is letters, digits and `_`, starting with a
+letter. Uploading the file again replaces the column's values.
 
-A group's name is letters, digits and `_`, starting with a letter.
+## Seeing set columns
 
-## Split into sets
+On the **Units** tab, above the table, every set column has a row with its
+values and how many units each has. Click a value to see its units, in
+order. The table has a column per set column, showing each unit's cell.
 
-To divide units over coders at random, click **Split units into sets** (or,
-while a set is shown, **Split set into sets** to split that set):
+## Fill a set column
+
+To divide units without a column in your file, click **Fill a set column**:
 
 | Setting | What it does |
 | --- | --- |
-| **sets** | How many sets to make (`s1`, `s2`, ...) |
-| **overlap** | Units set aside as `_overlap`, as a percentage or a number of **units** |
-| **group name** | The new group's name |
+| **Names** | The values to divide over, one per line: coder names or email addresses. Or a number, for `s1`, `s2`, ... |
+| **Overlap** | Units set aside as `_overlap`, as a percentage or a number of units |
+| **Column** | The column's name (new, or one to replace) |
 
-The units are shuffled first, then the overlap is taken, and the rest is
-divided into sets that differ in size by at most one unit. The text under
-the settings says exactly which sets will be made. With 1000 units, 4 sets
-and 10% overlap you get `_overlap` with 100 units and `s1` to `s4` with 225
-units each. Then, in a unit loop, choose **Assign sets** with this group
-(see [Handing out units](unit-distribution.md)).
-
-You can also do this from the codebook editor: a unit loop's **Units** tab has
-**Generate sets…** next to the group or set to choose, which splits the
-study's units into a new group and selects it.
-
-The shuffle uses a random seed, so splitting twice gives different sets.
-That is fine: the sets are stored, and the split is not made again.
+The units are shuffled, the overlap is taken, and the rest is divided
+evenly: with 1000 units, 4 names and 10% overlap, 100 units are
+`_overlap` and each name gets 225. The shuffle is stored: filling again
+gives a new division.
 
 ## Adding units later
 
-When you upload units that are new and the file has no sets column for a
-group, the upload asks what to do with them, per group:
+Uploading new units with the column fills it in for them. Uploading new
+units without it asks per set column what to do: leave them out, spread
+them over the existing values (smallest first), or make new values of
+about the same size.
 
-- **Not in this group**: they stay out of its sets;
-- **Distribute over its sets**: shuffled, and added to the smallest sets
-  first, so the sets stay about equal;
-- **New sets of about** *n* **units**: new sets the average size of the
-  existing ones, named on (`s5` after `s4`). A design that makes a link per
-  set gets their links once they are deployed.
+## Changing units' values by hand
 
-The group's `_overlap` stays as it is.
+Tick units in the table, then under **Put in** choose a value and its
+column and click **Put in**. A value or column that doesn't exist yet is
+made. While a value is shown, **Remove from** takes the selected units out.
 
-## Putting selected units in a set
-
-1. Tick the units you want (the box in the header selects all units on the
-   page).
-2. Under **Put in set**, type the set's name and its group, and click **Put
-   in**. A set or group that doesn't exist yet is made.
-
-While a set is shown, **Remove from** *set* takes the selected units out of
-it. Changed sets are a draft: coding that runs picks them up once you deploy
-them; units a coder already got stay theirs.
-
-## Sets and links
-
-A design can give each set of a group its own link, by a **link
-parameter** with the group's sets in the design's session parameters (above the item tree) (see
-[Session parameters](session-parameters.md)). A loop that assigns sets
-"named by the link" then gives coders of each link that link's set. A new
-set gets its link when it is deployed; a removed set's link is retired when
-the removal is deployed.
-
-A group can also hold email addresses as set names: a loop that assigns sets
-by the coder's **login email** then lets only those people code, each their
-own set.
+All of this is a draft: running coding picks it up when you deploy, and
+units a coder already got stay theirs.
 
 ## Sets are lists, not rules
 
 A set is a fixed list of units, not a rule such as *"all units from 2024"*.
-Once made, it doesn't change when you upload more units, and its order stays
-the same. A running study should not change because someone uploaded more
-material, and when you report the study, the sets say exactly which units
-were coded by whom. The design names groups and sets, but which units are
-in them is your data, not part of the design (see
+It doesn't change when you upload more units, and its order stays the
+same: a running study doesn't change because someone uploaded material,
+and the results say exactly which units were for whom. The design names
+the columns; which units are in them is your data (see
 [A design describes a process](design-reproducible.md)).
 
-*All units*, on the other hand, grows when you upload and deploy more units,
-also while coding runs.
+## Deleting a column
 
-## Deleting a group
-
-Click the bin icon next to the group. Its units stay in the study. A group
-can't be deleted while the deployed or latest design version uses it.
+Click the bin icon next to the column. Its units stay in the study. A
+column can't be deleted while the deployed or latest design uses it.

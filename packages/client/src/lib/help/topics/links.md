@@ -11,10 +11,10 @@ to your student assistants, or on a crowd-coding platform), or each coder
 or group can get their own.
 
 Links are made by **deploying the design**: you don't create them by
-hand. A design without link parameters makes one link. A design whose
-session parameters include **link parameters** makes a link per value, or per
-combination of values: a link per set of a group, per experimental
-condition, per panel. See [Session parameters](session-parameters.md).
+hand. A design without coders, conditions assigned by link or link parameters
+makes one link. Otherwise deploying makes a link per value, or per
+combination of values: a link per coder, per experimental condition, per
+class. See [The session](session-parameters.md).
 That way the design describes which links exist and what each one means,
 and the values a link carries are `$session` values in the codebook.
 
@@ -25,11 +25,11 @@ Coders can only start once a design version is deployed (see
 
 Links follow the deployed design and the study's deployed sets:
 
-- deploying a design with other link parameters makes the links it
-  needs, and **retires** links it no longer makes;
-- a link parameter with the sets of a group gets a new link when a new set
-  of the group is deployed; a set whose removal is deployed has its link
-  retired;
+- deploying a design with other coders, conditions or link parameters
+  makes the links it needs, and **retires** links it no longer makes;
+- a new coder (or a new value of a condition with **All values in the
+  column**) gets a link when it is deployed, and the link of a removed one
+  is retired;
 - a link that comes back into the design (the same values) is the same link
   again, with the same address.
 
@@ -43,15 +43,15 @@ session parameters instead of every combination.
 
 ## Who may use a link
 
-The pencil icon in a link's row sets who may use it:
+The pencil icon in a link's row (**Who may use this link**) sets:
 
 | Setting | What it does |
 | --- | --- |
 | **Label** | For you: it appears in the Coders tab and the results |
-| **No login** / **Login optional** / **Login required** | Whether coders can, or must, log in (see [Login](#login)) |
-| **Only these email addresses** | With login: only coders who log in with one of these addresses (see [Login](#login)) |
 | **Max uses** | Stop accepting new coders after this many |
 | **Fixed participant id** | Everyone who uses this link gets this participant id (a personal link) |
+
+Whether coders sign in is set for the whole study (see [Login](#login)).
 
 **New link** (the key icon) gives the link a new address: the old one stops
 working, for instance when it was shared too widely. Coders who started
@@ -143,29 +143,30 @@ working. Retired links are listed separately, below the active ones.
 
 ## Login
 
-Coders log in the same way as researchers (the login your server offers;
-it isn't available on servers without one). Logging in links their email
-address to their session, once. They code as anyone does; the email is
-used again only when they continue on another device: logging in there
+Coders sign in the same way as researchers (the login your server offers;
+it isn't available on servers without one). Signing in links their email
+address to their session, once. They code as anyone does; the email is used
+again only when they continue on another device: signing in there
 continues the same session.
 
-- **Login required**: coders log in before they start.
-- **Login optional**: coders start right away, and can log in any time from
+Whether coders sign in is a setting of the study: you choose it when you
+first deploy, and can change it in the study's **Settings**.
+
+- **Off**: anonymous links; nobody signs in.
+- **Optional**: coders start right away, and can sign in any time from
   **Continue on another device** (the screen icon), which links their
   session so far.
-- **Only these email addresses**: only coders who log in with one of these
-  addresses can use the link (others see that the link is for other
-  people). A list makes login required.
-- **Sets assigned by email**: a unit loop can give each coder the set named
-  after their login email (see [Handing out units](unit-distribution.md)).
-  Then only the email addresses that are set names of that group can code
-  at all, with any link: coders log in, and other addresses see *"This email
-  address has no access to this study"*.
+- **Required**: coders sign in before they start.
+- **Coders who are email addresses** (units divided over coders by
+  email): there is one link, and sign-in is always required. Each coder
+  gets the units of the address they signed in with; other addresses see
+  *"This email address has no access to this study"*. See
+  [Giving each coder their own units](own-units.md).
 
 The coder's email address is stored with their session: it appears in the
 Coders tab and the results (`email`), and you can delete a coder's data by
 email. A participant id can come with a login too; it is then only a label
 next to the account.
 
-A link **without login** ignores a login: someone who happens to be
+With sign-in **Off**, a login is ignored: someone who happens to be
 logged in (such as you, trying your own link) starts an anonymous session.

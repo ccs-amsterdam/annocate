@@ -34,11 +34,11 @@ Two rules explain most of it:
 | **Question renamed** | As removing the old question and adding a new one: units are unfinished again | Asked under the new name |
 | **Question text, instruction or layout** changed | Stay finished | Coders see the new text |
 | **Conditions or order** changed | Stay finished | Follow the new design |
-| **Distribution** changed (the loop's **Units** tab) | Coders keep the units they were given, as long as the loop still hands out those units in the same way; otherwise they are routed again (see [Different units for different coders](coder-groups.md#routing-is-sticky)) | The new rules apply |
+| **Distribution** changed (the loop's **Units** tab) | Coders keep the units they were given, as long as the loop still hands out those units in the same way; otherwise they are routed again (see [Coder groups in a loop](coder-groups.md#routing-is-sticky)) | The new rules apply |
 
 Units and sets are drafts too: units you upload and sets you make while
 coding runs reach coders once you deploy them, with a design draft or on
-their own (see [Sets and set groups](sets.md)).
+their own (see [Set columns](sets.md)).
 
 The deploy dialog warns about removed option values and changed answer
 types, before you deploy. After deploying, it warns if a loop gained
@@ -51,11 +51,11 @@ When a loop gains a question, every unit that coders finished in it lacks
 the new answer, so it counts as unfinished: in the **Overview** progress,
 on the **Coders** tab, and for handing out units.
 
-- In loops where each coder has their own units (**Everyone codes everything**, **Assign
-  sets**), these units come earlier in the
+- In loops where each coder codes all their units, these units come
+  earlier in the
   coder's order, so they come back first, before new units. The coder sees
   their earlier answers and only answers the new question.
-- In a shared queue (**Crowd coding**), they go back into the
+- In a shared queue (crowd coding), they go back into the
   queue, and count again for how many coders a unit still needs. See
   [Shared queues](shared-queues.md).
 - This also happens when a condition hides the new question for some

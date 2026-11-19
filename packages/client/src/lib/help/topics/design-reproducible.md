@@ -19,8 +19,8 @@ units and with their own coders.
 | Layer | Holds | Shared with the study? |
 | --- | --- | --- |
 | **Design** | Questions, conditions, layouts, per loop the rules for handing out units, and the session parameters links carry. It refers to sets and groups by name, and to coders only through their answers and session values | Yes: this is the instrument |
-| **Sets** | Named lists of units in groups, such as `s1`, `s2`, `_overlap` in a group `parts` | As data, if you may share the units |
-| **Links** | Made from the design's link parameters, with who may use them: login, email addresses, participant ids, max uses | No: they are about your coders |
+| **Set columns** | Which coder or condition each unit is for, such as `anna`, `anna;bob`, `_overlap` in a column `coder` | As data, if you may share the units |
+| **Links** | Made from the design's coders, conditions and link parameters, with labels, participant ids and max uses | No: they are about your coders |
 
 ## The design names, but never binds
 
@@ -28,12 +28,12 @@ The design may *name* things that only get a meaning in the study:
 
 - **A set**: *every coder codes the units of set `gold`*. Which units are
   in `gold` is decided by the set, not the design.
-- **A set that depends on the coder**: *each coder gets one set of group
-  `parts`*, drawn, or named by their link or login. See
-  [Handing out units](unit-distribution.md).
+- **Units that depend on the coder or condition**: *units are divided over
+  coders by the column `coder`*, or *the condition `framing` is linked to the
+  column `framing`*. See [Handing out units](unit-distribution.md).
 - **A group of coders**: *coders in the experimental group get this layout*,
-  where the group is an [auto question](random-condition.md) (drawn at random or
-  balanced), or a [session parameter](session-parameters.md) from the link.
+  where the group is a [condition](experimental-conditions.md), drawn or
+  set by the link.
 
 What the design never contains is a unit id, a participant id, an email
 address or a link's address. So:
@@ -47,7 +47,7 @@ address or a link's address. So:
 ## Sets are lists, not rules
 
 A set is a stored list of units, in order. It is not a rule like
-"units 1 to 100" or "a random 10%". **Split units into sets** draws the sets
+"units 1 to 100" or "a random 10%". **Fill a set column** draws the sets
 for you, then stores the result as lists.
 
 That has two consequences:
@@ -87,8 +87,9 @@ For the design to run in another study, that study needs:
 - **units with the fields the design uses**, with the same names
   (`$unit.headline` needs a `headline` field). The design declares them, so
   the Units page says what an upload must have;
-- **set groups and sets with the names the design uses**, if it names
-  any. Deploying then makes the links.
+- **set columns with the names the design uses**, if it names any, with
+  the condition values it lists. Deploying checks this, and makes the
+  links.
 
 [Scripts](scripts.md) in conditions and templates are plain JavaScript
 expressions, so they can be read and checked without AnnoTinder.
@@ -110,7 +111,7 @@ For your replication materials:
 
 ## Limits
 
-- **Random draws are not repeated.** An auto question drawn at random,
+- **Random draws are not repeated.** A random condition drawn at random,
   and a random unit order, give a different draw in a new run. The
   procedure is the same; the outcome per coder is not. The data records what
   each coder got.

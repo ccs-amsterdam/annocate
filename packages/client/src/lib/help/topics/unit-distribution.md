@@ -2,96 +2,62 @@
 title: Handing out units
 section: Units and distribution
 order: 3
-summary: Which units each coder gets - the three modes, when to use each, and the order of units.
+summary: Which units a session codes - the session's units, a loop's filter, crowd coding, and the order of units.
 ---
 
-Every unit loop says which units its coders get. Does every coder code
-everything, or do coders share the work? Does each coder get their own
-part? You set this on the loop's **Units** tab in the codebook editor, under
-**Who codes which units**.
+Two things decide which units a coder gets:
 
-The design describes *how* units are handed out, never *which* units go to
-*whom* by id: it refers to [sets and set groups](sets.md) by name, and
-to coders only through their answers or session values. That keeps the
-design shareable and easy to report.
+1. **The session's units**, decided once per session, for the whole
+   study: all units, or, when the design divides them, the units of the
+   session's coder and its linked conditions.
+2. **Each unit loop** works within those: all of them by default, or a
+   part (a filter), and either every unit once or as a shared queue
+   (crowd coding).
 
-## The three modes
+A loop doesn't decide *who* gets which units: that is in the design's
+**Session** and in your [set columns](sets.md).
 
-| Mode | Who gets what | Typical use |
-| --- | --- | --- |
-| **Everyone codes everything** | Every coder codes every unit (of the study, or of one set) | Small samples, reliability tests, survey experiments |
-| **Crowd coding** | One queue for all coders: each unit until enough coders coded it | Large samples, crowd coding |
-| **Assign sets** | Each coder gets one set of a group | Dividing a sample into fixed parts, a part per named coder |
+## The session's units
 
-### Everyone codes everything
-
-Every coder codes every unit under **Units**: **All units** of the study, or
-one set of a group.
-
-Use it when every unit should be coded by every coder: a reliability test
-with three coders, a pilot, or a survey experiment in which each participant
-rates the same ten messages. With [coder groups](coder-groups.md), each
-group can code its own set: the treatment group one set of messages, the
-control group another.
-
-### Crowd coding
-
-The units (all, or one set) form a queue that all coders draw from. Each
-unit is handed out until it is done, either when a number of coders coded
-it, or when a number of coders agree on a question, and then to no one else.
-Coders keep getting units until the queue is empty, or until they reach the
-*at most* of **Units per coder**.
-
-Use it for large samples that need, say, one or two codings per unit, and
-for crowd coding, where you don't know in advance how many coders will come
-or how much each will do. The settings are explained in
-[Shared queues](shared-queues.md). With a set, the queue can add its group's
-[overlap](overlap.md) units for every coder.
-
-### Assign sets
-
-Each coder gets one set of a **Group**: for example the group `parts` with
-the sets `s1` to `s4` made by **Split units into sets** (see
-[Sets and set groups](sets.md)). Under **A coder's set is** you choose
-how:
-
-| Choice | A coder gets |
+| The design says | A session gets |
 | --- | --- |
-| **Drawn: the set with the fewest coders** | The set with the fewest coders so far (the first of those on a tie) |
-| **Drawn at random** | A set at random |
-| **Named by the link or URL** | The set a [session parameter](session-parameters.md) with the group's sets names: e.g. a link per set |
-| **The coder's participant id** | The set named after their participant id |
-| **The coder's login email** | The set named after their email: only those emails can code |
+| nothing | all units |
+| **Units are divided over coders** (column `coder`) | the units of its coder (see [Giving each coder their own units](own-units.md)) |
+| a condition **linked to units** (column `framing`) | the units of its condition (see [Experimental conditions](experimental-conditions.md)) |
+| both | the units that match both |
 
-With **the fewest coders**, a coder counts for their set once they finished
-it, and while they are active: when they started it, or finished a unit of
-it, in the last 24 hours. A coder who stops halfway and doesn't come back
-stops counting after a day, so their set is handed out again. With more
-coders than sets, every set gets coded more than once.
+Units in a column's `_overlap` are for everyone. The loop's **Units** tab
+says in one line what a session gets, for example *"A session gets the
+units of its coder × framing."*
 
-To give each set its own link, so *you* decide who gets which set (a few
-expert coders, each their own part), add a **link parameter** with the
-group's sets to the design's session parameters (above the item tree), and choose **Named by the link
-or URL**: deploying makes a link per set, and a new set gets its link once
-it is deployed. A coder whose value names no set gets no units in this loop.
+## A loop's units
 
-With the **login email**, the group's set names are email addresses (say a
-sets column in your CSV with `alice@uni.nl`, `bob@uni.nl`): only these
-people can code, each their own set, logged in on any device. Others are
-told their email address has no access to the study.
+On the loop's **Units** tab:
 
-**Assign sets** also asks for the **Overlap**: the group's `_overlap` units
-every coder codes besides their set, first, last or spread through their
-units (the default), or **Disabled**. See [Overlap](overlap.md).
+- **All the session's units** (the default): every coder codes all of
+  them, once.
+- **Only those with a value of a set column**, or **Except those with a
+  value of a set column**: pick the column and the values. Two loops can
+  then split the units, for instance a `phase` column with `pre` and `post`:
+  the first loop codes `pre`, then come some questions, then a second loop
+  codes `post`. Or: first a loop with only the `_overlap` units, then one
+  with the rest.
 
-## Choosing a mode
+## Crowd coding
 
-- **Everyone codes the same units?** Everyone codes everything.
-- **Each unit coded by a fixed number of coders, with coders coming and
-  going?** Crowd coding.
-- **Fixed parts, handed out in turn?** Assign sets, drawn.
-- **Fixed parts for people you know?** Assign sets, named by the link (or
-  by the login email).
+Tick **Share the units among coders** to make the loop a shared queue:
+coders who get the same units draw from one queue, and a unit is handed
+out until enough coders coded it (or agree on a question), then to no one
+else. Use it when coders come and go and each unit needs, say, two codings.
+The settings (coders per unit, agreement, units per coder) are explained in
+[Shared queues](shared-queues.md).
+
+## Overlap, practice and gold units
+
+A loop places the special units of the session's set columns among the
+coder's own units: overlap units, practice units first, gold units spread
+through them. See [Overlap](overlap.md) and
+[Overlap, gold and practice units](special-units.md).
 
 ## Order
 
@@ -99,45 +65,35 @@ Under **Order** you choose in which order a coder gets their units:
 
 | Order | What coders get |
 | --- | --- |
-| **In set order** | The units in the order of the set (for all units: the order they were uploaded). Every coder gets the same order. |
+| **In set order** | The units in the order of their set (or the order they were uploaded). Every coder gets the same order. |
 | **Random (each coder their own order)** | Every coder gets the units in their own random order. |
 
 A random order is fixed per coder: after a reload, or the next day, they
-continue in the same order. The overlap units are shuffled in the same way.
-
-Which to choose:
+continue in the same order.
 
 - **Random** is the safer choice for most content analyses. Coders get
-  tired, and they learn as they go: in a fixed order the same units always
-  come first (when coders are fresh) and last (when they are tired), which
-  can bias the results. In a random order, these order effects average out
-  over units. In a survey experiment, random order is how you counterbalance
-  the order of the stimuli.
+  tired and learn as they go: in a fixed order the same units always come
+  first and last, which can bias the results. In a survey experiment,
+  random order counterbalances the order of the stimuli.
 - **In set order** is right when the order matters: units that tell a
-  story, a thread of messages, a training set that goes from easy to hard,
-  or when you want every coder to see exactly the same sequence. You set the
-  order by the order of the set (`s1#1`, `s1#2`, ... in a sets column).
+  story, a thread of messages, a training set from easy to hard. You set the
+  order with `#` in a set column (`anna#1`, `anna#2`).
 
-In a shared queue, the queue's priority comes first (units that need
-codings), and the order decides among units that are equally far. With
-**In set order**, coders then work through the queue in the same order,
-side by side; with **Random**, they spread over it.
+In a shared queue, the queue's priority comes first, and the order decides
+among units that are equally far.
 
-## Coders in different groups
+## Different settings for different coders
 
-A loop can hand out different units to different groups of coders: for
-example the treatment group of an experiment gets other messages than the
-control group. Click **Different units for different coder groups…** at the
-bottom of the **Units** tab. Each group then has its own mode and settings.
-See [Different units for different coders](coder-groups.md).
+A loop can use other settings for some coders, for instance another filter
+for coders who answered a question differently: see
+[Coder groups](coder-groups.md).
 
 ## What coders see when they run out
 
-A coder who has no units left in a loop simply continues with whatever comes
-after the loop in the codebook, such as closing questions or a thank-you
-message. That also happens when a coder gets no units at all, for instance
-when no group matches them.
+A coder who has no units left in a loop continues with whatever comes
+after the loop, such as closing questions or a thank-you message. That
+also happens when a session gets no units at all.
 
 > Check the distribution in the preview before you deploy: a preview codes
-> with your draft units and sets, but stores nothing, and it doesn't use
-> up units of a shared queue.
+> with your draft units, but stores nothing, and doesn't use up units of a
+> shared queue.

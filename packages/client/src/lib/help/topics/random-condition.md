@@ -2,42 +2,37 @@
 title: Random conditions
 section: Question types
 order: 7
-summary: Random conditions give each coder a value without asking - for experimental groups and routing.
+summary: A condition drawn when the coder reaches it, without asking - for experiments that assign after a few questions, optionally with its own units.
 ---
 
-An **Auto (assigned, not asked)** question is never shown to coders.
-Instead, AnnoTinder gives every coder a value when they reach it: drawn
-at random, or balanced over the options (optionally within groups). You then use that value like any other
-answer: to show different material to different groups, or to give
-different coders different units.
+A **Random condition (drawn, not asked)** is never shown to coders.
+Instead, AnnoTinder gives every coder a value when they reach it in the
+flow: drawn at random, or balanced over the values (optionally within
+groups). You then use that value like any other answer: to show different
+questions or texts, or to give each condition its own units.
 
-Typical uses:
-
-- **Experimental conditions** in a survey experiment: half of the
-  participants see the article with a source cue, the other half without.
-- **Splitting the work**: coders are spread evenly over parts of your
-  units.
-
-Values that come *from the link* (a panel's participant id, a condition per
-link, a group you know in advance) are not auto questions but
-[session parameters](session-parameters.md): `$session.<name>`.
+Use it when the condition should be assigned *after* some questions: a
+pre-test, background questions, or to balance groups on earlier answers.
+A condition that should be set when the session starts (by the link, or
+drawn at the start) is an **assigned condition** in **Session**: see
+[Experimental conditions](experimental-conditions.md).
 
 ## Where it goes
 
-An auto question can only be placed **outside unit loops**: it is a
+A random condition can only be placed **outside unit loops**: it is a
 property of the coder, not of a unit. It is assigned where it is in the
 codebook, when the coder gets there (see below). It has
 no question text, because nobody sees it. Its **Item Name** is how you
 refer to it, e.g. `group`.
 
-## Sources
+## Drawn
 
-Under **Source**, choose how the value is assigned:
+Under **Drawn**, choose how the value is assigned:
 
-| Source | The coder gets |
+| Drawn | The coder gets |
 | --- | --- |
-| **Random draw** | One of the options, at random. Give options a **weight** to make some more likely: weights 2 and 1 give about two thirds and one third |
-| **Balanced (option with fewest coders)** | The option that the fewest coders have so far, so groups stay as equal as possible. Ties go to the first option in the list |
+| **Random** | One of the options, at random. Give options a **weight** to make some more likely: weights 2 and 1 give about two thirds and one third |
+| **Balanced (the value fewest coders have)** | The option that the fewest coders have so far, so groups stay as equal as possible. Ties go to the first option in the list |
 
 The **Options** list the values the question can take, each with a value
 and an optional label, as for a [nominal question](nominal-and-ordinal.md).
@@ -45,7 +40,7 @@ Both need at least one option.
 
 ### Random or balanced?
 
-**Random draw** is what most experiments assume: every participant has the
+**Random** is what most experiments assume: every participant has the
 same chance of every condition, independently of everyone else. Group sizes
 then vary by chance; with 40 participants a 25/15 split is quite possible.
 
@@ -61,7 +56,7 @@ A value from the web address the coder opened (such as a panel's
 `PROLIFIC_PID`), or one fixed per link, is a
 [session parameter](session-parameters.md), declared in the design's
 session parameters: `$session.PROLIFIC_PID`, `$session.condition`. It is stored
-when the session starts, like the value of an auto question, and works in the same
+when the session starts, like the value of a random condition, and works in the same
 places: conditions, texts, end items' return links.
 
 ## Balanced within groups
@@ -73,13 +68,13 @@ groups of**. With `gender`, the conditions are balanced among women, and
 among men, so both conditions get about as many women and as many men.
 With `session.wave`, each wave is balanced on its own.
 
-The questions must come before the auto question (outside unit loops), so
+The questions must come before the random condition (outside unit loops), so
 coders have answered them when they reach it. A coder who skipped one is in
 the group of coders without an answer.
 
 ## Assigned when reached, never changed
 
-A coder's value is assigned when they **reach** the auto question in the
+A coder's value is assigned when they **reach** the random condition in the
 codebook, not when they start. Put it where the assignment should happen:
 after the screening questions, so participants who are screened out never
 get a condition and don't count in the balance; after the questions it is
@@ -95,7 +90,7 @@ later only affects coders who reach the question after the change.
 
 ## Using the value
 
-An auto question is referred to like a nominal question with one answer:
+An random condition is referred to like a nominal question with one answer:
 `$var.group.value` is the value, `$var.group.label` its label.
 
 **In conditions**, to ask questions only of one group:
@@ -122,9 +117,12 @@ $unit.text
 Switch between *experiment* and *control* to see what each group sees.
 See [Showing parts conditionally](template-blocks.md).
 
-**For units**, to give each group its own units: a loop can have a coder
-group per value, each with its own set (`$var.group.is("experiment")` gets
-the set `experiment`). See [Different units for different coders](coder-groups.md).
+**For units**: under **Linked to units**, choose a set column of your
+units. The loops after the random condition then give each coder only the
+units whose cell holds their value (and the column's `_overlap` units).
+With **All values in the column**, the values are the column's own: for
+instance 100 sets for a multilevel design, drawn balanced over coders. See
+[Experimental conditions](experimental-conditions.md).
 
-In the results, the values of auto questions are in `coders.csv`, with the coders'
+In the results, the values of random conditions are in `coders.csv`, with the coders'
 other answers outside unit loops. See [Downloading results](results.md).

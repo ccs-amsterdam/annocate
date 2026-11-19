@@ -67,7 +67,7 @@ curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/a
 | List your studies, create a study | `GET /study`, `POST /study` with `{ "name": ... }` |
 | Upload units (at most 200 per request) | `POST /study/<id>/units` |
 | List the study's fields | `GET /study/<id>/units/fields` |
-| List set groups, replace or delete a group | `GET /study/<id>/sets`; `PUT`, `DELETE /study/<id>/sets/<group>` |
+| List set columns, replace or delete one | `GET /study/<id>/sets`; `PUT`, `DELETE /study/<id>/sets/<column>` |
 | Save a design version | `POST /study/<id>/design` with `{ "items": [...], "note": ... }` |
 | Deploy: a design version and the draft units and sets (this makes its links) | `PUT /study/<id>/deployment` with `{ "designVersionId": ..., "units": true }` (without `units`, the deployed units stay) |
 | What deploying would change; the deployed versions | `GET /study/<id>/deployment/pending`, `GET /study/<id>/deployment/versions` |
@@ -136,8 +136,9 @@ for (batch in split(units, ceiling(seq_along(units) / 200))) {
 }
 ```
 
-A [set group](sets.md) is written as a whole: `PUT /study/<id>/sets/<group>`
-replaces the group's sets. Each set is a name with a list of AnnoTinder's
+A [set column](sets.md) is written as a whole: `PUT /study/<id>/sets/<column>`
+replaces the column's values (and declares it as a set column in the draft
+design). Each value is a name with a list of AnnoTinder's
 own unit ids (`id` in the response to the upload, or from
 `GET /study/<id>/units`); with `"ordered": true` coders get them in that
 order:
@@ -151,13 +152,13 @@ api(sprintf("study/%d/sets/pilot", study)) |>
   req_perform()
 ```
 
-A group can't be deleted while the deployed or latest design version uses it.
+A set column can't be deleted while the deployed or latest design version uses it.
 
 ## Downloading answers
 
 `GET /study/<id>/annotations` gives every answer, one row per coder,
 question and unit (`unitId` is `null` for questions outside unit loops;
-`assigned: true` marks [auto questions](random-condition.md)), in the order they were written, a page at a time
+`assigned: true` marks [random conditions](random-condition.md)), in the order they were written, a page at a time
 (up to `limit` rows, at most 10000). Pass the page's `next` as `after` to get
 the next page, until `next` is `null`:
 

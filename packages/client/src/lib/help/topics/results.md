@@ -94,10 +94,10 @@ A row per coder who started.
 | `started`, `last_active` | When they started, and when they last answered |
 | `ended`, `ended_at` | `complete` or `screenout` if their session ended at an end item (see [Ending a session](end-items.md)), `quit` if the coder quit, and when |
 | `deletion_requested` | When the coder asked for their answers to be deleted, if they did and you haven't deleted them yet (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)) |
-| `session.<name>` | The URL parameters the link required (the participant id is `participant_id`) |
+| `session.<name>` | The session's values: its coder (`session.coder`), its assigned conditions, and its link and URL parameters (the participant id is `participant_id`) |
 | `finished_<loop>` | How many units they finished in each unit loop, such as `finished_News items` |
 | `overlap_finished`, `gold_finished`, `practice_finished` | How many units of the deployed `_overlap`, `_gold` and `_practice` sets they finished, if the study has them (see [Overlap, gold and practice units](special-units.md)) |
-| one column per question | Their answers outside unit loops, and their [auto questions](random-condition.md) (experimental group, URL parameter variables) |
+| one column per question | Their answers outside unit loops, and their [random conditions](random-condition.md) |
 
 Answers outside unit loops (consent, background questions, a survey's
 questions) are only here, not in `annotations.csv`.
@@ -110,6 +110,10 @@ deployed), and a column per field of the unit as deployed. Only units that
 were coded are included. Coders were shown only the fields the codebook
 uses; the others (metadata, answer columns of gold units) are there for
 your analysis.
+
+Each [set column](sets.md) is a column too, with the unit's values as in
+your upload (`anna;bob`, `_overlap`), named after the column (or
+`<name>_set` when a field has the same name).
 
 A unit normally has one version. A unit that was replaced after it was
 coded (see [Uploading units](uploading-units.md#replacing-units)) has a row
