@@ -82,7 +82,7 @@ export function AssignmentSettings({
           <InfoTip label="About assigned conditions">
             A condition a session starts with: from its link (a link per value), or drawn when it starts (one link, random or balanced). Use it
             as <span className="font-mono">$session.name</span> in Show if blocks and texts. Linked to a set column, its value also selects the
-            session&apos;s units. For a condition drawn later in the flow, add a Random value item instead.
+            session&apos;s units. For a condition drawn later in the flow, add a computed variable (Random condition) instead.
           </InfoTip>
         </h3>
         {conditions.map((condition, i) => (

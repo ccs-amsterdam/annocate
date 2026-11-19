@@ -111,7 +111,7 @@ For your replication materials:
 
 ## Limits
 
-- **Random draws are not repeated.** A random value drawn at random,
+- **Random draws are not repeated.** A random condition drawn at random,
   and a random unit order, give a different draw in a new run. The
   procedure is the same; the outcome per coder is not. The data records what
   each coder got.

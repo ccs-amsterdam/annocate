@@ -187,5 +187,5 @@ Above the `::: if` line, the editor shows the condition in words with an
 [Showing parts conditionally](template-blocks.md).
 
 Which units a coder gets is decided by the session's values (the coder,
-conditions linked to a unit column) and by [random values](random-condition.md)
+conditions linked to a unit column) and by [random conditions](random-condition.md)
 linked to a unit column, not by conditions in the flow.

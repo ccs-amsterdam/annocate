@@ -80,7 +80,7 @@ variables (including computed values), and `ended` if the
 session ended at an `end` item. The coder codebook has only what coding
 needs: unit loops keep their layout, questions and order, without their
 `units` (the server works out the units: no filters, criteria or special
-units); no Study entry, no researcher notes, and computed items only with
+units); no Study entry, no researcher notes, and computed variables only with
 their options (an invisible step: the client asks `computeVariable`). Creates
 the coder and session on first use, with its `$session` values: the link's
 coder and conditions, conditions drawn at the start, link and URL
@@ -140,7 +140,7 @@ feedback, and with `retry` asks again until right. Gold and overlap units
 look like any other; gold cells never leave the server.
 
 The server works out the units from the session's values: the session's
-units (its coder and linked conditions; a linked computed item the coder
+units (its coder and linked conditions; a linked computed variable the coder
 doesn't have yet is drawn now), within the loop's filter (`architecture.md`
 §6.2). A session without a value it needs gets 409 `not_assigned`; a
 session whose values select no units gets none in the loop.
@@ -175,7 +175,7 @@ client shows it). A gold unit's response never says right or wrong.
 The coder-level answers (survey questions outside loops), all of them as
 the client has them. The server writes a row for each answer that changed
 (answer rows without a unit, like unit answers); values the server
-computed (computed items) and frozen answers (`frozen` in the session)
+computed (computed variables) and frozen answers (`frozen` in the session)
 are left as they are. `timings`: for the
 questions visited since the last post, how long the coder took; an
 answer that didn't change gets its timing updated.
@@ -184,7 +184,7 @@ answer that didn't change gets its timing updated.
 
 `POST /variables/computed/:name` → `{ value }` (a `VariableValue`)
 
-The coder reached the computed item `name` (`variable.type: "random"`) in
+The coder reached the computed variable `name` (`variable.type: "random"`) in
 the codebook's flow (the client evaluates conditions): the server draws its
 value now, once, and
 returns it; reached again, the same value. `draw: "random"` draws by
@@ -193,7 +193,7 @@ have, under a lock, counting with `stratify` only coders with the same
 answers to those questions (as saved: the client saves its answers first)
 and the same `session.<name>` values. A random variable linked to units without
 `options` draws from its column's values (409 while the column has none).
-404 for a name that is no computed item.
+404 for a name that is no computed variable.
 
 ### endSession
 

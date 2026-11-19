@@ -144,7 +144,7 @@ client calls `/d/<studyId>/...`.
 2. **`GET /session`.** Returns the codebook, per-loop progress, and the
    coder's variables (so client-side conditions can use drawn values).
 3. **`GET /loop/:loop/next?count=k`.** The runtime works out the coder's
-   units from their session values (§6), drawing any computed item linked
+   units from their session values (§6), drawing any computed variable linked
    to a column the loop needs that the coder hasn't reached, and marks the
    loop as reached (`coders.assignments`, for progress). It then picks
    the coder's next k units (unfinished ones first) and, in a shared queue,
@@ -208,7 +208,7 @@ session:
   (the value fewest sessions have, counting finished sessions and those
   active in the last 24 hours, under a lock per condition) or `"random"`.
   The value is `$session.<name>`.
-- **Computed items** (`type: "computed"`, `variable.type: "random"`, §7)
+- **Computed variables** (`type: "computed"`, `variable.type: "random"`, §7)
   are drawn when reached; with `units` they also select units, for the
   loops after them.
 
@@ -282,7 +282,7 @@ their values or the loop's settings no longer give them those units. Loops
 used to have branches (per-group settings chosen by a `when` condition in
 the client, stored per branch fingerprint); they were removed (2026-11-19,
 `plans/unit-assignment.md`): who gets which units is decided by the
-session's values and computed items linked to a column.
+session's values and computed variables linked to a column.
 
 **Loops have no name.** Within one design version a loop is identified by
 its position (`unitLoops`: `"1"`, `"2"`, ...): the coder API's
@@ -314,7 +314,7 @@ function, `splitIntoSets` in contracts `sets.ts`).
 
 ## 7. Coder variables, session parameters and links
 
-**Computed items** (`type: "computed"`, for now with `variable.type:
+**Computed variables** (`type: "computed"`, for now with `variable.type:
 "random"`) are drawn, never asked, and never changed afterwards. They are drawn when the coder *reaches* them in
 the design's flow: the client saves the answers so far, then asks the
 server (`POST /variables/computed/:name`), and goes on with the value.
@@ -510,7 +510,7 @@ Other open points:
 | `server/src/shared/` | Database queries shared by both APIs (deployments, finished units, units, coders, ...) |
 | `server/migrations/`, `src/db.ts` | The data model (numbered SQL migrations) and the database (`Sql`: `pg` or PGlite) |
 | `server/src/runtime/registry.ts` | `Deployments`: lazily loads one runtime per deployment; failures aren't cached; revision bumps, status, preview tokens |
-| `server/src/runtime/runtime.ts` | `DeploymentRuntime`: spec, a coder's units, distribution under locks, computed items, status |
+| `server/src/runtime/runtime.ts` | `DeploymentRuntime`: spec, a coder's units, distribution under locks, computed variables, status |
 | `server/src/runtime/store.ts` | `Store`: what the runtime reads and writes; `DbStore` on the database |
 | `server/src/runtime/types.ts` | The runtime's internal types (spec, coder, annotations, finished rows) |
 | `server/src/runtime/session.ts` | Coder session cookies, CSRF header |

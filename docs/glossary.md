@@ -8,7 +8,7 @@ keeps the word "codebook", "In code" says why.
 | Term | Meaning | Not |
 | --- | --- | --- |
 | **Study** | What a researcher runs in AnnoTinder: its design, units, deployments, links and results. Coders take part in it. | job, project |
-| **Design** | Everything someone repeating the study needs (`plans/design.md`): the **unit fields**, the **session** (coders, assigned conditions, URL and link parameters, participant id) and the **items** (questions, computed items, unit loops, Show if items, end items). Versioned. | "codebook" for the whole |
+| **Design** | Everything someone repeating the study needs (`plans/design.md`): the **unit fields**, the **session** (coders, assigned conditions, URL and link parameters, participant id) and the **items** (questions, computed variables, unit loops, Show if items, end items). Versioned. | "codebook" for the whole |
 | **Design version** (v1, v2, ...) | A saved state of the design. The latest one is the **draft** until it is deployed; deployed versions are frozen. | "codebook version" |
 | **Codebook** | The part of the design coders see: questions with their instructions and options, layouts, conditions, end messages. What the coding client gets (the *coder codebook*) and what **Export** writes (`codebook.md`), e.g. for a paper. The **Editor** tab (Design › Editor) edits the design's items and session. | the whole design; a version |
 | **Item** | An entry of the design: a question, unit loop, condition, end item, or the session (shown as the first item in the editor). | |
@@ -19,7 +19,7 @@ keeps the word "codebook", "In code" says why.
 | **Set** | One value of a set column: the units whose cell holds it, in order. `_overlap`, `_practice`, `_gold` are special sets, for every share. | "unitset" |
 | **Coders** (of a design) | The design's `session.coders`: a set column whose values are coders; each gets the units of their value (`$session.coder`). Names: a link per coder; email addresses: one link with sign-in. | |
 | **Assigned condition** | A condition in `session.conditions`, set when the session starts: by link, or drawn (balanced or random). `$session.<name>`. | |
-| **Computed item** | An item (`type: "computed"`) whose value the server computes when the coder reaches it, never asked; for now a random value (`variable.type: "random"`, drawn random or balanced). `$var.<name>`. In the editor: **Random value**. | "random condition", "auto question" |
+| **Computed variable** | An item (`type: "computed"`) whose value the server computes when the coder reaches it, never asked; for now a random condition (`variable.type: "random"`, drawn random or balanced). `$var.<name>`. In the editor: **Random condition**. | "random condition", "auto question" |
 | **Linked to units** | A condition (assigned or random) whose value also selects units: those with its value in a set column. | |
 | **Share** | The units a session gets: those whose cells hold its coder and linked conditions' values in each column (plus `_overlap`). A loop works within it. | |
 | **Show if** | An item (`show_if`) whose children only show when its condition holds. | "condition" for the item |

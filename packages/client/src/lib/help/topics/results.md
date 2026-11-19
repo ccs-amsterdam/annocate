@@ -97,7 +97,7 @@ A row per coder who started.
 | `session.<name>` | The session's values: its coder (`session.coder`), its assigned conditions, and its link and URL parameters (the participant id is `participant_id`) |
 | `finished_<loop>` | How many units they finished in each unit loop, such as `finished_News items` |
 | `overlap_finished`, `gold_finished`, `practice_finished` | How many units of the deployed `_overlap`, `_gold` and `_practice` sets they finished, if the study has them (see [Overlap, gold and practice units](special-units.md)) |
-| one column per question | Their answers outside unit loops, and their [random values](random-condition.md) |
+| one column per question | Their answers outside unit loops, and their [random conditions](random-condition.md) |
 
 Answers outside unit loops (consent, background questions, a survey's
 questions) are only here, not in `annotations.csv`.

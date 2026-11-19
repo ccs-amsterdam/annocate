@@ -170,7 +170,7 @@ export function VariableTypeForm({
           <div className="flex flex-col gap-1">
             <label className="flex items-center gap-1 text-sm font-medium">
               Drawn
-              <InfoTip label="About random values">
+              <InfoTip label="About random conditions">
                 Assigned when a coder reaches this item, so earlier questions can come first (coders screened out before don&apos;t
                 count). Use it as <span className="font-mono">$var.name</span>. For a condition from the link, or drawn when the
                 session starts, use an assigned condition in the session settings instead.
@@ -385,7 +385,7 @@ export const VARIABLE_TYPE_LABELS: Record<AnyVariableType["type"], string> = {
   scale: "Scale (items on the same options)",
   annotinder: "Swipe",
   confirm: "Confirm",
-  random: "Random value (drawn, not asked)",
+  random: "Random condition (drawn, not asked)",
   span: "Span (select text)",
   relation: "Relation (link spans)",
   unspecified: "Not chosen yet",

@@ -5,7 +5,7 @@ Status: built (2026-11-19, steps 1–4). Deviations from the text below:
 - The random condition is a **computed item** (`type: "computed"`,
   `variable: { type: "random", draw, options?, units?, stratify? }`, since
   2026-11-19; first an answer type `random_condition` of a question). The
-  editor shows it as "Random value". Later computed variables can have
+  editor shows it as "Random condition". Later computed variables can have
   other types (a formula). The coder API draws it at
   `POST /variables/computed/:name`.
 - The coder and condition values are per session (`$session`).

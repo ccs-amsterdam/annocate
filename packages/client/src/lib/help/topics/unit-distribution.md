@@ -86,7 +86,7 @@ among units that are equally far.
 
 A loop has one set of settings for everyone. Which units a coder gets
 differs by their session: their coder value, and the conditions and
-[random values](random-condition.md) linked to a unit column.
+[random conditions](random-condition.md) linked to a unit column.
 
 ## What coders see when they run out
 

@@ -48,7 +48,7 @@ $unit.text
 
 Switch the answer to `group` above the result to see what each group sees.
 This is how a survey experiment shows two versions of the same stimulus: an
-[random value](random-condition.md) puts coders (or participants) in a group at
+[random condition](random-condition.md) puts coders (or participants) in a group at
 random, and the layout shows each group its version.
 
 ### Else if and else

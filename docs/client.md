@@ -51,7 +51,7 @@ Status: current (2026-10-26). Server-side design lives in
 - It renders the unit layout and the current question's texts
   (`currentUnitTemplate`, `currentTexts` on the snapshot), because
   evaluation is async and rendering is not.
-- A computed item without a value is an invisible step: it saves the
+- A computed variable without a value is an invisible step: it saves the
   answers so far and asks the server for the value (`computeVariable`).
 - **Units in batches.** It asks for a loop's units a few at a time
   (`getNextUnits`, `UNIT_BATCH` 5) and keeps a queue per loop, refilled in

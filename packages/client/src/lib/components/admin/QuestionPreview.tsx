@@ -141,7 +141,7 @@ export function QuestionPreview({
           {/* Computed items are drawn, never asked */}
           {isComputed && (
             <div className="p-4 text-sm">
-              <span className="text-xs font-semibold text-primary">Random value</span>
+              <span className="text-xs font-semibold text-primary">Random condition</span>
               <p className="mt-1 text-xs text-muted-foreground">
                 Coders never see this item. The server draws its value when a coder reaches it; use it as
                 <code className="mx-1 rounded bg-muted px-1 font-mono">$var.{item.name}</code> in conditions and texts.
