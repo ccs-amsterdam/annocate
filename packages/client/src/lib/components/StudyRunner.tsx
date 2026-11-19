@@ -20,7 +20,7 @@ import { DockedAnswerPane } from "./DockedAnswerPane";
 import { TemplateMarkdown } from "./TemplateMarkdown";
 import { SessionEnd } from "./SessionEnd";
 import { QuitMenu } from "./QuitMenu";
-import { CodingNav } from "./CodingNav";
+import { CodingNav, CodingProgress } from "./CodingNav";
 import { SwipeCard, SwipeProvider, SwipeSurface } from "./SwipeCard";
 import { buildValues } from "./answerFields/answerValue";
 import { Button } from "@/components/ui/button";
@@ -466,12 +466,14 @@ function StudyRunnerContent({
         </div>
       )}
       {/* Top Header / Progress Bar */}
-      <header className="flex h-11 shrink-0 items-center justify-between border-b border-bar-foreground/10 bg-bar px-3 sm:px-4 text-bar-foreground shadow-sm">
+      <header className="relative flex h-11 shrink-0 items-center justify-between border-b border-bar-foreground/10 bg-bar px-3 sm:px-4 text-bar-foreground shadow-sm">
+        <CodingProgress navigation={snapshot.navigation} />
         <CodingNav
           navigation={snapshot.navigation}
           title={snapshot.title}
           onJumpToPhase={(index) => void manager.jumpToPhase(index)}
           onJumpToUnit={(index) => void manager.jumpToUnit(index)}
+          onJumpToQuestion={(index) => void manager.jumpToLoopStep(index)}
           onBack={() => {
             setNavDirection("previous");
             void manager.goBack();

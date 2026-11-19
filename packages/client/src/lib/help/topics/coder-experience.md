@@ -50,20 +50,28 @@ From left to right:
 
 | Element | What it does |
 | --- | --- |
-| Menu (three lines) | The study's steps: its questions, numbered, and its unit loops with the unit the coder is at, e.g. **News items 12 / 40**. A tick marks what is done. Click a step to go to it; a loop opens at the coder's unit |
-| Unit button, e.g. `12 / 40` | In a unit loop: which unit the coder is at. Click it to go to another unit: first, previous, a number, next, or the last one they reached |
-| Question number | Which question this is: of the study, or in a unit loop of the unit (only if the unit has several questions) |
+| Menu, with where the coder is: `3`, or `4 · 2` | The 3rd question; or in a unit loop unit 4, its 2nd question (just `4` if a unit has one question). Opens the menu (below) |
 | **<** and **>** | Go back and forward |
 | Monitor-and-phone icon | **Continue on another device** (below) |
 | Gear | **Settings**: light or dark, and keyboard shortcut badges |
 
-A study that is just one unit loop has no menu: the unit button is
-enough. Without a known number of units (a shared queue without a
-maximum), the unit button shows only the unit's number.
+In a unit loop whose number of units is known, a thin line along the
+bottom of the bar shows how many of them the coder has done.
 
-In the menu, questions are listed by the first line of their text, and
-a loop by its label (or *Units*). Give your loops a clear label and start
-each question with a short first line: that is what coders see there.
+**The menu** lists the study's steps: its questions, by the first line of
+their text, and its unit loops, by their label (or *Units*), with the
+unit the coder is at. A tick marks what is done. Click a question to go
+to it; click a loop to go to the coder's unit in it.
+
+**In a unit loop**, the menu opens on the loop: **Unit 12 of 40** (click
+the number and type another to go there), buttons for the first,
+previous, next and furthest unit, and the unit's questions, to go to one.
+**‹ All steps** goes back to the list of steps. Coders can go to any unit
+up to the furthest one they reached, not beyond. A study that is just one
+unit loop only has the loop's menu.
+
+Give your loops a clear label and start each question with a short first
+line: that is what coders see in the menu.
 
 ## Going back and forward
 
