@@ -40,7 +40,7 @@ interface QuestionPreviewProps {
 }
 
 /**
- * Live interactive preview of a design item (see TODO.txt).
+ * Live interactive preview of a design item.
  * Displays real-time updates as the author edits the item's question prompt,
  * options, scale items, codes, colors, or unit layout.
  */
