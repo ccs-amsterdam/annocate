@@ -88,10 +88,14 @@ export function LinksPanel({ client }: LinksPanelProps) {
           </p>
         )}
         {emailCoders && (
-          <p className="rounded-md border border-amber-500 bg-amber-500/10 p-2.5 text-xs">
-            The coders (column <span className="font-mono">{coderColumn}</span>) are email addresses: only those {coderValues.length} can code.
-            Coders sign in; other email addresses get &quot;This email address has no access to this study&quot;.
-          </p>
+          <div className="rounded-md border border-amber-500 bg-amber-500/10 p-2.5 text-xs">
+            The coders (column <span className="font-mono">{coderColumn}</span>) are email addresses, so there is one link: coders sign in and
+            get their own units. Other email addresses get &quot;This email address has no access to this study&quot;.
+            <details className="mt-1">
+              <summary className="cursor-pointer">The {coderValues.length} coders</summary>
+              <span className="font-mono">{coderValues.join(", ")}</span>
+            </details>
+          </div>
         )}
         {linksQuery.isLoading ? (
           <p className="text-sm text-muted-foreground">Loading links...</p>
@@ -126,7 +130,7 @@ function LinkTable({ client, links, linkOf }: { client: ResearcherApi; links: Li
         <thead>
           <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
             <th className="p-2 font-medium">Label</th>
-            <th className="p-2 font-medium">Values</th>
+            <th className="p-2 font-medium">For</th>
             <th className="p-2 font-medium">Link</th>
             <th className="p-2 font-medium">Access</th>
             <th className="p-2 font-medium">Uses</th>
@@ -178,7 +182,27 @@ function LinkRow({ client, invite, link }: { client: ResearcherApi; invite: Link
     <>
       <tr className="border-b align-top last:border-0">
         <td className="p-2 font-medium">{invite.label}</td>
-        <td className="p-2 font-mono text-xs text-muted-foreground">{values.length > 0 ? values.map(([k, v]) => `${k}=${v}`).join(", ") : "–"}</td>
+        <td className="p-2">
+          {values.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {values.map(([k, v]) => (
+                <span key={k} className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[11px]">
+                  {k === "coder" ? (
+                    <>
+                      coder <strong className="font-mono">{v}</strong>
+                    </>
+                  ) : (
+                    <>
+                      {k}: <strong className="font-mono">{v}</strong>
+                    </>
+                  )}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="text-xs text-muted-foreground">everyone</span>
+          )}
+        </td>
         <td className="p-2">
           <CopyLink link={link} disabled={status === "revoked" || status === "retired"} />
         </td>

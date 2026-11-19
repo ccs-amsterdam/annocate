@@ -53,8 +53,8 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
   // The Links tab lists a link per set
   await page.getByRole("button", { name: "Deploy", exact: true }).click();
   await page.getByRole("button", { name: "Links", exact: true }).click();
-  await expect(page.getByRole("cell", { name: "coder=s1" })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "coder=s2" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "coder s1" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "coder s2" })).toBeVisible();
   const links = await api<{ secret: string; params: Record<string, string> }[]>(request, "GET", `/study/${study.id}/links`);
   const s2 = links.find((l) => l.params.coder === "s2")!;
 

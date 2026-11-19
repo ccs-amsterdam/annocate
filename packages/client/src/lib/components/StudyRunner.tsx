@@ -298,15 +298,15 @@ function StudyRunnerContent({
   if (snapshot.phase === "error" && snapshot.errorCode === "email_not_allowed") {
     return (
       <SessionNotice title="This email address has no access to this study">
-        <p>The researchers invited specific email addresses, and the account you are logged in with isn&apos;t one of them.</p>
-        <p>If you were invited with another email address, log in with that account.</p>
+        <p>The researchers gave this study to specific email addresses, and the account you are signed in with isn&apos;t one of them.</p>
+        <p>If you were given it with another email address, sign in with that account.</p>
         <Button
           type="button"
           variant="outline"
           className="mt-2"
           onClick={() => void logOut().then(() => window.location.assign(coderLoginUrl()))}
         >
-          Log in with another account
+          Sign in with another account
         </Button>
       </SessionNotice>
     );
@@ -659,16 +659,16 @@ function LoginNotice() {
     void loginAvailable().then(setAvailable);
   }, []);
   return (
-    <SessionNotice title="Log in to take part">
+    <SessionNotice title="This study asks you to sign in">
       <p>
-        This link asks you to log in first. Your answers are then kept with your account: log in again to continue
-        later, on any device.
+        Sign in before you start. Your answers are then kept with your account: sign in again to continue later, on any
+        device. If the researchers gave you this study by email address, use that address.
       </p>
       {available === false ? (
-        <p>This server doesn&apos;t offer a login, though. Please contact the researchers.</p>
+        <p>This server doesn&apos;t offer a sign-in, though. Please contact the researchers.</p>
       ) : (
         <Button type="button" className="mt-2" disabled={available === null} onClick={() => window.location.assign(coderLoginUrl())}>
-          Log in
+          Sign in
         </Button>
       )}
     </SessionNotice>
