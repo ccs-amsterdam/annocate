@@ -59,7 +59,7 @@ describe("codebook routes", () => {
       {
         type: "unit_loop",
         label: "loop",
-        units: [{ mode: "all" }],
+        units: [{}],
         layout: { template: "" },
         children: [{ type: "question", name: "q1", variable: { type: "confirm", question: "Confirm?" } }],
       },
@@ -230,7 +230,7 @@ describe("annotations: finished counts and resets", () => {
         body: JSON.stringify({ units: [{ externalId: "u1", data: {} }, { externalId: "u2", data: {} }] }),
       }),
     )) as { id: number }[];
-    await db.query("INSERT INTO links (study_id, label, auth, secret) VALUES ($1, 'x', 'none', 'annotations-link')", [study.id]);
+    await db.query("INSERT INTO links (study_id, label, secret) VALUES ($1, 'x', 'annotations-link')", [study.id]);
     const { coder } = await store.resolveCoder({ coderKey: "k", linkSecret: "annotations-link" });
     const put = (unitId: number, variables: Record<string, VariableValue>) =>
       store.putAnnotation({ unitId, coderId: coder.coderId, variables });
@@ -299,7 +299,7 @@ describe("links, coder progress and overview", () => {
       }),
     )) as { id: number }[];
     const question = (name: string) => ({ type: "question", name, variable: { type: "confirm", question: "?" } });
-    const loop = { type: "unit_loop", label: "l", units: [{ mode: "all" }], layout: { template: "" }, children: [question("q1"), question("q2")] };
+    const loop = { type: "unit_loop", label: "l", units: [{}], layout: { template: "" }, children: [question("q1"), question("q2")] };
     const publish = async (items: object[], confirmLinks?: boolean) => {
       const codebook = await json(await app.request(`/api/study/${study.id}/design`, { method: "POST", headers: adminHeaders, body: JSON.stringify(splitDesignItems(items)) }));
       return app.request(`/api/study/${study.id}/deployment`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: codebook.id, confirmLinks }) });
@@ -329,7 +329,7 @@ describe("links, coder progress and overview", () => {
       await app.request(`/api/study/${study.id}/links/${unused.id}`, {
         method: "PUT",
         headers: adminHeaders,
-        body: JSON.stringify({ label: "Panel", auth: "none", maxUses: 1 }),
+        body: JSON.stringify({ label: "Panel", maxUses: 1 }),
       }),
     );
     expect(updated).toMatchObject({ label: "Panel", maxUses: 1, params: { batch: "unused" } });

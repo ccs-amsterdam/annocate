@@ -96,6 +96,11 @@ export class PreviewStore implements Store {
     coder.assignments = { ...coder.assignments, [branch]: assignment };
   }
 
+  async setSessionValue(coderId: number, name: string, value: string): Promise<void> {
+    const coder = this.coders.get(coderId);
+    if (coder) coder.session = { ...coder.session, [name]: value };
+  }
+
   async setEnded(coderId: number, ended: SessionEnd | null): Promise<void> {
     const coder = this.coders.get(coderId);
     if (!coder) throw new HttpError(404, "Coder not found");

@@ -29,22 +29,19 @@ export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
   });
 }
 
-/** The questions the `shared` branches of a loop compare for agreement: what distribution needs to know of finished codings. */
+/** The questions a loop's branches with criteria compare for agreement: what distribution needs to know of finished codings. */
 export function loopAgreementVariables(info: LoopInfo): string[] {
   const variables = new Set<string>();
-  for (const branch of info.loop.units) {
-    if (branch.mode === "shared" && "agree" in branch.until) variables.add(branch.until.on);
-  }
+  for (const branch of info.loop.units) if (branch.criteria?.until) variables.add(branch.criteria.until.on);
   return [...variables];
 }
 
 /**
  * Whether distributing a loop's units depends on every coder's codings
- * (loaded for all coders, not only active ones): shared queues, and
- * balanced sets (which count the coders who finished a set).
+ * (loaded for all coders, not only active ones): shared queues.
  */
 export function needsAllCodings(info: LoopInfo): boolean {
-  return info.loop.units.some((b) => b.mode === "shared" || (b.mode === "assign" && "draw" in b.from && b.from.draw === "balanced"));
+  return info.loop.units.some((b) => !!b.criteria);
 }
 
 /**

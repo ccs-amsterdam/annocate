@@ -21,20 +21,12 @@ export function links(server: Server): Hono<Env> {
   app.put("/study/:studyId/links/:id", requireStudyUser(server, "WRITE"), async (c) => {
     const parsed = LinkWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
-    const { label, auth, emails, maxUses, participantId } = parsed.data;
+    const { label, maxUses, participantId } = parsed.data;
     const row = await one<LinkRow>(
       db,
-      `UPDATE links SET label = $3, auth = $4, emails = $5, max_uses = $6, participant_id = $7
+      `UPDATE links SET label = $3, max_uses = $4, participant_id = $5
        WHERE study_id = $1 AND id = $2 RETURNING *`,
-      [
-        c.get("studyId"),
-        Number(c.req.param("id")),
-        label,
-        auth,
-        emails?.length ? JSON.stringify(emails.map((e) => e.toLowerCase())) : null,
-        maxUses ?? null,
-        participantId ?? null,
-      ],
+      [c.get("studyId"), Number(c.req.param("id")), label, maxUses ?? null, participantId ?? null],
     );
     if (!row) return c.json({ error: "Link not found" }, 404);
     forgetLink(row.secret);

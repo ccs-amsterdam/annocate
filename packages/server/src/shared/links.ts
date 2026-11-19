@@ -6,7 +6,6 @@ import {
   linkCombinations,
   linkKey,
   sessionItem,
-  setParameters,
   type DesignItem,
   type LinkResponse,
 } from "@annotinder/contracts";
@@ -20,9 +19,7 @@ export interface LinkRow {
   id: number;
   study_id: number;
   label: string;
-  auth: string;
   secret: string;
-  emails: string[] | null;
   max_uses: number | null;
   uses: number;
   participant_id: string | null;
@@ -38,10 +35,8 @@ export function toLinkResponse(row: LinkRow): LinkResponse {
     id: row.id,
     studyId: row.study_id,
     label: row.label,
-    auth: row.auth as LinkResponse["auth"],
     secret: row.secret,
     uses: row.uses,
-    ...(row.emails ? { emails: row.emails } : {}),
     ...(row.max_uses !== null ? { maxUses: row.max_uses } : {}),
     ...(row.participant_id !== null ? { participantId: row.participant_id } : {}),
     created: row.created,
@@ -52,13 +47,16 @@ export function toLinkResponse(row: LinkRow): LinkResponse {
 }
 
 /**
- * The links a codebook makes with the deployed sets (`live`) or the draft's:
- * one per combination of its link parameters' values.
+ * The links a codebook makes with the deployed set columns (`live`) or the
+ * draft's: one per coder (unless they sign in), per value of a condition
+ * assigned by link, and per combination of its link parameters' values.
  */
 export async function linksOf(sql: Sql, studyId: number, items: DesignItem[], live: boolean): Promise<Record<string, string>[]> {
+  const session = sessionItem(items);
+  const columns = [session?.coders?.column, ...(session?.conditions ?? []).map((c) => c.units)].filter((c): c is string => !!c);
   const sets = new Map<string, string[]>();
-  for (const group of new Set(setParameters(items).values())) sets.set(group, await groupSets(sql, studyId, group, live));
-  return linkCombinations(sessionItem(items), (group) => sets.get(group) ?? []);
+  for (const column of new Set(columns)) sets.set(column, await groupSets(sql, studyId, column, live));
+  return linkCombinations(session, (group) => sets.get(group) ?? []);
 }
 
 /**
@@ -110,7 +108,7 @@ export async function syncLinks(sql: Sql, studyId: number, options: { secrets?: 
     }
     const row = await one<{ id: number }>(
       sql,
-      "INSERT INTO links (study_id, label, auth, secret, params, link_key) VALUES ($1, $2, 'none', $3, $4, $5) RETURNING id",
+      "INSERT INTO links (study_id, label, secret, params, link_key) VALUES ($1, $2, $3, $4, $5) RETURNING id",
       [studyId, linkLabel(values), secrets.shift() ?? randomBytes(16).toString("hex"), JSON.stringify(values), key],
     );
     byKey.set(key, { id: row!.id, link_key: key, retired_at: null });
@@ -125,7 +123,7 @@ export async function syncLinks(sql: Sql, studyId: number, options: { secrets?: 
 /** What the coder API needs to know about a link on every request (the session cookie, login), by secret. */
 export interface LinkInfo {
   studyId: number;
-  /** Whether the link takes logins: `auth` is not "none", or it lists email addresses. */
+  /** Whether its study takes sign-ins (the study's `signIn`). */
   login: "none" | "optional" | "required";
 }
 
@@ -136,11 +134,13 @@ const links = new Map<string, { info: LinkInfo; until: number }>();
 export async function linkInfo(sql: Sql, secret: string): Promise<LinkInfo | null> {
   let cached = links.get(secret);
   if (!cached || cached.until < Date.now()) {
-    const row = await one<{ study_id: number; auth: string; emails: string[] | null }>(sql, "SELECT study_id, auth, emails FROM links WHERE secret = $1", [
-      secret,
-    ]);
+    const row = await one<{ study_id: number; sign_in: string }>(
+      sql,
+      "SELECT l.study_id, s.sign_in FROM links l JOIN studies s ON s.id = l.study_id WHERE l.secret = $1",
+      [secret],
+    );
     if (!row) return null; // not cached: anyone can send any secret
-    const login = row.auth === "required" || row.emails?.length ? "required" : row.auth === "optional" ? "optional" : "none";
+    const login = row.sign_in === "required" ? "required" : row.sign_in === "optional" ? "optional" : "none";
     cached = { info: { studyId: row.study_id, login }, until: Date.now() + 60_000 };
     if (links.size > 10_000) links.clear();
     links.set(secret, cached);
@@ -151,4 +151,9 @@ export async function linkInfo(sql: Sql, secret: string): Promise<LinkInfo | nul
 /** Forgets cached link info (after a link's access settings changed). */
 export function forgetLink(secret: string): void {
   links.delete(secret);
+}
+
+/** Forgets the cached info of a study's links (after its sign-in setting changed). */
+export function forgetStudyLinks(studyId: number): void {
+  for (const [secret, { info }] of links) if (info.studyId === studyId) links.delete(secret);
 }

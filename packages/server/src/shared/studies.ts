@@ -7,6 +7,7 @@ export interface StudyRow {
   created: Date;
   owner_id: number | null;
   keep_sessions_open: boolean;
+  sign_in: "off" | "optional" | "required";
   suspended_at: Date | null;
   origin: string | null;
   redirect_urls: Record<string, string>;
@@ -19,6 +20,7 @@ export function toStudyResponse(row: StudyRow): StudyResponse {
     archived: row.archived,
     created: row.created,
     keepSessionsOpen: row.keep_sessions_open,
+    signIn: row.sign_in,
     redirectUrls: row.redirect_urls ?? {},
     suspendedAt: row.suspended_at,
     origin: row.origin,

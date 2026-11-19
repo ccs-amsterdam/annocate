@@ -112,14 +112,11 @@ describe("studies from a recipe", () => {
     {
       type: "question",
       name: "condition",
-      variable: { type: "random_condition", draw: "random", options: [{ value: "x" }, { value: "y" }] },
+      variable: { type: "random_condition", draw: "random", units: "condition" },
     },
     {
       type: "unit_loop",
-      units: [
-        { when: { script: `$var.condition.is("x")` }, mode: "all", set: { group: "condition", set: "x" } },
-        { when: { script: `$var.condition.is("y")` }, mode: "all", set: { group: "condition", set: "y" } },
-      ],
+      units: [{}],
       layout: { template: "$unit.text" },
       children: [{ type: "question", name: "topic", variable: { type: "unspecified" } }],
     },
@@ -162,6 +159,12 @@ describe("studies from a recipe", () => {
     // A draft with a question to specify: saved, not deployed
     const designVersions = (await (await researcher(`/api/study/${study.id}/design`)).json()) as { items: unknown[] }[];
     expect(designVersions).toHaveLength(1);
+    // Its set columns are unit fields of type set
+    const [{ units: spec }] = await db.query<{ units: { fields: unknown[] } }>("SELECT units FROM design_versions WHERE study_id = $1", [study.id]);
+    expect(spec.fields).toEqual([
+      { name: "text", type: "text" },
+      { name: "condition", type: "set" },
+    ]);
     expect(await (await researcher(`/api/study/${study.id}/deployment`)).json()).toBeNull();
     expect(((await (await researcher(`/api/study/${study.id}/links`)).json()) as unknown[]).length).toBe(0);
 

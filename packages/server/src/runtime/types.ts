@@ -1,6 +1,6 @@
 import type { DeviceDetails } from "../shared/devices.js";
 import type { SessionRules } from "./sessionValues.js";
-import type { AnswerTiming, DesignVersion, DeletionRequest, SessionEnd, UnitData, VariableValue } from "@annotinder/contracts";
+import type { AnswerTiming, SignIn, DesignVersion, DeletionRequest, SessionEnd, UnitData, VariableValue } from "@annotinder/contracts";
 
 // What the runtime reads from and writes to the database (store.ts). Not
 // part of any API: coders get what the coder API (contracts
@@ -25,6 +25,8 @@ export interface DeploymentSpec {
   keepSessionsOpen: boolean;
   /** Deployment settings: the URL per `redirectSetting` name of end items (docs/plans/design.md §4). */
   redirectUrls: Record<string, string>;
+  /** Whether coders sign in (the study's setting; coders by email address always do). */
+  signIn: SignIn;
 }
 
 /** A unit's content, as the runtime reads it. */

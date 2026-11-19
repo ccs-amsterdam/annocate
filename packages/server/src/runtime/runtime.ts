@@ -1,6 +1,5 @@
 import {
   type AnswerTiming,
-  SET_ACTIVITY_MS,
   shownUnitFields,
   type UnitData,
   type AnyVariableType,
@@ -8,8 +7,9 @@ import {
   OVERLAP_SET,
   PRACTICE_SET,
   GOLD_SET,
-  branchGroup,
   branchFingerprint,
+  loopShareColumns,
+  type ShareColumn,
   loopDependencies,
   loopTitle,
   seededShuffle,
@@ -44,7 +44,7 @@ import { Codings, UnitPool, pickNext, type AgreementKeys, type OverlapPlacement 
 import type { Store } from "./store.js";
 import type { DeviceDetails } from "../shared/devices.js";
 import type { Coder, CoderValue, Coding, DeploymentSpec, Lease, ResolveCoderRequest, ResolvedCoder, Unit } from "./types.js";
-import type { SessionRules } from "./sessionValues.js";
+import { loginRequired, type SessionRules } from "./sessionValues.js";
 import {
   agreementKey,
   singleValue,
@@ -86,10 +86,26 @@ export const DEFAULT_RUNTIME_OPTIONS: RuntimeOptions = {
 
 export type { Coder };
 
-/** Where a coder is routed in a loop: the branch and their set (its key, contracts `setKey`, or `__all__`). */
+/**
+ * A coder's units in a loop branch (docs/plans/unit-assignment.md): those
+ * whose cells hold the session's values in every set column a value is
+ * linked to (`_overlap` cells: in every share), within the branch's filter.
+ * Shared by every coder with the same values: `key` names it (the pool of a
+ * shared queue, its leases, a row of the status). The special units come
+ * apart: the overlap (when the branch places it), practice and gold.
+ */
+interface Share {
+  key: string;
+  own: number[];
+  overlap: number[];
+  practice: number[];
+  gold: number[];
+}
+
+/** Where a coder is routed in a loop: the branch, and their units in it. */
 interface Route {
   branch: UnitBranch;
-  set: string;
+  share: Share;
 }
 
 const PLACEMENTS = { first: "before", last: "after", spread: "spread", rate: "rate" } as const;
@@ -102,11 +118,11 @@ interface Routed {
   extras: OverlapPlacement[];
 }
 
-/** The special sets a branch can mix in, in order of precedence when several are due. */
+/** The special units a branch can mix in, in order of precedence when several are due. */
 const SPECIAL = [
-  { set: PRACTICE_SET, settings: (b: UnitBranch) => (b.mode === "all" ? undefined : b.practice) },
-  { set: OVERLAP_SET, settings: (b: UnitBranch) => (b.mode === "all" || b.overlap?.placement === "disabled" ? undefined : b.overlap) },
-  { set: GOLD_SET, settings: (b: UnitBranch) => (b.mode === "all" ? undefined : b.gold) },
+  { set: PRACTICE_SET, units: (s: Share) => s.practice, settings: (b: UnitBranch) => b.practice },
+  { set: OVERLAP_SET, units: (s: Share) => s.overlap, settings: (b: UnitBranch) => (b.overlap?.placement === "disabled" ? undefined : b.overlap) },
+  { set: GOLD_SET, units: (s: Share) => s.gold, settings: (b: UnitBranch) => b.gold },
 ] as const;
 
 type RandomCondition = Extract<VariableType, { type: "random_condition" }>;
@@ -139,8 +155,14 @@ export class DeploymentRuntime {
   private randomConditions: [string, RandomCondition][] = [];
   /** Set key (`group/set`, and `__all__`) -> its units in order. */
   private sets = new Map<string, number[]>();
-  /** Group -> its sets' names (without reserved ones). */
+  /** Set column -> its values (sets, without reserved ones). */
   private groups = new Map<string, string[]>();
+  /** Every set column (with only reserved sets too): where practice and gold units come from. */
+  private columns: string[] = [];
+  /** Loop key -> the session values that select its units (contracts `loopShareColumns`). */
+  private shareColumns = new Map<string, ShareColumn[]>();
+  /** Shares computed from the current sets, by key. */
+  private shares = new Map<string, Share>();
   /** The codebook's questions, by name (practice feedback, texts). */
   private questions = new Map<string, AnyVariableType>();
   /** The unit fields the codebook shows (`shownUnitFields`): all coders get. */
@@ -181,7 +203,7 @@ export class DeploymentRuntime {
           this.applySpec(spec);
           await this.ensureCodings();
         } else {
-          this.spec = { ...this.spec, active: spec.active, keepSessionsOpen: spec.keepSessionsOpen, sets: spec.sets, redirectUrls: spec.redirectUrls };
+          this.spec = { ...this.spec, active: spec.active, keepSessionsOpen: spec.keepSessionsOpen, sets: spec.sets, redirectUrls: spec.redirectUrls, signIn: spec.signIn };
           this.applySets(spec);
           // Panel return links are deployment settings: they change without a new version
           this.coderCodebook = { ...this.coderCodebook, items: resolveRedirects(toCoderItems(this.spec.design.items as TopLevelItem[]), spec.redirectUrls) };
@@ -204,6 +226,7 @@ export class DeploymentRuntime {
       [...loopDependencies(items)].map(([key, names]) => [key, names.filter((name) => this.coderVariableTypes.has(name))]),
     );
     this.randomConditions = [...this.coderVariableTypes].filter((e): e is [string, RandomCondition] => e[1].type === "random_condition");
+    this.shareColumns = loopShareColumns(items);
     this.applySets(spec);
     this.shownFields = shownUnitFields(items);
     this.questions = collectQuestions(items).questions;
@@ -213,26 +236,24 @@ export class DeploymentRuntime {
   private applySets(spec: DeploymentSpec): void {
     this.sets = new Map(spec.sets.map((u) => [u.name, u.unitIds]));
     this.groups = new Map();
+    this.shares = new Map();
+    const columns = new Set<string>();
     for (const { name } of spec.sets) {
       const at = name.indexOf("/");
       if (at < 0) continue;
       const [group, set] = [name.slice(0, at), name.slice(at + 1)];
+      columns.add(group);
       if (set.startsWith("_")) continue;
       if (!this.groups.has(group)) this.groups.set(group, []);
       this.groups.get(group)!.push(set);
     }
+    this.columns = [...columns];
   }
 
-  /**
-   * What the codebook asks of a new session (its Session item), with the
-   * sets its values may name, and the groups whose set is the login's email.
-   */
+  /** What the codebook asks of a new session (its Session item), the set columns' values, and sign-in. */
   private get sessionRules(): SessionRules {
     const items = this.spec.design.items as TopLevelItem[];
-    const emailGroups = [...this.loops.values()].flatMap((info) =>
-      info.loop.units.flatMap((b) => (b.mode === "assign" && "session" in b.from && b.from.session === "email" ? [b.group] : [])),
-    );
-    return { item: sessionItem(items), setsOf: (group) => this.groups.get(group) ?? [], emailGroups: [...new Set(emailGroups)] };
+    return { item: sessionItem(items), setsOf: (group) => this.groups.get(group) ?? [], signIn: this.spec.signIn };
   }
 
   /** The URL parameter with the participant id (the codebook's Session item), if any: part of a device's session key. */
@@ -240,9 +261,9 @@ export class DeploymentRuntime {
     return sessionItem(this.spec.design.items as TopLevelItem[])?.participant?.param ?? null;
   }
 
-  /** Sets are assigned by the login's email: coders log in to start. */
+  /** Coders log in to start: the study requires it, or coders are email addresses. */
   get needsLogin(): boolean {
-    return this.sessionRules.emailGroups.length > 0;
+    return loginRequired(this.sessionRules);
   }
 
   /** What finishes a loop under this codebook (its questions and agreement questions), and the annotation epoch. */
@@ -292,28 +313,40 @@ export class DeploymentRuntime {
   }
 
   /**
-   * The coder reached an `auto` question: its value, assigned now if the
+   * The coder reached a random condition: its value, assigned now if the
    * coder has none yet (random, or balanced: the option the fewest coders
    * who reached it have, under a lock; with `stratify`, only among coders
    * with the same answers to those questions, or session values). Once
    * assigned it never changes. Coders who never reach it (screened out
-   * before) don't count.
+   * before) don't count. A condition linked to a set column (`units`) draws
+   * from its values unless it lists options, and its value is added to the
+   * session's values: it selects the units of the loops after it.
    */
   async assignCondition(coder: Coder, name: string): Promise<VariableValue> {
     this.assertOpen(coder);
     const variable = this.randomConditions.find(([n]) => n === name)?.[1];
-    if (!variable) throw new HttpError(404, `No auto question '${name}'`);
+    if (!variable) throw new HttpError(404, `No random condition '${name}'`);
+    const options = variable.options ?? (variable.units ? (this.groups.get(variable.units) ?? []).map((value) => ({ value })) : []);
+    if (options.length === 0) throw new HttpError(409, `Random condition '${name}' has no values yet`);
+    const linked = async (value: VariableValue) => {
+      const plain = valueOf(value);
+      if (variable.units && plain !== undefined && coder.session[name] !== plain) {
+        await this.store.setSessionValue(coder.coderId, name, plain);
+        coder.session = { ...coder.session, [name]: plain };
+      }
+      return value;
+    };
     const stored = (await this.store.coderValues(coder.coderId))[name];
-    if (stored) return stored.value;
+    if (stored) return linked(stored.value);
     const put = (store: Store, value: VariableValue) =>
       store.putCoderValues({ coderId: coder.coderId, values: { [name]: value }, assigned: true, designVersionId: this.spec.design.id });
     if (variable.draw === "random") {
-      const value = singleValue(this.drawWeighted(variable.options));
+      const value = singleValue(this.drawWeighted(options));
       await put(this.store, value);
-      return value;
+      return linked(value);
     }
     const stratify = variable.stratify ?? [];
-    return this.store.locked(`balanced/${name}`, async (store) => {
+    const value = await this.store.locked(`balanced/${name}`, async (store) => {
       // Another request of this coder may have assigned it meanwhile
       const again = (await store.coderValues(coder.coderId))[name];
       if (again) return again.value;
@@ -324,10 +357,11 @@ export class DeploymentRuntime {
       const others = (await store.coderValuesOf([name, ...stratify.filter((s) => !s.startsWith("session."))]))
         .filter((c) => stratum(c.values, c.session) === mine)
         .map((c) => c.values[name]);
-      const value = singleValue(DeploymentRuntime.leastUsed(variable.options, others));
+      const value = singleValue(DeploymentRuntime.leastUsed(options, others));
       await put(store, value);
       return value;
     });
+    return linked(value);
   }
 
   private drawWeighted(options: { value: string; weight?: number }[]): string {
@@ -526,39 +560,79 @@ export class DeploymentRuntime {
   }
 
   /**
-   * A route's special units (docs/plans/special-sets.md): its group's
-   * `_practice`, `_overlap` and `_gold` units, for those the branch uses.
-   * The overlap as many as `max` allows: the first ones, or a random draw
-   * (the same for every coder, so they code the same units).
+   * The share of a coder in a loop branch: from their session values (the
+   * coder, conditions linked to a set column), or null while one of them
+   * has no value (a random condition not reached yet, a coder without a
+   * coder value). Cached by key, until the sets change.
+   */
+  private shareOf(coder: Coder, loop: string, branch: UnitBranch): Share | null {
+    const columns = this.shareColumns.get(loop) ?? [];
+    const values: [string, string][] = [];
+    for (const c of columns) {
+      const value = coder.session[c.name];
+      if (value === undefined) return null;
+      values.push([c.column, value]);
+    }
+    const filter = branch.filter;
+    const key =
+      (values.map(([column, value]) => `${column}=${value}`).join(",") || "all") +
+      (filter ? ` | ${filter.column} ${filter.only ? "only" : "except"} ${(filter.only ?? filter.except ?? []).join(",")}` : "") +
+      (branch.overlap?.placement === undefined ? "" : branch.overlap.placement === "disabled" ? " | no overlap" : " | overlap");
+    const cached = this.shares.get(key);
+    if (cached) return cached;
+
+    // In every column: the value's units, and the column's overlap (in the first column's order)
+    const special = new Set(this.columns.flatMap((c) => [...this.unitsOf(setKey(c, PRACTICE_SET)), ...this.unitsOf(setKey(c, GOLD_SET))]));
+    let units: number[];
+    if (values.length === 0) units = this.unitsOf(ALL_UNITS_SET);
+    else {
+      const [first, ...rest] = values.map(([column, value]) => [...this.unitsOf(setKey(column, value)), ...this.unitsOf(setKey(column, OVERLAP_SET))]);
+      const others = rest.map((list) => new Set(list));
+      units = [...new Set(first)].filter((id) => others.every((o) => o.has(id)));
+    }
+    units = units.filter((id) => !special.has(id));
+    if (filter) {
+      const listed = new Set((filter.only ?? filter.except ?? []).flatMap((value) => this.unitsOf(setKey(filter.column, value))));
+      units = units.filter((id) => listed.has(id) === !!filter.only);
+    }
+    // The overlap apart when the branch places it (or leaves it out)
+    const overlapAll = new Set(values.flatMap(([column]) => this.unitsOf(setKey(column, OVERLAP_SET))));
+    let overlap = branch.overlap ? units.filter((id) => overlapAll.has(id)) : [];
+    const own = branch.overlap ? units.filter((id) => !overlapAll.has(id)) : units;
+    const max = branch.overlap?.max;
+    if (max !== undefined && overlap.length > max) {
+      overlap = branch.overlap?.pick === "random" ? seededShuffle(overlap, this.spec.studyId).slice(0, max) : overlap.slice(0, max);
+    }
+    const all = (set: string) => [...new Set(this.columns.flatMap((c) => this.unitsOf(setKey(c, set))))];
+    const share: Share = { key, own, overlap, practice: all(PRACTICE_SET), gold: all(GOLD_SET) };
+    this.shares.set(key, share);
+    return share;
+  }
+
+  /**
+   * A route's special units (docs/plans/special-sets.md): its practice,
+   * overlap and gold units, for those the branch places.
    */
   private specialUnits(route: Route): { set: string; units: number[]; placement: "first" | "last" | "spread" | "rate"; every?: number; rest?: "end" | "drop" }[] {
-    const group = branchGroup(route.branch);
-    if (group === null) return [];
-    return SPECIAL.flatMap(({ set, settings }) => {
+    return SPECIAL.flatMap(({ set, units, settings }) => {
       const s = settings(route.branch);
       if (!s || s.placement === "disabled") return [];
-      let units = this.unitsOf(setKey(group, set));
-      const max = "max" in s ? s.max : undefined;
-      if (max !== undefined && units.length > max) {
-        units = "pick" in s && s.pick === "random" ? seededShuffle(units, this.spec.studyId).slice(0, max) : units.slice(0, max);
-      }
-      return units.length > 0 ? [{ set: setKey(group, set), units, placement: s.placement, every: s.every, rest: s.rest }] : [];
+      const list = units(route.share);
+      return list.length > 0 ? [{ set: `${route.share.key}/${set}`, units: list, placement: s.placement, every: s.every, rest: s.rest }] : [];
     });
   }
 
-  /** The units of one special set of a route (empty if it doesn't use it). */
+  /** The units of one special set of a route (empty if it doesn't place it). */
   private specialSet(route: Route, set: string): number[] {
-    const group = branchGroup(route.branch);
-    return group === null ? [] : (this.specialUnits(route).find((s) => s.set === setKey(group, set))?.units ?? []);
+    return this.specialUnits(route).find((s) => s.set === `${route.share.key}/${set}`)?.units ?? [];
   }
 
-  /** The coder's own units of a route: their set, without the special units it mixes in (handed out as those). */
+  /** The coder's own units of a route, without the special units. */
   private ownUnits(route: Route): number[] {
-    const special = new Set(this.specialUnits(route).flatMap((s) => s.units));
-    return special.size === 0 ? this.unitsOf(route.set) : this.unitsOf(route.set).filter((id) => !special.has(id));
+    return route.share.own;
   }
 
-  /** All units of a route (own set and special units). */
+  /** All units of a route (own and special units). */
   private routeUnits(route: Route | null): Set<number> {
     return new Set(route ? [...this.ownUnits(route), ...this.specialUnits(route).flatMap((s) => s.units)] : []);
   }
@@ -566,17 +640,18 @@ export class DeploymentRuntime {
   /** How many units the coder will get in a loop, if that doesn't depend on other coders. */
   private expectedUnits(route: Route | null): number | null {
     if (!route) return null;
-    const { branch } = route;
+    const { criteria } = route.branch;
     const size = this.ownUnits(route).length;
-    const own = branch.mode === "shared" ? (branch.maxUnits === undefined ? null : Math.min(branch.maxUnits, size)) : size;
+    const max = criteria?.unitsPerCoder?.max;
+    const own = criteria ? (max === undefined ? null : Math.min(max, size)) : size;
     return own === null ? null : own + this.specialUnits(route).reduce((n, s) => n + s.units.length, 0);
   }
 
   /** A route's pools, working on these codings and (shared queues) leases. */
   private pools(route: Route, codings: Codings, leases: Lease[]): Routed {
-    const { branch, set } = route;
-    const main = new UnitPool(set, this.ownUnits(route), branch.mode === "shared" ? sharedDefaults(branch) : null, codings);
-    main.loadLeases(leases.filter((l) => l.set === set).map((l) => ({ ...l, expires: new Date(l.expires).getTime() })));
+    const { branch, share } = route;
+    const main = new UnitPool(share.key, this.ownUnits(route), sharedDefaults(branch), codings);
+    main.loadLeases(leases.filter((l) => l.set === share.key).map((l) => ({ ...l, expires: new Date(l.expires).getTime() })));
     const extras = this.specialUnits(route).map(
       (s): OverlapPlacement => ({
         pool: new UnitPool(s.set, s.units, null, codings),
@@ -587,29 +662,18 @@ export class DeploymentRuntime {
     return { branch, main, extras };
   }
 
-  /** The set an `all` or `shared` branch hands out (its set, or every unit). */
-  private static fixedSet(branch: UnitBranch): string | null {
-    if (branch.mode === "assign") return null;
-    return branch.set ? setKey(branch.set.group, branch.set.set) : ALL_UNITS_SET;
-  }
-
-  /** Whether a stored set fits a branch: its set, or (assign) a set of its group that exists. */
-  private fits(branch: UnitBranch, set: string): boolean {
-    if (branch.mode !== "assign") return DeploymentRuntime.fixedSet(branch) === set;
-    return set.startsWith(`${branch.group}/`) && (this.groups.get(branch.group) ?? []).includes(set.slice(branch.group.length + 1));
-  }
-
   /**
    * Where the coder is already routed in a loop (no new routing): the first
-   * branch with a stored routing (by `branchFingerprint`) whose set still
-   * fits it.
+   * branch with a stored routing (by `branchFingerprint`), with the share
+   * of their session values.
    */
   private assignedRoute(coder: Coder, loop: string): Route | null {
     const info = this.loops.get(loop);
     if (!info) return null;
     for (const branch of info.loop.units) {
-      const assignment = coder.assignments[branchFingerprint(branch)];
-      if (assignment && this.fits(branch, assignment.set)) return { branch, set: assignment.set };
+      if (!coder.assignments[branchFingerprint(branch)]) continue;
+      const share = this.shareOf(coder, loop, branch);
+      return share ? { branch, share } : null;
     }
     return null;
   }
@@ -618,13 +682,12 @@ export class DeploymentRuntime {
    * Routes a coder in a loop. The client evaluates the branch conditions
    * (they may use answers the server shouldn't need, docs/plans/encryption.md)
    * and sends the chosen branch; a loop with a single unconditional branch
-   * routes without a choice. In `assign` mode the server picks the coder's
-   * set of the group: drawn (balanced: the one with the fewest coders,
-   * under a lock; or random), or the one a session value names. Sticky:
-   * stored with the coder, and reused as long as the codebook still has a
-   * branch that hands out the same units (so a codebook update that keeps
-   * it doesn't move coders around). Null if the coder gets no units here
-   * (no set for their session value; tried again next time).
+   * routes without a choice. The units come from the session's values: a
+   * random condition linked to a set column that the coder hasn't reached
+   * (e.g. it was hidden) is assigned now. Sticky: the branch is stored with
+   * the coder, and reused as long as the codebook has a branch that hands
+   * out the same units. Null if the coder gets no units here (no coder
+   * value).
    */
   private async route(coder: Coder, info: LoopInfo, choice: BranchChoice): Promise<Route | null> {
     const loop = info.loop;
@@ -639,56 +702,15 @@ export class DeploymentRuntime {
     }
     const branch = loop.units[branchIndex];
     if (!branch) throw new HttpError(400, `${title} has no branch ${branchIndex}`);
-    const save = async (store: Store, set: string) => {
-      const assignment = { set, at: this.options.now() };
-      await store.routeCoder(coder.coderId, branchFingerprint(branch), assignment);
-      coder.assignments = { ...coder.assignments, [branchFingerprint(branch)]: assignment };
-      return { branch, set };
-    };
-
-    if (branch.mode !== "assign") {
-      const set = DeploymentRuntime.fixedSet(branch)!;
-      if (!this.sets.has(set)) throw new HttpError(409, `${title}: set '${set}' does not exist`);
-      return save(this.store, set);
+    for (const column of this.shareColumns.get(info.key) ?? []) {
+      if (column.random && coder.session[column.name] === undefined) await this.assignCondition(coder, column.name);
     }
-    const sets = this.groups.get(branch.group) ?? [];
-    if (sets.length === 0) return null;
-    if ("session" in branch.from) {
-      const name = branch.from.session;
-      const value = name === "email" ? coder.email : coder.session[name];
-      const set = value === undefined || value === null ? undefined : sets.find((s) => (name === "email" ? s.toLowerCase() === value.toLowerCase() : s === value));
-      return set === undefined ? null : save(this.store, setKey(branch.group, set));
-    }
-    if (branch.from.draw === "random") return save(this.store, setKey(branch.group, sets[Math.floor(this.options.random() * sets.length)]));
-    // The set with the fewest coders, counted under a lock: coders starting at the same moment spread over the sets.
-    return this.store.locked(`sets/${branch.group}`, async (store) => save(store, setKey(branch.group, await this.leastCodedSet(store, branch.group, sets))));
-  }
-
-  /**
-   * The set of a group with the fewest coders (the first of those), counting
-   * coders assigned a set of the group in any loop: for their set if they
-   * finished it, or were routed or finished a unit in the last 24 hours
-   * (contracts SET_ACTIVITY_MS). Sets of coders who dropped out are handed
-   * out again.
-   */
-  private async leastCodedSet(store: Store, group: string, sets: string[]): Promise<string> {
-    const [coders, rows] = await Promise.all([store.listCoders(), store.listCodings({})]);
-    const codings = DeploymentRuntime.codingsOf(rows);
-    const now = this.options.now();
-    const counts = new Map(sets.map((s) => [setKey(group, s), 0]));
-    for (const coder of coders) {
-      const counted = new Set<string>();
-      for (const info of this.loops.values()) {
-        const route = this.assignedRoute(coder, info.key);
-        if (route?.branch.mode !== "assign" || route.branch.group !== group || counted.has(route.set) || !counts.has(route.set)) continue;
-        const at = coder.assignments[branchFingerprint(route.branch)].at;
-        const active = now - Math.max(at, codings.lastFinished(coder.coderId)) < SET_ACTIVITY_MS;
-        const finished = this.ownUnits(route).every((id) => codings.has(coder.coderId, id));
-        if (active || finished) counts.set(route.set, counts.get(route.set)! + 1);
-        counted.add(route.set);
-      }
-    }
-    return [...counts.keys()].reduce((best, s) => (counts.get(s)! < counts.get(best)! ? s : best)).slice(group.length + 1);
+    const share = this.shareOf(coder, info.key, branch);
+    if (!share) return null;
+    const assignment = { set: share.key, at: this.options.now() };
+    await this.store.routeCoder(coder.coderId, branchFingerprint(branch), assignment);
+    coder.assignments = { ...coder.assignments, [branchFingerprint(branch)]: assignment };
+    return { branch, share };
   }
 
   // --- units ------------------------------------------------------------------
@@ -708,9 +730,8 @@ export class DeploymentRuntime {
     if (!info) throw new HttpError(404, `No unit loop '${loopName}'`);
     const route = await this.route(coder, info, choice);
     if (!route) return [];
-    const units =
-      route.branch.mode === "shared"
-        ? await this.store.locked(`queue/${info.key}/${route.set}`, (store) => this.pick(store, coder, info, route, count))
+    const units = route.branch.criteria
+        ? await this.store.locked(`queue/${info.key}/${route.share.key}`, (store) => this.pick(store, coder, info, route, count))
         : await this.pick(this.store, coder, info, route, count);
     return Promise.all(
       units.map(async (unit) => {
@@ -722,7 +743,7 @@ export class DeploymentRuntime {
 
   /** Picks the coder's next units (and leases them, in a shared queue); skips units that no longer exist. */
   private async pick(store: Store, coder: Coder, info: LoopInfo, route: Route, count: number): Promise<Unit[]> {
-    const shared = route.branch.mode === "shared";
+    const shared = !!route.branch.criteria;
     // A shared queue counts every coder; otherwise only the coder's own codings matter.
     // Leases first: finishing a unit (not under this lock) adds the coding and
     // drops the lease, so a coding finished in between is still seen, as a coding.
@@ -740,8 +761,8 @@ export class DeploymentRuntime {
         const now = this.options.now();
         const next = pickNext(main, extras, coder.coderId, codings, {
           order: info.loop.order ?? "sequential",
-          maxUnits: route.branch.mode === "shared" ? route.branch.maxUnits : undefined,
-          minUnits: route.branch.mode === "shared" ? route.branch.minUnits : undefined,
+          maxUnits: route.branch.criteria?.unitsPerCoder?.max,
+          minUnits: route.branch.criteria?.unitsPerCoder?.min,
           seed: this.spec.studyId * 1000,
           now,
         });
@@ -818,8 +839,8 @@ export class DeploymentRuntime {
       if (!route) return false;
       if (this.specialUnits(route).some((s) => s.units.includes(unitId))) return true;
       if (!this.ownUnits(route).includes(unitId)) return false;
-      if (route.branch.mode !== "shared") return true;
-      return own.some((c) => c.loop === info.key && c.unitId === unitId) || leases.some((l) => l.loop === info.key && l.set === route.set && l.unitId === unitId);
+      if (!route.branch.criteria) return true;
+      return own.some((c) => c.loop === info.key && c.unitId === unitId) || leases.some((l) => l.loop === info.key && l.set === route.share.key && l.unitId === unitId);
     };
     const loops = [...this.loops.values()].filter((info) => (loopName === undefined || info.key === loopName) && canSubmit(info));
     if (loops.length === 0) throw new HttpError(409, "Unit is not assigned to this coder");
@@ -859,7 +880,7 @@ export class DeploymentRuntime {
 
     // Gold units (docs/plans/special-sets.md): checked here, against the unit's answer columns (practice: in the browser).
     const route = this.assignedRoute(coder, info.key);
-    if (!route || route.branch.mode === "all") return {};
+    if (!route) return {};
     const response: SubmitUnitResponse = {};
     const { gold } = route.branch;
     if (gold?.health && this.specialSet(route, GOLD_SET).includes(unitId)) {
@@ -881,7 +902,7 @@ export class DeploymentRuntime {
   private coderUnit(route: Route | null, unit: { id: number; externalId: string; data: UnitData }, shown: UnitData, answers: Record<string, VariableValue>): CoderUnitResponse {
     const base = { id: unit.id, externalId: unit.externalId, variables: answers };
     if (!route || !this.specialSet(route, PRACTICE_SET).includes(unit.id)) return { ...base, data: shown };
-    const practice = route.branch.mode === "all" ? undefined : route.branch.practice;
+    const practice = route.branch.practice;
     const questions: NonNullable<CoderUnitResponse["practice"]>["questions"] = {};
     for (const name of practice?.questions ?? []) {
       const key = String(unit.data[practiceColumn(name)] ?? "").trim();

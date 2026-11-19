@@ -4,6 +4,7 @@ import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireSensitive, requireStudyUser } from "./auth.js";
 import { toStudyResponse, type StudyRow } from "../shared/studies.js";
+import { forgetStudyLinks } from "../shared/links.js";
 
 export function study(server: Server): Hono<Env> {
   const { db } = server;
@@ -21,17 +22,19 @@ export function study(server: Server): Hono<Env> {
     const row = await one<StudyRow>(
       db,
       `UPDATE studies SET name = $1, archived = $2, keep_sessions_open = COALESCE($3, keep_sessions_open),
-         redirect_urls = COALESCE($5::jsonb, redirect_urls) WHERE id = $4 RETURNING *`,
+         redirect_urls = COALESCE($5::jsonb, redirect_urls), sign_in = COALESCE($6, sign_in) WHERE id = $4 RETURNING *`,
       [
         parsed.data.name,
         parsed.data.archived ?? false,
         parsed.data.keepSessionsOpen ?? null,
         c.get("studyId"),
         parsed.data.redirectUrls ? JSON.stringify(parsed.data.redirectUrls) : null,
+        parsed.data.signIn ?? null,
       ],
     );
-    // The runtime reads whether sessions stay open, and the redirect URLs, with the deployment.
+    // The runtime reads whether sessions stay open, sign-in and the redirect URLs with the deployment.
     await server.deployments.refresh(c.get("studyId"));
+    forgetStudyLinks(c.get("studyId"));
     return c.json(toStudyResponse(row!));
   });
 

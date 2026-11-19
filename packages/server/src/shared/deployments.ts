@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { CLIENT_VERSION } from "../version.js";
 import {
+  type SignIn,
   loopTitle,
   unitLoops,
   DesignItemsSchema,
@@ -183,9 +184,9 @@ async function buildSpec(
   codebook: DesignVersionRow,
   meta: Pick<DeploymentSpec, "version" | "active" | "annotationEpoch" | "liveUnits">,
 ): Promise<DeploymentSpec> {
-  const study = await one<{ keep_sessions_open: boolean; redirect_urls: Record<string, string> }>(
+  const study = await one<{ keep_sessions_open: boolean; redirect_urls: Record<string, string>; sign_in: SignIn }>(
     sql,
-    "SELECT keep_sessions_open, redirect_urls FROM studies WHERE id = $1",
+    "SELECT keep_sessions_open, redirect_urls, sign_in FROM studies WHERE id = $1",
     [studyId],
   );
   return {
@@ -193,6 +194,7 @@ async function buildSpec(
     ...meta,
     keepSessionsOpen: study?.keep_sessions_open ?? false,
     redirectUrls: study?.redirect_urls ?? {},
+    signIn: study?.sign_in ?? "off",
     // The runtime works on the items with the session first
     design: { ...toDesignVersion(codebook), items: designVersionItems(codebook) },
     sets: await runtimeSets(sql, studyId, meta.liveUnits),

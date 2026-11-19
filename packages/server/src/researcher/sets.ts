@@ -1,25 +1,19 @@
 import { Hono } from "hono";
-import { DesignItemsSchema, SetGroupWriteSchema, branchGroups, setParameters, unitLoops, type DesignItem } from "@annotinder/contracts";
+import { SetGroupWriteSchema, designSetColumns } from "@annotinder/contracts";
 import type { Sql } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { designVersionItems } from "../shared/designVersions.js";
 import { requireStudyUser } from "./auth.js";
 import { deleteSetGroup, listSetGroups, putSetGroup } from "../shared/sets.js";
 
-/** Whether the deployed or latest codebook uses a group (a loop's set, or a link or URL parameter's values). */
+/** Whether the deployed or latest design selects units by a set column (`designSetColumns`). */
 async function groupInUse(sql: Sql, studyId: number, group: string): Promise<boolean> {
   const rows = await sql.query<{ items: unknown; session: unknown }>(
     `SELECT items, session FROM design_versions WHERE study_id = $1 AND (id = (SELECT design_version_id FROM deployments WHERE study_id = $1)
        OR id = (SELECT max(id) FROM design_versions WHERE study_id = $1))`,
     [studyId],
   );
-  return rows.some((row) => {
-    const parsed = DesignItemsSchema.safeParse(designVersionItems(row));
-    if (!parsed.success) return false;
-    const items = parsed.data as DesignItem[];
-    const loops = unitLoops(items).some(({ loop }) => loop.units.some((b) => branchGroups(b).includes(group)));
-    return loops || [...setParameters(items).values()].includes(group);
-  });
+  return rows.some((row) => designSetColumns(designVersionItems(row)).includes(group));
 }
 
 // Set groups (docs/plans/sets-and-session-parameters.md §1): the draft's.
@@ -44,7 +38,7 @@ export function sets(server: Server): Hono<Env> {
   app.delete("/study/:studyId/sets/:group", requireStudyUser(server, "WRITE"), async (c) => {
     const studyId = c.get("studyId");
     const group = c.req.param("group")!;
-    if (await groupInUse(db, studyId, group)) return c.json({ error: `The design uses group '${group}': change it first` }, 409);
+    if (await groupInUse(db, studyId, group)) return c.json({ error: `The design uses set column '${group}': change it first` }, 409);
     const deleted = await db.transaction((tx) => deleteSetGroup(tx, studyId, group));
     if (!deleted) return c.json({ error: "Group not found" }, 404);
     return c.body(null, 204);

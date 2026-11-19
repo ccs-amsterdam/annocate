@@ -1,5 +1,6 @@
 import { listSetGroups } from "./sets.js";
-import type { CoderProgress, DeletionRequest, StudyOverview, SessionEnd } from "@annotinder/contracts";
+import { loopShareColumns, type CoderProgress, type DeletionRequest, type StudyOverview, type SessionEnd } from "@annotinder/contracts";
+import { designVersionItems } from "./designVersions.js";
 import { one, type Sql } from "../db.js";
 import { getDeployment, loopVariables } from "./deployments.js";
 import { coderValues } from "./coders.js";
@@ -43,7 +44,7 @@ export async function listCoderProgress(sql: Sql, studyId: number): Promise<Code
     ended: SessionEnd | null;
     deletionRequest: DeletionRequest | null;
     session: Record<string, string>;
-    assignments: Record<string, { set?: string }>;
+    assignments: Record<string, unknown>;
   }>(
     `SELECT c.id, c.email, c.participant_id AS "participantId", c.link_id AS "linkId", c.created, i.label AS "linkLabel",
        c.ended, c.deletion_request AS "deletionRequest", c.session, c.assignments
@@ -62,35 +63,35 @@ export async function listCoderProgress(sql: Sql, studyId: number): Promise<Code
   );
   const finished = await finishedPerLoop(sql, studyId);
   const values = await coderValues(sql, studyId);
-  // Special sets as deployed, per group: their size, and per coder the units of them finished. A coder
-  // counts the special sets of the groups they were routed to (their assignments are `group/set`).
+  // Special units as deployed (docs/plans/unit-assignment.md): practice and gold units of any set
+  // column are everyone's; the overlap is that of the columns the coder's session values select
+  // units by. Counted for coders who were routed in a loop.
   const kinds = { _overlap: "overlap", _gold: "gold", _practice: "practice" } as const;
   type Kind = keyof typeof kinds;
-  const sizes = await sql.query<{ grp: string; name: Kind; total: number }>(
-    `SELECT s.grp, s.name, COUNT(m.unit_id)::int AS total FROM unit_sets s LEFT JOIN unit_set_members m ON m.set_id = s.id
-     WHERE s.study_id = $1 AND s.live AND s.name IN ('_overlap', '_gold', '_practice') GROUP BY s.grp, s.name`,
+  const members = await sql.query<{ grp: string; name: Kind; unitId: number }>(
+    `SELECT s.grp, s.name, m.unit_id AS "unitId" FROM unit_sets s JOIN unit_set_members m ON m.set_id = s.id
+     WHERE s.study_id = $1 AND s.live AND s.name IN ('_overlap', '_gold', '_practice')`,
     [studyId],
   );
-  const doneRows = await sql.query<{ coderId: number; grp: string; name: Kind; done: number }>(
-    `SELECT c.coder_id AS "coderId", s.grp, s.name, COUNT(DISTINCT c.unit_id)::int AS done FROM unit_codings c
-       JOIN unit_set_members m ON m.unit_id = c.unit_id JOIN unit_sets s ON s.id = m.set_id
-     WHERE c.study_id = $1 AND s.live AND s.name IN ('_overlap', '_gold', '_practice') GROUP BY c.coder_id, s.grp, s.name`,
-    [studyId],
+  const doneRows = await sql.query<{ coderId: number; unitId: number }>(
+    `SELECT DISTINCT coder_id AS "coderId", unit_id AS "unitId" FROM unit_codings WHERE study_id = $1 AND unit_id = ANY($2)`,
+    [studyId, [...new Set(members.map((m) => m.unitId))]],
   );
-  const special = (coderId: number, assignments: Record<string, { set?: string }>) => {
-    const groups = new Set(
-      Object.values(assignments ?? {})
-        .map((a) => a?.set ?? "")
-        .filter((set) => set.includes("/"))
-        .map((set) => set.slice(0, set.indexOf("/"))),
-    );
+  const done = new Map<number, Set<number>>();
+  for (const r of doneRows) done.set(r.coderId, (done.get(r.coderId) ?? new Set()).add(r.unitId));
+  const deployment = await getDeployment(sql, studyId);
+  const deployed = deployment
+    ? await one<{ items: unknown; session: unknown }>(sql, "SELECT items, session FROM design_versions WHERE id = $1", [deployment.designVersionId])
+    : null;
+  const shareColumns = deployed ? [...new Map([...loopShareColumns(designVersionItems(deployed)).values()].flat().map((c) => [c.name, c.column]))] : [];
+  const special = (coderId: number, session: Record<string, string>, assignments: Record<string, unknown>) => {
     const out: CoderProgress["special"] = {};
-    for (const size of sizes) {
-      if (!groups.has(size.grp)) continue;
-      const done = doneRows.find((d) => d.coderId === coderId && d.grp === size.grp && d.name === size.name)?.done ?? 0;
-      const kind = kinds[size.name];
-      const sum = out[kind] ?? { done: 0, total: 0 };
-      out[kind] = { done: sum.done + done, total: sum.total + size.total };
+    if (Object.keys(assignments ?? {}).length === 0) return out;
+    const overlapColumns = new Set(shareColumns.filter(([name]) => session?.[name] !== undefined).map(([, column]) => column));
+    for (const [name, kind] of Object.entries(kinds) as [Kind, (typeof kinds)[Kind]][]) {
+      const units = new Set(members.filter((m) => m.name === name && (name !== "_overlap" || overlapColumns.has(m.grp))).map((m) => m.unitId));
+      if (units.size === 0) continue;
+      out[kind] = { done: [...units].filter((id) => done.get(coderId)?.has(id)).length, total: units.size };
     }
     return out;
   };
@@ -105,7 +106,7 @@ export async function listCoderProgress(sql: Sql, studyId: number): Promise<Code
     lastActive: activity.get(c.id)?.lastActive ?? null,
     answers: activity.get(c.id)?.answers ?? 0,
     finished: Object.fromEntries([...finished].map(([loop, perCoder]) => [loop, perCoder.get(c.id) ?? 0])),
-    special: special(c.id, c.assignments),
+    special: special(c.id, c.session, c.assignments),
     variables: values.get(c.id) ?? {},
     ended: c.ended,
     deletionRequest: c.deletionRequest,

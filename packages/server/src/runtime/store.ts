@@ -1,12 +1,12 @@
 import type { DeviceDetails } from "../shared/devices.js";
-import type { DeletionRequest, SessionEnd, VariableValue } from "@annotinder/contracts";
+import { SET_ACTIVITY_MS, type DeletionRequest, type SessionEnd, type VariableValue } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { coderAnswers, putCoderValues, toCoder, type CoderRow } from "../shared/coders.js";
 import { getDeploymentSpec, getPreviewSpec } from "../shared/deployments.js";
 import { listFinished } from "../shared/finished.js";
 import { HttpError } from "../shared/http.js";
 import type { LinkRow } from "../shared/links.js";
-import { sessionValues } from "./sessionValues.js";
+import { sessionValues, type SessionDraw } from "./sessionValues.js";
 import { getSettings } from "../shared/accounts.js";
 import { checkAnswerSize, checkNewCoder, studyLimits } from "../shared/limits.js";
 import { lockUnits, servedUnits } from "../shared/units.js";
@@ -53,6 +53,8 @@ export interface Store {
   addDevice(coderId: number, coderKey: string, device: DeviceDetails): Promise<number | null>;
   /** Stores where the coder is routed in a loop: one branch's routing (`CoderAssignments`), next to the others. */
   routeCoder(coderId: number, branch: string, assignment: CoderAssignments[string]): Promise<void>;
+  /** Adds a value to the coder's session values (a random condition that selects units, once assigned). */
+  setSessionValue(coderId: number, name: string, value: string): Promise<void>;
   /** Stores how the session ended (null: reopened). */
   setEnded(coderId: number, ended: SessionEnd | null): Promise<void>;
   /** A "continue on another device" link (only its hash is stored). */
@@ -210,6 +212,15 @@ export class DbStore implements Store {
       [branch, JSON.stringify(assignment), this.studyId, coderId],
     );
     if (updated.length === 0) throw new HttpError(404, "Coder not found");
+  }
+
+  async setSessionValue(coderId: number, name: string, value: string): Promise<void> {
+    await this.sql.query("UPDATE coders SET session = session || jsonb_build_object($1::text, $2::text) WHERE study_id = $3 AND id = $4", [
+      name,
+      value,
+      this.studyId,
+      coderId,
+    ]);
   }
 
   async setEnded(coderId: number, ended: SessionEnd | null): Promise<void> {
@@ -476,19 +487,13 @@ async function findOrCreateCoder(
   if (!request.linkSecret) throw new HttpError(401, "Unknown coder; a valid link is needed");
   const link = await one<LinkRow>(sql, "SELECT * FROM links WHERE secret = $1", [request.linkSecret]);
   if (!link || link.study_id !== studyId) throw new HttpError(401, "Invalid link secret");
-  // An email list means only those people: they log in to show who they are.
-  const emails = link.emails?.length ? link.emails.map((e) => e.toLowerCase()) : null;
-  if ((link.auth === "required" || emails) && !login) throw new HttpError(401, "This link requires login", "auth_required");
-  if (emails && login && !emails.includes(login.email.toLowerCase())) {
-    throw new HttpError(403, "This link is for other email addresses", "email_not_allowed");
-  }
   // Revoked or retired: no new sessions, also not for a known participant (existing sessions go on).
   if (link.revoked_at !== null) throw new HttpError(401, "This link has been revoked");
   if (link.retired_at !== null) throw new HttpError(403, "This link is no longer active", "link_inactive");
   // A participant id is a label, never a credential: a new device for a
   // known participant gets a *new* session, and only when asked for.
-  const { participantId, session } = sessionValues(
-    request.sessionRules ?? { item: null, setsOf: () => [], emailGroups: [] },
+  const { participantId, session, draws } = sessionValues(
+    request.sessionRules ?? { item: null, setsOf: () => [], signIn: "off" },
     { params: link.params, participantId: link.participant_id },
     request.urlParams ?? {},
     login?.email ?? null,
@@ -510,6 +515,8 @@ async function findOrCreateCoder(
     );
     if (used.length === 0) throw new HttpError(401, "This link has been used up");
   }
+  // Conditions drawn at the start: balanced ones under a lock, counting the sessions that count (`drawCondition`)
+  for (const draw of draws) session[draw.name] = await drawCondition(sql, studyId, draw);
   const created = await one<CoderRow>(
     sql,
     "INSERT INTO coders (study_id, email, participant_id, link_id, session) VALUES ($1, $2, $3, $4, $5) RETURNING *",
@@ -517,6 +524,30 @@ async function findOrCreateCoder(
   );
   // A new session on a device that had one (`newSession`): the device moves to the new one.
   return { row: created!, deviceId: await addDevice(sql, studyId, created!.id, coderKey, device) };
+}
+
+/**
+ * A condition's value for a new session (`assign: "random"`): drawn at
+ * random, or balanced: the value the fewest sessions have (the first of
+ * those), under a lock (released with the transaction that creates the
+ * session). Sessions that completed count, and those that haven't ended
+ * and started or finished a unit in the last 24 hours (contracts
+ * SET_ACTIVITY_MS): values of sessions that dropped out are handed out again.
+ */
+async function drawCondition(sql: Sql, studyId: number, draw: SessionDraw): Promise<string> {
+  if (draw.values.length === 0) throw new HttpError(409, `Condition '${draw.name}' has no values yet`);
+  if (draw.draw === "random") return draw.values[Math.floor(Math.random() * draw.values.length)];
+  await sql.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`${studyId}/session/${draw.name}`]);
+  const since = new Date(Date.now() - SET_ACTIVITY_MS);
+  const rows = await sql.query<{ value: string; n: number }>(
+    `SELECT c.session->>$2::text AS value, count(*)::int AS n FROM coders c
+     WHERE c.study_id = $1 AND (c.session->>$2::text) IS NOT NULL AND (c.ended->>'outcome' = 'complete' OR (c.ended IS NULL AND (c.created > $3
+       OR EXISTS (SELECT 1 FROM unit_codings u WHERE u.study_id = $1 AND u.coder_id = c.id AND u.updated > $3))))
+     GROUP BY 1`,
+    [studyId, draw.name, since],
+  );
+  const counts = new Map(rows.map((r) => [r.value, r.n]));
+  return draw.values.reduce((best, v) => ((counts.get(v) ?? 0) < (counts.get(best) ?? 0) ? v : best));
 }
 
 /** Per database and key, the last call in line (`inTurn`). */

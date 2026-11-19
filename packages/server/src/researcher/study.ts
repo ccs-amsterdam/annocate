@@ -35,8 +35,8 @@ export function studies(server: Server): Hono<Env> {
     const row = await db.transaction(async (tx) => {
       const study = await one<StudyRow>(
         tx,
-        "INSERT INTO studies (name, archived, owner_id, keep_sessions_open) VALUES ($1, $2, $3, $4) RETURNING *",
-        [parsed.data.name, parsed.data.archived ?? false, ownerId, parsed.data.keepSessionsOpen ?? false],
+        "INSERT INTO studies (name, archived, owner_id, keep_sessions_open, sign_in) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+        [parsed.data.name, parsed.data.archived ?? false, ownerId, parsed.data.keepSessionsOpen ?? false, parsed.data.signIn ?? "off"],
       );
       // Development headers keep the bootstrap rule instead (a study without user roles is open).
       if (!researcher.devRole)

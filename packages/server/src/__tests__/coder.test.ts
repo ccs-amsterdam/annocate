@@ -245,7 +245,7 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
         {
           type: "unit_loop",
           label: "main_loop",
-          units: [{ mode: "all" }],
+          units: [{}],
           layout: { template: "" },
           children: [sentimentQuestion],
           ...loop,
@@ -281,7 +281,7 @@ async function draftUnit(id: number): Promise<{ externalId: string; data: UnitDa
   return row;
 }
 
-/** Adds a set to a group (group `g` by default), replacing a set of that name. Returns its unit ids. */
+/** Adds a set to a set column (`g` by default), replacing a set of that name. Returns its unit ids. */
 async function createSet(name: string, externalIds: string[], group = "g") {
   const ids = await Promise.all(externalIds.map(async (e) => (await unitByExternalId(e)).id));
   const groups = (await (await server.request("/api/study/1/sets", { headers: adminHeaders })).json()) as { name: string; sets: { name: string }[] }[];
@@ -306,10 +306,10 @@ let extraLinks = 0;
  * them on a link). Made directly: links come from the deployed codebook,
  * so a later deploy retires it.
  */
-async function link(settings: { auth?: string; emails?: string[]; participantId?: string; maxUses?: number } = {}) {
+async function link(settings: { participantId?: string; maxUses?: number } = {}) {
   const secret = `extra-${++extraLinks}`;
   const [{ id }] = await db.query<{ id: number }>(
-    "INSERT INTO links (study_id, label, auth, secret, link_key) VALUES (1, 'x', 'none', $1, $2) RETURNING id",
+    "INSERT INTO links (study_id, label, secret, link_key) VALUES (1, 'x', $1, $2) RETURNING id",
     [secret, JSON.stringify(["test", extraLinks])],
   );
   const res = await server.request(`/api/study/1/links/${id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ label: "x", ...settings }) });
@@ -317,7 +317,13 @@ async function link(settings: { auth?: string; emails?: string[]; participantId?
   return secret;
 }
 
-/** The coder reached an `auto` question: its assigned value. */
+/** Sets whether the study's coders sign in (contracts StudyWrite `signIn`). */
+async function setSignIn(signIn: "off" | "optional" | "required") {
+  const res = await server.request("/api/study/1", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ name: "Demo study", signIn }) });
+  expect(res.status).toBe(200);
+}
+
+/** The coder reached a random condition: its assigned value. */
 async function reach(c: ReturnType<typeof coder>, name: string) {
   const res = await c.call(`/variables/condition/${name}`, { method: "POST" });
   expect(res.status).toBe(200);
@@ -331,7 +337,7 @@ describe("shared queues", () => {
   it("pick up a redeploy and code each unit until coders agree", async () => {
     await coder("warmup").session(); // the server has the old version loaded
     await redeploy({
-      units: [{ mode: "shared", until: { agree: 2, on: "sentiment" }, maxCoders: 3, priority: "saturate" }],
+      units: [{ criteria: { until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 }, priority: "saturate" } }],
     });
 
     const answers: Record<string, string> = { a: "positive", b: "negative", c: "positive" };
@@ -352,12 +358,12 @@ describe("shared queues", () => {
     const status = (await (await server.request("/api/study/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
     expect(status.version).toBe(2);
     expect(status.sources).toEqual([
-      expect.objectContaining({ loop: "main_loop", set: "__all__", mode: "dynamic", completeUnits: 1, leasedUnits: 1, codings: 3, coders: 4 }),
+      expect.objectContaining({ loop: "main_loop", set: "all", mode: "dynamic", completeUnits: 1, leasedUnits: 1, codings: 3, coders: 4 }),
     ]);
   });
 
   it("refuse annotations for units that were not handed to the coder", async () => {
-    await redeploy({ units: [{ mode: "shared", until: { coders: 1 }, maxCoders: 1 }] });
+    await redeploy({ units: [{ criteria: { codersPerUnit: { min: 1, max: 1 } } }] });
     const a = coder("a");
     const b = coder("b");
     const unitA = await a.next();
@@ -392,7 +398,7 @@ describe("shared queues under concurrency", () => {
         },
       });
     server = createApp(db, { secret: "test-secret", wrapStore: racing, devMode: true });
-    await redeploy({ units: [{ mode: "shared", until: { coders: 1 }, maxCoders: 1 }] });
+    await redeploy({ units: [{ criteria: { codersPerUnit: { min: 1, max: 1 } } }] });
     const a = coder("a");
     const unitA = (await a.next())!;
     const { coderId } = await a.session();
@@ -403,144 +409,102 @@ describe("shared queues under concurrency", () => {
   });
 });
 
-describe("assigned sets", () => {
-  const assign = (from: object, overlap: object = { placement: "disabled" }) => ({ units: [{ mode: "assign", group: "g", from, overlap }] });
+describe("coders", () => {
+  const coders = sessionItem({ coders: { column: "coder" } });
+  /** The units a coder gets, finishing each. */
+  const order = async (c: ReturnType<typeof coder>, loop = "1") => {
+    const seen: string[] = [];
+    for (let u = await c.next(loop); u; u = await c.next(loop)) {
+      seen.push(u.externalId);
+      await c.submit(u.id, sentiment("positive"));
+    }
+    return seen;
+  };
 
-  it("draws the set with the fewest coders, counting dropouts only for 24 hours", async () => {
-    let clock = Date.parse("2026-11-01T12:00:00Z");
-    server = restart({ now: () => clock });
-    await createSet("s1", ["unit-1"]);
-    await createSet("s2", ["unit-2"]);
-    await redeploy(assign({ draw: "balanced" }));
-
-    const a = coder("a");
-    const unitA = await a.next();
-    expect(unitA!.externalId).toBe("unit-1");
-    expect((await a.submit(unitA!.id, sentiment("positive"))).status).toBe(200); // a finished s1
-    expect((await coder("b").next())!.externalId).toBe("unit-2"); // b starts s2, and stops
-
-    // An hour later both sets have a coder: the first set again.
-    clock += 60 * 60 * 1000;
-    expect((await coder("c").next())!.externalId).toBe("unit-1");
-    // A day later b counts no longer, but a (who finished) and c (still active) do.
-    clock += 25 * 60 * 60 * 1000;
-    expect((await coder("d").next())!.externalId).toBe("unit-2");
-  });
-
-  it("keeps a coder's set when the loop is moved or relabelled, not when how sets are assigned changes", async () => {
-    await createSet("s1", ["unit-1"]);
-    await createSet("s2", ["unit-2"]);
-    await redeploy(assign({ draw: "balanced" }));
-    expect((await coder("a").next())!.externalId).toBe("unit-1");
-    expect((await coder("b").next())!.externalId).toBe("unit-2");
-
-    // Another loop in front: this one is loop 2 now, and has another label. b still has s2.
-    const warmUp = { type: "question", name: "warm_up", variable: { type: "confirm", question: "?" } };
-    const before = { type: "unit_loop", label: "warm-up", layout: { template: "" }, units: [{ mode: "all", set: { group: "g", set: "s1" } }], children: [warmUp] };
-    await redeploy({ label: "renamed", ...assign({ draw: "balanced" }) }, [before]);
-    expect((await coder("b").next("2"))!.externalId).toBe("unit-2");
-
-    // Drawn at random instead: a new routing (with random() = 0, the first set).
-    server = restart({ random: () => 0 });
-    await redeploy(assign({ draw: "random" }));
-    expect((await coder("b").next())!.externalId).toBe("unit-1");
-    // A set that no longer exists: routed again.
-    await createSet("s1", ["unit-3"], "h");
-    await server.request("/api/study/1/sets/g", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ sets: [{ name: "s2", unitIds: [(await unitByExternalId("unit-2")).id] }] }) });
-    await deployDrafts();
-    expect((await coder("b").next())!.externalId).toBe("unit-2");
-  });
-
-  it("hands out the overlap first, last or spread, at most `max` of them, besides the coder's own units", async () => {
-    await createSet("s1", ["unit-1", "unit-2"]);
-    await createSet("_overlap", ["unit-2", "unit-3"]);
-    const order = async (name: string) => {
-      const c = coder(name);
-      const seen: string[] = [];
-      for (let u = await c.next(); u; u = await c.next()) {
-        seen.push(u.externalId);
-        await c.submit(u.id, sentiment("positive"));
-      }
-      return seen;
-    };
-    await redeploy(assign({ draw: "balanced" }, { placement: "first", max: 1 }));
-    // unit-2 is overlap, not own: once, as overlap; only the first overlap unit
-    expect(await order("first")).toEqual(["unit-2", "unit-1"]);
-    await redeploy(assign({ draw: "random" }, { placement: "last" }));
-    expect(await order("last")).toEqual(["unit-1", "unit-2", "unit-3"]);
-    // Disabled: the set as it is (the _overlap set plays no part)
-    await redeploy(assign({ draw: "random" }, { placement: "disabled" }));
-    expect(await order("none")).toEqual(["unit-1", "unit-2"]);
-  });
-
-  it("takes the set from a link parameter: one link per set, retired when its set goes", async () => {
-    await createSet("s1", ["unit-1"]);
-    await createSet("s2", ["unit-2"]);
-    const deployed = await redeploy(assign({ session: "part" }), [sessionItem({ params: [{ name: "part", kind: "link", values: { sets: "g" } }] })]);
+  it("by link: a link per coder, who gets the units whose cell holds them, and the column's overlap", async () => {
+    await createSet("anna", ["unit-1"], "coder");
+    await createSet("bob", ["unit-2", "unit-1"], "coder"); // unit-1: anna;bob
+    await createSet("_overlap", ["unit-3"], "coder");
+    const deployed = await redeploy({ units: [{ overlap: { placement: "first" } }] }, [coders]);
     expect(deployed.links).toBe(2);
-    const bySet = Object.fromEntries((await links()).filter((l) => !l.retiredAt).map((l) => [l.params.part, l.secret]));
-    expect(Object.keys(bySet).sort()).toEqual(["s1", "s2"]);
-    const c = coder("two", bySet.s2);
-    expect((await c.session()).session).toEqual({ part: "s2" });
-    expect((await c.next())!.externalId).toBe("unit-2");
+    const byCoder = Object.fromEntries((await links()).filter((l) => !l.retiredAt).map((l) => [l.params.coder, l.secret]));
+    expect(Object.keys(byCoder).sort()).toEqual(["anna", "bob"]);
+    const anna = coder("anna", byCoder.anna);
+    expect((await anna.session()).session).toEqual({ coder: "anna" });
+    expect(await order(anna)).toEqual(["unit-3", "unit-1"]);
+    expect(await order(coder("bob", byCoder.bob))).toEqual(["unit-3", "unit-1", "unit-2"]);
+    // A link carries the coder: another session of anna gets anna's units
+    expect(await order(coder("anna-2", byCoder.anna))).toEqual(["unit-3", "unit-1"]);
 
-    // A third set: a third link once the sets are deployed. Removing s1 retires its link.
-    await createSet("s3", ["unit-3"]);
-    expect((await links()).filter((l) => !l.retiredAt)).toHaveLength(2);
+    // A new coder: a new link once deployed. Removing bob retires his link; his session goes on.
+    await createSet("carol", ["unit-3"], "coder");
     expect((await deployDrafts()).links).toBe(3);
-    expect((await links()).filter((l) => !l.retiredAt)).toHaveLength(3);
-    await server.request("/api/study/1/sets/g", {
+    const ids = async (names: string[]) => Promise.all(names.map(async (n) => (await unitByExternalId(n)).id));
+    await server.request("/api/study/1/sets/coder", {
       method: "PUT",
       headers: adminHeaders,
-      body: JSON.stringify({ sets: [{ name: "s2", unitIds: [(await unitByExternalId("unit-2")).id] }, { name: "s3", unitIds: [(await unitByExternalId("unit-3")).id] }] }),
+      body: JSON.stringify({ sets: [{ name: "anna", unitIds: await ids(["unit-1"]) }, { name: "carol", unitIds: await ids(["unit-3"]) }] }),
     });
     await deployDrafts();
-    const retired = await send("late", "/session", {}, { "x-link-secret": bySet.s1 });
+    const retired = await send("late", "/session", {}, { "x-link-secret": byCoder.bob });
     expect(retired.status).toBe(403);
     expect(await retired.json()).toMatchObject({ code: "link_inactive" });
-    // The demo link (no link parameters before) is retired too: the codebook makes only set links now
+    // The demo link (no coders before) is retired too: the design makes a link per coder now
     expect((await send("demo", "/session", {}, { "x-link-secret": "demo-secret" })).status).toBe(403);
-    // A group the codebook uses can't be deleted
-    expect((await server.request("/api/study/1/sets/g", { method: "DELETE", headers: adminHeaders })).status).toBe(409);
+    // A set column the design uses can't be deleted
+    expect((await server.request("/api/study/1/sets/coder", { method: "DELETE", headers: adminHeaders })).status).toBe(409);
   });
 
-  it("takes the set from the login's email: only those emails may start", async () => {
-    await createSet("a@example.org", ["unit-1"]);
-    await createSet("b@example.org", ["unit-2"]);
-    await redeploy(assign({ session: "email" }));
-    expect(await (await send("anon", "/session", {}, { "x-link-secret": "demo-secret" })).json()).toMatchObject({ code: "auth_required" });
+  it("by email address: one link, coders sign in, only those addresses", async () => {
+    await createSet("a@example.org", ["unit-1"], "coder");
+    await createSet("b@example.org", ["unit-2"], "coder");
+    expect((await redeploy({}, [coders])).links).toBe(1);
+    const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
+    expect(await (await send("anon", "/session", {}, { "x-link-secret": secret })).json()).toMatchObject({ code: "auth_required" });
     const login = async (device: string, email: string) => {
       const user = await ensureUser(db, email);
       devices.set(device, { cookies: new Map([["annotinder_session", await createSession(db, user.id, CODER_LOGIN)]]), invite: null });
     };
     await login("stranger", "c@example.org");
-    expect(await (await send("stranger", "/session", {}, { "x-link-secret": "demo-secret" })).json()).toMatchObject({ code: "email_not_allowed" });
+    expect(await (await send("stranger", "/session", {}, { "x-link-secret": secret })).json()).toMatchObject({ code: "email_not_allowed" });
     await login("b", "B@example.org");
-    expect((await coder("b").next())!.externalId).toBe("unit-2");
+    const b = coder("b", secret);
+    expect((await b.session()).session).toEqual({ coder: "b@example.org" });
+    expect(await order(b)).toEqual(["unit-2"]);
   });
 
-  it("come with the next deploy, without a new codebook, as do new units", async () => {
-    await redeploy(assign({ draw: "balanced" }));
-    // No sets yet: no units, until they are deployed
-    expect(await coder("early").next()).toBeNull();
-    const set = await createSet("late", ["unit-2"]);
-    expect(await coder("early").next()).toBeNull();
+  it("can't mix email addresses and names, and the columns must be set columns", async () => {
+    await createSet("anna", ["unit-1"], "coder");
+    await createSet("b@example.org", ["unit-2"], "coder");
+    const design = await server.request("/api/study/1/design", { method: "POST", headers: adminHeaders, body: JSON.stringify(splitDesignItems([coders, { type: "unit_loop", units: [{}], layout: { template: "" }, children: [sentimentQuestion] }])) });
+    const { id } = (await design.json()) as { id: number };
+    const deploy = await server.request("/api/study/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: id, units: true }) });
+    expect(deploy.status).toBe(400);
+    expect(await deploy.json()).toMatchObject({ code: "assignment_invalid", error: expect.stringContaining("partly email addresses") });
+    // A text field can't be a set column
+    expect((await server.request("/api/study/1/sets/text", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ sets: [] }) })).status).toBe(409);
+  });
+
+  it("no units yet: none, until the next deploy brings them, as it brings new units", async () => {
+    await createSet("anna", [], "coder");
+    await redeploy({}, [coders]);
+    const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
+    const anna = coder("anna", secret);
+    expect(await anna.next()).toBeNull();
+    const set = await createSet("anna", ["unit-2"], "coder");
+    expect(await anna.next()).toBeNull();
     const deployed = await deployDrafts();
-    expect((await coder("early").next())!.id).toBe(set[0]);
+    expect((await anna.next())!.id).toBe(set[0]);
     // A new version that changed the units, not the codebook
     const versions = (await (await server.request("/api/study/1/deployment/versions", { headers: adminHeaders })).json()) as { version: number; changes: unknown }[];
     expect(versions[0]).toMatchObject({ version: deployed.version, changes: { design: false, units: { added: 0, changed: 0, removed: 0, sets: true } } });
     // With the release (and commit) it ran on
     expect(versions[0]).toMatchObject({ client: { release: RELEASE, commit: expect.any(String) } });
 
-    // New units join "all units"
+    // Without coders: every unit; new units join with the next deploy
     await redeploy({});
     const c = coder("all");
-    const seen: string[] = [];
-    for (let u = await c.next(); u; u = await c.next()) {
-      seen.push(u.externalId);
-      await c.submit(u.id, sentiment("positive"));
-    }
+    await order(c);
     const { data: before } = await draftUnit((await unitByExternalId("unit-1")).id);
     const upload = await server.request("/api/study/1/units", {
       method: "POST",
@@ -556,6 +520,118 @@ describe("assigned sets", () => {
   });
 });
 
+describe("assigned conditions", () => {
+  it("per link: a link per value (and per coder); the session gets the units of both", async () => {
+    await createSet("anna", ["unit-1", "unit-2"], "coder");
+    await createSet("bob", ["unit-1", "unit-2"], "coder");
+    await createSet("control", ["unit-1"], "framing");
+    await createSet("experiment", ["unit-2"], "framing");
+    const session = sessionItem({ coders: { column: "coder" }, conditions: [{ name: "framing", values: ["control", "experiment"], assign: "link", units: "framing" }] });
+    expect((await redeploy({}, [session])).links).toBe(4);
+    const secret = (await links()).find((l) => l.params.coder === "bob" && l.params.framing === "experiment")!.secret;
+    const c = coder("bob", secret);
+    expect((await c.session()).session).toEqual({ coder: "bob", framing: "experiment" });
+    expect((await c.next())!.externalId).toBe("unit-2");
+  });
+
+  it("drawn at the start: one link, balanced over the sessions", async () => {
+    await createSet("a", ["unit-1"], "framing");
+    await createSet("b", ["unit-2"], "framing");
+    const session = sessionItem({ conditions: [{ name: "framing", values: "free", assign: "random", units: "framing" }] });
+    expect((await redeploy({}, [session])).links).toBe(1);
+    const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
+    const first = coder("x", secret);
+    expect((await first.session()).session).toEqual({ framing: "a" });
+    expect((await first.next())!.externalId).toBe("unit-1");
+    const second = coder("y", secret);
+    expect((await second.session()).session).toEqual({ framing: "b" });
+    expect((await second.next())!.externalId).toBe("unit-2");
+    // Balanced across a restart: counted in the database
+    server = restart();
+    expect((await coder("z", secret).session()).session).toEqual({ framing: "a" });
+  });
+
+  it("fixed values are checked against their column at deploy", async () => {
+    await createSet("a", ["unit-1"], "framing");
+    await createSet("c", ["unit-2"], "framing");
+    const session = sessionItem({ conditions: [{ name: "framing", values: ["a", "b"], assign: "random", units: "framing" }] });
+    const design = await server.request("/api/study/1/design", { method: "POST", headers: adminHeaders, body: JSON.stringify(splitDesignItems([session, { type: "unit_loop", units: [{}], layout: { template: "" }, children: [sentimentQuestion] }])) });
+    const { id } = (await design.json()) as { id: number };
+    const deploy = await server.request("/api/study/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: id, units: true }) });
+    expect(deploy.status).toBe(400);
+    expect(((await deploy.json()) as { error: string }).error).toContain("column 'framing' has no units for 'b'");
+  });
+});
+
+describe("random conditions linked to a column", () => {
+  const part = { type: "question", name: "part", variable: { type: "random_condition", draw: "balanced", units: "parts" } };
+
+  it("draw from the column's values when reached, or when a loop after them needs them", async () => {
+    await createSet("p1", ["unit-1"], "parts");
+    await createSet("p2", ["unit-2"], "parts");
+    await redeploy({}, [part]);
+    const a = coder("a");
+    expect(await reach(a, "part")).toEqual([{ value: "p1" }]);
+    expect((await a.session()).session).toMatchObject({ part: "p1" });
+    expect((await a.next())!.externalId).toBe("unit-1");
+    // b never reached it (e.g. it was hidden): assigned when the loop needs it
+    const b = coder("b");
+    expect((await b.next())!.externalId).toBe("unit-2");
+    expect((await b.session()).variables.part).toMatchObject({ values: [{ value: "p2" }] });
+  });
+
+  it("don't select the units of loops before them", async () => {
+    await createSet("p1", ["unit-1"], "parts");
+    const loopBefore = { type: "unit_loop", label: "before", units: [{}], layout: { template: "" }, children: [{ type: "question", name: "other", variable: { type: "confirm", question: "?" } }] };
+    await redeploy({}, [loopBefore, part]);
+    const a = coder("a");
+    const first = (await a.batch(10, "1")).map((u) => u.externalId);
+    expect(first.length).toBeGreaterThan(1);
+    expect((await a.batch(10, "2")).map((u) => u.externalId)).toEqual(["unit-1"]);
+  });
+});
+
+describe("loop filters and the overlap", () => {
+  const coders = sessionItem({ coders: { column: "g" } });
+  const order = async (name: string) => {
+    const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
+    const c = coder(name, secret);
+    const seen: string[] = [];
+    for (let u = await c.next(); u; u = await c.next()) {
+      seen.push(u.externalId);
+      await c.submit(u.id, sentiment("positive"));
+    }
+    return seen;
+  };
+
+  it("hands out the overlap first, last or spread, at most `max` of them, besides the coder's own units", async () => {
+    await createSet("s1", ["unit-1", "unit-2"]);
+    await createSet("_overlap", ["unit-2", "unit-3"]);
+    await redeploy({ units: [{ overlap: { placement: "first", max: 1 } }] }, [coders]);
+    // unit-2 is overlap, not own: once, as overlap; only the first overlap unit
+    expect(await order("first")).toEqual(["unit-2", "unit-1"]);
+    await redeploy({ units: [{ overlap: { placement: "last" } }] }, [coders]);
+    expect(await order("last")).toEqual(["unit-1", "unit-2", "unit-3"]);
+    // Disabled: no overlap units at all
+    await redeploy({ units: [{ overlap: { placement: "disabled" } }] }, [coders]);
+    expect(await order("none")).toEqual(["unit-1"]);
+    // No overlap settings: the overlap units are among the coder's own
+    await redeploy({ units: [{}] }, [coders]);
+    expect(await order("plain")).toEqual(["unit-1", "unit-2", "unit-3"]);
+  });
+
+  it("filter the session's units by a set column: only or except some values", async () => {
+    await createSet("pre", ["unit-1"], "phase");
+    await createSet("post", ["unit-2", "unit-3"], "phase");
+    await redeploy({ units: [{ filter: { column: "phase", only: ["post"] } }] });
+    expect(await order("only")).toEqual(["unit-2", "unit-3"]);
+    await redeploy({ units: [{ filter: { column: "phase", except: ["post"] } }] });
+    const all = await order("except");
+    expect(all).toContain("unit-1");
+    expect(all).not.toContain("unit-2");
+  });
+});
+
 describe("routing by branch", () => {
   it("keeps routing sticky and refuses branches that don't exist", async () => {
     await createSet("s1", ["unit-1"]);
@@ -564,8 +640,8 @@ describe("routing by branch", () => {
     await redeploy(
       {
         units: [
-          { when: { script: `$var.condition.is("s1")` }, mode: "all", set: { group: "g", set: "s1" } },
-          { when: { script: `$var.condition.is("s2")` }, mode: "all", set: { group: "g", set: "s2" } },
+          { when: { script: `$var.condition.is("s1")` }, filter: { column: "g", only: ["s1"] } },
+          { when: { script: `$var.condition.is("s2")` }, filter: { column: "g", only: ["s2"] } },
         ],
       },
       [condition],
@@ -593,24 +669,33 @@ describe("routing by branch", () => {
     expect((await again.next("1", 1))!.id).toBe(first!.id);
     const { coderId } = await again.session();
     const [stored] = await db.query<{ assignments: unknown }>("SELECT assignments FROM coders WHERE id = $1", [coderId]);
-    expect(Object.values(stored.assignments as object)).toEqual([{ set: "g/s1", at: expect.any(Number) }]);
+    expect(Object.values(stored.assignments as object)).toEqual([{ set: "all | g only s1", at: expect.any(Number) }]);
 
     // balanced across a restart: the counts are in the database
     expect(await reach(coder("dave"), "condition")).toEqual([{ value: "s2" }]);
   });
 
+  it("keeps a coder's branch when the loop is moved or relabelled, not when what it hands out changes", async () => {
+    await createSet("s1", ["unit-1"]);
+    await createSet("s2", ["unit-2"]);
+    const branches = (s2: object) => ({ units: [{ when: { script: "false" }, filter: { column: "g", only: ["s1"] } }, s2] });
+    await redeploy(branches({ filter: { column: "g", only: ["s2"] } }));
+    const b = coder("b");
+    expect((await b.next("1", 1))!.externalId).toBe("unit-2");
+    // Another loop in front: this one is loop 2 now, and has another label. b keeps branch 2.
+    const warmUp = { type: "question", name: "warm_up", variable: { type: "confirm", question: "?" } };
+    const before = { type: "unit_loop", label: "warm-up", layout: { template: "" }, units: [{ filter: { column: "g", only: ["s1"] } }], children: [warmUp] };
+    await redeploy({ label: "renamed", ...branches({ filter: { column: "g", only: ["s2"] } }) }, [before]);
+    expect((await b.next("2"))!.externalId).toBe("unit-2");
+    // Another filter: routed again (the first branch, as chosen now)
+    await redeploy(branches({ filter: { column: "g", except: ["s1"] } }));
+    expect((await b.next("1", 0))!.externalId).toBe("unit-1");
+  });
+
   it("routes by the branch the client chose", async () => {
     const leaning = { type: "question", name: "leaning", variable: { type: "nominal", question: "?", options: [{ value: "left" }, { value: "right" }] } };
     await createSet("left_units", ["unit-1"]);
-    await redeploy(
-      {
-        units: [
-          { when: { script: `$var.leaning.is("left")` }, mode: "all", set: { group: "g", set: "left_units" } },
-          { mode: "all" },
-        ],
-      },
-      [leaning],
-    );
+    await redeploy({ units: [{ when: { script: `$var.leaning.is("left")` }, filter: { column: "g", only: ["left_units"] } }, {}] }, [leaning]);
     const lefty = coder("lefty");
     await lefty.call("/variables/coder", {
       method: "POST",
@@ -798,10 +883,7 @@ describe("practice and gold units", () => {
       {
         units: [
           {
-            mode: "assign",
-            group: "g",
-            from: { draw: "balanced" },
-            overlap: { placement: "disabled" },
+            filter: { column: "g", only: ["s1"] },
             practice: { placement: "first", questions: ["sentiment"] },
             gold: { placement: "last", questions: ["sentiment"], health: { start: 2, wrong: -1, end: "low_quality" } },
           },
@@ -1031,8 +1113,9 @@ describe("coder login", () => {
     return { status: res.status, body: (await res.json()) as SessionResponse & { code?: string } };
   };
 
-  it("a link that requires login: the email is linked once; another device finds the session by logging in", async () => {
-    const secret = await link({ auth: "required" });
+  it("a study that requires sign-in: the email is linked once; another device finds the session by logging in", async () => {
+    await setSignIn("required");
+    const secret = "demo-secret";
     expect(await session("anonymous", secret)).toMatchObject({ status: 401, body: { code: "auth_required" } });
 
     await loggedIn("phone", "a@example.org");
@@ -1055,17 +1138,9 @@ describe("coder login", () => {
     expect(coders.find((c) => c.id === phone.body.coderId)?.email).toBe("a@example.org");
   });
 
-  it("an email list: only those logins", async () => {
-    const secret = await link({ emails: ["b@example.org"] });
-    expect(await session("nobody", secret)).toMatchObject({ status: 401, body: { code: "auth_required" } });
-    await loggedIn("other", "a@example.org");
-    expect(await session("other", secret)).toMatchObject({ status: 403, body: { code: "email_not_allowed" } });
-    await loggedIn("invited", "b@example.org");
-    expect((await session("invited", secret)).status).toBe(200);
-  });
-
-  it("an optional login: links the email to the session started on the device; links without login ignore it", async () => {
-    const secret = await link({ auth: "optional" });
+  it("optional sign-in: links the email to the session started on the device; without sign-in it is ignored", async () => {
+    await setSignIn("optional");
+    const secret = "demo-secret";
     const before = await session("tablet", secret);
     expect(before.body.login).toBeNull();
     const user = await ensureUser(db, "c@example.org");
@@ -1082,7 +1157,8 @@ describe("coder login", () => {
     devices.get("phone")!.cookies.set("annotinder_session", await createSession(db, phoneUser.id, CODER_LOGIN));
     expect((await session("phone", secret)).body.coderId).toBe(before.body.coderId);
 
-    // The demo link takes no logins: an anonymous session as always
+    // Without sign-in: an anonymous session as always
+    await setSignIn("off");
     await loggedIn("researcher", "c@example.org");
     expect((await session("researcher", "demo-secret")).body).toMatchObject({ login: null });
   });
@@ -1141,9 +1217,9 @@ describe("sessions across devices", () => {
     expect((await send("device-2", "/session", {}, link)).status).toBe(200);
   });
 
-  it("refuses links that require login (not supported yet)", async () => {
-    const secret = await link({ auth: "required" });
-    const res = await send("login", "/session", {}, { "x-link-secret": secret });
+  it("refuses sessions without a login when the study requires sign-in", async () => {
+    await setSignIn("required");
+    const res = await send("login", "/session", {}, { "x-link-secret": "demo-secret" });
     expect(res.status).toBe(401);
     expect(await res.json()).toMatchObject({ code: "auth_required" });
   });
@@ -1205,14 +1281,14 @@ describe("resuming and codebook updates", () => {
 
 describe("rebuilding from the database", () => {
   const agreeing = {
-    units: [{ mode: "shared", until: { agree: 2, on: "sentiment" }, maxCoders: 3 }],
+    units: [{ criteria: { until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 } } }],
   };
   const status = async () =>
     (await (await server.request("/api/study/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
 
   it("keeps saturation the same across a restart with an agreement rule", async () => {
     await redeploy({
-      units: [{ mode: "shared", until: { agree: 2, on: "sentiment" }, maxCoders: 3, priority: "saturate" }],
+      units: [{ criteria: { until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 }, priority: "saturate" } }],
     });
     // two codings that disagree: the unit still needs a third coder
     const a = coder("a");
@@ -1391,7 +1467,7 @@ describe("state in the database, not in memory", () => {
 
   it("hands out a shared queue's units once, also when two processes are asked at the same time", async () => {
     await createSet("pair", ["unit-1", "unit-2"]);
-    await redeploy({ units: [{ mode: "shared", set: { group: "g", set: "pair" }, until: { coders: 1 }, maxCoders: 1 }] });
+    await redeploy({ units: [{ filter: { column: "g", only: ["pair"] }, criteria: { codersPerUnit: { min: 1, max: 1 } } }] });
     const other = restart();
     const [a, b] = await Promise.all([coder("left").next(), coder("right", "demo-secret", () => other).next()]);
     expect(new Set([a!.id, b!.id]).size).toBe(2);
@@ -1409,7 +1485,7 @@ describe("state in the database, not in memory", () => {
 
   it("leases a batch of a shared queue: other coders get what is left first", async () => {
     await createSet("queue", ["unit-1", "unit-2", "unit-3"]);
-    await redeploy({ units: [{ mode: "shared", set: { group: "g", set: "queue" }, until: { coders: 1 }, maxCoders: 1 }] });
+    await redeploy({ units: [{ filter: { column: "g", only: ["queue"] }, criteria: { codersPerUnit: { min: 1, max: 1 } } }] });
     const a = coder("a-batch");
     const b = coder("b-batch");
     const held = await a.batch(2);
@@ -1532,7 +1608,7 @@ describe("deployment settings", () => {
       body: JSON.stringify({ name: "Demo study", redirectUrls: { panel_done: "https://panel.example/done?id=$session.participant" } }),
     });
     expect(put.status).toBe(200);
-    expect((await put.json()).redirectUrls).toEqual({ panel_done: "https://panel.example/done?id=$session.participant" });
+    expect(((await put.json()) as { redirectUrls: unknown }).redirectUrls).toEqual({ panel_done: "https://panel.example/done?id=$session.participant" });
     const items = (await coder("first").session()).codebook.items as { type: string; redirectUrl?: string }[];
     expect(items.find((i) => i.type === "end")?.redirectUrl).toBe("https://panel.example/done?id=$session.participant");
     // maxUses 1: the demo link took "first"; a second new coder is refused
@@ -1622,6 +1698,40 @@ describe("unit fields in the design", () => {
     // A field the codebook uses can't be removed; a value that doesn't fit a new type stops a retype
     expect((await putFields(kept.filter((f) => f.name !== "nowhere"))).status).toBe(409);
     expect((await putFields(kept.map((f) => (f.name === "text" ? { ...f, type: "number" } : f)))).status).toBe(400);
+  });
+});
+
+describe("set columns", () => {
+  const draftFields = async () => {
+    const [{ units }] = await db.query<{ units: { fields: { name: string; type: string }[] } }>(
+      "SELECT units FROM design_versions WHERE study_id = 1 ORDER BY id DESC LIMIT 1",
+    );
+    return units.fields;
+  };
+
+  it("are unit fields of type set in the draft design: made with their sets, gone with them; never in uploads", async () => {
+    await createSet("anna", ["unit-1"], "coder");
+    expect(await draftFields()).toContainEqual({ name: "coder", type: "set" });
+    // An upload doesn't give set columns as data
+    const { data } = await draftUnit((await unitByExternalId("unit-1")).id);
+    const upload = await server.request("/api/study/1/units", {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ units: [{ externalId: "unit-x", data: { ...data, coder: "bob" } }] }),
+    });
+    expect(upload.status).toBe(400);
+    expect(await upload.json()).toMatchObject({ error: expect.stringContaining("is a set column") });
+    expect((await server.request("/api/study/1/sets/coder", { method: "DELETE", headers: adminHeaders })).status).toBe(204);
+    expect((await draftFields()).map((f) => f.name)).not.toContain("coder");
+  });
+});
+
+describe("sign-in", () => {
+  it("is a setting of the study, off by default", async () => {
+    const study = (await (await server.request("/api/study/1", { headers: adminHeaders })).json()) as { signIn: string };
+    expect(study.signIn).toBe("off");
+    await setSignIn("optional");
+    expect(((await (await server.request("/api/study/1", { headers: adminHeaders })).json()) as { signIn: string }).signIn).toBe("optional");
   });
 });
 
@@ -1775,7 +1885,7 @@ describe("end items", () => {
 });
 
 describe("special units per coder", () => {
-  it("count the special sets of the coder's own set group, not of other groups", async () => {
+  it("count practice and gold units of every set column, and the overlap of the columns the coder's units come from", async () => {
     const { data: base } = await draftUnit((await unitByExternalId("unit-1")).id);
     const upload = await server.request("/api/study/1/units", {
       method: "POST",
@@ -1784,20 +1894,25 @@ describe("special units per coder", () => {
     });
     expect(upload.status, await upload.clone().text()).toBe(201);
     await createSet("s1", ["unit-1"]);
+    await createSet("_overlap", ["unit-2"]);
     await createSet("_gold", ["g1"]);
-    // Another group with a bigger special set, used by no loop of this coder
+    // Another column: its gold units are everyone's, its overlap isn't this coder's
     await createSet("_gold", ["g1", "g2"], "h");
-    await redeploy({ units: [{ mode: "assign", group: "g", from: { draw: "balanced" }, overlap: { placement: "disabled" }, gold: { placement: "last", questions: ["sentiment"] } }] });
-    const c = coder("routed");
-    for (let i = 0; i < 2; i++) {
-      const unit = (await c.next())!;
+    await createSet("_overlap", ["unit-3"], "h");
+    await redeploy({ units: [{ gold: { placement: "last", questions: ["sentiment"] } }] }, [sessionItem({ coders: { column: "g" } })]);
+    const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
+    const c = coder("routed", secret);
+    const seen: string[] = [];
+    for (let unit = await c.next(); unit; unit = await c.next()) {
+      seen.push(unit.externalId);
       expect((await c.submit(unit.id, sentiment("positive"))).status).toBe(200);
     }
-    // A coder who never asked for units: not routed, so no special sets yet
-    await coder("idle").session();
+    expect(seen).toEqual(["unit-1", "unit-2", "g1", "g2"]);
+    // A coder who never asked for units: not routed, so no special units yet
+    await coder("idle", secret).session();
     const coders = (await (await server.request("/api/study/1/coders", { headers: adminHeaders })).json()) as CoderProgress[];
-    const routed = coders.find((x) => x.finished.main_loop === 2)!;
-    expect(routed.special).toEqual({ gold: { done: 1, total: 1 } });
+    const routed = coders.find((x) => x.finished.main_loop === 4)!;
+    expect(routed.special).toEqual({ overlap: { done: 1, total: 1 }, gold: { done: 2, total: 2 } });
     expect(coders.filter((x) => x.id !== routed.id).map((x) => x.special)).toEqual([{}]);
   });
 });

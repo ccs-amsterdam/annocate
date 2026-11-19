@@ -6,7 +6,7 @@ import type { Server, Env } from "../context.js";
 import { requireStudyUser } from "./auth.js";
 import { deploymentVersions, getDeployment, pendingChanges, putDeployment } from "../shared/deployments.js";
 import { checkLinkCount, syncLinks } from "../shared/links.js";
-import { setWarnings } from "../shared/sets.js";
+import { assignmentChecks } from "../shared/sets.js";
 
 export function deployment(server: Server): Hono<Env> {
   const { db } = server;
@@ -36,7 +36,10 @@ export function deployment(server: Server): Hono<Env> {
     // The units it runs: the drafts (`units`, and always the first time), or the deployed ones.
     const current = await one(db, "SELECT 1 FROM deployments WHERE study_id = $1", [studyId]);
     const live = !parsed.data.units && !!current;
-    // Links follow the codebook's link parameters (docs/plans/sets-and-session-parameters.md §4).
+    // Who gets which units: the set columns it names, the coders and conditions' values (docs/plans/unit-assignment.md §5)
+    const checks = await assignmentChecks(db, studyId, designVersionItems(codebook), designVersionUnits(codebook).fields, live);
+    if (checks.errors.length > 0) return c.json({ error: checks.errors.join(" "), code: "assignment_invalid" }, 400);
+    // Links follow the codebook's coders, conditions and link parameters (§4).
     await checkLinkCount(db, studyId, designVersionItems(codebook), parsed.data.confirmLinks ?? false, live);
     const deployed = await db.transaction(async (tx) => {
       const result = await putDeployment(tx, studyId, parsed.data);
@@ -45,7 +48,7 @@ export function deployment(server: Server): Hono<Env> {
       const unset = redirectSettings(designVersionItems(codebook)).filter((name) => !study?.redirect_urls?.[name]);
       const warnings = [
         ...(result.warnings ?? []),
-        ...(await setWarnings(tx, studyId, designVersionItems(codebook), live)),
+        ...checks.warnings,
         ...unset.map((name) => `End items send coders on with the setting '${name}', which has no URL yet: set it in the study's Settings.`),
       ];
       return { ...result, links: await syncLinks(tx, studyId), ...(warnings.length > 0 ? { warnings } : {}) };

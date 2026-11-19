@@ -131,9 +131,7 @@
         "type": "unit_loop",
         "label": "Headlines",
         "units": [
-          {
-            "mode": "all"
-          }
+          {}
         ],
         "layout": {
           "template": "# $unit.headline"

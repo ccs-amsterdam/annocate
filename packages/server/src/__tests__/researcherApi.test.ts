@@ -100,7 +100,7 @@ async function setUpStudy(key: string): Promise<{ studyId: number; unitIds: numb
           {
             type: "unit_loop",
             label: "loop",
-            units: [{ mode: "all" }],
+            units: [{}],
             layout: { template: "" },
             children: [question("q")],
           },

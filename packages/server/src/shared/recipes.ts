@@ -15,7 +15,7 @@ import { HttpError } from "./http.js";
 import type { StudyRow } from "./studies.js";
 import { checkUnitUpload } from "./limits.js";
 import { checkLinkCount, syncLinks } from "./links.js";
-import { putSetGroup } from "./sets.js";
+import { assignmentChecks, putSetGroup } from "./sets.js";
 import { saveUnits } from "./units.js";
 
 // Recipes (contracts recipe.ts, docs/plans/setup-wizard.md): a new study's
@@ -60,8 +60,8 @@ export async function createStudyFromRecipe(tx: Sql, recipe: Recipe, options: Re
 
   const study = (await one<StudyRow>(
     tx,
-    "INSERT INTO studies (name, owner_id, origin) VALUES ($1, $2, $3) RETURNING *",
-    [recipe.name, options.ownerId, options.origin ?? null],
+    "INSERT INTO studies (name, owner_id, origin, sign_in) VALUES ($1, $2, $3, $4) RETURNING *",
+    [recipe.name, options.ownerId, options.origin ?? null, recipe.signIn ?? "off"],
   ))!;
   if (options.ownerId !== null && options.ownerIsAdmin)
     await tx.query("INSERT INTO roles (role, study_id, user_id) VALUES ('ADMIN', $1, $2)", [study.id, options.ownerId]);
@@ -107,13 +107,17 @@ export async function createStudyFromRecipe(tx: Sql, recipe: Recipe, options: Re
   const twice = groups.find((g, i) => groups.indexOf(g) !== i);
   if (twice !== undefined) throw invalid(`Group '${twice}' is defined twice`);
   for (const group of recipe.sets) {
+    if (fields.some((f) => f.name === group.group)) throw invalid(`'${group.group}' is a field of the units and a set column`);
     await putSetGroup(
       tx,
       study.id,
       group.group,
       group.sets.map((set) => ({ name: set.name, unitIds: set.units.map(unitId), ordered: set.ordered })),
+      { declare: false },
     );
   }
+  // Set columns are fields of type set
+  fields = [...fields, ...groups.map((name) => ({ name, type: "set" as const }))];
 
   // The codebook: deployed, or the first draft
   // With the units' fields (docs/plans/design.md §3)
@@ -132,6 +136,8 @@ export async function createStudyFromRecipe(tx: Sql, recipe: Recipe, options: Re
   let firstLink: number | null = null;
   if (recipe.publish) {
     await putDeployment(tx, study.id, { designVersionId, active: true, units: true });
+    const checks = await assignmentChecks(tx, study.id, designItems(recipe.design) as DesignItem[], fields, true);
+    if (checks.errors.length > 0) throw invalid(checks.errors.join(" "));
     await checkLinkCount(tx, study.id, designItems(recipe.design) as DesignItem[], true, true);
     await syncLinks(tx, study.id, { secrets: options.secrets });
     firstLink =
