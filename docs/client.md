@@ -75,6 +75,26 @@ Server-side design lives in
 - Navigation: back and forward, jumping to a phase, unit or question. Unit
   history is kept **per loop**. On resume it is rebuilt from the session's
   finished unit ids, and units are loaded lazily (`architecture.md` §8.1).
+  The rules (tested in `studyManager/navigation.test.ts`, against an
+  in-memory server with the real one's rules, `fakeCoderServer.ts`):
+  - Back from a loop's first question goes to the previous unit's last
+    question; from a unit's first unit to the step before the loop. Back
+    from the step after a loop goes to its last unit; a loop the coder got
+    no units in is passed. Back never lands on an `end` item.
+  - Moving forward into a loop (Next, or answering the question before it
+    again) opens the unit the coder started and didn't finish, if any (Next:
+    at its first question; answering: at its first unanswered one), else
+    the next unit from the server. A unit is never handed out twice: the
+    server lists unfinished units first, so the unit queue remembers every
+    unit it held.
+  - Jumping to a loop in the menu returns to the unit the coder was on.
+  - Going back after an `end` inside a loop (`reopen`) opens the unit it
+    was reached on, at its last question.
+  - Operations (answers, back, next, jumps) run **one at a time**, in
+    order; an answer to a question no longer on screen when its turn comes
+    is dropped. `StudyRunner` also drops the second click of a double click
+    in the answer area and auto-repeated answer keys outside text fields
+    (`components/inputGuards.ts`), so neither answers the next question.
 - `currentUnitVariables` on the snapshot exposes the current unit's answers
   so far. Relation questions need it to find sibling span answers.
 - **A new design version while coding**: the server answers 409
