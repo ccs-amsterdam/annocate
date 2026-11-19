@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { UnitsSpecSchema, fieldUsage, typeOfValue, unitFieldNameError, type UnitDataValue } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
+import { and, eq } from "drizzle-orm";
+import { unitDraft, unitFieldNames, units, unitValues } from "../db/schema/index.js";
 import { requireStudyUser } from "./auth.js";
 import { designVersionItems } from "../shared/designVersions.js";
 import { dropDraftFields, getUnitFields, latestDesignVersion, setUnitFields } from "../shared/units.js";
@@ -40,14 +42,15 @@ export function unitsFields(server: Server): Hono<Env> {
     for (const f of fields) {
       const old = before.find((b) => b.name === f.name);
       if (!old || old.type === f.type) continue;
-      const rows = await db.query<{ external_id: string; value: UnitDataValue }>(
-        `SELECT u.external_id, val.value FROM units u JOIN unit_draft d ON d.unit_id = u.id
-         JOIN unit_field_names n ON n.id = d.field_id JOIN unit_values val ON val.id = d.value_id
-         WHERE u.study_id = $1 AND n.name = $2`,
-        [studyId, f.name],
-      );
-      const misfit = rows.find((r) => typeOfValue(r.value) !== null && typeOfValue(r.value) !== f.type);
-      if (misfit) return c.json({ error: `Unit '${misfit.external_id}': its ${f.name} (${JSON.stringify(misfit.value)}) isn't ${f.type}` }, 400);
+      const rows = await db
+        .select({ externalId: units.externalId, value: unitValues.value })
+        .from(units)
+        .innerJoin(unitDraft, eq(unitDraft.unitId, units.id))
+        .innerJoin(unitFieldNames, eq(unitFieldNames.id, unitDraft.fieldId))
+        .innerJoin(unitValues, eq(unitValues.id, unitDraft.valueId))
+        .where(and(eq(units.studyId, studyId), eq(unitFieldNames.name, f.name)));
+      const misfit = rows.find((r) => typeOfValue(r.value as UnitDataValue) !== null && typeOfValue(r.value as UnitDataValue) !== f.type);
+      if (misfit) return c.json({ error: `Unit '${misfit.externalId}': its ${f.name} (${JSON.stringify(misfit.value)}) isn't ${f.type}` }, 400);
     }
 
     await db.transaction(async (tx) => {

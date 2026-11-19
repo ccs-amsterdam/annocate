@@ -9,7 +9,9 @@ import {
   type UnitData,
   type UnitField,
 } from "@annotinder/contracts";
-import { one, type Sql } from "../db.js";
+import { asc, eq } from "drizzle-orm";
+import type { Db } from "../db/index.js";
+import { designVersions, links, roles, studies } from "../db/schema/index.js";
 import { putDeployment } from "./deployments.js";
 import { HttpError } from "./http.js";
 import type { StudyRow } from "./studies.js";
@@ -50,7 +52,7 @@ const invalid = (message: string) => new HttpError(400, message, "recipe_invalid
  * it can add to the study, as examples add answers). Within the owner's
  * limits on units; the caller checks the number of studies.
  */
-export async function createStudyFromRecipe(tx: Sql, recipe: Recipe, options: RecipeOptions): Promise<MadeStudy> {
+export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: RecipeOptions): Promise<MadeStudy> {
   // A deployed codebook must pass validation; a draft may have issues (questions to specify).
   if (recipe.publish) {
     const parsed = DesignItemsSchema.safeParse(designItems(recipe.design));
@@ -58,13 +60,12 @@ export async function createStudyFromRecipe(tx: Sql, recipe: Recipe, options: Re
       throw invalid(`The design can't be deployed: ${parsed.error.issues.map((i) => i.message).join("; ")}`);
   }
 
-  const study = (await one<StudyRow>(
-    tx,
-    "INSERT INTO studies (name, owner_id, origin, sign_in) VALUES ($1, $2, $3, $4) RETURNING *",
-    [recipe.name, options.ownerId, options.origin ?? null, recipe.signIn ?? "off"],
-  ))!;
-  if (options.ownerId !== null && options.ownerIsAdmin)
-    await tx.query("INSERT INTO roles (role, study_id, user_id) VALUES ('ADMIN', $1, $2)", [study.id, options.ownerId]);
+  const [made] = await tx
+    .insert(studies)
+    .values({ name: recipe.name, ownerId: options.ownerId, origin: options.origin ?? null, signIn: recipe.signIn ?? "off" })
+    .returning();
+  const study = made!;
+  if (options.ownerId !== null && options.ownerIsAdmin) await tx.insert(roles).values({ role: "ADMIN", studyId: study.id, userId: options.ownerId });
 
   // Units
   const unitIds = new Map<string, number>();
@@ -121,18 +122,18 @@ export async function createStudyFromRecipe(tx: Sql, recipe: Recipe, options: Re
 
   // The codebook: deployed, or the first draft
   // With the units' fields (docs/plans/design.md §3)
-  const designVersionId = (await one<{ id: number }>(
-    tx,
-    "INSERT INTO design_versions (study_id, note, items, units, session, public) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
-    [
-      study.id,
-      recipe.design.note ?? null,
-      JSON.stringify(recipe.design.items),
-      JSON.stringify({ fields }),
-      JSON.stringify(recipe.design.session ?? EMPTY_SESSION),
-      recipe.design.public ? JSON.stringify(recipe.design.public) : null,
-    ],
-  ))!.id;
+  const [designVersion] = await tx
+    .insert(designVersions)
+    .values({
+      studyId: study.id,
+      note: recipe.design.note ?? null,
+      items: recipe.design.items,
+      units: { fields },
+      session: recipe.design.session ?? EMPTY_SESSION,
+      public: recipe.design.public ?? null,
+    })
+    .returning({ id: designVersions.id });
+  const designVersionId = designVersion!.id;
   let firstLink: number | null = null;
   if (recipe.publish) {
     await putDeployment(tx, study.id, { designVersionId, active: true, units: true });
@@ -140,9 +141,8 @@ export async function createStudyFromRecipe(tx: Sql, recipe: Recipe, options: Re
     if (checks.errors.length > 0) throw invalid(checks.errors.join(" "));
     await checkLinkCount(tx, study.id, designItems(recipe.design) as DesignItem[], true, true);
     await syncLinks(tx, study.id, { secrets: options.secrets });
-    firstLink =
-      (await one<{ id: number }>(tx, "SELECT id FROM links WHERE study_id = $1 ORDER BY id LIMIT 1", [study.id]))?.id ??
-      null;
+    const [first] = await tx.select({ id: links.id }).from(links).where(eq(links.studyId, study.id)).orderBy(asc(links.id)).limit(1);
+    firstLink = first?.id ?? null;
   }
   return { study, designVersionId, unitIds, firstLink };
 }

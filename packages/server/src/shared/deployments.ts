@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { CLIENT_VERSION } from "../version.js";
 import {
-  type SignIn,
   loopTitle,
   unitLoops,
   DesignItemsSchema,
@@ -12,7 +11,9 @@ import {
   type DeploymentWrite,
   type PendingChanges,
 } from "@annotinder/contracts";
-import { one, type Sql } from "../db.js";
+import { and, desc, eq, sql } from "drizzle-orm";
+import type { Db } from "../db/index.js";
+import { deployments, deploymentVersions as deploymentVersionsTable, designVersions, studies } from "../db/schema/index.js";
 import { designVersionItems, itemsValid, toDesignVersion, type DesignVersionRow } from "./designVersions.js";
 import { HttpError } from "./http.js";
 import { listFinished } from "./finished.js";
@@ -20,19 +21,27 @@ import type { DeploymentSpec } from "../runtime/types.js";
 import { runtimeSets } from "./sets.js";
 import { anyUnitChanges, deployDraftUnits, unitChanges } from "./units.js";
 
-interface DeploymentRow {
-  study_id: number;
-  design_version_id: number;
-  active: boolean;
-  version: number;
-  annotation_epoch: number;
-  updated: Date;
+/** A study's deployment row, if it is deployed. */
+async function deploymentRow(db: Db, studyId: number) {
+  const [row] = await db.select().from(deployments).where(eq(deployments.studyId, studyId));
+  return row;
 }
 
-export async function getDeployment(sql: Sql, studyId: number): Promise<DeploymentResponse | null> {
-  const row = await one<DeploymentRow>(sql, "SELECT * FROM deployments WHERE study_id = $1", [studyId]);
+export async function getDeployment(db: Db, studyId: number): Promise<DeploymentResponse | null> {
+  const row = await deploymentRow(db, studyId);
   if (!row) return null;
-  return { studyId: row.study_id, designVersionId: row.design_version_id, active: row.active, version: row.version, updated: row.updated };
+  return { studyId: row.studyId, designVersionId: row.designVersionId, active: row.active, version: row.version, updated: row.updated };
+}
+
+/** A design version of a study (the latest if `id` is undefined). */
+async function designVersion(db: Db, studyId: number, id?: number) {
+  const [row] = await db
+    .select()
+    .from(designVersions)
+    .where(and(eq(designVersions.studyId, studyId), id === undefined ? undefined : eq(designVersions.id, id)))
+    .orderBy(desc(designVersions.id))
+    .limit(1);
+  return row;
 }
 
 /**
@@ -43,63 +52,63 @@ export async function getDeployment(sql: Sql, studyId: number): Promise<Deployme
  * coders already finished units in it: those units count as unfinished
  * again (docs/architecture.md §8.2).
  */
-export async function putDeployment(sql: Sql, studyId: number, body: DeploymentWrite): Promise<DeploymentResponse> {
-  const previous = await one<DeploymentRow>(sql, "SELECT * FROM deployments WHERE study_id = $1", [studyId]);
-  const warnings = previous ? await reopenWarnings(sql, studyId, previous.design_version_id, body.designVersionId) : [];
-  const units = !previous || body.units ? await unitChanges(sql, studyId) : null;
+export async function putDeployment(db: Db, studyId: number, body: DeploymentWrite): Promise<DeploymentResponse> {
+  const previous = await deploymentRow(db, studyId);
+  const warnings = previous ? await reopenWarnings(db, studyId, previous.designVersionId, body.designVersionId) : [];
+  const units = !previous || body.units ? await unitChanges(db, studyId) : null;
   const newUnits = units !== null && (!previous || anyUnitChanges(units));
   const changes: DeploymentChanges = {
-    design: previous?.design_version_id !== body.designVersionId,
+    design: previous?.designVersionId !== body.designVersionId,
     units: newUnits ? units : null,
   };
   const changed = changes.design || changes.units !== null;
   const version = !previous ? 1 : previous.version + (changed ? 1 : 0);
   // The units of this version: new versions of changed units, the draft's sets
-  if (newUnits) await deployDraftUnits(sql, studyId, version);
-  await sql.query(
-    `INSERT INTO deployments (study_id, design_version_id, active, version, updated) VALUES ($1, $2, $3, $4, now())
-     ON CONFLICT (study_id) DO UPDATE SET design_version_id = excluded.design_version_id,
-       active = excluded.active, version = excluded.version, updated = excluded.updated`,
-    [studyId, body.designVersionId, body.active, version],
-  );
+  if (newUnits) await deployDraftUnits(db, studyId, version);
+  const deployment = { designVersionId: body.designVersionId, active: body.active, version, updated: sql`now()` };
+  await db
+    .insert(deployments)
+    .values({ studyId, ...deployment })
+    .onConflictDoUpdate({ target: deployments.studyId, set: deployment });
   if (!previous || changed) {
-    await sql.query(
-      "INSERT INTO deployment_versions (study_id, version, design_version_id, changes, client_release, client_commit) VALUES ($1, $2, $3, $4, $5, $6)",
-      [studyId, version, body.designVersionId, JSON.stringify(changes), CLIENT_VERSION.release, CLIENT_VERSION.commit],
-    );
+    await db.insert(deploymentVersionsTable).values({
+      studyId,
+      version,
+      designVersionId: body.designVersionId,
+      changes,
+      clientRelease: CLIENT_VERSION.release,
+      clientCommit: CLIENT_VERSION.commit,
+    });
   }
-  await sql.query("UPDATE design_versions SET immutable = true WHERE study_id = $1 AND id = $2", [studyId, body.designVersionId]);
-  return { ...(await getDeployment(sql, studyId))!, ...(warnings.length > 0 ? { warnings } : {}) };
+  await db
+    .update(designVersions)
+    .set({ immutable: true })
+    .where(and(eq(designVersions.studyId, studyId), eq(designVersions.id, body.designVersionId)));
+  return { ...(await getDeployment(db, studyId))!, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
 /** What deploying the drafts would change: the units, and the latest codebook if it isn't deployed. */
-export async function pendingChanges(sql: Sql, studyId: number): Promise<PendingChanges> {
-  const deployed = await one<DeploymentRow>(sql, "SELECT * FROM deployments WHERE study_id = $1", [studyId]);
-  const latest = await one<{ id: number }>(sql, "SELECT id FROM design_versions WHERE study_id = $1 ORDER BY id DESC LIMIT 1", [studyId]);
+export async function pendingChanges(db: Db, studyId: number): Promise<PendingChanges> {
+  const deployed = await deploymentRow(db, studyId);
+  const latest = await designVersion(db, studyId);
   return {
-    units: await unitChanges(sql, studyId),
-    designVersionId: latest && latest.id !== deployed?.design_version_id ? latest.id : null,
+    units: await unitChanges(db, studyId),
+    designVersionId: latest && latest.id !== deployed?.designVersionId ? latest.id : null,
   };
 }
 
 /** The deployed versions, newest first. */
-export async function deploymentVersions(sql: Sql, studyId: number): Promise<DeploymentVersion[]> {
-  const rows = await sql.query<{
-    version: number;
-    design_version_id: number;
-    changes: DeploymentChanges;
-    client_release: string | null;
-    client_commit: string | null;
-    created: Date;
-  }>(
-    "SELECT version, design_version_id, changes, client_release, client_commit, created FROM deployment_versions WHERE study_id = $1 ORDER BY version DESC",
-    [studyId],
-  );
+export async function deploymentVersions(db: Db, studyId: number): Promise<DeploymentVersion[]> {
+  const rows = await db
+    .select()
+    .from(deploymentVersionsTable)
+    .where(eq(deploymentVersionsTable.studyId, studyId))
+    .orderBy(desc(deploymentVersionsTable.version));
   return rows.map((r) => ({
     version: r.version,
-    designVersionId: r.design_version_id,
+    designVersionId: r.designVersionId,
     changes: r.changes,
-    client: r.client_release ? { release: r.client_release, commit: r.client_commit ?? "unknown" } : null,
+    client: r.clientRelease ? { release: r.clientRelease, commit: r.clientCommit ?? "unknown" } : null,
     created: r.created,
   }));
 }
@@ -109,8 +118,8 @@ export async function deploymentVersions(sql: Sql, studyId: number): Promise<Dep
  * (through conditions), from a stored codebook. Titles are for people:
  * progress per loop and warnings.
  */
-export async function loopVariables(sql: Sql, studyId: number, designVersionId: number): Promise<Map<string, string[]>> {
-  const row = await one<{ items: unknown; session: unknown }>(sql, "SELECT items, session FROM design_versions WHERE study_id = $1 AND id = $2", [studyId, designVersionId]);
+export async function loopVariables(db: Db, studyId: number, designVersionId: number): Promise<Map<string, string[]>> {
+  const row = await designVersion(db, studyId, designVersionId);
   const loops = new Map<string, string[]>();
   const parsed = row ? DesignItemsSchema.safeParse(designVersionItems(row)) : null;
   if (!parsed?.success) return loops;
@@ -123,10 +132,10 @@ export async function loopVariables(sql: Sql, studyId: number, designVersionId: 
   return loops;
 }
 
-async function reopenWarnings(sql: Sql, studyId: number, previousDesignVersionId: number, designVersionId: number): Promise<string[]> {
+async function reopenWarnings(db: Db, studyId: number, previousDesignVersionId: number, designVersionId: number): Promise<string[]> {
   if (previousDesignVersionId === designVersionId) return [];
-  const before = await loopVariables(sql, studyId, previousDesignVersionId);
-  const after = await loopVariables(sql, studyId, designVersionId);
+  const before = await loopVariables(db, studyId, previousDesignVersionId);
+  const after = await loopVariables(db, studyId, designVersionId);
   const warnings: string[] = [];
   for (const [loop, variables] of after) {
     // The same loop in the previous version: same title, or else the one sharing most questions.
@@ -138,7 +147,7 @@ async function reopenWarnings(sql: Sql, studyId: number, previousDesignVersionId
     if (!previous || !previous.some((v) => variables.includes(v))) continue;
     const added = variables.filter((v) => !previous.includes(v));
     if (added.length === 0) continue;
-    const finished = (await listFinished(sql, studyId, { loops: [{ level: "unit", loop, variables: previous }] })).length;
+    const finished = (await listFinished(db, studyId, { loops: [{ level: "unit", loop, variables: previous }] })).length;
     if (finished > 0) {
       warnings.push(
         `Loop '${loop}' gained questions (${added.join(", ")}): ${finished} finished unit codings ` +
@@ -150,15 +159,15 @@ async function reopenWarnings(sql: Sql, studyId: number, previousDesignVersionId
 }
 
 /** Everything the runtime needs to run a deployed study. */
-export async function getDeploymentSpec(sql: Sql, studyId: number): Promise<DeploymentSpec | null> {
-  const deployment = await one<DeploymentRow>(sql, "SELECT * FROM deployments WHERE study_id = $1", [studyId]);
+export async function getDeploymentSpec(db: Db, studyId: number): Promise<DeploymentSpec | null> {
+  const deployment = await deploymentRow(db, studyId);
   if (!deployment) return null;
-  const codebook = await one<DesignVersionRow>(sql, "SELECT * FROM design_versions WHERE study_id = $1 AND id = $2", [studyId, deployment.design_version_id]);
+  const codebook = await designVersion(db, studyId, deployment.designVersionId);
   if (!codebook) return null;
-  return buildSpec(sql, studyId, codebook, {
+  return buildSpec(db, studyId, codebook, {
     version: deployment.version,
     active: deployment.active,
-    annotationEpoch: deployment.annotation_epoch,
+    annotationEpoch: deployment.annotationEpoch,
     liveUnits: true,
   });
 }
@@ -168,35 +177,34 @@ export async function getDeploymentSpec(sql: Sql, studyId: number): Promise<Depl
  * always active. Its `version` is derived from the content, so the preview
  * picks up every edit.
  */
-export async function getPreviewSpec(sql: Sql, studyId: number): Promise<DeploymentSpec | null> {
-  const codebook = await one<DesignVersionRow>(sql, "SELECT * FROM design_versions WHERE study_id = $1 ORDER BY id DESC LIMIT 1", [studyId]);
+export async function getPreviewSpec(db: Db, studyId: number): Promise<DeploymentSpec | null> {
+  const codebook = await designVersion(db, studyId);
   if (!codebook) return null;
   if (!itemsValid(designVersionItems(codebook))) throw new HttpError(409, "The latest design version has issues: fix them to preview it", "design_invalid");
   // The drafts: the latest codebook with the draft units and sets.
-  const spec = await buildSpec(sql, studyId, codebook, { version: 1, active: true, annotationEpoch: 0, liveUnits: false });
+  const spec = await buildSpec(db, studyId, codebook, { version: 1, active: true, annotationEpoch: 0, liveUnits: false });
   const digest = createHash("sha256").update(JSON.stringify([spec.design, spec.sets])).digest("hex");
   return { ...spec, version: (parseInt(digest.slice(0, 7), 16) % 2 ** 30) + 1 };
 }
 
 async function buildSpec(
-  sql: Sql,
+  db: Db,
   studyId: number,
   codebook: DesignVersionRow,
   meta: Pick<DeploymentSpec, "version" | "active" | "annotationEpoch" | "liveUnits">,
 ): Promise<DeploymentSpec> {
-  const study = await one<{ keep_sessions_open: boolean; redirect_urls: Record<string, string>; sign_in: SignIn }>(
-    sql,
-    "SELECT keep_sessions_open, redirect_urls, sign_in FROM studies WHERE id = $1",
-    [studyId],
-  );
+  const [study] = await db
+    .select({ keepSessionsOpen: studies.keepSessionsOpen, redirectUrls: studies.redirectUrls, signIn: studies.signIn })
+    .from(studies)
+    .where(eq(studies.id, studyId));
   return {
     studyId,
     ...meta,
-    keepSessionsOpen: study?.keep_sessions_open ?? false,
-    redirectUrls: study?.redirect_urls ?? {},
-    signIn: study?.sign_in ?? "off",
+    keepSessionsOpen: study?.keepSessionsOpen ?? false,
+    redirectUrls: study?.redirectUrls ?? {},
+    signIn: study?.signIn ?? "off",
     // The runtime works on the items with the session first
     design: { ...toDesignVersion(codebook), items: designVersionItems(codebook) },
-    sets: await runtimeSets(sql, studyId, meta.liveUnits),
+    sets: await runtimeSets(db, studyId, meta.liveUnits),
   };
 }

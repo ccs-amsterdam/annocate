@@ -1,9 +1,12 @@
 import { Hono } from "hono";
 import { StudyWriteSchema } from "@annotinder/contracts";
-import { one, type Sql } from "../db.js";
+import { asc, isNotNull } from "drizzle-orm";
+import type { Db } from "../db/index.js";
+import { roles, studies as studiesTable } from "../db/schema/index.js";
+import { studyRole } from "../db/sql.js";
 import type { Server, Env } from "../context.js";
 import { requireResearcher } from "./auth.js";
-import { toStudyResponse, type StudyRow } from "../shared/studies.js";
+import { toStudyResponse } from "../shared/studies.js";
 import { effectiveLimits, usage } from "../shared/accounts.js";
 import { HttpError } from "../shared/http.js";
 
@@ -17,11 +20,11 @@ export function studies(server: Server): Hono<Env> {
 
   app.get("/study", requireResearcher(server), async (c) => {
     const researcher = c.get("researcher");
-    const rows = researcher.devRole
-      ? await db.query<StudyRow>("SELECT * FROM studies ORDER BY id")
-      : await db.query<StudyRow>("SELECT j.* FROM studies j WHERE study_role(j.id, $1) IS NOT NULL ORDER BY j.id", [
-          researcher.userId,
-        ]);
+    const rows = await db
+      .select()
+      .from(studiesTable)
+      .where(researcher.devRole ? undefined : isNotNull(studyRole(studiesTable.id, researcher.userId)))
+      .orderBy(asc(studiesTable.id));
     return c.json(rows.map(toStudyResponse));
   });
 
@@ -33,14 +36,18 @@ export function studies(server: Server): Hono<Env> {
     const ownerId = researcher.userId;
     await checkStudyLimit(db, ownerId);
     const row = await db.transaction(async (tx) => {
-      const study = await one<StudyRow>(
-        tx,
-        "INSERT INTO studies (name, archived, owner_id, keep_sessions_open, sign_in) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-        [parsed.data.name, parsed.data.archived ?? false, ownerId, parsed.data.keepSessionsOpen ?? false, parsed.data.signIn ?? "off"],
-      );
+      const [study] = await tx
+        .insert(studiesTable)
+        .values({
+          name: parsed.data.name,
+          archived: parsed.data.archived ?? false,
+          ownerId,
+          keepSessionsOpen: parsed.data.keepSessionsOpen ?? false,
+          signIn: parsed.data.signIn ?? "off",
+        })
+        .returning();
       // Development headers keep the bootstrap rule instead (a study without user roles is open).
-      if (!researcher.devRole)
-        await tx.query("INSERT INTO roles (role, study_id, user_id) VALUES ('ADMIN', $1, $2)", [study!.id, ownerId]);
+      if (!researcher.devRole) await tx.insert(roles).values({ role: "ADMIN", studyId: study!.id, userId: ownerId });
       return study!;
     });
     return c.json(toStudyResponse(row), 201);
@@ -50,7 +57,7 @@ export function studies(server: Server): Hono<Env> {
 }
 
 /** Refuses a new study past the owner's limit on studies (docs/accounts.md). */
-export async function checkStudyLimit(db: Sql, ownerId: number): Promise<void> {
+export async function checkStudyLimit(db: Db, ownerId: number): Promise<void> {
   const { studies: maxStudies } = await effectiveLimits(db, ownerId);
   if (maxStudies != null && (await usage(db, ownerId)).studies >= maxStudies) {
     throw new HttpError(

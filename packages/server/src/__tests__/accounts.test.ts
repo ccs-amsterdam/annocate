@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { adminEndpoints, researcherEndpoints, type AccountRole } from "@annotinder/contracts";
-import type { Sql } from "../db.js";
+import type { Db } from "../db/index.js";
 import { createApp } from "../app.js";
 import { createApiKey, ensureUser, loginUser, resetIdentities, setServerRole } from "../shared/accounts.js";
 import { createSession } from "../shared/sessions.js";
-import { emptyDb } from "./testDb.js";
+import { emptyDb, query } from "./testDb.js";
 
 // Accounts (docs/accounts.md): account roles, becoming a researcher, limits,
 // and the admin API, with API keys and responses checked against the contracts.
 
-let db: Sql;
+let db: Db;
 let app: ReturnType<typeof createApp>;
 
 beforeEach(async () => {
@@ -119,11 +119,11 @@ describe("identities and invitations (JIT account claiming, safeguards)", () => 
     loginUser(db, { iss: "https://idp.test", sub, email, mfa }, []);
   const backdate = (email: string, what: "granted" | "login", months: number) =>
     what === "granted"
-      ? db.query(
+      ? query(db, 
           `UPDATE roles SET granted_at = now() - interval '${months} months' WHERE user_id IN (SELECT id FROM users WHERE email = $1)`,
           [email],
         )
-      : db.query(
+      : query(db, 
           `UPDATE users SET last_login_at = now() - interval '${months} months', registered_at = now() - interval '${months + 2} months' WHERE email = $1`,
           [email],
         );

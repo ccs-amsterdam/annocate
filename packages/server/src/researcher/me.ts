@@ -1,7 +1,8 @@
 import { Hono, type Context } from "hono";
 import { ApiKeyWriteSchema, ResearcherRequestWriteSchema, type MeResponse } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
-import { one } from "../db.js";
+import { and, eq, isNull, sql } from "drizzle-orm";
+import { identities, researcherRequests } from "../db/schema/index.js";
 import { freshUntil, lacksMfa, requireResearcher, requireSensitive } from "./auth.js";
 import { HttpError } from "../shared/http.js";
 import { createApiKey, effectiveLimits, getSettings, listApiKeys, revokeApiKey, usage } from "../shared/accounts.js";
@@ -21,17 +22,16 @@ export function me(server: Server): Hono<Env> {
     const login = server.login;
     if (!login?.previous || Date.now() >= login.previous.until.getTime()) return false;
     const current = login.oidc.issuer.replace(/\/+$/, "");
-    return !(await one(db, "SELECT 1 FROM identities WHERE user_id = $1 AND rtrim(iss, '/') = $2", [id, current]));
+    return (await db.$count(identities, and(eq(identities.userId, id), sql`rtrim(${identities.iss}, '/') = ${current}`))) === 0;
   }
 
   async function meResponse(c: Context<Env>): Promise<MeResponse> {
     const researcher = c.get("researcher");
     const id = await userId(c);
-    const request = await one<{ at: Date }>(
-      db,
-      "SELECT at FROM researcher_requests WHERE user_id = $1 AND decided_at IS NULL",
-      [id],
-    );
+    const [request] = await db
+      .select({ at: researcherRequests.at })
+      .from(researcherRequests)
+      .where(and(eq(researcherRequests.userId, id), isNull(researcherRequests.decidedAt)));
     return {
       email: researcher.email,
       role: researcher.accountRole,
@@ -52,11 +52,13 @@ export function me(server: Server): Hono<Env> {
     if (c.get("researcher").accountRole !== "user") throw new HttpError(409, "You are a researcher already");
     if (!(await getSettings(db)).registration.requests)
       throw new HttpError(403, "This server doesn't take requests: ask for an invite link");
-    await db.query(
-      `INSERT INTO researcher_requests (user_id, message) VALUES ($1, $2)
-       ON CONFLICT (user_id) DO UPDATE SET message = excluded.message, at = now(), decided_at = NULL, decided_by = NULL, approved = NULL`,
-      [await userId(c), parsed.data.message],
-    );
+    await db
+      .insert(researcherRequests)
+      .values({ userId: await userId(c), message: parsed.data.message })
+      .onConflictDoUpdate({
+        target: researcherRequests.userId,
+        set: { message: sql`excluded.message`, at: sql`now()`, decidedAt: null, decidedBy: null, approved: null },
+      });
     return c.json(await meResponse(c));
   });
 

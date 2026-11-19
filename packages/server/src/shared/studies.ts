@@ -1,17 +1,7 @@
 import type { StudyResponse } from "@annotinder/contracts";
+import type { studies } from "../db/schema/index.js";
 
-export interface StudyRow {
-  id: number;
-  name: string;
-  archived: boolean;
-  created: Date;
-  owner_id: number | null;
-  keep_sessions_open: boolean;
-  sign_in: "off" | "optional" | "required";
-  suspended_at: Date | null;
-  origin: string | null;
-  redirect_urls: Record<string, string>;
-}
+export type StudyRow = typeof studies.$inferSelect;
 
 export function toStudyResponse(row: StudyRow): StudyResponse {
   return {
@@ -19,10 +9,10 @@ export function toStudyResponse(row: StudyRow): StudyResponse {
     name: row.name,
     archived: row.archived,
     created: row.created,
-    keepSessionsOpen: row.keep_sessions_open,
-    signIn: row.sign_in,
-    redirectUrls: row.redirect_urls ?? {},
-    suspendedAt: row.suspended_at,
+    keepSessionsOpen: row.keepSessionsOpen,
+    signIn: row.signIn,
+    redirectUrls: row.redirectUrls ?? {},
+    suspendedAt: row.suspendedAt,
     origin: row.origin,
   };
 }

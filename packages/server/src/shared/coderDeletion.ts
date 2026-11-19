@@ -1,5 +1,8 @@
+import { and, desc, eq, exists, inArray, or, sql } from "drizzle-orm";
 import type { CoderDeletion, DeleteCoders, DeleteCodersResponse } from "@annotinder/contracts";
-import type { Sql } from "../db.js";
+import type { Db } from "../db/index.js";
+import { anyOf } from "../db/sql.js";
+import { annotationValues as a, coderDeletions, coders, units } from "../db/schema/index.js";
 
 /**
  * Deletes coders and everything they answered, for good (a participant
@@ -10,51 +13,76 @@ import type { Sql } from "../db.js";
  * versions stay: they hold unit content, not the coder's. Each deleted coder
  * is logged (`coder_deletions`), with the ids downloaded results use.
  */
-export async function deleteCoders(sql: Sql, studyId: number, select: DeleteCoders, deletedBy: string | null): Promise<DeleteCodersResponse> {
-  return sql.transaction(async (tx) => {
-    const coders = await tx.query<{ id: number }>(
-      `SELECT id FROM coders WHERE study_id = $1 AND (id = ANY($2) OR participant_id = ANY($3) OR lower(email) = ANY($4))`,
-      [studyId, select.coderIds ?? [], select.participantIds ?? [], (select.emails ?? []).map((e) => e.toLowerCase())],
-    );
-    const ids = coders.map((c) => c.id);
+export async function deleteCoders(db: Db, studyId: number, select: DeleteCoders, deletedBy: string | null): Promise<DeleteCodersResponse> {
+  return db.transaction(async (tx) => {
+    const emails = (select.emails ?? []).map((e) => e.toLowerCase());
+    const selected = await tx
+      .select({ id: coders.id })
+      .from(coders)
+      .where(
+        and(
+          eq(coders.studyId, studyId),
+          or(
+            inArray(coders.id, select.coderIds ?? []),
+            inArray(coders.participantId, select.participantIds ?? []),
+            inArray(sql`lower(${coders.email})`, emails),
+          ),
+        ),
+      );
+    const ids = selected.map((c) => c.id);
     if (ids.length === 0) return { coderIds: [], answers: 0 };
-    await tx.query(
-      `INSERT INTO coder_deletions (study_id, coder_id, participant_id, email, requested_at, deleted_by, answers)
-       SELECT c.study_id, c.id, c.participant_id, c.email, (c.deletion_request->>'at')::timestamptz, $3,
-              (SELECT count(*)::int FROM annotation_values a WHERE a.study_id = c.study_id AND a.coder_id = c.id)
-       FROM coders c WHERE c.study_id = $1 AND c.id = ANY($2)`,
-      [studyId, ids, deletedBy],
+    const theirs = and(eq(coders.studyId, studyId), inArray(coders.id, ids));
+    const logged = await tx
+      .select({
+        studyId: coders.studyId,
+        coderId: coders.id,
+        participantId: coders.participantId,
+        email: coders.email,
+        requestedAt: coders.deletionRequest,
+        answers: sql<number>`(${tx.select({ n: sql`count(*)::int` }).from(a).where(and(eq(a.studyId, coders.studyId), eq(a.coderId, coders.id)))})`,
+      })
+      .from(coders)
+      .where(theirs);
+    await tx.insert(coderDeletions).values(
+      logged.map((c) => ({ ...c, requestedAt: c.requestedAt ? new Date(c.requestedAt.at) : null, deletedBy })),
     );
-    const removed = await tx.query<{ unitId: number | null }>(
-      `DELETE FROM annotation_values WHERE study_id = $1 AND coder_id = ANY($2) RETURNING unit_id AS "unitId"`,
-      [studyId, ids],
-    );
-    await tx.query("DELETE FROM coders WHERE study_id = $1 AND id = ANY($2)", [studyId, ids]);
-    const units = [...new Set(removed.flatMap((r) => (r.unitId === null ? [] : [r.unitId])))];
-    await tx.query(
-      `UPDATE units u SET coded = EXISTS (SELECT 1 FROM annotation_values a WHERE a.unit_id = u.id) WHERE u.study_id = $1 AND u.id = ANY($2)`,
-      [studyId, units],
-    );
+    const removed = await tx
+      .delete(a)
+      .where(and(eq(a.studyId, studyId), inArray(a.coderId, ids)))
+      .returning({ unitId: a.unitId });
+    await tx.delete(coders).where(theirs);
+    const touched = [...new Set(removed.flatMap((r) => (r.unitId === null ? [] : [r.unitId])))];
+    await tx
+      .update(units)
+      .set({ coded: exists(tx.select({ one: sql`1` }).from(a).where(eq(a.unitId, units.id))) })
+      .where(and(eq(units.studyId, studyId), anyOf(units.id, touched)));
     return { coderIds: ids, answers: removed.length };
   });
 }
 
 /** Deletes later: the request stays, marked postponed, and is no longer brought up. Returns false if there is none. */
-export async function postponeDeletion(sql: Sql, studyId: number, coderId: number): Promise<boolean> {
-  const rows = await sql.query(
-    `UPDATE coders SET deletion_request = deletion_request || jsonb_build_object('postponedAt', now())
-     WHERE study_id = $1 AND id = $2 AND deletion_request IS NOT NULL RETURNING id`,
-    [studyId, coderId],
-  );
+export async function postponeDeletion(db: Db, studyId: number, coderId: number): Promise<boolean> {
+  const rows = await db
+    .update(coders)
+    .set({ deletionRequest: sql`${coders.deletionRequest} || jsonb_build_object('postponedAt', now())` })
+    .where(and(eq(coders.studyId, studyId), eq(coders.id, coderId), sql`${coders.deletionRequest} IS NOT NULL`))
+    .returning({ id: coders.id });
   return rows.length > 0;
 }
 
 /** The study's deletion log, newest first. */
-export async function listCoderDeletions(sql: Sql, studyId: number): Promise<CoderDeletion[]> {
-  return sql.query<CoderDeletion>(
-    `SELECT coder_id AS "coderId", participant_id AS "participantId", email, requested_at AS "requestedAt",
-            deleted_at AS "deletedAt", deleted_by AS "deletedBy", answers
-     FROM coder_deletions WHERE study_id = $1 ORDER BY deleted_at DESC, id DESC`,
-    [studyId],
-  );
+export async function listCoderDeletions(db: Db, studyId: number): Promise<CoderDeletion[]> {
+  return db
+    .select({
+      coderId: coderDeletions.coderId,
+      participantId: coderDeletions.participantId,
+      email: coderDeletions.email,
+      requestedAt: coderDeletions.requestedAt,
+      deletedAt: coderDeletions.deletedAt,
+      deletedBy: coderDeletions.deletedBy,
+      answers: coderDeletions.answers,
+    })
+    .from(coderDeletions)
+    .where(eq(coderDeletions.studyId, studyId))
+    .orderBy(desc(coderDeletions.deletedAt), desc(coderDeletions.id));
 }

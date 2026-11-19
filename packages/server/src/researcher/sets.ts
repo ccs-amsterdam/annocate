@@ -1,18 +1,24 @@
 import { Hono } from "hono";
 import { SetGroupWriteSchema, designSetColumns } from "@annotinder/contracts";
-import type { Sql } from "../db.js";
+import { and, eq, or, sql } from "drizzle-orm";
+import type { Db } from "../db/index.js";
+import { deployments, designVersions } from "../db/schema/index.js";
 import type { Server, Env } from "../context.js";
 import { designVersionItems } from "../shared/designVersions.js";
 import { requireStudyUser } from "./auth.js";
 import { deleteSetGroup, listSetGroups, putSetGroup } from "../shared/sets.js";
 
 /** Whether the deployed or latest design selects units by a set column (`designSetColumns`). */
-async function groupInUse(sql: Sql, studyId: number, group: string): Promise<boolean> {
-  const rows = await sql.query<{ items: unknown; session: unknown }>(
-    `SELECT items, session FROM design_versions WHERE study_id = $1 AND (id = (SELECT design_version_id FROM deployments WHERE study_id = $1)
-       OR id = (SELECT max(id) FROM design_versions WHERE study_id = $1))`,
-    [studyId],
-  );
+async function groupInUse(db: Db, studyId: number, group: string): Promise<boolean> {
+  const deployed = db.select({ id: deployments.designVersionId }).from(deployments).where(eq(deployments.studyId, studyId));
+  const latest = db
+    .select({ id: sql`max(${designVersions.id})` })
+    .from(designVersions)
+    .where(eq(designVersions.studyId, studyId));
+  const rows = await db
+    .select({ items: designVersions.items, session: designVersions.session })
+    .from(designVersions)
+    .where(and(eq(designVersions.studyId, studyId), or(eq(designVersions.id, deployed), eq(designVersions.id, latest))));
   return rows.some((row) => designSetColumns(designVersionItems(row)).includes(group));
 }
 

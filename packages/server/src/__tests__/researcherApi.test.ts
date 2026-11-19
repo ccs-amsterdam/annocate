@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { researcherEndpoints, type ResearcherEndpointName } from "@annotinder/contracts";
 import type { z } from "zod";
-import type { Sql } from "../db.js";
+import type { Db } from "../db/index.js";
 import { createApp } from "../app.js";
 import { createSession } from "../shared/sessions.js";
 import { createApiKey, ensureUser, setServerRole } from "../shared/accounts.js";
@@ -11,7 +11,7 @@ import { emptyDb } from "./testDb.js";
 // an API key, the endpoint registry from the contracts, and every response
 // checked against its contract schema.
 
-let db: Sql;
+let db: Db;
 let app: ReturnType<typeof createApp>;
 
 beforeEach(async () => {

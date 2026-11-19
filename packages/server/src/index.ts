@@ -1,5 +1,5 @@
 import { serve } from "@hono/node-server";
-import { one } from "./db.js";
+import { studies } from "./db/schema/index.js";
 import { describeDatabase, openDatabase } from "./database.js";
 import { seed } from "./seed.js";
 import { createApp } from "./app.js";
@@ -39,7 +39,7 @@ if (devMode && !LOOPBACK.includes(host ?? "")) {
 
 const db = await openDatabase();
 // Development: an empty database gets a demo study.
-if (process.env.ANNOTINDER_DEMO === "1" && !(await one(db, "SELECT 1 FROM studies LIMIT 1"))) await seed(db);
+if (process.env.ANNOTINDER_DEMO === "1" && (await db.$count(studies)) === 0) await seed(db);
 
 const { OIDC_HOST, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, ANNOTINDER_PUBLIC_URL } = process.env;
 // Moving to another provider: the previous one, accepted until OIDC_PREVIOUS_UNTIL (docs/accounts.md "Changing providers")

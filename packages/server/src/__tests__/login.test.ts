@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Sql } from "../db.js";
+import type { Db } from "../db/index.js";
 import { createApp } from "../app.js";
 import type { MfaClaim } from "../oidc.js";
-import { emptyDb } from "./testDb.js";
+import { emptyDb, query } from "./testDb.js";
 import { CLIENT_ID, CLIENT_SECRET, ISSUER, mockIssuer } from "./mockIssuer.js";
 
 // Researcher login against a mock OpenID Connect provider: the test plays
@@ -10,7 +10,7 @@ import { CLIENT_ID, CLIENT_SECRET, ISSUER, mockIssuer } from "./mockIssuer.js";
 
 const PUBLIC_URL = "http://annotinder.test";
 
-let db: Sql;
+let db: Db;
 let issuer: ReturnType<typeof mockIssuer>;
 let app: ReturnType<typeof createApp>;
 
@@ -102,7 +102,7 @@ describe("researcher login", () => {
   });
 
   it("starts a session for the verified email, and returns to the page the researcher came from", async () => {
-    await db.query("INSERT INTO roles (role, email_domain) VALUES ('researcher', 'uni.nl')");
+    await query(db, "INSERT INTO roles (role, email_domain) VALUES ('researcher', 'uni.nl')");
     const b = browser();
     expect(await b.logIn(verified)).toBe("/studies?x=1");
     expect(b.cookies.has("annotinder_session")).toBe(true);
@@ -266,14 +266,14 @@ describe("researcher login", () => {
     app = newApp(["boss@uni.nl"]);
     expect(await role("anyone@gmail.com")).toBe("user");
     expect(await role("boss@uni.nl")).toBe("admin");
-    await db.query("INSERT INTO roles (role, email_domain) VALUES ('researcher', '*.uni.nl')");
+    await query(db, "INSERT INTO roles (role, email_domain) VALUES ('researcher', '*.uni.nl')");
     expect(await role("jane@dept.uni.nl")).toBe("researcher");
     expect(await role("jane@uni.nl.evil.com")).toBe("user");
-    await db.query("INSERT INTO roles (role) VALUES ('researcher')");
+    await query(db, "INSERT INTO roles (role) VALUES ('researcher')");
     expect(await role("anyone@gmail.com")).toBe("researcher");
 
     // A user can't create studies
-    await db.query("DELETE FROM roles WHERE user_id IS NULL AND email_domain IS NULL");
+    await query(db, "DELETE FROM roles WHERE user_id IS NULL AND email_domain IS NULL");
     const b = browser();
     await b.logIn({ ...verified, email: "student@gmail.com", sub: "student" });
     const res = await b.api("/api/study", { method: "POST", body: JSON.stringify({ name: "x" }) });
@@ -284,7 +284,7 @@ describe("researcher login", () => {
   it("refuses blocked users, and ends their sessions", async () => {
     const b = browser();
     await b.logIn(verified);
-    await db.query("UPDATE users SET blocked_at = now()");
+    await query(db, "UPDATE users SET blocked_at = now()");
     expect((await b.api("/api/me")).status).toBe(401);
     expect(await b.logIn(verified)).toContain("loginError=blocked");
   });
@@ -376,11 +376,11 @@ describe("changing providers (OIDC_PREVIOUS_*)", () => {
     const later = browser();
     await later.logIn({ ...verified, email: "jane@new.org", sub: "new-jane" });
     expect((await me(later)).email).toBe("jane@new.org");
-    expect(await db.query("SELECT iss, sub FROM identities i JOIN users u ON u.id = i.user_id ORDER BY iss")).toEqual([
+    expect(await query(db, "SELECT iss, sub FROM identities i JOIN users u ON u.id = i.user_id ORDER BY iss")).toEqual([
       { iss: ISSUER, sub: "new-jane" },
       { iss: OLD, sub: "old-jane" },
     ]);
-    expect(await db.query("SELECT count(*)::int AS n FROM users")).toEqual([{ n: 1 }]);
+    expect(await query(db, "SELECT count(*)::int AS n FROM users")).toEqual([{ n: 1 }]);
   });
 
   it("doesn't link a login that is someone else's account, nor without a session", async () => {

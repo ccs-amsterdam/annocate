@@ -7,6 +7,8 @@ import { linkInfo } from "./shared/links.js";
 import { userForSession } from "./shared/sessions.js";
 import { deviceDetails } from "./shared/devices.js";
 import { coderStudies } from "./shared/coderStudies.js";
+import { and, eq } from "drizzle-orm";
+import { coderDevices, coders } from "./db/schema/index.js";
 import { SESSION_COOKIE } from "./researcher/login.js";
 import { coderKey, newDeviceId, readDevice, requireClientHeader, writeDevice } from "./runtime/session.js";
 import type { Coder, DeploymentRuntime } from "./runtime/runtime.js";
@@ -61,10 +63,10 @@ export function coderApi(server: Server): Hono {
     const urlParams = Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));
     const participant = participantParam ? urlParams[participantParam]?.trim() || undefined : undefined;
     const key = await coderKey(device, deploymentId, participant);
-    const [study] = await coderStudies(server.db, "c.study_id = $1 AND c.id = (SELECT coder_id FROM coder_devices WHERE key_hash = $2)", [
-      Number(deploymentId),
-      key,
-    ]);
+    const [study] = await coderStudies(
+      server.db,
+      and(eq(coders.studyId, Number(deploymentId)), eq(coders.id, server.db.select({ id: coderDevices.coderId }).from(coderDevices).where(eq(coderDevices.keyHash, key)))),
+    );
     if (!study) throw new HttpError(404, "No session here");
     return c.json(study);
   });

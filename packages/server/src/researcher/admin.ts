@@ -8,93 +8,122 @@ import {
   PlanWriteSchema,
   ResearcherRequestDecisionSchema,
   ServerSettingsSchema,
-  type AccountRole,
-  type AdminStudy,
   type AdminUser,
-  type Limits,
 } from "@annotinder/contracts";
-import { one, type Sql } from "../db.js";
+import { and, asc, desc, eq, exists, isNotNull, isNull, like, not, sql, type SQL } from "drizzle-orm";
+import type { Db } from "../db/index.js";
+import {
+  adminLog,
+  annotationValues,
+  coders,
+  domainPlans,
+  identities,
+  plans,
+  researcherRequests,
+  roles,
+  serverSettings,
+  sessions,
+  studies,
+  units,
+  users,
+} from "../db/schema/index.js";
+import { accountRole, roleApplies } from "../db/sql.js";
 import type { Server, Env } from "../context.js";
 import { checkSensitive, requireResearcher } from "./auth.js";
 import { serverWarnings } from "../shared/warnings.js";
 import { HttpError } from "../shared/http.js";
-import { effectiveLimits, getSettings, setServerRole, userForEmail } from "../shared/accounts.js";
+import { effectiveLimits, everyoneResearcher, getSettings, setServerRole, userForEmail } from "../shared/accounts.js";
 
 // The server admin's API (contracts admin.ts, docs/accounts.md): account
 // role `admin`. Admins manage accounts and studies, never study data: nothing
 // here returns design versions, units or answers. Every change is logged.
 
-interface UserRow {
-  id: number;
-  email: string;
-  role: AccountRole;
-  role_via: "user" | "domain" | "everyone" | null;
-  plan_id: number | null;
-  limits: Limits;
-  blocked_at: Date | null;
-  created: Date;
-  last_login_at: Date | null;
-  registered: boolean;
-  invitation_expired: boolean;
-  roles_disabled: number;
-  has_mfa: boolean;
-  linked: boolean;
-  studies: number;
-}
+/** Server roles (not a study's). */
+const serverRole = isNull(roles.studyId);
 
 /**
  * Users with their account role and where it comes from, whether they
  * claimed their account (`registered`), whether their invitation expired
  * (unclaimed 3 months after their first role), roles the safeguards turned
- * off, and (`$1`: the current provider's issuer) whether they linked a login there.
+ * off, and whether they linked a login at the current provider (`issuer`).
  */
-const USER_SELECT = `SELECT u.*, account_role(u.id) AS role, u.registered_at IS NOT NULL AS registered,
-  (SELECT CASE WHEN bool_or(r.user_id IS NOT NULL) THEN 'user' WHEN bool_or(r.email_domain IS NOT NULL) THEN 'domain' WHEN count(*) > 0 THEN 'everyone' END
-     FROM roles r WHERE r.study_id IS NULL AND role_applies(r, u) AND r.role = account_role(u.id)) AS role_via,
-  (u.registered_at IS NULL AND EXISTS (SELECT 1 FROM roles r WHERE r.user_id = u.id AND r.granted_at < now() - interval '3 months')) AS invitation_expired,
-  (SELECT count(*)::int FROM roles r WHERE r.user_id = u.id AND u.registered_at IS NOT NULL AND NOT role_applies(r, u)) AS roles_disabled,
-  EXISTS (SELECT 1 FROM identities i WHERE i.user_id = u.id AND rtrim(i.iss, '/') = rtrim($1::text, '/')) AS linked,
-  (SELECT count(*)::int FROM studies j WHERE j.owner_id = u.id) AS studies
-  FROM users u`;
+function selectUsers(db: Db, issuer: string) {
+  const role = accountRole(users.id);
+  const registered = sql<boolean>`${users.registeredAt} IS NOT NULL`;
+  // Where their account role comes from: their own role, their domain's, or everyone's
+  const roleVia = db
+    .select({
+      via: sql`CASE WHEN bool_or(${roles.userId} IS NOT NULL) THEN 'user' WHEN bool_or(${roles.emailDomain} IS NOT NULL) THEN 'domain' WHEN count(*) > 0 THEN 'everyone' END`,
+    })
+    .from(roles)
+    .where(and(serverRole, roleApplies(roles, users), eq(roles.role, role)));
+  const ownRoles = (where: SQL) => db.select({ one: sql`1` }).from(roles).where(and(eq(roles.userId, users.id), where));
+  return db
+    .select({
+      user: users,
+      role,
+      roleVia: sql<AdminUser["roleVia"]>`(${roleVia})`,
+      registered,
+      invitationExpired: sql<boolean>`(${and(isNull(users.registeredAt), exists(ownRoles(sql`${roles.grantedAt} < now() - interval '3 months'`)))})`,
+      rolesDisabled: sql<number>`(${db
+        .select({ n: sql`count(*)::int` })
+        .from(roles)
+        .where(and(eq(roles.userId, users.id), isNotNull(users.registeredAt), not(roleApplies(roles, users))))})`,
+      linked: sql<boolean>`${exists(
+        db
+          .select({ one: sql`1` })
+          .from(identities)
+          .where(and(eq(identities.userId, users.id), sql`rtrim(${identities.iss}, '/') = rtrim(${issuer}::text, '/')`)),
+      )}`,
+      studies: sql<number>`(${db.select({ n: sql`count(*)::int` }).from(studies).where(eq(studies.ownerId, users.id))})`,
+    })
+    .from(users)
+    .$dynamic();
+}
 
-async function toAdminUser(sql: Sql, row: UserRow): Promise<AdminUser> {
+type UserRow = Awaited<ReturnType<ReturnType<typeof selectUsers>["execute"]>>[number];
+
+async function toAdminUser(db: Db, { user, ...row }: UserRow): Promise<AdminUser> {
   return {
-    id: row.id,
-    email: row.email,
+    id: user.id,
+    email: user.email,
     role: row.role,
-    roleVia: row.role_via,
+    roleVia: row.roleVia,
     registered: row.registered,
-    invitationExpired: row.invitation_expired,
-    rolesDisabled: row.roles_disabled,
-    hasMfa: row.has_mfa,
+    invitationExpired: row.invitationExpired,
+    rolesDisabled: row.rolesDisabled,
+    hasMfa: user.hasMfa,
     linked: row.linked,
-    planId: row.plan_id,
-    limits: row.limits,
-    effectiveLimits: await effectiveLimits(sql, row.id),
-    blockedAt: row.blocked_at,
-    created: row.created,
-    lastLogin: row.last_login_at,
+    planId: user.planId,
+    limits: user.limits,
+    effectiveLimits: await effectiveLimits(db, user.id),
+    blockedAt: user.blockedAt,
+    created: user.created,
+    lastLogin: user.lastLoginAt,
     studies: row.studies,
   };
 }
 
-const STUDY_SELECT = `SELECT j.id, j.name, j.created, j.archived, j.suspended_at, o.email AS owner,
-  (SELECT count(*)::int FROM units WHERE study_id = j.id AND in_draft) AS units,
-  (SELECT count(*)::int FROM coders WHERE study_id = j.id) AS coders,
-  (SELECT count(*)::int FROM annotation_values WHERE study_id = j.id) AS answers
-  FROM studies j LEFT JOIN users o ON o.id = j.owner_id`;
-
-const toAdminStudy = (row: Omit<AdminStudy, "suspendedAt"> & { suspended_at: Date | null }): AdminStudy => ({
-  id: row.id,
-  name: row.name,
-  owner: row.owner,
-  created: row.created,
-  archived: row.archived,
-  suspendedAt: row.suspended_at,
-  units: row.units,
-  coders: row.coders,
-  answers: row.answers,
-});
+/** Studies with their owner and how much they hold. */
+function selectStudies(db: Db) {
+  const counted = (table: typeof units | typeof coders | typeof annotationValues, where?: SQL) =>
+    sql<number>`(${db.select({ n: sql`count(*)::int` }).from(table).where(and(eq(table.studyId, studies.id), where))})`;
+  return db
+    .select({
+      id: studies.id,
+      name: studies.name,
+      owner: users.email,
+      created: studies.created,
+      archived: studies.archived,
+      suspendedAt: studies.suspendedAt,
+      units: counted(units, sql`${units.inDraft}`),
+      coders: counted(coders),
+      answers: counted(annotationValues),
+    })
+    .from(studies)
+    .leftJoin(users, eq(users.id, studies.ownerId))
+    .$dynamic();
+}
 
 async function body<T>(
   c: Context,
@@ -110,16 +139,14 @@ export function admin(server: Server): Hono<Env> {
   const app = new Hono<Env>();
   app.use("/admin/*", requireResearcher(server, { role: "admin" }));
 
+  /** Server roles of email domains (not of a user). */
+  const domainRoles = and(serverRole, isNull(roles.userId));
+
   /** The current login provider's issuer (whether users linked a login there). */
   const issuer = () => server.login?.oidc.issuer ?? "";
 
   const log = (c: Context<Env>, action: string, target: string, details: object = {}) =>
-    db.query("INSERT INTO admin_log (admin, action, target, details) VALUES ($1, $2, $3, $4)", [
-      c.get("researcher").email,
-      action,
-      target,
-      JSON.stringify(details),
-    ]);
+    db.insert(adminLog).values({ admin: c.get("researcher").email, action, target, details: details as Record<string, unknown> });
 
   // ---- warnings and settings ---------------------------------------------------
 
@@ -131,45 +158,36 @@ export function admin(server: Server): Hono<Env> {
     const settings = await body(c, ServerSettingsSchema);
     await getSettings(db); // the row exists
     // Open registration is a role: researcher, for every user with an email address
-    await db.query(
-      "DELETE FROM roles WHERE study_id IS NULL AND user_id IS NULL AND email_domain IS NULL AND role = 'researcher'",
-    );
-    if (settings.registration.open)
-      await db.query("INSERT INTO roles (role, granted_by) VALUES ('researcher', $1)", [c.get("researcher").email]);
-    await db.query(
-      "UPDATE server_settings SET registration = $1, default_plan_id = $2, unit_bytes = $3, answer_bytes = $4",
-      [
-        JSON.stringify({ requests: settings.registration.requests }),
-        settings.defaultPlanId,
-        settings.unitBytes,
-        settings.answerBytes,
-      ],
-    );
+    await db.delete(roles).where(everyoneResearcher);
+    if (settings.registration.open) await db.insert(roles).values({ role: "researcher", grantedBy: c.get("researcher").email });
+    await db.update(serverSettings).set({
+      registration: { requests: settings.registration.requests },
+      defaultPlanId: settings.defaultPlanId,
+      unitBytes: settings.unitBytes,
+      answerBytes: settings.answerBytes,
+    });
     await log(c, "settings", "server", settings);
     return c.json(await getSettings(db));
   });
 
   // ---- plans and domains -------------------------------------------------------
 
-  app.get("/admin/plans", async (c) => c.json(await db.query("SELECT id, name, limits FROM plans ORDER BY name")));
+  app.get("/admin/plans", async (c) => c.json(await db.select().from(plans).orderBy(asc(plans.name))));
 
   app.post("/admin/plans", async (c) => {
     const plan = await body(c, PlanWriteSchema);
-    const row = await one(db, "INSERT INTO plans (name, limits) VALUES ($1, $2) RETURNING id, name, limits", [
-      plan.name,
-      JSON.stringify(plan.limits),
-    ]);
+    const [row] = await db.insert(plans).values({ name: plan.name, limits: plan.limits }).returning();
     await log(c, "create plan", plan.name, plan.limits);
     return c.json(row, 201);
   });
 
   app.put("/admin/plans/:id", async (c) => {
     const plan = await body(c, PlanWriteSchema);
-    const row = await one(db, "UPDATE plans SET name = $1, limits = $2 WHERE id = $3 RETURNING id, name, limits", [
-      plan.name,
-      JSON.stringify(plan.limits),
-      Number(c.req.param("id")),
-    ]);
+    const [row] = await db
+      .update(plans)
+      .set({ name: plan.name, limits: plan.limits })
+      .where(eq(plans.id, Number(c.req.param("id"))))
+      .returning();
     if (!row) throw new HttpError(404, "Plan not found");
     await log(c, "update plan", plan.name, plan.limits);
     return c.json(row);
@@ -179,40 +197,33 @@ export function admin(server: Server): Hono<Env> {
     const id = Number(c.req.param("id"));
     if ((await getSettings(db)).defaultPlanId === id)
       throw new HttpError(409, "This is the default plan: choose another default first");
-    const row = await one<{ name: string }>(db, "DELETE FROM plans WHERE id = $1 RETURNING name", [id]);
+    const [row] = await db.delete(plans).where(eq(plans.id, id)).returning({ name: plans.name });
     if (!row) throw new HttpError(404, "Plan not found");
     await log(c, "delete plan", row.name);
     return c.body(null, 204);
   });
 
   // A domain rule: a researcher role for users with an email address there, and/or their plan
-  app.get("/admin/domains", async (c) =>
-    c.json(
-      await db.query(
-        `SELECT d.domain, EXISTS (SELECT 1 FROM roles r WHERE r.study_id IS NULL AND r.user_id IS NULL AND r.email_domain = d.domain) AS researcher,
-           (SELECT plan_id FROM domain_plans p WHERE p.domain = d.domain) AS "planId"
-         FROM (SELECT email_domain AS domain FROM roles WHERE study_id IS NULL AND user_id IS NULL AND email_domain IS NOT NULL
-               UNION SELECT domain FROM domain_plans) d ORDER BY d.domain`,
-      ),
-    ),
-  );
+  app.get("/admin/domains", async (c) => {
+    const researcherDomains = await db
+      .select({ domain: sql<string>`${roles.emailDomain}` })
+      .from(roles)
+      .where(and(domainRoles, isNotNull(roles.emailDomain)));
+    const planned = new Map((await db.select().from(domainPlans)).map((d) => [d.domain, d.planId]));
+    const researchers = new Set(researcherDomains.map((r) => r.domain));
+    const domains = [...new Set([...researchers, ...planned.keys()])].sort();
+    return c.json(domains.map((domain) => ({ domain, researcher: researchers.has(domain), planId: planned.get(domain) ?? null })));
+  });
 
   app.put("/admin/domains/:domain", async (c) => {
     const domain = DomainSchema.safeParse(c.req.param("domain"));
     if (!domain.success) throw new HttpError(400, "A domain like uni.nl or *.uni.nl");
     const rule = await body(c, DomainRuleWriteSchema);
     await db.transaction(async (tx) => {
-      await tx.query("DELETE FROM roles WHERE study_id IS NULL AND user_id IS NULL AND email_domain = $1", [
-        domain.data,
-      ]);
-      if (rule.researcher)
-        await tx.query("INSERT INTO roles (role, email_domain, granted_by) VALUES ('researcher', $1, $2)", [
-          domain.data,
-          c.get("researcher").email,
-        ]);
-      await tx.query("DELETE FROM domain_plans WHERE domain = $1", [domain.data]);
-      if (rule.planId !== null)
-        await tx.query("INSERT INTO domain_plans (domain, plan_id) VALUES ($1, $2)", [domain.data, rule.planId]);
+      await tx.delete(roles).where(and(domainRoles, eq(roles.emailDomain, domain.data)));
+      if (rule.researcher) await tx.insert(roles).values({ role: "researcher", emailDomain: domain.data, grantedBy: c.get("researcher").email });
+      await tx.delete(domainPlans).where(eq(domainPlans.domain, domain.data));
+      if (rule.planId !== null) await tx.insert(domainPlans).values({ domain: domain.data, planId: rule.planId });
     });
     await log(c, "domain", domain.data, rule);
     return c.json({ domain: domain.data, ...rule });
@@ -220,12 +231,12 @@ export function admin(server: Server): Hono<Env> {
 
   app.delete("/admin/domains/:domain", async (c) => {
     const domain = c.req.param("domain").toLowerCase();
-    const roles = await db.query(
-      "DELETE FROM roles WHERE study_id IS NULL AND user_id IS NULL AND email_domain = $1 RETURNING id",
-      [domain],
-    );
-    const plans = await db.query("DELETE FROM domain_plans WHERE domain = $1 RETURNING domain", [domain]);
-    if (roles.length + plans.length === 0) throw new HttpError(404, "No such domain");
+    const deletedRoles = await db
+      .delete(roles)
+      .where(and(domainRoles, eq(roles.emailDomain, domain)))
+      .returning({ id: roles.id });
+    const deletedPlans = await db.delete(domainPlans).where(eq(domainPlans.domain, domain)).returning({ domain: domainPlans.domain });
+    if (deletedRoles.length + deletedPlans.length === 0) throw new HttpError(404, "No such domain");
     await log(c, "delete domain", domain);
     return c.body(null, 204);
   });
@@ -234,15 +245,15 @@ export function admin(server: Server): Hono<Env> {
 
   app.get("/admin/users", async (c) => {
     const q = (c.req.query("q") ?? "").trim().toLowerCase();
-    const rows = await db.query<UserRow>(
-      `${USER_SELECT} WHERE ($2 = '' OR u.email LIKE '%' || $2 || '%') ORDER BY u.last_login_at DESC NULLS LAST, u.id DESC LIMIT 200`,
-      [issuer(), q],
-    );
+    const rows = await selectUsers(db, issuer())
+      .where(q === "" ? undefined : like(users.email, `%${q}%`))
+      .orderBy(sql`${users.lastLoginAt} DESC NULLS LAST`, desc(users.id))
+      .limit(200);
     return c.json(await Promise.all(rows.map((r) => toAdminUser(db, r))));
   });
 
   const userById = async (id: number) => {
-    const row = await one<UserRow>(db, `${USER_SELECT} WHERE u.id = $2`, [issuer(), id]);
+    const [row] = await selectUsers(db, issuer()).where(eq(users.id, id));
     if (!row) throw new HttpError(404, "User not found");
     return toAdminUser(db, row);
   };
@@ -255,7 +266,7 @@ export function admin(server: Server): Hono<Env> {
     const id = await db.transaction(async (tx) => {
       const { id } = await userForEmail(tx, email);
       await setServerRole(tx, id, user.role, c.get("researcher").email);
-      if (user.planId != null) await tx.query("UPDATE users SET plan_id = $1 WHERE id = $2", [user.planId, id]);
+      if (user.planId != null) await tx.update(users).set({ planId: user.planId }).where(eq(users.id, id));
       return id;
     });
     await log(c, "add user", email, { role: user.role, planId: user.planId ?? null });
@@ -267,7 +278,7 @@ export function admin(server: Server): Hono<Env> {
     const id = Number(c.req.param("id"));
     const user = await userById(id);
     if (user.registered) throw new HttpError(409, "This user has logged in: block them instead");
-    await db.query("DELETE FROM users WHERE id = $1 AND registered_at IS NULL", [id]);
+    await db.delete(users).where(and(eq(users.id, id), isNull(users.registeredAt)));
     await log(c, "withdraw invitation", user.email);
     return c.body(null, 204);
   });
@@ -285,17 +296,16 @@ export function admin(server: Server): Hono<Env> {
     await db.transaction(async (tx) => {
       if (update.role) await setServerRole(tx, id, update.role, c.get("researcher").email);
       // The safeguards turned their roles off: restored (their dates count from now)
-      if (update.restoreRoles) await tx.query("UPDATE roles SET granted_at = now() WHERE user_id = $1", [id]);
-      if (update.planId !== undefined)
-        await tx.query("UPDATE users SET plan_id = $1 WHERE id = $2", [update.planId, id]);
-      if (update.limits)
-        await tx.query("UPDATE users SET limits = $1 WHERE id = $2", [JSON.stringify(update.limits), id]);
+      if (update.restoreRoles) await tx.update(roles).set({ grantedAt: sql`now()` }).where(eq(roles.userId, id));
+      const user = eq(users.id, id);
+      if (update.planId !== undefined) await tx.update(users).set({ planId: update.planId }).where(user);
+      if (update.limits) await tx.update(users).set({ limits: update.limits }).where(user);
       if (update.blocked === true) {
-        await tx.query("UPDATE users SET blocked_at = COALESCE(blocked_at, now()) WHERE id = $1", [id]);
+        await tx.update(users).set({ blockedAt: sql`COALESCE(${users.blockedAt}, now())` }).where(user);
         // Blocked: their logins end now (API keys stop working too, shared/accounts.ts).
-        await tx.query("DELETE FROM sessions WHERE user_id = $1", [id]);
+        await tx.delete(sessions).where(eq(sessions.userId, id));
       }
-      if (update.blocked === false) await tx.query("UPDATE users SET blocked_at = NULL WHERE id = $1", [id]);
+      if (update.blocked === false) await tx.update(users).set({ blockedAt: null }).where(user);
     });
     await log(
       c,
@@ -316,27 +326,26 @@ export function admin(server: Server): Hono<Env> {
 
   app.get("/admin/requests", async (c) =>
     c.json(
-      await db.query(
-        `SELECT r.user_id AS "userId", u.email, r.message, r.at FROM researcher_requests r JOIN users u ON u.id = r.user_id
-         WHERE r.decided_at IS NULL ORDER BY r.at`,
-      ),
+      await db
+        .select({ userId: researcherRequests.userId, email: users.email, message: researcherRequests.message, at: researcherRequests.at })
+        .from(researcherRequests)
+        .innerJoin(users, eq(users.id, researcherRequests.userId))
+        .where(isNull(researcherRequests.decidedAt))
+        .orderBy(asc(researcherRequests.at)),
     ),
   );
 
   app.post("/admin/requests/:userId", async (c) => {
     const userId = Number(c.req.param("userId"));
     const { approve } = await body(c, ResearcherRequestDecisionSchema);
-    const row = await one<{ email: string }>(
-      db,
-      `UPDATE researcher_requests r SET decided_at = now(), decided_by = $2, approved = $3 FROM users u
-       WHERE r.user_id = $1 AND u.id = r.user_id AND r.decided_at IS NULL RETURNING u.email`,
-      [userId, c.get("researcher").email, approve],
-    );
+    const [row] = await db
+      .update(researcherRequests)
+      .set({ decidedAt: sql`now()`, decidedBy: c.get("researcher").email, approved: approve })
+      .from(users)
+      .where(and(eq(researcherRequests.userId, userId), eq(users.id, researcherRequests.userId), isNull(researcherRequests.decidedAt)))
+      .returning({ email: users.email, role: accountRole(users.id) });
     if (!row) throw new HttpError(404, "No open request from this user");
-    if (
-      approve &&
-      (await one<{ role: AccountRole }>(db, "SELECT account_role($1) AS role", [userId]))?.role === "user"
-    ) {
+    if (approve && row.role === "user") {
       await setServerRole(db, userId, "researcher", c.get("researcher").email);
     }
     await log(c, approve ? "approve request" : "deny request", row.email);
@@ -347,30 +356,31 @@ export function admin(server: Server): Hono<Env> {
 
   app.get("/admin/studies", async (c) =>
     c.json(
-      (await db.query<Parameters<typeof toAdminStudy>[0]>(`${STUDY_SELECT} ORDER BY j.id DESC`)).map(toAdminStudy),
+      await selectStudies(db).orderBy(desc(studies.id)),
     ),
   );
 
   app.put("/admin/studies/:id", async (c) => {
     const id = Number(c.req.param("id"));
     const update = await body(c, AdminStudyUpdateSchema);
-    const study = await one<{ name: string }>(db, "SELECT name FROM studies WHERE id = $1", [id]);
+    const [study] = await db.select({ name: studies.name }).from(studies).where(eq(studies.id, id));
     if (!study) throw new HttpError(404, "Study not found");
     if (update.owner !== undefined) {
-      const owner = await one<{ id: number; role: AccountRole }>(
-        db,
-        "SELECT id, account_role(id) AS role FROM users WHERE email = $1 AND registered_at IS NOT NULL ORDER BY last_login_at DESC NULLS LAST LIMIT 1",
-        [update.owner.toLowerCase()],
-      );
+      const [owner] = await db
+        .select({ id: users.id, role: accountRole(users.id) })
+        .from(users)
+        .where(and(eq(users.email, update.owner.toLowerCase()), isNotNull(users.registeredAt)))
+        .orderBy(sql`${users.lastLoginAt} DESC NULLS LAST`)
+        .limit(1);
       if (!owner || owner.role === "user")
         throw new HttpError(400, "The new owner must be a researcher on this server");
-      await db.query("UPDATE studies SET owner_id = $1 WHERE id = $2", [owner.id, id]);
+      await db.update(studies).set({ ownerId: owner.id }).where(eq(studies.id, id));
     }
     if (update.suspended !== undefined) {
-      await db.query(
-        `UPDATE studies SET suspended_at = ${update.suspended ? "COALESCE(suspended_at, now())" : "NULL"} WHERE id = $1`,
-        [id],
-      );
+      await db
+        .update(studies)
+        .set({ suspendedAt: update.suspended ? sql`COALESCE(${studies.suspendedAt}, now())` : null })
+        .where(eq(studies.id, id));
       // Coders are refused from now on (the runtime loads again, runtime/store.ts).
       server.deployments.drop(id);
     }
@@ -380,13 +390,18 @@ export function admin(server: Server): Hono<Env> {
       `#${id} ${study.name}`,
       update,
     );
-    return c.json(
-      toAdminStudy((await one<Parameters<typeof toAdminStudy>[0]>(db, `${STUDY_SELECT} WHERE j.id = $1`, [id]))!),
-    );
+    const [updated] = await selectStudies(db).where(eq(studies.id, id));
+    return c.json(updated!);
   });
 
   app.get("/admin/log", async (c) =>
-    c.json(await db.query("SELECT at, admin, action, target, details FROM admin_log ORDER BY id DESC LIMIT 500")),
+    c.json(
+      await db
+        .select({ at: adminLog.at, admin: adminLog.admin, action: adminLog.action, target: adminLog.target, details: adminLog.details })
+        .from(adminLog)
+        .orderBy(desc(adminLog.id))
+        .limit(500),
+    ),
   );
 
   return app;

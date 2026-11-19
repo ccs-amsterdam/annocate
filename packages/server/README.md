@@ -64,11 +64,30 @@ the server's settings. With it, they give others a role in a study
   validation, sessions, previews (in memory). It reads and writes the
   database through [`store.ts`](src/runtime/store.ts).
 - [`src/shared/`](src/shared/): database queries used by both.
-- [`migrations/`](migrations/): the data model, as numbered SQL files,
-  applied in order at startup ([`src/db.ts`](src/db.ts)). A change is a new
-  file, never an edit to an applied one.
+- [`src/db/`](src/db/): the database, through [Drizzle](https://orm.drizzle.team):
+  the tables per area in [`schema/`](src/db/schema/), opening a database and
+  applying the migrations in [`index.ts`](src/db/index.ts), and SQL
+  expressions used inside queries (role resolution, unit data) in
+  [`sql.ts`](src/db/sql.ts). Queries use Drizzle's query builder; a few
+  (distribution's locks, comparing draft and deployed units, bulk inserts)
+  are `sql` templates.
+- [`migrations/`](migrations/): made by Drizzle from the schema, applied in
+  order when the server starts. `0001_seed.sql` is hand-written: what the
+  schema can't say (`rate_limits` is unlogged) and the seed rows.
+
+Changing the schema: edit [`src/db/schema/`](src/db/schema/), then
+
+```sh
+pnpm --filter @annotinder/server db:generate
+```
+
+writes a new migration in `migrations/` (with its snapshot in
+`migrations/meta/`). Read it, and commit it with the schema change; an
+applied migration is never edited. For something the schema can't say,
+`pnpm --filter @annotinder/server exec drizzle-kit generate --custom --name <what>`
+makes an empty migration to write by hand.
 
 Tests run on PGlite (one instance per test file, emptied before each
 test). To run them against a Postgres server instead, point
-`TEST_DATABASE_URL` at a scratch database: each test worker gets its own
-schema there, and its tables are emptied.
+`TEST_DATABASE_URL` at a scratch server: each test worker gets its own
+database there (`annotinder_test_<n>`), and its tables are emptied.

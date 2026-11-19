@@ -1,4 +1,4 @@
-import type { Sql } from "./db.js";
+import type { Db } from "./db/index.js";
 import { createStudyFromExample } from "./examples.js";
 
 /**
@@ -6,7 +6,7 @@ import { createStudyFromExample } from "./examples.js";
  * example (examples/tour.json), with the link secret `demo-secret` (a
  * development server's coder home links to it: /code/1?link=demo-secret).
  */
-export async function seed(db: Sql): Promise<void> {
+export async function seed(db: Db): Promise<void> {
   await createStudyFromExample(db, "tour", {
     name: "Demo study",
     ownerId: null,

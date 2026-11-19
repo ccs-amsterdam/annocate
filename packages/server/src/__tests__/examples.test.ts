@@ -6,16 +6,16 @@ import {
   StudyResponseSchema,
   type AnnotationRow,
 } from "@annotinder/contracts";
-import type { Sql } from "../db.js";
+import type { Db } from "../db/index.js";
 import { createApp } from "../app.js";
 import { createApiKey, ensureUser, setServerRole } from "../shared/accounts.js";
 import { listExamples } from "../examples.js";
-import { emptyDb } from "./testDb.js";
+import { emptyDb, query } from "./testDb.js";
 
 // Example studies (docs/plans/examples.md): every example makes a working study,
 // with valid example answers, that a coder can start coding.
 
-let db: Sql;
+let db: Db;
 let app: ReturnType<typeof createApp>;
 let key: string;
 
@@ -83,10 +83,10 @@ describe("example studies", () => {
   );
 
   it("counts against the researcher's limit on studies", async () => {
-    const plan = await db.query<{ id: number }>(
+    const plan = await query<{ id: number }>(db, 
       "INSERT INTO plans (name, limits) VALUES ('One', '{\"studies\": 1}') RETURNING id",
     );
-    await db.query("UPDATE users SET plan_id = $1", [plan[0].id]);
+    await query(db, "UPDATE users SET plan_id = $1", [plan[0].id]);
     expect(
       (await researcher("/api/study/from-example", { method: "POST", body: JSON.stringify({ example: "nope" }) }))
         .status,
@@ -135,7 +135,7 @@ describe("studies from a recipe", () => {
     design: { items },
   };
   const post = (body: object) => researcher("/api/study/from-recipe", { method: "POST", body: JSON.stringify(body) });
-  const studyCount = async () => (await db.query<{ n: number }>("SELECT count(*)::int AS n FROM studies"))[0].n;
+  const studyCount = async () => (await query<{ n: number }>(db, "SELECT count(*)::int AS n FROM studies"))[0].n;
 
   it("makes the units, set groups and a draft design; deploying makes its links", async () => {
     const res = await post(recipe);
@@ -159,7 +159,7 @@ describe("studies from a recipe", () => {
     const designVersions = (await (await researcher(`/api/study/${study.id}/design`)).json()) as { items: unknown[] }[];
     expect(designVersions).toHaveLength(1);
     // Its set columns are unit fields of type set
-    const [{ units: spec }] = await db.query<{ units: { fields: unknown[] } }>("SELECT units FROM design_versions WHERE study_id = $1", [study.id]);
+    const [{ units: spec }] = await query<{ units: { fields: unknown[] } }>(db, "SELECT units FROM design_versions WHERE study_id = $1", [study.id]);
     expect(spec.fields).toEqual([
       { name: "text", type: "text" },
       { name: "condition", type: "set" },
@@ -193,10 +193,10 @@ describe("studies from a recipe", () => {
   });
 
   it("counts against the researcher's limit on studies", async () => {
-    const plan = await db.query<{ id: number }>(
+    const plan = await query<{ id: number }>(db, 
       "INSERT INTO plans (name, limits) VALUES ('One', '{\"studies\": 1}') RETURNING id",
     );
-    await db.query("UPDATE users SET plan_id = $1", [plan[0].id]);
+    await query(db, "UPDATE users SET plan_id = $1", [plan[0].id]);
     expect((await post(recipe)).status).toBe(201);
     expect(await (await post(recipe)).json()).toMatchObject({ code: "limit_reached" });
   });

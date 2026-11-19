@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { DeploymentWriteSchema, designErrors, redirectSettings, undeclaredFields } from "@annotinder/contracts";
-import { designVersionItems, designVersionUnits, itemsValid, type DesignVersionRow } from "../shared/designVersions.js";
-import { one } from "../db.js";
+import { designVersionItems, designVersionUnits, itemsValid } from "../shared/designVersions.js";
+import { and, eq } from "drizzle-orm";
+import { deployments, designVersions, studies } from "../db/schema/index.js";
 import type { Server, Env } from "../context.js";
 import { requireStudyUser } from "./auth.js";
 import { deploymentVersions, getDeployment, pendingChanges, putDeployment } from "../shared/deployments.js";
@@ -21,7 +22,10 @@ export function deployment(server: Server): Hono<Env> {
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
     const studyId = c.get("studyId");
-    const codebook = await one<DesignVersionRow>(db, "SELECT * FROM design_versions WHERE study_id = $1 AND id = $2", [studyId, parsed.data.designVersionId]);
+    const [codebook] = await db
+      .select()
+      .from(designVersions)
+      .where(and(eq(designVersions.studyId, studyId), eq(designVersions.id, parsed.data.designVersionId)));
     if (!codebook) return c.json({ error: "Design version not found" }, 404);
     // Drafts may be saved with issues; coders only ever get a valid codebook.
     const errors = designErrors(designVersionItems(codebook));
@@ -34,27 +38,27 @@ export function deployment(server: Server): Hono<Env> {
       return c.json({ error: `The design uses unit fields it doesn't declare: ${undeclared.join(", ")}`, code: "undeclared_fields" }, 400);
     }
     // The units it runs: the drafts (`units`, and always the first time), or the deployed ones.
-    const current = await one(db, "SELECT 1 FROM deployments WHERE study_id = $1", [studyId]);
-    const live = !parsed.data.units && !!current;
+    const deployed = (await db.$count(deployments, eq(deployments.studyId, studyId))) > 0;
+    const live = !parsed.data.units && deployed;
     // Who gets which units: the set columns it names, the coders and conditions' values (docs/plans/unit-assignment.md §5)
     const checks = await assignmentChecks(db, studyId, designVersionItems(codebook), designVersionUnits(codebook).fields, live);
     if (checks.errors.length > 0) return c.json({ error: checks.errors.join(" "), code: "assignment_invalid" }, 400);
     // Links follow the codebook's coders, conditions and link parameters (§4).
     await checkLinkCount(db, studyId, designVersionItems(codebook), parsed.data.confirmLinks ?? false, live);
-    const deployed = await db.transaction(async (tx) => {
-      const result = await putDeployment(tx, studyId, parsed.data);
-      const study = await one<{ redirect_urls: Record<string, string> }>(tx, "SELECT redirect_urls FROM studies WHERE id = $1", [studyId]);
+    const result = await db.transaction(async (tx) => {
+      const deployment = await putDeployment(tx, studyId, parsed.data);
+      const [study] = await tx.select({ redirectUrls: studies.redirectUrls }).from(studies).where(eq(studies.id, studyId));
       // Panel return links are deployment settings: say which ones are missing
-      const unset = redirectSettings(designVersionItems(codebook)).filter((name) => !study?.redirect_urls?.[name]);
+      const unset = redirectSettings(designVersionItems(codebook)).filter((name) => !study?.redirectUrls?.[name]);
       const warnings = [
-        ...(result.warnings ?? []),
+        ...(deployment.warnings ?? []),
         ...checks.warnings,
         ...unset.map((name) => `End items send coders on with the setting '${name}', which has no URL yet: set it in the study's Settings.`),
       ];
-      return { ...result, links: await syncLinks(tx, studyId), ...(warnings.length > 0 ? { warnings } : {}) };
+      return { ...deployment, links: await syncLinks(tx, studyId), ...(warnings.length > 0 ? { warnings } : {}) };
     });
     await server.deployments.refresh(studyId);
-    return c.json(deployed);
+    return c.json(result);
   });
 
   return app;

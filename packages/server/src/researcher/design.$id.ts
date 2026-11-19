@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { DesignWriteSchema, sessionItem, type DesignConflict } from "@annotinder/contracts";
-import { one } from "../db.js";
+import { and, eq, sql } from "drizzle-orm";
+import { designVersions } from "../db/schema/index.js";
 import type { Server, Env } from "../context.js";
 import { requireStudyUser } from "./auth.js";
 import { toDesignVersion, type DesignVersionRow } from "../shared/designVersions.js";
@@ -8,10 +9,10 @@ import { toDesignVersion, type DesignVersionRow } from "../shared/designVersions
 /** The 409 for a save based on an older revision (contracts `DesignConflictSchema`). */
 function conflict(row: DesignVersionRow): DesignConflict {
   return {
-    error: `${row.updated_by ?? "Someone"} saved this draft since you opened it`,
+    error: `${row.updatedBy ?? "Someone"} saved this draft since you opened it`,
     code: "design_conflict",
     updated: row.updated,
-    updatedBy: row.updated_by,
+    updatedBy: row.updatedBy,
     revision: row.revision,
   };
 }
@@ -20,7 +21,8 @@ export function designVersion(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  const get = (studyId: number, id: number) => one<DesignVersionRow>(db, "SELECT * FROM design_versions WHERE study_id = $1 AND id = $2", [studyId, id]);
+  const version = (studyId: number, id: number) => and(eq(designVersions.studyId, studyId), eq(designVersions.id, id));
+  const get = async (studyId: number, id: number) => (await db.select().from(designVersions).where(version(studyId, id)))[0];
 
   app.get("/study/:studyId/design/:id", requireStudyUser(server, "READ"), async (c) => {
     const row = await get(c.get("studyId"), Number(c.req.param("id")));
@@ -43,25 +45,28 @@ export function designVersion(server: Server): Hono<Env> {
     const { revision } = parsed.data;
     if (revision !== undefined && revision !== existing.revision) return c.json(conflict(existing), 409);
 
-    const row = await one<DesignVersionRow>(
-      db,
-      `UPDATE design_versions SET note = $1, items = $2, units = COALESCE($7::jsonb, units), session = COALESCE($8::jsonb, session), public = CASE WHEN $9 THEN $10::jsonb ELSE public END, updated = now(), updated_by = $3, revision = revision + 1
-       WHERE study_id = $4 AND id = $5 AND NOT immutable AND ($6::int IS NULL OR revision = $6) RETURNING *`,
-      [
-        parsed.data.note ?? null,
-        JSON.stringify(parsed.data.items),
-        c.get("studyUser")?.email ?? null,
-        studyId,
-        id,
-        revision ?? null,
-        parsed.data.units ? JSON.stringify(parsed.data.units) : null,
-        // Left out: kept
-        parsed.data.session ? JSON.stringify(parsed.data.session) : null,
-        // Left out: kept; null: none
-        parsed.data.public !== undefined,
-        parsed.data.public ? JSON.stringify(parsed.data.public) : null,
-      ],
-    );
+    const { note, items, units, session, public: info } = parsed.data;
+    const [row] = await db
+      .update(designVersions)
+      .set({
+        note: note ?? null,
+        items,
+        // Left out: kept (public: null is none)
+        ...(units ? { units } : {}),
+        ...(session ? { session } : {}),
+        ...(info !== undefined ? { public: info } : {}),
+        updated: sql`now()`,
+        updatedBy: c.get("studyUser")?.email ?? null,
+        revision: sql`${designVersions.revision} + 1`,
+      })
+      .where(
+        and(
+          version(studyId, id),
+          eq(designVersions.immutable, false),
+          revision === undefined ? undefined : eq(designVersions.revision, revision),
+        ),
+      )
+      .returning();
     if (!row) {
       // Deployed or saved by someone else meanwhile.
       const now = await get(studyId, id);
@@ -78,7 +83,7 @@ export function designVersion(server: Server): Hono<Env> {
     if (!existing) return c.json({ error: "Design version not found" }, 404);
     if (existing.immutable) return c.json({ error: "Design version is deployed and cannot be deleted" }, 409);
 
-    await db.query("DELETE FROM design_versions WHERE study_id = $1 AND id = $2 AND NOT immutable", [studyId, id]);
+    await db.delete(designVersions).where(and(version(studyId, id), eq(designVersions.immutable, false)));
     return c.body(null, 204);
   });
 

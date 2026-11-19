@@ -1,4 +1,6 @@
-import { one, type Sql } from "../db.js";
+import { eq, sql } from "drizzle-orm";
+import type { Db } from "../db/index.js";
+import { deployments } from "../db/schema/index.js";
 import type { DeploymentStatus } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 import { DeploymentRuntime, DEFAULT_RUNTIME_OPTIONS, type RuntimeOptions } from "./runtime.js";
@@ -16,7 +18,7 @@ export class Deployments {
   private runtimes = new Map<string, { runtime: Promise<DeploymentRuntime>; usedAt: number }>();
 
   constructor(
-    private db: Sql,
+    private db: Db,
     /** Signs preview tokens. */
     private secret: string,
     private options: RuntimeOptions = DEFAULT_RUNTIME_OPTIONS,
@@ -56,7 +58,11 @@ export class Deployments {
    * the deployment's version.
    */
   async refresh(studyId: number): Promise<number | null> {
-    const row = await one<{ version: number }>(this.db, "UPDATE deployments SET revision = revision + 1 WHERE study_id = $1 RETURNING version", [studyId]);
+    const [row] = await this.db
+      .update(deployments)
+      .set({ revision: sql`${deployments.revision} + 1` })
+      .where(eq(deployments.studyId, studyId))
+      .returning({ version: deployments.version });
     return row?.version ?? null;
   }
 

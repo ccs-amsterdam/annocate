@@ -2,7 +2,8 @@ import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, getSignedCookie, setCookie, setSignedCookie } from "hono/cookie";
 import type { LoginError } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
-import { one } from "../db.js";
+import { and, eq, isNotNull } from "drizzle-orm";
+import { identities, users } from "../db/schema/index.js";
 import type { LoginState } from "../oidc.js";
 import { loginUser } from "../shared/accounts.js";
 import { createSession, deleteSession, SESSION_TTL_MS, userForSession } from "../shared/sessions.js";
@@ -129,22 +130,16 @@ export function login(server: Server): Hono<Env> {
 
     if (state.linkUserId !== undefined) {
       // Account linking: this identity joins the user who was logged in (not if it is someone else's already)
-      const owner = await one<{ user_id: number }>(
-        server.db,
-        "SELECT user_id FROM identities WHERE iss = $1 AND sub = $2",
-        [result.iss, result.sub],
-      );
-      if (owner && owner.user_id !== state.linkUserId) return back(state.returnTo, "link_failed");
-      if (!owner)
-        await server.db.query("INSERT INTO identities (iss, sub, user_id) VALUES ($1, $2, $3)", [
-          result.iss,
-          result.sub,
-          state.linkUserId,
-        ]);
+      const [owner] = await server.db
+        .select({ userId: identities.userId })
+        .from(identities)
+        .where(and(eq(identities.iss, result.iss), eq(identities.sub, result.sub)));
+      if (owner && owner.userId !== state.linkUserId) return back(state.returnTo, "link_failed");
+      if (!owner) await server.db.insert(identities).values({ iss: result.iss, sub: result.sub, userId: state.linkUserId });
       await securityLog(server.db, state.linkUserId, "identity_linked", { issuer: result.iss });
     }
     const user = await loginUser(server.db, result, server.admins);
-    if (await one(server.db, "SELECT 1 FROM users WHERE id = $1 AND blocked_at IS NOT NULL", [user.id]))
+    if ((await server.db.$count(users, and(eq(users.id, user.id), isNotNull(users.blockedAt)))) > 0)
       return back(state.returnTo, "blocked");
     const login = { mfa: result.mfa, authTime: result.authTime, issuer: result.iss };
     await securityLog(server.db, user.id, "login", {

@@ -1,4 +1,4 @@
-import type { Sql } from "./db.js";
+import type { Db } from "./db/index.js";
 import type { Role } from "@annotinder/contracts";
 import type { Deployments } from "./runtime/registry.js";
 import type { Researcher } from "./researcher/auth.js";
@@ -6,7 +6,7 @@ import type { Oidc } from "./oidc.js";
 
 /** What every endpoint gets (built in app.ts). */
 export interface Server {
-  db: Sql;
+  db: Db;
   /** The runtimes of deployed studies and previews, in memory (runtime/registry.ts). */
   deployments: Deployments;
   /** Development mode (`AUTH_DEV_MODE`): development auth headers (researcher/auth.ts), on this machine only (index.ts refuses otherwise). */

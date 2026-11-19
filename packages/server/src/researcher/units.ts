@@ -11,7 +11,7 @@ export function units(server: Server): Hono<Env> {
   const app = new Hono<Env>();
 
   app.get("/study/:studyId/units", requireStudyUser(server, "READ"), async (c) => {
-    const rows = await draftUnits(db, "u.study_id = $1", [c.get("studyId")]);
+    const rows = await draftUnits(db, c.get("studyId"));
     return c.json(rows.map(toUnitMeta));
   });
 
@@ -59,11 +59,8 @@ export function units(server: Server): Hono<Env> {
       if (problem) return c.json({ error: `Unit '${unit.externalId}': ${problem}` }, 400);
     }
 
-    const existingRows = await draftUnits(db, "u.study_id = $1 AND u.external_id = ANY($2)", [
-      studyId,
-      units.map((u) => u.externalId),
-    ]);
-    const existing = new Map(existingRows.map((row) => [row.external_id, row]));
+    const existingRows = await draftUnits(db, studyId, { externalIds: units.map((u) => u.externalId) });
+    const existing = new Map(existingRows.map((row) => [row.externalId, row]));
     await checkUnitUpload(db, studyId, units, new Set(units.filter((u) => !existing.has(u.externalId)).map((u) => u.externalId)).size);
     for (const unit of units) {
       const row = existing.get(unit.externalId);
@@ -82,7 +79,7 @@ export function units(server: Server): Hono<Env> {
     const created = await db.transaction(async (tx) => {
       if (JSON.stringify(fields) !== JSON.stringify(declared)) await setUnitFields(tx, studyId, fields);
       const ids = await saveUnits(tx, studyId, units);
-      const rows = await draftUnits(tx, "u.study_id = $1 AND u.id = ANY($2)", [studyId, [...ids.values()]]);
+      const rows = await draftUnits(tx, studyId, { ids: [...ids.values()] });
       const byId = new Map(rows.map((r) => [r.id, r]));
       return units.map((u) => toUnitResponse(byId.get(ids.get(u.externalId)!)!));
     });

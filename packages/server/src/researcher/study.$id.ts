@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { StudyWriteSchema } from "@annotinder/contracts";
-import { one } from "../db.js";
+import { eq } from "drizzle-orm";
+import { studies } from "../db/schema/index.js";
 import type { Server, Env } from "../context.js";
 import { requireSensitive, requireStudyUser } from "./auth.js";
-import { toStudyResponse, type StudyRow } from "../shared/studies.js";
+import { toStudyResponse } from "../shared/studies.js";
 import { forgetStudyLinks } from "../shared/links.js";
 
 export function study(server: Server): Hono<Env> {
@@ -11,7 +12,7 @@ export function study(server: Server): Hono<Env> {
   const app = new Hono<Env>();
 
   app.get("/study/:studyId", requireStudyUser(server, "READ"), async (c) => {
-    const row = await one<StudyRow>(db, "SELECT * FROM studies WHERE id = $1", [c.get("studyId")]);
+    const [row] = await db.select().from(studies).where(eq(studies.id, c.get("studyId")));
     return c.json(toStudyResponse(row!));
   });
 
@@ -19,28 +20,28 @@ export function study(server: Server): Hono<Env> {
     const parsed = StudyWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-    const row = await one<StudyRow>(
-      db,
-      `UPDATE studies SET name = $1, archived = $2, keep_sessions_open = COALESCE($3, keep_sessions_open),
-         redirect_urls = COALESCE($5::jsonb, redirect_urls), sign_in = COALESCE($6, sign_in) WHERE id = $4 RETURNING *`,
-      [
-        parsed.data.name,
-        parsed.data.archived ?? false,
-        parsed.data.keepSessionsOpen ?? null,
-        c.get("studyId"),
-        parsed.data.redirectUrls ? JSON.stringify(parsed.data.redirectUrls) : null,
-        parsed.data.signIn ?? null,
-      ],
-    );
+    const { name, archived, keepSessionsOpen, redirectUrls, signIn } = parsed.data;
+    const [row] = await db
+      .update(studies)
+      // Left out: kept (except archived: false)
+      .set({
+        name,
+        archived: archived ?? false,
+        ...(keepSessionsOpen !== undefined ? { keepSessionsOpen } : {}),
+        ...(redirectUrls ? { redirectUrls } : {}),
+        ...(signIn ? { signIn } : {}),
+      })
+      .where(eq(studies.id, c.get("studyId")))
+      .returning();
     // The runtime reads whether sessions stay open, sign-in and the redirect URLs with the deployment.
     await server.deployments.refresh(c.get("studyId"));
     forgetStudyLinks(c.get("studyId"));
     return c.json(toStudyResponse(row!));
   });
 
-  // Deleting the study cascades to all of its rows (migrations/).
+  // Deleting the study cascades to all of its rows (src/db/schema).
   app.delete("/study/:studyId", requireStudyUser(server, "ADMIN"), requireSensitive(server), async (c) => {
-    await db.query("DELETE FROM studies WHERE id = $1", [c.get("studyId")]);
+    await db.delete(studies).where(eq(studies.id, c.get("studyId")));
     server.deployments.drop(c.get("studyId"));
     return c.body(null, 204);
   });

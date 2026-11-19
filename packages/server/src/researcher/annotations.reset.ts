@@ -2,7 +2,10 @@ import { Hono } from "hono";
 import { ResetAnnotationsSchema, type ResetAnnotations } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
 import { requireSensitive, requireStudyUser } from "./auth.js";
-import type { Sql } from "../db.js";
+import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import type { Db } from "../db/index.js";
+import { anyOf } from "../db/sql.js";
+import { annotationValues as a, deployments } from "../db/schema/index.js";
 
 // Reset: retire the live values of these variables (e.g. a loop's
 // questions), so the units are coded again. Nothing is deleted.
@@ -22,14 +25,25 @@ export function annotationsReset(server: Server): Hono<Env> {
   return app;
 }
 
-async function retireAnnotations(sql: Sql, studyId: number, request: ResetAnnotations): Promise<number> {
-  const retired = await sql.query(
-    `UPDATE annotation_values SET retired_at = now()
-     WHERE study_id = $1 AND unit_id IS NOT NULL AND retired_at IS NULL AND variable = ANY($2)
-       AND ($3::int[] IS NULL OR unit_id = ANY($3)) AND ($4::int[] IS NULL OR coder_id = ANY($4))
-     RETURNING id`,
-    [studyId, request.variables, request.unitIds?.length ? request.unitIds : null, request.coderIds?.length ? request.coderIds : null],
-  );
-  await sql.query("UPDATE deployments SET annotation_epoch = annotation_epoch + 1 WHERE study_id = $1", [studyId]);
+async function retireAnnotations(db: Db, studyId: number, request: ResetAnnotations): Promise<number> {
+  const retired = await db
+    .update(a)
+    .set({ retiredAt: sql`now()` })
+    .where(
+      and(
+        eq(a.studyId, studyId),
+        isNotNull(a.unitId),
+        isNull(a.retiredAt),
+        inArray(a.variable, request.variables),
+        // None given: all
+        request.unitIds?.length ? anyOf(a.unitId, request.unitIds) : undefined,
+        request.coderIds?.length ? anyOf(a.coderId, request.coderIds) : undefined,
+      ),
+    )
+    .returning({ id: a.id });
+  await db
+    .update(deployments)
+    .set({ annotationEpoch: sql`${deployments.annotationEpoch} + 1` })
+    .where(eq(deployments.studyId, studyId));
   return retired.length;
 }

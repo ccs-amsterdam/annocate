@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Sql } from "../db.js";
-import { emptyDb } from "./testDb.js";
+import type { Db } from "../db/index.js";
+import { emptyDb, query } from "./testDb.js";
 import { createApp } from "../app.js";
 import { DbStore } from "../runtime/store.js";
 import { HttpError } from "../shared/http.js";
 import { splitDesignItems, type DesignItem, type VariableValue } from "@annotinder/contracts";
 
-let db: Sql;
+let db: Db;
 let app: ReturnType<typeof createApp>;
 
 const adminHeaders = { "content-type": "application/json", "x-dev-role": "ADMIN" };
@@ -230,7 +230,7 @@ describe("annotations: finished counts and resets", () => {
         body: JSON.stringify({ units: [{ externalId: "u1", data: {} }, { externalId: "u2", data: {} }] }),
       }),
     )) as { id: number }[];
-    await db.query("INSERT INTO links (study_id, label, secret) VALUES ($1, 'x', 'annotations-link')", [study.id]);
+    await query(db, "INSERT INTO links (study_id, label, secret) VALUES ($1, 'x', 'annotations-link')", [study.id]);
     const { coder } = await store.resolveCoder({ coderKey: "k", linkSecret: "annotations-link" });
     const put = (unitId: number, variables: Record<string, VariableValue>) =>
       store.putAnnotation({ unitId, coderId: coder.coderId, variables });
@@ -255,7 +255,7 @@ describe("annotations: finished counts and resets", () => {
     const { units, put, finished } = await setup();
     await put(units[0].id, { old: value("x"), q1: value("a") });
     await put(units[0].id, { q1: value("b") });
-    const rows = await db.query<{ variable: string; value: VariableValue }>(
+    const rows = await query<{ variable: string; value: VariableValue }>(db, 
       "SELECT variable, value FROM annotation_values WHERE retired_at IS NULL ORDER BY variable",
     );
     expect(rows.map((r) => [r.variable, r.value.values?.[0].value])).toEqual([
@@ -280,7 +280,7 @@ describe("annotations: finished counts and resets", () => {
     expect((await finished(["q1"])).map((f) => f.unitId)).toEqual([units[1].id]);
     // recoded after the reset: a new live row next to the retired one
     await put(units[0].id, { q1: value("b") });
-    expect(await db.query("SELECT COUNT(*)::int AS n FROM annotation_values WHERE unit_id = $1", [units[0].id])).toEqual([{ n: 2 }]);
+    expect(await query(db, "SELECT COUNT(*)::int AS n FROM annotation_values WHERE unit_id = $1", [units[0].id])).toEqual([{ n: 2 }]);
     expect(await finished(["q1"])).toHaveLength(2);
   });
 });
@@ -439,7 +439,7 @@ describe("rate limits", () => {
     const me = () => limited.request("/api/study", { headers: adminHeaders });
     for (let i = 0; i < 3; i++) expect((await me()).status).toBe(200);
     expect((await me()).status).toBe(429);
-    const [{ n }] = await db.query<{ n: number }>("SELECT count(*)::int AS n FROM rate_limits");
+    const [{ n }] = await query<{ n: number }>(db, "SELECT count(*)::int AS n FROM rate_limits");
     expect(n).toBeGreaterThan(0);
   });
 });

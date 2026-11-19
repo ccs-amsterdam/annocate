@@ -1,6 +1,9 @@
 import { Hono } from "hono";
 import { AnnotationsQuerySchema, UnitVersionsQuerySchema, type AnnotationRow, type UnitVersion } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
+import { and, asc, eq, gt, isNull } from "drizzle-orm";
+import { annotationValues as a, coderDevices, coders, units, unitServes, unitVersions } from "../db/schema/index.js";
+import { unitDataHash, unitVersionData } from "../db/sql.js";
 import { requireStudyUser } from "./auth.js";
 
 /**
@@ -16,21 +19,34 @@ export function annotations(server: Server): Hono<Env> {
     const parsed = AnnotationsQuerySchema.safeParse(c.req.query());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     const { after, limit, retired } = parsed.data;
-    const rows = await db.query<AnnotationRow & { retiredAt: Date | null }>(
-      `SELECT a.id, a.unit_id AS "unitId", u.external_id AS "externalId", a.coder_id AS "coderId",
-         c.participant_id AS "participantId", a.variable, a.value, a.design_version_id AS "designVersionId",
-         a.unit_version_id AS "unitVersionId", a.device_id AS "deviceId", a.assigned, a.timing,
-         s.first_served AS "servedAt", a.created, a.updated, a.retired_at AS "retiredAt"
-       FROM annotation_values a
-       LEFT JOIN units u ON u.id = a.unit_id
-       LEFT JOIN coders c ON c.id = a.coder_id
-       LEFT JOIN unit_serves s ON s.coder_id = a.coder_id AND s.unit_id = a.unit_id
-       WHERE a.study_id = $1 AND a.id > $2 AND ($3 OR a.retired_at IS NULL)
-       ORDER BY a.id LIMIT $4`,
-      [c.get("studyId"), after ?? 0, retired, limit + 1],
-    );
+    const rows = await db
+      .select({
+        id: a.id,
+        unitId: a.unitId,
+        externalId: units.externalId,
+        coderId: a.coderId,
+        participantId: coders.participantId,
+        variable: a.variable,
+        value: a.value,
+        designVersionId: a.designVersionId,
+        unitVersionId: a.unitVersionId,
+        deviceId: a.deviceId,
+        assigned: a.assigned,
+        timing: a.timing,
+        servedAt: unitServes.firstServed,
+        created: a.created,
+        updated: a.updated,
+        retiredAt: a.retiredAt,
+      })
+      .from(a)
+      .leftJoin(units, eq(units.id, a.unitId))
+      .leftJoin(coders, eq(coders.id, a.coderId))
+      .leftJoin(unitServes, and(eq(unitServes.coderId, a.coderId), eq(unitServes.unitId, a.unitId)))
+      .where(and(eq(a.studyId, c.get("studyId")), gt(a.id, after ?? 0), retired ? undefined : isNull(a.retiredAt)))
+      .orderBy(asc(a.id))
+      .limit(limit + 1);
     const page = rows.slice(0, limit).map((row) => {
-      const out: AnnotationRow = { ...row };
+      const out: AnnotationRow = { ...row } as AnnotationRow;
       if (!retired) delete out.retiredAt;
       return out;
     });
@@ -39,10 +55,11 @@ export function annotations(server: Server): Hono<Env> {
 
   app.get("/study/:studyId/devices", requireStudyUser(server, "READ"), async (c) =>
     c.json(
-      await db.query(
-        `SELECT id, coder_id AS "coderId", device_type AS type, browser, os, created FROM coder_devices WHERE study_id = $1 ORDER BY id`,
-        [c.get("studyId")],
-      ),
+      await db
+        .select({ id: coderDevices.id, coderId: coderDevices.coderId, type: coderDevices.deviceType, browser: coderDevices.browser, os: coderDevices.os, created: coderDevices.created })
+        .from(coderDevices)
+        .where(eq(coderDevices.studyId, c.get("studyId")))
+        .orderBy(asc(coderDevices.id)),
     ),
   );
 
@@ -52,12 +69,18 @@ export function annotations(server: Server): Hono<Env> {
     const parsed = UnitVersionsQuerySchema.safeParse(c.req.query());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     const { after, limit } = parsed.data;
-    const rows = await db.query<UnitVersion>(
-      `SELECT v.id, v.unit_id AS "unitId", u.external_id AS "externalId", unit_data_hash(unit_version_data(v.id)) AS hash, unit_version_data(v.id) AS data, v.created
-       FROM unit_versions v JOIN units u ON u.id = v.unit_id
-       WHERE v.study_id = $1 AND v.id > $2 ORDER BY v.id LIMIT $3`,
-      [c.get("studyId"), after ?? 0, limit + 1],
-    );
+    const versions = db
+      .select({ id: unitVersions.id, unitId: unitVersions.unitId, externalId: units.externalId, data: unitVersionData(unitVersions.id).as("data"), created: unitVersions.created })
+      .from(unitVersions)
+      .innerJoin(units, eq(units.id, unitVersions.unitId))
+      .where(and(eq(unitVersions.studyId, c.get("studyId")), gt(unitVersions.id, after ?? 0)))
+      .orderBy(asc(unitVersions.id))
+      .limit(limit + 1)
+      .as("v");
+    const rows: UnitVersion[] = await db
+      .select({ id: versions.id, unitId: versions.unitId, externalId: versions.externalId, hash: unitDataHash(versions.data), data: versions.data, created: versions.created })
+      .from(versions)
+      .orderBy(asc(versions.id));
     const page = rows.slice(0, limit);
     return c.json({ versions: page, next: rows.length > limit ? page[page.length - 1].id : null });
   });

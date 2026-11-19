@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { openPglite, openPostgres, type Sql } from "./db.js";
+import { openPglite, openPostgres, type Database } from "./db/index.js";
 
 /** Where the local PGlite database lives, unless `PGLITE_DIR` says otherwise. */
 export const DEFAULT_PGLITE_DIR = fileURLToPath(new URL("../.pglite", import.meta.url));
@@ -8,7 +8,7 @@ export const DEFAULT_PGLITE_DIR = fileURLToPath(new URL("../.pglite", import.met
  * The database from the environment: Postgres at `DATABASE_URL`, or else a
  * PGlite database in `PGLITE_DIR` (default: `.pglite` in this package).
  */
-export function openDatabase(): Promise<Sql> {
+export function openDatabase(): Promise<Database> {
   const url = process.env.DATABASE_URL;
   return url ? openPostgres(url) : openPglite(process.env.PGLITE_DIR ?? DEFAULT_PGLITE_DIR);
 }

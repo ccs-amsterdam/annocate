@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { openPglite } from "./db.js";
+import { openPglite } from "./db/index.js";
 import { DEFAULT_PGLITE_DIR } from "./database.js";
 import { seed } from "./seed.js";
 

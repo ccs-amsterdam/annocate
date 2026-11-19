@@ -7,7 +7,7 @@ export function unit(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  const get = async (studyId: number, id: number) => (await draftUnits(db, "u.study_id = $1 AND u.id = $2", [studyId, id]))[0];
+  const get = async (studyId: number, id: number) => (await draftUnits(db, studyId, { ids: [id] }))[0];
 
   app.get("/study/:studyId/units/:id", requireStudyUser(server, "READ"), async (c) => {
     const row = await get(c.get("studyId"), Number(c.req.param("id")));

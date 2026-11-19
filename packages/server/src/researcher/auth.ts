@@ -1,6 +1,9 @@
 import type { Context, Next } from "hono";
 import { accountRoleAtLeast, type AccountRole, type Role } from "@annotinder/contracts";
-import { one } from "../db.js";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { roles, studies } from "../db/schema/index.js";
+import { studyRole } from "../db/sql.js";
+import { row as dbRow } from "../db/index.js";
 import { HttpError } from "../shared/http.js";
 import type { Env, Server } from "../context.js";
 import { getCookie } from "hono/cookie";
@@ -18,7 +21,7 @@ import { isFresh, SESSION_COOKIE } from "./login.js";
 //
 // Both identify a user (an identity at the login provider, docs/accounts.md);
 // their role in a study and their account role (user, researcher, admin)
-// come from `roles` (`study_role()`, `account_role()`). Researcher access needs a login with a second factor
+// come from `roles` (`studyRole()`, `accountRole()` in db/sql.ts). Researcher access needs a login with a second factor
 // (the provider's, `OIDC_MFA_CLAIM`): a login without one only gets
 // `GET /me` and logging out. API keys count as with one (making one needs
 // it), but never do sensitive actions (`requireSensitive`): those need a
@@ -89,17 +92,12 @@ async function authenticate(c: Context, server: Server): Promise<Researcher | nu
 
 /** The researcher's role in a study, if any. */
 async function roleIn(server: Server, researcher: Researcher, studyId: number): Promise<Role | null> {
-  const row = await one<{ role: Role | null }>(server.db, "SELECT study_role($1, $2) AS role", [
-    studyId,
-    researcher.userId,
-  ]);
+  const row = await dbRow<{ role: Role | null }>(server.db, sql`SELECT ${studyRole(studyId, researcher.userId)} AS role`);
   if (!researcher.devRole) return row?.role ?? null;
   // Development: a study without user roles lets any role through; otherwise the
   // header can't claim more than was granted.
   if (!row?.role)
-    return (await one(server.db, "SELECT 1 FROM roles WHERE study_id = $1 AND user_id IS NOT NULL", [studyId]))
-      ? null
-      : researcher.devRole;
+    return (await server.db.$count(roles, and(eq(roles.studyId, studyId), isNotNull(roles.userId)))) > 0 ? null : researcher.devRole;
   return ROLE_RANK[row.role] < ROLE_RANK[researcher.devRole] ? null : researcher.devRole;
 }
 
@@ -176,14 +174,10 @@ export function requireStudyUser(server: Server, minRole: Role) {
     const studyId = raw ? Number(raw) : NaN;
     if (!Number.isInteger(studyId) || studyId <= 0 || studyId > MAX_ID)
       return c.json({ error: "Invalid study id" }, 400);
-    const study = await one<{ suspended_at: Date | null }>(
-      server.db,
-      "SELECT suspended_at FROM studies WHERE id = $1",
-      [studyId],
-    );
+    const [study] = await server.db.select({ suspendedAt: studies.suspendedAt }).from(studies).where(eq(studies.id, studyId));
     if (!study) return c.json({ error: "Study not found" }, 404);
     // Suspended by a server admin: reading, and deleting data or the study, still work.
-    if (study.suspended_at && c.req.method !== "GET" && !SUSPENDED_ALLOWED.some((p) => p.test(c.req.path))) {
+    if (study.suspendedAt && c.req.method !== "GET" && !SUSPENDED_ALLOWED.some((p) => p.test(c.req.path))) {
       return c.json(
         { error: "A server admin suspended this study: it can't be changed", code: "study_suspended" },
         403,

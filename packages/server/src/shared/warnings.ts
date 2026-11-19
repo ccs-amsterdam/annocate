@@ -1,5 +1,7 @@
 import type { ServerWarning } from "@annotinder/contracts";
-import { one } from "../db.js";
+import { and, eq, gt, inArray, isNotNull, not, notExists, sql } from "drizzle-orm";
+import { identities, users } from "../db/schema/index.js";
+import { accountRole } from "../db/sql.js";
 import type { Server } from "../context.js";
 
 // Server hardening warnings for admins (the lab's Authentication standard,
@@ -29,16 +31,18 @@ export async function serverWarnings(server: Server): Promise<ServerWarning[]> {
     });
   }
   // Researchers and admins whose latest login lacked the second factor: they can't work, so the provider's 2FA or OIDC_MFA_CLAIM is likely wrong
-  const lacking = await one<{ n: number }>(
-    server.db,
-    `SELECT count(*)::int AS n FROM users u
-     WHERE NOT u.has_mfa AND u.last_login_at > now() - make_interval(days => $1) AND account_role(u.id) IN ('researcher', 'admin')`,
-    [RECENT_DAYS],
+  const lacking = await server.db.$count(
+    users,
+    and(
+      not(users.hasMfa),
+      gt(users.lastLoginAt, sql`now() - make_interval(days => ${RECENT_DAYS})`),
+      inArray(accountRole(users.id), ["researcher", "admin"]),
+    ),
   );
-  if (lacking && lacking.n > 0) {
+  if (lacking > 0) {
     warnings.push({
       code: "no_2fa_signal",
-      message: `${lacking.n} researcher${lacking.n === 1 ? "" : "s"} logged in recently without the second factor signal (OIDC_MFA_CLAIM), so they can't work. Check the provider's 2FA settings and OIDC_MFA_CLAIM.`,
+      message: `${lacking} researcher${lacking === 1 ? "" : "s"} logged in recently without the second factor signal (OIDC_MFA_CLAIM), so they can't work. Check the provider's 2FA settings and OIDC_MFA_CLAIM.`,
     });
   }
   // Moving to another login provider: who hasn't linked their login there yet, and the end date
@@ -51,15 +55,14 @@ export async function serverWarnings(server: Server): Promise<ServerWarning[]> {
         message: `The previous login provider (OIDC_PREVIOUS_HOST) is still configured after its end date (OIDC_PREVIOUS_UNTIL, ${until}): it is no longer accepted, so remove the OIDC_PREVIOUS_* settings.`,
       });
     } else {
-      const unlinked = await one<{ n: number }>(
-        server.db,
-        `SELECT count(*)::int AS n FROM users u WHERE u.registered_at IS NOT NULL
-           AND NOT EXISTS (SELECT 1 FROM identities i WHERE i.user_id = u.id AND rtrim(i.iss, '/') = rtrim($1::text, '/'))`,
-        [issuer],
-      );
+      const linkedThere = server.db
+        .select({ one: sql`1` })
+        .from(identities)
+        .where(and(eq(identities.userId, users.id), sql`rtrim(${identities.iss}, '/') = rtrim(${issuer}::text, '/')`));
+      const unlinked = await server.db.$count(users, and(isNotNull(users.registeredAt), notExists(linkedThere)));
       warnings.push({
         code: "migration_not_finished",
-        message: `Moving to another login provider until ${until} (OIDC_PREVIOUS_UNTIL): ${unlinked?.n ?? 0} user${unlinked?.n === 1 ? " hasn't" : "s haven't"} linked their login there yet ("not linked" below). Remind them before then.`,
+        message: `Moving to another login provider until ${until} (OIDC_PREVIOUS_UNTIL): ${unlinked} user${unlinked === 1 ? " hasn't" : "s haven't"} linked their login there yet ("not linked" below). Remind them before then.`,
       });
     }
   }

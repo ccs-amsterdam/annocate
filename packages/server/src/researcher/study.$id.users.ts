@@ -2,6 +2,10 @@ import { Hono } from "hono";
 import { StudyUsersWriteSchema, type Role, type StudyUserResponse } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
 import { checkSensitive, requireStudyUser } from "./auth.js";
+import { and, asc, eq, inArray, isNotNull, isNull, notInArray, sql } from "drizzle-orm";
+import type { Db } from "../db/index.js";
+import { roles, users } from "../db/schema/index.js";
+import { roleApplies } from "../db/sql.js";
 import { userForEmail } from "../shared/accounts.js";
 
 // A study's users: roles in the study given to users (docs/accounts.md). An
@@ -13,32 +17,34 @@ import { userForEmail } from "../shared/accounts.js";
 const THREE_MONTHS_MS = 91 * 24 * 60 * 60_000;
 
 /** A role the safeguards turned off: a registered user's that doesn't apply, or an invitation unclaimed for 3 months. */
-const isDisabled = (r: { registered: boolean; applies: boolean; granted_at: Date }) =>
-  r.registered ? !r.applies : Date.now() > r.granted_at.getTime() + THREE_MONTHS_MS;
+const isDisabled = (r: { registered: boolean; applies: boolean; grantedAt: Date }) =>
+  r.registered ? !r.applies : Date.now() > r.grantedAt.getTime() + THREE_MONTHS_MS;
 
-interface RoleRow {
-  user_id: number;
-  email: string;
-  role: Role;
-  granted_at: Date;
-  registered: boolean;
-  applies: boolean;
-}
+/** A study's roles given to users (not to email domains). */
+const userRolesOf = (studyId: number) => and(eq(roles.studyId, studyId), isNotNull(roles.userId), isNull(roles.emailDomain));
+
+/** The users with a role in the study, and whether it applies (the safeguards). */
+const rolesOf = (db: Db, studyId: number) =>
+  db
+    .select({
+      userId: users.id,
+      email: users.email,
+      role: sql<Role>`${roles.role}`,
+      grantedAt: roles.grantedAt,
+      registered: sql<boolean>`${users.registeredAt} IS NOT NULL`,
+      applies: roleApplies(roles, users),
+    })
+    .from(roles)
+    .innerJoin(users, eq(users.id, roles.userId))
+    .where(userRolesOf(studyId))
+    .orderBy(asc(users.email));
 
 export function studyUsers(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  const rolesOf = (studyId: number, sql = db) =>
-    sql.query<RoleRow>(
-      `SELECT r.user_id, u.email, r.role, r.granted_at, u.registered_at IS NOT NULL AS registered, role_applies(r, u) AS applies
-       FROM roles r JOIN users u ON u.id = r.user_id
-       WHERE r.study_id = $1 AND r.email_domain IS NULL ORDER BY u.email`,
-      [studyId],
-    );
-
   app.get("/study/:studyId/users", requireStudyUser(server, "ADMIN"), async (c) => {
-    const rows = await rolesOf(c.get("studyId"));
+    const rows = await rolesOf(db, c.get("studyId"));
     return c.json(
       rows.map((r): StudyUserResponse => ({
         email: r.email,
@@ -64,7 +70,7 @@ export function studyUsers(server: Server): Hono<Env> {
     const studyId = c.get("studyId");
     const researcher = c.get("researcher");
     await db.transaction(async (tx) => {
-      const before = await rolesOf(studyId, tx);
+      const before = await rolesOf(tx, studyId);
       const wanted = new Map<number, Role>();
       const restore = new Set<number>();
       for (const user of users) {
@@ -74,31 +80,34 @@ export function studyUsers(server: Server): Hono<Env> {
       }
       // Giving or taking the study's ADMIN role is sensitive: not with an API key, and with a recent second factor
       const admins = (ids: number[]) => ids.sort((a, b) => a - b).join(",");
-      const adminsBefore = admins(before.filter((r) => r.role === "ADMIN").map((r) => r.user_id));
+      const adminsBefore = admins(before.filter((r) => r.role === "ADMIN").map((r) => r.userId));
       const adminsAfter = admins([...wanted].filter(([, role]) => role === "ADMIN").map(([id]) => id));
       if (adminsBefore !== adminsAfter) checkSensitive(server, researcher);
 
-      await tx.query(
-        "DELETE FROM roles WHERE study_id = $1 AND user_id IS NOT NULL AND email_domain IS NULL AND NOT (user_id = ANY($2::int[]))",
-        [studyId, [...wanted.keys()]],
-      );
+      await tx.delete(roles).where(and(userRolesOf(studyId), notInArray(roles.userId, [...wanted.keys()])));
       // A role given again or changed counts from now (granted_at); an unchanged one keeps its date
       for (const [userId, role] of wanted) {
-        await tx.query(
-          `INSERT INTO roles (role, study_id, user_id, granted_by) VALUES ($1, $2, $3, $4)
-           ON CONFLICT (study_id, user_id) WHERE study_id IS NOT NULL AND user_id IS NOT NULL AND email_domain IS NULL
-           DO UPDATE SET role = excluded.role, granted_by = excluded.granted_by,
-             granted_at = CASE WHEN roles.role = excluded.role THEN roles.granted_at ELSE now() END`,
-          [role, studyId, userId, researcher.email],
-        );
+        await tx
+          .insert(roles)
+          .values({ role, studyId, userId, grantedBy: researcher.email })
+          .onConflictDoUpdate({
+            // A user's role on the study (the partial unique index roles_user_study)
+            target: [roles.studyId, roles.userId],
+            targetWhere: and(isNotNull(roles.studyId), isNotNull(roles.userId), isNull(roles.emailDomain)),
+            set: {
+              role: sql`excluded.role`,
+              grantedBy: sql`excluded.granted_by`,
+              grantedAt: sql`CASE WHEN ${roles.role} = excluded.role THEN ${roles.grantedAt} ELSE now() END`,
+            },
+          });
       }
       // Restored: a role the safeguards turned off applies again (its date counts from now)
-      const restored = before.filter((r) => restore.has(r.user_id) && isDisabled(r)).map((r) => r.user_id);
+      const restored = before.filter((r) => restore.has(r.userId) && isDisabled(r)).map((r) => r.userId);
       if (restored.length > 0) {
-        await tx.query(
-          "UPDATE roles SET granted_at = now() WHERE study_id = $1 AND user_id = ANY($2::int[]) AND email_domain IS NULL",
-          [studyId, restored],
-        );
+        await tx
+          .update(roles)
+          .set({ grantedAt: sql`now()` })
+          .where(and(userRolesOf(studyId), inArray(roles.userId, restored)));
       }
     });
     return c.body(null, 204);

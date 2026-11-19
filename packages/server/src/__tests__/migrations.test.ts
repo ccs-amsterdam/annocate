@@ -1,37 +1,18 @@
-import { PGlite } from "@electric-sql/pglite";
-import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { openPglite } from "../db/index.js";
+import { query } from "./testDb.js";
 
-const dir = new URL("../../migrations/", import.meta.url);
-const sqlOf = (file: string) => readFileSync(new URL(file, dir), "utf8");
-const files = readdirSync(dir)
-  .filter((f) => /^\d{4}_.*\.sql$/.test(f))
-  .sort();
-
-/** A database with the migrations before `version` applied. */
-async function before(version: string): Promise<PGlite> {
-  const db = await PGlite.create();
-  for (const file of files.filter((f) => f < version)) await db.exec(sqlOf(file));
-  return db;
-}
-
-describe("migration 0006 (unit assignment)", () => {
-  it("carries the links' sign-in over to the study: required wins over optional", async () => {
-    const db = await before("0006");
-    await db.exec(`INSERT INTO studies (name) VALUES ('required'), ('emails'), ('optional'), ('off')`);
-    await db.exec(`INSERT INTO links (study_id, label, secret, auth, emails) VALUES
-      (1, 'a', 's1', 'optional', NULL), (1, 'b', 's2', 'required', NULL),
-      (2, 'a', 's3', 'off', '["a@example.org"]'),
-      (3, 'a', 's4', 'off', NULL), (3, 'b', 's5', 'optional', NULL),
-      (4, 'a', 's6', 'off', NULL)`);
-    await db.exec(sqlOf(files.find((f) => f.startsWith("0006"))!));
-    const rows = await db.query<{ name: string; sign_in: string }>("SELECT name, sign_in FROM studies ORDER BY id");
-    expect(rows.rows.map((r) => [r.name, r.sign_in])).toEqual([
-      ["required", "required"],
-      ["emails", "required"],
-      ["optional", "optional"],
-      ["off", "off"],
-    ]);
+describe("migrations", () => {
+  it("apply to an empty database, once, with the seed rows", async () => {
+    const db = await openPglite();
+    const tables = await query<{ name: string }>(db, "SELECT tablename AS name FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename");
+    expect(tables.map((t) => t.name)).toContain("annotation_values");
+    expect(tables.length).toBe(33);
+    expect(await query(db, "SELECT relpersistence FROM pg_class WHERE relname = 'rate_limits'")).toEqual([{ relpersistence: "u" }]);
+    expect(await query(db, "SELECT name FROM plans")).toEqual([{ name: "Default" }]);
+    expect(await query(db, "SELECT registration, default_plan_id AS plan FROM server_settings")).toEqual([{ registration: { requests: true }, plan: 1 }]);
+    const applied = await query<{ n: number }>(db, "SELECT count(*)::int AS n FROM drizzle.__drizzle_migrations");
     await db.close();
+    expect(applied[0]!.n).toBeGreaterThan(0);
   }, 30_000); // PGlite starts in seconds, slower while other test files run
 });

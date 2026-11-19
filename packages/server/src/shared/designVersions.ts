@@ -10,22 +10,10 @@ import {
   type TopLevelItem,
   type UnitsSpec,
 } from "@annotinder/contracts";
+import type { designVersions } from "../db/schema/index.js";
 
 /** A row of `design_versions`: a version of the design. */
-export interface DesignVersionRow {
-  id: number;
-  study_id: number;
-  note: string | null;
-  items: unknown;
-  units: unknown;
-  session: unknown;
-  public: unknown;
-  created: Date;
-  updated: Date;
-  updated_by: string | null;
-  revision: number;
-  immutable: boolean;
-}
+export type DesignVersionRow = typeof designVersions.$inferSelect;
 
 /** A stored codebook's items, without the session. */
 function storedItems(row: Pick<DesignVersionRow, "items">): TopLevelItem[] {
@@ -64,7 +52,7 @@ export function toDesignVersionMeta(row: DesignVersionRow): DesignVersionMeta {
     note: row.note,
     created: row.created,
     updated: row.updated,
-    updatedBy: row.updated_by,
+    updatedBy: row.updatedBy,
     revision: row.revision,
     immutable: row.immutable,
     valid: itemsValid(designVersionItems(row)),
@@ -73,5 +61,5 @@ export function toDesignVersionMeta(row: DesignVersionRow): DesignVersionMeta {
 
 /** A stored codebook as served. */
 export function toDesignVersion(row: DesignVersionRow): DesignVersion {
-  return { ...toDesignVersionMeta(row), studyId: row.study_id, items: storedItems(row), units: designVersionUnits(row), session: designVersionSession(row), public: designVersionPublic(row) };
+  return { ...toDesignVersionMeta(row), studyId: row.studyId, items: storedItems(row), units: designVersionUnits(row), session: designVersionSession(row), public: designVersionPublic(row) };
 }

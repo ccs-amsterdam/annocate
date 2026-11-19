@@ -20,13 +20,13 @@ export function unitsPage(server: Server): Hono<Env> {
     const setName = c.req.query("set");
 
     if (!group || !setName) {
-      const rows = await draftUnits(db, "u.study_id = $1", [studyId, limit, offset], "LIMIT $2 OFFSET $3");
+      const rows = await draftUnits(db, studyId, { limit, offset });
       return c.json({ total: await unitCount(db, studyId), units: rows.map(toUnitResponse) });
     }
     const set = (await listSetGroups(db, studyId)).find((g) => g.name === group)?.sets.find((s) => s.name === setName);
     if (!set) return c.json({ error: `Set '${setName}' of group '${group}' not found` }, 404);
     const ids = set.unitIds.slice(offset, offset + limit);
-    const rows = ids.length ? await draftUnits(db, "u.study_id = $1 AND u.id = ANY($2)", [studyId, ids]) : [];
+    const rows = ids.length ? await draftUnits(db, studyId, { ids }) : [];
     const byId = new Map(rows.map((r) => [r.id, r]));
     return c.json({
       total: set.unitIds.length,

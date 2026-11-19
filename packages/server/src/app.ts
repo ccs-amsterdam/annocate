@@ -9,7 +9,7 @@ import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import { join } from "node:path";
 import { serveStatic } from "@hono/node-server/serve-static";
-import type { Sql } from "./db.js";
+import type { Db } from "./db/index.js";
 import { CLIENT_VERSION } from "./version.js";
 import type { Env, Server } from "./context.js";
 import { coderApi } from "./coder.js";
@@ -85,7 +85,7 @@ export interface AppOptions {
  * (`/d/<deploymentId>/...`), on one database. A new app on the same
  * database is a restart: runtimes rebuild from the database.
  */
-export function createApp(db: Sql, options: AppOptions = {}) {
+export function createApp(db: Db, options: AppOptions = {}) {
   const secret = options.secret ?? crypto.randomUUID();
   const server: Server = {
     db,

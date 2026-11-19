@@ -9,8 +9,11 @@ import type {
   VariableValue,
 } from "@annotinder/contracts";
 import { RELEASE, splitDesignItems } from "@annotinder/contracts";
-import type { Sql } from "../db.js";
-import { emptyDb } from "./testDb.js";
+import type { Db } from "../db/index.js";
+import { and, eq, isNull } from "drizzle-orm";
+import { annotationValues, units } from "../db/schema/index.js";
+import { unitDraftData, unitVersionData } from "../db/sql.js";
+import { emptyDb, query } from "./testDb.js";
 import { seed } from "../seed.js";
 import { createApp } from "../app.js";
 import type { RuntimeOptions } from "../runtime/runtime.js";
@@ -27,7 +30,7 @@ import { SESSION_COOKIE } from "../researcher/login.js";
 
 const adminHeaders = { "content-type": "application/json", "x-dev-role": "ADMIN" };
 
-let db: Sql;
+let db: Db;
 let server: ReturnType<typeof createApp>;
 
 /** What the runtime read or wrote (Store method names), in order. */
@@ -127,13 +130,13 @@ const demo = (code: string) => ({
 });
 
 async function unitByExternalId(externalId: string): Promise<{ id: number }> {
-  return (await db.query<{ id: number }>("SELECT id FROM units WHERE external_id = $1", [externalId]))[0];
+  return (await query<{ id: number }>(db, "SELECT id FROM units WHERE external_id = $1", [externalId]))[0];
 }
 
 /** Live annotation values per (unit, coder), as stored in the database. */
 /** Unit answers in the database, per unit and coder. */
 async function dbAnnotations() {
-  const rows = await db.query<{ unitId: number; coderId: number; variable: string; value: VariableValue; designVersionId: number }>(
+  const rows = await query<{ unitId: number; coderId: number; variable: string; value: VariableValue; designVersionId: number }>(db, 
     `SELECT unit_id AS "unitId", coder_id AS "coderId", variable, value, design_version_id AS "designVersionId"
      FROM annotation_values WHERE unit_id IS NOT NULL AND retired_at IS NULL ORDER BY unit_id, coder_id`,
   );
@@ -269,11 +272,8 @@ async function deployDrafts(): Promise<DeploymentResponse> {
 
 /** A unit of the draft: its external id and data. */
 async function draftUnit(id: number): Promise<{ externalId: string; data: UnitData }> {
-  const [row] = await db.query<{ externalId: string; data: UnitData }>(
-    `SELECT external_id AS "externalId", unit_draft_data(id) AS data FROM units WHERE id = $1`,
-    [id],
-  );
-  return row;
+  const [row] = await db.select({ externalId: units.externalId, data: unitDraftData(units.id) }).from(units).where(eq(units.id, id));
+  return row!;
 }
 
 /** Adds a set to a set column (`g` by default), replacing a set of that name. Returns its unit ids. */
@@ -303,7 +303,7 @@ let extraLinks = 0;
  */
 async function link(settings: { participantId?: string; maxUses?: number } = {}) {
   const secret = `extra-${++extraLinks}`;
-  const [{ id }] = await db.query<{ id: number }>(
+  const [{ id }] = await query<{ id: number }>(db, 
     "INSERT INTO links (study_id, label, secret, link_key) VALUES (1, 'x', $1, $2) RETURNING id",
     [secret, JSON.stringify(["test", extraLinks])],
   );
@@ -630,7 +630,7 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     expect((await c.next("2"))!.id).toBe(first!.id);
     expect(await c.next("1")).not.toBeNull();
     const { coderId } = await c.session();
-    const [stored] = await db.query<{ assignments: Record<string, unknown> }>("SELECT assignments FROM coders WHERE id = $1", [coderId]);
+    const [stored] = await query<{ assignments: Record<string, unknown> }>(db, "SELECT assignments FROM coders WHERE id = $1", [coderId]);
     expect(stored.assignments).toEqual({ "1": { at: expect.any(Number) }, "2": { at: expect.any(Number) } });
     // The units follow from the session: no branch to choose (an old client's `branch` is ignored)
     expect((await c.call("/loop/2/next?branch=3")).status).toBe(200);
@@ -843,14 +843,14 @@ describe("sessions", () => {
 
     const deviceId = devices.get("browser")!.cookies.get("annotinder_device")!;
     const { coderId } = (await res.json()) as SessionResponse;
-    const [stored] = await db.query<{ key_hash: string; device_type: string; browser: string; os: string }>(
+    const [stored] = await query<{ key_hash: string; device_type: string; browser: string; os: string }>(db, 
       "SELECT key_hash, device_type, browser, os FROM coder_devices WHERE coder_id = $1",
       [coderId],
     );
     const { createHash } = await import("node:crypto");
     expect(stored).toEqual({ key_hash: createHash("sha256").update(`${deviceId}\n1\n`).digest("hex"), device_type: "phone", browser: "Safari", os: "iOS" });
     // The device id itself is stored nowhere
-    expect(JSON.stringify(await db.query("SELECT * FROM coders"))).not.toContain(deviceId);
+    expect(JSON.stringify(await query(db, "SELECT * FROM coders"))).not.toContain(deviceId);
 
     // the cookie continues the session; it isn't set again
     const again = await send("browser", "/session", {}, { "x-link-secret": "demo-secret" });
@@ -862,7 +862,7 @@ describe("sessions", () => {
     const c = coder("answerer");
     const unit = await c.next();
     await c.submit(unit!.id, demo("neutral"));
-    const rows = await db.query<{ device_id: number | null }>("SELECT DISTINCT device_id FROM annotation_values WHERE unit_id = $1", [unit!.id]);
+    const rows = await query<{ device_id: number | null }>(db, "SELECT DISTINCT device_id FROM annotation_values WHERE unit_id = $1", [unit!.id]);
     expect(rows).toHaveLength(1);
     expect(rows[0].device_id).not.toBeNull();
     const listed = (await (await server.request("/api/study/1/devices", { headers: adminHeaders })).json()) as { id: number }[];
@@ -971,7 +971,7 @@ describe("quitting and deleting a coder's data", () => {
     expect(log).toEqual([
       expect.objectContaining({ coderId: before.id, participantId: "P77", requestedAt: expect.any(String), deletedAt: expect.any(String), answers: 1 }),
     ]);
-    expect((await db.query("SELECT 1 FROM annotation_values WHERE coder_id = $1", [before.id])).length).toBe(0);
+    expect((await query(db, "SELECT 1 FROM annotation_values WHERE coder_id = $1", [before.id])).length).toBe(0);
     // Nothing matches: nothing deleted
     const none = await server.request("/api/study/1/coders/delete", { method: "POST", headers: adminHeaders, body: JSON.stringify({ emails: ["x@y.z"] }) });
     expect(await none.json()).toEqual({ coderIds: [], answers: 0 });
@@ -1101,7 +1101,7 @@ describe("coder-level answers", () => {
     expect((await post({ age: value(30), city: value("Utrecht") })).status).toBe(204);
     expect((await post({ age: value(31), city: value("Utrecht") })).status).toBe(204);
 
-    const rows = await db.query<{ variable: string; unit_id: number | null; assigned: boolean; created: Date; updated: Date; device_id: number | null }>(
+    const rows = await query<{ variable: string; unit_id: number | null; assigned: boolean; created: Date; updated: Date; device_id: number | null }>(db, 
       "SELECT variable, unit_id, assigned, created, updated, device_id FROM annotation_values WHERE unit_id IS NULL ORDER BY variable",
     );
     expect(rows.map((r) => [r.variable, r.assigned])).toEqual([
@@ -1209,8 +1209,8 @@ describe("limits", () => {
     const first = coder("first");
     await first.session();
     const owner = await ensureUser(db, "owner@uni.nl");
-    await db.query("UPDATE users SET limits = $1 WHERE id = $2", [JSON.stringify({ codersPerStudy: 1 }), owner.id]);
-    await db.query("UPDATE studies SET owner_id = $1 WHERE id = 1", [owner.id]);
+    await query(db, "UPDATE users SET limits = $1 WHERE id = $2", [JSON.stringify({ codersPerStudy: 1 }), owner.id]);
+    await query(db, "UPDATE studies SET owner_id = $1 WHERE id = 1", [owner.id]);
     const refused = await coder("second").call("/session");
     expect(refused.status).toBe(403);
     expect(await refused.json()).toMatchObject({ code: "study_full" });
@@ -1320,7 +1320,7 @@ describe("sessions across devices", () => {
     expect(confirmed.status).toBe(200);
     const secondCoder = ((await confirmed.json()) as SessionResponse).coderId;
     expect(secondCoder).not.toBe(firstCoder);
-    const rows = await db.query("SELECT participant_id FROM coders WHERE participant_id = 'P123'");
+    const rows = await query(db, "SELECT participant_id FROM coders WHERE participant_id = 'P123'");
     expect(rows).toHaveLength(2);
 
     // and that device keeps its new session
@@ -1328,7 +1328,7 @@ describe("sessions across devices", () => {
     expect(((await reload.json()) as SessionResponse).coderId).toBe(secondCoder);
 
     // A revoked link starts no new sessions, also not for a known participant; existing ones go on.
-    await db.query("UPDATE links SET revoked_at = now() WHERE secret = $1", [secret]);
+    await query(db, "UPDATE links SET revoked_at = now() WHERE secret = $1", [secret]);
     expect((await send("device-3", "/session", {}, { ...link, "x-new-session": "1" })).status).toBe(401);
     expect((await send("device-2", "/session", {}, link)).status).toBe(200);
   });
@@ -1390,7 +1390,7 @@ describe("resuming and codebook updates", () => {
     const [stored] = await dbAnnotations();
     expect(stored.variables.sentiment.values).toEqual([{ value: "positive" }]);
     expect(stored.variables).toHaveProperty("actors_and_issues"); // kept, though v2 no longer asks it
-    const sentimentRows = await db.query(`SELECT design_version_id AS "designVersionId" FROM annotation_values WHERE variable = 'sentiment'`);
+    const sentimentRows = await query(db, `SELECT design_version_id AS "designVersionId" FROM annotation_values WHERE variable = 'sentiment'`);
     expect(sentimentRows).toEqual([{ designVersionId: 2 }]);
   });
 });
@@ -1446,7 +1446,7 @@ describe("rebuilding from the database", () => {
   });
 
   it("keeps codings across a redeploy that keeps the loops, and derives them again when they change", async () => {
-    const codings = () => db.query<{ agreement: Record<string, string> }>("SELECT agreement FROM unit_codings");
+    const codings = () => query<{ agreement: Record<string, string> }>(db, "SELECT agreement FROM unit_codings");
 
     // v2 changes the loop's questions (demo had six): finished units must be derived again
     await redeploy({ units: {} });
@@ -1524,7 +1524,7 @@ describe("finished units follow the current codebook", () => {
     const again = await c.next();
     expect(again!.id).toBe(first!.id);
     expect(again!.variables).toEqual({}); // retired values are not served
-    expect(await db.query("SELECT COUNT(*)::int AS n FROM annotation_values WHERE retired_at IS NOT NULL")).toEqual([{ n: 1 }]);
+    expect(await query(db, "SELECT COUNT(*)::int AS n FROM annotation_values WHERE retired_at IS NOT NULL")).toEqual([{ n: 1 }]);
   });
 
   it("tracks a unit separately in each loop it appears in", async () => {
@@ -1587,7 +1587,7 @@ describe("state in the database, not in memory", () => {
     const other = restart();
     const [a, b] = await Promise.all([coder("left").next(), coder("right", "demo-secret", () => other).next()]);
     expect(new Set([a!.id, b!.id]).size).toBe(2);
-    expect(await db.query("SELECT count(*)::int AS n FROM unit_leases")).toEqual([{ n: 2 }]);
+    expect(await query(db, "SELECT count(*)::int AS n FROM unit_leases")).toEqual([{ n: 2 }]);
   });
 
   it("hands out units in batches: the same unfinished ones first, then the next", async () => {
@@ -1628,11 +1628,11 @@ describe("state in the database, not in memory", () => {
 describe("unit versions", () => {
   const versionOf = async (unitId: number) =>
     (
-      await db.query<{ data: UnitData }>(
-        `SELECT unit_version_data(v.id) AS data FROM annotation_values a JOIN unit_versions v ON v.id = a.unit_version_id
-         WHERE a.unit_id = $1 AND a.retired_at IS NULL LIMIT 1`,
-        [unitId],
-      )
+      await db
+        .select({ data: unitVersionData(annotationValues.unitVersionId) })
+        .from(annotationValues)
+        .where(and(eq(annotationValues.unitId, unitId), isNull(annotationValues.retiredAt)))
+        .limit(1)
     )[0]?.data;
   const upload = (units: object[], extra: object) =>
     server.request("/api/study/1/units", { method: "POST", headers: adminHeaders, body: JSON.stringify({ units, ...extra }) });
@@ -1678,7 +1678,7 @@ describe("unit versions", () => {
 });
 
 describe("unit versions are made by deploys", () => {
-  const count = async (sql: string, params: unknown[] = []) => (await db.query<{ n: number }>(sql, params))[0].n;
+  const count = async (sql: string, params: unknown[] = []) => (await query<{ n: number }>(db, sql, params))[0].n;
   const upload = async (units: object[]) => {
     const res = await server.request("/api/study/1/units", { method: "POST", headers: adminHeaders, body: JSON.stringify({ units, overwrite: true, overwriteCoded: true }) });
     expect(res.status, await res.clone().text()).toBe(201);
@@ -1749,7 +1749,7 @@ describe("review regressions", () => {
     const pending = (await (await server.request("/api/study/1/deployment/pending", { headers: adminHeaders })).json()) as { units: { sets: boolean } };
     expect(pending.units.sets).toBe(true);
     const deployed = await deployDrafts();
-    const live = (await db.query<{ name: string }>("SELECT name FROM unit_sets WHERE study_id = 1 AND live AND name = 'empty'"));
+    const live = (await query<{ name: string }>(db, "SELECT name FROM unit_sets WHERE study_id = 1 AND live AND name = 'empty'"));
     expect(live).toHaveLength(1);
     expect(deployed.version).toBeGreaterThan(1);
   });
@@ -1819,7 +1819,7 @@ describe("unit fields in the design", () => {
 
 describe("set columns", () => {
   const draftFields = async () => {
-    const [{ units }] = await db.query<{ units: { fields: { name: string; type: string }[] } }>(
+    const [{ units }] = await query<{ units: { fields: { name: string; type: string }[] } }>(db, 
       "SELECT units FROM design_versions WHERE study_id = 1 ORDER BY id DESC LIMIT 1",
     );
     return units.fields;
@@ -1898,7 +1898,7 @@ describe("researcher preview", () => {
 
   it("keeps the preview's coders and answers out of the database", async () => {
     await draft("draft");
-    const coders = async () => (await db.query<{ n: number }>("SELECT COUNT(*)::int AS n FROM coders"))[0].n;
+    const coders = async () => (await query<{ n: number }>(db, "SELECT COUNT(*)::int AS n FROM coders"))[0].n;
     const before = await coders();
     const { deploymentId, token } = await openPreview();
     const call = previewer(deploymentId, token);
@@ -2043,9 +2043,9 @@ describe("the coder home", () => {
     // The deployed design's public title, never the study's name (which is private)
     const first = (await summary.json()) as { title: unknown };
     expect(first).toMatchObject({ deployment: "1", title: "A tour of AnnoTinder", ended: null, units: 1 });
-    expect(JSON.stringify(first)).not.toContain(((await db.query<{ name: string }>("SELECT name FROM studies WHERE id = 1"))[0]).name);
+    expect(JSON.stringify(first)).not.toContain(((await query<{ name: string }>(db, "SELECT name FROM studies WHERE id = 1"))[0]).name);
     // Without one: none
-    await db.query("UPDATE design_versions SET public = NULL WHERE id = (SELECT design_version_id FROM deployments WHERE study_id = 1)");
+    await query(db, "UPDATE design_versions SET public = NULL WHERE id = (SELECT design_version_id FROM deployments WHERE study_id = 1)");
     expect(await (await send("home", "/summary")).json()).toMatchObject({ title: null });
     // Another device: no session here (and asking doesn't make one)
     expect((await send("elsewhere", "/summary")).status).toBe(404);
@@ -2058,7 +2058,7 @@ describe("the coder home", () => {
     const c = coder("laptop");
     await c.session();
     const user = await ensureUser(db, "coder@uni.nl");
-    await db.query("UPDATE coders SET email = 'coder@uni.nl' WHERE id = (SELECT max(id) FROM coders)");
+    await query(db, "UPDATE coders SET email = 'coder@uni.nl' WHERE id = (SELECT max(id) FROM coders)");
     const sessions = (cookie?: string) =>
       server.request("/api/coder/sessions", { headers: { "x-annotinder": "1", ...(cookie ? { cookie: `${SESSION_COOKIE}=${cookie}` } : {}) } });
     expect((await sessions()).status).toBe(401);

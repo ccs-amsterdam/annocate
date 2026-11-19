@@ -1,6 +1,8 @@
 import type { Context, MiddlewareHandler } from "hono";
 import { getConnInfo } from "@hono/node-server/conninfo";
-import type { Sql } from "../db.js";
+import { lt, sql } from "drizzle-orm";
+import type { Db } from "../db/index.js";
+import { rateLimits } from "../db/schema/index.js";
 
 // Rate limits (docs/security.md "Rate limits"): generous ceilings against
 // floods and guessing, not fraud detection (answer timings are for that).
@@ -47,7 +49,7 @@ export class RateLimiter {
   private memory = new Map<string, [number, number]>();
 
   constructor(
-    private sql: Sql,
+    private db: Db,
     readonly limits: RateLimits,
     readonly trustProxy: boolean,
   ) {}
@@ -55,16 +57,19 @@ export class RateLimiter {
   /** Counts a request; true while within `limit` this minute. */
   async hit(key: string, limit: number): Promise<boolean> {
     const minute = new Date(Math.floor(Date.now() / 60_000) * 60_000);
-    const [row] = await this.sql.query<{ count: number }>(
-      `INSERT INTO rate_limits (key, minute) VALUES ($1, $2)
-       ON CONFLICT (key, minute) DO UPDATE SET count = rate_limits.count + 1 RETURNING count`,
-      [key, minute],
-    );
+    const [row] = await this.db
+      .insert(rateLimits)
+      .values({ key, minute })
+      .onConflictDoUpdate({ target: [rateLimits.key, rateLimits.minute], set: { count: sql`${rateLimits.count} + 1` } })
+      .returning({ count: rateLimits.count });
     if (Date.now() - this.lastCleanup > 60_000) {
       this.lastCleanup = Date.now();
-      void this.sql.query("DELETE FROM rate_limits WHERE minute < now() - interval '10 minutes'").catch(() => undefined);
+      void this.db
+        .delete(rateLimits)
+        .where(lt(rateLimits.minute, sql`now() - interval '10 minutes'`))
+        .catch(() => undefined);
     }
-    return row.count <= limit;
+    return row!.count <= limit;
   }
 
   /** Counts in this process's memory (cheap, for every request). */

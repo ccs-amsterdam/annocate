@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { DesignWriteSchema, EMPTY_SESSION, sessionItem } from "@annotinder/contracts";
-import { one } from "../db.js";
+import { asc, eq } from "drizzle-orm";
+import { designVersions as versions } from "../db/schema/index.js";
 import type { Server, Env } from "../context.js";
 import { requireStudyUser } from "./auth.js";
-import { toDesignVersionMeta, toDesignVersion, type DesignVersionRow } from "../shared/designVersions.js";
+import { toDesignVersionMeta, toDesignVersion } from "../shared/designVersions.js";
 import { getUnitFields } from "../shared/units.js";
 
 export function designVersions(server: Server): Hono<Env> {
@@ -11,7 +12,7 @@ export function designVersions(server: Server): Hono<Env> {
   const app = new Hono<Env>();
 
   app.get("/study/:studyId/design", requireStudyUser(server, "READ"), async (c) => {
-    const rows = await db.query<DesignVersionRow>("SELECT * FROM design_versions WHERE study_id = $1 ORDER BY id", [c.get("studyId")]);
+    const rows = await db.select().from(versions).where(eq(versions.studyId, c.get("studyId"))).orderBy(asc(versions.id));
     return c.json(rows.map(toDesignVersionMeta));
   });
 
@@ -22,19 +23,18 @@ export function designVersions(server: Server): Hono<Env> {
     if (sessionItem(parsed.data.items)) return c.json({ error: "The session and public info go in `session` and `public`, not among the items" }, 400);
     // The unit fields, unless given: the latest version's (docs/plans/design.md §3)
     const units = parsed.data.units ?? (await getUnitFields(db, c.get("studyId")).then((fields) => ({ fields })));
-    const row = await one<DesignVersionRow>(
-      db,
-      "INSERT INTO design_versions (study_id, note, items, units, session, public, updated_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
-      [
-        c.get("studyId"),
-        parsed.data.note ?? null,
-        JSON.stringify(parsed.data.items),
-        JSON.stringify(units),
-        JSON.stringify(parsed.data.session ?? EMPTY_SESSION),
-        parsed.data.public ? JSON.stringify(parsed.data.public) : null,
-        c.get("studyUser")?.email ?? null,
-      ],
-    );
+    const [row] = await db
+      .insert(versions)
+      .values({
+        studyId: c.get("studyId"),
+        note: parsed.data.note ?? null,
+        items: parsed.data.items,
+        units,
+        session: parsed.data.session ?? EMPTY_SESSION,
+        public: parsed.data.public ?? null,
+        updatedBy: c.get("studyUser")?.email ?? null,
+      })
+      .returning();
     return c.json(toDesignVersion(row!), 201);
   });
 

@@ -1,11 +1,12 @@
 import type { DeviceDetails } from "../shared/devices.js";
 import { SET_ACTIVITY_MS, type DeletionRequest, type SessionEnd, type VariableValue } from "@annotinder/contracts";
-import { one, type Sql } from "../db.js";
+import { and, asc, eq, gt, inArray, isNotNull, isNull, lt, or, sql, type AnyColumn } from "drizzle-orm";
+import type { Db } from "../db/index.js";
+import { annotationValues, coderDevices, coders, deployments, links, studies, transfers, unitCodings, unitLeases, units, unitServes, unitVersions } from "../db/schema/index.js";
 import { coderAnswers, putCoderValues, toCoder, type CoderRow } from "../shared/coders.js";
 import { getDeploymentSpec, getPreviewSpec } from "../shared/deployments.js";
 import { listFinished } from "../shared/finished.js";
 import { HttpError } from "../shared/http.js";
-import type { LinkRow } from "../shared/links.js";
 import { emailCoders, sessionValues, type SessionDraw } from "./sessionValues.js";
 import { getSettings } from "../shared/accounts.js";
 import { checkAnswerSize, checkNewCoder, studyLimits } from "../shared/limits.js";
@@ -116,28 +117,34 @@ export interface Store {
 /** A study's data in the database. */
 export class DbStore implements Store {
   constructor(
-    private sql: Sql,
+    private db: Db,
     private studyId: number,
     /** Use the latest codebook instead of the deployed one (previews). */
     private preview = false,
   ) {}
 
+  /** This study's coder (by id). */
+  private coder(coderId: number) {
+    return and(eq(coders.studyId, this.studyId), eq(coders.id, coderId));
+  }
+
   async deploymentStamp(): Promise<string | null> {
     if (this.preview) return null;
-    const row = await one<{ stamp: string }>(
-      this.sql,
-      `SELECT concat_ws('/', d.version, d.annotation_epoch, d.revision, j.suspended_at IS NOT NULL) AS stamp
-       FROM studies j LEFT JOIN deployments d ON d.study_id = j.id WHERE j.id = $1`,
-      [this.studyId],
-    );
-    return row?.stamp ?? "";
+    const [found] = await this.db
+      .select({
+        stamp: sql<string>`concat_ws('/', ${deployments.version}, ${deployments.annotationEpoch}, ${deployments.revision}, ${studies.suspendedAt} IS NOT NULL)`,
+      })
+      .from(studies)
+      .leftJoin(deployments, eq(deployments.studyId, studies.id))
+      .where(eq(studies.id, this.studyId));
+    return found?.stamp ?? "";
   }
 
   async getDeployment(): Promise<DeploymentSpec> {
-    if (await one(this.sql, "SELECT 1 FROM studies WHERE id = $1 AND suspended_at IS NOT NULL", [this.studyId])) {
+    if ((await this.db.$count(studies, and(eq(studies.id, this.studyId), isNotNull(studies.suspendedAt)))) > 0) {
       throw new HttpError(403, "This study isn't available", "study_suspended");
     }
-    const spec = this.preview ? await getPreviewSpec(this.sql, this.studyId) : await getDeploymentSpec(this.sql, this.studyId);
+    const spec = this.preview ? await getPreviewSpec(this.db, this.studyId) : await getDeploymentSpec(this.db, this.studyId);
     if (!spec) throw new HttpError(404, this.preview ? "Study has no design yet" : "Study is not deployed");
     return spec;
   }
@@ -145,45 +152,53 @@ export class DbStore implements Store {
   /** Units as deployed (their current versions; a preview: the drafts). */
   async getUnits(ids: number[], live: boolean): Promise<Unit[]> {
     if (ids.length === 0) return [];
-    const rows = await servedUnits(this.sql, this.studyId, live, ids);
-    return rows.map((r) => ({ id: r.id, externalId: r.external_id, data: r.data, hash: r.hash, versionId: r.version_id }));
+    return servedUnits(this.db, this.studyId, live, ids);
   }
 
   async listCoders(): Promise<Coder[]> {
-    return (await this.sql.query<CoderRow>("SELECT * FROM coders WHERE study_id = $1 ORDER BY id", [this.studyId])).map(toCoder);
+    return (await this.db.select().from(coders).where(eq(coders.studyId, this.studyId)).orderBy(asc(coders.id))).map(toCoder);
   }
 
   async resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder> {
     // The common case, a device that has a session here: one query.
-    const known = request.newSession ? null : await knownCoder(this.sql, this.studyId, request.coderKey);
-    const linkable = !!known && request.linkable && known.email === null;
-    if (known && !linkable) return { coder: toCoder(known), deviceId: known.device_id };
+    const known = request.newSession ? null : await knownCoder(this.db, this.studyId, request.coderKey);
+    const linkable = !!known && request.linkable && known.coder.email === null;
+    if (known && !linkable) return { coder: toCoder(known.coder), deviceId: known.deviceId };
     // The login only where it matters (read before the transaction: it is another query).
     const login = (await request.login?.()) ?? null;
-    if (known && !login) return { coder: toCoder(known), deviceId: known.device_id };
-    const { row, deviceId } = await this.sql.transaction((tx) => findOrCreateCoder(tx, this.studyId, request, known, login));
-    return { coder: toCoder(row), deviceId };
+    if (known && !login) return { coder: toCoder(known.coder), deviceId: known.deviceId };
+    const { row: coder, deviceId } = await this.db.transaction((tx) => findOrCreateCoder(tx, this.studyId, request, known, login));
+    return { coder: toCoder(coder), deviceId };
   }
 
   coderValues(coderId: number): Promise<Record<string, CoderValue>> {
-    return coderAnswers(this.sql, this.studyId, coderId);
+    return coderAnswers(this.db, this.studyId, coderId);
   }
 
   async freezeCoderValues(coderId: number, names: string[]): Promise<void> {
     if (names.length === 0) return;
-    await this.sql.query(
-      `UPDATE annotation_values SET frozen = true
-       WHERE study_id = $1 AND coder_id = $2 AND unit_id IS NULL AND retired_at IS NULL AND NOT frozen AND variable = ANY($3)`,
-      [this.studyId, coderId, names],
-    );
+    const a = annotationValues;
+    await this.db
+      .update(a)
+      .set({ frozen: true })
+      .where(
+        and(
+          eq(a.studyId, this.studyId),
+          eq(a.coderId, coderId),
+          isNull(a.unitId),
+          isNull(a.retiredAt),
+          eq(a.frozen, false),
+          inArray(a.variable, names),
+        ),
+      );
   }
 
   async putCoderValues(write: CoderValuesWrite): Promise<void> {
-    await this.sql.transaction((tx) => putCoderValues(tx, this.studyId, write));
+    await this.db.transaction((tx) => putCoderValues(tx, this.studyId, write));
   }
 
   async addDevice(coderId: number, coderKey: string, device: DeviceDetails): Promise<number | null> {
-    return addDevice(this.sql, this.studyId, coderId, coderKey, device);
+    return addDevice(this.db, this.studyId, coderId, coderKey, device);
   }
 
   /** The answer size and the study's answer limit, and its answers so far: read again at most once a minute. */
@@ -192,11 +207,10 @@ export class DbStore implements Store {
   async checkAnswers(variables: Record<string, VariableValue>): Promise<void> {
     const now = Date.now();
     if (!this.answerRules || now - this.answerRules.at > 60_000) {
-      const { answerBytes } = await getSettings(this.sql);
-      const { limits } = await studyLimits(this.sql, this.studyId);
+      const { answerBytes } = await getSettings(this.db);
+      const { limits } = await studyLimits(this.db, this.studyId);
       const max = limits.answersPerStudy ?? null;
-      const count =
-        max === null ? 0 : (await one<{ n: number }>(this.sql, "SELECT count(*)::int AS n FROM annotation_values WHERE study_id = $1", [this.studyId]))!.n;
+      const count = max === null ? 0 : await this.db.$count(annotationValues, eq(annotationValues.studyId, this.studyId));
       this.answerRules = { at: now, answerBytes, max, count };
     }
     const rules = this.answerRules;
@@ -211,131 +225,138 @@ export class DbStore implements Store {
 
   async routeCoder(coderId: number, loop: string, assignment: CoderAssignments[string]): Promise<void> {
     // Merged into the stored marks, so two loops at once don't overwrite each other.
-    const updated = await this.sql.query(
-      "UPDATE coders SET assignments = coalesce(assignments, '{}'::jsonb) || jsonb_build_object($1::text, $2::jsonb) WHERE study_id = $3 AND id = $4 RETURNING id",
-      [loop, JSON.stringify(assignment), this.studyId, coderId],
-    );
+    const updated = await this.db
+      .update(coders)
+      .set({ assignments: sql`coalesce(${coders.assignments}, '{}'::jsonb) || jsonb_build_object(${loop}::text, ${JSON.stringify(assignment)}::jsonb)` })
+      .where(this.coder(coderId))
+      .returning({ id: coders.id });
     if (updated.length === 0) throw new HttpError(404, "Coder not found");
   }
 
   async setSessionValue(coderId: number, name: string, value: string): Promise<string> {
-    const row = await one<{ value: string }>(
-      this.sql,
-      `UPDATE coders SET session = CASE WHEN session ? $1 THEN session ELSE session || jsonb_build_object($1::text, $2::text) END
-       WHERE study_id = $3 AND id = $4 RETURNING session->>$1 AS value`,
-      [name, value, this.studyId, coderId],
-    );
-    return row?.value ?? value;
+    // Set once: a value already there stays
+    const [updated] = await this.db
+      .update(coders)
+      .set({
+        session: sql`CASE WHEN ${coders.session} ? ${name}::text THEN ${coders.session} ELSE ${coders.session} || jsonb_build_object(${name}::text, ${value}::text) END`,
+      })
+      .where(this.coder(coderId))
+      .returning({ value: sql<string>`${coders.session}->>${name}::text` });
+    return updated?.value ?? value;
   }
 
   async setEnded(coderId: number, ended: SessionEnd | null): Promise<void> {
-    const updated = await this.sql.query("UPDATE coders SET ended = $1 WHERE study_id = $2 AND id = $3 RETURNING id", [
-      ended === null ? null : JSON.stringify(ended),
-      this.studyId,
-      coderId,
-    ]);
+    const updated = await this.db.update(coders).set({ ended }).where(this.coder(coderId)).returning({ id: coders.id });
     if (updated.length === 0) throw new HttpError(404, "Coder not found");
   }
 
   async createTransfer(tokenHash: string, transfer: Transfer): Promise<void> {
-    await this.sql.query("DELETE FROM transfers WHERE expires < now()");
-    await this.sql.query("INSERT INTO transfers (token_hash, study_id, coder_id, participant, expires) VALUES ($1, $2, $3, $4, $5)", [
-      tokenHash,
-      this.studyId,
-      transfer.coderId,
-      transfer.participant,
-      transfer.expires,
-    ]);
+    await this.db.delete(transfers).where(lt(transfers.expires, sql`now()`));
+    await this.db.insert(transfers).values({ tokenHash, studyId: this.studyId, ...transfer });
   }
 
   async redeemTransfer(tokenHash: string, now: Date): Promise<Transfer | null> {
-    const row = await one<{ coder_id: number; participant: string | null; expires: Date }>(
-      this.sql,
-      "DELETE FROM transfers WHERE token_hash = $1 AND study_id = $2 RETURNING coder_id, participant, expires",
-      [tokenHash, this.studyId],
-    );
-    if (!row || row.expires <= now) return null;
-    return { coderId: row.coder_id, participant: row.participant, expires: row.expires };
+    const [redeemed] = await this.db
+      .delete(transfers)
+      .where(and(eq(transfers.tokenHash, tokenHash), eq(transfers.studyId, this.studyId)))
+      .returning({ coderId: transfers.coderId, participant: transfers.participant, expires: transfers.expires });
+    if (!redeemed || redeemed.expires <= now) return null;
+    return redeemed;
   }
 
   async requestDeletion(coderId: number, request: DeletionRequest): Promise<void> {
-    await this.sql.query("UPDATE coders SET deletion_request = $1 WHERE study_id = $2 AND id = $3", [JSON.stringify(request), this.studyId, coderId]);
+    await this.db.update(coders).set({ deletionRequest: request }).where(this.coder(coderId));
   }
 
   async listFinished(request: FinishedRequest): Promise<Finished[]> {
-    return request.loops.length === 0 ? [] : listFinished(this.sql, this.studyId, request);
+    return request.loops.length === 0 ? [] : listFinished(this.db, this.studyId, request);
   }
 
   async unitAnswers(coderId: number, unitId: number): Promise<Record<string, VariableValue>> {
-    const rows = await this.sql.query<{ variable: string; value: VariableValue }>(
-      "SELECT variable, value FROM annotation_values WHERE study_id = $1 AND coder_id = $2 AND unit_id = $3 AND retired_at IS NULL",
-      [this.studyId, coderId, unitId],
-    );
-    return Object.fromEntries(rows.map((r) => [r.variable, r.value]));
+    const a = annotationValues;
+    const found = await this.db
+      .select({ variable: a.variable, value: a.value })
+      .from(a)
+      .where(and(eq(a.studyId, this.studyId), eq(a.coderId, coderId), eq(a.unitId, unitId), isNull(a.retiredAt)));
+    return Object.fromEntries(found.map((r) => [r.variable, r.value]));
   }
 
   async listCodings(filter: { loop?: string; coderId?: number }): Promise<Coding[]> {
     // Times as epoch ms: a shared queue reads every coding of the loop for each pick, and parsing timestamps dominated.
-    const rows = await this.sql.query<Omit<Coding, "created" | "updated"> & { created: number; updated: number }>(
-      `SELECT loop_key AS loop, unit_id AS "unitId", coder_id AS "coderId", agreement,
-              (extract(epoch FROM created) * 1000)::float8 AS created, (extract(epoch FROM updated) * 1000)::float8 AS updated
-       FROM unit_codings
-       WHERE study_id = $1 AND ($2::text IS NULL OR loop_key = $2) AND ($3::int IS NULL OR coder_id = $3)
-       ORDER BY unit_codings.created, unit_id`,
-      [this.studyId, filter.loop ?? null, filter.coderId ?? null],
-    );
-    return rows.map((r) => ({ ...r, created: new Date(r.created), updated: new Date(r.updated) }));
+    const epochMs = (column: AnyColumn) => sql<number>`(extract(epoch FROM ${column}) * 1000)::float8`;
+    const found = await this.db
+      .select({
+        loop: unitCodings.loopKey,
+        unitId: unitCodings.unitId,
+        coderId: unitCodings.coderId,
+        agreement: unitCodings.agreement,
+        created: epochMs(unitCodings.created),
+        updated: epochMs(unitCodings.updated),
+      })
+      .from(unitCodings)
+      .where(
+        and(
+          eq(unitCodings.studyId, this.studyId),
+          filter.loop === undefined ? undefined : eq(unitCodings.loopKey, filter.loop),
+          filter.coderId === undefined ? undefined : eq(unitCodings.coderId, filter.coderId),
+        ),
+      )
+      .orderBy(asc(unitCodings.created), asc(unitCodings.unitId));
+    return found.map((r) => ({ ...r, created: new Date(r.created), updated: new Date(r.updated) }));
   }
 
   async codingsBasis(): Promise<string | null> {
     if (this.preview) return null;
-    return (await one<{ basis: string | null }>(this.sql, "SELECT codings_basis AS basis FROM deployments WHERE study_id = $1", [this.studyId]))?.basis ?? null;
+    const [deployment] = await this.db.select({ basis: deployments.codingsBasis }).from(deployments).where(eq(deployments.studyId, this.studyId));
+    return deployment?.basis ?? null;
   }
 
   async replaceCodings(basis: string, codings: Coding[]): Promise<void> {
-    await this.sql.transaction(async (tx) => {
-      await tx.query("DELETE FROM unit_codings WHERE study_id = $1", [this.studyId]);
+    await this.db.transaction(async (tx) => {
+      await tx.delete(unitCodings).where(eq(unitCodings.studyId, this.studyId));
       for (const c of codings) await insertCoding(tx, this.studyId, c);
-      await tx.query("UPDATE deployments SET codings_basis = $1 WHERE study_id = $2", [basis, this.studyId]);
+      await tx.update(deployments).set({ codingsBasis: basis }).where(eq(deployments.studyId, this.studyId));
     });
   }
 
   async listLeases(filter: { loop?: string; coderId?: number }): Promise<Lease[]> {
-    return this.sql.query<Lease>(
-      `SELECT loop_key AS loop, set_name AS "set", coder_id AS "coderId", unit_id AS "unitId", expires FROM unit_leases
-       WHERE study_id = $1 AND ($2::text IS NULL OR loop_key = $2) AND ($3::int IS NULL OR coder_id = $3)`,
-      [this.studyId, filter.loop ?? null, filter.coderId ?? null],
-    );
+    return this.db
+      .select({ loop: unitLeases.loopKey, set: unitLeases.setName, coderId: unitLeases.coderId, unitId: unitLeases.unitId, expires: unitLeases.expires })
+      .from(unitLeases)
+      .where(
+        and(
+          eq(unitLeases.studyId, this.studyId),
+          filter.loop === undefined ? undefined : eq(unitLeases.loopKey, filter.loop),
+          filter.coderId === undefined ? undefined : eq(unitLeases.coderId, filter.coderId),
+        ),
+      );
   }
 
   async putLeases(leases: Lease[]): Promise<void> {
     if (leases.length === 0) return;
-    await this.sql.query(
-      `INSERT INTO unit_leases (study_id, loop_key, set_name, coder_id, unit_id, expires)
-       SELECT $1, * FROM unnest($2::text[], $3::text[], $4::int[], $5::int[], $6::timestamptz[])
-       ON CONFLICT (study_id, loop_key, set_name, coder_id, unit_id) DO UPDATE SET expires = excluded.expires`,
-      [
-        this.studyId,
-        leases.map((l) => l.loop),
-        leases.map((l) => l.set),
-        leases.map((l) => l.coderId),
-        leases.map((l) => l.unitId),
-        leases.map((l) => l.expires),
-      ],
-    );
+    await this.db
+      .insert(unitLeases)
+      .values(leases.map((l) => ({ studyId: this.studyId, loopKey: l.loop, setName: l.set, coderId: l.coderId, unitId: l.unitId, expires: l.expires })))
+      .onConflictDoUpdate({
+        target: [unitLeases.studyId, unitLeases.loopKey, unitLeases.setName, unitLeases.coderId, unitLeases.unitId],
+        set: { expires: sql`excluded.expires` },
+      });
   }
 
   async coderValuesOf(variables: string[]): Promise<{ values: Record<string, VariableValue>; session: Record<string, string> }[]> {
-    const rows = await this.sql.query<{ coderId: number; variable: string; value: VariableValue; session: Record<string, string> | null; participant: string | null }>(
-      `SELECT v.coder_id AS "coderId", v.variable, v.value, c.session, c.participant_id AS participant
-       FROM annotation_values v JOIN coders c ON c.id = v.coder_id
-       WHERE v.study_id = $1 AND v.unit_id IS NULL AND v.retired_at IS NULL AND v.variable = ANY($2)
-         AND EXISTS (SELECT 1 FROM annotation_values a WHERE a.study_id = $1 AND a.coder_id = v.coder_id AND a.unit_id IS NULL
-                     AND a.retired_at IS NULL AND a.variable = $3)`,
-      [this.studyId, variables, variables[0]],
-    );
+    const a = annotationValues;
+    /** A coder's live coder-level answer to `variable`. */
+    const coderLevel = (variable: string | string[]) =>
+      and(eq(a.studyId, this.studyId), isNull(a.unitId), isNull(a.retiredAt), Array.isArray(variable) ? inArray(a.variable, variable) : eq(a.variable, variable));
+    // The coders who answered the first variable, with their answers to all of them
+    const answeredFirst = this.db.select({ coderId: a.coderId }).from(a).where(coderLevel(variables[0]!));
+    const found = await this.db
+      .select({ coderId: a.coderId, variable: a.variable, value: a.value, session: coders.session, participant: coders.participantId })
+      .from(a)
+      .innerJoin(coders, eq(coders.id, a.coderId))
+      .where(and(coderLevel(variables), inArray(a.coderId, answeredFirst)));
     const byCoder = new Map<number, { values: Record<string, VariableValue>; session: Record<string, string> }>();
-    for (const r of rows) {
+    for (const r of found) {
       if (!byCoder.has(r.coderId)) byCoder.set(r.coderId, { values: {}, session: { ...r.session, ...(r.participant ? { participant: r.participant } : {}) } });
       byCoder.get(r.coderId)!.values[r.variable] = r.value;
     }
@@ -346,9 +367,9 @@ export class DbStore implements Store {
     const lock = `${this.studyId}/${key}`;
     // In this process, one at a time before taking a connection: requests
     // waiting for the database lock would otherwise hold the whole pool.
-    return inTurn(this.sql, lock, () =>
-      this.sql.transaction(async (tx) => {
-        await tx.query("SELECT pg_advisory_xact_lock(hashtext($1))", [lock]);
+    return inTurn(this.db, lock, () =>
+      this.db.transaction(async (tx) => {
+        await advisoryLock(tx, lock);
         return fn(new DbStore(tx, this.studyId, this.preview));
       }),
     );
@@ -361,106 +382,152 @@ export class DbStore implements Store {
    */
   async putAnnotation(write: AnnotationWrite): Promise<void> {
     const { studyId } = this;
-    await this.sql.transaction(async (tx) => {
-      const unit = await one<{ coded: boolean }>(tx, "SELECT coded FROM units WHERE study_id = $1 AND id = $2", [studyId, write.unitId]);
+    const a = annotationValues;
+    await this.db.transaction(async (tx) => {
+      const [unit] = await tx
+        .select({ coded: units.coded })
+        .from(units)
+        .where(and(eq(units.studyId, studyId), eq(units.id, write.unitId)));
       if (!unit) throw new HttpError(404, "Unit not found");
       // No deploy deletes versions meanwhile
       await lockUnits(tx, studyId, "read");
       // The version the coder saw; one a deploy just deleted (nobody had answered on it) gives way to the current one.
-      const version = await one<{ id: number | null }>(
-        tx,
-        "SELECT COALESCE((SELECT id FROM unit_versions WHERE id = $1), (SELECT id FROM unit_versions WHERE unit_id = $2 AND to_deploy IS NULL)) AS id",
-        [write.unitVersionId ?? null, write.unitId],
-      );
+      const [version] = await tx
+        .select({ id: unitVersions.id })
+        .from(unitVersions)
+        .where(
+          or(
+            write.unitVersionId == null ? undefined : eq(unitVersions.id, write.unitVersionId),
+            and(eq(unitVersions.unitId, write.unitId), isNull(unitVersions.toDeploy)),
+          ),
+        )
+        .orderBy(sql`${unitVersions.id} = ${write.unitVersionId ?? null}::int DESC NULLS LAST`)
+        .limit(1);
       for (const [variable, value] of Object.entries(write.variables)) {
-        await tx.query(
-          `INSERT INTO annotation_values (study_id, unit_id, coder_id, variable, value, design_version_id, unit_version_id, device_id, timing, created, updated)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
-           ON CONFLICT (unit_id, coder_id, variable) WHERE retired_at IS NULL
-           DO UPDATE SET value = excluded.value, design_version_id = excluded.design_version_id, unit_version_id = excluded.unit_version_id,
-             device_id = excluded.device_id, timing = excluded.timing, updated = excluded.updated`,
-          [
+        await tx
+          .insert(a)
+          .values({
             studyId,
-            write.unitId,
-            write.coderId,
+            unitId: write.unitId,
+            coderId: write.coderId,
             variable,
-            JSON.stringify(value),
-            write.designVersionId ?? null,
-            version?.id ?? null,
-            write.deviceId ?? null,
-            write.timings?.[variable] ? JSON.stringify(write.timings[variable]) : null,
-          ],
-        );
+            value,
+            designVersionId: write.designVersionId ?? null,
+            unitVersionId: version?.id ?? null,
+            deviceId: write.deviceId ?? null,
+            timing: write.timings?.[variable] ?? null,
+            created: sql`now()`,
+            updated: sql`now()`,
+          })
+          .onConflictDoUpdate({
+            // The live answer (the partial unique index annotation_values_live)
+            target: [a.unitId, a.coderId, a.variable],
+            targetWhere: isNull(a.retiredAt),
+            set: {
+              value: sql`excluded.value`,
+              designVersionId: sql`excluded.design_version_id`,
+              unitVersionId: sql`excluded.unit_version_id`,
+              deviceId: sql`excluded.device_id`,
+              timing: sql`excluded.timing`,
+              updated: sql`excluded.updated`,
+            },
+          });
       }
       for (const coding of write.codings ?? []) {
         const now = new Date();
         await insertCoding(tx, studyId, { loop: coding.loop, unitId: write.unitId, coderId: write.coderId, agreement: coding.agreement, created: now, updated: now });
         // Finished: the coder's lease on it has done its study (distribution ignores it from now on anyway).
-        await tx.query("DELETE FROM unit_leases WHERE study_id = $1 AND loop_key = $2 AND coder_id = $3 AND unit_id = $4", [
-          studyId,
-          coding.loop,
-          write.coderId,
-          write.unitId,
-        ]);
+        await tx
+          .delete(unitLeases)
+          .where(
+            and(
+              eq(unitLeases.studyId, studyId),
+              eq(unitLeases.loopKey, coding.loop),
+              eq(unitLeases.coderId, write.coderId),
+              eq(unitLeases.unitId, write.unitId),
+            ),
+          );
       }
-      if (!unit.coded) await tx.query("UPDATE units SET coded = true WHERE id = $1", [write.unitId]);
+      if (!unit.coded) await tx.update(units).set({ coded: true }).where(eq(units.id, write.unitId));
     });
   }
 
   async recordServe(coderId: number, unitId: number, unitVersionId: number): Promise<void> {
-    await this.sql.transaction(async (tx) => {
+    await this.db.transaction(async (tx) => {
       // No deploy deletes the version meanwhile; one deleted just before: none recorded
       await lockUnits(tx, this.studyId, "read");
-      await tx.query(
-        `INSERT INTO unit_serves (study_id, coder_id, unit_id, unit_version_id) VALUES ($1, $2, $3, (SELECT id FROM unit_versions WHERE id = $4))
-         ON CONFLICT (coder_id, unit_id) DO UPDATE SET unit_version_id = excluded.unit_version_id
-         WHERE unit_serves.unit_version_id IS DISTINCT FROM excluded.unit_version_id`,
-        [this.studyId, coderId, unitId, unitVersionId],
-      );
+      const [version] = await tx.select({ id: unitVersions.id }).from(unitVersions).where(eq(unitVersions.id, unitVersionId));
+      await tx
+        .insert(unitServes)
+        .values({ studyId: this.studyId, coderId, unitId, unitVersionId: version?.id ?? null })
+        .onConflictDoUpdate({
+          target: [unitServes.coderId, unitServes.unitId],
+          set: { unitVersionId: sql`excluded.unit_version_id` },
+          setWhere: sql`${unitServes.unitVersionId} IS DISTINCT FROM excluded.unit_version_id`,
+        });
     });
   }
 
   async servedVersion(coderId: number, unitId: number): Promise<number | null> {
-    const row = await one<{ v: number | null }>(this.sql, "SELECT unit_version_id AS v FROM unit_serves WHERE coder_id = $1 AND unit_id = $2", [
-      coderId,
-      unitId,
-    ]);
-    return row?.v ?? null;
+    const [served] = await this.db
+      .select({ versionId: unitServes.unitVersionId })
+      .from(unitServes)
+      .where(and(eq(unitServes.coderId, coderId), eq(unitServes.unitId, unitId)));
+    return served?.versionId ?? null;
   }
 }
 
+/** Waits for a database lock on `key`, held until the transaction ends. */
+async function advisoryLock(tx: Db, key: string): Promise<void> {
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${key}))`);
+}
+
 /** Adds a device's key to a session (or moves it there from another one); returns the device row. */
-async function addDevice(sql: Sql, studyId: number, coderId: number, coderKey: string, device: DeviceDetails = { type: null, browser: null, os: null }): Promise<number> {
-  const row = await one<{ id: number }>(
-    sql,
-    `INSERT INTO coder_devices (study_id, coder_id, key_hash, device_type, browser, os) VALUES ($1, $2, $3, $4, $5, $6)
-     ON CONFLICT (key_hash) DO UPDATE SET coder_id = excluded.coder_id RETURNING id`,
-    [studyId, coderId, coderKey, device.type, device.browser, device.os],
-  );
-  return row!.id;
+async function addDevice(db: Db, studyId: number, coderId: number, coderKey: string, device: DeviceDetails = { type: null, browser: null, os: null }): Promise<number> {
+  const [added] = await db
+    .insert(coderDevices)
+    .values({ studyId, coderId, keyHash: coderKey, deviceType: device.type, browser: device.browser, os: device.os })
+    .onConflictDoUpdate({ target: coderDevices.keyHash, set: { coderId: sql`excluded.coder_id` } })
+    .returning({ id: coderDevices.id });
+  return added!.id;
 }
 
 /** The latest session in this study linked to an email (one per email: docs/coder-identity.md §5). */
-const sessionOfEmail = (sql: Sql, studyId: number, email: string) =>
-  one<CoderRow>(sql, "SELECT * FROM coders WHERE study_id = $1 AND lower(email) = lower($2) ORDER BY id DESC LIMIT 1", [studyId, email]);
+async function sessionOfEmail(db: Db, studyId: number, email: string): Promise<CoderRow | undefined> {
+  const [found] = await db
+    .select()
+    .from(coders)
+    .where(and(eq(coders.studyId, studyId), sql`lower(${coders.email}) = lower(${email})`))
+    .orderBy(sql`${coders.id} DESC`)
+    .limit(1);
+  return found;
+}
 
 /** Stores a finished coding; one finished again keeps its first time and gets the new agreement answers. */
-async function insertCoding(sql: Sql, studyId: number, c: Coding): Promise<void> {
-  await sql.query(
-    `INSERT INTO unit_codings (study_id, loop_key, unit_id, coder_id, agreement, created, updated) VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT (study_id, loop_key, unit_id, coder_id) DO UPDATE SET agreement = excluded.agreement, updated = excluded.updated`,
-    [studyId, c.loop, c.unitId, c.coderId, JSON.stringify(c.agreement), c.created, c.updated],
-  );
+async function insertCoding(db: Db, studyId: number, c: Coding): Promise<void> {
+  await db
+    .insert(unitCodings)
+    .values({ studyId, loopKey: c.loop, unitId: c.unitId, coderId: c.coderId, agreement: c.agreement, created: c.created, updated: c.updated })
+    .onConflictDoUpdate({
+      target: [unitCodings.studyId, unitCodings.loopKey, unitCodings.unitId, unitCodings.coderId],
+      set: { agreement: sql`excluded.agreement`, updated: sql`excluded.updated` },
+    });
+}
+
+/** A device's session: the coder and the device row. */
+interface KnownCoder {
+  coder: CoderRow;
+  deviceId: number;
 }
 
 /** The session a device key has in this study, if any. */
-async function knownCoder(sql: Sql, studyId: number, coderKey: string): Promise<(CoderRow & { device_id: number }) | null> {
-  const known = await one<CoderRow & { device_id: number }>(
-    sql,
-    "SELECT c.*, d.id AS device_id FROM coder_devices d JOIN coders c ON c.id = d.coder_id WHERE d.key_hash = $1",
-    [coderKey],
-  );
-  if (known && known.study_id !== studyId) throw new HttpError(401, "Coder key belongs to a different study");
+async function knownCoder(db: Db, studyId: number, coderKey: string): Promise<KnownCoder | null> {
+  const [known] = await db
+    .select({ coder: coders, deviceId: coderDevices.id })
+    .from(coderDevices)
+    .innerJoin(coders, eq(coders.id, coderDevices.coderId))
+    .where(eq(coderDevices.keyHash, coderKey));
+  if (known && known.coder.studyId !== studyId) throw new HttpError(401, "Coder key belongs to a different study");
   return known ?? null;
 }
 
@@ -469,67 +536,68 @@ async function knownCoder(sql: Sql, studyId: number, coderKey: string): Promise<
  * a new device's: found by the login, or created from the link.
  */
 async function findOrCreateCoder(
-  sql: Sql,
+  db: Db,
   studyId: number,
   request: ResolveCoderRequest,
-  known: (CoderRow & { device_id: number }) | null,
+  known: KnownCoder | null,
   login: { email: string } | null,
 ): Promise<{ row: CoderRow; deviceId: number }> {
   const { coderKey, device } = request;
   if (known && login) {
     // A login links its email to the session, once. If the email already
     // has a session in this study, this device continues that one instead.
-    const other = await sessionOfEmail(sql, studyId, login.email);
-    if (other) return { row: other, deviceId: await addDevice(sql, studyId, other.id, coderKey, device) };
-    const linked = await one<CoderRow>(sql, "UPDATE coders SET email = $1 WHERE id = $2 RETURNING *", [login.email.toLowerCase(), known.id]);
-    return { row: linked!, deviceId: known.device_id };
+    const other = await sessionOfEmail(db, studyId, login.email);
+    if (other) return { row: other, deviceId: await addDevice(db, studyId, other.id, coderKey, device) };
+    const [linked] = await db.update(coders).set({ email: login.email.toLowerCase() }).where(eq(coders.id, known.coder.id)).returning();
+    return { row: linked!, deviceId: known.deviceId };
   }
   // A new device of a linked session: logging in finds it. Email coders have one session each: a new one
   // isn't made for them (their units are their email's), also when asked for.
   if (login && (!request.newSession || (request.sessionRules && emailCoders(request.sessionRules)))) {
-    const mine = await sessionOfEmail(sql, studyId, login.email);
-    if (mine) return { row: mine, deviceId: await addDevice(sql, studyId, mine.id, coderKey, device) };
+    const mine = await sessionOfEmail(db, studyId, login.email);
+    if (mine) return { row: mine, deviceId: await addDevice(db, studyId, mine.id, coderKey, device) };
   }
   if (!request.linkSecret) throw new HttpError(401, "Unknown coder; a valid link is needed");
-  const link = await one<LinkRow>(sql, "SELECT * FROM links WHERE secret = $1", [request.linkSecret]);
-  if (!link || link.study_id !== studyId) throw new HttpError(401, "Invalid link secret");
+  const [link] = await db.select().from(links).where(eq(links.secret, request.linkSecret));
+  if (!link || link.studyId !== studyId) throw new HttpError(401, "Invalid link secret");
   // Revoked or retired: no new sessions, also not for a known participant (existing sessions go on).
-  if (link.revoked_at !== null) throw new HttpError(401, "This link has been revoked");
-  if (link.retired_at !== null) throw new HttpError(403, "This link is no longer active", "link_inactive");
+  if (link.revokedAt !== null) throw new HttpError(401, "This link has been revoked");
+  if (link.retiredAt !== null) throw new HttpError(403, "This link is no longer active", "link_inactive");
   // A participant id is a label, never a credential: a new device for a
   // known participant gets a *new* session, and only when asked for.
   const { participantId, session, draws } = sessionValues(
     request.sessionRules ?? { item: null, setsOf: () => [], signIn: "off" },
-    { params: link.params, participantId: link.participant_id },
+    { params: link.params, participantId: link.participantId },
     request.urlParams ?? {},
     login?.email ?? null,
   );
   const knownParticipant =
-    participantId !== null && !!(await one(sql, "SELECT 1 FROM coders WHERE study_id = $1 AND participant_id = $2", [studyId, participantId]));
+    participantId !== null && (await db.$count(coders, and(eq(coders.studyId, studyId), eq(coders.participantId, participantId)))) > 0;
   if (knownParticipant && !request.newSession) {
     throw new HttpError(409, "This participant already has a session on another device", "participant_has_session");
   }
   if (request.paused) throw new HttpError(409, "This study is paused", "study_paused");
-  await checkNewCoder(sql, studyId);
+  await checkNewCoder(db, studyId);
   // A new session of a known participant is the same person: it doesn't use up the link.
   if (!knownParticipant) {
     // Checked and counted in one statement, so concurrent coders can't overrun `max_uses`.
     // The link's own limit, else the design's sample size per link (docs/plans/design.md §4)
-    const used = await sql.query(
-      "UPDATE links SET uses = uses + 1 WHERE id = $1 AND (COALESCE(max_uses, $2::int) IS NULL OR uses < COALESCE(max_uses, $2::int)) RETURNING id",
-      [link.id, request.sessionRules?.item?.maxUses ?? null],
-    );
+    const maxUses = sql`COALESCE(${links.maxUses}, ${request.sessionRules?.item?.maxUses ?? null}::int)`;
+    const used = await db
+      .update(links)
+      .set({ uses: sql`${links.uses} + 1` })
+      .where(and(eq(links.id, link.id), or(sql`${maxUses} IS NULL`, lt(links.uses, maxUses))))
+      .returning({ id: links.id });
     if (used.length === 0) throw new HttpError(401, "This link has been used up");
   }
   // Conditions drawn at the start: balanced ones under a lock, counting the sessions that count (`computeVariable`)
-  for (const draw of draws) session[draw.name] = await computeVariable(sql, studyId, draw);
-  const created = await one<CoderRow>(
-    sql,
-    "INSERT INTO coders (study_id, email, participant_id, link_id, session) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-    [studyId, login?.email.toLowerCase() ?? null, participantId, link.id, JSON.stringify(session)],
-  );
+  for (const draw of draws) session[draw.name] = await computeVariable(db, studyId, draw);
+  const [created] = await db
+    .insert(coders)
+    .values({ studyId, email: login?.email.toLowerCase() ?? null, participantId, linkId: link.id, session })
+    .returning();
   // A new session on a device that had one (`newSession`): the device moves to the new one.
-  return { row: created!, deviceId: await addDevice(sql, studyId, created!.id, coderKey, device) };
+  return { row: created!, deviceId: await addDevice(db, studyId, created!.id, coderKey, device) };
 }
 
 /**
@@ -540,29 +608,37 @@ async function findOrCreateCoder(
  * and started or finished a unit in the last 24 hours (contracts
  * SET_ACTIVITY_MS): values of sessions that dropped out are handed out again.
  */
-async function computeVariable(sql: Sql, studyId: number, draw: SessionDraw): Promise<string> {
+async function computeVariable(db: Db, studyId: number, draw: SessionDraw): Promise<string> {
   if (draw.values.length === 0) throw new HttpError(409, `Condition '${draw.name}' has no values yet`);
-  if (draw.draw === "random") return draw.values[Math.floor(Math.random() * draw.values.length)];
-  await sql.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`${studyId}/session/${draw.name}`]);
+  if (draw.draw === "random") return draw.values[Math.floor(Math.random() * draw.values.length)]!;
+  await advisoryLock(db, `${studyId}/session/${draw.name}`);
   const since = new Date(Date.now() - SET_ACTIVITY_MS);
-  const rows = await sql.query<{ value: string; n: number }>(
-    `SELECT c.session->>$2::text AS value, count(*)::int AS n FROM coders c
-     WHERE c.study_id = $1 AND (c.session->>$2::text) IS NOT NULL AND (c.ended->>'outcome' = 'complete' OR (c.ended IS NULL AND (c.created > $3
-       OR EXISTS (SELECT 1 FROM unit_codings u WHERE u.study_id = $1 AND u.coder_id = c.id AND u.updated > $3))))
-     GROUP BY 1`,
-    [studyId, draw.name, since],
+  const value = sql<string>`${coders.session}->>${draw.name}::text`;
+  const recentlyCoded = db
+    .select({ one: sql`1` })
+    .from(unitCodings)
+    .where(and(eq(unitCodings.studyId, studyId), eq(unitCodings.coderId, coders.id), gt(unitCodings.updated, since)));
+  // Sessions that count: completed, or not ended and active in the last day
+  const counting = or(
+    sql`${coders.ended}->>'outcome' = 'complete'`,
+    and(isNull(coders.ended), or(gt(coders.created, since), sql`EXISTS (${recentlyCoded})`)),
   );
-  const counts = new Map(rows.map((r) => [r.value, r.n]));
+  const found = await db
+    .select({ value, n: sql<number>`count(*)::int` })
+    .from(coders)
+    .where(and(eq(coders.studyId, studyId), sql`${value} IS NOT NULL`, counting))
+    .groupBy(sql`1`); // the value (by position: its parameter is another each time it's written)
+  const counts = new Map(found.map((r) => [r.value, r.n]));
   return draw.values.reduce((best, v) => ((counts.get(v) ?? 0) < (counts.get(best) ?? 0) ? v : best));
 }
 
 /** Per database and key, the last call in line (`inTurn`). */
-const lines = new WeakMap<Sql, Map<string, Promise<unknown>>>();
+const lines = new WeakMap<Db, Map<string, Promise<unknown>>>();
 
 /** Runs `fn` after earlier calls with the same key (on this database, in this process) have finished. */
-function inTurn<T>(sql: Sql, key: string, fn: () => Promise<T>): Promise<T> {
-  let byKey = lines.get(sql);
-  if (!byKey) lines.set(sql, (byKey = new Map()));
+function inTurn<T>(db: Db, key: string, fn: () => Promise<T>): Promise<T> {
+  let byKey = lines.get(db);
+  if (!byKey) lines.set(db, (byKey = new Map()));
   const run = (byKey.get(key) ?? Promise.resolve()).then(fn);
   const last = run.catch(() => undefined);
   byKey.set(key, last);

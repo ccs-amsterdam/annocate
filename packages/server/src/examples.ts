@@ -11,7 +11,9 @@ import {
   type TopLevelItem,
   type VariableValue,
 } from "@annotinder/contracts";
-import { one, type Sql } from "./db.js";
+import { and, asc, eq, isNull } from "drizzle-orm";
+import type { Db } from "./db/index.js";
+import { annotationValues, coders, links as linksTable, units, unitVersions } from "./db/schema/index.js";
 import { collectCoderVariables, collectLoops } from "./runtime/designItems.js";
 import { putCoderValues } from "./shared/coders.js";
 import { HttpError } from "./shared/http.js";
@@ -114,7 +116,7 @@ export interface FromExampleOptions {
  * one transaction: within the owner's limits on units (the caller checks
  * the number of studies).
  */
-export async function createStudyFromExample(db: Sql, id: string, options: FromExampleOptions): Promise<StudyRow> {
+export async function createStudyFromExample(db: Db, id: string, options: FromExampleOptions): Promise<StudyRow> {
   const example = examples().get(id);
   if (!example) throw new HttpError(404, `No example '${id}'`);
   const items = DesignItemsSchema.parse(example.design.items) as TopLevelItem[];
@@ -142,19 +144,26 @@ export async function createStudyFromExample(db: Sql, id: string, options: FromE
       const errors = validateAnswer(name, type, value);
       if (errors.length > 0) throw new Error(`examples/${id}.json: ${errors.join("; ")}`);
     };
-    const links = await tx.query<{ id: number; params: Record<string, string> }>(
-      "SELECT id, params FROM links WHERE study_id = $1 AND retired_at IS NULL ORDER BY id",
-      [study.id],
-    );
+    const links = await tx
+      .select({ id: linksTable.id, params: linksTable.params })
+      .from(linksTable)
+      .where(and(eq(linksTable.studyId, study.id), isNull(linksTable.retiredAt)))
+      .orderBy(asc(linksTable.id));
     for (const [i, coder] of example.answers.entries()) {
       // The link whose values the coder's session has (their coder, a condition by link)
       const link = links.find((l) => Object.entries(l.params).every(([name, value]) => coder.session[name] === value));
       if (Object.keys(coder.session).length > 0 && !link) throw new Error(`examples/${id}.json: no link for example coder ${i + 1}'s session`);
-      const coderId = (await one<{ id: number }>(
-        tx,
-        "INSERT INTO coders (study_id, participant_id, link_id, session, ended) VALUES ($1, $2, $3, $4, $5) RETURNING id",
-        [study.id, `Example coder ${i + 1}`, link?.id ?? firstLink, JSON.stringify(coder.session), JSON.stringify({ outcome: "complete", at: new Date() })],
-      ))!.id;
+      const [made] = await tx
+        .insert(coders)
+        .values({
+          studyId: study.id,
+          participantId: `Example coder ${i + 1}`,
+          linkId: link?.id ?? firstLink,
+          session: coder.session,
+          ended: { outcome: "complete", at: new Date() },
+        })
+        .returning({ id: coders.id });
+      const coderId = made!.id;
       const values = Object.fromEntries(
         Object.entries(coder.variables).map(([name, short]) => [name, answerValue(short)]),
       );
@@ -173,21 +182,27 @@ export async function createStudyFromExample(db: Sql, id: string, options: FromE
         }
         const uid = unitId(externalId);
         // The deployed version of the unit, as coders' answers point to theirs
-        const version = (await one<{ id: number }>(
-          tx,
-          "SELECT id FROM unit_versions WHERE unit_id = $1 AND to_deploy IS NULL",
-          [uid],
-        ))!.id;
+        const [version] = await tx
+          .select({ id: unitVersions.id })
+          .from(unitVersions)
+          .where(and(eq(unitVersions.unitId, uid), isNull(unitVersions.toDeploy)));
+        const now = new Date();
         for (const [name, short] of Object.entries(answers)) {
           const value = answerValue(short);
           check(name, unitTypes.get(name), value);
-          await tx.query(
-            `INSERT INTO annotation_values (study_id, unit_id, coder_id, variable, value, design_version_id, unit_version_id, created, updated)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())`,
-            [study.id, uid, coderId, name, JSON.stringify(value), designVersionId, version],
-          );
+          await tx.insert(annotationValues).values({
+            studyId: study.id,
+            unitId: uid,
+            coderId,
+            variable: name,
+            value,
+            designVersionId,
+            unitVersionId: version!.id,
+            created: now,
+            updated: now,
+          });
         }
-        await tx.query("UPDATE units SET coded = true WHERE id = $1", [uid]);
+        await tx.update(units).set({ coded: true }).where(eq(units.id, uid));
       }
     }
     return study;
