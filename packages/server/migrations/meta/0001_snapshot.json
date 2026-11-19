@@ -1,6 +1,6 @@
 {
-  "id": "75ce3b1d-f782-4ab9-85b8-49fe5498d142",
-  "prevId": "d6e2acaa-1c13-4d2b-89be-1d849f1e9eb2",
+  "id": "7edbbe96-32a4-43d8-a9fa-1baf8acd1ba6",
+  "prevId": "e4148f09-0954-48fb-b6a2-01f49304d44d",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -804,6 +804,12 @@
         "registered_at": {
           "name": "registered_at",
           "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email_verified": {
+          "name": "email_verified",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false
         },

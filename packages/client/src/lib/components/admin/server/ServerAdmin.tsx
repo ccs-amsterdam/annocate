@@ -289,6 +289,14 @@ function UserStatus({ user, migrating, onRestore }: { user: AdminUser; migrating
           not linked
         </span>
       )}
+      {user.registered && user.emailVerified === false && (
+        <span
+          className={`${badge} bg-amber-500/15 text-amber-700`}
+          title="Their login provider didn't confirm their email address at their latest login"
+        >
+          email not verified
+        </span>
+      )}
       {user.registered && !user.hasMfa && (
         <span
           className={`${badge} bg-amber-500/15 text-amber-700`}

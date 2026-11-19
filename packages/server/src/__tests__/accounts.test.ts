@@ -116,7 +116,7 @@ describe("account roles", () => {
 
 describe("identities and invitations (JIT account claiming, safeguards)", () => {
   const login = (sub: string, email: string, mfa = true) =>
-    loginUser(db, { iss: "https://idp.test", sub, email, mfa }, []);
+    loginUser(db, { iss: "https://idp.test", sub, email, emailVerified: true, mfa }, []);
   const backdate = (email: string, what: "granted" | "login", months: number) =>
     what === "granted"
       ? query(db, 
@@ -178,7 +178,7 @@ describe("identities and invitations (JIT account claiming, safeguards)", () => 
     expect(await resetIdentities(db)).toEqual({ users: 1, unclaimable: 0 });
     // The new provider's login with the same verified email is the same account, with its roles
     expect(
-      await loginUser(db, { iss: "https://new-idp.test", sub: "new-sub", email: "jane@uni.nl", mfa: true }, []),
+      await loginUser(db, { iss: "https://new-idp.test", sub: "new-sub", email: "jane@uni.nl", emailVerified: true, mfa: true }, []),
     ).toMatchObject({
       id: jane.id,
       role: "researcher",

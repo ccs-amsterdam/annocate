@@ -39,7 +39,7 @@ export function me(server: Server): Hono<Env> {
       usage: await usage(db, id),
       researcherRequest: request ? { at: request.at } : null,
       canRequestResearcher: (await getSettings(db)).registration.requests,
-      twoFactor: { required: lacksMfa(researcher), freshUntil: freshUntil(server, researcher) },
+      twoFactor: { required: lacksMfa(server, researcher), freshUntil: freshUntil(server, researcher) },
       linkNeeded: await linkNeeded(id),
     };
   }

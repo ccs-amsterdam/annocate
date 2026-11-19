@@ -29,7 +29,7 @@ function aliased<T extends Table>(table: T, name: string): [T, SQL] {
 
 type Columns<K extends string> = { [P in K]: AnyColumn };
 type RoleColumns = Columns<"role" | "studyId" | "userId" | "emailDomain" | "requireEmail" | "grantedAt">;
-type UserColumns = Columns<"id" | "email" | "registeredAt" | "reactivatedAt" | "hasMfa">;
+type UserColumns = Columns<"id" | "email" | "emailVerified" | "registeredAt" | "reactivatedAt" | "hasMfa">;
 
 /** Whether an email address is at a domain (`uni.nl`, or `*.uni.nl` for subdomains too); as `emailAtDomain` in shared/accounts.ts. */
 function emailAtDomain(email: SQLWrapper, domain: SQLWrapper): SQL<boolean> {
@@ -42,16 +42,16 @@ function emailAtDomain(email: SQLWrapper, domain: SQLWrapper): SQL<boolean> {
 
 /**
  * Whether role row `r` applies to user `u` (docs/accounts.md "Safeguards"):
- * the user is registered; the role is theirs, their email domain's, or
- * everyone's (with an email, if required); a role of their own granted before
+ * the user is registered; the role is theirs, their (verified) email
+ * domain's, or everyone's (with a verified email, if required); a role of their own granted before
  * they were reactivated needs a second factor; an invitation claimed more
  * than 3 months after it was granted has expired.
  */
 export function roleApplies(r: RoleColumns, u: UserColumns): SQL<boolean> {
   const body = sql`${u.registeredAt} IS NOT NULL
     AND (${r.userId} IS NULL OR ${r.userId} = ${u.id})
-    AND (${r.emailDomain} IS NULL OR ${emailAtDomain(u.email, r.emailDomain)})
-    AND (${r.userId} IS NOT NULL OR ${r.emailDomain} IS NOT NULL OR NOT ${r.requireEmail} OR ${u.email} <> '')
+    AND (${r.emailDomain} IS NULL OR (${u.emailVerified} IS TRUE AND ${emailAtDomain(u.email, r.emailDomain)}))
+    AND (${r.userId} IS NOT NULL OR ${r.emailDomain} IS NOT NULL OR NOT ${r.requireEmail} OR ${u.emailVerified} IS TRUE)
     AND NOT COALESCE(${r.userId} IS NOT NULL AND ${r.grantedAt} < ${u.reactivatedAt} AND NOT ${u.hasMfa}, false)
     AND NOT COALESCE(${r.userId} IS NOT NULL AND ${u.registeredAt} > ${r.grantedAt} + interval '3 months', false)`;
   return sql<boolean>`(${body})`;

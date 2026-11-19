@@ -54,7 +54,7 @@ export interface Researcher {
   via: "session" | "key" | "dev";
   /** The login used a second factor (API keys: yes, see above). */
   mfa: boolean;
-  /** Sessions: when the provider authenticated the user with the second factor (step-up). */
+  /** Sessions: when the provider authenticated the user (step-up). */
   authTime: Date | null;
   /** Development headers only: the role the request claims. */
   devRole?: Role;
@@ -101,8 +101,8 @@ async function roleIn(server: Server, researcher: Researcher, studyId: number): 
   return ROLE_RANK[row.role] < ROLE_RANK[researcher.devRole] ? null : researcher.devRole;
 }
 
-/** Whether this login lacks the second factor researcher access needs. */
-export const lacksMfa = (researcher: Researcher) => !researcher.mfa;
+/** Whether this login lacks the second factor researcher access needs (none needed with `AUTH_INSECURE_DISABLE_2FA`). */
+export const lacksMfa = (server: Server, researcher: Researcher) => !server.insecure.disable2fa && !researcher.mfa;
 const MFA_REQUIRED = {
   error: "Researcher access needs a login with a second factor: log in again with one",
   code: "mfa_required",
@@ -111,7 +111,8 @@ const MFA_REQUIRED = {
 /** Until when a researcher may do sensitive actions without logging in again; null: not now (docs/security.md "Step-up"). */
 export function freshUntil(server: Server, researcher: Researcher): Date | null {
   if (researcher.via === "dev") return new Date(Date.now() + server.stepUpMaxAge * 1000);
-  if (researcher.via !== "session" || !isFresh(researcher, server.stepUpMaxAge)) return null;
+  if (researcher.via !== "session" || !isFresh(researcher, server.stepUpMaxAge, { requireMfa: !server.insecure.disable2fa }))
+    return null;
   return new Date(researcher.authTime!.getTime() + server.stepUpMaxAge * 1000);
 }
 
@@ -119,14 +120,16 @@ export function freshUntil(server: Server, researcher: Researcher): Date | null 
  * Checks a sensitive action (creating or revoking API keys, deleting
  * answers or coders' data, deleting a study, giving or taking admin roles):
  * never with an API key (403 `not_with_api_key`), and only with a recent
- * second factor (403 `step_up_required`: the client logs in again with
+ * login, with a second factor unless `AUTH_INSECURE_DISABLE_2FA` (403
+ * `step_up_required`: the client logs in again with
  * `?stepUp=1`). Development headers pass. Call after authentication.
  */
 export function checkSensitive(server: Server, researcher: Researcher): void {
   if (researcher.via === "key")
     throw new HttpError(403, "This can't be done with an API key: use the web client", "not_with_api_key");
   if (!freshUntil(server, researcher)) {
-    throw new HttpError(403, "Confirm it's you: log in again with your second factor to do this", "step_up_required");
+    const how = server.insecure.disable2fa ? "log in again" : "log in again with your second factor";
+    throw new HttpError(403, `Confirm it's you: ${how} to do this`, "step_up_required");
   }
 }
 
@@ -150,7 +153,7 @@ export function requireResearcher(
   return async (c: Context<Env>, next: Next) => {
     const researcher = await authenticate(c, server);
     if (!researcher) return c.json({ error: "Unauthorized" }, 401);
-    if (!withoutMfa && lacksMfa(researcher)) return c.json(MFA_REQUIRED, 403);
+    if (!withoutMfa && lacksMfa(server, researcher)) return c.json(MFA_REQUIRED, 403);
     if (role && !accountRoleAtLeast(researcher.accountRole, role)) {
       return c.json({ error: `This needs a ${role} account`, code: `${role}_required` }, 403);
     }
@@ -168,7 +171,7 @@ export function requireStudyUser(server: Server, minRole: Role) {
   return async (c: Context<Env>, next: Next) => {
     const researcher = await authenticate(c, server);
     if (!researcher) return c.json({ error: "Unauthorized" }, 401);
-    if (lacksMfa(researcher)) return c.json(MFA_REQUIRED, 403);
+    if (lacksMfa(server, researcher)) return c.json(MFA_REQUIRED, 403);
 
     const raw = c.req.param("studyId");
     const studyId = raw ? Number(raw) : NaN;

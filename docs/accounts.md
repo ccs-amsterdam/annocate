@@ -26,7 +26,8 @@ AnnoTinder follows the Societal Analytics Lab's Authentication standard
 - **JIT account claiming**: the first login with a verified email address
   that has a shadow user claims it (its roles and plan become the user's).
   A user whose address changes to one with a shadow user claims that too.
-- `users`: `email` (latest login), `registered_at`, `last_login_at`,
+- `users`: `email` (latest login), `email_verified` (the provider confirmed
+  it at the latest login; NULL for shadow users), `registered_at`, `last_login_at`,
   `has_mfa` (the latest login had the second factor), `reactivated_at`
   (the first login after a year away).
 
@@ -104,7 +105,10 @@ A new login provider means new identities (lab-infra
   fallback for who missed the linking period.
 
 Domain roles and claiming rely on verified email addresses: logins without
-`email_verified` are refused.
+`email_verified` are refused. With `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION`
+they aren't (`security.md` §1): such users can still claim invitations to
+their address (the *Roles for unverified email addresses* warning), but
+domain roles and roles for everyone with a verified address skip them.
 
 ## 3. Limits
 

@@ -23,6 +23,14 @@ export interface Server {
   admins: readonly string[];
   /** How recent (seconds) a login's second factor must be for sensitive actions (`AUTH_STEP_UP_MAX_AGE`, default 600). */
   stepUpMaxAge: number;
+  /**
+   * Weaker security (the lab's Authentication standard, "Weaker security"):
+   * `disable2fa` (`AUTH_INSECURE_DISABLE_2FA`): no second factor needed,
+   * step-up only checks that the login is recent; `disableEmailVerification`
+   * (`AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION`): users whose provider didn't
+   * confirm their address can log in. Never for sensitive data.
+   */
+  insecure: { disable2fa: boolean; disableEmailVerification: boolean };
 }
 
 /** Hono context variables, set by the auth middleware. */

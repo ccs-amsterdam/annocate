@@ -48,13 +48,18 @@ const secure = (c: Context) =>
 /** Clock difference with the provider we allow when checking `auth_time`. */
 const CLOCK_SKEW_MS = 60_000;
 
-/** Whether a login's second factor is recent enough for sensitive actions (step-up). */
+/**
+ * Whether a login is recent enough for sensitive actions (step-up), with a
+ * second factor unless `requireMfa` is false (`AUTH_INSECURE_DISABLE_2FA`:
+ * then only `auth_time` counts).
+ */
 export function isFresh(
   login: { mfa: boolean; authTime: Date | null },
   maxAgeSeconds: number,
-  now = Date.now(),
+  { requireMfa = true, now = Date.now() }: { requireMfa?: boolean; now?: number } = {},
 ): boolean {
-  return login.mfa && login.authTime !== null && now - login.authTime.getTime() <= maxAgeSeconds * 1000 + CLOCK_SKEW_MS;
+  if (requireMfa && !login.mfa) return false;
+  return login.authTime !== null && now - login.authTime.getTime() <= maxAgeSeconds * 1000 + CLOCK_SKEW_MS;
 }
 
 export function login(server: Server): Hono<Env> {
@@ -127,6 +132,8 @@ export function login(server: Server): Hono<Env> {
     if (!provider) return back(state.returnTo, "login_failed");
     const result = await provider.finish(callbackUrl, state);
     if ("error" in result) return back(state.returnTo, result.error);
+    // An address the provider didn't confirm: refused, unless AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION
+    if (!result.emailVerified && !server.insecure.disableEmailVerification) return back(state.returnTo, "email_unverified");
 
     if (state.linkUserId !== undefined) {
       // Account linking: this identity joins the user who was logged in (not if it is someone else's already)
@@ -145,6 +152,7 @@ export function login(server: Server): Hono<Env> {
     await securityLog(server.db, user.id, "login", {
       issuer: result.iss,
       mfa: result.mfa,
+      ...(result.emailVerified ? {} : { emailVerified: false }),
       ...(state.stepUp ? { stepUp: true } : {}),
     });
     setCookie(c, SESSION_COOKIE, await createSession(server.db, user.id, login), {
@@ -155,7 +163,8 @@ export function login(server: Server): Hono<Env> {
       maxAge: SESSION_TTL_MS / 1000,
     });
     // A step-up login must bring a recent second factor (checked here, whatever the provider did with max_age)
-    if (state.stepUp && !isFresh(login, server.stepUpMaxAge)) return back(state.returnTo, "step_up_failed");
+    if (state.stepUp && !isFresh(login, server.stepUpMaxAge, { requireMfa: !server.insecure.disable2fa }))
+      return back(state.returnTo, "step_up_failed");
     return back(state.returnTo);
   });
 

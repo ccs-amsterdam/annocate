@@ -64,6 +64,8 @@ export interface AppOptions {
   admins?: string[];
   /** How recent (seconds) a login's second factor must be for sensitive actions (`AUTH_STEP_UP_MAX_AGE`, default 600). */
   stepUpMaxAge?: number;
+  /** Weaker security: `AUTH_INSECURE_DISABLE_2FA`, `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION` (context.ts). */
+  insecure?: Partial<Server["insecure"]>;
   /**
    * The built client (`packages/client/dist`): served from this server, so
    * coders and researchers reach one origin (session cookies). Without it
@@ -103,6 +105,10 @@ export function createApp(db: Db, options: AppOptions = {}) {
     secret,
     admins: (options.admins ?? []).map((e) => e.trim().toLowerCase()).filter(Boolean),
     stepUpMaxAge: options.stepUpMaxAge ?? 600,
+    insecure: {
+      disable2fa: options.insecure?.disable2fa ?? false,
+      disableEmailVerification: options.insecure?.disableEmailVerification ?? false,
+    },
   };
 
   const app = new Hono<Env>();

@@ -79,6 +79,8 @@ export const AdminUserSchema = z.object({
   rolesDisabled: z.number().int(),
   /** Their latest login used a second factor. */
   hasMfa: z.boolean(),
+  /** Their provider confirmed their email address at their latest login; null for invitations. */
+  emailVerified: z.boolean().nullable(),
   /** While moving to another login provider: whether they linked their login there. */
   linked: z.boolean(),
   /** Their own plan (else the domain's or the default). */
@@ -165,15 +167,24 @@ export type AdminLogEntry = z.infer<typeof AdminLogEntrySchema>;
 /**
  * Something that makes this server less secure, shown to server admins
  * (the lab's Authentication standard, "Server hardening warnings"):
- * `shared_provider`: logins come from the lab's shared OIDC provider, so the
- * server must not hold sensitive data (this can't be turned off);
+ * `2fa_not_required`: `AUTH_INSECURE_DISABLE_2FA` is set;
+ * `email_verification_not_required`: `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION` is set;
+ * `unverified_roles`: users with roles whose provider didn't confirm their
+ * email address;
  * `no_2fa_signal`: recent researcher logins came without the second factor
- * signal (`OIDC_MFA_CLAIM`), so they can't do anything but log out;
+ * signal (`OIDC_MFA_CLAIM`), so they can't do anything but log out (not
+ * with `AUTH_INSECURE_DISABLE_2FA`);
  * `migration_not_finished`: the previous provider is still configured after
  * `OIDC_PREVIOUS_UNTIL`.
  */
 export const ServerWarningSchema = z.object({
-  code: z.enum(["shared_provider", "no_2fa_signal", "migration_not_finished"]),
+  code: z.enum([
+    "2fa_not_required",
+    "email_verification_not_required",
+    "unverified_roles",
+    "no_2fa_signal",
+    "migration_not_finished",
+  ]),
   message: z.string(),
 });
 export type ServerWarning = z.infer<typeof ServerWarningSchema>;

@@ -41,9 +41,9 @@ change is written to the admin log (`listAdminLog`). Non-admins get 403
 
 Notes:
 
-- **warnings**: what makes the server less secure (`shared_provider`,
-  `no_2fa_signal`, `migration_not_finished`; `security.md` §1 "Hardening
-  warnings").
+- **warnings**: what makes the server less secure (`2fa_not_required`,
+  `email_verification_not_required`, `unverified_roles`, `no_2fa_signal`,
+  `migration_not_finished`; `security.md` §1 "Hardening warnings").
 - **settings**: `registration` (`open`: every user with an email address
   is a researcher, a role row for everyone; `requests`: users can ask), `defaultPlanId`, and the largest
   unit (`unitBytes`) and answer (`answerBytes`), in bytes of JSON.

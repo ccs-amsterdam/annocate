@@ -14,8 +14,9 @@ let db: Db;
 let issuer: ReturnType<typeof mockIssuer>;
 let app: ReturnType<typeof createApp>;
 
-function newApp(admins: string[] = [], mfaClaim?: MfaClaim) {
+function newApp(admins: string[] = [], mfaClaim?: MfaClaim, insecure?: { disable2fa?: boolean; disableEmailVerification?: boolean }) {
   return createApp(db, {
+    ...(insecure ? { insecure } : {}),
     secret: "test-secret",
     login: {
       oidc: {
@@ -135,7 +136,63 @@ describe("researcher login", () => {
       "/studies?x=1&loginError=email_unverified",
     );
     expect(await b.logIn({ email: "jane@uni.nl" })).toBe("/studies?x=1&loginError=email_unverified");
+    expect(await b.logIn({ email_verified: true })).toBe("/studies?x=1&loginError=email_missing");
     expect(b.cookies.has("annotinder_session")).toBe(false);
+  });
+
+  it("AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION: unverified addresses log in and claim invitations, but get no domain or verified-email roles", async () => {
+    app = newApp(["boss@uni.nl"], undefined, { disableEmailVerification: true });
+    await query(db, "INSERT INTO roles (role, email_domain) VALUES ('researcher', 'uni.nl')");
+    await query(db, "INSERT INTO users (email) VALUES ('ann@other.nl')");
+    const b = browser();
+    expect(await b.logIn({ email: "jane@uni.nl", email_verified: false, amr: ["mfa"] })).toBe("/studies?x=1");
+    // Logged in, but the domain role needs a verified address
+    expect(await (await b.api("/api/me")).json()).toMatchObject({ email: "jane@uni.nl", role: "user" });
+    // Once the provider confirms it, the domain role applies
+    await b.logIn(verified);
+    expect(await (await b.api("/api/me")).json()).toMatchObject({ role: "researcher" });
+    expect((await query(db, "SELECT email_verified FROM users WHERE email = 'jane@uni.nl'"))[0]).toEqual({
+      email_verified: true,
+    });
+
+    // An invitation (a role given to an address) is claimed without verification: the admins are warned
+    await query(db, "INSERT INTO roles (role, user_id) SELECT 'researcher', id FROM users WHERE email = 'ann@other.nl'");
+    const ann = browser();
+    await ann.logIn({ email: "ann@other.nl", sub: "ann", amr: ["mfa"] });
+    expect(await (await ann.api("/api/me")).json()).toMatchObject({ role: "researcher" });
+    const boss = browser();
+    await boss.logIn({ ...verified, email: "boss@uni.nl", sub: "boss" });
+    const warnings = ((await (await boss.api("/api/admin/warnings")).json()) as { code: string }[]).map((w) => w.code);
+    expect(warnings).toEqual(expect.arrayContaining(["email_verification_not_required", "unverified_roles"]));
+    expect(warnings).not.toContain("2fa_not_required");
+
+    // Turned off again: unverified addresses can't log in
+    app = newApp(["boss@uni.nl"]);
+    expect(await browser().logIn({ email: "ann@other.nl", sub: "ann", amr: ["mfa"] })).toBe(
+      "/studies?x=1&loginError=email_unverified",
+    );
+  });
+
+  it("AUTH_INSECURE_DISABLE_2FA: no second factor needed, but sensitive actions still need a recent login", async () => {
+    app = newApp(["jane@uni.nl"], undefined, { disable2fa: true });
+    const b = browser();
+    await b.logIn({ ...verified, amr: ["pwd"], auth_time: secondsAgo(20 * 60) });
+    expect(await (await b.api("/api/me")).json()).toMatchObject({ twoFactor: { required: false, freshUntil: null } });
+    expect((await b.api("/api/study", { method: "POST", body: JSON.stringify({ name: "x" }) })).status).toBe(201);
+    const key = await b.api("/api/me/keys", { method: "POST", body: JSON.stringify({ label: "R" }) });
+    expect(key.status).toBe(403);
+    expect(await key.json()).toMatchObject({ code: "step_up_required" });
+    // Step-up: a recent login is enough, without a second factor; an old one still fails
+    expect(await b.logIn({ ...verified, amr: ["pwd"], auth_time: secondsAgo(30 * 60) }, "/x", true)).toBe(
+      "/x?loginError=step_up_failed",
+    );
+    expect(await b.logIn({ ...verified, amr: ["pwd"], auth_time: secondsAgo(5) }, "/x", true)).toBe("/x");
+    expect((await b.api("/api/me/keys", { method: "POST", body: JSON.stringify({ label: "R" }) })).status).toBe(201);
+    // Whether logins use 2FA is still recorded
+    expect((await query(db, "SELECT has_mfa FROM users WHERE email = 'jane@uni.nl'"))[0]).toEqual({ has_mfa: false });
+    const warnings = ((await (await b.api("/api/admin/warnings")).json()) as { code: string }[]).map((w) => w.code);
+    expect(warnings).toContain("2fa_not_required");
+    expect(warnings).not.toContain("no_2fa_signal");
   });
 
   it("always requires the provider's second factor for researcher access (OIDC_MFA_CLAIM, default amr:mfa)", async () => {

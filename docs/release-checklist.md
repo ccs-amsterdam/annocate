@@ -51,12 +51,7 @@ To do on the server (the guide's steps):
    addresses, with one link and sign-in required. Each coder gets the units
    of their own address; any other address gets 403 `email_not_allowed`.
    The e2e tests don't cover this.
-9. **The shared login provider.** `SHARED_OIDC_ISSUERS`
-   (`server/src/shared/warnings.ts`) is empty. Fill in the lab's shared
-   issuer (`https://auth.societal-analytics.nl/realms/idp`?), so that a
-   server using it gets the hardening warning about shared logins, or
-   remove the check. **Decide** which issuer.
-10. **Read `security.md`** before inviting anyone outside the team.
+9. **Read `security.md`** before inviting anyone outside the team.
 
 ## 2. Decisions
 

@@ -253,9 +253,9 @@ export class HttpResearcherApi implements ResearcherApi {
         parsed = undefined;
       }
       const error = new ResearcherApiError(res.status, `Request to ${path} failed (${res.status}): ${body}`, parsed);
-      // A sensitive action needs a recent second factor: log in again, back to this page (then do it again)
+      // A sensitive action needs a recent login (with a second factor, unless the server turned that off): log in again, back to this page (then do it again)
       if (error.code === "step_up_required" && typeof window !== "undefined" && !this.config.devRole) {
-        if (window.confirm("To do this, confirm it's you: log in again with your second factor, then try once more.")) {
+        if (window.confirm("To do this, confirm it's you: log in again (your login provider may ask for your second factor), then try once more.")) {
           window.location.assign(
             this.loginUrl(window.location.pathname + window.location.search + window.location.hash, { stepUp: true }),
           );

@@ -11,27 +11,29 @@ AnnoTinder follows the Societal Analytics Lab's Authentication standard
 
 **The login provider.** Researchers log in with an OpenID Connect provider
 (`OIDC_HOST`): ideally the institution's, managed by a security team with a
-helpdesk for account recovery (the lab's shared provider is only for
-servers without sensitive data). AnnoTinder runs the login on the server
+helpdesk for account recovery (the lab's own Keycloak works too:
+`hosting.md`). AnnoTinder runs the login on the server
 (authorization code flow with PKCE) and keeps its own session: a signed,
 http-only cookie on its own origin. The provider must, and AnnoTinder checks
 each of these itself, because providers don't always do what was asked:
 
 | Requirement | What the provider does |
 | --- | --- |
-| **Verified email** | `"email_verified": true` in the ID token. Without it the login is refused. |
-| **A second factor, signalled** | 2FA, and a claim saying it was used: `OIDC_MFA_CLAIM`, `amr:mfa` (default) or `acr:<value>` (e.g. SURFconext's `acr:http://test.surfconext.nl/assurance/loa2`). |
-| **Step-up** | Honours `max_age`, and returns `auth_time` in the ID token. |
+| **Verified email** | `"email_verified": true` in the ID token. Without it the login is refused (unless `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION`, below). |
+| **A second factor, signalled** | 2FA, and a claim saying it was used: `OIDC_MFA_CLAIM`, `amr:mfa` (default) or `acr:<value>` (e.g. SURFconext's `acr:http://test.surfconext.nl/assurance/loa2`). Can be turned off (`AUTH_INSECURE_DISABLE_2FA`, below). |
+| **Step-up** | Honours `max_age`, and returns `auth_time` in the ID token. Can't be turned off. |
 
-**The second factor is always required** for researcher access: there is no
-setting without it (outside development mode). A login without the 2FA
-claim only gets `GET /me` and logging out (403 `mfa_required`); the client
-asks to turn on 2FA at the provider and log in again. Coding never needs a
+**The second factor is required** for researcher access, unless
+`AUTH_INSECURE_DISABLE_2FA` (below). A login without the 2FA claim only
+gets `GET /me` and logging out (403 `mfa_required`); the client asks to
+turn on 2FA at the provider and log in again. (Stricter than the lab
+standard, which asks for 2FA only for sensitive actions.) Coding never needs a
 second factor, nor a login. Account recovery (a lost phone) is the
 provider's: AnnoTinder has no second factor of its own.
 
-**Step-up for sensitive actions.** These need a web session whose second
-factor is at most `AUTH_STEP_UP_MAX_AGE` seconds old (default 600):
+**Step-up for sensitive actions.** These need a web session whose login
+(with the second factor) is at most `AUTH_STEP_UP_MAX_AGE` seconds old
+(default 600):
 
 - creating or revoking API keys;
 - resetting answers (`POST /study/:id/annotations/reset`), deleting coders'
@@ -42,7 +44,30 @@ factor is at most `AUTH_STEP_UP_MAX_AGE` seconds old (default 600):
 Otherwise the server answers 403 `step_up_required`, and the client sends
 the researcher to log in again with `?stepUp=1`: the server asks the
 provider for `max_age`, then checks the new ID token's 2FA claim and
-`auth_time` itself (`loginError=step_up_failed` if they don't hold).
+`auth_time` itself (`loginError=step_up_failed` if they don't hold). With
+`AUTH_INSECURE_DISABLE_2FA` only `auth_time` is checked.
+
+**Weaker security: teaching and low-sensitivity servers.** Two requirements
+can be turned off in `.env`, each named `INSECURE` because it makes the
+server less secure. Never on a server with sensitive research data. Both
+are logged at every start and shown as hardening warnings; turning one off
+again restores the requirement.
+
+- `AUTH_INSECURE_DISABLE_2FA=true`: no second factor, for researcher access
+  or for sensitive actions, which still need a recent login (step-up with
+  `auth_time`). Whether a login used 2FA is still recorded (`has_mfa`, the
+  *no 2FA* mark). For providers without a usable 2FA signal, such as a free
+  Auth0 tenant. The risk: whoever has a user's password, or their mailbox
+  (to reset it), can do that user's sensitive actions.
+- `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION=true`: users log in when the
+  provider doesn't confirm their address (`email_verified` false or
+  missing; recorded on the user). They can still claim roles given to that
+  address (invitations), and code as that address in a study with email
+  coders, so on a provider where people choose their own
+  address someone could claim another's roles. Roles by email domain, and
+  roles for everyone with a verified address, still need
+  `email_verified: true`. Only for a provider that does verify addresses
+  but doesn't send the claim.
 
 **API keys** are for other clients (R, Python): made and revoked only in the
 web client with a fresh second factor, and they never do the sensitive
@@ -59,13 +84,15 @@ Never for a server other people use.
 
 | Warning | Meaning |
 | --- | --- |
-| Shared OIDC provider | Logins come from the lab's shared provider (its issuer is in `SHARED_OIDC_ISSUERS`, `shared/warnings.ts`): no sensitive data on this server. Can't be turned off. |
-| No 2FA signal | Researchers logged in recently without the 2FA claim, so they can't work: check the provider's 2FA and `OIDC_MFA_CLAIM`. |
+| 2FA not required | `AUTH_INSECURE_DISABLE_2FA` is set: not for sensitive data. |
+| Email verification not required | `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION` is set: not for sensitive data. |
+| Roles for unverified email addresses | Users with roles whose provider didn't confirm their address (marked "email not verified" in *Users*): check that they are the right people. |
+| No 2FA signal | Researchers logged in recently without the 2FA claim, so they can't work: check the provider's 2FA and `OIDC_MFA_CLAIM`. Not shown with `AUTH_INSECURE_DISABLE_2FA`. |
 | Migration not finished | `OIDC_PREVIOUS_*` is set: until `OIDC_PREVIOUS_UNTIL`, how many users haven't linked their login at the new provider (marked "not linked" in *Users*); after it, remove those settings. |
 
 **Who someone is**: their login at the provider (`iss` + `sub`), not their
 email address; roles go to users, or to users with a verified email at a
-domain. Safeguards keep a later owner of an email address from getting
+domain (the latter only with a verified address). Safeguards keep a later owner of an email address from getting
 someone's roles (dormant users, invitations expire after 3 months):
 `accounts.md` §1–2.
 
@@ -166,7 +193,9 @@ answer to it.
 | `OIDC_HOST`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | The login provider (§1) |
 | `OIDC_MFA_CLAIM` | Which claim counts as a second factor: `amr:mfa` (default) or `acr:<value>` (§1) |
 | `OIDC_PREVIOUS_*`, `OIDC_PREVIOUS_UNTIL` | The previous login provider while moving to another (`accounts.md` "Changing providers") |
-| `AUTH_STEP_UP_MAX_AGE` | Seconds a second factor stays fresh for sensitive actions (default 600, §1) |
+| `AUTH_STEP_UP_MAX_AGE` | Seconds a login stays fresh for sensitive actions (default 600, §1) |
+| `AUTH_INSECURE_DISABLE_2FA` | `true`: no second factor required (weaker security, §1) |
+| `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION` | `true`: unverified email addresses can log in (weaker security, §1) |
 | `AUTH_DEV_MODE` | `1`: development headers, localhost only (§1) |
 | `ANNOTINDER_PUBLIC_URL` | Where browsers reach the server (the login callback); an `https` address turns on HSTS |
 | `ANNOTINDER_FRAME_ANCESTORS` | Origins that may frame AnnoTinder (§2) |

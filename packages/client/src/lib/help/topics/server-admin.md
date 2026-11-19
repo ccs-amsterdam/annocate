@@ -25,7 +25,8 @@ The list shows every account, most recently logged in first. Per user:
 - **Block**: logs them out, and stops their logins and API keys until
   unblocked. Their studies stay.
 - Marks: *invited* (not logged in yet), *invitation expired*, *no 2FA*
-  (their latest login lacked the second factor), *not linked* (while
+  (their latest login lacked the second factor), *email not verified*
+  (their provider didn't confirm their address), *not linked* (while
   moving to another login provider) and *roles off* (see below).
 
 **Invite** someone by email to make them a researcher (or admin) before
@@ -76,21 +77,29 @@ researcher.
 
 ## Second factor
 
-Managing studies and the server always needs a login with the login
-provider's second factor (which claim says so: `OIDC_MFA_CLAIM`). Coding
-never requires it. A researcher who lost their second factor turns to the
+Managing studies and the server needs a login with the login provider's
+second factor (which claim says so: `OIDC_MFA_CLAIM`), unless the server
+turned that off (`AUTH_INSECURE_DISABLE_2FA`, below). Coding never
+requires it. A researcher who lost their second factor turns to the
 login provider's helpdesk: AnnoTinder has none of its own.
 
 Sensitive actions (API keys, deleting answers, coders' data or a study, and
-giving or taking admin roles) ask for a recent second factor: you log in
-again, then repeat the action. API keys can never do them.
+giving or taking admin roles) ask for a recent login with the second factor
+(only a recent login with `AUTH_INSECURE_DISABLE_2FA`): you log in again,
+then repeat the action. API keys can never do them.
 
 ## Warnings
 
-The top of this page lists what makes the server less secure: logins from
-the lab's **shared login provider** (then this server must not hold
-sensitive data), researchers logging in **without the second factor
-signal** (check the provider's two-factor settings and `OIDC_MFA_CLAIM`),
-or a **move to another login provider** (`OIDC_PREVIOUS_*`): how many
-users haven't linked their new login yet, and, after its end date, to
-remove the old provider's settings.
+The top of this page lists what makes the server less secure:
+
+- **2FA not required** (`AUTH_INSECURE_DISABLE_2FA`) or **email
+  verification not required** (`AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION`):
+  weaker security for teaching and other servers without sensitive data.
+- **Roles for unverified email addresses**: users with roles whose login
+  provider didn't confirm their address (marked *email not verified*).
+  Check that they are the right people.
+- Researchers logging in **without the second factor signal**: check the
+  provider's two-factor settings and `OIDC_MFA_CLAIM`.
+- A **move to another login provider** (`OIDC_PREVIOUS_*`): how many users
+  haven't linked their new login yet, and, after its end date, to remove the
+  old provider's settings.

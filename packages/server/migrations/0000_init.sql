@@ -83,6 +83,7 @@ CREATE TABLE "users" (
 	"last_login_at" timestamp with time zone,
 	"blocked_at" timestamp with time zone,
 	"registered_at" timestamp with time zone,
+	"email_verified" boolean,
 	"has_mfa" boolean DEFAULT false NOT NULL,
 	"reactivated_at" timestamp with time zone
 );

@@ -3,7 +3,8 @@ import * as client from "openid-client";
 // Researcher login with an OpenID Connect provider, following the lab's
 // Authentication standard (docs/security.md "Login"): any provider that
 // verifies email addresses (`email_verified`), signals a second factor
-// (`OIDC_MFA_CLAIM`), and supports step-up (`max_age`, `auth_time`). The
+// (`OIDC_MFA_CLAIM`), and supports step-up (`max_age`, `auth_time`); the
+// first two can be turned off (`AUTH_INSECURE_*`, researcher/login.ts). The
 // provider only proves who someone is; the session is ours
 // (shared/sessions.ts). The identity is the provider (`iss`) and the user
 // there (`sub`); the email address is how people find each other.
@@ -49,13 +50,14 @@ export interface LoginState {
 }
 
 /**
- * A login: who (`iss` + `sub`), their verified email, whether it used a
- * second factor (`mfa`, per `OIDC_MFA_CLAIM`), and when they authenticated
- * (`authTime`; null if the provider doesn't say).
+ * A login: who (`iss` + `sub`), their email and whether the provider
+ * confirmed it (`emailVerified`: only `email_verified: true` counts), whether
+ * it used a second factor (`mfa`, per `OIDC_MFA_CLAIM`), and when they
+ * authenticated (`authTime`; null if the provider doesn't say).
  */
 export type LoginResult =
-  | { iss: string; sub: string; email: string; mfa: boolean; authTime: Date | null }
-  | { error: "email_unverified" | "login_failed" };
+  | { iss: string; sub: string; email: string; emailVerified: boolean; mfa: boolean; authTime: Date | null }
+  | { error: "email_missing" | "login_failed" };
 
 export class Oidc {
   private config: Promise<client.Configuration> | null = null;
@@ -122,10 +124,17 @@ export class Oidc {
       console.warn("Login failed:", err instanceof Error ? err.message : err);
       return { error: "login_failed" };
     }
-    if (!claims || typeof claims.email !== "string" || claims.email_verified !== true) return { error: "email_unverified" };
+    if (!claims || typeof claims.email !== "string" || !claims.email.trim()) return { error: "email_missing" };
     const { claim, value } = this.mfaClaim;
     const mfa = claim === "amr" ? Array.isArray(claims.amr) && claims.amr.map(String).includes(value) : claims.acr === value;
     const authTime = typeof claims.auth_time === "number" ? new Date(claims.auth_time * 1000) : null;
-    return { iss: claims.iss, sub: claims.sub, email: claims.email.trim().toLowerCase(), mfa, authTime };
+    return {
+      iss: claims.iss,
+      sub: claims.sub,
+      email: claims.email.trim().toLowerCase(),
+      emailVerified: claims.email_verified === true,
+      mfa,
+      authTime,
+    };
   }
 }

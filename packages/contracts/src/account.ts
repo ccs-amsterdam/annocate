@@ -120,10 +120,13 @@ export type AuthOptions = z.infer<typeof AuthOptionsSchema>;
 
 /** Why a login was refused, as `?loginError=` on the page the researcher returns to. */
 export const LoginErrorSchema = z.enum([
+  /** The provider didn't confirm the email address (unless `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION`). */
   "email_unverified",
+  /** The provider sent no email address (the client lacks the `email` scope). */
+  "email_missing",
   "blocked",
   "login_failed",
-  /** A login for a sensitive action (step-up) without a second factor, or not recent. */
+  /** A login for a sensitive action (step-up) that is not recent, or (unless `AUTH_INSECURE_DISABLE_2FA`) without a second factor. */
   "step_up_failed",
   /** Linking a new login to this account failed: it belongs to another account, or nobody was logged in. */
   "link_failed",

@@ -9,8 +9,8 @@ import type { User } from "./accounts.js";
 // httpOnly cookie, its hash in the database. Sliding: each use pushes the
 // expiry out again, at most once an hour. A session remembers whether its
 // login used a second factor (`mfa`) and when the provider authenticated
-// the user (`authTime`): sensitive actions need that recent (step-up,
-// researcher/auth.ts).
+// the user (`authTime`): sensitive actions need that recent, and with a
+// second factor unless `AUTH_INSECURE_DISABLE_2FA` (step-up, researcher/auth.ts).
 
 export const SESSION_TTL_MS = 14 * 24 * 60 * 60_000;
 const EXTEND_AFTER_MS = 60 * 60_000;
@@ -34,7 +34,7 @@ export async function createSession(db: Db, userId: number, login: SessionLogin)
     keyHash: hashKey(key),
     expires: new Date(Date.now() + SESSION_TTL_MS),
     mfa: login.mfa,
-    authTime: login.mfa ? login.authTime : null,
+    authTime: login.authTime,
     issuer: login.issuer,
   });
   return key;

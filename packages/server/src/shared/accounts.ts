@@ -36,7 +36,8 @@ const mostRecentlyActive = [sql`${users.lastLoginAt} DESC NULLS LAST`, desc(user
 /**
  * A registered user with this email, made if there is none (development
  * headers, the operator's command line, tests): the most recently active
- * one, else a shadow user made registered. Logins use `loginUser`.
+ * one, else a shadow user made registered. Its address counts as verified
+ * (these come from the operator, not a provider). Logins use `loginUser`.
  */
 export async function ensureUser(db: Db, email: string): Promise<User> {
   const address = email.trim().toLowerCase();
@@ -50,10 +51,10 @@ export async function ensureUser(db: Db, email: string): Promise<User> {
     ? [found]
     : await db
         .update(users)
-        .set({ registeredAt: sql`now()` })
+        .set({ registeredAt: sql`now()`, emailVerified: true })
         .where(and(eq(users.email, address), isNull(users.registeredAt)))
         .returning({ id: users.id });
-  const [made] = claimed ? [claimed] : await db.insert(users).values({ email: address, registeredAt: sql`now()` }).returning({ id: users.id });
+  const [made] = claimed ? [claimed] : await db.insert(users).values({ email: address, registeredAt: sql`now()`, emailVerified: true }).returning({ id: users.id });
   return (await userById(db, made!.id))!;
 }
 
@@ -117,6 +118,8 @@ export interface LoginIdentity {
   iss: string;
   sub: string;
   email: string;
+  /** The provider confirmed the address (`email_verified: true`). */
+  emailVerified: boolean;
   mfa: boolean;
 }
 
@@ -126,7 +129,7 @@ export interface LoginIdentity {
  * new identity, the shadow user of its verified email (JIT account
  * claiming), else a new user. An existing user also claims a shadow user of
  * their (new) email: its roles and plan move to them. Records the login
- * (`has_mfa`, `last_login_at`, `reactivated_at` after a year away: a year
+ * (`email_verified`, `has_mfa`, `last_login_at`, `reactivated_at` after a year away: a year
  * without logging in makes a user dormant). `admins` (`ANNOTINDER_ADMINS`)
  * get the admin role.
  */
@@ -150,6 +153,7 @@ export async function loginUser(db: Db, login: LoginIdentity, admins: readonly s
       .update(users)
       .set({
         email,
+        emailVerified: login.emailVerified,
         hasMfa: login.mfa,
         registeredAt: sql`COALESCE(${users.registeredAt}, now())`,
         reactivatedAt: sql`CASE WHEN ${users.lastLoginAt} < now() - interval '1 year' THEN now() ELSE ${users.reactivatedAt} END`,

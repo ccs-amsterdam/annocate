@@ -93,6 +93,7 @@ async function toAdminUser(db: Db, { user, ...row }: UserRow): Promise<AdminUser
     invitationExpired: row.invitationExpired,
     rolesDisabled: row.rolesDisabled,
     hasMfa: user.hasMfa,
+    emailVerified: user.emailVerified,
     linked: row.linked,
     planId: user.planId,
     limits: user.limits,

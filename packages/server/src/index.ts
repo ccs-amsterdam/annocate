@@ -20,7 +20,8 @@ import { parseMfaClaim, type MfaClaim } from "./oidc.js";
 // OIDC_PREVIOUS_HOST, OIDC_PREVIOUS_CLIENT_ID, OIDC_PREVIOUS_CLIENT_SECRET,
 // OIDC_PREVIOUS_MFA_CLAIM, OIDC_PREVIOUS_UNTIL; AUTH_DEV_MODE=1 (development
 // headers instead of a login: refused unless the server listens on localhost
-// only); ANNOTINDER_PUBLIC_URL (where browsers reach the server);
+// only); AUTH_INSECURE_DISABLE_2FA=true, AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION=true
+// (weaker security: teaching and other servers without sensitive data); ANNOTINDER_PUBLIC_URL (where browsers reach the server);
 // ANNOTINDER_ADMINS (comma-separated emails: the server's first admins);
 // ANNOTINDER_FRAME_ANCESTORS (origins that may frame AnnoTinder, e.g. AmCAT's);
 // ANNOTINDER_TRUST_PROXY=1 (behind a proxy: client addresses from X-Forwarded-For);
@@ -82,6 +83,17 @@ if (login && !process.env.ANNOTINDER_SECRET) {
 const stepUpMaxAge = Number(process.env.AUTH_STEP_UP_MAX_AGE ?? 600);
 if (!Number.isInteger(stepUpMaxAge) || stepUpMaxAge <= 0)
   throw new Error("AUTH_STEP_UP_MAX_AGE must be a number of seconds");
+// Weaker security (the lab's Authentication standard): never for sensitive data, so said at every start
+const insecureFlag = (name: string) => {
+  const value = process.env[name]?.trim().toLowerCase();
+  if (!value || value === "false") return false;
+  if (value === "true") return true;
+  throw new Error(`${name} must be true or false, not "${process.env[name]}"`);
+};
+const insecure = {
+  disable2fa: insecureFlag("AUTH_INSECURE_DISABLE_2FA"),
+  disableEmailVerification: insecureFlag("AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION"),
+};
 const admins = (process.env.ANNOTINDER_ADMINS ?? "").split(",");
 const clientDir = process.env.ANNOTINDER_CLIENT_DIR || undefined;
 const frameAncestors = (process.env.ANNOTINDER_FRAME_ANCESTORS ?? "").split(/[\s,]+/).filter(Boolean);
@@ -96,6 +108,7 @@ const app = createApp(db, {
   login,
   admins,
   stepUpMaxAge,
+  insecure,
   clientDir,
   frameAncestors,
   https,
@@ -107,7 +120,7 @@ const server = serve({ fetch: app.fetch, port, ...(host ? { hostname: host } : {
   console.log(`@annotinder/server listening on http://localhost:${info.port} (${describeDatabase()})`);
   console.log(
     login
-      ? `  researcher login: ${login.oidc.issuer} (second factor: ${process.env.OIDC_MFA_CLAIM ?? "amr:mfa"}), callback ${login.publicUrl}/api/auth/callback`
+      ? `  researcher login: ${login.oidc.issuer} (second factor: ${insecure.disable2fa ? "not required" : (process.env.OIDC_MFA_CLAIM ?? "amr:mfa")}), callback ${login.publicUrl}/api/auth/callback`
       : "  researcher login: not configured (OIDC_HOST)",
   );
   console.log(`  admins: ${admins.filter((a) => a.trim()).join(", ") || "none named (ANNOTINDER_ADMINS)"}`);
@@ -116,6 +129,12 @@ const server = serve({ fetch: app.fetch, port, ...(host ? { hostname: host } : {
       ? `  client: ${clientDir}`
       : "  client: not served here (ANNOTINDER_CLIENT_DIR; in development Vite serves it)",
   );
+  if (insecure.disable2fa)
+    console.warn("  WARNING: AUTH_INSECURE_DISABLE_2FA: sensitive actions don't need a second factor. Not for sensitive research data.");
+  if (insecure.disableEmailVerification)
+    console.warn(
+      "  WARNING: AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION: unverified email addresses can log in and claim invitations. Not for sensitive research data.",
+    );
   if (devMode)
     console.warn(`  development mode (AUTH_DEV_MODE=1): development auth headers accepted, listening on ${host} only`);
 });

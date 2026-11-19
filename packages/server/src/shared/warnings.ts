@@ -1,21 +1,11 @@
 import type { ServerWarning } from "@annotinder/contracts";
-import { and, eq, gt, inArray, isNotNull, not, notExists, sql } from "drizzle-orm";
-import { identities, users } from "../db/schema/index.js";
+import { and, eq, exists, gt, inArray, isNotNull, not, notExists, sql } from "drizzle-orm";
+import { identities, roles, users } from "../db/schema/index.js";
 import { accountRole } from "../db/sql.js";
 import type { Server } from "../context.js";
 
 // Server hardening warnings for admins (the lab's Authentication standard,
 // "Server hardening warnings"; docs/security.md).
-
-/**
- * Issuers of the lab's shared OIDC provider (its `idp` realm): servers that
- * log in with it must not hold sensitive data, and admins are told so (the
- * standard's "Choosing an OIDC provider"). The provider's public hostname
- * isn't fixed yet: its issuer goes here once it is.
- */
-const SHARED_OIDC_ISSUERS: readonly string[] = [];
-
-const sameIssuer = (a: string, b: string) => a.replace(/\/+$/, "") === b.replace(/\/+$/, "");
 
 /** Researcher logins in this many days without the second factor signal make the `no_2fa_signal` warning. */
 const RECENT_DAYS = 30;
@@ -23,27 +13,50 @@ const RECENT_DAYS = 30;
 export async function serverWarnings(server: Server): Promise<ServerWarning[]> {
   const warnings: ServerWarning[] = [];
   const issuer = server.login?.oidc.issuer;
-  if (issuer && SHARED_OIDC_ISSUERS.some((shared) => sameIssuer(shared, issuer))) {
+  if (server.insecure.disable2fa) {
     warnings.push({
-      code: "shared_provider",
+      code: "2fa_not_required",
       message:
-        "Shared OIDC provider: not for sensitive data. Logins come from the lab's shared provider, so this server must not hold sensitive research data.",
+        "2FA not required (AUTH_INSECURE_DISABLE_2FA): sensitive actions only need a recent login, not a second factor. Not for sensitive research data.",
+    });
+  }
+  if (server.insecure.disableEmailVerification) {
+    warnings.push({
+      code: "email_verification_not_required",
+      message:
+        "Email verification not required (AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION): users whose login provider didn't confirm their email address can log in and claim invitations to it. Not for sensitive research data.",
+    });
+  }
+  // Users with roles of their own whose provider didn't confirm their address: check that they are the right people
+  const unverified = await server.db.$count(
+    users,
+    and(
+      eq(users.emailVerified, false),
+      exists(server.db.select({ one: sql`1` }).from(roles).where(eq(roles.userId, users.id))),
+    ),
+  );
+  if (unverified > 0) {
+    warnings.push({
+      code: "unverified_roles",
+      message: `${unverified} user${unverified === 1 ? " has" : "s have"} roles but an email address their login provider didn't confirm ("email not verified" below). Check that these are the right people.`,
     });
   }
   // Researchers and admins whose latest login lacked the second factor: they can't work, so the provider's 2FA or OIDC_MFA_CLAIM is likely wrong
-  const lacking = await server.db.$count(
-    users,
-    and(
-      not(users.hasMfa),
-      gt(users.lastLoginAt, sql`now() - make_interval(days => ${RECENT_DAYS})`),
-      inArray(accountRole(users.id), ["researcher", "admin"]),
-    ),
-  );
-  if (lacking > 0) {
-    warnings.push({
-      code: "no_2fa_signal",
-      message: `${lacking} researcher${lacking === 1 ? "" : "s"} logged in recently without the second factor signal (OIDC_MFA_CLAIM), so they can't work. Check the provider's 2FA settings and OIDC_MFA_CLAIM.`,
-    });
+  if (!server.insecure.disable2fa) {
+    const lacking = await server.db.$count(
+      users,
+      and(
+        not(users.hasMfa),
+        gt(users.lastLoginAt, sql`now() - make_interval(days => ${RECENT_DAYS})`),
+        inArray(accountRole(users.id), ["researcher", "admin"]),
+      ),
+    );
+    if (lacking > 0) {
+      warnings.push({
+        code: "no_2fa_signal",
+        message: `${lacking} researcher${lacking === 1 ? "" : "s"} logged in recently without the second factor signal (OIDC_MFA_CLAIM), so they can't work. Check the provider's 2FA settings and OIDC_MFA_CLAIM.`,
+      });
+    }
   }
   // Moving to another login provider: who hasn't linked their login there yet, and the end date
   const previous = server.login?.previous;

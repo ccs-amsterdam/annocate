@@ -1,5 +1,5 @@
 {
-  "id": "d6e2acaa-1c13-4d2b-89be-1d849f1e9eb2",
+  "id": "e4148f09-0954-48fb-b6a2-01f49304d44d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -804,6 +804,12 @@
         "registered_at": {
           "name": "registered_at",
           "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email_verified": {
+          "name": "email_verified",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false
         },

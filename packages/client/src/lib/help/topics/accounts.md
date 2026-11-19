@@ -49,8 +49,9 @@ unit as text).
 ## Two-factor authentication
 
 Managing studies needs a second factor (such as an authenticator app or a
-passkey) at your login provider. Logging in without one only lets you code:
-set it up with your login provider, then log in again.
+passkey) at your login provider, unless this server turned that off.
+Logging in without one only lets you code: set it up with your login
+provider, then log in again.
 
 Some actions ask you to confirm it's you (step-up): making or revoking API
 keys, deleting answers, coders' data or a study, and giving or taking admin

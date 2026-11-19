@@ -32,6 +32,8 @@ export const users = pgTable(
     lastLoginAt: timestamptz(),
     blockedAt: timestamptz(),
     registeredAt: timestamptz(),
+    /** The provider confirmed the address at the latest login (`email_verified: true`); NULL for shadow users. */
+    emailVerified: boolean(),
     hasMfa: boolean().notNull().default(false),
     reactivatedAt: timestamptz(),
   },

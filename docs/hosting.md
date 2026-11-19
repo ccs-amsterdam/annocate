@@ -484,6 +484,7 @@ two-line site block of step 7.
 | `OIDC_MFA_CLAIM` | Which ID token claim counts as a second factor: `amr:mfa` (default) or `acr:<value>`. See `security.md` §1 |
 | `OIDC_PREVIOUS_HOST`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_MFA_CLAIM`, `OIDC_PREVIOUS_UNTIL` | While moving to another login provider: the previous one, accepted until `OIDC_PREVIOUS_UNTIL` (a date), so users can link their new login. See `accounts.md`, "Changing providers" |
 | `AUTH_STEP_UP_MAX_AGE` | How many seconds a login's second factor stays fresh for sensitive actions (default 600). See `security.md` §1 |
+| `AUTH_INSECURE_DISABLE_2FA`, `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION` | `true`: weaker security for teaching and other servers without sensitive data ("Login provider" below; `security.md` §1) |
 | `ANNOTINDER_ADMINS` | Comma-separated email addresses that get the admin role when they log in: the server's first admins (`accounts.md`) |
 | `ANNOTINDER_TRUST_PROXY` | `1`: behind a proxy (Caddy, nginx) that sets `X-Forwarded-For`, so rate limits count the client's address from it. Only when the server can't be reached except through the proxy. The compose file sets it |
 | `ANNOTINDER_RATE_LIMITS` | `off`: no rate limits, e.g. for a load test from one machine. On by default (`security.md`) |
@@ -524,7 +525,14 @@ Authentik, Zitadel, or SURFconext.
   - a second factor that it signals in the ID token (`OIDC_MFA_CLAIM`);
   - step-up (`max_age`, `auth_time`).
 
-  Researcher access always needs the second factor.
+  Researcher access needs the second factor.
+- **A provider without these, for teaching or a low-sensitivity server**
+  (e.g. a free Auth0 tenant, which has no usable 2FA signal): turn the
+  missing requirement off with `AUTH_INSECURE_DISABLE_2FA=true` or
+  `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION=true` (`security.md` §1, "Weaker
+  security"). Never on a server with sensitive research data: for that, use
+  the institution's provider or the lab's Keycloak, as in the steps above.
+  Step-up (`max_age`, `auth_time`) can't be turned off.
 - Users are their login at the provider (`iss` + `sub`), not their email
   address. There are two ways to move to another provider
   (`accounts.md`, "Changing providers"):
