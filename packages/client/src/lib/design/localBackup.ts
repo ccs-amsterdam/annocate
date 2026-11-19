@@ -2,7 +2,7 @@ import type { TopLevelItem } from "@annotinder/contracts";
 
 // A copy of unsaved design edits in the browser's localStorage, so a
 // closed tab or crashed browser doesn't lose them (docs/client.md §7). There
-// is one backup at a time: the codebook being edited. It is cleared when the
+// is one backup at a time: the design being edited. It is cleared when the
 // edits are saved or discarded. Too large to store (localStorage holds a few
 // MB): then there is no backup.
 
@@ -10,7 +10,7 @@ const STORAGE_KEY = "annotinder:design-backup";
 
 export interface DesignBackup {
   studyId: number;
-  /** The version being edited; null for a new codebook. */
+  /** The version being edited; null for a new design. */
   designVersionId: number | null;
   /** The saved revision the edits are based on (for the save conflict check). */
   revision?: number;
@@ -41,7 +41,7 @@ export function writeBackup(backup: DesignBackup): void {
   }
 }
 
-/** Clears the backup; with a study and codebook, only if it is theirs. */
+/** Clears the backup; with a study and design version, only if it is theirs. */
 export function clearBackup(of?: { studyId: number; designVersionId: number | null }): void {
   try {
     if (of) {

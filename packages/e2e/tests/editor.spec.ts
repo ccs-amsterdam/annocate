@@ -2,9 +2,9 @@ import { expect, test } from "./fixtures";
 import type { DesignVersion, StudyResponse } from "@annotinder/contracts";
 import { api } from "./helpers";
 
-// The codebook editor, step by step as "Your first study" (help) describes it.
+// The design editor, step by step as "Your first study" (help) describes it.
 
-test("writing a codebook in the editor, as the help describes it, and saving it", async ({ page, request }) => {
+test("writing a design in the editor, as the help describes it, and saving it", async ({ page, request }) => {
   const study = await api<StudyResponse>(request, "POST", "/study", { name: "Editor test" });
   await api(request, "POST", `/study/${study.id}/units`, {
     units: [{ externalId: "a1", data: { headline: "Storm hits the coast", text: "Heavy rain." } }],

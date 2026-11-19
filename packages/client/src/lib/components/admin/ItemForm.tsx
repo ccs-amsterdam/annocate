@@ -91,7 +91,7 @@ export function ItemForm({
   client?: ResearcherApi;
   /** The study's set groups (loops' sets, session parameters with a group's sets). */
   groups: SetGroupResponse[];
-  /** The codebook's set-typed session parameters (name -> group). */
+  /** The design's set-typed session parameters (name -> group). */
   /** The `$session` names (declared and built-in). */
   sessionValueNames?: string[];
   unitVariableNames?: string[];
@@ -106,7 +106,7 @@ export function ItemForm({
   readOnly?: boolean;
   validationIssues?: DesignIssue[];
   isInsideLoop?: boolean;
-  /** The codebook's screen-out end items (a loop's gold checks can end there). */
+  /** The design's screen-out end items (a loop's gold checks can end there). */
   screenouts?: string[];
   /** For a unit loop: what selects a session's units (its coder, linked conditions). */
   shareSources?: ShareSource[];

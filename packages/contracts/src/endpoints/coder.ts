@@ -73,7 +73,7 @@ export const coderEndpoints = {
     response: z.void(),
   },
   /**
-   * The coder reached a computed item (in the flow of the codebook): the
+   * The coder reached a computed item (in the flow of the design): the
    * server computes its value now, once (random or balanced, counting only
    * coders who reached it; stratified by the answers saved so far), and
    * returns it. Reached again: the same value.

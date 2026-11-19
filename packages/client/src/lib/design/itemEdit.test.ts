@@ -254,7 +254,7 @@ describe("itemEdit", () => {
       expect(order(insertAt(tree(), { after: "c" }, q("new")))).toEqual(["a", "loop", "c", "x", "new", "b", "empty"]);
     });
 
-    it("keeps the topmost ticked items in codebook order", () => {
+    it("keeps the topmost ticked items in design order", () => {
       expect(topmostSelected(tree(), new Set(["b", "x", "loop"]))).toEqual(["loop", "b"]);
     });
 

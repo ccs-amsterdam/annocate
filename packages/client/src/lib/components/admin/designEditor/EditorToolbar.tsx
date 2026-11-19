@@ -31,13 +31,13 @@ interface EditorToolbarProps {
   onOpenIssue: (issue: EditorIssue) => void;
   dirty: boolean;
   canSave: boolean;
-  /** Whether the codebook passes validation (required to deploy). */
+  /** Whether the design passes validation (required to deploy). */
   valid: boolean;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
-  /** Items with unsaved changes, in codebook order (for "revert item"). */
+  /** Items with unsaved changes, in design order (for "revert item"). */
   changedItems: ChangedItem[];
   onRevertItem: (key: string) => void;
   onRevertAll: () => void;

@@ -32,7 +32,7 @@ describe("HttpCoderApi", () => {
     expect((fetch.mock.calls[1] as unknown as [string, RequestInit])[1].headers).not.toHaveProperty("x-url-params");
   });
 
-  it("sends the codebook version of the loaded session with later requests", async () => {
+  it("sends the design version of the loaded session with later requests", async () => {
     const fetch = vi.fn(async () => new Response(JSON.stringify({ version: 3 }), { status: 200 }));
     vi.stubGlobal("fetch", fetch);
     const { HttpCoderApi } = await import("../api/httpCoderApi");

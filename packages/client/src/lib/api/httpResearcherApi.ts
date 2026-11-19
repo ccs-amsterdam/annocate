@@ -111,9 +111,9 @@ export interface ResearcherApi {
   createStudy(body: StudyWrite): Promise<StudyResponse>;
   /** The example studies AnnoTinder ships (docs/plans/examples.md). */
   listExamples(): Promise<ExampleSummary[]>;
-  /** A new study from an example: units, a deployed codebook, a link and example answers. */
+  /** A new study from an example: units, a deployed design version, a link and example answers. */
   createStudyFromExample(body: StudyFromExample): Promise<StudyResponse>;
-  /** A new study from a recipe (the setup wizard): units, set groups, a codebook (a draft unless `publish`; deploying makes its links). */
+  /** A new study from a recipe (the setup wizard): units, set groups, a design (a draft unless `publish`; deploying makes its links). */
   createStudyFromRecipe(body: RecipeInput): Promise<StudyResponse>;
   updateStudy(id: number, body: StudyWrite): Promise<StudyResponse>;
   deleteStudy(id: number): Promise<void>;
@@ -140,7 +140,7 @@ export interface ResearcherApi {
   listSetGroups(live?: boolean): Promise<SetGroupResponse[]>;
   /** Makes or replaces a group; links with the group's sets follow. */
   putSetGroup(group: string, body: SetGroupWrite): Promise<SetGroupResponse>;
-  /** Refused (409) while the codebook uses the group. */
+  /** Refused (409) while the design uses the group. */
   deleteSetGroup(group: string): Promise<void>;
 
   listCoders(): Promise<CoderProgress[]>;
@@ -150,7 +150,7 @@ export interface ResearcherApi {
   postponeDeletion(coderId: number): Promise<void>;
   /** The study's deletion log, newest first. */
   listCoderDeletions(): Promise<CoderDeletion[]>;
-  /** The links (made from the deployed codebook), active ones first. */
+  /** The links (made from the deployed design version), active ones first. */
   listLinks(): Promise<LinkResponse[]>;
   /** A link's access settings: label, login, emails, max uses, participant id. */
   updateLink(id: number, body: LinkWrite): Promise<LinkResponse>;
@@ -175,7 +175,7 @@ export interface ResearcherApi {
   /** Retires live answers, so units are coded again (ADMIN). */
   resetAnnotations(body: ResetAnnotations): Promise<{ retired: number }>;
 
-  /** A preview session of the latest codebook, run in memory. */
+  /** A preview session of the latest design version, run in memory. */
   createPreview(): Promise<PreviewSession>;
 
   /** One page of annotations; pass `next` as `after` for the following page. */

@@ -10,7 +10,7 @@ import { coderValues } from "./coders.js";
  * questions): the (unit, coder) pairs where *every* variable has a live
  * value, oldest first. Coder-level groups: the coders that have all of them.
  * Only filters; which variables make up a loop is the runtime's business
- * (it reads the codebook).
+ * (it reads the design).
  *
  * Used by the runtime (runtime/store.ts) and when deploying (to warn about
  * loops that gained questions).

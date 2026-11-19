@@ -164,8 +164,8 @@ export function useCreateDesignVersionMutation(
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: DesignWrite) => client.createDesignVersion(body),
-    onSuccess: (codebook) => {
-      queryClient.setQueryData(keys.designVersion(client.studyId, codebook.id), codebook);
+    onSuccess: (version) => {
+      queryClient.setQueryData(keys.designVersion(client.studyId, version.id), version);
       return Promise.all([
         queryClient.invalidateQueries({ queryKey: keys.designVersions(client.studyId) }),
         queryClient.invalidateQueries({ queryKey: keys.pending(client.studyId) }),
@@ -180,8 +180,8 @@ export function useUpdateDesignVersionMutation(
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, body }) => client.updateDesignVersion(id, body),
-    onSuccess: (codebook) => {
-      queryClient.setQueryData(keys.designVersion(client.studyId, codebook.id), codebook);
+    onSuccess: (version) => {
+      queryClient.setQueryData(keys.designVersion(client.studyId, version.id), version);
       void queryClient.invalidateQueries({ queryKey: keys.designVersions(client.studyId) });
       void queryClient.invalidateQueries({ queryKey: keys.pending(client.studyId) });
     },
@@ -208,7 +208,7 @@ export function useUnitFieldsQuery(client: ResearcherApi): UseQueryResult<UnitFi
   return useQuery({ queryKey: keys.unitFields(client.studyId), queryFn: () => client.getUnitFields() });
 }
 
-/** Replaces the design's unit fields (removed fields leave the draft units, and the draft codebook may be new). */
+/** Replaces the design's unit fields (removed fields leave the draft units, and the draft design version may be new). */
 export function useUnitFieldsMutation(client: ResearcherApi): UseMutationResult<UnitField[], Error, UnitField[]> {
   const queryClient = useQueryClient();
   return useMutation({
@@ -237,7 +237,7 @@ export function useCreateUnitsMutation(client: ResearcherApi) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: UnitsCreateBody) => client.createUnits(body),
-    // New fields go into the design: possibly a new draft codebook
+    // New fields go into the design: possibly a new draft design version
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: keys.units(client.studyId) }),
@@ -403,7 +403,7 @@ export function useStudyUsersMutation(client: ResearcherApi): UseMutationResult<
   });
 }
 
-/** Pauses (no new units for coders) or resumes the live study, keeping its codebook. */
+/** Pauses (no new units for coders) or resumes the live study, keeping its design. */
 export function useDeploymentActiveMutation(
   client: ResearcherApi,
 ): UseMutationResult<DeploymentResponse, Error, { designVersionId: number; active: boolean }> {
@@ -438,7 +438,7 @@ export function useUnitQuery(client: ResearcherApi, id: number | null): UseQuery
   });
 }
 
-/** What to deploy: a codebook (the deployed one: keep it), and the draft units and sets (default) or not. */
+/** What to deploy: a design version (the deployed one: keep it), and the draft units and sets (default) or not. */
 export interface DeployVars {
   designVersionId: number;
   units?: boolean;
@@ -446,7 +446,7 @@ export interface DeployVars {
 }
 
 /**
- * Deploys (docs/plans/design.md §5): a codebook and the draft units. With
+ * Deploys (docs/plans/design.md §5): a design version and the draft units. With
  * many links (contracts CONFIRM_LINKS) the server asks to confirm (409
  * `confirm_links`): deploy again with `confirmLinks`.
  */

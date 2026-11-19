@@ -7,7 +7,7 @@ import { describeVersions } from "../../design/versions";
 
 /**
  * The Design section's start (docs/client.md §7): the two parts of a design,
- * the codebook (Editor) and the units, as two cards with what they hold
+ * the design (Editor) and the units, as two cards with what they hold
  * now. Picking one opens it; from there the sub tabs switch between them.
  * So a researcher sees both parts, instead of landing in the editor and
  * missing the units.
@@ -33,7 +33,7 @@ export function DesignLanding({ client, onOpen }: { client: ResearcherApi; onOpe
       <DesignCard
         icon={<BookOpen className="h-6 w-6" />}
         title="Editor"
-        description="The codebook: the questions coders answer, and the unit loops that show them the units."
+        description="The design: the questions coders answer, and the unit loops that show them the units."
         action="Open the editor"
         onClick={() => onOpen("Editor")}
       >

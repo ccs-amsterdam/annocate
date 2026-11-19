@@ -11,7 +11,7 @@ export interface DesignTreeState {
   items: TopLevelItem[];
   /** The item open in the editor. */
   selected: string | null;
-  /** Immutable codebook: no add, move or delete actions. */
+  /** A frozen design version: no add, move or delete actions. */
   readOnly: boolean;
   select: (key: string) => void;
 

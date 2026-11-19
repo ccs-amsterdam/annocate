@@ -23,20 +23,20 @@ export interface ResetScope {
  */
 export function ResetAnswersDialog({ client, scope, onClose }: { client: ResearcherApi; scope: ResetScope | null; onClose: () => void }) {
   const deployment = useDeploymentQuery(client).data;
-  const codebook = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data;
+  const version = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data;
   const reset = useResetAnswersMutation(client);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
 
-  // The live codebook's loop questions, per loop (only answers in loops can be reset).
+  // The live design version's loop questions, per loop (only answers in loops can be reset).
   const loops = useMemo(() => {
-    const items = (codebook?.items ?? []) as TopLevelItem[];
+    const items = (version?.items ?? []) as TopLevelItem[];
     const { loopOf } = collectQuestions(items);
     return unitLoops(items).map(({ key, loop }) => ({
       key,
       title: loopTitle(loop, key),
       questions: [...loopOf].filter(([, l]) => l === key).map(([name]) => name),
     }));
-  }, [codebook]);
+  }, [version]);
 
   const close = () => {
     setChosen(new Set());
@@ -92,7 +92,7 @@ export function ResetAnswersDialog({ client, scope, onClose }: { client: Researc
                 </div>
               </fieldset>
             ))}
-            {loops.length === 0 && <p className="text-muted-foreground">The live codebook has no unit loops: there is nothing to reset.</p>}
+            {loops.length === 0 && <p className="text-muted-foreground">The live design version has no unit loops: there is nothing to reset.</p>}
           </div>
         )}
         {reset.error && <p className="text-sm text-destructive">{reset.error.message}</p>}

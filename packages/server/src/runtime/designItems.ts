@@ -15,7 +15,7 @@ export type VariableType = AnyVariableType;
 export { validateVariables };
 
 export interface LoopInfo {
-  /** The loop's position in the codebook (contracts `unitLoops`): how the coder API and distribution state refer to it. */
+  /** The loop's position in the design (contracts `unitLoops`): how the coder API and distribution state refer to it. */
   key: string;
   loop: UnitLoopItem;
   variables: Map<string, VariableType>;
@@ -107,7 +107,7 @@ export function agreementKey(variables: Record<string, VariableValue>, variable:
 }
 
 
-/** The `end` item with this name, anywhere in the codebook. */
+/** The `end` item with this name, anywhere in the design. */
 export function findEndItem(items: readonly DesignItem[], name: string): EndItem | null {
   for (const item of items) {
     if (item.type === "end" && item.name === name) return item;

@@ -1,13 +1,13 @@
 import Editor, { type OnMount } from "@monaco-editor/react";
 import { editorTheme, SCROLLBAR } from "./monacoSetup";
-import type { CODEBOOK_MODEL, ITEM_MODEL } from "./models";
+import type { DESIGN_MODEL, ITEM_MODEL } from "./models";
 import { useTheme } from "../../../context/theme";
 
 export type MonacoEditor = Parameters<OnMount>[0];
 
 export interface MonacoJsonProps {
-  /** Which schema applies: the whole codebook, or one item. */
-  model: typeof CODEBOOK_MODEL | typeof ITEM_MODEL;
+  /** Which schema applies: the whole design, or one item. */
+  model: typeof DESIGN_MODEL | typeof ITEM_MODEL;
   value: string;
   onChange: (value: string) => void;
   readOnly?: boolean;

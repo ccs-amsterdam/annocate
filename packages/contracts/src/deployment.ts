@@ -2,10 +2,10 @@ import { z } from "zod";
 import { ClientVersionSchema } from "./version.js";
 import { IdSchema } from "./common.js";
 
-// Deploying a study (researcher API): which codebook coders get, its status,
+// Deploying a study (researcher API): which design version coders get, its status,
 // and previews. The coder side is the coder API (endpoints/coder.ts).
 // Everything is a draft until deployed (docs/plans/design.md §5): a
-// deployed version is a codebook with a snapshot of the units and sets.
+// deployed version is a design version with a snapshot of the units and sets.
 
 /** The draft's units compared with the deployed ones. */
 export const UnitChangesSchema = z.object({
@@ -40,18 +40,18 @@ export type DeploymentVersion = z.infer<typeof DeploymentVersionSchema>;
 export const PendingChangesSchema = z.object({
   /** The draft units against the deployed ones (all added when nothing is deployed). */
   units: UnitChangesSchema,
-  /** The latest codebook, if it isn't the deployed one. */
+  /** The latest design version, if it isn't the deployed one. */
   designVersionId: IdSchema.nullable(),
 });
 export type PendingChanges = z.infer<typeof PendingChangesSchema>;
 
 /** Researcher-facing: `PUT /study/:studyId/deployment`. */
 export const DeploymentWriteSchema = z.object({
-  /** The codebook coders get (the deployed one: keep it). */
+  /** The design version coders get (the deployed one: keep it). */
   designVersionId: IdSchema,
   /**
    * Deploy the draft units and sets too. Default false: keep the deployed
-   * ones, so changing the codebook or pausing deploys no units by accident
+   * ones, so changing the design or pausing deploys no units by accident
    * (the first deploy always takes the draft's).
    */
   units: z.boolean().default(false),
@@ -75,7 +75,7 @@ export const DeploymentResponseSchema = DeploymentWriteSchema.omit({ units: true
    * gained questions, which reopens units coders already finished.
    */
   warnings: z.array(z.string()).optional(),
-  /** How many active links the codebook's link parameters make. */
+  /** How many active links the design's link parameters make. */
   links: z.number().int().nonnegative().optional(),
 });
 export type DeploymentResponse = z.infer<typeof DeploymentResponseSchema>;
@@ -121,7 +121,7 @@ export type DeploymentStatus = z.infer<typeof DeploymentStatusSchema>;
 
 /**
  * Researcher `POST /study/:studyId/deployment/preview`: a preview of the study's
- * latest codebook (deployed or not), run as deployment `<studyId>.preview`.
+ * latest design version (deployed or not), run as deployment `<studyId>.preview`.
  * Coders and answers stay in the server's memory; nothing is stored. The
  * client uses `token` like a link secret (`x-link-secret`).
  */

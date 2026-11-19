@@ -33,7 +33,7 @@ export function itemShapeError(raw: unknown, { children }: { children: boolean }
 
 /** Why a parsed value isn't a list of items the editor can show; null if it is. */
 export function itemsShapeError(raw: unknown): string | null {
-  if (!Array.isArray(raw)) return "A codebook is a list of items: [ { ... }, { ... } ]";
+  if (!Array.isArray(raw)) return "A design is a list of items: [ { ... }, { ... } ]";
   for (const item of raw) {
     const error = itemShapeError(item, { children: true });
     if (error) return error;

@@ -15,15 +15,15 @@ const USE_LABEL: Record<FieldUse | "none", { label: string; title: string; class
     className: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
   },
   server: { label: "server only", title: "An answer column of gold or practice questions: never sent to coders", className: "bg-sky-500/15 text-sky-700 dark:text-sky-400" },
-  none: { label: "not used", title: "The codebook doesn't use it: kept with the units, never sent to coders", className: "bg-muted text-muted-foreground" },
+  none: { label: "not used", title: "The design doesn't use it: kept with the units, never sent to coders", className: "bg-muted text-muted-foreground" },
 };
 
 const TYPES: UnitFieldType[] = ["text", "number", "boolean"];
 
 /**
  * The design's unit fields (docs/plans/design.md §3): per field its type,
- * how the codebook (its latest version) uses it, and a description. Fields
- * the codebook doesn't use can be removed (their values leave the draft
+ * how the design (its latest version) uses it, and a description. Fields
+ * the design doesn't use can be removed (their values leave the draft
  * units); fields it uses but the design doesn't declare can be declared.
  */
 export function FieldsPanel({ client, fields }: { client: ResearcherApi; fields: UnitField[] }) {
@@ -48,7 +48,7 @@ export function FieldsPanel({ client, fields }: { client: ResearcherApi; fields:
         <Button variant="link" size="sm" className="h-auto px-1 text-xs" onClick={() => setOpen(!open)}>
           {open ? "Hide details" : "Details"}
         </Button>
-        {undeclared.length > 0 && <span className="text-amber-700 dark:text-amber-400">The codebook uses fields the design doesn't declare: {undeclared.join(", ")}</span>}
+        {undeclared.length > 0 && <span className="text-amber-700 dark:text-amber-400">The design uses fields it doesn't declare: {undeclared.join(", ")}</span>}
       </div>
       {open && (
         <div className="overflow-x-auto rounded-md border border-border">
@@ -57,7 +57,7 @@ export function FieldsPanel({ client, fields }: { client: ResearcherApi; fields:
               <tr>
                 <th className="px-2 py-1 font-medium">Field</th>
                 <th className="px-2 py-1 font-medium">Type</th>
-                <th className="px-2 py-1 font-medium">In the codebook</th>
+                <th className="px-2 py-1 font-medium">In the design</th>
                 <th className="px-2 py-1 font-medium">Description</th>
                 <th className="px-2 py-1" />
               </tr>

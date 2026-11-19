@@ -3,7 +3,7 @@ import type { DesignVersion, DeploymentResponse } from "@annotinder/contracts";
 import { answers, api, coders, fromExample, question } from "./helpers";
 
 // A coder's session over time: quitting, another device, pausing, and a
-// new codebook version while they code.
+// new design version while they code.
 
 const SWIPE_QUESTION = "Is this headline good news or bad news?";
 
@@ -83,7 +83,7 @@ test("pausing: a working coder saves what they have and sees the study is paused
   await question(page, "What is this headline about?");
 });
 
-test("a new codebook version while coding: the coder continues on the new version", async ({ page, request }) => {
+test("a new design version while coding: the coder continues on the new version", async ({ page, request }) => {
   const { study, link } = await fromExample(request, "survey-annotations");
   await page.goto(link);
   await page.getByRole("button", { name: "I confirm", exact: true }).click();

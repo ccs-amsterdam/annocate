@@ -135,7 +135,7 @@ export function UploadUnits({ client, studyFields, onDone }: { client: Researche
           })}
           <p className="text-[11px] text-muted-foreground">
             Shuffled first. Distributing fills the smallest sets first; new sets are named on (e.g. s5 after s4). The overlap stays as it
-            is. New sets get their own link if the codebook makes a link per set.
+            is. New sets get their own link if the design makes a link per set.
           </p>
         </div>
       )}
@@ -317,7 +317,7 @@ export function CsvUnitsForm({
           </p>
         )}
         <p className="text-[11px] text-muted-foreground">
-          Field names: letters, digits and _, so a codebook can show them as <code>$unit.name</code>. A column named like a
+          Field names: letters, digits and _, so a design can show them as <code>$unit.name</code>. A column named like a
           field of this study is uploaded as that field, with its type.
           {allowSets && (
             <>

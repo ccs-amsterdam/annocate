@@ -7,7 +7,7 @@ import type { DesignEditorMode } from "./DesignEditor";
 
 interface DesignStatusBannerProps {
   mode: DesignEditorMode;
-  /** Version number of the opened codebook; null for a new, unsaved codebook. */
+  /** Version number of the opened design version; null for a new, unsaved design. */
   openNumber: number | null;
   /** Version number of the live design version; null if nothing was deployed yet. */
   liveNumber: number | null;

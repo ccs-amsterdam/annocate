@@ -43,7 +43,7 @@ function loopReferences(loop: UnitLoopItem, spanFields?: (field: string) => void
 }
 
 /**
- * The unit fields a codebook shows or uses (docs/architecture.md §8.4): every
+ * The unit fields a design shows or uses (docs/architecture.md §8.4): every
  * `$unit.<field>` in its unit loops, and the columns of span questions.
  * Coders are sent only these fields, and a unit version is a unit as it
  * looks with them.
@@ -84,7 +84,7 @@ export function loopDependencies(items: readonly unknown[]): Map<string, string[
 }
 
 /**
- * How a codebook uses each unit field (docs/plans/design.md §3):
+ * How a design uses each unit field (docs/plans/design.md §3):
  * - `shown`: in a layout, a question or instruction text, an end message,
  *   or selected in by a span question: coders see it;
  * - `sent`: only in conditions the browser evaluates: sent to coders, not
@@ -164,7 +164,7 @@ function scriptCount(loop: UnitLoopItem, field: string): number {
 }
 
 /**
- * Unit fields the codebook uses but the design doesn't declare (`$unit.id`
+ * Unit fields the design uses but doesn't declare (`$unit.id`
  * and `_` names, which AnnoTinder provides, aside).
  */
 export function undeclaredFields(items: readonly unknown[], declared: readonly { name: string }[]): string[] {

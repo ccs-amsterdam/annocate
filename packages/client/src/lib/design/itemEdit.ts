@@ -11,7 +11,7 @@ import { findItem, findParent, flattenTree, isInsideUnitLoop, keyOf } from "../c
 export type MoveTargetPosition = "before" | "after" | "inside";
 
 /**
- * An item as the tree edits below handle it: any codebook item, with the
+ * An item as the tree edits below handle it: any design item, with the
  * editor's `_key` (stable identity while names are edited; conditions have
  * no name) and children.
  */
@@ -71,7 +71,7 @@ export function getUniqueItemName(
 }
 
 /**
- * Pure tree manipulation edit operations over hierarchical codebook items.
+ * Pure tree manipulation edit operations over hierarchical design items.
  */
 
 export function insertItem(
@@ -491,7 +491,7 @@ export function updateItem(
 
 /**
  * A place in the tree: right before or after an item, or at the end of a
- * container's children (`into: null`: the end of the codebook).
+ * container's children (`into: null`: the end of the design).
  */
 export type TreePosition = { before: string } | { after: string } | { into: string | null };
 
@@ -548,7 +548,7 @@ export function insertAt(items: TopLevelItem[], position: TreePosition, newItem:
 
 /**
  * The items of a selection that are not inside another selected item (a
- * selected container brings its children), in codebook order.
+ * selected container brings its children), in design order.
  */
 export function topmostSelected(items: TopLevelItem[], keys: ReadonlySet<string>): string[] {
   const result: string[] = [];
@@ -604,7 +604,7 @@ export function moveChanges(items: TopLevelItem[], sources: string[], position: 
   return shape(moveAllTo(items, sources, position)) !== shape(items);
 }
 
-/** Items (topmost selected, in codebook order) moved to a position, keeping their order. */
+/** Items (topmost selected, in design order) moved to a position, keeping their order. */
 export function moveAllTo(items: TopLevelItem[], sources: string[], position: TreePosition): TopLevelItem[] {
   if ("into" in position) {
     return sources.reduce(

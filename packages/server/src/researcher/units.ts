@@ -21,7 +21,7 @@ export function units(server: Server): Hono<Env> {
   // New columns are added to the draft design's fields (units already stored
   // have no value for them); every declared field must be given (null for
   // empty). The first upload (no units yet) takes its types from the values,
-  // and drops declared fields it lacks that the codebook doesn't use.
+  // and drops declared fields it lacks that the design doesn't use.
   app.post("/study/:studyId/units", requireStudyUser(server, "WRITE"), async (c) => {
     const parsed = UnitsCreateBodySchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);

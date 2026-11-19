@@ -113,7 +113,7 @@ export function ItemPanel({
   );
 }
 
-/** The names of the codebook's end items that screen out, anywhere in it. */
+/** The names of the design's end items that screen out, anywhere in it. */
 function screenoutEnds(items: DesignItem[]): string[] {
   return items.flatMap((i): string[] => {
     if (i.type === "end") return i.outcome === "screenout" ? [i.name] : [];

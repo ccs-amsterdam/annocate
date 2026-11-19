@@ -28,12 +28,12 @@ interface DesignTreeViewProps {
   validationIssues?: DesignIssue[];
   /** Keys of items with unsaved changes (marked in the tree). */
   changed?: ReadonlySet<string>;
-  /** Immutable codebook: items can be selected, but not added, moved or deleted. */
+  /** A frozen design version: items can be selected, but not added, moved or deleted. */
   readOnly?: boolean;
 }
 
 /**
- * Hierarchical view of the codebook items.
+ * Hierarchical view of the design items.
  *
  * - Adding: each row has a + (on hover) that adds below it. Where "below"
  *   is ambiguous (the last item of a loop: inside or after the loop; an

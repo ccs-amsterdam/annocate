@@ -429,7 +429,7 @@ describe("resuming a session", () => {
     expect(itemName(manager.getSnapshot().currentItem!)).toBe("q2");
   });
 
-  it("asks again when a stored answer no longer fits the codebook", async () => {
+  it("asks again when a stored answer no longer fits the design", async () => {
     const items = [select("group", ["a", "b"]) as unknown as TopLevelItem, unitLoop("main", [select("q1", ["a"])])];
     const { server } = resumedServer({ items, variables: { group: code("removed_code") } });
     const manager = new StudyManager(server);
@@ -501,7 +501,7 @@ describe("rendering templates", () => {
   });
 });
 
-describe("a new codebook version while coding", () => {
+describe("a new design version while coding", () => {
   it("loads the session again when navigating meets the new version", async () => {
     let refuse = false;
     let served = false;
@@ -528,7 +528,7 @@ describe("a new codebook version while coding", () => {
     expect(manager.getSnapshot().phase).not.toBe("error");
   });
 
-  it("loads the new codebook and continues the same unit, keeping the answers given so far", async () => {
+  it("loads the new design version and continues the same unit, keeping the answers given so far", async () => {
     const v1 = [unitLoop("loop", [unitVar("q1"), unitVar("q2")])];
     const v2 = [unitLoop("loop", [unitVar("q1"), unitVar("q2"), unitVar("q3")])];
     let version = 1;

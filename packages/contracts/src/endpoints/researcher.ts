@@ -81,14 +81,14 @@ export const researcherEndpoints = {
   listStudies: { method: "GET", path: "/study", request: z.void(), response: z.array(StudyResponseSchema) },
   createStudy: { method: "POST", path: "/study", request: StudyWriteSchema, response: StudyResponseSchema },
   listExamples: { method: "GET", path: "/examples", request: z.void(), response: z.array(ExampleSummarySchema) },
-  /** A new study from an example: units, codebook (deployed), link and example answers. */
+  /** A new study from an example: units, a deployed design, a link and example answers. */
   createStudyFromExample: {
     method: "POST",
     path: "/study/from-example",
     request: StudyFromExampleSchema,
     response: StudyResponseSchema,
   },
-  /** A new study from a recipe (the setup wizard): units, set groups, a codebook (a draft unless `publish`; deploying makes its links). */
+  /** A new study from a recipe (the setup wizard): units, set groups, a design (a draft unless `publish`; deploying makes its links). */
   createStudyFromRecipe: {
     method: "POST",
     path: "/study/from-recipe",
@@ -143,7 +143,7 @@ export const researcherEndpoints = {
   /**
    * Replaces the draft design's unit fields (docs/plans/design.md §3):
    * declare, retype (the units' values must fit), describe, or remove
-   * fields the codebook doesn't use (their values leave the draft units).
+   * fields the design doesn't use (their values leave the draft units).
    */
   putUnitFields: {
     method: "PUT",
@@ -212,7 +212,7 @@ export const researcherEndpoints = {
     request: z.void(),
     response: z.array(LinkResponseSchema),
   },
-  /** A link's access settings (label, login, emails, max uses, participant id). Links themselves come from the deployed codebook. */
+  /** A link's access settings (label, login, emails, max uses, participant id). Links themselves come from the deployed design version. */
   updateLink: {
     method: "PUT",
     path: "/study/:studyId/links/:id",
@@ -234,7 +234,7 @@ export const researcherEndpoints = {
   },
   getOverview: { method: "GET", path: "/study/:studyId/overview", request: z.void(), response: StudyOverviewSchema },
 
-  // Deploying a study: which codebook coders get (docs/architecture.md).
+  // Deploying a study: which design version coders get (docs/architecture.md).
   getDeployment: {
     method: "GET",
     path: "/study/:studyId/deployment",

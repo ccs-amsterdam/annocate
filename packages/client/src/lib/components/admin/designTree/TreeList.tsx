@@ -8,7 +8,7 @@ import { getChildren, getItemKey, type TreeNode } from "./utils";
 
 interface TreeListProps {
   nodes: TreeNode[];
-  /** Container owning this list; null for the codebook root. */
+  /** Container owning this list; null for the design root. */
   parent: TreeNode | null;
 }
 

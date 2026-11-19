@@ -5,7 +5,7 @@ import { requireStudyUser } from "./auth.js";
 const PREVIEW_TTL_MS = 12 * 60 * 60_000;
 
 // A preview session for researchers (contracts PreviewSessionSchema): the
-// latest codebook, run in memory, writing nothing back (runtime/preview.ts).
+// latest design version, run in memory, writing nothing back (runtime/preview.ts).
 export function deploymentPreview(server: Server): Hono<Env> {
   const app = new Hono<Env>();
 

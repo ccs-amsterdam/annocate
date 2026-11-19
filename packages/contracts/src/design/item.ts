@@ -18,7 +18,7 @@ const ItemBaseSchema = z.object({
 const ConditionLabelSchema = z.string().optional().describe("Shown in the editor instead of the condition");
 
 /**
- * A question item appearing at the top level of a codebook.
+ * A question item appearing at the top level of a design.
  * Results in a stored coder-level (non-unit) variable value.
  */
 export const TopLevelQuestionItemSchema = ItemBaseSchema.extend({
@@ -215,7 +215,7 @@ export const TopLevelItemSchema: z.ZodType<TopLevelItem> = z.lazy(() =>
 export type ConditionItem = Extract<TopLevelItem | InLoopItem, { type: "show_if" }>;
 
 /**
- * Any codebook item anywhere in the tree.
+ * Any design item anywhere in the tree.
  */
 export type DesignItem = TopLevelItem | InLoopItem;
 
@@ -225,7 +225,7 @@ export function itemName(item: DesignItem): string | undefined {
 }
 
 /**
- * The unit loops of a codebook in document order, with their key: their
+ * The unit loops of a design in document order, with their key: their
  * position (`"1"`, `"2"`, ...). The key identifies a loop within one
  * design version (the coder API's `/loop/:loop`, progress, distribution
  * state).

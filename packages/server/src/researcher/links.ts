@@ -8,7 +8,7 @@ import { requireStudyUser } from "./auth.js";
 import { forgetLink, toLinkResponse } from "../shared/links.js";
 
 // Links (docs/plans/sets-and-session-parameters.md §4): made from the
-// deployed codebook (shared/links.ts `syncLinks`); here only their access
+// deployed design version (shared/links.ts `syncLinks`); here only their access
 // settings, revoking, and a new secret.
 /** A study's link, by id (from the path). */
 const link = (studyId: number, id: string | undefined) => and(eq(linksTable.studyId, studyId), eq(linksTable.id, Number(id)));

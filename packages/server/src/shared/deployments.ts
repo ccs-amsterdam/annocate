@@ -45,10 +45,10 @@ async function designVersion(db: Db, studyId: number, id?: number) {
 }
 
 /**
- * Deploys: the codebook, with the draft units and sets (`units`, always on
- * the first deploy) or the deployed ones. A new version when the codebook
+ * Deploys: a design version, with the draft units and sets (`units`, always on
+ * the first deploy) or the deployed ones. A new deployment version when the design version
  * or the units change (docs/plans/design.md §5), recorded with what
- * changed. Freezes the codebook. Warns when a loop gains questions while
+ * changed. Freezes the design version. Warns when a loop gains questions while
  * coders already finished units in it: those units count as unfinished
  * again (docs/architecture.md §8.2).
  */
@@ -87,7 +87,7 @@ export async function putDeployment(db: Db, studyId: number, body: DeploymentWri
   return { ...(await getDeployment(db, studyId))!, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-/** What deploying the drafts would change: the units, and the latest codebook if it isn't deployed. */
+/** What deploying the drafts would change: the units, and the latest design version if it isn't deployed. */
 export async function pendingChanges(db: Db, studyId: number): Promise<PendingChanges> {
   const deployed = await deploymentRow(db, studyId);
   const latest = await designVersion(db, studyId);
@@ -115,7 +115,7 @@ export async function deploymentVersions(db: Db, studyId: number): Promise<Deplo
 
 /**
  * Loop title (contracts `loopTitle`, made unique) -> names of its questions
- * (through conditions), from a stored codebook. Titles are for people:
+ * (through conditions), from a stored design version. Titles are for people:
  * progress per loop and warnings.
  */
 export async function loopVariables(db: Db, studyId: number, designVersionId: number): Promise<Map<string, string[]>> {
@@ -162,9 +162,9 @@ async function reopenWarnings(db: Db, studyId: number, previousDesignVersionId: 
 export async function getDeploymentSpec(db: Db, studyId: number): Promise<DeploymentSpec | null> {
   const deployment = await deploymentRow(db, studyId);
   if (!deployment) return null;
-  const codebook = await designVersion(db, studyId, deployment.designVersionId);
-  if (!codebook) return null;
-  return buildSpec(db, studyId, codebook, {
+  const versionRow = await designVersion(db, studyId, deployment.designVersionId);
+  if (!versionRow) return null;
+  return buildSpec(db, studyId, versionRow, {
     version: deployment.version,
     active: deployment.active,
     annotationEpoch: deployment.annotationEpoch,
@@ -173,16 +173,16 @@ export async function getDeploymentSpec(db: Db, studyId: number): Promise<Deploy
 }
 
 /**
- * The spec for previewing: the study's latest codebook, deployed or not,
+ * The spec for previewing: the study's latest design version, deployed or not,
  * always active. Its `version` is derived from the content, so the preview
  * picks up every edit.
  */
 export async function getPreviewSpec(db: Db, studyId: number): Promise<DeploymentSpec | null> {
-  const codebook = await designVersion(db, studyId);
-  if (!codebook) return null;
-  if (!itemsValid(designVersionItems(codebook))) throw new HttpError(409, "The latest design version has issues: fix them to preview it", "design_invalid");
-  // The drafts: the latest codebook with the draft units and sets.
-  const spec = await buildSpec(db, studyId, codebook, { version: 1, active: true, annotationEpoch: 0, liveUnits: false });
+  const versionRow = await designVersion(db, studyId);
+  if (!versionRow) return null;
+  if (!itemsValid(designVersionItems(versionRow))) throw new HttpError(409, "The latest design version has issues: fix them to preview it", "design_invalid");
+  // The drafts: the latest design version with the draft units and sets.
+  const spec = await buildSpec(db, studyId, versionRow, { version: 1, active: true, annotationEpoch: 0, liveUnits: false });
   const digest = createHash("sha256").update(JSON.stringify([spec.design, spec.sets])).digest("hex");
   return { ...spec, version: (parseInt(digest.slice(0, 7), 16) % 2 ** 30) + 1 };
 }
@@ -190,7 +190,7 @@ export async function getPreviewSpec(db: Db, studyId: number): Promise<Deploymen
 async function buildSpec(
   db: Db,
   studyId: number,
-  codebook: DesignVersionRow,
+  versionRow: DesignVersionRow,
   meta: Pick<DeploymentSpec, "version" | "active" | "annotationEpoch" | "liveUnits">,
 ): Promise<DeploymentSpec> {
   const [study] = await db
@@ -204,7 +204,7 @@ async function buildSpec(
     redirectUrls: study?.redirectUrls ?? {},
     signIn: study?.signIn ?? "off",
     // The runtime works on the items with the session first
-    design: { ...toDesignVersion(codebook), items: designVersionItems(codebook) },
+    design: { ...toDesignVersion(versionRow), items: designVersionItems(versionRow) },
     sets: await runtimeSets(db, studyId, meta.liveUnits),
   };
 }

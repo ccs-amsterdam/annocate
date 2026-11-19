@@ -48,7 +48,7 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
   await expect(second.getByText("Second text")).toBeVisible();
 });
 
-test("the design's unit fields: how the codebook uses each, removing an unused one", async ({ page, request }) => {
+test("the design's unit fields: how the design uses each, removing an unused one", async ({ page, request }) => {
   const study = await api<StudyResponse>(request, "POST", "/study", { name: "Field use" });
   await api(request, "POST", `/study/${study.id}/units`, { units: [{ externalId: "a1", data: { text: "Hello", year: 2020, note: "x" } }] });
   const [draft] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);

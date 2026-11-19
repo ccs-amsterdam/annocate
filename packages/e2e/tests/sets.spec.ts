@@ -36,7 +36,7 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
     ["s2", 1],
   ]);
 
-  // A codebook whose coders are the column's values: a link each, with the overlap first
+  // A design whose coders are the column's values: a link each, with the overlap first
   const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
     session: { params: [], coders: { column: "part" } },
     items: [

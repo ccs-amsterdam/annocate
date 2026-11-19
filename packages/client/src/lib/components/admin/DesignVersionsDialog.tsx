@@ -8,7 +8,7 @@ import { HelpButton } from "../../help/HelpButton";
 export interface DesignVersionsViewProps {
   designVersions: DesignVersionMeta[];
   versions: DesignVersions;
-  /** Id of the version open in the editor; null for a new, unsaved codebook. */
+  /** Id of the version open in the editor; null for a new, unsaved design. */
   openId: number | null;
   onView: (id: number) => void;
   onRestore: (id: number) => void;

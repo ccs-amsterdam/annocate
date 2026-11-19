@@ -29,7 +29,7 @@ export function flattenTree(items: (TopLevelItem | InLoopItem)[]): DesignItem[] 
   return result;
 }
 
-/** The codebook editor's key of an item (stable while its name is edited), if it has one. */
+/** The design editor's key of an item (stable while its name is edited), if it has one. */
 export function keyOf(item: DesignItem | TopLevelItem | InLoopItem): string | undefined {
   return (item as { _key?: string })._key;
 }

@@ -15,7 +15,7 @@ import type { designVersions } from "../db/schema/index.js";
 /** A row of `design_versions`: a version of the design. */
 export type DesignVersionRow = typeof designVersions.$inferSelect;
 
-/** A stored codebook's items, without the session. */
+/** A stored design version's items, without the session. */
 function storedItems(row: Pick<DesignVersionRow, "items">): TopLevelItem[] {
   return (Array.isArray(row.items) ? row.items : []) as TopLevelItem[];
 }
@@ -35,7 +35,7 @@ export function designVersionItems(row: Pick<DesignVersionRow, "items" | "sessio
   return designItems({ items: storedItems(row), session: designVersionSession(row), public: designVersionPublic(row) }) as TopLevelItem[];
 }
 
-/** A stored codebook's unit fields (docs/plans/design.md §3). */
+/** A stored design version's unit fields (docs/plans/design.md §3). */
 export function designVersionUnits(row: Pick<DesignVersionRow, "units">): UnitsSpec {
   const parsed = UnitsSpecSchema.safeParse(row.units);
   return parsed.success ? parsed.data : { fields: [] };
@@ -59,7 +59,7 @@ export function toDesignVersionMeta(row: DesignVersionRow): DesignVersionMeta {
   };
 }
 
-/** A stored codebook as served. */
+/** A stored design version as served. */
 export function toDesignVersion(row: DesignVersionRow): DesignVersion {
   return { ...toDesignVersionMeta(row), studyId: row.studyId, items: storedItems(row), units: designVersionUnits(row), session: designVersionSession(row), public: designVersionPublic(row) };
 }

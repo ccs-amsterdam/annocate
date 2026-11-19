@@ -5,10 +5,10 @@ import { PublicInfoSchema, SessionSpecSchema, type PublicInfo, type SessionSpec 
 import { TopLevelItemSchema, type TopLevelItem } from "./item.js";
 import { semanticIssues } from "./validation.js";
 
-/** A codebook's items. */
+/** A design's items. */
 export const DesignItemsSchema = z
   .array(TopLevelItemSchema)
-  .min(1, "A codebook needs at least one item")
+  .min(1, "A design needs at least one item")
   .superRefine((items, ctx) => {
     // The item schemas report their own issues; add the rest.
     for (const issue of semanticIssues(items).filter((i) => !i.warning)) {
@@ -18,7 +18,7 @@ export const DesignItemsSchema = z
 
 /**
  * A draft's items: any list. Drafts may be
- * saved while they don't pass validation (work in progress); a codebook is
+ * saved while they don't pass validation (work in progress); a design version is
  * only checked in full (`DesignItemsSchema`) to deploy or preview it.
  */
 export const DraftItemsSchema = z.array(z.unknown()).max(10_000);
@@ -66,14 +66,14 @@ export const DesignVersionMetaSchema = z.object({
   updatedBy: z.string().nullable(),
   /** Bumped on every save: what `revision` in a write refers to. */
   revision: z.number().int().positive(),
-  /** Once true, the codebook can no longer be edited/deleted (CONTRACTS.md). */
+  /** Once true, the design version can no longer be edited/deleted (CONTRACTS.md). */
   immutable: z.boolean(),
   /** Whether it passes validation: required to deploy or preview it. */
   valid: z.boolean(),
 });
 export type DesignVersionMeta = z.infer<typeof DesignVersionMetaSchema>;
 
-/** Full codebook document as returned by the server. A draft's items may not pass validation (`valid`). */
+/** A design version as returned by the server. A draft's items may not pass validation (`valid`). */
 export const DesignVersionSchema = DesignVersionMetaSchema.extend({
   studyId: IdSchema,
   items: z.custom<TopLevelItem[]>((v) => Array.isArray(v)),

@@ -61,7 +61,7 @@ export type AnnotationPage = z.infer<typeof AnnotationPageSchema>;
 
 /**
  * A unit as coders saw it (docs/architecture.md §8.4): its external id and
- * the fields the codebook showed (`shownUnitFields`), kept once per version.
+ * the fields the design showed (`shownUnitFields`), kept once per version.
  * A unit replaced after it was coded has several; every answer points to
  * the one its coder saw (`unitVersionId`).
  */

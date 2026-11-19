@@ -5,7 +5,7 @@ import { z } from "zod";
 // UnitFields.tsx). Values are inserted with references and `{{ }}` (see
 // references.ts); they are plain text unless a suffix says otherwise, so a
 // value is never interpreted as markdown by accident. Attached to a
-// `unit_loop` codebook item.
+// `unit_loop` design item.
 export const UnitLayoutSchema = z.object({
   template: z
     .string()

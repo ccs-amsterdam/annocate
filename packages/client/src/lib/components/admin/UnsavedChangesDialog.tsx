@@ -12,7 +12,7 @@ interface UnsavedChangesDialogProps {
 }
 
 /**
- * Modal dialog warning the user about unsaved codebook changes before navigating away.
+ * Modal dialog warning the user about unsaved design changes before navigating away.
  * Provides 3 distinct actions:
  * - Cancel: stay on the current page, don't navigate.
  * - Discard changes: drop unsaved modifications and proceed.
@@ -38,7 +38,7 @@ export function UnsavedChangesDialog({
           <div>
             <h3 className="text-base font-bold text-foreground">Unsaved Changes</h3>
             <p className="text-xs text-muted-foreground">
-              You have unsaved changes in your codebook.
+              You have unsaved changes in your design.
             </p>
           </div>
         </div>

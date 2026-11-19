@@ -36,7 +36,7 @@ export function toLinkResponse(row: LinkRow): LinkResponse {
 }
 
 /**
- * The links a codebook makes with the deployed set columns (`live`) or the
+ * The links a design makes with the deployed set columns (`live`) or the
  * draft's: one per coder (unless they sign in), per value of a condition
  * assigned by link, and per combination of its link parameters' values.
  */
@@ -49,7 +49,7 @@ async function linksOf(db: Db, studyId: number, items: DesignItem[], live: boole
 }
 
 /**
- * Checks how many links deploying a codebook makes: at most `MAX_LINKS`
+ * Checks how many links deploying a design makes: at most `MAX_LINKS`
  * (400), and more than `CONFIRM_LINKS` only when confirmed (409
  * `confirm_links`). Returns the number.
  */
@@ -64,7 +64,7 @@ export async function checkLinkCount(db: Db, studyId: number, items: DesignItem[
 const linkLabel = (values: Record<string, string>) => Object.values(values).join(" · ") || "Open link";
 
 /**
- * Makes the study's links match its deployed codebook (§4): a link per
+ * Makes the study's links match its deployed design version (§4): a link per
  * combination of the link parameters' values. Missing links are made (with
  * `secrets` in order, else random ones); links the design no longer makes
  * are retired, never deleted (coders came from them); retired links that

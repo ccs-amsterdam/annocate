@@ -50,7 +50,7 @@ function ownContent(item: DesignItem): string {
 
 /**
  * What changed between two design versions, item by item (items are matched by
- * name, which is unique in a codebook; conditions by place). In document order: removed items in
+ * name, which is unique in a design; conditions by place). In document order: removed items in
  * the order of `before`, then the rest in the order of `after`.
  */
 export function diffDesigns(

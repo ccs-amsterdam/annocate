@@ -3,7 +3,7 @@ import type { DesignVersion, StudyResponse, SetGroupResponse } from "@annotinder
 import { api } from "./helpers";
 
 // The setup wizard (docs/plans/setup-wizard.md): through its steps to a study
-// with a draft codebook, opened in the editor to specify the questions.
+// with a draft design version, opened in the editor to specify the questions.
 
 test("annotation with an experiment: a set of units per condition, questions before, per unit and after", async ({ page, request }) => {
   await page.goto("/research");

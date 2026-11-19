@@ -61,7 +61,7 @@ test("your first study, as the help describes it: units, a design, deploy, a lin
   await page.getByRole("button", { name: /Upload 3 units/ }).click();
   await expect.poll(async () => (await api<unknown[]>(request, "GET", `/study/${study.id}/units`)).length).toBe(3);
 
-  // 3-6. A codebook (written through the API: the editor has its own unit tests), published
+  // 3-6. A design (written through the API: the editor has its own unit tests), published
   const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
     note: "v1",
     items: [

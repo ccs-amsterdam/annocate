@@ -75,7 +75,7 @@ export interface HttpCoderApiConfig {
   linkSecret?: string;
   /**
    * The page's other query parameters: the participant id, the link's
-   * required URL parameters, and the codebook's `url_param` auto variables.
+   * required URL parameters and the design's other URL parameters.
    * The server stores the ones it needs when the coder starts.
    */
   urlParams?: Record<string, string>;

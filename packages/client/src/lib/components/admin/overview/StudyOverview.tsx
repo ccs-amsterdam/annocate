@@ -203,7 +203,7 @@ function VersionLink({
           type="button"
           onClick={() => onOpen(version)}
           className="group flex max-w-xs items-center gap-1.5 text-left text-sm font-medium text-foreground hover:text-primary"
-          title={`Open v${number} in the codebook editor`}
+          title={`Open v${number} in the design editor`}
         >
           <Icon className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">

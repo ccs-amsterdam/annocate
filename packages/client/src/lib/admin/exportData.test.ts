@@ -56,7 +56,7 @@ describe("data download", () => {
     expect(answerJson({ done: true, skip: false, values: [{ value: "1" }, { value: "99" }] }, true)).toBe("[1,99]");
   });
 
-  it("makes a row per unit and coder, a column per question in codebook order", () => {
+  it("makes a row per unit and coder, a column per question in design order", () => {
     const table = annotationsTable(
       [
         row(1, 1, "topic", { done: true, skip: false, values: [{ value: "politics" }] }),
@@ -124,7 +124,7 @@ describe("data download", () => {
     expect(toCsv(formulas, false)).toContain("\r\n=HYPERLINK(1)\r\n");
   });
 
-  it("adds label columns, with the label in the codebook version each answer was given under", () => {
+  it("adds label columns, with the label in the design version each answer was given under", () => {
     const version = (label: string) =>
       [
         {

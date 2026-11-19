@@ -227,7 +227,7 @@ const sentimentQuestion = {
 };
 
 /**
- * Creates a codebook with the given unit_loop settings (by default with one
+ * Creates a design with the given unit_loop settings (by default with one
  * question, `sentiment`) and deploys it as a new version. Returns the
  * deployment response.
  */
@@ -262,7 +262,7 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
   return (await deploy.json()) as DeploymentResponse;
 }
 
-/** Deploys the draft units and sets with the deployed codebook (docs/plans/design.md §5). */
+/** Deploys the draft units and sets with the deployed design version (docs/plans/design.md §5). */
 async function deployDrafts(): Promise<DeploymentResponse> {
   const current = (await (await server.request("/api/study/1/deployment", { headers: adminHeaders })).json()) as { designVersionId: number };
   const res = await server.request("/api/study/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: current.designVersionId, units: true }) });
@@ -290,7 +290,7 @@ async function createSet(name: string, externalIds: string[], group = "g") {
   return ids;
 }
 
-/** The deployed codebook's links: params -> secret. */
+/** The deployed design version's links: params -> secret. */
 async function links(): Promise<{ id: number; secret: string; params: Record<string, string>; retiredAt: string | null }[]> {
   return (await (await server.request("/api/study/1/links", { headers: adminHeaders })).json()) as never;
 }
@@ -298,7 +298,7 @@ async function links(): Promise<{ id: number; secret: string; params: Record<str
 let extraLinks = 0;
 /**
  * Another link to the study, with these access settings (as a researcher sets
- * them on a link). Made directly: links come from the deployed codebook,
+ * them on a link). Made directly: links come from the deployed design version,
  * so a later deploy retires it.
  */
 async function link(settings: { participantId?: string; maxUses?: number } = {}) {
@@ -490,7 +490,7 @@ describe("coders", () => {
     expect(await anna.next()).toBeNull();
     const deployed = await deployDrafts();
     expect((await anna.next())!.id).toBe(set[0]);
-    // A new version that changed the units, not the codebook
+    // A new version that changed the units, not the design
     const versions = (await (await server.request("/api/study/1/deployment/versions", { headers: adminHeaders })).json()) as { version: number; changes: unknown }[];
     expect(versions[0]).toMatchObject({ version: deployed.version, changes: { design: false, units: { added: 0, changed: 0, removed: 0, sets: true } } });
     // With the release (and commit) it ran on
@@ -1342,7 +1342,7 @@ describe("sessions across devices", () => {
 });
 
 describe("resuming and codebook updates", () => {
-  it("refuses requests made with an older codebook version, until the session is loaded again", async () => {
+  it("refuses requests made with an older design version, until the session is loaded again", async () => {
     const c = coder("v");
     const { version } = await c.session();
     const unit = await c.next();
@@ -1378,7 +1378,7 @@ describe("resuming and codebook updates", () => {
     expect((await c.call(`/loop/1/units/${unit3}`)).status).toBe(404);
   });
 
-  it("keeps answers to questions a codebook update removed, and tags the codebook version", async () => {
+  it("keeps answers to questions a design update removed, and tags the design version", async () => {
     // demo codebook: sentiment + actors_and_issues + other loop questions
     const c = coder("upd");
     const unit = await c.next();
@@ -1537,7 +1537,7 @@ describe("finished units follow the current codebook", () => {
     };
     await redeploy(fixedMain, [second]);
     const c = coder("two");
-    // Loops are numbered by position: second_loop (first in the codebook) is 1, main_loop 2.
+    // Loops are numbered by position: second_loop (first in the design) is 1, main_loop 2.
     const unit = await c.next("2");
     expect((await c.submit(unit!.id, sentiment("neutral"), "2")).status).toBe(200);
 
@@ -1669,7 +1669,7 @@ describe("unit versions", () => {
     expect(page.versions.filter((v) => v.unitId === unit.id).map((v) => v.data.text)).toEqual([row.data.text, "edited"]);
   });
 
-  it("sends coders only the unit fields the codebook uses", async () => {
+  it("sends coders only the unit fields the design uses", async () => {
     expect((await upload([{ externalId: "secret", data: { headline: "h", text: "t" } }], {})).status).toBe(201);
     await redeploy({ layout: { template: "$unit.headline" } });
     const unit = (await coder("c").next())!;
@@ -1790,7 +1790,7 @@ describe("unit fields in the design", () => {
     const items = (await get(draft.id)).items;
     await server.request(`/api/study/1/design/${draft.id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ items }) });
     expect((await get(draft.id)).units.fields.map((f) => f.name)).toContain("source");
-    // A codebook using a field the design doesn't declare can't be deployed
+    // A design using a field it doesn't declare can't be deployed
     const created = await server.request("/api/study/1/design", {
       method: "POST",
       headers: adminHeaders,
@@ -1811,7 +1811,7 @@ describe("unit fields in the design", () => {
     const kept = [...fields.filter((f) => f.name !== "source"), { name: "nowhere", type: "number" }];
     expect((await putFields(kept)).status).toBe(200);
     expect((await draftUnit(unit.id)).data).not.toHaveProperty("source");
-    // A field the codebook uses can't be removed; a value that doesn't fit a new type stops a retype
+    // A field the design uses can't be removed; a value that doesn't fit a new type stops a retype
     expect((await putFields(kept.filter((f) => f.name !== "nowhere"))).status).toBe(409);
     expect((await putFields(kept.map((f) => (f.name === "text" ? { ...f, type: "number" } : f)))).status).toBe(400);
   });
@@ -1882,7 +1882,7 @@ describe("researcher preview", () => {
     };
   };
 
-  it("runs the latest codebook, deployed or not, and picks up edits", async () => {
+  it("runs the latest design version, deployed or not, and picks up edits", async () => {
     await draft("draft 1");
     const { deploymentId, token } = await openPreview();
     expect(deploymentId).toBe("1.preview");
@@ -1994,7 +1994,7 @@ describe("end items", () => {
     expect((await c.call(`/loop/1/units/${unit!.id}`)).status).toBe(200);
   });
 
-  it("only for end items of the codebook", async () => {
+  it("only for end items of the design", async () => {
     const res = await coder("other").call("/end", { method: "POST", body: JSON.stringify({ item: "consent" }) });
     expect(res.status).toBe(400);
   });

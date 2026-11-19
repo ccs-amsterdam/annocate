@@ -36,7 +36,7 @@ import { SharedSettings } from "./UnitLoopForm";
 // The setup wizard (docs/plans/setup-wizard.md): what the study does, the
 // experiment's conditions, the units and how they are shown, the names of
 // the questions, and who codes what. It makes a recipe (admin/setupRecipe.ts); the study then
-// opens in the codebook editor, where the questions get their answer types.
+// opens in the design editor, where the questions get their answer types.
 
 type Step = "start" | "experiment" | "units" | "distribution" | "layout" | "questions" | "create";
 
@@ -597,7 +597,7 @@ function CreateStep({ a, problems }: { a: SetupAnswers; problems: string[] }) {
         ))}
       </ul>
       <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm text-foreground">
-        <p className="font-medium">Next, in the codebook editor</p>
+        <p className="font-medium">Next, in the design editor</p>
         <p className="mt-1 text-muted-foreground">
           The study opens on its Editor tab. Questions marked <em>to specify</em> need an answer type: select each one and choose
           it. Then save, preview, and deploy; coders can start once it is deployed.

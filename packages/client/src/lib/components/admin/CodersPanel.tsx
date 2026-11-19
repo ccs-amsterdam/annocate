@@ -23,7 +23,7 @@ function endedText(ended: CoderProgress["ended"]): string {
 /**
  * Coder progress (docs/client.md §7): who started, through which
  * link, when they were last active, how their session ended, and how
- * many units they finished per loop of the live codebook. Coders' requests
+ * many units they finished per loop of the live design version. Coders' requests
  * to delete their answers come first, to delete now or later (they are
  * then no longer brought up, but stay marked); any coder's data can be
  * deleted (also by participant id or email). Deleted coders stay listed in
@@ -33,7 +33,7 @@ function endedText(ended: CoderProgress["ended"]): string {
 export function CodersPanel({ client }: { client: ResearcherApi }) {
   const codersQuery = useCodersQuery(client);
   const coders = sortByActivity(codersQuery.data ?? []);
-  // Loops of the live codebook (every coder has the same keys)
+  // Loops of the live design version (every coder has the same keys)
   const loops = Object.keys(coders[0]?.finished ?? {});
   // The special sets the study has (overlap, gold, practice): units of them each coder finished
   const specials = (["overlap", "gold", "practice"] as const).filter((kind) => coders.some((c) => c.special?.[kind]));

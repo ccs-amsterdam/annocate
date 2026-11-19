@@ -12,4 +12,4 @@ export function JsonCodeEditor(props: MonacoJsonProps) {
   );
 }
 
-export { CODEBOOK_MODEL, ITEM_MODEL } from "./models";
+export { DESIGN_MODEL, ITEM_MODEL } from "./models";

@@ -15,9 +15,9 @@ import type { AnyVariableType } from "./variableTypes.js";
 //   $session.<name>                     the session's participant id (`participant`) and
 //                                       the URL parameters its link requires
 //
-// Names are always literal, so what a codebook refers to (and where) can be
+// Names are always literal, so what a design refers to (and where) can be
 // checked without running anything. All functions here are pure, shared by
-// the client runtime, codebook validation and the admin editor.
+// the client runtime, design validation and the admin editor.
 
 export type ReferenceNamespace = "unit" | "var" | "session";
 
@@ -486,7 +486,7 @@ export function questionValues(variable: AnyVariableType): OptionValue[] | undef
 
 export type ReferenceValueType = "string" | "number" | "boolean" | "any";
 
-/** What a reference holds, as follows from the codebook (never from the runtime value). */
+/** What a reference holds, as follows from the design (never from the runtime value). */
 export type ReferenceShape =
   | {
       ok: true;

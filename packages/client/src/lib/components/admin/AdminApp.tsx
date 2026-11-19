@@ -71,7 +71,7 @@ export type LeaveGuard = (when: boolean) => { blocked: boolean; proceed: () => v
 const noGuard: LeaveGuard = () => ({ blocked: false, proceed: () => {}, stay: () => {} });
 
 /**
- * The tabs, grouped: designing the study (codebook, units), deploying it
+ * The tabs, grouped: designing the study (design, units), deploying it
  * (links, coders), its results, and settings. A group with more than
  * one page shows them as sub tabs. A group with a `start` page opens there
  * (Design: cards for its pages), without sub tabs.
@@ -178,7 +178,7 @@ function AdminAppInner({
   const selectedStudyId = location.page === "study" ? location.studyId : null;
   const [me, setMe] = useState(initialMe);
   const serverPage = location.page === "server";
-  // Unsaved codebook edits from an earlier session (localBackup.ts), read once
+  // Unsaved design edits from an earlier session (localBackup.ts), read once
   const [backup, setBackup] = useState(() => readBackup());
   const [restore, setRestore] = useState<DesignBackup | null>(null);
   const banner = backup && (
@@ -191,7 +191,7 @@ function AdminAppInner({
         setBackup(null);
       }}
       onDiscard={() => {
-        if (!confirm("Throw away these unsaved codebook changes?")) return;
+        if (!confirm("Throw away these unsaved design changes?")) return;
         clearBackup();
         setBackup(null);
       }}
@@ -256,7 +256,7 @@ function StudyAdminView({
   onSwitchStudy,
   useLeaveGuard,
 }: {
-  /** Offers unsaved codebook edits from an earlier session, if any. */
+  /** Offers unsaved design edits from an earlier session, if any. */
   banner: ReactNode;
   /** Those edits, once the researcher chose to continue with them. */
   restore: DesignBackup | null;
@@ -457,7 +457,7 @@ function StudyAdminView({
   );
 }
 
-/** Offers unsaved codebook edits from an earlier session (the browser was closed): continue with them, or throw them away. */
+/** Offers unsaved design edits from an earlier session (the browser was closed): continue with them, or throw them away. */
 function BackupBanner({
   client,
   backup,
@@ -477,7 +477,7 @@ function BackupBanner({
       <div className="flex items-start gap-2.5">
         <FilePen className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
         <div>
-          <p className="font-semibold text-foreground">You have unsaved changes in the codebook editor</p>
+          <p className="font-semibold text-foreground">You have unsaved changes in the design editor</p>
           <p className="text-muted-foreground">
             In {study ? `"${study.name}"` : `study #${backup.studyId}`}, from {when}. They were kept in this browser.
           </p>

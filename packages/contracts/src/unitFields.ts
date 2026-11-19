@@ -28,7 +28,7 @@ export type UnitField = z.infer<typeof UnitFieldSchema>;
 /**
  * The design's units (docs/plans/design.md §3): the study's unit fields and
  * their types, the one specification of them. Uploads write it (new
- * columns are added); the codebook's `$unit` references must be declared.
+ * columns are added); the design's `$unit` references must be declared.
  */
 export const UnitsSpecSchema = z.object({ fields: z.array(UnitFieldSchema).max(500) });
 export type UnitsSpec = z.infer<typeof UnitsSpecSchema>;

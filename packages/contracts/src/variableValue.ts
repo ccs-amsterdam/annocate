@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ClientIdSchema } from "./common.js";
 
-// The coder-submitted "answer" for a single codebook variable: one
+// The coder-submitted "answer" for a single question: one
 // JSON-serializable value (replacing the old app's `Annotation` /
 // `VariableAnnotations` rows).
 //

@@ -15,7 +15,7 @@ const given = (studyId: number) => and(eq(a.studyId, studyId), isNull(a.retiredA
 const ACTIVITY_DAYS = 30;
 
 /**
- * Coder id -> units finished, per loop of the live codebook: every question
+ * Coder id -> units finished, per loop of the live design version: every question
  * of the loop has a live answer (the rule of `listFinished`).
  */
 async function finishedPerLoop(db: Db, studyId: number): Promise<Map<string, Map<number, number>>> {

@@ -36,15 +36,15 @@ interface LinksPanelProps {
  * The study's links (docs/plans/sets-and-session-parameters.md §4): made from
  * the deployed design, one per combination of its link parameters'
  * values. Here their access settings (label, login, emails, max uses), and
- * revoking or renewing a link. Links the codebook no longer makes are
+ * revoking or renewing a link. Links the design no longer makes are
  * retired, never deleted: coders and their answers refer to the link they
  * came from.
  */
 export function LinksPanel({ client }: LinksPanelProps) {
   const linksQuery = useLinksQuery(client);
   const deployment = useDeploymentQuery(client).data;
-  const codebook = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data;
-  const items = (codebook ? designItems(codebook) : []) as TopLevelItem[];
+  const version = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data;
+  const items = (version ? designItems(version) : []) as TopLevelItem[];
   const session = sessionItem(items);
   // The deployed sets: links are the deployed design's
   const groups = useSetGroupsQuery(client, true).data ?? [];

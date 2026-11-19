@@ -112,7 +112,7 @@ export function toUnitMeta(row: UnitRow): UnitMeta {
 }
 
 /**
- * Writes the unit fields into the design's draft: the latest codebook if it
+ * Writes the unit fields into the design's draft: the latest design version if it
  * is a draft (without a new revision: the fields aren't the editor's
  * edits), else a new draft with the latest version's items.
  */

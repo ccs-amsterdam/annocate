@@ -94,7 +94,7 @@ export function UnitLoopForm({
   loop: UnitLoopItem;
   /** What selects a session's units (its coder, linked conditions): for the Units tab's summary. */
   shareSources?: ShareSource[];
-  /** The codebook's end items with outcome `screenout`: where gold checks can end a session. */
+  /** The design's end items with outcome `screenout`: where gold checks can end a session. */
   screenouts?: string[];
   /** For "Generate sets…" (absent: not offered). */
   client?: ResearcherApi;

@@ -80,7 +80,7 @@ export function coderApi(server: Server): Hono {
     c.set("runtime", runtime);
     // The client works with the codebook of the version it loaded; after a
     // deploy it must load the session again (the session and transfer
-    // links don't depend on the codebook).
+    // links don't depend on the design).
     const version = c.req.header(VERSION_HEADER);
     const exempt = c.req.path.endsWith("/session") || c.req.path.endsWith("/transfer");
     if (version !== undefined && version !== String(runtime.version) && !exempt) {
@@ -93,7 +93,7 @@ export function coderApi(server: Server): Hono {
     // participant id). `x-new-session`: the coder asked for a new one (a
     // participant id that already has a session elsewhere).
     const linkSecret = c.req.header("x-link-secret");
-    // The page's query parameters: the participant id and the codebook's URL parameters.
+    // The page's query parameters: the participant id and the design's URL parameters.
     const urlParams = Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));
     const newSession = c.req.header("x-new-session") === "1";
     const link = linkSecret ? await linkInfo(server.db, linkSecret) : null;

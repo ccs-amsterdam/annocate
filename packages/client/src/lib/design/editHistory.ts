@@ -2,7 +2,7 @@ import type { TopLevelItem } from "@annotinder/contracts";
 import { deleteItem, updateItem } from "./itemEdit";
 import { findItem, flattenTree, keyOf } from "../codebook/tree";
 
-// Undo/redo and "what changed since the last save" for the codebook editor
+// Undo/redo and "what changed since the last save" for the design editor
 // (docs/client.md §7). The editor keeps whole snapshots of the items: the
 // updates are immutable, so unchanged items are shared between snapshots and
 // keeping 100 of them is cheap.

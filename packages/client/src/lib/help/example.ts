@@ -85,7 +85,7 @@ function exampleQuestion(alternatives: (string | number | null)[]): AnyVariableT
 }
 
 /**
- * The example as a codebook, for checking it: its answers as questions
+ * The example as a design, for checking it: its answers as questions
  * before a loop (those in `steps` in the loop, in that order, the other
  * steps as confirm questions), and the template as the loop's layout.
  */

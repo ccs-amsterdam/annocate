@@ -17,7 +17,7 @@ export const StudyOverviewSchema = z.object({
   }),
   answers: z.number().int().nonnegative(),
   /**
-   * (unit, coder) pairs that finished a loop of the live codebook: every
+   * (unit, coder) pairs that finished a loop of the live design version: every
    * question of the loop answered (the rule of the backend `finished` endpoint).
    * Zero if nothing is deployed.
    */

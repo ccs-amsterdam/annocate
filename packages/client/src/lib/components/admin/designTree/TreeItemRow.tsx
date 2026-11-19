@@ -27,7 +27,7 @@ function rowTitle(item: TreeNode): string {
 /** How a position is called in the add menu. */
 function positionLabel(items: TopLevelItem[], position: TreePosition): string {
   if ("into" in position) {
-    if (position.into === null) return "At the end of the codebook";
+    if (position.into === null) return "At the end of the design";
     const container = findItem(items, position.into);
     return `Inside ${container ? rowTitle(container as TreeNode) : "it"}`;
   }

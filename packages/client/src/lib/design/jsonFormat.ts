@@ -1,4 +1,4 @@
-// Formats JSON for the codebook editor's JSON views (docs/client.md §7):
+// Formats JSON for the design editor's JSON views (docs/client.md §7):
 // indented like JSON.stringify(value, null, 2), except that small objects and
 // arrays of plain values stay on one line when they fit, e.g. an option
 // `{ "value": "neg", "label": "Negative" }` or `"items": ["a", "b"]`.

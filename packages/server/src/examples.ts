@@ -22,7 +22,7 @@ import { createStudyFromRecipe } from "./shared/recipes.js";
 
 // Example studies (docs/plans/examples.md): recipes (shared/recipes.ts) that
 // ship with AnnoTinder, as files in `examples/<id>.json`, with a deployed
-// codebook and sometimes example answers. Making a study from one gives an
+// design and sometimes example answers. Making a study from one gives an
 // ordinary study, to try and adapt.
 
 const EXAMPLES_DIR = new URL("../examples/", import.meta.url);
@@ -56,7 +56,7 @@ const ExampleFileSchema = RecipeSchema.extend({
       }),
     )
     .default([]),
-}).refine((e) => e.publish, "An example publishes its codebook");
+}).refine((e) => e.publish, "An example publishes its design");
 type ExampleFile = z.infer<typeof ExampleFileSchema>;
 
 let catalogue: Map<string, ExampleFile> | null = null;

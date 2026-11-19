@@ -8,9 +8,9 @@ import { SetGroupNameSchema } from "../sets.js";
 // and the conditions linked to set columns (session.ts, the random
 // condition). A loop works within the session's units: an optional filter
 // on a set column, optional distribution criteria (a shared queue), and the
-// placement of special units. The codebook refers to set columns and their
+// placement of special units. The design refers to set columns and their
 // values by name; which units are in them lives with the units, so a
-// codebook can be shared and reproduced without revealing them.
+// design can be shared and reproduced without revealing them.
 
 /**
  * Whether coders' answers to a question can be compared for an agreement

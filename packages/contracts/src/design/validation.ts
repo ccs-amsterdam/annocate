@@ -49,7 +49,7 @@ interface RefContext {
 }
 
 /**
- * Validates a codebook's items array:
+ * Validates a design's items array:
  * 1. Validates each top-level item against the TopLevelItemSchema
  * 2. Enforces unique names across all items in the tree
  * 3. Enforces that span variable references in relations exist in preceding items
@@ -294,7 +294,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     return { shown: new Set(names.shown), selectable: new Set(names.selectable) };
   }
 
-  /** End items anywhere in the codebook: name -> outcome. */
+  /** End items anywhere in the design: name -> outcome. */
   const endItems = new Map<string, unknown>();
   const collectEnds = (list: unknown) => {
     for (const raw of Array.isArray(list) ? list : []) {
@@ -381,8 +381,8 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
 
   /** The Session item: first, once, top level; its parameters' names unique, combinations of its link parameters. */
   function checkSession(item: RawItem, itemPath: Path, index: number, nested: boolean) {
-    if (nested || index !== 0) issue([...itemPath, "type"], "The Session item comes first in the codebook, at the top");
-    if (items.filter((i) => (i as { type?: unknown } | null)?.type === "session").length > 1) issue([...itemPath, "type"], "A codebook has one Session item");
+    if (nested || index !== 0) issue([...itemPath, "type"], "The Session item comes first in the design, at the top");
+    if (items.filter((i) => (i as { type?: unknown } | null)?.type === "session").length > 1) issue([...itemPath, "type"], "A design has one Session item");
     const session = item as unknown as Partial<SessionItem>;
     const params = Array.isArray(session.params) ? session.params : [];
     const names = params.map((p) => p?.name);
@@ -623,7 +623,7 @@ export function callArgumentProblems(variable: AnyVariableType, call: Pick<Simpl
     .map((arg) => `${JSON.stringify(arg)} is not an answer option of ${subject} (${values.map((v) => JSON.stringify(v)).join(", ")})`);
 }
 
-/** Validation errors only (warnings left out): what blocks saving a codebook. */
+/** Validation errors only (warnings left out): what blocks saving a design. */
 export function designErrors(items: unknown[]): DesignIssue[] {
   return validateDesignItems(items).filter((i) => !i.warning);
 }

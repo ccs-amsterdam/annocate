@@ -3,7 +3,7 @@ import { IdSchema } from "./common.js";
 
 // Set groups (docs/plans/sets-and-session-parameters.md §1): a group is a
 // column of the units; each unit's cell names the set(s) it is in, e.g.
-// `s1`, `s1;s2`, or `s1#3;s2#1` (positions). The codebook refers to a group
+// `s1`, `s1;s2`, or `s1#3;s2#1` (positions). The design refers to a group
 // by name, and to a set as `{ group, set }`. Names starting with `_` are
 // reserved: `_overlap`, the units every coder of the group codes too.
 
@@ -33,7 +33,7 @@ export const SetNameSchema = z
   .refine((s) => !/[;#]/.test(s) && s.trim() === s, "A set's name has no ; or #, and no spaces at its ends")
   .refine((s) => !s.startsWith("_") || (RESERVED_SETS as readonly string[]).includes(s), "Set names starting with _ are reserved (_overlap, _practice, _gold)");
 
-/** A set of a group, as the codebook refers to it. */
+/** A set of a group, as the design refers to it. */
 export const SetRefSchema = z.object({ group: SetGroupNameSchema, set: SetNameSchema });
 export type SetRef = z.infer<typeof SetRefSchema>;
 

@@ -4,7 +4,7 @@ import { AlertCircle, Maximize2, Minimize2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatJson } from "../../design/jsonFormat";
 import { designShapeError } from "../../design/itemShape";
-import { CODEBOOK_MODEL, JsonCodeEditor } from "./jsonEditor/JsonCodeEditor";
+import { DESIGN_MODEL, JsonCodeEditor } from "./jsonEditor/JsonCodeEditor";
 import type { MonacoEditor } from "./jsonEditor/MonacoJson";
 
 /** Lines that open a "variable" or "layout" object: the details "Fold details" collapses. */
@@ -49,7 +49,7 @@ function designText(items: TopLevelItem[]): string {
 
 /**
  * The whole design as JSON (docs/client.md §7), with completion and checks
- * from the codebook's JSON Schema. Applied to the draft on every edit that
+ * from the design's JSON Schema. Applied to the draft on every edit that
  * parses to items the editor can show; validation issues are listed in the
  * toolbar as for the visual editor.
  */
@@ -128,7 +128,7 @@ export function DesignJsonEditor({
 
       <div className="relative min-h-[400px] flex-1 overflow-hidden rounded-lg border border-border shadow-inner">
         <JsonCodeEditor
-          model={CODEBOOK_MODEL}
+          model={DESIGN_MODEL}
           value={text}
           onChange={edit}
           readOnly={disabled}

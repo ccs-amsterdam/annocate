@@ -126,8 +126,8 @@ describe("the Session item", () => {
   });
 
   it("comes first, once; its parameters are named once, not built in, and link parameters list their values", () => {
-    expect(messages([q, session({})])).toEqual(["The Session item comes first in the codebook, at the top"]);
-    expect(messages([session({}), session({})])).toEqual(expect.arrayContaining(["A codebook has one Session item"]));
+    expect(messages([q, session({})])).toEqual(["The Session item comes first in the design, at the top"]);
+    expect(messages([session({}), session({})])).toEqual(expect.arrayContaining(["A design has one Session item"]));
     const dup = [
       { name: "a", kind: "url", values: { open: {} } },
       { name: "a", kind: "url", param: "b", values: { open: {} } },

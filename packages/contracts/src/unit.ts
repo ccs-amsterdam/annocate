@@ -60,7 +60,7 @@ export type UnitsCreateBody = z.infer<typeof UnitsCreateBodySchema>;
 export const CoderUnitResponseSchema = z.object({
   id: IdSchema,
   externalId: z.string(),
-  /** Only the fields the codebook uses (`shownUnitFields`). */
+  /** Only the fields the design uses (`shownUnitFields`). */
   data: UnitDataSchema,
   variables: z.record(z.string(), VariableValueSchema),
   /**

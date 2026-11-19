@@ -111,7 +111,7 @@ describe("referenceShape", () => {
     return referenceShape(questions, references[0]);
   };
 
-  it("follows from the codebook", () => {
+  it("follows from the design", () => {
     expect(shape("$var.role.value")).toMatchObject({ ok: true, array: false, type: "string", values: ["student", "staff"] });
     expect(shape("$var.role.label")).toMatchObject({ ok: true, array: false, type: "string" });
     expect(shape("$var.edu.value")).toMatchObject({ ok: true, array: false, type: "number", values: [1, 2] });

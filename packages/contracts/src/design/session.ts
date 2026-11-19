@@ -7,8 +7,8 @@ import { SetGroupNameSchema } from "../sets.js";
 // link carries (link parameters, fixed in the link: one link per
 // combination of their values) and what may be added to it (URL parameters,
 // e.g. a panel's ids). All are `$session.<name>` values, stored on the
-// session when it starts. Declared by the codebook's Session item, so the
-// links follow from the codebook instead of being made by hand.
+// session when it starts. Declared by the design's Session item, so the
+// links follow from the design instead of being made by hand.
 
 /** Session values that can't be declared: the participant id, the `source` URL parameter, the login's email, the coder (`session.coders`). */
 export const RESERVED_SESSION_NAMES = ["participant", "source", "email", "coder"] as const;
@@ -243,7 +243,7 @@ export function sessionItem(items: readonly unknown[]): SessionItem | null {
   return (found as SessionItem | undefined) ?? null;
 }
 
-/** The names `$session` has under a codebook: its parameters, its conditions and the built-in ones. */
+/** The names `$session` has under a design: its parameters, its conditions and the built-in ones. */
 export function sessionNames(items: readonly unknown[]): string[] {
   const item = sessionItem(items);
   const named = [...(item?.params ?? []), ...(item?.conditions ?? [])].map((p) => p?.name);
@@ -282,7 +282,7 @@ export function sessionColumns(item: SessionItem | null): { name: string; column
 }
 
 /**
- * The links a codebook makes: one per combination of the coders (when they
+ * The links a design makes: one per combination of the coders (when they
  * don't sign in), the values of conditions assigned per link, and the
  * values of its link parameters (or the listed `combinations` of those),
  * each as name -> value. `setsOf` gives a set column's values (from the

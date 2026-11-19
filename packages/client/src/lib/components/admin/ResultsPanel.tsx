@@ -51,7 +51,7 @@ function save(bytes: Uint8Array, filename: string, type: string) {
 
 /**
  * Downloading the study's data (docs/client.md §7, "Results"): one zip with
- * the annotations, coders, the unit versions coded and the codebook's
+ * the annotations, coders, the unit versions coded and the design's
  * variables as CSV files, and a README, built in the browser from the
  * researcher API.
  */

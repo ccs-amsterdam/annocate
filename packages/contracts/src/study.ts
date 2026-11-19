@@ -55,7 +55,7 @@ export const StudyResponseSchema = StudyWriteSchema.extend({
 export type StudyResponse = z.infer<typeof StudyResponseSchema>;
 
 /**
- * An example study AnnoTinder ships (`GET /examples`): a codebook with units,
+ * An example study AnnoTinder ships (`GET /examples`): a design with units,
  * a link and sometimes example answers, to try and adapt
  * (docs/plans/examples.md).
  */

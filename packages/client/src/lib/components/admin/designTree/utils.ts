@@ -17,7 +17,7 @@ export function getChildren(item: TreeNode): TreeNode[] | null {
 /**
  * The questions' numbers, as the coding screen's top bar shows them: the
  * questions outside unit loops 1, 2, 3, ...; in a unit loop, its questions
- * from 1 (through conditions, in codebook order; a condition that hides a
+ * from 1 (through conditions, in design order; a condition that hides a
  * question doesn't renumber the rest here).
  */
 export function questionNumbers(items: readonly TreeNode[]): Map<string, number> {

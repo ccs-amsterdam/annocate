@@ -107,7 +107,7 @@ export function nestedQuestions(items: TopLevelItem[] | undefined): Set<string> 
  * option an update removed), else the value itself.
  */
 export class Labels {
-  /** codebook id -> question -> value -> label. */
+  /** design version id -> question -> value -> label. */
   private byVersion = new Map<number, Map<string, Map<string, string>>>();
 
   constructor(
@@ -154,12 +154,12 @@ interface Column {
   json?: boolean;
 }
 
-/** The answer columns for some values: per question a column (a scale one per item), in codebook order, with label columns. */
+/** The answer columns for some values: per question a column (a scale one per item), in design order, with label columns. */
 function answerColumns(values: Iterable<[string, VariableValue]>, order: string[], labels?: Labels, nested: ReadonlySet<string> = new Set()): Column[] {
   const items = new Map<string, Set<string | undefined>>();
   const json = new Set(nested);
   for (const [variable, value] of values) {
-    // Nested answers found in the data, also of questions the live codebook no longer has
+    // Nested answers found in the data, also of questions the live design version no longer has
     if (value.spans || value.relations || (value.values ?? []).filter((v) => v.item === undefined).length > 1) json.add(variable);
     const set = items.get(variable) ?? new Set();
     items.set(variable, set);
@@ -191,7 +191,7 @@ const cellOf = (
 ) =>
   c.json ? answerJson(value, numeric.has(c.variable)) : answerText(value, c.item, c.label && labels ? labels.writer(c.variable, designVersionId) : asIs, spans);
 
-/** Question names in codebook order (the live codebook's, if given). */
+/** Question names in design order (the live design version's, if given). */
 export function questionOrder(items: TopLevelItem[] | undefined): string[] {
   return items ? [...collectQuestions(items).questions.keys()] : [];
 }
@@ -315,7 +315,7 @@ export function resetAnswersTable(
  * Coders as a table: who they are (link, participant id), when they
  * started and were last active, how their session ended, units finished
  * per loop, and their coder-level answers (survey questions, `auto` groups;
- * labels from the live codebook).
+ * labels from the live design version).
  */
 export function codersTable(
   coders: CoderProgress[],

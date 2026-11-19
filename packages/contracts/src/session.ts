@@ -9,7 +9,7 @@ import { VariableValueSchema } from "./variableValue.js";
  * server (`GET /loop/:loop/next`).
  */
 export const SetProgressSchema = z.object({
-  /** The unit loop's key: its position in the codebook (`unitLoops`). */
+  /** The unit loop's key: its position in the design (`unitLoops`). */
   set: z.string(),
   doneUnitIds: z.array(IdSchema),
   /**
@@ -153,11 +153,11 @@ export const CoderErrorCodeSchema = z.enum([
   "session_ended",
   /** The session ended and its study closes finished sessions: its answers can't be looked at again. */
   "session_closed",
-  /** Preview only: the latest codebook has issues, so it can't run. */
+  /** Preview only: the latest design version has issues, so it can't run. */
   "design_invalid",
-  /** The codebook requires a URL parameter the link doesn't have. */
+  /** The design requires a URL parameter the link doesn't have. */
   "url_param_missing",
-  /** A URL parameter's value isn't one the codebook accepts (its values, pattern or length). */
+  /** A URL parameter's value isn't one the design accepts (its values, pattern or length). */
   "url_param_invalid",
   /** The researchers paused the study: no new sessions or units until they resume it (what is open can be saved). */
   "study_paused",

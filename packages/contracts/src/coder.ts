@@ -31,7 +31,7 @@ export const CoderProgressSchema = z.object({
   lastActive: z.coerce.date().nullable(),
   /** Live answers (unit-level variable values). */
   answers: z.number().int().nonnegative(),
-  /** unit loop title (`loopTitle`) -> units this coder finished, for the loops of the live codebook. */
+  /** unit loop title (`loopTitle`) -> units this coder finished, for the loops of the live design version. */
   finished: z.record(z.string(), z.number().int().nonnegative()),
   /**
    * Units of the deployed special sets (`_overlap`, `_gold`, `_practice`;
@@ -95,7 +95,7 @@ export type CoderDeletion = z.infer<typeof CoderDeletionSchema>;
 
 /**
  * An link (docs/coder-identity.md §3). Links are generated from
- * the deployed codebook: one per combination of its link parameters
+ * the deployed design version: one per combination of its link parameters
  * (docs/plans/sets-and-session-parameters.md §4). The researcher manages
  * who may use a link, not which links exist. Whether coders sign in is a
  * setting of the study (`StudyWrite.signIn`), not of a link.
@@ -126,7 +126,7 @@ export const LinkResponseSchema = LinkWriteSchema.extend({
   /** The link parameter values this link carries (`$session.<name>`). */
   params: z.record(z.string(), z.string()),
   /**
-   * Set when the deployed codebook no longer makes this link (e.g. its set
+   * Set when the deployed design version no longer makes this link (e.g. its set
    * was removed): no new coders ("This link is no longer active"). Cleared
    * if the link is part of the design again.
    */
