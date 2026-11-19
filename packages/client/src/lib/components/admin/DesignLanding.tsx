@@ -2,7 +2,13 @@ import type { ReactNode } from "react";
 import { ArrowRight, BookOpen, Layers } from "lucide-react";
 import { collectQuestions, unitLoops, type TopLevelItem } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useDeploymentQuery, useDesignVersionQuery, useDesignVersionsQuery, useUnitFieldsQuery, useUnitsQuery } from "../../admin/queries";
+import {
+  useDeploymentQuery,
+  useDesignVersionQuery,
+  useDesignVersionsQuery,
+  useUnitFieldsQuery,
+  useUnitsQuery,
+} from "../../admin/queries";
 import { describeVersions } from "../../design/versions";
 
 /**
@@ -12,7 +18,13 @@ import { describeVersions } from "../../design/versions";
  * So a researcher sees both parts, instead of landing in the editor and
  * missing the units.
  */
-export function DesignLanding({ client, onOpen }: { client: ResearcherApi; onOpen: (page: "Editor" | "Units") => void }) {
+export function DesignLanding({
+  client,
+  onOpen,
+}: {
+  client: ResearcherApi;
+  onOpen: (page: "Editor" | "Units") => void;
+}) {
   const versionsQuery = useDesignVersionsQuery(client);
   const deploymentQuery = useDeploymentQuery(client);
   const versions = describeVersions(versionsQuery.data ?? [], deploymentQuery.data?.designVersionId ?? null);
@@ -37,8 +49,16 @@ export function DesignLanding({ client, onOpen }: { client: ResearcherApi; onOpe
         action="Open the editor"
         onClick={() => onOpen("Editor")}
       >
-        <Fact label="Coders use">{live === null ? <span className="text-muted-foreground">nothing yet: not deployed</span> : `v${live}`}</Fact>
-        <Fact label="Draft">{draft === null ? <span className="text-muted-foreground">none: editing makes one</span> : `v${draft}, not deployed yet`}</Fact>
+        <Fact label="Coders use">
+          {live === null ? <span className="text-muted-foreground">nothing yet: not deployed</span> : `v${live}`}
+        </Fact>
+        <Fact label="Draft">
+          {draft === null ? (
+            <span className="text-muted-foreground">none: editing makes one</span>
+          ) : (
+            `v${draft}, not deployed yet`
+          )}
+        </Fact>
         {questions !== null && (
           <Fact label="Contents">
             {questions} question{questions === 1 ? "" : "s"}
@@ -53,14 +73,26 @@ export function DesignLanding({ client, onOpen }: { client: ResearcherApi; onOpe
         action="Open the units"
         onClick={() => onOpen("Units")}
       >
-        <Fact label="Units">{units === null ? "…" : units === 0 ? <span className="text-muted-foreground">none yet: upload a file</span> : units}</Fact>
+        <Fact label="Units">
+          {units === null ? (
+            "…"
+          ) : units === 0 ? (
+            <span className="text-muted-foreground">none yet: upload a file</span>
+          ) : (
+            units
+          )}
+        </Fact>
         <Fact label="Columns">
           {fields.length === 0 ? (
             <span className="text-muted-foreground">none yet</span>
           ) : (
             <span className="flex flex-wrap gap-1">
               {fields.map((f) => (
-                <span key={f.name} className="rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px]" title={f.description}>
+                <span
+                  key={f.name}
+                  className="rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px]"
+                  title={f.description}
+                >
                   {f.name} <span className="text-muted-foreground">{f.type}</span>
                 </span>
               ))}
@@ -91,7 +123,7 @@ function DesignCard({
     <button
       type="button"
       onClick={onClick}
-      className="group flex cursor-pointer flex-col gap-4 rounded-2xl border border-border bg-card p-6 text-left shadow-sm transition-colors hover:border-wood/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group flex cursor-pointer flex-col gap-4 rounded-2xl border border-border bg-card p-6 text-left shadow-sm transition-colors hover:border-wood/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
       <div className="flex items-center gap-3">
         <span className="rounded-xl bg-wood/10 p-2.5 text-wood">{icon}</span>

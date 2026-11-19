@@ -14,13 +14,26 @@ let cached: { item: JsonSchema; design: JsonSchema } | null = null;
 
 function build() {
   // Output shape: unknown fields are flagged (`additionalProperties: false`)
-  const items = z.toJSONSchema(z.array(TopLevelItemSchema), { io: "output", unrepresentable: "any", cycles: "ref", reused: "ref" }) as JsonSchema;
+  const items = z.toJSONSchema(z.array(TopLevelItemSchema), {
+    io: "output",
+    unrepresentable: "any",
+    cycles: "ref",
+    reused: "ref",
+  }) as JsonSchema;
   // One item without its children (they are edited as items of their own)
-  const item = JSON.parse(JSON.stringify({ ...items, type: undefined, items: undefined, $ref: (items.items as JsonSchema).$ref })) as JsonSchema;
+  const item = JSON.parse(
+    JSON.stringify({ ...items, type: undefined, items: undefined, $ref: (items.items as JsonSchema).$ref }),
+  ) as JsonSchema;
   dropChildren(item);
   // The design as the editor's JSON view shows it: its public info, session and items
   const design = z.toJSONSchema(
-    z.object({ public: PublicInfoSchema.nullable().optional(), session: SessionSpecSchema.optional(), items: z.array(TopLevelItemSchema) }).strict(),
+    z
+      .object({
+        public: PublicInfoSchema.nullable().optional(),
+        session: SessionSpecSchema.optional(),
+        items: z.array(TopLevelItemSchema),
+      })
+      .strict(),
     { io: "output", unrepresentable: "any", cycles: "ref", reused: "ref" },
   ) as JsonSchema;
   cached = { item, design };

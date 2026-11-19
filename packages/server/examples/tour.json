@@ -287,9 +287,7 @@
               "type": "nominal",
               "question": "What is the overall tone of this article?",
               "instruction": "A nominal question: pick one option. Options can have their own colours. Texts can use earlier answers: you said you are a **$var.role.label**. This question focuses on the text and dims the rest.",
-              "focus": [
-                "unit.text"
-              ],
+              "focus": ["unit.text"],
               "focusDim": true,
               "options": [
                 {
@@ -349,10 +347,7 @@
               "type": "span",
               "question": "Label the people, organisations, features and products in the headline and the text.",
               "instruction": "A span question: select words in the headline or the text and give them a label. You can label as many spans as you like.",
-              "fields": [
-                "headline",
-                "text"
-              ],
+              "fields": ["headline", "text"],
               "options": [
                 {
                   "value": "person",

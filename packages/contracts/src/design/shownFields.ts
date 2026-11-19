@@ -14,7 +14,8 @@ import { allTemplateReferences } from "./templateBlocks.js";
 function loopReferences(loop: UnitLoopItem, spanFields?: (field: string) => void): Reference[] {
   const refs: Reference[] = [];
   const snippets = loop.layout?.snippets;
-  const text = (source: unknown) => typeof source === "string" && refs.push(...allTemplateReferences(expandSnippets(source, snippets).source));
+  const text = (source: unknown) =>
+    typeof source === "string" && refs.push(...allTemplateReferences(expandSnippets(source, snippets).source));
   const script = (source: unknown) => typeof source === "string" && refs.push(...extractReferences(source).references);
 
   text(loop.layout?.template);
@@ -29,7 +30,12 @@ function loopReferences(loop: UnitLoopItem, spanFields?: (field: string) => void
       } else if (item.type === "end") {
         text(item.message);
       } else if ("variable" in item && item.variable) {
-        const variable = item.variable as { question?: unknown; instruction?: unknown; type?: string; fields?: unknown };
+        const variable = item.variable as {
+          question?: unknown;
+          instruction?: unknown;
+          type?: string;
+          fields?: unknown;
+        };
         text(variable.question);
         text(variable.instruction);
         if (spanFields && variable.type === "span" && Array.isArray(variable.fields)) {
@@ -77,7 +83,9 @@ export function loopDependencies(items: readonly unknown[]): Map<string, string[
       }
     };
     collect(loop.children);
-    const names = new Set(loopReferences(loop).flatMap((r) => (r.ns === "var" && !own.has(r.path[0]) ? [r.path[0]] : [])));
+    const names = new Set(
+      loopReferences(loop).flatMap((r) => (r.ns === "var" && !own.has(r.path[0]) ? [r.path[0]] : [])),
+    );
     out.set(key, [...names]);
   }
   return out;
@@ -104,7 +112,8 @@ export function fieldUsage(items: readonly unknown[]): Map<string, FieldUse> {
   for (const { loop } of unitLoops(items)) {
     // A field referred to more often than in the loop's scripts is in a text coders see
     const counts = new Map<string, number>();
-    for (const ref of loopReferences(loop, (f) => use(f, "shown"))) if (ref.ns === "unit") counts.set(ref.path[0], (counts.get(ref.path[0]) ?? 0) + 1);
+    for (const ref of loopReferences(loop, (f) => use(f, "shown")))
+      if (ref.ns === "unit") counts.set(ref.path[0], (counts.get(ref.path[0]) ?? 0) + 1);
     for (const [field, n] of counts) use(field, n > scriptCount(loop, field) ? "shown" : "sent");
     const units = loop.units;
     if (units?.filter?.column) use(units.filter.column, "server");
@@ -131,8 +140,14 @@ export function designSetColumns(items: readonly unknown[]): string[] {
   for (const c of session?.conditions ?? []) if (c?.units) columns.add(c.units);
   const walk = (list: unknown) => {
     for (const raw of Array.isArray(list) ? list : []) {
-      const it = raw as { type?: unknown; variable?: { type?: unknown; units?: unknown }; children?: unknown; units?: unknown } | null;
-      if (it?.type === "computed" && it.variable?.type === "random" && typeof it.variable.units === "string") columns.add(it.variable.units);
+      const it = raw as {
+        type?: unknown;
+        variable?: { type?: unknown; units?: unknown };
+        children?: unknown;
+        units?: unknown;
+      } | null;
+      if (it?.type === "computed" && it.variable?.type === "random" && typeof it.variable.units === "string")
+        columns.add(it.variable.units);
       if (it?.type === "unit_loop") {
         const column = (it.units as { filter?: { column?: unknown } } | undefined)?.filter?.column;
         if (typeof column === "string") columns.add(column);
@@ -148,7 +163,8 @@ export function designSetColumns(items: readonly unknown[]): string[] {
 function scriptCount(loop: UnitLoopItem, field: string): number {
   let n = 0;
   const count = (script: unknown) => {
-    for (const ref of extractReferences(String(script ?? "")).references) if (ref.ns === "unit" && ref.path[0] === field) n++;
+    for (const ref of extractReferences(String(script ?? "")).references)
+      if (ref.ns === "unit" && ref.path[0] === field) n++;
   };
   const walk = (list: unknown) => {
     if (!Array.isArray(list)) return;
@@ -173,6 +189,9 @@ export function undeclaredFields(items: readonly unknown[], declared: readonly {
 }
 
 /** Columns the design selects units by (`designSetColumns`) that are declared, but not as `set` fields. */
-export function notSetColumns(items: readonly unknown[], declared: readonly { name: string; type: string }[]): string[] {
+export function notSetColumns(
+  items: readonly unknown[],
+  declared: readonly { name: string; type: string }[],
+): string[] {
   return designSetColumns(items).filter((c) => declared.some((f) => f.name === c && f.type !== "set"));
 }

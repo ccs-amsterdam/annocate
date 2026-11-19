@@ -13,9 +13,15 @@ export function deployment(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/study/:studyId/deployment", requireStudyUser(server, "READ"), async (c) => c.json(await getDeployment(db, c.get("studyId"))));
-  app.get("/study/:studyId/deployment/pending", requireStudyUser(server, "READ"), async (c) => c.json(await pendingChanges(db, c.get("studyId"))));
-  app.get("/study/:studyId/deployment/versions", requireStudyUser(server, "READ"), async (c) => c.json(await deploymentVersions(db, c.get("studyId"))));
+  app.get("/study/:studyId/deployment", requireStudyUser(server, "READ"), async (c) =>
+    c.json(await getDeployment(db, c.get("studyId"))),
+  );
+  app.get("/study/:studyId/deployment/pending", requireStudyUser(server, "READ"), async (c) =>
+    c.json(await pendingChanges(db, c.get("studyId"))),
+  );
+  app.get("/study/:studyId/deployment/versions", requireStudyUser(server, "READ"), async (c) =>
+    c.json(await deploymentVersions(db, c.get("studyId"))),
+  );
 
   app.put("/study/:studyId/deployment", requireStudyUser(server, "ADMIN"), async (c) => {
     const parsed = DeploymentWriteSchema.safeParse(await c.req.json());
@@ -35,25 +41,43 @@ export function deployment(server: Server): Hono<Env> {
     // The unit fields it uses must be declared (docs/architecture.md §8.4)
     const undeclared = undeclaredFields(designVersionItems(version), designVersionUnits(version).fields);
     if (undeclared.length > 0) {
-      return c.json({ error: `The design uses unit fields it doesn't declare: ${undeclared.join(", ")}`, code: "undeclared_fields" }, 400);
+      return c.json(
+        {
+          error: `The design uses unit fields it doesn't declare: ${undeclared.join(", ")}`,
+          code: "undeclared_fields",
+        },
+        400,
+      );
     }
     // The units it runs: the drafts (`units`, and always the first time), or the deployed ones.
     const deployed = (await db.$count(deployments, eq(deployments.studyId, studyId))) > 0;
     const live = !parsed.data.units && deployed;
     // Who gets which units: the set columns it names, the coders and conditions' values (docs/architecture.md §6.3)
-    const checks = await assignmentChecks(db, studyId, designVersionItems(version), designVersionUnits(version).fields, live);
+    const checks = await assignmentChecks(
+      db,
+      studyId,
+      designVersionItems(version),
+      designVersionUnits(version).fields,
+      live,
+    );
     if (checks.errors.length > 0) return c.json({ error: checks.errors.join(" "), code: "assignment_invalid" }, 400);
     // Links follow the design's coders, conditions and link parameters (§4).
     await checkLinkCount(db, studyId, designVersionItems(version), parsed.data.confirmLinks ?? false, live);
     const result = await db.transaction(async (tx) => {
       const deployment = await putDeployment(tx, studyId, parsed.data);
-      const [study] = await tx.select({ redirectUrls: studies.redirectUrls }).from(studies).where(eq(studies.id, studyId));
+      const [study] = await tx
+        .select({ redirectUrls: studies.redirectUrls })
+        .from(studies)
+        .where(eq(studies.id, studyId));
       // Panel return links are deployment settings: say which ones are missing
       const unset = redirectSettings(designVersionItems(version)).filter((name) => !study?.redirectUrls?.[name]);
       const warnings = [
         ...(deployment.warnings ?? []),
         ...checks.warnings,
-        ...unset.map((name) => `End items send coders on with the setting '${name}', which has no URL yet: set it in the study's Settings.`),
+        ...unset.map(
+          (name) =>
+            `End items send coders on with the setting '${name}', which has no URL yet: set it in the study's Settings.`,
+        ),
       ];
       return { ...deployment, links: await syncLinks(tx, studyId), ...(warnings.length > 0 ? { warnings } : {}) };
     });

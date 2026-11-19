@@ -41,7 +41,9 @@ describe("extractReferences", () => {
   });
 
   it("reports computed and bare namespaces", () => {
-    expect(errors("$var[name].value")).toEqual(["Names after $var must be literal ($var.name), not computed ($var[...])"]);
+    expect(errors("$var[name].value")).toEqual([
+      "Names after $var must be literal ($var.name), not computed ($var[...])",
+    ]);
     expect(errors("Object.keys($unit)")).toEqual(["$unit must be followed by a name ($unit.name)"]);
     expect(errors("$var.q[x]")).toHaveLength(1);
     expect(errors("$unit.x['y']")).toEqual(["Names in $unit.x[...] must be literal, not computed"]);
@@ -60,9 +62,9 @@ describe("parseTemplate", () => {
   it("splits text and expressions, with suffixes and the alone-on-line flag", () => {
     const parsed = parseTemplate("# $unit.headline\n\n$unit.body::markdown\n\nScore: {{ $unit.a + 1 }}::text.");
     expect(parsed.errors).toEqual([]);
-    expect(parsed.segments.map((s) => (s.type === "text" ? s.text : `[${s.script}|${s.suffix}|${s.alone}]`)).join("")).toBe(
-      "# [$unit.headline|text|false]\n\n[$unit.body|markdown|true]\n\nScore: [$unit.a + 1|text|false].",
-    );
+    expect(
+      parsed.segments.map((s) => (s.type === "text" ? s.text : `[${s.script}|${s.suffix}|${s.alone}]`)).join(""),
+    ).toBe("# [$unit.headline|text|false]\n\n[$unit.body|markdown|true]\n\nScore: [$unit.a + 1|text|false].");
   });
 
   it("treats a bare $ref as the one-reference script", () => {
@@ -89,15 +91,38 @@ describe("parseTemplate", () => {
   it("finds refs glued to text, and leaves trailing punctuation", () => {
     expect(expressions("part_$var.slot.value").map((e) => e.script)).toEqual(["$var.slot.value"]);
     expect(expressions("You are a $var.role.label.").map((e) => e.script)).toEqual(["$var.role.label"]);
-    expect(parseTemplate(`$var.role.is("a")`).errors.map((e) => e.message)).toEqual(['$var.role.is(...) can only be used inside {{ }}']);
+    expect(parseTemplate(`$var.role.is("a")`).errors.map((e) => e.message)).toEqual([
+      "$var.role.is(...) can only be used inside {{ }}",
+    ]);
   });
 });
 
 const questions = new Map<string, AnyVariableType>([
   ["role", { type: "nominal", question: "?", options: [{ value: "student", label: "Student" }, { value: "staff" }] }],
   ["topics", { type: "nominal", question: "?", multiple: true, options: [{ value: "x" }, { value: "y" }] }],
-  ["edu", { type: "ordinal", question: "?", options: [{ value: 1, label: "low" }, { value: 2, label: "high" }] }],
-  ["interest", { type: "scale", question: "?", options: [{ value: 1, label: "low" }, { value: 5, label: "high" }], items: [{ name: "tech" }] }],
+  [
+    "edu",
+    {
+      type: "ordinal",
+      question: "?",
+      options: [
+        { value: 1, label: "low" },
+        { value: 2, label: "high" },
+      ],
+    },
+  ],
+  [
+    "interest",
+    {
+      type: "scale",
+      question: "?",
+      options: [
+        { value: 1, label: "low" },
+        { value: 5, label: "high" },
+      ],
+      items: [{ name: "tech" }],
+    },
+  ],
   ["age", { type: "numeric", question: "?", labels: [{ value: 18, label: "adult" }] }],
   ["ok", { type: "confirm", question: "?" }],
   ["slot", { type: "random", draw: "random", options: [{ value: "1" }] }],
@@ -112,7 +137,12 @@ describe("referenceShape", () => {
   };
 
   it("follows from the design", () => {
-    expect(shape("$var.role.value")).toMatchObject({ ok: true, array: false, type: "string", values: ["student", "staff"] });
+    expect(shape("$var.role.value")).toMatchObject({
+      ok: true,
+      array: false,
+      type: "string",
+      values: ["student", "staff"],
+    });
     expect(shape("$var.role.label")).toMatchObject({ ok: true, array: false, type: "string" });
     expect(shape("$var.edu.value")).toMatchObject({ ok: true, array: false, type: "number", values: [1, 2] });
     expect(shape("$var.topics.values")).toMatchObject({ ok: true, array: true });
@@ -126,11 +156,18 @@ describe("referenceShape", () => {
   });
 
   it("knows the helper methods per kind", () => {
-    expect(shape("$var.role.is('x')")).toMatchObject({ ok: true, type: "boolean", method: { name: "is", kind: "single" } });
+    expect(shape("$var.role.is('x')")).toMatchObject({
+      ok: true,
+      type: "boolean",
+      method: { name: "is", kind: "single" },
+    });
     expect(shape("$var.edu.gte(1)")).toMatchObject({ ok: true, method: { name: "gte", kind: "ordinal" } });
     expect(shape("$var.topics.count()")).toMatchObject({ ok: true, type: "number" });
     expect(shape("$var.interest.items.tech.lt(3)")).toMatchObject({ ok: true, method: { kind: "ordinal" } });
-    expect(shape("$var.role.gte(1)")).toEqual({ ok: false, reason: `"role" is a nominal question, which does not support "greater than or equal to" comparisons; use "is" or "is one of"` });
+    expect(shape("$var.role.gte(1)")).toEqual({
+      ok: false,
+      reason: `"role" is a nominal question, which does not support "greater than or equal to" comparisons; use "is" or "is one of"`,
+    });
     expect(shape("$var.topics.is('x')").ok).toBe(false);
     expect(shape("$var.interest.is(1)").ok).toBe(false);
   });
@@ -201,7 +238,11 @@ describe("buildScope", () => {
         interest: { done: true, skip: false, values: [{ item: "tech", value: 5 }] },
         age: { done: true, skip: false, values: [{ value: 18 }] },
         ok: { done: true, skip: false },
-        ents: { done: true, skip: false, spans: [{ id: "1", field: "text", value: "PER", slices: [{ offset: 0, length: 3, text: "Ann" }] }] },
+        ents: {
+          done: true,
+          skip: false,
+          spans: [{ id: "1", field: "text", value: "PER", slices: [{ offset: 0, length: 3, text: "Ann" }] }],
+        },
         slot: { done: true, skip: true, values: [{ value: "1" }] },
       },
       { text: "Ann" },

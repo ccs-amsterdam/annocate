@@ -39,7 +39,9 @@ export const users = pgTable(
   },
   (t) => [
     index("users_email").on(t.email),
-    uniqueIndex("users_shadow_email").on(t.email).where(sql`${t.registeredAt} IS NULL`),
+    uniqueIndex("users_shadow_email")
+      .on(t.email)
+      .where(sql`${t.registeredAt} IS NULL`),
   ],
 );
 
@@ -80,12 +82,18 @@ export const roles = pgTable(
     index("roles_study").on(t.studyId),
     index("roles_user").on(t.userId),
     // One role per user on the server and per user on a study; one per domain and one for everyone on the server.
-    uniqueIndex("roles_user_server").on(t.userId).where(sql`${t.studyId} IS NULL AND ${t.userId} IS NOT NULL AND ${t.emailDomain} IS NULL`),
+    uniqueIndex("roles_user_server")
+      .on(t.userId)
+      .where(sql`${t.studyId} IS NULL AND ${t.userId} IS NOT NULL AND ${t.emailDomain} IS NULL`),
     uniqueIndex("roles_user_study")
       .on(t.studyId, t.userId)
       .where(sql`${t.studyId} IS NOT NULL AND ${t.userId} IS NOT NULL AND ${t.emailDomain} IS NULL`),
-    uniqueIndex("roles_domain_server").on(t.emailDomain).where(sql`${t.studyId} IS NULL AND ${t.userId} IS NULL AND ${t.emailDomain} IS NOT NULL`),
-    uniqueIndex("roles_everyone_server").on(t.role).where(sql`${t.studyId} IS NULL AND ${t.userId} IS NULL AND ${t.emailDomain} IS NULL`),
+    uniqueIndex("roles_domain_server")
+      .on(t.emailDomain)
+      .where(sql`${t.studyId} IS NULL AND ${t.userId} IS NULL AND ${t.emailDomain} IS NOT NULL`),
+    uniqueIndex("roles_everyone_server")
+      .on(t.role)
+      .where(sql`${t.studyId} IS NULL AND ${t.userId} IS NULL AND ${t.emailDomain} IS NULL`),
     check(
       "roles_role_fits_context",
       sql`(${t.studyId} IS NULL AND ${t.role} IN ('researcher', 'admin')) OR (${t.studyId} IS NOT NULL AND ${t.role} IN ('READ', 'WRITE', 'ADMIN'))`,

@@ -26,15 +26,26 @@ export function loopShareColumns(items: readonly unknown[]): Map<string, ShareCo
   let loops = 0;
   const walk = (list: unknown) => {
     for (const raw of Array.isArray(list) ? list : []) {
-      const it = raw as { type?: unknown; name?: unknown; variable?: { type?: unknown; units?: unknown }; children?: unknown } | null;
+      const it = raw as {
+        type?: unknown;
+        name?: unknown;
+        variable?: { type?: unknown; units?: unknown };
+        children?: unknown;
+      } | null;
       if (!it || typeof it !== "object") continue;
       if (it.type === "unit_loop") {
         loops++;
         out.set(String(loops), [...base, ...random]);
         continue;
       }
-      if (it.type === "computed" && it.variable?.type === "random" && typeof it.variable.units === "string" && typeof it.name === "string") {
-        if (!random.some((r) => r.name === it.name)) random.push({ name: it.name, column: it.variable.units, random: true });
+      if (
+        it.type === "computed" &&
+        it.variable?.type === "random" &&
+        typeof it.variable.units === "string" &&
+        typeof it.name === "string"
+      ) {
+        if (!random.some((r) => r.name === it.name))
+          random.push({ name: it.name, column: it.variable.units, random: true });
       }
       if (it.type === "show_if") walk(it.children);
     }

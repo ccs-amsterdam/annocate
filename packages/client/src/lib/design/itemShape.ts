@@ -8,11 +8,14 @@ const ITEM_TYPES = ["question", "computed", "unit_loop", "show_if", "end"];
 
 /** Why a parsed value isn't an item the editor can show; null if it is. With `children`, they are checked too. */
 export function itemShapeError(raw: unknown, { children }: { children: boolean }): string | null {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return 'An item must be an object ({ "name": ..., "type": ... })';
+  if (!raw || typeof raw !== "object" || Array.isArray(raw))
+    return 'An item must be an object ({ "name": ..., "type": ... })';
   const item = raw as Record<string, unknown>;
   const label = typeof item.name === "string" && item.name ? `'${item.name}'` : "An item";
-  if (typeof item.type !== "string" || !ITEM_TYPES.includes(item.type)) return `${label}: type must be one of ${ITEM_TYPES.join(", ")}`;
-  if (item.type !== "show_if" && item.type !== "unit_loop" && typeof item.name !== "string") return `${label} needs a name`;
+  if (typeof item.type !== "string" || !ITEM_TYPES.includes(item.type))
+    return `${label}: type must be one of ${ITEM_TYPES.join(", ")}`;
+  if (item.type !== "show_if" && item.type !== "unit_loop" && typeof item.name !== "string")
+    return `${label} needs a name`;
   const isQuestion = item.type === "question" || item.type === "computed";
   const variable = item.variable as { type?: unknown } | undefined;
   if (isQuestion && (!variable || typeof variable !== "object" || typeof variable.type !== "string")) {
@@ -57,7 +60,11 @@ export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLe
     const counts = { show_if: 0, unit_loop: 0 };
     for (const raw of list) {
       const item = raw as Record<string, unknown>;
-      const id = unnamed(item.type) ? `${parent}/${String(item.type)} ${counts[item.type as Unnamed]++}` : typeof item.name === "string" ? item.name : null;
+      const id = unnamed(item.type)
+        ? `${parent}/${String(item.type)} ${counts[item.type as Unnamed]++}`
+        : typeof item.name === "string"
+          ? item.name
+          : null;
       const key = typeof item._key === "string" ? item._key : undefined;
       if (id && key && !keys.has(id)) keys.set(id, key);
       if (Array.isArray(item.children)) index(item.children, key ?? "?");
@@ -70,13 +77,18 @@ export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLe
     const counts = { show_if: 0, unit_loop: 0 };
     return list.map((raw) => {
       const item = { ...(raw as Record<string, unknown>) };
-      const id = unnamed(item.type) ? `${parent}/${String(item.type)} ${counts[item.type as Unnamed]++}` : typeof item.name === "string" ? item.name : null;
+      const id = unnamed(item.type)
+        ? `${parent}/${String(item.type)} ${counts[item.type as Unnamed]++}`
+        : typeof item.name === "string"
+          ? item.name
+          : null;
       const key = id ? keys.get(id) : undefined;
       if (!item._key && key && !used.has(key)) {
         item._key = key;
         used.add(key);
       }
-      if (Array.isArray(item.children)) item.children = walk(item.children, typeof item._key === "string" ? item._key : "-");
+      if (Array.isArray(item.children))
+        item.children = walk(item.children, typeof item._key === "string" ? item._key : "-");
       return item;
     });
   };
@@ -85,14 +97,23 @@ export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLe
 
 /** Why parsed text isn't a design the editor can show; null if it is. */
 export function designShapeError(raw: unknown): string | null {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return 'The design is an object: { "public": ..., "session": ..., "items": [ ... ] }';
+  if (!raw || typeof raw !== "object" || Array.isArray(raw))
+    return 'The design is an object: { "public": ..., "session": ..., "items": [ ... ] }';
   const design = raw as Record<string, unknown>;
   const unknown = Object.keys(design).filter((k) => !["public", "session", "items"].includes(k));
-  if (unknown.length) return `Unknown key${unknown.length > 1 ? "s" : ""} ${unknown.map((k) => `"${k}"`).join(", ")}: a design has "public", "session" and "items"`;
-  if (design.session !== undefined && (!design.session || typeof design.session !== "object" || Array.isArray(design.session))) {
+  if (unknown.length)
+    return `Unknown key${unknown.length > 1 ? "s" : ""} ${unknown.map((k) => `"${k}"`).join(", ")}: a design has "public", "session" and "items"`;
+  if (
+    design.session !== undefined &&
+    (!design.session || typeof design.session !== "object" || Array.isArray(design.session))
+  ) {
     return '"session" must be an object, e.g. { "params": [] }';
   }
-  if (design.public !== undefined && design.public !== null && (typeof design.public !== "object" || Array.isArray(design.public))) {
+  if (
+    design.public !== undefined &&
+    design.public !== null &&
+    (typeof design.public !== "object" || Array.isArray(design.public))
+  ) {
     return '"public" must be an object, e.g. { "title": "..." }, or null';
   }
   if ((design.items as unknown[] | undefined)?.some?.((i) => (i as { type?: unknown } | null)?.type === "session")) {

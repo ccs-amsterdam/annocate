@@ -31,7 +31,10 @@ test("a study's tabs are URLs: a reload stays; leaving unsaved edits asks first"
 
   // An unsaved edit: going elsewhere (a tab, the browser's back button) asks first
   await page.getByRole("button", { name: /Add item/ }).click();
-  await page.getByRole("button", { name: /^Question/ }).first().click();
+  await page
+    .getByRole("button", { name: /^Question/ })
+    .first()
+    .click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Unsaved Changes" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
@@ -54,7 +57,12 @@ test("the coder home lists the studies this browser takes part in, to continue t
   await page.goto(link);
   await question(page, "Is this headline good news or bad news?");
   await page.keyboard.press("ArrowRight");
-  await expect.poll(async () => (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null).length).toBe(1);
+  await expect
+    .poll(
+      async () =>
+        (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null).length,
+    )
+    .toBe(1);
   await page.goto("/code");
   // Shown by the design's public title, never the study's (private) name
   const card = page.getByRole("link", { name: /Good news, bad news/ });
@@ -66,7 +74,10 @@ test("the coder home lists the studies this browser takes part in, to continue t
   await question(page, "Is this headline good news or bad news?");
 });
 
-test("on a phone the editor shows one pane at a time: the tree, then an item with a way back", async ({ page, request }) => {
+test("on a phone the editor shows one pane at a time: the tree, then an item with a way back", async ({
+  page,
+  request,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const { study } = await fromExample(request, "simple-survey");
   await page.goto(`/research/studies/${study.id}/editor`);

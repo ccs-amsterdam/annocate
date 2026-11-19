@@ -33,9 +33,18 @@ describe("formatJson", () => {
   it("puts keys in reading order, children last", () => {
     const stored = { children: [], label: "c", type: "show_if", condition: { script: "true" } };
     expect(formatJson(stored)).toBe(
-      ["{", '  "type": "show_if",', '  "label": "c",', '  "condition": { "script": "true" },', '  "children": []', "}"].join("\n"),
+      [
+        "{",
+        '  "type": "show_if",',
+        '  "label": "c",',
+        '  "condition": { "script": "true" },',
+        '  "children": []',
+        "}",
+      ].join("\n"),
     );
-    expect(formatJson({ color: "red", label: "Neg", value: "neg" })).toBe('{ "value": "neg", "label": "Neg", "color": "red" }');
+    expect(formatJson({ color: "red", label: "Neg", value: "neg" })).toBe(
+      '{ "value": "neg", "label": "Neg", "color": "red" }',
+    );
   });
 
   it("breaks what doesn't fit, and round-trips", () => {

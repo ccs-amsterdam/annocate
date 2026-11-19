@@ -36,7 +36,11 @@ const HELPER_SETUP = `$var = ${HELPER_PRELUDE}($var);`;
 export async function evaluateScript(script: string, scope: ReferenceScope): Promise<unknown> {
   const single = parseReference(script);
   if ("ref" in single) return referenceValue(scope, single.ref);
-  return evaluateExpression(script, { $unit: scope.$unit, $var: scope.$var, $session: scope.$session ?? {} }, HELPER_SETUP);
+  return evaluateExpression(
+    script,
+    { $unit: scope.$unit, $var: scope.$var, $session: scope.$session ?? {} },
+    HELPER_SETUP,
+  );
 }
 
 /** A syntax error in a script, or null if it parses (it isn't run). For the admin editor. */
@@ -66,7 +70,11 @@ export async function scriptSyntaxError(script: string): Promise<string | null> 
  * expression shouldn't crash the coder's session. `setup` (statements) runs
  * first, e.g. to add the helper methods.
  */
-export async function evaluateExpression(expression: string, values: Record<string, unknown>, setup = ""): Promise<unknown> {
+export async function evaluateExpression(
+  expression: string,
+  values: Record<string, unknown>,
+  setup = "",
+): Promise<unknown> {
   try {
     const QuickJS = await loadQuickJS();
 

@@ -17,7 +17,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { HelpButton } from "../../help/HelpButton";
 
-
 /** Just the shared `question`/`instruction` fields -- kept as a plain (non-union-derived) shape so
  * patches don't get incorrectly widened back into a cross-product union of every variable type
  * (a `Partial<Extract<Union, ...>>` distributes member-wise and reintroduces every variant's fields). */
@@ -57,7 +56,11 @@ function QuestionFields({
             <select
               className="h-7 rounded-md border border-input bg-background px-2 text-xs"
               value={value.instructionWhen ?? "always"}
-              onChange={(e) => onChange({ instructionWhen: e.target.value === "always" ? undefined : (e.target.value as "first" | "practice") })}
+              onChange={(e) =>
+                onChange({
+                  instructionWhen: e.target.value === "always" ? undefined : (e.target.value as "first" | "practice"),
+                })
+              }
             >
               <option value="always">Always</option>
               <option value="first">The first time a coder sees the question</option>
@@ -121,11 +124,18 @@ export function VariableTypeForm({
         <>
           <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
           <ScaleItemsEditor items={v.items} onChange={(items) => onChange({ ...v, items })} />
-          <OptionsEditor key="ordinal" level="ordinal" options={v.options} onChange={(options) => onChange({ ...v, options })} />
+          <OptionsEditor
+            key="ordinal"
+            level="ordinal"
+            options={v.options}
+            onChange={(options) => onChange({ ...v, options })}
+          />
           <LayoutSelect
             variable={v}
             layouts={SCALE_LAYOUTS}
-            onChange={(layout) => onChange({ ...v, layout: layout === "auto" ? undefined : (layout as typeof v.layout) })}
+            onChange={(layout) =>
+              onChange({ ...v, layout: layout === "auto" ? undefined : (layout as typeof v.layout) })
+            }
           />
         </>
       );
@@ -137,20 +147,23 @@ export function VariableTypeForm({
           <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
           <OptionsEditor swipe max={3} options={v.options} onChange={(options) => onChange({ ...v, options })} />
           <div className="flex items-center gap-1">
-          <label className="flex items-center gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={v.card ?? false}
-              onChange={(e) => {
-                const next = { ...v };
-                if (e.target.checked) next.card = true;
-                else delete next.card;
-                onChange(next);
-              }}
-            />
-            Show the unit on a card while this question is asked
-          </label>
-          <InfoTip label="About the card">In a unit loop. Without a card the unit is shown as it is, so the layout doesn&apos;t change between questions.</InfoTip>
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={v.card ?? false}
+                onChange={(e) => {
+                  const next = { ...v };
+                  if (e.target.checked) next.card = true;
+                  else delete next.card;
+                  onChange(next);
+                }}
+              />
+              Show the unit on a card while this question is asked
+            </label>
+            <InfoTip label="About the card">
+              In a unit loop. Without a card the unit is shown as it is, so the layout doesn&apos;t change between
+              questions.
+            </InfoTip>
           </div>
         </>
       );
@@ -167,9 +180,9 @@ export function VariableTypeForm({
             <label className="flex items-center gap-1 text-sm font-medium">
               Drawn
               <InfoTip label="About random conditions">
-                Assigned when a coder reaches this item, so earlier questions can come first (coders screened out before don&apos;t
-                count). Use it as <span className="font-mono">$var.name</span>. For a condition from the link, or drawn when the
-                session starts, use an assigned condition in the session settings instead.
+                Assigned when a coder reaches this item, so earlier questions can come first (coders screened out before
+                don&apos;t count). Use it as <span className="font-mono">$var.name</span>. For a condition from the
+                link, or drawn when the session starts, use an assigned condition in the session settings instead.
               </InfoTip>
             </label>
             <select
@@ -185,8 +198,8 @@ export function VariableTypeForm({
             <label className="flex items-center gap-1 text-sm font-medium">
               Linked to units
               <InfoTip label="About linking to units">
-                Linked to a set column, the coder&apos;s value also selects their units in the loops after this item: only units whose
-                cell holds it (and <span className="font-mono">_overlap</span> units).
+                Linked to a set column, the coder&apos;s value also selects their units in the loops after this item:
+                only units whose cell holds it (and <span className="font-mono">_overlap</span> units).
               </InfoTip>
             </label>
             <select
@@ -236,7 +249,9 @@ export function VariableTypeForm({
                       key={name}
                       type="button"
                       onClick={() => {
-                        const stratify = on ? (v.stratify ?? []).filter((n) => n !== name) : [...(v.stratify ?? []), name];
+                        const stratify = on
+                          ? (v.stratify ?? []).filter((n) => n !== name)
+                          : [...(v.stratify ?? []), name];
                         const next: typeof v = { ...v, stratify };
                         if (stratify.length === 0) delete next.stratify;
                         onChange(next);
@@ -253,24 +268,26 @@ export function VariableTypeForm({
               </p>
             </div>
           )}
-          {v.options && <OptionsEditor
-            options={v.options}
-            onChange={(options) => onChange({ ...v, options })}
-            extra={
-              v.draw === "random"
-                ? (option, update) => (
-                    <Input
-                      placeholder="weight"
-                      type="number"
-                      title="Weight of this option in the random draw (default 1)"
-                      value={option.weight ?? ""}
-                      onChange={(e) => update({ weight: e.target.value === "" ? undefined : Number(e.target.value) })}
-                      className="h-8 w-16 text-xs"
-                    />
-                  )
-                : undefined
-            }
-          />}
+          {v.options && (
+            <OptionsEditor
+              options={v.options}
+              onChange={(options) => onChange({ ...v, options })}
+              extra={
+                v.draw === "random"
+                  ? (option, update) => (
+                      <Input
+                        placeholder="weight"
+                        type="number"
+                        title="Weight of this option in the random draw (default 1)"
+                        value={option.weight ?? ""}
+                        onChange={(e) => update({ weight: e.target.value === "" ? undefined : Number(e.target.value) })}
+                        className="h-8 w-16 text-xs"
+                      />
+                    )
+                  : undefined
+              }
+            />
+          )}
         </>
       );
     }
@@ -279,7 +296,11 @@ export function VariableTypeForm({
       return (
         <>
           <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
-          <SpanFieldsPicker value={v.fields} layoutFields={layoutFields} onChange={(fields) => onChange({ ...v, fields })} />
+          <SpanFieldsPicker
+            value={v.fields}
+            layoutFields={layoutFields}
+            onChange={(fields) => onChange({ ...v, fields })}
+          />
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium">Default Selection Mode</label>
             <select
@@ -352,7 +373,10 @@ export function VariableTypeForm({
             This question has a name but no answer type yet. Choose one above: the form then shows what that type needs
             (options, labels, a range). The design can be saved like this, but not previewed or deployed.
           </p>
-          <QuestionFields value={{ ...v, question: v.question ?? "" }} onChange={(patch) => onChange({ ...v, ...patch })} />
+          <QuestionFields
+            value={{ ...v, question: v.question ?? "" }}
+            onChange={(patch) => onChange({ ...v, ...patch })}
+          />
         </>
       );
     }
@@ -376,7 +400,9 @@ const LAYOUT_LABELS: Record<string, string> = {
 
 function describeLayout(resolved: ReturnType<typeof resolveLayout>): string {
   const label = LAYOUT_LABELS[resolved.layout] ?? resolved.layout;
-  return "columns" in resolved && resolved.layout === "grid" ? `${label.split(" (")[0]}, ${resolved.columns} column${resolved.columns === 1 ? "" : "s"}` : label;
+  return "columns" in resolved && resolved.layout === "grid"
+    ? `${label.split(" (")[0]}, ${resolved.columns} column${resolved.columns === 1 ? "" : "s"}`
+    : label;
 }
 
 /** A layout select whose `auto` entry says what auto picks for this question (resolveLayout). */
@@ -407,7 +433,13 @@ function LayoutSelect({
 }
 
 /** Options, several answers (nominal) and layout of a nominal or ordinal question. */
-function CategoricalFields({ variable: v, onChange }: { variable: CategoricalType; onChange: (next: AnyVariableType) => void }) {
+function CategoricalFields({
+  variable: v,
+  onChange,
+}: {
+  variable: CategoricalType;
+  onChange: (next: AnyVariableType) => void;
+}) {
   const ordinal = v.type === "ordinal";
   const setLayout = (layout: string) => {
     const next = { ...v, layout: layout === "auto" ? undefined : layout } as CategoricalType;
@@ -417,13 +449,22 @@ function CategoricalFields({ variable: v, onChange }: { variable: CategoricalTyp
   return (
     <>
       {v.type === "ordinal" ? (
-        <OptionsEditor key="ordinal" level="ordinal" options={v.options} onChange={(options) => onChange({ ...v, options })} />
+        <OptionsEditor
+          key="ordinal"
+          level="ordinal"
+          options={v.options}
+          onChange={(options) => onChange({ ...v, options })}
+        />
       ) : (
         <OptionsEditor key="nominal" options={v.options} onChange={(options) => onChange({ ...v, options })} />
       )}
       {v.type === "nominal" && (
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={!!v.multiple} onChange={(e) => onChange({ ...v, multiple: e.target.checked || undefined })} />
+          <input
+            type="checkbox"
+            checked={!!v.multiple}
+            onChange={(e) => onChange({ ...v, multiple: e.target.checked || undefined })}
+          />
           Allow several answers
         </label>
       )}
@@ -431,7 +472,11 @@ function CategoricalFields({ variable: v, onChange }: { variable: CategoricalTyp
       {v.layout === "grid" && (
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium">Columns</label>
-          <select className={selectClass} value={v.columns ?? 1} onChange={(e) => onChange({ ...v, columns: Number(e.target.value) })}>
+          <select
+            className={selectClass}
+            value={v.columns ?? 1}
+            onChange={(e) => onChange({ ...v, columns: Number(e.target.value) })}
+          >
             {[1, 2, 3, 4].map((n) => (
               <option key={n} value={n}>
                 {n}
@@ -450,7 +495,13 @@ const STEP_PRESETS = [
   { step: 0.01, label: "Two decimals" },
 ];
 
-function NumericFields({ variable: v, onChange }: { variable: NumericType; onChange: (next: AnyVariableType) => void }) {
+function NumericFields({
+  variable: v,
+  onChange,
+}: {
+  variable: NumericType;
+  onChange: (next: AnyVariableType) => void;
+}) {
   const step = v.step ?? 1;
   const preset = STEP_PRESETS.some((p) => p.step === step);
   const numberOrUndefined = (text: string) => (text === "" ? undefined : Number(text));
@@ -460,11 +511,19 @@ function NumericFields({ variable: v, onChange }: { variable: NumericType; onCha
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium">Minimum</label>
-          <Input type="number" value={v.min ?? ""} onChange={(e) => onChange({ ...v, min: numberOrUndefined(e.target.value) })} />
+          <Input
+            type="number"
+            value={v.min ?? ""}
+            onChange={(e) => onChange({ ...v, min: numberOrUndefined(e.target.value) })}
+          />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium">Maximum</label>
-          <Input type="number" value={v.max ?? ""} onChange={(e) => onChange({ ...v, max: numberOrUndefined(e.target.value) })} />
+          <Input
+            type="number"
+            value={v.max ?? ""}
+            onChange={(e) => onChange({ ...v, max: numberOrUndefined(e.target.value) })}
+          />
         </div>
       </div>
       <div className="flex flex-col gap-1">
@@ -473,7 +532,13 @@ function NumericFields({ variable: v, onChange }: { variable: NumericType; onCha
           <select
             className={`${selectClass} flex-1`}
             value={preset ? String(step) : "custom"}
-            onChange={(e) => onChange({ ...v, step: e.target.value === "custom" ? 5 : Number(e.target.value) === 1 ? undefined : Number(e.target.value) })}
+            onChange={(e) =>
+              onChange({
+                ...v,
+                step:
+                  e.target.value === "custom" ? 5 : Number(e.target.value) === 1 ? undefined : Number(e.target.value),
+              })
+            }
           >
             {STEP_PRESETS.map((p) => (
               <option key={p.step} value={String(p.step)}>
@@ -487,7 +552,9 @@ function NumericFields({ variable: v, onChange }: { variable: NumericType; onCha
               type="number"
               className="w-24"
               value={step}
-              onChange={(e) => onChange({ ...v, step: Number(e.target.value) > 0 ? Number(e.target.value) : undefined })}
+              onChange={(e) =>
+                onChange({ ...v, step: Number(e.target.value) > 0 ? Number(e.target.value) : undefined })
+              }
             />
           )}
         </div>
@@ -500,12 +567,19 @@ function NumericFields({ variable: v, onChange }: { variable: NumericType; onCha
               type="number"
               className="w-24"
               value={l.value}
-              onChange={(e) => onChange({ ...v, labels: labels.map((x, j) => (j === i ? { ...x, value: Number(e.target.value) } : x)) })}
+              onChange={(e) =>
+                onChange({
+                  ...v,
+                  labels: labels.map((x, j) => (j === i ? { ...x, value: Number(e.target.value) } : x)),
+                })
+              }
             />
             <Input
               className="flex-1"
               value={l.label}
-              onChange={(e) => onChange({ ...v, labels: labels.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })}
+              onChange={(e) =>
+                onChange({ ...v, labels: labels.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })
+              }
             />
             <Button
               type="button"
@@ -534,7 +608,9 @@ function NumericFields({ variable: v, onChange }: { variable: NumericType; onCha
       <LayoutSelect
         variable={v}
         layouts={NUMERIC_LAYOUTS}
-        onChange={(layout) => onChange({ ...v, layout: layout === "auto" ? undefined : (layout as NumericType["layout"]) })}
+        onChange={(layout) =>
+          onChange({ ...v, layout: layout === "auto" ? undefined : (layout as NumericType["layout"]) })
+        }
       />
     </>
   );
@@ -554,7 +630,8 @@ function SpanFieldsPicker({
   layoutFields?: string[];
   onChange: (fields: string[]) => void;
 }) {
-  const toggle = (field: string) => onChange(value.includes(field) ? value.filter((f) => f !== field) : [...value, field]);
+  const toggle = (field: string) =>
+    onChange(value.includes(field) ? value.filter((f) => f !== field) : [...value, field]);
   // The layout's selectable ids are `unit.<field>`; a span question names the unit field.
   const shownFields = layoutFields?.map((id) => id.replace(/^unit\./, ""));
   const names = [...new Set([...(shownFields ?? []), ...value])];
@@ -596,7 +673,14 @@ function SpanFieldsPicker({
       ) : (
         <Input
           value={value.join(", ")}
-          onChange={(e) => onChange(e.target.value.split(",").map((f) => f.trim()).filter(Boolean))}
+          onChange={(e) =>
+            onChange(
+              e.target.value
+                .split(",")
+                .map((f) => f.trim())
+                .filter(Boolean),
+            )
+          }
           placeholder="headline, text"
         />
       )}

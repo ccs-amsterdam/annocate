@@ -6,16 +6,25 @@ import { InfoTip } from "@/components/ui/info-tip";
  * study, not per link. Coders given by email address always sign in: then
  * the choice is shown, locked.
  */
-export function SignInSetting({ value, onChange, emailCoders }: { value: SignIn; onChange: (value: SignIn) => void; emailCoders: boolean }) {
+export function SignInSetting({
+  value,
+  onChange,
+  emailCoders,
+}: {
+  value: SignIn;
+  onChange: (value: SignIn) => void;
+  emailCoders: boolean;
+}) {
   return (
     <label className="flex flex-col gap-1 text-sm">
       <span className="flex items-center gap-1 font-medium">
         Coders sign in
         <InfoTip label="About signing in">
-          <strong>Off</strong>: coders start from their link, without an account; their session stays on their device (they can move it
-          to another device with a code). <strong>Optional</strong>: they may sign in, to continue on any device. <strong>Required</strong>:
-          they must sign in with a verified email address first, e.g. to make sure each person codes once. When the units are divided over
-          coders by email address, sign-in is required: that is how coders get their own units.
+          <strong>Off</strong>: coders start from their link, without an account; their session stays on their device
+          (they can move it to another device with a code). <strong>Optional</strong>: they may sign in, to continue on
+          any device. <strong>Required</strong>: they must sign in with a verified email address first, e.g. to make
+          sure each person codes once. When the units are divided over coders by email address, sign-in is required:
+          that is how coders get their own units.
         </InfoTip>
       </span>
       <select

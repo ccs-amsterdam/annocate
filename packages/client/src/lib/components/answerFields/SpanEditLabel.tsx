@@ -26,14 +26,7 @@ export interface SpanEditLabelProps {
  * 2. Code buttons to change the label (with absolute shortcut badges 1-9).
  * 3. Direct Delete button (with absolute Del shortcut badge).
  */
-export function SpanEditLabel({
-  annotation,
-  span,
-  onBack,
-  onCancel,
-  onCodeChanged,
-  onDelete,
-}: SpanEditLabelProps) {
+export function SpanEditLabel({ annotation, span, onBack, onCancel, onCodeChanged, onDelete }: SpanEditLabelProps) {
   const { theme } = useCoderSettings();
   const isDark = theme === "dark";
 
@@ -114,15 +107,15 @@ export function SpanEditLabel({
   const badgeStyle = getCodeBadgeStyle(colorFor(span.value), isDark);
 
   return (
-    <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-1">
+    <div className="flex animate-in flex-col gap-2 fade-in slide-in-from-bottom-1">
       {/* Header bar: back button, label badge + quoted text, and cancel icon */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           {onBack && (
             <button
               type="button"
               onClick={onBack}
-              className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer shrink-0 mr-1"
+              className="mr-1 flex shrink-0 cursor-pointer items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground"
               title="Back to labels"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
@@ -131,18 +124,18 @@ export function SpanEditLabel({
           )}
           <span
             style={badgeStyle}
-            className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold shrink-0"
+            className="inline-flex shrink-0 items-center rounded-md border px-2 py-0.5 text-xs font-semibold"
           >
             {labelFor(span.value)}
           </span>
           <span
-            className="text-xs sm:text-sm font-serif italic text-foreground truncate max-w-sm sm:max-w-md"
+            className="max-w-sm truncate font-serif text-xs text-foreground italic sm:max-w-md sm:text-sm"
             title={spanSummary}
           >
             &ldquo;{truncateSpanText(spanSummary, 55)}&rdquo;
           </span>
           {span.slices.length > 1 && (
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
               {span.slices.length} frags
             </span>
           )}
@@ -152,7 +145,7 @@ export function SpanEditLabel({
         <button
           type="button"
           onClick={handleCancel}
-          className="relative flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer shrink-0"
+          className="relative flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
           title="Cancel (Esc)"
           aria-label="Cancel"
         >
@@ -170,9 +163,9 @@ export function SpanEditLabel({
               key={c.value}
               type="button"
               disabled={isCurrent}
-              className={`relative flex flex-1 min-w-[95px] max-w-[180px] items-center justify-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer shadow-xs ${
+              className={`relative flex max-w-[180px] min-w-[95px] flex-1 cursor-pointer items-center justify-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold shadow-xs transition-all ${
                 isCurrent
-                  ? "ring-2 ring-foreground/60 shadow-sm opacity-90 cursor-default"
+                  ? "cursor-default opacity-90 shadow-sm ring-2 ring-foreground/60"
                   : "hover:scale-105 active:scale-95"
               }`}
               style={getCodeButtonStyle(c.color, isCurrent, isDark)}
@@ -181,7 +174,7 @@ export function SpanEditLabel({
             >
               {idx < 9 && <ShortcutBadge shortcut={String(idx + 1)} />}
               <span className="truncate">{optionLabel(c)}</span>
-              {isCurrent && <Check className="h-3.5 w-3.5 ml-0.5 text-foreground shrink-0" />}
+              {isCurrent && <Check className="ml-0.5 h-3.5 w-3.5 shrink-0 text-foreground" />}
             </button>
           );
         })}
@@ -191,7 +184,7 @@ export function SpanEditLabel({
           type="button"
           variant="destructive"
           size="sm"
-          className="relative h-8 px-3 text-xs gap-1.5 cursor-pointer ml-auto shrink-0 shadow-xs"
+          className="relative ml-auto h-8 shrink-0 cursor-pointer gap-1.5 px-3 text-xs shadow-xs"
           onClick={handleDelete}
           title="Delete this label (Del / Backspace)"
         >

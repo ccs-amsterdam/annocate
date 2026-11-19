@@ -36,7 +36,12 @@ function transformFor(x: number, y: number): string {
 }
 
 /** Shows the option for a direction on the overlay, at an opacity (0: hidden). */
-function showOverlay(overlay: HTMLDivElement | null, option: NominalOption | undefined, direction: SwipeDirection | null, strength: number) {
+function showOverlay(
+  overlay: HTMLDivElement | null,
+  option: NominalOption | undefined,
+  direction: SwipeDirection | null,
+  strength: number,
+) {
   if (!overlay) return;
   if (!option || !direction || strength <= 0) {
     overlay.style.opacity = "0";
@@ -81,7 +86,11 @@ export function SwipeProvider({
       flying.current = true;
       const width = el.offsetWidth || 400;
       const to =
-        direction === "left" ? { x: -width * 1.5, y: from.y } : direction === "right" ? { x: width * 1.5, y: from.y } : { x: from.x, y: -(el.offsetHeight || 600) * 1.5 };
+        direction === "left"
+          ? { x: -width * 1.5, y: from.y }
+          : direction === "right"
+            ? { x: width * 1.5, y: from.y }
+            : { x: from.x, y: -(el.offsetHeight || 600) * 1.5 };
       showOverlay(overlay.current, option, direction, 1);
       el.style.transition = `transform ${FLY_MS}ms ease-in, opacity ${FLY_MS}ms ease-in`;
       el.style.transform = transformFor(to.x, to.y);
@@ -159,7 +168,9 @@ export function SwipeSurface({ children, className = "" }: { children: ReactNode
     swipe?.registerOverlay(overlay.current);
     return () => swipe?.registerOverlay(null);
   }, [swipe]);
-  const drag = useRef<{ id: number; x0: number; y0: number; t0: number; x: number; y: number; active: boolean } | null>(null);
+  const drag = useRef<{ id: number; x0: number; y0: number; t0: number; x: number; y: number; active: boolean } | null>(
+    null,
+  );
   /** Whether an upward drag is a swipe (content at its bottom), which decides `touch-action`. */
   const [upAllowed, setUpAllowed] = useState(true);
   const hasUp = (swipe?.options.length ?? 0) >= 3;
@@ -262,7 +273,7 @@ export function SwipeSurface({ children, className = "" }: { children: ReactNode
         aria-hidden
         className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center opacity-0 transition-opacity duration-150"
       >
-        <span className="rounded-xl border-4 border-foreground bg-background/95 px-5 py-2 text-2xl font-extrabold uppercase tracking-wide text-foreground shadow-xl" />
+        <span className="rounded-xl border-4 border-foreground bg-background/95 px-5 py-2 text-2xl font-extrabold tracking-wide text-foreground uppercase shadow-xl" />
       </div>
     </div>
   );

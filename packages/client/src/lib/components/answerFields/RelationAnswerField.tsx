@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { optionLabel, type RelationAnswer, type RelationOptions, type SpanAnswer, type VariableValue } from "@annotinder/contracts";
+import {
+  optionLabel,
+  type RelationAnswer,
+  type RelationOptions,
+  type SpanAnswer,
+  type VariableValue,
+} from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 import { getCodeBadgeStyle } from "../../utils/color";
@@ -27,13 +33,20 @@ function spanLabel(span: SpanAnswer | undefined): string {
  * links two already-created spans (from `span` questions of the same loop named
  * in `variable.from`/`variable.to`) with a relation type (an option).
  */
-export function RelationAnswerField({ variable, unitVariables, initialValue, onAnswer }: AnswerFieldProps<RelationVariable>) {
+export function RelationAnswerField({
+  variable,
+  unitVariables,
+  initialValue,
+  onAnswer,
+}: AnswerFieldProps<RelationVariable>) {
   const fromSpans = endpointSpans(unitVariables, variable.from);
   const toSpans = endpointSpans(unitVariables, variable.to);
 
   // Back at this question: the relations given before, as far as their spans still exist.
   const [relations, setRelations] = useState<RelationAnswer[]>(() =>
-    (initialValue?.relations ?? []).filter((r) => fromSpans.some((s) => s.id === r.fromId) && toSpans.some((s) => s.id === r.toId)),
+    (initialValue?.relations ?? []).filter(
+      (r) => fromSpans.some((s) => s.id === r.fromId) && toSpans.some((s) => s.id === r.toId),
+    ),
   );
   const [fromId, setFromId] = useState("");
   const [toId, setToId] = useState("");
@@ -73,10 +86,12 @@ export function RelationAnswerField({ variable, unitVariables, initialValue, onA
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span>Link {variable.from.variable} to {variable.to.variable}</span>
+        <span>
+          Link {variable.from.variable} to {variable.to.variable}
+        </span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <select
           value={fromId}
           onChange={(e) => setFromId(e.target.value)}
@@ -130,9 +145,9 @@ export function RelationAnswerField({ variable, unitVariables, initialValue, onA
       </div>
 
       {relations.length > 0 && (
-        <div className="flex flex-col gap-1 pt-1 border-t border-border">
+        <div className="flex flex-col gap-1 border-t border-border pt-1">
           <span className="text-xs font-semibold text-muted-foreground">Relations ({relations.length}):</span>
-          <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
+          <div className="flex max-h-32 flex-col gap-1 overflow-y-auto">
             {relations.map((rel) => {
               const from = fromSpans.find((s) => s.id === rel.fromId);
               const to = toSpans.find((s) => s.id === rel.toId);
@@ -143,7 +158,7 @@ export function RelationAnswerField({ variable, unitVariables, initialValue, onA
                   className="flex items-center justify-between gap-1 rounded bg-muted/50 px-2 py-1 text-xs"
                 >
                   <span className="truncate">{spanLabel(from)}</span>
-                  <span className="rounded border px-1.5 py-0.2 font-semibold shrink-0" style={badgeStyle}>
+                  <span className="py-0.2 shrink-0 rounded border px-1.5 font-semibold" style={badgeStyle}>
                     {labelFor(rel.value)}
                   </span>
                   <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" />
@@ -151,7 +166,7 @@ export function RelationAnswerField({ variable, unitVariables, initialValue, onA
                   <button
                     type="button"
                     onClick={() => handleRemove(rel.id)}
-                    className="text-muted-foreground hover:text-foreground shrink-0 ml-1"
+                    className="ml-1 shrink-0 text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -162,7 +177,7 @@ export function RelationAnswerField({ variable, unitVariables, initialValue, onA
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
+      <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
         <Button
           variant="ghost"
           size="sm"
@@ -171,10 +186,7 @@ export function RelationAnswerField({ variable, unitVariables, initialValue, onA
         >
           Skip
         </Button>
-        <Button
-          size="sm"
-          onClick={() => onAnswer({ done: true, skip: false, relations })}
-        >
+        <Button size="sm" onClick={() => onAnswer({ done: true, skip: false, relations })}>
           Done ({relations.length})
         </Button>
       </div>

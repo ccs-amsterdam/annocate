@@ -11,7 +11,8 @@ import { forgetLink, toLinkResponse } from "../shared/links.js";
 // deployed design version (shared/links.ts `syncLinks`); here only their access
 // settings, revoking, and a new secret.
 /** A study's link, by id (from the path). */
-const link = (studyId: number, id: string | undefined) => and(eq(linksTable.studyId, studyId), eq(linksTable.id, Number(id)));
+const link = (studyId: number, id: string | undefined) =>
+  and(eq(linksTable.studyId, studyId), eq(linksTable.id, Number(id)));
 
 export function links(server: Server): Hono<Env> {
   const { db } = server;
@@ -53,9 +54,16 @@ export function links(server: Server): Hono<Env> {
 
   // A new secret: the old link stops working (e.g. it was shared too widely); sessions that started go on.
   app.post("/study/:studyId/links/:id/secret", requireStudyUser(server, "WRITE"), async (c) => {
-    const [old] = await db.select().from(linksTable).where(link(c.get("studyId"), c.req.param("id")));
+    const [old] = await db
+      .select()
+      .from(linksTable)
+      .where(link(c.get("studyId"), c.req.param("id")));
     if (!old) return c.json({ error: "Link not found" }, 404);
-    const [row] = await db.update(linksTable).set({ secret: randomBytes(16).toString("hex") }).where(eq(linksTable.id, old.id)).returning();
+    const [row] = await db
+      .update(linksTable)
+      .set({ secret: randomBytes(16).toString("hex") })
+      .where(eq(linksTable.id, old.id))
+      .returning();
     forgetLink(old.secret);
     return c.json(toLinkResponse(row!));
   });

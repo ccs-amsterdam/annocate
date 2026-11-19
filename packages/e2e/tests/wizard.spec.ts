@@ -5,7 +5,10 @@ import { api } from "./helpers";
 // The setup wizard (docs/examples.md): through its steps to a study
 // with a draft design version, opened in the editor to specify the questions.
 
-test("annotation with an experiment: a set of units per condition, questions before, per unit and after", async ({ page, request }) => {
+test("annotation with an experiment: a set of units per condition, questions before, per unit and after", async ({
+  page,
+  request,
+}) => {
   await page.goto("/research");
   await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /Guided setup/ }).click();
@@ -22,7 +25,9 @@ test("annotation with an experiment: a set of units per condition, questions bef
   await page.locator("input[type=file]").setInputFiles({
     name: "stimuli.csv",
     mimeType: "text/csv",
-    buffer: Buffer.from("id,text,group\ns1,A neutral report.,control\ns2,A framed report.,treatment\ns3,Another framed one.,treatment\n"),
+    buffer: Buffer.from(
+      "id,text,group\ns1,A neutral report.,control\ns2,A framed report.,treatment\ns3,Another framed one.,treatment\n",
+    ),
   });
   await page.getByRole("button", { name: /Use column names/ }).click();
   await page.getByRole("button", { name: "Next" }).click();
@@ -66,7 +71,10 @@ test("annotation with an experiment: a set of units per condition, questions bef
   }[];
   expect(items.map((i) => i.name ?? i.type)).toEqual(["condition", "age", "unit_loop", "comments"]);
   // The experimental groups: a computed item (a random condition) linked to the condition's set column
-  expect(items[0]).toMatchObject({ type: "computed", variable: { type: "random", draw: "balanced", units: "condition" } });
+  expect(items[0]).toMatchObject({
+    type: "computed",
+    variable: { type: "random", draw: "balanced", units: "condition" },
+  });
   expect(items[2].children!.map((c) => [c.name, c.variable])).toEqual([
     ["how_credible_is_it", { type: "unspecified", question: "How credible is it?" }],
     ["topic", { type: "unspecified" }],
@@ -105,7 +113,9 @@ test("crowd coding with an overlap; the loop's units are set by the wizard", asy
   await page.locator("input[type=file]").setInputFiles({
     name: "units.csv",
     mimeType: "text/csv",
-    buffer: Buffer.from("id,headline,text\n" + Array.from({ length: 10 }, (_, i) => `u${i},Headline ${i},Text ${i}`).join("\n") + "\n"),
+    buffer: Buffer.from(
+      "id,headline,text\n" + Array.from({ length: 10 }, (_, i) => `u${i},Headline ${i},Text ${i}`).join("\n") + "\n",
+    ),
   });
   await page.getByRole("button", { name: /Use column names/ }).click();
   await page.getByRole("button", { name: "Next" }).click();
@@ -117,7 +127,9 @@ test("crowd coding with an overlap; the loop's units are set by the wizard", asy
   await page.getByLabel("Overlap size").fill("2");
   await page.getByRole("button", { name: "Next" }).click();
   // The headline dragged to the title; the text chosen for the body from its menu
-  await page.getByRole("button", { name: "Add headline to the body" }).dragTo(page.getByRole("button", { name: "Title: choose a field" }));
+  await page
+    .getByRole("button", { name: "Add headline to the body" })
+    .dragTo(page.getByRole("button", { name: "Title: choose a field" }));
   await expect(page.getByRole("button", { name: "Title: headline" })).toBeVisible();
   await page.getByRole("button", { name: "Body: choose a field" }).click();
   await page.getByRole("menuitem", { name: "text" }).click();
@@ -134,7 +146,10 @@ test("crowd coding with an overlap; the loop's units are set by the wizard", asy
 
   const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "Crowd pilot")!;
   const [draft] = await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`);
-  const [loop] = (await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${draft.id}`)).items as { units: unknown; layout: { template: string } }[];
+  const [loop] = (await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${draft.id}`)).items as {
+    units: unknown;
+    layout: { template: string };
+  }[];
   expect(loop.units).toEqual({
     criteria: { codersPerUnit: { min: 2, max: 2 } },
     overlap: { placement: "rate", every: 10, rest: "end" },

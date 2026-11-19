@@ -4,7 +4,16 @@ import { designVersionItems } from "./designVersions.js";
 import { and, asc, count, countDistinct, eq, gte, inArray, isNotNull, isNull, max, sql } from "drizzle-orm";
 import type { Db } from "../db/index.js";
 import { anyOf } from "../db/sql.js";
-import { annotationValues as a, coders as codersTable, designVersions, links, unitCodings, unitSetMembers, unitSets, units } from "../db/schema/index.js";
+import {
+  annotationValues as a,
+  coders as codersTable,
+  designVersions,
+  links,
+  unitCodings,
+  unitSetMembers,
+  unitSets,
+  units,
+} from "../db/schema/index.js";
 import { getDeployment, loopVariables } from "./deployments.js";
 import { coderValues } from "./coders.js";
 
@@ -71,14 +80,21 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
   const doneRows = await db
     .selectDistinct({ coderId: unitCodings.coderId, unitId: unitCodings.unitId })
     .from(unitCodings)
-    .where(and(eq(unitCodings.studyId, studyId), anyOf(unitCodings.unitId, [...new Set(members.map((m) => m.unitId))])));
+    .where(
+      and(eq(unitCodings.studyId, studyId), anyOf(unitCodings.unitId, [...new Set(members.map((m) => m.unitId))])),
+    );
   const done = new Map<number, Set<number>>();
   for (const r of doneRows) done.set(r.coderId, (done.get(r.coderId) ?? new Set()).add(r.unitId));
   const deployment = await getDeployment(db, studyId);
   const [deployed] = deployment
-    ? await db.select({ items: designVersions.items, session: designVersions.session }).from(designVersions).where(eq(designVersions.id, deployment.designVersionId))
+    ? await db
+        .select({ items: designVersions.items, session: designVersions.session })
+        .from(designVersions)
+        .where(eq(designVersions.id, deployment.designVersionId))
     : [];
-  const shareColumns = deployed ? [...new Map([...loopShareColumns(designVersionItems(deployed)).values()].flat().map((c) => [c.name, c.column]))] : [];
+  const shareColumns = deployed
+    ? [...new Map([...loopShareColumns(designVersionItems(deployed)).values()].flat().map((c) => [c.name, c.column]))]
+    : [];
   const special = (coderId: number, session: Record<string, string>, assignments: Record<string, unknown>) => {
     const out: CoderProgress["special"] = {};
     if (Object.keys(assignments ?? {}).length === 0) return out;
@@ -86,9 +102,19 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
     // As the runtime (`shareOf`): the coder column's, when coders divide the units (a condition column's
     // `_overlap` is in every condition: own units); else the session's columns, or (none) every column
     const coderColumn = selected.find(([name]) => name === "coder")?.[1];
-    const overlapColumns = new Set(coderColumn ? [coderColumn] : selected.length > 0 ? selected.map(([, column]) => column) : members.map((m) => m.grp));
+    const overlapColumns = new Set(
+      coderColumn
+        ? [coderColumn]
+        : selected.length > 0
+          ? selected.map(([, column]) => column)
+          : members.map((m) => m.grp),
+    );
     for (const [name, kind] of Object.entries(kinds) as [Kind, (typeof kinds)[Kind]][]) {
-      const units = new Set(members.filter((m) => m.name === name && (name !== "_overlap" || overlapColumns.has(m.grp))).map((m) => m.unitId));
+      const units = new Set(
+        members
+          .filter((m) => m.name === name && (name !== "_overlap" || overlapColumns.has(m.grp)))
+          .map((m) => m.unitId),
+      );
       if (units.size === 0) continue;
       out[kind] = { done: [...units].filter((id) => done.get(coderId)?.has(id)).length, total: units.size };
     }
@@ -116,7 +142,10 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
 /** `GET /overview`: counts and the last 30 days of activity. */
 export async function studyOverview(db: Db, studyId: number, now = new Date()): Promise<StudyOverview> {
   const dayAgo = new Date(now.getTime() - DAY_MS);
-  const groups = (await listSetGroups(db, studyId)).map((g) => ({ name: g.name, sets: g.sets.map((s) => ({ name: s.name, units: s.unitIds.length })) }));
+  const groups = (await listSetGroups(db, studyId)).map((g) => ({
+    name: g.name,
+    sets: g.sets.map((s) => ({ name: s.name, units: s.unitIds.length })),
+  }));
   const [answers] = await db
     .select({
       total: count(),
@@ -148,7 +177,8 @@ export async function studyOverview(db: Db, studyId: number, now = new Date()): 
 /** Answers given per day (UTC; by creation, including ones retired later), with empty days filled in. */
 async function activityPerDay(db: Db, studyId: number, now: Date): Promise<StudyOverview["activity"]> {
   const days: string[] = [];
-  for (let i = ACTIVITY_DAYS - 1; i >= 0; i--) days.push(new Date(now.getTime() - i * DAY_MS).toISOString().slice(0, 10));
+  for (let i = ACTIVITY_DAYS - 1; i >= 0; i--)
+    days.push(new Date(now.getTime() - i * DAY_MS).toISOString().slice(0, 10));
   const day = sql<string>`to_char(${a.created} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`;
   const rows = await db
     .select({ day, answers: count(), coders: countDistinct(a.coderId) })

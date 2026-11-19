@@ -11,7 +11,12 @@ export interface DeviceDetails {
 export function deviceDetails(userAgent: string | undefined): DeviceDetails {
   const ua = userAgent ?? "";
   if (!ua) return { type: null, browser: null, os: null };
-  const type = /iPad|Tablet/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua)) ? "tablet" : /Mobi|iPhone|Android/i.test(ua) ? "phone" : "desktop";
+  const type =
+    /iPad|Tablet/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua))
+      ? "tablet"
+      : /Mobi|iPhone|Android/i.test(ua)
+        ? "phone"
+        : "desktop";
   const browser = /Edg\//.test(ua)
     ? "Edge"
     : /OPR\/|Opera/.test(ua)

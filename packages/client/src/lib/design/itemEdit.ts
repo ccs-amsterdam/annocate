@@ -58,10 +58,7 @@ export function stripKeys<T extends TopLevelItem[] | InLoopItem[]>(items: T): T 
   return withoutKeys(asNodes(items)) as unknown as T;
 }
 
-export function getUniqueItemName(
-  items: (TopLevelItem | InLoopItem)[],
-  prefix = "item",
-): string {
+export function getUniqueItemName(items: (TopLevelItem | InLoopItem)[], prefix = "item"): string {
   const existingNames = new Set(flattenTree(items).map(itemName));
   let counter = 1;
   while (existingNames.has(`${prefix}_${counter}`)) {
@@ -85,10 +82,7 @@ export function insertItem(
 
   function insertInNodes(nodes: Node[]): Node[] {
     return nodes.map((node) => {
-      if (
-        (node._key === parentIdentifier || node.name === parentIdentifier) &&
-        hasChildren(node)
-      ) {
+      if ((node._key === parentIdentifier || node.name === parentIdentifier) && hasChildren(node)) {
         return {
           ...node,
           children: [...node.children, ...asNodes([newItem])],
@@ -107,15 +101,9 @@ export function insertItem(
   return asItems(insertInNodes(asNodes(items)));
 }
 
-export function insertItemBefore(
-  items: TopLevelItem[],
-  targetIdentifier: string,
-  newItem: DesignItem,
-): TopLevelItem[] {
+export function insertItemBefore(items: TopLevelItem[], targetIdentifier: string, newItem: DesignItem): TopLevelItem[] {
   function insertInNodes(nodes: Node[]): { list: Node[]; inserted: boolean } {
-    const idx = nodes.findIndex(
-      (n) => n._key === targetIdentifier || n.name === targetIdentifier,
-    );
+    const idx = nodes.findIndex((n) => n._key === targetIdentifier || n.name === targetIdentifier);
     if (idx !== -1) {
       const copy = [...nodes];
       copy.splice(idx, 0, ...asNodes([newItem]));
@@ -201,8 +189,7 @@ export function canMoveItemTo(
 
   const isTargetInLoop =
     targetParent !== null &&
-    (targetParent.type === "unit_loop" ||
-      isInsideUnitLoop(items, keyOf(targetParent) || itemName(targetParent) || ""));
+    (targetParent.type === "unit_loop" || isInsideUnitLoop(items, keyOf(targetParent) || itemName(targetParent) || ""));
 
   // Check item type constraints:
   if (sourceItem.type === "computed") {
@@ -216,16 +203,11 @@ export function canMoveItemTo(
     if (isTargetInLoop) return false;
     if (position === "inside" && targetItem.type === "unit_loop") return false;
   } else if (sourceItem.type === "show_if") {
-    const sourceDescendants = flattenTree(
-      childrenOf(sourceItem),
-    );
+    const sourceDescendants = flattenTree(childrenOf(sourceItem));
     const hasInLoopOnly = sourceDescendants.some(
       (d) => d.type === "question" && (d.variable?.type === "span" || d.variable?.type === "relation"),
     );
-    const hasTopOnly = sourceDescendants.some(
-      (d) =>
-        d.type === "unit_loop" || d.type === "computed",
-    );
+    const hasTopOnly = sourceDescendants.some((d) => d.type === "unit_loop" || d.type === "computed");
 
     if (isTargetInLoop && hasTopOnly) return false;
     if (!isTargetInLoop && hasInLoopOnly) return false;
@@ -250,9 +232,7 @@ export function canMoveToRootEnd(items: TopLevelItem[], sourceIdentifier: string
   if (sourceItem.type === "show_if") {
     const descendants = flattenTree(childrenOf(sourceItem));
     if (
-      descendants.some(
-        (d) => d.type === "question" && (d.variable?.type === "span" || d.variable?.type === "relation"),
-      )
+      descendants.some((d) => d.type === "question" && (d.variable?.type === "span" || d.variable?.type === "relation"))
     ) {
       return false;
     }
@@ -332,10 +312,7 @@ export function moveItemTo(
   // Step 3: Insert before or after target in its containing array
   function insertSibling(nodes: Node[]): { list: Node[]; inserted: boolean } {
     const idx = nodes.findIndex(
-      (n) =>
-        n._key === targetIdentifier ||
-        n.name === targetIdentifier ||
-        (targetKey && n._key === targetKey),
+      (n) => n._key === targetIdentifier || n.name === targetIdentifier || (targetKey && n._key === targetKey),
     );
     if (idx !== -1) {
       const copy = [...nodes];
@@ -363,11 +340,7 @@ export function moveItemTo(
   return insertSibling(asNodes(withoutSource)).list as TopLevelItem[];
 }
 
-export function moveItem(
-  items: TopLevelItem[],
-  identifier: string,
-  direction: "up" | "down",
-): TopLevelItem[] {
+export function moveItem(items: TopLevelItem[], identifier: string, direction: "up" | "down"): TopLevelItem[] {
   function moveInList(list: Node[]): { list: Node[]; moved: boolean } {
     const idx = list.findIndex((i) => i._key === identifier || i.name === identifier);
     if (idx !== -1) {
@@ -410,10 +383,7 @@ export function indentItem(items: TopLevelItem[], identifier: string): TopLevelI
     const idx = list.findIndex((i) => i._key === identifier || i.name === identifier);
     if (idx > 0) {
       const prevSibling = list[idx - 1];
-      if (
-        (prevSibling.type === "unit_loop" || prevSibling.type === "show_if") &&
-        hasChildren(prevSibling)
-      ) {
+      if ((prevSibling.type === "unit_loop" || prevSibling.type === "show_if") && hasChildren(prevSibling)) {
         const itemToIndent = list[idx];
         const remaining = list.filter((_, i) => i !== idx);
         const updatedPrev = {
@@ -451,24 +421,14 @@ export function outdentItem(items: TopLevelItem[], identifier: string): TopLevel
   const parent = findParent(items, identifier);
   if (!parent) return items;
 
-  return moveItemTo(
-    items,
-    keyOf(item) || itemName(item) || "",
-    keyOf(parent) || itemName(parent) || "",
-    "after",
-  );
+  return moveItemTo(items, keyOf(item) || itemName(item) || "", keyOf(parent) || itemName(parent) || "", "after");
 }
 
-export function updateItem(
-  items: TopLevelItem[],
-  identifier: string,
-  updated: DesignItem,
-): TopLevelItem[] {
+export function updateItem(items: TopLevelItem[], identifier: string, updated: DesignItem): TopLevelItem[] {
   function updateInNodes(nodes: Node[]): Node[] {
     return nodes.map((node) => {
       if (node._key === identifier || node.name === identifier) {
-        const children =
-          "children" in updated ? asNodes(childrenOf(updated)) : node.children;
+        const children = "children" in updated ? asNodes(childrenOf(updated)) : node.children;
 
         return {
           ...node,
@@ -564,7 +524,7 @@ export function topmostSelected(items: TopLevelItem[], keys: ReadonlySet<string>
 
 /** Whether an item is selected itself or is inside a selected item. */
 export function isInSelection(items: TopLevelItem[], keys: ReadonlySet<string>, key: string): boolean {
-  for (let k: string | null = key; k; ) {
+  for (let k: string | null = key; k;) {
     if (keys.has(k)) return true;
     const parent = findParent(items, k);
     k = parent ? idOf(parent) : null;

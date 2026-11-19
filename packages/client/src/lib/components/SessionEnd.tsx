@@ -72,7 +72,9 @@ export function SessionEnd({
           </div>
         ) : (
           <p className="mt-2 text-sm text-muted-foreground">
-            {screenout ? "This is the end of the study for you." : "You've completed all available units. Thank you for your contributions!"}
+            {screenout
+              ? "This is the end of the study for you."
+              : "You've completed all available units. Thank you for your contributions!"}
           </p>
         )}
         {redirect && (
@@ -92,11 +94,14 @@ export function SessionEnd({
             className="mt-4 cursor-pointer text-sm text-primary underline underline-offset-2 hover:text-primary/80"
           >
             Go back to my answers
-            {reopen.until && ` (until ${new Date(reopen.until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})`}
+            {reopen.until &&
+              ` (until ${new Date(reopen.until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})`}
           </button>
         )}
         {deletionRequested ? (
-          <p className="mt-6 text-xs text-muted-foreground">Your request to delete your answers was sent to the researchers.</p>
+          <p className="mt-6 text-xs text-muted-foreground">
+            Your request to delete your answers was sent to the researchers.
+          </p>
         ) : (
           onRequestDeletion &&
           !preview && (
@@ -121,7 +126,11 @@ export function SessionEnd({
           </div>
         )}
         {onRequestDeletion && (
-          <QuitDialog choice={asking ? "delete" : null} onClose={() => setAsking(false)} onQuit={() => onRequestDeletion()} />
+          <QuitDialog
+            choice={asking ? "delete" : null}
+            onClose={() => setAsking(false)}
+            onQuit={() => onRequestDeletion()}
+          />
         )}
       </div>
     </div>

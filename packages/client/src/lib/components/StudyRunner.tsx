@@ -76,16 +76,16 @@ function CoderSettingsMenu() {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-bar-foreground hover:bg-bar-foreground/15 transition-colors cursor-pointer"
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-bar-foreground transition-colors hover:bg-bar-foreground/15"
           title="Coder Settings"
           aria-label="Coder Settings"
         >
           <Settings className="h-4 w-4" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-60 p-3 shadow-lg space-y-3">
+      <PopoverContent align="end" className="w-60 space-y-3 p-3 shadow-lg">
         <div className="border-b border-border/80 pb-2">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Settings</h4>
+          <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Settings</h4>
         </div>
 
         {/* Theme Setting */}
@@ -95,10 +95,10 @@ function CoderSettingsMenu() {
             <button
               type="button"
               onClick={() => setTheme("light")}
-              className={`flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium border transition-colors cursor-pointer ${
+              className={`flex cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 theme === "light"
-                  ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                  : "bg-muted/40 text-foreground border-border hover:bg-muted"
+                  ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                  : "border-border bg-muted/40 text-foreground hover:bg-muted"
               }`}
             >
               <Sun className="h-3.5 w-3.5" />
@@ -107,10 +107,10 @@ function CoderSettingsMenu() {
             <button
               type="button"
               onClick={() => setTheme("dark")}
-              className={`flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium border transition-colors cursor-pointer ${
+              className={`flex cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 theme === "dark"
-                  ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                  : "bg-muted/40 text-foreground border-border hover:bg-muted"
+                  ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                  : "border-border bg-muted/40 text-foreground hover:bg-muted"
               }`}
             >
               <Moon className="h-3.5 w-3.5" />
@@ -120,9 +120,9 @@ function CoderSettingsMenu() {
         </div>
 
         {/* Shortcuts Setting */}
-        <div className="space-y-1.5 pt-2 border-t border-border/60">
+        <div className="space-y-1.5 border-t border-border/60 pt-2">
           <div className="flex items-center justify-between">
-            <label htmlFor="toggle-shortcuts" className="text-xs font-medium text-foreground cursor-pointer">
+            <label htmlFor="toggle-shortcuts" className="cursor-pointer text-xs font-medium text-foreground">
               Shortcuts
             </label>
             <button
@@ -142,7 +142,7 @@ function CoderSettingsMenu() {
               />
             </button>
           </div>
-          <p className="text-[11px] text-muted-foreground leading-tight">
+          <p className="text-[11px] leading-tight text-muted-foreground">
             Show keyboard hotkey badges on answer options
           </p>
         </div>
@@ -283,7 +283,10 @@ function StudyRunnerContent({
   if (snapshot.phase === "error" && snapshot.errorCode === "study_paused") {
     return (
       <SessionNotice title="This study is paused">
-        <p>The researchers paused it for a while. Anything you answered is saved, and you can continue where you left off once it goes on.</p>
+        <p>
+          The researchers paused it for a while. Anything you answered is saved, and you can continue where you left off
+          once it goes on.
+        </p>
         <p>Please try again later: open your link again, or check now.</p>
         <Button type="button" variant="outline" className="mt-2" onClick={() => manager.retry()}>
           Check again
@@ -299,7 +302,10 @@ function StudyRunnerContent({
   if (snapshot.phase === "error" && snapshot.errorCode === "email_not_allowed") {
     return (
       <SessionNotice title="This email address has no access to this study">
-        <p>The researchers gave this study to specific email addresses, and the account you are signed in with isn&apos;t one of them.</p>
+        <p>
+          The researchers gave this study to specific email addresses, and the account you are signed in with isn&apos;t
+          one of them.
+        </p>
         <p>If you were given it with another email address, sign in with that account.</p>
         <Button
           type="button"
@@ -321,7 +327,10 @@ function StudyRunnerContent({
     );
   }
 
-  if (snapshot.phase === "error" && (snapshot.errorCode === "url_param_missing" || snapshot.errorCode === "url_param_invalid")) {
+  if (
+    snapshot.phase === "error" &&
+    (snapshot.errorCode === "url_param_missing" || snapshot.errorCode === "url_param_invalid")
+  ) {
     return (
       <SessionNotice title="This link is incomplete">
         <p>{snapshot.error}.</p>
@@ -342,11 +351,7 @@ function StudyRunnerContent({
           </div>
           <h3 className="mt-3 text-lg font-semibold text-foreground">Something went wrong</h3>
           <p className="mt-1 text-sm text-muted-foreground">{snapshot.error}</p>
-          <Button
-            type="button"
-            className="mt-5"
-            onClick={() => manager.retry()}
-          >
+          <Button type="button" className="mt-5" onClick={() => manager.retry()}>
             Retry
           </Button>
         </div>
@@ -380,7 +385,9 @@ function StudyRunnerContent({
 
   const item = snapshot.currentItem;
   const isUnitVar = snapshot.phase === "unit_variable";
-  const hasUnitLayout = Boolean(isUnitVar && snapshot.currentUnit && snapshot.currentUnitLayout && snapshot.currentUnitTemplate);
+  const hasUnitLayout = Boolean(
+    isUnitVar && snapshot.currentUnit && snapshot.currentUnitLayout && snapshot.currentUnitTemplate,
+  );
   const spanVariable = isUnitVar && item.variable.type === "span" ? item.variable : null;
 
   const handleAnswer = (val: VariableValue) => {
@@ -394,11 +401,7 @@ function StudyRunnerContent({
       key={`${snapshot.currentUnit?.id ?? ""}/${item.name}`}
       item={item}
       onAnswer={handleAnswer}
-      initialValue={
-        !isUnitVar
-          ? snapshot.userVariableValues[item.name]
-          : snapshot.currentUnitVariables?.[item.name]
-      }
+      initialValue={!isUnitVar ? snapshot.userVariableValues[item.name] : snapshot.currentUnitVariables?.[item.name]}
       unitVariables={snapshot.currentUnitVariables ?? undefined}
       texts={snapshot.currentTexts}
     />
@@ -414,7 +417,13 @@ function StudyRunnerContent({
       {practiceWrong.retry ? (
         <p className="mt-1 text-muted-foreground">This is a practice unit: answer again.</p>
       ) : (
-        <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => void manager.continueAfterPractice()}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="mt-2"
+          onClick={() => void manager.continueAfterPractice()}
+        >
           Continue
         </Button>
       )}
@@ -431,8 +440,13 @@ function StudyRunnerContent({
       <fieldset disabled className="pointer-events-none opacity-60" aria-readonly>
         {answerField}
       </fieldset>
-      <p className="px-4 text-sm text-muted-foreground">You coded units with this answer, so it can&apos;t be changed any more.</p>
-      <Button className="mx-4 w-fit" onClick={() => handleAnswer(snapshot.userVariableValues[item.name] ?? { done: true, skip: true })}>
+      <p className="px-4 text-sm text-muted-foreground">
+        You coded units with this answer, so it can&apos;t be changed any more.
+      </p>
+      <Button
+        className="mx-4 w-fit"
+        onClick={() => handleAnswer(snapshot.userVariableValues[item.name] ?? { done: true, skip: true })}
+      >
         Continue
       </Button>
     </div>
@@ -443,11 +457,15 @@ function StudyRunnerContent({
   // A swipe question: the unit (or the question card) is the card to swipe.
   const swipeVariable = item.variable.type === "annotinder" ? item.variable : null;
   // What the question is about, by id: scrolled to when it comes up (docs/client.md §3, "Focus").
-  const focus = ("focus" in item.variable ? item.variable.focus : undefined) ?? spanVariable?.fields.map((f) => `unit.${f}`);
+  const focus =
+    ("focus" in item.variable ? item.variable.focus : undefined) ?? spanVariable?.fields.map((f) => `unit.${f}`);
   const focusDim = "focusDim" in item.variable ? item.variable.focusDim : undefined;
   const withSwipe = (content: ReactNode) =>
     swipeVariable ? (
-      <SwipeProvider options={swipeVariable.options} onAnswer={(option) => handleAnswer(buildValues([{ value: option.value }]))}>
+      <SwipeProvider
+        options={swipeVariable.options}
+        onAnswer={(option) => handleAnswer(buildValues([{ value: option.value }]))}
+      >
         {content}
       </SwipeProvider>
     ) : (
@@ -462,13 +480,13 @@ function StudyRunnerContent({
     <div className="@container flex h-full w-full flex-col overflow-hidden bg-background">
       {rightFlash && (
         <div role="status" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
-          <div className="flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-lg font-semibold text-white shadow-lg animate-in fade-in zoom-in-90">
+          <div className="flex animate-in items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-lg font-semibold text-white shadow-lg zoom-in-90 fade-in">
             <CircleCheck className="h-6 w-6" /> Correct
           </div>
         </div>
       )}
       {/* Top Header / Progress Bar */}
-      <header className="relative flex h-11 shrink-0 items-center justify-between border-b border-bar-foreground/10 bg-bar px-3 sm:px-4 text-bar-foreground shadow-sm">
+      <header className="relative flex h-11 shrink-0 items-center justify-between border-b border-bar-foreground/10 bg-bar px-3 text-bar-foreground shadow-sm sm:px-4">
         <CodingProgress navigation={snapshot.navigation} />
         <CodingNav
           navigation={snapshot.navigation}
@@ -487,9 +505,13 @@ function StudyRunnerContent({
         />
 
         {/* Right Section: Coder Settings Menu */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex shrink-0 items-center gap-1">
           {snapshot.retrying && (
-            <span className="flex items-center gap-1 text-xs" role="status" title="Your answers are kept and saved as soon as the connection is back.">
+            <span
+              className="flex items-center gap-1 text-xs"
+              role="status"
+              title="Your answers are kept and saved as soon as the connection is back."
+            >
               <CloudOff className="h-4 w-4" />
               <span className="hidden sm:inline">Not saved yet: no connection</span>
             </span>
@@ -526,41 +548,60 @@ function StudyRunnerContent({
               desktop screen it has a max height and is centred, so the answers stay near the unit. */}
           {withSwipe(
             <div className="flex min-h-0 flex-1 flex-col @5xl:p-6">
-            <SwipeSurface className="relative flex w-full flex-1 flex-col overflow-hidden [container-type:size] @5xl:mx-auto @5xl:my-auto @5xl:max-h-[56rem] @5xl:max-w-3xl @5xl:rounded-2xl @5xl:border @5xl:border-border @5xl:bg-card @5xl:shadow-sm">
-              {/* Scrollable Unit Content (Document). Stable gutter: a scrollbar appearing doesn't move the text. */}
-              <div className="subtle-scrollbar flex-1 min-h-[100px] overflow-y-auto overflow-x-hidden p-3 sm:p-5 [scrollbar-gutter:stable]">
-                <div
-                  key={unitAnimationKey}
-                  className={`mx-auto max-w-2xl ${unitSlideClass}`}
-                  onAnimationEnd={() => setUnitSlideClass("")}
-                >
-                  {swipeVariable ? (
-                    // The unit moves when swiped; on a card only if the question asks for one (no layout jump otherwise)
-                    <SwipeCard key={variableKey} className={swipeVariable.card ? "rounded-2xl border border-border bg-card p-4 shadow-md sm:p-5" : "rounded-2xl bg-background"}>
-                      <UnitFields layout={snapshot.currentUnitLayout!} rendered={snapshot.currentUnitTemplate!} focus={focus} focusDim={focusDim} />
-                    </SwipeCard>
-                  ) : (
-                    <UnitFields layout={snapshot.currentUnitLayout!} rendered={snapshot.currentUnitTemplate!} focus={focus} focusDim={focusDim} />
-                  )}
+              <SwipeSurface className="[container-type:size] relative flex w-full flex-1 flex-col overflow-hidden @5xl:mx-auto @5xl:my-auto @5xl:max-h-[56rem] @5xl:max-w-3xl @5xl:rounded-2xl @5xl:border @5xl:border-border @5xl:bg-card @5xl:shadow-sm">
+                {/* Scrollable Unit Content (Document). Stable gutter: a scrollbar appearing doesn't move the text. */}
+                <div className="min-h-[100px] flex-1 subtle-scrollbar [scrollbar-gutter:stable] overflow-x-hidden overflow-y-auto p-3 sm:p-5">
+                  <div
+                    key={unitAnimationKey}
+                    className={`mx-auto max-w-2xl ${unitSlideClass}`}
+                    onAnimationEnd={() => setUnitSlideClass("")}
+                  >
+                    {swipeVariable ? (
+                      // The unit moves when swiped; on a card only if the question asks for one (no layout jump otherwise)
+                      <SwipeCard
+                        key={variableKey}
+                        className={
+                          swipeVariable.card
+                            ? "rounded-2xl border border-border bg-card p-4 shadow-md sm:p-5"
+                            : "rounded-2xl bg-background"
+                        }
+                      >
+                        <UnitFields
+                          layout={snapshot.currentUnitLayout!}
+                          rendered={snapshot.currentUnitTemplate!}
+                          focus={focus}
+                          focusDim={focusDim}
+                        />
+                      </SwipeCard>
+                    ) : (
+                      <UnitFields
+                        layout={snapshot.currentUnitLayout!}
+                        rendered={snapshot.currentUnitTemplate!}
+                        focus={focus}
+                        focusDim={focusDim}
+                      />
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Compact, Thumb-Friendly Docked Bottom Answer Form */}
-              <DockedAnswerPane>
-                <div key={variableKey} className={slideClass}>
-                  {questionElement}
-                </div>
-              </DockedAnswerPane>
-            </SwipeSurface>
+                {/* Compact, Thumb-Friendly Docked Bottom Answer Form */}
+                <DockedAnswerPane>
+                  <div key={variableKey} className={slideClass}>
+                    {questionElement}
+                  </div>
+                </DockedAnswerPane>
+              </SwipeSurface>
             </div>,
           )}
         </SpanAnnotationProvider>
       ) : (
         /* Standalone Question (intro, survey, user variable without document) */
         withSwipe(
-          <SwipeSurface className="flex flex-1 items-center justify-center overflow-y-auto overflow-x-hidden p-4 sm:p-8">
+          <SwipeSurface className="flex flex-1 items-center justify-center overflow-x-hidden overflow-y-auto p-4 sm:p-8">
             <div key={variableKey} className={`mx-auto w-full max-w-xl ${slideClass}`}>
-              <SwipeCard className="rounded-2xl border border-border bg-card p-5 sm:p-8 shadow-sm">{questionElement}</SwipeCard>
+              <SwipeCard className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-8">
+                {questionElement}
+              </SwipeCard>
             </div>
           </SwipeSurface>,
         )
@@ -585,13 +626,13 @@ export function StudyRunner(props: StudyRunnerProps) {
  */
 function CoderSessionGate(props: StudyRunnerProps) {
   const { baseUrl, linkSecret, transferToken, onTransferRedeemed, newSession = false } = props;
-  const scope = useMemo<CoderSessionScope>(
-    () => ({ baseUrl, linkSecret }),
-    [baseUrl, linkSecret],
-  );
-  const [session, setSession] = useState<{ ready: boolean; generation: number; newSession: boolean; error: string | null }>(
-    () => ({ ready: !transferToken, generation: 0, newSession, error: null }),
-  );
+  const scope = useMemo<CoderSessionScope>(() => ({ baseUrl, linkSecret }), [baseUrl, linkSecret]);
+  const [session, setSession] = useState<{
+    ready: boolean;
+    generation: number;
+    newSession: boolean;
+    error: string | null;
+  }>(() => ({ ready: !transferToken, generation: 0, newSession, error: null }));
 
   useEffect(() => {
     if (!transferToken) return;
@@ -614,7 +655,10 @@ function CoderSessionGate(props: StudyRunnerProps) {
     return (
       <SessionNotice title="This link can't be used">
         <p>{session.error}</p>
-        <p>Links to continue on another device work once and expire after 15 minutes. Make a new one on the device you started on.</p>
+        <p>
+          Links to continue on another device work once and expire after 15 minutes. Make a new one on the device you
+          started on.
+        </p>
       </SessionNotice>
     );
   }
@@ -668,7 +712,12 @@ function LoginNotice() {
       {available === false ? (
         <p>This server doesn&apos;t offer a sign-in, though. Please contact the researchers.</p>
       ) : (
-        <Button type="button" className="mt-2" disabled={available === null} onClick={() => window.location.assign(coderLoginUrl())}>
+        <Button
+          type="button"
+          className="mt-2"
+          disabled={available === null}
+          onClick={() => window.location.assign(coderLoginUrl())}
+        >
           Sign in
         </Button>
       )}
@@ -713,7 +762,7 @@ function TransferMenu({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-bar-foreground hover:bg-bar-foreground/15 transition-colors cursor-pointer"
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-bar-foreground transition-colors hover:bg-bar-foreground/15"
           title="Continue on another device"
           aria-label="Continue on another device"
         >
@@ -721,7 +770,9 @@ function TransferMenu({
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 space-y-3 p-3 shadow-lg">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Continue on another device</h4>
+        <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+          Continue on another device
+        </h4>
         {error && <p className="text-xs text-destructive">{error}</p>}
         {!error && !link && <Loader2 className="mx-auto h-5 w-5 animate-spin text-primary" />}
         {link && (
@@ -732,7 +783,11 @@ function TransferMenu({
               dangerouslySetInnerHTML={{ __html: renderSVG(link.url) }}
             />
             <div className="flex items-center gap-1">
-              <input readOnly value={link.url} className="h-8 min-w-0 flex-1 rounded border border-input bg-background px-2 text-xs" />
+              <input
+                readOnly
+                value={link.url}
+                className="h-8 min-w-0 flex-1 rounded border border-input bg-background px-2 text-xs"
+              />
               <Button
                 type="button"
                 size="icon-sm"
@@ -762,7 +817,13 @@ function TransferMenu({
             <p className="text-[11px] text-muted-foreground">
               Or log in: your answers are then kept with your account, and you can continue on any device by logging in.
             </p>
-            <Button type="button" size="sm" variant="outline" className="w-full" onClick={() => window.location.assign(coderLoginUrl())}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="w-full"
+              onClick={() => window.location.assign(coderLoginUrl())}
+            >
               Log in
             </Button>
           </div>
@@ -784,14 +845,15 @@ function ParticipantElsewhere({ onStartNewSession }: { onStartNewSession: () => 
   return (
     <SessionNotice title="You already started on another device">
       <p>
-        This link was already used to start on another device or browser. Your answers so far are there, and that is where you
-        continue.
+        This link was already used to start on another device or browser. Your answers so far are there, and that is
+        where you continue.
       </p>
       <ul className="list-disc space-y-1 pl-5">
         <li>Open this link again on the device and browser where you started.</li>
         <li>
-          To continue <em>here</em>: on that device, open &quot;Continue on another device&quot; (top right) and open the link or
-          scan the code it shows here. If the study lets you log in, you can also log in there, and then log in here.
+          To continue <em>here</em>: on that device, open &quot;Continue on another device&quot; (top right) and open
+          the link or scan the code it shows here. If the study lets you log in, you can also log in there, and then log
+          in here.
         </li>
       </ul>
       {!cantReturn ? (
@@ -801,15 +863,26 @@ function ParticipantElsewhere({ onStartNewSession }: { onStartNewSession: () => 
       ) : (
         <div className="mt-2 flex flex-col gap-2 rounded-md border border-amber-500/60 bg-amber-500/10 p-3">
           <p>
-            Starting again should rarely be needed: only when you can&apos;t (easily) use the device or browser where you started, for
-            instance because you lost it or its browser data was cleared. A new session starts from the beginning, without your
-            earlier answers, and the researchers see that this link started twice.
+            Starting again should rarely be needed: only when you can&apos;t (easily) use the device or browser where
+            you started, for instance because you lost it or its browser data was cleared. A new session starts from the
+            beginning, without your earlier answers, and the researchers see that this link started twice.
           </p>
           <label className="flex items-start gap-2">
-            <input type="checkbox" className="mt-1" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={confirmed}
+              onChange={(e) => setConfirmed(e.target.checked)}
+            />
             <span>I can&apos;t get back to the device or browser where I started.</span>
           </label>
-          <Button type="button" variant="outline" className="self-start" disabled={!confirmed} onClick={onStartNewSession}>
+          <Button
+            type="button"
+            variant="outline"
+            className="self-start"
+            disabled={!confirmed}
+            onClick={onStartNewSession}
+          >
             Start a new session
           </Button>
         </div>

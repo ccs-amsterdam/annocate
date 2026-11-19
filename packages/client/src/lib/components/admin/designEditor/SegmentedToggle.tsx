@@ -10,7 +10,12 @@ interface SegmentedToggleProps<T extends string> {
 }
 
 /** A small row of mutually exclusive buttons, e.g. Visual | JSON. */
-export function SegmentedToggle<T extends string>({ value, options, onChange, variant = "muted" }: SegmentedToggleProps<T>) {
+export function SegmentedToggle<T extends string>({
+  value,
+  options,
+  onChange,
+  variant = "muted",
+}: SegmentedToggleProps<T>) {
   return (
     <div
       className={cn(

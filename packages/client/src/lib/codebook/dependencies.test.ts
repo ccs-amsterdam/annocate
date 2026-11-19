@@ -16,7 +16,9 @@ describe("extractDependencies", () => {
   });
 
   it("makes a helper call depend on its question", () => {
-    expect(extractDependencies(`$var.role.is("a")`, scope)).toEqual({ "$var.role": { answered: true, value: "a", label: "A" } });
+    expect(extractDependencies(`$var.role.is("a")`, scope)).toEqual({
+      "$var.role": { answered: true, value: "a", label: "A" },
+    });
   });
 
   it("ignores references in strings and comments", () => {

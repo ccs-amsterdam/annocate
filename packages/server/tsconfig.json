@@ -6,15 +6,8 @@
     "composite": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "types": [
-      "node"
-    ]
+    "types": ["node"]
   },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "src/**/*.test.ts",
-    "src/__tests__"
-  ]
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts", "src/__tests__"]
 }

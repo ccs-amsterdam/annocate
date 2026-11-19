@@ -22,7 +22,7 @@ export function LoopProgress({ status }: { status: DeploymentStatus }) {
                 <span className="font-mono">{s.loop}</span>
                 <span className="text-muted-foreground"> · {shareLabel(s.set)}</span>
               </span>
-              <span className="shrink-0 tabular-nums text-muted-foreground">
+              <span className="shrink-0 text-muted-foreground tabular-nums">
                 {s.completeUnits} / {s.totalUnits} complete · {s.coders} coder{s.coders === 1 ? "" : "s"}
               </span>
             </div>

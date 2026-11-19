@@ -48,9 +48,7 @@ export function SandboxedHtml({ html, title = "HTML content" }: { html: string; 
     return () => window.removeEventListener("message", onMessage);
   }, []);
   return (
-    <div ref={box}>
-      {look && <SandboxFrame ref={frame} html={html} look={look} title={title} height={height} />}
-    </div>
+    <div ref={box}>{look && <SandboxFrame ref={frame} html={html} look={look} title={title} height={height} />}</div>
   );
 }
 

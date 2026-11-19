@@ -100,7 +100,7 @@ export function StudyPreview({ client, coderApiUrl = "" }: StudyPreviewProps) {
   if (designVersionsQuery.isLoading || unitsQuery.isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <p className="text-sm text-muted-foreground animate-pulse">Loading study preview...</p>
+        <p className="animate-pulse text-sm text-muted-foreground">Loading study preview...</p>
       </div>
     );
   }
@@ -115,15 +115,15 @@ export function StudyPreview({ client, coderApiUrl = "" }: StudyPreviewProps) {
         <p className="mt-2 text-sm text-muted-foreground">
           To preview how this study looks and works for coders, you need:
         </p>
-        <ul className="mt-3 text-left text-sm space-y-2 bg-muted/50 p-4 rounded-lg">
+        <ul className="mt-3 space-y-2 rounded-lg bg-muted/50 p-4 text-left text-sm">
           <li className="flex items-center gap-2">
-            <span className={hasDesign ? "text-primary font-bold" : "text-muted-foreground"}>
+            <span className={hasDesign ? "font-bold text-primary" : "text-muted-foreground"}>
               {hasDesign ? "✓" : "○"}
             </span>
             <span>Design with questions {hasDesign ? "(Ready)" : "(Missing)"}</span>
           </li>
           <li className="flex items-center gap-2">
-            <span className={hasUnits ? "text-primary font-bold" : "text-muted-foreground"}>
+            <span className={hasUnits ? "font-bold text-primary" : "text-muted-foreground"}>
               {hasUnits ? "✓" : "○"}
             </span>
             <span>Uploaded units {hasUnits ? "(Ready)" : "(Missing)"}</span>
@@ -177,9 +177,7 @@ export function StudyPreview({ client, coderApiUrl = "" }: StudyPreviewProps) {
               type="button"
               onClick={() => setIsFullScreen(true)}
               className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
-                isFullScreen
-                  ? "bg-card text-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
+                isFullScreen ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Maximize2 className="h-3.5 w-3.5" />
@@ -192,20 +190,23 @@ export function StudyPreview({ client, coderApiUrl = "" }: StudyPreviewProps) {
               className="rounded-md bg-muted px-2 py-1 text-xs text-foreground"
               title="Preview runs the latest version. Coders keep using the live version until you deploy."
             >
-              Previewing v{designVersions.length} ({latestStatus === "draft" ? "draft" : latestStatus === "live" ? "live" : "not live"})
+              Previewing v{designVersions.length} (
+              {latestStatus === "draft" ? "draft" : latestStatus === "live" ? "live" : "not live"})
             </span>
           )}
 
           {/* Presets and Dimension Inputs */}
           {!isFullScreen && (
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-muted-foreground font-medium">Preset:</span>
+              <span className="font-medium text-muted-foreground">Preset:</span>
               <select
                 className="h-8 rounded-md border border-input bg-background px-2 text-xs font-medium"
                 // The preset matching the current size, if any ("Custom" otherwise)
                 value={
                   (deviceMode === "mobile" ? MOBILE_PRESETS : DESKTOP_PRESETS).find((p) =>
-                    deviceMode === "mobile" ? p.width === mobileWidth && p.height === mobileHeight : p.width === desktopWidth && p.height === desktopHeight,
+                    deviceMode === "mobile"
+                      ? p.width === mobileWidth && p.height === mobileHeight
+                      : p.width === desktopWidth && p.height === desktopHeight,
                   )?.label ?? ""
                 }
                 onChange={(e) => {
@@ -235,7 +236,7 @@ export function StudyPreview({ client, coderApiUrl = "" }: StudyPreviewProps) {
               </select>
 
               {/* Adjustable Width & Height */}
-              <div className="flex items-center gap-1 pl-2 border-l border-border">
+              <div className="flex items-center gap-1 border-l border-border pl-2">
                 <span className="text-muted-foreground">W:</span>
                 <input
                   type="number"
@@ -248,7 +249,7 @@ export function StudyPreview({ client, coderApiUrl = "" }: StudyPreviewProps) {
                     if (deviceMode === "mobile") setMobileWidth(w);
                     else setDesktopWidth(w);
                   }}
-                  className="h-8 w-16 rounded-md border border-input bg-background px-2 text-xs font-mono"
+                  className="h-8 w-16 rounded-md border border-input bg-background px-2 font-mono text-xs"
                 />
                 <span className="text-muted-foreground">× H:</span>
                 <input
@@ -262,7 +263,7 @@ export function StudyPreview({ client, coderApiUrl = "" }: StudyPreviewProps) {
                     if (deviceMode === "mobile") setMobileHeight(h);
                     else setDesktopHeight(h);
                   }}
-                  className="h-8 w-16 rounded-md border border-input bg-background px-2 text-xs font-mono"
+                  className="h-8 w-16 rounded-md border border-input bg-background px-2 font-mono text-xs"
                 />
                 <span className="text-muted-foreground">px</span>
               </div>
@@ -283,15 +284,13 @@ export function StudyPreview({ client, coderApiUrl = "" }: StudyPreviewProps) {
       </div>
 
       {/* Preview Container */}
-      <div className="flex flex-1 items-center justify-center overflow-auto p-2 sm:p-6 bg-muted/20 rounded-2xl">
+      <div className="flex flex-1 items-center justify-center overflow-auto rounded-2xl bg-muted/20 p-2 sm:p-6">
         {creatingLink ? (
           <div className="flex h-64 items-center justify-center">
-            <p className="text-sm text-muted-foreground animate-pulse">Initializing preview session...</p>
+            <p className="animate-pulse text-sm text-muted-foreground">Initializing preview session...</p>
           </div>
         ) : error ? (
-          <div className="p-4 text-center text-sm text-destructive">
-            Failed to initialize preview: {error}
-          </div>
+          <div className="p-4 text-center text-sm text-destructive">Failed to initialize preview: {error}</div>
         ) : preview ? (
           isFullScreen ? (
             /* Responsive Full Width */
@@ -308,10 +307,10 @@ export function StudyPreview({ client, coderApiUrl = "" }: StudyPreviewProps) {
             /* Mobile Device Frame with simulated bezel */
             <div
               style={{ width: mobileWidth, height: mobileHeight }}
-              className="max-w-full rounded-[38px] border-[10px] border-slate-900 bg-background shadow-2xl overflow-hidden flex flex-col my-auto transition-all"
+              className="my-auto flex max-w-full flex-col overflow-hidden rounded-[38px] border-[10px] border-slate-900 bg-background shadow-2xl transition-all"
             >
               {/* Top Speaker / Dynamic Island Notch */}
-              <div className="h-6 w-full bg-slate-900 flex items-center justify-center shrink-0">
+              <div className="flex h-6 w-full shrink-0 items-center justify-center bg-slate-900">
                 <div className="h-3.5 w-24 rounded-full bg-slate-950" />
               </div>
               <div className="flex-1 overflow-auto">
@@ -324,7 +323,7 @@ export function StudyPreview({ client, coderApiUrl = "" }: StudyPreviewProps) {
                 />
               </div>
               {/* Bottom Home Indicator */}
-              <div className="h-4 w-full bg-slate-900 flex items-center justify-center shrink-0">
+              <div className="flex h-4 w-full shrink-0 items-center justify-center bg-slate-900">
                 <div className="h-1 w-28 rounded-full bg-slate-700" />
               </div>
             </div>
@@ -332,14 +331,14 @@ export function StudyPreview({ client, coderApiUrl = "" }: StudyPreviewProps) {
             /* Desktop Device Frame with simulated window title bar */
             <div
               style={{ width: desktopWidth, height: desktopHeight }}
-              className="max-w-full rounded-xl border border-border bg-background shadow-2xl overflow-hidden flex flex-col my-auto transition-all"
+              className="my-auto flex max-w-full flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl transition-all"
             >
               {/* Window Header */}
-              <div className="flex h-8 w-full items-center gap-1.5 border-b border-border bg-muted px-3 shrink-0">
+              <div className="flex h-8 w-full shrink-0 items-center gap-1.5 border-b border-border bg-muted px-3">
                 <div className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
                 <div className="h-2.5 w-2.5 rounded-full bg-amber-500/60" />
                 <div className="h-2.5 w-2.5 rounded-full bg-ember/70" />
-                <span className="mx-auto text-[11px] font-mono text-muted-foreground">
+                <span className="mx-auto font-mono text-[11px] text-muted-foreground">
                   Annotinder Preview ({desktopWidth} × {desktopHeight})
                 </span>
               </div>

@@ -2,11 +2,24 @@ import { TopLevelItemSchema, loopTitle, unitLoops, type DesignItem } from "./ite
 import type { AnyVariableType } from "./variableTypes.js";
 import { sameValue } from "./options.js";
 import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
-import { CHECKABLE_TYPES, goldColumn, practiceColumn, practiceMessageColumn, supportsAgreement, type LoopUnits } from "./unitLoop.js";
+import {
+  CHECKABLE_TYPES,
+  goldColumn,
+  practiceColumn,
+  practiceMessageColumn,
+  supportsAgreement,
+  type LoopUnits,
+} from "./unitLoop.js";
 import { RESERVED_SESSION_NAMES, sessionColumns, sessionItem, sessionNames, type SessionItem } from "./session.js";
 import { loopShareColumns } from "./assignment.js";
 import { expandSnippets, usesSnippets } from "./snippets.js";
-import { parseTemplateBlocks, templateNames, type DisplayNode, type FromStage, type TemplateNode } from "./templateBlocks.js";
+import {
+  parseTemplateBlocks,
+  templateNames,
+  type DisplayNode,
+  type FromStage,
+  type TemplateNode,
+} from "./templateBlocks.js";
 import {
   METHOD_TEXT,
   describeQuestion,
@@ -73,7 +86,8 @@ function schemaIssues(items: unknown[]): DesignIssue[] {
   for (let i = 0; i < items.length; i++) {
     const result = TopLevelItemSchema.safeParse(items[i]);
     if (!result.success) {
-      for (const err of flattenUnions(result.error.issues)) issues.push({ path: [i, ...err.path], message: err.message });
+      for (const err of flattenUnions(result.error.issues))
+        issues.push({ path: [i, ...err.path], message: err.message });
     }
   }
   return issues;
@@ -92,11 +106,16 @@ interface RawIssue {
  * (the one with the fewest issues if several did), recursively, so the
  * message is about the actual problem.
  */
-function flattenUnions(issues: readonly RawIssue[], prefix: (string | number)[] = []): { path: (string | number)[]; message: string }[] {
+function flattenUnions(
+  issues: readonly RawIssue[],
+  prefix: (string | number)[] = [],
+): { path: (string | number)[]; message: string }[] {
   return issues.flatMap((issue) => {
     const path = [...prefix, ...issue.path.filter((p): p is string | number => typeof p !== "symbol")];
     if (issue.code !== "invalid_union" || !issue.errors?.length) return [{ path, message: issue.message }];
-    const matching = issue.errors.filter((branch) => !branch.some((e) => e.path.length === 1 && (e.path[0] === "type" || e.path[0] === "mode")));
+    const matching = issue.errors.filter(
+      (branch) => !branch.some((e) => e.path.length === 1 && (e.path[0] === "type" || e.path[0] === "mode")),
+    );
     if (matching.length === 0) return [{ path, message: issue.message }];
     const best = matching.reduce((a, b) => (b.length < a.length ? b : a));
     return flattenUnions(best, path);
@@ -118,7 +137,12 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   /** `$session` names (declared parameters, conditions and the built-in ones). */
   const sessionNamed = new Set(sessionNames(items));
   /** Set columns that select a session's units (the coder column, assigned conditions'): column -> what. */
-  const linkedColumns = new Map(sessionColumns(sessionItem(items)).map((c) => [c.column, c.name === "coder" ? "the coders" : `condition '${c.name}'`]));
+  const linkedColumns = new Map(
+    sessionColumns(sessionItem(items)).map((c) => [
+      c.column,
+      c.name === "coder" ? "the coders" : `condition '${c.name}'`,
+    ]),
+  );
 
   const seen = new Set<string>();
   const issue = (path: Path, message: string, warning = false) => {
@@ -134,26 +158,37 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     // Session values exist everywhere: the Session item's parameters and the built-in ones.
     if (ref.ns === "session") {
       const name = ref.path[0];
-      if (!sessionNamed.has(name)) return issue(ctx.path, `${text}: no session parameter '${name}' (declare it in the Session item)`), null;
+      if (!sessionNamed.has(name))
+        return (issue(ctx.path, `${text}: no session parameter '${name}' (declare it in the Session item)`), null);
       return referenceShape(questions, ref);
     }
     if (ref.ns !== "var") {
-      if (ctx.loop === null) return issue(ctx.path, `${text} can only be used inside a unit loop`), null;
+      if (ctx.loop === null) return (issue(ctx.path, `${text} can only be used inside a unit loop`), null);
       return referenceShape(questions, ref);
     }
     const name = ref.path[0];
     const where = loopOf.get(name);
-    if (where === undefined) return issue(ctx.path, `${text}: '${name}' is not a question`), null;
-    if (name === ctx.self) return issue(ctx.path, `${text}: a question can't refer to itself`), null;
-    if (ctx.inside?.has(name)) return issue(ctx.path, `${text}: '${name}' is inside this condition`), null;
-    if (where !== null && where !== ctx.loop) return issue(ctx.path, `${text}: '${name}' is a question of another unit loop (${loopTitles.get(where)})`), null;
+    if (where === undefined) return (issue(ctx.path, `${text}: '${name}' is not a question`), null);
+    if (name === ctx.self) return (issue(ctx.path, `${text}: a question can't refer to itself`), null);
+    if (ctx.inside?.has(name)) return (issue(ctx.path, `${text}: '${name}' is inside this condition`), null);
+    if (where !== null && where !== ctx.loop)
+      return (
+        issue(ctx.path, `${text}: '${name}' is a question of another unit loop (${loopTitles.get(where)})`),
+        null
+      );
     if (!ctx.available.has(name)) {
       // In a layout, the loop's own answers exist from their question on: `::: from` says from where.
       const next = ctx.loopOrder?.[ctx.loopOrder.indexOf(name) + 1];
       if (ctx.loopOrder?.includes(name)) {
-        return issue(ctx.path, `${text}: '${name}' is answered in this loop; use it inside ${next ? `::: from ${next}` : "a ::: from block of a later question"}`), null;
+        return (
+          issue(
+            ctx.path,
+            `${text}: '${name}' is answered in this loop; use it inside ${next ? `::: from ${next}` : "a ::: from block of a later question"}`,
+          ),
+          null
+        );
       }
-      return issue(ctx.path, `${text}: '${name}' is asked after this point`), null;
+      return (issue(ctx.path, `${text}: '${name}' is asked after this point`), null);
     }
     const shape = referenceShape(questions, ref);
     if (!shape.ok) issue(ctx.path, shape.reason);
@@ -182,7 +217,11 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     if (!condition || typeof condition !== "object") return;
     const path = [...ctx.path, "script"];
     if (!condition.script?.trim()) issue(path, "The script is empty");
-    if (usesSnippets(condition.script ?? "")) issue(path, "Snippets ([[name]]) can only be used in a unit loop's layout and its questions' texts; in a layout, `::: if [[name]]` works");
+    if (usesSnippets(condition.script ?? ""))
+      issue(
+        path,
+        "Snippets ([[name]]) can only be used in a unit loop's layout and its questions' texts; in a layout, `::: if [[name]]` works",
+      );
     checkScript(condition.script ?? "", { ...ctx, path });
     const simple = parseSimpleCondition(condition.script ?? "");
     if (simple) for (const call of simpleConditionCalls(simple)) checkCall(call, { ...ctx, path });
@@ -193,7 +232,11 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
    * stages only in a layout). Returns the context at a place in it: inside
    * `from` stages, the loop's questions before theirs are available too.
    */
-  function checkBlocks(source: string, ctx: RefContext, kind: "layout" | "text" | "set" | "url"): (at: number) => RefContext {
+  function checkBlocks(
+    source: string,
+    ctx: RefContext,
+    kind: "layout" | "text" | "set" | "url",
+  ): (at: number) => RefContext {
     // Blocks: their conditions, and `from` stages, which make the loop's
     // questions before their question available inside them.
     const blocks = parseTemplateBlocks(source);
@@ -219,7 +262,8 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     walkBlocks(blocks.nodes);
     for (const stage of stages) {
       if (kind !== "layout") issue(ctx.path, "::: from only works in a unit layout");
-      else if (!ctx.loopOrder?.includes(stage.question)) issue(ctx.path, `::: from ${stage.question}: '${stage.question}' is not a question of this loop`);
+      else if (!ctx.loopOrder?.includes(stage.question))
+        issue(ctx.path, `::: from ${stage.question}: '${stage.question}' is not a question of this loop`);
     }
     const ctxAt = (at: number): RefContext => {
       const order = ctx.loopOrder ?? [];
@@ -268,7 +312,11 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       const here = ctxAt(segment.start);
       if (kind === "set" || kind === "url") {
         const what = kind === "url" ? "Redirect URLs" : "Set names";
-        if (!segment.ref) issue(here.path, `${what} can only use ${kind === "url" ? "$var and $session" : "$var"} references, not {{ }}`);
+        if (!segment.ref)
+          issue(
+            here.path,
+            `${what} can only use ${kind === "url" ? "$var and $session" : "$var"} references, not {{ }}`,
+          );
         else if (segment.ref.suffix) issue(here.path, `${what} can't use ::${segment.ref.suffix}`);
       } else {
         refErrors(extractReferences(segment.script).errors, here.path);
@@ -277,13 +325,18 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
         if (!segment.ref && inside) issue(here.path, `A suffix goes after the }}: {{ ... }}::${inside[1]}`);
         const display = displays.find((d) => segment.start >= d.bodyStart && segment.start < d.bodyEnd);
         if (display && segment.suffix !== "text") {
-          issue(here.path, `Inside a ::: ${display.kind} block values are put in as they are: leave out ::${segment.suffix}`);
+          issue(
+            here.path,
+            `Inside a ::: ${display.kind} block values are put in as they are: leave out ::${segment.suffix}`,
+          );
         }
       }
       for (const ref of segment.references) {
         const shape = checkRef(ref, here);
-        if (kind === "set" && shape?.ok && shape.array) issue(here.path, `${referenceText(ref)} holds a list; a set name needs a single value`);
-        if (kind === "url" && ref.ns === "unit") issue(here.path, `${referenceText(ref)}: redirect URLs can only use $var and $session references`);
+        if (kind === "set" && shape?.ok && shape.array)
+          issue(here.path, `${referenceText(ref)} holds a list; a set name needs a single value`);
+        if (kind === "url" && ref.ns === "unit")
+          issue(here.path, `${referenceText(ref)}: redirect URLs can only use $var and $session references`);
       }
     }
     const named = displays.flatMap((d) => (d.name ? [d.name] : []));
@@ -306,25 +359,42 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   collectEnds(items);
 
   function checkLoop(item: RawItem, itemPath: Path, loopName: string) {
-    const loop = item as { units?: Partial<LoopUnits> | null; children?: unknown; layout?: { template?: unknown; snippets?: Record<string, string> } };
+    const loop = item as {
+      units?: Partial<LoopUnits> | null;
+      children?: unknown;
+      layout?: { template?: unknown; snippets?: Record<string, string> };
+    };
     const loopQuestions = questionNames(loop.children);
     {
       const branch = loop.units && typeof loop.units === "object" ? loop.units : null;
       const path = [...itemPath, "units"];
       const overlap = branch?.overlap;
       if (overlap?.max !== undefined && overlap.expect !== undefined && overlap.max < overlap.expect) {
-        issue([...path, "overlap", "max"], `At most ${overlap.max} overlap units, but the design expects ${overlap.expect}`);
+        issue(
+          [...path, "overlap", "max"],
+          `At most ${overlap.max} overlap units, but the design expects ${overlap.expect}`,
+        );
       }
       // Practice and gold: questions of this loop with answers compared by value; a gold screen-out at an end item
       const checks = { practice: branch?.practice, gold: branch?.gold };
-      for (const [kind, settings] of Object.entries(checks) as ["practice" | "gold", { questions?: unknown; health?: { end?: unknown } } | undefined][]) {
+      for (const [kind, settings] of Object.entries(checks) as [
+        "practice" | "gold",
+        { questions?: unknown; health?: { end?: unknown } } | undefined,
+      ][]) {
         if (!settings) continue;
         (Array.isArray(settings.questions) ? settings.questions : []).forEach((name: unknown, q) => {
           const at = [...path, kind, "questions", q];
-          if (typeof name !== "string" || !loopQuestions.has(name)) return issue(at, `${kind === "gold" ? "Gold" : "Practice"} question '${String(name)}' is not a question in this loop`);
+          if (typeof name !== "string" || !loopQuestions.has(name))
+            return issue(
+              at,
+              `${kind === "gold" ? "Gold" : "Practice"} question '${String(name)}' is not a question in this loop`,
+            );
           const type = questions.get(name)?.type;
           if (!(CHECKABLE_TYPES as readonly string[]).includes(type ?? "")) {
-            issue(at, `'${name}' can't be checked against a right answer: ${describeQuestion(questions.get(name)!)} (use nominal, ordinal, swipe, numeric or confirm)`);
+            issue(
+              at,
+              `'${name}' can't be checked against a right answer: ${describeQuestion(questions.get(name)!)} (use nominal, ordinal, swipe, numeric or confirm)`,
+            );
           }
         });
         // The right answers must never reach coders: no layout or question may show their columns
@@ -333,20 +403,33 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           if (typeof name !== "string") continue;
           const columns = kind === "gold" ? [goldColumn(name)] : [practiceColumn(name), practiceMessageColumn(name)];
           for (const column of columns) {
-            if (new RegExp(`\\$unit\\.${column}\\b`).test(shown)) issue([...path, kind], `The answer column ${column} is shown to coders (in the layout or a question): it must stay hidden`);
+            if (new RegExp(`\\$unit\\.${column}\\b`).test(shown))
+              issue(
+                [...path, kind],
+                `The answer column ${column} is shown to coders (in the layout or a question): it must stay hidden`,
+              );
           }
         }
         const end = settings.health?.end;
         if (typeof end === "string") {
           const found = endItems.get(end);
-          if (!found) issue([...path, kind, "health", "end"], `No end item '${end}': the session ends there when health runs out`);
-          else if (found !== "screenout") issue([...path, kind, "health", "end"], `End item '${end}' should be a screen-out (coders who fail the gold checks)`);
+          if (!found)
+            issue(
+              [...path, kind, "health", "end"],
+              `No end item '${end}': the session ends there when health runs out`,
+            );
+          else if (found !== "screenout")
+            issue(
+              [...path, kind, "health", "end"],
+              `End item '${end}' should be a screen-out (coders who fail the gold checks)`,
+            );
         }
       }
       const agreement = branch?.criteria?.until?.on;
       if (typeof agreement === "string") {
         const at = [...path, "criteria", "until", "on"];
-        if (!loopQuestions.has(agreement)) issue(at, `Agreement question '${agreement}' is not a question in this loop`);
+        if (!loopQuestions.has(agreement))
+          issue(at, `Agreement question '${agreement}' is not a question in this loop`);
         else if (!supportsAgreement(questions.get(agreement)!)) {
           issue(
             at,
@@ -359,14 +442,22 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     const snippets = loop.layout?.snippets ?? {};
     const names = checkTemplate(
       loop.layout?.template,
-      { path: [...itemPath, "layout", "template"], loop: loopName, available: coderAvailable, snippets, loopOrder: [...loopQuestions] },
+      {
+        path: [...itemPath, "layout", "template"],
+        loop: loopName,
+        available: coderAvailable,
+        snippets,
+        loopOrder: [...loopQuestions],
+      },
       "layout",
     );
-    const idHint = (id: string) => (id.startsWith("unit.") ? ` (as $${id})` : id.startsWith("var.") ? "" : ` (as a ::: block named '${id}')`);
+    const idHint = (id: string) =>
+      id.startsWith("unit.") ? ` (as $${id})` : id.startsWith("var.") ? "" : ` (as a ::: block named '${id}')`;
     forEachQuestion(loop.children, [...itemPath, "children"], (q, path) => {
       const variable = q.variable as { type?: string; fields?: unknown; focus?: unknown } | undefined;
       for (const id of Array.isArray(variable?.focus) ? variable.focus : []) {
-        if (typeof id === "string" && !names.shown.has(id)) issue([...path, "variable", "focus"], `'${id}' is not shown in the layout${idHint(id)}`);
+        if (typeof id === "string" && !names.shown.has(id))
+          issue([...path, "variable", "focus"], `'${id}' is not shown in the layout${idHint(id)}`);
       }
       for (const field of variable?.type === "span" && Array.isArray(variable.fields) ? variable.fields : []) {
         if (typeof field !== "string" || names.selectable.has(`unit.${field}`)) continue;
@@ -382,35 +473,48 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   /** The Session item: first, once, top level; its parameters' names unique, combinations of its link parameters. */
   function checkSession(item: RawItem, itemPath: Path, index: number, nested: boolean) {
     if (nested || index !== 0) issue([...itemPath, "type"], "The Session item comes first in the design, at the top");
-    if (items.filter((i) => (i as { type?: unknown } | null)?.type === "session").length > 1) issue([...itemPath, "type"], "A design has one Session item");
+    if (items.filter((i) => (i as { type?: unknown } | null)?.type === "session").length > 1)
+      issue([...itemPath, "type"], "A design has one Session item");
     const session = item as unknown as Partial<SessionItem>;
     const params = Array.isArray(session.params) ? session.params : [];
     const names = params.map((p) => p?.name);
     names.forEach((name, i) => {
-      if (name && names.indexOf(name) !== i) issue([...itemPath, "params", i, "name"], `Two session parameters are named '${name}'`);
+      if (name && names.indexOf(name) !== i)
+        issue([...itemPath, "params", i, "name"], `Two session parameters are named '${name}'`);
     });
     const conditions = Array.isArray(session.conditions) ? session.conditions : [];
     conditions.forEach((cond, i) => {
       const name = cond?.name;
       if (!name) return;
-      if (names.includes(name) || conditions.findIndex((c) => c?.name === name) !== i) issue([...itemPath, "conditions", i, "name"], `Two session values are named '${name}'`);
+      if (names.includes(name) || conditions.findIndex((c) => c?.name === name) !== i)
+        issue([...itemPath, "conditions", i, "name"], `Two session values are named '${name}'`);
     });
     // A column selects units for one session value
     const columns = [
       ...(session.coders?.column ? [{ column: session.coders.column, path: [...itemPath, "coders", "column"] }] : []),
-      ...conditions.flatMap((c, i) => (c?.units ? [{ column: c.units, path: [...itemPath, "conditions", i, "units"] }] : [])),
+      ...conditions.flatMap((c, i) =>
+        c?.units ? [{ column: c.units, path: [...itemPath, "conditions", i, "units"] }] : [],
+      ),
     ];
     columns.forEach(({ column, path }, i) => {
-      if (columns.findIndex((c) => c.column === column) !== i) issue(path, `Column '${column}' already selects units for another session value: use a column each`);
+      if (columns.findIndex((c) => c.column === column) !== i)
+        issue(path, `Column '${column}' already selects units for another session value: use a column each`);
     });
     const keys = params.filter((p) => p?.kind === "url").map((p) => p.param ?? p.name);
     if (session.participant) keys.push(session.participant.param);
     keys.forEach((key, i) => {
       if (keys.indexOf(key) !== i) issue([...itemPath, "params"], `Two URL parameters use the key '${key}'`);
-      if (key === "source") issue([...itemPath, "params"], "'source' is always accepted as a URL parameter (tracking): use another key");
+      if (key === "source")
+        issue([...itemPath, "params"], "'source' is always accepted as a URL parameter (tracking): use another key");
     });
     params.forEach((p, i) => {
-      if (p?.kind === "url" && p.default !== undefined && p.values && "list" in p.values && !p.values.list.some((v) => v.value === p.default)) {
+      if (
+        p?.kind === "url" &&
+        p.default !== undefined &&
+        p.values &&
+        "list" in p.values &&
+        !p.values.list.some((v) => v.value === p.default)
+      ) {
         issue([...itemPath, "params", i, "default"], `The default '${p.default}' is not one of the values`);
       }
     });
@@ -419,8 +523,10 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       const comboNames = Object.keys(combo ?? {});
       const missing = linkParams.filter((p) => !comboNames.includes(p.name)).map((p) => p.name);
       const extra = comboNames.filter((n) => !linkParams.some((p) => p.name === n));
-      if (missing.length > 0) issue([...itemPath, "combinations", c], `Combination ${c + 1} has no value for ${missing.join(", ")}`);
-      if (extra.length > 0) issue([...itemPath, "combinations", c], `Combination ${c + 1}: ${extra.join(", ")} is not a link parameter`);
+      if (missing.length > 0)
+        issue([...itemPath, "combinations", c], `Combination ${c + 1} has no value for ${missing.join(", ")}`);
+      if (extra.length > 0)
+        issue([...itemPath, "combinations", c], `Combination ${c + 1}: ${extra.join(", ")} is not a link parameter`);
       for (const p of linkParams) {
         const value = combo?.[p.name];
         if (value !== undefined && p.values && "list" in p.values && !p.values.list.some((v) => v.value === value)) {
@@ -428,20 +534,33 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
         }
       }
     });
-    if (session.combinations && linkParams.length === 0) issue([...itemPath, "combinations"], "Combinations need link parameters");
+    if (session.combinations && linkParams.length === 0)
+      issue([...itemPath, "combinations"], "Combinations need link parameters");
   }
 
   /** A computed item: outside loops; a random one linked to a column selects units (one value per column); stratified on earlier answers or session values. */
   function checkComputed(item: RawItem, itemPath: Path, inLoop: boolean, available: ReadonlySet<string>) {
-    const variable = (item as { variable?: unknown }).variable as { type?: unknown; units?: unknown; stratify?: unknown } | undefined;
-    if (inLoop) return issue([...itemPath, "type"], `Computed item '${item.name}' can only be used outside a unit loop`);
+    const variable = (item as { variable?: unknown }).variable as
+      { type?: unknown; units?: unknown; stratify?: unknown } | undefined;
+    if (inLoop)
+      return issue([...itemPath, "type"], `Computed item '${item.name}' can only be used outside a unit loop`);
     if (variable?.type !== "random") return;
     const units = typeof variable.units === "string" ? variable.units : undefined;
-    if (units && item.name && (sessionNamed.has(item.name) || (RESERVED_SESSION_NAMES as readonly string[]).includes(item.name))) {
-      issue([...itemPath, "name"], `Computed item '${item.name}' selects units: its name can't also be a session value`);
+    if (
+      units &&
+      item.name &&
+      (sessionNamed.has(item.name) || (RESERVED_SESSION_NAMES as readonly string[]).includes(item.name))
+    ) {
+      issue(
+        [...itemPath, "name"],
+        `Computed item '${item.name}' selects units: its name can't also be a session value`,
+      );
     }
     if (units && linkedColumns.has(units)) {
-      issue([...itemPath, "variable", "units"], `Column '${units}' already selects units for ${linkedColumns.get(units)}: use a column each`);
+      issue(
+        [...itemPath, "variable", "units"],
+        `Column '${units}' already selects units for ${linkedColumns.get(units)}: use a column each`,
+      );
     } else if (units && item.name) {
       // Drawn independently, two values on one column would rarely leave a session any units
       linkedColumns.set(units, `computed item '${item.name}'`);
@@ -449,11 +568,19 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     // Groups for a balanced draw: answers given before it, or session values
     for (const name of Array.isArray(variable.stratify) ? (variable.stratify as string[]) : []) {
       const known = name.startsWith("session.") ? sessionNamed.has(name.slice("session.".length)) : available.has(name);
-      if (!known) issue([...itemPath, "variable", "stratify"], `Computed item '${item.name}': balanced within '${name}', which is not a question before it or a session value (session.<name>)`);
+      if (!known)
+        issue(
+          [...itemPath, "variable", "stratify"],
+          `Computed item '${item.name}': balanced within '${name}', which is not a question before it or a session value (session.<name>)`,
+        );
     }
   }
 
-  function walk(itemList: unknown[], currentPath: Path, loop: { name: string; snippets: Record<string, string> } | null) {
+  function walk(
+    itemList: unknown[],
+    currentPath: Path,
+    loop: { name: string; snippets: Record<string, string> } | null,
+  ) {
     if (!Array.isArray(itemList)) return;
 
     itemList.forEach((rawItem, index) => {
@@ -487,13 +614,24 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       }
 
       if (isQuestion) {
-        const variable = item.variable as { type?: string; question?: unknown; instruction?: unknown; from?: { variable?: string }; to?: { variable?: string } } | undefined;
+        const variable = item.variable as
+          | {
+              type?: string;
+              question?: unknown;
+              instruction?: unknown;
+              from?: { variable?: string };
+              to?: { variable?: string };
+            }
+          | undefined;
         // Check relation variable references
         if (variable?.type === "relation") {
           for (const end of ["from", "to"] as const) {
             const ref = variable[end]?.variable;
             if (ref && !spanVariables.has(ref)) {
-              issue([...itemPath, "variable", end, "variable"], `Relation '${end}' refers to '${ref}' which is not a preceding span question`);
+              issue(
+                [...itemPath, "variable", end, "variable"],
+                `Relation '${end}' refers to '${ref}' which is not a preceding span question`,
+              );
             }
           }
         }
@@ -505,7 +643,13 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
         for (const field of ["question", "instruction"] as const) {
           checkTemplate(
             variable?.[field],
-            { path: [...itemPath, "variable", field], loop: loop?.name ?? null, available, snippets: loop?.snippets, self: item.name },
+            {
+              path: [...itemPath, "variable", field],
+              loop: loop?.name ?? null,
+              available,
+              snippets: loop?.snippets,
+              self: item.name,
+            },
             "text",
           );
         }
@@ -546,12 +690,18 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
         if (typeof end.redirectUrl === "string" && !/^https?:\/\//.test(end.redirectUrl)) {
           issue([...itemPath, "redirectUrl"], "The redirect URL must start with https:// (or http://)");
         }
-        if (typeof end.redirectUrl === "string" && typeof (item as { redirectSetting?: unknown }).redirectSetting === "string") {
+        if (
+          typeof end.redirectUrl === "string" &&
+          typeof (item as { redirectSetting?: unknown }).redirectSetting === "string"
+        ) {
           issue([...itemPath, "redirectSetting"], "Give a redirect URL or a deployment setting, not both");
         }
       } else if (item.type === "question") {
         if (!loop && (item.variable?.type === "span" || item.variable?.type === "relation")) {
-          issue([...itemPath, "variable", "type"], `Question '${item.name}' with answer type '${item.variable.type}' can only be used inside a unit_loop`);
+          issue(
+            [...itemPath, "variable", "type"],
+            `Question '${item.name}' with answer type '${item.variable.type}' can only be used inside a unit_loop`,
+          );
         } else if (item.variable?.type === "unspecified") {
           issue([...itemPath, "variable", "type"], `Question '${item.name}' has no answer type yet: choose one`);
         }
@@ -566,7 +716,8 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   const linked: { name: string; column: string }[] = [];
   forEachQuestion(items, [], (q) => {
     const v = q.variable as { type?: unknown; units?: unknown } | undefined;
-    if (q.type === "computed" && v?.type === "random" && typeof v.units === "string" && q.name) linked.push({ name: q.name, column: v.units });
+    if (q.type === "computed" && v?.type === "random" && typeof v.units === "string" && q.name)
+      linked.push({ name: q.name, column: v.units });
   });
   const loopPaths = new Map<string, Path>();
   const findLoops = (list: unknown, path: Path) =>
@@ -596,9 +747,18 @@ const ORDER_METHODS: ReadonlySet<string> = new Set(["gt", "gte", "lt", "lte", "b
  * method fits it): their number, and that they are its values (numeric: in
  * its range). Used by validation and the condition editor's rules.
  */
-export function callArgumentProblems(variable: AnyVariableType, call: Pick<SimpleCall, "question" | "item" | "method" | "args">): string[] {
+export function callArgumentProblems(
+  variable: AnyVariableType,
+  call: Pick<SimpleCall, "question" | "item" | "method" | "args">,
+): string[] {
   const subject = call.item ? `"${call.question} › ${call.item}"` : `"${call.question}"`;
-  const arity: Record<string, [number, number]> = { count: [0, 0], between: [2, 2], isAny: [1, Infinity], hasAny: [1, Infinity], hasAll: [1, Infinity] };
+  const arity: Record<string, [number, number]> = {
+    count: [0, 0],
+    between: [2, 2],
+    isAny: [1, Infinity],
+    hasAny: [1, Infinity],
+    hasAll: [1, Infinity],
+  };
   const [min, max] = arity[call.method] ?? [1, 1];
   if (call.args.length < min || call.args.length > max) {
     if (max === 0) return [`"${METHOD_TEXT[call.method]}" takes no values`];
@@ -606,7 +766,8 @@ export function callArgumentProblems(variable: AnyVariableType, call: Pick<Simpl
     return [`"${METHOD_TEXT[call.method]}" needs ${n} value${max > 1 && min > 1 ? "s" : ""}`];
   }
   if (variable.type === "numeric") {
-    const range = variable.min !== undefined && variable.max !== undefined ? ` (${variable.min} to ${variable.max})` : "";
+    const range =
+      variable.min !== undefined && variable.max !== undefined ? ` (${variable.min} to ${variable.max})` : "";
     return call.args.flatMap((arg) => {
       if (typeof arg !== "number") return [`${JSON.stringify(arg)} is not a number, and ${subject} is numeric`];
       if ((variable.min !== undefined && arg < variable.min) || (variable.max !== undefined && arg > variable.max)) {
@@ -617,10 +778,15 @@ export function callArgumentProblems(variable: AnyVariableType, call: Pick<Simpl
   }
   const values = questionValues(variable);
   if (!values) return [];
-  return call.args
-    // `is(2)` matches the value "2"; order methods compare numbers only
-    .filter((arg) => !values.some((v) => (ORDER_METHODS.has(call.method) ? v === arg : sameValue(v, arg))))
-    .map((arg) => `${JSON.stringify(arg)} is not an answer option of ${subject} (${values.map((v) => JSON.stringify(v)).join(", ")})`);
+  return (
+    call.args
+      // `is(2)` matches the value "2"; order methods compare numbers only
+      .filter((arg) => !values.some((v) => (ORDER_METHODS.has(call.method) ? v === arg : sameValue(v, arg))))
+      .map(
+        (arg) =>
+          `${JSON.stringify(arg)} is not an answer option of ${subject} (${values.map((v) => JSON.stringify(v)).join(", ")})`,
+      )
+  );
 }
 
 /** Validation errors only (warnings left out): what blocks saving a design. */
@@ -695,12 +861,17 @@ function questionNames(list: unknown, into = new Set<string>()): Set<string> {
   return into;
 }
 
-function forEachQuestion(list: unknown, path: Path, visit: (item: RawItem & { variable?: unknown }, path: Path) => void) {
+function forEachQuestion(
+  list: unknown,
+  path: Path,
+  visit: (item: RawItem & { variable?: unknown }, path: Path) => void,
+) {
   if (!Array.isArray(list)) return;
   list.forEach((raw, i) => {
     const child = raw as RawItem | null;
     if (!child || typeof child !== "object") return;
-    if (child.type === "show_if") forEachQuestion((child as { children?: unknown }).children, [...path, i, "children"], visit);
+    if (child.type === "show_if")
+      forEachQuestion((child as { children?: unknown }).children, [...path, i, "children"], visit);
     else if (child.type !== "unit_loop") visit(child as RawItem & { variable?: unknown }, [...path, i]);
   });
 }

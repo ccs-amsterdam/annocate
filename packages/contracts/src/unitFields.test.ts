@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { checkUnitData, fieldsOfUnits, inferFieldType, parseFieldValue, toUnitFieldName, unitFieldNameError } from "./unitFields.js";
+import {
+  checkUnitData,
+  fieldsOfUnits,
+  inferFieldType,
+  parseFieldValue,
+  toUnitFieldName,
+  unitFieldNameError,
+} from "./unitFields.js";
 
 describe("unit fields", () => {
   it("infers a CSV column's type from its non-empty values", () => {
@@ -18,7 +25,12 @@ describe("unit fields", () => {
   });
 
   it("takes the fields of a first upload, refusing mixed types", () => {
-    expect(fieldsOfUnits([{ a: null, b: "x" }, { a: 2, b: "y" }])).toEqual({
+    expect(
+      fieldsOfUnits([
+        { a: null, b: "x" },
+        { a: 2, b: "y" },
+      ]),
+    ).toEqual({
       fields: [
         { name: "a", type: "number" },
         { name: "b", type: "text" },
@@ -44,7 +56,9 @@ describe("unit fields", () => {
   });
 
   it("types answer columns as text, and lets them hold any value (cells like 3..5 or a|b)", () => {
-    expect(fieldsOfUnits([{ score_gold: 3 }, { score_gold: "3..5" }])).toEqual({ fields: [{ name: "score_gold", type: "text" }] });
+    expect(fieldsOfUnits([{ score_gold: 3 }, { score_gold: "3..5" }])).toEqual({
+      fields: [{ name: "score_gold", type: "text" }],
+    });
     // Also a column typed number before: an answer-key cell fits
     const fields = [{ name: "score_practice", type: "number" as const }];
     expect(checkUnitData({ score_practice: "3..5" }, fields)).toBeNull();

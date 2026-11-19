@@ -53,7 +53,11 @@ export function StudyOverview({ client, onNavigate, onOpenDesign }: StudyOvervie
       <ExampleNotice client={client} />
       <Card title="Status" tone={deployment?.active ? "leaf" : undefined}>
         <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-          <LiveStatus live={deployment !== null} active={deployment?.active ?? false} since={deployment?.updated ?? null} />
+          <LiveStatus
+            live={deployment !== null}
+            active={deployment?.active ?? false}
+            since={deployment?.updated ?? null}
+          />
           {deployment && <LiveControls client={client} deployment={deployment} />}
           <VersionLink
             icon={CircleDot}
@@ -235,7 +239,7 @@ function StatTile({
       className="flex flex-col items-start rounded-xl border border-border bg-card p-4 text-left shadow-xs transition-colors hover:border-primary/50"
     >
       <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
+      <span className="mt-1 text-2xl font-semibold text-foreground tabular-nums">
         {value === undefined ? "…" : value.toLocaleString()}
       </span>
       {detail && <span className="mt-0.5 text-xs text-muted-foreground">{detail}</span>}
@@ -243,10 +247,22 @@ function StatTile({
   );
 }
 
-function Card({ title, subtitle, tone, children }: { title: string; subtitle?: string; tone?: "leaf"; children: ReactNode }) {
+function Card({
+  title,
+  subtitle,
+  tone,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  tone?: "leaf";
+  children: ReactNode;
+}) {
   // tone "leaf": a positive state (the study is live), as a faint tint of the palette's green
   return (
-    <section className={`rounded-xl border p-4 shadow-xs ${tone === "leaf" ? "border-leaf/40 bg-leaf/10" : "border-border bg-card"}`}>
+    <section
+      className={`rounded-xl border p-4 shadow-xs ${tone === "leaf" ? "border-leaf/40 bg-leaf/10" : "border-border bg-card"}`}
+    >
       <header className="mb-3">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
@@ -278,12 +294,18 @@ function DeployHistory({ client, numberOf }: { client: ResearcherApi; numberOf: 
           ].filter(Boolean);
           return (
             // The current deploy: a faint leaf tint
-            <li key={v.version} className={`flex flex-wrap items-baseline gap-x-2 rounded-md px-2 py-0.5 ${i === 0 ? "bg-leaf/10" : ""}`}>
+            <li
+              key={v.version}
+              className={`flex flex-wrap items-baseline gap-x-2 rounded-md px-2 py-0.5 ${i === 0 ? "bg-leaf/10" : ""}`}
+            >
               <span className="font-mono text-xs text-muted-foreground">#{v.version}</span>
               <span>{parts.length > 0 ? parts.join("; ") : "settings only"}</span>
               <span className="text-xs text-muted-foreground">{formatWhen(v.created)}</span>
               {v.client && (
-                <span className="text-xs text-muted-foreground" title={`AnnoTinder ${v.client.release}, commit ${v.client.commit}`}>
+                <span
+                  className="text-xs text-muted-foreground"
+                  title={`AnnoTinder ${v.client.release}, commit ${v.client.commit}`}
+                >
                   on {v.client.release}
                 </span>
               )}

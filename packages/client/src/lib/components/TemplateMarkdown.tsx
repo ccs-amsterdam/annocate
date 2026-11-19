@@ -49,7 +49,15 @@ function styleComponents(styles: Record<string, string>[] | undefined): Componen
   } as Components;
 }
 
-function TemplateValueView({ value, block, styles }: { value: TemplateValue; block: boolean; styles?: Record<string, string>[] }) {
+function TemplateValueView({
+  value,
+  block,
+  styles,
+}: {
+  value: TemplateValue;
+  block: boolean;
+  styles?: Record<string, string>[];
+}) {
   // A unit field's element is marked (data-field), so a question can scroll to it (UnitFields).
   const field = value.field ? { "data-field": value.field } : {};
   const wrap = (content: ReactNode, pre = true) =>

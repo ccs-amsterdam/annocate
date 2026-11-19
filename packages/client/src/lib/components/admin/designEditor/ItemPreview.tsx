@@ -26,7 +26,9 @@ function loopQuestionNames(loop: UnitLoopItem): string[] {
 
 /** The questions a template refers to, in its values and in its blocks' conditions. */
 function referencedQuestions(template: string): string[] {
-  const names = templateReferences(template).references.filter((r) => r.ns === "var").map((r) => r.path[0]);
+  const names = templateReferences(template)
+    .references.filter((r) => r.ns === "var")
+    .map((r) => r.path[0]);
   const walk = (nodes: TemplateNode[]) => {
     for (const node of nodes) {
       if (node.type === "if") {
@@ -60,7 +62,9 @@ export function ItemPreview({ client, draft, item }: { client: ResearcherApi; dr
 
   const [unitIndex, setUnitIndex] = useState(0);
   // Units from a set: by default the loop's own (the first value its filter takes, if any)
-  const sets = (useSetGroupsQuery(client).data ?? []).flatMap((g) => g.sets.map((set) => ({ group: g.name, set: set.name, key: `${g.name}/${set.name}` })));
+  const sets = (useSetGroupsQuery(client).data ?? []).flatMap((g) =>
+    g.sets.map((set) => ({ group: g.name, set: set.name, key: `${g.name}/${set.name}` })),
+  );
   const branch = loop?.units;
   const loopSet = branch?.filter?.only?.length ? `${branch.filter.column}/${branch.filter.only[0]}` : null;
   const [chosenSet, setChosenSet] = useState<string | null | undefined>(undefined);
@@ -80,7 +84,8 @@ export function ItemPreview({ client, draft, item }: { client: ResearcherApi; dr
   for (const q of used) {
     const options = optionsOf(questions.get(q));
     const i = picked[q];
-    if (options && i !== undefined && options[i]) answers[q] = { done: true, skip: false, values: [{ value: options[i].value }] };
+    if (options && i !== undefined && options[i])
+      answers[q] = { done: true, skip: false, values: [{ value: options[i].value }] };
   }
 
   const controls = loop && (
@@ -105,11 +110,25 @@ export function ItemPreview({ client, draft, item }: { client: ResearcherApi; dr
       )}
       <span className="flex items-center gap-1">
         Unit
-        <button type="button" className="rounded p-0.5 hover:bg-muted disabled:opacity-40" disabled={unitIndex === 0} onClick={() => setUnitIndex(unitIndex - 1)} aria-label="Previous unit">
+        <button
+          type="button"
+          className="rounded p-0.5 hover:bg-muted disabled:opacity-40"
+          disabled={unitIndex === 0}
+          onClick={() => setUnitIndex(unitIndex - 1)}
+          aria-label="Previous unit"
+        >
           <ChevronLeft className="h-3.5 w-3.5" />
         </button>
-        <span className="font-medium text-foreground">{total ? `${unit?.externalId ?? "…"} (${unitIndex + 1}/${total})` : "example"}</span>
-        <button type="button" className="rounded p-0.5 hover:bg-muted disabled:opacity-40" disabled={unitIndex + 1 >= total} onClick={() => setUnitIndex(unitIndex + 1)} aria-label="Next unit">
+        <span className="font-medium text-foreground">
+          {total ? `${unit?.externalId ?? "…"} (${unitIndex + 1}/${total})` : "example"}
+        </span>
+        <button
+          type="button"
+          className="rounded p-0.5 hover:bg-muted disabled:opacity-40"
+          disabled={unitIndex + 1 >= total}
+          onClick={() => setUnitIndex(unitIndex + 1)}
+          aria-label="Next unit"
+        >
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
       </span>

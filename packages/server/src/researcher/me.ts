@@ -22,7 +22,10 @@ export function me(server: Server): Hono<Env> {
     const login = server.login;
     if (!login?.previous || Date.now() >= login.previous.until.getTime()) return false;
     const current = login.oidc.issuer.replace(/\/+$/, "");
-    return (await db.$count(identities, and(eq(identities.userId, id), sql`rtrim(${identities.iss}, '/') = ${current}`))) === 0;
+    return (
+      (await db.$count(identities, and(eq(identities.userId, id), sql`rtrim(${identities.iss}, '/') = ${current}`))) ===
+      0
+    );
   }
 
   async function meResponse(c: Context<Env>): Promise<MeResponse> {

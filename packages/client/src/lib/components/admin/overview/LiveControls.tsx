@@ -20,7 +20,13 @@ export function LiveControls({ client, deployment }: { client: ResearcherApi; de
           disabled={setActive.isPending}
           onClick={() => {
             const pausing = deployment.active;
-            if (pausing && !confirm("Pause the study? Coders get no new units until you resume it; units they have open can still be finished.")) return;
+            if (
+              pausing &&
+              !confirm(
+                "Pause the study? Coders get no new units until you resume it; units they have open can still be finished.",
+              )
+            )
+              return;
             setActive.mutate({ designVersionId: deployment.designVersionId, active: !pausing });
           }}
         >
@@ -32,4 +38,3 @@ export function LiveControls({ client, deployment }: { client: ResearcherApi; de
     </div>
   );
 }
-

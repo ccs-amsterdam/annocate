@@ -59,7 +59,12 @@ export function finishedLoops(variables: Record<string, VariableValue>, loops: I
 export function codingsSignature(loops: Iterable<LoopInfo>): string {
   return JSON.stringify(
     [...loops]
-      .map((info) => [info.key, [...info.variables.keys()].sort(), needsAllCodings(info), loopAgreementVariables(info).sort()])
+      .map((info) => [
+        info.key,
+        [...info.variables.keys()].sort(),
+        needsAllCodings(info),
+        loopAgreementVariables(info).sort(),
+      ])
       .sort(),
   );
 }
@@ -70,7 +75,8 @@ export function collectCoderVariables(items: TopLevelItem[]): Map<string, Variab
   const walk = (list: TopLevelItem[]) => {
     for (const item of list) {
       if (item.type === "show_if") walk(item.children);
-      else if (item.type !== "unit_loop" && item.type !== "end" && item.type !== "session") variables.set(item.name, item.variable);
+      else if (item.type !== "unit_loop" && item.type !== "end" && item.type !== "session")
+        variables.set(item.name, item.variable);
     }
   };
   walk(items);
@@ -80,7 +86,8 @@ export function collectCoderVariables(items: TopLevelItem[]): Map<string, Variab
 function collectQuestions(items: DesignItem[], into: Map<string, VariableType>) {
   for (const item of items) {
     if (item.type === "show_if") collectQuestions(item.children as DesignItem[], into);
-    else if (item.type !== "unit_loop" && item.type !== "end" && item.type !== "session") into.set(item.name, item.variable);
+    else if (item.type !== "unit_loop" && item.type !== "end" && item.type !== "session")
+      into.set(item.name, item.variable);
   }
 }
 
@@ -105,7 +112,6 @@ export function agreementKey(variables: Record<string, VariableValue>, variable:
     .sort()
     .join("|");
 }
-
 
 /** The `end` item with this name, anywhere in the design. */
 export function findEndItem(items: readonly DesignItem[], name: string): EndItem | null {

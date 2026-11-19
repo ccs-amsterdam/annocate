@@ -44,7 +44,10 @@ export function useFlip(container: RefObject<HTMLElement | null>): void {
         // From where it is on screen now (mid-glide, if it was moving), to its place
         const shown = el.getBoundingClientRect().top - tops.get(el)!;
         el.getAnimations().forEach((a) => a.cancel());
-        el.animate([{ transform: `translateY(${before - now + shown}px)` }, { transform: "none" }], { duration: DURATION, easing: EASING });
+        el.animate([{ transform: `translateY(${before - now + shown}px)` }, { transform: "none" }], {
+          duration: DURATION,
+          easing: EASING,
+        });
       }
     }
     places.current = next;

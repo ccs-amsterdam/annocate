@@ -157,7 +157,7 @@ export function DesignTreeView({
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7 text-destructive hover:text-destructive text-xs"
+                className="h-7 text-xs text-destructive hover:text-destructive"
                 onClick={() => onDelete(ticked) && clear()}
               >
                 <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
@@ -169,14 +169,22 @@ export function DesignTreeView({
           ) : (
             <AddItemMenu
               label="Add item"
-              options={[{ position: end, label: shown.length ? "At the end" : "First item", types: insertableTypesAt(items, end) }]}
+              options={[
+                {
+                  position: end,
+                  label: shown.length ? "At the end" : "First item",
+                  types: insertableTypesAt(items, end),
+                },
+              ]}
               onAdd={state.addAt}
             />
           )}
         </div>
       )}
       <div ref={list} className="flex flex-col p-1 pb-3">
-        {shown.length === 0 && !readOnly && <p className="px-2 py-3 text-sm text-muted-foreground">No items yet: add the first one above.</p>}
+        {shown.length === 0 && !readOnly && (
+          <p className="px-2 py-3 text-sm text-muted-foreground">No items yet: add the first one above.</p>
+        )}
         <TreeList nodes={shown} parent={null} />
       </div>
     </DesignTreeProvider>

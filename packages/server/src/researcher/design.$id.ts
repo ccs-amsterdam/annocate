@@ -22,7 +22,8 @@ export function designVersion(server: Server): Hono<Env> {
   const app = new Hono<Env>();
 
   const version = (studyId: number, id: number) => and(eq(designVersions.studyId, studyId), eq(designVersions.id, id));
-  const get = async (studyId: number, id: number) => (await db.select().from(designVersions).where(version(studyId, id)))[0];
+  const get = async (studyId: number, id: number) =>
+    (await db.select().from(designVersions).where(version(studyId, id)))[0];
 
   app.get("/study/:studyId/design/:id", requireStudyUser(server, "READ"), async (c) => {
     const row = await get(c.get("studyId"), Number(c.req.param("id")));
@@ -40,7 +41,8 @@ export function designVersion(server: Server): Hono<Env> {
     const parsed = DesignWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-    if (sessionItem(parsed.data.items)) return c.json({ error: "The session and public info go in `session` and `public`, not among the items" }, 400);
+    if (sessionItem(parsed.data.items))
+      return c.json({ error: "The session and public info go in `session` and `public`, not among the items" }, 400);
     // Saved by someone else since the edits started: don't overwrite their work.
     const { revision } = parsed.data;
     if (revision !== undefined && revision !== existing.revision) return c.json(conflict(existing), 409);

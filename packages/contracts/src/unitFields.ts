@@ -112,7 +112,9 @@ export function fieldsOfUnits(units: UnitData[]): { fields: UnitField[] } | { er
  */
 export function addedFields(units: UnitData[], fields: UnitField[]): { fields: UnitField[] } | { error: string } {
   const known = new Set(fields.map((f) => f.name));
-  const added = fieldsOfUnits(units.map((data) => Object.fromEntries(Object.entries(data).filter(([name]) => !known.has(name)))));
+  const added = fieldsOfUnits(
+    units.map((data) => Object.fromEntries(Object.entries(data).filter(([name]) => !known.has(name)))),
+  );
   if ("error" in added) return added;
   for (const field of added.fields) {
     const problem = unitFieldNameError(field.name);
@@ -135,7 +137,8 @@ export function checkUnitData(data: UnitData, fields: UnitField[]): string | nul
       continue;
     }
     const actual = typeOfValue(value);
-    if (actual !== null && actual !== type && !isAnswerColumn(name)) return `Field '${name}' is ${type}, got ${actual} (${JSON.stringify(value)})`;
+    if (actual !== null && actual !== type && !isAnswerColumn(name))
+      return `Field '${name}' is ${type}, got ${actual} (${JSON.stringify(value)})`;
   }
   const missing = fields.find((f) => f.type !== "set" && !(f.name in data));
   return missing ? `Missing field '${missing.name}'` : null;

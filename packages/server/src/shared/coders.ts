@@ -24,7 +24,11 @@ export function toCoder(row: CoderRow): Coder {
 const liveCoderLevel = (studyId: number) => and(eq(a.studyId, studyId), isNull(a.unitId), isNull(a.retiredAt));
 
 /** Coder-level values (answers outside unit loops, and assigned values): the live answer rows without a unit, per coder. */
-export async function coderValues(db: Db, studyId: number, coderId?: number): Promise<Map<number, Record<string, VariableValue>>> {
+export async function coderValues(
+  db: Db,
+  studyId: number,
+  coderId?: number,
+): Promise<Map<number, Record<string, VariableValue>>> {
   const rows = await db
     .select({ coderId: a.coderId, variable: a.variable, value: a.value })
     .from(a)
@@ -89,6 +93,8 @@ export async function putCoderValues(db: Db, studyId: number, write: CoderValues
     await db
       .update(a)
       .set({ timing: timing(variable) })
-      .where(and(liveCoderLevel(studyId), eq(a.coderId, write.coderId), eq(a.variable, variable), eq(a.assigned, false)));
+      .where(
+        and(liveCoderLevel(studyId), eq(a.coderId, write.coderId), eq(a.variable, variable), eq(a.assigned, false)),
+      );
   }
 }

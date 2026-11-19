@@ -18,26 +18,40 @@ export async function studyLimits(db: Db, studyId: number): Promise<{ ownerId: n
 
 const limitReached = (message: string) => new HttpError(403, message, "limit_reached");
 
-const size = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`);
+const size = (bytes: number) =>
+  bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`;
 
 /** Refuses an upload that adds `added` units past the study's or its owner's limits, or a unit larger than the server allows. */
-export async function checkUnitUpload(db: Db, studyId: number, units: { externalId: string; data: unknown }[], added: number): Promise<void> {
+export async function checkUnitUpload(
+  db: Db,
+  studyId: number,
+  units: { externalId: string; data: unknown }[],
+  added: number,
+): Promise<void> {
   const { unitBytes } = await getSettings(db);
   for (const unit of units) {
     const bytes = Buffer.byteLength(JSON.stringify(unit.data));
     if (bytes > unitBytes) {
-      throw new HttpError(413, `Unit '${unit.externalId}' takes ${size(bytes)}; a unit can take at most ${size(unitBytes)} on this server`, "unit_too_large");
+      throw new HttpError(
+        413,
+        `Unit '${unit.externalId}' takes ${size(bytes)}; a unit can take at most ${size(unitBytes)} on this server`,
+        "unit_too_large",
+      );
     }
   }
   if (added === 0) return;
   const { ownerId, limits } = await studyLimits(db, studyId);
   if (limits.unitsPerStudy != null) {
     const n = await db.$count(unitsTable, and(eq(unitsTable.studyId, studyId), eq(unitsTable.inDraft, true)));
-    if (n + added > limits.unitsPerStudy) throw limitReached(`A study can have at most ${limits.unitsPerStudy} units (this one has ${n})`);
+    if (n + added > limits.unitsPerStudy)
+      throw limitReached(`A study can have at most ${limits.unitsPerStudy} units (this one has ${n})`);
   }
   if (limits.units != null && ownerId !== null) {
     const { units } = await usage(db, ownerId);
-    if (units + added > limits.units) throw limitReached(`The study's owner can have at most ${limits.units} units in all their studies (now ${units})`);
+    if (units + added > limits.units)
+      throw limitReached(
+        `The study's owner can have at most ${limits.units} units in all their studies (now ${units})`,
+      );
   }
 }
 
@@ -45,11 +59,17 @@ export async function checkUnitUpload(db: Db, studyId: number, units: { external
 export async function checkNewCoder(db: Db, studyId: number): Promise<void> {
   const { limits } = await studyLimits(db, studyId);
   if (limits.codersPerStudy == null) return;
-  if ((await db.$count(coders, eq(coders.studyId, studyId))) >= limits.codersPerStudy) throw new HttpError(403, "This study doesn't take new coders any more", "study_full");
+  if ((await db.$count(coders, eq(coders.studyId, studyId))) >= limits.codersPerStudy)
+    throw new HttpError(403, "This study doesn't take new coders any more", "study_full");
 }
 
 /** Refuses an answer larger than the server allows. */
 export function checkAnswerSize(name: string, value: unknown, answerBytes: number): void {
   const bytes = Buffer.byteLength(JSON.stringify(value));
-  if (bytes > answerBytes) throw new HttpError(413, `The answer to '${name}' takes ${size(bytes)}; at most ${size(answerBytes)}`, "answer_too_large");
+  if (bytes > answerBytes)
+    throw new HttpError(
+      413,
+      `The answer to '${name}' takes ${size(bytes)}; at most ${size(answerBytes)}`,
+      "answer_too_large",
+    );
 }

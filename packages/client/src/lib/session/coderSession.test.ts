@@ -27,7 +27,9 @@ describe("HttpCoderApi", () => {
     const { HttpCoderApi } = await import("../api/httpCoderApi");
     await new HttpCoderApi({ baseUrl: "/d/42", urlParams: { src: "panel A", wave: "2" } }).getSession();
     const [, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
-    expect(new URLSearchParams((init.headers as Record<string, string>)["x-url-params"])).toEqual(new URLSearchParams("src=panel+A&wave=2"));
+    expect(new URLSearchParams((init.headers as Record<string, string>)["x-url-params"])).toEqual(
+      new URLSearchParams("src=panel+A&wave=2"),
+    );
     await new HttpCoderApi({ baseUrl: "/d/42" }).getSession();
     expect((fetch.mock.calls[1] as unknown as [string, RequestInit])[1].headers).not.toHaveProperty("x-url-params");
   });

@@ -151,7 +151,9 @@ function toValue(expression: TemplateExpression, value: unknown, selectable: rea
     text: outputText(value),
     block: expression.alone,
     ...(field ? { field } : {}),
-    ...(field?.startsWith("unit.") && suffix === "text" && selectable.includes(field.slice(5)) ? { selectable: true } : {}),
+    ...(field?.startsWith("unit.") && suffix === "text" && selectable.includes(field.slice(5))
+      ? { selectable: true }
+      : {}),
   };
 }
 

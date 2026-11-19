@@ -49,7 +49,9 @@ export const EndItemSchema = ItemBaseSchema.extend({
   redirectUrl: z
     .string()
     .optional()
-    .describe("Where to send the coder, e.g. a panel's return link. May contain $var references (filled in URL-encoded)."),
+    .describe(
+      "Where to send the coder, e.g. a panel's return link. May contain $var references (filled in URL-encoded).",
+    ),
   redirectSetting: SafeNameSchema.optional().describe(
     "Instead of redirectUrl: the name of a deployment setting holding the URL (the study's settings), for a link that differs per run, such as a panel's.",
   ),
@@ -147,11 +149,11 @@ export const InLoopConditionItemSchema: z.ZodType<Extract<InLoopItem, { type: "s
     label: ConditionLabelSchema,
     condition: ConditionSchema.describe("A script over earlier answers ($var), and in a loop $unit"),
     children: z.array(InLoopItemSchema).min(1, "Condition must have at least one child item"),
-  })
+  }),
 );
 
 export const InLoopItemSchema: z.ZodType<InLoopItem> = z.lazy(() =>
-  z.union([InLoopQuestionItemSchema, EndItemSchema, InLoopConditionItemSchema])
+  z.union([InLoopQuestionItemSchema, EndItemSchema, InLoopConditionItemSchema]),
 );
 
 /**
@@ -195,7 +197,7 @@ export const TopLevelConditionItemSchema: z.ZodType<Extract<TopLevelItem, { type
     label: ConditionLabelSchema,
     condition: ConditionSchema.describe("A script over earlier answers ($var), and in a loop $unit"),
     children: z.array(TopLevelItemSchema).min(1, "Condition must have at least one child item"),
-  })
+  }),
 );
 
 export const TopLevelItemSchema: z.ZodType<TopLevelItem> = z.lazy(() =>
@@ -206,7 +208,7 @@ export const TopLevelItemSchema: z.ZodType<TopLevelItem> = z.lazy(() =>
     EndItemSchema,
     SessionItemSchema,
     TopLevelConditionItemSchema,
-  ])
+  ]),
 );
 
 /**

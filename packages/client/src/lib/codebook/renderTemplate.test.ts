@@ -5,7 +5,10 @@ import { prepareTemplate, renderTemplate, staticTemplate } from "./renderTemplat
 
 const scope = (unit: Record<string, unknown>): ReferenceScope => ({
   $unit: unit,
-  $var: { role: { answered: true, value: "student", label: "Student" }, topics: { answered: true, values: ["a", "b"], labels: ["A", "B"] } },
+  $var: {
+    role: { answered: true, value: "student", label: "Student" },
+    topics: { answered: true, values: ["a", "b"], labels: ["A", "B"] },
+  },
 });
 
 describe("prepareTemplate", () => {
@@ -40,9 +43,15 @@ describe("renderTemplate", () => {
   });
 
   it("marks the fields span questions select in as selectable", async () => {
-    const rendered = await renderTemplate("$unit.body\n\n$unit.title", scope({ body: "a b", title: "T" }), undefined, "t", {
-      selectable: ["body"],
-    });
+    const rendered = await renderTemplate(
+      "$unit.body\n\n$unit.title",
+      scope({ body: "a b", title: "T" }),
+      undefined,
+      "t",
+      {
+        selectable: ["body"],
+      },
+    );
     expect(rendered.values).toEqual([
       { suffix: "text", text: "a b", block: true, field: "unit.body", selectable: true },
       { suffix: "text", text: "T", block: true, field: "unit.title" },
@@ -59,7 +68,10 @@ describe("renderTemplate", () => {
 
   it("renders a script that fails or doesn't parse as nothing, and goes on", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
-    const rendered = await renderTemplate("{{ $unit.missing.deeper }}|{{ 1 + }}|$unit.headline", scope({ headline: "Hi" }));
+    const rendered = await renderTemplate(
+      "{{ $unit.missing.deeper }}|{{ 1 + }}|$unit.headline",
+      scope({ headline: "Hi" }),
+    );
     expect(rendered.values.map((v) => v.text)).toEqual(["", "", "Hi"]);
     error.mockRestore();
   });
@@ -71,10 +83,15 @@ describe("renderTemplate", () => {
 });
 
 describe("renderTemplate blocks", () => {
-  const strip = (markdown: string) => markdown.replace(/\uE000\d+\uE001/g, "#").replace(/\s+/g, " ").trim();
+  const strip = (markdown: string) =>
+    markdown
+      .replace(/\uE000\d+\uE001/g, "#")
+      .replace(/\s+/g, " ")
+      .trim();
 
   it("shows the first if branch whose condition holds, else the else", async () => {
-    const template = "::: if $var.role.is('teacher')\nT\n::: else if $var.role.is('student')\nS $unit.a\n::: else\nE\n:::\nend";
+    const template =
+      "::: if $var.role.is('teacher')\nT\n::: else if $var.role.is('student')\nS $unit.a\n::: else\nE\n:::\nend";
     const rendered = await renderTemplate(template, scope({ a: "x" }));
     expect(strip(rendered.markdown)).toBe("S # end");
     expect(rendered.values.map((v) => v.text)).toEqual(["x"]);
@@ -82,7 +99,8 @@ describe("renderTemplate blocks", () => {
 
   it("shows the last from stage whose question is reached", async () => {
     const template = "top\n::: from b\nB\n::: from c\nC\n:::";
-    const at = (current: string) => renderTemplate(template, scope({}), undefined, "t", { progress: { current, order: ["a", "b", "c"] } });
+    const at = (current: string) =>
+      renderTemplate(template, scope({}), undefined, "t", { progress: { current, order: ["a", "b", "c"] } });
     expect(strip((await at("a")).markdown)).toBe("top");
     expect(strip((await at("b")).markdown)).toBe("top B");
     expect(strip((await at("c")).markdown)).toBe("top C");

@@ -21,7 +21,8 @@ const isDisabled = (r: { registered: boolean; applies: boolean; grantedAt: Date 
   r.registered ? !r.applies : Date.now() > r.grantedAt.getTime() + THREE_MONTHS_MS;
 
 /** A study's roles given to users (not to email domains). */
-const userRolesOf = (studyId: number) => and(eq(roles.studyId, studyId), isNotNull(roles.userId), isNull(roles.emailDomain));
+const userRolesOf = (studyId: number) =>
+  and(eq(roles.studyId, studyId), isNotNull(roles.userId), isNull(roles.emailDomain));
 
 /** The users with a role in the study, and whether it applies (the safeguards). */
 const rolesOf = (db: Db, studyId: number) =>

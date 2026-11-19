@@ -1,0 +1,10 @@
+# Generated, or not ours to format
+**/dist/
+**/node_modules/
+pnpm-lock.yaml
+packages/server/migrations/
+packages/e2e/test-results/
+packages/e2e/playwright-report/
+coverage/
+# Prose: wrapped by hand, and tables stay compact
+**/*.md

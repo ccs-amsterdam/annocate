@@ -11,7 +11,11 @@ export function defaultItemForType(type: DesignItem["type"], name: string): Desi
         variable: { type: "unspecified" },
       } as DesignItem;
     case "computed":
-      return { type: "computed", name, variable: { type: "random", draw: "random", options: [{ value: "control" }, { value: "experiment" }] } };
+      return {
+        type: "computed",
+        name,
+        variable: { type: "random", draw: "random", options: [{ value: "control" }, { value: "experiment" }] },
+      };
     case "unit_loop":
       // Like a condition, a new loop starts empty: its questions are added in
       // the tree. By default it hands out all the session's units, once (its form changes that).

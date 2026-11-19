@@ -137,43 +137,19 @@
       "sets": [
         {
           "name": "anna",
-          "units": [
-            "news-06",
-            "news-07",
-            "news-08",
-            "news-09",
-            "news-10"
-          ]
+          "units": ["news-06", "news-07", "news-08", "news-09", "news-10"]
         },
         {
           "name": "bob",
-          "units": [
-            "news-11",
-            "news-12",
-            "news-13",
-            "news-14",
-            "news-15"
-          ]
+          "units": ["news-11", "news-12", "news-13", "news-14", "news-15"]
         },
         {
           "name": "carla",
-          "units": [
-            "news-16",
-            "news-17",
-            "news-18",
-            "news-19",
-            "news-20"
-          ]
+          "units": ["news-16", "news-17", "news-18", "news-19", "news-20"]
         },
         {
           "name": "_overlap",
-          "units": [
-            "news-01",
-            "news-02",
-            "news-03",
-            "news-04",
-            "news-05"
-          ]
+          "units": ["news-01", "news-02", "news-03", "news-04", "news-05"]
         }
       ]
     }

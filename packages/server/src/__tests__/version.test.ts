@@ -6,7 +6,9 @@ import { CLIENT_VERSION } from "../version.js";
 describe("the release", () => {
   it("is every package's version (bumped together, docs/release-checklist.md)", () => {
     for (const dir of ["../../../..", "../../../contracts", "../../../server", "../../../client", "../../../e2e"]) {
-      const pkg = JSON.parse(readFileSync(new URL(`${dir}/package.json`, import.meta.url), "utf8")) as { version: string };
+      const pkg = JSON.parse(readFileSync(new URL(`${dir}/package.json`, import.meta.url), "utf8")) as {
+        version: string;
+      };
       expect(pkg.version, dir).toBe(RELEASE);
     }
   });

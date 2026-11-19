@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronLeft, Code2, Eye, GitBranch, Heading1, Image, Paintbrush, Puzzle, Text } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronLeft,
+  Code2,
+  Eye,
+  GitBranch,
+  Heading1,
+  Image,
+  Paintbrush,
+  Puzzle,
+  Text,
+} from "lucide-react";
 import type { AnyVariableType, Condition } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -83,10 +94,15 @@ export function TemplateInsertMenu({
   };
   const back = (title: string) => (
     <div className="flex items-center gap-1 px-1 pb-1">
-      <button type="button" title="Back" onClick={() => setStep("menu")} className="cursor-pointer rounded p-0.5 text-muted-foreground hover:bg-muted">
+      <button
+        type="button"
+        title="Back"
+        onClick={() => setStep("menu")}
+        className="cursor-pointer rounded p-0.5 text-muted-foreground hover:bg-muted"
+      >
         <ChevronLeft className="h-3.5 w-3.5" />
       </button>
-      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{title}</span>
+      <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{title}</span>
     </div>
   );
   const list = (names: string[], empty: string, pick: (name: string) => void) =>
@@ -98,11 +114,18 @@ export function TemplateInsertMenu({
 
   return (
     <div ref={ref} className="relative">
-      <Button type="button" variant="outline" size="sm" className="h-7 text-xs" disabled={!editor} onClick={() => setStep(step ? null : "menu")}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-7 text-xs"
+        disabled={!editor}
+        onClick={() => setStep(step ? null : "menu")}
+      >
         Insert <ChevronDown className="ml-1 h-3.5 w-3.5" />
       </Button>
       {step && (
-        <div className="absolute right-0 top-full z-50 mt-1 max-h-80 w-64 overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+        <div className="absolute top-full right-0 z-50 mt-1 max-h-80 w-64 overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg">
           {step === "menu" && (
             <>
               {item(Heading1, "Headline", () => setStep("headline"), "a unit field as a heading")}
@@ -110,10 +133,15 @@ export function TemplateInsertMenu({
               {item(Image, "Image", () => setStep("image"), "a unit field with an image URL")}
               {item(Puzzle, "Snippet", () => setStep("snippet"), "a named piece of this layout")}
               <div className="my-1 border-t border-border" />
-              {item(GitBranch, "Show if…", () => {
-                setStep(null);
-                setCondition({ script: "" });
-              }, "only when a condition holds")}
+              {item(
+                GitBranch,
+                "Show if…",
+                () => {
+                  setStep(null);
+                  setCondition({ script: "" });
+                },
+                "only when a condition holds",
+              )}
               {item(Eye, "Show from…", () => setStep("from"), "from a question of the loop on")}
               {item(Paintbrush, "Style…", () => setStep("style"), "colours, size, a box")}
               {item(Code2, "HTML block", () => insert(block("::: html")), "your own HTML, shown in a sandbox")}
@@ -122,13 +150,17 @@ export function TemplateInsertMenu({
           {(step === "headline" || step === "text" || step === "image") && (
             <>
               {back("Which field?")}
-              {list(fields, "This study's units have no fields yet: upload units first.", (f) => insert(fieldSnippet[step](f)))}
+              {list(fields, "This study's units have no fields yet: upload units first.", (f) =>
+                insert(fieldSnippet[step](f)),
+              )}
             </>
           )}
           {step === "snippet" && (
             <>
               {back("Which snippet?")}
-              {list(snippets, "This loop has no snippets yet: add them below the template.", (n) => insert(`${literal(`[[${n}]]`)}\n$0`))}
+              {list(snippets, "This loop has no snippets yet: add them below the template.", (n) =>
+                insert(`${literal(`[[${n}]]`)}\n$0`),
+              )}
             </>
           )}
           {step === "from" && (

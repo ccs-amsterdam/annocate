@@ -30,7 +30,9 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
 
   const values =
     layout === "buttons"
-      ? Array.from({ length: numericSteps(variable) ?? 0 }, (_, i) => Number(((variable.min ?? 0) + i * step).toFixed(decimals(step))))
+      ? Array.from({ length: numericSteps(variable) ?? 0 }, (_, i) =>
+          Number(((variable.min ?? 0) + i * step).toFixed(decimals(step))),
+        )
       : [];
   useNumberShortcuts(values.length, values.length && values.length <= 9 ? (i) => answer(values[i]) : null);
 
@@ -41,7 +43,13 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap gap-1 [&>*]:grow [&>*]:basis-8">
           {values.map((n) => (
-            <Button key={n} type="button" variant={value === n ? "default" : "outline"} className="h-10 min-w-0 px-1" onClick={() => answer(n)}>
+            <Button
+              key={n}
+              type="button"
+              variant={value === n ? "default" : "outline"}
+              className="h-10 min-w-0 px-1"
+              onClick={() => answer(n)}
+            >
               {n}
             </Button>
           ))}
@@ -66,10 +74,17 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
             aria-label="Value"
             onChange={(e) => setValue(Number(e.target.value))}
           />
-          <span className={`w-12 text-right font-mono text-sm ${value === null ? "text-muted-foreground" : ""}`}>{value ?? "–"}</span>
+          <span className={`w-12 text-right font-mono text-sm ${value === null ? "text-muted-foreground" : ""}`}>
+            {value ?? "–"}
+          </span>
         </div>
         <ScaleLabels labels={labels} min={variable.min!} max={variable.max!} />
-        <Button type="button" className="h-10" disabled={value === null} onClick={() => value !== null && answer(value)}>
+        <Button
+          type="button"
+          className="h-10"
+          disabled={value === null}
+          onClick={() => value !== null && answer(value)}
+        >
           Continue
         </Button>
       </div>

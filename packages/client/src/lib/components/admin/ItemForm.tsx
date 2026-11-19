@@ -103,14 +103,19 @@ export function ItemForm({
           <Input
             value={item.label ?? ""}
             onChange={(e) => onChange({ ...item, label: e.target.value || undefined })}
-            placeholder={item.type === "show_if" ? "Shown in the tree instead of the condition, e.g. Too young" : "e.g. News items"}
+            placeholder={
+              item.type === "show_if" ? "Shown in the tree instead of the condition, e.g. Too young" : "e.g. News items"
+            }
           />
         </div>
       ) : (
         <div className="flex flex-col gap-1.5">
           <span className="flex items-center gap-1.5">
             <label className="text-xs font-semibold text-foreground">Item Name</label>
-            <HelpButton topic={item.type === "end" ? "end-items" : item.type === "computed" ? "random-condition" : "questions"} label="Help" />
+            <HelpButton
+              topic={item.type === "end" ? "end-items" : item.type === "computed" ? "random-condition" : "questions"}
+              label="Help"
+            />
           </span>
           <Input
             value={item.name}
@@ -132,7 +137,12 @@ export function ItemForm({
                 <span className="text-xs font-semibold text-foreground">Choose an answer type</span>
                 <HelpButton topic="question-types" label="Help: answer types" />
               </span>
-              <TypeCardGrid cards={answerCards} onPick={(type) => onChange({ ...item, variable: switchVariableType(item.variable, type) } as DesignItem)} />
+              <TypeCardGrid
+                cards={answerCards}
+                onPick={(type) =>
+                  onChange({ ...item, variable: switchVariableType(item.variable, type) } as DesignItem)
+                }
+              />
             </div>
           ) : (
             <TypeHeader
@@ -146,7 +156,10 @@ export function ItemForm({
             variable={item.variable}
             unitVariableNames={unitVariableNames}
             layoutFields={isInsideLoop ? loopNames?.selectable : undefined}
-            stratifyChoices={[...availableQuestions.map((q) => q.name), ...sessionValueNames.map((n) => `session.${n}`)]}
+            stratifyChoices={[
+              ...availableQuestions.map((q) => q.name),
+              ...sessionValueNames.map((n) => `session.${n}`),
+            ]}
             setColumns={groups.map((g) => g.name)}
             onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
           />
@@ -170,11 +183,16 @@ export function ItemForm({
             onPick={(type) => onChange({ ...item, variable: switchVariableType(item.variable, type) } as DesignItem)}
             help={<HelpButton topic="random-condition" label="Help: random conditions" />}
           />
-          <p className="text-[11px] text-muted-foreground">Worked out when the coder reaches this point; never shown to the coder.</p>
+          <p className="text-[11px] text-muted-foreground">
+            Worked out when the coder reaches this point; never shown to the coder.
+          </p>
           <VariableTypeForm
             variable={item.variable}
             unitVariableNames={unitVariableNames}
-            stratifyChoices={[...availableQuestions.map((q) => q.name), ...sessionValueNames.map((n) => `session.${n}`)]}
+            stratifyChoices={[
+              ...availableQuestions.map((q) => q.name),
+              ...sessionValueNames.map((n) => `session.${n}`),
+            ]}
             setColumns={groups.map((g) => g.name)}
             onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
           />
@@ -197,9 +215,7 @@ export function ItemForm({
         />
       )}
 
-      {item.type === "end" && (
-        <EndItemFields item={item as EndItem} onChange={onChange} issues={validationIssues} />
-      )}
+      {item.type === "end" && <EndItemFields item={item as EndItem} onChange={onChange} issues={validationIssues} />}
 
       {item.type === "show_if" && (
         <div className="flex flex-col gap-1.5 border-t border-border/60 pt-4">
@@ -234,9 +250,9 @@ function EndItemFields({
     <div className="flex flex-col gap-3 border-t border-border/60 pt-4">
       <div className="flex flex-col gap-1.5">
         <span className="flex items-center gap-1.5">
-            <label className="text-xs font-semibold text-foreground">Outcome</label>
-            <HelpButton topic="end-items" label="Help: ending a session" />
-          </span>
+          <label className="text-xs font-semibold text-foreground">Outcome</label>
+          <HelpButton topic="end-items" label="Help: ending a session" />
+        </span>
         <select
           className="h-9 rounded-md border border-input bg-background px-3 text-xs"
           value={item.outcome}
@@ -268,7 +284,8 @@ function EndItemFields({
             delete next.redirectSetting;
             if (e.target.value === "url") next.redirectUrl = "";
             // Separate settings by default: panels give a return link per outcome
-            if (e.target.value === "setting") next.redirectSetting = item.outcome === "screenout" ? "panel_screenout" : "panel_return";
+            if (e.target.value === "setting")
+              next.redirectSetting = item.outcome === "screenout" ? "panel_screenout" : "panel_return";
             onChange(next);
           }}
         >
@@ -360,11 +377,17 @@ function FocusSelect({
         </div>
       )}
       <label className="flex w-fit items-center gap-2 text-xs">
-        <input type="checkbox" checked={dim} disabled={focus.length === 0 && !spanDefault} onChange={(e) => set({ focusDim: e.target.checked })} />
+        <input
+          type="checkbox"
+          checked={dim}
+          disabled={focus.length === 0 && !spanDefault}
+          onChange={(e) => set({ focusDim: e.target.checked })}
+        />
         Dim the rest of the unit
       </label>
       <p className="text-[11px] text-muted-foreground">
-        {spanDefault ? "By default the fields it selects in. " : ""}When this question comes up, the unit scrolls to the first and highlights it.
+        {spanDefault ? "By default the fields it selects in. " : ""}When this question comes up, the unit scrolls to the
+        first and highlights it.
       </p>
     </div>
   );

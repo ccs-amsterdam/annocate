@@ -1,5 +1,6 @@
 /** The study's pages. Preview is opened with the Preview Study button, not from the tabs. */
-export type TabId = "Overview" | "Design" | "Editor" | "Units" | "Links" | "Coders" | "Results" | "Settings" | "Preview";
+export type TabId =
+  "Overview" | "Design" | "Editor" | "Units" | "Links" | "Coders" | "Results" | "Settings" | "Preview";
 
 /** Each page's name in the URL (`/research/studies/<id>/<slug>`). */
 export const TAB_SLUGS: Record<TabId, string> = {

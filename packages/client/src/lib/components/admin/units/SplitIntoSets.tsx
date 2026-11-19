@@ -38,7 +38,10 @@ export function SplitIntoSets({
   const [count, setCount] = useState(4);
   // Names for the values (one per line or comma): the coders, or groups; empty: s1..sN
   const [namesText, setNamesText] = useState("");
-  const names = namesText.split(/[\n,]+/).map((n) => n.trim()).filter(Boolean);
+  const names = namesText
+    .split(/[\n,]+/)
+    .map((n) => n.trim())
+    .filter(Boolean);
   const [overlap, setOverlap] = useState(0);
   const [overlapIsPercent, setOverlapIsPercent] = useState(true);
   const [seed] = useState(() => Math.floor(Math.random() * 1_000_000));
@@ -73,7 +76,13 @@ export function SplitIntoSets({
         <label className="flex flex-col gap-1">
           overlap
           <div className="flex gap-1">
-            <Input type="number" min={0} className="w-20" value={overlap} onChange={(e) => setOverlap(Math.max(0, Number(e.target.value)))} />
+            <Input
+              type="number"
+              min={0}
+              className="w-20"
+              value={overlap}
+              onChange={(e) => setOverlap(Math.max(0, Number(e.target.value)))}
+            />
             <select
               className="h-10 rounded-md border border-input bg-background px-2 text-sm"
               value={overlapIsPercent ? "pct" : "n"}
@@ -99,11 +108,14 @@ export function SplitIntoSets({
         />
       </label>
       <p className="text-muted-foreground">
-        Makes column <span className="font-mono">{group}</span> with {sets.map((s) => `${s.name} (${s.units.length})`).join(", ")}. Units
-        are shuffled first. {OVERLAP_SET} units are for everyone. To give each coder their own units, choose this column under
+        Makes column <span className="font-mono">{group}</span> with{" "}
+        {sets.map((s) => `${s.name} (${s.units.length})`).join(", ")}. Units are shuffled first. {OVERLAP_SET} units are
+        for everyone. To give each coder their own units, choose this column under
         <em> Coders</em> in the session settings; for groups, link a condition to it.
       </p>
-      {!validName && <p className="text-destructive">A column&apos;s name is letters, digits and _, starting with a letter.</p>}
+      {!validName && (
+        <p className="text-destructive">A column&apos;s name is letters, digits and _, starting with a letter.</p>
+      )}
       {taken && <p className="text-destructive">A column named {group} already exists: pick another name.</p>}
       {twice && <p className="text-destructive">{twice} is listed twice.</p>}
       {putGroup.isError && <p className="text-destructive">{putGroup.error.message}</p>}
@@ -117,7 +129,9 @@ export function SplitIntoSets({
           }
           disabled={!validName || unitIds.length === 0 || taken || !!twice || putGroup.isPending}
         >
-          {putGroup.isPending ? "Creating..." : `Create column with ${sets.filter((s) => s.name !== OVERLAP_SET).length} values`}
+          {putGroup.isPending
+            ? "Creating..."
+            : `Create column with ${sets.filter((s) => s.name !== OVERLAP_SET).length} values`}
         </Button>
         <Button variant="outline" onClick={() => onDone(null)}>
           Cancel

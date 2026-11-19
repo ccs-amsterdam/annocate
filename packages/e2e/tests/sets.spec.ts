@@ -6,7 +6,11 @@ import { answers, api, question } from "./helpers";
 // in the CSV makes a set column; as the design's coder column it makes a link
 // per value (coder), and a coder gets their units, with the overlap.
 
-test("a sets column makes a group; a link per set; a coder codes their link's set and the overlap", async ({ page, request, browser }) => {
+test("a sets column makes a group; a link per set; a coder codes their link's set and the overlap", async ({
+  page,
+  request,
+  browser,
+}) => {
   await page.goto("/research");
   await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /Empty study/ }).click();
@@ -44,7 +48,13 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
         type: "unit_loop",
         units: { overlap: { placement: "first" } },
         layout: { template: "$unit.text" },
-        children: [{ type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] } }],
+        children: [
+          {
+            type: "question",
+            name: "topic",
+            variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] },
+          },
+        ],
       },
     ],
   });
@@ -55,7 +65,11 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
   await page.getByRole("button", { name: "Links", exact: true }).click();
   await expect(page.getByRole("cell", { name: "coder s1" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "coder s2" })).toBeVisible();
-  const links = await api<{ secret: string; params: Record<string, string> }[]>(request, "GET", `/study/${study.id}/links`);
+  const links = await api<{ secret: string; params: Record<string, string> }[]>(
+    request,
+    "GET",
+    `/study/${study.id}/links`,
+  );
   const s2 = links.find((l) => l.params.coder === "s2")!;
 
   // A coder with the s2 link: the overlap unit, then their own
@@ -81,7 +95,12 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
   await page.getByLabel("New units in group part").selectOption("distribute");
   await page.getByRole("button", { name: /Upload 2 units/ }).click();
   await expect
-    .poll(async () => (await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`))[0].sets.map((s) => [s.name, s.unitIds.length]))
+    .poll(async () =>
+      (await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`))[0].sets.map((s) => [
+        s.name,
+        s.unitIds.length,
+      ]),
+    )
     .toEqual([
       ["_overlap", 1],
       ["s1", 2],

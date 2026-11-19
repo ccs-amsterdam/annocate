@@ -49,7 +49,15 @@ describe("DesignTreeView", () => {
 
   it("has no actions on a read-only codebook", () => {
     const html = renderToStaticMarkup(
-      <DesignTreeView items={dummyItems} selected={null} onSelect={vi.fn()} onAdd={vi.fn()} onDelete={vi.fn()} onMove={vi.fn()} readOnly />,
+      <DesignTreeView
+        items={dummyItems}
+        selected={null}
+        onSelect={vi.fn()}
+        onAdd={vi.fn()}
+        onDelete={vi.fn()}
+        onMove={vi.fn()}
+        readOnly
+      />,
     );
     expect(html).not.toContain("Add an item below");
     expect(html).not.toContain("checkbox");

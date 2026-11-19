@@ -18,7 +18,11 @@ const THINK_MS = Number(process.env.THINK_MS ?? 1000);
 const DEV = { "content-type": "application/json", "x-dev-role": "ADMIN", "x-dev-email": "load@example.com" };
 
 async function api(method, path, body) {
-  const res = await fetch(`${BASE}/api${path}`, { method, headers: DEV, body: body === undefined ? undefined : JSON.stringify(body) });
+  const res = await fetch(`${BASE}/api${path}`, {
+    method,
+    headers: DEV,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
   if (!res.ok) throw new Error(`${method} ${path}: ${res.status} ${await res.text()}`);
   return res.status === 204 ? null : res.json();
 }
@@ -32,7 +36,10 @@ async function setUp() {
   for (let i = 0; i < UNITS; i += 200) {
     const units = [];
     for (let j = i; j < Math.min(UNITS, i + 200); j++) {
-      units.push({ externalId: `u${j}`, data: { headline: `Headline ${j}`, text: `Some text of unit ${j}. `.repeat(20) } });
+      units.push({
+        externalId: `u${j}`,
+        data: { headline: `Headline ${j}`, text: `Some text of unit ${j}. `.repeat(20) },
+      });
     }
     await api("POST", `/study/${study.id}/units`, { units });
   }
@@ -48,8 +55,16 @@ async function setUp() {
       units: [{ mode: "shared", set: "__all__", until: { coders: 2 }, maxCoders: 2 }],
       layout: { template: "# $unit.headline\n\n$unit.text" },
       children: [
-        { type: "question", name: "sentiment", variable: { type: "nominal", question: "Sentiment?", options: [{ value: "pos" }, { value: "neg" }] } },
-        { type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "a" }, { value: "b" }, { value: "c" }] } },
+        {
+          type: "question",
+          name: "sentiment",
+          variable: { type: "nominal", question: "Sentiment?", options: [{ value: "pos" }, { value: "neg" }] },
+        },
+        {
+          type: "question",
+          name: "topic",
+          variable: { type: "nominal", question: "Topic?", options: [{ value: "a" }, { value: "b" }, { value: "c" }] },
+        },
       ],
     },
   ];
@@ -73,7 +88,12 @@ function coderClient(studyId, secret) {
     const t = performance.now();
     const res = await fetch(`${BASE}/api/d/${studyId}${path}`, {
       method,
-      headers: { "content-type": "application/json", "x-annotinder": "1", "x-link-secret": secret, ...(cookie ? { cookie } : {}) },
+      headers: {
+        "content-type": "application/json",
+        "x-annotinder": "1",
+        "x-link-secret": secret,
+        ...(cookie ? { cookie } : {}),
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const setCookie = res.headers.get("set-cookie");
@@ -98,7 +118,10 @@ async function coder(studyId, secret, until, n) {
   const session = await call("session", "GET", "/session");
   if (!session) return 0;
   const loop = session.progress[0].set;
-  await call("coder vars", "POST", "/variables/coder", { variables: { age: value(n % 2 ? "young" : "old") }, timings: { age: timing } });
+  await call("coder vars", "POST", "/variables/coder", {
+    variables: { age: value(n % 2 ? "young" : "old") },
+    timings: { age: timing },
+  });
   let done = 0;
   while (Date.now() < until) {
     const batch = await call("next", "GET", `/loop/${encodeURIComponent(loop)}/next?count=${BATCH}`);
@@ -109,7 +132,10 @@ async function coder(studyId, secret, until, n) {
       await call("submit", "POST", "/variables/unit", {
         unitId: unit.id,
         loop,
-        variables: { sentiment: value(Math.random() < 0.5 ? "pos" : "neg"), topic: value("abc"[Math.floor(Math.random() * 3)]) },
+        variables: {
+          sentiment: value(Math.random() < 0.5 ? "pos" : "neg"),
+          topic: value("abc"[Math.floor(Math.random() * 3)]),
+        },
         timings: { sentiment: timing, topic: timing },
       });
       done++;
@@ -123,18 +149,24 @@ function pct(sorted, p) {
   return sorted[Math.min(sorted.length - 1, Math.floor((sorted.length * p) / 100))];
 }
 
-const { studyId, secret } = process.env.STUDY ? { studyId: Number(process.env.STUDY), secret: process.env.SECRET } : await setUp();
+const { studyId, secret } = process.env.STUDY
+  ? { studyId: Number(process.env.STUDY), secret: process.env.SECRET }
+  : await setUp();
 const start = Date.now();
 const until = start + DURATION;
 const done = await Promise.all(Array.from({ length: CODERS }, (_, i) => coder(studyId, secret, until, i)));
 const seconds = (Date.now() - start) / 1000;
 
-console.log(`\n${CODERS} coders, batch ${BATCH}, think ~${THINK_MS}ms, ${seconds.toFixed(0)}s: ${done.reduce((a, b) => a + b, 0)} units submitted`);
+console.log(
+  `\n${CODERS} coders, batch ${BATCH}, think ~${THINK_MS}ms, ${seconds.toFixed(0)}s: ${done.reduce((a, b) => a + b, 0)} units submitted`,
+);
 console.log("request        n      p50     p95     p99     max  (ms)");
 for (const [name, list] of stats) {
   const s = [...list].sort((a, b) => a - b);
   const f = (x) => x.toFixed(0).padStart(7);
-  console.log(`${name.padEnd(12)} ${String(s.length).padStart(6)} ${f(pct(s, 50))} ${f(pct(s, 95))} ${f(pct(s, 99))} ${f(s[s.length - 1])}`);
+  console.log(
+    `${name.padEnd(12)} ${String(s.length).padStart(6)} ${f(pct(s, 50))} ${f(pct(s, 95))} ${f(pct(s, 99))} ${f(s[s.length - 1])}`,
+  );
 }
 for (const [key, n] of errors) console.log(`error x${n}: ${key}`);
 console.log(JSON.stringify({ studyId, secret }));

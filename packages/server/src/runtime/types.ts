@@ -1,6 +1,14 @@
 import type { DeviceDetails } from "../shared/devices.js";
 import type { SessionRules } from "./sessionValues.js";
-import type { AnswerTiming, SignIn, DesignVersion, DeletionRequest, SessionEnd, UnitData, VariableValue } from "@annotinder/contracts";
+import type {
+  AnswerTiming,
+  SignIn,
+  DesignVersion,
+  DeletionRequest,
+  SessionEnd,
+  UnitData,
+  VariableValue,
+} from "@annotinder/contracts";
 
 // What the runtime reads from and writes to the database (store.ts). Not
 // part of any API: coders get what the coder API (contracts

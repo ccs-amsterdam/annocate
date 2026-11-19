@@ -83,7 +83,8 @@ describe("example studies", () => {
   );
 
   it("counts against the researcher's limit on studies", async () => {
-    const plan = await query<{ id: number }>(db, 
+    const plan = await query<{ id: number }>(
+      db,
       "INSERT INTO plans (name, limits) VALUES ('One', '{\"studies\": 1}') RETURNING id",
     );
     await query(db, "UPDATE users SET plan_id = $1", [plan[0].id]);
@@ -159,7 +160,11 @@ describe("studies from a recipe", () => {
     const designVersions = (await (await researcher(`/api/study/${study.id}/design`)).json()) as { items: unknown[] }[];
     expect(designVersions).toHaveLength(1);
     // Its set columns are unit fields of type set
-    const [{ units: spec }] = await query<{ units: { fields: unknown[] } }>(db, "SELECT units FROM design_versions WHERE study_id = $1", [study.id]);
+    const [{ units: spec }] = await query<{ units: { fields: unknown[] } }>(
+      db,
+      "SELECT units FROM design_versions WHERE study_id = $1",
+      [study.id],
+    );
     expect(spec.fields).toEqual([
       { name: "text", type: "text" },
       { name: "condition", type: "set" },
@@ -193,7 +198,8 @@ describe("studies from a recipe", () => {
   });
 
   it("counts against the researcher's limit on studies", async () => {
-    const plan = await query<{ id: number }>(db, 
+    const plan = await query<{ id: number }>(
+      db,
       "INSERT INTO plans (name, limits) VALUES ('One', '{\"studies\": 1}') RETURNING id",
     );
     await query(db, "UPDATE users SET plan_id = $1", [plan[0].id]);

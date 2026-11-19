@@ -45,7 +45,8 @@ import type { TabId } from "../../admin/tabs";
  * Where the researcher is (the app's URL, router.tsx): the studies, the server
  * admin's page, or a study's page (the editor on a version: its number, v1, v2, ...).
  */
-export type AdminLocation = { page: "studies" } | { page: "server" } | { page: "study"; studyId: number; tab: TabId; version?: number };
+export type AdminLocation =
+  { page: "studies" } | { page: "server" } | { page: "study"; studyId: number; tab: TabId; version?: number };
 
 /**
  * Asks before leaving a page with unsaved edits (when `when`), e.g. the
@@ -198,7 +199,9 @@ function AdminAppInner({
         ) : (
           <StudyList
             client={client}
-            onSelectStudy={(id, open) => onNavigate({ page: "study", studyId: id, tab: open === "editor" ? "Editor" : "Overview" })}
+            onSelectStudy={(id, open) =>
+              onNavigate({ page: "study", studyId: id, tab: open === "editor" ? "Editor" : "Overview" })
+            }
             me={me}
             server={server}
             onMe={setMe}
@@ -219,9 +222,13 @@ function AdminAppInner({
       tab={location.tab}
       version={location.version}
       onTabChange={(tab) => onNavigate({ page: "study", studyId: location.studyId, tab })}
-      onVersionChange={(version) => onNavigate({ page: "study", studyId: location.studyId, tab: "Editor", version }, { replace: true })}
+      onVersionChange={(version) =>
+        onNavigate({ page: "study", studyId: location.studyId, tab: "Editor", version }, { replace: true })
+      }
       onBackToStudies={() => onNavigate({ page: "studies" })}
-      onSwitchStudy={(id) => onNavigate({ page: "study", studyId: id, tab: location.tab === "Preview" ? "Overview" : location.tab })}
+      onSwitchStudy={(id) =>
+        onNavigate({ page: "study", studyId: id, tab: location.tab === "Preview" ? "Overview" : location.tab })
+      }
       useLeaveGuard={useLeaveGuard}
     />
   );
@@ -302,7 +309,7 @@ function StudyAdminView({
                   const newId = Number(e.target.value);
                   requestNavigation(() => onSwitchStudy(newId));
                 }}
-                className="max-w-[16rem] truncate rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-input focus:border-input focus:outline-none focus:ring-1 focus:ring-primary"
+                className="max-w-[16rem] truncate rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-input focus:border-input focus:ring-1 focus:ring-primary focus:outline-none"
               >
                 {allStudiesQuery.data?.map((j) => (
                   <option key={j.id} value={j.id}>
@@ -329,7 +336,9 @@ function StudyAdminView({
                     aria-current={active ? "page" : undefined}
                     onClick={() => requestNavigation(() => onTabChange(g.start ?? g.pages[0].id))}
                     className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
-                      active ? "bg-wood/15 text-foreground ring-1 ring-inset ring-wood/30" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      active
+                        ? "bg-wood/15 text-foreground ring-1 ring-wood/30 ring-inset"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -368,7 +377,9 @@ function StudyAdminView({
                       aria-current={active ? "page" : undefined}
                       onClick={() => requestNavigation(() => onTabChange(p.id))}
                       className={`flex items-center gap-1.5 border-b-2 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
-                        active ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                        active
+                          ? "border-primary text-foreground"
+                          : "border-transparent text-muted-foreground hover:text-foreground"
                       }`}
                     >
                       <Icon className="h-3.5 w-3.5" />
@@ -384,7 +395,13 @@ function StudyAdminView({
 
       {/* Main Tab Content */}
       {/* The editor fills the height, its panes scroll on their own; other pages scroll as a whole */}
-      <main className={tab === "Editor" ? "flex min-h-0 flex-1 flex-col overflow-hidden px-3 pt-2 pb-3 sm:px-4" : "min-h-0 flex-1 overflow-auto p-4 sm:p-6"}>
+      <main
+        className={
+          tab === "Editor"
+            ? "flex min-h-0 flex-1 flex-col overflow-hidden px-3 pt-2 pb-3 sm:px-4"
+            : "min-h-0 flex-1 overflow-auto p-4 sm:p-6"
+        }
+      >
         {banner}
         {/* The editor has its own Deploy */}
         {tab !== "Editor" && <PendingDeployBar client={client} />}

@@ -26,7 +26,7 @@ export function OptionButton({ option, selected, shortcut, check, onClick }: Opt
       type="button"
       variant={selected ? "default" : "outline"}
       aria-pressed={selected}
-      className={`relative h-auto min-h-10 justify-center gap-1.5 whitespace-normal px-3 py-1.5 text-sm leading-snug ${
+      className={`relative h-auto min-h-10 justify-center gap-1.5 px-3 py-1.5 text-sm leading-snug whitespace-normal ${
         customStyle ? "" : selected ? "border-primary" : "border-border hover:bg-muted/50"
       }`}
       style={customStyle}
@@ -74,7 +74,7 @@ export function CompactRow({ options, selected, onSelect, label }: CompactRowPro
             aria-checked={isCurrent}
             onClick={() => onSelect(option)}
             style={style}
-            className={`h-9 min-w-0 cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap rounded-md border border-transparent px-1 text-sm font-bold text-foreground transition-all duration-200 ${
+            className={`h-9 min-w-0 cursor-pointer overflow-hidden rounded-md border border-transparent px-1 text-sm font-bold text-ellipsis whitespace-nowrap text-foreground transition-all duration-200 ${
               isCurrent
                 ? `flex-[3_1_auto] px-3 ${colorStyle ? "" : "bg-secondary text-secondary-foreground dark:bg-foreground dark:text-background"} ring-2 ring-primary ring-offset-1 ring-offset-background`
                 : "flex-1 basis-0 hover:brightness-110"

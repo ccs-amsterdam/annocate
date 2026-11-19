@@ -57,12 +57,14 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[], al
   };
   const check = (item: string, refs: Reference[]) => {
     for (const ref of refs) {
-      if (ref.ns === "unit" && !known.has(ref.path[0])) warn(item, ref.path[0], `${item}: $unit.${ref.path[0]} is not a unit field`);
+      if (ref.ns === "unit" && !known.has(ref.path[0]))
+        warn(item, ref.path[0], `${item}: $unit.${ref.path[0]} is not a unit field`);
     }
   };
 
   const walk = (children: InLoopItem[], snippets: Record<string, string> | undefined) => {
-    const text = (source: string | undefined) => templateReferences(expandSnippets(source ?? "", snippets).source).references;
+    const text = (source: string | undefined) =>
+      templateReferences(expandSnippets(source ?? "", snippets).source).references;
     for (const child of children) {
       if (child.type === "show_if") {
         check(itemTitle(child), conditionReferences(child.condition));
@@ -89,7 +91,10 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[], al
     for (const item of list) {
       if (item.type === "show_if") visit(item.children);
       if (item.type !== "unit_loop") continue;
-      check(itemTitle(item), allTemplateReferences(expandSnippets(item.layout?.template ?? "", item.layout?.snippets).source));
+      check(
+        itemTitle(item),
+        allTemplateReferences(expandSnippets(item.layout?.template ?? "", item.layout?.snippets).source),
+      );
       walk(item.children, item.layout?.snippets);
     }
   };

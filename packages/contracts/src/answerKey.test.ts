@@ -39,6 +39,10 @@ describe("answer keys", () => {
     expect(answerKeyProblems(parseAnswerKey("6..9")!, scale)).toEqual(["6..9 (no option in this range)"]);
     const numeric = { type: "numeric", min: 0, max: 10 };
     expect(answerKeyProblems(parseAnswerKey("3..5|7")!, numeric)).toEqual([]);
-    expect(answerKeyProblems(parseAnswerKey("x|11|20..30")!, numeric)).toEqual(["x (not a number)", "11 (outside 0..10)", "20..30 (outside 0..10)"]);
+    expect(answerKeyProblems(parseAnswerKey("x|11|20..30")!, numeric)).toEqual([
+      "x (not a number)",
+      "11 (outside 0..10)",
+      "20..30 (outside 0..10)",
+    ]);
   });
 });

@@ -56,7 +56,9 @@ export function AccountMenu({
             {me ? (
               <>
                 <div className="truncate font-semibold">{me.email}</div>
-                <div className="text-muted-foreground">{{ user: "User", researcher: "Researcher", admin: "Admin" }[me.role]}</div>
+                <div className="text-muted-foreground">
+                  {{ user: "User", researcher: "Researcher", admin: "Admin" }[me.role]}
+                </div>
                 {dev && <div className="text-muted-foreground">Development server: no login</div>}
               </>
             ) : (
@@ -145,16 +147,22 @@ function ApiKeysDialog({ client, onClose }: { client: ResearcherApi; onClose: ()
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>API keys</DialogTitle>
-          <DialogDescription>For scripts (R, Python) and other systems: they act as you, in every study you have a role in.</DialogDescription>
+          <DialogDescription>
+            For scripts (R, Python) and other systems: they act as you, in every study you have a role in.
+          </DialogDescription>
         </DialogHeader>
         {created && (
           <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/40 p-3">
             <p className="text-xs font-semibold">Copy this key now: it won't be shown again.</p>
-            <code className="break-all text-xs">{created.key}</code>
+            <code className="text-xs break-all">{created.key}</code>
           </div>
         )}
         <div className="flex gap-2">
-          <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="What is it for? e.g. laptop R scripts" />
+          <Input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="What is it for? e.g. laptop R scripts"
+          />
           <Button onClick={create}>Create</Button>
         </div>
         {error && <p className="text-xs text-destructive">{error}</p>}

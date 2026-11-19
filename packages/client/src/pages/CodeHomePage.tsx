@@ -6,7 +6,11 @@ import { continueUrl, loadStudies, type StudyEntry } from "../lib/session/studie
 const ENDED: Record<string, string> = { complete: "Finished", screenout: "Ended", quit: "Quit" };
 
 function when(date: Date): string {
-  return date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: date.getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
+  return date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: date.getFullYear() === new Date().getFullYear() ? undefined : "numeric",
+  });
 }
 
 /**
@@ -49,14 +53,19 @@ export function CodeHomePage({ apiUrl, dev = false }: { apiUrl: string; dev?: bo
         <Link2 className="mx-auto h-8 w-8 text-muted-foreground" />
         <p className="mt-3 font-medium">Start from a link</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          You take part in a study through the link its researcher gave you. Open that link to begin; the studies you started in this browser show up
-          here.
+          You take part in a study through the link its researcher gave you. Open that link to begin; the studies you
+          started in this browser show up here.
         </p>
       </div>
       {dev && (
         <p className="mt-4 text-center text-xs text-muted-foreground">
           Development server:{" "}
-          <Link to="/code/$deployment" params={{ deployment: "1" }} search={{ link: "demo-secret" }} className="underline">
+          <Link
+            to="/code/$deployment"
+            params={{ deployment: "1" }}
+            search={{ link: "demo-secret" }}
+            className="underline"
+          >
             try the demo study
           </Link>
         </p>
@@ -72,7 +81,7 @@ function StudyCard({ entry }: { entry: StudyEntry }) {
     <a
       href={continueUrl(entry)}
       // A finished study: a faint leaf tint
-      className={`group flex items-center gap-3 rounded-xl border px-4 py-3 shadow-sm transition-colors hover:border-wood/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+      className={`group flex items-center gap-3 rounded-xl border px-4 py-3 shadow-sm transition-colors hover:border-wood/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
         study.ended === "complete" ? "border-leaf/40 bg-leaf/10" : "border-border bg-card"
       }`}
     >

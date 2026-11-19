@@ -7,7 +7,9 @@ const types = { headline: "text", source: "text", text: "text", views: "number" 
 
 describe("LayoutDesigner", () => {
   it("starts as an empty document: the places' placeholders, and every field to place", () => {
-    const html = renderToStaticMarkup(<LayoutDesigner layout={{ body: [] }} fields={fields} types={types} onChange={() => {}} />);
+    const html = renderToStaticMarkup(
+      <LayoutDesigner layout={{ body: [] }} fields={fields} types={types} onChange={() => {}} />,
+    );
     for (const place of ["Title", "Byline", "Body"]) expect(html).toContain(`aria-label="${place}: choose a field"`);
     for (const f of fields) expect(html).toContain(`aria-label="Add ${f} to the body"`);
     expect(html).toContain("click to add to the body, or drag onto a place");
@@ -15,7 +17,12 @@ describe("LayoutDesigner", () => {
 
   it("shows placed fields in their places, and only the others in the list", () => {
     const html = renderToStaticMarkup(
-      <LayoutDesigner layout={{ title: "headline", body: ["text"] }} fields={fields} types={types} onChange={() => {}} />,
+      <LayoutDesigner
+        layout={{ title: "headline", body: ["text"] }}
+        fields={fields}
+        types={types}
+        onChange={() => {}}
+      />,
     );
     expect(html).toContain('aria-label="Title: headline"');
     expect(html).toContain('aria-label="Body: text"');
@@ -29,7 +36,11 @@ describe("LayoutDesigner", () => {
 
   it("says when every field is shown", () => {
     const html = renderToStaticMarkup(
-      <LayoutDesigner layout={{ title: "headline", byline: "source", body: ["text", "views"] }} fields={fields} onChange={() => {}} />,
+      <LayoutDesigner
+        layout={{ title: "headline", byline: "source", body: ["text", "views"] }}
+        fields={fields}
+        onChange={() => {}}
+      />,
     );
     expect(html).toContain("Every unit field is shown");
     expect(html).not.toContain("Body: add a field");

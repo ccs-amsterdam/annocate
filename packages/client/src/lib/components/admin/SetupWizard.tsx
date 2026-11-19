@@ -52,7 +52,15 @@ const STEP_TITLES: Record<Step, string> = {
 
 const NO_FIELDS: UnitField[] = [];
 
-export function SetupWizard({ client, onCreated, onClose }: { client: ResearcherApi; onCreated: (study: StudyResponse) => void; onClose: () => void }) {
+export function SetupWizard({
+  client,
+  onCreated,
+  onClose,
+}: {
+  client: ResearcherApi;
+  onCreated: (study: StudyResponse) => void;
+  onClose: () => void;
+}) {
   const [a, setA] = useState<SetupAnswers>(DEFAULT_SETUP);
   const [step, setStep] = useState<Step>("start");
   const [csv, setCsv] = useState<CsvUnits | null>(null);
@@ -78,11 +86,17 @@ export function SetupWizard({ client, onCreated, onClose }: { client: Researcher
   const at = steps.indexOf(step);
   const problems = setupProblems(a);
   const startDone = a.name.trim() !== "" && (a.parts.annotate || a.parts.survey || a.parts.experiment);
-  const blocked = (step === "units" && csv !== null && csv.errors.length > 0) || (step === "distribution" && distributionProblems(a).length > 0);
+  const blocked =
+    (step === "units" && csv !== null && csv.errors.length > 0) ||
+    (step === "distribution" && distributionProblems(a).length > 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in">
-      <div role="dialog" aria-label="Guided setup" className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-xl border border-border bg-card shadow-xl">
+    <div className="fixed inset-0 z-50 flex animate-in items-center justify-center bg-black/50 p-4 backdrop-blur-sm fade-in">
+      <div
+        role="dialog"
+        aria-label="Guided setup"
+        className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-xl border border-border bg-card shadow-xl"
+      >
         <div className="border-b border-border px-6 pt-5 pb-3">
           <h2 className="text-lg font-semibold text-foreground">Guided setup</h2>
           <ol className="mt-2 flex flex-wrap gap-x-1 gap-y-1 text-xs">
@@ -92,7 +106,11 @@ export function SetupWizard({ client, onCreated, onClose }: { client: Researcher
                 className={cn(
                   "flex items-center gap-1 rounded-full px-2 py-0.5",
                   // Done steps: a leaf tint; the current one: wood
-                  i === at ? "bg-wood/15 font-semibold text-foreground" : i < at ? "bg-leaf/15 text-leaf-strong" : "text-muted-foreground",
+                  i === at
+                    ? "bg-wood/15 font-semibold text-foreground"
+                    : i < at
+                      ? "bg-leaf/15 text-leaf-strong"
+                      : "text-muted-foreground",
                 )}
               >
                 {i > 0 && <span className="text-muted-foreground">/</span>}
@@ -119,7 +137,9 @@ export function SetupWizard({ client, onCreated, onClose }: { client: Researcher
           </Button>
           <div className="flex items-center gap-2">
             {create.isError && (
-              <p className="text-xs text-destructive">{create.error instanceof ResearcherApiError ? create.error.reason : create.error.message}</p>
+              <p className="text-xs text-destructive">
+                {create.error instanceof ResearcherApiError ? create.error.reason : create.error.message}
+              </p>
             )}
             {at > 0 && (
               <Button variant="outline" onClick={() => setStep(steps[at - 1])} disabled={create.isPending}>
@@ -131,7 +151,10 @@ export function SetupWizard({ client, onCreated, onClose }: { client: Researcher
                 Next
               </Button>
             ) : (
-              <Button onClick={() => create.mutate(setupRecipe(a), { onSuccess: onCreated })} disabled={problems.length > 0 || create.isPending}>
+              <Button
+                onClick={() => create.mutate(setupRecipe(a), { onSuccess: onCreated })}
+                disabled={problems.length > 0 || create.isPending}
+              >
                 {create.isPending ? "Creating..." : "Create study"}
               </Button>
             )}
@@ -152,8 +175,18 @@ function Intro({ children }: { children: ReactNode }) {
 }
 
 const PARTS: { key: keyof SetupParts; title: string; text: string; icon: typeof ListChecks }[] = [
-  { key: "annotate", title: "Annotate units", text: "Coders get texts (or other units) one by one and answer questions about each.", icon: ListChecks },
-  { key: "survey", title: "Ask questions", text: "Participants answer questions once: about themselves, or their opinion (a survey).", icon: MessageSquareText },
+  {
+    key: "annotate",
+    title: "Annotate units",
+    text: "Coders get texts (or other units) one by one and answer questions about each.",
+    icon: ListChecks,
+  },
+  {
+    key: "survey",
+    title: "Ask questions",
+    text: "Participants answer questions once: about themselves, or their opinion (a survey).",
+    icon: MessageSquareText,
+  },
   {
     key: "experiment",
     title: "Experiment",
@@ -166,21 +199,34 @@ function StartStep({ a, set }: StepProps) {
   return (
     <>
       <p className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs text-foreground">
-        The guided setup makes a study quickly: what it does, the units, who codes what, how a unit looks, and the names of your
-        questions. It then opens in the editor, where you specify the questions and can add what the setup leaves out
-        (conditions, agreement, personal or panel links, and more).{" "}
+        The guided setup makes a study quickly: what it does, the units, who codes what, how a unit looks, and the names
+        of your questions. It then opens in the editor, where you specify the questions and can add what the setup
+        leaves out (conditions, agreement, personal or panel links, and more).{" "}
         <HelpButton topic="setup-wizard">What only the editor does</HelpButton>
       </p>
       <label className="block text-xs font-medium text-muted-foreground">
         Study name
-        <Input className="mt-1" autoFocus value={a.name} onChange={(e) => set({ name: e.target.value })} placeholder="e.g. News pilot" />
+        <Input
+          className="mt-1"
+          autoFocus
+          value={a.name}
+          onChange={(e) => set({ name: e.target.value })}
+          placeholder="e.g. News pilot"
+        />
       </label>
       <label className="block text-xs font-medium text-muted-foreground">
         <span className="flex items-center gap-1.5">
           Title coders see (optional)
-          <InfoTip label="About the title coders see">The study name stays private; coders see this title instead, or &quot;Untitled study&quot;.</InfoTip>
+          <InfoTip label="About the title coders see">
+            The study name stays private; coders see this title instead, or &quot;Untitled study&quot;.
+          </InfoTip>
         </span>
-        <Input className="mt-1" value={a.publicTitle} onChange={(e) => set({ publicTitle: e.target.value })} placeholder={a.name.trim() || "e.g. Reading the news"} />
+        <Input
+          className="mt-1"
+          value={a.publicTitle}
+          onChange={(e) => set({ publicTitle: e.target.value })}
+          placeholder={a.name.trim() || "e.g. Reading the news"}
+        />
       </label>
       <Intro>Choose one or more. You can change everything later in the editor.</Intro>
       <div className="grid gap-2 sm:grid-cols-3">
@@ -204,7 +250,9 @@ function StartStep({ a, set }: StepProps) {
         ))}
       </div>
       {a.parts.experiment && !a.parts.annotate && !a.parts.survey && (
-        <p className="text-xs text-muted-foreground">An experiment alone asks questions too: it is set up as questions with an experiment.</p>
+        <p className="text-xs text-muted-foreground">
+          An experiment alone asks questions too: it is set up as questions with an experiment.
+        </p>
       )}
     </>
   );
@@ -220,7 +268,11 @@ function ExperimentStep({ a, set }: StepProps) {
       </Intro>
       <label className="block text-xs font-medium text-muted-foreground">
         Name of the condition variable
-        <Input className="mt-1 font-mono" value={e.name} onChange={(ev) => set({ experiment: { ...e, name: ev.target.value } })} />
+        <Input
+          className="mt-1 font-mono"
+          value={e.name}
+          onChange={(ev) => set({ experiment: { ...e, name: ev.target.value } })}
+        />
       </label>
       <label className="block text-xs font-medium text-muted-foreground">
         Conditions (one per line)
@@ -234,11 +286,19 @@ function ExperimentStep({ a, set }: StepProps) {
       <fieldset className="space-y-1 text-sm">
         <legend className="text-xs font-medium text-muted-foreground">Assignment</legend>
         <label className="flex items-center gap-2">
-          <input type="radio" checked={e.assign === "balanced"} onChange={() => set({ experiment: { ...e, assign: "balanced" } })} />
+          <input
+            type="radio"
+            checked={e.assign === "balanced"}
+            onChange={() => set({ experiment: { ...e, assign: "balanced" } })}
+          />
           Balanced: the condition with the fewest participants so far
         </label>
         <label className="flex items-center gap-2">
-          <input type="radio" checked={e.assign === "random"} onChange={() => set({ experiment: { ...e, assign: "random" } })} />
+          <input
+            type="radio"
+            checked={e.assign === "random"}
+            onChange={() => set({ experiment: { ...e, assign: "random" } })}
+          />
           Random: a random draw per participant
         </label>
       </fieldset>
@@ -254,7 +314,11 @@ function UnitsStep({ a, set, onCsv }: StepProps & { onCsv: (result: CsvUnits | n
         <CsvUnitsForm studyFields={NO_FIELDS} onResult={onCsv} />
       </div>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={a.order === "random"} onChange={(ev) => set({ order: ev.target.checked ? "random" : "sequential" })} />
+        <input
+          type="checkbox"
+          checked={a.order === "random"}
+          onChange={(ev) => set({ order: ev.target.checked ? "random" : "sequential" })}
+        />
         Random order per coder (otherwise as uploaded)
       </label>
     </>
@@ -276,7 +340,11 @@ function DistributionStep({ a, set }: StepProps) {
     <>
       <label className="block text-xs font-medium text-muted-foreground">
         Who codes which units
-        <select className="mt-1 block h-9 w-full max-w-sm rounded-md border border-input bg-background px-2 text-sm" value={d.mode} onChange={(e) => choose(e.target.value as SetupDistribution["mode"])}>
+        <select
+          className="mt-1 block h-9 w-full max-w-sm rounded-md border border-input bg-background px-2 text-sm"
+          value={d.mode}
+          onChange={(e) => choose(e.target.value as SetupDistribution["mode"])}
+        >
           {options.map((o) => (
             <option key={o.mode} value={o.mode}>
               {o.label}
@@ -294,13 +362,33 @@ function DistributionStep({ a, set }: StepProps) {
               <label className="flex flex-wrap items-center gap-2">
                 <input type="radio" checked={d.source === "split"} onChange={() => update({ source: "split" })} />
                 Divide the units into
-                <input aria-label="Number of sets" type="number" min={1} className={numberInput} value={d.sets} onChange={(e) => update({ sets: Number(e.target.value) })} />
+                <input
+                  aria-label="Number of sets"
+                  type="number"
+                  min={1}
+                  className={numberInput}
+                  value={d.sets}
+                  onChange={(e) => update({ sets: Number(e.target.value) })}
+                />
                 sets
               </label>
-              <label className={cn("flex flex-wrap items-center gap-2", columns.length === 0 && "text-muted-foreground")}>
-                <input type="radio" disabled={columns.length === 0} checked={d.source === "column"} onChange={() => update({ source: "column" })} />
+              <label
+                className={cn("flex flex-wrap items-center gap-2", columns.length === 0 && "text-muted-foreground")}
+              >
+                <input
+                  type="radio"
+                  disabled={columns.length === 0}
+                  checked={d.source === "column"}
+                  onChange={() => update({ source: "column" })}
+                />
                 One set per value of the column
-                <select aria-label="Column with the set" disabled={columns.length === 0} className={smallSelect} value={d.column} onChange={(e) => update({ source: "column", column: e.target.value })}>
+                <select
+                  aria-label="Column with the set"
+                  disabled={columns.length === 0}
+                  className={smallSelect}
+                  value={d.column}
+                  onChange={(e) => update({ source: "column", column: e.target.value })}
+                >
                   {columns.map((c) => (
                     <option key={c} value={c}>
                       {c}
@@ -309,7 +397,11 @@ function DistributionStep({ a, set }: StepProps) {
                 </select>
               </label>
             </fieldset>
-            <OverlapInput overlap={d.overlap} units={a.units?.units.length ?? 0} onChange={(overlap) => update({ overlap })} />
+            <OverlapInput
+              overlap={d.overlap}
+              units={a.units?.units.length ?? 0}
+              onChange={(overlap) => update({ overlap })}
+            />
             <fieldset className="space-y-1.5">
               <legend className="text-xs font-medium text-muted-foreground">How coders get a set</legend>
               <label className="flex items-center gap-2">
@@ -317,8 +409,8 @@ function DistributionStep({ a, set }: StepProps) {
                 One link: each new coder gets the set with the fewest coders
               </label>
               <label className="flex items-center gap-2">
-                <input type="radio" checked={d.handOut === "links"} onChange={() => update({ handOut: "links" })} />
-                A link per set (made when you deploy): you decide who gets which (e.g. a few expert coders)
+                <input type="radio" checked={d.handOut === "links"} onChange={() => update({ handOut: "links" })} />A
+                link per set (made when you deploy): you decide who gets which (e.g. a few expert coders)
               </label>
             </fieldset>
             {a.units && sets.length > 0 && (
@@ -332,12 +424,21 @@ function DistributionStep({ a, set }: StepProps) {
 
         {d.mode === "crowd" && (
           <>
-            <SharedSettings criteria={d.shared} agreeable={[]} allowAgreement={false} onChange={(shared) => update({ shared })} />
+            <SharedSettings
+              criteria={d.shared}
+              agreeable={[]}
+              allowAgreement={false}
+              onChange={(shared) => update({ shared })}
+            />
             <p className="text-xs text-muted-foreground">
               Coding until coders agree on a question is set in the editor, once the question has its answer type.{" "}
               <HelpButton topic="setup-wizard">What only the editor does</HelpButton>
             </p>
-            <OverlapInput overlap={d.overlap} units={a.units?.units.length ?? 0} onChange={(overlap) => update({ overlap })} />
+            <OverlapInput
+              overlap={d.overlap}
+              units={a.units?.units.length ?? 0}
+              onChange={(overlap) => update({ overlap })}
+            />
           </>
         )}
 
@@ -345,7 +446,12 @@ function DistributionStep({ a, set }: StepProps) {
           <>
             <label className="flex flex-wrap items-center gap-2">
               The units of each condition, by the column
-              <select aria-label="Column for the groups" className={smallSelect} value={d.column} onChange={(e) => update({ column: e.target.value, values: {} })}>
+              <select
+                aria-label="Column for the groups"
+                className={smallSelect}
+                value={d.column}
+                onChange={(e) => update({ column: e.target.value, values: {} })}
+              >
                 {columns.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -368,7 +474,14 @@ function DistributionStep({ a, set }: StepProps) {
                               type="checkbox"
                               checked={chosen.includes(value)}
                               onChange={(e) =>
-                                update({ values: { ...d.values, [condition]: e.target.checked ? [...chosen, value] : chosen.filter((v) => v !== value) } })
+                                update({
+                                  values: {
+                                    ...d.values,
+                                    [condition]: e.target.checked
+                                      ? [...chosen, value]
+                                      : chosen.filter((v) => v !== value),
+                                  },
+                                })
                               }
                             />
                             {value || "(empty)"}
@@ -381,7 +494,6 @@ function DistributionStep({ a, set }: StepProps) {
             </div>
           </>
         )}
-
       </div>
 
       {problems.length > 0 && (
@@ -396,17 +508,41 @@ function DistributionStep({ a, set }: StepProps) {
 }
 
 /** Overlap units: none, a number, or a percentage of the units. */
-function OverlapInput({ overlap, units, onChange }: { overlap: SetupOverlap; units: number; onChange: (overlap: SetupOverlap) => void }) {
+function OverlapInput({
+  overlap,
+  units,
+  onChange,
+}: {
+  overlap: SetupOverlap;
+  units: number;
+  onChange: (overlap: SetupOverlap) => void;
+}) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <label className="flex items-center gap-2">
-        <input type="checkbox" checked={overlap !== null} onChange={(e) => onChange(e.target.checked ? { by: "percent", value: 10 } : null)} />
+        <input
+          type="checkbox"
+          checked={overlap !== null}
+          onChange={(e) => onChange(e.target.checked ? { by: "percent", value: 10 } : null)}
+        />
         Overlap: units every coder codes (to compare coders)
       </label>
       {overlap && (
         <>
-          <input aria-label="Overlap size" type="number" min={1} className={numberInput} value={overlap.value} onChange={(e) => onChange({ ...overlap, value: Number(e.target.value) })} />
-          <select aria-label="Overlap in" className={smallSelect} value={overlap.by} onChange={(e) => onChange({ ...overlap, by: e.target.value as "units" | "percent" })}>
+          <input
+            aria-label="Overlap size"
+            type="number"
+            min={1}
+            className={numberInput}
+            value={overlap.value}
+            onChange={(e) => onChange({ ...overlap, value: Number(e.target.value) })}
+          />
+          <select
+            aria-label="Overlap in"
+            className={smallSelect}
+            value={overlap.by}
+            onChange={(e) => onChange({ ...overlap, by: e.target.value as "units" | "percent" })}
+          >
             <option value="percent">% of the units</option>
             <option value="units">units</option>
           </select>
@@ -424,22 +560,30 @@ function LayoutStep({ a, set }: StepProps) {
   return (
     <>
       <Intro>
-        Choose what coders see of each unit: click a place (title, byline, body) to put a field there, or drag a field onto it.
-        The editor&apos;s Layout tab can change this later.
+        Choose what coders see of each unit: click a place (title, byline, body) to put a field there, or drag a field
+        onto it. The editor&apos;s Layout tab can change this later.
       </Intro>
       <div className="grid gap-4 sm:grid-cols-2">
         <section className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Layout</h3>
+          <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Layout</h3>
           {fields.length > 0 ? (
             <LayoutDesigner layout={a.layout} fields={fields} types={types} onChange={(layout) => set({ layout })} />
           ) : (
-            <p className="text-sm text-muted-foreground">Upload units first (or choose their fields in the editor later).</p>
+            <p className="text-sm text-muted-foreground">
+              Upload units first (or choose their fields in the editor later).
+            </p>
           )}
         </section>
         <section className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">The first unit, as coders see it</h3>
+          <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            The first unit, as coders see it
+          </h3>
           <div className="rounded-lg border border-border bg-background p-4">
-            {first ? <UnitPreview layout={a.layout} unit={{ id: first.externalId, ...first.data }} /> : <p className="text-sm text-muted-foreground">No units yet.</p>}
+            {first ? (
+              <UnitPreview layout={a.layout} unit={{ id: first.externalId, ...first.data }} />
+            ) : (
+              <p className="text-sm text-muted-foreground">No units yet.</p>
+            )}
           </div>
         </section>
       </div>
@@ -464,7 +608,13 @@ function QuestionsStep({ a, set }: StepProps) {
       </Intro>
       {lists.map((list) => {
         const names = parseQuestions(a.questions[list]).map((q) => q.name);
-        const heading = lists.length === 1 ? { title: list === "unit" ? LIST_TEXT.unit.title : "Questions", text: list === "unit" ? LIST_TEXT.unit.text : "Asked once per participant." } : LIST_TEXT[list];
+        const heading =
+          lists.length === 1
+            ? {
+                title: list === "unit" ? LIST_TEXT.unit.title : "Questions",
+                text: list === "unit" ? LIST_TEXT.unit.text : "Asked once per participant.",
+              }
+            : LIST_TEXT[list];
         return (
           <label key={list} className="block">
             <span className="text-sm font-medium text-foreground">{heading.title}</span>
@@ -499,19 +649,26 @@ function QuestionsStep({ a, set }: StepProps) {
  * feedback (practice), and whether the uploaded units have its answer column.
  */
 function ChecksSection({ a, set }: StepProps) {
-  const questions = parseQuestions(a.questions.unit).map((q) => q.name).filter(Boolean);
+  const questions = parseQuestions(a.questions.unit)
+    .map((q) => q.name)
+    .filter(Boolean);
   if (questions.length === 0) return null;
   const fields = new Set(a.units?.fields.map((f) => f.name) ?? []);
   const toggle = (kind: "gold" | "practice", name: string, on: boolean) =>
-    set({ checks: { ...a.checks, [kind]: on ? [...a.checks[kind].filter((q) => q !== name), name] : a.checks[kind].filter((q) => q !== name) } });
+    set({
+      checks: {
+        ...a.checks,
+        [kind]: on ? [...a.checks[kind].filter((q) => q !== name), name] : a.checks[kind].filter((q) => q !== name),
+      },
+    });
   return (
     <fieldset className="flex flex-col gap-2 rounded-md border border-border p-3">
       <legend className="px-1 text-sm font-medium text-foreground">Units with a known answer (optional)</legend>
       <p className="text-xs text-muted-foreground">
-        <strong>Gold</strong> units check coders silently; <strong>practice</strong> units tell them when they were wrong. They are the
-        units in the sets <code>_gold</code> and <code>_practice</code> (a sets column with those values, or later on the Units page), with
-        the right answer in a column per question. You can write the answers later with <strong>Create gold values</strong> in the
-        loop&apos;s Units tab.
+        <strong>Gold</strong> units check coders silently; <strong>practice</strong> units tell them when they were
+        wrong. They are the units in the sets <code>_gold</code> and <code>_practice</code> (a sets column with those
+        values, or later on the Units page), with the right answer in a column per question. You can write the answers
+        later with <strong>Create gold values</strong> in the loop&apos;s Units tab.
       </p>
       <table className="w-fit text-left text-xs">
         <thead className="text-muted-foreground">
@@ -531,9 +688,18 @@ function ChecksSection({ a, set }: StepProps) {
                 return (
                   <td key={kind} className="pr-4">
                     <label className="flex items-center gap-1.5">
-                      <input type="checkbox" aria-label={`${kind} ${q}`} checked={checked} onChange={(e) => toggle(kind, q, e.target.checked)} />
+                      <input
+                        type="checkbox"
+                        aria-label={`${kind} ${q}`}
+                        checked={checked}
+                        onChange={(e) => toggle(kind, q, e.target.checked)}
+                      />
                       {checked && (
-                        <span className={fields.has(column) ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}>
+                        <span
+                          className={
+                            fields.has(column) ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"
+                          }
+                        >
                           {fields.has(column) ? `${column} found` : `no ${column} yet`}
                         </span>
                       )}
@@ -560,7 +726,9 @@ function distributionSummary(d: SetupDistribution): string {
     case "crowd": {
       const until = d.shared.until;
       const coders = d.shared.codersPerUnit?.min ?? 1;
-      const rule = until ? `${until.agree} coders agree${until.on ? ` on ${until.on}` : ""}` : `${coders} coder${coders > 1 ? "s" : ""} coded it`;
+      const rule = until
+        ? `${until.agree} coders agree${until.on ? ` on ${until.on}` : ""}`
+        : `${coders} coder${coders > 1 ? "s" : ""} coded it`;
       const max = d.shared.codersPerUnit?.max;
       return `Crowd coding: each unit until ${rule}${max ? `, at most ${max} coders` : ""}${overlap}.`;
     }
@@ -575,14 +743,22 @@ function CreateStep({ a, problems }: { a: SetupAnswers; problems: string[] }) {
   const d = a.distribution;
   const lines: string[] = [`A study named "${a.name.trim()}".`];
   if (a.parts.experiment) {
-    lines.push(`Participants get a condition (${a.experiment.name}): ${a.experiment.conditions.filter(Boolean).join(", ")}, ${a.experiment.assign === "balanced" ? "balanced" : "at random"}.`);
+    lines.push(
+      `Participants get a condition (${a.experiment.name}): ${a.experiment.conditions.filter(Boolean).join(", ")}, ${a.experiment.assign === "balanced" ? "balanced" : "at random"}.`,
+    );
   }
   if (lists.includes("before") && count("before") > 0) {
-    lines.push(lists.length > 1 ? `${count("before")} question(s) before the units.` : `${count("before")} question(s).`);
+    lines.push(
+      lists.length > 1 ? `${count("before")} question(s) before the units.` : `${count("before")} question(s).`,
+    );
   }
   if (a.parts.annotate) {
     const shown = [a.layout.title, a.layout.byline, ...a.layout.body].filter(Boolean);
-    lines.push(a.units ? `${a.units.units.length} units, showing ${shown.join(", ") || "no fields yet"}.` : "No units yet: upload them on the Units tab.");
+    lines.push(
+      a.units
+        ? `${a.units.units.length} units, showing ${shown.join(", ") || "no fields yet"}.`
+        : "No units yet: upload them on the Units tab.",
+    );
     lines.push(distributionSummary(d));
     lines.push(`${count("unit")} question(s) about each unit.`);
     if (lists.includes("after") && count("after") > 0) lines.push(`${count("after")} question(s) after the units.`);
@@ -599,8 +775,8 @@ function CreateStep({ a, problems }: { a: SetupAnswers; problems: string[] }) {
       <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm text-foreground">
         <p className="font-medium">Next, in the design editor</p>
         <p className="mt-1 text-muted-foreground">
-          The study opens on its Editor tab. Questions marked <em>to specify</em> need an answer type: select each one and choose
-          it. Then save, preview, and deploy; coders can start once it is deployed.
+          The study opens on its Editor tab. Questions marked <em>to specify</em> need an answer type: select each one
+          and choose it. Then save, preview, and deploy; coders can start once it is deployed.
         </p>
       </div>
       {problems.length > 0 && (

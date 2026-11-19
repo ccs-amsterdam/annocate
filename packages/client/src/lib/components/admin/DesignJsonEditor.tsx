@@ -10,7 +10,12 @@ import type { MonacoEditor } from "./jsonEditor/MonacoJson";
 
 /** Monaco's folding contribution: internals, not in its public types. */
 interface FoldingModel {
-  regions: { length: number; getStartLineNumber(i: number): number; isCollapsed(i: number): boolean; toRegion(i: number): unknown } | null;
+  regions: {
+    length: number;
+    getStartLineNumber(i: number): number;
+    isCollapsed(i: number): boolean;
+    toRegion(i: number): unknown;
+  } | null;
   toggleCollapseState(regions: unknown[]): void;
 }
 
@@ -19,7 +24,9 @@ async function foldDetails(editor: MonacoEditor | null) {
   const text = editor?.getModel()?.getValue();
   if (!editor || !text) return;
   const lines = new Set(getFoldableLineNumbers(text));
-  const contribution = editor.getContribution("editor.contrib.folding") as { getFoldingModel?(): Promise<FoldingModel | null> } | null;
+  const contribution = editor.getContribution("editor.contrib.folding") as {
+    getFoldingModel?(): Promise<FoldingModel | null>;
+  } | null;
   const model = await contribution?.getFoldingModel?.();
   const regions = model?.regions;
   if (!model || !regions) return;
@@ -93,7 +100,13 @@ export function DesignJsonEditor({
   return (
     <div className="flex h-full flex-col gap-2">
       <div className="flex items-center justify-end gap-1.5 px-1">
-        <Button variant="outline" size="sm" onClick={() => void foldDetails(editorRef.current)} className="h-7 gap-1 text-xs" title="Collapse the variable and layout details">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void foldDetails(editorRef.current)}
+          className="h-7 gap-1 text-xs"
+          title="Collapse the variable and layout details"
+        >
           <Minimize2 className="h-3 w-3" />
           Fold details
         </Button>

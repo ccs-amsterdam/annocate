@@ -18,7 +18,16 @@ export function highlightTemplate(source: string): ReactNode[] {
   let at = 0;
   let key = 0;
   const push = (text: string, className?: string) => {
-    if (text) out.push(className ? <span key={key++} className={className}>{text}</span> : text);
+    if (text)
+      out.push(
+        className ? (
+          <span key={key++} className={className}>
+            {text}
+          </span>
+        ) : (
+          text
+        ),
+      );
   };
   for (const m of source.matchAll(TOKEN)) {
     push(source.slice(at, m.index));

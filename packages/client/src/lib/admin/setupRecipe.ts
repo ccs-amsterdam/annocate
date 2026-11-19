@@ -1,4 +1,16 @@
-import { CriteriaSchema, DEFAULT_RATE, OVERLAP_SET, RESERVED_SETS, seededShuffle, type Criteria, type RecipeInput, type SessionSpec, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
+import {
+  CriteriaSchema,
+  DEFAULT_RATE,
+  OVERLAP_SET,
+  RESERVED_SETS,
+  seededShuffle,
+  type Criteria,
+  type RecipeInput,
+  type SessionSpec,
+  type UnitCreate,
+  type UnitField,
+  type UnitData,
+} from "@annotinder/contracts";
 import { placedFields, simpleTemplate, type SimpleLayout } from "../design/simpleLayout";
 
 // The setup wizard (docs/client.md §7, "Guided setup") as data: what the
@@ -35,7 +47,14 @@ export type SetupDistribution =
    * sets are the coders), or by one link giving each new session the set
    * with the fewest sessions (`rotate`: a condition drawn at the start).
    */
-  | { mode: "sets"; source: "split" | "column"; sets: number; column: string; overlap: SetupOverlap; handOut: "links" | "rotate" }
+  | {
+      mode: "sets";
+      source: "split" | "column";
+      sets: number;
+      column: string;
+      overlap: SetupOverlap;
+      handOut: "links" | "rotate";
+    }
   /**
    * Crowd coding: a shared queue, with the criteria the editor's form has
    * (`shared`: coders per unit or agreement, units per coder, priority),
@@ -159,7 +178,9 @@ const WIZARD_GROUP = "sets";
 
 /** A set's name from a column's value: no `;` or `#`, and no leading `_` (reserved). */
 const setName = (value: string) =>
-  (RESERVED_SETS as readonly string[]).includes(value.trim()) ? value.trim() : value.trim().replace(/[;#]+/g, "_").replace(/^_+/, "").slice(0, 128) || "empty";
+  (RESERVED_SETS as readonly string[]).includes(value.trim())
+    ? value.trim()
+    : value.trim().replace(/[;#]+/g, "_").replace(/^_+/, "").slice(0, 128) || "empty";
 
 /** Whether a distribution puts the units in sets of a group: then gold and practice units can be mixed in. */
 export const hasSetGroup = (d: SetupDistribution) => d.mode === "sets" || d.mode === "crowd";
@@ -186,19 +207,27 @@ export function columnValues(units: SetupUnits | null, column: string): string[]
 /** How many units an overlap takes of `n`. */
 export function overlapCount(overlap: SetupOverlap, n: number): number {
   if (!overlap) return 0;
-  return Math.min(n, overlap.by === "units" ? Math.max(0, Math.round(overlap.value)) : Math.round((overlap.value / 100) * n));
+  return Math.min(
+    n,
+    overlap.by === "units" ? Math.max(0, Math.round(overlap.value)) : Math.round((overlap.value / 100) * n),
+  );
 }
 
 /**
  * The sets a distribution makes (of the wizard's group), and the overlap
  * units (if any): drawn at random (fixed seed) and taken out of the sets.
  */
-export function distributionSets(d: SetupDistribution, units: SetupUnits | null): { sets: { name: string; units: string[] }[]; overlap: string[] } {
+export function distributionSets(
+  d: SetupDistribution,
+  units: SetupUnits | null,
+): { sets: { name: string; units: string[] }[]; overlap: string[] } {
   const ids = (units?.units ?? []).map((u) => u.externalId);
   // Units a column already puts in a special set (_gold, _practice, _overlap) aren't drawn for the overlap
   const special = new Set(
     d.mode === "sets" && d.source === "column"
-      ? (units?.units ?? []).filter((u) => (RESERVED_SETS as readonly string[]).includes(valueOf(u, d.column).trim())).map((u) => u.externalId)
+      ? (units?.units ?? [])
+          .filter((u) => (RESERVED_SETS as readonly string[]).includes(valueOf(u, d.column).trim()))
+          .map((u) => u.externalId)
       : [],
   );
   const drawable = ids.filter((id) => !special.has(id));
@@ -223,10 +252,17 @@ export function distributionSets(d: SetupDistribution, units: SetupUnits | null)
       rest.map((u) => u.externalId),
       2,
     );
-    const sets = Array.from({ length: n }, (_, i) => ({ name: `s${i + 1}`, units: shuffled.filter((_, j) => j % n === i) }));
+    const sets = Array.from({ length: n }, (_, i) => ({
+      name: `s${i + 1}`,
+      units: shuffled.filter((_, j) => j % n === i),
+    }));
     return { sets, overlap: overlapIds };
   }
-  if (d.mode === "crowd") return { sets: overlapIds.length > 0 ? [{ name: "queue", units: rest.map((u) => u.externalId) }] : [], overlap: overlapIds };
+  if (d.mode === "crowd")
+    return {
+      sets: overlapIds.length > 0 ? [{ name: "queue", units: rest.map((u) => u.externalId) }] : [],
+      overlap: overlapIds,
+    };
   return { sets: [], overlap: [] };
 }
 
@@ -234,12 +270,14 @@ export function distributionSets(d: SetupDistribution, units: SetupUnits | null)
 export function setupProblems(a: SetupAnswers): string[] {
   const problems: string[] = [];
   if (!a.name.trim()) problems.push("Give the study a name");
-  if (!a.parts.annotate && !a.parts.survey && !a.parts.experiment) problems.push("Choose at least one of annotate, survey or experiment");
+  if (!a.parts.annotate && !a.parts.survey && !a.parts.experiment)
+    problems.push("Choose at least one of annotate, survey or experiment");
   const lists = questionLists(a.parts);
   const names = new Map<string, number>();
   const add = (name: string) => names.set(name, (names.get(name) ?? 0) + 1);
   if (a.parts.experiment) {
-    if (!/^[a-zA-Z0-9_]{1,64}$/.test(a.experiment.name)) problems.push("The condition's name: letters, digits and _ only");
+    if (!/^[a-zA-Z0-9_]{1,64}$/.test(a.experiment.name))
+      problems.push("The condition's name: letters, digits and _ only");
     add(a.experiment.name);
     const conditions = a.experiment.conditions.map((c) => c.trim()).filter(Boolean);
     if (conditions.length < 2) problems.push("An experiment needs at least two conditions");
@@ -247,17 +285,22 @@ export function setupProblems(a: SetupAnswers): string[] {
   }
   for (const list of lists) {
     for (const q of parseQuestions(a.questions[list])) {
-      if (!q.name) problems.push(`"${a.questions[list].find((l) => questionName(l) === q.name) ?? ""}" makes no name: use letters or digits`);
+      if (!q.name)
+        problems.push(
+          `"${a.questions[list].find((l) => questionName(l) === q.name) ?? ""}" makes no name: use letters or digits`,
+        );
       else add(q.name);
     }
   }
   const twice = [...names].filter(([, n]) => n > 1).map(([name]) => name);
   if (twice.length > 0) problems.push(`Each question once: ${twice.join(", ")}`);
-  if (a.parts.annotate && parseQuestions(a.questions.unit).length === 0) problems.push("Add at least one question about each unit");
+  if (a.parts.annotate && parseQuestions(a.questions.unit).length === 0)
+    problems.push("Add at least one question about each unit");
   if (!a.parts.annotate && parseQuestions(a.questions.before).length === 0) problems.push("Add at least one question");
   if (a.parts.annotate) problems.push(...distributionProblems(a));
   // With units: something of each unit is shown
-  if (a.parts.annotate && a.units && placedFields(a.layout).length === 0) problems.push("Choose what coders see of each unit (How coders see a unit)");
+  if (a.parts.annotate && a.units && placedFields(a.layout).length === 0)
+    problems.push("Choose what coders see of each unit (How coders see a unit)");
   return problems;
 }
 
@@ -269,22 +312,25 @@ export function distributionProblems(a: SetupAnswers): string[] {
   const needsUnits = (what: string) => !a.units && problems.push(`${what} needs the units now`);
   if ("overlap" in d && d.overlap) {
     needsUnits("An overlap");
-    if (d.overlap.value <= 0 || (d.overlap.by === "percent" && d.overlap.value > 100)) problems.push("The overlap: a number of units, or a percentage up to 100");
+    if (d.overlap.value <= 0 || (d.overlap.by === "percent" && d.overlap.value > 100))
+      problems.push("The overlap: a number of units, or a percentage up to 100");
   }
   if (d.mode === "sets") {
     needsUnits("Assigning sets");
     if (a.units && d.source === "split" && (d.sets < 1 || d.sets > n)) problems.push(`Between 1 and ${n} sets`);
-    if (a.units && d.source === "column" && !a.units.fields.some((f) => f.name === d.column)) problems.push("Choose the column that holds each unit's set");
+    if (a.units && d.source === "column" && !a.units.fields.some((f) => f.name === d.column))
+      problems.push("Choose the column that holds each unit's set");
   }
   if (d.mode === "crowd") {
     // The queue's own rules; the question to agree on may be chosen later, in the editor.
     const parsed = CriteriaSchema.safeParse(d.shared);
-    if (!parsed.success) problems.push(...parsed.error.issues.filter((i) => i.path.join(".") !== "until.on").map((i) => i.message));
+    if (!parsed.success)
+      problems.push(...parsed.error.issues.filter((i) => i.path.join(".") !== "until.on").map((i) => i.message));
   }
   if (d.mode === "groups") {
     if (!a.parts.experiment) problems.push("Experimental groups need an experiment");
     needsUnits("Experimental groups");
-    const empty = a.experiment.conditions.filter((c) => c.trim() && !(d.values[c]?.length));
+    const empty = a.experiment.conditions.filter((c) => c.trim() && !d.values[c]?.length);
     if (a.units && empty.length > 0) problems.push(`Choose the units of ${empty.join(", ")}`);
   }
   return problems;
@@ -322,7 +368,9 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
       variable: {
         type: "random",
         draw: a.experiment.assign,
-        options: conditions.map((c) => (linked && setName(c) !== c ? { value: setName(c), label: c } : { value: linked ? setName(c) : c })),
+        options: conditions.map((c) =>
+          linked && setName(c) !== c ? { value: setName(c), label: c } : { value: linked ? setName(c) : c },
+        ),
         ...(linked ? { units: a.experiment.name } : {}),
       },
     });
@@ -344,12 +392,18 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
         session =
           d.handOut === "links"
             ? { params: [], coders: { column: WIZARD_GROUP } }
-            : { params: [], conditions: [{ name: WIZARD_GROUP, values: "free", assign: "random", units: WIZARD_GROUP }] };
+            : {
+                params: [],
+                conditions: [{ name: WIZARD_GROUP, values: "free", assign: "random", units: WIZARD_GROUP }],
+              };
         break;
       case "crowd":
         // The overlap: everyone's (a column's _overlap, without a column dividing the units)
         if (overlap.length > 0) groups.push({ group: WIZARD_GROUP, sets: overlapSet });
-        units = { criteria: d.shared, ...(overlap.length > 0 ? { overlap: { placement: "rate", every: DEFAULT_RATE, rest: "end" } } : {}) };
+        units = {
+          criteria: d.shared,
+          ...(overlap.length > 0 ? { overlap: { placement: "rate", every: DEFAULT_RATE, rest: "end" } } : {}),
+        };
         break;
       case "groups":
         // A set column named after the condition, a value per condition: the condition (drawn before the loop) selects its units
@@ -357,13 +411,23 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
           group: a.experiment.name,
           sets: conditions.map((condition) => {
             const values = d.values[condition] ?? [];
-            return { name: setName(condition), units: (a.units?.units ?? []).filter((u) => values.includes(valueOf(u, d.column))).map((u) => u.externalId) };
+            return {
+              name: setName(condition),
+              units: (a.units?.units ?? [])
+                .filter((u) => values.includes(valueOf(u, d.column)))
+                .map((u) => u.externalId),
+            };
           }),
         });
         break;
     }
     // Gold and practice checks on the special units (assign sets, crowd coding)
-    if (hasSetGroup(d)) units = withChecks(units, a.checks, parseQuestions(a.questions.unit).map((q) => q.name));
+    if (hasSetGroup(d))
+      units = withChecks(
+        units,
+        a.checks,
+        parseQuestions(a.questions.unit).map((q) => q.name),
+      );
     items.push({
       type: "unit_loop",
       label: "Units",
@@ -381,6 +445,11 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
     name: a.name.trim(),
     units: (a.units?.units ?? []).map((u) => ({ id: u.externalId, data: u.data })),
     sets: groups.map((g) => ({ ...g, sets: g.sets.filter((s) => s.units.length > 0) })),
-    design: { note: "Made with the setup wizard", ...(title ? { public: { title } } : {}), ...(session ? { session } : {}), items },
+    design: {
+      note: "Made with the setup wizard",
+      ...(title ? { public: { title } } : {}),
+      ...(session ? { session } : {}),
+      items,
+    },
   };
 }

@@ -57,7 +57,12 @@ const spanText = (span: SpanAnswer) => span.slices.map((x) => x.text).join(" …
  * columns: `item`). A relation names its spans by their text, found among
  * `spans` (the spans of the same unit and coder).
  */
-export function answerText(value: VariableValue | undefined, item?: string, write: Write = asIs, spans?: ReadonlyMap<string, SpanAnswer>): string {
+export function answerText(
+  value: VariableValue | undefined,
+  item?: string,
+  write: Write = asIs,
+  spans?: ReadonlyMap<string, SpanAnswer>,
+): string {
   if (!value || value.skip) return "";
   // A confirm question: answered, without a value.
   if (!value.values && !value.spans && !value.relations) return "true";
@@ -80,8 +85,14 @@ export function answerText(value: VariableValue | undefined, item?: string, writ
 export function answerJson(value: VariableValue | undefined, numeric = false): string {
   if (!value || value.skip) return "";
   const code = (v: OptionValue) => (numeric && typeof v === "string" ? Number(v) : v);
-  if (value.spans) return JSON.stringify(value.spans.map(({ id, value, field, slices }) => ({ id, value: code(value), field, slices })));
-  if (value.relations) return JSON.stringify(value.relations.map(({ id, value, fromId, toId }) => ({ id, value: code(value), fromId, toId })));
+  if (value.spans)
+    return JSON.stringify(
+      value.spans.map(({ id, value, field, slices }) => ({ id, value: code(value), field, slices })),
+    );
+  if (value.relations)
+    return JSON.stringify(
+      value.relations.map(({ id, value, fromId, toId }) => ({ id, value: code(value), fromId, toId })),
+    );
   return JSON.stringify((value.values ?? []).map((v) => code(v.value)));
 }
 
@@ -155,12 +166,18 @@ interface Column {
 }
 
 /** The answer columns for some values: per question a column (a scale one per item), in design order, with label columns. */
-function answerColumns(values: Iterable<[string, VariableValue]>, order: string[], labels?: Labels, nested: ReadonlySet<string> = new Set()): Column[] {
+function answerColumns(
+  values: Iterable<[string, VariableValue]>,
+  order: string[],
+  labels?: Labels,
+  nested: ReadonlySet<string> = new Set(),
+): Column[] {
   const items = new Map<string, Set<string | undefined>>();
   const json = new Set(nested);
   for (const [variable, value] of values) {
     // Nested answers found in the data, also of questions the live design version no longer has
-    if (value.spans || value.relations || (value.values ?? []).filter((v) => v.item === undefined).length > 1) json.add(variable);
+    if (value.spans || value.relations || (value.values ?? []).filter((v) => v.item === undefined).length > 1)
+      json.add(variable);
     const set = items.get(variable) ?? new Set();
     items.set(variable, set);
     const answerItems = (value.values ?? []).map((v) => v.item);
@@ -179,7 +196,8 @@ function answerColumns(values: Iterable<[string, VariableValue]>, order: string[
   });
 }
 
-const header = (c: Column) => `${c.item ? `${c.variable}.${c.item}` : c.variable}${c.label ? "_label" : c.json ? "_json" : ""}`;
+const header = (c: Column) =>
+  `${c.item ? `${c.variable}.${c.item}` : c.variable}${c.label ? "_label" : c.json ? "_json" : ""}`;
 const time = (d: Date | string | null | undefined) => (d ? new Date(d).toISOString() : "");
 const cellOf = (
   value: VariableValue | undefined,
@@ -189,7 +207,9 @@ const cellOf = (
   numeric: ReadonlySet<string>,
   spans?: ReadonlyMap<string, SpanAnswer>,
 ) =>
-  c.json ? answerJson(value, numeric.has(c.variable)) : answerText(value, c.item, c.label && labels ? labels.writer(c.variable, designVersionId) : asIs, spans);
+  c.json
+    ? answerJson(value, numeric.has(c.variable))
+    : answerText(value, c.item, c.label && labels ? labels.writer(c.variable, designVersionId) : asIs, spans);
 
 /** Question names in design order (the live design version's, if given). */
 export function questionOrder(items: TopLevelItem[] | undefined): string[] {
@@ -222,7 +242,13 @@ export function annotationsTable(
   // And the device of the latest answer: a unit is submitted from one device at a time.
   const byUnitCoder = new Map<
     string,
-    { first: AnnotationRow; last: Date; deviceId: number | null; values: Map<string, VariableValue>; designVersions: Map<string, number | null> }
+    {
+      first: AnnotationRow;
+      last: Date;
+      deviceId: number | null;
+      values: Map<string, VariableValue>;
+      designVersions: Map<string, number | null>;
+    }
   >();
   const unitTimes = unitTimings(annotations);
   // Answers outside unit loops (no unit) are in coders.csv.
@@ -230,7 +256,17 @@ export function annotationsTable(
     if (a.unitId === null) continue;
     const key = `${a.unitId}/${a.coderId}`;
     let row = byUnitCoder.get(key);
-    if (!row) byUnitCoder.set(key, (row = { first: a, last: new Date(a.updated), deviceId: a.deviceId ?? null, values: new Map(), designVersions: new Map() }));
+    if (!row)
+      byUnitCoder.set(
+        key,
+        (row = {
+          first: a,
+          last: new Date(a.updated),
+          deviceId: a.deviceId ?? null,
+          values: new Map(),
+          designVersions: new Map(),
+        }),
+      );
     row.values.set(a.variable, a.value);
     row.designVersions.set(a.variable, a.designVersionId);
     if (new Date(a.updated) > row.last) {
@@ -264,18 +300,27 @@ export function annotationsTable(
       // The unit's spans, by id, so relations can name them by their text
       const spans = new Map([...values.values()].flatMap((v) => (v.spans ?? []).map((s) => [s.id, s] as const)));
       return [
-      first.externalId ?? "",
-      first.unitVersionId === null ? "" : String(first.unitVersionId),
-      String(first.coderId),
-      first.participantId ?? "",
-      coderById.get(first.coderId)?.linkLabel ?? "",
-      time(first.created),
-      time(last),
-      versionCell(versionOf, first.designVersionId),
-      deviceId === null ? "" : String(deviceId),
-      times?.client == null ? "" : String(times.client),
-      times?.server == null ? "" : String(times.server),
-      ...columns.map((c) => cellOf(values.get(c.variable), c, labels, designVersions.get(c.variable) ?? first.designVersionId, numeric, spans)),
+        first.externalId ?? "",
+        first.unitVersionId === null ? "" : String(first.unitVersionId),
+        String(first.coderId),
+        first.participantId ?? "",
+        coderById.get(first.coderId)?.linkLabel ?? "",
+        time(first.created),
+        time(last),
+        versionCell(versionOf, first.designVersionId),
+        deviceId === null ? "" : String(deviceId),
+        times?.client == null ? "" : String(times.client),
+        times?.server == null ? "" : String(times.server),
+        ...columns.map((c) =>
+          cellOf(
+            values.get(c.variable),
+            c,
+            labels,
+            designVersions.get(c.variable) ?? first.designVersionId,
+            numeric,
+            spans,
+          ),
+        ),
       ];
     }),
   };
@@ -294,7 +339,19 @@ export function resetAnswersTable(
 ): Table {
   const reset = annotations.filter((a) => a.retiredAt);
   return {
-    headers: ["unit_id", "unit_version_id", "coder_id", "participant_id", "variable", "value", ...(labels ? ["value_label"] : []), "value_json", "design_version", "answered", "reset_at"],
+    headers: [
+      "unit_id",
+      "unit_version_id",
+      "coder_id",
+      "participant_id",
+      "variable",
+      "value",
+      ...(labels ? ["value_label"] : []),
+      "value_json",
+      "design_version",
+      "answered",
+      "reset_at",
+    ],
     rows: reset.map((a) => [
       a.externalId ?? "",
       a.unitVersionId === null ? "" : String(a.unitVersionId),
@@ -377,7 +434,11 @@ export function codersTable(
  * replaced after it was coded has several), with the fields as shown.
  * Join the annotations on `unit_version_id`.
  */
-export function unitsTable(versions: UnitVersion[], annotations: AnnotationRow[], groups: SetGroupResponse[] = []): Table {
+export function unitsTable(
+  versions: UnitVersion[],
+  annotations: AnnotationRow[],
+  groups: SetGroupResponse[] = [],
+): Table {
   const used = new Set(annotations.map((a) => a.unitVersionId));
   const coded = versions.filter((v) => used.has(v.id));
   const fields = [...new Set(coded.flatMap((v) => Object.keys(v.data)))];
@@ -385,7 +446,14 @@ export function unitsTable(versions: UnitVersion[], annotations: AnnotationRow[]
   const cells = groups.map((g) => cellsFromSets(g.sets));
   return {
     // Set columns under their own name (they are declared unit fields, not in the units' data)
-    headers: ["unit_version_id", "unit_id", "hash", "deployed", ...fields, ...groups.map((g) => (fields.includes(g.name) ? `${g.name}_set` : g.name))],
+    headers: [
+      "unit_version_id",
+      "unit_id",
+      "hash",
+      "deployed",
+      ...fields,
+      ...groups.map((g) => (fields.includes(g.name) ? `${g.name}_set` : g.name)),
+    ],
     rows: coded.map((v) => [
       String(v.id),
       v.externalId,
@@ -403,7 +471,10 @@ export function unitsTable(versions: UnitVersion[], annotations: AnnotationRow[]
  * its label; questions without options have one row. The loop is the one
  * the question is in (empty: asked once per coder).
  */
-export function variablesTable(designVersions: ReadonlyMap<number, TopLevelItem[]>, versionOf: VersionOf = (id) => id): Table {
+export function variablesTable(
+  designVersions: ReadonlyMap<number, TopLevelItem[]>,
+  versionOf: VersionOf = (id) => id,
+): Table {
   const rows: string[][] = [];
   for (const [id, items] of [...designVersions].sort(([a], [b]) => a - b)) {
     const { questions, loopOf } = collectQuestions(items);
@@ -415,7 +486,8 @@ export function variablesTable(designVersions: ReadonlyMap<number, TopLevelItem[
       const options = optionsOf(variable) ?? [];
       for (const n of names) {
         if (options.length === 0) rows.push([versionCell(versionOf, id), loop, n, variable.type, text, "", ""]);
-        for (const o of options) rows.push([versionCell(versionOf, id), loop, n, variable.type, text, String(o.value), optionLabel(o)]);
+        for (const o of options)
+          rows.push([versionCell(versionOf, id), loop, n, variable.type, text, String(o.value), optionLabel(o)]);
       }
     }
   }
@@ -430,7 +502,9 @@ const TIMING_TOLERANCE_MS = 2000;
  * screen, summed; null without timings), and the server's bound: from
  * handing the unit out to the last answer (null if not known).
  */
-function unitTimings(annotations: AnnotationRow[]): Map<string, { client: number | null; hidden: number; server: number | null }> {
+function unitTimings(
+  annotations: AnnotationRow[],
+): Map<string, { client: number | null; hidden: number; server: number | null }> {
   const out = new Map<string, { client: number | null; hidden: number; server: number | null }>();
   for (const a of annotations) {
     if (a.unitId === null) continue;
@@ -473,11 +547,12 @@ export function timingsTable(annotations: AnnotationRow[], coders: CoderProgress
     if (a.unitId !== null) {
       const unit = units.get(`${a.unitId}/${a.coderId}`);
       server = unit?.server ?? null;
-      exceeds = server === null || unit?.client == null ? null : unit.client + unit.hidden > server + TIMING_TOLERANCE_MS;
+      exceeds =
+        server === null || unit?.client == null ? null : unit.client + unit.hidden > server + TIMING_TOLERANCE_MS;
     } else {
       const created = new Date(a.created).getTime();
       const before = (answeredAt.get(a.coderId) ?? []).filter((v) => v < created);
-      const from = before.length > 0 ? Math.max(...before) : started.get(a.coderId) ?? null;
+      const from = before.length > 0 ? Math.max(...before) : (started.get(a.coderId) ?? null);
       server = from === null ? null : created - from;
       exceeds = server === null || t.firstMs === null ? null : t.firstMs > server + TIMING_TOLERANCE_MS;
     }
@@ -498,7 +573,19 @@ export function timingsTable(annotations: AnnotationRow[], coders: CoderProgress
     ];
   });
   return {
-    headers: ["unit_id", "coder_id", "participant_id", "variable", "first_ms", "total_ms", "hidden_ms", "edits", "practice_tries", "server_ms", "exceeds_server"],
+    headers: [
+      "unit_id",
+      "coder_id",
+      "participant_id",
+      "variable",
+      "first_ms",
+      "total_ms",
+      "hidden_ms",
+      "edits",
+      "practice_tries",
+      "server_ms",
+      "exceeds_server",
+    ],
     rows,
   };
 }
@@ -507,7 +594,14 @@ export function timingsTable(annotations: AnnotationRow[], coders: CoderProgress
 export function devicesTable(devices: Device[]): Table {
   return {
     headers: ["device_id", "coder_id", "device_type", "browser", "os", "first_used"],
-    rows: devices.map((d) => [String(d.id), String(d.coderId), d.type ?? "", d.browser ?? "", d.os ?? "", time(d.created)]),
+    rows: devices.map((d) => [
+      String(d.id),
+      String(d.coderId),
+      d.type ?? "",
+      d.browser ?? "",
+      d.os ?? "",
+      time(d.created),
+    ]),
   };
 }
 
@@ -539,9 +633,13 @@ annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
                  questions (unit_ms_client; see timings.csv) and the time
                  from the server handing out the unit to its last answer
                  (unit_ms_server), and a column per question (a scale: a column per item,
-                 question.item).${labels ? `
+                 question.item).${
+                   labels
+                     ? `
                  Each answer column is followed by a _label column: the label
-                 in the design version the answer was given under.` : ""}
+                 in the design version the answer was given under.`
+                     : ""
+                 }
 coders.csv       A row per coder: participant id, email (coders who logged
                  in), link, started, last
                  active, how their session ended (complete, screenout or

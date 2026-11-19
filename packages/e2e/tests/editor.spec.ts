@@ -26,7 +26,10 @@ test("writing a design in the editor, as the help describes it, and saving it", 
   // (the session parameters are above the tree, not a row: the loop is the first row)
   await page.getByRole("button", { name: "Add an item below" }).first().click();
   await page.getByRole("button", { name: "Inside News articles" }).click();
-  await page.getByRole("button", { name: /^Question/ }).first().click();
+  await page
+    .getByRole("button", { name: /^Question/ })
+    .first()
+    .click();
   await page.getByPlaceholder("e.g. sentiment, age").fill("topic");
   // A new question has no answer type yet: the form starts with the answer types as cards
   await expect(page.getByText("Choose an answer type")).toBeVisible();
@@ -36,12 +39,18 @@ test("writing a design in the editor, as the help describes it, and saving it", 
 
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect
-    .poll(async () => (await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`)).length, { timeout: 10_000 })
+    .poll(async () => (await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`)).length, {
+      timeout: 10_000,
+    })
     .toBe(1);
   const [saved] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
   const { items } = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${saved.id}`);
   expect(items).toMatchObject([
-    { type: "unit_loop", label: "News articles", children: [{ name: "topic", variable: { type: "nominal", question: "What is this article mainly about?" } }] },
+    {
+      type: "unit_loop",
+      label: "News articles",
+      children: [{ name: "topic", variable: { type: "nominal", question: "What is this article mainly about?" } }],
+    },
   ]);
 });
 
@@ -73,7 +82,9 @@ test("a computed variable: a random condition linked to a set column", async ({ 
 
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect
-    .poll(async () => (await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`)).length, { timeout: 10_000 })
+    .poll(async () => (await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`)).length, {
+      timeout: 10_000,
+    })
     .toBe(1);
   const [saved] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
   const { items } = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${saved.id}`);

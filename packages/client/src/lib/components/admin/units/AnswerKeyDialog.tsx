@@ -52,11 +52,22 @@ function cellValue(text: string, field: UnitField | undefined): UnitDataValue | 
 /** The option values of a choice question; undefined for numbers and confirm. */
 function optionsOf(variable: AnyVariableType): { value: string; label: string }[] | undefined {
   if (!("options" in variable) || !Array.isArray(variable.options)) return undefined;
-  return (variable.options as { value: unknown; label?: string }[]).map((o) => ({ value: String(o.value), label: o.label ?? String(o.value) }));
+  return (variable.options as { value: unknown; label?: string }[]).map((o) => ({
+    value: String(o.value),
+    label: o.label ?? String(o.value),
+  }));
 }
 
 /** One question's right answer: option chips, a range or a checkbox, plus the cell as text. */
-function AnswerInput({ question, cell, onChange }: { question: AnswerKeyQuestion; cell: string; onChange: (cell: string) => void }) {
+function AnswerInput({
+  question,
+  cell,
+  onChange,
+}: {
+  question: AnswerKeyQuestion;
+  cell: string;
+  onChange: (cell: string) => void;
+}) {
   const key = parseAnswerKey(cell) ?? [];
   const options = optionsOf(question.variable);
   const multiple = question.variable.type === "nominal" && question.variable.multiple === true;
@@ -66,13 +77,21 @@ function AnswerInput({ question, cell, onChange }: { question: AnswerKeyQuestion
     const chosen = new Set(key.flatMap((alt) => ("values" in alt ? alt.values : [])));
     const toggle = (value: string) => {
       const next = options.map((o) => o.value).filter((v) => (v === value ? !chosen.has(v) : chosen.has(v)));
-      const alternatives: AnswerAlternative[] = next.length === 0 ? [] : multiple ? [{ values: next }] : next.map((v) => ({ values: [v] }));
+      const alternatives: AnswerAlternative[] =
+        next.length === 0 ? [] : multiple ? [{ values: next }] : next.map((v) => ({ values: [v] }));
       onChange(formatAnswerKey(alternatives));
     };
     control = (
       <div className="flex flex-wrap gap-1.5">
         {options.map((o) => (
-          <Button key={o.value} type="button" size="sm" variant={chosen.has(o.value) ? "default" : "outline"} aria-pressed={chosen.has(o.value)} onClick={() => toggle(o.value)}>
+          <Button
+            key={o.value}
+            type="button"
+            size="sm"
+            variant={chosen.has(o.value) ? "default" : "outline"}
+            aria-pressed={chosen.has(o.value)}
+            onClick={() => toggle(o.value)}
+          >
             {o.label}
           </Button>
         ))}
@@ -80,27 +99,57 @@ function AnswerInput({ question, cell, onChange }: { question: AnswerKeyQuestion
     );
   } else if (question.variable.type === "numeric") {
     const alt = key[0];
-    const [from, to] = !alt ? ["", ""] : "range" in alt ? [String(alt.range[0]), String(alt.range[1])] : [alt.values[0] ?? "", ""];
+    const [from, to] = !alt
+      ? ["", ""]
+      : "range" in alt
+        ? [String(alt.range[0]), String(alt.range[1])]
+        : [alt.values[0] ?? "", ""];
     const set = (f: string, t: string) => onChange(f === "" ? "" : t === "" ? f : `${f}..${t}`);
     control = (
       <div className="flex items-center gap-2 text-xs">
-        <Input type="number" aria-label={`${question.name}: right answer`} className="h-8 w-24" value={from} onChange={(e) => set(e.target.value, to)} />
+        <Input
+          type="number"
+          aria-label={`${question.name}: right answer`}
+          className="h-8 w-24"
+          value={from}
+          onChange={(e) => set(e.target.value, to)}
+        />
         to
-        <Input type="number" aria-label={`${question.name}: up to`} className="h-8 w-24" placeholder="(exactly)" value={to} onChange={(e) => set(from, e.target.value)} />
+        <Input
+          type="number"
+          aria-label={`${question.name}: up to`}
+          className="h-8 w-24"
+          placeholder="(exactly)"
+          value={to}
+          onChange={(e) => set(from, e.target.value)}
+        />
       </div>
     );
   } else if (question.variable.type === "confirm") {
     control = (
       <label className="flex items-center gap-2 text-xs">
-        <input type="checkbox" checked={cell.trim() === "true"} onChange={(e) => onChange(e.target.checked ? "true" : "")} /> Confirmed is right
+        <input
+          type="checkbox"
+          checked={cell.trim() === "true"}
+          onChange={(e) => onChange(e.target.checked ? "true" : "")}
+        />{" "}
+        Confirmed is right
       </label>
     );
   }
   return (
     <div className="flex flex-col gap-1.5">
       {control}
-      <Input aria-label={`${question.name}: cell`} className="h-7 font-mono text-xs" value={cell} placeholder="empty: not checked" onChange={(e) => onChange(e.target.value)} />
-      {options && !multiple && key.length > 1 && <span className="text-[11px] text-muted-foreground">Any of these is right.</span>}
+      <Input
+        aria-label={`${question.name}: cell`}
+        className="h-7 font-mono text-xs"
+        value={cell}
+        placeholder="empty: not checked"
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {options && !multiple && key.length > 1 && (
+        <span className="text-[11px] text-muted-foreground">Any of these is right.</span>
+      )}
     </div>
   );
 }
@@ -162,7 +211,9 @@ export function AnswerKeyDialog({
   useEffect(() => {
     if (!unit) return;
     let cancelled = false;
-    renderTemplate(layout.template, buildScope(questionMap, {}, unitScopeData(unit)), undefined, "answer-key", { snippets: layout.snippets }).then(
+    renderTemplate(layout.template, buildScope(questionMap, {}, unitScopeData(unit)), undefined, "answer-key", {
+      snippets: layout.snippets,
+    }).then(
       (r) => !cancelled && setRendered(r),
       () => !cancelled && setRendered(null),
     );
@@ -172,9 +223,11 @@ export function AnswerKeyDialog({
   }, [unit, layout, questionMap]);
 
   const cell = (u: UnitResponse, col: string) => edits[u.id]?.[col] ?? cellText(u.data[col]);
-  const setCell = (u: UnitResponse, col: string, value: string) => setEdits((e) => ({ ...e, [u.id]: { ...e[u.id], [col]: value } }));
+  const setCell = (u: UnitResponse, col: string, value: string) =>
+    setEdits((e) => ({ ...e, [u.id]: { ...e[u.id], [col]: value } }));
   const done = (u: UnitResponse) => questions.every((q) => parseAnswerKey(cell(u, column(q.name))) !== null);
-  const changed = units?.filter((u) => Object.entries(edits[u.id] ?? {}).some(([col, v]) => v !== cellText(u.data[col]))) ?? [];
+  const changed =
+    units?.filter((u) => Object.entries(edits[u.id] ?? {}).some(([col, v]) => v !== cellText(u.data[col]))) ?? [];
 
   const save = async () => {
     setSaving(true);
@@ -191,7 +244,8 @@ export function AnswerKeyDialog({
         return { externalId: u.externalId, data };
       });
       // Answer columns are never shown to coders, so writing them makes no new unit versions.
-      for (let i = 0; i < body.length; i += 200) await client.createUnits({ units: body.slice(i, i + 200), overwriteCoded: true });
+      for (let i = 0; i < body.length; i += 200)
+        await client.createUnits({ units: body.slice(i, i + 200), overwriteCoded: true });
       await queryClient.invalidateQueries();
       onClose();
     } catch (err) {
@@ -208,26 +262,52 @@ export function AnswerKeyDialog({
         <DialogHeader>
           <DialogTitle>Right answers of the {what} units</DialogTitle>
           <DialogDescription>
-            Group {group}, set {set}: {units ? `${ready} of ${units.length} have answers for every checked question` : "loading…"}. Coders never see these columns.
+            Group {group}, set {set}:{" "}
+            {units ? `${ready} of ${units.length} have answers for every checked question` : "loading…"}. Coders never
+            see these columns.
           </DialogDescription>
         </DialogHeader>
-        {units && units.length === 0 && <p className="text-sm">No units in column {group} are marked {set} yet: mark them on the Units page.</p>}
+        {units && units.length === 0 && (
+          <p className="text-sm">
+            No units in column {group} are marked {set} yet: mark them on the Units page.
+          </p>
+        )}
         {unit && (
           <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
             <div className="flex items-center gap-2 text-sm">
-              <Button variant="outline" size="icon-sm" aria-label="Previous unit" disabled={index === 0} onClick={() => setIndex(index - 1)}>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                aria-label="Previous unit"
+                disabled={index === 0}
+                onClick={() => setIndex(index - 1)}
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <span>
                 Unit {index + 1} of {units!.length}: <span className="font-mono">{unit.externalId}</span>
               </span>
-              <Button variant="outline" size="icon-sm" aria-label="Next unit" disabled={index === units!.length - 1} onClick={() => setIndex(index + 1)}>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                aria-label="Next unit"
+                disabled={index === units!.length - 1}
+                onClick={() => setIndex(index + 1)}
+              >
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              <span className={done(unit) ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}>{done(unit) ? "answered" : "missing answers"}</span>
+              <span
+                className={done(unit) ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}
+              >
+                {done(unit) ? "answered" : "missing answers"}
+              </span>
             </div>
             <div className="max-h-72 overflow-y-auto rounded-md border border-border p-3">
-              {rendered ? <UnitFields layout={layout} rendered={rendered} /> : <pre className="text-xs whitespace-pre-wrap">{JSON.stringify(unit.data, null, 2)}</pre>}
+              {rendered ? (
+                <UnitFields layout={layout} rendered={rendered} />
+              ) : (
+                <pre className="text-xs whitespace-pre-wrap">{JSON.stringify(unit.data, null, 2)}</pre>
+              )}
             </div>
             {questions.map((q) => (
               <div key={q.name} className="flex flex-col gap-1.5 rounded-md border border-border p-3">
@@ -235,7 +315,11 @@ export function AnswerKeyDialog({
                   {"question" in q.variable && q.variable.question ? q.variable.question : q.name}{" "}
                   <span className="font-normal text-muted-foreground">({column(q.name)})</span>
                 </span>
-                <AnswerInput question={q} cell={cell(unit, column(q.name))} onChange={(v) => setCell(unit, column(q.name), v)} />
+                <AnswerInput
+                  question={q}
+                  cell={cell(unit, column(q.name))}
+                  onChange={(v) => setCell(unit, column(q.name), v)}
+                />
                 {messageColumn && (
                   <Textarea
                     aria-label={`${q.name}: message when wrong`}

@@ -31,8 +31,14 @@ function designVersionPublic(row: Partial<Pick<DesignVersionRow, "public">>): Pu
 }
 
 /** A stored design version's items with the Study entry (session, public info) first: what validation, links and the runtime work on. */
-export function designVersionItems(row: Pick<DesignVersionRow, "items" | "session"> & Partial<Pick<DesignVersionRow, "public">>): TopLevelItem[] {
-  return designItems({ items: storedItems(row), session: designVersionSession(row), public: designVersionPublic(row) }) as TopLevelItem[];
+export function designVersionItems(
+  row: Pick<DesignVersionRow, "items" | "session"> & Partial<Pick<DesignVersionRow, "public">>,
+): TopLevelItem[] {
+  return designItems({
+    items: storedItems(row),
+    session: designVersionSession(row),
+    public: designVersionPublic(row),
+  }) as TopLevelItem[];
 }
 
 /** A stored design version's unit fields (docs/architecture.md §8.4). */
@@ -61,5 +67,12 @@ export function toDesignVersionMeta(row: DesignVersionRow): DesignVersionMeta {
 
 /** A stored design version as served. */
 export function toDesignVersion(row: DesignVersionRow): DesignVersion {
-  return { ...toDesignVersionMeta(row), studyId: row.studyId, items: storedItems(row), units: designVersionUnits(row), session: designVersionSession(row), public: designVersionPublic(row) };
+  return {
+    ...toDesignVersionMeta(row),
+    studyId: row.studyId,
+    items: storedItems(row),
+    units: designVersionUnits(row),
+    session: designVersionSession(row),
+    public: designVersionPublic(row),
+  };
 }

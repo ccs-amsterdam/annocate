@@ -17,7 +17,11 @@ export const RESERVED_SESSION_NAMES = ["participant", "source", "email", "coder"
 export const MAX_SESSION_VALUE = 256;
 
 /** A URL parameter name, as it appears in links (e.g. `PROLIFIC_PID`). */
-export const UrlParamNameSchema = z.string().min(1).max(64).regex(/^[A-Za-z0-9_.~-]+$/, "A URL parameter name is letters, digits, _, -, . or ~");
+export const UrlParamNameSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[A-Za-z0-9_.~-]+$/, "A URL parameter name is letters, digits, _, -, . or ~");
 
 /**
  * Why a pattern could make matching take very long (catastrophic
@@ -86,7 +90,11 @@ export const UrlParamPatternSchema = z
  * value up to 256 characters, optionally matching a pattern).
  */
 export const SessionValuesSchema = z.union([
-  z.object({ list: z.array(z.object({ value: z.string().min(1).max(MAX_SESSION_VALUE), label: z.string().optional() })).min(1, "List at least one value") }),
+  z.object({
+    list: z
+      .array(z.object({ value: z.string().min(1).max(MAX_SESSION_VALUE), label: z.string().optional() }))
+      .min(1, "List at least one value"),
+  }),
   z.object({ open: z.object({ pattern: UrlParamPatternSchema.optional() }) }),
 ]);
 export type SessionValues = z.infer<typeof SessionValuesSchema>;
@@ -113,12 +121,21 @@ export const SessionParamSchema = z
     message: "participant, source, email and coder are built in: choose another name",
     path: ["name"],
   })
-  .refine((p) => p.kind === "url" || !("open" in p.values), { message: "A link parameter needs a list of values: links are made for each", path: ["values"] })
-  .refine((p) => p.kind === "url" || (p.param === undefined && p.default === undefined), { message: "Only URL parameters have a URL key or a default", path: ["kind"] });
+  .refine((p) => p.kind === "url" || !("open" in p.values), {
+    message: "A link parameter needs a list of values: links are made for each",
+    path: ["values"],
+  })
+  .refine((p) => p.kind === "url" || (p.param === undefined && p.default === undefined), {
+    message: "Only URL parameters have a URL key or a default",
+    path: ["kind"],
+  });
 export type SessionParam = z.infer<typeof SessionParamSchema>;
 
 /** The participant id from a URL parameter of the link (e.g. a panel's `PROLIFIC_PID`), required to start. */
-export const ParticipantParamSchema = z.object({ param: UrlParamNameSchema, pattern: UrlParamPatternSchema.optional() });
+export const ParticipantParamSchema = z.object({
+  param: UrlParamNameSchema,
+  pattern: UrlParamPatternSchema.optional(),
+});
 export type ParticipantParam = z.infer<typeof ParticipantParamSchema>;
 
 /**
@@ -135,7 +152,10 @@ export const ConditionValueSchema = z
   .string()
   .min(1)
   .max(128)
-  .refine((s) => !/[;#]/.test(s) && s.trim() === s && !s.startsWith("_"), "A value has no ; or #, no spaces at its ends, and doesn't start with _");
+  .refine(
+    (s) => !/[;#]/.test(s) && s.trim() === s && !s.startsWith("_"),
+    "A value has no ; or #, no spaces at its ends, and doesn't start with _",
+  );
 
 /**
  * An assigned condition (docs/architecture.md §6.1): a session value (`$session.<name>`) with
@@ -155,9 +175,18 @@ export const ConditionSpecSchema = z
     /** What it is, for the researcher. */
     description: z.string().max(500).optional(),
   })
-  .refine((c) => c.values !== "free" || c.units !== undefined, { message: "Free values come from a set column: link the condition to one", path: ["values"] })
-  .refine((c) => c.assign === "random" || c.draw === undefined, { message: "Only a random assignment draws", path: ["draw"] })
-  .refine((c) => c.values === "free" || new Set(c.values).size === c.values.length, { message: "A value is listed twice", path: ["values"] })
+  .refine((c) => c.values !== "free" || c.units !== undefined, {
+    message: "Free values come from a set column: link the condition to one",
+    path: ["values"],
+  })
+  .refine((c) => c.assign === "random" || c.draw === undefined, {
+    message: "Only a random assignment draws",
+    path: ["draw"],
+  })
+  .refine((c) => c.values === "free" || new Set(c.values).size === c.values.length, {
+    message: "A value is listed twice",
+    path: ["values"],
+  })
   .refine((c) => !(RESERVED_SESSION_NAMES as readonly string[]).includes(c.name), {
     message: "participant, source, email and coder are built in: choose another name",
     path: ["name"],
@@ -219,13 +248,25 @@ export const EMPTY_SESSION: SessionSpec = { params: [] };
  * A design's items with the Study entry (its session and public info) as
  * the first item: what validation, the runtime and the editor work on.
  */
-export function designItems<T>(design: { items: readonly T[]; session?: SessionSpec | null; public?: PublicInfo | null }): (T | SessionItem)[] {
-  const study: SessionItem = { type: "session", ...(design.session ?? EMPTY_SESSION), ...(design.public ? { public: design.public } : {}) };
+export function designItems<T>(design: {
+  items: readonly T[];
+  session?: SessionSpec | null;
+  public?: PublicInfo | null;
+}): (T | SessionItem)[] {
+  const study: SessionItem = {
+    type: "session",
+    ...(design.session ?? EMPTY_SESSION),
+    ...(design.public ? { public: design.public } : {}),
+  };
   return [study, ...design.items];
 }
 
 /** The other way round: the Study entry out of the items, into the design's `session` and `public`. */
-export function splitDesignItems<T>(items: readonly T[]): { items: T[]; session: SessionSpec; public: PublicInfo | null } {
+export function splitDesignItems<T>(items: readonly T[]): {
+  items: T[];
+  session: SessionSpec;
+  public: PublicInfo | null;
+} {
   const found = items.find((i) => (i as { type?: unknown } | null)?.type === "session") as SessionItem | undefined;
   const rest = items.filter((i) => i !== (found as unknown));
   if (!found) return { items: rest, session: EMPTY_SESSION, public: null };
@@ -265,7 +306,10 @@ export function coderAccess(values: readonly string[]): "email" | "link" | "mixe
 }
 
 /** A condition's values: its list, or (free) its column's values. */
-export function conditionValues(condition: Pick<ConditionSpec, "values" | "units">, setsOf: (group: string) => string[]): string[] {
+export function conditionValues(
+  condition: Pick<ConditionSpec, "values" | "units">,
+  setsOf: (group: string) => string[],
+): string[] {
   return condition.values === "free" ? (condition.units ? setsOf(condition.units) : []) : condition.values;
 }
 
@@ -288,13 +332,17 @@ export function sessionColumns(item: SessionItem | null): { name: string; column
  * each as name -> value. `setsOf` gives a set column's values (from the
  * units, without reserved ones). One link (no values) without any.
  */
-export function linkCombinations(item: SessionItem | null, setsOf: (group: string) => string[]): Record<string, string>[] {
+export function linkCombinations(
+  item: SessionItem | null,
+  setsOf: (group: string) => string[],
+): Record<string, string>[] {
   const dimensions: { name: string; values: string[] }[] = [];
   if (item?.coders) {
     const coders = setsOf(item.coders.column);
     if (coderAccess(coders) === "link") dimensions.push({ name: "coder", values: coders });
   }
-  for (const c of item?.conditions ?? []) if (c.assign === "link") dimensions.push({ name: c.name, values: conditionValues(c, setsOf) });
+  for (const c of item?.conditions ?? [])
+    if (c.assign === "link") dimensions.push({ name: c.name, values: conditionValues(c, setsOf) });
   const linkParams = (item?.params ?? []).filter((p) => p.kind === "link");
   const valuesOf = (p: SessionParam): string[] => ("list" in p.values ? p.values.list.map((v) => v.value) : []);
   let params: Record<string, string>[];
@@ -311,7 +359,11 @@ export function linkCombinations(item: SessionItem | null, setsOf: (group: strin
 
 /** A link's key: its parameter values in a canonical form (names sorted). */
 export function linkKey(values: Record<string, string>): string {
-  return JSON.stringify(Object.keys(values).sort().map((k) => [k, values[k]]));
+  return JSON.stringify(
+    Object.keys(values)
+      .sort()
+      .map((k) => [k, values[k]]),
+  );
 }
 
 /** Links above this many need a confirmation to deploy; more than `MAX_LINKS` can't be deployed. */

@@ -29,13 +29,21 @@ export interface OptionsEditorProps<T extends Option> {
  * numbers rising in order). Custom isn't stored: options that aren't 1..n
  * open as custom.
  */
-export function OptionsEditor<T extends Option>({ options, onChange, level = "nominal", max, swipe, extra }: OptionsEditorProps<T>) {
+export function OptionsEditor<T extends Option>({
+  options,
+  onChange,
+  level = "nominal",
+  max,
+  swipe,
+  extra,
+}: OptionsEditorProps<T>) {
   const ordinal = level === "ordinal";
   const [custom, setCustom] = useState(() => ordinal && !isSequence(options));
   const auto = ordinal && !custom;
   /** Changes to the list of options: renumbered while values follow the order. */
   const commit = (next: T[]) => onChange(auto ? renumber(next) : next);
-  const update = (index: number, patch: Partial<T>) => onChange(options.map((o, i) => (i === index ? { ...o, ...patch } : o)));
+  const update = (index: number, patch: Partial<T>) =>
+    onChange(options.map((o, i) => (i === index ? { ...o, ...patch } : o)));
   // A moved option and the one it swapped places with slide past each other
   const grid = useRef<HTMLDivElement>(null);
   const swapped = useRef<{ moved: number; other: number } | null>(null);
@@ -50,12 +58,16 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
     const swap = swapped.current;
     swapped.current = null;
     if (!swap || !grid.current || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const cells = (row: number) => Array.from(grid.current!.querySelectorAll<HTMLElement>(`[data-option-row="${row}"]`));
+    const cells = (row: number) =>
+      Array.from(grid.current!.querySelectorAll<HTMLElement>(`[data-option-row="${row}"]`));
     const top = (row: number) => cells(row)[0]?.getBoundingClientRect().top ?? 0;
     const dy = top(swap.other) - top(swap.moved);
     const slide = (row: number, from: number) =>
       cells(row).forEach((el) =>
-        el.animate([{ transform: `translateY(${from}px)` }, { transform: "none" }], { duration: 220, easing: "cubic-bezier(0.16, 1, 0.3, 1)" }),
+        el.animate([{ transform: `translateY(${from}px)` }, { transform: "none" }], {
+          duration: 220,
+          easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+        }),
       );
     slide(swap.moved, dy);
     slide(swap.other, -dy);
@@ -77,7 +89,9 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
     commit([...options, { value } as T]);
   };
 
-  const rising = options.every((o, i) => i === 0 || (typeof o.value === "number" && o.value > (options[i - 1].value as number)));
+  const rising = options.every(
+    (o, i) => i === 0 || (typeof o.value === "number" && o.value > (options[i - 1].value as number)),
+  );
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -99,7 +113,10 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
           </label>
         )}
       </div>
-      <div ref={grid} className="grid grid-cols-[auto_1fr_8rem_5.5rem_auto] items-center gap-1.5 text-[11px] text-muted-foreground">
+      <div
+        ref={grid}
+        className="grid grid-cols-[auto_1fr_8rem_5.5rem_auto] items-center gap-1.5 text-[11px] text-muted-foreground"
+      >
         <span />
         <span>Label (shown)</span>
         <span>Value (stored)</span>
@@ -110,7 +127,11 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
           return (
             <div key={i} className="contents">
               <span data-option-row={i} className="flex w-5 justify-center">
-                {Direction ? <Direction className="size-4 text-foreground" aria-label={`swipe ${SWIPE_DIRECTIONS[i]}`} /> : i + 1}
+                {Direction ? (
+                  <Direction className="size-4 text-foreground" aria-label={`swipe ${SWIPE_DIRECTIONS[i]}`} />
+                ) : (
+                  i + 1
+                )}
               </span>
               <Input
                 data-option-row={i}
@@ -128,7 +149,9 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
                 tabIndex={auto ? -1 : undefined}
                 title={auto ? "Follows the order of the options (check Custom values to set it)" : undefined}
                 onChange={(e) =>
-                  update(i, { value: ordinal ? (e.target.value === "" ? 0 : Number(e.target.value)) : e.target.value } as Partial<T>)
+                  update(i, {
+                    value: ordinal ? (e.target.value === "" ? 0 : Number(e.target.value)) : e.target.value,
+                  } as Partial<T>)
                 }
                 className={`h-8 font-mono text-xs ${auto ? "bg-muted/40 text-muted-foreground" : ""}`}
               />
@@ -141,7 +164,14 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
               />
               <span data-option-row={i} className="flex items-center">
                 {extra?.(option, (patch) => update(i, patch))}
-                <Button type="button" variant="ghost" size="icon-sm" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={i === 0}
+                  onClick={() => move(i, -1)}
+                  aria-label="Move up"
+                >
                   <ArrowUp className="size-3.5" />
                 </Button>
                 <Button
@@ -168,7 +198,9 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
           );
         })}
       </div>
-      {ordinal && !rising && <p className="text-[11px] text-destructive">Ordinal values must rise in the order of the options.</p>}
+      {ordinal && !rising && (
+        <p className="text-[11px] text-destructive">Ordinal values must rise in the order of the options.</p>
+      )}
       {(!max || options.length < max) && (
         <Button type="button" variant="outline" size="sm" onClick={add} className="self-start">
           + Add option
@@ -192,20 +224,19 @@ function NumericCodesHelp() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button type="button" className="inline-flex cursor-pointer items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary">
+        <button
+          type="button"
+          className="inline-flex cursor-pointer items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary"
+        >
           <CircleHelp className="h-3.5 w-3.5 shrink-0" />
           Numeric values
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="flex w-80 flex-col gap-2 text-xs">
-        <p>
-          Values of nominal answers are text, but can use numbers if you prefer
-          labeled numeric values:
-
-        </p>
-        <div className="grid family-mono text-[11px] grid-cols-[4rem_1fr] text-primary/80">
-          <div className='font-bold'>Label</div>
-          <div className='font-bold'>Value</div>
+        <p>Values of nominal answers are text, but can use numbers if you prefer labeled numeric values:</p>
+        <div className="family-mono grid grid-cols-[4rem_1fr] text-[11px] text-primary/80">
+          <div className="font-bold">Label</div>
+          <div className="font-bold">Value</div>
           <div>Politics</div>
           <div>1</div>
           <div>Economy</div>
@@ -213,9 +244,7 @@ function NumericCodesHelp() {
           <div>Other</div>
           <div>999</div>
         </div>
-        <p>
-          If all values are numbers, the variable is automatically exported as numeric type.
-        </p>
+        <p>If all values are numbers, the variable is automatically exported as numeric type.</p>
         <HelpButton topic="nominal-and-ordinal#numeric-values">More about numeric values</HelpButton>
       </PopoverContent>
     </Popover>

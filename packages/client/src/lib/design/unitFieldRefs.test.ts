@@ -6,16 +6,26 @@ const items = [
   {
     type: "unit_loop",
     label: "loop",
-      layout: { template: "# {{$unit.headline}}\n\n$unit.body" },
+    layout: { template: "# {{$unit.headline}}\n\n$unit.body" },
     children: [
       { type: "question", name: "q1", variable: { type: "confirm", question: "Is {{$unit.topic}} right?" } },
       {
         type: "show_if",
         condition: { script: "$unit.source === 'x'" },
-        children: [{ type: "question", name: "q2", variable: { type: "confirm", question: "'$unit.quoted' $unit.body" } }],
+        children: [
+          { type: "question", name: "q2", variable: { type: "confirm", question: "'$unit.quoted' $unit.body" } },
+        ],
       },
-      { type: "question", name: "spans", variable: { type: "span", question: "?", fields: ["unit.note"], options: [] } },
-      { type: "question", name: "spans2", variable: { type: "span", question: "?", fields: ["unit.text"], options: [] } },
+      {
+        type: "question",
+        name: "spans",
+        variable: { type: "span", question: "?", fields: ["unit.note"], options: [] },
+      },
+      {
+        type: "question",
+        name: "spans2",
+        variable: { type: "span", question: "?", fields: ["unit.text"], options: [] },
+      },
     ],
   },
 ] as unknown as TopLevelItem[];

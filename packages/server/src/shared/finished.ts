@@ -91,7 +91,9 @@ async function listFinishedCoders(
       unitId: null,
       coderId: coder.id,
       created: coder.created,
-      ...(group.values?.length ? { values: Object.fromEntries(group.values.filter((v) => v in own).map((v) => [v, own[v]])) } : {}),
+      ...(group.values?.length
+        ? { values: Object.fromEntries(group.values.filter((v) => v in own).map((v) => [v, own[v]])) }
+        : {}),
     });
   }
   return result;

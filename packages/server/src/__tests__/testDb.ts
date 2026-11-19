@@ -13,7 +13,10 @@ let db: Promise<Database> | undefined;
 export async function emptyDb(): Promise<Database> {
   const url = process.env.TEST_DATABASE_URL;
   const database = await (db ??= url ? openTestDatabase(url) : openPglite());
-  const tables = await query<{ name: string }>(database, "SELECT tablename AS name FROM pg_tables WHERE schemaname = current_schema()");
+  const tables = await query<{ name: string }>(
+    database,
+    "SELECT tablename AS name FROM pg_tables WHERE schemaname = current_schema()",
+  );
   await database.execute(sql.raw(`TRUNCATE ${tables.map((t) => `"${t.name}"`).join(", ")} RESTART IDENTITY CASCADE`));
   return database;
 }
@@ -36,6 +39,8 @@ async function openTestDatabase(url: string): Promise<Database> {
  * rows directly. Rows as `rows` (db/index.ts) gives them.
  */
 export function query<T = Record<string, unknown>>(database: Db, text: string, params: unknown[] = []): Promise<T[]> {
-  const parts: SQL[] = text.split(/\$(\d+)/).map((part, i) => (i % 2 === 0 ? sql.raw(part) : sql`${sql.param(params[Number(part) - 1])}`));
+  const parts: SQL[] = text
+    .split(/\$(\d+)/)
+    .map((part, i) => (i % 2 === 0 ? sql.raw(part) : sql`${sql.param(params[Number(part) - 1])}`));
   return rows<T>(database, sql.join(parts));
 }

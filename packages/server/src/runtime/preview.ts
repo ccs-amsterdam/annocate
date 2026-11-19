@@ -3,7 +3,20 @@ import type { DeletionRequest, SessionEnd, VariableValue } from "@annotinder/con
 import { HttpError } from "../shared/http.js";
 import type { Store } from "./store.js";
 import { previewSessionValues } from "./sessionValues.js";
-import type { Coder as StoredCoder, Coding, Lease, CoderValue, CoderAssignments, CoderValuesWrite, Finished, FinishedRequest, AnnotationWrite, ResolveCoderRequest, ResolvedCoder, Transfer } from "./types.js";
+import type {
+  Coder as StoredCoder,
+  Coding,
+  Lease,
+  CoderValue,
+  CoderAssignments,
+  CoderValuesWrite,
+  Finished,
+  FinishedRequest,
+  AnnotationWrite,
+  ResolveCoderRequest,
+  ResolvedCoder,
+  Transfer,
+} from "./types.js";
 
 // Researcher previews (`<studyId>.preview`, contracts PreviewSessionSchema):
 // the latest codebook and the real units come from the database, but coders
@@ -34,7 +47,10 @@ export class PreviewStore implements Store {
   /** Device keys -> coder id: a device's preview session (a new one on "start over"). */
   private devices = new Map<string, number>();
   /** `<unitId>/<coderId>` -> the coder's answers and when they were first written. */
-  private annotations = new Map<string, { unitId: number; coderId: number; variables: Record<string, VariableValue>; created: Date; updated: Date }>();
+  private annotations = new Map<
+    string,
+    { unitId: number; coderId: number; variables: Record<string, VariableValue>; created: Date; updated: Date }
+  >();
   /** Coder-level answers, per coder. */
   private values = new Map<number, Record<string, CoderValue>>();
 
@@ -59,8 +75,7 @@ export class PreviewStore implements Store {
     // A copy, as from a database: changes go through the store.
     if (known) return { coder: { ...known }, deviceId: null };
     const valid =
-      request.linkSecret !== undefined &&
-      verifyPreviewToken(this.secret, this.studyId, request.linkSecret, this.now());
+      request.linkSecret !== undefined && verifyPreviewToken(this.secret, this.studyId, request.linkSecret, this.now());
     if (!valid) throw new HttpError(401, "This preview link has expired; open the preview again");
     const coder: Coder = {
       coderId: this.coders.size + 1,
@@ -159,7 +174,11 @@ export class PreviewStore implements Store {
 
   async listCodings(filter: { loop?: string; coderId?: number }): Promise<Coding[]> {
     return [...this.codings.values()]
-      .filter((c) => (filter.loop === undefined || c.loop === filter.loop) && (filter.coderId === undefined || c.coderId === filter.coderId))
+      .filter(
+        (c) =>
+          (filter.loop === undefined || c.loop === filter.loop) &&
+          (filter.coderId === undefined || c.coderId === filter.coderId),
+      )
       .sort((a, b) => a.created.getTime() - b.created.getTime() || a.unitId - b.unitId);
   }
 
@@ -177,7 +196,9 @@ export class PreviewStore implements Store {
 
   async listLeases(filter: { loop?: string; coderId?: number }): Promise<Lease[]> {
     return [...this.leases.values()].filter(
-      (l) => (filter.loop === undefined || l.loop === filter.loop) && (filter.coderId === undefined || l.coderId === filter.coderId),
+      (l) =>
+        (filter.loop === undefined || l.loop === filter.loop) &&
+        (filter.coderId === undefined || l.coderId === filter.coderId),
     );
   }
 
@@ -185,10 +206,17 @@ export class PreviewStore implements Store {
     for (const lease of leases) this.leases.set(`${lease.loop}/${lease.set}/${lease.coderId}/${lease.unitId}`, lease);
   }
 
-  async coderValuesOf(variables: string[]): Promise<{ values: Record<string, VariableValue>; session: Record<string, string> }[]> {
+  async coderValuesOf(
+    variables: string[],
+  ): Promise<{ values: Record<string, VariableValue>; session: Record<string, string> }[]> {
     return [...this.values].flatMap(([coderId, values]) =>
       values[variables[0]]
-        ? [{ values: Object.fromEntries(variables.flatMap((v) => (values[v] ? [[v, values[v].value]] : []))), session: this.coders.get(coderId)?.session ?? {} }]
+        ? [
+            {
+              values: Object.fromEntries(variables.flatMap((v) => (values[v] ? [[v, values[v].value]] : []))),
+              session: this.coders.get(coderId)?.session ?? {},
+            },
+          ]
         : [],
     );
   }
@@ -223,7 +251,14 @@ export class PreviewStore implements Store {
     for (const coding of w.codings ?? []) {
       const key = `${coding.loop}/${w.unitId}/${w.coderId}`;
       const existing = this.codings.get(key);
-      this.codings.set(key, { loop: coding.loop, unitId: w.unitId, coderId: w.coderId, agreement: coding.agreement, created: existing?.created ?? now, updated: now });
+      this.codings.set(key, {
+        loop: coding.loop,
+        unitId: w.unitId,
+        coderId: w.coderId,
+        agreement: coding.agreement,
+        created: existing?.created ?? now,
+        updated: now,
+      });
     }
   }
 
@@ -231,11 +266,15 @@ export class PreviewStore implements Store {
     const rows: Finished[] = [];
     for (const group of request.loops) {
       const pick = (variables: Record<string, VariableValue>) =>
-        group.values?.length ? { values: Object.fromEntries(group.values.filter((v) => v in variables).map((v) => [v, variables[v]])) } : {};
+        group.values?.length
+          ? { values: Object.fromEntries(group.values.filter((v) => v in variables).map((v) => [v, variables[v]])) }
+          : {};
       if (group.level === "coder") {
         for (const c of this.coders.values()) {
           if (request.coderId !== undefined && c.coderId !== request.coderId) continue;
-          const variables = Object.fromEntries(Object.entries(this.values.get(c.coderId) ?? {}).map(([k, v]) => [k, v.value]));
+          const variables = Object.fromEntries(
+            Object.entries(this.values.get(c.coderId) ?? {}).map(([k, v]) => [k, v.value]),
+          );
           if (group.variables.every((v) => v in variables)) {
             rows.push({ loop: group.loop, unitId: null, coderId: c.coderId, created: c.created, ...pick(variables) });
           }
@@ -245,7 +284,13 @@ export class PreviewStore implements Store {
       for (const a of this.annotations.values()) {
         if (request.coderId !== undefined && a.coderId !== request.coderId) continue;
         if (group.variables.every((v) => v in a.variables)) {
-          rows.push({ loop: group.loop, unitId: a.unitId, coderId: a.coderId, created: a.created, ...pick(a.variables) });
+          rows.push({
+            loop: group.loop,
+            unitId: a.unitId,
+            coderId: a.coderId,
+            created: a.created,
+            ...pick(a.variables),
+          });
         }
       }
     }

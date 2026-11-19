@@ -23,7 +23,7 @@ export function ActivityChart({ activity }: { activity: Day[] }) {
     <div>
       <div className="relative flex h-32">
         {/* y-axis: top value and baseline */}
-        <div className="flex w-8 shrink-0 flex-col justify-between pr-1.5 text-right text-[10px] tabular-nums text-muted-foreground">
+        <div className="flex w-8 shrink-0 flex-col justify-between pr-1.5 text-right text-[10px] text-muted-foreground tabular-nums">
           <span className="-translate-y-1/2">{top}</span>
           <span className="translate-y-1/2">0</span>
         </div>
@@ -54,7 +54,7 @@ export function ActivityChart({ activity }: { activity: Day[] }) {
         </div>
       </div>
 
-      <div className="ml-8 mt-1 flex justify-between text-[10px] text-muted-foreground">
+      <div className="mt-1 ml-8 flex justify-between text-[10px] text-muted-foreground">
         <span>{dayLabel(activity[0].day)}</span>
         <span>{dayLabel(activity[activity.length - 1].day)}</span>
       </div>
@@ -85,7 +85,7 @@ export function ActivityChart({ activity }: { activity: Day[] }) {
 function Tooltip({ day, left }: { day: Day; left: number }) {
   return (
     <div
-      className="pointer-events-none absolute bottom-full z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md"
+      className="pointer-events-none absolute bottom-full z-10 mb-1 -translate-x-1/2 rounded-md border border-border bg-popover px-2 py-1 text-xs whitespace-nowrap text-popover-foreground shadow-md"
       style={{ left: `${left}%` }}
     >
       <div className="font-medium">{dayLabel(day.day)}</div>

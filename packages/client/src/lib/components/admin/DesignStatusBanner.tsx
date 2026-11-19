@@ -80,11 +80,7 @@ export function DesignStatusBanner({
   }
 
   return (
-    <Banner
-      tone="draft"
-      icon={FilePen}
-      title={`Draft v${openNumber} · not live yet`}
-    >
+    <Banner tone="draft" icon={FilePen} title={`Draft v${openNumber} · not live yet`}>
       {liveNumber !== null
         ? `Coders are using v${liveNumber} until you deploy this draft.`
         : "Nothing is deployed yet, so coders can't start this study. Deploy when it's ready."}
@@ -114,7 +110,12 @@ function Banner({
 }) {
   return (
     <div role="status" className="flex min-w-0 flex-wrap items-center gap-2">
-      <span className={cn("inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium text-foreground", TONES[tone].box)}>
+      <span
+        className={cn(
+          "inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium text-foreground",
+          TONES[tone].box,
+        )}
+      >
         <Icon className={cn("h-3.5 w-3.5 shrink-0", TONES[tone].icon)} />
         <span className="truncate">{title}</span>
         <InfoTip label="About this version">{children}</InfoTip>

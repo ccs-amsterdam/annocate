@@ -31,7 +31,10 @@ export function coderSummary(values: readonly string[]): CoderSummary {
 }
 
 /** What deploying would object to (errors) or point out (warnings) about a condition, given the draft units. */
-export function conditionProblems(condition: Pick<ConditionSpec, "values" | "units">, groups: readonly SetGroupResponse[]): { errors: string[]; warnings: string[] } {
+export function conditionProblems(
+  condition: Pick<ConditionSpec, "values" | "units">,
+  groups: readonly SetGroupResponse[],
+): { errors: string[]; warnings: string[] } {
   const errors: string[] = [];
   const warnings: string[] = [];
   if (!condition.units) return { errors, warnings };
@@ -46,13 +49,21 @@ export function conditionProblems(condition: Pick<ConditionSpec, "values" | "uni
   }
   const missing = condition.values.filter((v) => !inColumn.includes(v));
   const extra = inColumn.filter((v) => !(condition.values as string[]).includes(v));
-  if (missing.length > 0) errors.push(`No units for ${missing.map((v) => `"${v}"`).join(", ")} in column "${condition.units}"`);
-  if (extra.length > 0) warnings.push(`Column "${condition.units}" also has ${extra.map((v) => `"${v}"`).join(", ")}: no session gets those units`);
+  if (missing.length > 0)
+    errors.push(`No units for ${missing.map((v) => `"${v}"`).join(", ")} in column "${condition.units}"`);
+  if (extra.length > 0)
+    warnings.push(
+      `Column "${condition.units}" also has ${extra.map((v) => `"${v}"`).join(", ")}: no session gets those units`,
+    );
   return { errors, warnings };
 }
 
 /** How many links deploying makes for the coders and conditions assigned by link (before other link parameters). */
-export function assignmentLinks(coders: CoderSummary | null, conditions: readonly Pick<ConditionSpec, "values" | "assign" | "units">[], groups: readonly SetGroupResponse[]): number {
+export function assignmentLinks(
+  coders: CoderSummary | null,
+  conditions: readonly Pick<ConditionSpec, "values" | "assign" | "units">[],
+  groups: readonly SetGroupResponse[],
+): number {
   let n = coders && coders.kind === "names" ? coders.count : 1;
   for (const c of conditions) {
     if (c.assign !== "link") continue;
@@ -84,16 +95,27 @@ export function shareSources(
 }
 
 /** A loop's units in one line: whose they are, and the loop's filter. */
-export function shareSummary(sources: readonly ShareSource[], filter?: { column: string; only?: string[]; except?: string[] }): string {
+export function shareSummary(
+  sources: readonly ShareSource[],
+  filter?: { column: string; only?: string[]; except?: string[] },
+): string {
   const whose =
-    sources.length === 0 ? "A session gets all units" : `A session gets the units of its ${sources.map((s) => s.label).join(" × ")}`;
+    sources.length === 0
+      ? "A session gets all units"
+      : `A session gets the units of its ${sources.map((s) => s.label).join(" × ")}`;
   if (!filter) return `${whose}, and codes them all.`;
-  const values = (filter.only ?? filter.except ?? []).filter(Boolean).map((v) => `“${v}”`).join(", ");
+  const values = (filter.only ?? filter.except ?? [])
+    .filter(Boolean)
+    .map((v) => `“${v}”`)
+    .join(", ");
   return `${whose}; this loop ${filter.only ? "only" : "all except"} those with ${values || "(no value yet)"} in ${filter.column}.`;
 }
 
 /** The values of a set column with their number of units (the special ones last). */
-export function valueCounts(groups: readonly SetGroupResponse[], column: string): { value: string; count: number; special: boolean }[] {
+export function valueCounts(
+  groups: readonly SetGroupResponse[],
+  column: string,
+): { value: string; count: number; special: boolean }[] {
   const special = new Set<string>(RESERVED_SETS);
   const sets = groups.find((g) => g.name === column)?.sets ?? [];
   return sets

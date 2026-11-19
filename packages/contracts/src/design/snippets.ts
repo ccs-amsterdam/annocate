@@ -42,9 +42,11 @@ export function expandSnippets(
     const name = m[1];
     const text = snippets?.[name];
     const suffix = /^::([A-Za-z]+)/.exec(source.slice(last));
-    if (suffix) errors.push(`[[${name}]]::${suffix[1]}: a snippet takes no suffix (it is pasted into the template as it is)`);
+    if (suffix)
+      errors.push(`[[${name}]]::${suffix[1]}: a snippet takes no suffix (it is pasted into the template as it is)`);
     if (text === undefined) errors.push(`[[${name}]]: there is no snippet '${name}' in this loop's layout`);
-    else if (using.includes(name)) errors.push(`[[${name}]]: the snippet includes itself (${[...using, name].join(" → ")})`);
+    else if (using.includes(name))
+      errors.push(`[[${name}]]: the snippet includes itself (${[...using, name].join(" → ")})`);
     else {
       const inner = expandSnippets(text, snippets, [...using, name]);
       errors.push(...inner.errors);

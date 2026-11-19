@@ -24,7 +24,9 @@ export async function evaluateCondition(
 ): Promise<boolean> {
   const simple = parseSimpleCondition(condition.script);
   if (simple) return evaluateSimpleCondition(simple, scope);
-  const result = cache ? await cache.evaluate(key, condition.script, scope) : await evaluateScript(condition.script, scope);
+  const result = cache
+    ? await cache.evaluate(key, condition.script, scope)
+    : await evaluateScript(condition.script, scope);
   return Boolean(result);
 }
 
@@ -49,7 +51,13 @@ const OPERATORS: Record<string, string> = {
   hasAll: "has all of",
 };
 /** Negated helpers that read as one operator. */
-const NEGATED: Record<string, string> = { is: "is not", isAny: "is none of", eq: "≠", has: "doesn't have", hasAny: "has none of" };
+const NEGATED: Record<string, string> = {
+  is: "is not",
+  isAny: "is none of",
+  eq: "≠",
+  has: "doesn't have",
+  hasAny: "has none of",
+};
 const COMPARE: Record<string, string> = { ">=": "≥", "<=": "≤", "===": "=", "!==": "≠" };
 
 /**

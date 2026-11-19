@@ -10,13 +10,17 @@ import { questionKind, questionValues } from "./references.js";
 export type { AnyVariableType } from "./variableTypes.js";
 
 /** Whether `value` is on a numeric question's grid: within min..max, a multiple of `step` from `min` (or 0). */
-export function numericValueError(variable: { min?: number; max?: number; step?: number }, value: number): string | null {
+export function numericValueError(
+  variable: { min?: number; max?: number; step?: number },
+  value: number,
+): string | null {
   if (!Number.isFinite(value)) return "not a number";
   if (variable.min !== undefined && value < variable.min) return `below the minimum ${variable.min}`;
   if (variable.max !== undefined && value > variable.max) return `above the maximum ${variable.max}`;
   const step = variable.step ?? 1;
   const steps = (value - (variable.min ?? 0)) / step;
-  if (Math.abs(steps - Math.round(steps)) > 1e-6) return `not a multiple of ${step}${variable.min ? ` from ${variable.min}` : ""}`;
+  if (Math.abs(steps - Math.round(steps)) > 1e-6)
+    return `not a multiple of ${step}${variable.min ? ` from ${variable.min}` : ""}`;
   return null;
 }
 
@@ -33,7 +37,8 @@ export function validateAnswer(name: string, variable: AnyVariableType, value: V
   if (answers.length > 0 && (kind === "span" || kind === "relation" || kind === "confirm")) {
     errors.push(`'${name}': values given for a ${variable.type} variable`);
   }
-  if ((value.spans?.length ?? 0) > 0 && variable.type !== "span") errors.push(`'${name}': spans given for a ${variable.type} variable`);
+  if ((value.spans?.length ?? 0) > 0 && variable.type !== "span")
+    errors.push(`'${name}': spans given for a ${variable.type} variable`);
   if ((value.relations?.length ?? 0) > 0 && variable.type !== "relation") {
     errors.push(`'${name}': relations given for a ${variable.type} variable`);
   }
@@ -42,7 +47,8 @@ export function validateAnswer(name: string, variable: AnyVariableType, value: V
     const items = new Set(variable.items.map((i) => i.name));
     const seen = new Set<string>();
     for (const answer of answers) {
-      if (answer.item === undefined || !items.has(answer.item)) errors.push(`'${name}': unknown item '${answer.item ?? ""}'`);
+      if (answer.item === undefined || !items.has(answer.item))
+        errors.push(`'${name}': unknown item '${answer.item ?? ""}'`);
       else if (seen.has(answer.item)) errors.push(`'${name}': more than one answer for item '${answer.item}'`);
       else seen.add(answer.item);
     }

@@ -23,11 +23,15 @@ export const UnitLayoutSchema = z.object({
   snippets: z
     .record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "A snippet name is letters, digits and _"), z.string())
     .optional()
-    .describe("Named pieces of the template, put in with [[name]] as if typed there (anywhere: lines, block fences, scripts)"),
+    .describe(
+      "Named pieces of the template, put in with [[name]] as if typed there (anywhere: lines, block fences, scripts)",
+    ),
   style: z.record(z.string(), z.string()).optional().describe("Optional inline CSS for the layout's root container"),
   colorScheme: z
     .enum(["light", "dark"])
     .optional()
-    .describe("Always show the unit in light or dark colours (e.g. for styled content). Default: follow the coder's setting."),
+    .describe(
+      "Always show the unit in light or dark colours (e.g. for styled content). Default: follow the coder's setting.",
+    ),
 });
 export type UnitLayout = z.infer<typeof UnitLayoutSchema>;

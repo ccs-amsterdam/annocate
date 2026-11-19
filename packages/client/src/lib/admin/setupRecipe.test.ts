@@ -1,13 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { RecipeSchema, designItems, validateDesignItems } from "@annotinder/contracts";
-import { DEFAULT_SETUP, defaultDistribution, parseQuestions, questionLists, setupProblems, setupRecipe, type SetupAnswers } from "./setupRecipe";
+import {
+  DEFAULT_SETUP,
+  defaultDistribution,
+  parseQuestions,
+  questionLists,
+  setupProblems,
+  setupRecipe,
+  type SetupAnswers,
+} from "./setupRecipe";
 
 const setupUnits = {
   fields: [
     { name: "text", type: "text" as const },
     { name: "group", type: "text" as const },
   ],
-  units: Array.from({ length: 10 }, (_, i) => ({ externalId: `u${i}`, data: { text: `text ${i}`, group: i < 4 ? "a" : i < 8 ? "b" : "c" } })),
+  units: Array.from({ length: 10 }, (_, i) => ({
+    externalId: `u${i}`,
+    data: { text: `text ${i}`, group: i < 4 ? "a" : i < 8 ? "b" : "c" },
+  })),
 };
 const setup = (patch: Partial<SetupAnswers>): SetupAnswers => ({
   ...DEFAULT_SETUP,
@@ -22,7 +33,10 @@ const otherIssues = (a: SetupAnswers) => {
   const recipe = RecipeSchema.parse(setupRecipe(a));
   return validateDesignItems(designItems(recipe.design)).filter((i) => !i.message.includes("no answer type yet"));
 };
-const loopOf = (a: SetupAnswers) => (setupRecipe(a).design.items as { type: string; units?: unknown; layout?: { template: string } }[]).find((i) => i.type === "unit_loop")!;
+const loopOf = (a: SetupAnswers) =>
+  (setupRecipe(a).design.items as { type: string; units?: unknown; layout?: { template: string } }[]).find(
+    (i) => i.type === "unit_loop",
+  )!;
 
 describe("setup wizard recipes", () => {
   it("turn typed lines into question names, keeping the text as the question", () => {
@@ -42,8 +56,13 @@ describe("setup wizard recipes", () => {
 
   it("the title coders see goes into the session, only when given", () => {
     expect(setupRecipe(setup({})).design.session).toBeUndefined();
-    expect(setupRecipe(setup({ publicTitle: "  Reading the news " })).design.public).toEqual({ title: "Reading the news" });
-    const links = setup({ publicTitle: "News", distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null, handOut: "links" } });
+    expect(setupRecipe(setup({ publicTitle: "  Reading the news " })).design.public).toEqual({
+      title: "Reading the news",
+    });
+    const links = setup({
+      publicTitle: "News",
+      distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null, handOut: "links" },
+    });
     expect(setupRecipe(links).design.session).toMatchObject({ coders: { column: "sets" } });
     expect(setupRecipe(links).design.public).toEqual({ title: "News" });
   });
@@ -58,7 +77,13 @@ describe("setup wizard recipes", () => {
   });
 
   it("assign sets: split, with overlap, handed out by one rotating link", () => {
-    const a = setup({ distribution: { ...defaultDistribution("sets"), sets: 3, overlap: { by: "percent", value: 20 } } as SetupAnswers["distribution"] });
+    const a = setup({
+      distribution: {
+        ...defaultDistribution("sets"),
+        sets: 3,
+        overlap: { by: "percent", value: 20 },
+      } as SetupAnswers["distribution"],
+    });
     expect(setupProblems(a)).toEqual([]);
     expect(otherIssues(a)).toEqual([]);
     const recipe = setupRecipe(a);
@@ -69,12 +94,17 @@ describe("setup wizard recipes", () => {
     // Every unit once
     expect(new Set(group.sets.flatMap((s) => s.units)).size).toBe(10);
     // One link: a set drawn when a session starts, the one with the fewest sessions
-    expect(setupRecipe(a).design.session).toEqual({ params: [], conditions: [{ name: "sets", values: "free", assign: "random", units: "sets" }] });
+    expect(setupRecipe(a).design.session).toEqual({
+      params: [],
+      conditions: [{ name: "sets", values: "free", assign: "random", units: "sets" }],
+    });
     expect(loopOf(a).units).toEqual({ overlap: { placement: "spread" } });
   });
 
   it("assign sets by a column, a link per set", () => {
-    const a = setup({ distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null, handOut: "links" } });
+    const a = setup({
+      distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null, handOut: "links" },
+    });
     expect(otherIssues(a)).toEqual([]);
     const recipe = setupRecipe(a);
     expect(recipe.sets![0].sets.map((s) => [s.name, s.units.length])).toEqual([
@@ -88,13 +118,27 @@ describe("setup wizard recipes", () => {
   });
 
   it("gold and practice checks on per-unit questions, with a sets column keeping _gold and _practice", () => {
-    const a = setup({ distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null, handOut: "rotate" } });
-    const units = a.units!.units.map((u, i) => (i === 0 ? { ...u, data: { ...u.data, group: "_gold" } } : i === 1 ? { ...u, data: { ...u.data, group: "_practice" } } : u));
-    const recipe = setupRecipe({ ...a, units: { ...a.units!, units }, checks: { gold: ["topic"], practice: ["topic", "nope"] } });
+    const a = setup({
+      distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null, handOut: "rotate" },
+    });
+    const units = a.units!.units.map((u, i) =>
+      i === 0
+        ? { ...u, data: { ...u.data, group: "_gold" } }
+        : i === 1
+          ? { ...u, data: { ...u.data, group: "_practice" } }
+          : u,
+    );
+    const recipe = setupRecipe({
+      ...a,
+      units: { ...a.units!, units },
+      checks: { gold: ["topic"], practice: ["topic", "nope"] },
+    });
     const names = recipe.sets![0].sets.map((s) => s.name);
     expect(names).toContain("_gold");
     expect(names).toContain("_practice");
-    expect(loopOf({ ...a, units: { ...a.units!, units }, checks: { gold: ["topic"], practice: ["topic", "nope"] } }).units).toEqual({
+    expect(
+      loopOf({ ...a, units: { ...a.units!, units }, checks: { gold: ["topic"], practice: ["topic", "nope"] } }).units,
+    ).toEqual({
       practice: { placement: "first", questions: ["topic"] },
       gold: { placement: "rate", every: 10, questions: ["topic"] },
     });
@@ -128,16 +172,35 @@ describe("setup wizard recipes", () => {
   });
 
   it("crowd coding with checks but no overlap: a queue over all units", () => {
-    const a = setup({ distribution: { mode: "crowd", shared: { codersPerUnit: { min: 2, max: 2 } }, overlap: null }, checks: { gold: ["topic"], practice: [] } });
+    const a = setup({
+      distribution: { mode: "crowd", shared: { codersPerUnit: { min: 2, max: 2 } }, overlap: null },
+      checks: { gold: ["topic"], practice: [] },
+    });
     // Gold units come from a set column's _gold (added on the Units page)
     expect(setupRecipe(a).sets).toEqual([]);
-    expect(loopOf(a).units).toMatchObject({ criteria: { codersPerUnit: { min: 2, max: 2 } }, gold: { questions: ["topic"] } });
+    expect(loopOf(a).units).toMatchObject({
+      criteria: { codersPerUnit: { min: 2, max: 2 } },
+      gold: { questions: ["topic"] },
+    });
   });
 
   it("sets from a column: values with the same set name are one set; special units stay out of the overlap", () => {
     const names = ["a;b", "a#b", "_gold", "_gold", "_overlap", "c", "c", "c", "c", "c"];
-    const units = { ...setupUnits, units: setupUnits.units.map((u, i) => ({ ...u, data: { ...u.data, group: names[i] } })) };
-    const a = setup({ units, distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: { by: "units", value: 2 }, handOut: "rotate" } });
+    const units = {
+      ...setupUnits,
+      units: setupUnits.units.map((u, i) => ({ ...u, data: { ...u.data, group: names[i] } })),
+    };
+    const a = setup({
+      units,
+      distribution: {
+        mode: "sets",
+        source: "column",
+        sets: 0,
+        column: "group",
+        overlap: { by: "units", value: 2 },
+        handOut: "rotate",
+      },
+    });
     const sets = Object.fromEntries(setupRecipe(a).sets![0].sets.map((s) => [s.name, s.units]));
     expect(Object.keys(sets).sort()).toEqual(["_gold", "_overlap", "a_b", "c"].sort());
     expect(sets._gold).toEqual(["u2", "u3"]);
@@ -164,37 +227,71 @@ describe("setup wizard recipes", () => {
     expect(items.map((i) => i.name ?? i.type)).toEqual(["condition", "age", "unit_loop", "any_comments"]);
     // The condition selects its units: a computed item linked to a set column named after it
     expect(recipe.sets![0].group).toBe("condition");
-    expect((recipe.design.items as { type: string; variable?: { units?: string } }[])[0]).toMatchObject({ type: "computed", variable: { type: "random", units: "condition" } });
+    expect((recipe.design.items as { type: string; variable?: { units?: string } }[])[0]).toMatchObject({
+      type: "computed",
+      variable: { type: "random", units: "condition" },
+    });
     expect(loopOf(a).units).toBeUndefined();
   });
 
   it("a survey alone, or an experiment alone (a survey with an experiment)", () => {
-    const survey = setup({ parts: { annotate: false, survey: true, experiment: false }, units: null, questions: { before: ["age"], unit: [], after: [] } });
+    const survey = setup({
+      parts: { annotate: false, survey: true, experiment: false },
+      units: null,
+      questions: { before: ["age"], unit: [], after: [] },
+    });
     expect(setupProblems(survey)).toEqual([]);
-    expect(setupRecipe(survey).design.items).toEqual([{ type: "question", name: "age", variable: { type: "unspecified" } }]);
-    const experiment = setup({ parts: { annotate: false, survey: false, experiment: true }, units: null, questions: { before: ["support"], unit: [], after: [] } });
+    expect(setupRecipe(survey).design.items).toEqual([
+      { type: "question", name: "age", variable: { type: "unspecified" } },
+    ]);
+    const experiment = setup({
+      parts: { annotate: false, survey: false, experiment: true },
+      units: null,
+      questions: { before: ["support"], unit: [], after: [] },
+    });
     expect(otherIssues(experiment)).toEqual([]);
     expect(setupRecipe(experiment).design.items).toHaveLength(2);
   });
 
   it("say what is missing or wrong", () => {
-    expect(setupProblems(setup({ name: "", parts: { annotate: false, survey: false, experiment: false }, questions: { before: [], unit: [], after: [] } }))).toEqual([
+    expect(
+      setupProblems(
+        setup({
+          name: "",
+          parts: { annotate: false, survey: false, experiment: false },
+          questions: { before: [], unit: [], after: [] },
+        }),
+      ),
+    ).toEqual([
       "Give the study a name",
       "Choose at least one of annotate, survey or experiment",
       "Add at least one question",
     ]);
-    const twice = setup({ parts: { annotate: true, survey: true, experiment: false }, questions: { before: ["Age"], unit: ["age"], after: [] } });
+    const twice = setup({
+      parts: { annotate: true, survey: true, experiment: false },
+      questions: { before: ["Age"], unit: ["age"], after: [] },
+    });
     expect(setupProblems(twice)).toEqual(["Each question once: age"]);
     // The queue's own rules; the question to agree on can wait for the editor
-    const crowd = setup({ distribution: { mode: "crowd", shared: { until: { agree: 2, on: "" }, codersPerUnit: { max: 1 } }, overlap: null } });
+    const crowd = setup({
+      distribution: {
+        mode: "crowd",
+        shared: { until: { agree: 2, on: "" }, codersPerUnit: { max: 1 } },
+        overlap: null,
+      },
+    });
     expect(setupProblems(crowd)).toEqual([expect.stringContaining("The most coders per unit must be at least")]);
     const groups = setup({
       parts: { annotate: true, survey: false, experiment: true },
       distribution: { mode: "groups", column: "group", values: { control: ["a"] } },
     });
     expect(setupProblems(groups)).toEqual(["Choose the units of treatment"]);
-    expect(setupProblems(setup({ units: null, distribution: defaultDistribution("sets") }))).toEqual(["Assigning sets needs the units now"]);
+    expect(setupProblems(setup({ units: null, distribution: defaultDistribution("sets") }))).toEqual([
+      "Assigning sets needs the units now",
+    ]);
     // With units, something of each unit is shown
-    expect(setupProblems(setup({ layout: { body: [] } }))).toEqual(["Choose what coders see of each unit (How coders see a unit)"]);
+    expect(setupProblems(setup({ layout: { body: [] } }))).toEqual([
+      "Choose what coders see of each unit (How coders see a unit)",
+    ]);
   });
 });

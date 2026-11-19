@@ -65,9 +65,9 @@ export function QuestionPreview({
 
   const layout = isLoop
     ? item.layout
-    : parentLoop?.layout ?? {
+    : (parentLoop?.layout ?? {
         template: "# $unit.headline\n\n$unit.text",
-      };
+      });
   const loop = isLoop ? item : parentLoop;
   // Span questions' fields are selectable during every question, as while coding.
   const selectable = loop ? spanColumns(loop) : (spanVariable?.fields ?? []);
@@ -82,7 +82,7 @@ export function QuestionPreview({
           <span>Preview</span>
         </div>
         {answerState && (
-          <span className="rounded bg-primary/15 px-2 py-0.5 text-[10px] font-mono text-primary font-medium">
+          <span className="rounded bg-primary/15 px-2 py-0.5 font-mono text-[10px] font-medium text-primary">
             Answered: {JSON.stringify(answerState.value)}
           </span>
         )}
@@ -115,9 +115,9 @@ export function QuestionPreview({
 
           {/* Interactive Question Card */}
           {isVariable && (
-            <div className="p-4 bg-card">
+            <div className="bg-card p-4">
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                   Question Card ({item.variable.type})
                 </span>
                 {answerState && (
@@ -154,10 +154,12 @@ export function QuestionPreview({
             <div className="p-4 text-sm">
               <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">Condition Item</span>
               <p className="mt-1 text-xs text-muted-foreground">
-                Shown when: <code className="rounded bg-muted px-1.5 py-0.5 font-mono">{describeCondition(item.condition)}</code>
+                Shown when:{" "}
+                <code className="rounded bg-muted px-1.5 py-0.5 font-mono">{describeCondition(item.condition)}</code>
               </p>
               <p className="mt-3 text-xs text-muted-foreground">
-                Condition items do not display a visible card to coders; their rules or script decide which items are shown.
+                Condition items do not display a visible card to coders; their rules or script decide which items are
+                shown.
               </p>
             </div>
           )}
@@ -185,7 +187,11 @@ function useRenderedLayout(
   useEffect(() => {
     let cancelled = false;
     const scope = buildScope(questions ?? new Map(), answers ?? {}, unit);
-    renderTemplate(layout.template, scope, undefined, "preview", { progress, snippets: layout.snippets, selectable }).then(
+    renderTemplate(layout.template, scope, undefined, "preview", {
+      progress,
+      snippets: layout.snippets,
+      selectable,
+    }).then(
       (result) => !cancelled && setRendered(result),
       () => undefined,
     );

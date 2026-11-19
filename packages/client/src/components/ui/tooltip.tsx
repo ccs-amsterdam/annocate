@@ -20,7 +20,11 @@ function TooltipTrigger(props: React.ComponentProps<typeof TooltipPrimitive.Trig
   return <TooltipPrimitive.Trigger {...props} />;
 }
 
-function TooltipContent({ className, sideOffset = 4, ...props }: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+function TooltipContent({
+  className,
+  sideOffset = 4,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Content>) {
   return (
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content

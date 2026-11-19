@@ -57,12 +57,22 @@ export function ItemPanel({
         <div className="flex h-full min-h-0 flex-col overflow-hidden">
           <div className="flex items-center justify-between gap-2 border-b border-border/80 bg-muted/30 px-3 py-1.5">
             {onBack && (
-              <Button type="button" variant="ghost" size="sm" className="-ml-2 h-7 gap-1 px-2" onClick={onBack} aria-label="Back to the items">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="-ml-2 h-7 gap-1 px-2"
+                onClick={onBack}
+                aria-label="Back to the items"
+              >
                 <ArrowLeft className="h-4 w-4" />
                 Items
               </Button>
             )}
-            <span className="inline-flex items-center rounded-md border border-border bg-background px-2 py-0.5 text-xs font-semibold text-foreground shadow-2xs" title="Item type">
+            <span
+              className="inline-flex items-center rounded-md border border-border bg-background px-2 py-0.5 text-xs font-semibold text-foreground shadow-2xs"
+              title="Item type"
+            >
               {ITEM_TYPES[item.type]?.label ?? item.type}
             </span>
 
@@ -78,7 +88,9 @@ export function ItemPanel({
             />
           </div>
 
-          <div className={`min-h-0 flex-1 p-4 ${pane === "json" ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
+          <div
+            className={`min-h-0 flex-1 p-4 ${pane === "json" ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}
+          >
             {itemWarnings.length > 0 && (
               <ul className="mb-3 space-y-1 rounded-md bg-amber-500/10 p-2 text-xs text-foreground">
                 {itemWarnings.map((w) => (
@@ -159,7 +171,9 @@ function ItemEditForm({
         availableQuestions={available}
         inLoop={!!loop}
         unitFields={(unitFieldsQuery.data ?? []).map((f) => f.name)}
-        loopNames={loop ? templateNames(expandSnippets(loop.layout?.template ?? "", loop.layout?.snippets).source) : undefined}
+        loopNames={
+          loop ? templateNames(expandSnippets(loop.layout?.template ?? "", loop.layout?.snippets).source) : undefined
+        }
         readOnly={readOnly}
         validationIssues={itemIssues}
         isInsideLoop={isInsideUnitLoop(items, key)}
@@ -176,9 +190,7 @@ function variableNames(items: TopLevelItem[]) {
   const all = flattenTree(items);
   const inLoop = (i: DesignItem) => isInsideUnitLoop(items, getItemKey(i));
   return {
-    unitVariableNames: all
-      .filter((i) => i.type === "question" && inLoop(i))
-      .flatMap((i) => itemName(i) ?? []),
+    unitVariableNames: all.filter((i) => i.type === "question" && inLoop(i)).flatMap((i) => itemName(i) ?? []),
   };
 }
 

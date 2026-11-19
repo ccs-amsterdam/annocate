@@ -71,7 +71,16 @@ describe("csvToUnits", () => {
     const result = csvToUnits(headers, rows, 0, mapping, studyFields);
     expect(result.units[0].data).toEqual({ text: "hello", count: 42, source: null });
 
-    const bad = csvToUnits(["id", "count"], [["1", "many"], ["2", "n/a"]], 0, [{ column: 1, field: "count", type: "text" }], studyFields);
+    const bad = csvToUnits(
+      ["id", "count"],
+      [
+        ["1", "many"],
+        ["2", "n/a"],
+      ],
+      0,
+      [{ column: 1, field: "count", type: "text" }],
+      studyFields,
+    );
     expect(bad.errors).toEqual(["count: 2 values aren't numbers ('many', 'n/a')"]);
     const names = csvToUnits(headers, rows, 0, [
       { column: 1, field: "a b", type: "text" },
@@ -86,13 +95,30 @@ describe("csvToUnits", () => {
   });
 
   it("checks the ids", () => {
-    const result = csvToUnits(["id", "t"], [["1", "a"], ["1", "b"], ["", "c"]], 0, [{ column: 1, field: "t", type: "text" }]);
+    const result = csvToUnits(
+      ["id", "t"],
+      [
+        ["1", "a"],
+        ["1", "b"],
+        ["", "c"],
+      ],
+      0,
+      [{ column: 1, field: "t", type: "text" }],
+    );
     expect(result.errors).toEqual(["Some rows have no id", "The id '1' occurs more than once in id"]);
   });
 });
 
 describe("columnTypes", () => {
   it("types columns by their values, answer columns as text", () => {
-    expect(columnTypes(["n", "n_gold", "n_practice"], [["1", "2", "3"], ["4", "5", "6"]])).toEqual(["number", "text", "text"]);
+    expect(
+      columnTypes(
+        ["n", "n_gold", "n_practice"],
+        [
+          ["1", "2", "3"],
+          ["4", "5", "6"],
+        ],
+      ),
+    ).toEqual(["number", "text", "text"]);
   });
 });

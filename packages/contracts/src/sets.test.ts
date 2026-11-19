@@ -49,7 +49,11 @@ describe("splitIntoSets", () => {
     ]);
     expect(new Set(sets.flatMap((s) => s.units)).size).toBe(11);
     expect(splitIntoSets(ids, { sets: 3, seed: 7 })).toEqual(splitIntoSets(ids, { sets: 3, seed: 7 }));
-    expect(splitIntoSets(ids, { sets: 2, overlapFraction: 0.1, shuffle: false })).toMatchObject([{ units: [2, 3, 4, 5, 6] }, {}, { name: "_overlap", units: [1] }]);
+    expect(splitIntoSets(ids, { sets: 2, overlapFraction: 0.1, shuffle: false })).toMatchObject([
+      { units: [2, 3, 4, 5, 6] },
+      {},
+      { name: "_overlap", units: [1] },
+    ]);
   });
 });
 

@@ -57,7 +57,11 @@ function selectUsers(db: Db, issuer: string) {
     })
     .from(roles)
     .where(and(serverRole, roleApplies(roles, users), eq(roles.role, role)));
-  const ownRoles = (where: SQL) => db.select({ one: sql`1` }).from(roles).where(and(eq(roles.userId, users.id), where));
+  const ownRoles = (where: SQL) =>
+    db
+      .select({ one: sql`1` })
+      .from(roles)
+      .where(and(eq(roles.userId, users.id), where));
   return db
     .select({
       user: users,
@@ -73,9 +77,14 @@ function selectUsers(db: Db, issuer: string) {
         db
           .select({ one: sql`1` })
           .from(identities)
-          .where(and(eq(identities.userId, users.id), sql`rtrim(${identities.iss}, '/') = rtrim(${issuer}::text, '/')`)),
+          .where(
+            and(eq(identities.userId, users.id), sql`rtrim(${identities.iss}, '/') = rtrim(${issuer}::text, '/')`),
+          ),
       )}`,
-      studies: sql<number>`(${db.select({ n: sql`count(*)::int` }).from(studies).where(eq(studies.ownerId, users.id))})`,
+      studies: sql<number>`(${db
+        .select({ n: sql`count(*)::int` })
+        .from(studies)
+        .where(eq(studies.ownerId, users.id))})`,
     })
     .from(users)
     .$dynamic();
@@ -108,7 +117,10 @@ async function toAdminUser(db: Db, { user, ...row }: UserRow): Promise<AdminUser
 /** Studies with their owner and how much they hold. */
 function selectStudies(db: Db) {
   const counted = (table: typeof units | typeof coders | typeof annotationValues, where?: SQL) =>
-    sql<number>`(${db.select({ n: sql`count(*)::int` }).from(table).where(and(eq(table.studyId, studies.id), where))})`;
+    sql<number>`(${db
+      .select({ n: sql`count(*)::int` })
+      .from(table)
+      .where(and(eq(table.studyId, studies.id), where))})`;
   return db
     .select({
       id: studies.id,
@@ -147,7 +159,9 @@ export function admin(server: Server): Hono<Env> {
   const issuer = () => server.login?.oidc.issuer ?? "";
 
   const log = (c: Context<Env>, action: string, target: string, details: object = {}) =>
-    db.insert(adminLog).values({ admin: c.get("researcher").email, action, target, details: details as Record<string, unknown> });
+    db
+      .insert(adminLog)
+      .values({ admin: c.get("researcher").email, action, target, details: details as Record<string, unknown> });
 
   // ---- warnings and settings ---------------------------------------------------
 
@@ -160,7 +174,8 @@ export function admin(server: Server): Hono<Env> {
     await getSettings(db); // the row exists
     // Open registration is a role: researcher, for every user with an email address
     await db.delete(roles).where(everyoneResearcher);
-    if (settings.registration.open) await db.insert(roles).values({ role: "researcher", grantedBy: c.get("researcher").email });
+    if (settings.registration.open)
+      await db.insert(roles).values({ role: "researcher", grantedBy: c.get("researcher").email });
     await db.update(serverSettings).set({
       registration: { requests: settings.registration.requests },
       defaultPlanId: settings.defaultPlanId,
@@ -213,7 +228,9 @@ export function admin(server: Server): Hono<Env> {
     const planned = new Map((await db.select().from(domainPlans)).map((d) => [d.domain, d.planId]));
     const researchers = new Set(researcherDomains.map((r) => r.domain));
     const domains = [...new Set([...researchers, ...planned.keys()])].sort();
-    return c.json(domains.map((domain) => ({ domain, researcher: researchers.has(domain), planId: planned.get(domain) ?? null })));
+    return c.json(
+      domains.map((domain) => ({ domain, researcher: researchers.has(domain), planId: planned.get(domain) ?? null })),
+    );
   });
 
   app.put("/admin/domains/:domain", async (c) => {
@@ -222,7 +239,10 @@ export function admin(server: Server): Hono<Env> {
     const rule = await body(c, DomainRuleWriteSchema);
     await db.transaction(async (tx) => {
       await tx.delete(roles).where(and(domainRoles, eq(roles.emailDomain, domain.data)));
-      if (rule.researcher) await tx.insert(roles).values({ role: "researcher", emailDomain: domain.data, grantedBy: c.get("researcher").email });
+      if (rule.researcher)
+        await tx
+          .insert(roles)
+          .values({ role: "researcher", emailDomain: domain.data, grantedBy: c.get("researcher").email });
       await tx.delete(domainPlans).where(eq(domainPlans.domain, domain.data));
       if (rule.planId !== null) await tx.insert(domainPlans).values({ domain: domain.data, planId: rule.planId });
     });
@@ -236,7 +256,10 @@ export function admin(server: Server): Hono<Env> {
       .delete(roles)
       .where(and(domainRoles, eq(roles.emailDomain, domain)))
       .returning({ id: roles.id });
-    const deletedPlans = await db.delete(domainPlans).where(eq(domainPlans.domain, domain)).returning({ domain: domainPlans.domain });
+    const deletedPlans = await db
+      .delete(domainPlans)
+      .where(eq(domainPlans.domain, domain))
+      .returning({ domain: domainPlans.domain });
     if (deletedRoles.length + deletedPlans.length === 0) throw new HttpError(404, "No such domain");
     await log(c, "delete domain", domain);
     return c.body(null, 204);
@@ -297,12 +320,19 @@ export function admin(server: Server): Hono<Env> {
     await db.transaction(async (tx) => {
       if (update.role) await setServerRole(tx, id, update.role, c.get("researcher").email);
       // The safeguards turned their roles off: restored (their dates count from now)
-      if (update.restoreRoles) await tx.update(roles).set({ grantedAt: sql`now()` }).where(eq(roles.userId, id));
+      if (update.restoreRoles)
+        await tx
+          .update(roles)
+          .set({ grantedAt: sql`now()` })
+          .where(eq(roles.userId, id));
       const user = eq(users.id, id);
       if (update.planId !== undefined) await tx.update(users).set({ planId: update.planId }).where(user);
       if (update.limits) await tx.update(users).set({ limits: update.limits }).where(user);
       if (update.blocked === true) {
-        await tx.update(users).set({ blockedAt: sql`COALESCE(${users.blockedAt}, now())` }).where(user);
+        await tx
+          .update(users)
+          .set({ blockedAt: sql`COALESCE(${users.blockedAt}, now())` })
+          .where(user);
         // Blocked: their logins end now (API keys stop working too, shared/accounts.ts).
         await tx.delete(sessions).where(eq(sessions.userId, id));
       }
@@ -328,7 +358,12 @@ export function admin(server: Server): Hono<Env> {
   app.get("/admin/requests", async (c) =>
     c.json(
       await db
-        .select({ userId: researcherRequests.userId, email: users.email, message: researcherRequests.message, at: researcherRequests.at })
+        .select({
+          userId: researcherRequests.userId,
+          email: users.email,
+          message: researcherRequests.message,
+          at: researcherRequests.at,
+        })
         .from(researcherRequests)
         .innerJoin(users, eq(users.id, researcherRequests.userId))
         .where(isNull(researcherRequests.decidedAt))
@@ -343,7 +378,13 @@ export function admin(server: Server): Hono<Env> {
       .update(researcherRequests)
       .set({ decidedAt: sql`now()`, decidedBy: c.get("researcher").email, approved: approve })
       .from(users)
-      .where(and(eq(researcherRequests.userId, userId), eq(users.id, researcherRequests.userId), isNull(researcherRequests.decidedAt)))
+      .where(
+        and(
+          eq(researcherRequests.userId, userId),
+          eq(users.id, researcherRequests.userId),
+          isNull(researcherRequests.decidedAt),
+        ),
+      )
       .returning({ email: users.email, role: accountRole(users.id) });
     if (!row) throw new HttpError(404, "No open request from this user");
     if (approve && row.role === "user") {
@@ -355,11 +396,7 @@ export function admin(server: Server): Hono<Env> {
 
   // ---- studies --------------------------------------------------------------------
 
-  app.get("/admin/studies", async (c) =>
-    c.json(
-      await selectStudies(db).orderBy(desc(studies.id)),
-    ),
-  );
+  app.get("/admin/studies", async (c) => c.json(await selectStudies(db).orderBy(desc(studies.id))));
 
   app.put("/admin/studies/:id", async (c) => {
     const id = Number(c.req.param("id"));
@@ -398,7 +435,13 @@ export function admin(server: Server): Hono<Env> {
   app.get("/admin/log", async (c) =>
     c.json(
       await db
-        .select({ at: adminLog.at, admin: adminLog.admin, action: adminLog.action, target: adminLog.target, details: adminLog.details })
+        .select({
+          at: adminLog.at,
+          admin: adminLog.admin,
+          action: adminLog.action,
+          target: adminLog.target,
+          details: adminLog.details,
+        })
         .from(adminLog)
         .orderBy(desc(adminLog.id))
         .limit(500),

@@ -59,9 +59,15 @@ function sameValue(a: string, b: string): boolean {
 }
 
 /** Whether an answer (a question's value) matches a key; a skipped or missing answer never does. */
-export function answerMatchesKey(answer: { skip?: boolean; values?: { value: unknown }[] } | undefined, key: AnswerAlternative[]): boolean {
+export function answerMatchesKey(
+  answer: { skip?: boolean; values?: { value: unknown }[] } | undefined,
+  key: AnswerAlternative[],
+): boolean {
   if (!answer || answer.skip) return false;
-  return matchesAnswerKey(key, (answer.values ?? []).map((v) => String(v.value)));
+  return matchesAnswerKey(
+    key,
+    (answer.values ?? []).map((v) => String(v.value)),
+  );
 }
 
 /** A cell written back from alternatives (the inverse of parseAnswerKey). */
@@ -86,8 +92,14 @@ export function answerKeyProblems(
     if ("range" in alt) {
       const [lo, hi] = alt.range;
       const text = `${lo}..${hi}`;
-      if (options) return options.some((o) => o.trim() !== "" && Number(o) >= lo && Number(o) <= hi) ? [] : [`${text} (no option in this range)`];
-      if (numeric && ((question.min !== undefined && hi < question.min) || (question.max !== undefined && lo > question.max)))
+      if (options)
+        return options.some((o) => o.trim() !== "" && Number(o) >= lo && Number(o) <= hi)
+          ? []
+          : [`${text} (no option in this range)`];
+      if (
+        numeric &&
+        ((question.min !== undefined && hi < question.min) || (question.max !== undefined && lo > question.max))
+      )
         return [`${text} (outside ${question.min ?? ""}..${question.max ?? ""})`];
       return [];
     }
@@ -96,7 +108,8 @@ export function answerKeyProblems(
       if (numeric) {
         const n = Number(v);
         if (v.trim() === "" || !Number.isFinite(n)) return [`${v} (not a number)`];
-        if ((question.min !== undefined && n < question.min) || (question.max !== undefined && n > question.max)) return [`${v} (outside ${question.min ?? ""}..${question.max ?? ""})`];
+        if ((question.min !== undefined && n < question.min) || (question.max !== undefined && n > question.max))
+          return [`${v} (outside ${question.min ?? ""}..${question.max ?? ""})`];
       }
       return [];
     });

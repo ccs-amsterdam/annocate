@@ -13,7 +13,12 @@ import { annotationValues as a, coderDeletions, coders, units } from "../db/sche
  * versions stay: they hold unit content, not the coder's. Each deleted coder
  * is logged (`coder_deletions`), with the ids downloaded results use.
  */
-export async function deleteCoders(db: Db, studyId: number, select: DeleteCoders, deletedBy: string | null): Promise<DeleteCodersResponse> {
+export async function deleteCoders(
+  db: Db,
+  studyId: number,
+  select: DeleteCoders,
+  deletedBy: string | null,
+): Promise<DeleteCodersResponse> {
   return db.transaction(async (tx) => {
     const emails = (select.emails ?? []).map((e) => e.toLowerCase());
     const selected = await tx
@@ -39,13 +44,16 @@ export async function deleteCoders(db: Db, studyId: number, select: DeleteCoders
         participantId: coders.participantId,
         email: coders.email,
         requestedAt: coders.deletionRequest,
-        answers: sql<number>`(${tx.select({ n: sql`count(*)::int` }).from(a).where(and(eq(a.studyId, coders.studyId), eq(a.coderId, coders.id)))})`,
+        answers: sql<number>`(${tx
+          .select({ n: sql`count(*)::int` })
+          .from(a)
+          .where(and(eq(a.studyId, coders.studyId), eq(a.coderId, coders.id)))})`,
       })
       .from(coders)
       .where(theirs);
-    await tx.insert(coderDeletions).values(
-      logged.map((c) => ({ ...c, requestedAt: c.requestedAt ? new Date(c.requestedAt.at) : null, deletedBy })),
-    );
+    await tx
+      .insert(coderDeletions)
+      .values(logged.map((c) => ({ ...c, requestedAt: c.requestedAt ? new Date(c.requestedAt.at) : null, deletedBy })));
     const removed = await tx
       .delete(a)
       .where(and(eq(a.studyId, studyId), inArray(a.coderId, ids)))
@@ -54,7 +62,14 @@ export async function deleteCoders(db: Db, studyId: number, select: DeleteCoders
     const touched = [...new Set(removed.flatMap((r) => (r.unitId === null ? [] : [r.unitId])))];
     await tx
       .update(units)
-      .set({ coded: exists(tx.select({ one: sql`1` }).from(a).where(eq(a.unitId, units.id))) })
+      .set({
+        coded: exists(
+          tx
+            .select({ one: sql`1` })
+            .from(a)
+            .where(eq(a.unitId, units.id)),
+        ),
+      })
       .where(and(eq(units.studyId, studyId), anyOf(units.id, touched)));
     return { coderIds: ids, answers: removed.length };
   });

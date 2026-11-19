@@ -123,7 +123,7 @@ export function AddItemMenu({
       {open && (
         <div
           className={cn(
-            "absolute z-50 min-w-56 max-w-80 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-in fade-in-0 zoom-in-95",
+            "absolute z-50 max-w-80 min-w-56 animate-in rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg fade-in-0 zoom-in-95",
             label === undefined ? "right-0" : "left-0",
             upwards ? "bottom-full mb-1" : "top-full mt-1",
           )}
@@ -191,7 +191,7 @@ export function AddItemMenu({
 
 function MenuHeader({ children }: { children: string }) {
   return (
-    <div className="truncate px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+    <div className="truncate px-2 py-1 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
       {children}
     </div>
   );

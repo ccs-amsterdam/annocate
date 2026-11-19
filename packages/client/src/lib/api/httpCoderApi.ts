@@ -177,7 +177,10 @@ export class HttpCoderApi implements CoderApi {
     return this.request(coderEndpoints.createTransfer.path, { method: "POST" });
   }
 
-  async postCoderVariables(variables: Record<string, VariableValue>, timings?: Record<string, AnswerTiming>): Promise<void> {
+  async postCoderVariables(
+    variables: Record<string, VariableValue>,
+    timings?: Record<string, AnswerTiming>,
+  ): Promise<void> {
     await this.request(coderEndpoints.postCoderVariables.path, {
       method: "POST",
       body: JSON.stringify({ variables, timings }),

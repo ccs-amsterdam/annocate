@@ -1,7 +1,14 @@
 import { useMemo, useState } from "react";
 import { collectQuestions, loopTitle, unitLoops, type TopLevelItem } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useDesignVersionQuery, useDeploymentQuery, useResetAnswersMutation } from "../../admin/queries";
 import { HelpButton } from "../../help/HelpButton";
@@ -21,7 +28,15 @@ export interface ResetScope {
  * kept as reset (the API's `retired=true`, and the download's
  * reset_answers.csv).
  */
-export function ResetAnswersDialog({ client, scope, onClose }: { client: ResearcherApi; scope: ResetScope | null; onClose: () => void }) {
+export function ResetAnswersDialog({
+  client,
+  scope,
+  onClose,
+}: {
+  client: ResearcherApi;
+  scope: ResetScope | null;
+  onClose: () => void;
+}) {
   const deployment = useDeploymentQuery(client).data;
   const version = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data;
   const reset = useResetAnswersMutation(client);
@@ -46,8 +61,9 @@ export function ResetAnswersDialog({ client, scope, onClose }: { client: Researc
   const toggle = (names: string[], on: boolean) =>
     setChosen((prev) => {
       const next = new Set(prev);
-      for (const n of names) if (on) next.add(n);
-      else next.delete(n);
+      for (const n of names)
+        if (on) next.add(n);
+        else next.delete(n);
       return next;
     });
 
@@ -60,8 +76,8 @@ export function ResetAnswersDialog({ client, scope, onClose }: { client: Researc
             <HelpButton topic="changing-a-live-design#resetting-answers" label="Help: resetting answers" />
           </DialogTitle>
           <DialogDescription>
-            The answers to the questions you choose become unanswered, so these units are coded again. The old answers are kept
-            as reset answers, apart from the live ones.
+            The answers to the questions you choose become unanswered, so these units are coded again. The old answers
+            are kept as reset answers, apart from the live ones.
           </DialogDescription>
         </DialogHeader>
         {reset.isSuccess ? (
@@ -92,7 +108,11 @@ export function ResetAnswersDialog({ client, scope, onClose }: { client: Researc
                 </div>
               </fieldset>
             ))}
-            {loops.length === 0 && <p className="text-muted-foreground">The live design version has no unit loops: there is nothing to reset.</p>}
+            {loops.length === 0 && (
+              <p className="text-muted-foreground">
+                The live design version has no unit loops: there is nothing to reset.
+              </p>
+            )}
           </div>
         )}
         {reset.error && <p className="text-sm text-destructive">{reset.error.message}</p>}

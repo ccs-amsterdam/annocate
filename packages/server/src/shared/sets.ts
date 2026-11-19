@@ -38,17 +38,28 @@ import { getUnitFields, lockUnits, servedUnits, setUnitFields, unitIds } from ".
 // the draft's, and the deployed (`live`) ones a deploy copies from it.
 
 /** A set column of the draft. */
-const draftGroup = (studyId: number, group: string) => and(eq(unitSets.studyId, studyId), eq(unitSets.live, false), eq(unitSets.grp, group));
+const draftGroup = (studyId: number, group: string) =>
+  and(eq(unitSets.studyId, studyId), eq(unitSets.live, false), eq(unitSets.grp, group));
 
 /** The study's groups with their sets, in order (groups and sets by name): the draft's, or the deployed ones (`live`). */
 export async function listSetGroups(db: Db, studyId: number, live = false): Promise<SetGroupResponse[]> {
   // Empty sets too (a set without units yet still names a link, a set to assign)
   const rows = await db
-    .select({ grp: unitSets.grp, name: unitSets.name, unitId: unitSetMembers.unitId, position: unitSetMembers.position })
+    .select({
+      grp: unitSets.grp,
+      name: unitSets.name,
+      unitId: unitSetMembers.unitId,
+      position: unitSetMembers.position,
+    })
     .from(unitSets)
     .leftJoin(unitSetMembers, eq(unitSetMembers.setId, unitSets.id))
     .where(and(eq(unitSets.studyId, studyId), eq(unitSets.live, live)))
-    .orderBy(asc(unitSets.grp), asc(unitSets.name), sql`${unitSetMembers.position} NULLS LAST`, asc(unitSetMembers.unitId));
+    .orderBy(
+      asc(unitSets.grp),
+      asc(unitSets.name),
+      sql`${unitSetMembers.position} NULLS LAST`,
+      asc(unitSetMembers.unitId),
+    );
   const groups = new Map<string, Map<string, UnitSet>>();
   for (const r of rows) {
     if (!groups.has(r.grp)) groups.set(r.grp, new Map());
@@ -66,7 +77,14 @@ export async function groupSets(db: Db, studyId: number, group: string, live = f
   const rows = await db
     .select({ name: unitSets.name })
     .from(unitSets)
-    .where(and(eq(unitSets.studyId, studyId), eq(unitSets.live, live), eq(unitSets.grp, group), notLike(unitSets.name, "\\_%")))
+    .where(
+      and(
+        eq(unitSets.studyId, studyId),
+        eq(unitSets.live, live),
+        eq(unitSets.grp, group),
+        notLike(unitSets.name, "\\_%"),
+      ),
+    )
     .orderBy(asc(unitSets.name));
   return rows.map((r) => r.name);
 }
@@ -76,13 +94,21 @@ export async function groupSets(db: Db, studyId: number, group: string, live = f
  * (positions for ordered sets). Units must be the draft's. The column is a
  * unit field of type `set` in the draft design (`declare`, the default).
  */
-export async function putSetGroup(db: Db, studyId: number, group: string, sets: UnitSet[], options: { declare?: boolean } = {}): Promise<void> {
+export async function putSetGroup(
+  db: Db,
+  studyId: number,
+  group: string,
+  sets: UnitSet[],
+  options: { declare?: boolean } = {},
+): Promise<void> {
   await lockUnits(db, studyId, "write");
-  if (!SetGroupNameSchema.safeParse(group).success) throw new HttpError(400, `'${group}' is not a column name: letters, digits and _, starting with a letter`);
+  if (!SetGroupNameSchema.safeParse(group).success)
+    throw new HttpError(400, `'${group}' is not a column name: letters, digits and _, starting with a letter`);
   if (options.declare !== false) {
     const fields = await getUnitFields(db, studyId);
     const field = fields.find((f) => f.name === group);
-    if (field && field.type !== "set") throw new HttpError(409, `'${group}' is a ${field.type} field of the units, not a set column`);
+    if (field && field.type !== "set")
+      throw new HttpError(409, `'${group}' is a ${field.type} field of the units, not a set column`);
     if (!field) await setUnitFields(db, studyId, [...fields, { name: group, type: "set" }]);
   }
   const names = sets.map((s) => s.name);
@@ -103,7 +129,10 @@ export async function putSetGroup(db: Db, studyId: number, group: string, sets: 
   }
   await db.delete(unitSets).where(draftGroup(studyId, group));
   for (const set of sets) {
-    const [created] = await db.insert(unitSets).values({ studyId, live: false, grp: group, name: set.name }).returning({ id: unitSets.id });
+    const [created] = await db
+      .insert(unitSets)
+      .values({ studyId, live: false, grp: group, name: set.name })
+      .returning({ id: unitSets.id });
     const members = [...new Set(set.unitIds)];
     if (members.length === 0) continue;
     // One array parameter per column: a set can have many units
@@ -120,7 +149,12 @@ export async function deleteSetGroup(db: Db, studyId: number, group: string): Pr
   const deleted = await db.delete(unitSets).where(draftGroup(studyId, group)).returning({ id: unitSets.id });
   const fields = await getUnitFields(db, studyId);
   const declared = fields.some((f) => f.name === group && f.type === "set");
-  if (declared) await setUnitFields(db, studyId, fields.filter((f) => f.name !== group));
+  if (declared)
+    await setUnitFields(
+      db,
+      studyId,
+      fields.filter((f) => f.name !== group),
+    );
   return deleted.length > 0 || declared;
 }
 
@@ -128,7 +162,11 @@ export async function deleteSetGroup(db: Db, studyId: number, group: string): Pr
  * The sets as the runtime reads them, keyed `group/set`, plus all its units
  * (`__all__`): deployed (`live`), or the draft's (previews).
  */
-export async function runtimeSets(db: Db, studyId: number, live: boolean): Promise<{ name: string; unitIds: number[] }[]> {
+export async function runtimeSets(
+  db: Db,
+  studyId: number,
+  live: boolean,
+): Promise<{ name: string; unitIds: number[] }[]> {
   const allUnitIds = await unitIds(db, studyId, live);
   const groups = await listSetGroups(db, studyId, live);
   return [
@@ -154,36 +192,60 @@ export async function assignmentChecks(
   live = false,
 ): Promise<{ errors: string[]; warnings: string[] }> {
   const groups = new Map((await listSetGroups(db, studyId, live)).map((g) => [g.name, g.sets]));
-  const valuesOf = (column: string) => (groups.get(column) ?? []).filter((s) => !s.name.startsWith("_")).map((s) => s.name);
-  const unitsIn = (column: string, set: string) => (groups.get(column) ?? []).find((s) => s.name === set)?.unitIds ?? [];
+  const valuesOf = (column: string) =>
+    (groups.get(column) ?? []).filter((s) => !s.name.startsWith("_")).map((s) => s.name);
+  const unitsIn = (column: string, set: string) =>
+    (groups.get(column) ?? []).find((s) => s.name === set)?.unitIds ?? [];
   const errors: string[] = [];
   const warnings: string[] = [];
 
   const notSet = notSetColumns(items, fields);
-  for (const column of notSet) errors.push(`Column '${column}' selects units, but it is a ${fields.find((f) => f.name === column)?.type} field: make it a set column.`);
+  for (const column of notSet)
+    errors.push(
+      `Column '${column}' selects units, but it is a ${fields.find((f) => f.name === column)?.type} field: make it a set column.`,
+    );
   const columns = designSetColumns(items).filter((c) => !notSet.includes(c));
   for (const column of columns) {
-    if (valuesOf(column).length === 0) warnings.push(`Set column '${column}' has no values yet, so no session gets units by it until it has.`);
+    if (valuesOf(column).length === 0)
+      warnings.push(`Set column '${column}' has no values yet, so no session gets units by it until it has.`);
   }
 
   const session = sessionItem(items);
   if (session?.coders && coderAccess(valuesOf(session.coders.column)) === "mixed") {
-    errors.push(`The coders (column '${session.coders.column}') are partly email addresses: make them all email addresses (coders sign in) or none (a link each).`);
+    errors.push(
+      `The coders (column '${session.coders.column}') are partly email addresses: make them all email addresses (coders sign in) or none (a link each).`,
+    );
   }
   // Conditions' and computed items' fixed values, and the column's other values
   const random = collectQuestions(items).questions;
   const linked = [
-    ...(session?.conditions ?? []).flatMap((c) => (c.units ? [{ name: `Condition '${c.name}'`, column: c.units, values: c.values === "free" ? null : c.values }] : [])),
+    ...(session?.conditions ?? []).flatMap((c) =>
+      c.units
+        ? [{ name: `Condition '${c.name}'`, column: c.units, values: c.values === "free" ? null : c.values }]
+        : [],
+    ),
     ...[...random].flatMap(([name, v]) =>
-      v.type === "random" && v.units ? [{ name: `Computed item '${name}'`, column: v.units, values: v.options ? v.options.map((o) => o.value) : null }] : [],
+      v.type === "random" && v.units
+        ? [
+            {
+              name: `Computed item '${name}'`,
+              column: v.units,
+              values: v.options ? v.options.map((o) => o.value) : null,
+            },
+          ]
+        : [],
     ),
   ];
   for (const { name, column, values } of linked) {
     if (values === null || valuesOf(column).length === 0) continue;
     const missing = values.filter((v) => !valuesOf(column).includes(v));
-    if (missing.length > 0) errors.push(`${name}: column '${column}' has no units for ${missing.map((v) => `'${v}'`).join(", ")}.`);
+    if (missing.length > 0)
+      errors.push(`${name}: column '${column}' has no units for ${missing.map((v) => `'${v}'`).join(", ")}.`);
     const unlisted = valuesOf(column).filter((v) => !values.includes(v));
-    if (unlisted.length > 0) warnings.push(`${name} doesn't list ${unlisted.map((v) => `'${v}'`).join(", ")} of column '${column}': no session gets those units.`);
+    if (unlisted.length > 0)
+      warnings.push(
+        `${name} doesn't list ${unlisted.map((v) => `'${v}'`).join(", ")} of column '${column}': no session gets those units.`,
+      );
   }
   // Units no session gets: in no set of a column every session is selected by
   const all = await unitIds(db, studyId, live);
@@ -191,7 +253,10 @@ export async function assignmentChecks(
     if (notSet.includes(column) || valuesOf(column).length === 0) continue;
     const placed = new Set((groups.get(column) ?? []).flatMap((s) => s.unitIds));
     const none = all.filter((id) => !placed.has(id)).length;
-    if (none > 0) warnings.push(`${none} unit${none === 1 ? " has" : "s have"} no value in column '${column}': no session gets ${none === 1 ? "it" : "them"}.`);
+    if (none > 0)
+      warnings.push(
+        `${none} unit${none === 1 ? " has" : "s have"} no value in column '${column}': no session gets ${none === 1 ? "it" : "them"}.`,
+      );
   }
 
   // Special units the loops place
@@ -209,7 +274,9 @@ export async function assignmentChecks(
         if (!settings) continue;
         const specials = special(set);
         if (specials.length === 0) {
-          warnings.push(`Loop '${title}': ${set === GOLD_SET ? "gold" : "practice"} units are on, but no set column has ${set} units.`);
+          warnings.push(
+            `Loop '${title}': ${set === GOLD_SET ? "gold" : "practice"} units are on, but no set column has ${set} units.`,
+          );
           continue;
         }
         const rows = (await servedUnits(db, studyId, live, specials)).sort((a, b) => a.id - b.id);
@@ -227,7 +294,11 @@ export async function assignmentChecks(
             );
           }
           if (empty.length === 0) continue;
-          const which = empty.slice(0, 5).map((r) => r.externalId).join(", ") + (empty.length > 5 ? ", …" : "");
+          const which =
+            empty
+              .slice(0, 5)
+              .map((r) => r.externalId)
+              .join(", ") + (empty.length > 5 ? ", …" : "");
           warnings.push(
             `Loop '${title}': ${empty.length} ${set} unit${empty.length === 1 ? " has" : "s have"} no right answer for '${question}' in column ${column(question)} (${which})${set === GOLD_SET ? ": they aren't checked" : ": no feedback on them"}.`,
           );
@@ -238,7 +309,10 @@ export async function assignmentChecks(
       const shareColumns = (shares.get(key) ?? []).map((c) => c.column);
       const overlapColumns = shareColumns.length > 0 ? shareColumns : [...groups.keys()];
       const n = new Set(overlapColumns.flatMap((c) => unitsIn(c, OVERLAP_SET))).size;
-      if (n === 0) warnings.push(`Loop '${title}': the overlap is on, but ${overlapColumns.length === 0 ? "no set column has overlap units" : `no ${OVERLAP_SET} units in ${overlapColumns.map((c) => `'${c}'`).join(", ")}`}.`);
+      if (n === 0)
+        warnings.push(
+          `Loop '${title}': the overlap is on, but ${overlapColumns.length === 0 ? "no set column has overlap units" : `no ${OVERLAP_SET} units in ${overlapColumns.map((c) => `'${c}'`).join(", ")}`}.`,
+        );
       else if (units.overlap.expect !== undefined && n < units.overlap.expect) {
         warnings.push(`Loop '${title}': ${n} overlap units; ${units.overlap.expect} are recommended.`);
       }

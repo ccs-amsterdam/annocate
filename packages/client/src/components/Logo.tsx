@@ -20,10 +20,7 @@ const LEAF = "M0 0C3.15 -2.94 7.88 -2.63 10.5 0C7.88 2.31 3.15 2.73 0 0Z";
 const LEAF_TRANSFORM = "translate(26 42.5) rotate(50)";
 
 /** Two wisps of smoke from the first twig (animated in index.css, `.logo-smoke`). */
-const SMOKE = [
-  "M50 14C46 9 53 6 49.5 1C47.5 -2 50 -5 51.5 -7",
-  "M45 14C42 10 47 7 44.5 3C43 1 44.5 -2 45.5 -3",
-];
+const SMOKE = ["M50 14C46 9 53 6 49.5 1C47.5 -2 50 -5 51.5 -7", "M45 14C42 10 47 7 44.5 3C43 1 44.5 -2 45.5 -3"];
 
 export function Logo({
   className = "h-7 w-7 text-wood",

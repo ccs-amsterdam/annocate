@@ -4,16 +4,8 @@
     "noEmit": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "types": [
-      "node"
-    ],
-    "lib": [
-      "ES2022",
-      "DOM"
-    ]
+    "types": ["node"],
+    "lib": ["ES2022", "DOM"]
   },
-  "include": [
-    "*.ts",
-    "tests"
-  ]
+  "include": ["*.ts", "tests"]
 }

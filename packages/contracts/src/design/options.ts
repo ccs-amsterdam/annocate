@@ -17,9 +17,9 @@ export type Option = z.infer<typeof OptionSchema>;
 export type OptionValue = Option["value"];
 
 export const NominalOptionSchema = OptionSchema.extend({
-  value: z.string({ error: "Nominal values are text (numbers rising in order: use an ordinal question)" }).describe(
-    "A standardized term, e.g. `human_interest`.",
-  ),
+  value: z
+    .string({ error: "Nominal values are text (numbers rising in order: use an ordinal question)" })
+    .describe("A standardized term, e.g. `human_interest`."),
 });
 export type NominalOption = z.infer<typeof NominalOptionSchema>;
 
@@ -29,7 +29,9 @@ export type NominalOption = z.infer<typeof NominalOptionSchema>;
  * number and a string are the same if the number written out is the string.
  */
 export function sameValue(a: unknown, b: unknown): boolean {
-  return a === b || (typeof a !== typeof b && (typeof a === "number" || typeof b === "number") && String(a) === String(b));
+  return (
+    a === b || (typeof a !== typeof b && (typeof a === "number" || typeof b === "number") && String(a) === String(b))
+  );
 }
 
 /** Whether a string is a number written the plain way: "3", "-2", "1.5"; not "01", "1.0", "+3" or " 3". */
@@ -75,7 +77,8 @@ export function ordinalValueErrors(options: { value: unknown }[]): string[] {
       errors.push(`Ordinal values are numbers, not ${JSON.stringify(value)}`);
       continue;
     }
-    if (previous !== null && value <= previous) errors.push(`Ordinal values must rise in the order of the options (${value} after ${previous})`);
+    if (previous !== null && value <= previous)
+      errors.push(`Ordinal values must rise in the order of the options (${value} after ${previous})`);
     previous = value;
   }
   return errors;

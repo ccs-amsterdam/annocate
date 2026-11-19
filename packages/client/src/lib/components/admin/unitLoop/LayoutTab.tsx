@@ -90,7 +90,7 @@ export function LayoutTab({
       <div className="flex flex-col gap-5">
         <Section title="Layout" help="What coders see of each unit." topic="layout-templates">
           {readOnly ? (
-            <pre className="whitespace-pre-wrap rounded-md border border-input p-2 font-mono text-xs">
+            <pre className="rounded-md border border-input p-2 font-mono text-xs whitespace-pre-wrap">
               {layout.template}
             </pre>
           ) : (
@@ -183,7 +183,7 @@ export function LayoutTab({
         className="group rounded-md border border-border/70 px-3 py-2"
         open={snippets.length > 0 || layout.colorScheme !== undefined}
       >
-        <summary className="cursor-pointer select-none text-xs font-medium text-muted-foreground hover:text-foreground">
+        <summary className="cursor-pointer text-xs font-medium text-muted-foreground select-none hover:text-foreground">
           More layout options: colours, snippets
         </summary>
         <div className="mt-3 flex flex-col gap-4">

@@ -1,5 +1,12 @@
 import { Hono, type Context } from "hono";
-import { EndSessionSchema, QuitSessionSchema, NextUnitQuerySchema, PostCoderVariablesSchema, PostUnitVariablesSchema, RedeemTransferSchema } from "@annotinder/contracts";
+import {
+  EndSessionSchema,
+  QuitSessionSchema,
+  NextUnitQuerySchema,
+  PostCoderVariablesSchema,
+  PostUnitVariablesSchema,
+  RedeemTransferSchema,
+} from "@annotinder/contracts";
 import type { Server } from "./context.js";
 import { HttpError } from "./shared/http.js";
 import { getCookie } from "hono/cookie";
@@ -45,7 +52,9 @@ export function coderApi(server: Server): Hono {
     const device = readDevice(c) ?? newDeviceId();
     await runtime.redeemTransfer(
       body.token,
-      async (participant) => [...new Set([await coderKey(device, deploymentId), await coderKey(device, deploymentId, participant)])],
+      async (participant) => [
+        ...new Set([await coderKey(device, deploymentId), await coderKey(device, deploymentId, participant)]),
+      ],
       deviceDetails(c.req.header("user-agent")),
     );
     writeDevice(c, device);
@@ -65,7 +74,13 @@ export function coderApi(server: Server): Hono {
     const key = await coderKey(device, deploymentId, participant);
     const [study] = await coderStudies(
       server.db,
-      and(eq(coders.studyId, Number(deploymentId)), eq(coders.id, server.db.select({ id: coderDevices.coderId }).from(coderDevices).where(eq(coderDevices.keyHash, key)))),
+      and(
+        eq(coders.studyId, Number(deploymentId)),
+        eq(
+          coders.id,
+          server.db.select({ id: coderDevices.coderId }).from(coderDevices).where(eq(coderDevices.keyHash, key)),
+        ),
+      ),
     );
     if (!study) throw new HttpError(404, "No session here");
     return c.json(study);
@@ -100,7 +115,11 @@ export function coderApi(server: Server): Hono {
     const existingDevice = readDevice(c);
     const device = existingDevice ?? newDeviceId();
     const participantParam = runtime.participantParam;
-    const key = await coderKey(device, deploymentId, participantParam ? urlParams[participantParam]?.trim() || undefined : undefined);
+    const key = await coderKey(
+      device,
+      deploymentId,
+      participantParam ? urlParams[participantParam]?.trim() || undefined : undefined,
+    );
     // Logins matter where the link takes them, or where sets are assigned by email.
     const takesLogin = !!link && (link.login !== "none" || runtime.needsLogin);
     // A login (the same as researchers', §5) is read only when it matters:
@@ -133,7 +152,9 @@ export function coderApi(server: Server): Hono {
 
   session.post("/transfer", async (c) => c.json(await c.get("runtime").createTransfer(c.get("coder"))));
 
-  session.get("/session", async (c) => c.json({ ...(await c.get("runtime").session(c.get("coder"))), canLogIn: c.get("canLogIn") }));
+  session.get("/session", async (c) =>
+    c.json({ ...(await c.get("runtime").session(c.get("coder"))), canLogIn: c.get("canLogIn") }),
+  );
 
   session.get("/loop/:loop/next", async (c) => {
     const query = NextUnitQuerySchema.safeParse({ count: c.req.query("count") });
@@ -147,10 +168,16 @@ export function coderApi(server: Server): Hono {
 
   session.post("/variables/unit", async (c) => {
     const body = await parseBody(c, PostUnitVariablesSchema);
-    return c.json(await c.get("runtime").submitUnit(c.get("coder"), body.unitId, body.variables, body.loop, c.get("deviceId"), body.timings));
+    return c.json(
+      await c
+        .get("runtime")
+        .submitUnit(c.get("coder"), body.unitId, body.variables, body.loop, c.get("deviceId"), body.timings),
+    );
   });
 
-  session.post("/variables/computed/:name", async (c) => c.json({ value: await c.get("runtime").computeVariable(c.get("coder"), c.req.param("name")) }));
+  session.post("/variables/computed/:name", async (c) =>
+    c.json({ value: await c.get("runtime").computeVariable(c.get("coder"), c.req.param("name")) }),
+  );
 
   session.post("/end", async (c) => {
     const body = await parseBody(c, EndSessionSchema);
@@ -178,7 +205,10 @@ export function coderApi(server: Server): Hono {
   return app;
 }
 
-async function parseBody<T>(c: Context, schema: { safeParse(v: unknown): { success: true; data: T } | { success: false } }) {
+async function parseBody<T>(
+  c: Context,
+  schema: { safeParse(v: unknown): { success: true; data: T } | { success: false } },
+) {
   let raw: unknown;
   try {
     raw = await c.req.json();

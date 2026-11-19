@@ -26,12 +26,13 @@ describe("TemplateMarkdown blocks", () => {
 
   it("renders the blocks of a snippet", async () => {
     const snippets = { banner: "::: style color: blue; font-size: 90%\n> **Experiment group.** A banner.\n:::" };
-    const html = renderToStaticMarkup(<TemplateMarkdown rendered={await renderTemplate("[[banner]]", scope, undefined, "t", { snippets })} />);
+    const html = renderToStaticMarkup(
+      <TemplateMarkdown rendered={await renderTemplate("[[banner]]", scope, undefined, "t", { snippets })} />,
+    );
     expect(html).toContain('<div class="flex flex-col gap-4" style="color:blue;font-size:90%"><blockquote>');
     expect(html).toContain("<strong>Experiment group.</strong>");
     expect(html).not.toContain(":::");
   });
-
 
   it("shows typed blocks as one value of their kind, values put in as they are, marked with their name", async () => {
     const s: ReferenceScope = { $unit: { headline: "News", text: "about climate" }, $var: {} };
@@ -51,4 +52,3 @@ describe("TemplateMarkdown blocks", () => {
     expect(rendered.values.at(-1)).toEqual({ suffix: "text", text: "about", block: true, field: "summary" });
   });
 });
-

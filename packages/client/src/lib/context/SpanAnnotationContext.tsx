@@ -91,8 +91,7 @@ export function SpanAnnotationProvider({
             },
           ];
         }),
-      updateSpan: (id, newValue) =>
-        setSpans((prev) => prev.map((s) => (s.id === id ? { ...s, value: newValue } : s))),
+      updateSpan: (id, newValue) => setSpans((prev) => prev.map((s) => (s.id === id ? { ...s, value: newValue } : s))),
       removeSpan: (id) => setSpans((prev) => prev.filter((s) => s.id !== id)),
       overlapsExisting: (slices) =>
         inPendingField(spans).some((s) =>
@@ -114,7 +113,17 @@ export function SpanAnnotationProvider({
       focusedSpanId,
       setFocusedSpanId,
     };
-  }, [sameFields, options, spans, selectionMode, allowGaps, pendingSpan, setPendingSpan, isViewingAllLabels, focusedSpanId]);
+  }, [
+    sameFields,
+    options,
+    spans,
+    selectionMode,
+    allowGaps,
+    pendingSpan,
+    setPendingSpan,
+    isViewingAllLabels,
+    focusedSpanId,
+  ]);
 
   return <SpanAnnotationContext.Provider value={value}>{children}</SpanAnnotationContext.Provider>;
 }

@@ -168,7 +168,9 @@ export function rowsToScript(rules: RuleRows, targets: RuleTarget[]): string {
     return c ? [c] : [];
   });
   if (conditions.length === 0) return "true";
-  return printSimpleCondition(conditions.length === 1 ? conditions[0] : { op: rules.match === "any" ? "or" : "and", args: conditions });
+  return printSimpleCondition(
+    conditions.length === 1 ? conditions[0] : { op: rules.match === "any" ? "or" : "and", args: conditions },
+  );
 }
 
 export function findTarget(targets: RuleTarget[], row: { question: string; item?: string }): RuleTarget | undefined {
@@ -189,12 +191,20 @@ function conditionRow(condition: SimpleCondition, targets: RuleTarget[]): RuleRo
   if (inner.op !== "call") return null;
   const target = findTarget(targets, inner);
   const operator = target
-    ? ruleOperators(target.kind).find((o) => o.method === inner.method && Boolean(o.negate) === negate && o.count === inner.compare?.op)
+    ? ruleOperators(target.kind).find(
+        (o) => o.method === inner.method && Boolean(o.negate) === negate && o.count === inner.compare?.op,
+      )
     : undefined;
   // `.is(1)` for the value "1": the option's own value, so the editor finds it
   const asOption = (a: OptionValue) => target?.options?.find((o) => sameValue(o.value, a))?.value ?? a;
   const args = inner.compare ? [inner.compare.value] : inner.args.map(asOption);
-  return { question: inner.question, ...(inner.item ? { item: inner.item } : {}), operator: operator?.key ?? "", args, raw: condition };
+  return {
+    question: inner.question,
+    ...(inner.item ? { item: inner.item } : {}),
+    operator: operator?.key ?? "",
+    args,
+    raw: condition,
+  };
 }
 
 /** What a row without a fitting operator says, in words: "lower than", "not is one of". */
@@ -216,7 +226,8 @@ export function rowProblems(row: RuleRow, targets: RuleTarget[]): string[] {
   const subject = row.item ? `"${row.question} › ${row.item}"` : `"${row.question}"`;
   if (!target) {
     const question = targets.find((t) => t.question === row.question);
-    if (question && row.item) return [`${subject}: "${row.item}" is not an item of "${row.question}", ${describeQuestion(question.variable)}`];
+    if (question && row.item)
+      return [`${subject}: "${row.item}" is not an item of "${row.question}", ${describeQuestion(question.variable)}`];
     return [`${subject} is not a question asked before this point`];
   }
   const operator = ruleOperators(target.kind).find((o) => o.key === row.operator);
@@ -230,7 +241,12 @@ export function rowProblems(row: RuleRow, targets: RuleTarget[]): string[] {
     return [`${subject}: "${rawOperatorLabel(row)}" can't be edited as a rule; choose another, or edit the script`];
   }
   if (operator.answered || operator.count) return [];
-  return callArgumentProblems(target.variable, { question: row.question, item: row.item, method: operator.method!, args: row.args });
+  return callArgumentProblems(target.variable, {
+    question: row.question,
+    item: row.item,
+    method: operator.method!,
+    args: row.args,
+  });
 }
 
 /** A simple condition as rows, if it is a flat list of rows (else null: edit it as a script). */
@@ -246,6 +262,15 @@ export function conditionToRows(condition: SimpleCondition, targets: RuleTarget[
 export function defaultRow(target: RuleTarget): RuleRow {
   const operator = ruleOperators(target.kind)[0];
   const first = target.options?.[0]?.value;
-  const args = operator.args === "none" ? [] : operator.args === "range" ? [0, 1] : operator.args === "number" ? [0] : first !== undefined ? [first] : [];
+  const args =
+    operator.args === "none"
+      ? []
+      : operator.args === "range"
+        ? [0, 1]
+        : operator.args === "number"
+          ? [0]
+          : first !== undefined
+            ? [first]
+            : [];
   return { question: target.question, ...(target.item ? { item: target.item } : {}), operator: operator.key, args };
 }

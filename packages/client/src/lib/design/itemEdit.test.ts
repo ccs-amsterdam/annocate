@@ -23,7 +23,12 @@ import { flattenTree, keyOf } from "../codebook/tree";
 
 /** A condition; it has no name, so the tests identify it by its editor key. */
 function cond(key: string, children: DesignItem[] = []): TopLevelItem {
-  return { _key: key, type: "show_if", condition: { script: "true" }, children: children as TopLevelItem[] } as TopLevelItem;
+  return {
+    _key: key,
+    type: "show_if",
+    condition: { script: "true" },
+    children: children as TopLevelItem[],
+  } as TopLevelItem;
 }
 
 describe("itemEdit", () => {
@@ -69,10 +74,7 @@ describe("itemEdit", () => {
     });
 
     it("removes a nested item and all its descendants", () => {
-      const items: TopLevelItem[] = [
-        cond("a", [cond("a1", [cond("a1_nested")]), cond("a2")]),
-        cond("b"),
-      ];
+      const items: TopLevelItem[] = [cond("a", [cond("a1", [cond("a1_nested")]), cond("a2")]), cond("b")];
       const next = deleteItem(items, "a1");
       expect(flattenTree(next).map(keyOf)).toEqual(["a", "a2", "b"]);
     });
@@ -237,7 +239,12 @@ describe("itemEdit", () => {
     // a, loop[ c[ x ] ], b
     const tree = (): TopLevelItem[] => [
       q("a") as TopLevelItem,
-      { _key: "loop", type: "unit_loop", layout: { template: "text" }, children: [cond("c", [q("x")])] } as unknown as TopLevelItem,
+      {
+        _key: "loop",
+        type: "unit_loop",
+        layout: { template: "text" },
+        children: [cond("c", [q("x")])],
+      } as unknown as TopLevelItem,
       q("b") as TopLevelItem,
       cond("empty"),
     ];

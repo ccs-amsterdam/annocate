@@ -12,7 +12,11 @@ export function deploymentPreview(server: Server): Hono<Env> {
   app.post("/study/:studyId/deployment/preview", requireStudyUser(server, "WRITE"), (c) => {
     const studyId = c.get("studyId");
     const expiresAt = Date.now() + PREVIEW_TTL_MS;
-    return c.json({ deploymentId: `${studyId}.preview`, token: server.deployments.previewToken(studyId, expiresAt), expiresAt: new Date(expiresAt) });
+    return c.json({
+      deploymentId: `${studyId}.preview`,
+      token: server.deployments.previewToken(studyId, expiresAt),
+      expiresAt: new Date(expiresAt),
+    });
   });
 
   return app;

@@ -12,12 +12,18 @@ import { UnitFields } from "./UnitFields";
  */
 async function render(layout: UnitLayout, unit: Record<string, unknown>) {
   const scope: ReferenceScope = { $unit: unit, $var: {} };
-  return { layout, rendered: await renderTemplate(layout.template, scope, undefined, "t", { snippets: layout.snippets }) };
+  return {
+    layout,
+    rendered: await renderTemplate(layout.template, scope, undefined, "t", { snippets: layout.snippets }),
+  };
 }
 
 describe("UnitFields", () => {
   it("renders values as plain text by default, so markdown in data stays literal", async () => {
-    const props = await render({ template: "# $unit.headline\n\n$unit.text" }, { headline: "Hi *there*", text: "**x** <b>y</b>" });
+    const props = await render(
+      { template: "# $unit.headline\n\n$unit.text" },
+      { headline: "Hi *there*", text: "**x** <b>y</b>" },
+    );
     const html = renderToStaticMarkup(<UnitFields {...props} />);
     expect(html).toContain("<h1>");
     expect(html).toContain("Hi *there*");

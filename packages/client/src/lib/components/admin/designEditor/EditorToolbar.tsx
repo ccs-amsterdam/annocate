@@ -1,4 +1,17 @@
-import { AlertCircle, AlertTriangle, ChevronDown, Code2, FileDown, History, Redo2, Rocket, RotateCcw, Sliders, Undo2, type LucideIcon } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  ChevronDown,
+  Code2,
+  FileDown,
+  History,
+  Redo2,
+  Rocket,
+  RotateCcw,
+  Sliders,
+  Undo2,
+  type LucideIcon,
+} from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { IconButton } from "@/components/ui/icon-button";
 import { Button } from "@/components/ui/button";
@@ -83,7 +96,13 @@ export function EditorToolbar({
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-2">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <IssuesMenu issues={errors} label="issue" icon={AlertCircle} tone="bg-destructive/10 text-destructive" onOpen={onOpenIssue} />
+        <IssuesMenu
+          issues={errors}
+          label="issue"
+          icon={AlertCircle}
+          tone="bg-destructive/10 text-destructive"
+          onOpen={onOpenIssue}
+        />
         <IssuesMenu
           issues={warnings}
           label="warning"
@@ -106,13 +125,34 @@ export function EditorToolbar({
       <div className="flex flex-wrap items-center gap-2">
         {!readOnly && (
           <div className="flex items-center">
-            <Button type="button" variant="ghost" size="icon-sm" onClick={onUndo} disabled={!canUndo} title="Undo" aria-label="Undo">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={onUndo}
+              disabled={!canUndo}
+              title="Undo"
+              aria-label="Undo"
+            >
               <Undo2 className="h-4 w-4" />
             </Button>
-            <Button type="button" variant="ghost" size="icon-sm" onClick={onRedo} disabled={!canRedo} title="Redo" aria-label="Redo">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={onRedo}
+              disabled={!canRedo}
+              title="Redo"
+              aria-label="Redo"
+            >
               <Redo2 className="h-4 w-4" />
             </Button>
-            <RevertMenu dirty={dirty} changedItems={changedItems} onRevertItem={onRevertItem} onRevertAll={onRevertAll} />
+            <RevertMenu
+              dirty={dirty}
+              changedItems={changedItems}
+              onRevertItem={onRevertItem}
+              onRevertAll={onRevertAll}
+            />
           </div>
         )}
 
@@ -122,29 +162,37 @@ export function EditorToolbar({
               <IconButton icon={FileDown} label="Export" />
             </PopoverTrigger>
             <PopoverContent align="end" className="flex w-72 flex-col gap-1 p-1">
-              <button type="button" className="rounded px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => {
+              <button
+                type="button"
+                className="rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+                onClick={() => {
                   setExportOpen(false);
                   onExport("codebook");
                 }}
               >
                 Codebook (Markdown)
-                <span className="block text-xs text-muted-foreground">What coders see, as a document, e.g. for a paper</span>
+                <span className="block text-xs text-muted-foreground">
+                  What coders see, as a document, e.g. for a paper
+                </span>
               </button>
-              <button type="button" className="rounded px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => {
+              <button
+                type="button"
+                className="rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+                onClick={() => {
                   setExportOpen(false);
                   onExport("design");
                 }}
               >
                 Design file (JSON)
-                <span className="block text-xs text-muted-foreground">All of the design, with the AnnoTinder version: to archive or reproduce it</span>
+                <span className="block text-xs text-muted-foreground">
+                  All of the design, with the AnnoTinder version: to archive or reproduce it
+                </span>
               </button>
             </PopoverContent>
           </Popover>
         )}
 
-        {onOpenVersions && (
-          <IconButton icon={History} label="Versions" onClick={onOpenVersions} />
-        )}
+        {onOpenVersions && <IconButton icon={History} label="Versions" onClick={onOpenVersions} />}
 
         {!readOnly && (
           <Button
@@ -210,7 +258,10 @@ function IssuesMenu({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button" className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold ${tone}`}>
+        <button
+          type="button"
+          className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold ${tone}`}
+        >
           <Icon className="h-3.5 w-3.5 shrink-0" />
           {issues.length} {label}
           {issues.length === 1 ? "" : "s"}
@@ -270,7 +321,14 @@ function RevertMenu({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button type="button" variant="ghost" size="sm" disabled={!dirty} className="gap-1 text-xs" title="Go back to the last save">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={!dirty}
+          className="gap-1 text-xs"
+          title="Go back to the last save"
+        >
           <RotateCcw className="h-3.5 w-3.5" />
           Revert
           <ChevronDown className="h-3 w-3" />
@@ -279,7 +337,9 @@ function RevertMenu({
       <PopoverContent align="end" className="w-72 p-1">
         {changedItems.length > 0 && (
           <>
-            <p className="px-2 pb-0.5 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Revert item</p>
+            <p className="px-2 pt-1.5 pb-0.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+              Revert item
+            </p>
             <ul className="max-h-60 overflow-y-auto">
               {changedItems.map((item) => (
                 <li key={item.key}>

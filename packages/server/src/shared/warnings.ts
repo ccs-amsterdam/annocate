@@ -32,7 +32,12 @@ export async function serverWarnings(server: Server): Promise<ServerWarning[]> {
     users,
     and(
       eq(users.emailVerified, false),
-      exists(server.db.select({ one: sql`1` }).from(roles).where(eq(roles.userId, users.id))),
+      exists(
+        server.db
+          .select({ one: sql`1` })
+          .from(roles)
+          .where(eq(roles.userId, users.id)),
+      ),
     ),
   );
   if (unverified > 0) {

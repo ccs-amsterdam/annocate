@@ -17,7 +17,12 @@ export function ScaleItemsEditor({ items, onChange }: { items: ScaleItem[]; onCh
       <label className="text-sm font-medium">Items</label>
       {items.map((item, i) => (
         <div key={i} className="flex items-center gap-2">
-          <Input placeholder="name" value={item.name} onChange={(e) => update(i, { name: e.target.value })} className="w-32" />
+          <Input
+            placeholder="name"
+            value={item.name}
+            onChange={(e) => update(i, { name: e.target.value })}
+            className="w-32"
+          />
           <Input
             placeholder="label"
             value={item.label ?? ""}

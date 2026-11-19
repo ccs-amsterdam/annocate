@@ -30,7 +30,7 @@ export function ExampleNotice({ client }: { client: ResearcherApi }) {
     <section className="relative rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5">
       <button
         type="button"
-        className="absolute right-2 top-2 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+        className="absolute top-2 right-2 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
         aria-label="Close"
         onClick={() => {
           try {
@@ -60,8 +60,8 @@ export function ExampleNotice({ client }: { client: ResearcherApi }) {
           ))}
         </ul>
         <p className="mt-2 text-xs text-muted-foreground">
-          It is an ordinary study: change anything. Example answers are from coders named &ldquo;Example coder&rdquo;; delete them on the
-          Coders tab before real coding starts.
+          It is an ordinary study: change anything. Example answers are from coders named &ldquo;Example coder&rdquo;;
+          delete them on the Coders tab before real coding starts.
         </p>
       </details>
     </section>

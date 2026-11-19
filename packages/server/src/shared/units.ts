@@ -1,5 +1,12 @@
 import { and, asc, desc, eq, exists, inArray, isNotNull, isNull, notExists, or, sql } from "drizzle-orm";
-import { EMPTY_SESSION, type UnitChanges, type UnitData, type UnitField, type UnitMeta, type UnitResponse } from "@annotinder/contracts";
+import {
+  EMPTY_SESSION,
+  type UnitChanges,
+  type UnitData,
+  type UnitField,
+  type UnitMeta,
+  type UnitResponse,
+} from "@annotinder/contracts";
 import { row, rows, type Db } from "../db/index.js";
 import {
   annotationValues,
@@ -67,7 +74,14 @@ export async function draftUnits(db: Db, studyId: number, query: DraftUnitsQuery
   if (query.offset !== undefined) withData.offset(query.offset);
   const t = withData.as("t");
   return db
-    .select({ id: t.id, studyId: t.studyId, externalId: t.externalId, coded: t.coded, data: t.data, hash: unitDataHash(t.data) })
+    .select({
+      id: t.id,
+      studyId: t.studyId,
+      externalId: t.externalId,
+      coded: t.coded,
+      data: t.data,
+      hash: unitDataHash(t.data),
+    })
     .from(t)
     .orderBy(asc(t.id));
 }
@@ -81,14 +95,21 @@ export async function draftUnits(db: Db, studyId: number, query: DraftUnitsQuery
  */
 export async function lockUnits(db: Db, studyId: number, mode: "write" | "read"): Promise<void> {
   await db.execute(
-    mode === "write" ? sql`SELECT pg_advisory_xact_lock(${UNITS_LOCK}, ${studyId})` : sql`SELECT pg_advisory_xact_lock_shared(${UNITS_LOCK}, ${studyId})`,
+    mode === "write"
+      ? sql`SELECT pg_advisory_xact_lock(${UNITS_LOCK}, ${studyId})`
+      : sql`SELECT pg_advisory_xact_lock_shared(${UNITS_LOCK}, ${studyId})`,
   );
 }
 const UNITS_LOCK = 24026;
 
 /** The study's latest design version (the draft, or the deployed one if there is no draft). */
 export async function latestDesignVersion(db: Db, studyId: number): Promise<DesignVersionRow | undefined> {
-  const [latest] = await db.select().from(designVersions).where(eq(designVersions.studyId, studyId)).orderBy(desc(designVersions.id)).limit(1);
+  const [latest] = await db
+    .select()
+    .from(designVersions)
+    .where(eq(designVersions.studyId, studyId))
+    .orderBy(desc(designVersions.id))
+    .limit(1);
   return latest;
 }
 
@@ -138,7 +159,11 @@ export async function setUnitFields(db: Db, studyId: number, fields: UnitField[]
  * (also ones taken out of the draft earlier). Returns their ids by
  * external id.
  */
-export async function saveUnits(db: Db, studyId: number, upload: { externalId: string; data: UnitData }[]): Promise<Map<string, number>> {
+export async function saveUnits(
+  db: Db,
+  studyId: number,
+  upload: { externalId: string; data: UnitData }[],
+): Promise<Map<string, number>> {
   const ids = new Map<string, number>();
   if (upload.length === 0) return ids;
   await lockUnits(db, studyId, "write");
@@ -194,10 +219,17 @@ export async function removeUnit(db: Db, studyId: number, unitId: number): Promi
     .select({ id: unitSets.id })
     .from(unitSets)
     .where(and(eq(unitSets.studyId, studyId), eq(unitSets.live, false)));
-  await db.delete(unitSetMembers).where(and(eq(unitSetMembers.unitId, unitId), inArray(unitSetMembers.setId, draftSets)));
+  await db
+    .delete(unitSetMembers)
+    .where(and(eq(unitSetMembers.unitId, unitId), inArray(unitSetMembers.setId, draftSets)));
   await db.delete(unitDraft).where(eq(unitDraft.unitId, unitId));
   const unit = and(eq(units.studyId, studyId), eq(units.id, unitId));
-  const hasVersions = exists(db.select({ one: sql`1` }).from(unitVersions).where(eq(unitVersions.unitId, units.id)));
+  const hasVersions = exists(
+    db
+      .select({ one: sql`1` })
+      .from(unitVersions)
+      .where(eq(unitVersions.unitId, units.id)),
+  );
   const [kept] = await db
     .select({ id: units.id })
     .from(units)
@@ -209,15 +241,23 @@ export async function removeUnit(db: Db, studyId: number, unitId: number): Promi
 
 /** Values neither a draft nor a version refers to. */
 async function deleteUnusedValues(db: Db, studyId: number): Promise<void> {
-  await db
-    .delete(unitValues)
-    .where(
-      and(
-        eq(unitValues.studyId, studyId),
-        notExists(db.select({ one: sql`1` }).from(unitDraft).where(eq(unitDraft.valueId, unitValues.id))),
-        notExists(db.select({ one: sql`1` }).from(unitVersionFields).where(eq(unitVersionFields.valueId, unitValues.id))),
+  await db.delete(unitValues).where(
+    and(
+      eq(unitValues.studyId, studyId),
+      notExists(
+        db
+          .select({ one: sql`1` })
+          .from(unitDraft)
+          .where(eq(unitDraft.valueId, unitValues.id)),
       ),
-    );
+      notExists(
+        db
+          .select({ one: sql`1` })
+          .from(unitVersionFields)
+          .where(eq(unitVersionFields.valueId, unitValues.id)),
+      ),
+    ),
+  );
 }
 
 /**
@@ -285,19 +325,29 @@ export async function deployDraftUnits(db: Db, studyId: number, deploy: number):
     SELECT l.unit_id, l.version_id FROM live l WHERE NOT EXISTS (SELECT 1 FROM draft d WHERE d.unit_id = l.unit_id)`,
   );
   const closing = changed.flatMap((c) => (c.versionId === null ? [] : [c.versionId]));
-  if (closing.length > 0) await db.update(unitVersions).set({ toDeploy: deploy - 1 }).where(anyOf(unitVersions.id, closing));
+  if (closing.length > 0)
+    await db
+      .update(unitVersions)
+      .set({ toDeploy: deploy - 1 })
+      .where(anyOf(unitVersions.id, closing));
   // New versions of the added and changed units, with the draft's fields
   const opening = await rows<{ id: number }>(
     db,
     sql`INSERT INTO unit_versions (study_id, unit_id, from_deploy)
-    SELECT ${studyId}, u.id, ${deploy} FROM units u WHERE ${anyOf(sql`u.id`, changed.map((c) => c.unitId))} AND u.in_draft
+    SELECT ${studyId}, u.id, ${deploy} FROM units u WHERE ${anyOf(
+      sql`u.id`,
+      changed.map((c) => c.unitId),
+    )} AND u.in_draft
     RETURNING id`,
   );
   if (opening.length > 0) {
     await db.execute(sql`
       INSERT INTO unit_version_fields (version_id, field_id, value_id)
       SELECT v.id, d.field_id, d.value_id FROM unit_versions v JOIN unit_draft d ON d.unit_id = v.unit_id
-      WHERE ${anyOf(sql`v.id`, opening.map((o) => o.id))}`);
+      WHERE ${anyOf(
+        sql`v.id`,
+        opening.map((o) => o.id),
+      )}`);
   }
   // The draft's sets become the live ones
   await db.delete(unitSets).where(and(eq(unitSets.studyId, studyId), eq(unitSets.live, true)));
@@ -312,25 +362,31 @@ export async function deployDraftUnits(db: Db, studyId: number, deploy: number):
     JOIN unit_sets s ON s.study_id = ${studyId} AND NOT s.live AND s.grp = c.grp AND s.name = c.name
     JOIN unit_set_members m ON m.set_id = s.id`);
   // Replaced versions nobody coded, units nothing keeps, values nothing refers to
-  await db
-    .delete(unitVersions)
-    .where(
-      and(
-        eq(unitVersions.studyId, studyId),
-        isNotNull(unitVersions.toDeploy),
-        notExists(db.select({ one: sql`1` }).from(annotationValues).where(eq(annotationValues.unitVersionId, unitVersions.id))),
+  await db.delete(unitVersions).where(
+    and(
+      eq(unitVersions.studyId, studyId),
+      isNotNull(unitVersions.toDeploy),
+      notExists(
+        db
+          .select({ one: sql`1` })
+          .from(annotationValues)
+          .where(eq(annotationValues.unitVersionId, unitVersions.id)),
       ),
-    );
-  await db
-    .delete(units)
-    .where(
-      and(
-        eq(units.studyId, studyId),
-        eq(units.inDraft, false),
-        eq(units.coded, false),
-        notExists(db.select({ one: sql`1` }).from(unitVersions).where(eq(unitVersions.unitId, units.id))),
+    ),
+  );
+  await db.delete(units).where(
+    and(
+      eq(units.studyId, studyId),
+      eq(units.inDraft, false),
+      eq(units.coded, false),
+      notExists(
+        db
+          .select({ one: sql`1` })
+          .from(unitVersions)
+          .where(eq(unitVersions.unitId, units.id)),
       ),
-    );
+    ),
+  );
   await deleteUnusedValues(db, studyId);
 }
 
@@ -348,12 +404,19 @@ export interface ServedUnitRow {
 export async function servedUnits(db: Db, studyId: number, live: boolean, ids: number[]): Promise<ServedUnitRow[]> {
   if (!live) return (await draftUnits(db, studyId, { ids })).map((r) => ({ ...r, versionId: 0 }));
   const t = db
-    .select({ id: units.id, externalId: units.externalId, versionId: sql<number>`${unitVersions.id}`.as("version_id"), data: unitVersionData(unitVersions.id).as("data") })
+    .select({
+      id: units.id,
+      externalId: units.externalId,
+      versionId: sql<number>`${unitVersions.id}`.as("version_id"),
+      data: unitVersionData(unitVersions.id).as("data"),
+    })
     .from(units)
     .innerJoin(unitVersions, and(eq(unitVersions.unitId, units.id), isNull(unitVersions.toDeploy)))
     .where(and(eq(units.studyId, studyId), anyOf(units.id, ids)))
     .as("t");
-  return db.select({ id: t.id, externalId: t.externalId, versionId: t.versionId, data: t.data, hash: unitDataHash(t.data) }).from(t);
+  return db
+    .select({ id: t.id, externalId: t.externalId, versionId: t.versionId, data: t.data, hash: unitDataHash(t.data) })
+    .from(t);
 }
 
 /** The ids of a study's units: the deployed ones (with a current version, `live`) or the draft's. */
@@ -371,4 +434,3 @@ export async function unitIds(db: Db, studyId: number, live: boolean): Promise<n
         .orderBy(asc(units.id));
   return found.map((r) => r.id);
 }
-

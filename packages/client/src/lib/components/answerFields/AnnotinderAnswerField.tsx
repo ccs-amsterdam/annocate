@@ -10,7 +10,14 @@ type AnnotinderVariable = Extract<QuestionVariable, { type: "annotinder" }>;
 
 const ICONS = { left: ArrowLeft, right: ArrowRight, up: ArrowUp };
 /** Arrow keys, and 1, 2, 3 for the 1st, 2nd and 3rd option. */
-const KEYS: Record<string, SwipeDirection> = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", "1": "left", "2": "right", "3": "up" };
+const KEYS: Record<string, SwipeDirection> = {
+  ArrowLeft: "left",
+  ArrowRight: "right",
+  ArrowUp: "up",
+  "1": "left",
+  "2": "right",
+  "3": "up",
+};
 
 /**
  * A swipe question: the card (the unit, see `SwipeCard`) is swiped left,

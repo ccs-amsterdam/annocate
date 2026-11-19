@@ -1,5 +1,13 @@
 import { optionLabel } from "./options.js";
-import type { AnyVariableType, CategoricalType, NominalLayout, NumericLayout, NumericType, OrdinalLayout, ScaleLayout } from "./variableTypes.js";
+import type {
+  AnyVariableType,
+  CategoricalType,
+  NominalLayout,
+  NumericLayout,
+  NumericType,
+  OrdinalLayout,
+  ScaleLayout,
+} from "./variableTypes.js";
 
 // How an answer form is laid out (docs/client.md §4). `auto` is fixed per
 // question, not per device, so every coder sees the same form: it is chosen
@@ -89,7 +97,8 @@ export function resolveLayout(variable: AnyVariableType): ResolvedLayout {
  * the smallest phone (single questions never scroll); null if it fits.
  */
 export function layoutWarning(variable: AnyVariableType): string | null {
-  if ((variable.type !== "nominal" && variable.type !== "ordinal") || !variable.layout || variable.layout === "auto") return null;
+  if ((variable.type !== "nominal" && variable.type !== "ordinal") || !variable.layout || variable.layout === "auto")
+    return null;
   const labels = variable.options.map(optionLabel);
   const tooTall = "doesn't fit half a small phone screen; coders would have to scroll (auto picks a layout that fits)";
   switch (variable.layout) {

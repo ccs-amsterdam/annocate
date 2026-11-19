@@ -26,7 +26,9 @@ export function readBackup(): DesignBackup | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const backup = JSON.parse(raw) as DesignBackup;
-    return typeof backup.studyId === "number" && Array.isArray(backup.items) && Array.isArray(backup.saved) ? backup : null;
+    return typeof backup.studyId === "number" && Array.isArray(backup.items) && Array.isArray(backup.saved)
+      ? backup
+      : null;
   } catch {
     return null;
   }

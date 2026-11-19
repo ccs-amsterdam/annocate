@@ -15,7 +15,14 @@ export const IconButton = React.forwardRef<
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button ref={ref} variant={variant} size={size} aria-label={label} className={cn("h-8 w-8 p-0", className)} {...props}>
+        <Button
+          ref={ref}
+          variant={variant}
+          size={size}
+          aria-label={label}
+          className={cn("h-8 w-8 p-0", className)}
+          {...props}
+        >
           <Icon className={cn("h-4 w-4", iconClassName)} />
         </Button>
       </TooltipTrigger>

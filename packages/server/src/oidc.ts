@@ -94,7 +94,11 @@ export class Oidc {
    * `maxAge` (seconds): the provider must have authenticated the user that
    * recently, else it asks again (step-up).
    */
-  async start(redirectUri: string, login: Omit<LoginState, "state" | "nonce" | "verifier">, maxAge?: number): Promise<{ url: URL; state: LoginState }> {
+  async start(
+    redirectUri: string,
+    login: Omit<LoginState, "state" | "nonce" | "verifier">,
+    maxAge?: number,
+  ): Promise<{ url: URL; state: LoginState }> {
     const verifier = client.randomPKCECodeVerifier();
     const state: LoginState = { ...login, state: client.randomState(), nonce: client.randomNonce(), verifier };
     const url = client.buildAuthorizationUrl(await this.configuration(), {
@@ -126,7 +130,8 @@ export class Oidc {
     }
     if (!claims || typeof claims.email !== "string" || !claims.email.trim()) return { error: "email_missing" };
     const { claim, value } = this.mfaClaim;
-    const mfa = claim === "amr" ? Array.isArray(claims.amr) && claims.amr.map(String).includes(value) : claims.acr === value;
+    const mfa =
+      claim === "amr" ? Array.isArray(claims.amr) && claims.amr.map(String).includes(value) : claims.acr === value;
     const authTime = typeof claims.auth_time === "number" ? new Date(claims.auth_time * 1000) : null;
     return {
       iss: claims.iss,

@@ -11,7 +11,16 @@ import {
   type Condition,
 } from "@annotinder/contracts";
 import { describe, expect, it } from "vitest";
-import { computeLoopSteps, computeTopLevelSteps, findItem, findParent, flattenTree, isInsideUnitLoop, itemAtPath, keyOf } from "./tree";
+import {
+  computeLoopSteps,
+  computeTopLevelSteps,
+  findItem,
+  findParent,
+  flattenTree,
+  isInsideUnitLoop,
+  itemAtPath,
+  keyOf,
+} from "./tree";
 
 /** Items by name; conditions (which have none) by their editor key. */
 const id = (item: DesignItem) => itemName(item) ?? keyOf(item);

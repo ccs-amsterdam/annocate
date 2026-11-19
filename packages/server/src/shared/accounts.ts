@@ -3,7 +3,18 @@ import { and, asc, count, desc, eq, exists, gt, inArray, isNotNull, isNull, lt, 
 import { alias } from "drizzle-orm/pg-core";
 import type { AccountRole, ApiKeyCreated, ApiKeyResponse, Limits, ServerSettings } from "@annotinder/contracts";
 import type { Db } from "../db/index.js";
-import { apiKeys, domainPlans, identities, plans, roles, serverSettings, sessions, studies, units, users } from "../db/schema/index.js";
+import {
+  apiKeys,
+  domainPlans,
+  identities,
+  plans,
+  roles,
+  serverSettings,
+  sessions,
+  studies,
+  units,
+  users,
+} from "../db/schema/index.js";
 import { accountRole } from "../db/sql.js";
 
 // Users, their identities and roles, limits, and API keys (contracts
@@ -24,7 +35,14 @@ const KEY_PREFIX = "atk_";
 const hashKey = (key: string) => createHash("sha256").update(key).digest("hex");
 
 function toApiKeyResponse(row: typeof apiKeys.$inferSelect): ApiKeyResponse {
-  return { id: row.id, label: row.label, prefix: row.prefix, created: row.created, lastUsed: row.lastUsed, revokedAt: row.revokedAt };
+  return {
+    id: row.id,
+    label: row.label,
+    prefix: row.prefix,
+    created: row.created,
+    lastUsed: row.lastUsed,
+    revokedAt: row.revokedAt,
+  };
 }
 
 /** A user's id, email and account role, to select. */
@@ -54,7 +72,12 @@ export async function ensureUser(db: Db, email: string): Promise<User> {
         .set({ registeredAt: sql`now()`, emailVerified: true })
         .where(and(eq(users.email, address), isNull(users.registeredAt)))
         .returning({ id: users.id });
-  const [made] = claimed ? [claimed] : await db.insert(users).values({ email: address, registeredAt: sql`now()`, emailVerified: true }).returning({ id: users.id });
+  const [made] = claimed
+    ? [claimed]
+    : await db
+        .insert(users)
+        .values({ email: address, registeredAt: sql`now()`, emailVerified: true })
+        .returning({ id: users.id });
   return (await userById(db, made!.id))!;
 }
 
@@ -83,7 +106,11 @@ export async function userForEmail(db: Db, email: string): Promise<{ id: number;
   const [made] = await db
     .insert(users)
     .values({ email: address })
-    .onConflictDoUpdate({ target: users.email, targetWhere: isNull(users.registeredAt), set: { email: sql`excluded.email` } })
+    .onConflictDoUpdate({
+      target: users.email,
+      targetWhere: isNull(users.registeredAt),
+      set: { email: sql`excluded.email` },
+    })
     .returning({ id: users.id });
   return { id: made!.id, registered: false };
 }
@@ -95,7 +122,12 @@ const userServerRole = {
 };
 
 /** Gives a user an account role on the server (`user`: none of their own); `granted_at` stays for an unchanged role. */
-export async function setServerRole(db: Db, userId: number, role: AccountRole, grantedBy: string | null = null): Promise<void> {
+export async function setServerRole(
+  db: Db,
+  userId: number,
+  role: AccountRole,
+  grantedBy: string | null = null,
+): Promise<void> {
   if (role === "user") {
     await db.delete(roles).where(and(isNull(roles.studyId), eq(roles.userId, userId), isNull(roles.emailDomain)));
     return;
@@ -160,7 +192,10 @@ export async function loginUser(db: Db, login: LoginIdentity, admins: readonly s
         lastLoginAt: sql`now()`,
       })
       .where(eq(users.id, userId));
-    await tx.update(identities).set({ lastLoginAt: sql`now()` }).where(identity);
+    await tx
+      .update(identities)
+      .set({ lastLoginAt: sql`now()` })
+      .where(identity);
     if (admins.includes(email)) await setServerRole(tx, userId, "admin", "ANNOTINDER_ADMINS");
     return (await userById(tx, userId))!;
   });
@@ -215,7 +250,10 @@ export async function resetIdentities(db: Db): Promise<{ users: number; unclaima
     await tx.delete(identities);
     await tx.delete(sessions);
     const registered = tx.select({ id: users.id }).from(users).where(isNotNull(users.registeredAt));
-    await tx.update(roles).set({ grantedAt: sql`now()` }).where(inArray(roles.userId, registered));
+    await tx
+      .update(roles)
+      .set({ grantedAt: sql`now()` })
+      .where(inArray(roles.userId, registered));
     // Users sharing the email who win over this one: a shadow user, or a later login
     const other = alias(users, "other");
     const reset = await tx
@@ -261,7 +299,9 @@ export async function createApiKey(db: Db, userId: number, label: string): Promi
 }
 
 export async function listApiKeys(db: Db, userId: number): Promise<ApiKeyResponse[]> {
-  return (await db.select().from(apiKeys).where(eq(apiKeys.userId, userId)).orderBy(asc(apiKeys.id))).map(toApiKeyResponse);
+  return (await db.select().from(apiKeys).where(eq(apiKeys.userId, userId)).orderBy(asc(apiKeys.id))).map(
+    toApiKeyResponse,
+  );
 }
 
 /** Revokes one of the user's keys; null if they have no such key. */
@@ -281,7 +321,14 @@ export async function userForKey(db: Db, key: string): Promise<User | null> {
     .update(apiKeys)
     .set({ lastUsed: sql`now()` })
     .from(users)
-    .where(and(eq(apiKeys.keyHash, hashKey(key)), isNull(apiKeys.revokedAt), eq(users.id, apiKeys.userId), isNull(users.blockedAt)))
+    .where(
+      and(
+        eq(apiKeys.keyHash, hashKey(key)),
+        isNull(apiKeys.revokedAt),
+        eq(users.id, apiKeys.userId),
+        isNull(users.blockedAt),
+      ),
+    )
     .returning(userFields);
   return row ?? null;
 }
@@ -299,7 +346,12 @@ function emailAtDomain(email: string, domain: string): boolean {
 }
 
 /** The role row that makes every user a researcher (`registration.open`). */
-export const everyoneResearcher = and(isNull(roles.studyId), isNull(roles.userId), isNull(roles.emailDomain), eq(roles.role, "researcher"));
+export const everyoneResearcher = and(
+  isNull(roles.studyId),
+  isNull(roles.userId),
+  isNull(roles.emailDomain),
+  eq(roles.role, "researcher"),
+);
 
 /**
  * The server's settings (one row; made with the defaults if it isn't there).
@@ -310,7 +362,10 @@ export async function getSettings(db: Db): Promise<ServerSettings> {
   const [row] = await db
     .select({
       settings: serverSettings,
-      open: sql<boolean>`EXISTS (${db.select({ one: sql`1` }).from(roles).where(everyoneResearcher)})`,
+      open: sql<boolean>`EXISTS (${db
+        .select({ one: sql`1` })
+        .from(roles)
+        .where(everyoneResearcher)})`,
     })
     .from(serverSettings);
   const { settings, open } = row!;
@@ -334,9 +389,14 @@ const generous = (a: number | null, b: number | null) => (a === null || b === nu
  * domains' plans, else the default plan; then their personal overrides.
  */
 export async function effectiveLimits(db: Db, userId: number): Promise<Limits> {
-  const [user] = await db.select({ email: users.email, planId: users.planId, limits: users.limits }).from(users).where(eq(users.id, userId));
+  const [user] = await db
+    .select({ email: users.email, planId: users.planId, limits: users.limits })
+    .from(users)
+    .where(eq(users.id, userId));
   if (!user) return {};
-  const allPlans = new Map((await db.select({ id: plans.id, limits: plans.limits }).from(plans)).map((p) => [p.id, p.limits]));
+  const allPlans = new Map(
+    (await db.select({ id: plans.id, limits: plans.limits }).from(plans)).map((p) => [p.id, p.limits]),
+  );
   let base: Limits | undefined = user.planId !== null ? allPlans.get(user.planId) : undefined;
   if (!base) {
     const rules = await db.select().from(domainPlans);

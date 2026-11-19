@@ -7,7 +7,18 @@ import { useCreateStudyMutation, useDeleteStudyMutation, useStudiesQuery } from 
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, FolderOpen, Trash2, Calendar, Archive, Shield, Sparkles, Wand2, ChevronDown } from "lucide-react";
+import {
+  Plus,
+  Search,
+  FolderOpen,
+  Trash2,
+  Calendar,
+  Archive,
+  Shield,
+  Sparkles,
+  Wand2,
+  ChevronDown,
+} from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ExamplesDialog } from "./ExamplesDialog";
 import { SetupWizard } from "./SetupWizard";
@@ -40,7 +51,7 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
   if (studiesQuery.isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <p className="text-sm text-muted-foreground animate-pulse">Loading studies...</p>
+        <p className="animate-pulse text-sm text-muted-foreground">Loading studies...</p>
       </div>
     );
   }
@@ -58,9 +69,7 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
   }
 
   const studies = studiesQuery.data ?? [];
-  const filteredStudies = studies.filter((j) =>
-    j.name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredStudies = studies.filter((j) => j.name.toLowerCase().includes(search.toLowerCase()));
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,20 +97,37 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
         {/* Search & Filter Toolbar */}
         {studies.length > 0 && (
           <div className="relative w-full max-w-xs sm:ml-4">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search studies..." aria-label="Search studies" className="h-9 pl-9" />
+            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search studies..."
+              aria-label="Search studies"
+              className="h-9 pl-9"
+            />
           </div>
         )}
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          {me?.role === "admin" && onOpenServerAdmin && <IconButton icon={Shield} label="Server admin" variant="outline" className="h-9 w-9" onClick={onOpenServerAdmin} />}
+          {me?.role === "admin" && onOpenServerAdmin && (
+            <IconButton
+              icon={Shield}
+              label="Server admin"
+              variant="outline"
+              className="h-9 w-9"
+              onClick={onOpenServerAdmin}
+            />
+          )}
           {canCreate && (
-            <CreateStudyMenu onWizard={() => setShowWizard(true)} onExample={() => setShowExamples(true)} onEmpty={() => setShowCreateModal(true)} />
+            <CreateStudyMenu
+              onWizard={() => setShowWizard(true)}
+              onExample={() => setShowExamples(true)}
+              onEmpty={() => setShowCreateModal(true)}
+            />
           )}
         </div>
       </div>
 
       {me && server && onMe && <ResearcherAccess server={server} me={me} onMe={onMe} />}
-
 
       {/* Studies List */}
       {filteredStudies.length === 0 ? (
@@ -112,7 +138,7 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
           <h3 className="mt-4 text-base font-semibold text-foreground">
             {studies.length === 0 ? "No studies yet" : "No matching studies"}
           </h3>
-          <p className="mt-1 text-sm text-muted-foreground max-w-xs">
+          <p className="mt-1 max-w-xs text-sm text-muted-foreground">
             {studies.length === 0
               ? canCreate
                 ? "Get started by creating your first annotation study."
@@ -148,14 +174,16 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
               onKeyDown={(e) => {
                 if (e.key === "Enter") onSelectStudy(study.id);
               }}
-              className="group relative flex cursor-pointer flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-wood/50 hover:bg-wood/5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="group relative flex cursor-pointer flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-wood/50 hover:bg-wood/5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               <div className="flex items-start justify-between gap-2">
-                <h3 className="line-clamp-2 text-base font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary">{study.name}</h3>
+                <h3 className="line-clamp-2 text-base font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary">
+                  {study.name}
+                </h3>
                 <IconButton
                   icon={Trash2}
                   label={`Delete study ${study.name}`}
-                  className="-mr-2 -mt-1 h-7 w-7 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                  className="-mt-1 -mr-2 h-7 w-7 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100"
                   iconClassName="h-3.5 w-3.5"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -166,7 +194,13 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
               <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
                 <Calendar className="h-3.5 w-3.5" />
                 <span>
-                  {study.created ? new Date(study.created).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "Recently"}
+                  {study.created
+                    ? new Date(study.created).toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })
+                    : "Recently"}
                 </span>
                 {study.archived && (
                   <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-medium">
@@ -203,17 +237,13 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
 
       {/* Create Study Dialog Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex animate-in items-center justify-center bg-black/50 p-4 backdrop-blur-sm fade-in">
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
             <h2 className="text-lg font-semibold text-foreground">Create New Study</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Enter a descriptive name for your annotation study.
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Enter a descriptive name for your annotation study.</p>
             <form onSubmit={handleCreateSubmit} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">
-                  Study Name
-                </label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Study Name</label>
                 <Input
                   autoFocus
                   placeholder="e.g. Sentiment Analysis Phase 1"
@@ -225,7 +255,9 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
 
               {createStudy.isError && (
                 <p className="text-xs text-destructive">
-                  {createStudy.error instanceof ResearcherApiError ? createStudy.error.reason : createStudy.error.message}
+                  {createStudy.error instanceof ResearcherApiError
+                    ? createStudy.error.reason
+                    : createStudy.error.message}
                 </p>
               )}
 
@@ -252,17 +284,15 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
 
       {/* Delete Study Confirmation Modal */}
       {studyToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex animate-in items-center justify-center bg-black/50 p-4 backdrop-blur-sm fade-in">
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
             <h2 className="text-lg font-semibold text-foreground">Delete Study</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Are you sure you want to delete <strong className="text-foreground">{studyToDelete.name}</strong>?
-              This will permanently delete all its designVersions, units, and coder annotations.
+              Are you sure you want to delete <strong className="text-foreground">{studyToDelete.name}</strong>? This
+              will permanently delete all its designVersions, units, and coder annotations.
             </p>
 
-            {deleteStudy.isError && (
-              <p className="mt-2 text-xs text-destructive">{deleteStudy.error.message}</p>
-            )}
+            {deleteStudy.isError && <p className="mt-2 text-xs text-destructive">{deleteStudy.error.message}</p>}
 
             <div className="mt-5 flex justify-end gap-2">
               <Button
@@ -293,7 +323,15 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
 }
 
 /** "Create new study": the guided setup, an example, or an empty study. */
-function CreateStudyMenu({ onWizard, onExample, onEmpty }: { onWizard: () => void; onExample: () => void; onEmpty: () => void }) {
+function CreateStudyMenu({
+  onWizard,
+  onExample,
+  onEmpty,
+}: {
+  onWizard: () => void;
+  onExample: () => void;
+  onEmpty: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const item = (icon: ReactNode, title: string, text: string, onClick: () => void) => (
     <button
@@ -322,7 +360,12 @@ function CreateStudyMenu({ onWizard, onExample, onEmpty }: { onWizard: () => voi
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-1.5" role="menu">
-        {item(<Wand2 className="h-4 w-4" />, "Guided setup", "Units, who codes what and your questions, step by step.", onWizard)}
+        {item(
+          <Wand2 className="h-4 w-4" />,
+          "Guided setup",
+          "Units, who codes what and your questions, step by step.",
+          onWizard,
+        )}
         {item(<Sparkles className="h-4 w-4" />, "From an example", "A ready study to try and change.", onExample)}
         {item(<Plus className="h-4 w-4" />, "Empty study", "Start from scratch in the editor.", onEmpty)}
       </PopoverContent>

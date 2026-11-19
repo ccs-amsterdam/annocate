@@ -62,10 +62,16 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
 
   const [made] = await tx
     .insert(studies)
-    .values({ name: recipe.name, ownerId: options.ownerId, origin: options.origin ?? null, signIn: recipe.signIn ?? "off" })
+    .values({
+      name: recipe.name,
+      ownerId: options.ownerId,
+      origin: options.origin ?? null,
+      signIn: recipe.signIn ?? "off",
+    })
     .returning();
   const study = made!;
-  if (options.ownerId !== null && options.ownerIsAdmin) await tx.insert(roles).values({ role: "ADMIN", studyId: study.id, userId: options.ownerId });
+  if (options.ownerId !== null && options.ownerIsAdmin)
+    await tx.insert(roles).values({ role: "ADMIN", studyId: study.id, userId: options.ownerId });
 
   // Units
   const unitIds = new Map<string, number>();
@@ -108,7 +114,8 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
   const twice = groups.find((g, i) => groups.indexOf(g) !== i);
   if (twice !== undefined) throw invalid(`Group '${twice}' is defined twice`);
   for (const group of recipe.sets) {
-    if (fields.some((f) => f.name === group.group)) throw invalid(`'${group.group}' is a field of the units and a set column`);
+    if (fields.some((f) => f.name === group.group))
+      throw invalid(`'${group.group}' is a field of the units and a set column`);
     await putSetGroup(
       tx,
       study.id,
@@ -141,7 +148,12 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
     if (checks.errors.length > 0) throw invalid(checks.errors.join(" "));
     await checkLinkCount(tx, study.id, designItems(recipe.design) as DesignItem[], true, true);
     await syncLinks(tx, study.id, { secrets: options.secrets });
-    const [first] = await tx.select({ id: links.id }).from(links).where(eq(links.studyId, study.id)).orderBy(asc(links.id)).limit(1);
+    const [first] = await tx
+      .select({ id: links.id })
+      .from(links)
+      .where(eq(links.studyId, study.id))
+      .orderBy(asc(links.id))
+      .limit(1);
     firstLink = first?.id ?? null;
   }
   return { study, designVersionId, unitIds, firstLink };

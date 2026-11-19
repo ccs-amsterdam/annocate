@@ -6,7 +6,8 @@ import { test as base, expect, type BrowserContext } from "@playwright/test";
 
 function watch(context: BrowserContext, violations: string[]) {
   context.on("console", (msg) => {
-    if (/Content Security Policy|Refused to (load|execute|apply|frame|connect)/i.test(msg.text())) violations.push(msg.text());
+    if (/Content Security Policy|Refused to (load|execute|apply|frame|connect)/i.test(msg.text()))
+      violations.push(msg.text());
   });
 }
 

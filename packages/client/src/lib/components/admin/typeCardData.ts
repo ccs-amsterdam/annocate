@@ -33,5 +33,10 @@ export function answerTypeCards(types: readonly string[]): TypeCard<AnswerType>[
 
 /** What a computed variable can compute (a formula comes later). */
 export const COMPUTED_TYPE_CARDS: TypeCard<"random">[] = [
-  { type: "random", label: "Random condition", description: "Drawn at random or balanced, e.g. an experimental group", icon: Shuffle },
+  {
+    type: "random",
+    label: "Random condition",
+    description: "Drawn at random or balanced, e.g. an experimental group",
+    icon: Shuffle,
+  },
 ];

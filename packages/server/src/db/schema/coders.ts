@@ -30,7 +30,10 @@ export const coders = pgTable(
     ended: jsonb().$type<SessionEnd>(),
     deletionRequest: jsonb().$type<DeletionRequest>(),
   },
-  (t) => [index("coders_email").on(t.studyId, sql`lower(${t.email})`), index("coders_participant").on(t.studyId, t.participantId)],
+  (t) => [
+    index("coders_email").on(t.studyId, sql`lower(${t.email})`),
+    index("coders_participant").on(t.studyId, t.participantId),
+  ],
 );
 
 /** A coder's devices (a cookie; key_hash: its hash), with coarse details. */
@@ -120,7 +123,11 @@ export const annotationValues = pgTable(
     index("annotation_values_coder").on(t.studyId, t.coderId, t.unitId),
     index("annotation_values_created").on(t.studyId, t.created),
     index("annotation_values_variable").on(t.studyId, t.variable),
-    uniqueIndex("annotation_values_live").on(t.unitId, t.coderId, t.variable).where(sql`${t.retiredAt} IS NULL`),
-    uniqueIndex("annotation_values_coder_live").on(t.coderId, t.variable).where(sql`${t.retiredAt} IS NULL AND ${t.unitId} IS NULL`),
+    uniqueIndex("annotation_values_live")
+      .on(t.unitId, t.coderId, t.variable)
+      .where(sql`${t.retiredAt} IS NULL`),
+    uniqueIndex("annotation_values_coder_live")
+      .on(t.coderId, t.variable)
+      .where(sql`${t.retiredAt} IS NULL AND ${t.unitId} IS NULL`),
   ],
 );

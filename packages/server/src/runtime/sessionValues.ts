@@ -1,4 +1,11 @@
-import { MAX_SESSION_VALUE, coderAccess, conditionValues, sessionParamKey, type SessionItem, type SignIn } from "@annotinder/contracts";
+import {
+  MAX_SESSION_VALUE,
+  coderAccess,
+  conditionValues,
+  sessionParamKey,
+  type SessionItem,
+  type SignIn,
+} from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 
 // A new session's `$session` values (docs/architecture.md §6
@@ -25,7 +32,8 @@ export interface SessionDraw {
 }
 
 /** How coders get in: by email (sign in) when the coder column's values are email addresses. */
-export const emailCoders = (rules: SessionRules) => !!rules.item?.coders && coderAccess(rules.setsOf(rules.item.coders.column)) === "email";
+export const emailCoders = (rules: SessionRules) =>
+  !!rules.item?.coders && coderAccess(rules.setsOf(rules.item.coders.column)) === "email";
 
 /** Whether a new session needs a login: the study requires it, or coders are email addresses. */
 export const loginRequired = (rules: SessionRules) => rules.signIn === "required" || emailCoders(rules);
@@ -50,10 +58,12 @@ export function sessionValues(
 ): { participantId: string | null; session: Record<string, string>; draws: SessionDraw[] } {
   const read = (key: string) => {
     const value = urlParams[key]?.trim();
-    if (value && value.length > MAX_SESSION_VALUE) throw new HttpError(400, `The URL parameter "${key}" is too long`, "url_param_invalid");
+    if (value && value.length > MAX_SESSION_VALUE)
+      throw new HttpError(400, `The URL parameter "${key}" is too long`, "url_param_invalid");
     return value || undefined;
   };
-  const invalid = (key: string) => new HttpError(400, `The URL parameter "${key}" has a value this link doesn't accept`, "url_param_invalid");
+  const invalid = (key: string) =>
+    new HttpError(400, `The URL parameter "${key}" has a value this link doesn't accept`, "url_param_invalid");
 
   const session: Record<string, string> = {};
   for (const p of rules.item?.params ?? []) {
@@ -63,7 +73,8 @@ export function sessionValues(
     }
     const key = sessionParamKey(p);
     const value = read(key) ?? p.default;
-    if (value === undefined) throw new HttpError(400, `This link needs the URL parameter "${key}"`, "url_param_missing");
+    if (value === undefined)
+      throw new HttpError(400, `This link needs the URL parameter "${key}"`, "url_param_missing");
     const ok = "list" in p.values ? p.values.list.some((v) => v.value === value) : fits(value, p.values.open.pattern);
     if (!ok) throw invalid(key);
     session[p.name] = value;
@@ -75,7 +86,8 @@ export function sessionValues(
   const participant = rules.item?.participant;
   if (participant) {
     const value = read(participant.param);
-    if (value === undefined) throw new HttpError(400, `This link needs the URL parameter "${participant.param}"`, "url_param_missing");
+    if (value === undefined)
+      throw new HttpError(400, `This link needs the URL parameter "${participant.param}"`, "url_param_missing");
     if (!fits(value, participant.pattern)) throw invalid(participant.param);
     participantId = value;
   }
@@ -89,7 +101,8 @@ export function sessionValues(
     if (emailCoders(rules)) {
       const lower = email!.toLowerCase();
       const coder = values.find((v) => v.toLowerCase() === lower);
-      if (coder === undefined) throw new HttpError(403, "This email address has no access to this study", "email_not_allowed");
+      if (coder === undefined)
+        throw new HttpError(403, "This email address has no access to this study", "email_not_allowed");
       session.coder = coder;
     } else if (link.params.coder !== undefined) {
       if (!values.includes(link.params.coder)) throw inactive();
@@ -121,7 +134,8 @@ export function previewSessionValues(rules: SessionRules, urlParams: Record<stri
   const given = (key: string) => urlParams[key]?.trim().slice(0, MAX_SESSION_VALUE) || undefined;
   for (const p of rules.item?.params ?? []) {
     const first = "list" in p.values ? p.values.list[0]?.value : undefined;
-    const value = given(p.kind === "url" ? sessionParamKey(p) : p.name) ?? (p.kind === "url" ? p.default : undefined) ?? first;
+    const value =
+      given(p.kind === "url" ? sessionParamKey(p) : p.name) ?? (p.kind === "url" ? p.default : undefined) ?? first;
     if (value !== undefined) session[p.name] = value;
   }
   // The coder and the conditions: as given (by name), else the first value

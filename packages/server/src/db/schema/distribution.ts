@@ -64,5 +64,8 @@ export const unitCodings = pgTable(
     created: timestamptz().notNull().defaultNow(),
     updated: timestamptz().notNull().defaultNow(),
   },
-  (t) => [primaryKey({ name: "unit_codings_pkey", columns: [t.studyId, t.loopKey, t.unitId, t.coderId] }), index("unit_codings_coder").on(t.coderId, t.loopKey, t.created)],
+  (t) => [
+    primaryKey({ name: "unit_codings_pkey", columns: [t.studyId, t.loopKey, t.unitId, t.coderId] }),
+    index("unit_codings_coder").on(t.coderId, t.loopKey, t.created),
+  ],
 );

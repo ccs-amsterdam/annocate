@@ -7,14 +7,18 @@ import { answers, api, coders, fromExample, question } from "./helpers";
 
 const SWIPE_QUESTION = "Is this headline good news or bad news?";
 
-test("a coder quits and asks for their answers to be deleted; the researcher sees the request", async ({ page, request }) => {
+test("a coder quits and asks for their answers to be deleted; the researcher sees the request", async ({
+  page,
+  request,
+}) => {
   const { study, link } = await fromExample(request, "swipe-sentiment");
   const examples = (await coders(request, study.id)).map((c) => c.id);
   await page.goto(link);
   await question(page, SWIPE_QUESTION);
   await page.keyboard.press("ArrowLeft");
   // The next unit asks the same question: wait for the answer to be saved
-  const own = async () => (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null);
+  const own = async () =>
+    (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null);
   await expect.poll(async () => (await own()).length).toBe(1);
   await page.getByRole("button", { name: "Stop" }).click();
   await page.getByRole("button", { name: /Quit and ask to delete my answers/ }).click();
@@ -27,7 +31,9 @@ test("a coder quits and asks for their answers to be deleted; the researcher see
   expect(mine[0].ended?.outcome).toBe("quit");
   expect(mine[0].deletionRequest).toBeTruthy();
   // The answer given before quitting was saved
-  expect((await answers(request, study.id)).filter((a) => a.coderId === mine[0].id && a.unitId !== null)).toHaveLength(1);
+  expect((await answers(request, study.id)).filter((a) => a.coderId === mine[0].id && a.unitId !== null)).toHaveLength(
+    1,
+  );
 });
 
 test("a coder continues on another device with the transfer link", async ({ page, request, browser }) => {
@@ -47,13 +53,22 @@ test("a coder continues on another device with the transfer link", async ({ page
   await question(phone, SWIPE_QUESTION);
   await phone.keyboard.press("ArrowRight");
   await question(phone, SWIPE_QUESTION);
-  await expect.poll(async () => (await coders(request, study.id)).filter((c) => !examples.includes(c.id)).length).toBe(1);
   await expect
-    .poll(async () => (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null).length)
+    .poll(async () => (await coders(request, study.id)).filter((c) => !examples.includes(c.id)).length)
+    .toBe(1);
+  await expect
+    .poll(
+      async () =>
+        (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null).length,
+    )
     .toBe(2);
 });
 
-test("pausing: a working coder saves what they have and sees the study is paused; new coders can't start; resume", async ({ page, request, browser }) => {
+test("pausing: a working coder saves what they have and sees the study is paused; new coders can't start; resume", async ({
+  page,
+  request,
+  browser,
+}) => {
   const { study, link } = await fromExample(request, "survey-annotations");
   await page.goto(link);
   await page.getByRole("button", { name: "I confirm", exact: true }).click();
@@ -62,7 +77,8 @@ test("pausing: a working coder saves what they have and sees the study is paused
   await question(page, "What is this headline about?");
 
   const deployment = await api<DeploymentResponse>(request, "GET", `/study/${study.id}/deployment`);
-  const pause = (active: boolean) => api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: deployment.designVersionId, active });
+  const pause = (active: boolean) =>
+    api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: deployment.designVersionId, active });
   await pause(false);
 
   // Code the units already loaded (a batch of 5), then the paused message
@@ -96,7 +112,12 @@ test("a new design version while coding: the coder continues on the new version"
   // The researcher rewords a question and publishes
   const deployment = await api<DeploymentResponse>(request, "GET", `/study/${study.id}/deployment`);
   const codebook = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${deployment.designVersionId}`);
-  const items = JSON.parse(JSON.stringify(codebook.items).replace("How relevant is this news to you personally?", "How relevant is this news for you?"));
+  const items = JSON.parse(
+    JSON.stringify(codebook.items).replace(
+      "How relevant is this news to you personally?",
+      "How relevant is this news for you?",
+    ),
+  );
   const next = await api<DesignVersion>(request, "POST", `/study/${study.id}/design`, { note: "v2", items });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: next.id, active: true });
 
@@ -107,5 +128,11 @@ test("a new design version while coding: the coder continues on the new version"
   await expect(page.getByRole("button", { name: /Quite/ })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: /Quite/ }).click();
   await question(page, "What is this headline about?");
-  await expect.poll(async () => (await answers(request, study.id)).filter((a) => a.variable === "relevance" && a.designVersionId === next.id).length).toBe(1);
+  await expect
+    .poll(
+      async () =>
+        (await answers(request, study.id)).filter((a) => a.variable === "relevance" && a.designVersionId === next.id)
+          .length,
+    )
+    .toBe(1);
 });

@@ -9,4 +9,3 @@ export class HttpError extends Error {
     super(message);
   }
 }
-

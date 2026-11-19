@@ -27,7 +27,13 @@ export interface RateLimits {
  * Defaults: a class or a lab behind one address (hundreds of coders at once)
  * stays well below them.
  */
-export const DEFAULT_RATE_LIMITS: RateLimits = { coderStart: 300, transfer: 30, login: 60, researcher: 1200, coder: 10_000 };
+export const DEFAULT_RATE_LIMITS: RateLimits = {
+  coderStart: 300,
+  transfer: 30,
+  login: 60,
+  researcher: 1200,
+  coder: 10_000,
+};
 
 /** The client's address: the last X-Forwarded-For entry behind a proxy that sets it (`trustProxy`), else the connection's. */
 function clientIp(c: Context, trustProxy: boolean): string {

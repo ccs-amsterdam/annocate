@@ -61,10 +61,19 @@ export function DesignManager({
   // The version shown in the editor; null follows the current version (draft, else latest)
   // (undefined: the URL's version number, `initialVersion`, once the versions are known)
   const [chosenId, setSelectedId] = useState<number | null | undefined>(
-    restore ? restore.designVersionId : initialVersionId !== null ? initialVersionId : initialVersion !== undefined ? undefined : null,
+    restore
+      ? restore.designVersionId
+      : initialVersionId !== null
+        ? initialVersionId
+        : initialVersion !== undefined
+          ? undefined
+          : null,
   );
-  const urlId = designVersionsQuery.data ? (designVersionsQuery.data[(initialVersion ?? 0) - 1]?.id ?? null) : undefined;
-  const selectedId = chosenId !== undefined ? chosenId : urlId === undefined ? null : urlId === versions.currentId ? null : urlId;
+  const urlId = designVersionsQuery.data
+    ? (designVersionsQuery.data[(initialVersion ?? 0) - 1]?.id ?? null)
+    : undefined;
+  const selectedId =
+    chosenId !== undefined ? chosenId : urlId === undefined ? null : urlId === versions.currentId ? null : urlId;
   const fromUrl = chosenId === undefined && urlId === undefined;
   // The backup is used by the first editor only: later ones start from what is saved
   const [pendingRestore, setPendingRestore] = useState(restore);
@@ -142,7 +151,11 @@ export function DesignManager({
   /** Copies a version into the draft (replacing the draft's content, if there is one). */
   function restoreVersion(id: number) {
     // Asked first: cancelling it after unsaved edits were discarded would leave them untracked
-    if (versions.draftId !== null && !confirm(`Replace the draft (v${draftNumber}) with the content of v${versions.numberOf(id)}?`)) return;
+    if (
+      versions.draftId !== null &&
+      !confirm(`Replace the draft (v${draftNumber}) with the content of v${versions.numberOf(id)}?`)
+    )
+      return;
     requestNavigation(async () => {
       try {
         const source = await client.getDesignVersion(id);
@@ -254,7 +267,10 @@ export function DesignManager({
         onDeploy={async (version, note, units) => {
           if (version && note !== (version.note ?? "")) {
             // Based on the saved revision; the editor reloads after (its revision is now old), deploy or not
-            const updated = await updateDesignVersion.mutateAsync({ id: version.id, body: { note: note || undefined, items: version.items, revision: version.revision } });
+            const updated = await updateDesignVersion.mutateAsync({
+              id: version.id,
+              body: { note: note || undefined, items: version.items, revision: version.revision },
+            });
             setToPublish(updated);
             setEditorEpoch((n) => n + 1);
           }

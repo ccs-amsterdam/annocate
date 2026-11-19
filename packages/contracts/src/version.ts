@@ -61,6 +61,11 @@ export function designFile(
     name: meta.name,
     version: meta.version,
     note: design.note ?? null,
-    design: { public: design.public ?? null, session: design.session ?? EMPTY_SESSION, units: design.units, items: design.items } as DesignFile["design"],
+    design: {
+      public: design.public ?? null,
+      session: design.session ?? EMPTY_SESSION,
+      units: design.units,
+      items: design.items,
+    } as DesignFile["design"],
   };
 }

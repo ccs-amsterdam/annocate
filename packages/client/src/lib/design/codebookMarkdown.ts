@@ -1,4 +1,12 @@
-import { fieldUsage, unitLoops, loopTitle, type AnyVariableType, type DesignItem, type TopLevelItem, type UnitLoopItem } from "@annotinder/contracts";
+import {
+  fieldUsage,
+  unitLoops,
+  loopTitle,
+  type AnyVariableType,
+  type DesignItem,
+  type TopLevelItem,
+  type UnitLoopItem,
+} from "@annotinder/contracts";
 
 // The codebook as a document (docs/glossary.md): what coders see,
 // for a paper's appendix or a colleague: questions with their instructions
@@ -24,11 +32,18 @@ function optionLines(variable: AnyVariableType): string[] {
   const lines: string[] = [];
   if ("options" in variable && Array.isArray(variable.options)) {
     for (const o of variable.options as { value: unknown; label?: string }[]) {
-      lines.push(o.label && o.label !== String(o.value) ? `- \`${String(o.value)}\`: ${o.label}` : `- \`${String(o.value)}\``);
+      lines.push(
+        o.label && o.label !== String(o.value) ? `- \`${String(o.value)}\`: ${o.label}` : `- \`${String(o.value)}\``,
+      );
     }
   }
   if (variable.type === "numeric") {
-    const range = [variable.min !== undefined ? `from ${variable.min}` : "", variable.max !== undefined ? `to ${variable.max}` : ""].filter(Boolean).join(" ");
+    const range = [
+      variable.min !== undefined ? `from ${variable.min}` : "",
+      variable.max !== undefined ? `to ${variable.max}` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
     if (range) lines.push(`- ${range}`);
   }
   if (variable.type === "scale") {
@@ -40,7 +55,8 @@ function optionLines(variable: AnyVariableType): string[] {
 }
 
 function question(name: string, variable: AnyVariableType, depth: number): string[] {
-  const text = "question" in variable && typeof variable.question === "string" && variable.question ? variable.question : "";
+  const text =
+    "question" in variable && typeof variable.question === "string" && variable.question ? variable.question : "";
   const out = [`${"#".repeat(depth)} ${name}${text ? `: ${text.split("\n")[0]}` : ""}`, ""];
   if (text.includes("\n")) out.push(text, "");
   if ("instruction" in variable && typeof variable.instruction === "string" && variable.instruction) {
@@ -61,9 +77,17 @@ function items(list: DesignItem[], depth: number, keys: LoopKeys): string[] {
     if (item.type === "session") continue;
     if (item.type === "show_if") {
       const label = item.label ? `${item.label}: ` : "";
-      out.push(`*Only if ${label}\`${item.condition?.script ?? ""}\`*`, "", ...items((item.children ?? []) as DesignItem[], depth, keys));
+      out.push(
+        `*Only if ${label}\`${item.condition?.script ?? ""}\`*`,
+        "",
+        ...items((item.children ?? []) as DesignItem[], depth, keys),
+      );
     } else if (item.type === "end") {
-      out.push(`${"#".repeat(depth)} End: ${item.name} (${item.outcome})`, "", ...(item.message ? [item.message, ""] : []));
+      out.push(
+        `${"#".repeat(depth)} End: ${item.name} (${item.outcome})`,
+        "",
+        ...(item.message ? [item.message, ""] : []),
+      );
     } else if (item.type === "unit_loop") {
       out.push(...loop(item as UnitLoopItem, depth, keys));
     } else if ("variable" in item) {
@@ -86,6 +110,16 @@ function loop(item: UnitLoopItem, depth: number, keys: LoopKeys): string[] {
 
 /** The codebook (its items, the session among them or not) as Markdown. */
 export function codebookMarkdown(list: readonly TopLevelItem[], title = "Codebook", note?: string | null): string {
-  const out = [`# ${title}`, "", ...(note ? [note, ""] : []), ...items(list as DesignItem[], 2, new Map(unitLoops(list).map(({ loop, key }) => [loop, key])))];
-  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+  const out = [
+    `# ${title}`,
+    "",
+    ...(note ? [note, ""] : []),
+    ...items(list as DesignItem[], 2, new Map(unitLoops(list).map(({ loop, key }) => [loop, key]))),
+  ];
+  return (
+    out
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim() + "\n"
+  );
 }

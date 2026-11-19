@@ -23,12 +23,19 @@ export const RecipeSchema = z.object({
     .array(
       z.object({
         group: SetGroupNameSchema,
-        sets: z.array(z.object({ name: SetNameSchema, units: z.array(z.string()), ordered: z.boolean().default(false) })),
+        sets: z.array(
+          z.object({ name: SetNameSchema, units: z.array(z.string()), ordered: z.boolean().default(false) }),
+        ),
       }),
     )
     .default([]),
   /** The first design version: a draft, or deployed with `publish` (then it must pass validation). */
-  design: z.object({ note: z.string().max(1000).optional(), public: PublicInfoSchema.optional(), session: SessionSpecSchema.optional(), items: DraftItemsSchema }),
+  design: z.object({
+    note: z.string().max(1000).optional(),
+    public: PublicInfoSchema.optional(),
+    session: SessionSpecSchema.optional(),
+    items: DraftItemsSchema,
+  }),
   /** Whether coders sign in (the study's setting; default `off`). */
   signIn: SignInSchema.optional(),
   /** Deploy the design, so coders can start right away (examples). Default: a draft. */

@@ -1,4 +1,14 @@
-import { extractReferences, parseTemplate, referenceText, templateFences, templateReferences, type TemplateExpression, type Reference, type ReferenceError, type TemplateFence } from "./references.js";
+import {
+  extractReferences,
+  parseTemplate,
+  referenceText,
+  templateFences,
+  templateReferences,
+  type TemplateExpression,
+  type Reference,
+  type ReferenceError,
+  type TemplateFence,
+} from "./references.js";
 
 // Blocks in a template (docs/client.md §3, "Blocks"): fenced lines, as
 // Pandoc's fenced divs, that show part of a template only if a condition
@@ -63,7 +73,15 @@ export type TemplateNode =
   | DisplayNode
   | { type: "if"; branches: IfBranch[]; start: number }
   | { type: "from"; stages: FromStage[]; start: number }
-  | { type: "style"; css: string; style: Record<string, string>; start: number; body: TemplateNode[]; bodyStart: number; bodyEnd: number };
+  | {
+      type: "style";
+      css: string;
+      style: Record<string, string>;
+      start: number;
+      body: TemplateNode[];
+      bodyStart: number;
+      bodyEnd: number;
+    };
 
 export interface ParsedBlocks {
   nodes: TemplateNode[];
@@ -80,7 +98,8 @@ type Open =
 
 /** The body nodes are collected in, and the range it covers, of an open block. */
 function currentBody(open: Open): { body: TemplateNode[]; set: (end: number) => void } {
-  if (open.kind === "style" || open.kind === "display") return { body: open.node.body, set: (end) => (open.node.bodyEnd = end) };
+  if (open.kind === "style" || open.kind === "display")
+    return { body: open.node.body, set: (end) => (open.node.bodyEnd = end) };
   const parts = open.kind === "if" ? open.node.branches : open.node.stages;
   const last = parts[parts.length - 1];
   return { body: last.body, set: (end) => (last.bodyEnd = end) };
@@ -122,7 +141,14 @@ export function parseTemplateBlocks(source: string): ParsedBlocks {
       case "if": {
         if (!fence.arg) error(fence, "::: if needs a condition, e.g. ::: if $var.group.is('a')");
         const node: Extract<TemplateNode, { type: "if" }> = { type: "if", start: fence.start, branches: [] };
-        node.branches.push({ script: fence.arg, references: script(fence), start: fence.start, body: [], bodyStart: pos, bodyEnd: pos });
+        node.branches.push({
+          script: fence.arg,
+          references: script(fence),
+          start: fence.start,
+          body: [],
+          bodyStart: pos,
+          bodyEnd: pos,
+        });
         body().push(node);
         stack.push({ kind: "if", node, colons: fence.colons });
         break;
@@ -152,7 +178,8 @@ export function parseTemplateBlocks(source: string): ParsedBlocks {
         break;
       }
       case "from": {
-        if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(fence.arg)) error(fence, "::: from needs the name of a question of this loop, e.g. ::: from topics");
+        if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(fence.arg))
+          error(fence, "::: from needs the name of a question of this loop, e.g. ::: from topics");
         const stage: FromStage = { question: fence.arg, start: fence.start, body: [], bodyStart: pos, bodyEnd: pos };
         if (top?.kind === "from" && sameLevel) {
           top.node.stages.push(stage);
@@ -168,10 +195,14 @@ export function parseTemplateBlocks(source: string): ParsedBlocks {
       case "html":
       case "image": {
         if (fence.arg && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(fence.arg)) {
-          error(fence, `::: ${fence.keyword} ${fence.arg}: a name is letters, digits and _ (e.g. ::: ${fence.keyword} highlighted)`);
+          error(
+            fence,
+            `::: ${fence.keyword} ${fence.arg}: a name is letters, digits and _ (e.g. ::: ${fence.keyword} highlighted)`,
+          );
         }
         const outer = stack.find((o) => o.kind === "display");
-        if (outer) error(fence, `A ::: ${fence.keyword} block can't be inside a ::: ${(outer.node as DisplayNode).kind} block`);
+        if (outer)
+          error(fence, `A ::: ${fence.keyword} block can't be inside a ::: ${(outer.node as DisplayNode).kind} block`);
         const node: DisplayNode = {
           type: "display",
           kind: fence.keyword,
@@ -190,7 +221,8 @@ export function parseTemplateBlocks(source: string): ParsedBlocks {
         for (const message of parsed.errors) error(fence, message);
         // Styles are markdown: only a markdown block's content can have them.
         const display = stack.find((o) => o.kind === "display")?.node as DisplayNode | undefined;
-        if (display && display.kind !== "markdown") error(fence, `A ::: style block can't be inside a ::: ${display.kind} block (it can be inside ::: markdown)`);
+        if (display && display.kind !== "markdown")
+          error(fence, `A ::: style block can't be inside a ::: ${display.kind} block (it can be inside ::: markdown)`);
         const node: Extract<TemplateNode, { type: "style" }> = {
           type: "style",
           css: fence.arg,
@@ -207,7 +239,8 @@ export function parseTemplateBlocks(source: string): ParsedBlocks {
       case "close":
         if (!top) error(fence, "::: closes nothing: no block is open");
         else {
-          if (!sameLevel) error(fence, `This ::: closes a block opened with ${top.colons} colons: use ${":".repeat(top.colons)}`);
+          if (!sameLevel)
+            error(fence, `This ::: closes a block opened with ${top.colons} colons: use ${":".repeat(top.colons)}`);
           stack.pop();
         }
         break;
@@ -217,7 +250,11 @@ export function parseTemplateBlocks(source: string): ParsedBlocks {
   closeBodyAt(source.length);
   for (const open of stack) {
     const what = open.kind === "display" ? `::: ${open.node.kind}` : `::: ${open.kind}`;
-    errors.push({ message: `${what} is not closed (end it with ${":".repeat(open.colons)})`, start: open.node.start, end: open.node.start + 3 });
+    errors.push({
+      message: `${what} is not closed (end it with ${":".repeat(open.colons)})`,
+      start: open.node.start,
+      end: open.node.start + 3,
+    });
   }
   return { nodes: root, errors, hasBlocks: fences.length > 0 };
 }
@@ -250,7 +287,8 @@ export function parseInlineCss(css: string): { style: Record<string, string>; er
     const key = property.startsWith("--") ? property : property.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
     style[key] = value;
   }
-  if (Object.keys(style).length === 0 && errors.length === 0) errors.push("::: style needs CSS, e.g. ::: style color: darkred; font-size: 120%");
+  if (Object.keys(style).length === 0 && errors.length === 0)
+    errors.push("::: style needs CSS, e.g. ::: style color: darkred; font-size: 120%");
   return { style, errors };
 }
 

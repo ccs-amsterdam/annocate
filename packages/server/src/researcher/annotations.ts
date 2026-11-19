@@ -1,5 +1,10 @@
 import { Hono } from "hono";
-import { AnnotationsQuerySchema, UnitVersionsQuerySchema, type AnnotationRow, type UnitVersion } from "@annotinder/contracts";
+import {
+  AnnotationsQuerySchema,
+  UnitVersionsQuerySchema,
+  type AnnotationRow,
+  type UnitVersion,
+} from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
 import { and, asc, eq, gt, isNull } from "drizzle-orm";
 import { annotationValues as a, coderDevices, coders, units, unitServes, unitVersions } from "../db/schema/index.js";
@@ -56,7 +61,14 @@ export function annotations(server: Server): Hono<Env> {
   app.get("/study/:studyId/devices", requireStudyUser(server, "READ"), async (c) =>
     c.json(
       await db
-        .select({ id: coderDevices.id, coderId: coderDevices.coderId, type: coderDevices.deviceType, browser: coderDevices.browser, os: coderDevices.os, created: coderDevices.created })
+        .select({
+          id: coderDevices.id,
+          coderId: coderDevices.coderId,
+          type: coderDevices.deviceType,
+          browser: coderDevices.browser,
+          os: coderDevices.os,
+          created: coderDevices.created,
+        })
         .from(coderDevices)
         .where(eq(coderDevices.studyId, c.get("studyId")))
         .orderBy(asc(coderDevices.id)),
@@ -70,7 +82,13 @@ export function annotations(server: Server): Hono<Env> {
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     const { after, limit } = parsed.data;
     const versions = db
-      .select({ id: unitVersions.id, unitId: unitVersions.unitId, externalId: units.externalId, data: unitVersionData(unitVersions.id).as("data"), created: unitVersions.created })
+      .select({
+        id: unitVersions.id,
+        unitId: unitVersions.unitId,
+        externalId: units.externalId,
+        data: unitVersionData(unitVersions.id).as("data"),
+        created: unitVersions.created,
+      })
       .from(unitVersions)
       .innerJoin(units, eq(units.id, unitVersions.unitId))
       .where(and(eq(unitVersions.studyId, c.get("studyId")), gt(unitVersions.id, after ?? 0)))
@@ -78,7 +96,14 @@ export function annotations(server: Server): Hono<Env> {
       .limit(limit + 1)
       .as("v");
     const rows: UnitVersion[] = await db
-      .select({ id: versions.id, unitId: versions.unitId, externalId: versions.externalId, hash: unitDataHash(versions.data), data: versions.data, created: versions.created })
+      .select({
+        id: versions.id,
+        unitId: versions.unitId,
+        externalId: versions.externalId,
+        hash: unitDataHash(versions.data),
+        data: versions.data,
+        created: versions.created,
+      })
       .from(versions)
       .orderBy(asc(versions.id));
     const page = rows.slice(0, limit);

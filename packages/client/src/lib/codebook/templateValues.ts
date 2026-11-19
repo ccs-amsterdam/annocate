@@ -58,7 +58,9 @@ export function remarkTemplateValues(values: TemplateValue[]) {
 
 /** The text of a paragraph that is only text (a marker), else null. */
 function markerOf(node: RootContent): string | null {
-  return node.type === "paragraph" && node.children.length === 1 && node.children[0].type === "text" ? node.children[0].value.trim() : null;
+  return node.type === "paragraph" && node.children.length === 1 && node.children[0].type === "text"
+    ? node.children[0].value.trim()
+    : null;
 }
 
 /** Groups the nodes between style marker paragraphs into `template-style` elements (nested blocks nest). */

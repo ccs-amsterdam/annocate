@@ -1,4 +1,12 @@
-import { collectQuestions, optionLabel, questionValues, type AnyVariableType, type DesignItem, type InLoopItem, type TopLevelItem } from "@annotinder/contracts";
+import {
+  collectQuestions,
+  optionLabel,
+  questionValues,
+  type AnyVariableType,
+  type DesignItem,
+  type InLoopItem,
+  type TopLevelItem,
+} from "@annotinder/contracts";
 import { itemTitle } from "../codebook/conditions";
 
 type DesignChangeKind = "added" | "removed" | "changed" | "moved";
@@ -34,7 +42,11 @@ function locate(
   for (const item of items) {
     const parentId = container?.id ?? "";
     const id =
-      item.type === "show_if" || item.type === "unit_loop" ? `${parentId}/${item.type} ${counts[item.type]++}` : item.type === "session" ? "/session" : item.name;
+      item.type === "show_if" || item.type === "unit_loop"
+        ? `${parentId}/${item.type} ${counts[item.type]++}`
+        : item.type === "session"
+          ? "/session"
+          : item.name;
     out.set(id, { item, parent: container?.title ?? null, parentId });
     if ("children" in item && Array.isArray(item.children)) locate(item.children, { id, title: itemTitle(item) }, out);
   }
@@ -69,7 +81,8 @@ export function diffDesigns(
     const name = itemTitle(item);
     if (!prev) changes.push({ kind: "added", name, type: item.type, parent });
     else if (prev.parentId !== parentId) changes.push({ kind: "moved", name, type: item.type, parent });
-    else if (ownContent(prev.item) !== ownContent(item)) changes.push({ kind: "changed", name, type: item.type, parent });
+    else if (ownContent(prev.item) !== ownContent(item))
+      changes.push({ kind: "changed", name, type: item.type, parent });
   }
   return changes;
 }
@@ -113,7 +126,9 @@ export function valueChanges(before: (TopLevelItem | InLoopItem)[], after: (TopL
     const removed = (questionValues(prev) ?? []).filter((v) => !now.has(v));
     if (removed.length > 0) {
       const list = removed.map((v) => JSON.stringify(v)).join(", ");
-      warnings.push(`'${name}' no longer has the value${removed.length === 1 ? "" : "s"} ${list}: earlier answers with ${removed.length === 1 ? "it" : "them"} no longer fit.`);
+      warnings.push(
+        `'${name}' no longer has the value${removed.length === 1 ? "" : "s"} ${list}: earlier answers with ${removed.length === 1 ? "it" : "them"} no longer fit.`,
+      );
     }
     // An option that moved to another value (ordinal options renumbered when moved, or a
     // nominal value edited): the earlier answers with its old value now mean another option.
@@ -122,7 +137,9 @@ export function valueChanges(before: (TopLevelItem | InLoopItem)[], after: (TopL
     for (const [value, label] of labelsBefore) {
       const now = labelsNow.get(value);
       if (now === undefined || now === label || ![...labelsNow.values()].includes(label)) continue;
-      warnings.push(`'${name}': the value ${JSON.stringify(value)} was "${label}" and is now "${now}": earlier answers ${JSON.stringify(value)} will read as "${now}".`);
+      warnings.push(
+        `'${name}': the value ${JSON.stringify(value)} was "${label}" and is now "${now}": earlier answers ${JSON.stringify(value)} will read as "${now}".`,
+      );
     }
   }
   return warnings;

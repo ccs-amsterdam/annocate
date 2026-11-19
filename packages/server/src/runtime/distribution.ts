@@ -115,7 +115,12 @@ export class UnitPool {
    * good units the first in that order wins. Has no side effects; call
    * `take` for the unit actually handed out.
    */
-  best(coderId: number, now: number, shuffleSeed: number | null, { reach = "slots" }: { reach?: Reach } = {}): number | undefined {
+  best(
+    coderId: number,
+    now: number,
+    shuffleSeed: number | null,
+    { reach = "slots" }: { reach?: Reach } = {},
+  ): number | undefined {
     const order = shuffleSeed === null ? this.units : seededShuffle(this.units, shuffleSeed);
     const rule = this.rule;
     if (!rule) return order.find((id) => !this.codings.has(coderId, id));
@@ -391,7 +396,8 @@ export function pickNext(
     if ((own === undefined && !dropRest) || extra.placement === "before") return { pool: extra.pool, unitId };
     if (extra.placement === "rate" && own !== undefined) {
       const doneExtra = done.filter((id) => extra.pool.has(id)).length;
-      if (doneOwn >= rateDue(doneExtra, extra.every ?? 10, hashString(`${options.seed}/${coderId}/${extra.pool.set}`))) return { pool: extra.pool, unitId };
+      if (doneOwn >= rateDue(doneExtra, extra.every ?? 10, hashString(`${options.seed}/${coderId}/${extra.pool.set}`)))
+        return { pool: extra.pool, unitId };
     }
     if (extra.placement === "spread") {
       // The N own units are cut into M + 1 equal parts, and special unit j

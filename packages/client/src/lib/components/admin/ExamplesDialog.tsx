@@ -10,7 +10,15 @@ import { useCreateStudyFromExampleMutation, useExamplesQuery } from "../../admin
  * category; the chosen one becomes an ordinary study, deployed, with an
  * link and sometimes example answers.
  */
-export function ExamplesDialog({ client, onCreated, onClose }: { client: ResearcherApi; onCreated: (study: StudyResponse) => void; onClose: () => void }) {
+export function ExamplesDialog({
+  client,
+  onCreated,
+  onClose,
+}: {
+  client: ResearcherApi;
+  onCreated: (study: StudyResponse) => void;
+  onClose: () => void;
+}) {
   const examplesQuery = useExamplesQuery(client);
   const create = useCreateStudyFromExampleMutation(client);
   const [chosen, setChosen] = useState<string | null>(null);
@@ -20,18 +28,25 @@ export function ExamplesDialog({ client, onCreated, onClose }: { client: Researc
   const example = examples.find((e) => e.id === chosen);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in">
-      <div role="dialog" aria-modal="true" aria-labelledby="examples-title" className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl border border-border bg-card p-6 shadow-xl">
-        <h2 id="examples-title" className="text-lg font-semibold text-foreground">New study from an example</h2>
+    <div className="fixed inset-0 z-50 flex animate-in items-center justify-center bg-black/50 p-4 backdrop-blur-sm fade-in">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="examples-title"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl border border-border bg-card p-6 shadow-xl"
+      >
+        <h2 id="examples-title" className="text-lg font-semibold text-foreground">
+          New study from an example
+        </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          An example makes a ready study: units, a deployed design and a link, sometimes with example answers. It is yours
-          to try, change and delete.
+          An example makes a ready study: units, a deployed design and a link, sometimes with example answers. It is
+          yours to try, change and delete.
         </p>
         <div className="mt-4 flex-1 space-y-4 overflow-y-auto pr-1">
           {examplesQuery.isLoading && <p className="text-sm text-muted-foreground">Loading examples...</p>}
           {categories.map((category) => (
             <section key={category}>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{category}</h3>
+              <h3 className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">{category}</h3>
               <div className="grid gap-2">
                 {examples
                   .filter((e) => e.category === category)
@@ -66,10 +81,18 @@ export function ExamplesDialog({ client, onCreated, onClose }: { client: Researc
         >
           <label className="block text-xs font-medium text-muted-foreground">
             Study name
-            <Input className="mt-1" value={name} disabled={!example} onChange={(e) => setName(e.target.value)} placeholder="Choose an example first" />
+            <Input
+              className="mt-1"
+              value={name}
+              disabled={!example}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Choose an example first"
+            />
           </label>
           {create.isError && (
-            <p className="text-xs text-destructive">{create.error instanceof ResearcherApiError ? create.error.reason : create.error.message}</p>
+            <p className="text-xs text-destructive">
+              {create.error instanceof ResearcherApiError ? create.error.reason : create.error.message}
+            </p>
           )}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={onClose} disabled={create.isPending}>

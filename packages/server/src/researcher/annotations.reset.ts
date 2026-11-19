@@ -13,14 +13,19 @@ export function annotationsReset(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.post("/study/:studyId/annotations/reset", requireStudyUser(server, "ADMIN"), requireSensitive(server), async (c) => {
-    const parsed = ResetAnnotationsSchema.safeParse(await c.req.json());
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
-    const studyId = c.get("studyId");
-    const retired = await db.transaction((tx) => retireAnnotations(tx, studyId, parsed.data));
-    await server.deployments.refresh(studyId);
-    return c.json({ retired });
-  });
+  app.post(
+    "/study/:studyId/annotations/reset",
+    requireStudyUser(server, "ADMIN"),
+    requireSensitive(server),
+    async (c) => {
+      const parsed = ResetAnnotationsSchema.safeParse(await c.req.json());
+      if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+      const studyId = c.get("studyId");
+      const retired = await db.transaction((tx) => retireAnnotations(tx, studyId, parsed.data));
+      await server.deployments.refresh(studyId);
+      return c.json({ retired });
+    },
+  );
 
   return app;
 }

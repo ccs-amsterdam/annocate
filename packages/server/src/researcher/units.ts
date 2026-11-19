@@ -4,7 +4,16 @@ import { designVersionItems } from "../shared/designVersions.js";
 import type { Server, Env } from "../context.js";
 import { requireStudyUser } from "./auth.js";
 import { checkUnitUpload } from "../shared/limits.js";
-import { draftUnits, getUnitFields, latestDesignVersion, saveUnits, setUnitFields, toUnitMeta, toUnitResponse, unitCount } from "../shared/units.js";
+import {
+  draftUnits,
+  getUnitFields,
+  latestDesignVersion,
+  saveUnits,
+  setUnitFields,
+  toUnitMeta,
+  toUnitResponse,
+  unitCount,
+} from "../shared/units.js";
 
 export function units(server: Server): Hono<Env> {
   const { db } = server;
@@ -52,7 +61,9 @@ export function units(server: Server): Hono<Env> {
     const setFields = new Set(fields.filter((f) => f.type === "set").map((f) => f.name));
     const units = parsed.data.units.map((u) => ({
       ...u,
-      data: Object.fromEntries(Object.entries(u.data).filter(([name, value]) => !(setFields.has(name) && value === null))),
+      data: Object.fromEntries(
+        Object.entries(u.data).filter(([name, value]) => !(setFields.has(name) && value === null)),
+      ),
     }));
     for (const unit of units) {
       const problem = checkUnitData(unit.data, fields);
@@ -61,13 +72,20 @@ export function units(server: Server): Hono<Env> {
 
     const existingRows = await draftUnits(db, studyId, { externalIds: units.map((u) => u.externalId) });
     const existing = new Map(existingRows.map((row) => [row.externalId, row]));
-    await checkUnitUpload(db, studyId, units, new Set(units.filter((u) => !existing.has(u.externalId)).map((u) => u.externalId)).size);
+    await checkUnitUpload(
+      db,
+      studyId,
+      units,
+      new Set(units.filter((u) => !existing.has(u.externalId)).map((u) => u.externalId)).size,
+    );
     for (const unit of units) {
       const row = existing.get(unit.externalId);
       if (!row) continue;
       if (row.coded && !overwriteCoded) {
         return c.json(
-          { error: `Unit '${unit.externalId}' was coded; replacing it needs overwriteCoded: true (its answers keep the version their coders saw)` },
+          {
+            error: `Unit '${unit.externalId}' was coded; replacing it needs overwriteCoded: true (its answers keep the version their coders saw)`,
+          },
           409,
         );
       }

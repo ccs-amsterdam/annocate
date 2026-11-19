@@ -59,7 +59,11 @@ describe("Question dispatcher", () => {
       variable: {
         type: "ordinal",
         question: "Rate sentiment",
-        options: [{ value: 1, label: "low" }, { value: 2, label: "mid" }, { value: 3, label: "high" }],
+        options: [
+          { value: 1, label: "low" },
+          { value: 2, label: "mid" },
+          { value: 3, label: "high" },
+        ],
       },
     };
     const html = renderToStaticMarkup(<Question item={item} onAnswer={onAnswer} />);
@@ -72,8 +76,14 @@ describe("Question dispatcher", () => {
       type: "question",
       variable: { type: "numeric", question: "How many?", ...extra },
     });
-    expect(renderToStaticMarkup(<Question item={numeric({ min: 0, max: 10 })} onAnswer={onAnswer} />)).toContain(">10</button>");
-    expect(renderToStaticMarkup(<Question item={numeric({ min: 0, max: 100, labels: [{ value: 0, label: "cold" }] })} onAnswer={onAnswer} />)).toContain('type="range"');
+    expect(renderToStaticMarkup(<Question item={numeric({ min: 0, max: 10 })} onAnswer={onAnswer} />)).toContain(
+      ">10</button>",
+    );
+    expect(
+      renderToStaticMarkup(
+        <Question item={numeric({ min: 0, max: 100, labels: [{ value: 0, label: "cold" }] })} onAnswer={onAnswer} />,
+      ),
+    ).toContain('type="range"');
     expect(renderToStaticMarkup(<Question item={numeric({})} onAnswer={onAnswer} />)).toContain('type="number"');
   });
 
@@ -85,7 +95,11 @@ describe("Question dispatcher", () => {
         type: "scale",
         question: "How interested are you?",
         items: [{ name: "politics", label: "Politics" }, { name: "tech" }],
-        options: [{ value: 1, label: "not at all" }, { value: 2, label: "somewhat" }, { value: 3, label: "very" }],
+        options: [
+          { value: 1, label: "not at all" },
+          { value: 2, label: "somewhat" },
+          { value: 3, label: "very" },
+        ],
       },
     };
     const initialValue = { done: true, skip: false, values: [{ item: "politics", value: 2 }] };
@@ -106,7 +120,10 @@ describe("Question dispatcher", () => {
         layout: "grid",
         question: "?",
         items: [{ name: "politics" }],
-        options: [{ value: 1, label: "no" }, { value: 2, label: "yes" }],
+        options: [
+          { value: 1, label: "no" },
+          { value: 2, label: "yes" },
+        ],
       },
     };
     const html = renderToStaticMarkup(<Question item={item} onAnswer={onAnswer} />);
@@ -126,7 +143,9 @@ describe("Question dispatcher", () => {
     };
     const html = renderToStaticMarkup(<Question item={item} onAnswer={onAnswer} />);
     expect(html).toContain("Relevant?");
-    const order = ["no (swipe left)", "Not sure (swipe up)", "yes (swipe right)"].map((l) => html.indexOf(`aria-label="${l}"`));
+    const order = ["no (swipe left)", "Not sure (swipe up)", "yes (swipe right)"].map((l) =>
+      html.indexOf(`aria-label="${l}"`),
+    );
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     // Without a card to swipe (e.g. the editor's preview), only keys and buttons.
@@ -373,9 +392,7 @@ describe("Question dispatcher", () => {
         ],
       },
     };
-    const html = renderToStaticMarkup(
-      <Question item={item} onAnswer={onAnswer} unitVariables={unitVariables} />,
-    );
+    const html = renderToStaticMarkup(<Question item={item} onAnswer={onAnswer} unitVariables={unitVariables} />);
     expect(html).toContain("Link actors to issues");
     expect(html).toContain("John");
     expect(html).toContain("Climate");

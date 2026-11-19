@@ -41,7 +41,9 @@ export class Deployments {
       return cached.runtime;
     }
     const studyId = Number(match[1]);
-    const created = match[2] ? this.previewRuntime(deploymentId, studyId) : new DeploymentRuntime(deploymentId, this.wrapStore(new DbStore(this.db, studyId)), this.options);
+    const created = match[2]
+      ? this.previewRuntime(deploymentId, studyId)
+      : new DeploymentRuntime(deploymentId, this.wrapStore(new DbStore(this.db, studyId)), this.options);
     const loading = created.load().then(() => created);
     this.runtimes.set(deploymentId, { runtime: loading, usedAt: now });
     // Don't cache failures (e.g. study not deployed): retry on the next request.

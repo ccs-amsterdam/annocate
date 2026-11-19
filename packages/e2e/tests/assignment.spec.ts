@@ -11,10 +11,21 @@ const loop = (overlap?: unknown) => ({
   type: "unit_loop",
   units: overlap ? { overlap } : {},
   layout: { template: "$unit.text" },
-  children: [{ type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] } }],
+  children: [
+    {
+      type: "question",
+      name: "topic",
+      variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] },
+    },
+  ],
 });
 
-async function studyWithColumn(request: Parameters<typeof api>[0], name: string, column: string, cells: Record<string, string>): Promise<StudyResponse> {
+async function studyWithColumn(
+  request: Parameters<typeof api>[0],
+  name: string,
+  column: string,
+  cells: Record<string, string>,
+): Promise<StudyResponse> {
   const study = await api<StudyResponse>(request, "POST", "/study", { name });
   const units = await api<UnitResponse[]>(request, "POST", `/study/${study.id}/units`, {
     units: Object.keys(cells).map((text, i) => ({ externalId: `u${i + 1}`, data: { text } })),
@@ -24,13 +35,25 @@ async function studyWithColumn(request: Parameters<typeof api>[0], name: string,
     const text = String(unit.data.text);
     bySet.set(cells[text], [...(bySet.get(cells[text]) ?? []), unit.id]);
   }
-  await api(request, "PUT", `/study/${study.id}/sets/${column}`, { sets: [...bySet].map(([name, unitIds]) => ({ name, unitIds })) });
+  await api(request, "PUT", `/study/${study.id}/sets/${column}`, {
+    sets: [...bySet].map(([name, unitIds]) => ({ name, unitIds })),
+  });
   return study;
 }
 
-test("the session settings show the coders and conditions; the first deploy asks whether coders sign in", async ({ page, request }) => {
-  const study = await studyWithColumn(request, "Two coders", "coder", { "Anna's text": "anna", "Bob's text": "bob", "Shared text": "_overlap" });
-  await api(request, "POST", `/study/${study.id}/design`, { session: { params: [], coders: { column: "coder" } }, items: [loop()] });
+test("the session settings show the coders and conditions; the first deploy asks whether coders sign in", async ({
+  page,
+  request,
+}) => {
+  const study = await studyWithColumn(request, "Two coders", "coder", {
+    "Anna's text": "anna",
+    "Bob's text": "bob",
+    "Shared text": "_overlap",
+  });
+  await api(request, "POST", `/study/${study.id}/design`, {
+    session: { params: [], coders: { column: "coder" } },
+    items: [loop()],
+  });
 
   await page.goto(`/research/studies/${study.id}/editor`);
   await page.getByRole("button", { name: "Session", exact: true }).click();
@@ -51,7 +74,9 @@ test("the session settings show the coders and conditions; the first deploy asks
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Coders sign in").selectOption("optional");
   await dialog.getByRole("button", { name: "Deploy", exact: true }).click();
-  await expect.poll(async () => (await api<StudyResponse>(request, "GET", `/study/${study.id}`)).signIn).toBe("optional");
+  await expect
+    .poll(async () => (await api<StudyResponse>(request, "GET", `/study/${study.id}`)).signIn)
+    .toBe("optional");
 
   // A link per coder on the Links page
   await page.getByRole("button", { name: "Deploy", exact: true }).click();
@@ -60,10 +85,21 @@ test("the session settings show the coders and conditions; the first deploy asks
   await expect(page.getByRole("cell", { name: "coder bob" })).toBeVisible();
 });
 
-test("a condition drawn at the start, linked to units: balanced, each session codes its value's units", async ({ request, browser }) => {
-  const study = await studyWithColumn(request, "Framing", "framing", { "Calm report": "control", "Alarming report": "experiment" });
+test("a condition drawn at the start, linked to units: balanced, each session codes its value's units", async ({
+  request,
+  browser,
+}) => {
+  const study = await studyWithColumn(request, "Framing", "framing", {
+    "Calm report": "control",
+    "Alarming report": "experiment",
+  });
   const design = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
-    session: { params: [], conditions: [{ name: "framing", values: ["control", "experiment"], assign: "random", draw: "balanced", units: "framing" }] },
+    session: {
+      params: [],
+      conditions: [
+        { name: "framing", values: ["control", "experiment"], assign: "random", draw: "balanced", units: "framing" },
+      ],
+    },
     items: [loop()],
   });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
@@ -76,7 +112,10 @@ test("a condition drawn at the start, linked to units: balanced, each session co
     const coder = await (await browser.newContext()).newPage();
     await coder.goto(`/code/${study.id}?link=${links[0].secret}`);
     await question(coder, "Topic?");
-    const text = (await coder.getByText(/report/).first().textContent())!.trim();
+    const text = (await coder
+      .getByText(/report/)
+      .first()
+      .textContent())!.trim();
     seen.push(text);
     await coder.getByRole("button", { name: /politics/ }).click();
     await expect(coder.getByText(/completed|Thank you/i).first()).toBeVisible();
@@ -90,7 +129,13 @@ test("two loops filter one set column: first the pre units, then the post units"
     ...loop(),
     label: name,
     units: { filter: { column: "phase", only: [only] } },
-    children: [{ type: "question", name, variable: { type: "nominal", question: text, options: [{ value: "yes" }, { value: "no" }] } }],
+    children: [
+      {
+        type: "question",
+        name,
+        variable: { type: "nominal", question: text, options: [{ value: "yes" }, { value: "no" }] },
+      },
+    ],
   });
   const design = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
     items: [filtered("pre", "before", "Before?"), filtered("post", "after", "After?")],

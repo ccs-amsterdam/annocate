@@ -25,57 +25,70 @@ const FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
 export function WelcomePage() {
   return (
     <div className="min-h-full">
-    <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:py-16">
-      <section className="text-center">
-        <Logo smoke className="mx-auto h-16 w-16 text-wood" />
-        <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight sm:text-5xl">AnnoTinder</h1>
-        <p className="mt-2 text-sm font-medium text-muted-foreground">Open-source annotation for research</p>
-        <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-          Design a coding task or a survey, share a link, and collect clean, documented data: quick for coders, transparent for researchers.
-        </p>
-      </section>
+      <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:py-16">
+        <section className="text-center">
+          <Logo smoke className="mx-auto h-16 w-16 text-wood" />
+          <h1 className="font-heading mt-4 text-4xl font-bold tracking-tight sm:text-5xl">AnnoTinder</h1>
+          <p className="mt-2 text-sm font-medium text-muted-foreground">Open-source annotation for research</p>
+          <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
+            Design a coding task or a survey, share a link, and collect clean, documented data: quick for coders,
+            transparent for researchers.
+          </p>
+        </section>
 
-      <section className="mt-10 grid gap-4 sm:grid-cols-2" aria-label="Get started">
-        <EntryCard
-          to="/research"
-          icon={FlaskConical}
-          title="I'm a researcher"
-          text="Create studies, upload units, design what coders see, deploy and download the results."
-          action="Go to your studies"
-        />
-        <EntryCard
-          to="/code"
-          icon={PenTool}
-          title="I'm a coder"
-          text="Continue the studies you take part in on this device. New studies start from the link a researcher gave you."
-          action="Go to coding"
-        />
-      </section>
+        <section className="mt-10 grid gap-4 sm:grid-cols-2" aria-label="Get started">
+          <EntryCard
+            to="/research"
+            icon={FlaskConical}
+            title="I'm a researcher"
+            text="Create studies, upload units, design what coders see, deploy and download the results."
+            action="Go to your studies"
+          />
+          <EntryCard
+            to="/code"
+            icon={PenTool}
+            title="I'm a coder"
+            text="Continue the studies you take part in on this device. New studies start from the link a researcher gave you."
+            action="Go to coding"
+          />
+        </section>
 
-      <section className="mt-12 grid gap-6 sm:grid-cols-3">
-        {FEATURES.map(({ icon: Icon, title, text }) => (
-          <div key={title}>
-            <Icon className="h-5 w-5 text-leaf-strong" />
-            <h2 className="mt-2 text-sm font-semibold">{title}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{text}</p>
-          </div>
-        ))}
-      </section>
-    </main>
+        <section className="mt-12 grid gap-6 sm:grid-cols-3">
+          {FEATURES.map(({ icon: Icon, title, text }) => (
+            <div key={title}>
+              <Icon className="h-5 w-5 text-leaf-strong" />
+              <h2 className="mt-2 text-sm font-semibold">{title}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{text}</p>
+            </div>
+          ))}
+        </section>
+      </main>
     </div>
   );
 }
 
-function EntryCard({ to, icon: Icon, title, text, action }: { to: "/research" | "/code"; icon: LucideIcon; title: string; text: string; action: string }) {
+function EntryCard({
+  to,
+  icon: Icon,
+  title,
+  text,
+  action,
+}: {
+  to: "/research" | "/code";
+  icon: LucideIcon;
+  title: string;
+  text: string;
+  action: string;
+}) {
   return (
     <Link
       to={to}
-      className="group flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
       <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
         <Icon className="h-5 w-5" />
       </span>
-      <span className="mt-4 font-heading text-lg font-semibold">{title}</span>
+      <span className="font-heading mt-4 text-lg font-semibold">{title}</span>
       <span className="mt-1 flex-1 text-sm text-muted-foreground">{text}</span>
       <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">
         {action}

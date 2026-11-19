@@ -80,7 +80,9 @@ export type EndSessionResponse = z.infer<typeof EndSessionResponseSchema>;
  */
 export const EndValuesSchema = z.object({
   variables: z.record(z.string(), VariableValueSchema),
-  unit: z.object({ data: z.record(z.string(), z.unknown()), variables: z.record(z.string(), VariableValueSchema) }).nullable(),
+  unit: z
+    .object({ data: z.record(z.string(), z.unknown()), variables: z.record(z.string(), VariableValueSchema) })
+    .nullable(),
 });
 export type EndValues = z.infer<typeof EndValuesSchema>;
 export type EndSession = z.infer<typeof EndSessionSchema>;

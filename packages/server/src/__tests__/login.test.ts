@@ -14,7 +14,11 @@ let db: Db;
 let issuer: ReturnType<typeof mockIssuer>;
 let app: ReturnType<typeof createApp>;
 
-function newApp(admins: string[] = [], mfaClaim?: MfaClaim, insecure?: { disable2fa?: boolean; disableEmailVerification?: boolean }) {
+function newApp(
+  admins: string[] = [],
+  mfaClaim?: MfaClaim,
+  insecure?: { disable2fa?: boolean; disableEmailVerification?: boolean },
+) {
   return createApp(db, {
     ...(insecure ? { insecure } : {}),
     secret: "test-secret",
@@ -156,7 +160,10 @@ describe("researcher login", () => {
     });
 
     // An invitation (a role given to an address) is claimed without verification: the admins are warned
-    await query(db, "INSERT INTO roles (role, user_id) SELECT 'researcher', id FROM users WHERE email = 'ann@other.nl'");
+    await query(
+      db,
+      "INSERT INTO roles (role, user_id) SELECT 'researcher', id FROM users WHERE email = 'ann@other.nl'",
+    );
     const ann = browser();
     await ann.logIn({ email: "ann@other.nl", sub: "ann", amr: ["mfa"] });
     expect(await (await ann.api("/api/me")).json()).toMatchObject({ role: "researcher" });

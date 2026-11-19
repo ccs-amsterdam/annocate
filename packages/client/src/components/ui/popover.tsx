@@ -10,13 +10,21 @@ function PopoverTrigger(props: React.ComponentProps<typeof PopoverPrimitive.Trig
   return <PopoverPrimitive.Trigger {...props} />;
 }
 
-function PopoverContent({ className, align = "center", sideOffset = 4, ...props }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+function PopoverContent({
+  className,
+  align = "center",
+  sideOffset = 4,
+  ...props
+}: React.ComponentProps<typeof PopoverPrimitive.Content>) {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
         align={align}
         sideOffset={sideOffset}
-        className={cn("z-50 w-72 rounded-md border bg-popover p-2 text-popover-foreground shadow-md outline-none", className)}
+        className={cn(
+          "z-50 w-72 rounded-md border bg-popover p-2 text-popover-foreground shadow-md outline-none",
+          className,
+        )}
         {...props}
       />
     </PopoverPrimitive.Portal>

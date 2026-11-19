@@ -6,7 +6,11 @@ import { api, question } from "./helpers";
 // tells the coder when they are wrong, and they answer again; a gold unit is checked silently, and
 // running out of health ends the session at a screen-out.
 
-test("a practice question gives feedback when wrong, answered again until right; a wrong gold unit ends the session at a screen-out", async ({ page, request, browser }) => {
+test("a practice question gives feedback when wrong, answered again until right; a wrong gold unit ends the session at a screen-out", async ({
+  page,
+  request,
+  browser,
+}) => {
   await page.goto("/research");
   await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /Empty study/ }).click();
@@ -45,13 +49,23 @@ test("a practice question gives feedback when wrong, answered again until right;
           gold: { placement: "last", questions: ["topic"], health: { start: 1, wrong: -1, end: "low_quality" } },
         },
         layout: { template: "$unit.text" },
-        children: [{ type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] } }],
+        children: [
+          {
+            type: "question",
+            name: "topic",
+            variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] },
+          },
+        ],
       },
       { type: "end", name: "low_quality", outcome: "screenout", message: "Sorry, this study is over for you." },
     ],
   });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: codebook.id });
-  const links = await api<{ secret: string; params: Record<string, string> }[]>(request, "GET", `/study/${study.id}/links`);
+  const links = await api<{ secret: string; params: Record<string, string> }[]>(
+    request,
+    "GET",
+    `/study/${study.id}/links`,
+  );
   const s1 = links.find((l) => l.params.coder === "s1")!;
 
   const coder = await (await browser.newContext()).newPage();
@@ -104,7 +118,13 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
         name: "articles",
         units: { gold: { placement: "last", questions: ["topic"] } },
         layout: { template: "$unit.text" },
-        children: [{ type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] } }],
+        children: [
+          {
+            type: "question",
+            name: "topic",
+            variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] },
+          },
+        ],
       },
     ],
   });
@@ -126,6 +146,10 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
   await dialog.getByRole("button", { name: /Save 1 unit/ }).click();
   await expect(dialog).toBeHidden();
 
-  const page1 = await api<{ units: { externalId: string; data: Record<string, unknown> }[] }>(request, "GET", `/study/${study.id}/units/page?offset=0&limit=10`);
+  const page1 = await api<{ units: { externalId: string; data: Record<string, unknown> }[] }>(
+    request,
+    "GET",
+    `/study/${study.id}/units/page?offset=0&limit=10`,
+  );
   expect(page1.units.find((u) => u.externalId === "g1")!.data.topic_gold).toBe("politics|other");
 });

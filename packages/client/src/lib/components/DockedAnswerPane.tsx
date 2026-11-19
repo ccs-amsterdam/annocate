@@ -110,7 +110,7 @@ export function DockedAnswerPane({ children }: { children: ReactNode }) {
         onMouseDown={startDragging}
         onTouchStart={startDragging}
         onDoubleClick={custom ? resetToAuto : undefined}
-        className="group flex h-5 w-full shrink-0 cursor-row-resize select-none items-center justify-center transition-colors hover:bg-primary/15 active:bg-primary/25 sm:h-6"
+        className="group flex h-5 w-full shrink-0 cursor-row-resize items-center justify-center transition-colors select-none hover:bg-primary/15 active:bg-primary/25 sm:h-6"
         title={custom ? "Drag to resize, double click to fit the answer form" : "Drag to resize answer panel"}
         role="separator"
         aria-orientation="horizontal"
@@ -121,7 +121,7 @@ export function DockedAnswerPane({ children }: { children: ReactNode }) {
         <button
           type="button"
           onClick={resetToAuto}
-          className="absolute right-2 top-0.5 z-10 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground sm:top-1"
+          className="absolute top-0.5 right-2 z-10 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground sm:top-1"
           title="Fit the panel to the answer form again"
         >
           <RotateCcw className="size-3" />
@@ -131,7 +131,7 @@ export function DockedAnswerPane({ children }: { children: ReactNode }) {
 
       <div
         ref={scrollRef}
-        className="subtle-scrollbar min-h-0 flex-1 overflow-y-auto px-3.5 pb-2.5 pt-0.5 [scrollbar-gutter:stable_both-edges] sm:px-6 sm:pb-3.5 sm:pt-1"
+        className="min-h-0 flex-1 subtle-scrollbar [scrollbar-gutter:stable_both-edges] overflow-y-auto px-3.5 pt-0.5 pb-2.5 sm:px-6 sm:pt-1 sm:pb-3.5"
       >
         <div ref={contentRef} className="mx-auto w-full max-w-xl">
           {children}

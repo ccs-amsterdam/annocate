@@ -41,7 +41,10 @@ export async function createSession(db: Db, userId: number, login: SessionLogin)
 }
 
 /** The user of a valid session key (not blocked), with the session's second factor; extends the session. */
-export async function userForSession(db: Db, key: string): Promise<(User & SessionLogin & { sessionId: number }) | null> {
+export async function userForSession(
+  db: Db,
+  key: string,
+): Promise<(User & SessionLogin & { sessionId: number }) | null> {
   const [row] = await db
     .select({
       id: users.id,

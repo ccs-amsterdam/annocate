@@ -31,7 +31,10 @@ export const SetNameSchema = z
   .min(1)
   .max(128)
   .refine((s) => !/[;#]/.test(s) && s.trim() === s, "A set's name has no ; or #, and no spaces at its ends")
-  .refine((s) => !s.startsWith("_") || (RESERVED_SETS as readonly string[]).includes(s), "Set names starting with _ are reserved (_overlap, _practice, _gold)");
+  .refine(
+    (s) => !s.startsWith("_") || (RESERVED_SETS as readonly string[]).includes(s),
+    "Set names starting with _ are reserved (_overlap, _practice, _gold)",
+  );
 
 /** A set of a group, as the design refers to it. */
 export const SetRefSchema = z.object({ group: SetGroupNameSchema, set: SetNameSchema });
@@ -80,7 +83,8 @@ export function parseSetCell(cell: string): SetCellEntry[] | { error: string } {
       continue;
     }
     const position = Number(part.slice(at + 1));
-    if (!Number.isInteger(position) || position < 1) return { error: `"${part}": the position after # is a whole number from 1` };
+    if (!Number.isInteger(position) || position < 1)
+      return { error: `"${part}": the position after # is a whole number from 1` };
     entries.push({ set, position });
   }
   const sets = entries.map((e) => e.set);
@@ -137,10 +141,20 @@ export function cellsFromSets(sets: UnitSet[]): Map<number, string> {
  */
 export function splitIntoSets<T>(
   units: T[],
-  options: { sets: number; overlapUnits?: number; overlapFraction?: number; shuffle?: boolean; seed?: number; prefix?: string },
+  options: {
+    sets: number;
+    overlapUnits?: number;
+    overlapFraction?: number;
+    shuffle?: boolean;
+    seed?: number;
+    prefix?: string;
+  },
 ): { name: string; units: T[] }[] {
   const ids = options.shuffle === false ? [...units] : seededShuffle(units, options.seed ?? 0);
-  const overlapN = Math.min(ids.length, options.overlapUnits ?? Math.round((options.overlapFraction ?? 0) * ids.length));
+  const overlapN = Math.min(
+    ids.length,
+    options.overlapUnits ?? Math.round((options.overlapFraction ?? 0) * ids.length),
+  );
   const overlap = ids.slice(0, overlapN);
   const rest = ids.slice(overlapN);
   const n = Math.max(1, options.sets);
@@ -195,7 +209,8 @@ export function addToSets(sets: UnitSet[], unitIds: number[], mode: "distribute"
     for (const id of ids) targets.reduce((a, b) => (b.unitIds.length < a.unitIds.length ? b : a)).unitIds.push(id);
     return next;
   }
-  const average = own.length > 0 ? Math.max(1, Math.round(own.reduce((n, s) => n + s.unitIds.length, 0) / own.length)) : ids.length;
+  const average =
+    own.length > 0 ? Math.max(1, Math.round(own.reduce((n, s) => n + s.unitIds.length, 0) / own.length)) : ids.length;
   const count = Math.max(1, Math.round(ids.length / average));
   // Names on from the highest `<prefix><n>` (default `s`)
   const numbered = own.map((s) => /^(.*?)(\d+)$/.exec(s.name)).filter((m): m is RegExpExecArray => m !== null);

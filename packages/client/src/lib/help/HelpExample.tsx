@@ -28,7 +28,9 @@ export function HelpExample({ source }: { source: string }) {
 
 function LiveExample({ data }: { data: HelpExampleData }) {
   const [template, setTemplate] = useState(data.template);
-  const [chosen, setChosen] = useState(() => Object.fromEntries(Object.entries(data.answers).map(([q, alts]) => [q, alts[0]])));
+  const [chosen, setChosen] = useState(() =>
+    Object.fromEntries(Object.entries(data.answers).map(([q, alts]) => [q, alts[0]])),
+  );
   const [step, setStep] = useState(data.steps[0] ?? null);
   const [result, setResult] = useState<{ rendered: RenderedTemplate } | { error: string } | null>(null);
 
@@ -52,7 +54,9 @@ function LiveExample({ data }: { data: HelpExampleData }) {
   return (
     <div className="not-prose my-6 overflow-hidden rounded-lg border border-border">
       <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-3 py-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Template · try editing it</span>
+        <span className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+          Template · try editing it
+        </span>
         {template !== data.template && (
           <button
             type="button"
@@ -74,7 +78,10 @@ function LiveExample({ data }: { data: HelpExampleData }) {
           spellCheck={false}
           value={template}
           onChange={(e) => setTemplate(e.target.value)}
-          className={cn(editorText, "absolute inset-0 h-full w-full resize-none overflow-hidden bg-transparent text-transparent caret-foreground outline-none")}
+          className={cn(
+            editorText,
+            "absolute inset-0 h-full w-full resize-none overflow-hidden bg-transparent text-transparent caret-foreground outline-none",
+          )}
         />
       </div>
 
@@ -87,7 +94,7 @@ function LiveExample({ data }: { data: HelpExampleData }) {
                 {unitFields.map(([field, value]) => (
                   <div key={field} className="contents">
                     <dt className="text-sky-700 dark:text-sky-300">$unit.{field}</dt>
-                    <dd className="whitespace-pre-wrap break-words">{String(value)}</dd>
+                    <dd className="break-words whitespace-pre-wrap">{String(value)}</dd>
                   </div>
                 ))}
               </dl>
@@ -100,7 +107,7 @@ function LiveExample({ data }: { data: HelpExampleData }) {
                 {Object.entries(data.snippets).map(([name, text]) => (
                   <div key={name}>
                     <dt className="text-emerald-700 dark:text-emerald-300">[[{name}]]</dt>
-                    <dd className="whitespace-pre-wrap break-words pl-3">{highlightTemplate(text)}</dd>
+                    <dd className="pl-3 break-words whitespace-pre-wrap">{highlightTemplate(text)}</dd>
                   </div>
                 ))}
               </dl>
@@ -116,13 +123,20 @@ function LiveExample({ data }: { data: HelpExampleData }) {
             />
           ))}
           {data.steps.length > 0 && (
-            <Choice label="Question on screen" options={data.steps.map((s) => ({ value: s, label: s }))} value={step} onChange={setStep} />
+            <Choice
+              label="Question on screen"
+              options={data.steps.map((s) => ({ value: s, label: s }))}
+              value={step}
+              onChange={setStep}
+            />
           )}
         </div>
       )}
 
       <div className="border-t border-border bg-background p-4">
-        <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">What the coder sees</div>
+        <div className="mb-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+          What the coder sees
+        </div>
         {result === null ? (
           <p className="text-xs text-muted-foreground">Rendering…</p>
         ) : "error" in result ? (
@@ -156,7 +170,9 @@ function Choice<T extends string | number | null>({
           onClick={() => onChange(o.value)}
           className={cn(
             "cursor-pointer rounded-md border px-2 py-0.5 font-mono text-[11px] transition-colors",
-            o.value === value ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground",
+            o.value === value
+              ? "border-primary bg-primary/10 text-foreground"
+              : "border-border text-muted-foreground hover:text-foreground",
           )}
         >
           {o.label}

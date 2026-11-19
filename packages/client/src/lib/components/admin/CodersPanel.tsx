@@ -3,7 +3,14 @@ import { RotateCcw, Trash2, UserX } from "lucide-react";
 import type { CoderDeletion, CoderProgress, DeleteCoders } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useCoderDeletionMutations, useCoderDeletionsQuery, useCodersQuery } from "../../admin/queries";
 import { formatWhen } from "../../admin/format";
@@ -52,7 +59,8 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
         <h2 className="flex items-center gap-1.5 text-lg font-medium">
           Coders
           <InfoTip label="About the counts">
-            Finished units count, per loop of the live design, the units where a coder answered every question of the loop.
+            Finished units count, per loop of the live design, the units where a coder answered every question of the
+            loop.
           </InfoTip>
           <HelpButton topic="coders-and-progress" label="Help: following progress" />
         </h2>
@@ -77,7 +85,8 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
               <li key={c.id} className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{coderName(c)}</span>
                 <span className="text-xs text-muted-foreground">
-                  asked {formatWhen(c.deletionRequest!.at)} · {c.answers} answers{c.linkLabel ? ` · ${c.linkLabel}` : ""}
+                  asked {formatWhen(c.deletionRequest!.at)} · {c.answers} answers
+                  {c.linkLabel ? ` · ${c.linkLabel}` : ""}
                 </span>
                 <span className="ml-auto flex gap-1">
                   <Button size="xs" variant="destructive" onClick={() => deleteCoder(c)}>
@@ -100,7 +109,8 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
       )}
       {postponed > 0 && (
         <p className="text-xs text-amber-700 dark:text-amber-400">
-          {postponed === 1 ? "1 coder's" : `${postponed} coders'`} data still to be deleted (marked &ldquo;deletion requested&rdquo; below).
+          {postponed === 1 ? "1 coder's" : `${postponed} coders'`} data still to be deleted (marked &ldquo;deletion
+          requested&rdquo; below).
         </p>
       )}
 
@@ -127,7 +137,11 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
                   </th>
                 ))}
                 {specials.map((kind) => (
-                  <th key={kind} className="p-2 text-right font-medium capitalize" title={`Units of the deployed _${kind} set this coder finished`}>
+                  <th
+                    key={kind}
+                    className="p-2 text-right font-medium capitalize"
+                    title={`Units of the deployed _${kind} set this coder finished`}
+                  >
                     {kind}
                   </th>
                 ))}
@@ -140,7 +154,11 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
               {coders.map((coder) => (
                 <tr key={coder.id} className="border-b last:border-0">
                   <td className="p-2">
-                    {coder.participantId || coder.email ? coderName(coder) : <span className="text-muted-foreground">#{coder.id}</span>}
+                    {coder.participantId || coder.email ? (
+                      coderName(coder)
+                    ) : (
+                      <span className="text-muted-foreground">#{coder.id}</span>
+                    )}
                   </td>
                   <td className="p-2 text-muted-foreground">{coder.linkLabel ?? "–"}</td>
                   <td className="p-2 whitespace-nowrap text-muted-foreground">{formatWhen(coder.started)}</td>
@@ -152,7 +170,10 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
                   >
                     {endedText(coder.ended)}
                     {coder.deletionRequest && (
-                      <span className="ml-1 text-xs text-amber-700 dark:text-amber-400" title={`Asked ${formatWhen(coder.deletionRequest.at)}`}>
+                      <span
+                        className="ml-1 text-xs text-amber-700 dark:text-amber-400"
+                        title={`Asked ${formatWhen(coder.deletionRequest.at)}`}
+                      >
                         (deletion requested)
                       </span>
                     )}
@@ -177,7 +198,13 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
                     >
                       <RotateCcw className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon-sm" aria-label={`Delete ${coderName(coder)}'s data`} title="Delete this coder's data" onClick={() => deleteCoder(coder)}>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Delete ${coderName(coder)}'s data`}
+                      title="Delete this coder's data"
+                      onClick={() => deleteCoder(coder)}
+                    >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </td>
@@ -223,7 +250,9 @@ function DeletionLog({ deletions }: { deletions: CoderDeletion[] }) {
     <details className="mt-2 rounded-lg border p-3 text-sm">
       <summary className="cursor-pointer font-medium">
         Deleted coders ({deletions.length})
-        <span className="ml-2 text-xs font-normal text-muted-foreground">delete them from data you downloaded earlier too</span>
+        <span className="ml-2 text-xs font-normal text-muted-foreground">
+          delete them from data you downloaded earlier too
+        </span>
       </summary>
       <table className="mt-2 w-full text-sm">
         <thead>
@@ -241,7 +270,9 @@ function DeletionLog({ deletions }: { deletions: CoderDeletion[] }) {
             <tr key={`${d.coderId}-${String(d.deletedAt)}`} className="border-b last:border-0">
               <td className="p-1.5">#{d.coderId}</td>
               <td className="p-1.5">{d.participantId ?? d.email ?? "–"}</td>
-              <td className="p-1.5 whitespace-nowrap text-muted-foreground">{d.requestedAt ? formatWhen(d.requestedAt) : "–"}</td>
+              <td className="p-1.5 whitespace-nowrap text-muted-foreground">
+                {d.requestedAt ? formatWhen(d.requestedAt) : "–"}
+              </td>
               <td className="p-1.5 whitespace-nowrap">{formatWhen(d.deletedAt)}</td>
               <td className="p-1.5 text-muted-foreground">{d.deletedBy ?? "–"}</td>
               <td className="p-1.5 text-right tabular-nums">{d.answers}</td>
@@ -270,15 +301,25 @@ function DeleteByIdDialog({
     .split(/[\n,]/)
     .map((t) => t.trim())
     .filter(Boolean);
-  const matches = coders.filter((c) => wanted.some((w) => w === c.participantId || w.toLowerCase() === c.email?.toLowerCase()));
+  const matches = coders.filter((c) =>
+    wanted.some((w) => w === c.participantId || w.toLowerCase() === c.email?.toLowerCase()),
+  );
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Delete a coder&apos;s data</DialogTitle>
-          <DialogDescription>For instance when a participant withdraws. Give their participant id or email, one per line.</DialogDescription>
+          <DialogDescription>
+            For instance when a participant withdraws. Give their participant id or email, one per line.
+          </DialogDescription>
         </DialogHeader>
-        <Textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder={"P12345\nname@example.org"} className="font-mono text-xs" />
+        <Textarea
+          rows={3}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={"P12345\nname@example.org"}
+          className="font-mono text-xs"
+        />
         <p className="text-xs text-muted-foreground">
           {wanted.length === 0
             ? "A participant id can belong to several sessions (e.g. on two devices): all are found."
@@ -324,7 +365,9 @@ function ConfirmDeleteDialog({
     <Dialog open={target !== null} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Delete {target && target.names.length === 1 ? `${target.names[0]}'s` : "these coders'"} data?</DialogTitle>
+          <DialogTitle>
+            Delete {target && target.names.length === 1 ? `${target.names[0]}'s` : "these coders'"} data?
+          </DialogTitle>
           <DialogDescription>This can&apos;t be undone.</DialogDescription>
         </DialogHeader>
         <div className="space-y-2 text-sm">
@@ -334,7 +377,9 @@ function ConfirmDeleteDialog({
             before are not affected: delete those yourself. The deletion is logged (Deleted coders, below, and
             deleted_coders.csv in the download) with the coder id and participant id, so you can.
           </p>
-          <p className="text-muted-foreground">Units they coded can be handed out again where the distribution needs more codings.</p>
+          <p className="text-muted-foreground">
+            Units they coded can be handed out again where the distribution needs more codings.
+          </p>
           {error && <p className="text-destructive">{error}</p>}
         </div>
         <DialogFooter>

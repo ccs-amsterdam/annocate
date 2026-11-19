@@ -125,7 +125,9 @@ export function assignAllColumns(
   return mapping.map((m) => {
     if (m.field || m.column === idColumn) return m;
     const existing = studyFields.find((f) => f.name === toUnitFieldName(headers[m.column]) && !taken.has(f.name));
-    const field = existing ? existing.name : toUnitFieldName(headers[m.column], new Set([...taken, ...studyFields.map((f) => f.name)]));
+    const field = existing
+      ? existing.name
+      : toUnitFieldName(headers[m.column], new Set([...taken, ...studyFields.map((f) => f.name)]));
     taken.add(field);
     return { ...m, field, type: existing ? existing.type : types[m.column] };
   });
@@ -138,7 +140,11 @@ function badValues(rows: string[][], column: number, type: UnitFieldType): { cou
 }
 
 /** What is wrong with each column's mapping (null: nothing): its name, a duplicate, or values that don't fit the type. */
-export function mappingProblems(rows: string[][], mapping: ColumnMapping[], studyFields: UnitField[]): (string | null)[] {
+export function mappingProblems(
+  rows: string[][],
+  mapping: ColumnMapping[],
+  studyFields: UnitField[],
+): (string | null)[] {
   return mapping.map((m) => {
     if (!m.field) return null;
     const existing = studyFields.find((f) => f.name === m.field);
@@ -146,10 +152,12 @@ export function mappingProblems(rows: string[][], mapping: ColumnMapping[], stud
       const nameError = unitFieldNameError(m.field);
       if (nameError) return `Field name: ${nameError}`;
     }
-    if (mapping.some((other) => other !== m && other.field === m.field)) return `Two columns are uploaded as ${m.field}`;
+    if (mapping.some((other) => other !== m && other.field === m.field))
+      return `Two columns are uploaded as ${m.field}`;
     const type = existing?.type ?? m.type;
     const { count, examples } = badValues(rows, m.column, type);
-    if (count > 0) return `${count} value${count === 1 ? " isn't a" : "s aren't"} ${type === "text" ? "text" : `${type}${count === 1 ? "" : "s"}`} (${examples.map((e) => `'${e}'`).join(", ")})`;
+    if (count > 0)
+      return `${count} value${count === 1 ? " isn't a" : "s aren't"} ${type === "text" ? "text" : `${type}${count === 1 ? "" : "s"}`} (${examples.map((e) => `'${e}'`).join(", ")})`;
     return null;
   });
 }
@@ -181,7 +189,9 @@ export function csvToUnits(
     .filter((e): e is string => e !== null);
   if (uploaded.length === 0) errors.push("Choose at least one column to upload");
   const typeOf = (m: ColumnMapping) => studyFields.find((f) => f.name === m.field)?.type ?? m.type;
-  const added = uploaded.filter((m) => !studyFields.some((f) => f.name === m.field)).map((m) => ({ name: m.field, type: m.type }));
+  const added = uploaded
+    .filter((m) => !studyFields.some((f) => f.name === m.field))
+    .map((m) => ({ name: m.field, type: m.type }));
   const fields = [...studyFields, ...added];
 
   const units = rows.map((row) => {

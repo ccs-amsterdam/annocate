@@ -69,9 +69,7 @@
               "type": "span",
               "question": "Select every person and organisation mentioned in the text.",
               "instruction": "Select the words with your mouse (or finger), then choose a label. Click a label to change or remove it.",
-              "fields": [
-                "text"
-              ],
+              "fields": ["text"],
               "options": [
                 {
                   "value": "person",

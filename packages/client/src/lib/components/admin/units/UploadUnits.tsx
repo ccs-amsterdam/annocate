@@ -1,9 +1,30 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
-import { OVERLAP_SET, SetGroupNameSchema, addToSets, parseSetCell, setsFromCells, type UnitField, type UnitFieldType } from "@annotinder/contracts";
+import {
+  OVERLAP_SET,
+  SetGroupNameSchema,
+  addToSets,
+  parseSetCell,
+  setsFromCells,
+  type UnitField,
+  type UnitFieldType,
+} from "@annotinder/contracts";
 import { AlertCircle, Check, FileUp, Wand2 } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useCreateUnitsMutation, usePutSetGroupMutation, useSetGroupsQuery, useUnitsQuery } from "../../../admin/queries";
-import { assignAllColumns, csvToUnits, initialMapping, mappingProblems, parseCsv, type ColumnMapping, type CsvUnits } from "../../../admin/csv";
+import {
+  useCreateUnitsMutation,
+  usePutSetGroupMutation,
+  useSetGroupsQuery,
+  useUnitsQuery,
+} from "../../../admin/queries";
+import {
+  assignAllColumns,
+  csvToUnits,
+  initialMapping,
+  mappingProblems,
+  parseCsv,
+  type ColumnMapping,
+  type CsvUnits,
+} from "../../../admin/csv";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldBadge } from "./FieldBadge";
@@ -34,7 +55,15 @@ export type CsvUpload = CsvUnits & { setGroups: CsvSetGroup[] };
  * type); "Use column names" gives every other column its own (valid) name.
  * Values are checked against the types before anything is uploaded.
  */
-export function UploadUnits({ client, studyFields, onDone }: { client: ResearcherApi; studyFields: UnitField[]; onDone: () => void }) {
+export function UploadUnits({
+  client,
+  studyFields,
+  onDone,
+}: {
+  client: ResearcherApi;
+  studyFields: UnitField[];
+  onDone: () => void;
+}) {
   const createUnits = useCreateUnitsMutation(client);
   const putGroup = usePutSetGroupMutation(client);
   const existingUnits = useUnitsQuery(client).data ?? [];
@@ -53,13 +82,19 @@ export function UploadUnits({ client, studyFields, onDone }: { client: Researche
   const coded = replaced.filter((u) => byId.get(u.externalId)!.coded);
   const added = result ? result.units.filter((u) => !byId.has(u.externalId)) : [];
   // Groups with sets the new units could join: those the file doesn't set itself
-  const otherGroups = groups.filter((g) => !result?.setGroups.some((s) => s.group === g.name) && g.sets.some((s) => s.name !== OVERLAP_SET));
+  const otherGroups = groups.filter(
+    (g) => !result?.setGroups.some((s) => s.group === g.name) && g.sets.some((s) => s.name !== OVERLAP_SET),
+  );
 
   async function upload() {
     if (!result) return;
     for (let i = 0; i < result.units.length; i += BATCH) {
       setProgress(i);
-      await createUnits.mutateAsync({ overwrite, overwriteCoded: overwrite && overwriteCoded, units: result.units.slice(i, i + BATCH) });
+      await createUnits.mutateAsync({
+        overwrite,
+        overwriteCoded: overwrite && overwriteCoded,
+        units: result.units.slice(i, i + BATCH),
+      });
     }
     // Sets columns: each replaces its group, by the units' ids
     const chosen = otherGroups.filter((g) => addTo[g.name]);
@@ -72,7 +107,9 @@ export function UploadUnits({ client, studyFields, onDone }: { client: Researche
         await putGroup.mutateAsync({ group: g.name, body: { sets } });
       }
       for (const { group, cells } of result.setGroups) {
-        const sets = setsFromCells(cells.flatMap((c) => (ids.has(c.externalId) ? [{ unitId: ids.get(c.externalId)!, cell: c.cell }] : [])));
+        const sets = setsFromCells(
+          cells.flatMap((c) => (ids.has(c.externalId) ? [{ unitId: ids.get(c.externalId)!, cell: c.cell }] : [])),
+        );
         if ("error" in sets) throw new Error(sets.error);
         await putGroup.mutateAsync({ group, body: { sets } });
       }
@@ -87,7 +124,8 @@ export function UploadUnits({ client, studyFields, onDone }: { client: Researche
       {result && replaced.length > 0 && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} />
-          Replace the {replaced.length} unit{replaced.length === 1 ? "" : "s"} that already exist{replaced.length === 1 ? "s" : ""} (same id)
+          Replace the {replaced.length} unit{replaced.length === 1 ? "" : "s"} that already exist
+          {replaced.length === 1 ? "s" : ""} (same id)
         </label>
       )}
       {overwrite && coded.length > 0 && (
@@ -109,7 +147,8 @@ export function UploadUnits({ client, studyFields, onDone }: { client: Researche
       {result && result.errors.length === 0 && added.length > 0 && otherGroups.length > 0 && (
         <div className="flex flex-col gap-2 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm">
           <p>
-            The {added.length} new unit{added.length === 1 ? " is" : "s are"} in no set. Add {added.length === 1 ? "it" : "them"} to the sets of:
+            The {added.length} new unit{added.length === 1 ? " is" : "s are"} in no set. Add{" "}
+            {added.length === 1 ? "it" : "them"} to the sets of:
           </p>
           {otherGroups.map((g) => {
             const own = g.sets.filter((s) => s.name !== OVERLAP_SET);
@@ -134,8 +173,8 @@ export function UploadUnits({ client, studyFields, onDone }: { client: Researche
             );
           })}
           <p className="text-[11px] text-muted-foreground">
-            Shuffled first. Distributing fills the smallest sets first; new sets are named on (e.g. s5 after s4). The overlap stays as it
-            is. New sets get their own link if the design makes a link per set.
+            Shuffled first. Distributing fills the smallest sets first; new sets are named on (e.g. s5 after s4). The
+            overlap stays as it is. New sets get their own link if the design makes a link per set.
           </p>
         </div>
       )}
@@ -150,7 +189,9 @@ export function UploadUnits({ client, studyFields, onDone }: { client: Researche
               (overwrite && coded.length > 0 && !overwriteCoded)
             }
           >
-            {progress !== null ? `Uploading ${progress} / ${result.units.length}...` : `Upload ${result.units.length} units`}
+            {progress !== null
+              ? `Uploading ${progress} / ${result.units.length}...`
+              : `Upload ${result.units.length} units`}
           </Button>
           {createUnits.isError && <p className="text-sm text-destructive">{createUnits.error.message}</p>}
           {putGroup.isError && <p className="text-sm text-destructive">{putGroup.error.message}</p>}
@@ -185,11 +226,18 @@ export function CsvUnitsForm({
   const result = useMemo((): CsvUpload | null => {
     if (!csv) return null;
     // One column is the units' ids (its type in the table)
-    if (idColumn < 0) return { fields: [], units: [], errors: ["Choose the column with each unit's id: set its type to Unit id"], setGroups: [] };
+    if (idColumn < 0)
+      return {
+        fields: [],
+        units: [],
+        errors: ["Choose the column with each unit's id: set its type to Unit id"],
+        setGroups: [],
+      };
     const units = csvToUnits(csv.headers, csv.rows, idColumn, mapping, studyFields);
     const errors = [...units.errors];
     const setGroups = Object.entries(setColumns).map(([column, group]) => {
-      if (!SetGroupNameSchema.safeParse(group).success) errors.push(`Group name "${group}": letters, digits and _, starting with a letter`);
+      if (!SetGroupNameSchema.safeParse(group).success)
+        errors.push(`Group name "${group}": letters, digits and _, starting with a letter`);
       const cells = csv.rows.map((r) => ({ externalId: (r[idColumn] ?? "").trim(), cell: r[Number(column)] ?? "" }));
       const bad = cells.map((c) => parseSetCell(c.cell)).find((p) => "error" in p);
       if (bad && "error" in bad) errors.push(`Column ${csv.headers[Number(column)]}: ${bad.error}`);
@@ -214,7 +262,11 @@ export function CsvUnitsForm({
     const id = parsed.headers.findIndex((h) => /^(id|externalid|external_id)$/i.test(h.trim()));
     const idAt = Math.max(0, id);
     setIdColumn(idAt);
-    setMapping(initialMapping(parsed.headers, parsed.rows, studyFields).map((m) => (m.column === idAt ? { ...m, field: "" } : m)));
+    setMapping(
+      initialMapping(parsed.headers, parsed.rows, studyFields).map((m) =>
+        m.column === idAt ? { ...m, field: "" } : m,
+      ),
+    );
   }
 
   if (!csv || !result) {
@@ -233,7 +285,8 @@ export function CsvUnitsForm({
   const problems = mappingProblems(csv.rows, mapping, studyFields);
   const mapped = new Set(mapping.map((m) => m.field).filter(Boolean));
   const unmappedFields = studyFields.filter((f) => !mapped.has(f.name));
-  const setColumn = (i: number, next: Partial<ColumnMapping>) => setMapping(mapping.map((m, j) => (j === i ? { ...m, ...next } : m)));
+  const setColumn = (i: number, next: Partial<ColumnMapping>) =>
+    setMapping(mapping.map((m, j) => (j === i ? { ...m, ...next } : m)));
 
   return (
     <>
@@ -252,7 +305,11 @@ export function CsvUnitsForm({
         <div className="flex items-center justify-between gap-2">
           <h4 className="text-sm font-medium">Columns to upload</h4>
           <div className="flex gap-1">
-            <Button size="sm" variant="outline" onClick={() => setMapping(assignAllColumns(csv.headers, csv.rows, mapping, studyFields, idColumn))}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setMapping(assignAllColumns(csv.headers, csv.rows, mapping, studyFields, idColumn))}
+            >
               <Wand2 className="mr-1 h-3.5 w-3.5" /> Use column names
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setMapping(mapping.map((m) => ({ ...m, field: "" })))}>
@@ -317,15 +374,16 @@ export function CsvUnitsForm({
           </p>
         )}
         <p className="text-[11px] text-muted-foreground">
-          Field names: letters, digits and _, so a design can show them as <code>$unit.name</code>. A column named like a
-          field of this study is uploaded as that field, with its type.
+          Field names: letters, digits and _, so a design can show them as <code>$unit.name</code>. A column named like
+          a field of this study is uploaded as that field, with its type.
           {allowSets && (
             <>
               {" "}
-              A <strong>set</strong> column says who or which group codes a unit: each cell holds one or more values, e.g.{" "}
-              <code>anna</code> or <code>anna;bob</code> (both), <code>_overlap</code> (everyone), <code>_gold</code> or{" "}
-              <code>_practice</code> (gold or practice units), optionally with a position (<code>anna#3</code>). Use it for coders
-              or for conditions (session settings). It replaces the column&apos;s values.
+              A <strong>set</strong> column says who or which group codes a unit: each cell holds one or more values,
+              e.g. <code>anna</code> or <code>anna;bob</code> (both), <code>_overlap</code> (everyone),{" "}
+              <code>_gold</code> or <code>_practice</code> (gold or practice units), optionally with a position (
+              <code>anna#3</code>). Use it for coders or for conditions (session settings). It replaces the
+              column&apos;s values.
             </>
           )}
         </p>
@@ -445,7 +503,9 @@ function ColumnRow({
   const isSets = group !== undefined;
   const uploaded = mapping.field !== "" || isSets;
   return (
-    <tr className={`border-b align-top last:border-0 ${isId ? "bg-primary/5" : uploaded ? "" : "text-muted-foreground"}`}>
+    <tr
+      className={`border-b align-top last:border-0 ${isId ? "bg-primary/5" : uploaded ? "" : "text-muted-foreground"}`}
+    >
       <td className="p-1.5 font-medium">{header}</td>
       <td className="max-w-56 p-1.5">
         <span className="line-clamp-2 break-all">{samples.filter(Boolean).join(" · ") || "(empty)"}</span>
@@ -458,7 +518,12 @@ function ColumnRow({
         ) : isSets ? (
           <span className="flex items-center gap-1 text-xs">
             group
-            <Input aria-label={`Group of ${header}`} className="h-8 w-36 font-mono text-xs" value={group} onChange={(e) => onGroup(e.target.value.trim())} />
+            <Input
+              aria-label={`Group of ${header}`}
+              className="h-8 w-36 font-mono text-xs"
+              value={group}
+              onChange={(e) => onGroup(e.target.value.trim())}
+            />
           </span>
         ) : (
           <Input
@@ -472,7 +537,10 @@ function ColumnRow({
       </td>
       <td className="p-1.5">
         {existing && !isId && !isSets ? (
-          <span className="inline-flex h-8 items-center gap-1 text-muted-foreground" title="A field of this study keeps its type">
+          <span
+            className="inline-flex h-8 items-center gap-1 text-muted-foreground"
+            title="A field of this study keeps its type"
+          >
             {existing.type} <span className="text-[10px]">(existing field)</span>
           </span>
         ) : (
@@ -483,7 +551,8 @@ function ColumnRow({
             onChange={(e) => {
               if (e.target.value === "id") return onId(true);
               if (isId) onId(false);
-              if (e.target.value === "sets") return onGroup(header.replace(/[^A-Za-z0-9_]+/g, "_").replace(/^[^A-Za-z]+/, "") || "sets");
+              if (e.target.value === "sets")
+                return onGroup(header.replace(/[^A-Za-z0-9_]+/g, "_").replace(/^[^A-Za-z]+/, "") || "sets");
               if (isSets) onGroup(null);
               onChange({ type: e.target.value as UnitFieldType });
             }}

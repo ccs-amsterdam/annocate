@@ -10,7 +10,14 @@ import {
 
 // The answer types the editor offers, their names, and switching a question between them.
 
-export const VARIABLE_TYPE_OPTIONS_USER: UserVariableType["type"][] = ["nominal", "ordinal", "numeric", "scale", "annotinder", "confirm"];
+export const VARIABLE_TYPE_OPTIONS_USER: UserVariableType["type"][] = [
+  "nominal",
+  "ordinal",
+  "numeric",
+  "scale",
+  "annotinder",
+  "confirm",
+];
 
 export const VARIABLE_TYPE_OPTIONS_UNIT: UnitVariableType["type"][] = [
   "nominal",
@@ -40,7 +47,14 @@ export const VARIABLE_TYPE_LABELS: Record<AnyVariableType["type"], string> = {
 function defaultVariableForAnyType(type: string): AnyVariableType {
   switch (type) {
     case "nominal":
-      return { type: "nominal", question: "", options: [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }] };
+      return {
+        type: "nominal",
+        question: "",
+        options: [
+          { value: "yes", label: "Yes" },
+          { value: "no", label: "No" },
+        ],
+      };
     case "ordinal":
       return {
         type: "ordinal",
@@ -67,7 +81,14 @@ function defaultVariableForAnyType(type: string): AnyVariableType {
         ],
       };
     case "annotinder":
-      return { type: "annotinder", question: "", options: [{ value: "no", label: "No" }, { value: "yes", label: "Yes" }] };
+      return {
+        type: "annotinder",
+        question: "",
+        options: [
+          { value: "no", label: "No" },
+          { value: "yes", label: "Yes" },
+        ],
+      };
     case "confirm":
       return { type: "confirm", question: "" };
     case "random":
@@ -98,7 +119,10 @@ export function switchVariableType(current: AnyVariableType, type: AnyVariableTy
   if ((current.type === "nominal" || current.type === "ordinal") && (type === "nominal" || type === "ordinal")) {
     const rest = { ...(current as NominalType) };
     delete rest.multiple;
-    const layout = rest.layout && (type === "ordinal" ? ORDINAL_LAYOUTS : NOMINAL_LAYOUTS).some((l) => l === rest.layout) ? rest.layout : undefined;
+    const layout =
+      rest.layout && (type === "ordinal" ? ORDINAL_LAYOUTS : NOMINAL_LAYOUTS).some((l) => l === rest.layout)
+        ? rest.layout
+        : undefined;
     return { ...rest, type, layout, options: convertOptionsLevel(current.options, type) } as AnyVariableType;
   }
   const next = defaultVariableForAnyType(type);

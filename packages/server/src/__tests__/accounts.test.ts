@@ -119,11 +119,13 @@ describe("identities and invitations (JIT account claiming, safeguards)", () => 
     loginUser(db, { iss: "https://idp.test", sub, email, emailVerified: true, mfa }, []);
   const backdate = (email: string, what: "granted" | "login", months: number) =>
     what === "granted"
-      ? query(db, 
+      ? query(
+          db,
           `UPDATE roles SET granted_at = now() - interval '${months} months' WHERE user_id IN (SELECT id FROM users WHERE email = $1)`,
           [email],
         )
-      : query(db, 
+      : query(
+          db,
           `UPDATE users SET last_login_at = now() - interval '${months} months', registered_at = now() - interval '${months + 2} months' WHERE email = $1`,
           [email],
         );
@@ -178,7 +180,11 @@ describe("identities and invitations (JIT account claiming, safeguards)", () => 
     expect(await resetIdentities(db)).toEqual({ users: 1, unclaimable: 0 });
     // The new provider's login with the same verified email is the same account, with its roles
     expect(
-      await loginUser(db, { iss: "https://new-idp.test", sub: "new-sub", email: "jane@uni.nl", emailVerified: true, mfa: true }, []),
+      await loginUser(
+        db,
+        { iss: "https://new-idp.test", sub: "new-sub", email: "jane@uni.nl", emailVerified: true, mfa: true },
+        [],
+      ),
     ).toMatchObject({
       id: jane.id,
       role: "researcher",

@@ -63,7 +63,8 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
     return () => window.removeEventListener("keydown", onKeyDown);
   });
 
-  const highlight = (name: string) => (missing === name ? "rounded-md ring-2 ring-destructive ring-offset-2 ring-offset-background" : "");
+  const highlight = (name: string) =>
+    missing === name ? "rounded-md ring-2 ring-destructive ring-offset-2 ring-offset-background" : "";
 
   return (
     <div className="flex flex-col gap-2">
@@ -111,9 +112,18 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
           <EndLabels options={variable.options} />
           <div className="flex flex-col gap-1.5">
             {items.map((item) => (
-              <div key={item.name} ref={(el) => void (rows.current[item.name] = el)} className={`flex flex-col gap-0.5 ${highlight(item.name)}`}>
+              <div
+                key={item.name}
+                ref={(el) => void (rows.current[item.name] = el)}
+                className={`flex flex-col gap-0.5 ${highlight(item.name)}`}
+              >
                 <div className="text-center text-sm text-foreground">{itemLabel(item)}</div>
-                <CompactRow options={variable.options} selected={selected[item.name]} onSelect={(o) => select(item.name, o)} label={itemLabel(item)} />
+                <CompactRow
+                  options={variable.options}
+                  selected={selected[item.name]}
+                  onSelect={(o) => select(item.name, o)}
+                  label={itemLabel(item)}
+                />
               </div>
             ))}
           </div>

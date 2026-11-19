@@ -13,7 +13,9 @@ import type { RandomVariable } from "./variableTypes.js";
 // weights, groups to balance within, linked columns).
 
 /** A random computed variable as coders get it: its options (for labels; none for a column's free values). */
-export type CoderRandomVariable = Pick<RandomVariable, "type"> & { options: Omit<NonNullable<RandomVariable["options"]>[number], "weight">[] };
+export type CoderRandomVariable = Pick<RandomVariable, "type"> & {
+  options: Omit<NonNullable<RandomVariable["options"]>[number], "weight">[];
+};
 
 /** A computed item as coders get it: an invisible step that asks the server for its value. */
 export type CoderComputedItem = Omit<ComputedItem, "variable"> & { variable: CoderRandomVariable };

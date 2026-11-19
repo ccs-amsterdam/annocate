@@ -12,7 +12,10 @@ export function study(server: Server): Hono<Env> {
   const app = new Hono<Env>();
 
   app.get("/study/:studyId", requireStudyUser(server, "READ"), async (c) => {
-    const [row] = await db.select().from(studies).where(eq(studies.id, c.get("studyId")));
+    const [row] = await db
+      .select()
+      .from(studies)
+      .where(eq(studies.id, c.get("studyId")));
     return c.json(toStudyResponse(row!));
   });
 

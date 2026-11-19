@@ -13,9 +13,14 @@ import {
 export const VariableBaseSchema = z.object({
   question: z
     .string()
-    .describe("The question shown to the coder: a markdown template with $var references and {{ }} (in a loop also $unit and [[snippets]])."),
+    .describe(
+      "The question shown to the coder: a markdown template with $var references and {{ }} (in a loop also $unit and [[snippets]]).",
+    ),
   questionStyle: z.record(z.string(), z.string()).optional(),
-  instruction: z.string().optional().describe("Extra instructions for this variable; a markdown template like `question`."),
+  instruction: z
+    .string()
+    .optional()
+    .describe("Extra instructions for this variable; a markdown template like `question`."),
   instructionStyle: z.record(z.string(), z.string()).optional(),
   /**
    * When the instruction shows, in a unit loop: `always` (default), `first`
@@ -31,7 +36,10 @@ export const VariableBaseSchema = z.object({
         "for an answer, or a named ::: block's name (docs/client.md §3). The first is scrolled to and highlighted when the " +
         "question comes up. Default for span questions: their fields.",
     ),
-  focusDim: z.boolean().optional().describe("Dim the rest of the unit while this question is on screen, so its focus stands out."),
+  focusDim: z
+    .boolean()
+    .optional()
+    .describe("Dim the rest of the unit while this question is on screen, so its focus stands out."),
 });
 
 export const NOMINAL_LAYOUTS = ["auto", "flex", "row", "grid", "dropdown"] as const;
@@ -81,13 +89,18 @@ export const NumericTypeSchema = VariableBaseSchema.extend({
     .describe("Labels at break points, e.g. 0 'cold', 50 'neutral', 100 'warm'."),
   layout: z.enum(NUMERIC_LAYOUTS).optional().describe("Default auto: chosen from the range (resolveLayout)."),
 }).superRefine((v, ctx) => {
-  if (v.min !== undefined && v.max !== undefined && v.min >= v.max) ctx.addIssue({ code: "custom", message: "min must be below max", path: ["max"] });
+  if (v.min !== undefined && v.max !== undefined && v.min >= v.max)
+    ctx.addIssue({ code: "custom", message: "min must be below max", path: ["max"] });
   if ((v.layout === "slider" || v.layout === "buttons") && (v.min === undefined || v.max === undefined)) {
     ctx.addIssue({ code: "custom", message: `Layout ${v.layout} needs both min and max`, path: ["layout"] });
   }
   for (const [i, l] of (v.labels ?? []).entries()) {
     if ((v.min !== undefined && l.value < v.min) || (v.max !== undefined && l.value > v.max)) {
-      ctx.addIssue({ code: "custom", message: `Label at ${l.value} is outside min..max`, path: ["labels", i, "value"] });
+      ctx.addIssue({
+        code: "custom",
+        message: `Label at ${l.value} is outside min..max`,
+        path: ["labels", i, "value"],
+      });
     }
   }
 });
@@ -108,7 +121,9 @@ export const ScaleTypeSchema = VariableBaseSchema.extend({
   items: z
     .array(ScaleItemSchema)
     .min(1, "A scale needs at least one item")
-    .refine((items) => new Set(items.map((i) => i.name)).size === items.length, { message: "Item names must be unique" }),
+    .refine((items) => new Set(items.map((i) => i.name)).size === items.length, {
+      message: "Item names must be unique",
+    }),
   options: OrdinalOptionsSchema,
   layout: z.enum(SCALE_LAYOUTS).optional(),
 });
@@ -121,7 +136,9 @@ export const AnnotinderTypeSchema = VariableBaseSchema.extend({
   card: z
     .boolean()
     .optional()
-    .describe("In a unit loop: show the unit on a card while this question is asked. Default: the unit as it is (the layout doesn't change between questions); it moves when swiped either way."),
+    .describe(
+      "In a unit loop: show the unit on a card while this question is asked. Default: the unit as it is (the layout doesn't change between questions); it moves when swiped either way.",
+    ),
 });
 export type AnnotinderType = z.infer<typeof AnnotinderTypeSchema>;
 
@@ -142,7 +159,10 @@ export const RandomVariableSchema = z
     type: z.literal("random"),
     draw: z.enum(["random", "balanced"]),
     /** The possible values. Optional with `units`: then the column's values (its sets), whatever they are. */
-    options: z.array(NominalOptionSchema.extend({ weight: z.number().positive().optional() })).min(1, "List at least one value").optional(),
+    options: z
+      .array(NominalOptionSchema.extend({ weight: z.number().positive().optional() }))
+      .min(1, "List at least one value")
+      .optional(),
     /**
      * A set column of the units (docs/architecture.md §6.1): the
      * coder's value then selects their units, in the loops after this
@@ -158,9 +178,21 @@ export const RandomVariableSchema = z
     stratify: z.array(z.string().min(1).max(80)).max(5).optional(),
   })
   .superRefine((v, ctx) => {
-    if (!v.options && !v.units) ctx.addIssue({ code: "custom", message: "List the values, or link the variable to a set column of the units", path: ["options"] });
-    if (v.stratify?.length && v.draw !== "balanced") ctx.addIssue({ code: "custom", message: "Only a balanced draw can be balanced within groups", path: ["stratify"] });
-    nominalValueErrors(v.options ?? []).forEach((message) => ctx.addIssue({ code: "custom", message, path: ["options"] }));
+    if (!v.options && !v.units)
+      ctx.addIssue({
+        code: "custom",
+        message: "List the values, or link the variable to a set column of the units",
+        path: ["options"],
+      });
+    if (v.stratify?.length && v.draw !== "balanced")
+      ctx.addIssue({
+        code: "custom",
+        message: "Only a balanced draw can be balanced within groups",
+        path: ["stratify"],
+      });
+    nominalValueErrors(v.options ?? []).forEach((message) =>
+      ctx.addIssue({ code: "custom", message, path: ["options"] }),
+    );
   });
 export type RandomVariable = z.infer<typeof RandomVariableSchema>;
 
@@ -176,7 +208,7 @@ export const SpanTypeSchema = VariableBaseSchema.extend({
     .array(z.string().min(1))
     .min(1, "Choose what to select in")
     .describe(
-      "The unit fields to select spans in (each span records its field), e.g. [\"headline\", \"text\"]: fields the layout " +
+      'The unit fields to select spans in (each span records its field), e.g. ["headline", "text"]: fields the layout ' +
         "shows as plain text, `$unit.<field>` (docs/client.md §3)",
     ),
   options: NominalOptionsSchema,

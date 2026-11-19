@@ -42,7 +42,9 @@ export function toLinkResponse(row: LinkRow): LinkResponse {
  */
 async function linksOf(db: Db, studyId: number, items: DesignItem[], live: boolean): Promise<Record<string, string>[]> {
   const session = sessionItem(items);
-  const columns = [session?.coders?.column, ...(session?.conditions ?? []).map((c) => c.units)].filter((c): c is string => !!c);
+  const columns = [session?.coders?.column, ...(session?.conditions ?? []).map((c) => c.units)].filter(
+    (c): c is string => !!c,
+  );
   const sets = new Map<string, string[]>();
   for (const column of new Set(columns)) sets.set(column, await groupSets(db, studyId, column, live));
   return linkCombinations(session, (group) => sets.get(group) ?? []);
@@ -53,10 +55,22 @@ async function linksOf(db: Db, studyId: number, items: DesignItem[], live: boole
  * (400), and more than `CONFIRM_LINKS` only when confirmed (409
  * `confirm_links`). Returns the number.
  */
-export async function checkLinkCount(db: Db, studyId: number, items: DesignItem[], confirmed: boolean, live: boolean): Promise<number> {
+export async function checkLinkCount(
+  db: Db,
+  studyId: number,
+  items: DesignItem[],
+  confirmed: boolean,
+  live: boolean,
+): Promise<number> {
   const n = (await linksOf(db, studyId, items, live)).length;
-  if (n > MAX_LINKS) throw new HttpError(400, `This design makes ${n} links; at most ${MAX_LINKS} are possible. List the combinations you need.`, "too_many_links");
-  if (n > CONFIRM_LINKS && !confirmed) throw new HttpError(409, `This design makes ${n} links. Deploy anyway?`, "confirm_links");
+  if (n > MAX_LINKS)
+    throw new HttpError(
+      400,
+      `This design makes ${n} links; at most ${MAX_LINKS} are possible. List the combinations you need.`,
+      "too_many_links",
+    );
+  if (n > CONFIRM_LINKS && !confirmed)
+    throw new HttpError(409, `This design makes ${n} links. Deploy anyway?`, "confirm_links");
   return n;
 }
 
@@ -98,7 +112,13 @@ export async function syncLinks(db: Db, studyId: number, options: { secrets?: st
     }
     const [made] = await db
       .insert(linksTable)
-      .values({ studyId, label: linkLabel(values), secret: secrets.shift() ?? randomBytes(16).toString("hex"), params: values, linkKey: key })
+      .values({
+        studyId,
+        label: linkLabel(values),
+        secret: secrets.shift() ?? randomBytes(16).toString("hex"),
+        params: values,
+        linkKey: key,
+      })
       .returning({ id: linksTable.id });
     byKey.set(key, made!.id);
     keep.add(made!.id);

@@ -26,7 +26,7 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
       <div className="flex items-center gap-1">
         <input
           aria-label="Title shown to coders"
-          className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 font-heading text-base font-semibold placeholder:font-normal placeholder:text-muted-foreground/70 hover:border-input focus:border-input focus:outline-none focus:ring-1 focus:ring-ring disabled:hover:border-transparent"
+          className="font-heading min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-base font-semibold placeholder:font-normal placeholder:text-muted-foreground/70 hover:border-input focus:border-input focus:ring-1 focus:ring-ring focus:outline-none disabled:hover:border-transparent"
           placeholder="Title shown to coders…"
           maxLength={200}
           disabled={readOnly}
@@ -38,8 +38,8 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
           }}
         />
         <InfoTip label="About the title">
-          What coders see as the study&apos;s name: on their list of studies and while coding. The study&apos;s own name stays private, so
-          it can say what the study is about.
+          What coders see as the study&apos;s name: on their list of studies and while coding. The study&apos;s own name
+          stays private, so it can say what the study is about.
         </InfoTip>
       </div>
       <div className="flex flex-wrap items-center gap-1 px-1">
@@ -74,9 +74,17 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
             type="button"
             onClick={open}
             className="inline-flex cursor-pointer items-center gap-1 rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] hover:border-wood/50"
-            title={c.assign === "link" ? "An assigned condition: a link per value" : "An assigned condition: drawn when a session starts"}
+            title={
+              c.assign === "link"
+                ? "An assigned condition: a link per value"
+                : "An assigned condition: drawn when a session starts"
+            }
           >
-            {c.assign === "link" ? <Link2 className="h-3 w-3 text-muted-foreground" /> : <Shuffle className="h-3 w-3 text-muted-foreground" />}
+            {c.assign === "link" ? (
+              <Link2 className="h-3 w-3 text-muted-foreground" />
+            ) : (
+              <Shuffle className="h-3 w-3 text-muted-foreground" />
+            )}
             {c.name}
             <span className="text-muted-foreground">condition</span>
           </button>
@@ -87,7 +95,11 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
             type="button"
             onClick={open}
             className="inline-flex cursor-pointer items-center gap-1 rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] hover:border-wood/50"
-            title={p.kind === "link" ? "A link parameter: each value gets its own link" : "A URL parameter: added to a link by whoever shares it"}
+            title={
+              p.kind === "link"
+                ? "A link parameter: each value gets its own link"
+                : "A URL parameter: added to a link by whoever shares it"
+            }
           >
             {p.kind === "link" && <Link2 className="h-3 w-3 text-muted-foreground" />}
             {p.name}

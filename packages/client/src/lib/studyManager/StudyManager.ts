@@ -17,7 +17,19 @@ import type {
   ReferenceScope,
   UnitData,
 } from "@annotinder/contracts";
-import { answerMatchesKey, parseAnswerKey, type AnswerAlternative, buildScope, unitScopeData, loopDependencies, unitLoops, collectQuestions, fillRedirectUrl, itemName, validateAnswer } from "@annotinder/contracts";
+import {
+  answerMatchesKey,
+  parseAnswerKey,
+  type AnswerAlternative,
+  buildScope,
+  unitScopeData,
+  loopDependencies,
+  unitLoops,
+  collectQuestions,
+  fillRedirectUrl,
+  itemName,
+  validateAnswer,
+} from "@annotinder/contracts";
 import type { CoderApi } from "../api/httpCoderApi";
 import { ExpressionCache } from "../codebook/expressionCache";
 import { computeLoopSteps, computeTopLevelSteps, flattenTree, spanColumns, type StepContext } from "../codebook/tree";
@@ -25,12 +37,7 @@ import { renderTemplate, staticTemplate, type RenderedTemplate } from "../codebo
 import type { QuestionTexts } from "../components/Question";
 import { QuestionTimer } from "./timing";
 
-type StudyManagerPhase =
-  | "loading"
-  | "user_variable"
-  | "unit_variable"
-  | "finished"
-  | "error";
+type StudyManagerPhase = "loading" | "user_variable" | "unit_variable" | "finished" | "error";
 
 interface NavigationUnitItem {
   index: number;
@@ -614,8 +621,12 @@ export class StudyManager {
       const nextUnit = await this.fetchNextUnit(this.activeLoop);
       if (!nextUnit) break;
       // Back at the unit the coder had open before a new design version: keep their unsaved answers.
-    const carried = this.takeCarryOver(this.activeLoop, nextUnit.id);
-    this.unitHistory.push({ unitId: nextUnit.id, unit: nextUnit, answers: { ...carried, ...(nextUnit.variables ?? {}) } });
+      const carried = this.takeCarryOver(this.activeLoop, nextUnit.id);
+      this.unitHistory.push({
+        unitId: nextUnit.id,
+        unit: nextUnit,
+        answers: { ...carried, ...(nextUnit.variables ?? {}) },
+      });
     }
 
     if (this.unitHistory.length === 0) return;
@@ -748,9 +759,12 @@ export class StudyManager {
 
   /** "The expected answer to "…" was …", with the options' labels. */
   private expectedAnswerText(name: string, key: AnswerAlternative[]): string {
-    const variable = this.questions.get(name) as { question?: string; options?: { value: unknown; label?: string }[] } | undefined;
+    const variable = this.questions.get(name) as
+      { question?: string; options?: { value: unknown; label?: string }[] } | undefined;
     const label = (v: string) => variable?.options?.find((o) => String(o.value) === v)?.label ?? v;
-    const right = key.map((alt) => ("range" in alt ? `between ${alt.range[0]} and ${alt.range[1]}` : alt.values.map(label).join(" and ")));
+    const right = key.map((alt) =>
+      "range" in alt ? `between ${alt.range[0]} and ${alt.range[1]}` : alt.values.map(label).join(" and "),
+    );
     const text = variable?.question ? `"${variable.question}"` : name;
     return `The expected answer to ${text} is ${right.join(" or ")}.`;
   }
@@ -837,13 +851,19 @@ export class StudyManager {
       await this.flush();
       await this.republish();
     };
-    this.publish({ phase: "error", error: err instanceof Error ? err.message : String(err), errorCode: errorCodeOf(err), retrying: false });
+    this.publish({
+      phase: "error",
+      error: err instanceof Error ? err.message : String(err),
+      errorCode: errorCodeOf(err),
+      retrying: false,
+    });
   }
 
   /** Shows the current question again (after an error). */
   private async republish(): Promise<void> {
     if (this.activeLoop && this.currentUnit) await this.publishLoopStep();
-    else if (!this.activeLoop && this.topSteps[this.topIndex]?.type === "question") await this.publishTopStep(this.topSteps[this.topIndex]);
+    else if (!this.activeLoop && this.topSteps[this.topIndex]?.type === "question")
+      await this.publishTopStep(this.topSteps[this.topIndex]);
   }
 
   /**
@@ -866,7 +886,11 @@ export class StudyManager {
         await this.reloadAfterPublish();
         return;
       }
-      this.publish({ phase: "error", error: err instanceof Error ? err.message : String(err), errorCode: errorCodeOf(err) });
+      this.publish({
+        phase: "error",
+        error: err instanceof Error ? err.message : String(err),
+        errorCode: errorCodeOf(err),
+      });
     } finally {
       this.busy -= 1;
     }
@@ -888,7 +912,8 @@ export class StudyManager {
     this.saveError = null;
     // A practice question's feedback belongs to the unit, which is served again
     this.publish({ practiceWrong: null });
-    if (this.activeLoop && this.currentUnit) this.carryOver.set(`${this.keyOf(this.activeLoop)}/${this.currentUnit.id}`, { ...this.unitVariableValues });
+    if (this.activeLoop && this.currentUnit)
+      this.carryOver.set(`${this.keyOf(this.activeLoop)}/${this.currentUnit.id}`, { ...this.unitVariableValues });
     this.unitQueues.clear();
     this.publish({ unsaved: 0, retrying: false });
     this.starting = null;
@@ -978,8 +1003,12 @@ export class StudyManager {
     const { question } = item.variable;
     const instruction = this.showsInstruction(item) ? item.variable.instruction : undefined;
     const [q, i] = await Promise.all([
-      question ? renderTemplate(question, scope, this.expressionCache, `question:${item.name}`, { snippets }) : undefined,
-      instruction ? renderTemplate(instruction, scope, this.expressionCache, `instruction:${item.name}`, { snippets }) : undefined,
+      question
+        ? renderTemplate(question, scope, this.expressionCache, `question:${item.name}`, { snippets })
+        : undefined,
+      instruction
+        ? renderTemplate(instruction, scope, this.expressionCache, `instruction:${item.name}`, { snippets })
+        : undefined,
     ]);
     return { question: q, instruction: i };
   }
@@ -1012,7 +1041,11 @@ export class StudyManager {
         currentFrozen: false,
       });
     } catch (err) {
-      this.publish({ phase: "error", error: err instanceof Error ? err.message : String(err), errorCode: errorCodeOf(err) });
+      this.publish({
+        phase: "error",
+        error: err instanceof Error ? err.message : String(err),
+        errorCode: errorCodeOf(err),
+      });
     }
   }
 
@@ -1080,7 +1113,9 @@ export class StudyManager {
     const answers = this.carryOver.get(key) ?? {};
     this.carryOver.delete(key);
     const draft = this.readDraft();
-    return draft && draft.loop === this.keyOf(loop) && draft.unitId === unitId ? { ...draft.answers, ...answers } : answers;
+    return draft && draft.loop === this.keyOf(loop) && draft.unitId === unitId
+      ? { ...draft.answers, ...answers }
+      : answers;
   }
 
   /** The coder (from the session): the browser's draft of a unit is theirs. */
@@ -1101,7 +1136,14 @@ export class StudyManager {
     // Not for practice units: a restored answer would skip its check
     if (!key || !this.activeLoop || !this.currentUnit || this.currentUnit.practice) return;
     try {
-      localStorage.setItem(key, JSON.stringify({ loop: this.keyOf(this.activeLoop), unitId: this.currentUnit.id, answers: this.unitVariableValues }));
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          loop: this.keyOf(this.activeLoop),
+          unitId: this.currentUnit.id,
+          answers: this.unitVariableValues,
+        }),
+      );
     } catch {
       // No draft then
     }
@@ -1149,7 +1191,10 @@ export class StudyManager {
    */
   private endScope(values: EndValues | null): ReferenceScope {
     if (!values) return this.scope(this.coderVisible);
-    return this.scope({ ...this.coderVisible, ...values.variables, ...values.unit?.variables }, values.unit?.data as UnitData | undefined);
+    return this.scope(
+      { ...this.coderVisible, ...values.variables, ...values.unit?.variables },
+      values.unit?.data as UnitData | undefined,
+    );
   }
 
   /**
@@ -1184,7 +1229,9 @@ export class StudyManager {
   private async publishEnding(item: EndItem | null, scope: ReferenceScope, quit = false): Promise<void> {
     const ending: SessionEnding | null = item && {
       item,
-      message: item.message ? await renderTemplate(item.message, scope, this.expressionCache, `end:${item.name}`) : null,
+      message: item.message
+        ? await renderTemplate(item.message, scope, this.expressionCache, `end:${item.name}`)
+        : null,
       redirectUrl: item.redirectUrl ? fillRedirectUrl(item.redirectUrl, scope) : null,
     };
     this.activeLoop = null;
@@ -1261,7 +1308,12 @@ export class StudyManager {
    */
   private async postedCoderValues(): Promise<Record<string, VariableValue>> {
     const { visible } = await computeTopLevelSteps(this.stepItems, this.userVariableValues, this.stepContext);
-    return Object.fromEntries(Object.entries(this.userVariableValues).map(([name, value]) => [name, name in visible ? value : { done: true, skip: true }]));
+    return Object.fromEntries(
+      Object.entries(this.userVariableValues).map(([name, value]) => [
+        name,
+        name in visible ? value : { done: true, skip: true },
+      ]),
+    );
   }
 
   private async advanceUnit(): Promise<void> {
@@ -1292,7 +1344,10 @@ export class StudyManager {
       const timings = this.timer.take(`u:${id}:`);
       // Practice questions: how many tries it took (1: right the first time)
       for (const [triesKey, tries] of this.practiceTries) {
-        const [unitId, name] = [Number(triesKey.slice(0, triesKey.indexOf(":"))), triesKey.slice(triesKey.indexOf(":") + 1)];
+        const [unitId, name] = [
+          Number(triesKey.slice(0, triesKey.indexOf(":"))),
+          triesKey.slice(triesKey.indexOf(":") + 1),
+        ];
         if (unitId !== id) continue;
         if (timings[name]) timings[name] = { ...timings[name], tries };
         this.practiceTries.delete(triesKey);
@@ -1300,14 +1355,16 @@ export class StudyManager {
       this.save({
         key: `unit:${loopKey}/${id}`,
         send: async () => {
-          const submitted: SubmitUnitResponse | null = (await this.coderApi.postUnitVariables(id, doneValues, loopKey, timings)) || null;
+          const submitted: SubmitUnitResponse | null =
+            (await this.coderApi.postUnitVariables(id, doneValues, loopKey, timings)) || null;
           this.clearDraft(id);
           // Gold checks ended the session (health ran out): it ends now, wherever the coder is.
           if (submitted?.end) this.endedByServer(submitted.end);
         },
         unit: { loop: loopKey, unitId: id, answers: doneValues },
       });
-      for (const name of this.dependencies.get(loopKey) ?? []) if (name in this.userVariableValues) this.frozen.add(name);
+      for (const name of this.dependencies.get(loopKey) ?? [])
+        if (name in this.userVariableValues) this.frozen.add(name);
       if (this.currentUnit && this.unitHistoryIndex >= 0 && this.unitHistoryIndex < this.unitHistory.length) {
         this.unitHistory[this.unitHistoryIndex].answers = { ...doneValues };
       }
@@ -1378,7 +1435,11 @@ export class StudyManager {
 
     // Back at the unit the coder had open before a new design version: keep their unsaved answers.
     const carried = this.takeCarryOver(this.activeLoop, nextUnit.id);
-    this.unitHistory.push({ unitId: nextUnit.id, unit: nextUnit, answers: { ...carried, ...(nextUnit.variables ?? {}) } });
+    this.unitHistory.push({
+      unitId: nextUnit.id,
+      unit: nextUnit,
+      answers: { ...carried, ...(nextUnit.variables ?? {}) },
+    });
     await this.openEntry(this.unitHistory.length - 1);
 
     await this.refreshLoopSteps();
@@ -1428,7 +1489,15 @@ export class StudyManager {
           const reached = Math.max(this.loopIndex, firstOpen === -1 ? this.loopSteps.length - 1 : firstOpen);
           questions = this.loopSteps.flatMap((q, qIdx) =>
             q.type === "question" && qIdx <= reached
-              ? [{ index: qIdx, name: q.name, label: getQuestionLabel(q), isCurrent: qIdx === this.loopIndex, isCompleted: qIdx < this.loopIndex }]
+              ? [
+                  {
+                    index: qIdx,
+                    name: q.name,
+                    label: getQuestionLabel(q),
+                    isCurrent: qIdx === this.loopIndex,
+                    isCompleted: qIdx < this.loopIndex,
+                  },
+                ]
               : [],
           );
         }
@@ -1462,7 +1531,8 @@ export class StudyManager {
 
   private publish(next: Partial<StudyManagerSnapshot>): void {
     // After the server ended the session, its ending stays on screen
-    if (this.serverEnded && this.snapshot.phase === "finished" && next.phase !== undefined && next.phase !== "finished") return;
+    if (this.serverEnded && this.snapshot.phase === "finished" && next.phase !== undefined && next.phase !== "finished")
+      return;
     // Navigation (canGoBack etc.) depends on the new phase, so set that first.
     this.snapshot = { ...this.snapshot, userVariableValues: { ...this.userVariableValues }, ...next };
     this.snapshot = { ...this.snapshot, navigation: this.buildNavigation() };

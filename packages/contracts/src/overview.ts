@@ -7,7 +7,12 @@ import { z } from "zod";
 export const StudyOverviewSchema = z.object({
   units: z.number().int().nonnegative(),
   /** The set groups, with their sets' sizes. */
-  groups: z.array(z.object({ name: z.string(), sets: z.array(z.object({ name: z.string(), units: z.number().int().nonnegative() })) })),
+  groups: z.array(
+    z.object({
+      name: z.string(),
+      sets: z.array(z.object({ name: z.string(), units: z.number().int().nonnegative() })),
+    }),
+  ),
   coders: z.object({
     total: z.number().int().nonnegative(),
     /** Coders who gave at least one answer. */

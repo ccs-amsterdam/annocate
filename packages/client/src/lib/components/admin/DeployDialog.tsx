@@ -2,7 +2,14 @@ import { useState } from "react";
 import { designItems, type DesignVersion, type SignIn, type TopLevelItem } from "@annotinder/contracts";
 import { describeUnitChanges } from "../../admin/unitChanges";
 import { AlertTriangle, Loader2, Rocket } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { diffDesigns, summarizeChanges, valueChanges, type DesignChange } from "../../design/diff";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -40,14 +47,29 @@ interface DeployDialogProps {
  *
  * Mount it with a `key` per design version, so the note starts fresh.
  */
-export function DeployDialog({ client, open, version, versionNumber, live, liveNumber, includeDesign = true, onDeploy, onClose }: DeployDialogProps) {
+export function DeployDialog({
+  client,
+  open,
+  version,
+  versionNumber,
+  live,
+  liveNumber,
+  includeDesign = true,
+  onDeploy,
+  onClose,
+}: DeployDialogProps) {
   const [state, setState] = useState<
-    { step: "confirm" } | { step: "publishing" } | { step: "done"; warnings: string[] } | { step: "error"; message: string }
+    | { step: "confirm" }
+    | { step: "publishing" }
+    | { step: "done"; warnings: string[] }
+    | { step: "error"; message: string }
   >({ step: "confirm" });
   const pending = usePendingChangesQuery(client, open).data;
   const firstDeploy = liveNumber === null;
   const unitChanges = pending?.units ?? null;
-  const hasUnitChanges = unitChanges !== null && (unitChanges.added > 0 || unitChanges.changed > 0 || unitChanges.removed > 0 || unitChanges.sets);
+  const hasUnitChanges =
+    unitChanges !== null &&
+    (unitChanges.added > 0 || unitChanges.changed > 0 || unitChanges.removed > 0 || unitChanges.sets);
   const [withDesign, setWithDesign] = useState(includeDesign || firstDeploy);
   const [withUnits, setWithUnits] = useState(true);
   const deployDesign = version !== null && (withDesign || firstDeploy);
@@ -57,7 +79,9 @@ export function DeployDialog({ client, open, version, versionNumber, live, liveN
   const draftItems = version ? (designItems(version) as TopLevelItem[]) : [];
   const changes = version && live ? diffDesigns(liveItems, draftItems) : null;
   const valueWarnings = version && live ? valueChanges(liveItems, draftItems) : [];
-  const [note, setNote] = useState(() => version?.note ?? (changes ? summarizeChanges(changes) : live === null ? "First version" : ""));
+  const [note, setNote] = useState(
+    () => version?.note ?? (changes ? summarizeChanges(changes) : live === null ? "First version" : ""),
+  );
   // Whether coders sign in: chosen at the first deploy (docs/architecture.md §7), in Settings later
   const study = useStudyQuery(client).data ?? null;
   const updateStudy = useUpdateStudyMutation(client);
@@ -75,7 +99,8 @@ export function DeployDialog({ client, open, version, versionNumber, live, liveN
   async function deploy() {
     setState({ step: "publishing" });
     try {
-      if (firstDeploy && study && signIn !== study.signIn) await updateStudy.mutateAsync({ id: study.id, body: { name: study.name, archived: study.archived, signIn } });
+      if (firstDeploy && study && signIn !== study.signIn)
+        await updateStudy.mutateAsync({ id: study.id, body: { name: study.name, archived: study.archived, signIn } });
       const result = await onDeploy(deployDesign ? version : null, note.trim(), useUnits);
       if (result.warnings?.length) setState({ step: "done", warnings: result.warnings });
       else close();
@@ -121,7 +146,12 @@ export function DeployDialog({ client, open, version, versionNumber, live, liveN
               <section className="space-y-2 rounded-md border border-border p-3">
                 {version ? (
                   <label className="flex items-center gap-2 font-semibold text-foreground">
-                    <input type="checkbox" checked={deployDesign} disabled={firstDeploy} onChange={(e) => setWithDesign(e.target.checked)} />
+                    <input
+                      type="checkbox"
+                      checked={deployDesign}
+                      disabled={firstDeploy}
+                      onChange={(e) => setWithDesign(e.target.checked)}
+                    />
                     Design v{versionNumber}
                   </label>
                 ) : (
@@ -163,19 +193,31 @@ export function DeployDialog({ client, open, version, versionNumber, live, liveN
                     />
                   </>
                 )}
-                {version && !deployDesign && <p className="text-xs text-muted-foreground">The draft stays a draft, for a later deploy.</p>}
+                {version && !deployDesign && (
+                  <p className="text-xs text-muted-foreground">The draft stays a draft, for a later deploy.</p>
+                )}
               </section>
 
               <section className="space-y-1 rounded-md border border-border p-3">
                 {firstDeploy || hasUnitChanges ? (
                   <label className="flex items-center gap-2 font-semibold text-foreground">
-                    <input type="checkbox" checked={useUnits} disabled={firstDeploy} onChange={(e) => setWithUnits(e.target.checked)} />
-                    Units and sets{unitChanges ? `: ${firstDeploy ? `${unitChanges.added} units` : describeUnitChanges(unitChanges)}` : ""}
+                    <input
+                      type="checkbox"
+                      checked={useUnits}
+                      disabled={firstDeploy}
+                      onChange={(e) => setWithUnits(e.target.checked)}
+                    />
+                    Units and sets
+                    {unitChanges
+                      ? `: ${firstDeploy ? `${unitChanges.added} units` : describeUnitChanges(unitChanges)}`
+                      : ""}
                   </label>
                 ) : (
                   <p className="font-semibold text-foreground">Units and sets: no changes</p>
                 )}
-                {hasUnitChanges && !useUnits && <p className="text-xs text-muted-foreground">The units stay drafts, for a later deploy.</p>}
+                {hasUnitChanges && !useUnits && (
+                  <p className="text-xs text-muted-foreground">The units stay drafts, for a later deploy.</p>
+                )}
               </section>
               {firstDeploy && (
                 <section className="space-y-1 rounded-md border border-border p-3">
@@ -188,9 +230,22 @@ export function DeployDialog({ client, open, version, versionNumber, live, liveN
                 What happens when you deploy
                 <InfoTip label="What happens when you deploy">
                   <ul className="list-disc space-y-1 pl-4">
-                    <li>{firstDeploy ? "Coders can start." : "Coders who are working now switch to it when they next save an answer; new coders start with it."}</li>
-                    {!firstDeploy && <li>Answers already given stay linked to the design version and unit versions they were given with.</li>}
-                    {deployDesign && <li>Design v{versionNumber} becomes read only. To change it later, you edit a new draft and deploy that.</li>}
+                    <li>
+                      {firstDeploy
+                        ? "Coders can start."
+                        : "Coders who are working now switch to it when they next save an answer; new coders start with it."}
+                    </li>
+                    {!firstDeploy && (
+                      <li>
+                        Answers already given stay linked to the design version and unit versions they were given with.
+                      </li>
+                    )}
+                    {deployDesign && (
+                      <li>
+                        Design v{versionNumber} becomes read only. To change it later, you edit a new draft and deploy
+                        that.
+                      </li>
+                    )}
                   </ul>
                 </InfoTip>
                 <HelpButton topic="changing-a-live-design" label="Help: changing a live design" />
@@ -203,8 +258,15 @@ export function DeployDialog({ client, open, version, versionNumber, live, liveN
               <Button variant="outline" onClick={close} disabled={state.step === "publishing"}>
                 Cancel
               </Button>
-              <Button onClick={() => void deploy()} disabled={state.step === "publishing" || nothing || (!firstDeploy && !pending)}>
-                {state.step === "publishing" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Rocket className="mr-1.5 h-4 w-4" />}
+              <Button
+                onClick={() => void deploy()}
+                disabled={state.step === "publishing" || nothing || (!firstDeploy && !pending)}
+              >
+                {state.step === "publishing" ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Rocket className="mr-1.5 h-4 w-4" />
+                )}
                 Deploy
               </Button>
             </DialogFooter>
@@ -224,7 +286,14 @@ const KIND_LABEL: Record<DesignChange["kind"], { label: string; className: strin
 
 function ChangeLine({ change }: { change: DesignChange }) {
   const { label, className } = KIND_LABEL[change.kind];
-  const where = change.kind === "moved" ? (change.parent ? ` to ${change.parent}` : " to the top level") : change.parent ? ` in ${change.parent}` : "";
+  const where =
+    change.kind === "moved"
+      ? change.parent
+        ? ` to ${change.parent}`
+        : " to the top level"
+      : change.parent
+        ? ` in ${change.parent}`
+        : "";
   return (
     <li className="flex items-center gap-2">
       <span className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-[11px] font-semibold ${className}`}>

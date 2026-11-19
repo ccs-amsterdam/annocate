@@ -12,7 +12,11 @@ import {
   type TopLevelItem,
 } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useCreateDesignVersionMutation, useUnitFieldsQuery, useUpdateDesignVersionMutation } from "../../../admin/queries";
+import {
+  useCreateDesignVersionMutation,
+  useUnitFieldsQuery,
+  useUpdateDesignVersionMutation,
+} from "../../../admin/queries";
 import {
   deleteItems,
   ensureKeys,
@@ -93,7 +97,10 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
     }
     const rest = undeclared.filter((f) => !located.has(f));
     if (rest.length > 0) {
-      issues.push({ path: [], message: `Uses unit fields the design doesn't declare: ${rest.join(", ")}. Upload units with them, or declare them on the Units page.` });
+      issues.push({
+        path: [],
+        message: `Uses unit fields the design doesn't declare: ${rest.join(", ")}. Upload units with them, or declare them on the Units page.`,
+      });
     }
     return issues;
   }, [cleanItems, declared, undeclared]);
@@ -107,14 +114,20 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
   useWarnBeforeUnload(dirty);
 
   // A copy of unsaved edits in the browser, in case it closes (localBackup.ts)
-  const backupOf = useMemo(() => ({ studyId: client.studyId ?? 0, designVersionId: version?.id ?? null }), [client.studyId, version?.id]);
+  const backupOf = useMemo(
+    () => ({ studyId: client.studyId ?? 0, designVersionId: version?.id ?? null }),
+    [client.studyId, version?.id],
+  );
   useEffect(() => {
     if (readOnly) return;
     if (!dirty) {
       clearBackup(backupOf);
       return;
     }
-    const timer = setTimeout(() => writeBackup({ ...backupOf, revision, items, saved, at: Date.now() }), BACKUP_DELAY_MS);
+    const timer = setTimeout(
+      () => writeBackup({ ...backupOf, revision, items, saved, at: Date.now() }),
+      BACKUP_DELAY_MS,
+    );
     return () => clearTimeout(timer);
   }, [readOnly, dirty, backupOf, revision, items, saved]);
 
@@ -176,7 +189,13 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
   /** Items (topmost selected, in design order) moved to a position. */
   function move(keys: string[], position: TreePosition) {
     // The Study entry stays first
-    setItems(moveAllTo(items, keys.filter((key) => findItem(items, key)?.type !== "session"), position));
+    setItems(
+      moveAllTo(
+        items,
+        keys.filter((key) => findItem(items, key)?.type !== "session"),
+        position,
+      ),
+    );
   }
 
   function update(key: string, next: DesignItem) {
@@ -203,7 +222,11 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
         version && !version.immutable
           ? await updateDesignVersion.mutateAsync({
               id: version.id,
-              body: { note: version.note ?? undefined, ...splitDesignItems(cleanItems), revision: overwrite ? undefined : revision },
+              body: {
+                note: version.note ?? undefined,
+                ...splitDesignItems(cleanItems),
+                revision: overwrite ? undefined : revision,
+              },
             })
           : await createDesignVersion.mutateAsync(splitDesignItems(cleanItems));
       setSaved(sent);

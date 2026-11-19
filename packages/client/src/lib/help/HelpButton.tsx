@@ -6,7 +6,17 @@ import { openHelp } from "./helpStore";
  * Opens the help on a topic (`topic` or `topic#heading`, a file in
  * ./topics). An icon, or with `children` a small text link.
  */
-export function HelpButton({ topic, label = "Help", className, children }: { topic: string; label?: string; className?: string; children?: React.ReactNode }) {
+export function HelpButton({
+  topic,
+  label = "Help",
+  className,
+  children,
+}: {
+  topic: string;
+  label?: string;
+  className?: string;
+  children?: React.ReactNode;
+}) {
   return (
     <button
       type="button"

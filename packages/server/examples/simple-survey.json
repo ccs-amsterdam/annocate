@@ -208,10 +208,7 @@
         },
         "age": 34,
         "news_frequency": 3,
-        "sources": [
-          "tv",
-          "websites"
-        ],
+        "sources": ["tv", "websites"],
         "social_platform": {
           "done": true,
           "skip": true
@@ -231,10 +228,7 @@
         },
         "age": 22,
         "news_frequency": 4,
-        "sources": [
-          "social",
-          "websites"
-        ],
+        "sources": ["social", "websites"],
         "social_platform": "instagram",
         "trust": {
           "tv": 2,
@@ -251,11 +245,7 @@
         },
         "age": 61,
         "news_frequency": 3,
-        "sources": [
-          "tv",
-          "newspaper",
-          "radio"
-        ],
+        "sources": ["tv", "newspaper", "radio"],
         "social_platform": {
           "done": true,
           "skip": true

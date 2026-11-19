@@ -100,7 +100,12 @@ monaco.languages.registerCompletionItemProvider(LANGUAGE, {
     const before = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
     const word = model.getWordUntilPosition(position);
     const range = new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn);
-    const item = (label: string, detail: string, kind = monaco.languages.CompletionItemKind.Field, insertText = label) => ({
+    const item = (
+      label: string,
+      detail: string,
+      kind = monaco.languages.CompletionItemKind.Field,
+      insertText = label,
+    ) => ({
       label,
       detail,
       kind,
@@ -108,7 +113,11 @@ monaco.languages.registerCompletionItemProvider(LANGUAGE, {
       range,
     });
     if (/^\s{0,3}:{3,}\s*from\s+\w*$/.test(before)) {
-      return { suggestions: current.loopQuestions.map((n) => item(n, "question of this loop", monaco.languages.CompletionItemKind.Variable)) };
+      return {
+        suggestions: current.loopQuestions.map((n) =>
+          item(n, "question of this loop", monaco.languages.CompletionItemKind.Variable),
+        ),
+      };
     }
     if (/^\s{0,3}:{3,}\s*\w*$/.test(before)) {
       return {
@@ -120,7 +129,11 @@ monaco.languages.registerCompletionItemProvider(LANGUAGE, {
     }
     if (before.endsWith(" ")) return { suggestions: [] };
     if (/\[\[\w*$/.test(before)) {
-      return { suggestions: current.snippets.map((n) => item(n, "snippet", monaco.languages.CompletionItemKind.Snippet, `${n}]]`)) };
+      return {
+        suggestions: current.snippets.map((n) =>
+          item(n, "snippet", monaco.languages.CompletionItemKind.Snippet, `${n}]]`),
+        ),
+      };
     }
     const ref = /\$(unit|var|session)\.\w*$/.exec(before);
     if (ref) {
@@ -153,7 +166,9 @@ monaco.languages.registerCompletionItemProvider(LANGUAGE, {
 const IF_FENCE = /^(\s{0,3}:{3,}\s*(?:else\s+if|if)\s+)(.*?)\s*$/;
 let editCondition: ((line: number, script: string) => void) | null = null;
 const EDIT_CONDITION = "annotinder.editCondition";
-monaco.editor.registerCommand(EDIT_CONDITION, (_accessor, line: number, script: string) => editCondition?.(line, script));
+monaco.editor.registerCommand(EDIT_CONDITION, (_accessor, line: number, script: string) =>
+  editCondition?.(line, script),
+);
 monaco.languages.registerCodeLensProvider(LANGUAGE, {
   provideCodeLenses(model) {
     const lenses = [];
@@ -162,7 +177,11 @@ monaco.languages.registerCodeLensProvider(LANGUAGE, {
       if (!match || !match[2]) continue;
       lenses.push({
         range: new monaco.Range(line, 1, line, 1),
-        command: { id: EDIT_CONDITION, title: `if ${describeCondition({ script: match[2] })}  ·  edit`, arguments: [line, match[2]] },
+        command: {
+          id: EDIT_CONDITION,
+          title: `if ${describeCondition({ script: match[2] })}  ·  edit`,
+          arguments: [line, match[2]],
+        },
       });
     }
     return { lenses, dispose: () => undefined };
@@ -170,7 +189,15 @@ monaco.languages.registerCodeLensProvider(LANGUAGE, {
 });
 
 /** A unit template editor: markdown, with completions for references. */
-export default function MonacoTemplate({ value, onChange, names, readOnly, height = 240, onReady, onEditCondition }: MonacoTemplateProps) {
+export default function MonacoTemplate({
+  value,
+  onChange,
+  names,
+  readOnly,
+  height = 240,
+  onReady,
+  onEditCondition,
+}: MonacoTemplateProps) {
   const [theme] = useTheme();
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   useEffect(() => {
@@ -233,7 +260,9 @@ export default function MonacoTemplate({ value, onChange, names, readOnly, heigh
         suggestOnTriggerCharacters: true,
         wordBasedSuggestions: "off",
       }}
-      loading={<div className="flex h-full items-center justify-center text-xs text-muted-foreground">Loading editor...</div>}
+      loading={
+        <div className="flex h-full items-center justify-center text-xs text-muted-foreground">Loading editor...</div>
+      }
     />
   );
 }

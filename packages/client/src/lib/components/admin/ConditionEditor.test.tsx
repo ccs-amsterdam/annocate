@@ -4,8 +4,16 @@ import { availableQuestions, type TopLevelItem } from "@annotinder/contracts";
 import { ConditionEditor } from "./ConditionEditor";
 
 const items = [
-  { type: "question", name: "role", variable: { type: "nominal", question: "?", options: [{ value: "student" }, { value: "expert", label: "Expert" }] } },
-  { type: "show_if", condition: { script: "true" }, children: [{ type: "question", name: "inner", variable: { type: "confirm", question: "?" } }] },
+  {
+    type: "question",
+    name: "role",
+    variable: { type: "nominal", question: "?", options: [{ value: "student" }, { value: "expert", label: "Expert" }] },
+  },
+  {
+    type: "show_if",
+    condition: { script: "true" },
+    children: [{ type: "question", name: "inner", variable: { type: "confirm", question: "?" } }],
+  },
   { type: "question", name: "later", variable: { type: "confirm", question: "?" } },
 ] as TopLevelItem[];
 
@@ -14,7 +22,11 @@ describe("ConditionEditor", () => {
 
   it("shows a simple condition as rules, with only the questions available here", () => {
     const html = renderToStaticMarkup(
-      <ConditionEditor condition={{ script: `$var.role.isAny("student", "expert")` }} onChange={() => {}} questions={questions} />,
+      <ConditionEditor
+        condition={{ script: `$var.role.isAny("student", "expert")` }}
+        onChange={() => {}}
+        questions={questions}
+      />,
     );
     expect(html).toContain('<option value="role" selected="">role</option>');
     expect(html).toContain('<option value="isAny" selected="">is one of</option>');
@@ -43,7 +55,12 @@ describe("ConditionEditor", () => {
 
   it("shows a script editor with a reference cheat sheet in script mode", () => {
     const html = renderToStaticMarkup(
-      <ConditionEditor condition={{ script: "$var.role.value === 'expert'" }} onChange={() => {}} questions={questions} loop />,
+      <ConditionEditor
+        condition={{ script: "$var.role.value === 'expert'" }}
+        onChange={() => {}}
+        questions={questions}
+        loop
+      />,
     );
     expect(html).toContain("<textarea");
     expect(html).toContain("$var.role.is(…)");

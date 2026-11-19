@@ -13,7 +13,11 @@ function commit(): string {
   if (fromEnv) return fromEnv.slice(0, 64);
   try {
     const cwd = dirname(fileURLToPath(import.meta.url));
-    return execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd, stdio: ["ignore", "pipe", "ignore"] }).toString().trim() || "unknown";
+    return (
+      execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd, stdio: ["ignore", "pipe", "ignore"] })
+        .toString()
+        .trim() || "unknown"
+    );
   } catch {
     return "unknown";
   }

@@ -45,9 +45,14 @@ export function SessionItemForm({
   issues: DesignIssue[];
   onChange: (item: SessionItem) => void;
 }) {
-  const setsOf = (group: string) => groups.find((g) => g.name === group)?.sets.filter((s) => s.name !== OVERLAP_SET).map((s) => s.name) ?? [];
+  const setsOf = (group: string) =>
+    groups
+      .find((g) => g.name === group)
+      ?.sets.filter((s) => s.name !== OVERLAP_SET)
+      .map((s) => s.name) ?? [];
   const params = item.params;
-  const setParam = (i: number, param: SessionParam) => onChange({ ...item, params: params.map((p, j) => (j === i ? param : p)) });
+  const setParam = (i: number, param: SessionParam) =>
+    onChange({ ...item, params: params.map((p, j) => (j === i ? param : p)) });
   const linkParams = params.filter((p) => p.kind === "link");
   // Every combination (ignoring the listed ones), and those that make links
   const all = linkCombinations({ ...item, combinations: undefined }, setsOf);
@@ -57,7 +62,10 @@ export function SessionItemForm({
   const addParam = () => {
     let n = params.length + 1;
     while (params.some((p) => p.name === `param_${n}`)) n++;
-    onChange({ ...item, params: [...params, { name: `param_${n}`, kind: "link", values: { list: [{ value: "a" }, { value: "b" }] } }] });
+    onChange({
+      ...item,
+      params: [...params, { name: `param_${n}`, kind: "link", values: { list: [{ value: "a" }, { value: "b" }] } }],
+    });
   };
 
   return (
@@ -66,8 +74,8 @@ export function SessionItemForm({
       <h2 className="-mb-3 flex items-center gap-1.5 text-sm font-semibold">
         Session
         <InfoTip label="About the session">
-          How a coder&apos;s session starts: which units are theirs (coders, conditions), the links and their parameters, URL parameters
-          from a panel, the participant id, and the sample size per link.
+          How a coder&apos;s session starts: which units are theirs (coders, conditions), the links and their
+          parameters, URL parameters from a panel, the participant id, and the sample size per link.
         </InfoTip>
       </h2>
       <AssignmentSettings item={item} groups={groups} issues={issues} onChange={onChange} />
@@ -75,11 +83,13 @@ export function SessionItemForm({
         <h3 className="flex items-center gap-1.5 text-xs font-semibold">
           Parameters
           <InfoTip label="About session parameters">
-            Values a session starts with, used as <span className="font-mono">$session.name</span> in conditions and texts.
-            A <strong>link parameter</strong> is fixed in the link: every value (or combination of values) gets its own link on the Links
-            page. A <strong>URL parameter</strong> is added to a link by whoever shares it (e.g. <span className="font-mono">?wave=2</span>).
-            Built in: <span className="font-mono">$session.participant</span>, <span className="font-mono">$session.source</span> (the
-            optional <span className="font-mono">?source=</span> of any link) and <span className="font-mono">$session.email</span>.
+            Values a session starts with, used as <span className="font-mono">$session.name</span> in conditions and
+            texts. A <strong>link parameter</strong> is fixed in the link: every value (or combination of values) gets
+            its own link on the Links page. A <strong>URL parameter</strong> is added to a link by whoever shares it
+            (e.g. <span className="font-mono">?wave=2</span>). Built in:{" "}
+            <span className="font-mono">$session.participant</span>, <span className="font-mono">$session.source</span>{" "}
+            (the optional <span className="font-mono">?source=</span> of any link) and{" "}
+            <span className="font-mono">$session.email</span>.
           </InfoTip>
           <HelpButton topic="session-parameters" label="Help: session parameters" />
         </h3>
@@ -100,7 +110,9 @@ export function SessionItemForm({
       {linkParams.length > 0 && (
         <section className="flex flex-col gap-2">
           <h3 className="text-xs font-semibold">Links</h3>
-          <p className={`text-[11px] ${links.length > CONFIRM_LINKS ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}>
+          <p
+            className={`text-[11px] ${links.length > CONFIRM_LINKS ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}
+          >
             Deploying makes {links.length} link{links.length === 1 ? "" : "s"}
             {item.combinations ? ` (of ${all.length} combinations)` : ""}.
             {links.length > MAX_LINKS
@@ -142,11 +154,19 @@ export function SessionItemForm({
                         })
                       }
                     />
-                    <span className="font-mono">{Object.entries(combo).map(([k, v]) => `${k}=${v}`).join(", ")}</span>
+                    <span className="font-mono">
+                      {Object.entries(combo)
+                        .map(([k, v]) => `${k}=${v}`)
+                        .join(", ")}
+                    </span>
                   </label>
                 );
               })}
-              {all.length > 500 && <span className="text-muted-foreground">… and {all.length - 500} more (edit them in the JSON view)</span>}
+              {all.length > 500 && (
+                <span className="text-muted-foreground">
+                  … and {all.length - 500} more (edit them in the JSON view)
+                </span>
+              )}
             </div>
           )}
         </section>
@@ -157,7 +177,8 @@ export function SessionItemForm({
           <span className="flex items-center gap-1">
             Sessions per link (sample size)
             <InfoTip label="About the sample size per link">
-              Each link takes at most this many sessions, e.g. 40 per condition. A link&apos;s own limit (Deploy, Links) overrides it.
+              Each link takes at most this many sessions, e.g. 40 per condition. A link&apos;s own limit (Deploy, Links)
+              overrides it.
             </InfoTip>
           </span>
           <Input
@@ -206,12 +227,14 @@ export function SessionItemForm({
                 className="h-8 w-48 font-mono text-xs font-normal"
                 placeholder="e.g. [0-9a-f]{24}"
                 value={item.participant.pattern ?? ""}
-                onChange={(e) => onChange({ ...item, participant: { ...item.participant!, pattern: e.target.value || undefined } })}
+                onChange={(e) =>
+                  onChange({ ...item, participant: { ...item.participant!, pattern: e.target.value || undefined } })
+                }
               />
             </label>
             <InfoTip label="About participant ids">
-              Required to start: a link without it, or with a value not matching the pattern, is refused. A participant id is a label, not a
-              password: the same id on another device starts a new session (after asking).
+              Required to start: a link without it, or with a value not matching the pattern, is refused. A participant
+              id is a label, not a password: the same id on another device starts a new session (after asking).
             </InfoTip>
           </div>
         )}
@@ -249,11 +272,19 @@ function ParamEditor({
       <div className="flex flex-wrap items-end gap-3">
         <label className={labelClass}>
           Name
-          <Input className="h-8 w-40 font-mono text-xs font-normal" value={param.name} onChange={(e) => onChange({ ...param, name: e.target.value })} />
+          <Input
+            className="h-8 w-40 font-mono text-xs font-normal"
+            value={param.name}
+            onChange={(e) => onChange({ ...param, name: e.target.value })}
+          />
         </label>
         <label className={labelClass}>
           Kind
-          <select className={`${selectClass} font-normal`} value={param.kind} onChange={(e) => setKind(e.target.value as "link" | "url")}>
+          <select
+            className={`${selectClass} font-normal`}
+            value={param.kind}
+            onChange={(e) => setKind(e.target.value as "link" | "url")}
+          >
             <option value="link">Link parameter (a link per value)</option>
             <option value="url">URL parameter (?{param.param ?? param.name}=…)</option>
           </select>
@@ -263,22 +294,30 @@ function ParamEditor({
           <select
             className={`${selectClass} font-normal`}
             value={kind}
-            onChange={(e) =>
-              setValues(
-                e.target.value === "list" ? { list: [{ value: "a" }] } : { open: {} },
-              )
-            }
+            onChange={(e) => setValues(e.target.value === "list" ? { list: [{ value: "a" }] } : { open: {} })}
           >
             <option value="list">From a list</option>
             {param.kind === "url" && <option value="open">Any value</option>}
           </select>
         </label>
-        <Button type="button" variant="ghost" size="icon-sm" className="ml-auto" aria-label={`Remove ${param.name}`} onClick={onRemove}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="ml-auto"
+          aria-label={`Remove ${param.name}`}
+          onClick={onRemove}
+        >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>
 
-      {"list" in param.values && <ListValues values={param.values.list.map((v) => v.value)} onChange={(list) => setValues({ list: list.map((value) => ({ value })) })} />}
+      {"list" in param.values && (
+        <ListValues
+          values={param.values.list.map((v) => v.value)}
+          onChange={(list) => setValues({ list: list.map((value) => ({ value })) })}
+        />
+      )}
       {"open" in param.values && (
         <label className={labelClass}>
           Pattern (optional)
@@ -312,7 +351,9 @@ function ParamEditor({
             />
           </label>
           <span className="text-[11px] text-muted-foreground">
-            {param.default === undefined ? "Required: a link without it doesn't start." : "Used when the link has none."}
+            {param.default === undefined
+              ? "Required: a link without it doesn't start."
+              : "Used when the link has none."}
           </span>
         </div>
       )}

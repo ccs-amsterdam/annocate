@@ -22,7 +22,10 @@ function entriesOf(value: object): [string, unknown][] {
     const i = FIRST_KEYS.indexOf(key);
     return i === -1 ? FIRST_KEYS.length : i;
   };
-  return entries.map((e, i) => [e, i] as const).sort((a, b) => rank(a[0][0]) - rank(b[0][0]) || a[1] - b[1]).map(([e]) => e);
+  return entries
+    .map((e, i) => [e, i] as const)
+    .sort((a, b) => rank(a[0][0]) - rank(b[0][0]) || a[1] - b[1])
+    .map(([e]) => e);
 }
 
 /** One line, with spaces as people write it: `{ "a": 1, "b": [1, 2] }`. */
@@ -30,7 +33,9 @@ function oneLine(value: unknown): string {
   if (isPlain(value)) return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(oneLine).join(", ")}]`;
   const entries = entriesOf(value as object);
-  return entries.length === 0 ? "{}" : `{ ${entries.map(([k, v]) => `${JSON.stringify(k)}: ${oneLine(v)}`).join(", ")} }`;
+  return entries.length === 0
+    ? "{}"
+    : `{ ${entries.map(([k, v]) => `${JSON.stringify(k)}: ${oneLine(v)}`).join(", ")} }`;
 }
 
 const isEmpty = (v: unknown) => typeof v === "object" && v !== null && Object.keys(v).length === 0;

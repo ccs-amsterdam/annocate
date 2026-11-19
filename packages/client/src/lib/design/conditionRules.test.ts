@@ -4,9 +4,15 @@ import { conditionToRows, defaultRow, rowProblems, rowsToScript, ruleTargets } f
 
 const targets = ruleTargets([
   { name: "role", variable: { type: "nominal", question: "?", options: [{ value: "a" }, { value: "b" }] } },
-  { name: "topics", variable: { type: "nominal", multiple: true, question: "?", options: [{ value: "x" }, { value: "y" }] } },
+  {
+    name: "topics",
+    variable: { type: "nominal", multiple: true, question: "?", options: [{ value: "x" }, { value: "y" }] },
+  },
   { name: "age", variable: { type: "numeric", question: "?" } },
-  { name: "battery", variable: { type: "scale", question: "?", items: [{ name: "tech" }], options: [{ value: 1 }, { value: 5 }] } },
+  {
+    name: "battery",
+    variable: { type: "scale", question: "?", items: [{ name: "tech" }], options: [{ value: 1 }, { value: 5 }] },
+  },
 ] as { name: string; variable: AnyVariableType }[]);
 
 const roundTrip = (script: string) => {
@@ -57,7 +63,9 @@ describe("condition rules", () => {
       [],
     ]);
     expect(problems(`$var.other.is("a")`)).toEqual([[`"other" is not a question asked before this point`]]);
-    expect(problems(`$var.battery.items.art.is(1)`)).toEqual([[`"battery › art": "art" is not an item of "battery", a scale`]]);
+    expect(problems(`$var.battery.items.art.is(1)`)).toEqual([
+      [`"battery › art": "art" is not an item of "battery", a scale`],
+    ]);
     expect(problems(`$var.topics.count() > 1`)).toEqual([
       [`"topics": "count >" can't be edited as a rule; choose another, or edit the script`],
     ]);

@@ -35,7 +35,8 @@ function write(studies: OpenedStudy[]): void {
   }
 }
 
-const same = (a: OpenedStudy, b: OpenedStudy) => a.deployment === b.deployment && JSON.stringify(a.params) === JSON.stringify(b.params);
+const same = (a: OpenedStudy, b: OpenedStudy) =>
+  a.deployment === b.deployment && JSON.stringify(a.params) === JSON.stringify(b.params);
 
 /** Remembers a study this browser opened (most recent first). */
 export function rememberStudy(study: OpenedStudy): void {
@@ -70,12 +71,15 @@ export async function loadStudies(apiUrl: string): Promise<StudyEntry[]> {
     }),
   );
   write(here.filter((h) => !h.gone).map((h) => h.opened));
-  const entries: StudyEntry[] = here.flatMap((h) => (h.study ? [{ ...h.opened, study: h.study, elsewhere: false }] : []));
+  const entries: StudyEntry[] = here.flatMap((h) =>
+    h.study ? [{ ...h.opened, study: h.study, elsewhere: false }] : [],
+  );
   // A logged-in coder's sessions on other devices (none without a login)
   const res = await fetch(`${apiUrl}/coder/sessions`, { headers, credentials: "same-origin" }).catch(() => null);
   const mine = res?.ok ? z.array(CoderStudySchema).safeParse(await res.json()) : null;
   for (const study of mine?.success ? mine.data : []) {
-    if (!entries.some((e) => e.deployment === study.deployment)) entries.push({ deployment: study.deployment, params: {}, study, elsewhere: true });
+    if (!entries.some((e) => e.deployment === study.deployment))
+      entries.push({ deployment: study.deployment, params: {}, study, elsewhere: true });
   }
   return entries;
 }

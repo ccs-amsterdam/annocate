@@ -31,7 +31,9 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
         onAnswer(buildValues([{ value: option.value }]));
         return;
       }
-      setSelected((current) => (current.includes(option.value) ? current.filter((v) => v !== option.value) : [...current, option.value]));
+      setSelected((current) =>
+        current.includes(option.value) ? current.filter((v) => v !== option.value) : [...current, option.value],
+      );
     },
     [multiple, onAnswer],
   );
@@ -100,7 +102,13 @@ function OptionsDropdown({ options, selected, multiple, onPick }: OptionsDropdow
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline" role="combobox" aria-expanded={open} className="h-10 w-full justify-between">
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="h-10 w-full justify-between"
+        >
           <span className="truncate">{chosen.length ? chosen.map(optionLabel).join(", ") : "Choose…"}</span>
           <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
         </Button>
@@ -121,7 +129,9 @@ function OptionsDropdown({ options, selected, multiple, onPick }: OptionsDropdow
                   }}
                 >
                   <span className="flex flex-1 items-center gap-2 truncate">
-                    {option.color && <span className="size-3 rounded-full border" style={{ backgroundColor: option.color }} />}
+                    {option.color && (
+                      <span className="size-3 rounded-full border" style={{ backgroundColor: option.color }} />
+                    )}
                     <span className="truncate">{optionLabel(option)}</span>
                   </span>
                   {selected.has(option.value) && <Check className="size-4" />}

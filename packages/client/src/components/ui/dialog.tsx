@@ -24,13 +24,18 @@ function DialogOverlay({ className, ...props }: React.ComponentProps<typeof Dial
   return <DialogPrimitive.Overlay className={cn("fixed inset-0 z-50 bg-black/50", className)} {...props} />;
 }
 
-function DialogContent({ className, children, showCloseButton = true, ...props }: React.ComponentProps<typeof DialogPrimitive.Content> & { showCloseButton?: boolean }) {
+function DialogContent({
+  className,
+  children,
+  showCloseButton = true,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Content> & { showCloseButton?: boolean }) {
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border bg-popover p-6 shadow-lg",
+          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border bg-popover p-6 shadow-lg",
           className,
         )}
         {...props}
@@ -38,7 +43,7 @@ function DialogContent({ className, children, showCloseButton = true, ...props }
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close asChild>
-            <Button variant="ghost" size="icon-sm" className="absolute right-4 top-4">
+            <Button variant="ghost" size="icon-sm" className="absolute top-4 right-4">
               <XIcon />
               <span className="sr-only">Close</span>
             </Button>
@@ -53,7 +58,12 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return <div className={cn("flex flex-col gap-2", className)} {...props} />;
 }
 
-function DialogFooter({ className, showCloseButton = false, children, ...props }: React.ComponentProps<"div"> & { showCloseButton?: boolean }) {
+function DialogFooter({
+  className,
+  showCloseButton = false,
+  children,
+  ...props
+}: React.ComponentProps<"div"> & { showCloseButton?: boolean }) {
   return (
     <div className={cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end", className)} {...props}>
       {children}

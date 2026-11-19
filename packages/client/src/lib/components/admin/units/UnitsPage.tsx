@@ -47,7 +47,9 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
   const pageQuery = useUnitPageQuery(client, { offset, limit: PAGE_SIZE, group: shownSet?.group, set: shownSet?.set });
   const fields = fieldsQuery.data ?? [];
   const groups = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data]);
-  const currentSet = shownSet ? groups.find((g) => g.name === shownSet.group)?.sets.find((s) => s.name === shownSet.set) ?? null : null;
+  const currentSet = shownSet
+    ? (groups.find((g) => g.name === shownSet.group)?.sets.find((s) => s.name === shownSet.set) ?? null)
+    : null;
   const total = pageQuery.data?.total ?? 0;
 
   // group -> unit id -> its cell (the unit's sets in the group)
@@ -56,7 +58,12 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
     for (const g of groups) {
       const entries = new Map<number, { set: string; position?: number }[]>();
       for (const set of g.sets) {
-        set.unitIds.forEach((id, i) => entries.set(id, [...(entries.get(id) ?? []), set.ordered ? { set: set.name, position: i + 1 } : { set: set.name }]));
+        set.unitIds.forEach((id, i) =>
+          entries.set(id, [
+            ...(entries.get(id) ?? []),
+            set.ordered ? { set: set.name, position: i + 1 } : { set: set.name },
+          ]),
+        );
       }
       out.set(g.name, new Map([...entries].map(([id, e]) => [id, formatSetCell(e)])));
     }
@@ -78,7 +85,9 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
           </h2>
           <div className="mt-1">
             {fields.length === 0 && (unitsQuery.data?.length ?? 0) === 0 ? (
-              <p className="text-xs text-muted-foreground">No units yet: upload a CSV to start. Its columns become the units' fields.</p>
+              <p className="text-xs text-muted-foreground">
+                No units yet: upload a CSV to start. Its columns become the units' fields.
+              </p>
             ) : (
               <FieldsPanel client={client} fields={fields} />
             )}
@@ -112,7 +121,13 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
       )}
 
       {selected.size > 0 && (
-        <SelectionBar client={client} selected={selected} groups={groups} current={shownSet} onClear={() => setSelected(new Set())} />
+        <SelectionBar
+          client={client}
+          selected={selected}
+          groups={groups}
+          current={shownSet}
+          onClear={() => setSelected(new Set())}
+        />
       )}
 
       <UnitTable
@@ -193,7 +208,8 @@ function SetsBar({
               className={chip(current?.group === g.name && current.set === set.name)}
               onClick={() => onSelect({ group: g.name, set: set.name })}
             >
-              <span className="font-mono">{set.name}</span> <span className="text-muted-foreground">{set.unitIds.length}</span>
+              <span className="font-mono">{set.name}</span>{" "}
+              <span className="text-muted-foreground">{set.unitIds.length}</span>
             </button>
           ))}
           <Button
@@ -211,7 +227,11 @@ function SetsBar({
           </Button>
         </div>
       ))}
-      {current && <p className="text-xs text-muted-foreground">Showing the units with {current.set} in column {current.group}, in their order.</p>}
+      {current && (
+        <p className="text-xs text-muted-foreground">
+          Showing the units with {current.set} in column {current.group}, in their order.
+        </p>
+      )}
       {deleteGroup.isError && <p className="text-sm text-destructive">{deleteGroup.error.message}</p>}
     </div>
   );
@@ -241,13 +261,21 @@ function SelectionBar({
   const changed = (groupName: string, name: string, change: (ids: number[]) => number[]) => {
     const existing = groups.find((g) => g.name === groupName)?.sets ?? [];
     const has = existing.some((s) => s.name === name);
-    const next = has ? existing.map((s) => (s.name === name ? { ...s, unitIds: change(s.unitIds) } : s)) : [...existing, { name, unitIds: change([]), ordered: false }];
+    const next = has
+      ? existing.map((s) => (s.name === name ? { ...s, unitIds: change(s.unitIds) } : s))
+      : [...existing, { name, unitIds: change([]), ordered: false }];
     return next.filter((s) => s.unitIds.length > 0);
   };
   const putIn = () => {
     const name = setName.trim();
     if (!name) return;
-    putGroup.mutate({ group, body: { sets: changed(group, name, (ids) => [...ids, ...[...selected].filter((id) => !ids.includes(id))]) } }, { onSuccess: onClear });
+    putGroup.mutate(
+      {
+        group,
+        body: { sets: changed(group, name, (ids) => [...ids, ...[...selected].filter((id) => !ids.includes(id))]) },
+      },
+      { onSuccess: onClear },
+    );
   };
 
   return (
@@ -292,7 +320,10 @@ function SelectionBar({
           disabled={putGroup.isPending}
           onClick={() =>
             putGroup.mutate(
-              { group: current.group, body: { sets: changed(current.group, current.set, (ids) => ids.filter((id) => !selected.has(id))) } },
+              {
+                group: current.group,
+                body: { sets: changed(current.group, current.set, (ids) => ids.filter((id) => !selected.has(id))) },
+              },
               { onSuccess: onClear },
             )
           }
@@ -300,7 +331,13 @@ function SelectionBar({
           Remove from {current.set}
         </Button>
       )}
-      <Button size="sm" variant="outline" onClick={() => setResetting({ unitIds: [...selected], label: `${selected.size} unit${selected.size === 1 ? "" : "s"}` })}>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() =>
+          setResetting({ unitIds: [...selected], label: `${selected.size} unit${selected.size === 1 ? "" : "s"}` })
+        }
+      >
         <RotateCcw className="h-3.5 w-3.5" /> Reset answers…
       </Button>
       <Button size="sm" variant="ghost" onClick={onClear}>
@@ -359,7 +396,12 @@ function UnitTable({
                 type="checkbox"
                 aria-label="Select all units on this page"
                 checked={allOnPage}
-                onChange={(e) => toggle(units.map((u) => u.id), e.target.checked)}
+                onChange={(e) =>
+                  toggle(
+                    units.map((u) => u.id),
+                    e.target.checked,
+                  )
+                }
               />
             </th>
             <th className="p-2 font-medium">id</th>
@@ -381,7 +423,14 @@ function UnitTable({
             <tr
               key={unit.id}
               // Practice units: a faint leaf tint
-              className={cn("border-b align-top last:border-0", groups.some((g) => (cells.get(g)?.get(unit.id) ?? "").split(";").some((cell) => cell.split("#")[0].trim() === "_practice")) && "bg-leaf/10")}
+              className={cn(
+                "border-b align-top last:border-0",
+                groups.some((g) =>
+                  (cells.get(g)?.get(unit.id) ?? "")
+                    .split(";")
+                    .some((cell) => cell.split("#")[0].trim() === "_practice"),
+                ) && "bg-leaf/10",
+              )}
             >
               <td className="p-2">
                 <input
@@ -392,7 +441,12 @@ function UnitTable({
                 />
               </td>
               <td className="p-2 font-mono text-xs">
-                <button type="button" className="cursor-pointer text-left underline-offset-2 hover:underline" title="Show this unit" onClick={() => setShown(unit.id)}>
+                <button
+                  type="button"
+                  className="cursor-pointer text-left underline-offset-2 hover:underline"
+                  title="Show this unit"
+                  onClick={() => setShown(unit.id)}
+                >
                   {unit.externalId}
                 </button>
               </td>
@@ -431,7 +485,17 @@ function UnitTable({
 }
 
 /** One unit with all its fields in full. */
-function UnitDialog({ client, id, fields, onClose }: { client: ResearcherApi; id: number | null; fields: UnitField[]; onClose: () => void }) {
+function UnitDialog({
+  client,
+  id,
+  fields,
+  onClose,
+}: {
+  client: ResearcherApi;
+  id: number | null;
+  fields: UnitField[];
+  onClose: () => void;
+}) {
   const unit = useUnitQuery(client, id).data;
   return (
     <Dialog open={id !== null} onOpenChange={(o) => !o && onClose()}>
@@ -439,7 +503,9 @@ function UnitDialog({ client, id, fields, onClose }: { client: ResearcherApi; id
         <DialogHeader>
           <DialogTitle className="font-mono">{unit?.externalId ?? "…"}</DialogTitle>
           <DialogDescription>
-            {unit?.coded ? "Coded: replace it by uploading it again; coders' answers keep the version they saw." : "Not coded yet."}
+            {unit?.coded
+              ? "Coded: replace it by uploading it again; coders' answers keep the version they saw."
+              : "Not coded yet."}
           </DialogDescription>
         </DialogHeader>
         {unit && (
@@ -449,7 +515,9 @@ function UnitDialog({ client, id, fields, onClose }: { client: ResearcherApi; id
                 <dt className="font-mono text-xs text-muted-foreground">
                   {f.name} <span className="opacity-70">({f.type})</span>
                 </dt>
-                <dd className="whitespace-pre-wrap break-words">{unit.data[f.name] === null || unit.data[f.name] === undefined ? "–" : String(unit.data[f.name])}</dd>
+                <dd className="break-words whitespace-pre-wrap">
+                  {unit.data[f.name] === null || unit.data[f.name] === undefined ? "–" : String(unit.data[f.name])}
+                </dd>
               </div>
             ))}
           </dl>

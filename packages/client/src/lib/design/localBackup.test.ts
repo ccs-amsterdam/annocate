@@ -16,7 +16,14 @@ beforeEach(() => {
   } as Storage;
 });
 
-const backup = (studyId: number, designVersionId: number | null): DesignBackup => ({ studyId, designVersionId, revision: 2, items: [], saved: [], at: 1 });
+const backup = (studyId: number, designVersionId: number | null): DesignBackup => ({
+  studyId,
+  designVersionId,
+  revision: 2,
+  items: [],
+  saved: [],
+  at: 1,
+});
 
 describe("local backup", () => {
   it("keeps one backup, cleared only by its own codebook", () => {

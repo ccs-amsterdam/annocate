@@ -11,11 +11,25 @@ import { parseHelpTarget } from "./helpStore";
 /** The ids of a topic's headings, as HelpContent gives them. */
 function headingIds(body: string): Set<string> {
   const html = renderToStaticMarkup(<ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>);
-  return new Set([...html.matchAll(/<h[23]>(.*?)<\/h[23]>/g)].map((m) => headingId(m[1].replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"'))));
+  return new Set(
+    [...html.matchAll(/<h[23]>(.*?)<\/h[23]>/g)].map((m) =>
+      headingId(
+        m[1]
+          .replace(/<[^>]+>/g, "")
+          .replace(/&amp;/g, "&")
+          .replace(/&#x27;/g, "'")
+          .replace(/&quot;/g, '"'),
+      ),
+    ),
+  );
 }
 
 /** The client's sources, which open topics with `HelpButton topic="…"`, `openHelp("…")` and topic maps. */
-const sources = import.meta.glob(["../**/*.{ts,tsx}", "!../**/*.test.*", "!./**"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const sources = import.meta.glob(["../**/*.{ts,tsx}", "!../**/*.test.*", "!./**"], {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
 
 describe("help topics", () => {
   it("each have a title, a known section and a summary", () => {
@@ -35,7 +49,8 @@ describe("help topics", () => {
         if (!link) continue;
         const target = helpTopic(link.slug);
         if (!target) problems.push(`${t.slug}: no topic ${link.slug}`);
-        else if (link.anchor && !headingIds(target.body).has(link.anchor)) problems.push(`${t.slug}: no heading #${link.anchor} in ${link.slug}`);
+        else if (link.anchor && !headingIds(target.body).has(link.anchor))
+          problems.push(`${t.slug}: no heading #${link.anchor} in ${link.slug}`);
       }
     }
     expect(problems).toEqual([]);
@@ -49,11 +64,13 @@ describe("help topics", () => {
         const { slug, anchor } = parseHelpTarget(target);
         const topic = helpTopic(slug);
         if (!topic) problems.push(`${file}: no topic ${slug}`);
-        else if (anchor && !headingIds(topic.body).has(anchor)) problems.push(`${file}: no heading #${anchor} in ${slug}`);
+        else if (anchor && !headingIds(topic.body).has(anchor))
+          problems.push(`${file}: no heading #${anchor} in ${slug}`);
       }
       // Topic maps (AdminApp's TAB_HELP): `Name: "slug"` entries
       for (const block of source.matchAll(/const \w*_HELP[^=]*=\s*\{([^}]*)\}/g)) {
-        for (const [, slug] of block[1].matchAll(/:\s*"([^"]+)"/g)) if (!helpTopic(parseHelpTarget(slug).slug)) problems.push(`${file}: no topic ${slug}`);
+        for (const [, slug] of block[1].matchAll(/:\s*"([^"]+)"/g))
+          if (!helpTopic(parseHelpTarget(slug).slug)) problems.push(`${file}: no topic ${slug}`);
       }
     }
     expect(problems).toEqual([]);
@@ -64,7 +81,8 @@ describe("help topics", () => {
     for (const t of HELP_TOPICS) {
       for (const [, source] of t.body.matchAll(/```example\n([\s\S]*?)```/g)) {
         const data = parseExample(source);
-        for (const issue of validateDesignItems(exampleDesign(data))) if (!issue.warning) problems.push(`${t.slug}: ${issue.message}\n${data.template}`);
+        for (const issue of validateDesignItems(exampleDesign(data)))
+          if (!issue.warning) problems.push(`${t.slug}: ${issue.message}\n${data.template}`);
         const scope = exampleScope(data, Object.fromEntries(Object.entries(data.answers).map(([q, a]) => [q, a[0]])));
         const rendered = await renderTemplate(data.template, scope, undefined, "help", {
           snippets: data.snippets,
@@ -80,7 +98,21 @@ describe("help topics", () => {
 describe("help examples", () => {
   it("read unit data, answers with alternatives, multi-line snippets and steps", () => {
     const data = parseExample(
-      ["unit:", "  headline: Storm", "  likes: 12", "answers:", "  group: a | b | -", "snippets:", "  note: |", "    line one", "", "    line two", "steps: topic, tone", "---", "# $unit.headline"].join("\n"),
+      [
+        "unit:",
+        "  headline: Storm",
+        "  likes: 12",
+        "answers:",
+        "  group: a | b | -",
+        "snippets:",
+        "  note: |",
+        "    line one",
+        "",
+        "    line two",
+        "steps: topic, tone",
+        "---",
+        "# $unit.headline",
+      ].join("\n"),
     );
     expect(data.unit).toEqual({ headline: "Storm", likes: 12 });
     expect(data.answers).toEqual({ group: ["a", "b", null] });
@@ -99,6 +131,9 @@ describe("help examples", () => {
 
 describe("front matter", () => {
   it("splits off the meta block", () => {
-    expect(parseFrontMatter("---\ntitle: A: b\norder: 2\n---\nBody")).toEqual({ meta: { title: "A: b", order: "2" }, body: "Body" });
+    expect(parseFrontMatter("---\ntitle: A: b\norder: 2\n---\nBody")).toEqual({
+      meta: { title: "A: b", order: "2" },
+      body: "Body",
+    });
   });
 });

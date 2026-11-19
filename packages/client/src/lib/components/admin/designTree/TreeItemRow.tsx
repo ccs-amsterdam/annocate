@@ -7,11 +7,7 @@ import { ITEM_TYPES, itemIcon } from "./itemTypes";
 import { AddItemMenu, type AddOption } from "./AddItemMenu";
 import { ActionButton, TreeRow } from "./TreeRow";
 import { getItemKey, insertableTypesAt, type TreeNode } from "./utils";
-import {
-  parseSimpleCondition,
-  type TopLevelItem,
-  type UnitLoopItem,
-} from "@annotinder/contracts";
+import { parseSimpleCondition, type TopLevelItem, type UnitLoopItem } from "@annotinder/contracts";
 import { describeCondition, itemTitle } from "../../../codebook/conditions";
 import type { TreePosition } from "../../../design/itemEdit";
 import { VARIABLE_TYPE_LABELS } from "../../../design/answerTypes";
@@ -96,7 +92,7 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
       )}
     >
       {/* The Study entry is always there, first: not moved or deleted */}
-      {!tree.readOnly && item.type === "session" && <span className="h-3.5 w-3.5 mr-px shrink-0" aria-hidden />}
+      {!tree.readOnly && item.type === "session" && <span className="mr-px h-3.5 w-3.5 shrink-0" aria-hidden />}
       {!tree.readOnly && item.type !== "session" && (
         <input
           type="checkbox"
@@ -106,19 +102,27 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
           disabled={inTicked || tree.moving}
           onChange={() => tree.toggleChecked(key)}
           className={cn(
-            "h-3.5 w-3.5 mr-px shrink-0 cursor-pointer accent-primary transition-opacity disabled:cursor-default",
-            tree.checked.size === 0 && "opacity-0  group-hover:opacity-60 focus-visible:opacity-100",
+            "mr-px h-3.5 w-3.5 shrink-0 cursor-pointer accent-primary transition-opacity disabled:cursor-default",
+            tree.checked.size === 0 && "opacity-0 group-hover:opacity-60 focus-visible:opacity-100",
           )}
         />
       )}
       <button
         type="button"
         onClick={() => tree.select(key)}
-        className={cn("flex min-w-0 pl-1 flex-1 rounded  cursor-pointer items-center gap-1 text-left",
+        className={cn(
+          "flex min-w-0 flex-1 cursor-pointer items-center gap-1 rounded pl-1 text-left",
 
-          tree.selected === key ? "bg-wood/15" : "")}
+          tree.selected === key ? "bg-wood/15" : "",
+        )}
       >
-        <ItemLabel item={item} number={tree.numberOf(key)} selected={tree.selected === key} issue={tree.getIssue(item)} changed={tree.isChanged(item)} />
+        <ItemLabel
+          item={item}
+          number={tree.numberOf(key)}
+          selected={tree.selected === key}
+          issue={tree.getIssue(item)}
+          changed={tree.isChanged(item)}
+        />
       </button>
       {item.type === "unit_loop" && (
         // Open the loop on a tab of its form: also marks loops in the tree.
@@ -175,7 +179,7 @@ function ItemLabel({
         // Conditions have no name: shown by their condition, unless they have a label.
         <span
           className={cn(
-            "truncate px-1.5 py-0.5 font-medium font-mono text-foreground/50",
+            "truncate px-1.5 py-0.5 font-mono font-medium text-foreground/50",
             parseSimpleCondition(item.condition.script) ? "text-sm" : "font-mono text-xs",
           )}
         >
@@ -183,7 +187,9 @@ function ItemLabel({
         </span>
       ) : (
         <span className={cn("truncate px-1.5 py-0.5", selected ? "font-semibold" : "font-medium")}>
-          {item.type === "unit_loop" ? treeLoopTitle(item) : itemTitle(item) || <em className="font-normal text-muted-foreground">(unnamed)</em>}
+          {item.type === "unit_loop"
+            ? treeLoopTitle(item)
+            : itemTitle(item) || <em className="font-normal text-muted-foreground">(unnamed)</em>}
         </span>
       )}
       {item.type === "unit_loop" && (
@@ -195,7 +201,11 @@ function ItemLabel({
         </span>
       )}
       {changed && (
-        <span title="Unsaved changes" aria-label="Unsaved changes" className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+        <span
+          title="Unsaved changes"
+          aria-label="Unsaved changes"
+          className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"
+        />
       )}
       {issue && (
         <span title={issue} className="shrink-0 text-destructive">
@@ -207,7 +217,8 @@ function ItemLabel({
 }
 
 function ItemIcon({ item }: { item: TreeNode }) {
-  const title = "variable" in item && item.variable ? VARIABLE_TYPE_LABELS[item.variable.type] : ITEM_TYPES[item.type].label;
+  const title =
+    "variable" in item && item.variable ? VARIABLE_TYPE_LABELS[item.variable.type] : ITEM_TYPES[item.type].label;
   return (
     <span title={title} className="shrink-0">
       {createElement(itemIcon(item), { className: `h-4 w-4 ${ITEM_TYPES[item.type].color}` })}

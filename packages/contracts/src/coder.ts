@@ -39,7 +39,10 @@ export const CoderProgressSchema = z.object({
    * special sets of the set groups the coder was routed to (empty before
    * routing, or in loops without a group).
    */
-  special: z.partialRecord(z.enum(["overlap", "gold", "practice"]), z.object({ done: z.number().int().nonnegative(), total: z.number().int().nonnegative() })),
+  special: z.partialRecord(
+    z.enum(["overlap", "gold", "practice"]),
+    z.object({ done: z.number().int().nonnegative(), total: z.number().int().nonnegative() }),
+  ),
   /** Coder-level values: answers outside unit loops, and `auto` variables (link presets, random, URL). */
   variables: z.record(z.string(), VariableValueSchema),
   /** Set if the coder's session ended at an `end` item (screened out or complete), or they quit. */

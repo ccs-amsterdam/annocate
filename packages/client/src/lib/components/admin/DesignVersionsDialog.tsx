@@ -17,7 +17,15 @@ export interface DesignVersionsViewProps {
   onClose?: () => void;
 }
 
-export function DesignVersionsView({ designVersions, versions, openId, onView, onRestore, onDeleteDraft, onClose }: DesignVersionsViewProps) {
+export function DesignVersionsView({
+  designVersions,
+  versions,
+  openId,
+  onView,
+  onRestore,
+  onDeleteDraft,
+  onClose,
+}: DesignVersionsViewProps) {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <h2 className="flex shrink-0 items-center gap-2 pr-8 text-lg font-bold text-foreground">
@@ -35,8 +43,8 @@ export function DesignVersionsView({ designVersions, versions, openId, onView, o
               <strong className="text-foreground">draft</strong>, and it only reaches coders when you publish it.
             </p>
             <p>
-              Deployed versions are read only, so every answer stays linked to the exact version it was given
-              under. To go back to an older version, restore it as the draft and publish that.
+              Deployed versions are read only, so every answer stays linked to the exact version it was given under. To
+              go back to an older version, restore it as the draft and publish that.
             </p>
           </div>
         </div>

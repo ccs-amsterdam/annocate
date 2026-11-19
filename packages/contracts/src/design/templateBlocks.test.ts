@@ -20,7 +20,11 @@ describe("template blocks", () => {
     const block = nodes[1] as Extract<(typeof nodes)[number], { type: "if" }>;
     expect(block.branches.map((b) => b.script)).toEqual(["$var.group.is('a')", "$var.group.is('b')", null]);
     expect(block.branches[0].references[0].path).toEqual(["group", "is"]);
-    expect(block.branches.map((b) => text(source, b.body[0] as { start: number; end: number }))).toEqual(["A\n", "B\n", "C\n"]);
+    expect(block.branches.map((b) => text(source, b.body[0] as { start: number; end: number }))).toEqual([
+      "A\n",
+      "B\n",
+      "C\n",
+    ]);
     expect(text(source, nodes[2] as { start: number; end: number })).toBe("after");
   });
 
@@ -44,17 +48,25 @@ describe("template blocks", () => {
     expect(parseTemplateBlocks("```\n::: if x\n```").hasBlocks).toBe(false);
     const parsed = parseTemplate("::: if $var.x.is('a')\n$unit.text\n:::");
     expect(parsed.errors).toEqual([]);
-    expect(parsed.segments.filter((s) => s.type === "expression").map((s) => (s.type === "expression" ? s.script : ""))).toEqual(["$unit.text"]);
+    expect(
+      parsed.segments.filter((s) => s.type === "expression").map((s) => (s.type === "expression" ? s.script : "")),
+    ).toEqual(["$unit.text"]);
   });
 
   it("reads inline CSS as a React style", () => {
-    expect(parseInlineCss("color: darkred; font-size: 120%; --x: 1").style).toEqual({ color: "darkred", fontSize: "120%", "--x": "1" });
+    expect(parseInlineCss("color: darkred; font-size: 120%; --x: 1").style).toEqual({
+      color: "darkred",
+      fontSize: "120%",
+      "--x": "1",
+    });
     expect(parseInlineCss("position: fixed").errors[0]).toMatch(/isn't allowed/);
     expect(parseInlineCss("bold").errors[0]).toMatch(/not a CSS declaration/);
   });
 
   it("parses typed blocks with an optional name", () => {
-    const { nodes, errors } = parseTemplateBlocks("::: markdown intro\nHi\n:::\n::: html\n<b>x</b>\n:::\n::: text bad.name\n:::");
+    const { nodes, errors } = parseTemplateBlocks(
+      "::: markdown intro\nHi\n:::\n::: html\n<b>x</b>\n:::\n::: text bad.name\n:::",
+    );
     expect(nodes.filter((n) => n.type === "display").map((n) => n.type === "display" && [n.kind, n.name])).toEqual([
       ["markdown", "intro"],
       ["html", undefined],

@@ -92,12 +92,17 @@ async function authenticate(c: Context, server: Server): Promise<Researcher | nu
 
 /** The researcher's role in a study, if any. */
 async function roleIn(server: Server, researcher: Researcher, studyId: number): Promise<Role | null> {
-  const row = await dbRow<{ role: Role | null }>(server.db, sql`SELECT ${studyRole(studyId, researcher.userId)} AS role`);
+  const row = await dbRow<{ role: Role | null }>(
+    server.db,
+    sql`SELECT ${studyRole(studyId, researcher.userId)} AS role`,
+  );
   if (!researcher.devRole) return row?.role ?? null;
   // Development: a study without user roles lets any role through; otherwise the
   // header can't claim more than was granted.
   if (!row?.role)
-    return (await server.db.$count(roles, and(eq(roles.studyId, studyId), isNotNull(roles.userId)))) > 0 ? null : researcher.devRole;
+    return (await server.db.$count(roles, and(eq(roles.studyId, studyId), isNotNull(roles.userId)))) > 0
+      ? null
+      : researcher.devRole;
   return ROLE_RANK[row.role] < ROLE_RANK[researcher.devRole] ? null : researcher.devRole;
 }
 
@@ -111,7 +116,10 @@ const MFA_REQUIRED = {
 /** Until when a researcher may do sensitive actions without logging in again; null: not now (docs/security.md "Step-up"). */
 export function freshUntil(server: Server, researcher: Researcher): Date | null {
   if (researcher.via === "dev") return new Date(Date.now() + server.stepUpMaxAge * 1000);
-  if (researcher.via !== "session" || !isFresh(researcher, server.stepUpMaxAge, { requireMfa: !server.insecure.disable2fa }))
+  if (
+    researcher.via !== "session" ||
+    !isFresh(researcher, server.stepUpMaxAge, { requireMfa: !server.insecure.disable2fa })
+  )
     return null;
   return new Date(researcher.authTime!.getTime() + server.stepUpMaxAge * 1000);
 }
@@ -177,7 +185,10 @@ export function requireStudyUser(server: Server, minRole: Role) {
     const studyId = raw ? Number(raw) : NaN;
     if (!Number.isInteger(studyId) || studyId <= 0 || studyId > MAX_ID)
       return c.json({ error: "Invalid study id" }, 400);
-    const [study] = await server.db.select({ suspendedAt: studies.suspendedAt }).from(studies).where(eq(studies.id, studyId));
+    const [study] = await server.db
+      .select({ suspendedAt: studies.suspendedAt })
+      .from(studies)
+      .where(eq(studies.id, studyId));
     if (!study) return c.json({ error: "Study not found" }, 404);
     // Suspended by a server admin: reading, and deleting data or the study, still work.
     if (study.suspendedAt && c.req.method !== "GET" && !SUSPENDED_ALLOWED.some((p) => p.test(c.req.path))) {

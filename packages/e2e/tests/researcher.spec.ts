@@ -8,7 +8,10 @@ import { answers, api, question } from "./helpers";
 
 async function downloadZip(page: Page): Promise<Record<string, string>> {
   await page.getByRole("button", { name: "Results" }).click();
-  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: /Download zip/ }).click()]);
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: /Download zip/ }).click(),
+  ]);
   const bytes = await (await download.createReadStream()).toArray();
   const files = unzipSync(new Uint8Array(Buffer.concat(bytes)));
   return Object.fromEntries(Object.entries(files).map(([name, data]) => [name, strFromU8(data)]));
@@ -20,12 +23,24 @@ test("a study from an example: the dialog, the overview note, and its results in
   await page.goto("/research");
   await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /From an example/ }).click();
-  await page.getByRole("dialog").getByRole("button", { name: /Sentiment by swiping/ }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /Sentiment by swiping/ })
+    .click();
   await page.getByRole("button", { name: "Create study" }).click();
   await expect(page.getByText(/Made from the example/)).toBeVisible();
 
   const files = await downloadZip(page);
-  for (const name of ["README.txt", "annotations.csv", "coders.csv", "units.csv", "variables.csv", "devices.csv", "timings.csv", "deleted_coders.csv"]) {
+  for (const name of [
+    "README.txt",
+    "annotations.csv",
+    "coders.csv",
+    "units.csv",
+    "variables.csv",
+    "devices.csv",
+    "timings.csv",
+    "deleted_coders.csv",
+  ]) {
     expect(Object.keys(files)).toContain(name);
   }
   // 3 example coders, 10 units each
@@ -33,7 +48,11 @@ test("a study from an example: the dialog, the overview note, and its results in
   expect(csvRows(files["coders.csv"])).toHaveLength(1 + 3);
 });
 
-test("your first study, as the help describes it: units, a design, deploy, a link, code", async ({ page, request, browser }) => {
+test("your first study, as the help describes it: units, a design, deploy, a link, code", async ({
+  page,
+  request,
+  browser,
+}) => {
   // 1. Create a study
   await page.goto("/research");
   await page.getByRole("button", { name: /Create new study/ }).click();
@@ -90,7 +109,13 @@ test("your first study, as the help describes it: units, a design, deploy, a lin
   await page.getByRole("button", { name: "Editor", exact: true }).click();
   await page.getByRole("button", { name: "Deploy…", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Deploy", exact: true }).click();
-  await expect.poll(async () => (await api<{ designVersionId: number } | null>(request, "GET", `/study/${study.id}/deployment`))?.designVersionId).toBe(codebook.id);
+  await expect
+    .poll(
+      async () =>
+        (await api<{ designVersionId: number } | null>(request, "GET", `/study/${study.id}/deployment`))
+          ?.designVersionId,
+    )
+    .toBe(codebook.id);
 
   // 7. Link coders: publishing made the study's link; give it a label
   await page.getByRole("button", { name: "Deploy", exact: true }).click();

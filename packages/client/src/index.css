@@ -1,6 +1,6 @@
-@import 'tw-animate-css';
-@import '@fontsource-variable/geist' layer(base);
-@import 'tailwindcss';
+@import "tw-animate-css";
+@import "@fontsource-variable/geist" layer(base);
+@import "tailwindcss";
 
 /* `dark:` follows the `dark` class on <html> (context/theme.ts), not only the system setting. */
 /* Dark mode: `.dark` on <html> (the coder's choice), or on a part that is
@@ -91,10 +91,9 @@
 
 @layer base {
   .theme {
-
     --font-heading: var(--font-sans);
 
-    --font-sans: 'Geist Variable', sans-serif
+    --font-sans: "Geist Variable", sans-serif;
   }
   :root,
   .light {
@@ -163,7 +162,7 @@
     --sidebar-accent: hsl(36 12% 94%);
     --sidebar-accent-foreground: hsl(30 6% 15%);
     --sidebar-border: hsl(36 10% 87%);
-    --sidebar-ring: hsl(30 52% 35%)
+    --sidebar-ring: hsl(30 52% 35%);
   }
   .dark {
     /* Warm charcoal surfaces; primary turns to ash (light buttons with
@@ -219,7 +218,7 @@
     --sidebar-accent: hsl(30 5% 18%);
     --sidebar-accent-foreground: hsl(40 10% 94%);
     --sidebar-border: hsl(30 5% 21%);
-    --sidebar-ring: hsl(31 45% 56%)
+    --sidebar-ring: hsl(31 45% 56%);
   }
   * {
     @apply border-border outline-ring/50;
@@ -507,10 +506,23 @@
   animation-delay: 1.3s;
 }
 @keyframes logoSmoke {
-  0% { stroke-dashoffset: 60; opacity: 0; transform: translate(0, 2px); }
-  15% { opacity: 0.9; }
-  70% { stroke-dashoffset: 0; opacity: 0.6; }
-  100% { stroke-dashoffset: -30; opacity: 0; transform: translate(1.5px, -6px); }
+  0% {
+    stroke-dashoffset: 60;
+    opacity: 0;
+    transform: translate(0, 2px);
+  }
+  15% {
+    opacity: 0.9;
+  }
+  70% {
+    stroke-dashoffset: 0;
+    opacity: 0.6;
+  }
+  100% {
+    stroke-dashoffset: -30;
+    opacity: 0;
+    transform: translate(1.5px, -6px);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .logo-smoke path {

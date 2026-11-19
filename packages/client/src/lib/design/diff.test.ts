@@ -56,7 +56,12 @@ describe("valueChanges", () => {
   const q = (variable: object) => [{ type: "question", name: "q", variable }] as unknown as TopLevelItem[];
   it("warns when values disappear or the level changes", () => {
     const before = q({ type: "nominal", question: "?", options: [{ value: "a" }, { value: "b" }] });
-    expect(valueChanges(before, q({ type: "nominal", question: "?", options: [{ value: "a", label: "A!" }, { value: "b" }] }))).toEqual([]);
+    expect(
+      valueChanges(
+        before,
+        q({ type: "nominal", question: "?", options: [{ value: "a", label: "A!" }, { value: "b" }] }),
+      ),
+    ).toEqual([]);
     expect(valueChanges(before, q({ type: "nominal", question: "?", options: [{ value: "a" }] }))).toEqual([
       `'q' no longer has the value "b": earlier answers with it no longer fit.`,
     ]);
@@ -66,7 +71,8 @@ describe("valueChanges", () => {
   });
 
   it("warns when an option moved to another value, not when it was only relabelled", () => {
-    const scale = (labels: string[]) => q({ type: "ordinal", question: "?", options: labels.map((label, i) => ({ value: i + 1, label })) });
+    const scale = (labels: string[]) =>
+      q({ type: "ordinal", question: "?", options: labels.map((label, i) => ({ value: i + 1, label })) });
     const before = scale(["Disagree", "Neutral", "Agree"]);
     expect(valueChanges(before, scale(["Disagree", "Neutral", "Fully agree"]))).toEqual([]);
     // "Agree" moved up: renumbered

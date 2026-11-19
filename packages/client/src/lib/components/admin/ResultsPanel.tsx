@@ -77,7 +77,11 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
       const devices = await client.listDevices();
       const rows = await allPages<AnnotationRow>(
         async (after) => {
-          const page = await client.listAnnotations({ after, limit: 10000, ...(withReset ? { retired: "true" as const } : {}) });
+          const page = await client.listAnnotations({
+            after,
+            limit: 10000,
+            ...(withReset ? { retired: "true" as const } : {}),
+          });
           return { rows: page.annotations, next: page.next };
         },
         (n) => setBusy(`Loading answers: ${n}…`),
@@ -105,7 +109,16 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
         const ran = deployments.find((d) => d.designVersionId === id && d.client)?.client;
         const number = numbers.numberOf(id);
         designs[`designs/v${number ?? id}.json`] = strToU8(
-          JSON.stringify(designFile(version, { name, version: number, client: ran ?? { release: "unknown", commit: "unknown" }, exportedAt: new Date() }), null, 2),
+          JSON.stringify(
+            designFile(version, {
+              name,
+              version: number,
+              client: ran ?? { release: "unknown", commit: "unknown" },
+              exportedAt: new Date(),
+            }),
+            null,
+            2,
+          ),
         );
       }
 
@@ -118,7 +131,12 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
       const now = new Date();
       const zip = zipSync({
         "README.txt": strToU8(readme(name, now, withLabels, spreadsheetSafe)),
-        "annotations.csv": strToU8(toCsv(annotationsTable(annotations, coderList, order, labels, nested, numbers.numberOf, numeric), spreadsheetSafe)),
+        "annotations.csv": strToU8(
+          toCsv(
+            annotationsTable(annotations, coderList, order, labels, nested, numbers.numberOf, numeric),
+            spreadsheetSafe,
+          ),
+        ),
         "coders.csv": strToU8(toCsv(codersTable(coderList, order, labels, nested, numeric), spreadsheetSafe)),
         "devices.csv": strToU8(toCsv(devicesTable(devices), spreadsheetSafe)),
         "timings.csv": strToU8(toCsv(timingsTable(annotations, coderList), spreadsheetSafe)),
@@ -126,7 +144,13 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
         "units.csv": strToU8(toCsv(unitsTable(versions, annotations, await client.listSetGroups()), spreadsheetSafe)),
         "variables.csv": strToU8(toCsv(variablesTable(designVersions, numbers.numberOf), spreadsheetSafe)),
         ...designs,
-        ...(withReset ? { "reset_answers.csv": strToU8(toCsv(resetAnswersTable(rows, labels, numbers.numberOf, numeric), spreadsheetSafe)) } : {}),
+        ...(withReset
+          ? {
+              "reset_answers.csv": strToU8(
+                toCsv(resetAnswersTable(rows, labels, numbers.numberOf, numeric), spreadsheetSafe),
+              ),
+            }
+          : {}),
       });
       save(zip, `${name.replace(/[^\w-]+/g, "_")}_${now.toISOString().slice(0, 10)}.zip`, "application/zip");
     } catch (e) {
@@ -152,38 +176,46 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
           <div className="flex items-center gap-2 font-medium">
             <FileArchive className="h-4 w-4 text-primary" /> All data (zip)
             <InfoTip label="What's in the zip">
-          <ul className="list-disc pl-4">
-            <li>
-              <strong>annotations.csv</strong>: a row per unit and coder, with a column per question (a scale: per item)
-            </li>
-            <li>
-              <strong>coders.csv</strong>: a row per coder: link, participant id, how their session ended, and their
-              answers outside unit loops
-            </li>
-            <li>
-              <strong>devices.csv</strong>: the devices coders used (phone, tablet or desktop, browser, operating system)
-            </li>
-            <li>
-              <strong>timings.csv</strong>: how long coders took per question, as their browser measured it, with the server&apos;s own measure
-            </li>
-            <li>
-              <strong>deleted_coders.csv</strong>: coders whose data was deleted; delete them from earlier downloads too
-            </li>
-            <li>
-              <strong>units.csv</strong>: the units as coders saw them, a row per version (a unit replaced after it was
-              coded has several)
-            </li>
-            <li>
-              <strong>variables.csv</strong>: per design version, each question&apos;s options and labels
-            </li>
-            <li>
-              <strong>designs/v&lt;n&gt;.json</strong>: each design version as a whole, with the AnnoTinder version it ran on
-            </li>
-            <li>
-              <strong>README.txt</strong>: what the columns mean
-            </li>
-          </ul>
-          <p className="mt-2">CSV files (UTF-8). Scripts (R, Python) can get the same data from the API with an API key (account menu).</p>
+              <ul className="list-disc pl-4">
+                <li>
+                  <strong>annotations.csv</strong>: a row per unit and coder, with a column per question (a scale: per
+                  item)
+                </li>
+                <li>
+                  <strong>coders.csv</strong>: a row per coder: link, participant id, how their session ended, and their
+                  answers outside unit loops
+                </li>
+                <li>
+                  <strong>devices.csv</strong>: the devices coders used (phone, tablet or desktop, browser, operating
+                  system)
+                </li>
+                <li>
+                  <strong>timings.csv</strong>: how long coders took per question, as their browser measured it, with
+                  the server&apos;s own measure
+                </li>
+                <li>
+                  <strong>deleted_coders.csv</strong>: coders whose data was deleted; delete them from earlier downloads
+                  too
+                </li>
+                <li>
+                  <strong>units.csv</strong>: the units as coders saw them, a row per version (a unit replaced after it
+                  was coded has several)
+                </li>
+                <li>
+                  <strong>variables.csv</strong>: per design version, each question&apos;s options and labels
+                </li>
+                <li>
+                  <strong>designs/v&lt;n&gt;.json</strong>: each design version as a whole, with the AnnoTinder version
+                  it ran on
+                </li>
+                <li>
+                  <strong>README.txt</strong>: what the columns mean
+                </li>
+              </ul>
+              <p className="mt-2">
+                CSV files (UTF-8). Scripts (R, Python) can get the same data from the API with an API key (account
+                menu).
+              </p>
             </InfoTip>
           </div>
           <label className="flex items-center gap-2 text-sm">
@@ -200,8 +232,8 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
               Safe to open in a spreadsheet
             </label>
             <InfoTip label="About spreadsheet-safe files">
-              Text starting with =, +, - or @ gets a leading &apos; so it can&apos;t run as a formula (README.txt says how to remove it in R or
-              Python).
+              Text starting with =, +, - or @ gets a leading &apos; so it can&apos;t run as a formula (README.txt says
+              how to remove it in R or Python).
             </InfoTip>
           </div>
           <Button className="self-start" disabled={busy !== null} onClick={() => void download()}>

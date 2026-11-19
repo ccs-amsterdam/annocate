@@ -117,7 +117,7 @@ Known limitations, documented rather than fixed:
    to the design schema bumps `DESIGN_FORMAT_VERSION`.
 2. Migrations only add: change `server/src/db/schema/` and run
    `db:generate`; never edit a released migration.
-3. Run the checks: `pnpm build`, `pnpm typecheck`, `pnpm lint`,
+3. Run the checks: `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`,
    `pnpm test`, `pnpm test:e2e`, and the load test
    (`server/scripts/load-test.mjs`, results in `hosting.md` "Capacity")
    against the release build. Run `pnpm test:e2e` once with `DATABASE_URL`

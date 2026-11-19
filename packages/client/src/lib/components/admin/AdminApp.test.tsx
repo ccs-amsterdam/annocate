@@ -62,7 +62,9 @@ const stubClient: ResearcherApi = {
 
 describe("AdminApp", () => {
   it("renders the StudyList view without throwing while studies query is pending", () => {
-    const html = renderToStaticMarkup(<AdminApp client={stubClient} location={{ page: "studies" }} onNavigate={() => {}} />);
+    const html = renderToStaticMarkup(
+      <AdminApp client={stubClient} location={{ page: "studies" }} onNavigate={() => {}} />,
+    );
     expect(html).toContain("Loading studies");
   });
 

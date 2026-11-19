@@ -43,7 +43,16 @@ import { HttpError } from "../shared/http.js";
 import { Codings, UnitPool, pickNext, type AgreementKeys, type OverlapPlacement } from "./distribution.js";
 import type { Store } from "./store.js";
 import type { DeviceDetails } from "../shared/devices.js";
-import type { Coder, CoderValue, Coding, DeploymentSpec, Lease, ResolveCoderRequest, ResolvedCoder, Unit } from "./types.js";
+import type {
+  Coder,
+  CoderValue,
+  Coding,
+  DeploymentSpec,
+  Lease,
+  ResolveCoderRequest,
+  ResolvedCoder,
+  Unit,
+} from "./types.js";
 import { loginRequired, type SessionRules } from "./sessionValues.js";
 import {
   agreementKey,
@@ -61,7 +70,8 @@ import {
 } from "./designItems.js";
 
 /** Stored coder-level answers as plain values. */
-const plainValues = (values: Record<string, CoderValue>) => Object.fromEntries(Object.entries(values).map(([name, v]) => [name, v.value]));
+const plainValues = (values: Record<string, CoderValue>) =>
+  Object.fromEntries(Object.entries(values).map(([name, v]) => [name, v.value]));
 
 export interface RuntimeOptions {
   /** How long a "continue on another device" link stays valid. */
@@ -116,7 +126,11 @@ interface Routed {
 /** The special units a loop can mix in, in order of precedence when several are due. */
 const SPECIAL = [
   { set: PRACTICE_SET, units: (s: Share) => s.practice, settings: (b: LoopUnits) => b.practice },
-  { set: OVERLAP_SET, units: (s: Share) => s.overlap, settings: (b: LoopUnits) => (b.overlap?.placement === "disabled" ? undefined : b.overlap) },
+  {
+    set: OVERLAP_SET,
+    units: (s: Share) => s.overlap,
+    settings: (b: LoopUnits) => (b.overlap?.placement === "disabled" ? undefined : b.overlap),
+  },
   { set: GOLD_SET, units: (s: Share) => s.gold, settings: (b: LoopUnits) => b.gold },
 ] as const;
 
@@ -198,10 +212,20 @@ export class DeploymentRuntime {
           this.applySpec(spec);
           await this.ensureCodings();
         } else {
-          this.spec = { ...this.spec, active: spec.active, keepSessionsOpen: spec.keepSessionsOpen, sets: spec.sets, redirectUrls: spec.redirectUrls, signIn: spec.signIn };
+          this.spec = {
+            ...this.spec,
+            active: spec.active,
+            keepSessionsOpen: spec.keepSessionsOpen,
+            sets: spec.sets,
+            redirectUrls: spec.redirectUrls,
+            signIn: spec.signIn,
+          };
           this.applySets(spec);
           // Panel return links are deployment settings: they change without a new version
-          this.coderCodebook = { ...this.coderCodebook, items: resolveRedirects(toCoderItems(this.spec.design.items as TopLevelItem[]), spec.redirectUrls) };
+          this.coderCodebook = {
+            ...this.coderCodebook,
+            items: resolveRedirects(toCoderItems(this.spec.design.items as TopLevelItem[]), spec.redirectUrls),
+          };
         }
         // Only once read: a failed read (e.g. a suspended study) is tried again next time.
         this.stamp = stamp;
@@ -218,14 +242,23 @@ export class DeploymentRuntime {
     this.loops = new Map(collectLoops(items).map((l) => [l.key, l]));
     this.coderVariableTypes = collectCoderVariables(items);
     this.dependencies = new Map(
-      [...loopDependencies(items)].map(([key, names]) => [key, names.filter((name) => this.coderVariableTypes.has(name))]),
+      [...loopDependencies(items)].map(([key, names]) => [
+        key,
+        names.filter((name) => this.coderVariableTypes.has(name)),
+      ]),
     );
-    this.randomVariables = [...this.coderVariableTypes].filter((e): e is [string, RandomVariable] => e[1].type === "random");
+    this.randomVariables = [...this.coderVariableTypes].filter(
+      (e): e is [string, RandomVariable] => e[1].type === "random",
+    );
     this.shareColumns = loopShareColumns(items);
     this.applySets(spec);
     this.shownFields = shownUnitFields(items);
     this.questions = collectQuestions(items).questions;
-    this.coderCodebook = { id: spec.design.id, title: spec.design.public?.title ?? null, items: resolveRedirects(toCoderItems(items), spec.redirectUrls) };
+    this.coderCodebook = {
+      id: spec.design.id,
+      title: spec.design.public?.title ?? null,
+      items: resolveRedirects(toCoderItems(items), spec.redirectUrls),
+    };
   }
 
   private applySets(spec: DeploymentSpec): void {
@@ -278,12 +311,25 @@ export class DeploymentRuntime {
     await this.store.locked("codings", async (store) => {
       if ((await store.codingsBasis()) === basis) return;
       const rows = await store.listFinished({
-        loops: [...this.loops.values()].map((info) => ({ loop: info.key, variables: [...info.variables.keys()], values: loopAgreementVariables(info) })),
+        loops: [...this.loops.values()].map((info) => ({
+          loop: info.key,
+          variables: [...info.variables.keys()],
+          values: loopAgreementVariables(info),
+        })),
       });
       const codings = rows.flatMap((row): Coding[] => {
         const info = this.loops.get(row.loop);
         if (!info || row.unitId === null) return [];
-        return [{ loop: row.loop, unitId: row.unitId, coderId: row.coderId, agreement: agreementKeys(row.values ?? {}, info), created: row.created, updated: row.created }];
+        return [
+          {
+            loop: row.loop,
+            unitId: row.unitId,
+            coderId: row.coderId,
+            agreement: agreementKeys(row.values ?? {}, info),
+            created: row.created,
+            updated: row.created,
+          },
+        ];
       });
       await store.replaceCodings(basis, codings);
     });
@@ -321,7 +367,8 @@ export class DeploymentRuntime {
     this.assertOpen(coder);
     const variable = this.randomVariables.find(([n]) => n === name)?.[1];
     if (!variable) throw new HttpError(404, `No computed item '${name}'`);
-    const options = variable.options ?? (variable.units ? (this.groups.get(variable.units) ?? []).map((value) => ({ value })) : []);
+    const options =
+      variable.options ?? (variable.units ? (this.groups.get(variable.units) ?? []).map((value) => ({ value })) : []);
     if (options.length === 0) throw new HttpError(409, `Computed item '${name}' has no values yet`);
     // Linked to units: the value goes into the session values, once (a session value never changes, so
     // the coder's units don't either); the session's value is the variable's
@@ -337,7 +384,12 @@ export class DeploymentRuntime {
     // Already in the session (e.g. its answers were reset): the same value again, not a new draw
     const kept = variable.units ? coder.session[name] : undefined;
     const put = (store: Store, value: VariableValue) =>
-      store.putCoderValues({ coderId: coder.coderId, values: { [name]: value }, assigned: true, designVersionId: this.spec.design.id });
+      store.putCoderValues({
+        coderId: coder.coderId,
+        values: { [name]: value },
+        assigned: true,
+        designVersionId: this.spec.design.id,
+      });
     if (variable.draw === "random" || kept !== undefined) {
       // Under the coder's own lock: two requests of this coder at once draw once (the first write wins)
       const value = await this.store.locked(`condition/${name}/${coder.coderId}`, async (store) => {
@@ -356,7 +408,11 @@ export class DeploymentRuntime {
       if (again) return again.value;
       const own = await store.coderValues(coder.coderId);
       const stratum = (values: Record<string, VariableValue | undefined>, session: Record<string, string>) =>
-        JSON.stringify(stratify.map((s) => (s.startsWith("session.") ? (session[s.slice("session.".length)] ?? null) : (valueOf(values[s]) ?? null))));
+        JSON.stringify(
+          stratify.map((s) =>
+            s.startsWith("session.") ? (session[s.slice("session.".length)] ?? null) : (valueOf(values[s]) ?? null),
+          ),
+        );
       const mine = stratum(Object.fromEntries(Object.entries(own).map(([k, v]) => [k, v.value])), coder.session);
       const others = (await store.coderValuesOf([name, ...stratify.filter((s) => !s.startsWith("session."))]))
         .filter((c) => stratum(c.values, c.session) === mine)
@@ -391,9 +447,16 @@ export class DeploymentRuntime {
   /** A one-time token that lets another device continue this coder's session (docs/coder-identity.md §4). */
   async createTransfer(coder: Coder): Promise<TransferResponse> {
     const bytes = crypto.getRandomValues(new Uint8Array(24));
-    const token = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const token = btoa(String.fromCharCode(...bytes))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
     const expires = new Date(this.options.now() + this.options.transferTtlMs);
-    await this.store.createTransfer(await sha256(token), { coderId: coder.coderId, participant: coder.session.participant ?? null, expires });
+    await this.store.createTransfer(await sha256(token), {
+      coderId: coder.coderId,
+      participant: coder.session.participant ?? null,
+      expires,
+    });
     return { token, expiresAt: expires };
   }
 
@@ -401,7 +464,11 @@ export class DeploymentRuntime {
    * Redeems a transfer token (once): the new device joins the session, with
    * its keys for it (`keys`, from the session's participant id: coder.ts).
    */
-  async redeemTransfer(token: string, keys: (participantId: string | null) => Promise<string[]>, device: DeviceDetails): Promise<void> {
+  async redeemTransfer(
+    token: string,
+    keys: (participantId: string | null) => Promise<string[]>,
+    device: DeviceDetails,
+  ): Promise<void> {
     const transfer = await this.store.redeemTransfer(await sha256(token), new Date(this.options.now()));
     if (!transfer) throw new HttpError(404, "This link has expired or was already used", "transfer_invalid");
     for (const key of await keys(transfer.participant)) await this.store.addDevice(transfer.coderId, key, device);
@@ -410,7 +477,10 @@ export class DeploymentRuntime {
   /** The session for the client. */
   async session(coder: Coder): Promise<SessionResponse> {
     const values = await this.store.coderValues(coder.coderId);
-    const [endValues, codings] = await Promise.all([this.endValues(coder, values), this.store.listCodings({ coderId: coder.coderId })]);
+    const [endValues, codings] = await Promise.all([
+      this.endValues(coder, values),
+      this.store.listCodings({ coderId: coder.coderId }),
+    ]);
     return {
       coderId: coder.coderId,
       studyId: this.spec.studyId,
@@ -450,10 +520,18 @@ export class DeploymentRuntime {
     // Without an item: the coder went through the whole study.
     const end = item === undefined ? null : findEndItem(this.spec.design.items, item);
     if (item !== undefined && !end) throw new HttpError(400, `No end item '${item}'`);
-    if (unit && (!this.loops.has(unit.loop) || Object.keys(await this.store.unitAnswers(coder.coderId, unit.id)).length === 0)) {
+    if (
+      unit &&
+      (!this.loops.has(unit.loop) || Object.keys(await this.store.unitAnswers(coder.coderId, unit.id)).length === 0)
+    ) {
       throw new HttpError(400, "The end's unit is not one you answered");
     }
-    coder.ended = { ...(item ? { item } : {}), ...(unit ? { unit } : {}), outcome: end?.outcome ?? "complete", at: new Date(this.options.now()) };
+    coder.ended = {
+      ...(item ? { item } : {}),
+      ...(unit ? { unit } : {}),
+      outcome: end?.outcome ?? "complete",
+      at: new Date(this.options.now()),
+    };
     await this.store.setEnded(coder.coderId, coder.ended);
     return { reopen: this.reopen(coder) };
   }
@@ -494,8 +572,10 @@ export class DeploymentRuntime {
     const end = found ? resolveRedirects([found], this.spec.redirectUrls)[0] : null;
     const source = `${end?.message ?? ""}\n${end?.redirectUrl ?? ""}`;
     // Every `$var.x` / `$unit.x` written anywhere in them (texts, scripts, block conditions).
-    const names = (ns: string) => new Set([...source.matchAll(new RegExp(`\\$${ns}\\.([A-Za-z0-9_]+)`, "g"))].map((m) => m[1]));
-    const pick = <T>(values: Record<string, T>, wanted: Set<string>) => Object.fromEntries(Object.entries(values).filter(([k]) => wanted.has(k)));
+    const names = (ns: string) =>
+      new Set([...source.matchAll(new RegExp(`\\$${ns}\\.([A-Za-z0-9_]+)`, "g"))].map((m) => m[1]));
+    const pick = <T>(values: Record<string, T>, wanted: Set<string>) =>
+      Object.fromEntries(Object.entries(values).filter(([k]) => wanted.has(k)));
     const vars = names("var");
     let unit: EndValues["unit"] = null;
     if (ended.unit) {
@@ -547,13 +627,23 @@ export class DeploymentRuntime {
     const stored = await this.store.coderValues(coder.coderId);
     const open = (name: string) => !auto.has(name) && !stored[name]?.assigned && !stored[name]?.frozen;
     const changed = Object.fromEntries(
-      Object.entries(variables).filter(([name, value]) => open(name) && JSON.stringify(stored[name]?.value) !== JSON.stringify(value)),
+      Object.entries(variables).filter(
+        ([name, value]) => open(name) && JSON.stringify(stored[name]?.value) !== JSON.stringify(value),
+      ),
     );
     // Timings of answered questions only (an unchanged answer: its timing alone is updated)
-    const timed = Object.fromEntries(Object.entries(timings).filter(([name]) => open(name) && (name in changed || name in stored)));
+    const timed = Object.fromEntries(
+      Object.entries(timings).filter(([name]) => open(name) && (name in changed || name in stored)),
+    );
     if (Object.keys(changed).length === 0 && Object.keys(timed).length === 0) return;
     await this.store.checkAnswers(changed);
-    await this.store.putCoderValues({ coderId: coder.coderId, values: changed, designVersionId: this.spec.design.id, deviceId, timings: timed });
+    await this.store.putCoderValues({
+      coderId: coder.coderId,
+      values: changed,
+      designVersionId: this.spec.design.id,
+      deviceId,
+      timings: timed,
+    });
   }
 
   // --- routing ----------------------------------------------------------------
@@ -583,35 +673,51 @@ export class DeploymentRuntime {
     // Everything the units depend on: the values, the filter, and the overlap's settings (its count, how it's picked)
     const key =
       (values.map(([column, value]) => `${column}=${value}`).join(",") || "all") +
-      (filter ? ` | ${filter.column} ${filter.only ? "only" : "except"} ${(filter.only ?? filter.except ?? []).join(",")}` : "") +
+      (filter
+        ? ` | ${filter.column} ${filter.only ? "only" : "except"} ${(filter.only ?? filter.except ?? []).join(",")}`
+        : "") +
       (settings.overlap ? ` | overlap ${JSON.stringify(settings.overlap)}` : "");
     const cached = this.shares.get(key);
     if (cached) return cached;
 
     // In every column: the value's units, and the column's overlap (in the first column's order)
-    const special = new Set(this.columns.flatMap((c) => [...this.unitsOf(setKey(c, PRACTICE_SET)), ...this.unitsOf(setKey(c, GOLD_SET))]));
+    const special = new Set(
+      this.columns.flatMap((c) => [...this.unitsOf(setKey(c, PRACTICE_SET)), ...this.unitsOf(setKey(c, GOLD_SET))]),
+    );
     let units: number[];
     if (values.length === 0) units = this.unitsOf(ALL_UNITS_SET);
     else {
-      const [first, ...rest] = values.map(([column, value]) => [...this.unitsOf(setKey(column, value)), ...this.unitsOf(setKey(column, OVERLAP_SET))]);
+      const [first, ...rest] = values.map(([column, value]) => [
+        ...this.unitsOf(setKey(column, value)),
+        ...this.unitsOf(setKey(column, OVERLAP_SET)),
+      ]);
       const others = rest.map((list) => new Set(list));
       units = [...new Set(first)].filter((id) => others.every((o) => o.has(id)));
     }
     units = units.filter((id) => !special.has(id));
     if (filter) {
-      const listed = new Set((filter.only ?? filter.except ?? []).flatMap((value) => this.unitsOf(setKey(filter.column, value))));
+      const listed = new Set(
+        (filter.only ?? filter.except ?? []).flatMap((value) => this.unitsOf(setKey(filter.column, value))),
+      );
       units = units.filter((id) => listed.has(id) === !!filter.only);
     }
     // The overlap apart when the loop places it (or leaves it out): the coder column's, when coders divide
     // the units (a condition column's `_overlap` is just in every condition: the coder's own units); else
     // of the session's columns, or (no column divides the units) of every column
-    const overlapColumns = coderColumn ? [coderColumn] : values.length > 0 ? values.map(([column]) => column) : this.columns;
+    const overlapColumns = coderColumn
+      ? [coderColumn]
+      : values.length > 0
+        ? values.map(([column]) => column)
+        : this.columns;
     const overlapAll = new Set(overlapColumns.flatMap((column) => this.unitsOf(setKey(column, OVERLAP_SET))));
     let overlap = settings.overlap ? units.filter((id) => overlapAll.has(id)) : [];
     const own = settings.overlap ? units.filter((id) => !overlapAll.has(id)) : units;
     const max = settings.overlap?.max;
     if (max !== undefined && overlap.length > max) {
-      overlap = settings.overlap?.pick === "random" ? seededShuffle(overlap, this.spec.studyId).slice(0, max) : overlap.slice(0, max);
+      overlap =
+        settings.overlap?.pick === "random"
+          ? seededShuffle(overlap, this.spec.studyId).slice(0, max)
+          : overlap.slice(0, max);
     }
     const all = (set: string) => [...new Set(this.columns.flatMap((c) => this.unitsOf(setKey(c, set))))];
     const share: Share = { key, own, overlap, practice: all(PRACTICE_SET), gold: all(GOLD_SET) };
@@ -623,12 +729,22 @@ export class DeploymentRuntime {
    * A route's special units (docs/architecture.md §6.2): its practice,
    * overlap and gold units, for those the loop places.
    */
-  private specialUnits(route: Route): { set: string; units: number[]; placement: "first" | "last" | "spread" | "rate"; every?: number; rest?: "end" | "drop" }[] {
+  private specialUnits(
+    route: Route,
+  ): {
+    set: string;
+    units: number[];
+    placement: "first" | "last" | "spread" | "rate";
+    every?: number;
+    rest?: "end" | "drop";
+  }[] {
     return SPECIAL.flatMap(({ set, units, settings }) => {
       const s = settings(route.units);
       if (!s || s.placement === "disabled") return [];
       const list = units(route.share);
-      return list.length > 0 ? [{ set: `${route.share.key}/${set}`, units: list, placement: s.placement, every: s.every, rest: s.rest }] : [];
+      return list.length > 0
+        ? [{ set: `${route.share.key}/${set}`, units: list, placement: s.placement, every: s.every, rest: s.rest }]
+        : [];
     });
   }
 
@@ -663,13 +779,11 @@ export class DeploymentRuntime {
     const main = new UnitPool(share.key, this.ownUnits(route), sharedDefaults(units), codings);
     // Every lease of the loop: shares overlap (`_overlap`, `a;b`), and a unit leased in one share is taken in all
     main.loadLeases(leases.map((l) => ({ ...l, expires: new Date(l.expires).getTime() })));
-    const extras = this.specialUnits(route).map(
-      (s): OverlapPlacement => ({
-        pool: new UnitPool(s.set, s.units, null, codings),
-        placement: PLACEMENTS[s.placement],
-        ...(s.placement === "rate" ? { every: s.every ?? DEFAULT_RATE, rest: s.rest ?? "end" } : {}),
-      }),
-    );
+    const extras = this.specialUnits(route).map((s): OverlapPlacement => ({
+      pool: new UnitPool(s.set, s.units, null, codings),
+      placement: PLACEMENTS[s.placement],
+      ...(s.placement === "rate" ? { every: s.every ?? DEFAULT_RATE, rest: s.rest ?? "end" } : {}),
+    }));
     return { units, main, extras };
   }
 
@@ -698,7 +812,8 @@ export class DeploymentRuntime {
       if (column.random && coder.session[column.name] === undefined) await this.computeVariable(coder, column.name);
     }
     const route = this.routeOf(coder, info);
-    if (!route) throw new HttpError(409, "No units are assigned to you yet: ask the researcher for a new link", "not_assigned");
+    if (!route)
+      throw new HttpError(409, "No units are assigned to you yet: ask the researcher for a new link", "not_assigned");
     if (!coder.assignments[info.key]) {
       const assignment = { at: this.options.now() };
       await this.store.routeCoder(coder.coderId, info.key, assignment);
@@ -725,11 +840,14 @@ export class DeploymentRuntime {
     const route = await this.route(coder, info);
     // A shared queue: one lock for the whole loop, since shares overlap (`_overlap`, `a;b`)
     const units = route.units.criteria
-        ? await this.store.locked(`queue/${info.key}`, (store) => this.pick(store, coder, info, route, count))
-        : await this.pick(this.store, coder, info, route, count);
+      ? await this.store.locked(`queue/${info.key}`, (store) => this.pick(store, coder, info, route, count))
+      : await this.pick(this.store, coder, info, route, count);
     return Promise.all(
       units.map(async (unit) => {
-        const [shown, answers] = await Promise.all([this.markServed(coder.coderId, unit), this.store.unitAnswers(coder.coderId, unit.id)]);
+        const [shown, answers] = await Promise.all([
+          this.markServed(coder.coderId, unit),
+          this.store.unitAnswers(coder.coderId, unit.id),
+        ]);
         return this.coderUnit(route, unit, shown.data, answers);
       }),
     );
@@ -784,7 +902,13 @@ export class DeploymentRuntime {
     await store.putLeases(
       picked
         .filter((p) => p.pool.rule)
-        .map((p) => ({ loop: info.key, set: p.pool.set, coderId: coder.coderId, unitId: p.unitId, expires: new Date(now + p.pool.rule!.leaseSeconds * 1000) })),
+        .map((p) => ({
+          loop: info.key,
+          set: p.pool.set,
+          coderId: coder.coderId,
+          unitId: p.unitId,
+          expires: new Date(now + p.pool.rule!.leaseSeconds * 1000),
+        })),
     );
     return picked.map((p) => units.get(p.unitId)!);
   }
@@ -807,7 +931,8 @@ export class DeploymentRuntime {
     // A unit the coder coded here stays theirs, also if the units were divided differently since
     const codedHere = coded.some((c) => c.unitId === unitId);
     // Only units the coder has worked on (or holds): no peeking ahead.
-    if (!(this.routeUnits(route).has(unitId) || codedHere) || !(answered || held)) throw new HttpError(404, "This unit is not part of your session");
+    if (!(this.routeUnits(route).has(unitId) || codedHere) || !(answered || held))
+      throw new HttpError(404, "This unit is not part of your session");
     const unit = (await this.getUnits([unitId])).get(unitId);
     if (!unit) throw new HttpError(404, "Unit not found");
     const shown = await this.markServed(coder.coderId, unit);
@@ -848,7 +973,9 @@ export class DeploymentRuntime {
       if (!route.units.criteria) return true;
       return leases.some((l) => l.loop === info.key && l.unitId === unitId);
     };
-    const loops = [...this.loops.values()].filter((info) => (loopName === undefined || info.key === loopName) && canSubmit(info));
+    const loops = [...this.loops.values()].filter(
+      (info) => (loopName === undefined || info.key === loopName) && canSubmit(info),
+    );
     if (loops.length === 0) throw new HttpError(409, "Unit is not assigned to this coder");
 
     const info = loops.find((l) => [...l.variables.keys()].every((name) => name in variables));
@@ -870,7 +997,10 @@ export class DeploymentRuntime {
     }
     // The loops these answers (with the unit's earlier ones) finish the unit in.
     const merged = { ...(await this.store.unitAnswers(coder.coderId, unitId)), ...variables };
-    const codings = finishedLoops(merged, this.loops.values()).map((l) => ({ loop: l.key, agreement: agreementKeys(merged, l) }));
+    const codings = finishedLoops(merged, this.loops.values()).map((l) => ({
+      loop: l.key,
+      agreement: agreementKeys(merged, l),
+    }));
     await this.store.putAnnotation({
       unitId,
       coderId: coder.coderId,
@@ -905,7 +1035,12 @@ export class DeploymentRuntime {
    * questions and their feedback, checked in the browser (docs/architecture.md §6.2).
    * Gold cells never leave the server.
    */
-  private coderUnit(route: Route | null, unit: { id: number; externalId: string; data: UnitData }, shown: UnitData, answers: Record<string, VariableValue>): CoderUnitResponse {
+  private coderUnit(
+    route: Route | null,
+    unit: { id: number; externalId: string; data: UnitData },
+    shown: UnitData,
+    answers: Record<string, VariableValue>,
+  ): CoderUnitResponse {
     const base = { id: unit.id, externalId: unit.externalId, variables: answers };
     if (!route || !this.specialSet(route, PRACTICE_SET).includes(unit.id)) return { ...base, data: shown };
     const practice = route.units.practice;
@@ -916,7 +1051,16 @@ export class DeploymentRuntime {
       const message = String(unit.data[practiceMessageColumn(name)] ?? "").trim();
       questions[name] = { key, ...(message ? { message } : {}) };
     }
-    const checks = Object.keys(questions).length > 0 ? { practice: { retry: practice?.retry ?? true, ...(practice?.message ? { message: practice.message } : {}), questions } } : {};
+    const checks =
+      Object.keys(questions).length > 0
+        ? {
+            practice: {
+              retry: practice?.retry ?? true,
+              ...(practice?.message ? { message: practice.message } : {}),
+              questions,
+            },
+          }
+        : {};
     return { ...base, data: { ...shown, _practice: true }, ...checks };
   }
 
@@ -940,7 +1084,9 @@ export class DeploymentRuntime {
       for (const name of gold.questions) {
         const expected = parseAnswerKey(unit.data[goldColumn(name)]);
         if (expected === null) continue;
-        value = answerMatchesKey(answers[name], expected) ? Math.min(health.start, value + (health.right ?? 0)) : value + health.wrong;
+        value = answerMatchesKey(answers[name], expected)
+          ? Math.min(health.start, value + (health.right ?? 0))
+          : value + health.wrong;
       }
     }
     return value;
@@ -953,7 +1099,11 @@ export class DeploymentRuntime {
   /** Progress per loop and set: from every coder's codings, routing and leases. */
   async status(): Promise<DeploymentStatus> {
     const now = this.options.now();
-    const [rows, allCoders, leases] = await Promise.all([this.store.listCodings({}), this.store.listCoders(), this.store.listLeases({})]);
+    const [rows, allCoders, leases] = await Promise.all([
+      this.store.listCodings({}),
+      this.store.listCoders(),
+      this.store.listLeases({}),
+    ]);
     const sources: DeploymentStatus["sources"] = [];
     for (const [loop, info] of this.loops) {
       const codings = DeploymentRuntime.codingsOf(rows.filter((r) => r.loop === loop));
@@ -963,7 +1113,9 @@ export class DeploymentRuntime {
       });
       // One row per pool: a set with its rule (a shared queue, or handed out whole).
       const pools = new Map<string, { pool: UnitPool; coders: number[] }>();
-      const loopLeases = leases.filter((l) => l.loop === loop).map((l) => ({ ...l, expires: new Date(l.expires).getTime() }));
+      const loopLeases = leases
+        .filter((l) => l.loop === loop)
+        .map((l) => ({ ...l, expires: new Date(l.expires).getTime() }));
       // Shares overlap (`_overlap`, `a;b`): a unit is listed once, in the first row that has it
       const listed = new Set<number>();
       for (const { coderId, route } of routes) {
@@ -971,7 +1123,12 @@ export class DeploymentRuntime {
         for (const pool of [routed.main, ...routed.extras.map((e) => e.pool)]) {
           const key = `${pool.set}/${JSON.stringify(pool.rule)}`;
           if (!pools.has(key)) {
-            const row = new UnitPool(pool.set, pool.unitIds.filter((id) => !listed.has(id)), pool.rule, codings);
+            const row = new UnitPool(
+              pool.set,
+              pool.unitIds.filter((id) => !listed.has(id)),
+              pool.rule,
+              codings,
+            );
             row.loadLeases(loopLeases);
             for (const id of row.unitIds) listed.add(id);
             pools.set(key, { pool: row, coders: [] });
@@ -980,7 +1137,12 @@ export class DeploymentRuntime {
         }
       }
       for (const { pool, coders } of pools.values()) {
-        sources.push({ loop: loopTitle(info.loop, loop), set: pool.set, ...pool.status(now, coders), coders: coders.length });
+        sources.push({
+          loop: loopTitle(info.loop, loop),
+          set: pool.set,
+          ...pool.status(now, coders),
+          coders: coders.length,
+        });
       }
     }
     return {
@@ -998,7 +1160,9 @@ export class DeploymentRuntime {
    * unit version (answers point to it).
    */
   private async shownVersion(unit: Unit): Promise<{ data: UnitData; versionId: number }> {
-    const data: UnitData = Object.fromEntries(this.shownFields.filter((f) => f in unit.data).map((f) => [f, unit.data[f]]));
+    const data: UnitData = Object.fromEntries(
+      this.shownFields.filter((f) => f in unit.data).map((f) => [f, unit.data[f]]),
+    );
     return { data, versionId: unit.versionId };
   }
 

@@ -4,7 +4,15 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { TypeCard } from "./typeCardData";
 
 /** The kinds as a grid of cards: icon, name and one line each. */
-export function TypeCardGrid<T extends string>({ cards, value, onPick }: { cards: TypeCard<T>[]; value?: T; onPick: (type: T) => void }) {
+export function TypeCardGrid<T extends string>({
+  cards,
+  value,
+  onPick,
+}: {
+  cards: TypeCard<T>[];
+  value?: T;
+  onPick: (type: T) => void;
+}) {
   return (
     <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2" role="listbox" aria-label="Types">
       {cards.map(({ type, label, description, icon: Icon }) => (
@@ -56,7 +64,10 @@ export function TypeHeader<T extends string>({
       {cards.length > 1 && (
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
-            <button type="button" className="ml-auto cursor-pointer text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+            <button
+              type="button"
+              className="ml-auto cursor-pointer text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
               Change type
             </button>
           </PopoverTrigger>

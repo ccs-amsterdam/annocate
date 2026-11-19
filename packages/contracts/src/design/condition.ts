@@ -116,7 +116,12 @@ export type SimpleCondition =
   | { op: "answered"; question: string }
   | SimpleCall;
 
-type Token = { t: "ref"; path: string[] } | { t: "str"; v: string } | { t: "num"; v: number } | { t: "sym"; v: string } | { t: "word"; v: string };
+type Token =
+  | { t: "ref"; path: string[] }
+  | { t: "str"; v: string }
+  | { t: "num"; v: number }
+  | { t: "sym"; v: string }
+  | { t: "word"; v: string };
 
 const SYMBOLS = ["&&", "||", "===", "!==", ">=", "<=", "!", "(", ")", ",", ">", "<"];
 
@@ -226,7 +231,8 @@ export function parseSimpleCondition(script: string): SimpleCondition | null {
     const method = path[path.length - 1] as HelperMethod;
     if (!HELPER_METHODS.includes(method)) return null;
     if (path.length === 2) call = { op: "call", question: path[0], method, args: [] };
-    else if (path.length === 4 && path[1] === "items") call = { op: "call", question: path[0], item: path[2], method, args: [] };
+    else if (path.length === 4 && path[1] === "items")
+      call = { op: "call", question: path[0], item: path[2], method, args: [] };
     else return null;
     if (!isSym("(")) return null;
     pos++;
@@ -263,7 +269,9 @@ export function printSimpleCondition(condition: SimpleCondition, parent: "and" |
     case "answered":
       return `$var.${condition.question}.answered`;
     case "call": {
-      const target = condition.item ? `$var.${condition.question}.items.${condition.item}` : `$var.${condition.question}`;
+      const target = condition.item
+        ? `$var.${condition.question}.items.${condition.item}`
+        : `$var.${condition.question}`;
       const call = `${target}.${condition.method}(${condition.args.map((a) => JSON.stringify(a)).join(", ")})`;
       if (!condition.compare) return call;
       const text = `${call} ${condition.compare.op} ${condition.compare.value}`;
@@ -273,7 +281,9 @@ export function printSimpleCondition(condition: SimpleCondition, parent: "and" |
       return `!${printSimpleCondition(condition.arg, "not")}`;
     case "and":
     case "or": {
-      const text = condition.args.map((a) => printSimpleCondition(a, condition.op)).join(condition.op === "and" ? " && " : " || ");
+      const text = condition.args
+        .map((a) => printSimpleCondition(a, condition.op))
+        .join(condition.op === "and" ? " && " : " || ");
       return parent === "not" || (parent === "and" && condition.op === "or") ? `(${text})` : text;
     }
   }
@@ -313,7 +323,8 @@ export function evaluateSimpleCondition(condition: SimpleCondition, scope: Refer
       const entry = scope.$var[condition.question];
       const target = condition.item ? entry?.items?.[condition.item] : entry;
       const result = applyHelper(target, condition.method, condition.args);
-      if (condition.compare) return typeof result === "number" && compare(result, condition.compare.op, condition.compare.value);
+      if (condition.compare)
+        return typeof result === "number" && compare(result, condition.compare.op, condition.compare.value);
       return result === true;
     }
   }

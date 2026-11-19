@@ -19,7 +19,9 @@ import { SetGroupNameSchema } from "../sets.js";
  * less obvious; not supported until someone needs it.
  */
 export function supportsAgreement(variable: AnyVariableType): boolean {
-  return (variable.type === "nominal" && !variable.multiple) || variable.type === "ordinal" || variable.type === "annotinder";
+  return (
+    (variable.type === "nominal" && !variable.multiple) || variable.type === "ordinal" || variable.type === "annotinder"
+  );
 }
 
 /** The key for "every unit in the study" (the server's sets are keyed `group/set`, `setKey`). */
@@ -126,7 +128,10 @@ export const UnitFilterSchema = z
     only: z.array(z.string().min(1).max(128)).min(1).max(100).optional(),
     except: z.array(z.string().min(1).max(128)).min(1).max(100).optional(),
   })
-  .refine((f) => (f.only === undefined) !== (f.except === undefined), { message: "A filter has either only or except values", path: ["only"] });
+  .refine((f) => (f.only === undefined) !== (f.except === undefined), {
+    message: "A filter has either only or except values",
+    path: ["only"],
+  });
 export type UnitFilter = z.infer<typeof UnitFilterSchema>;
 
 /**
@@ -141,9 +146,13 @@ export type UnitFilter = z.infer<typeof UnitFilterSchema>;
  */
 export const CriteriaSchema = z
   .object({
-    codersPerUnit: z.object({ min: z.number().int().min(1).optional(), max: z.number().int().min(1).optional() }).optional(),
+    codersPerUnit: z
+      .object({ min: z.number().int().min(1).optional(), max: z.number().int().min(1).optional() })
+      .optional(),
     until: z.object({ agree: z.number().int().min(2), on: SafeNameSchema }).optional(),
-    unitsPerCoder: z.object({ min: z.number().int().positive().optional(), max: z.number().int().positive().optional() }).optional(),
+    unitsPerCoder: z
+      .object({ min: z.number().int().positive().optional(), max: z.number().int().positive().optional() })
+      .optional(),
     /**
      * `cover`: prefer the least-coded units (every unit gets coded before any
      * is done). `saturate`: prefer units closest to done (done units arrive
@@ -154,21 +163,31 @@ export const CriteriaSchema = z
     leaseSeconds: z.number().int().positive().optional(),
   })
   .refine((c) => !c.until || c.codersPerUnit?.max !== undefined, {
-    message: "Set the most coders per unit when coding until coders agree (otherwise a unit nobody agrees on is coded forever)",
+    message:
+      "Set the most coders per unit when coding until coders agree (otherwise a unit nobody agrees on is coded forever)",
     path: ["codersPerUnit", "max"],
   })
-  .refine((c) => c.codersPerUnit?.max === undefined || c.codersPerUnit.max >= (c.until?.agree ?? c.codersPerUnit.min ?? 1), {
-    message: "The most coders per unit must be at least the coders (or agreeing coders) a unit needs",
-    path: ["codersPerUnit", "max"],
-  })
+  .refine(
+    (c) => c.codersPerUnit?.max === undefined || c.codersPerUnit.max >= (c.until?.agree ?? c.codersPerUnit.min ?? 1),
+    {
+      message: "The most coders per unit must be at least the coders (or agreeing coders) a unit needs",
+      path: ["codersPerUnit", "max"],
+    },
+  )
   .refine((c) => !c.until || c.codersPerUnit?.min === undefined, {
     message: "With until, a unit is done when coders agree: leave out the minimum coders per unit",
     path: ["codersPerUnit", "min"],
   })
-  .refine((c) => c.unitsPerCoder?.min === undefined || c.unitsPerCoder.max === undefined || c.unitsPerCoder.min <= c.unitsPerCoder.max, {
-    message: "The minimum units per coder can't be more than the maximum",
-    path: ["unitsPerCoder", "min"],
-  });
+  .refine(
+    (c) =>
+      c.unitsPerCoder?.min === undefined ||
+      c.unitsPerCoder.max === undefined ||
+      c.unitsPerCoder.min <= c.unitsPerCoder.max,
+    {
+      message: "The minimum units per coder can't be more than the maximum",
+      path: ["unitsPerCoder", "min"],
+    },
+  );
 export type Criteria = z.infer<typeof CriteriaSchema>;
 
 /**
@@ -184,10 +203,17 @@ export const LoopUnitsSchema = z
     practice: PracticeSettingsSchema.optional(),
     gold: GoldSettingsSchema.optional(),
   })
-  .refine((b) => !b.criteria || b.criteria.unitsPerCoder?.max !== undefined || ![b.overlap, b.practice, b.gold].some((s) => s?.placement === "spread"), {
-    message: "Spreading special units in a shared queue needs a maximum of units per coder (to know where to put them)",
-    path: ["criteria", "unitsPerCoder", "max"],
-  });
+  .refine(
+    (b) =>
+      !b.criteria ||
+      b.criteria.unitsPerCoder?.max !== undefined ||
+      ![b.overlap, b.practice, b.gold].some((s) => s?.placement === "spread"),
+    {
+      message:
+        "Spreading special units in a shared queue needs a maximum of units per coder (to know where to put them)",
+      path: ["criteria", "unitsPerCoder", "max"],
+    },
+  );
 export type LoopUnits = z.infer<typeof LoopUnitsSchema>;
 
 /** A loop's units settings (`{}` when absent: all the session's units, once). */

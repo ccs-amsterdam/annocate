@@ -1,5 +1,11 @@
 import { Hono } from "hono";
-import { UnitsSpecSchema, fieldUsage, typeOfValue, unitFieldNameError, type UnitDataValue } from "@annotinder/contracts";
+import {
+  UnitsSpecSchema,
+  fieldUsage,
+  typeOfValue,
+  unitFieldNameError,
+  type UnitDataValue,
+} from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
 import { and, eq } from "drizzle-orm";
 import { unitDraft, unitFieldNames, units, unitValues } from "../db/schema/index.js";
@@ -13,7 +19,9 @@ export function unitsFields(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/study/:studyId/units/fields", requireStudyUser(server, "READ"), async (c) => c.json(await getUnitFields(db, c.get("studyId"))));
+  app.get("/study/:studyId/units/fields", requireStudyUser(server, "READ"), async (c) =>
+    c.json(await getUnitFields(db, c.get("studyId"))),
+  );
 
   // Declare, retype, describe, or remove fields. A removed field's values
   // leave the draft units (deployed versions keep them); a retyped field's
@@ -49,8 +57,14 @@ export function unitsFields(server: Server): Hono<Env> {
         .innerJoin(unitFieldNames, eq(unitFieldNames.id, unitDraft.fieldId))
         .innerJoin(unitValues, eq(unitValues.id, unitDraft.valueId))
         .where(and(eq(units.studyId, studyId), eq(unitFieldNames.name, f.name)));
-      const misfit = rows.find((r) => typeOfValue(r.value as UnitDataValue) !== null && typeOfValue(r.value as UnitDataValue) !== f.type);
-      if (misfit) return c.json({ error: `Unit '${misfit.externalId}': its ${f.name} (${JSON.stringify(misfit.value)}) isn't ${f.type}` }, 400);
+      const misfit = rows.find(
+        (r) => typeOfValue(r.value as UnitDataValue) !== null && typeOfValue(r.value as UnitDataValue) !== f.type,
+      );
+      if (misfit)
+        return c.json(
+          { error: `Unit '${misfit.externalId}': its ${f.name} (${JSON.stringify(misfit.value)}) isn't ${f.type}` },
+          400,
+        );
     }
 
     await db.transaction(async (tx) => {

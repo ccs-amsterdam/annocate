@@ -226,13 +226,10 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
     }
   }
 
-
   // Scroll focused span into view when inspected from the labels list
   useEffect(() => {
     if (!annotation?.focusedSpanId || !containerRef.current) return;
-    const el = containerRef.current.querySelector(
-      `[data-span-id~="${annotation.focusedSpanId}"]`,
-    );
+    const el = containerRef.current.querySelector(`[data-span-id~="${annotation.focusedSpanId}"]`);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
@@ -249,8 +246,7 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
       if ((e.key === "Backspace" || e.key === "Delete") && !annotation.pendingSpan && annotation.spans.length > 0) {
         if (
           containerRef.current &&
-          (containerRef.current === document.activeElement ||
-            containerRef.current.contains(document.activeElement))
+          (containerRef.current === document.activeElement || containerRef.current.contains(document.activeElement))
         ) {
           e.preventDefault();
           const last = annotation.spans[annotation.spans.length - 1];
@@ -295,8 +291,7 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
       s.slices.some((slice) => slice.offset <= start && slice.offset + slice.length >= end),
     );
     const isPending = Boolean(
-      pending &&
-        pending.slices.some((slice) => slice.offset <= start && slice.offset + slice.length >= end),
+      pending && pending.slices.some((slice) => slice.offset <= start && slice.offset + slice.length >= end),
     );
     segments.push({ start, end, spans: covering, isPending });
   }
@@ -332,70 +327,65 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
   if (pending?.mode === "create") segments.forEach((seg, i) => seg.isPending && (lastPending = i));
 
   function renderSegment(seg: (typeof segments)[number], i: number) {
-          if (seg.spans.length === 0) {
-            if (seg.isPending) {
-              return (
-                <mark
-                  key={i}
-                  className="rounded-xs bg-wood/25 text-foreground ring-2 ring-wood/70"
-                >
-                  {text.slice(seg.start, seg.end)}
-                </mark>
-              );
-            }
-            return <span key={i}>{text.slice(seg.start, seg.end)}</span>;
-          }
+    if (seg.spans.length === 0) {
+      if (seg.isPending) {
+        return (
+          <mark key={i} className="rounded-xs bg-wood/25 text-foreground ring-2 ring-wood/70">
+            {text.slice(seg.start, seg.end)}
+          </mark>
+        );
+      }
+      return <span key={i}>{text.slice(seg.start, seg.end)}</span>;
+    }
 
-          if (seg.spans.length === 1) {
-            const span = seg.spans[0];
-            const isStart = span.slices.some((sl) => sl.offset === seg.start);
-            const isEnd = span.slices.some((sl) => sl.offset + sl.length === seg.end);
-            const spanSummary = span.slices.map((sl) => sl.text).join(" ... ");
-            const isFocused = annotation?.focusedSpanId === span.id;
-            return (
-              <mark
-                key={i}
-                data-span-id={span.id}
-                style={getSpanHighlightStyle({ color: colorFor(span.value), isStart, isEnd })}
-                title={`${labelFor(span.value)}: "${spanSummary}" (click to view labels)`}
-                onClick={(e) => handleSegmentClick(e, seg.spans)}
-                className={`cursor-pointer transition-opacity hover:opacity-85 font-normal ${
-                  isFocused || seg.isPending ? "ring-2 ring-wood ring-offset-1 ring-offset-background" : ""
-                }`}
-              >
-                {text.slice(seg.start, seg.end)}
-              </mark>
-            );
-          }
+    if (seg.spans.length === 1) {
+      const span = seg.spans[0];
+      const isStart = span.slices.some((sl) => sl.offset === seg.start);
+      const isEnd = span.slices.some((sl) => sl.offset + sl.length === seg.end);
+      const spanSummary = span.slices.map((sl) => sl.text).join(" ... ");
+      const isFocused = annotation?.focusedSpanId === span.id;
+      return (
+        <mark
+          key={i}
+          data-span-id={span.id}
+          style={getSpanHighlightStyle({ color: colorFor(span.value), isStart, isEnd })}
+          title={`${labelFor(span.value)}: "${spanSummary}" (click to view labels)`}
+          onClick={(e) => handleSegmentClick(e, seg.spans)}
+          className={`cursor-pointer font-normal transition-opacity hover:opacity-85 ${
+            isFocused || seg.isPending ? "ring-2 ring-wood ring-offset-1 ring-offset-background" : ""
+          }`}
+        >
+          {text.slice(seg.start, seg.end)}
+        </mark>
+      );
+    }
 
-          // Multiple overlapping spans on this segment
-          const spansInfo = seg.spans.map((s) => ({
-            color: colorFor(s.value),
-            isStart: s.slices.some((sl) => sl.offset === seg.start),
-            isEnd: s.slices.some((sl) => sl.offset + sl.length === seg.end),
-          }));
-          const stackedStyle = getStackedUnderlineStyle(spansInfo);
-          const title = seg.spans
-            .map((s) => `${labelFor(s.value)}: "${s.slices.map((sl) => sl.text).join(" ... ")}"`)
-            .join(", ");
+    // Multiple overlapping spans on this segment
+    const spansInfo = seg.spans.map((s) => ({
+      color: colorFor(s.value),
+      isStart: s.slices.some((sl) => sl.offset === seg.start),
+      isEnd: s.slices.some((sl) => sl.offset + sl.length === seg.end),
+    }));
+    const stackedStyle = getStackedUnderlineStyle(spansInfo);
+    const title = seg.spans
+      .map((s) => `${labelFor(s.value)}: "${s.slices.map((sl) => sl.text).join(" ... ")}"`)
+      .join(", ");
 
-          const isFocused = Boolean(
-            annotation?.focusedSpanId && seg.spans.some((s) => s.id === annotation.focusedSpanId),
-          );
-          return (
-            <mark
-              key={i}
-              data-span-id={seg.spans.map((s) => s.id).join(" ")}
-              style={stackedStyle}
-              title={`${title} (click to view labels)`}
-              onClick={(e) => handleSegmentClick(e, seg.spans)}
-              className={`cursor-pointer transition-opacity hover:opacity-85 font-normal ${
-                isFocused || seg.isPending ? "ring-2 ring-wood ring-offset-1 ring-offset-background" : ""
-              }`}
-            >
-              {text.slice(seg.start, seg.end)}
-            </mark>
-          );
+    const isFocused = Boolean(annotation?.focusedSpanId && seg.spans.some((s) => s.id === annotation.focusedSpanId));
+    return (
+      <mark
+        key={i}
+        data-span-id={seg.spans.map((s) => s.id).join(" ")}
+        style={stackedStyle}
+        title={`${title} (click to view labels)`}
+        onClick={(e) => handleSegmentClick(e, seg.spans)}
+        className={`cursor-pointer font-normal transition-opacity hover:opacity-85 ${
+          isFocused || seg.isPending ? "ring-2 ring-wood ring-offset-1 ring-offset-background" : ""
+        }`}
+      >
+        {text.slice(seg.start, seg.end)}
+      </mark>
+    );
   }
 
   const Container = inline ? "span" : "div";
@@ -407,7 +397,7 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
         tabIndex={annotation ? 0 : undefined}
         onKeyUp={annotation ? handleKeyUp : undefined}
         // The text being selected, the selection waiting for a label and the span being edited share one tint (wood)
-        className="whitespace-pre-wrap select-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 rounded p-1 transition-all leading-[1.8] selection:bg-wood/30 selection:text-foreground"
+        className="rounded p-1 leading-[1.8] whitespace-pre-wrap transition-all select-text selection:bg-wood/30 selection:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
       >
         {segments.map((seg, i) => (
           <React.Fragment key={i}>

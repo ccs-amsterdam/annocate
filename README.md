@@ -62,7 +62,8 @@ codes it (deployment `1`). `pnpm reset-db` starts over with an empty
 database.
 
 Other useful root scripts: `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm test`
-(each runs across all packages).
+(each runs across all packages), and `pnpm format` (Prettier with Tailwind class
+sorting; `pnpm format:check` only reports). Markdown is left alone.
 
 `pnpm test:e2e` runs the end-to-end tests (`packages/e2e`, Playwright): a
 browser codes the example studies, the researcher makes and downloads studies,

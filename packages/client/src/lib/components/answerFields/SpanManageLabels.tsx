@@ -26,18 +26,11 @@ export interface SpanManageLabelsProps {
  * - Clicking an existing label in this menu opens `SpanEditLabel` to edit the code or delete.
  * - Clicking "Create new label" enters creation mode to add an overlapping label on this text.
  */
-export function SpanManageLabels({
-  annotation,
-  spans,
-  initialTargetSpanId,
-  fallbackSlices,
-}: SpanManageLabelsProps) {
+export function SpanManageLabels({ annotation, spans, initialTargetSpanId, fallbackSlices }: SpanManageLabelsProps) {
   const { theme } = useCoderSettings();
   const isDark = theme === "dark";
 
-  const [selectedSpanId, setSelectedSpanId] = useState<string | null>(
-    initialTargetSpanId ?? null,
-  );
+  const [selectedSpanId, setSelectedSpanId] = useState<string | null>(initialTargetSpanId ?? null);
 
   function colorFor(code: string): string | undefined {
     return annotation.options.find((c) => c.value === code)?.color;
@@ -99,18 +92,16 @@ export function SpanManageLabels({
 
   // Label inspection menu
   return (
-    <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-1">
+    <div className="flex animate-in flex-col gap-2 fade-in slide-in-from-bottom-1">
       {/* Header bar */}
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-foreground">
-          Current labels ({spans.length}):
-        </span>
+        <span className="text-xs font-semibold text-foreground">Current labels ({spans.length}):</span>
 
         {/* Clear cancel icon */}
         <button
           type="button"
           onClick={() => annotation.setPendingSpan(null)}
-          className="relative flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer shrink-0"
+          className="relative flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
           title="Cancel (Esc)"
           aria-label="Cancel"
         >
@@ -129,30 +120,27 @@ export function SpanManageLabels({
               key={s.id}
               type="button"
               onClick={() => setSelectedSpanId(s.id)}
-              className="relative flex w-full items-center justify-between gap-2.5 rounded-lg border border-border/70 bg-background/80 px-3 py-2 text-left hover:bg-muted/60 hover:border-primary/40 transition-all cursor-pointer shadow-2xs group"
+              className="group relative flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-lg border border-border/70 bg-background/80 px-3 py-2 text-left shadow-2xs transition-all hover:border-primary/40 hover:bg-muted/60"
             >
               {idx < 9 && <ShortcutBadge shortcut={String(idx + 1)} />}
-              <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
                 <span
                   style={badgeStyle}
-                  className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold shrink-0"
+                  className="inline-flex shrink-0 items-center rounded-md border px-2 py-0.5 text-xs font-semibold"
                 >
                   {labelFor(s.value)}
                 </span>
-                <span
-                  className="text-xs font-serif italic text-foreground/90 truncate"
-                  title={spanSummary}
-                >
+                <span className="truncate font-serif text-xs text-foreground/90 italic" title={spanSummary}>
                   &ldquo;{truncateSpanText(spanSummary, 50)}&rdquo;
                 </span>
                 {s.slices.length > 1 && (
-                  <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-muted text-muted-foreground shrink-0">
+                  <span className="py-0.2 shrink-0 rounded bg-muted px-1 font-mono text-[10px] text-muted-foreground">
                     {s.slices.length} frags
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-1 text-[11px] text-muted-foreground group-hover:text-primary transition-colors shrink-0">
+              <div className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground transition-colors group-hover:text-primary">
                 <span>Edit</span>
                 <ChevronRight className="h-3.5 w-3.5" />
               </div>
@@ -163,12 +151,12 @@ export function SpanManageLabels({
 
       {/* Button to create a new label on this text */}
       {candidateSlices && candidateSlices.length > 0 && (
-        <div className="pt-1 flex justify-end">
+        <div className="flex justify-end pt-1">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="h-7 text-xs gap-1 cursor-pointer"
+            className="h-7 cursor-pointer gap-1 text-xs"
             onClick={() => {
               annotation.setPendingSpan({
                 field: annotation.pendingSpan?.field,

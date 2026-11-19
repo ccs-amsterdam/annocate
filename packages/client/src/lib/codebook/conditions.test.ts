@@ -5,10 +5,16 @@ import { evaluateScript, scriptSyntaxError } from "./expression";
 
 const questions = new Map<string, AnyVariableType>([
   ["role", { type: "nominal", question: "?", options: [{ value: "student" }, { value: "staff" }] }],
-  ["topics", { type: "nominal", question: "?", multiple: true, options: [{ value: "a" }, { value: "b" }, { value: "c" }] }],
+  [
+    "topics",
+    { type: "nominal", question: "?", multiple: true, options: [{ value: "a" }, { value: "b" }, { value: "c" }] },
+  ],
   ["edu", { type: "ordinal", question: "?", options: [{ value: 1 }, { value: 2 }, { value: 3 }] }],
   ["age", { type: "numeric", question: "?" }],
-  ["battery", { type: "scale", question: "?", items: [{ name: "x" }, { name: "y" }], options: [{ value: 1 }, { value: 5 }] }],
+  [
+    "battery",
+    { type: "scale", question: "?", items: [{ name: "x" }, { name: "y" }], options: [{ value: 1 }, { value: 5 }] },
+  ],
   ["later", { type: "nominal", question: "?", options: [{ value: "a" }] }],
 ]);
 const scope = buildScope(
@@ -62,7 +68,9 @@ describe("evaluateCondition", () => {
   });
 
   it("has no bare-name globals", async () => {
-    expect(await evaluateCondition({ script: "typeof role === 'undefined' && typeof count === 'undefined'" }, scope)).toBe(true);
+    expect(
+      await evaluateCondition({ script: "typeof role === 'undefined' && typeof count === 'undefined'" }, scope),
+    ).toBe(true);
   });
 
   it("returns false and does not throw on invalid scripts", async () => {
@@ -87,7 +95,9 @@ describe("describeCondition", () => {
     const read = (script: string) => describeCondition({ script });
     expect(read(`$var.group.is("experiment")`)).toBe(`group is "experiment"`);
     expect(read(`$var.age.lt(16)`)).toBe("age < 16");
-    expect(read(`$var.age.between(18, 65) && !$var.consent.answered`)).toBe("age between 18 and 65 and consent is not answered");
+    expect(read(`$var.age.between(18, 65) && !$var.consent.answered`)).toBe(
+      "age between 18 and 65 and consent is not answered",
+    );
     expect(read(`!$var.role.isAny("a", "b") || ($var.topics.count() >= 2 && $var.interest.items.tech.gte(4))`)).toBe(
       `role is none of "a", "b" or (topics count ≥ 2 and interest › tech ≥ 4)`,
     );

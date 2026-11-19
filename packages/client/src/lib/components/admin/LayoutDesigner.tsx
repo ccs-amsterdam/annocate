@@ -3,7 +3,14 @@ import { buildScope, type UnitFieldType } from "@annotinder/contracts";
 import { ChevronDown, ChevronUp, Hash, Plus, Tags, ToggleLeft, Type, X } from "lucide-react";
 import { cn } from "cn";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { placeField, placedFields, removeField, simpleTemplate, type LayoutSlot, type SimpleLayout } from "../../design/simpleLayout";
+import {
+  placeField,
+  placedFields,
+  removeField,
+  simpleTemplate,
+  type LayoutSlot,
+  type SimpleLayout,
+} from "../../design/simpleLayout";
 import { renderTemplate, type RenderedTemplate } from "../../codebook/renderTemplate";
 import { UnitFields } from "../UnitFields";
 
@@ -51,10 +58,20 @@ const dragField = (field: string) => (e: DragEvent) => {
 };
 
 /** A list of fields to choose from, in a popover. */
-function FieldMenu({ label, fields, current, onChoose }: { label: string; fields: string[]; current?: string; onChoose: (field: string) => void }) {
+function FieldMenu({
+  label,
+  fields,
+  current,
+  onChoose,
+}: {
+  label: string;
+  fields: string[];
+  current?: string;
+  onChoose: (field: string) => void;
+}) {
   return (
     <PopoverContent align="start" className="w-56 p-1" role="menu" aria-label={label}>
-      <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="px-2 py-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{label}</p>
       {fields.length === 0 && <p className="px-2 py-1 text-xs text-muted-foreground">Every field is placed</p>}
       {fields.map((f) => (
         <button
@@ -62,7 +79,10 @@ function FieldMenu({ label, fields, current, onChoose }: { label: string; fields
           type="button"
           role="menuitem"
           onClick={() => onChoose(f)}
-          className={cn("block w-full rounded px-2 py-1 text-left font-mono text-xs hover:bg-muted", f === current && "bg-primary/10 text-primary")}
+          className={cn(
+            "block w-full rounded px-2 py-1 text-left font-mono text-xs hover:bg-muted",
+            f === current && "bg-primary/10 text-primary",
+          )}
         >
           {f}
         </button>
@@ -115,14 +135,16 @@ function Slot({
             onDragStart={field ? dragField(field) : undefined}
             className={cn(
               "w-full cursor-pointer rounded-md px-2 py-1.5 text-left transition-colors",
-              field ? "hover:bg-primary/5 hover:ring-1 hover:ring-primary/40" : "border border-dashed border-border/80 hover:border-primary/60",
+              field
+                ? "hover:bg-primary/5 hover:ring-1 hover:ring-primary/40"
+                : "border border-dashed border-border/80 hover:border-primary/60",
               drop.over && "bg-primary/10 ring-2 ring-primary/60",
             )}
           >
             {field ? (
               <span className="flex items-start gap-2">
                 <span className="min-w-0 flex-1">{children}</span>
-                <span className="shrink-0 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70 group-focus-within:invisible group-hover:invisible">
+                <span className="shrink-0 pt-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground/70 uppercase group-focus-within:invisible group-hover:invisible">
                   {label}
                 </span>
               </span>
@@ -142,7 +164,7 @@ function Slot({
         />
       </Popover>
       {field && onRemove && (
-        <span className="absolute right-1 top-1 hidden items-center gap-0.5 group-focus-within:flex group-hover:flex">
+        <span className="absolute top-1 right-1 hidden items-center gap-0.5 group-focus-within:flex group-hover:flex">
           {extra}
           <button
             type="button"
@@ -162,7 +184,14 @@ function Slot({
 const Lines = ({ n, faint }: { n: number; faint?: boolean }) => (
   <span className="mt-1 flex flex-col gap-1" aria-hidden>
     {Array.from({ length: n }, (_, i) => (
-      <span key={i} className={cn("h-1.5 rounded", faint ? "bg-muted-foreground/10" : "bg-muted-foreground/15", i === n - 1 ? "w-2/3" : "w-full")} />
+      <span
+        key={i}
+        className={cn(
+          "h-1.5 rounded",
+          faint ? "bg-muted-foreground/10" : "bg-muted-foreground/15",
+          i === n - 1 ? "w-2/3" : "w-full",
+        )}
+      />
     ))}
   </span>
 );
@@ -195,7 +224,10 @@ export function LayoutDesigner({
 
   return (
     <div className="flex w-full flex-col gap-3">
-      <div className="mx-auto w-full max-w-md rounded-lg border border-border bg-background p-4 shadow-sm" aria-label="Layout of a unit">
+      <div
+        className="mx-auto w-full max-w-md rounded-lg border border-border bg-background p-4 shadow-sm"
+        aria-label="Layout of a unit"
+      >
         <div className="flex flex-col gap-1.5">
           <Slot
             label="Title"
@@ -204,9 +236,9 @@ export function LayoutDesigner({
             dragSource
             onPlace={(f) => place(f, "title")}
             onRemove={layout.title ? () => remove(layout.title!) : undefined}
-            placeholder={<PlaceholderText className="text-lg font-bold leading-tight">Title</PlaceholderText>}
+            placeholder={<PlaceholderText className="text-lg leading-tight font-bold">Title</PlaceholderText>}
           >
-            <span className="block font-mono text-lg font-bold leading-tight text-foreground">{layout.title}</span>
+            <span className="block font-mono text-lg leading-tight font-bold text-foreground">{layout.title}</span>
           </Slot>
           <Slot
             label="Byline"
@@ -217,7 +249,7 @@ export function LayoutDesigner({
             onRemove={layout.byline ? () => remove(layout.byline!) : undefined}
             placeholder={<PlaceholderText className="text-xs italic">Byline</PlaceholderText>}
           >
-            <span className="block font-mono text-xs italic text-muted-foreground">{layout.byline}</span>
+            <span className="block font-mono text-xs text-muted-foreground italic">{layout.byline}</span>
           </Slot>
           <div className="mt-1 flex flex-col gap-1.5" role="group" aria-label="Body">
             {layout.body.map((field, i) => (
@@ -273,8 +305,10 @@ export function LayoutDesigner({
         </div>
       </div>
       <div className="mx-auto w-full max-w-md" role="group" aria-label="Unit fields not shown">
-        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {unplaced.length > 0 ? "Unit fields: click to add to the body, or drag onto a place" : "Every unit field is shown"}
+        <p className="mb-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+          {unplaced.length > 0
+            ? "Unit fields: click to add to the body, or drag onto a place"
+            : "Every unit field is shown"}
         </p>
         {unplaced.length > 0 && (
           <div className="flex flex-wrap gap-1.5">

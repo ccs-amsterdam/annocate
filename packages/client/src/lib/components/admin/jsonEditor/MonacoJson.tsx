@@ -41,7 +41,9 @@ export default function MonacoJson({ model, value, onChange, readOnly, onMount }
         renderLineHighlight: "all",
         quickSuggestions: { strings: true, other: true, comments: false },
       }}
-      loading={<div className="flex h-full items-center justify-center text-xs text-muted-foreground">Loading editor...</div>}
+      loading={
+        <div className="flex h-full items-center justify-center text-xs text-muted-foreground">Loading editor...</div>
+      }
     />
   );
 }

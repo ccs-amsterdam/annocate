@@ -23,7 +23,7 @@ export function ShortcutBadge({ shortcut, position = "top-right", className = ""
 
   return (
     <kbd
-      className={`absolute ${posClass} z-20 pointer-events-none inline-flex h-4 min-w-[1rem] items-center justify-center rounded border border-border/80 bg-background/95 px-1 font-mono text-[9px] font-semibold text-foreground shadow-xs select-none leading-none ${className}`}
+      className={`absolute ${posClass} pointer-events-none z-20 inline-flex h-4 min-w-[1rem] items-center justify-center rounded border border-border/80 bg-background/95 px-1 font-mono text-[9px] leading-none font-semibold text-foreground shadow-xs select-none ${className}`}
     >
       {shortcut}
     </kbd>

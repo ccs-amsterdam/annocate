@@ -1,9 +1,26 @@
 import { describe, expect, it } from "vitest";
 import type { AnnotationRow, CoderProgress, TopLevelItem } from "@annotinder/contracts";
-import { Labels, annotationsTable, answerJson, answerText, codersTable, resetAnswersTable, timingsTable, toCsv, unitsTable, variablesTable } from "./exportData";
+import {
+  Labels,
+  annotationsTable,
+  answerJson,
+  answerText,
+  codersTable,
+  resetAnswersTable,
+  timingsTable,
+  toCsv,
+  unitsTable,
+  variablesTable,
+} from "./exportData";
 
 const at = new Date("2026-11-01T10:00:00Z");
-const row = (unitId: number, coderId: number, variable: string, value: AnnotationRow["value"], minutes = 0): AnnotationRow => ({
+const row = (
+  unitId: number,
+  coderId: number,
+  variable: string,
+  value: AnnotationRow["value"],
+  minutes = 0,
+): AnnotationRow => ({
   id: unitId * 100 + coderId,
   unitId,
   externalId: `u${unitId}`,
@@ -39,17 +56,34 @@ const coder = (id: number, extra: Partial<CoderProgress> = {}): CoderProgress =>
 describe("data download", () => {
   it("writes answers as text: values joined, scale items apart, spans with their text, skipped empty", () => {
     expect(answerText({ done: true, skip: false, values: [{ value: "a" }, { value: "b" }] })).toBe("a; b");
-    const scale = { done: true, skip: false, values: [{ item: "tech", value: 4 }, { item: "art", value: 2 }] };
+    const scale = {
+      done: true,
+      skip: false,
+      values: [
+        { item: "tech", value: 4 },
+        { item: "art", value: 2 },
+      ],
+    };
     expect(answerText(scale, "art")).toBe("2");
-    const span = { done: true, skip: false, spans: [{ id: "s1", field: "text", value: "actor", slices: [{ offset: 0, length: 4, text: "Lena" }] }] };
+    const span = {
+      done: true,
+      skip: false,
+      spans: [{ id: "s1", field: "text", value: "actor", slices: [{ offset: 0, length: 4, text: "Lena" }] }],
+    };
     expect(answerText(span)).toBe("actor: Lena");
     expect(answerText({ done: true, skip: true })).toBe("");
     // A confirm question: answered, no value
     expect(answerText({ done: true, skip: false })).toBe("true");
     // Relations name their spans by text; the JSON keeps positions and ids
-    const relation = { done: true, skip: false, relations: [{ id: "r1", fromId: "s1", toId: "s9", value: "criticizes" }] };
+    const relation = {
+      done: true,
+      skip: false,
+      relations: [{ id: "r1", fromId: "s1", toId: "s9", value: "criticizes" }],
+    };
     expect(answerText(relation, undefined, undefined, new Map([["s1", span.spans[0]]]))).toBe("criticizes: Lena → s9");
-    expect(JSON.parse(answerJson(span))).toEqual([{ id: "s1", value: "actor", field: "text", slices: [{ offset: 0, length: 4, text: "Lena" }] }]);
+    expect(JSON.parse(answerJson(span))).toEqual([
+      { id: "s1", value: "actor", field: "text", slices: [{ offset: 0, length: 4, text: "Lena" }] },
+    ]);
     expect(answerJson({ done: true, skip: false, values: [{ value: "a" }, { value: "b" }] })).toBe('["a","b"]');
     expect(answerJson({ done: true, skip: true })).toBe("");
     // Numeric codes are numbers in the JSON
@@ -84,9 +118,54 @@ describe("data download", () => {
       "interest.tech",
     ]);
     expect(table.rows).toEqual([
-      ["u1", "", "1", "p1", "Open link", "2026-11-01T10:00:00.000Z", "2026-11-01T10:02:00.000Z", "2", "7", "", "", "pos", "politics", ""],
-      ["u1", "", "2", "", "Open link", "2026-11-01T10:00:00.000Z", "2026-11-01T10:00:00.000Z", "2", "7", "", "", "neg", "", ""],
-      ["u2", "", "1", "p1", "Open link", "2026-11-01T10:00:00.000Z", "2026-11-01T10:00:00.000Z", "2", "7", "", "", "", "", "4"],
+      [
+        "u1",
+        "",
+        "1",
+        "p1",
+        "Open link",
+        "2026-11-01T10:00:00.000Z",
+        "2026-11-01T10:02:00.000Z",
+        "2",
+        "7",
+        "",
+        "",
+        "pos",
+        "politics",
+        "",
+      ],
+      [
+        "u1",
+        "",
+        "2",
+        "",
+        "Open link",
+        "2026-11-01T10:00:00.000Z",
+        "2026-11-01T10:00:00.000Z",
+        "2",
+        "7",
+        "",
+        "",
+        "neg",
+        "",
+        "",
+      ],
+      [
+        "u2",
+        "",
+        "1",
+        "p1",
+        "Open link",
+        "2026-11-01T10:00:00.000Z",
+        "2026-11-01T10:00:00.000Z",
+        "2",
+        "7",
+        "",
+        "",
+        "",
+        "",
+        "4",
+      ],
     ]);
   });
 
@@ -98,8 +177,32 @@ describe("data download", () => {
         ended: { item: "done", outcome: "complete", at },
       }),
     ]);
-    expect(table.headers).toEqual(["coder_id", "participant_id", "email", "link", "started", "last_active", "ended", "ended_at", "deletion_requested", "finished_main", "age"]);
-    expect(table.rows[0]).toEqual(["1", "p1", "", "Open link", at.toISOString(), at.toISOString(), "complete", at.toISOString(), "", "1", "42"]);
+    expect(table.headers).toEqual([
+      "coder_id",
+      "participant_id",
+      "email",
+      "link",
+      "started",
+      "last_active",
+      "ended",
+      "ended_at",
+      "deletion_requested",
+      "finished_main",
+      "age",
+    ]);
+    expect(table.rows[0]).toEqual([
+      "1",
+      "p1",
+      "",
+      "Open link",
+      at.toISOString(),
+      at.toISOString(),
+      "complete",
+      at.toISOString(),
+      "",
+      "1",
+      "42",
+    ]);
   });
 
   it("orders the finished columns of unit loops naturally (2 before 10)", () => {
@@ -115,7 +218,11 @@ describe("data download", () => {
     const value = { done: true, skip: false, values: [{ value: 1 }] };
     const timing = (firstMs: number, totalMs: number) => ({ firstMs, totalMs, hiddenMs: 0, edits: 1 });
     const survey = { ...row(0, 1, "age", value, 1), unitId: null, externalId: null, timing: timing(30_000, 30_000) };
-    const unit = { ...row(1, 1, "sentiment", value, 3), timing: timing(5000, 90_000), servedAt: new Date(at.getTime() + 2 * 60_000) };
+    const unit = {
+      ...row(1, 1, "sentiment", value, 3),
+      timing: timing(5000, 90_000),
+      servedAt: new Date(at.getTime() + 2 * 60_000),
+    };
     const coders = [coder(1)];
     expect(timingsTable([survey, unit], coders).rows).toEqual([
       ["", "1", "p1", "age", "30000", "30000", "0", "1", "", "60000", "false"],
@@ -138,12 +245,27 @@ describe("data download", () => {
       [
         {
           type: "unit_loop",
-            layout: { template: "" },
-          children: [{ type: "question", name: "sentiment", variable: { type: "nominal", question: "?", options: [{ value: "pos", label }, { value: "neg" }] } }],
+          layout: { template: "" },
+          children: [
+            {
+              type: "question",
+              name: "sentiment",
+              variable: { type: "nominal", question: "?", options: [{ value: "pos", label }, { value: "neg" }] },
+            },
+          ],
         },
       ] as TopLevelItem[];
-    const labels = new Labels(new Map([[1, version("Positive")], [2, version("Good")]]), 2);
-    const old = { ...row(1, 1, "sentiment", { done: true, skip: false, values: [{ value: "pos" }] }), designVersionId: 1 };
+    const labels = new Labels(
+      new Map([
+        [1, version("Positive")],
+        [2, version("Good")],
+      ]),
+      2,
+    );
+    const old = {
+      ...row(1, 1, "sentiment", { done: true, skip: false, values: [{ value: "pos" }] }),
+      designVersionId: 1,
+    };
     const now = row(2, 1, "sentiment", { done: true, skip: false, values: [{ value: "pos" }, { value: "neg" }] });
     const table = annotationsTable([old, now], [coder(1)], [], labels);
     // Two answers to one question: also a _json column
@@ -153,7 +275,12 @@ describe("data download", () => {
       ["pos; neg", "Good; neg", '["pos","neg"]'],
     ]);
     // One unit, answered partly under each version: each answer with its own version's labels
-    const mixed = annotationsTable([{ ...row(1, 1, "other", { done: true, skip: false, values: [{ value: "x" }] }, -1), designVersionId: 2 }, old], [coder(1)], [], labels);
+    const mixed = annotationsTable(
+      [{ ...row(1, 1, "other", { done: true, skip: false, values: [{ value: "x" }] }, -1), designVersionId: 2 }, old],
+      [coder(1)],
+      [],
+      labels,
+    );
     expect(mixed.rows[0][mixed.headers.indexOf("sentiment_label")]).toBe("Positive");
 
     expect(variablesTable(new Map([[2, version("Good")]])).rows).toEqual([
@@ -164,10 +291,37 @@ describe("data download", () => {
 
   it("lists reset answers apart, with when they were given and reset", () => {
     const live = row(1, 1, "sentiment", { done: true, skip: false, values: [{ value: "neg" }] });
-    const reset = { ...row(1, 1, "sentiment", { done: true, skip: false, values: [{ value: "pos" }] }), retiredAt: new Date(at.getTime() + 60_000) };
+    const reset = {
+      ...row(1, 1, "sentiment", { done: true, skip: false, values: [{ value: "pos" }] }),
+      retiredAt: new Date(at.getTime() + 60_000),
+    };
     const table = resetAnswersTable([live, reset]);
-    expect(table.headers).toEqual(["unit_id", "unit_version_id", "coder_id", "participant_id", "variable", "value", "value_json", "design_version", "answered", "reset_at"]);
-    expect(table.rows).toEqual([["u1", "", "1", "p1", "sentiment", "pos", '["pos"]', "2", at.toISOString(), new Date(at.getTime() + 60_000).toISOString()]]);
+    expect(table.headers).toEqual([
+      "unit_id",
+      "unit_version_id",
+      "coder_id",
+      "participant_id",
+      "variable",
+      "value",
+      "value_json",
+      "design_version",
+      "answered",
+      "reset_at",
+    ]);
+    expect(table.rows).toEqual([
+      [
+        "u1",
+        "",
+        "1",
+        "p1",
+        "sentiment",
+        "pos",
+        '["pos"]',
+        "2",
+        at.toISOString(),
+        new Date(at.getTime() + 60_000).toISOString(),
+      ],
+    ]);
   });
 
   it("lists the unit versions answers were given on", () => {
@@ -176,7 +330,10 @@ describe("data download", () => {
       { id: 8, unitId: 1, externalId: "u1", hash: "h2", data: { text: "new" }, created: at },
       { id: 9, unitId: 2, externalId: "u2", hash: "h3", data: { text: "never coded" }, created: at },
     ];
-    const answered = [{ ...row(1, 1, "q", { done: true, skip: false }), unitVersionId: 7 }, { ...row(1, 2, "q", { done: true, skip: false }), unitVersionId: 8 }];
+    const answered = [
+      { ...row(1, 1, "q", { done: true, skip: false }), unitVersionId: 7 },
+      { ...row(1, 2, "q", { done: true, skip: false }), unitVersionId: 8 },
+    ];
     expect(unitsTable(versions, answered)).toEqual({
       headers: ["unit_version_id", "unit_id", "hash", "deployed", "text"],
       rows: [

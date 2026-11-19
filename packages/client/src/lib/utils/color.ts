@@ -145,11 +145,7 @@ export function getContrastTextColor(hexColor?: string): string {
  *   (white in dark mode, crisp dark in light mode).
  * - Selected: vivid solid background with high-contrast text.
  */
-export function getCodeButtonStyle(
-  color?: string,
-  selected = false,
-  isDark?: boolean,
-): CSSProperties | undefined {
+export function getCodeButtonStyle(color?: string, selected = false, isDark?: boolean): CSSProperties | undefined {
   if (!color) return undefined;
   const dark = isDark ?? isDarkMode();
   const baseHex = standardizeColor(color);
@@ -253,7 +249,9 @@ export function getStackedUnderlineStyle(spans: StackedSegmentSpan[]): CSSProper
 
   // Multi-color subtle horizontal bands for background tint
   const bgStops = valid
-    .map((s, idx) => `${s.color}38 ${((idx / n) * 100).toFixed(1)}%, ${s.color}38 ${(((idx + 1) / n) * 100).toFixed(1)}%`)
+    .map(
+      (s, idx) => `${s.color}38 ${((idx / n) * 100).toFixed(1)}%, ${s.color}38 ${(((idx + 1) / n) * 100).toFixed(1)}%`,
+    )
     .join(", ");
 
   const anyStart = valid.some((s) => s.isStart);

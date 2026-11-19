@@ -64,7 +64,11 @@ export type VariableValue = z.infer<typeof VariableValueSchema>;
  * question of the loop (`skip` for questions a condition hid).
  */
 /** Milliseconds, as the browser measured them: at most a day per question (longer is noise). */
-const ms = z.number().int().nonnegative().max(24 * 60 * 60 * 1000);
+const ms = z
+  .number()
+  .int()
+  .nonnegative()
+  .max(24 * 60 * 60 * 1000);
 
 /**
  * How long a coder took on one question, measured in the browser

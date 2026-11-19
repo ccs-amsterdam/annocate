@@ -73,7 +73,6 @@ describe("truncateSpanText", () => {
   });
 });
 
-
 describe("mergeSpanSlices", () => {
   const text = "The quick brown fox jumps over";
 
@@ -140,10 +139,7 @@ describe("toggleSliceRange", () => {
 describe("SelectableText and SpanAnnotationProvider", () => {
   it("renders non-overlapping text when no spans exist", () => {
     const html = renderToStaticMarkup(
-      <SpanAnnotationProvider
-        fields={["headline"]}
-        options={[{ value: "actor", color: "#2196f3" }]}
-      >
+      <SpanAnnotationProvider fields={["headline"]} options={[{ value: "actor", color: "#2196f3" }]}>
         <SelectableText text="Sample headline text" />
       </SpanAnnotationProvider>,
     );
@@ -193,4 +189,3 @@ describe("SelectableText and SpanAnnotationProvider", () => {
     expect(html.match(/tabindex="0"/g)).toHaveLength(2);
   });
 });
-

@@ -130,7 +130,9 @@ const server = serve({ fetch: app.fetch, port, ...(host ? { hostname: host } : {
       : "  client: not served here (ANNOTINDER_CLIENT_DIR; in development Vite serves it)",
   );
   if (insecure.disable2fa)
-    console.warn("  WARNING: AUTH_INSECURE_DISABLE_2FA: sensitive actions don't need a second factor. Not for sensitive research data.");
+    console.warn(
+      "  WARNING: AUTH_INSECURE_DISABLE_2FA: sensitive actions don't need a second factor. Not for sensitive research data.",
+    );
   if (insecure.disableEmailVerification)
     console.warn(
       "  WARNING: AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION: unverified email addresses can log in and claim invitations. Not for sensitive research data.",

@@ -133,7 +133,8 @@ export function login(server: Server): Hono<Env> {
     const result = await provider.finish(callbackUrl, state);
     if ("error" in result) return back(state.returnTo, result.error);
     // An address the provider didn't confirm: refused, unless AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION
-    if (!result.emailVerified && !server.insecure.disableEmailVerification) return back(state.returnTo, "email_unverified");
+    if (!result.emailVerified && !server.insecure.disableEmailVerification)
+      return back(state.returnTo, "email_unverified");
 
     if (state.linkUserId !== undefined) {
       // Account linking: this identity joins the user who was logged in (not if it is someone else's already)
@@ -142,7 +143,8 @@ export function login(server: Server): Hono<Env> {
         .from(identities)
         .where(and(eq(identities.iss, result.iss), eq(identities.sub, result.sub)));
       if (owner && owner.userId !== state.linkUserId) return back(state.returnTo, "link_failed");
-      if (!owner) await server.db.insert(identities).values({ iss: result.iss, sub: result.sub, userId: state.linkUserId });
+      if (!owner)
+        await server.db.insert(identities).values({ iss: result.iss, sub: result.sub, userId: state.linkUserId });
       await securityLog(server.db, state.linkUserId, "identity_linked", { issuer: result.iss });
     }
     const user = await loginUser(server.db, result, server.admins);

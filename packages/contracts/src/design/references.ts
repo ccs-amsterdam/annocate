@@ -32,7 +32,20 @@ export type VarProperty = (typeof VAR_PROPERTIES)[number];
 export const ITEM_PROPERTIES = ["value", "label"] as const;
 
 /** Helper methods on a question (or a scale item), e.g. `$var.topics.has("sports")`. */
-export const HELPER_METHODS = ["is", "isAny", "gt", "gte", "lt", "lte", "eq", "between", "has", "hasAny", "hasAll", "count"] as const;
+export const HELPER_METHODS = [
+  "is",
+  "isAny",
+  "gt",
+  "gte",
+  "lt",
+  "lte",
+  "eq",
+  "between",
+  "has",
+  "hasAny",
+  "hasAll",
+  "count",
+] as const;
 export type HelperMethod = (typeof HELPER_METHODS)[number];
 
 export interface Reference {
@@ -104,7 +117,8 @@ function readReference(
 
   const first = segment();
   if (first === null) {
-    if (source[pos] === "[") return fail(`Names after $${ns} must be literal ($${ns}.name), not computed ($${ns}[...])`);
+    if (source[pos] === "[")
+      return fail(`Names after $${ns} must be literal ($${ns}.name), not computed ($${ns}[...])`);
     return fail(`$${ns} must be followed by a name ($${ns}.name)`);
   }
   const path = [first];
@@ -113,7 +127,10 @@ function readReference(
     // A property, or a called method: of the question or of a scale item.
     const member = (allowed: readonly string[], label: string): string | { error: string } => {
       const name = segment();
-      if (name === null) return { error: `${label} needs a property: ${allowed.map((p) => `.${p}`).join(", ")}, or a method like .is(...)` };
+      if (name === null)
+        return {
+          error: `${label} needs a property: ${allowed.map((p) => `.${p}`).join(", ")}, or a method like .is(...)`,
+        };
       if ((HELPER_METHODS as readonly string[]).includes(name)) {
         if (source[pos] !== "(") return { error: `${label}.${name} is a method: call it, ${label}.${name}(...)` };
         if (template) return { error: `${label}.${name}(...) can only be used inside {{ }}` };
@@ -121,7 +138,9 @@ function readReference(
         return name;
       }
       if (!allowed.includes(name)) {
-        return { error: `${label}.${name}: unknown property; use ${allowed.map((p) => `.${p}`).join(", ")} or a method` };
+        return {
+          error: `${label}.${name}: unknown property; use ${allowed.map((p) => `.${p}`).join(", ")} or a method`,
+        };
       }
       return name;
     };
@@ -137,7 +156,8 @@ function readReference(
       path.push(property);
     }
   }
-  if (!call && source[pos] === "[") return fail(`Names in ${referenceText({ ns, path })}[...] must be literal, not computed`);
+  if (!call && source[pos] === "[")
+    return fail(`Names in ${referenceText({ ns, path })}[...] must be literal, not computed`);
 
   let suffix: OutputSuffix | undefined;
   if (template && source.startsWith("::", pos)) {
@@ -248,7 +268,8 @@ export interface ParsedTemplate {
 }
 
 /** The kinds of block fence lines: `::: if <script>`, `::: else if <script>`, `::: else`, `::: from <question>`, `::: style <css>`, `:::` (closes). */
-export type FenceKeyword = "if" | "else if" | "else" | "from" | "style" | "text" | "markdown" | "html" | "image" | "close";
+export type FenceKeyword =
+  "if" | "else if" | "else" | "from" | "style" | "text" | "markdown" | "html" | "image" | "close";
 
 /** A block fence line in a template (docs/client.md §3, "Blocks"). */
 export interface TemplateFence {
@@ -285,7 +306,14 @@ export function templateFences(source: string): TemplateFence[] {
     const keyword: FenceKeyword | null =
       rest === "" ? "close" : kw ? (/^else\s+if$/.test(kw[1]) ? "else if" : (kw[1] as FenceKeyword)) : null;
     const argOffset = kw ? kw[0].length : 0;
-    fences.push({ keyword, colons: m[1].length, arg: rest.slice(argOffset).trim(), argStart: restStart + argOffset, start, end });
+    fences.push({
+      keyword,
+      colons: m[1].length,
+      arg: rest.slice(argOffset).trim(),
+      argStart: restStart + argOffset,
+      start,
+      end,
+    });
   }
   return fences;
 }
@@ -338,7 +366,12 @@ export function parseTemplate(source: string): ParsedTemplate {
       const match = /^::([A-Za-z]+)/.exec(source.slice(end));
       if (match) {
         if ((OUTPUT_SUFFIXES as readonly string[]).includes(match[1])) suffix = match[1] as OutputSuffix;
-        else errors.push({ message: `Unknown output '::${match[1]}' (use ::text, ::markdown, ::image or ::html)`, start: end, end: end + match[0].length });
+        else
+          errors.push({
+            message: `Unknown output '::${match[1]}' (use ::text, ::markdown, ::image or ::html)`,
+            start: end,
+            end: end + match[0].length,
+          });
         end += match[0].length;
       }
       const extracted = extractReferences(script, i + 2);
@@ -358,7 +391,14 @@ export function parseTemplate(source: string): ParsedTemplate {
         text += source.slice(i, read.end);
       } else if (read.ref) {
         const ref = read.ref;
-        push({ script: referenceText(ref), ref, references: [ref], suffix: ref.suffix ?? "text", start: ref.start, end: ref.end });
+        push({
+          script: referenceText(ref),
+          ref,
+          references: [ref],
+          suffix: ref.suffix ?? "text",
+          start: ref.start,
+          end: ref.end,
+        });
       }
       i = Math.max(read.end, i + 1);
     } else {
@@ -567,16 +607,32 @@ export function orList(words: string[]): string {
 const ORDER_METHODS: readonly string[] = ["gt", "gte", "lt", "lte", "between"];
 
 /** Why a question (or scale item, `subject`) can't take a helper method, in words. */
-function methodShape(subject: string, description: string, method: string, kind: QuestionKind, values?: OptionValue[]): ReferenceShape {
+function methodShape(
+  subject: string,
+  description: string,
+  method: string,
+  kind: QuestionKind,
+  values?: OptionValue[],
+): ReferenceShape {
   if (!(KIND_METHODS[kind] as readonly string[]).includes(method)) {
     const available = KIND_METHODS[kind].map((m) => `"${METHOD_TEXT[m]}"`);
     const what = (METHOD_TEXT as Record<string, string>)[method];
     const unsupported = what ? `"${what}"${ORDER_METHODS.includes(method) ? " comparisons" : ""}` : `.${method}()`;
     const use =
-      kind === "scale" ? "; compare its items instead" : available.length ? `; use ${orList(available)}` : `; only "is answered" works`;
+      kind === "scale"
+        ? "; compare its items instead"
+        : available.length
+          ? `; use ${orList(available)}`
+          : `; only "is answered" works`;
     return { ok: false, reason: `${subject} is ${description}, which does not support ${unsupported}${use}` };
   }
-  return { ok: true, array: false, type: method === "count" ? "number" : "boolean", values, method: { name: method as HelperMethod, kind } };
+  return {
+    ok: true,
+    array: false,
+    type: method === "count" ? "number" : "boolean",
+    values,
+    method: { name: method as HelperMethod, kind },
+  };
 }
 
 function varShape(name: string, variable: AnyVariableType, rest: string[], call: boolean): ReferenceShape {
@@ -588,15 +644,24 @@ function varShape(name: string, variable: AnyVariableType, rest: string[], call:
   if (property === "items") {
     if (variable.type !== "scale") return { ok: false, reason: `${label}: '${name}' has no items (only scales do)` };
     const [, item, itemProperty] = rest;
-    if (!variable.items.some((i) => i.name === item)) return { ok: false, reason: `${label}: '${item}' is not an item of '${name}'` };
+    if (!variable.items.some((i) => i.name === item))
+      return { ok: false, reason: `${label}: '${item}' is not an item of '${name}'` };
     if (call) return methodShape(`"${name} › ${item}"`, "a scale item", itemProperty, "ordinal", values);
-    return { ok: true, array: false, type: itemProperty === "label" ? "string" : "number", values: itemProperty === "value" ? values : undefined };
+    return {
+      ok: true,
+      array: false,
+      type: itemProperty === "label" ? "string" : "number",
+      values: itemProperty === "value" ? values : undefined,
+    };
   }
   if (call) return methodShape(`"${name}"`, describeQuestion(variable), property, kind, values);
   if (property === "answered") return { ok: true, array: false, type: "boolean" };
   if (!KIND_PROPERTIES[kind].includes(property)) {
     const available = [...KIND_PROPERTIES[kind].map((p) => (p === "items" ? ".items.<item>" : `.${p}`)), ".answered"];
-    return { ok: false, reason: `${label}: "${name}" is ${describeQuestion(variable)}, which has no .${property}; use ${orList(available)}` };
+    return {
+      ok: false,
+      reason: `${label}: "${name}" is ${describeQuestion(variable)}, which has no .${property}; use ${orList(available)}`,
+    };
   }
   const array = property === "values" || property === "labels" || property === "texts";
   if (property === "value" || property === "values") return { ok: true, array, type: valueType(kind), values };
@@ -621,7 +686,9 @@ export function referenceOptions(questions: Iterable<{ name: string; variable: A
     const kind = questionKind(variable);
     const paths = [
       ...KIND_PROPERTIES[kind].filter((p) => p !== "items").map((p) => [p]),
-      ...(variable.type === "scale" ? variable.items.flatMap((item) => ITEM_PROPERTIES.map((p) => ["items", item.name, p])) : []),
+      ...(variable.type === "scale"
+        ? variable.items.flatMap((item) => ITEM_PROPERTIES.map((p) => ["items", item.name, p]))
+        : []),
       ["answered"],
     ];
     for (const rest of paths) {
@@ -737,7 +804,6 @@ function varEntry(variable: AnyVariableType, answer: VariableValue | undefined):
     }
   }
 }
-
 
 /** The value at a reference in a scope (undefined if absent). */
 export function referenceValue(scope: ReferenceScope, ref: Pick<Reference, "ns" | "path">): unknown {

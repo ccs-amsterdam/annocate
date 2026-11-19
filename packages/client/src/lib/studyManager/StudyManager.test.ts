@@ -46,7 +46,10 @@ function unit(id: number): CoderUnitResponse {
 type NextUnit = (loop: string) => Promise<CoderUnitResponse | null>;
 
 /** A stub CoderApi whose methods can be individually made to reject once, then succeed. */
-function makeFlakyServer({ getNextUnit, ...overrides }: Partial<CoderApi> & { getNextUnit?: NextUnit } = {}): CoderApi & { calls: Record<string, number> } {
+function makeFlakyServer({
+  getNextUnit,
+  ...overrides
+}: Partial<CoderApi> & { getNextUnit?: NextUnit } = {}): CoderApi & { calls: Record<string, number> } {
   const calls: Record<string, number> = {};
   const base: CoderApi = {
     getSession: vi.fn(async () => {
@@ -75,10 +78,12 @@ function makeFlakyServer({ getNextUnit, ...overrides }: Partial<CoderApi> & { ge
     reopenSession: vi.fn(async () => {}),
   };
   const batches = getNextUnit
-    ? { getNextUnits: vi.fn(async (loop: string) => {
+    ? {
+        getNextUnits: vi.fn(async (loop: string) => {
           const unit = await getNextUnit(loop);
           return unit ? [unit] : [];
-        }) }
+        }),
+      }
     : {};
   return Object.assign(base, overrides, batches, { calls });
 }
@@ -148,7 +153,11 @@ describe("StudyManager error-handling, rollback, and retry contract", () => {
 
   it("skips computed items that have a value, and uses it in conditions", async () => {
     const items = [
-      { type: "computed", name: "group", variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }] } },
+      {
+        type: "computed",
+        name: "group",
+        variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }] },
+      },
       { type: "show_if", condition: { script: `$var.group.is("a")` }, children: [confirm("shown_to_a")] },
       confirm("everyone"),
     ] as TopLevelItem[];
@@ -164,8 +173,16 @@ describe("StudyManager error-handling, rollback, and retry contract", () => {
   });
 
   it("stores a coder-level answer a changed earlier answer now hides as skipped", async () => {
-    const role = { type: "question", name: "role", variable: { type: "nominal", question: "?", options: [{ value: "a" }, { value: "b" }] } };
-    const items = [role, { type: "show_if", condition: { script: `$var.role.is("a")` }, children: [confirm("followup")] }, confirm("last")] as TopLevelItem[];
+    const role = {
+      type: "question",
+      name: "role",
+      variable: { type: "nominal", question: "?", options: [{ value: "a" }, { value: "b" }] },
+    };
+    const items = [
+      role,
+      { type: "show_if", condition: { script: `$var.role.is("a")` }, children: [confirm("followup")] },
+      confirm("last"),
+    ] as TopLevelItem[];
     const posted: Record<string, VariableValue>[] = [];
     const server = makeFlakyServer({
       getSession: vi.fn(async () => session(items)),
@@ -186,20 +203,36 @@ describe("StudyManager error-handling, rollback, and retry contract", () => {
   });
 
   it("lists the unit's questions in the navigation as shown: hidden ones left out, texts as plain labels", async () => {
-    const q3 = { ...unitVar("q3"), variable: { ...unitVar("q3").variable, question: "## Is **$unit.headline** about [[topic]]?\nMore" } } as InLoopItem;
-    const loop = unitLoop("loop", [unitVar("q1"), { type: "show_if", condition: { script: `$var.q1.is("A")` }, children: [unitVar("q2")] } as InLoopItem, q3]);
-    const server = makeFlakyServer({ getSession: vi.fn(async () => session([loop])), getNextUnit: vi.fn(async () => unit(1)) });
+    const q3 = {
+      ...unitVar("q3"),
+      variable: { ...unitVar("q3").variable, question: "## Is **$unit.headline** about [[topic]]?\nMore" },
+    } as InLoopItem;
+    const loop = unitLoop("loop", [
+      unitVar("q1"),
+      { type: "show_if", condition: { script: `$var.q1.is("A")` }, children: [unitVar("q2")] } as InLoopItem,
+      q3,
+    ]);
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session([loop])),
+      getNextUnit: vi.fn(async () => unit(1)),
+    });
     const manager = new StudyManager(server);
     await manager.start();
     await manager.answer({ done: true, values: [{ value: "B" }] } as VariableValue);
     const questions = manager.getSnapshot().navigation.phases[0].questions!;
-    expect(questions.map((q) => [q.name, q.isCurrent])).toEqual([["q1", false], ["q3", true]]);
+    expect(questions.map((q) => [q.name, q.isCurrent])).toEqual([
+      ["q1", false],
+      ["q3", true],
+    ]);
     expect(questions[1].label).toBe("Is … about …?");
   });
 
   it("lists only the unit's questions the coder got to: not the ones after the first unanswered one", async () => {
     const loop = unitLoop("loop", [unitVar("q1"), unitVar("q2"), unitVar("q3")]);
-    const server = makeFlakyServer({ getSession: vi.fn(async () => session([loop])), getNextUnit: vi.fn(async () => unit(1)) });
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session([loop])),
+      getNextUnit: vi.fn(async () => unit(1)),
+    });
     const manager = new StudyManager(server);
     await manager.start();
     const names = () => manager.getSnapshot().navigation.phases[0].questions!.map((q) => q.name);
@@ -212,7 +245,10 @@ describe("StudyManager error-handling, rollback, and retry contract", () => {
 
   it("quits: the session ends; asking for deletion works also after the end", async () => {
     const quitSession = vi.fn(async () => {});
-    const server = makeFlakyServer({ getSession: vi.fn(async () => session([confirm("a"), confirm("b")])), quitSession });
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session([confirm("a"), confirm("b")])),
+      quitSession,
+    });
     const manager = new StudyManager(server);
     await manager.start();
     await manager.quit(false);
@@ -223,7 +259,14 @@ describe("StudyManager error-handling, rollback, and retry contract", () => {
 
     // Reloaded: the ending again, with the request
     const reloaded = makeFlakyServer({
-      getSession: vi.fn(async () => ({ ...session([confirm("a")]), ended: { outcome: "quit", at: new Date() }, deletionRequest: { at: new Date() } }) as SessionResponse),
+      getSession: vi.fn(
+        async () =>
+          ({
+            ...session([confirm("a")]),
+            ended: { outcome: "quit", at: new Date() },
+            deletionRequest: { at: new Date() },
+          }) as SessionResponse,
+      ),
     });
     const again = new StudyManager(reloaded);
     await again.start();
@@ -387,19 +430,35 @@ describe("StudyManager navigation, backwards navigation, and answer re-editing",
 describe("resuming a session", () => {
   const code = (c: string) => ({ done: true, skip: false, values: [{ value: c }] });
   const select = (name: string, codes: string[]) =>
-    ({ type: "question", name, variable: { type: "nominal", question: name, options: codes.map((c) => ({ value: c })) } }) as InLoopItem;
+    ({
+      type: "question",
+      name,
+      variable: { type: "nominal", question: name, options: codes.map((c) => ({ value: c })) },
+    }) as InLoopItem;
   const unitWith = (id: number, variables: Record<string, unknown>) =>
     ({ id, externalId: `u${id}`, data: {}, variables }) as unknown as CoderUnitResponse;
 
-  function resumedServer(opts: { variables?: Record<string, unknown>; nextUnit?: CoderUnitResponse | null; items?: TopLevelItem[] }) {
+  function resumedServer(opts: {
+    variables?: Record<string, unknown>;
+    nextUnit?: CoderUnitResponse | null;
+    items?: TopLevelItem[];
+  }) {
     const getLoopUnit = vi.fn(async (_loop: string, id: number) => unitWith(id, { q1: code("a"), q2: code("x") }));
     let served = false;
     const server = makeFlakyServer({
-      getSession: vi.fn(async () => ({
-        ...session(opts.items ?? [confirm("consent"), unitLoop("main", [select("q1", ["a", "b"]), select("q2", ["x", "y"])])]),
-        variables: opts.variables ?? { consent: { done: true, skip: false } },
-        progress: [{ set: "1", doneUnitIds: [10, 11], totalUnits: 5 }],
-      }) as SessionResponse),
+      getSession: vi.fn(
+        async () =>
+          ({
+            ...session(
+              opts.items ?? [
+                confirm("consent"),
+                unitLoop("main", [select("q1", ["a", "b"]), select("q2", ["x", "y"])]),
+              ],
+            ),
+            variables: opts.variables ?? { consent: { done: true, skip: false } },
+            progress: [{ set: "1", doneUnitIds: [10, 11], totalUnits: 5 }],
+          }) as SessionResponse,
+      ),
       getNextUnit: vi.fn(async () => {
         if (served) return null;
         served = true;
@@ -468,29 +527,50 @@ describe("submitting a finished unit", () => {
     await manager.answer({ done: true, skip: false });
 
     // With how long the question took (only the one shown)
-    expect(postUnitVariables).toHaveBeenCalledWith(5, { q1: { done: true, skip: false }, q2: { done: true, skip: true } }, "1", {
-      q1: { firstMs: 2500, totalMs: 2500, hiddenMs: 0, edits: 1 },
-    });
+    expect(postUnitVariables).toHaveBeenCalledWith(
+      5,
+      { q1: { done: true, skip: false }, q2: { done: true, skip: true } },
+      "1",
+      {
+        q1: { firstMs: 2500, totalMs: 2500, hiddenMs: 0, edits: 1 },
+      },
+    );
   });
 });
 
 describe("rendering templates", () => {
   it("fills in question texts and the layout from answers and unit data", async () => {
     const items = [
-      { type: "question", name: "role", variable: { type: "nominal", question: "Role?", options: [{ value: "student" }] } },
+      {
+        type: "question",
+        name: "role",
+        variable: { type: "nominal", question: "Role?", options: [{ value: "student" }] },
+      },
       {
         type: "unit_loop",
         label: "main",
         layout: { template: "# $unit.title\n\n[[intro]] $unit.title", snippets: { intro: "Hello" } },
         children: [
-          { type: "question", name: "q1", variable: { type: "confirm", question: "As a $var.role.value, is **$unit.title** news?" } },
+          {
+            type: "question",
+            name: "q1",
+            variable: { type: "confirm", question: "As a $var.role.value, is **$unit.title** news?" },
+          },
         ],
       },
     ] as TopLevelItem[];
     let served = false;
     const server = makeFlakyServer({
-      getSession: vi.fn(async () => ({ ...session(items), variables: { role: { done: true, skip: false, values: [{ value: "student" }] } } })),
-      getNextUnit: vi.fn(async () => (served ? null : ((served = true), { id: 1, externalId: "u1", data: { title: "*Big*" }, variables: {} } as CoderUnitResponse))),
+      getSession: vi.fn(async () => ({
+        ...session(items),
+        variables: { role: { done: true, skip: false, values: [{ value: "student" }] } },
+      })),
+      getNextUnit: vi.fn(async () =>
+        served
+          ? null
+          : ((served = true),
+            { id: 1, externalId: "u1", data: { title: "*Big*" }, variables: {} } as CoderUnitResponse),
+      ),
     });
     const manager = new StudyManager(server);
     await manager.start();
@@ -506,7 +586,11 @@ describe("a new design version while coding", () => {
     let refuse = false;
     let served = false;
     const getSession = vi.fn(
-      async () => ({ ...session([unitLoop("loop", [unitVar("q1")])]), progress: [{ set: "1", doneUnitIds: [10], totalUnits: 2 }] }) as SessionResponse,
+      async () =>
+        ({
+          ...session([unitLoop("loop", [unitVar("q1")])]),
+          progress: [{ set: "1", doneUnitIds: [10], totalUnits: 2 }],
+        }) as SessionResponse,
     );
     const server = makeFlakyServer({
       getSession,
@@ -570,7 +654,11 @@ describe("a new design version while coding", () => {
 });
 
 describe("end items", () => {
-  const consent = { type: "question", name: "consent", variable: { type: "nominal", question: "?", options: [{ value: "yes" }, { value: "no" }] } };
+  const consent = {
+    type: "question",
+    name: "consent",
+    variable: { type: "nominal", question: "?", options: [{ value: "yes" }, { value: "no" }] },
+  };
   const pid = { type: "computed", name: "pid", variable: { type: "random", draw: "url_param", urlParam: "pid" } };
   const stop = {
     type: "end",
@@ -631,7 +719,11 @@ describe("end items", () => {
 
   it("shows the ending again after a reload", async () => {
     const server = makeFlakyServer({
-      getSession: vi.fn(async () => ({ ...session(items), variables, ended: { item: "stop", outcome: "screenout" as const, at: new Date() } })),
+      getSession: vi.fn(async () => ({
+        ...session(items),
+        variables,
+        ended: { item: "stop", outcome: "screenout" as const, at: new Date() },
+      })),
     });
     const manager = new StudyManager(server);
     await manager.start();
@@ -643,7 +735,11 @@ describe("end items", () => {
   it("in a loop: saves the unit, then ends", async () => {
     const loop = unitLoop("loop", [
       unitVar("q1"),
-      { type: "show_if", condition: { script: `$var.q1.is("B")` }, children: [{ type: "end", name: "fail", outcome: "screenout" }] },
+      {
+        type: "show_if",
+        condition: { script: `$var.q1.is("B")` },
+        children: [{ type: "end", name: "fail", outcome: "screenout" }],
+      },
       unitVar("q2"),
     ] as InLoopItem[]);
     const posted: Record<string, VariableValue>[] = [];
@@ -655,7 +751,9 @@ describe("end items", () => {
     const manager = new StudyManager(server);
     await manager.start();
     await manager.answer({ done: true, skip: false, values: [{ value: "B" }] });
-    expect(posted).toEqual([{ q1: { done: true, skip: false, values: [{ value: "B" }] }, q2: { done: true, skip: true } }]);
+    expect(posted).toEqual([
+      { q1: { done: true, skip: false, values: [{ value: "B" }] }, q2: { done: true, skip: true } },
+    ]);
     expect(server.endSession).toHaveBeenCalledWith("fail", { loop: expect.any(String), id: 1 });
     expect(manager.getSnapshot().phase).toBe("finished");
   });
@@ -663,14 +761,21 @@ describe("end items", () => {
   it("in a loop: shows the ending again after a reload with the unit's values", async () => {
     const loop = unitLoop("loop", [
       unitVar("q1"),
-      { type: "show_if", condition: { script: `$var.q1.is("B")` }, children: [{ type: "end", name: "fail", outcome: "screenout", message: "You chose $var.q1.value" }] },
+      {
+        type: "show_if",
+        condition: { script: `$var.q1.is("B")` },
+        children: [{ type: "end", name: "fail", outcome: "screenout", message: "You chose $var.q1.value" }],
+      },
     ] as InLoopItem[]);
     const server = makeFlakyServer({
       getSession: vi.fn(async () => ({
         ...session([loop]),
         ended: { item: "fail", outcome: "screenout" as const, at: new Date(), unit: { loop: "loop", id: 1 } },
         // A closed session: the server gives only what the end screen uses
-        endValues: { variables: {}, unit: { data: {}, variables: { q1: { done: true, skip: false, values: [{ value: "B" }] } } } },
+        endValues: {
+          variables: {},
+          unit: { data: {}, variables: { q1: { done: true, skip: false, values: [{ value: "B" }] } } },
+        },
       })),
     });
     const manager = new StudyManager(server);
@@ -682,7 +787,11 @@ describe("end items", () => {
 
 describe("frozen answers", () => {
   it("a coder-level answer a loop depends on is frozen once a unit there is saved", async () => {
-    const role = { name: "role", type: "question", variable: { type: "nominal", question: "Role?", options: [{ value: "A" }, { value: "B" }] } } as TopLevelQuestionItem;
+    const role = {
+      name: "role",
+      type: "question",
+      variable: { type: "nominal", question: "Role?", options: [{ value: "A" }, { value: "B" }] },
+    } as TopLevelQuestionItem;
     const loop = { ...unitLoop("main", [unitVar("q1")]), layout: { template: "As {{$var.role.label}}" } };
     let served = 0;
     const server = makeFlakyServer({
@@ -740,8 +849,16 @@ describe("saving in the background", () => {
 describe("computed items", () => {
   it("are invisible steps: computed by the server when reached, after earlier answers are saved; conditions then use the value", async () => {
     const order: string[] = [];
-    const gender = { type: "question", name: "gender", variable: { type: "nominal", question: "Gender?", options: [{ value: "f" }, { value: "m" }] } };
-    const condition = { type: "computed", name: "condition", variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }], stratify: ["gender"] } };
+    const gender = {
+      type: "question",
+      name: "gender",
+      variable: { type: "nominal", question: "Gender?", options: [{ value: "f" }, { value: "m" }] },
+    };
+    const condition = {
+      type: "computed",
+      name: "condition",
+      variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }], stratify: ["gender"] },
+    };
     const onlyB = { type: "show_if", condition: { script: `$var.condition.is("b")` }, children: [confirm("seen_b")] };
     const server = makeFlakyServer({
       getSession: vi.fn(async () => session([gender, condition, onlyB, confirm("last")] as TopLevelItem[])),
@@ -853,7 +970,10 @@ describe("a draft of the unit on screen (browser storage)", () => {
     const A = { done: true, skip: false, values: [{ value: "A" }] };
     const make = () =>
       makeFlakyServer({
-        getSession: vi.fn(async () => ({ ...session([unitLoop("main", [unitVar("q1"), unitVar("q2")])]), coderId: 42 }) as SessionResponse),
+        getSession: vi.fn(
+          async () =>
+            ({ ...session([unitLoop("main", [unitVar("q1"), unitVar("q2")])]), coderId: 42 }) as SessionResponse,
+        ),
         getNextUnit: vi.fn(async () => unit(3)),
         postUnitVariables: vi.fn(async () => ({})),
       });

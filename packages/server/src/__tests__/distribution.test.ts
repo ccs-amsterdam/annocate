@@ -14,12 +14,20 @@ const shared = (rule: Partial<SharedRule> = {}): SharedRule => ({
 
 function setup() {
   const codings = new Codings();
-  const pool = (unitIds: number[], rule: SharedRule | null = null, name = "set") => new UnitPool(name, unitIds, rule, codings);
+  const pool = (unitIds: number[], rule: SharedRule | null = null, name = "set") =>
+    new UnitPool(name, unitIds, rule, codings);
   /** Simulates a coder getting and finishing their next unit. */
   const codeNext = (
     main: UnitPool,
     coderId: number,
-    opts: { overlap?: OverlapPlacement; order?: "sequential" | "random"; maxUnits?: number; minUnits?: number; code?: string; now?: number } = {},
+    opts: {
+      overlap?: OverlapPlacement;
+      order?: "sequential" | "random";
+      maxUnits?: number;
+      minUnits?: number;
+      code?: string;
+      now?: number;
+    } = {},
   ) => {
     const now = opts.now ?? 0;
     const next = pickNext(main, opts.overlap ? [opts.overlap] : [], coderId, codings, {
@@ -85,7 +93,9 @@ describe("overlap", () => {
     const { pool, codeAll } = setup();
     const overlap = { pool: pool([10], null, "overlap"), placement: "spread" as const };
     // maxUnits 4: the overlap unit goes in the middle; maxUnits caps only the coder's own units.
-    expect(codeAll(pool([1, 2, 3, 4, 5, 6], shared({ maxCoders: 1 })), 1, { overlap, maxUnits: 4 })).toEqual([1, 2, 10, 3, 4]);
+    expect(codeAll(pool([1, 2, 3, 4, 5, 6], shared({ maxCoders: 1 })), 1, { overlap, maxUnits: 4 })).toEqual([
+      1, 2, 10, 3, 4,
+    ]);
     // Only one unit left in the queue: the overlap unit comes after it.
     const { pool: pool2, codeAll: codeAll2 } = setup();
     const overlap2 = { pool: pool2([10], null, "overlap"), placement: "spread" as const };
@@ -97,7 +107,9 @@ describe("overlap", () => {
     const special = [101, 102, 103, 104, 105];
     const run = (coderId: number, rest: "end" | "drop") => {
       const { pool, codeAll } = setup();
-      return codeAll(pool(own), coderId, { overlap: { pool: pool(special, null, "overlap"), placement: "rate", every: 10, rest } });
+      return codeAll(pool(own), coderId, {
+        overlap: { pool: pool(special, null, "overlap"), placement: "rate", every: 10, rest },
+      });
     };
     const a = run(1, "end");
     expect(a).toEqual(run(1, "end")); // deterministic per coder
@@ -115,18 +127,24 @@ describe("overlap", () => {
     expect(run(2, "end")).not.toEqual(a);
     // Few own units: the rest comes at the end, or is dropped
     const { pool, codeAll } = setup();
-    const short = codeAll(pool([1, 2]), 1, { overlap: { pool: pool(special, null, "overlap"), placement: "rate", every: 10, rest: "end" } });
+    const short = codeAll(pool([1, 2]), 1, {
+      overlap: { pool: pool(special, null, "overlap"), placement: "rate", every: 10, rest: "end" },
+    });
     expect(short.filter((id) => id > 100)).toEqual(special);
     expect(short.filter((id) => id <= 100)).toEqual([1, 2]);
     const s2 = setup();
-    const dropped = s2.codeAll(s2.pool([1, 2]), 1, { overlap: { pool: s2.pool(special, null, "overlap"), placement: "rate", every: 10, rest: "drop" } });
+    const dropped = s2.codeAll(s2.pool([1, 2]), 1, {
+      overlap: { pool: s2.pool(special, null, "overlap"), placement: "rate", every: 10, rest: "drop" },
+    });
     expect(dropped.filter((id) => id > 100).length).toBeLessThan(special.length);
     expect(dropped.filter((id) => id <= 100)).toEqual([1, 2]);
   });
 
   it("skips units the coder already did in their own set", () => {
     const { pool, codeAll } = setup();
-    expect(codeAll(pool([1, 2]), 1, { overlap: { pool: pool([2, 3], null, "overlap"), placement: "after" } })).toEqual([1, 2, 3]);
+    expect(codeAll(pool([1, 2]), 1, { overlap: { pool: pool([2, 3], null, "overlap"), placement: "after" } })).toEqual([
+      1, 2, 3,
+    ]);
   });
 });
 
@@ -175,7 +193,10 @@ describe("shared queues", () => {
 
   it("keep coding until enough coders agree, up to maxCoders", () => {
     const { pool, codeNext } = setup();
-    const main = pool([1, 2], shared({ minCoders: 2, maxCoders: 3, agreement: { variable: "v", minAgree: 2 }, priority: "saturate" }));
+    const main = pool(
+      [1, 2],
+      shared({ minCoders: 2, maxCoders: 3, agreement: { variable: "v", minAgree: 2 }, priority: "saturate" }),
+    );
     expect(codeNext(main, 1, { code: "yes" })).toBe(1);
     expect(codeNext(main, 2, { code: "no" })).toBe(1);
     expect(main.isComplete(1)).toBe(false);
@@ -193,7 +214,13 @@ describe("shared queues", () => {
   it("cover prefers the least-coded unit, saturate the most-coded", () => {
     const cover = setup();
     cover.codings.record(9, 1, answer("x"));
-    expect(pickNext(cover.pool([1, 2], shared({ minCoders: 3 })), [], 1, cover.codings, { order: "sequential", seed: 0, now: 0 })?.unitId).toBe(2);
+    expect(
+      pickNext(cover.pool([1, 2], shared({ minCoders: 3 })), [], 1, cover.codings, {
+        order: "sequential",
+        seed: 0,
+        now: 0,
+      })?.unitId,
+    ).toBe(2);
 
     const saturate = setup();
     saturate.codings.record(9, 2, answer("x"));
@@ -226,7 +253,8 @@ describe("shared queues", () => {
     codings.record(8, 10, answer("a")); // agreed
     codings.record(7, 11, answer("a"));
     codings.record(8, 11, answer("b")); // full without agreement
-    const pick = (minUnits?: number) => pickNext(agree, [], 1, codings, { order: "sequential", seed: 0, now: 0, minUnits })?.unitId ?? null;
+    const pick = (minUnits?: number) =>
+      pickNext(agree, [], 1, codings, { order: "sequential", seed: 0, now: 0, minUnits })?.unitId ?? null;
     expect(pick()).toBeNull();
     expect(pick(1)).toBe(11);
   });

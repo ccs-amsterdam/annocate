@@ -38,7 +38,12 @@ const NUMBER = /^-?\d+(\.\d+)?$/;
 export function parseExample(source: string): HelpExampleData {
   const lines = source.replace(/\n$/, "").split("\n");
   const end = lines.indexOf("---");
-  const data: HelpExampleData = { unit: {}, answers: {}, steps: [], template: (end < 0 ? lines : lines.slice(end + 1)).join("\n") };
+  const data: HelpExampleData = {
+    unit: {},
+    answers: {},
+    steps: [],
+    template: (end < 0 ? lines : lines.slice(end + 1)).join("\n"),
+  };
   if (end < 0) return data;
 
   const header = lines.slice(0, end);
@@ -62,13 +67,18 @@ export function parseExample(source: string): HelpExampleData {
     }
     if (entry[2] === "|") {
       const block: string[] = [];
-      while (i + 1 < header.length && (header[i + 1].startsWith("    ") || header[i + 1].trim() === "")) block.push(header[++i].slice(4));
+      while (i + 1 < header.length && (header[i + 1].startsWith("    ") || header[i + 1].trim() === ""))
+        block.push(header[++i].slice(4));
       section[entry[1]] = block.join("\n").replace(/\n+$/, "");
     } else section[entry[1]] = entry[2];
   }
-  for (const [key, value] of Object.entries(sections.unit ?? {})) data.unit[key] = NUMBER.test(value) ? Number(value) : value;
+  for (const [key, value] of Object.entries(sections.unit ?? {}))
+    data.unit[key] = NUMBER.test(value) ? Number(value) : value;
   for (const [key, value] of Object.entries(sections.answers ?? {})) {
-    data.answers[key] = value.split("|").map((v) => v.trim()).map((v) => (v === "-" ? null : NUMBER.test(v) ? Number(v) : v));
+    data.answers[key] = value
+      .split("|")
+      .map((v) => v.trim())
+      .map((v) => (v === "-" ? null : NUMBER.test(v) ? Number(v) : v));
   }
   if (sections.snippets) data.snippets = sections.snippets;
   return data;
@@ -113,7 +123,10 @@ export function exampleScope(data: HelpExampleData, chosen: Record<string, strin
   for (const [name, alternatives] of Object.entries(data.answers)) {
     questions.set(name, exampleQuestion(alternatives));
     const value = chosen[name];
-    if (value !== null && value !== undefined) answers[name] = { values: [{ value: questions.get(name)!.type === "numeric" ? value : String(value) }] } as VariableValue;
+    if (value !== null && value !== undefined)
+      answers[name] = {
+        values: [{ value: questions.get(name)!.type === "numeric" ? value : String(value) }],
+      } as VariableValue;
   }
   for (const step of data.steps) if (!questions.has(step)) questions.set(step, { type: "confirm" } as AnyVariableType);
   return buildScope(questions, answers, data.unit);

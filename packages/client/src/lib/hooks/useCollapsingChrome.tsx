@@ -31,18 +31,26 @@ export function CollapsingChrome({ children, className }: { children: ReactNode;
       return next;
     });
   }, []);
-  const onScroll = useCallback((e: UIEvent) => {
-    const el = e.target as HTMLElement;
-    // Not for dialogs and popovers (portals still pass their events up the React tree)
-    if (!(el instanceof HTMLElement) || el.scrollHeight <= el.clientHeight || el.closest('[role="dialog"], [data-radix-popper-content-wrapper]')) return;
-    const top = el.scrollTop;
-    const before = last.current.get(el) ?? 0;
-    last.current.set(el, top);
-    if (Math.abs(top - before) < JITTER || Date.now() < settling.current) return;
-    if (top < HIDE_AFTER) setCollapsed(false);
-    // Only worth it with enough to scroll (else hiding the headers alone makes it all fit)
-    else if (el.scrollHeight - el.clientHeight > 2 * HIDE_AFTER || top < before) setCollapsed(top > before);
-  }, [setCollapsed]);
+  const onScroll = useCallback(
+    (e: UIEvent) => {
+      const el = e.target as HTMLElement;
+      // Not for dialogs and popovers (portals still pass their events up the React tree)
+      if (
+        !(el instanceof HTMLElement) ||
+        el.scrollHeight <= el.clientHeight ||
+        el.closest('[role="dialog"], [data-radix-popper-content-wrapper]')
+      )
+        return;
+      const top = el.scrollTop;
+      const before = last.current.get(el) ?? 0;
+      last.current.set(el, top);
+      if (Math.abs(top - before) < JITTER || Date.now() < settling.current) return;
+      if (top < HIDE_AFTER) setCollapsed(false);
+      // Only worth it with enough to scroll (else hiding the headers alone makes it all fit)
+      else if (el.scrollHeight - el.clientHeight > 2 * HIDE_AFTER || top < before) setCollapsed(top > before);
+    },
+    [setCollapsed],
+  );
   const show = useCallback(() => setCollapsed(false), [setCollapsed]);
   return (
     <ChromeContext.Provider value={{ collapsed, show }}>

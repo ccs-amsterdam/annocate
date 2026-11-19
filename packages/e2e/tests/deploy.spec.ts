@@ -5,20 +5,34 @@ import { api } from "./helpers";
 // Everything is a draft until deployed (docs/architecture.md §8.4): units and
 // sets too. Coders get the deployed snapshot.
 
-test("new units are drafts until deployed: the bar, the dialog, and then coders get them", async ({ page, request, browser }) => {
+test("new units are drafts until deployed: the bar, the dialog, and then coders get them", async ({
+  page,
+  request,
+  browser,
+}) => {
   const study = await api<StudyResponse>(request, "POST", "/study", { name: "Draft units" });
-  await api(request, "POST", `/study/${study.id}/units`, { units: [{ externalId: "a1", data: { text: "First text" } }] });
+  await api(request, "POST", `/study/${study.id}/units`, {
+    units: [{ externalId: "a1", data: { text: "First text" } }],
+  });
   const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
     items: [
       {
         type: "unit_loop",
         layout: { template: "$unit.text" },
-        children: [{ type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] } }],
+        children: [
+          {
+            type: "question",
+            name: "topic",
+            variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] },
+          },
+        ],
       },
     ],
   });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: codebook.id });
-  await api(request, "POST", `/study/${study.id}/units`, { units: [{ externalId: "a2", data: { text: "Second text" } }] });
+  await api(request, "POST", `/study/${study.id}/units`, {
+    units: [{ externalId: "a2", data: { text: "Second text" } }],
+  });
   const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
 
   // A coder gets only the deployed unit
@@ -37,7 +51,11 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
   await expect(dialog.getByText("Units and sets: 1 added")).toBeVisible();
   await dialog.getByRole("button", { name: "Deploy", exact: true }).click();
   await expect(page.getByText(/Not deployed yet/)).toBeHidden();
-  const versions = await api<{ version: number; changes: unknown }[]>(request, "GET", `/study/${study.id}/deployment/versions`);
+  const versions = await api<{ version: number; changes: unknown }[]>(
+    request,
+    "GET",
+    `/study/${study.id}/deployment/versions`,
+  );
   expect(versions[0]).toMatchObject({ version: 2, changes: { design: false, units: { added: 1 } } });
 
   // A new coder gets both
@@ -50,7 +68,9 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
 
 test("the design's unit fields: how the design uses each, removing an unused one", async ({ page, request }) => {
   const study = await api<StudyResponse>(request, "POST", "/study", { name: "Field use" });
-  await api(request, "POST", `/study/${study.id}/units`, { units: [{ externalId: "a1", data: { text: "Hello", year: 2020, note: "x" } }] });
+  await api(request, "POST", `/study/${study.id}/units`, {
+    units: [{ externalId: "a1", data: { text: "Hello", year: 2020, note: "x" } }],
+  });
   const [draft] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
   const { units } = await api<{ units: unknown }>(request, "GET", `/study/${study.id}/design/${draft.id}`);
   await api(request, "PUT", `/study/${study.id}/design/${draft.id}`, {
@@ -60,9 +80,17 @@ test("the design's unit fields: how the design uses each, removing an unused one
         type: "unit_loop",
         layout: { template: "$unit.text" },
         children: [
-          { type: "show_if", condition: { script: "$unit.year > 2000" }, children: [
-            { type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "a" }, { value: "b" }] } },
-          ] },
+          {
+            type: "show_if",
+            condition: { script: "$unit.year > 2000" },
+            children: [
+              {
+                type: "question",
+                name: "topic",
+                variable: { type: "nominal", question: "Topic?", options: [{ value: "a" }, { value: "b" }] },
+              },
+            ],
+          },
         ],
       },
     ],
@@ -73,14 +101,17 @@ test("the design's unit fields: how the design uses each, removing an unused one
   await page.getByRole("button", { name: "Design", exact: true }).click();
   await page.getByRole("button", { name: /Open the units/ }).click();
   await page.getByRole("button", { name: "Details" }).click();
-  const row = (name: string) => page.locator("tr", { has: page.locator("td.font-mono", { hasText: new RegExp(`^${name}$`) }) });
+  const row = (name: string) =>
+    page.locator("tr", { has: page.locator("td.font-mono", { hasText: new RegExp(`^${name}$`) }) });
   await expect(row("text")).toContainText("shown");
   await expect(row("year")).toContainText("sent, not shown");
   await expect(row("note")).toContainText("not used");
   page.once("dialog", (d) => void d.accept());
   await page.getByRole("button", { name: "Remove field note" }).click();
   await expect(row("note")).toHaveCount(0);
-  expect((await api<{ name: string }[]>(request, "GET", `/study/${study.id}/units/fields`)).map((f) => f.name)).toEqual(["text", "year"]);
+  expect((await api<{ name: string }[]>(request, "GET", `/study/${study.id}/units/fields`)).map((f) => f.name)).toEqual(
+    ["text", "year"],
+  );
 });
 
 test("export: the codebook as a document (what coders see), and the design file", async ({ page, request }) => {
@@ -136,7 +167,9 @@ test("panel return links are settings of the run, filled in for coders", async (
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByLabel("URL for panel_done").fill("https://panel.example/done");
   await page.getByRole("button", { name: "Save Changes" }).click();
-  await expect.poll(async () => (await api<StudyResponse>(request, "GET", `/study/${study.id}`)).redirectUrls).toEqual({ panel_done: "https://panel.example/done" });
+  await expect
+    .poll(async () => (await api<StudyResponse>(request, "GET", `/study/${study.id}`)).redirectUrls)
+    .toEqual({ panel_done: "https://panel.example/done" });
 });
 
 test("a link per value of a URL parameter, built in the browser", async ({ page, request }) => {

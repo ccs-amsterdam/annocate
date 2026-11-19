@@ -152,7 +152,8 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
     for (const [i, coder] of example.answers.entries()) {
       // The link whose values the coder's session has (their coder, a condition by link)
       const link = links.find((l) => Object.entries(l.params).every(([name, value]) => coder.session[name] === value));
-      if (Object.keys(coder.session).length > 0 && !link) throw new Error(`examples/${id}.json: no link for example coder ${i + 1}'s session`);
+      if (Object.keys(coder.session).length > 0 && !link)
+        throw new Error(`examples/${id}.json: no link for example coder ${i + 1}'s session`);
       const [made] = await tx
         .insert(coders)
         .values({

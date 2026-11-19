@@ -56,7 +56,8 @@ export interface ConditionEditorProps {
 export function ConditionEditor({ condition, onChange, questions, loop, issues = [] }: ConditionEditorProps) {
   const targets = useMemo(() => ruleTargets(questions), [questions]);
   const rules = useMemo(() => {
-    const simple = condition.script.trim() === "" ? { op: "const" as const, value: true } : parseSimpleCondition(condition.script);
+    const simple =
+      condition.script.trim() === "" ? { op: "const" as const, value: true } : parseSimpleCondition(condition.script);
     return simple ? conditionToRows(simple, targets) : null;
   }, [condition.script, targets]);
   const [mode, setMode] = useState<Mode>(rules ? "rules" : "script");
@@ -70,7 +71,7 @@ export function ConditionEditor({ condition, onChange, questions, loop, issues =
           onChange={(next) => {
             if (next === "rules" && !rules) {
               window.alert(
-                "This script can't be shown as rules: rules are a list of comparisons joined by all \"and\" or all \"or\". Edit it as a script, or clear it to start over.",
+                'This script can\'t be shown as rules: rules are a list of comparisons joined by all "and" or all "or". Edit it as a script, or clear it to start over.',
               );
               return;
             }
@@ -85,7 +86,9 @@ export function ConditionEditor({ condition, onChange, questions, loop, issues =
           <select
             className={selectClass}
             value={rules.match}
-            onChange={(e) => onChange({ script: rowsToScript({ ...rules, match: e.target.value as "all" | "any" }, targets) })}
+            onChange={(e) =>
+              onChange({ script: rowsToScript({ ...rules, match: e.target.value as "all" | "any" }, targets) })
+            }
           >
             <option value="all">All rules must hold</option>
             <option value="any">Any rule may hold</option>
@@ -94,19 +97,39 @@ export function ConditionEditor({ condition, onChange, questions, loop, issues =
       </div>
 
       {shown === "rules" && rules ? (
-        <RulesEditor rules={rules} targets={targets} onChange={(next) => onChange({ script: rowsToScript(next, targets) })} />
+        <RulesEditor
+          rules={rules}
+          targets={targets}
+          onChange={(next) => onChange({ script: rowsToScript(next, targets) })}
+        />
       ) : (
-        <ScriptEditor script={condition.script} onChange={(script) => onChange({ script })} questions={questions} loop={loop} />
+        <ScriptEditor
+          script={condition.script}
+          onChange={(script) => onChange({ script })}
+          questions={questions}
+          loop={loop}
+        />
       )}
 
       {/* In the rules, each row shows its own problems. */}
-      {!(shown === "rules" && rules?.rows.some((row) => rowProblems(row, targets).length > 0)) && <IssueList issues={issues} />}
+      {!(shown === "rules" && rules?.rows.some((row) => rowProblems(row, targets).length > 0)) && (
+        <IssueList issues={issues} />
+      )}
     </div>
   );
 }
 
-function RulesEditor({ rules, targets, onChange }: { rules: RuleRows; targets: RuleTarget[]; onChange: (rules: RuleRows) => void }) {
-  const setRow = (i: number, row: RuleRow) => onChange({ ...rules, rows: rules.rows.map((r, j) => (j === i ? row : r)) });
+function RulesEditor({
+  rules,
+  targets,
+  onChange,
+}: {
+  rules: RuleRows;
+  targets: RuleTarget[];
+  onChange: (rules: RuleRows) => void;
+}) {
+  const setRow = (i: number, row: RuleRow) =>
+    onChange({ ...rules, rows: rules.rows.map((r, j) => (j === i ? row : r)) });
   return (
     <div className="flex flex-col gap-1.5">
       {rules.rows.map((row, i) => (
@@ -172,7 +195,9 @@ function RuleRowEditor({
   let argsInput = null;
   if (!operator) {
     // No operator fits: show the values as they are; choosing an operator fixes the row.
-    argsInput = row.args.length > 0 && <span className="font-mono text-destructive">{row.args.map((a) => JSON.stringify(a)).join(", ")}</span>;
+    argsInput = row.args.length > 0 && (
+      <span className="font-mono text-destructive">{row.args.map((a) => JSON.stringify(a)).join(", ")}</span>
+    );
   } else if (operator.args === "one" && options.length) {
     const current = row.args[0];
     argsInput = (
@@ -215,7 +240,9 @@ function RuleRowEditor({
             type="button"
             onClick={() => toggle(o.value)}
             className={`rounded border px-1.5 py-0.5 text-[11px] ${
-              row.args.includes(o.value) ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"
+              row.args.includes(o.value)
+                ? "border-primary bg-primary/15 text-primary"
+                : "border-border text-muted-foreground"
             }`}
           >
             {optionLabel(o)}
@@ -246,41 +273,45 @@ function RuleRowEditor({
 
   return (
     <div className="flex flex-col gap-0.5">
-    <div className="flex flex-wrap items-center gap-2 text-xs">
-      <span className="w-6 text-muted-foreground">{label}</span>
-      <select
-        className={`${selectClass} font-mono ${target ? "" : invalid}`}
-        value={targetKey(row)}
-        onChange={(e) => {
-          const next = targets.find((t) => targetKey(t) === e.target.value);
-          if (next) onChange(defaultRow(next));
-        }}
-      >
-        {!target && <option value={targetKey(row)}>{targetKey(row)} (not available)</option>}
-        {targets.map((t) => (
-          <option key={targetKey(t)} value={targetKey(t)}>
-            {t.label}
-          </option>
-        ))}
-      </select>
-      <select className={`${selectClass} ${operator ? "" : invalid}`} value={row.operator} onChange={(e) => setOperator(e.target.value)}>
-        {!operator && <option value="">{rawOperatorLabel(row)}</option>}
-        {operators.map((o) => (
-          <option key={o.key} value={o.key}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      {argsInput}
-      <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove} aria-label="Remove rule">
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
-    </div>
-    {problems.map((problem) => (
-      <p key={problem} className="pl-8 text-xs text-destructive">
-        {problem}
-      </p>
-    ))}
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="w-6 text-muted-foreground">{label}</span>
+        <select
+          className={`${selectClass} font-mono ${target ? "" : invalid}`}
+          value={targetKey(row)}
+          onChange={(e) => {
+            const next = targets.find((t) => targetKey(t) === e.target.value);
+            if (next) onChange(defaultRow(next));
+          }}
+        >
+          {!target && <option value={targetKey(row)}>{targetKey(row)} (not available)</option>}
+          {targets.map((t) => (
+            <option key={targetKey(t)} value={targetKey(t)}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+        <select
+          className={`${selectClass} ${operator ? "" : invalid}`}
+          value={row.operator}
+          onChange={(e) => setOperator(e.target.value)}
+        >
+          {!operator && <option value="">{rawOperatorLabel(row)}</option>}
+          {operators.map((o) => (
+            <option key={o.key} value={o.key}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        {argsInput}
+        <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove} aria-label="Remove rule">
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      {problems.map((problem) => (
+        <p key={problem} className="pl-8 text-xs text-destructive">
+          {problem}
+        </p>
+      ))}
     </div>
   );
 }
@@ -302,7 +333,9 @@ function ScriptEditor({
     // Scales: the helpers are on the items.
     const scale = variable.type === "scale";
     const target = scale ? `$var.${name}.items.${variable.items[0]?.name ?? "item"}` : `$var.${name}`;
-    return KIND_METHODS[scale ? "ordinal" : questionKind(variable)].map((m) => `${target}.${m}(${m === "count" ? "" : "…"})`);
+    return KIND_METHODS[scale ? "ordinal" : questionKind(variable)].map(
+      (m) => `${target}.${m}(${m === "count" ? "" : "…"})`,
+    );
   });
   const insert = (text: string) => onChange(script.trim() ? `${script} ${text}` : text);
 

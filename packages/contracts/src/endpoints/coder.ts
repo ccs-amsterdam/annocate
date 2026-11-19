@@ -65,7 +65,12 @@ export const coderEndpoints = {
    * A finished unit. When gold checks ended the session (health ran out),
    * the end item it ended at (practice is checked in the browser).
    */
-  postUnitVariables: { method: "POST", path: "/variables/unit", request: PostUnitVariablesSchema, response: SubmitUnitResponseSchema },
+  postUnitVariables: {
+    method: "POST",
+    path: "/variables/unit",
+    request: PostUnitVariablesSchema,
+    response: SubmitUnitResponseSchema,
+  },
   postCoderVariables: {
     method: "POST",
     path: "/variables/coder",
@@ -78,7 +83,12 @@ export const coderEndpoints = {
    * coders who reached it; stratified by the answers saved so far), and
    * returns it. Reached again: the same value.
    */
-  computeVariable: { method: "POST", path: "/variables/computed/:name", request: z.void(), response: z.object({ value: VariableValueSchema }) },
+  computeVariable: {
+    method: "POST",
+    path: "/variables/computed/:name",
+    request: z.void(),
+    response: z.object({ value: VariableValueSchema }),
+  },
   /** The coder reached an `end` item: the session is over (screened out or complete). */
   endSession: { method: "POST", path: "/end", request: EndSessionSchema, response: EndSessionResponseSchema },
   /** Goes back after finishing (within `reopenUntil`): the session is open again. */

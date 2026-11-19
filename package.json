@@ -16,12 +16,15 @@
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
     "lint": "pnpm -r run lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "pnpm -r run typecheck",
     "test:e2e": "pnpm --filter @annotinder/e2e e2e"
   },
   "devDependencies": {
     "concurrently": "^10.0.5",
     "prettier": "^3.4.2",
+    "prettier-plugin-tailwindcss": "0.8.1",
     "typescript": "5.7.2"
   }
 }

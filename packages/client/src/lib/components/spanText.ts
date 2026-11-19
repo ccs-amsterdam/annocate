@@ -45,11 +45,7 @@ export function snapToWord(text: string, start: number, end: number): [number, n
 /**
  * Trims leading and trailing whitespace from a character range.
  */
-function trimRangeWhitespace(
-  text: string,
-  offset: number,
-  length: number,
-): { offset: number; length: number } {
+function trimRangeWhitespace(text: string, offset: number, length: number): { offset: number; length: number } {
   let start = offset;
   let end = offset + length;
   while (start < end && /\s/.test(text[start])) {
@@ -64,10 +60,7 @@ function trimRangeWhitespace(
 /**
  * Merges overlapping or directly adjacent slices and extracts their text from `text`.
  */
-export function mergeSpanSlices(
-  text: string,
-  slices: Array<{ offset: number; length: number }>,
-): SpanSlice[] {
+export function mergeSpanSlices(text: string, slices: Array<{ offset: number; length: number }>): SpanSlice[] {
   if (slices.length === 0) return [];
   const sorted = [...slices].sort((a, b) => a.offset - b.offset);
   const merged: Array<{ offset: number; length: number }> = [];
@@ -114,9 +107,7 @@ export function toggleSliceRange(
   const rStart = trimmed.offset;
   const rEnd = trimmed.offset + trimmed.length;
 
-  const overlaps = currentSlices.some(
-    (s) => rStart < s.offset + s.length && s.offset < rEnd,
-  );
+  const overlaps = currentSlices.some((s) => rStart < s.offset + s.length && s.offset < rEnd);
 
   if (overlaps) {
     // Toggle OFF: subtract range from slices

@@ -67,7 +67,10 @@ export const unitDraft = pgTable(
       .notNull()
       .references(() => unitValues.id),
   },
-  (t) => [primaryKey({ name: "unit_draft_pkey", columns: [t.unitId, t.fieldId] }), index("unit_draft_value").on(t.valueId)],
+  (t) => [
+    primaryKey({ name: "unit_draft_pkey", columns: [t.unitId, t.fieldId] }),
+    index("unit_draft_value").on(t.valueId),
+  ],
 );
 
 /**
@@ -89,7 +92,11 @@ export const unitVersions = pgTable(
     toDeploy: integer(),
     created: timestamptz().notNull().defaultNow(),
   },
-  (t) => [index("unit_versions_current").on(t.unitId).where(sql`${t.toDeploy} IS NULL`)],
+  (t) => [
+    index("unit_versions_current")
+      .on(t.unitId)
+      .where(sql`${t.toDeploy} IS NULL`),
+  ],
 );
 
 /** A unit version's fields, field -> value. */
@@ -106,7 +113,10 @@ export const unitVersionFields = pgTable(
       .notNull()
       .references(() => unitValues.id),
   },
-  (t) => [primaryKey({ name: "unit_version_fields_pkey", columns: [t.versionId, t.fieldId] }), index("unit_version_fields_value").on(t.valueId)],
+  (t) => [
+    primaryKey({ name: "unit_version_fields_pkey", columns: [t.versionId, t.fieldId] }),
+    index("unit_version_fields_value").on(t.valueId),
+  ],
 );
 
 /** Sets of units in set groups (grp: a `set` column), the draft's and the deployed ones (live); no history. */
@@ -136,5 +146,8 @@ export const unitSetMembers = pgTable(
       .references(() => units.id, { onDelete: "cascade" }),
     position: integer(),
   },
-  (t) => [primaryKey({ name: "unit_set_members_pkey", columns: [t.setId, t.unitId] }), index("unit_set_members_unit").on(t.unitId)],
+  (t) => [
+    primaryKey({ name: "unit_set_members_pkey", columns: [t.setId, t.unitId] }),
+    index("unit_set_members_unit").on(t.unitId),
+  ],
 );

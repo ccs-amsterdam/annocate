@@ -13,7 +13,14 @@ import type { DesignBackup } from "../../design/localBackup";
 import { Button } from "@/components/ui/button";
 import { cn } from "cn";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { TreePanel } from "./designEditor/TreePanel";
 import { ItemPanel, PreviewPanel } from "./designEditor/ItemPanel";
 
@@ -97,7 +104,10 @@ export function DesignEditor({
   // Warnings, not errors: units may still be uploaded after the design is written
   // (Fields the design doesn't declare are errors already, at the same items)
   const warnings = useMemo(
-    () => unknownUnitFields(draft.cleanItems, unitFieldsQuery.data ?? []).filter((w) => !draft.undeclared.includes(w.field)),
+    () =>
+      unknownUnitFields(draft.cleanItems, unitFieldsQuery.data ?? []).filter(
+        (w) => !draft.undeclared.includes(w.field),
+      ),
     [draft.cleanItems, unitFieldsQuery.data, draft.undeclared],
   );
 
@@ -119,7 +129,9 @@ export function DesignEditor({
     () =>
       flattenTree(draft.items).flatMap((item) => {
         const key = keyOf(item);
-        return key && draft.changed.has(key) ? [{ key, name: itemTitle(item), isNew: !findItem(draft.savedItems, key) }] : [];
+        return key && draft.changed.has(key)
+          ? [{ key, name: itemTitle(item), isNew: !findItem(draft.savedItems, key) }]
+          : [];
       }),
     [draft.items, draft.changed, draft.savedItems],
   );
@@ -127,7 +139,11 @@ export function DesignEditor({
   /** Opens the item an issue is about, in the visual editor. */
   function openIssue(issue: EditorIssue) {
     const target = issue.target;
-    const item = !target ? null : "path" in target ? itemAtPath(draft.items, target.path) : findItem(draft.items, target.name);
+    const item = !target
+      ? null
+      : "path" in target
+        ? itemAtPath(draft.items, target.path)
+        : findItem(draft.items, target.name);
     if (!item) return;
     draft.select(keyOf(item) ?? itemTitle(item));
     setView("tree");
@@ -205,8 +221,8 @@ export function DesignEditor({
             <DialogTitle>Someone else saved this draft</DialogTitle>
             <DialogDescription>
               {draft.conflict?.updatedBy ?? "Someone"} saved it at{" "}
-              {draft.conflict ? new Date(draft.conflict.updated).toLocaleTimeString() : ""}, while you were editing. Saving
-              yours replaces their changes.
+              {draft.conflict ? new Date(draft.conflict.updated).toLocaleTimeString() : ""}, while you were editing.
+              Saving yours replaces their changes.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -230,7 +246,12 @@ export function DesignEditor({
           <DesignJsonEditor items={draft.cleanItems} onChange={draft.replaceAll} disabled={readOnly} />
         </div>
       ) : (
-        <div className={cn("grid min-h-0 flex-1 gap-3 overflow-hidden", narrow ? "grid-cols-1" : wide ? "grid-cols-[1fr_1.15fr_1fr]" : "grid-cols-2")}>
+        <div
+          className={cn(
+            "grid min-h-0 flex-1 gap-3 overflow-hidden",
+            narrow ? "grid-cols-1" : wide ? "grid-cols-[1fr_1.15fr_1fr]" : "grid-cols-2",
+          )}
+        >
           {!showItemOnly && <TreePanel draft={draft} readOnly={readOnly} />}
           {(!narrow || showItemOnly) && (
             <ItemPanel

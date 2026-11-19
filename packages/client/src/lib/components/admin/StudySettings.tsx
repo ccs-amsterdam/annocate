@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { designItems, redirectSettings, type StudyResponse } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useDesignVersionQuery, useDesignVersionsQuery, useCreateStudyMutation, useDeleteStudyMutation, useSetGroupsQuery, useStudyQuery, useUpdateStudyMutation } from "../../admin/queries";
+import {
+  useDesignVersionQuery,
+  useDesignVersionsQuery,
+  useCreateStudyMutation,
+  useDeleteStudyMutation,
+  useSetGroupsQuery,
+  useStudyQuery,
+  useUpdateStudyMutation,
+} from "../../admin/queries";
 import { coderSummary, columnValues } from "../../design/assignment";
 import { SignInSetting } from "./SignInSetting";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -14,13 +22,7 @@ import { Trash2 } from "lucide-react";
  * the study name, toggle archived status, keep finished sessions open, or
  * delete the study.
  */
-export function StudySettings({
-  client,
-  onDeleted,
-}: {
-  client: ResearcherApi;
-  onDeleted?: () => void;
-}) {
+export function StudySettings({ client, onDeleted }: { client: ResearcherApi; onDeleted?: () => void }) {
   const studyQuery = useStudyQuery(client);
   const createStudy = useCreateStudyMutation(client);
 
@@ -83,13 +85,20 @@ function StudyEditForm({
   // The end items' redirect settings in the latest design version, and any URL already set
   const designVersions = useDesignVersionsQuery(client).data ?? [];
   const latest = useDesignVersionQuery(client, designVersions.at(-1)?.id ?? null).data;
-  const settingNames = [...new Set([...(latest ? redirectSettings(designItems(latest)) : []), ...Object.keys(study.redirectUrls ?? {})])];
+  const settingNames = [
+    ...new Set([...(latest ? redirectSettings(designItems(latest)) : []), ...Object.keys(study.redirectUrls ?? {})]),
+  ];
   // Compared as saved: without empty URLs, in any key order (the server stores JSONB)
   const redirectsDirty = JSON.stringify(setUrls(redirects)) !== JSON.stringify(setUrls(study.redirectUrls ?? {}));
   const coderColumn = latest?.session?.coders?.column;
   const groups = useSetGroupsQuery(client).data ?? [];
   const emailCoders = !!coderColumn && coderSummary(columnValues(groups, coderColumn)).kind === "emails";
-  const dirty = name !== study.name || archived !== study.archived || keepOpen !== study.keepSessionsOpen || signIn !== study.signIn || redirectsDirty;
+  const dirty =
+    name !== study.name ||
+    archived !== study.archived ||
+    keepOpen !== study.keepSessionsOpen ||
+    signIn !== study.signIn ||
+    redirectsDirty;
 
   return (
     <div className="max-w-md space-y-6">
@@ -98,38 +107,47 @@ function StudyEditForm({
         onSubmit={(e) => {
           e.preventDefault();
           const redirectUrls = setUrls(redirects);
-          updateStudy.mutate({ id: study.id, body: { name, archived, keepSessionsOpen: keepOpen, signIn: emailCoders ? "required" : signIn, redirectUrls } });
+          updateStudy.mutate({
+            id: study.id,
+            body: {
+              name,
+              archived,
+              keepSessionsOpen: keepOpen,
+              signIn: emailCoders ? "required" : signIn,
+              redirectUrls,
+            },
+          });
         }}
       >
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1">Study Name</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Study Name</label>
           <Input value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
           <input
             type="checkbox"
             checked={archived}
             onChange={(e) => setArchived(e.target.checked)}
-            className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+            className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
           />
           <span>Archived (hide from active coding lists)</span>
         </label>
 
         <SignInSetting value={signIn} onChange={setSignIn} emailCoders={emailCoders} />
 
-        <label className="flex items-start gap-2 text-sm text-foreground cursor-pointer">
+        <label className="flex cursor-pointer items-start gap-2 text-sm text-foreground">
           <input
             type="checkbox"
             checked={keepOpen}
             onChange={(e) => setKeepOpen(e.target.checked)}
-            className="mt-0.5 rounded border-input text-primary focus:ring-primary h-4 w-4"
+            className="mt-0.5 h-4 w-4 rounded border-input text-primary focus:ring-primary"
           />
           <span className="flex items-center gap-1">
             Keep finished sessions open
             <InfoTip label="About keeping sessions open">
-              Off (recommended): once coders finish, they can go back for 15 minutes; then their answers can&apos;t be looked at or
-              changed, also not by someone who gets into their account or device later.
+              Off (recommended): once coders finish, they can go back for 15 minutes; then their answers can&apos;t be
+              looked at or changed, also not by someone who gets into their account or device later.
             </InfoTip>
           </span>
         </label>
@@ -139,8 +157,8 @@ function StudyEditForm({
             <legend className="mb-1 flex items-center gap-1 text-sm font-medium text-foreground">
               Panel return links
               <InfoTip label="About panel return links">
-                End items send coders on to these. They belong to this run (a panel gives each study its own links), not to the design, and
-                take effect without deploying. May use $var and $session values.
+                End items send coders on to these. They belong to this run (a panel gives each study its own links), not
+                to the design, and take effect without deploying. May use $var and $session values.
               </InfoTip>
             </legend>
             {settingNames.map((setting) => (
@@ -165,7 +183,7 @@ function StudyEditForm({
         </div>
         {updateStudy.isError && <p className="text-sm text-destructive">{updateStudy.error.message}</p>}
         {updateStudy.isSuccess && !dirty && (
-          <p className="text-xs text-primary font-medium">Settings saved successfully.</p>
+          <p className="text-xs font-medium text-primary">Settings saved successfully.</p>
         )}
       </form>
 
@@ -173,7 +191,9 @@ function StudyEditForm({
       <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 shadow-sm">
         <h3 className="flex items-center gap-1 text-sm font-semibold text-destructive">
           Delete this study
-          <InfoTip label="About deleting">Deleting this study permanently removes its design versions, units, coders and their answers.</InfoTip>
+          <InfoTip label="About deleting">
+            Deleting this study permanently removes its design versions, units, coders and their answers.
+          </InfoTip>
         </h3>
 
         {!showConfirmDelete ? (

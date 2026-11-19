@@ -53,7 +53,9 @@ export function LinksPanel({ client }: LinksPanelProps) {
   // The URL parameters a link takes, with placeholders the panel (or the researcher) fills in.
   const urlParams = [
     ...(session?.participant ? [`${session.participant.param}=<participant id>`] : []),
-    ...(session?.params ?? []).filter((p) => p.kind === "url" && p.default === undefined).map((p) => `${sessionParamKey(p)}=<${p.name}>`),
+    ...(session?.params ?? [])
+      .filter((p) => p.kind === "url" && p.default === undefined)
+      .map((p) => `${sessionParamKey(p)}=<${p.name}>`),
   ];
   const linkOf = (link: LinkResponse) => {
     const url = codeLinkUrl(link.studyId, link.secret);
@@ -61,7 +63,9 @@ export function LinksPanel({ client }: LinksPanelProps) {
   };
   // Coders by email address: only those addresses may code, and they sign in.
   const coderColumn = session?.coders?.column;
-  const coderValues = coderColumn ? (groups.find((g) => g.name === coderColumn)?.sets ?? []).map((s) => s.name).filter((n) => !n.startsWith("_")) : [];
+  const coderValues = coderColumn
+    ? (groups.find((g) => g.name === coderColumn)?.sets ?? []).map((s) => s.name).filter((n) => !n.startsWith("_"))
+    : [];
   const emailCoders = coderValues.length > 0 && coderAccess(coderValues) === "email";
 
   const links = linksQuery.data ?? [];
@@ -74,9 +78,10 @@ export function LinksPanel({ client }: LinksPanelProps) {
         <h2 className="flex items-center gap-1.5 text-lg font-medium">
           Links
           <InfoTip label="About links">
-            Deploying the design makes its links: one, or one per value of each link parameter (and per combination) in its Study entry,
-            e.g. a link per set of a group. Deployed sets get links; links whose value is gone are retired. Here you set who may use a link.
-            Revoking stops new coders from joining with it; coders who already started keep working.
+            Deploying the design makes its links: one, or one per value of each link parameter (and per combination) in
+            its Study entry, e.g. a link per set of a group. Deployed sets get links; links whose value is gone are
+            retired. Here you set who may use a link. Revoking stops new coders from joining with it; coders who already
+            started keep working.
           </InfoTip>
           <HelpButton topic="links" label="Help: links" />
         </h2>
@@ -89,8 +94,9 @@ export function LinksPanel({ client }: LinksPanelProps) {
         )}
         {emailCoders && (
           <div className="rounded-md border border-amber-500 bg-amber-500/10 p-2.5 text-xs">
-            The coders (column <span className="font-mono">{coderColumn}</span>) are email addresses, so there is one link: coders sign in and
-            get their own units. Other email addresses get &quot;This email address has no access to this study&quot;.
+            The coders (column <span className="font-mono">{coderColumn}</span>) are email addresses, so there is one
+            link: coders sign in and get their own units. Other email addresses get &quot;This email address has no
+            access to this study&quot;.
             <details className="mt-1">
               <summary className="cursor-pointer">The {coderValues.length} coders</summary>
               <span className="font-mono">{coderValues.join(", ")}</span>
@@ -101,20 +107,28 @@ export function LinksPanel({ client }: LinksPanelProps) {
           <p className="text-sm text-muted-foreground">Loading links...</p>
         ) : active.length === 0 ? (
           <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-            {deployment ? "The deployed design makes no links right now (a link parameter without values?)." : "Deploy the design to get its links."}
+            {deployment
+              ? "The deployed design makes no links right now (a link parameter without values?)."
+              : "Deploy the design to get its links."}
           </p>
         ) : (
           <LinkTable client={client} links={active} linkOf={linkOf} />
         )}
       </section>
 
-      {active.length > 0 && <LinksPerValue session={session} links={active.map((l) => ({ label: l.label ?? "", link: linkOf(l) }))} />}
+      {active.length > 0 && (
+        <LinksPerValue session={session} links={active.map((l) => ({ label: l.label ?? "", link: linkOf(l) }))} />
+      )}
 
       {retired.length > 0 && (
         <section className="flex flex-col gap-2">
-          <button type="button" className="w-fit cursor-pointer text-sm text-muted-foreground hover:text-foreground" onClick={() => setShowRetired(!showRetired)}>
-            {showRetired ? "▾" : "▸"} Retired links ({retired.length}): the deployed design no longer makes them; they show &quot;This link is no
-            longer active&quot;
+          <button
+            type="button"
+            className="w-fit cursor-pointer text-sm text-muted-foreground hover:text-foreground"
+            onClick={() => setShowRetired(!showRetired)}
+          >
+            {showRetired ? "▾" : "▸"} Retired links ({retired.length}): the deployed design no longer makes them; they
+            show &quot;This link is no longer active&quot;
           </button>
           {showRetired && <LinkTable client={client} links={retired} linkOf={linkOf} />}
         </section>
@@ -123,7 +137,15 @@ export function LinksPanel({ client }: LinksPanelProps) {
   );
 }
 
-function LinkTable({ client, links, linkOf }: { client: ResearcherApi; links: LinkResponse[]; linkOf: (link: LinkResponse) => string }) {
+function LinkTable({
+  client,
+  links,
+  linkOf,
+}: {
+  client: ResearcherApi;
+  links: LinkResponse[];
+  linkOf: (link: LinkResponse) => string;
+}) {
   return (
     <div className="overflow-x-auto rounded-lg border">
       <table className="w-full text-sm">
@@ -217,13 +239,20 @@ function LinkRow({ client, link, url }: { client: ResearcherApi; link: LinkRespo
         <td className="p-2 whitespace-nowrap text-muted-foreground">{formatWhen(link.created)}</td>
         <td className="p-2">
           <div className="flex justify-end gap-1">
-            <IconButton icon={Pencil} iconClassName="h-3.5 w-3.5" label="Who may use this link" onClick={() => setEditing(!editing)} />
+            <IconButton
+              icon={Pencil}
+              iconClassName="h-3.5 w-3.5"
+              label="Who may use this link"
+              onClick={() => setEditing(!editing)}
+            />
             <IconButton
               icon={KeyRound}
               iconClassName="h-3.5 w-3.5"
               label="New link (the old one stops working; coders who started keep working)"
               disabled={renew.isPending || status === "retired"}
-              onClick={() => confirm(`Make a new link for "${link.label}"? The current link stops working.`) && renew.mutate(link.id)}
+              onClick={() =>
+                confirm(`Make a new link for "${link.label}"? The current link stops working.`) && renew.mutate(link.id)
+              }
             />
             {status !== "revoked" && status !== "retired" && (
               <IconButton
@@ -233,7 +262,8 @@ function LinkRow({ client, link, url }: { client: ResearcherApi; link: LinkRespo
                 className="hover:text-destructive"
                 disabled={revoke.isPending}
                 onClick={() =>
-                  confirm(`Revoke "${link.label}"? New coders can't join with it; started coders keep working.`) && revoke.mutate(link.id)
+                  confirm(`Revoke "${link.label}"? New coders can't join with it; started coders keep working.`) &&
+                  revoke.mutate(link.id)
                 }
               />
             )}
@@ -274,8 +304,22 @@ function AccessForm({ client, link, onDone }: { client: ResearcherApi; link: Lin
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <Input aria-label="Label" className="w-64" placeholder="Label" value={label} onChange={(e) => setLabel(e.target.value)} />
-        <Input aria-label="Max uses" type="number" min={1} className="w-32" placeholder="Max uses" value={maxUses} onChange={(e) => setMaxUses(e.target.value)} />
+        <Input
+          aria-label="Label"
+          className="w-64"
+          placeholder="Label"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+        />
+        <Input
+          aria-label="Max uses"
+          type="number"
+          min={1}
+          className="w-32"
+          placeholder="Max uses"
+          value={maxUses}
+          onChange={(e) => setMaxUses(e.target.value)}
+        />
         <Input
           aria-label="Fixed participant id"
           className="w-48"
@@ -285,8 +329,9 @@ function AccessForm({ client, link, onDone }: { client: ResearcherApi; link: Lin
         />
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Whether coders sign in is a setting of the study. Without sign-in, work stays on the device it was started on; coders can move
-        it with &quot;Continue on another device&quot;. Signed in, coders continue on any device by signing in there. A participant id is a label, never a way back into a session.{" "}
+        Whether coders sign in is a setting of the study. Without sign-in, work stays on the device it was started on;
+        coders can move it with &quot;Continue on another device&quot;. Signed in, coders continue on any device by
+        signing in there. A participant id is a label, never a way back into a session.{" "}
         <HelpButton topic="online-panels" className="align-middle">
           Online panels
         </HelpButton>
@@ -330,13 +375,7 @@ function CopyLink({ link, disabled }: { link: string; disabled: boolean }) {
  * school or panel its own (docs/architecture.md §7). Other URL
  * parameters keep their placeholders.
  */
-function LinksPerValue({
-  session,
-  links,
-}: {
-  session: SessionItem | null;
-  links: { label: string; link: string }[];
-}) {
+function LinksPerValue({ session, links }: { session: SessionItem | null; links: { label: string; link: string }[] }) {
   const [param, setParam] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const params = (session?.params ?? []).filter((p) => p.kind === "url" && !("open" in p.values));
@@ -349,7 +388,13 @@ function LinksPerValue({
           const key = sessionParamKey(chosen);
           const placeholder = `${key}=<${chosen.name}>`;
           const filled = `${key}=${encodeURIComponent(value)}`;
-          return { label, value, link: link.includes(placeholder) ? link.replace(placeholder, filled) : `${link}${link.includes("?") ? "&" : "?"}${filled}` };
+          return {
+            label,
+            value,
+            link: link.includes(placeholder)
+              ? link.replace(placeholder, filled)
+              : `${link}${link.includes("?") ? "&" : "?"}${filled}`,
+          };
         }),
       )
     : [];
@@ -358,12 +403,18 @@ function LinksPerValue({
     <section className="flex flex-col gap-2">
       <h3 className="text-sm font-medium">A link per value of a URL parameter</h3>
       <p className="text-xs text-muted-foreground">
-        For a URL parameter with known values, list a link per value, e.g. one per school to send around. Nothing is stored: these are
-        the links above with the value filled in.
+        For a URL parameter with known values, list a link per value, e.g. one per school to send around. Nothing is
+        stored: these are the links above with the value filled in.
       </p>
       <div className="flex flex-wrap items-center gap-2">
         {params.map((p) => (
-          <Button key={p.name} type="button" size="sm" variant={param === p.name ? "default" : "outline"} onClick={() => setParam(param === p.name ? null : p.name)}>
+          <Button
+            key={p.name}
+            type="button"
+            size="sm"
+            variant={param === p.name ? "default" : "outline"}
+            onClick={() => setParam(param === p.name ? null : p.name)}
+          >
             {p.name}
           </Button>
         ))}
@@ -389,7 +440,7 @@ function LinksPerValue({
               <tr key={r.link} className="border-t border-border">
                 {links.length > 1 && <td className="py-1 pr-2">{r.label}</td>}
                 <td className="py-1 pr-2 font-mono">{r.value}</td>
-                <td className="break-all py-1 font-mono text-muted-foreground">{r.link}</td>
+                <td className="py-1 font-mono break-all text-muted-foreground">{r.link}</td>
               </tr>
             ))}
           </tbody>

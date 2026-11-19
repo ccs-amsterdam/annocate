@@ -13,7 +13,12 @@ import {
 } from "@annotinder/contracts";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "../db/index.js";
-import { deployments, deploymentVersions as deploymentVersionsTable, designVersions, studies } from "../db/schema/index.js";
+import {
+  deployments,
+  deploymentVersions as deploymentVersionsTable,
+  designVersions,
+  studies,
+} from "../db/schema/index.js";
 import { designVersionItems, itemsValid, toDesignVersion, type DesignVersionRow } from "./designVersions.js";
 import { HttpError } from "./http.js";
 import { listFinished } from "./finished.js";
@@ -30,7 +35,13 @@ async function deploymentRow(db: Db, studyId: number) {
 export async function getDeployment(db: Db, studyId: number): Promise<DeploymentResponse | null> {
   const row = await deploymentRow(db, studyId);
   if (!row) return null;
-  return { studyId: row.studyId, designVersionId: row.designVersionId, active: row.active, version: row.version, updated: row.updated };
+  return {
+    studyId: row.studyId,
+    designVersionId: row.designVersionId,
+    active: row.active,
+    version: row.version,
+    updated: row.updated,
+  };
 }
 
 /** A design version of a study (the latest if `id` is undefined). */
@@ -124,7 +135,9 @@ export async function loopVariables(db: Db, studyId: number, designVersionId: nu
   const parsed = row ? DesignItemsSchema.safeParse(designVersionItems(row)) : null;
   if (!parsed?.success) return loops;
   const questions = (items: DesignItem[]): string[] =>
-    items.flatMap((i) => (i.type === "show_if" ? questions(i.children as DesignItem[]) : "variable" in i ? [i.name] : []));
+    items.flatMap((i) =>
+      i.type === "show_if" ? questions(i.children as DesignItem[]) : "variable" in i ? [i.name] : [],
+    );
   for (const { key, loop } of unitLoops(parsed.data)) {
     const title = loopTitle(loop, key);
     loops.set(loops.has(title) ? `${title} (${key})` : title, questions(loop.children as DesignItem[]));
@@ -132,7 +145,12 @@ export async function loopVariables(db: Db, studyId: number, designVersionId: nu
   return loops;
 }
 
-async function reopenWarnings(db: Db, studyId: number, previousDesignVersionId: number, designVersionId: number): Promise<string[]> {
+async function reopenWarnings(
+  db: Db,
+  studyId: number,
+  previousDesignVersionId: number,
+  designVersionId: number,
+): Promise<string[]> {
   if (previousDesignVersionId === designVersionId) return [];
   const before = await loopVariables(db, studyId, previousDesignVersionId);
   const after = await loopVariables(db, studyId, designVersionId);
@@ -147,7 +165,8 @@ async function reopenWarnings(db: Db, studyId: number, previousDesignVersionId: 
     if (!previous || !previous.some((v) => variables.includes(v))) continue;
     const added = variables.filter((v) => !previous.includes(v));
     if (added.length === 0) continue;
-    const finished = (await listFinished(db, studyId, { loops: [{ level: "unit", loop, variables: previous }] })).length;
+    const finished = (await listFinished(db, studyId, { loops: [{ level: "unit", loop, variables: previous }] }))
+      .length;
     if (finished > 0) {
       warnings.push(
         `Loop '${loop}' gained questions (${added.join(", ")}): ${finished} finished unit codings ` +
@@ -180,10 +199,18 @@ export async function getDeploymentSpec(db: Db, studyId: number): Promise<Deploy
 export async function getPreviewSpec(db: Db, studyId: number): Promise<DeploymentSpec | null> {
   const versionRow = await designVersion(db, studyId);
   if (!versionRow) return null;
-  if (!itemsValid(designVersionItems(versionRow))) throw new HttpError(409, "The latest design version has issues: fix them to preview it", "design_invalid");
+  if (!itemsValid(designVersionItems(versionRow)))
+    throw new HttpError(409, "The latest design version has issues: fix them to preview it", "design_invalid");
   // The drafts: the latest design version with the draft units and sets.
-  const spec = await buildSpec(db, studyId, versionRow, { version: 1, active: true, annotationEpoch: 0, liveUnits: false });
-  const digest = createHash("sha256").update(JSON.stringify([spec.design, spec.sets])).digest("hex");
+  const spec = await buildSpec(db, studyId, versionRow, {
+    version: 1,
+    active: true,
+    annotationEpoch: 0,
+    liveUnits: false,
+  });
+  const digest = createHash("sha256")
+    .update(JSON.stringify([spec.design, spec.sets]))
+    .digest("hex");
   return { ...spec, version: (parseInt(digest.slice(0, 7), 16) % 2 ** 30) + 1 };
 }
 

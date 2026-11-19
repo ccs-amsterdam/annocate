@@ -1,5 +1,15 @@
 import { useEffect, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CircleDot, Delete, Layers, Menu } from "lucide-react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  CircleDot,
+  Delete,
+  Layers,
+  Menu,
+} from "lucide-react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -22,11 +32,14 @@ import type { NavigationPhase, StudyManagerNavigation } from "../studyManager/St
 // How far the coder is in the loop shows as a line along the bar's bottom
 // edge (`CodingProgress`), when the loop's number of units is known.
 
-const barButton = "flex h-8 cursor-pointer items-center justify-center rounded-lg text-bar-foreground transition-colors hover:bg-bar-foreground/15";
+const barButton =
+  "flex h-8 cursor-pointer items-center justify-center rounded-lg text-bar-foreground transition-colors hover:bg-bar-foreground/15";
 
 /** The steps listed in the menu: questions and unit loops the coder got to. */
 const listed = (navigation: StudyManagerNavigation) =>
-  navigation.phases.filter((p) => (p.type === "question" || p.type === "unit_loop") && p.index <= navigation.maxReachedTopIndex);
+  navigation.phases.filter(
+    (p) => (p.type === "question" || p.type === "unit_loop") && p.index <= navigation.maxReachedTopIndex,
+  );
 
 /** A question step's number among the study's top-level questions (1, 2, ...). */
 function questionNumber(phases: NavigationPhase[], phase: NavigationPhase): number {
@@ -38,7 +51,10 @@ function questionNumber(phases: NavigationPhase[], phase: NavigationPhase): numb
  * they got), the furthest they reached, and how many they get, if known
  * (not in a shared queue without a maximum).
  */
-function loopUnits(phase: NavigationPhase, navigation: StudyManagerNavigation): { current: number; reached: number; total: number | null } {
+function loopUnits(
+  phase: NavigationPhase,
+  navigation: StudyManagerNavigation,
+): { current: number; reached: number; total: number | null } {
   const reached = Math.max(1, phase.unitCount ?? 0);
   const current = phase.isCurrent ? (phase.currentUnitIndex ?? navigation.currentUnitIndex ?? 0) + 1 : reached;
   return { current, reached, total: phase.totalUnits ? Math.max(reached, phase.totalUnits) : null };
@@ -49,7 +65,11 @@ function useMenuKeys(active: boolean) {
   useEffect(() => {
     if (!active) return;
     const onKey = (e: KeyboardEvent) => {
-      if (/^[0-9]$/.test(e.key) || ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Backspace", "Enter"].includes(e.key)) e.stopPropagation();
+      if (
+        /^[0-9]$/.test(e.key) ||
+        ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Backspace", "Enter"].includes(e.key)
+      )
+        e.stopPropagation();
     };
     window.addEventListener("keydown", onKey, { capture: true });
     return () => window.removeEventListener("keydown", onKey, { capture: true });
@@ -69,7 +89,15 @@ export interface CodingNavProps {
   onForward: () => void;
 }
 
-export function CodingNav({ navigation, title, onJumpToPhase, onJumpToUnit, onJumpToQuestion, onBack, onForward }: CodingNavProps) {
+export function CodingNav({
+  navigation,
+  title,
+  onJumpToPhase,
+  onJumpToUnit,
+  onJumpToQuestion,
+  onBack,
+  onForward,
+}: CodingNavProps) {
   const steps = listed(navigation);
   const current = navigation.phases[navigation.currentPhaseIndex];
   const inLoop = current?.type === "unit_loop";
@@ -150,7 +178,10 @@ export function CodingNav({ navigation, title, onJumpToPhase, onJumpToUnit, onJu
         </Popover>
       ) : (
         position && (
-          <span className={cn("flex items-center justify-center rounded-lg text-bar-foreground/80", chip)} title={positionTitle}>
+          <span
+            className={cn("flex items-center justify-center rounded-lg text-bar-foreground/80", chip)}
+            title={positionTitle}
+          >
             {position}
           </span>
         )
@@ -242,13 +273,25 @@ function Overview({
 }) {
   return (
     <div className="flex max-h-[70vh] flex-col">
-      {title && <p className="border-b border-border/60 px-3.5 py-2.5 text-sm font-semibold text-foreground">{title}</p>}
+      {title && (
+        <p className="border-b border-border/60 px-3.5 py-2.5 text-sm font-semibold text-foreground">{title}</p>
+      )}
       <div className="flex-1 space-y-0.5 overflow-y-auto p-1.5">
         {steps.map((step) => {
           const units = step.type === "unit_loop" ? loopUnits(step, navigation) : null;
           return (
-            <button key={step.name || step.index} type="button" onClick={() => onPick(step)} className={rowClass(step.isCurrent)} title={step.label}>
-              {step.type === "unit_loop" ? <Layers className="h-4 w-4 shrink-0 text-primary" /> : <StepIcon completed={step.isCompleted} current={step.isCurrent} />}
+            <button
+              key={step.name || step.index}
+              type="button"
+              onClick={() => onPick(step)}
+              className={rowClass(step.isCurrent)}
+              title={step.label}
+            >
+              {step.type === "unit_loop" ? (
+                <Layers className="h-4 w-4 shrink-0 text-primary" />
+              ) : (
+                <StepIcon completed={step.isCompleted} current={step.isCurrent} />
+              )}
               <span className="flex-1 truncate">{step.label}</span>
               {units && (
                 <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
@@ -318,10 +361,28 @@ function LoopPanel({
     <div className="flex max-h-[70vh] flex-col">
       <div className="flex items-center justify-between gap-1 p-1.5">
         <span className="flex">
-          <Button type="button" variant="ghost" size="icon" className={small} disabled={current <= 1} onClick={() => go(1)} title="First unit" aria-label="First unit">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={small}
+            disabled={current <= 1}
+            onClick={() => go(1)}
+            title="First unit"
+            aria-label="First unit"
+          >
             <ChevronsLeft className="h-4 w-4" />
           </Button>
-          <Button type="button" variant="ghost" size="icon" className={small} disabled={current <= 1} onClick={() => go(current - 1)} title="Previous unit" aria-label="Previous unit">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={small}
+            disabled={current <= 1}
+            onClick={() => go(current - 1)}
+            title="Previous unit"
+            aria-label="Previous unit"
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
         </span>
@@ -339,7 +400,16 @@ function LoopPanel({
           {total !== null && <span className="text-muted-foreground"> of {total}</span>}
         </button>
         <span className="flex">
-          <Button type="button" variant="ghost" size="icon" className={small} disabled={current >= reached} onClick={() => go(current + 1)} title="Next unit" aria-label="Next unit">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={small}
+            disabled={current >= reached}
+            onClick={() => go(current + 1)}
+            title="Next unit"
+            aria-label="Next unit"
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
           <Button
@@ -360,17 +430,39 @@ function LoopPanel({
         <div className="flex flex-col items-center gap-1.5 border-t border-border/60 p-2">
           <div className="grid grid-cols-3 gap-1">
             {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((k) => (
-              <Button key={k} type="button" variant="outline" className="h-8 w-12 cursor-pointer font-mono" onClick={() => press(k)}>
+              <Button
+                key={k}
+                type="button"
+                variant="outline"
+                className="h-8 w-12 cursor-pointer font-mono"
+                onClick={() => press(k)}
+              >
                 {k}
               </Button>
             ))}
-            <Button type="button" variant="outline" className="h-8 w-12 cursor-pointer" onClick={() => press("back")} aria-label="Delete a digit">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-8 w-12 cursor-pointer"
+              onClick={() => press("back")}
+              aria-label="Delete a digit"
+            >
               <Delete className="h-4 w-4" />
             </Button>
-            <Button type="button" variant="outline" className="h-8 w-12 cursor-pointer font-mono" onClick={() => press("0")}>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-8 w-12 cursor-pointer font-mono"
+              onClick={() => press("0")}
+            >
               0
             </Button>
-            <Button type="button" className="h-8 w-12 cursor-pointer text-xs" disabled={!typed} onClick={() => press("go")}>
+            <Button
+              type="button"
+              className="h-8 w-12 cursor-pointer text-xs"
+              disabled={!typed}
+              onClick={() => press("go")}
+            >
               Go
             </Button>
           </div>
@@ -382,7 +474,13 @@ function LoopPanel({
       {typed === null && questions.length > 1 && (
         <div className="flex-1 space-y-0.5 overflow-y-auto border-t border-border/60 p-1.5">
           {questions.map((q) => (
-            <button key={q.name} type="button" onClick={() => onJumpToQuestion(q.index)} className={rowClass(q.isCurrent)} title={q.label}>
+            <button
+              key={q.name}
+              type="button"
+              onClick={() => onJumpToQuestion(q.index)}
+              className={rowClass(q.isCurrent)}
+              title={q.label}
+            >
               <StepIcon completed={q.isCompleted} current={q.isCurrent} />
               <span className="truncate">{q.label}</span>
             </button>

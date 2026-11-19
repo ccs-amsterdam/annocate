@@ -2,7 +2,16 @@ import { describe, expect, it } from "vitest";
 import type { DesignVersionMeta } from "@annotinder/contracts";
 import { describeVersions } from "./versions";
 
-const meta = (id: number, immutable: boolean): DesignVersionMeta => ({ id, note: null, created: new Date(), updated: new Date(), updatedBy: null, revision: 1, immutable, valid: true });
+const meta = (id: number, immutable: boolean): DesignVersionMeta => ({
+  id,
+  note: null,
+  created: new Date(),
+  updated: new Date(),
+  updatedBy: null,
+  revision: 1,
+  immutable,
+  valid: true,
+});
 
 describe("describeVersions", () => {
   it("treats a mutable latest version as the draft", () => {

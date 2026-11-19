@@ -66,9 +66,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
           (s) =>
             pending.existingSpanIds?.includes(s.id) ||
             (pending.targetSpanId && s.id === pending.targetSpanId) ||
-            s.slices.some((sl) =>
-              pending.slices.some((ps) => ps.offset === sl.offset && ps.length === sl.length),
-            ),
+            s.slices.some((sl) => pending.slices.some((ps) => ps.offset === sl.offset && ps.length === sl.length)),
         )
       : [];
 
@@ -127,23 +125,23 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
           />
         ) : (
           /* Inline Creation Mode: Assign code to new text selection */
-          <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-1">
+          <div className="flex animate-in flex-col gap-2 fade-in slide-in-from-bottom-1">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <span className="text-xs font-semibold text-foreground shrink-0">Label as:</span>
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="shrink-0 text-xs font-semibold text-foreground">Label as:</span>
                 <span
-                  className="text-xs sm:text-sm font-serif italic text-muted-foreground truncate max-w-sm sm:max-w-md"
+                  className="max-w-sm truncate font-serif text-xs text-muted-foreground italic sm:max-w-md sm:text-sm"
                   title={pendingTextSummary}
                 >
                   &ldquo;{truncateSpanText(pendingTextSummary, 55)}&rdquo;
                 </span>
                 {pending.slices.length > 1 && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+                  <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
                     {pending.slices.length} frags
                   </span>
                 )}
                 {annotation?.allowGaps && (
-                  <span className="text-[10px] text-muted-foreground italic shrink-0 hidden sm:inline">
+                  <span className="hidden shrink-0 text-[10px] text-muted-foreground italic sm:inline">
                     (tap words to toggle gaps)
                   </span>
                 )}
@@ -153,7 +151,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
               <button
                 type="button"
                 onClick={() => annotation?.setPendingSpan(null)}
-                className="relative flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer shrink-0"
+                className="relative flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                 title="Cancel selection (Esc)"
                 aria-label="Cancel selection"
               >
@@ -164,7 +162,11 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
 
             {/* From sm up the labels are at the selection (SpanLabelMenu); on a phone here, near the thumbs */}
             <p className="hidden text-xs text-muted-foreground @2xl:block">
-              Pick a label at the selection{annotation && annotation.options.length > 1 ? `, or press 1 to ${Math.min(9, annotation.options.length)}` : ""}.
+              Pick a label at the selection
+              {annotation && annotation.options.length > 1
+                ? `, or press 1 to ${Math.min(9, annotation.options.length)}`
+                : ""}
+              .
             </p>
             {/* Code choices flexing to fill the row without trailing blank space */}
             <div className="flex flex-wrap items-center gap-2 pt-0.5 @2xl:hidden">
@@ -172,7 +174,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
                 <button
                   key={c.value}
                   type="button"
-                  className="relative flex flex-1 min-w-[95px] max-w-[180px] items-center justify-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
+                  className="relative flex max-w-[180px] min-w-[95px] flex-1 cursor-pointer items-center justify-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold shadow-xs transition-all hover:scale-105 active:scale-95"
                   style={getCodeButtonStyle(c.color, false, isDark)}
                   onClick={() => {
                     annotation.addSpan(pending.slices, c.value);
@@ -188,7 +190,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
         )
       ) : viewingAllLabels && annotation ? (
         /* Full list of all labels in place of the normal answer form */
-        <div className="flex flex-col gap-2.5 animate-in fade-in slide-in-from-bottom-1">
+        <div className="flex animate-in flex-col gap-2.5 fade-in slide-in-from-bottom-1">
           {editingSpanFromList ? (
             <SpanEditLabel
               annotation={annotation}
@@ -219,7 +221,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground cursor-pointer"
+                    className="h-7 cursor-pointer gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
                     onClick={() => {
                       setViewingAllLabels(false);
                       setEditingSpanFromList(null);
@@ -241,7 +243,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
                     setEditingSpanFromList(null);
                     annotation.setFocusedSpanId(null);
                   }}
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer shrink-0"
+                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                   title="Close list"
                   aria-label="Close"
                 >
@@ -249,7 +251,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
                 </button>
               </div>
 
-              <div className="flex flex-col gap-1.5 overflow-y-auto max-h-[140px] pr-0.5">
+              <div className="flex max-h-[140px] flex-col gap-1.5 overflow-y-auto pr-0.5">
                 {annotation.spans.map((span) => {
                   const badgeStyle = getCodeBadgeStyle(colorFor(span.value), isDark);
                   const spanSummary = span.slices.map((sl) => sl.text).join(" ... ");
@@ -258,28 +260,25 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
                       key={span.id}
                       type="button"
                       onClick={() => handleSelectSpanFromList(span)}
-                      className="flex w-full items-center justify-between gap-2 rounded-lg border border-border/70 bg-background/80 px-3 py-1.5 text-left hover:bg-muted/60 hover:border-primary/40 transition-all cursor-pointer shadow-2xs group"
+                      className="group flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-border/70 bg-background/80 px-3 py-1.5 text-left shadow-2xs transition-all hover:border-primary/40 hover:bg-muted/60"
                     >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
                         <span
                           style={badgeStyle}
-                          className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold shrink-0"
+                          className="inline-flex shrink-0 items-center rounded-md border px-2 py-0.5 text-xs font-semibold"
                         >
                           {labelFor(span.value)}
                         </span>
-                        <span
-                          className="text-xs font-serif italic text-foreground/90 truncate"
-                          title={spanSummary}
-                        >
+                        <span className="truncate font-serif text-xs text-foreground/90 italic" title={spanSummary}>
                           &ldquo;{truncateSpanText(spanSummary, 55)}&rdquo;
                         </span>
                         {span.slices.length > 1 && (
-                          <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-muted text-muted-foreground shrink-0">
+                          <span className="py-0.2 shrink-0 rounded bg-muted px-1 font-mono text-[10px] text-muted-foreground">
                             {span.slices.length} frags
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground group-hover:text-primary transition-colors shrink-0">
+                      <div className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground transition-colors group-hover:text-primary">
                         <span>Edit</span>
                         <ChevronRight className="h-3.5 w-3.5" />
                       </div>
@@ -293,27 +292,23 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
       ) : (
         /* Normal Idle Overview: Compact prompt + View all labels button + Done button */
         <div className="flex flex-col gap-3 py-0.5">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <p className="text-xs text-muted-foreground">
-              Click or select words above to label spans.
-            </p>
-            <span className="text-xs font-mono font-medium text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">Click or select words above to label spans.</p>
+            <span className="font-mono text-xs font-medium text-muted-foreground">
               {annotation?.spans.length ?? 0} labeled
             </span>
           </div>
 
-          <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/50">
+          <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-1">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 px-3 text-xs gap-1.5 cursor-pointer"
+              className="h-8 cursor-pointer gap-1.5 px-3 text-xs"
               disabled={!annotation || annotation.spans.length === 0}
               onClick={() => setViewingAllLabels(true)}
               title={
-                annotation && annotation.spans.length > 0
-                  ? "View and edit all labeled spans"
-                  : "No spans labeled yet"
+                annotation && annotation.spans.length > 0 ? "View and edit all labeled spans" : "No spans labeled yet"
               }
             >
               <List className="h-3.5 w-3.5" />
@@ -322,7 +317,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
 
             <Button
               size="sm"
-              className="h-8 px-4 text-xs font-medium cursor-pointer"
+              className="h-8 cursor-pointer px-4 text-xs font-medium"
               onClick={() =>
                 onAnswer({
                   done: true,

@@ -3,7 +3,14 @@ import { DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type Choice = "pause" | "quit" | "delete";
 
@@ -34,7 +41,7 @@ export function QuitMenu({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-bar-foreground hover:bg-bar-foreground/15 transition-colors cursor-pointer"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-bar-foreground transition-colors hover:bg-bar-foreground/15"
             title="Stop"
             aria-label="Stop"
           >
@@ -42,8 +49,16 @@ export function QuitMenu({
           </button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-64 p-1.5 shadow-lg">
-          <MenuItem title="Stop for now" detail="Continue later where you left off." onClick={() => setChoice("pause")} />
-          <MenuItem title="Quit this study" detail="Stop for good. Your answers so far are kept." onClick={() => setChoice("quit")} />
+          <MenuItem
+            title="Stop for now"
+            detail="Continue later where you left off."
+            onClick={() => setChoice("pause")}
+          />
+          <MenuItem
+            title="Quit this study"
+            detail="Stop for good. Your answers so far are kept."
+            onClick={() => setChoice("quit")}
+          />
           <MenuItem
             title="Quit and ask to delete my answers"
             detail="Stop for good, and ask the researchers to delete your answers."
@@ -51,14 +66,24 @@ export function QuitMenu({
           />
         </PopoverContent>
       </Popover>
-      <QuitDialog choice={choice} canTransfer={canTransfer} login={login} onClose={() => setChoice(null)} onQuit={onQuit} />
+      <QuitDialog
+        choice={choice}
+        canTransfer={canTransfer}
+        login={login}
+        onClose={() => setChoice(null)}
+        onQuit={onQuit}
+      />
     </>
   );
 }
 
 function MenuItem({ title, detail, onClick }: { title: string; detail: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="flex w-full cursor-pointer flex-col items-start rounded-md px-2.5 py-2 text-left hover:bg-muted">
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full cursor-pointer flex-col items-start rounded-md px-2.5 py-2 text-left hover:bg-muted"
+    >
       <span className="text-sm font-medium text-foreground">{title}</span>
       <span className="text-xs text-muted-foreground">{detail}</span>
     </button>
@@ -111,15 +136,15 @@ export function QuitDialog({
                 </p>
               ) : (
                 <p>
-                  To continue later, open the same link again <strong>on this device, in this browser</strong>: you continue
-                  where you left off. Your session is kept in this browser, so it is lost if you clear its cookies or use a
-                  private window.
+                  To continue later, open the same link again <strong>on this device, in this browser</strong>: you
+                  continue where you left off. Your session is kept in this browser, so it is lost if you clear its
+                  cookies or use a private window.
                 </p>
               )}
               {canTransfer && (
                 <p>
-                  To continue on another device, use <strong>Continue on another device</strong> (the screen icon at the top)
-                  before you stop.
+                  To continue on another device, use <strong>Continue on another device</strong> (the screen icon at the
+                  top) before you stop.
                 </p>
               )}
             </div>
@@ -135,8 +160,8 @@ export function QuitDialog({
               <DialogDescription>You won&apos;t be able to continue afterwards.</DialogDescription>
             </DialogHeader>
             <p className="text-sm text-foreground">
-              The answers you gave so far are kept, and the researchers can use them. Answers to the item you have open now and
-              didn&apos;t finish are not saved.
+              The answers you gave so far are kept, and the researchers can use them. Answers to the item you have open
+              now and didn&apos;t finish are not saved.
             </p>
             <DialogFooter>
               <Button variant="outline" onClick={close}>
@@ -156,13 +181,13 @@ export function QuitDialog({
             </DialogHeader>
             <div className="space-y-2 text-sm text-foreground">
               <p>
-                The researchers get a request to delete all your answers to this study. They decide on it: they may already have
-                downloaded the answers, or need them under the terms of the study (for instance when you were paid for taking
-                part).
+                The researchers get a request to delete all your answers to this study. They decide on it: they may
+                already have downloaded the answers, or need them under the terms of the study (for instance when you
+                were paid for taking part).
               </p>
               <p>
-                If you want to follow up on your request, contact the researchers of this study, and tell them when you sent it
-                and the link you used.
+                If you want to follow up on your request, contact the researchers of this study, and tell them when you
+                sent it and the link you used.
               </p>
               <label className="flex flex-col gap-1 pt-1 text-xs font-medium">
                 Type &ldquo;{CONFIRM_WORD}&rdquo; to confirm
@@ -173,7 +198,11 @@ export function QuitDialog({
               <Button variant="outline" onClick={close}>
                 Cancel
               </Button>
-              <Button variant="destructive" disabled={busy || typed.trim().toLowerCase() !== CONFIRM_WORD} onClick={() => void run(true)}>
+              <Button
+                variant="destructive"
+                disabled={busy || typed.trim().toLowerCase() !== CONFIRM_WORD}
+                onClick={() => void run(true)}
+              >
                 Quit and ask to delete
               </Button>
             </DialogFooter>

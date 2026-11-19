@@ -4,11 +4,7 @@ import { StudyRunner } from "./StudyRunner";
 
 describe("StudyRunner menu bar and settings integration", () => {
   it("renders StudyRunner with CoderSettingsProvider and initial loading state", () => {
-    const html = renderToStaticMarkup(
-      <StudyRunner
-        baseUrl="http://localhost:3000"
-      />
-    );
+    const html = renderToStaticMarkup(<StudyRunner baseUrl="http://localhost:3000" />);
     expect(html).toContain("Loading session…");
   });
 });

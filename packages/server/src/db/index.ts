@@ -63,10 +63,14 @@ const TIMESTAMP_TYPES = new Set([1114, 1184]); // TIMESTAMP, TIMESTAMPTZ
  * column types).
  */
 export async function rows<T>(db: Db, query: SQL): Promise<T[]> {
-  const result = (await db.execute(query)) as unknown as { rows: Record<string, unknown>[]; fields: { name: string; dataTypeID: number }[] };
+  const result = (await db.execute(query)) as unknown as {
+    rows: Record<string, unknown>[];
+    fields: { name: string; dataTypeID: number }[];
+  };
   const dates = result.fields.filter((f) => TIMESTAMP_TYPES.has(f.dataTypeID)).map((f) => f.name);
   if (dates.length > 0) {
-    for (const row of result.rows) for (const name of dates) if (typeof row[name] === "string") row[name] = new Date(row[name]);
+    for (const row of result.rows)
+      for (const name of dates) if (typeof row[name] === "string") row[name] = new Date(row[name]);
   }
   return result.rows as T[];
 }

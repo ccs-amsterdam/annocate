@@ -18,7 +18,9 @@ function initial(): Theme {
   } catch {
     // localStorage unavailable: follow the system.
   }
-  return typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 function get(): Theme {

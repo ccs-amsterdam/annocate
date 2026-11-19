@@ -18,7 +18,8 @@ interface HastNode {
   children?: HastNode[];
 }
 
-const textOf = (node: HastNode | undefined): string => (node?.type === "text" ? (node.value ?? "") : (node?.children ?? []).map(textOf).join(""));
+const textOf = (node: HastNode | undefined): string =>
+  node?.type === "text" ? (node.value ?? "") : (node?.children ?? []).map(textOf).join("");
 
 /**
  * The help dialog's content (lazy, with the topics): the topic menu, the
@@ -34,7 +35,13 @@ export default function HelpContent({ target }: { target: HelpTarget }) {
   useLayoutEffect(() => {
     const el = main.current;
     if (!el) return;
-    setHeadings([...el.querySelectorAll<HTMLElement>("article h2[id], article h3[id]")].map((h) => ({ id: h.id, text: h.textContent ?? "", depth: h.tagName === "H2" ? 2 : 3 })));
+    setHeadings(
+      [...el.querySelectorAll<HTMLElement>("article h2[id], article h3[id]")].map((h) => ({
+        id: h.id,
+        text: h.textContent ?? "",
+        depth: h.tagName === "H2" ? 2 : 3,
+      })),
+    );
     const anchor = target.anchor ? el.querySelector<HTMLElement>(`#${CSS.escape(target.anchor)}`) : null;
     if (anchor) anchor.scrollIntoView?.({ block: "start" });
     else el.scrollTop = 0;
@@ -65,7 +72,10 @@ export default function HelpContent({ target }: { target: HelpTarget }) {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <nav aria-label="Help topics" className="hidden w-64 shrink-0 overflow-y-auto border-r border-border px-5 py-6 md:block">
+        <nav
+          aria-label="Help topics"
+          className="hidden w-64 shrink-0 overflow-y-auto border-r border-border px-5 py-6 md:block"
+        >
           {HELP_SECTIONS.map((section) => (
             <div key={section} className="mb-6">
               <h4 className="mb-2 text-xs font-semibold text-foreground">{section}</h4>
@@ -93,7 +103,7 @@ export default function HelpContent({ target }: { target: HelpTarget }) {
         </nav>
 
         <div ref={main} onScroll={onScroll} className="min-w-0 flex-1 overflow-y-auto">
-          <article className="mx-auto max-w-3xl px-6 pb-16 pt-8 sm:px-10">
+          <article className="mx-auto max-w-3xl px-6 pt-8 pb-16 sm:px-10">
             <p className="mb-1 text-sm font-semibold text-primary">{topic.section}</p>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">{topic.title}</h1>
             {topic.summary && <p className="mt-3 text-lg text-muted-foreground">{topic.summary}</p>}
@@ -120,9 +130,14 @@ export default function HelpContent({ target }: { target: HelpTarget }) {
                       href={`#${h.id}`}
                       onClick={(e) => {
                         e.preventDefault();
-                        main.current?.querySelector(`#${CSS.escape(h.id)}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        main.current
+                          ?.querySelector(`#${CSS.escape(h.id)}`)
+                          ?.scrollIntoView({ behavior: "smooth", block: "start" });
                       }}
-                      className={cn("block transition-colors hover:text-foreground", active === h.id ? "text-primary" : "text-muted-foreground")}
+                      className={cn(
+                        "block transition-colors hover:text-foreground",
+                        active === h.id ? "text-primary" : "text-muted-foreground",
+                      )}
                     >
                       {h.text}
                     </a>
@@ -190,7 +205,10 @@ function PagerLink({ topic, direction }: { topic: HelpTopic; direction: "previou
     <button
       type="button"
       onClick={() => openHelp(topic.slug)}
-      className={cn("group flex cursor-pointer flex-col gap-0.5", direction === "next" && "ml-auto items-end text-right")}
+      className={cn(
+        "group flex cursor-pointer flex-col gap-0.5",
+        direction === "next" && "ml-auto items-end text-right",
+      )}
     >
       <span className="text-xs text-muted-foreground">{direction === "next" ? "Next" : "Previous"}</span>
       <span className="flex items-center gap-1 font-medium text-foreground group-hover:text-primary">

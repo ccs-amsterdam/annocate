@@ -22,7 +22,8 @@ test("a coder swipes through their set with the arrow keys; every answer is save
 test("a swipe starts anywhere on the screen, and 1, 2, 3 answer too", async ({ page, request }) => {
   const { study, link } = await fromExample(request, "swipe-sentiment");
   const examples = (await coders(request, study.id)).map((c) => c.id);
-  const mine = async () => (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null);
+  const mine = async () =>
+    (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null);
   await page.goto(link);
   await question(page, "Is this headline good news or bad news?");
   await page.waitForTimeout(500);
@@ -41,7 +42,11 @@ test("a swipe starts anywhere on the screen, and 1, 2, 3 answer too", async ({ p
   expect(values).toEqual(["positive", "negative"]);
 });
 
-test("a respondent under 18 is screened out; an adult fills in the whole survey, follow-up included", async ({ page, request, browser }) => {
+test("a respondent under 18 is screened out; an adult fills in the whole survey, follow-up included", async ({
+  page,
+  request,
+  browser,
+}) => {
   const { study, link } = await fromExample(request, "simple-survey");
   const examples = (await coders(request, study.id)).map((c) => c.id);
 
@@ -74,10 +79,14 @@ test("a respondent under 18 is screened out; an adult fills in the whole survey,
   await expect(adult.getByText("Thank you for taking part!")).toBeVisible();
 
   const rows = (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId));
-  const byVariable = (name: string) => rows.filter((a) => a.variable === name).map((a) => a.value.values?.map((v) => v.value));
+  const byVariable = (name: string) =>
+    rows.filter((a) => a.variable === name).map((a) => a.value.values?.map((v) => v.value));
   expect(byVariable("age").sort()).toEqual([[15], [30]]);
   expect(byVariable("social_platform")).toEqual([["instagram"]]);
-  const ended = (await coders(request, study.id)).filter((c) => !examples.includes(c.id)).map((c) => c.ended?.outcome).sort();
+  const ended = (await coders(request, study.id))
+    .filter((c) => !examples.includes(c.id))
+    .map((c) => c.ended?.outcome)
+    .sort();
   expect(ended).toEqual(["complete", "screenout"]);
 });
 
@@ -92,7 +101,10 @@ test("a participant in the experiment reads their version of the article and ans
   const human = await page.getByText("Kees Jansen").isVisible();
   expect(economic !== human).toBe(true);
   await page.getByRole("button", { name: "I confirm", exact: true }).click();
-  await page.getByRole("button", { name: /Support/ }).first().click();
+  await page
+    .getByRole("button", { name: /Support/ })
+    .first()
+    .click();
   for (const row of ["Hopeful", "Worried", "Angry"]) {
     await page.getByRole("radiogroup", { name: row }).getByRole("radio", { name: "a little" }).click();
   }
@@ -139,18 +151,33 @@ test("a coder selects actors in a text and labels them", async ({ page, request 
   await page.mouse.down();
   await page.mouse.move(box!.bx, box!.by, { steps: 8 });
   await page.mouse.up();
-  await page.getByRole("button", { name: /Person/ }).first().click();
+  await page
+    .getByRole("button", { name: /Person/ })
+    .first()
+    .click();
   await page.getByRole("button", { name: "Done (1)" }).click();
   await question(page, "Select every person and organisation mentioned in the text.");
-  await expect.poll(async () => (await answers(request, study.id)).filter((x) => !examples.includes(x.coderId)).length).toBe(1);
+  await expect
+    .poll(async () => (await answers(request, study.id)).filter((x) => !examples.includes(x.coderId)).length)
+    .toBe(1);
   const [row] = (await answers(request, study.id)).filter((x) => !examples.includes(x.coderId));
   expect(row.value.spans).toMatchObject([{ value: "person", field: "text", slices: [{ text: "Anna de Wit" }] }]);
 });
 
-test("an ::html field shows in its sandboxed frame, sized by its script, within the page's security policy", async ({ page, request }) => {
+test("an ::html field shows in its sandboxed frame, sized by its script, within the page's security policy", async ({
+  page,
+  request,
+}) => {
   const study = await api<{ id: number }>(request, "POST", "/study/from-recipe", {
     name: "HTML unit",
-    units: [{ id: "h1", data: { table: "<table><tr><th>Party</th><th>Seats</th></tr><tr><td>A</td><td>12</td></tr></table><p>Below</p>" } }],
+    units: [
+      {
+        id: "h1",
+        data: {
+          table: "<table><tr><th>Party</th><th>Seats</th></tr><tr><td>A</td><td>12</td></tr></table><p>Below</p>",
+        },
+      },
+    ],
     design: {
       items: [
         {
@@ -172,7 +199,10 @@ test("an ::html field shows in its sandboxed frame, sized by its script, within 
   await expect(page.frameLocator("iframe[sandbox]").getByText("Seats")).toBeVisible();
 });
 
-test("the menus list only what the coder got to; the loop's own menu keeps number keys from the question", async ({ page, request }) => {
+test("the menus list only what the coder got to; the loop's own menu keeps number keys from the question", async ({
+  page,
+  request,
+}) => {
   const { link } = await fromExample(request, "survey-annotations");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(link);

@@ -41,7 +41,7 @@ function renderQuestionText(variable: QuestionItem["variable"], rendered?: Rende
 
   return (
     <div
-      className="flex flex-col gap-1 text-base sm:text-lg font-semibold leading-snug tracking-tight text-foreground"
+      className="flex flex-col gap-1 text-base leading-snug font-semibold tracking-tight text-foreground sm:text-lg"
       style={variable.questionStyle as CSSProperties | undefined}
     >
       <TemplateMarkdown rendered={rendered ?? staticTemplate(variable.question)} components={TEXT_COMPONENTS} />
@@ -54,7 +54,7 @@ function renderInstruction(variable: QuestionItem["variable"], rendered?: Render
 
   return (
     <div
-      className="flex flex-col gap-1 text-xs sm:text-sm text-muted-foreground leading-normal"
+      className="flex flex-col gap-1 text-xs leading-normal text-muted-foreground sm:text-sm"
       style={variable.instructionStyle as CSSProperties | undefined}
     >
       <TemplateMarkdown rendered={rendered ?? staticTemplate(variable.instruction)} components={TEXT_COMPONENTS} />
@@ -69,8 +69,7 @@ export function Question({ item, onAnswer, unitVariables, initialValue, texts }:
   // Keep docked card compact: hide question header when inspecting/assigning a selected span
   // or when viewing the full list of labeled spans
   const hideHeader =
-    variable.type === "span" &&
-    (Boolean(spanAnnotation?.pendingSpan) || Boolean(spanAnnotation?.isViewingAllLabels));
+    variable.type === "span" && (Boolean(spanAnnotation?.pendingSpan) || Boolean(spanAnnotation?.isViewingAllLabels));
 
   let answerField: ReactNode;
   switch (variable.type) {
@@ -94,7 +93,14 @@ export function Question({ item, onAnswer, unitVariables, initialValue, texts }:
       answerField = <SpanAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;
       break;
     case "relation":
-      answerField = <RelationAnswerField variable={variable} unitVariables={unitVariables} onAnswer={onAnswer} initialValue={initialValue} />;
+      answerField = (
+        <RelationAnswerField
+          variable={variable}
+          unitVariables={unitVariables}
+          onAnswer={onAnswer}
+          initialValue={initialValue}
+        />
+      );
       break;
     default:
       answerField = <UnsupportedAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;
@@ -102,7 +108,7 @@ export function Question({ item, onAnswer, unitVariables, initialValue, texts }:
   }
 
   return (
-    <div className="flex flex-col gap-2 w-full">
+    <div className="flex w-full flex-col gap-2">
       {!hideHeader && (
         <div className="flex flex-col gap-0.5">
           {renderQuestionText(variable, texts?.question)}
