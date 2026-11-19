@@ -197,6 +197,19 @@ describe("StudyManager error-handling, rollback, and retry contract", () => {
     expect(questions[1].label).toBe("Is … about …?");
   });
 
+  it("lists only the unit's questions the coder got to: not the ones after the first unanswered one", async () => {
+    const loop = unitLoop("loop", [unitVar("q1"), unitVar("q2"), unitVar("q3")]);
+    const server = makeFlakyServer({ getSession: vi.fn(async () => session([loop])), getNextUnit: vi.fn(async () => unit(1)) });
+    const manager = new StudyManager(server);
+    await manager.start();
+    const names = () => manager.getSnapshot().navigation.phases[0].questions!.map((q) => q.name);
+    expect(names()).toEqual(["q1"]);
+    await manager.answer({ done: true, values: [{ value: "A" }] } as VariableValue);
+    expect(names()).toEqual(["q1", "q2"]);
+    await manager.goBack();
+    expect(names()).toEqual(["q1", "q2"]);
+  });
+
   it("quits: the session ends; asking for deletion works also after the end", async () => {
     const quitSession = vi.fn(async () => {});
     const server = makeFlakyServer({ getSession: vi.fn(async () => session([confirm("a"), confirm("b")])), quitSession });

@@ -172,3 +172,38 @@ test("an ::html field shows in its sandboxed frame, sized by its script, within 
   await expect.poll(async () => (await frame.boundingBox())?.height ?? 0).toBeGreaterThan(40);
   await expect(page.frameLocator("iframe[sandbox]").getByText("Seats")).toBeVisible();
 });
+
+test("the menus list only what the coder got to; the loop's own menu keeps number keys from the question", async ({ page, request }) => {
+  const { link } = await fromExample(request, "survey-annotations");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(link);
+  await page.getByRole("button", { name: "I confirm", exact: true }).click();
+  await page.getByRole("button", { name: /18 to 29/ }).click();
+
+  // On the third question: the menu shows the three, not the loop after them
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  const menu = page.getByRole("dialog");
+  await expect(menu.getByRole("button")).toHaveCount(3);
+  await expect(menu.getByText("Headlines", { exact: true })).toHaveCount(0);
+  if (process.env.E2E_SHOTS) await page.screenshot({ path: `${process.env.E2E_SHOTS}/menu-main.png` });
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: /Quite/ }).first().click();
+  await question(page, "What is this headline about?");
+  // In the loop: its button; its menu shows the unit's first question only
+  await page.getByRole("button", { name: /open the units/ }).click();
+  await expect(page.getByText("Unit 1")).toBeVisible();
+  await expect(page.getByRole("dialog").getByText("How relevant is this news")).toHaveCount(0);
+  if (process.env.E2E_SHOTS) await page.screenshot({ path: `${process.env.E2E_SHOTS}/menu-loop.png` });
+  // A number key opens the number pad, it doesn't answer the question
+  await page.keyboard.press("2");
+  await expect(page.getByText("You can go up to unit 1")).toBeVisible();
+  if (process.env.E2E_SHOTS) await page.screenshot({ path: `${process.env.E2E_SHOTS}/menu-pad.png` });
+  await page.keyboard.press("Escape");
+  await question(page, "What is this headline about?");
+
+  // The main menu now lists the loop too
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  await expect(page.getByRole("dialog").getByText("Headlines", { exact: true })).toBeVisible();
+  if (process.env.E2E_SHOTS) await page.screenshot({ path: `${process.env.E2E_SHOTS}/menu-main-loop.png` });
+});

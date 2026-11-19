@@ -2,31 +2,31 @@ import { useEffect, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CircleDot, Delete, Layers, Menu } from "lucide-react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { NavigationPhase, StudyManagerNavigation } from "../studyManager/StudyManager";
 
-// The left side of the coding screen's top bar (docs/client.md §2): the
-// menu button, where the coder is ("3": the 3rd question; "4 · 2": unit 4,
-// its 2nd question), which opens the menu too, and back / forward.
+// The left side of the coding screen's top bar (docs/client.md §2):
+// - the menu (☰): the study's questions and unit loops the coder got to,
+//   to go back to one; not there if the study is one unit loop only;
+// - in a unit loop, the loop's button (its icon and where the coder is:
+//   "4", or "4 · 2" for unit 4's 2nd question): which unit, first /
+//   previous / next / furthest, a number pad to go to a unit, and the
+//   unit's questions the coder got to;
+// - outside loops, the question's number;
+// - back / forward.
+// Questions the coder hasn't got to are never listed: conditions may skip them.
 //
-// The menu has two tabs while the coder is in a unit loop:
-// - Overview: the study's questions and unit loops (a loop with the
-//   coder's unit in it); a loop opens at the coder's unit, on its tab;
-// - the loop (by its label): which unit, first / previous / next /
-//   furthest, a number pad to go to a unit, and the unit's questions.
-//   The menu opens on this tab while in a loop. A study that is one unit
-//   loop only has this one.
-//
-// While the menu is open, number and arrow keys are the menu's (the
-// number pad), never the answer shortcuts of the question behind it.
+// While a menu is open, number and arrow keys are the menu's (the number
+// pad), never the answer shortcuts of the question behind it.
 //
 // How far the coder is in the loop shows as a line along the bar's bottom
 // edge (`CodingProgress`), when the loop's number of units is known.
 
 const barButton = "flex h-8 cursor-pointer items-center justify-center rounded-lg text-bar-foreground transition-colors hover:bg-bar-foreground/15";
 
-/** The steps listed in the menu: questions and unit loops. */
-const listed = (phases: NavigationPhase[]) => phases.filter((p) => p.type === "question" || p.type === "unit_loop");
+/** The steps listed in the menu: questions and unit loops the coder got to. */
+const listed = (navigation: StudyManagerNavigation) =>
+  navigation.phases.filter((p) => (p.type === "question" || p.type === "unit_loop") && p.index <= navigation.maxReachedTopIndex);
 
 /** A question step's number among the study's top-level questions (1, 2, ...). */
 function questionNumber(phases: NavigationPhase[], phase: NavigationPhase): number {
@@ -44,9 +44,21 @@ function loopUnits(phase: NavigationPhase, navigation: StudyManagerNavigation): 
   return { current, reached, total: phase.totalUnits ? Math.max(reached, phase.totalUnits) : null };
 }
 
+/** While `active`, number and arrow keys never reach the question behind the menu. */
+function useMenuKeys(active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (/^[0-9]$/.test(e.key) || ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Backspace", "Enter"].includes(e.key)) e.stopPropagation();
+    };
+    window.addEventListener("keydown", onKey, { capture: true });
+    return () => window.removeEventListener("keydown", onKey, { capture: true });
+  }, [active]);
+}
+
 export interface CodingNavProps {
   navigation: StudyManagerNavigation;
-  /** The study's public title, at the top of the overview. */
+  /** The study's public title, at the top of the menu. */
   title: string | null;
   onJumpToPhase: (index: number) => void;
   /** Goes to a unit of the current loop (0-based; among the units the coder reached). */
@@ -58,19 +70,15 @@ export interface CodingNavProps {
 }
 
 export function CodingNav({ navigation, title, onJumpToPhase, onJumpToUnit, onJumpToQuestion, onBack, onForward }: CodingNavProps) {
-  const steps = listed(navigation.phases);
+  const steps = listed(navigation);
   const current = navigation.phases[navigation.currentPhaseIndex];
   const inLoop = current?.type === "unit_loop";
-  const onlyLoop = steps.length === 1 && steps[0].type === "unit_loop";
-  const [open, setOpen] = useState(false);
-  // The tab: the overview, or the loop (by its index; shown once the coder is in it)
-  const [tab, setTab] = useState<"overview" | number>("overview");
-
-  const openMenu = (o: boolean) => {
-    setOpen(o);
-    // In a loop, the menu opens on the loop's tab
-    if (o) setTab(inLoop ? current.index : "overview");
-  };
+  const loops = navigation.phases.filter((p) => p.type === "unit_loop").length;
+  const onlyLoop = loops === 1 && navigation.phases.every((p) => p.type !== "question");
+  const [openMenu, setMenu] = useState<"main" | "loop" | null>(null);
+  // Out of the loop (e.g. back to a question), its menu is gone
+  const menu = openMenu === "loop" && !inLoop ? null : openMenu;
+  useMenuKeys(menu !== null);
 
   // Where the coder is: "3", or in a loop "4 · 2" (unit 4, 2nd question; just "4" if the unit has one question)
   let position: string | null = null;
@@ -86,86 +94,67 @@ export function CodingNav({ navigation, title, onJumpToPhase, onJumpToUnit, onJu
     position = several ? `${unit} · ${q + 1}` : String(unit);
     positionTitle = several ? `Unit ${unit}, question ${q + 1}` : `Unit ${unit}`;
   }
-
-  // While the menu is open, number and arrow keys never reach the question behind it (the loop tab uses numbers itself)
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (/^[0-9]$/.test(e.key) || ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Backspace", "Enter"].includes(e.key)) e.stopPropagation();
-    };
-    window.addEventListener("keydown", onKey, { capture: true });
-    return () => window.removeEventListener("keydown", onKey, { capture: true });
-  }, [open]);
-
-  const loop = tab === "overview" ? null : navigation.phases[tab];
-  const showLoop = loop?.type === "unit_loop" && loop.isCurrent;
+  const chip = "h-7 min-w-7 gap-1 px-2 text-xs font-semibold tabular-nums";
 
   return (
     <div className="flex items-center gap-1 sm:gap-1.5">
-      <Popover open={open} onOpenChange={openMenu}>
-        <PopoverAnchor asChild>
-          <div className="flex items-center gap-1">
-            {!onlyLoop && (
-              <button type="button" className={cn(barButton, "w-8")} onClick={() => openMenu(!open)} title="Menu" aria-label="Menu" aria-expanded={open}>
-                <Menu className="h-5 w-5" />
-              </button>
-            )}
-            {position && (
-              <button
-                type="button"
-                className={cn(barButton, "h-7 min-w-7 gap-1 bg-bar-foreground/15 px-2 text-xs font-semibold tabular-nums")}
-                onClick={() => openMenu(!open)}
-                title={`${positionTitle}: open the menu`}
-                aria-label={`${positionTitle}: open the menu`}
-              >
-                {onlyLoop && <Layers className="h-3.5 w-3.5" />}
-                {position}
-              </button>
-            )}
-          </div>
-        </PopoverAnchor>
-        <PopoverContent
-          align="start"
-          className="w-72 p-0 shadow-lg"
-          // Not into the menu's buttons: arrows and numbers stay the menu's, Esc closes it
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          {inLoop && !onlyLoop && (
-            <div className="flex gap-0.5 border-b border-border/60 p-1" role="tablist">
-              <TabButton active={!showLoop} onClick={() => setTab("overview")}>
-                Overview
-              </TabButton>
-              <TabButton active={showLoop} onClick={() => setTab(current.index)}>
-                <Layers className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{current.label}</span>
-              </TabButton>
-            </div>
-          )}
-          {showLoop ? (
-            <LoopPanel
-              phase={loop}
-              navigation={navigation}
-              onJumpToUnit={onJumpToUnit}
-              onJumpToQuestion={(index) => {
-                onJumpToQuestion(index);
-                setOpen(false);
-              }}
-            />
-          ) : (
+      {!onlyLoop && (
+        <Popover open={menu === "main"} onOpenChange={(o) => setMenu(o ? "main" : null)}>
+          <PopoverTrigger asChild>
+            <button type="button" className={cn(barButton, "w-8")} title="Menu" aria-label="Menu">
+              <Menu className="h-5 w-5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            className="w-72 p-0 shadow-lg"
+            // Not into the menu's buttons: arrows and numbers stay the menu's, Esc closes it
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
             <Overview
               steps={steps}
               navigation={navigation}
               title={title}
               onPick={(step) => {
-                onJumpToPhase(step.index);
-                // A loop: its tab, once the coder is in it; a question: done
-                if (step.type === "unit_loop") setTab(step.index);
-                else setOpen(false);
+                setMenu(null);
+                if (!step.isCurrent) onJumpToPhase(step.index);
               }}
             />
-          )}
-        </PopoverContent>
-      </Popover>
+          </PopoverContent>
+        </Popover>
+      )}
+      {inLoop ? (
+        <Popover open={menu === "loop"} onOpenChange={(o) => setMenu(o ? "loop" : null)}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={cn(barButton, chip, "bg-bar-foreground/15")}
+              title={`${current.label}: ${positionTitle}`}
+              aria-label={`${current.label}, ${positionTitle}: open the units`}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              {position}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-72 p-0 shadow-lg" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <LoopPanel
+              phase={current}
+              navigation={navigation}
+              onJumpToUnit={onJumpToUnit}
+              onJumpToQuestion={(index) => {
+                onJumpToQuestion(index);
+                setMenu(null);
+              }}
+            />
+          </PopoverContent>
+        </Popover>
+      ) : (
+        position && (
+          <span className={cn("flex items-center justify-center rounded-lg text-bar-foreground/80", chip)} title={positionTitle}>
+            {position}
+          </span>
+        )
+      )}
       <div className="flex shrink-0 items-center gap-0.5">
         <Button
           type="button"
@@ -193,23 +182,6 @@ export function CodingNav({ navigation, title, onJumpToPhase, onJumpToUnit, onJu
         </Button>
       </div>
     </div>
-  );
-}
-
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={cn(
-        "flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-        active ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {children}
-    </button>
   );
 }
 
@@ -250,13 +222,13 @@ function StepIcon({ completed, current }: { completed: boolean; current: boolean
   );
 }
 
-const rowClass = (current: boolean, enabled = true) =>
+const rowClass = (current: boolean) =>
   cn(
-    "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
-    current ? "bg-primary/10 font-semibold text-primary" : enabled ? "cursor-pointer text-foreground hover:bg-muted/60" : "cursor-default text-muted-foreground/60",
+    "flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
+    current ? "bg-primary/10 font-semibold text-primary" : "text-foreground hover:bg-muted/60",
   );
 
-/** The study's questions and unit loops, to go to one the coder reached. */
+/** The study's questions and unit loops the coder got to, to go back to one. */
 function Overview({
   steps,
   navigation,
@@ -273,16 +245,14 @@ function Overview({
       {title && <p className="border-b border-border/60 px-3.5 py-2.5 text-sm font-semibold text-foreground">{title}</p>}
       <div className="flex-1 space-y-0.5 overflow-y-auto p-1.5">
         {steps.map((step) => {
-          const reachable = step.index <= navigation.maxReachedTopIndex;
           const units = step.type === "unit_loop" ? loopUnits(step, navigation) : null;
           return (
-            <button key={step.name || step.index} type="button" disabled={!reachable} onClick={() => onPick(step)} className={rowClass(step.isCurrent, reachable)} title={step.label}>
+            <button key={step.name || step.index} type="button" onClick={() => onPick(step)} className={rowClass(step.isCurrent)} title={step.label}>
               {step.type === "unit_loop" ? <Layers className="h-4 w-4 shrink-0 text-primary" /> : <StepIcon completed={step.isCompleted} current={step.isCurrent} />}
               <span className="flex-1 truncate">{step.label}</span>
               {units && (
-                <span className="flex shrink-0 items-center gap-0.5 font-mono text-[11px] text-muted-foreground">
+                <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
                   {units.total === null ? units.current : `${units.current} / ${units.total}`}
-                  {reachable && <ChevronRight className="h-3.5 w-3.5" />}
                 </span>
               )}
             </button>

@@ -50,8 +50,9 @@ From left to right:
 
 | Element | What it does |
 | --- | --- |
-| Menu (three lines) | Opens the menu (below) |
-| Where the coder is: `3`, or `4 · 2` | The 3rd question; or in a unit loop unit 4, its 2nd question (just `4` if a unit has one question). Opens the menu too |
+| Menu (three lines) | Opens the menu (below). Not there if the study is just one unit loop |
+| Where the coder is: `3` | The 3rd question |
+| In a unit loop, a stack icon and `4 · 2` | Unit 4, its 2nd question (just `4` if a unit has one question). Opens the loop's menu (below) |
 | **<** and **>** | Go back and forward |
 | Monitor-and-phone icon | **Continue on another device** (below) |
 | Gear | **Settings**: light or dark, and keyboard shortcut badges |
@@ -59,19 +60,19 @@ From left to right:
 In a unit loop whose number of units is known, a thin line along the
 bottom of the bar shows how many of them the coder has done.
 
-**The menu** lists the study's questions, by the first line of their
-text, and its unit loops, by their label (or *Units*), with the unit the
-coder is at. A tick marks what is done. Click a question to go to it;
-click a loop to go to the coder's unit in it.
+**The menu** lists the study's questions the coder got to, by the first
+line of their text, and its unit loops, by their label (or *Units*), with
+the unit the coder is at. Questions they haven't got to are not listed:
+conditions may skip them. A tick marks what is done. Click a question to
+go to it; click a loop to go to the coder's unit in it.
 
-**In a unit loop**, the menu has two tabs, **Overview** (the list above)
-and the loop, and opens on the loop: **Unit 12 of 40** between buttons
-for the first, previous, next and furthest unit, and the unit's
-questions, to go to one. Click the unit number for a number pad to go to
-a unit by its number (typing numbers works too). Coders can go to any
-unit up to the furthest one they reached, not beyond. While the menu is
-open, number and arrow keys belong to the menu, not to the question
-behind it. A study that is just one unit loop only has the loop's tab.
+**The loop's menu** shows **Unit 12 of 40** between buttons for the
+first, previous, next and furthest unit, and the questions of the unit
+that the coder got to, to go to one. Click the unit number for a number
+pad to go to a unit by its number (typing numbers works too). Coders can
+go to any unit up to the furthest one they reached, not beyond. While a
+menu is open, number and arrow keys belong to the menu, not to the
+question behind it.
 
 Give your loops a clear label and start each question with a short first
 line: that is what coders see in the menu.

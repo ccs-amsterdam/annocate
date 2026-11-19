@@ -1452,9 +1452,13 @@ export class StudyManager {
             isCurrent: hIdx === history.index,
           }));
 
-          // The questions this unit shows (conditions applied), numbered as the coder meets them.
+          // The questions this unit shows (conditions applied) that the coder
+          // got to: up to the current one, or up to the first unanswered one
+          // (as jumpToLoopStep allows). Later ones may never show (conditions).
+          const firstOpen = this.loopSteps.findIndex((q) => this.unitVariableValues[itemName(q) ?? ""] === undefined);
+          const reached = Math.max(this.loopIndex, firstOpen === -1 ? this.loopSteps.length - 1 : firstOpen);
           questions = this.loopSteps.flatMap((q, qIdx) =>
-            q.type === "question"
+            q.type === "question" && qIdx <= reached
               ? [{ index: qIdx, name: q.name, label: getQuestionLabel(q), isCurrent: qIdx === this.loopIndex, isCompleted: qIdx < this.loopIndex }]
               : [],
           );
