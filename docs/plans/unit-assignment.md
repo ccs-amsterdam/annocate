@@ -2,19 +2,45 @@
 
 Status: built (2026-11-19, steps 1–4). Deviations from the text below:
 
-- The random condition is an answer type (`random_condition`, with `draw`,
-  `options?`, `units?`) of a question, not a new item kind; the editor
-  shows it as "Random condition".
-- The coder and condition values are per session (`$session`), but a
-  coder's routing in a loop is still stored per branch fingerprint
-  (`coders.assignments`, `architecture.md` §6.2), holding the share's key.
-  The fingerprint is the branch in full (`when`, filter, criteria,
-  placements) with the branches before it: a changed branch (or a changed
-  one before it) routes again, an unchanged one sticks, also when the loop
-  moves; another loop only shares it if its branches up to there are the
-  same.
+- The random condition is a **computed item** (`type: "computed"`,
+  `variable: { type: "random", draw, options?, units?, stratify? }`, since
+  2026-11-19; first an answer type `random_condition` of a question). The
+  editor shows it as "Random value". Later computed variables can have
+  other types (a formula). The coder API draws it at
+  `POST /variables/computed/:name`.
+- The coder and condition values are per session (`$session`).
 - Migration `0006_unit_assignment.sql` has the same number as the MCP
   branch's `0006_oauth.sql`: renumber one when merging.
+
+### Branches removed (2026-11-19)
+
+A loop's `units` was a list of branches, each with a `when` condition (on
+coder-level answers, evaluated by the client, which sent the branch index),
+its own filter, criteria and special units, and coders' routing was stored
+per branch fingerprint so it stuck. It is now **one object**
+(`{ filter?, criteria?, overlap?, practice?, gold? }`, absent: all the
+session's units, once). Why:
+
+- **Who gets which units is the session's job.** Since this plan, the
+  coder column and conditions linked to a column decide a session's units;
+  the common reason for branches ("experimental groups get other units") is
+  a computed item (or an assigned condition) linked to a column. Branches
+  were a second, overlapping way to do the same.
+- **The machinery cost more than it gave.** Branch fingerprints, sticky
+  routing, `branch_required`, the client's branch choice and a trust
+  trade-off (a coder could send another branch index).
+- **A branch duplicated a loop without its questions' names**: two groups
+  that need other settings get the same questions, so their answers can't be
+  told apart, while copying the loop needs other names. That fits better
+  with value loops and value branches (`question-loops.md` §5), which also
+  describes settings that depend on a condition as the way back for
+  per-group settings.
+
+What stays: coders keep the units they coded (they can go back to them and
+change their answers, whatever their values or the loop's settings give
+them now), and the leases of a shared queue are loop-wide (shares overlap).
+`coders.assignments` only marks the loops a coder reached, for progress;
+migration `0007_loop_units.sql` resets it.
 
 Replaces the loop modes (`all`,
 `shared`, `assign`), set-backed link parameters (`values: {sets: group}`),
@@ -125,11 +151,10 @@ value (`unit_sets`, `unit_set_members`, draft and live).
 
 ### 3. Loops
 
-A loop's branch has no `mode`:
+A loop's `units` has no `mode` (and, since 2026-11-19, no branches):
 
 ```jsonc
 {
-  "when": { "script": "..." },                               // optional, as now
   "filter": { "column": "phase", "only": ["post"] },         // optional: only or except, on a set column
   "criteria": {                                              // optional
     "codersPerUnit": { "min": 1, "max": 3 },

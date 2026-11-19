@@ -70,3 +70,47 @@ A new item type, the **question loop**, next to the unit loop:
   `$var.<loop>` is in scope.
 - Distribution and gold checks (`gold-checks.md`) don't need to know
   about question loops.
+
+## 5. Value loops and value branches (idea, 2026-11-19)
+
+Written down when unit loop branches were removed (`unit-assignment.md`).
+Not designed in detail, not for now.
+
+A generalisation of the question loop: loop or switch over a **list of
+values**, not only over spans or answers.
+
+- **Value loop:** go through the items inside once per value of a list,
+  e.g. the values of a column (`framing`: `control`, `experiment`), a fixed
+  list (a few parties), or an earlier answer's values. Inside, items refer
+  to the current value (`$var.<loop name>.value`, as in §1). A unit loop
+  inside a value loop could then filter its units by the value, which gives
+  "every coder codes the units of each condition in turn" without copying
+  the loop.
+- **Value branch:** a switch on a value: per value of a list, other items
+  (and so other loops with other settings). Like a Show if per value, but
+  written once, so the items inside aren't duplicated with other names.
+- **Results:** the answers to a question inside a value loop or branch are
+  separate variables per value, named `variable_name.value` (e.g.
+  `stance.rutte`, `sentiment.experiment`), with the same `item_key` storage
+  as §2 (the key is the value).
+
+### Settings that depend on a condition
+
+This is also the way back for per-group loop settings (what branches did:
+a filter or crowd coding per group of coders). Instead of a list of
+branches, each with a `when`, a loop setting itself can depend on a
+condition, e.g. practice units only for some coders:
+
+```jsonc
+"units": {
+  "practice": { "placement": "first", "when": { "script": "$var.experience.is(\"new\")" } }
+}
+```
+
+The loop stays one loop (its answers one set of variables, its queue one
+queue); only the setting is on or off per coder. The condition is evaluated
+by the server on coder-level answers it already has (or on session values),
+so who gets what is decided where the units are handed out. Open: which
+settings may depend on a condition (practice and gold: clearly; a filter or
+criteria: that splits a shared queue, which needs care), and whether the
+condition is fixed once the coder starts the loop (as branch routing was).

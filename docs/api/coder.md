@@ -16,11 +16,11 @@ All paths are under `/d/<deploymentId>`, e.g. `/d/42/session`
 | Endpoint | | Request | Response |
 |---|---|---|---|
 | [getSession](#getsession) | `GET /session` | – | `SessionResponseSchema` |
-| [getNextUnits](#getnextunits) | `GET /loop/:loop/next?count=&branch=` | – | `NextUnitsResponseSchema` |
+| [getNextUnits](#getnextunits) | `GET /loop/:loop/next?count=` | – | `NextUnitsResponseSchema` |
 | [getLoopUnit](#getloopunit) | `GET /loop/:loop/units/:unitId` | – | `CoderUnitResponseSchema` |
 | [postUnitVariables](#postunitvariables) | `POST /variables/unit` | `PostUnitVariablesSchema` | `SubmitUnitResponseSchema` |
 | [postCoderVariables](#postcodervariables) | `POST /variables/coder` | `PostCoderVariablesSchema` | – |
-| [drawCondition](#drawcondition) | `POST /variables/condition/:name` | – | `{ value }` |
+| [computeVariable](#computevariable) | `POST /variables/computed/:name` | – | `{ value }` |
 | [createTransfer](#createtransfer) | `POST /transfer` | – | `TransferResponseSchema` |
 | [redeemTransfer](#redeemtransfer) | `POST /transfer/redeem` | `RedeemTransferSchema` | `RedeemTransferResponseSchema` |
 | [endSession](#endsession) | `POST /end` | `EndSessionSchema` | `EndSessionResponseSchema` |
@@ -76,12 +76,12 @@ Errors are `{ error, code? }`, with `code` from `CoderErrorCodeSchema`. See
 
 The **coder codebook** (`CoderCodebookSchema`, contracts `toCoderItems`)
 and its `version`, per-loop progress and the coder's
-variables (including drawn random conditions), and `ended` if the
+variables (including computed values), and `ended` if the
 session ended at an `end` item. The coder codebook has only what coding
-needs: unit loops keep their layout, questions, order and per branch only
-its `when` condition (the client sends the branch index; the server works
-out the units); no filters, criteria or special units, no Study entry, no
-researcher notes, and random conditions only with their options. Creates
+needs: unit loops keep their layout, questions and order, without their
+`units` (the server works out the units: no filters, criteria or special
+units); no Study entry, no researcher notes, and computed items only with
+their options (an invisible step: the client asks `computeVariable`). Creates
 the coder and session on first use, with its `$session` values: the link's
 coder and conditions, conditions drawn at the start, link and URL
 parameters. `login`: the email of the login the session belongs to, or null;
@@ -113,14 +113,14 @@ login. Continuing one on a new device logs in there (`coder-identity.md`
 
 ### getNextUnits
 
-`GET /loop/:loop/next?count=<k>&branch=<i>` → `NextUnitsResponseSchema` (`{ units }`)
+`GET /loop/:loop/next?count=<k>` → `NextUnitsResponseSchema` (`{ units }`)
 
 `:loop` is the loop's position in the design version the coder runs
 (contracts `unitLoops`: `1`, `2`, ...); loops have no name. The same goes for
 `loop` in `POST /variables/unit` and `set` in the session's `progress`.
 
 The server picks the coder's next `count` units (default 1, at most
-`MAX_UNIT_BATCH`, 20) from the coder's branch: their own units (a set, or a
+`MAX_UNIT_BATCH`, 20): their own units in the loop (fixed, or a
 shared queue with leases) and the overlap, in order. The ones they haven't
 finished come first, so asking again returns the same ones until they are
 answered: the client asks for a batch and again before it runs out. In a
@@ -128,7 +128,7 @@ shared queue each is leased to the coder (a lease they hold is renewed).
 Empty: the coder is done with the loop. 409 while the study is paused
 (`active: false`).
 
-A branch can add the session's columns' **practice** and **gold** units
+A loop can add the session's columns' **practice** and **gold** units
 (`docs/plans/special-sets.md`) among the coder's own, like the overlap.
 Their answer columns (`<question>_practice`, `<question>_practice_message`,
 `<question>_gold`) are not in the unit's data. A practice unit's data has
@@ -139,16 +139,11 @@ practice question as it is answered (contracts `answerKey.ts`), shows the
 feedback, and with `retry` asks again until right. Gold and overlap units
 look like any other; gold cells never leave the server.
 
-The client chooses the branch (`NextUnitQuerySchema`): the index of the
-first branch in the loop's `units` whose `when` holds (400 for an unknown
-branch). The server works out the units: the session's units (its coder
-and linked conditions; a linked random condition the coder doesn't have
-yet is drawn now), within the branch's filter, and stores the routing per
-branch fingerprint; afterwards the parameter is ignored (routing is
-sticky, `architecture.md` §6.2). Without it, a loop with a single
-unconditional branch routes by itself; other loops answer 409 with code
-`branch_required`. A session whose values select no units gets none in the
-loop.
+The server works out the units from the session's values: the session's
+units (its coder and linked conditions; a linked computed item the coder
+doesn't have yet is drawn now), within the loop's filter (`architecture.md`
+§6.2). A session without a value it needs gets 409 `not_assigned`; a
+session whose values select no units gets none in the loop.
 
 ### getLoopUnit
 
@@ -180,24 +175,25 @@ client shows it). A gold unit's response never says right or wrong.
 The coder-level answers (survey questions outside loops), all of them as
 the client has them. The server writes a row for each answer that changed
 (answer rows without a unit, like unit answers); values the server
-drew (random conditions) and frozen answers (`frozen` in the session)
+computed (computed items) and frozen answers (`frozen` in the session)
 are left as they are. `timings`: for the
 questions visited since the last post, how long the coder took; an
 answer that didn't change gets its timing updated.
 
-### drawCondition
+### computeVariable
 
-`POST /variables/condition/:name` → `{ value }` (a `VariableValue`)
+`POST /variables/computed/:name` → `{ value }` (a `VariableValue`)
 
-The coder reached the random condition `name` in the codebook's flow (the
-client evaluates conditions): the server draws its value now, once, and
+The coder reached the computed item `name` (`variable.type: "random"`) in
+the codebook's flow (the client evaluates conditions): the server draws its
+value now, once, and
 returns it; reached again, the same value. `draw: "random"` draws by
 weight; `"balanced"` takes the option the fewest coders who reached it
 have, under a lock, counting with `stratify` only coders with the same
 answers to those questions (as saved: the client saves its answers first)
-and the same `session.<name>` values. A condition linked to units without
+and the same `session.<name>` values. A random variable linked to units without
 `options` draws from its column's values (409 while the column has none).
-404 for a name that is no random condition.
+404 for a name that is no computed item.
 
 ### endSession
 

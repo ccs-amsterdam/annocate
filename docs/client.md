@@ -51,8 +51,8 @@ Status: current (2026-10-26). Server-side design lives in
 - It renders the unit layout and the current question's texts
   (`currentUnitTemplate`, `currentTexts` on the snapshot), because
   evaluation is async and rendering is not.
-- It chooses the unit loop branch for the coder and tells the server
-  (`architecture.md` §6.2).
+- A computed item without a value is an invisible step: it saves the
+  answers so far and asks the server for the value (`computeVariable`).
 - **Units in batches.** It asks for a loop's units a few at a time
   (`getNextUnits`, `UNIT_BATCH` 5) and keeps a queue per loop, refilled in
   the background when 2 are left (`fetchNextUnit`, `fillQueue`).
@@ -264,7 +264,6 @@ as in SPSS or Stata value labels:
 | `scale` | `items` rated on the same ordinal `options` (a Likert battery) | `values: [{ item, value }]`, one per item |
 | `annotinder` | swipe a card: 2 or 3 options, in the order left, right, up | `values: [{ value }]` |
 | `confirm` | a button | nothing besides `done` |
-| `random_condition` | drawn, not asked (random or balanced; optionally linked to a set column) | `options: [{ value }]` |
 | `span` | select text in the unit (loops only) | `spans: [{ id, field, value, slices }]` |
 | `relation` | link two spans (loops only) | `relations: [{ id, fromId, toId, value }]` |
 
@@ -384,8 +383,8 @@ run it via `V8` (Jeroen Ooms' package), and scripts stay plain JS that any
 engine can run later. That suits reproducibility. Simple conditions don't
 need a JS engine at all: they are evaluated in plain TypeScript (below).
 
-All conditions are evaluated on the client, including unit loop branches;
-the server is only told the chosen branch (`architecture.md` §6.2).
+All conditions are evaluated on the client; the server never needs the
+answers they depend on to hand out units (`architecture.md` §6.2).
 
 ### References and conditions
 
@@ -396,7 +395,7 @@ instruction texts, conditions and redirect links
 | Reference | Meaning | Questions |
 | --- | --- | --- |
 | `$unit.<field>` | unit data column (inside a unit loop) | |
-| `$var.<q>.value`, `.label` | the answer; `null` when unanswered | single nominal, ordinal, numeric, swipe, random_condition |
+| `$var.<q>.value`, `.label` | the answer; `null` when unanswered | single nominal, ordinal, numeric, swipe, computed (random) |
 | `$var.<q>.values`, `.labels` | the answers; `[]` when unanswered | nominal with `multiple`, span, relation |
 | `$var.<q>.texts` | the selected texts | span |
 | `$var.<q>.values` | all items' values, in item order | scale |
@@ -417,7 +416,7 @@ Every method is false (`count()`: 0) while the question is unanswered.
 
 | Question | Methods |
 | --- | --- |
-| single (nominal, swipe, random_condition) | `is(v)`, `isAny(v1, v2, ...)` |
+| single (nominal, swipe, computed random) | `is(v)`, `isAny(v1, v2, ...)` |
 | ordinal, scale items (`$var.q.items.x`) | also `gt(v)`, `gte(v)`, `lt(v)`, `lte(v)` |
 | nominal with `multiple` | `has(v)`, `hasAny(...)`, `hasAll(...)`, `count()` |
 | numeric | `eq(n)`, `gt(n)`, `gte(n)`, `lt(n)`, `lte(n)`, `between(a, b)` |
@@ -432,7 +431,7 @@ implementation; `HELPER_PRELUDE` adds the same methods to `$var` inside
 QuickJS; a client test checks that both agree.
 
 A **condition** (`contracts/src/design/condition.ts`) is a script, used by
-`condition` items and unit loop branch `when`; truthy = holds:
+`show_if` items; truthy = holds:
 
 ```yaml
 condition:
@@ -452,7 +451,7 @@ question exists and comes before this point (not the question itself, not
 inside the condition's own children, not in another loop); the property or
 method fits its type; `$unit` and snippets (`[[name]]`) only inside a loop (unknown
 snippets are an error; unknown `$unit` fields are a warning in the editor, once the
-study has units); branch `when` and end item redirect URLs
+study has units); end item redirect URLs
 only use coder-level `$var` refs from before the loop (and `$session`
 names the Study entry declares, or built-in ones); span fields shown
 as plain text, as described in §3. In simple conditions the helper arguments are checked too:
@@ -474,7 +473,7 @@ pass with per-slot memoization:
   scope)` re-runs QuickJS only when the script or one of those values
   changed.
 - `StudyManager` owns one cache per session and passes it to step
-  computation, branch choice and template rendering. Changing units needs
+  computation and template rendering. Changing units needs
   no explicit invalidation: dependency values change, so entries miss.
 
 ## 7. Admin UI
@@ -577,14 +576,12 @@ from the Preview Study button. It uses a `ResearcherApi`
   Unit loops have two tabs (`UnitLoopForm.tsx`), Layout first; a loop's
   row in the tree has a button for each, which opens the loop on it
   (`designEditor/loopTab.ts`). **Units**: a line saying what a session
-  gets (from the Session's coders and linked conditions), then per branch
+  gets (from the Session's coders and linked conditions), then
   which of those units (all, or only/except values of a set column;
   `architecture.md` §6.2), "Share the units among coders" (crowd coding,
   with its criteria), the special units (overlap, practice, gold: first,
   last, spread, rate or disabled), and the loop's order. A new loop
-  starts "to specify", with a button "Code the session's units". "Different units for different coder groups"
-  turns on branches, where every branch but the last has a condition
-  ("if", "else if") and the last is "otherwise". **Layout**: the template,
+  has no `units`: all the session's units, once. **Layout**: the template,
   in Monaco (lazy, as the JSON editors: `jsonEditor/MonacoTemplate.tsx`)
   as its own language (markdown with references, suffixes, `{{ }}` and
   `[[snippets]]` highlighted) with completions after `$` (unit fields,
@@ -650,7 +647,7 @@ from the Preview Study button. It uses a `ResearcherApi`
   swipe options show their direction), `multiple`, a layout
   select whose `auto` entry names what auto picks, and for numeric
   questions the range, step presets and break-point labels.
-  Condition items and branch `when` use `ConditionEditor.tsx`: a
+  Condition items use `ConditionEditor.tsx`: a
   **Rules | Script** toggle over the same script. Rules mode reads and
   writes simple conditions that are a flat list of rows, all joined by
   "and" or all by "or" (`design/conditionRules.ts`): per row a question

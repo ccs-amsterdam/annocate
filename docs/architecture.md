@@ -143,8 +143,10 @@ client calls `/d/<studyId>/...`.
    request after that, one query finds it.
 2. **`GET /session`.** Returns the codebook, per-loop progress, and the
    coder's variables (so client-side conditions can use drawn values).
-3. **`GET /loop/:loop/next?count=k`.** On the first call for a loop, the
-   runtime routes the coder to a branch (§6) and stores that. It then picks
+3. **`GET /loop/:loop/next?count=k`.** The runtime works out the coder's
+   units from their session values (§6), drawing any computed item linked
+   to a column the loop needs that the coder hasn't reached, and marks the
+   loop as reached (`coders.assignments`, for progress). It then picks
    the coder's next k units (unfinished ones first) and, in a shared queue,
    leases them, reads them, and records the versions shown (`unit_serves`).
    A unit that no longer exists is skipped. The client asks for a batch (5)
@@ -206,9 +208,9 @@ session:
   (the value fewest sessions have, counting finished sessions and those
   active in the last 24 hours, under a lock per condition) or `"random"`.
   The value is `$session.<name>`.
-- **Random conditions** (a `random_condition` answer type, §7) are drawn
-  when reached; with `units` they also select units, for the loops after
-  them.
+- **Computed items** (`type: "computed"`, `variable.type: "random"`, §7)
+  are drawn when reached; with `units` they also select units, for the
+  loops after them.
 
 A session's units are the units whose cell holds the session's value in
 every linked column (its coder, and each linked condition), including each
@@ -216,27 +218,26 @@ column's `_overlap` units. Without linked columns: all units.
 
 ### 6.2 Unit loops
 
-Defined in `contracts/src/design/unitLoop.ts`. A loop has branches (the
-first whose `when` matches is used; no match = no units); each works
-within the session's units:
+Defined in `contracts/src/design/unitLoop.ts`. A loop has one `units`
+object (absent: all the session's units, once); it works within the
+session's units:
 
 ```yaml
 type: unit_loop
 label: News items        # optional: shown in the editor, progress and exports
 order: random            # sequential (default, the set's order) | random: each coder their own order
-units:
-  - when: { script: $var.reads_dutch.is("yes") }    # optional
-    filter: { column: phase, only: [post] }          # optional: only | except, on a set column
-    criteria:                                        # optional: a shared queue (crowd coding)
-      until: { agree: 3, on: sentiment }             # or codersPerUnit: { min: 1 }
-      codersPerUnit: { max: 5 }
-      unitsPerCoder: { max: 100 }
-    overlap: { placement: spread, expect: 50 }       # first | last | spread | rate | disabled
-    practice: { placement: first, questions: [sentiment] }
-    gold: { placement: rate, every: 10, questions: [sentiment] }
+units:                   # optional
+  filter: { column: phase, only: [post] }          # optional: only | except, on a set column
+  criteria:                                        # optional: a shared queue (crowd coding)
+    until: { agree: 3, on: sentiment }             # or codersPerUnit: { min: 1 }
+    codersPerUnit: { max: 5 }
+    unitsPerCoder: { max: 100 }
+  overlap: { placement: spread, expect: 50 }       # first | last | spread | rate | disabled
+  practice: { placement: first, questions: [sentiment] }
+  gold: { placement: rate, every: 10, questions: [sentiment] }
 ```
 
-- **No criteria**: every coder codes all the branch's units once.
+- **No criteria**: every coder codes all their units once.
 - **`filter`**: only (or all except) the session's units with given values
   of a set column: a pre and a post loop on a `phase` column, or a loop
   over the `_overlap` units first.
@@ -269,34 +270,19 @@ warning when there are fewer) and `max` with `pick` (`first` or a seeded
 `random` draw). See `plans/special-sets.md` for practice and gold.
 
 The pools behind this are internal (`server/src/runtime/distribution.ts`):
-a branch is a pool for the coder's own units (a queue with criteria, else
+a loop has a pool for the coder's own units (a queue with criteria, else
 fixed) and fixed pools for the special units.
 
-**`when`.** The same condition as a `show_if` item, on coder-level answers
-from before the loop and `$session` values. Codebook validation checks it.
-
-**The client chooses the branch.** When it enters a loop, the client
-evaluates the branches in order, takes the first that matches, and asks
-`GET /loop/:loop/next?branch=<i>`. A loop with a single unconditional
-branch routes without the parameter; any other loop answers 409
-`branch_required` until the client chooses. This way the server never needs
-the answers a branch depends on (`plans/encryption.md`, "Routing on
-answers").
-
-*Trust trade-off.* A coder can choose their own branch, by sending another
-branch index. Routing by `when` is a convenience, not access control. The
-session's own units (coder, conditions) and random conditions are decided
-and stored by the server, so a coder can't change them.
-
-**Routing is sticky.** A coder's branch is stored per coder by the
-branch's fingerprint (`branchFingerprint`: a hash of the branch in full,
-with the branches before it) in `coders.assignments`, and later choices are
-ignored. So relabelling, moving or reordering loops moves nobody; changing
-a branch (or one before it) routes its coders again, and another loop
-never takes a routing whose conditions it didn't evaluate. A coder keeps
-the units they coded in a loop (they can open and answer them again), even
-if their values no longer give them those units. The units themselves are
-recomputed from the session's values on each request.
+**Nothing to route.** A coder's units in a loop follow from their session
+values, recomputed on each request; nothing about them is stored.
+`coders.assignments` only marks the loops a coder reached (by loop key,
+`{ "<loop>": { "at": <ms> } }`), for the progress counts. A coder keeps the
+units they coded in a loop (they can open and answer them again), even if
+their values or the loop's settings no longer give them those units. Loops
+used to have branches (per-group settings chosen by a `when` condition in
+the client, stored per branch fingerprint); they were removed (2026-11-19,
+`plans/unit-assignment.md`): who gets which units is decided by the
+session's values and computed items linked to a column.
 
 **Loops have no name.** Within one design version a loop is identified by
 its position (`unitLoops`: `"1"`, `"2"`, ...): the coder API's
@@ -328,10 +314,10 @@ function, `splitIntoSets` in contracts `sets.ts`).
 
 ## 7. Coder variables, session parameters and links
 
-**Random conditions** (`random_condition`) are drawn, never asked, and
-never changed afterwards. They are drawn when the coder *reaches* them in
+**Computed items** (`type: "computed"`, for now with `variable.type:
+"random"`) are drawn, never asked, and never changed afterwards. They are drawn when the coder *reaches* them in
 the design's flow: the client saves the answers so far, then asks the
-server (`POST /variables/condition/:name`), and goes on with the value.
+server (`POST /variables/computed/:name`), and goes on with the value.
 Coders screened out before one never get a value, so they don't count in
 the balance.
 
@@ -431,7 +417,7 @@ against the **current** codebook (`validateAnswer`, shared via contracts):
 | Option values changed (an answer's value removed) | stay finished; the answer is dropped from view and asked again if the coder navigates back and resubmits | asked again |
 | Question renamed | = removed + added | = removed + added |
 | Conditions / order changed | stay finished | follow the new codebook |
-| Distribution changed | routing kept if the branch (and those before it) is unchanged, else re-routed (§6.2) | new rules apply |
+| Distribution changed | the coder's units follow the new settings; units they coded stay theirs (§6.2) | new rules apply |
 
 How it works:
 
@@ -511,7 +497,7 @@ Other open points:
 
 | Where | What |
 | --- | --- |
-| `contracts/src/design/unitLoop.ts` | `unit_loop` branches: modes, overlap, `when`, set references |
+| `contracts/src/design/unitLoop.ts` | a `unit_loop`'s `units`: filter, criteria, overlap, practice, gold |
 | `contracts/src/design/session.ts` | The Study entry: link and URL parameters, combinations |
 | `contracts/src/design/references.ts`, `condition.ts` | `$unit`/`$var` references, template parsing, scopes; conditions (scripts), helper methods, simple conditions |
 | `contracts/src/sets.ts` | Set groups and sets, set columns, `splitIntoSets` |
@@ -524,14 +510,14 @@ Other open points:
 | `server/src/shared/` | Database queries shared by both APIs (deployments, finished units, units, coders, ...) |
 | `server/migrations/`, `src/db.ts` | The data model (numbered SQL migrations) and the database (`Sql`: `pg` or PGlite) |
 | `server/src/runtime/registry.ts` | `Deployments`: lazily loads one runtime per deployment; failures aren't cached; revision bumps, status, preview tokens |
-| `server/src/runtime/runtime.ts` | `DeploymentRuntime`: spec, routing, distribution under locks, random conditions, status |
+| `server/src/runtime/runtime.ts` | `DeploymentRuntime`: spec, a coder's units, distribution under locks, computed items, status |
 | `server/src/runtime/store.ts` | `Store`: what the runtime reads and writes; `DbStore` on the database |
 | `server/src/runtime/types.ts` | The runtime's internal types (spec, coder, annotations, finished rows) |
 | `server/src/runtime/session.ts` | Coder session cookies, CSRF header |
 | `server/src/runtime/preview.ts` | Researcher previews: preview tokens, `PreviewStore` with in-memory coders and answers |
 | `server/src/runtime/distribution.ts` | `UnitPool` (fixed, or a shared queue), `pickNext` (own units and overlap), `Codings` |
 | `server/src/runtime/designItems.ts` | Loop/variable lookup, annotation validation, agreement keys |
-| `client/.../admin/UnitLoopForm.tsx` | Editor for loop branches, modes and overlap |
+| `client/.../admin/UnitLoopForm.tsx` | Editor for a loop's units (filter, criteria, special units) and layout |
 
 Tests (`server/src/__tests__/`) run through the app's fetch handler on
 PGlite (or a Postgres server with `TEST_DATABASE_URL`): `coder.test.ts`
