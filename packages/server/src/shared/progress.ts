@@ -64,8 +64,8 @@ export async function listCoderProgress(sql: Sql, studyId: number): Promise<Code
   const finished = await finishedPerLoop(sql, studyId);
   const values = await coderValues(sql, studyId);
   // Special units as deployed (docs/plans/unit-assignment.md): practice and gold units of any set
-  // column are everyone's; the overlap is that of the columns the coder's session values select
-  // units by. Counted for coders who were routed in a loop.
+  // column are everyone's; the overlap is that of the coder column, or (no coders) of the columns
+  // the coder's session values select units by. Counted for coders who were routed in a loop.
   const kinds = { _overlap: "overlap", _gold: "gold", _practice: "practice" } as const;
   type Kind = keyof typeof kinds;
   const members = await sql.query<{ grp: string; name: Kind; unitId: number }>(
@@ -87,9 +87,11 @@ export async function listCoderProgress(sql: Sql, studyId: number): Promise<Code
   const special = (coderId: number, session: Record<string, string>, assignments: Record<string, unknown>) => {
     const out: CoderProgress["special"] = {};
     if (Object.keys(assignments ?? {}).length === 0) return out;
-    const selected = shareColumns.filter(([name]) => session?.[name] !== undefined).map(([, column]) => column);
-    // The session's columns, or (no column divides its units) every column
-    const overlapColumns = new Set(selected.length > 0 ? selected : members.map((m) => m.grp));
+    const selected = shareColumns.filter(([name]) => session?.[name] !== undefined);
+    // As the runtime (`shareOf`): the coder column's, when coders divide the units (a condition column's
+    // `_overlap` is in every condition: own units); else the session's columns, or (none) every column
+    const coderColumn = selected.find(([name]) => name === "coder")?.[1];
+    const overlapColumns = new Set(coderColumn ? [coderColumn] : selected.length > 0 ? selected.map(([, column]) => column) : members.map((m) => m.grp));
     for (const [name, kind] of Object.entries(kinds) as [Kind, (typeof kinds)[Kind]][]) {
       const units = new Set(members.filter((m) => m.name === name && (name !== "_overlap" || overlapColumns.has(m.grp))).map((m) => m.unitId));
       if (units.size === 0) continue;

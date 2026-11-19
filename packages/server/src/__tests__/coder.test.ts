@@ -591,6 +591,154 @@ describe("random conditions linked to a column", () => {
   });
 });
 
+describe("assignment edge cases (review of the unit assignment)", () => {
+  const login = async (device: string, email: string) => {
+    const user = await ensureUser(db, email);
+    devices.set(device, { cookies: new Map([["annotinder_session", await createSession(db, user.id, CODER_LOGIN)]]), invite: null });
+  };
+
+  it("a shared queue counts leases across shares: a unit in two conditions goes to one coder only", async () => {
+    // unit-1 is `a;b`: in both shares
+    await createSet("a", ["unit-1", "unit-2"], "framing");
+    await createSet("b", ["unit-1", "unit-3"], "framing");
+    const session = sessionItem({ conditions: [{ name: "framing", values: ["a", "b"], assign: "link", units: "framing" }] });
+    await redeploy({ units: [{ criteria: { codersPerUnit: { max: 1 } } }] }, [session]);
+    const byValue = Object.fromEntries((await links()).filter((l) => !l.retiredAt).map((l) => [l.params.framing, l.secret]));
+    const x = coder("x", byValue.a);
+    const y = coder("y", byValue.b);
+    await x.session();
+    await y.session();
+    // unit-1 comes first in both shares: at once, only one coder gets it (the other gets their own unit)
+    const [ux, uy] = await Promise.all([x.next(), y.next()]);
+    expect([ux!.externalId, uy!.externalId].filter((id) => id === "unit-1")).toHaveLength(1);
+    const status = (await (await server.request("/api/study/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
+    expect(status.sources.reduce((n, s) => n + s.totalUnits, 0)).toBe(3);
+    expect(status.sources.reduce((n, s) => n + s.leasedUnits, 0)).toBe(2);
+  });
+
+  it("loops with the same columns and filter but another overlap count each get their own", async () => {
+    await createSet("_overlap", ["unit-1", "unit-2", "unit-3"]);
+    const first = { type: "unit_loop", label: "first", units: [{ overlap: { placement: "first", max: 1 } }], layout: { template: "" }, children: [{ type: "question", name: "other", variable: { type: "confirm", question: "?" } }] };
+    await redeploy({ units: [{ overlap: { placement: "first", max: 2 } }] }, [first]);
+    const c = coder("c");
+    // Loop 2 first: the order in which a server computes them doesn't matter
+    const second = (await c.batch(20, "2")).length;
+    const one = (await c.batch(20, "1")).length;
+    expect(second - one).toBe(1);
+  });
+
+  it("keeps a coder in the branch they were routed to, also when another branch has the same filter", async () => {
+    await createSet("_overlap", ["unit-1"]);
+    await redeploy({ units: [{ when: { script: "false" }, overlap: { placement: "disabled" } }, {}] });
+    const c = coder("c");
+    const first = await c.next("1", 1);
+    expect(first!.externalId).toBe("unit-1");
+    // Asked again without a choice: the same branch, so the same unfinished unit
+    expect((await c.next())!.id).toBe(first!.id);
+  });
+
+  it("doesn't take a routing from another loop for a branch with a condition", async () => {
+    const before = { type: "unit_loop", label: "before", units: [{}], layout: { template: "" }, children: [{ type: "question", name: "other", variable: { type: "confirm", question: "?" } }] };
+    await redeploy({ units: [{ when: { script: "false" } }, {}] }, [before]);
+    const c = coder("c");
+    expect(await c.next("1")).not.toBeNull();
+    const res = await c.call("/loop/2/next");
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ code: "branch_required" });
+  });
+
+  it("a random condition drawn twice at once has one value, in the answers and the session", async () => {
+    await createSet("p1", ["unit-1"], "parts");
+    await createSet("p2", ["unit-2"], "parts");
+    const part = { type: "question", name: "part", variable: { type: "random_condition", draw: "random", units: "parts" } };
+    await redeploy({}, [part]);
+    // Routing draws p1 (random() = 0); just after it found no value, another request of this coder drew p2
+    let between: ((store: Store) => Promise<void>) | null = null;
+    const racing = (store: Store): Store =>
+      new Proxy(store, {
+        get(target, prop, receiver) {
+          const value = Reflect.get(target, prop, receiver);
+          if (typeof value !== "function") return value;
+          if (prop === "locked") return (key: string, fn: (s: Store) => Promise<unknown>) => target.locked(key, (s) => fn(racing(s)));
+          return async (...args: unknown[]) => {
+            const result = await (value as (...a: unknown[]) => unknown).apply(target, args);
+            const finish = between;
+            if (finish && prop === "coderValues") {
+              between = null;
+              await finish(target);
+            }
+            return result;
+          };
+        },
+      });
+    server = createApp(db, { secret: "test-secret", runtime: { random: () => 0 }, wrapStore: racing, devMode: true });
+    const c = coder("c");
+    const { coderId } = await c.session();
+    between = async (store) => {
+      await store.putCoderValues({ coderId, values: { part: { done: true, values: [{ value: "p2" }] } }, assigned: true, designVersionId: null });
+      await store.setSessionValue(coderId, "part", "p2");
+    };
+    const unit = await c.next();
+    expect(between).toBeNull();
+    const session = await c.session();
+    expect(session.session.part).toBe("p2");
+    expect(session.variables.part.values).toEqual([{ value: "p2" }]);
+    expect(unit!.externalId).toBe("unit-2");
+  });
+
+  it("coders keep the units they coded when the column changes; the new coder gets them too", async () => {
+    await createSet("anna", ["unit-1"], "coder");
+    await createSet("bob", ["unit-2"], "coder");
+    await redeploy({}, [sessionItem({ coders: { column: "coder" } })]);
+    const byCoder = Object.fromEntries((await links()).filter((l) => !l.retiredAt).map((l) => [l.params.coder, l.secret]));
+    const anna = coder("anna", byCoder.anna);
+    const unit1 = await anna.next();
+    expect((await anna.submit(unit1!.id, sentiment("positive"))).status).toBe(200);
+    // unit-1 moves from anna to bob
+    await createSet("anna", ["unit-3"], "coder");
+    await createSet("bob", ["unit-2", "unit-1"], "coder");
+    await deployDrafts();
+    expect((await anna.call(`/loop/1/units/${unit1!.id}`)).status).toBe(200);
+    expect((await anna.submit(unit1!.id, sentiment("negative"))).status).toBe(200);
+    const bob = coder("bob", byCoder.bob);
+    const bobs = (await bob.batch(10)).map((u) => u.externalId);
+    expect(bobs).toContain("unit-1");
+  });
+
+  it("with coders, a condition column's overlap is in every condition, not an overlap to place", async () => {
+    await createSet("anna", ["unit-1", "unit-2"], "coder");
+    await createSet("a", ["unit-3"], "framing");
+    await createSet("_overlap", ["unit-1", "unit-2"], "framing");
+    const session = sessionItem({ coders: { column: "coder" }, conditions: [{ name: "framing", values: "free", assign: "link", units: "framing" }] });
+    await redeploy({ units: [{ overlap: { placement: "first", max: 1 } }] }, [session]);
+    const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
+    expect((await coder("anna", secret).batch(10)).map((u) => u.externalId).sort()).toEqual(["unit-1", "unit-2"]);
+    // Nor in the coders' progress
+    const [progress] = (await (await server.request("/api/study/1/coders", { headers: adminHeaders })).json()) as CoderProgress[];
+    expect(progress.special).toEqual({});
+  });
+
+  it("an email coder asking for a new session continues their own", async () => {
+    await createSet("a@example.org", ["unit-1"], "coder");
+    await redeploy({}, [sessionItem({ coders: { column: "coder" } })]);
+    const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
+    await login("a", "a@example.org");
+    const first = (await (await send("a", "/session", {}, { "x-link-secret": secret })).json()) as SessionResponse;
+    const again = (await (await send("a", "/session", {}, { "x-link-secret": secret, "x-new-session": "1" })).json()) as SessionResponse;
+    expect(again.coderId).toBe(first.coderId);
+  });
+
+  it("a session without a coder value is told it has no units yet", async () => {
+    const early = coder("early");
+    await early.session();
+    await createSet("anna", ["unit-1"], "coder");
+    await redeploy({}, [sessionItem({ coders: { column: "coder" } })]);
+    const res = await early.call("/loop/1/next");
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ code: "not_assigned" });
+  });
+});
+
 describe("loop filters and the overlap", () => {
   const coders = sessionItem({ coders: { column: "g" } });
   const order = async (name: string) => {

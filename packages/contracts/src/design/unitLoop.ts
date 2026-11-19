@@ -217,13 +217,17 @@ export const UnitLoopDistributionShape = {
 };
 
 /**
- * What a coder's routing in a loop is stored by: which units a branch hands
- * out (its filter, and whether it is a shared queue), not where the loop is
- * or what it is called. A coder keeps their branch as long as a branch with
- * the same fingerprint exists.
+ * What a coder's routing in a loop is stored by: the branch with the
+ * branches before it, in full (conditions, filters, criteria, placements),
+ * not where the loop is or what it is called. A coder keeps their branch
+ * while these are unchanged: a changed branch, or a changed branch before
+ * it (which could now be the one taken), routes them again. Another loop
+ * only shares the routing if its branches up to this one are the same, so
+ * a branch is never taken without its conditions (and those before it)
+ * having been evaluated.
  */
-export function branchFingerprint(branch: UnitBranch): string {
-  const what = JSON.stringify([branch.filter ?? null, !!branch.criteria]);
+export function branchFingerprint(branches: readonly UnitBranch[], index: number): string {
+  const what = JSON.stringify(branches.slice(0, index + 1));
   // FNV-1a, 32 bits: short keys for the stored routing.
   let h = 0x811c9dc5;
   for (let i = 0; i < what.length; i++) h = Math.imul(h ^ what.charCodeAt(i), 0x01000193);

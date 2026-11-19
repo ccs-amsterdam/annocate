@@ -328,21 +328,30 @@ export class DeploymentRuntime {
     if (!variable) throw new HttpError(404, `No random condition '${name}'`);
     const options = variable.options ?? (variable.units ? (this.groups.get(variable.units) ?? []).map((value) => ({ value })) : []);
     if (options.length === 0) throw new HttpError(409, `Random condition '${name}' has no values yet`);
-    const linked = async (value: VariableValue) => {
+    // Linked to units: the value goes into the session values, once (a session value never changes, so
+    // the coder's units don't either); the session's value is the condition's
+    const linked = async (value: VariableValue): Promise<VariableValue> => {
       const plain = valueOf(value);
-      if (variable.units && plain !== undefined && coder.session[name] !== plain) {
-        await this.store.setSessionValue(coder.coderId, name, plain);
-        coder.session = { ...coder.session, [name]: plain };
-      }
-      return value;
+      if (!variable.units || plain === undefined) return value;
+      const kept = await this.store.setSessionValue(coder.coderId, name, String(plain));
+      coder.session = { ...coder.session, [name]: kept };
+      return kept === String(plain) ? value : singleValue(kept);
     };
     const stored = (await this.store.coderValues(coder.coderId))[name];
     if (stored) return linked(stored.value);
+    // Already in the session (e.g. its answers were reset): the same value again, not a new draw
+    const kept = variable.units ? coder.session[name] : undefined;
     const put = (store: Store, value: VariableValue) =>
       store.putCoderValues({ coderId: coder.coderId, values: { [name]: value }, assigned: true, designVersionId: this.spec.design.id });
-    if (variable.draw === "random") {
-      const value = singleValue(this.drawWeighted(options));
-      await put(this.store, value);
+    if (variable.draw === "random" || kept !== undefined) {
+      // Under the coder's own lock: two requests of this coder at once draw once (the first write wins)
+      const value = await this.store.locked(`condition/${name}/${coder.coderId}`, async (store) => {
+        const again = (await store.coderValues(coder.coderId))[name];
+        if (again) return again.value;
+        const value = singleValue(kept ?? this.drawWeighted(options));
+        await put(store, value);
+        return value;
+      });
       return linked(value);
     }
     const stratify = variable.stratify ?? [];
@@ -568,16 +577,19 @@ export class DeploymentRuntime {
   private shareOf(coder: Coder, loop: string, branch: UnitBranch): Share | null {
     const columns = this.shareColumns.get(loop) ?? [];
     const values: [string, string][] = [];
+    let coderColumn: string | null = null;
     for (const c of columns) {
       const value = coder.session[c.name];
       if (value === undefined) return null;
       values.push([c.column, value]);
+      if (c.name === "coder" && !c.random) coderColumn = c.column;
     }
     const filter = branch.filter;
+    // Everything the units depend on: the values, the filter, and the overlap's settings (its count, how it's picked)
     const key =
       (values.map(([column, value]) => `${column}=${value}`).join(",") || "all") +
       (filter ? ` | ${filter.column} ${filter.only ? "only" : "except"} ${(filter.only ?? filter.except ?? []).join(",")}` : "") +
-      (branch.overlap?.placement === undefined ? "" : branch.overlap.placement === "disabled" ? " | no overlap" : " | overlap");
+      (branch.overlap ? ` | overlap ${JSON.stringify(branch.overlap)}` : "");
     const cached = this.shares.get(key);
     if (cached) return cached;
 
@@ -595,9 +607,10 @@ export class DeploymentRuntime {
       const listed = new Set((filter.only ?? filter.except ?? []).flatMap((value) => this.unitsOf(setKey(filter.column, value))));
       units = units.filter((id) => listed.has(id) === !!filter.only);
     }
-    // The overlap apart when the branch places it (or leaves it out): of the session's columns, or
-    // (no column divides the units) of every column
-    const overlapColumns = values.length > 0 ? values.map(([column]) => column) : this.columns;
+    // The overlap apart when the branch places it (or leaves it out): the coder column's, when coders divide
+    // the units (a condition column's `_overlap` is just in every condition: the coder's own units); else
+    // of the session's columns, or (no column divides the units) of every column
+    const overlapColumns = coderColumn ? [coderColumn] : values.length > 0 ? values.map(([column]) => column) : this.columns;
     const overlapAll = new Set(overlapColumns.flatMap((column) => this.unitsOf(setKey(column, OVERLAP_SET))));
     let overlap = branch.overlap ? units.filter((id) => overlapAll.has(id)) : [];
     const own = branch.overlap ? units.filter((id) => !overlapAll.has(id)) : units;
@@ -653,7 +666,8 @@ export class DeploymentRuntime {
   private pools(route: Route, codings: Codings, leases: Lease[]): Routed {
     const { branch, share } = route;
     const main = new UnitPool(share.key, this.ownUnits(route), sharedDefaults(branch), codings);
-    main.loadLeases(leases.filter((l) => l.set === share.key).map((l) => ({ ...l, expires: new Date(l.expires).getTime() })));
+    // Every lease of the loop: shares overlap (`_overlap`, `a;b`), and a unit leased in one share is taken in all
+    main.loadLeases(leases.map((l) => ({ ...l, expires: new Date(l.expires).getTime() })));
     const extras = this.specialUnits(route).map(
       (s): OverlapPlacement => ({
         pool: new UnitPool(s.set, s.units, null, codings),
@@ -665,19 +679,31 @@ export class DeploymentRuntime {
   }
 
   /**
-   * Where the coder is already routed in a loop (no new routing): the first
-   * branch with a stored routing (by `branchFingerprint`), with the share
-   * of their session values.
+   * Where the coder is already routed in a loop (no new routing): the branch
+   * of the loop with a stored routing (by `branchFingerprint`: the branch
+   * and those before it, in full, so only while these are unchanged; a loop
+   * that moved keeps its coders), with the share of their session values.
    */
   private assignedRoute(coder: Coder, loop: string): Route | null {
     const info = this.loops.get(loop);
-    if (!info) return null;
-    for (const branch of info.loop.units) {
-      if (!coder.assignments[branchFingerprint(branch)]) continue;
-      const share = this.shareOf(coder, loop, branch);
-      return share ? { branch, share } : null;
-    }
-    return null;
+    const branches = info?.loop.units ?? [];
+    const branch = branches.find((_, i) => coder.assignments[branchFingerprint(branches, i)]);
+    const share = branch && this.shareOf(coder, loop, branch);
+    return branch && share ? { branch, share } : null;
+  }
+
+  /**
+   * The coder's route in a loop for answering or going back to a unit: the
+   * stored one, or, when that branch changed (a new deploy) and the loop has
+   * a single branch without a condition, routed again now (no client choice
+   * needed), if the unit was served to them.
+   */
+  private async currentRoute(coder: Coder, loop: string, unitId: number): Promise<Route | null> {
+    const routed = this.assignedRoute(coder, loop);
+    const info = this.loops.get(loop);
+    if (routed || !info || info.loop.units.length !== 1 || info.loop.units[0].when) return routed;
+    if ((await this.store.servedVersion(coder.coderId, unitId)) === null) return null;
+    return this.route(coder, info, {}).catch(() => null);
   }
 
   /**
@@ -686,12 +712,13 @@ export class DeploymentRuntime {
    * and sends the chosen branch; a loop with a single unconditional branch
    * routes without a choice. The units come from the session's values: a
    * random condition linked to a set column that the coder hasn't reached
-   * (e.g. it was hidden) is assigned now. Sticky: the branch is stored with
-   * the coder, and reused as long as the codebook has a branch that hands
-   * out the same units. Null if the coder gets no units here (no coder
-   * value).
+   * (e.g. it was hidden) is assigned now. Sticky: the branch is stored (by
+   * its whole content), and reused while it is unchanged; a changed branch
+   * routes again.
+   * A session without a value it needs (a coder from a link made before the
+   * coder column had values) gets 409 `not_assigned`.
    */
-  private async route(coder: Coder, info: LoopInfo, choice: BranchChoice): Promise<Route | null> {
+  private async route(coder: Coder, info: LoopInfo, choice: BranchChoice): Promise<Route> {
     const loop = info.loop;
     const title = loopTitle(loop, info.key);
     const existing = this.assignedRoute(coder, info.key);
@@ -708,10 +735,11 @@ export class DeploymentRuntime {
       if (column.random && coder.session[column.name] === undefined) await this.assignCondition(coder, column.name);
     }
     const share = this.shareOf(coder, info.key, branch);
-    if (!share) return null;
+    if (!share) throw new HttpError(409, "No units are assigned to you yet: ask the researcher for a new link", "not_assigned");
     const assignment = { set: share.key, at: this.options.now() };
-    await this.store.routeCoder(coder.coderId, branchFingerprint(branch), assignment);
-    coder.assignments = { ...coder.assignments, [branchFingerprint(branch)]: assignment };
+    const key = branchFingerprint(loop.units, branchIndex);
+    await this.store.routeCoder(coder.coderId, key, assignment);
+    coder.assignments = { ...coder.assignments, [key]: assignment };
     return { branch, share };
   }
 
@@ -731,9 +759,9 @@ export class DeploymentRuntime {
     const info = this.loops.get(loopName);
     if (!info) throw new HttpError(404, `No unit loop '${loopName}'`);
     const route = await this.route(coder, info, choice);
-    if (!route) return [];
+    // A shared queue: one lock for the whole loop, since shares overlap (`_overlap`, `a;b`)
     const units = route.branch.criteria
-        ? await this.store.locked(`queue/${info.key}/${route.share.key}`, (store) => this.pick(store, coder, info, route, count))
+        ? await this.store.locked(`queue/${info.key}`, (store) => this.pick(store, coder, info, route, count))
         : await this.pick(this.store, coder, info, route, count);
     return Promise.all(
       units.map(async (unit) => {
@@ -804,12 +832,18 @@ export class DeploymentRuntime {
   async loopUnit(coder: Coder, loopName: string, unitId: number): Promise<CoderUnitResponse> {
     if (this.closed(coder)) throw new HttpError(409, "This session has ended", "session_closed");
     if (!this.loops.has(loopName)) throw new HttpError(404, `No unit loop '${loopName}'`);
-    const route = this.assignedRoute(coder, loopName);
-    const [answers, leases] = await Promise.all([this.store.unitAnswers(coder.coderId, unitId), this.store.listLeases({ coderId: coder.coderId })]);
+    const route = await this.currentRoute(coder, loopName, unitId);
+    const [answers, leases, coded] = await Promise.all([
+      this.store.unitAnswers(coder.coderId, unitId),
+      this.store.listLeases({ coderId: coder.coderId }),
+      this.store.listCodings({ loop: loopName, coderId: coder.coderId }),
+    ]);
     const answered = Object.keys(answers).length > 0;
     const held = leases.some((l) => l.loop === loopName && l.unitId === unitId);
+    // A unit the coder coded here stays theirs, also if the units were divided differently since
+    const codedHere = coded.some((c) => c.unitId === unitId);
     // Only units the coder has worked on (or holds): no peeking ahead.
-    if (!this.routeUnits(route).has(unitId) || !(answered || held)) throw new HttpError(404, "This unit is not part of your session");
+    if (!(this.routeUnits(route).has(unitId) || codedHere) || !(answered || held)) throw new HttpError(404, "This unit is not part of your session");
     const unit = (await this.getUnits([unitId])).get(unitId);
     if (!unit) throw new HttpError(404, "Unit not found");
     const shown = await this.markServed(coder.coderId, unit);
@@ -836,13 +870,19 @@ export class DeploymentRuntime {
     // Units in the coder's route; in a shared queue only their own earlier
     // codings (editing after going back) or the unit leased to them (an
     // expired lease still counts: at worst one coding too many).
+    const routes = new Map<string, Route | null>();
+    for (const info of this.loops.values()) {
+      if (loopName === undefined || info.key === loopName) routes.set(info.key, await this.currentRoute(coder, info.key, unitId));
+    }
     const canSubmit = (info: LoopInfo) => {
-      const route = this.assignedRoute(coder, info.key);
+      // A unit the coder coded here stays theirs (editing after going back), also if the units were divided differently since
+      if (own.some((c) => c.loop === info.key && c.unitId === unitId)) return true;
+      const route = routes.get(info.key) ?? null;
       if (!route) return false;
       if (this.specialUnits(route).some((s) => s.units.includes(unitId))) return true;
       if (!this.ownUnits(route).includes(unitId)) return false;
       if (!route.branch.criteria) return true;
-      return own.some((c) => c.loop === info.key && c.unitId === unitId) || leases.some((l) => l.loop === info.key && l.set === route.share.key && l.unitId === unitId);
+      return leases.some((l) => l.loop === info.key && l.unitId === unitId);
     };
     const loops = [...this.loops.values()].filter((info) => (loopName === undefined || info.key === loopName) && canSubmit(info));
     if (loops.length === 0) throw new HttpError(409, "Unit is not assigned to this coder");
@@ -959,11 +999,19 @@ export class DeploymentRuntime {
       });
       // One row per pool: a set with its rule (a shared queue, or handed out whole).
       const pools = new Map<string, { pool: UnitPool; coders: number[] }>();
+      const loopLeases = leases.filter((l) => l.loop === loop).map((l) => ({ ...l, expires: new Date(l.expires).getTime() }));
+      // Shares overlap (`_overlap`, `a;b`): a unit is listed once, in the first row that has it
+      const listed = new Set<number>();
       for (const { coderId, route } of routes) {
-        const routed = this.pools(route, codings, leases.filter((l) => l.loop === loop));
+        const routed = this.pools(route, codings, []);
         for (const pool of [routed.main, ...routed.extras.map((e) => e.pool)]) {
           const key = `${pool.set}/${JSON.stringify(pool.rule)}`;
-          if (!pools.has(key)) pools.set(key, { pool, coders: [] });
+          if (!pools.has(key)) {
+            const row = new UnitPool(pool.set, pool.unitIds.filter((id) => !listed.has(id)), pool.rule, codings);
+            row.loadLeases(loopLeases);
+            for (const id of row.unitIds) listed.add(id);
+            pools.set(key, { pool: row, coders: [] });
+          }
           pools.get(key)!.coders.push(coderId);
         }
       }

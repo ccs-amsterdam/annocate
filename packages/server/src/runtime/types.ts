@@ -41,10 +41,11 @@ export interface Unit {
 }
 
 /**
- * Where a coder was routed by one kind of branch (contracts
- * `branchFingerprint`): their set (`group/set`, or `__all__`). Stored so
- * routing is sticky: a coder keeps their units even if later answers or a
- * codebook update would route them differently.
+ * Where a coder was routed by a branch (contracts `branchFingerprint`: the
+ * branch's whole content, with the branches before it): their share. Stored so routing is sticky: the
+ * coder stays in that branch while it is unchanged (also if the loop moves),
+ * even if later answers would choose another; a changed branch routes them
+ * again.
  */
 export interface LoopAssignment {
   set: string;
@@ -52,7 +53,7 @@ export interface LoopAssignment {
   at: number;
 }
 
-/** unit_loop name -> where the coder was routed. */
+/** branch fingerprint -> where the coder was routed. */
 export type CoderAssignments = Record<string, LoopAssignment>;
 
 /** A coder as the runtime sees it. No email or other identifying data. */

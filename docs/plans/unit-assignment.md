@@ -8,6 +8,11 @@ Status: built (2026-11-19, steps 1–4). Deviations from the text below:
 - The coder and condition values are per session (`$session`), but a
   coder's routing in a loop is still stored per branch fingerprint
   (`coders.assignments`, `architecture.md` §6.2), holding the share's key.
+  The fingerprint is the branch in full (`when`, filter, criteria,
+  placements) with the branches before it: a changed branch (or a changed
+  one before it) routes again, an unchanged one sticks, also when the loop
+  moves; another loop only shares it if its branches up to there are the
+  same.
 - Migration `0006_unit_assignment.sql` has the same number as the MCP
   branch's `0006_oauth.sql`: renumber one when merging.
 
@@ -15,6 +20,19 @@ Replaces the loop modes (`all`,
 `shared`, `assign`), set-backed link parameters (`values: {sets: group}`),
 `auto` variables as such, and per-link sign-in settings. Keeps the
 distribution engine and the special sets of `special-sets.md`.
+
+## Known limitations
+
+- A running session keeps its sign-in state: changing the study's sign-in
+  setting applies to new sessions.
+- A link's settings are cached by the server (`linkInfo`) for up to 60
+  seconds, so a change to links can take that long to apply.
+- A session that started from a link without a coder value, before the
+  coder column had values, has no units: it gets 409 `not_assigned` ("No
+  units are assigned to you yet: ask the researcher for a new link").
+- Coders keep the units they coded: a unit that a re-upload moves to
+  another coder can still be opened and answered by the coder who coded it
+  (the other coder gets it too).
 
 ## Why
 

@@ -6,7 +6,7 @@ import { getDeploymentSpec, getPreviewSpec } from "../shared/deployments.js";
 import { listFinished } from "../shared/finished.js";
 import { HttpError } from "../shared/http.js";
 import type { LinkRow } from "../shared/links.js";
-import { sessionValues, type SessionDraw } from "./sessionValues.js";
+import { emailCoders, sessionValues, type SessionDraw } from "./sessionValues.js";
 import { getSettings } from "../shared/accounts.js";
 import { checkAnswerSize, checkNewCoder, studyLimits } from "../shared/limits.js";
 import { lockUnits, servedUnits } from "../shared/units.js";
@@ -51,10 +51,14 @@ export interface Store {
   resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder>;
   /** Adds a device to a session (a transfer link): its key now finds this coder. Returns the device's row. */
   addDevice(coderId: number, coderKey: string, device: DeviceDetails): Promise<number | null>;
-  /** Stores where the coder is routed in a loop: one branch's routing (`CoderAssignments`), next to the others. */
+  /** Stores where the coder is routed by a branch (`CoderAssignments`, by branch fingerprint), next to the others. */
   routeCoder(coderId: number, branch: string, assignment: CoderAssignments[string]): Promise<void>;
-  /** Adds a value to the coder's session values (a random condition that selects units, once assigned). */
-  setSessionValue(coderId: number, name: string, value: string): Promise<void>;
+  /**
+   * Adds a value to the coder's session values (a random condition that
+   * selects units, once assigned), unless it has one already: returns the
+   * value it has. A session value never changes, so its units don't either.
+   */
+  setSessionValue(coderId: number, name: string, value: string): Promise<string>;
   /** Stores how the session ended (null: reopened). */
   setEnded(coderId: number, ended: SessionEnd | null): Promise<void>;
   /** A "continue on another device" link (only its hash is stored). */
@@ -214,13 +218,14 @@ export class DbStore implements Store {
     if (updated.length === 0) throw new HttpError(404, "Coder not found");
   }
 
-  async setSessionValue(coderId: number, name: string, value: string): Promise<void> {
-    await this.sql.query("UPDATE coders SET session = session || jsonb_build_object($1::text, $2::text) WHERE study_id = $3 AND id = $4", [
-      name,
-      value,
-      this.studyId,
-      coderId,
-    ]);
+  async setSessionValue(coderId: number, name: string, value: string): Promise<string> {
+    const row = await one<{ value: string }>(
+      this.sql,
+      `UPDATE coders SET session = CASE WHEN session ? $1 THEN session ELSE session || jsonb_build_object($1::text, $2::text) END
+       WHERE study_id = $3 AND id = $4 RETURNING session->>$1 AS value`,
+      [name, value, this.studyId, coderId],
+    );
+    return row?.value ?? value;
   }
 
   async setEnded(coderId: number, ended: SessionEnd | null): Promise<void> {
@@ -479,8 +484,9 @@ async function findOrCreateCoder(
     const linked = await one<CoderRow>(sql, "UPDATE coders SET email = $1 WHERE id = $2 RETURNING *", [login.email.toLowerCase(), known.id]);
     return { row: linked!, deviceId: known.device_id };
   }
-  // A new device of a linked session: logging in finds it.
-  if (login && !request.newSession) {
+  // A new device of a linked session: logging in finds it. Email coders have one session each: a new one
+  // isn't made for them (their units are their email's), also when asked for.
+  if (login && (!request.newSession || (request.sessionRules && emailCoders(request.sessionRules)))) {
     const mine = await sessionOfEmail(sql, studyId, login.email);
     if (mine) return { row: mine, deviceId: await addDevice(sql, studyId, mine.id, coderKey, device) };
   }

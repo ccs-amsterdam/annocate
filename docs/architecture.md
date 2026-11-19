@@ -289,10 +289,13 @@ session's own units (coder, conditions) and random conditions are decided
 and stored by the server, so a coder can't change them.
 
 **Routing is sticky.** A coder's branch is stored per coder by the
-branch's fingerprint (`branchFingerprint`: a hash of its filter and whether
-it has criteria) in `coders.assignments`, and later choices are ignored. So
-relabelling, moving or reordering loops moves nobody; changing which units
-a branch hands out routes its coders again. The units themselves are
+branch's fingerprint (`branchFingerprint`: a hash of the branch in full,
+with the branches before it) in `coders.assignments`, and later choices are
+ignored. So relabelling, moving or reordering loops moves nobody; changing
+a branch (or one before it) routes its coders again, and another loop
+never takes a routing whose conditions it didn't evaluate. A coder keeps
+the units they coded in a loop (they can open and answer them again), even
+if their values no longer give them those units. The units themselves are
 recomputed from the session's values on each request.
 
 **Loops have no name.** Within one design version a loop is identified by
@@ -428,7 +431,7 @@ against the **current** codebook (`validateAnswer`, shared via contracts):
 | Option values changed (an answer's value removed) | stay finished; the answer is dropped from view and asked again if the coder navigates back and resubmits | asked again |
 | Question renamed | = removed + added | = removed + added |
 | Conditions / order changed | stay finished | follow the new codebook |
-| Distribution changed | routing kept if a branch with the same fingerprint still exists, else re-routed (§6.2) | new rules apply |
+| Distribution changed | routing kept if the branch (and those before it) is unchanged, else re-routed (§6.2) | new rules apply |
 
 How it works:
 

@@ -96,9 +96,11 @@ export class PreviewStore implements Store {
     coder.assignments = { ...coder.assignments, [branch]: assignment };
   }
 
-  async setSessionValue(coderId: number, name: string, value: string): Promise<void> {
+  async setSessionValue(coderId: number, name: string, value: string): Promise<string> {
     const coder = this.coders.get(coderId);
-    if (coder) coder.session = { ...coder.session, [name]: value };
+    if (!coder) return value;
+    if (coder.session[name] === undefined) coder.session = { ...coder.session, [name]: value };
+    return coder.session[name];
   }
 
   async setEnded(coderId: number, ended: SessionEnd | null): Promise<void> {
