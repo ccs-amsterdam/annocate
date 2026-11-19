@@ -317,10 +317,17 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
   const groups: NonNullable<RecipeInput["sets"]> = [];
   const conditions = a.experiment.conditions.map((c) => c.trim()).filter(Boolean);
   if (a.parts.experiment) {
+    // Experimental groups: the condition selects its units (a set column named after it, a value per condition)
+    const linked = a.parts.annotate && a.distribution.mode === "groups";
     items.push({
       type: "question",
       name: a.experiment.name,
-      variable: { type: "random_condition", draw: a.experiment.assign, options: conditions.map((value) => ({ value })) },
+      variable: {
+        type: "random_condition",
+        draw: a.experiment.assign,
+        options: conditions.map((c) => (linked && setName(c) !== c ? { value: setName(c), label: c } : { value: linked ? setName(c) : c })),
+        ...(linked ? { units: a.experiment.name } : {}),
+      },
     });
   }
   items.push(...parseQuestions(a.questions.before).map(unspecified));
@@ -349,18 +356,15 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
         branches = [{ criteria: d.shared, ...(overlap.length > 0 ? { overlap: { placement: "rate", every: DEFAULT_RATE, rest: "end" } } : {}) }];
         break;
       case "groups":
-        // A set per condition, and a coder group per condition that codes its set
+        // A set column named after the condition, a value per condition: the condition (drawn before the loop) selects its units
         groups.push({
-          group: WIZARD_GROUP,
+          group: a.experiment.name,
           sets: conditions.map((condition) => {
             const values = d.values[condition] ?? [];
             return { name: setName(condition), units: (a.units?.units ?? []).filter((u) => values.includes(valueOf(u, d.column))).map((u) => u.externalId) };
           }),
         });
-        branches = conditions.map((condition) => ({
-          when: { script: `$var.${a.experiment.name}.is(${JSON.stringify(condition)})` },
-          filter: { column: WIZARD_GROUP, only: [setName(condition)] },
-        }));
+        branches = [{}];
         break;
       case "later":
         branches = [];

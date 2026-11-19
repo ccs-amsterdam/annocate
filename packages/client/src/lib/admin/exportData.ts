@@ -381,7 +381,8 @@ export function unitsTable(versions: UnitVersion[], annotations: AnnotationRow[]
   // A column per set group: the unit's sets, as in a sets column of a CSV
   const cells = groups.map((g) => cellsFromSets(g.sets));
   return {
-    headers: ["unit_version_id", "unit_id", "hash", "deployed", ...fields, ...groups.map((g) => `sets.${g.name}`)],
+    // Set columns under their own name (they are declared unit fields, not in the units' data)
+    headers: ["unit_version_id", "unit_id", "hash", "deployed", ...fields, ...groups.map((g) => (fields.includes(g.name) ? `${g.name}_set` : g.name))],
     rows: coded.map((v) => [
       String(v.id),
       v.externalId,
@@ -543,14 +544,17 @@ coders.csv       A row per coder: participant id, email (coders who logged
                  active, how their session ended (complete, screenout or
                  quit), when they asked for their answers to be deleted
                  (deletion_requested; not done yet), their session values
-                 from the link (session.<name>), units finished per loop, and
-                 their answers outside unit loops.
+                 (session.<name>: from the link, the coder for studies
+                 that divide units over coders, and assigned conditions),
+                 units finished per loop, and their answers outside unit
+                 loops (random conditions included).
 units.csv        The units as deployed, a row per version: a unit replaced
                  after it was coded has a row per version (deployed: when).
                  Coders saw only the fields the design shows; the others
                  are for your analysis. Join annotations on unit_version_id.
-                 A column per set group (sets.<group>): the unit's sets,
-                 e.g. s1 or s1;_overlap (#n: its position in an ordered set).
+                 A column per set column (who or which group codes the
+                 unit): its values, e.g. anna or anna;_overlap (#n: its
+                 position in an ordered set).
 variables.csv    Per design version (design_version), question and option: the question text,
                  the stored value and its label.
 designs/v<n>.json  Each design version answers were given under (and the

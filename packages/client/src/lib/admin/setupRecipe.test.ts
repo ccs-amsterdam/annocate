@@ -150,7 +150,7 @@ describe("setup wizard recipes", () => {
     expect(sets._overlap).not.toContain("u2");
   });
 
-  it("experimental groups: the condition first, a set per condition by chosen values, questions before and after", () => {
+  it("experimental groups: the condition first, linked to a set column with a value per condition, questions before and after", () => {
     const a = setup({
       parts: { annotate: true, survey: false, experiment: true },
       distribution: { mode: "groups", column: "group", values: { control: ["a"], treatment: ["b", "c"] } },
@@ -165,11 +165,10 @@ describe("setup wizard recipes", () => {
     ]);
     const items = recipe.design.items as { name?: string; type: string }[];
     expect(items.map((i) => i.name ?? i.type)).toEqual(["condition", "age", "unit_loop", "any_comments"]);
-    // A coder group per condition, coding its set
-    expect(loopOf(a).units).toEqual([
-      { when: { script: '$var.condition.is("control")' }, filter: { column: "sets", only: ["control"] } },
-      { when: { script: '$var.condition.is("treatment")' }, filter: { column: "sets", only: ["treatment"] } },
-    ]);
+    // The condition selects its units: a set column named after it, linked to the random condition
+    expect(recipe.sets![0].group).toBe("condition");
+    expect((recipe.design.items as { variable?: { units?: string } }[])[0].variable).toMatchObject({ type: "random_condition", units: "condition" });
+    expect(loopOf(a).units).toEqual([{}]);
   });
 
   it("decide later: the loop's units are not set, and reported", () => {

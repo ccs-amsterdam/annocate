@@ -1,7 +1,9 @@
-import { ALL_UNITS_SET, type DeploymentStatus } from "@annotinder/contracts";
+import type { DeploymentStatus } from "@annotinder/contracts";
+import { shareLabel } from "../../../design/assignment";
 
 /**
- * Progress per set of each loop (once coders are routed to it): complete
+ * Progress per share of each loop (the units of a coder and conditions;
+ * once coders are routed to it): complete
  * units (every routed coder finished them, or the saturation rule was met
  * for dynamic sources) out of all units.
  */
@@ -18,7 +20,7 @@ export function LoopProgress({ status }: { status: DeploymentStatus }) {
             <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
               <span className="truncate">
                 <span className="font-mono">{s.loop}</span>
-                <span className="text-muted-foreground"> · {s.set === ALL_UNITS_SET ? "all units" : s.set}</span>
+                <span className="text-muted-foreground"> · {shareLabel(s.set)}</span>
               </span>
               <span className="shrink-0 tabular-nums text-muted-foreground">
                 {s.completeUnits} / {s.totalUnits} complete · {s.coders} coder{s.coders === 1 ? "" : "s"}
@@ -30,7 +32,7 @@ export function LoopProgress({ status }: { status: DeploymentStatus }) {
               aria-valuenow={pct}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label={`${s.loop}, ${s.set}: ${pct}% complete`}
+              aria-label={`${s.loop}, ${shareLabel(s.set)}: ${pct}% complete`}
             >
               <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
             </div>
