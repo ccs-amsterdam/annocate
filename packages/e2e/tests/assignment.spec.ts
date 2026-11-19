@@ -83,3 +83,44 @@ test("a condition drawn at the start, linked to units: balanced, each session co
   }
   expect(seen.sort()).toEqual(["Alarming report", "Calm report"]);
 });
+
+test("two loops filter one set column: first the pre units, then the post units", async ({ request, browser }) => {
+  const study = await studyWithColumn(request, "Pre and post", "phase", { "Before text": "pre", "After text": "post" });
+  const filtered = (only: string, name: string, text: string) => ({
+    ...loop(),
+    label: name,
+    units: [{ filter: { column: "phase", only: [only] } }],
+    children: [{ type: "question", name, variable: { type: "nominal", question: text, options: [{ value: "yes" }, { value: "no" }] } }],
+  });
+  const design = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
+    items: [filtered("pre", "before", "Before?"), filtered("post", "after", "After?")],
+  });
+  await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+
+  const coder = await (await browser.newContext()).newPage();
+  await coder.goto(`/code/${study.id}?link=${link.secret}`);
+  await question(coder, "Before?");
+  await expect(coder.getByText("Before text")).toBeVisible();
+  await coder.getByRole("button", { name: /yes/ }).click();
+  await question(coder, "After?");
+  await expect(coder.getByText("After text")).toBeVisible();
+  await expect(coder.getByText("Before text")).toHaveCount(0);
+});
+
+test("uploading units with a set column makes the column, shown with its values", async ({ page, request }) => {
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Set column upload" });
+  await page.goto(`/research/studies/${study.id}/units`);
+  await page.getByRole("button", { name: /Upload CSV/ }).click();
+  await page.locator("input[type=file]").setInputFiles({
+    name: "units.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("id,text,coder\nu1,First,anna\nu2,Second,bob\nu3,Third,anna;bob\nu4,Fourth,_overlap\n"),
+  });
+  await page.getByRole("button", { name: /Use column names/ }).click();
+  await page.getByLabel("Type of coder").selectOption("sets");
+  await page.getByRole("button", { name: /Upload 4 units/ }).click();
+  await expect(page.getByRole("button", { name: /^anna 2$/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^bob 2$/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^_overlap 1$/ })).toBeVisible();
+});
