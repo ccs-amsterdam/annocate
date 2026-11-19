@@ -322,9 +322,10 @@ export function CsvUnitsForm({
           {allowSets && (
             <>
               {" "}
-              A <strong>sets</strong> column makes a set group: each cell names the unit&apos;s sets, e.g. <code>s1</code>,{" "}
-              <code>s1;s2</code> or <code>s1#3</code> (third in s1), and <code>_overlap</code> for the group&apos;s overlap. It replaces
-              the group&apos;s sets.
+              A <strong>set</strong> column says who or which group codes a unit: each cell holds one or more values, e.g.{" "}
+              <code>anna</code> or <code>anna;bob</code> (both), <code>_overlap</code> (everyone), <code>_gold</code> or{" "}
+              <code>_practice</code> (gold or practice units), optionally with a position (<code>anna#3</code>). Use it for coders
+              or for conditions (session settings). It replaces the column&apos;s values.
             </>
           )}
         </p>
@@ -488,7 +489,7 @@ function ColumnRow({
             }}
           >
             <option value="id">unit id</option>
-            {allowSets && <option value="sets">sets</option>}
+            {allowSets && <option value="sets">set (who or which group codes it)</option>}
             {TYPES.map((t) => (
               <option key={t} value={t}>
                 {t}

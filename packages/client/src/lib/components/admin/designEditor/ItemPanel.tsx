@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import {
   sessionNames,
+  splitDesignItems,
+  collectQuestions,
   availableQuestions,
   itemName,
   templateNames,
@@ -18,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { ItemPreview } from "./ItemPreview";
 import { getItemKey } from "../designTree/utils";
 import { SegmentedToggle } from "./SegmentedToggle";
+import { shareSources } from "../../../design/assignment";
 import { ItemJsonEditor } from "./ItemJsonEditor";
 import type { DesignDraft } from "./useDesignDraft";
 import type { UnitFieldWarning } from "../../../design/unitFieldRefs";
@@ -160,6 +163,7 @@ function ItemEditForm({
         validationIssues={itemIssues}
         isInsideLoop={isInsideUnitLoop(items, key)}
         screenouts={item.type === "unit_loop" ? screenoutEnds(cleanItems) : undefined}
+        shareSources={item.type === "unit_loop" ? loopShareSources(cleanItems) : undefined}
         onChange={(next) => draft.update(key, next)}
       />
     </fieldset>
@@ -191,4 +195,13 @@ export function PreviewPanel({ client, draft }: { client: ResearcherApi; draft: 
       )}
     </div>
   );
+}
+
+/** What selects a session's units: the coder and assigned conditions, and random conditions linked to units. */
+function loopShareSources(items: readonly unknown[]) {
+  const { session, items: rest } = splitDesignItems(items);
+  const random = [...collectQuestions(rest as DesignItem[]).questions]
+    .filter(([, v]) => v.type === "random_condition")
+    .map(([name, v]) => ({ name, units: (v as { units?: string }).units }));
+  return shareSources(session, random);
 }

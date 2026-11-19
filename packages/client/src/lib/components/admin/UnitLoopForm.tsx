@@ -34,6 +34,7 @@ import { ConditionEditor } from "./ConditionEditor";
 import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
 import { HelpButton } from "../../help/HelpButton";
+import { shareSummary, valueCounts, type ShareSource } from "../../design/assignment";
 import { parseSimpleLayout, simpleTemplate } from "../../design/simpleLayout";
 import { LayoutDesigner } from "./LayoutDesigner";
 import { AnswerKeyDialog, type AnswerKeyQuestion } from "./units/AnswerKeyDialog";
@@ -115,10 +116,13 @@ export function UnitLoopForm({
   coderQuestions,
   screenouts = [],
   validationIssues,
+  shareSources = [],
   readOnly = false,
   onChange,
 }: {
   loop: UnitLoopItem;
+  /** What selects a session's units (its coder, linked conditions): for the Units tab's summary. */
+  shareSources?: ShareSource[];
   /** The codebook's end items with outcome `screenout`: where gold checks can end a session. */
   screenouts?: string[];
   /** For "Generate sets…" (absent: not offered). */
@@ -166,6 +170,7 @@ export function UnitLoopForm({
           coderQuestions={coderQuestions}
           screenouts={screenouts}
           validationIssues={validationIssues}
+          shareSources={shareSources}
           onChange={onChange}
         />
       ) : (
@@ -206,6 +211,7 @@ function UnitsTab({
   coderQuestions,
   screenouts,
   validationIssues,
+  shareSources,
   onChange,
 }: {
   loop: UnitLoopItem;
@@ -214,6 +220,7 @@ function UnitsTab({
   coderQuestions: { name: string; variable: AnyVariableType }[];
   screenouts: string[];
   validationIssues: DesignIssue[];
+  shareSources: ShareSource[];
   onChange: (loop: UnitLoopItem) => void;
 }) {
   const agreeable = agreementQuestions(loop.children as DesignItem[]);
@@ -251,6 +258,7 @@ function UnitsTab({
       checkable={checkable}
       answerKey={client && loop.layout ? { client, layout: loop.layout } : undefined}
       screenouts={screenouts}
+      shareSources={shareSources}
       issues={issuesAt(validationIssues, "units", b)}
       onChange={(branch) => setBranch(b, branch)}
     />
@@ -550,10 +558,12 @@ function BranchEditor({
   checkable,
   answerKey,
   screenouts,
+  shareSources,
   issues,
   onChange,
 }: {
   branch: UnitBranch;
+  shareSources: ShareSource[];
   answerKey?: AnswerKeyContext;
   client?: ResearcherApi;
   groups: SetGroupResponse[];
@@ -574,8 +584,8 @@ function BranchEditor({
   };
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[11px] text-muted-foreground">
-        A session gets the units of its coder and conditions (the Study entry); this loop hands out those, or some of them.
+      <p className="flex items-center gap-1 text-xs">
+        <span>{shareSummary(shareSources, branch.filter)}</span>
         <HelpButton topic="unit-distribution" label="Help: unit distribution" />
       </p>
       <FilterEditor groups={groups} filter={branch.filter} onChange={(filter) => onChange(filter ? { ...branch, filter } : without("filter"))} />
@@ -659,18 +669,33 @@ function FilterEditor({ groups, filter, onChange }: { groups: SetGroupResponse[]
               ))}
             </select>
           </label>
-          <label className={labelClass}>
-            Values (comma separated)
-            <Input
-              className="h-8 w-48 text-xs font-normal"
-              value={values.join(", ")}
-              placeholder={column?.sets.map((s) => s.name).join(", ")}
-              onChange={(e) => {
-                const list = e.target.value.split(",").map((v) => v.trim());
-                onChange(filter.only ? { ...filter, only: list } : { ...filter, except: list });
-              }}
-            />
-          </label>
+          <div className={labelClass}>
+            Values
+            <div className="flex flex-wrap gap-1">
+              {valueCounts(groups, filter.column).map(({ value, count }) => {
+                const on = values.includes(value);
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => {
+                      const list = on ? values.filter((v) => v !== value) : [...values.filter(Boolean), value];
+                      const key = filter.only ? "only" : "except";
+                      onChange({ column: filter.column, [key]: list.length ? list : [""] } as UnitFilter);
+                    }}
+                    className={cn(
+                      "cursor-pointer rounded-full border px-2 py-0.5 text-[11px] font-normal",
+                      on ? "border-wood bg-wood/15 text-foreground" : "border-border text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {value} <span className="text-muted-foreground">{count}</span>
+                  </button>
+                );
+              })}
+              {!column && <span className="text-[11px] font-normal text-muted-foreground">No units with this column yet</span>}
+            </div>
+          </div>
         </>
       )}
     </div>

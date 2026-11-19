@@ -1,4 +1,4 @@
-import { RESERVED_SETS, type ConditionSpec, type SetGroupResponse } from "@annotinder/contracts";
+import { ALL_UNITS_SET, RESERVED_SETS, type ConditionSpec, type SetGroupResponse } from "@annotinder/contracts";
 
 // Who gets which units (docs/plans/unit-assignment.md), as the editor shows
 // it: the coders and conditions of the session, checked against the draft
@@ -60,4 +60,63 @@ export function assignmentLinks(coders: CoderSummary | null, conditions: readonl
     n *= Math.max(1, values.length);
   }
   return n;
+}
+
+/** What selects a session's units: its coder and the conditions linked to a set column. */
+export interface ShareSource {
+  /** How the editor names it, e.g. "coder" or "framing". */
+  label: string;
+  column: string;
+  /** Drawn in the flow (a random condition), not at the start. */
+  inFlow?: boolean;
+}
+
+/** The share's sources, from the session settings and the random conditions linked to units. */
+export function shareSources(
+  session: { coders?: { column: string }; conditions?: readonly { name: string; units?: string }[] } | null | undefined,
+  randomConditions: readonly { name: string; units?: string }[] = [],
+): ShareSource[] {
+  const out: ShareSource[] = [];
+  if (session?.coders) out.push({ label: "coder", column: session.coders.column });
+  for (const c of session?.conditions ?? []) if (c.units) out.push({ label: c.name, column: c.units });
+  for (const c of randomConditions) if (c.units) out.push({ label: c.name, column: c.units, inFlow: true });
+  return out;
+}
+
+/** A loop's units in one line: whose they are, and the loop's filter. */
+export function shareSummary(sources: readonly ShareSource[], filter?: { column: string; only?: string[]; except?: string[] }): string {
+  const whose =
+    sources.length === 0 ? "A session gets all units" : `A session gets the units of its ${sources.map((s) => s.label).join(" × ")}`;
+  if (!filter) return `${whose}, and codes them all.`;
+  const values = (filter.only ?? filter.except ?? []).filter(Boolean).map((v) => `“${v}”`).join(", ");
+  return `${whose}; this loop ${filter.only ? "only" : "all except"} those with ${values || "(no value yet)"} in ${filter.column}.`;
+}
+
+/** The values of a set column with their number of units (the special ones last). */
+export function valueCounts(groups: readonly SetGroupResponse[], column: string): { value: string; count: number; special: boolean }[] {
+  const special = new Set<string>(RESERVED_SETS);
+  const sets = groups.find((g) => g.name === column)?.sets ?? [];
+  return sets
+    .map((s) => ({ value: s.name, count: s.unitIds.length, special: special.has(s.name) }))
+    .sort((a, b) => Number(a.special) - Number(b.special));
+}
+
+/**
+ * A share's key from the server's progress (`coder=anna,framing=control |
+ * phase only post | overlap`) as people read it: "anna · framing control,
+ * only post".
+ */
+export function shareLabel(key: string): string {
+  if (key === ALL_UNITS_SET) return "all units";
+  const [values, ...rest] = key.split(" | ");
+  const who =
+    values === "all"
+      ? "all units"
+      : values
+          .split(",")
+          .map((pair) => pair.split("="))
+          .map(([column, value]) => (column === "coder" ? value : `${column} ${value}`))
+          .join(" · ");
+  const filter = rest.find((r) => / (only|except) /.test(r));
+  return filter ? `${who}, ${filter.replace(/^\S+ /, "")}` : who;
 }

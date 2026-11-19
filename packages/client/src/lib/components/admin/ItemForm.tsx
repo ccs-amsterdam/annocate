@@ -17,6 +17,7 @@ import { ConditionEditor } from "./ConditionEditor";
 import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
 import { Input } from "@/components/ui/input";
+import type { ShareSource } from "../../design/assignment";
 import { Textarea } from "@/components/ui/textarea";
 import {
   VariableTypeForm,
@@ -85,6 +86,7 @@ export function ItemForm({
   validationIssues = [],
   isInsideLoop = false,
   screenouts = [],
+  shareSources,
   onChange,
 }: {
   item: DesignItem;
@@ -109,6 +111,8 @@ export function ItemForm({
   isInsideLoop?: boolean;
   /** The codebook's screen-out end items (a loop's gold checks can end there). */
   screenouts?: string[];
+  /** For a unit loop: what selects a session's units (its coder, linked conditions). */
+  shareSources?: ShareSource[];
   onChange: (updated: DesignItem) => void;
 }) {
   const getFieldError = (field: string) => {
@@ -210,6 +214,7 @@ export function ItemForm({
           coderQuestions={availableQuestions}
           screenouts={screenouts}
           validationIssues={validationIssues}
+          shareSources={shareSources}
           readOnly={readOnly}
           onChange={(loop) => onChange(loop)}
         />

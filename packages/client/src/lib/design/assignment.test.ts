@@ -36,3 +36,21 @@ describe("who gets which units, in the editor", () => {
     expect(assignmentLinks(null, [{ values: ["a", "b"], assign: "random" }], groups)).toBe(1);
   });
 });
+
+describe("share summaries", () => {
+  it("say whose units a loop hands out, with its filter", async () => {
+    const { shareSources, shareSummary, shareLabel, valueCounts } = await import("./assignment");
+    const sources = shareSources({ coders: { column: "coder" }, conditions: [{ name: "framing", units: "framing" }, { name: "lang" }] }, [{ name: "set", units: "set" }]);
+    expect(sources.map((s) => s.label)).toEqual(["coder", "framing", "set"]);
+    expect(sources[2].inFlow).toBe(true);
+    expect(shareSummary([], undefined)).toBe("A session gets all units, and codes them all.");
+    expect(shareSummary(sources.slice(0, 2), { column: "phase", only: ["post"] })).toBe("A session gets the units of its coder × framing; this loop only those with “post” in phase.");
+    expect(shareLabel("coder=anna,framing=control | phase only post | overlap")).toBe("anna · framing control, only post");
+    expect(shareLabel("all")).toBe("all units");
+    const groups = [{ name: "phase", sets: [{ name: "_overlap", unitIds: [9], ordered: false }, { name: "pre", unitIds: [1, 2], ordered: false }] }];
+    expect(valueCounts(groups, "phase")).toEqual([
+      { value: "pre", count: 2, special: false },
+      { value: "_overlap", count: 1, special: true },
+    ]);
+  });
+});

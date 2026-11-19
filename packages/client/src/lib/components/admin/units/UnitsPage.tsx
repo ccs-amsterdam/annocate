@@ -176,14 +176,14 @@ function SetsBar({
         <div className="ml-auto flex gap-1.5">
           <Button size="sm" variant="outline" onClick={onSplit} className="gap-1.5" disabled={allCount === 0}>
             <Scissors className="h-3.5 w-3.5" />
-            Split {current ? "set" : "units"} into sets
+            Fill a set column
           </Button>
           <HelpButton topic="sets" label="Help: sets" />
         </div>
       </div>
       {groups.map((g) => (
         <div key={g.name} className="flex flex-wrap items-center gap-1.5">
-          <span className="w-28 truncate font-mono text-xs font-semibold" title={`Group ${g.name}`}>
+          <span className="w-28 truncate font-mono text-xs font-semibold" title={`Set column ${g.name}`}>
             {g.name}
           </span>
           {g.sets.map((set) => (
@@ -199,11 +199,11 @@ function SetsBar({
           <Button
             size="icon-sm"
             variant="ghost"
-            title={`Delete group ${g.name} (its units stay)`}
-            aria-label={`Delete group ${g.name}`}
+            title={`Delete column ${g.name} (its units stay)`}
+            aria-label={`Delete column ${g.name}`}
             disabled={deleteGroup.isPending}
             onClick={() => {
-              if (!confirm(`Delete group "${g.name}" and its sets? Its units stay.`)) return;
+              if (!confirm(`Delete set column "${g.name}"? Its units stay.`)) return;
               deleteGroup.mutate(g.name, { onSuccess: () => current?.group === g.name && onSelect(null) });
             }}
           >
@@ -211,7 +211,7 @@ function SetsBar({
           </Button>
         </div>
       ))}
-      {current && <p className="text-xs text-muted-foreground">Showing the units of {current.set} (group {current.group}) in the set&apos;s order.</p>}
+      {current && <p className="text-xs text-muted-foreground">Showing the units with {current.set} in column {current.group}, in their order.</p>}
       {deleteGroup.isError && <p className="text-sm text-destructive">{deleteGroup.error.message}</p>}
     </div>
   );
