@@ -29,11 +29,10 @@ export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
   });
 }
 
-/** The questions a loop's branches with criteria compare for agreement: what distribution needs to know of finished codings. */
+/** The question a loop with criteria compares for agreement: what distribution needs to know of finished codings. */
 export function loopAgreementVariables(info: LoopInfo): string[] {
-  const variables = new Set<string>();
-  for (const branch of info.loop.units) if (branch.criteria?.until) variables.add(branch.criteria.until.on);
-  return [...variables];
+  const on = info.loop.units?.criteria?.until?.on;
+  return on ? [on] : [];
 }
 
 /**
@@ -41,7 +40,7 @@ export function loopAgreementVariables(info: LoopInfo): string[] {
  * (loaded for all coders, not only active ones): shared queues.
  */
 export function needsAllCodings(info: LoopInfo): boolean {
-  return info.loop.units.some((b) => !!b.criteria);
+  return !!info.loop.units?.criteria;
 }
 
 /**

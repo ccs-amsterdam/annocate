@@ -90,10 +90,10 @@ export class PreviewStore implements Store {
     return null;
   }
 
-  async routeCoder(coderId: number, branch: string, assignment: CoderAssignments[string]): Promise<void> {
+  async routeCoder(coderId: number, loop: string, assignment: CoderAssignments[string]): Promise<void> {
     const coder = this.coders.get(coderId);
     if (!coder) throw new HttpError(404, "Coder not found");
-    coder.assignments = { ...coder.assignments, [branch]: assignment };
+    coder.assignments = { ...coder.assignments, [loop]: assignment };
   }
 
   async setSessionValue(coderId: number, name: string, value: string): Promise<string> {

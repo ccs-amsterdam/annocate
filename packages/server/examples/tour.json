@@ -21,7 +21,7 @@
       "id": "unit-2",
       "data": {
         "headline": "Experiments inside codebooks: AnnoTinder adds conditions and random groups",
-        "text": "A new version of AnnoTinder lets researchers build experiments directly into a codebook. A random condition assigns each coder to a control or experiment group, and Show if items show or hide questions depending on earlier answers. Communication scholar Maria Jansen of the Northbridge Media Institute called the feature a cheap way to test how instructions affect coding quality."
+        "text": "A new version of AnnoTinder lets researchers build experiments directly into a codebook. A random value assigns each coder to a control or experiment group, and Show if items show or hide questions depending on earlier answers. Communication scholar Maria Jansen of the Northbridge Media Institute called the feature a cheap way to test how instructions affect coding quality."
       }
     },
     {
@@ -51,10 +51,10 @@
         }
       },
       {
-        "type": "question",
+        "type": "computed",
         "name": "group",
         "variable": {
-          "type": "random_condition",
+          "type": "random",
           "draw": "random",
           "options": [
             {
@@ -182,7 +182,7 @@
             "variable": {
               "type": "nominal",
               "question": "You were randomly assigned to the experiment group, so only you (and others in this group) see this question. Did you know codebooks can contain experiments?",
-              "instruction": "A random condition assigned you to a group at random. A Show if item then shows this question only to the experiment group.",
+              "instruction": "A random value assigned you to a group at random. A Show if item then shows this question only to the experiment group.",
               "options": [
                 {
                   "value": "yes",
@@ -245,9 +245,6 @@
       {
         "type": "unit_loop",
         "label": "News items",
-        "units": [
-          {}
-        ],
         "layout": {
           "template": "::: if $var.group.is('experiment')\n[[experiment_banner]]\n::: else\n[[control_banner]]\n:::\n\n::: if $var.experience.is(1)\n[[beginner_tip]]\n:::\n\n# $unit.headline\n\n$unit.text\n\n:::: from topics\n::: style margin-top: 1em; font-size: 90%; opacity: 0.8\nYou rated the tone of this article as **$var.sentiment.label**.\n:::\n::::",
           "snippets": {

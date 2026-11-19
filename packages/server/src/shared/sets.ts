@@ -18,6 +18,7 @@ import {
   loopTitle,
   setKey,
   unitLoops,
+  loopUnits,
   type DesignItem,
   type SetGroupResponse,
   type UnitField,
@@ -170,20 +171,20 @@ export async function assignmentChecks(
   if (session?.coders && coderAccess(valuesOf(session.coders.column)) === "mixed") {
     errors.push(`The coders (column '${session.coders.column}') are partly email addresses: make them all email addresses (coders sign in) or none (a link each).`);
   }
-  // Conditions' fixed values, and the column's other values
+  // Conditions' and computed items' fixed values, and the column's other values
   const random = collectQuestions(items).questions;
   const linked = [
-    ...(session?.conditions ?? []).flatMap((c) => (c.units ? [{ name: c.name, column: c.units, values: c.values === "free" ? null : c.values }] : [])),
+    ...(session?.conditions ?? []).flatMap((c) => (c.units ? [{ name: `Condition '${c.name}'`, column: c.units, values: c.values === "free" ? null : c.values }] : [])),
     ...[...random].flatMap(([name, v]) =>
-      v.type === "random_condition" && v.units ? [{ name, column: v.units, values: v.options ? v.options.map((o) => o.value) : null }] : [],
+      v.type === "random" && v.units ? [{ name: `Computed item '${name}'`, column: v.units, values: v.options ? v.options.map((o) => o.value) : null }] : [],
     ),
   ];
   for (const { name, column, values } of linked) {
     if (values === null || valuesOf(column).length === 0) continue;
     const missing = values.filter((v) => !valuesOf(column).includes(v));
-    if (missing.length > 0) errors.push(`Condition '${name}': column '${column}' has no units for ${missing.map((v) => `'${v}'`).join(", ")}.`);
+    if (missing.length > 0) errors.push(`${name}: column '${column}' has no units for ${missing.map((v) => `'${v}'`).join(", ")}.`);
     const unlisted = valuesOf(column).filter((v) => !values.includes(v));
-    if (unlisted.length > 0) warnings.push(`Condition '${name}' doesn't list ${unlisted.map((v) => `'${v}'`).join(", ")} of column '${column}': no session gets those units.`);
+    if (unlisted.length > 0) warnings.push(`${name} doesn't list ${unlisted.map((v) => `'${v}'`).join(", ")} of column '${column}': no session gets those units.`);
   }
   // Units no session gets: in no set of a column every session is selected by
   const all = (await sql.query<{ id: number }>(
@@ -205,18 +206,19 @@ export async function assignmentChecks(
   const { questions } = collectQuestions(items);
   for (const { key, loop } of unitLoops(items)) {
     const title = loopTitle(loop, key);
-    for (const branch of loop.units) {
+    {
+      const units = loopUnits(loop);
       for (const [set, settings, column] of [
-        [PRACTICE_SET, branch.practice, practiceColumn],
-        [GOLD_SET, branch.gold, goldColumn],
+        [PRACTICE_SET, units.practice, practiceColumn],
+        [GOLD_SET, units.gold, goldColumn],
       ] as const) {
         if (!settings) continue;
-        const units = special(set);
-        if (units.length === 0) {
+        const specials = special(set);
+        if (specials.length === 0) {
           warnings.push(`Loop '${title}': ${set === GOLD_SET ? "gold" : "practice"} units are on, but no set column has ${set} units.`);
           continue;
         }
-        const rows = (await servedUnits(sql, studyId, live, units)).sort((a, b) => a.id - b.id);
+        const rows = (await servedUnits(sql, studyId, live, specials)).sort((a, b) => a.id - b.id);
         for (const question of settings.questions ?? []) {
           const empty = rows.filter((r) => parseAnswerKey(r.data[column(question)]) === null);
           // Right answers that can never be right: not an option, not a number, a range without options in it
@@ -237,14 +239,14 @@ export async function assignmentChecks(
           );
         }
       }
-      if (!branch.overlap || branch.overlap.placement === "disabled") continue;
+      if (!units.overlap || units.overlap.placement === "disabled") continue;
       // The session's columns, or (no column divides the units) every column
       const shareColumns = (shares.get(key) ?? []).map((c) => c.column);
       const overlapColumns = shareColumns.length > 0 ? shareColumns : [...groups.keys()];
       const n = new Set(overlapColumns.flatMap((c) => unitsIn(c, OVERLAP_SET))).size;
       if (n === 0) warnings.push(`Loop '${title}': the overlap is on, but ${overlapColumns.length === 0 ? "no set column has overlap units" : `no ${OVERLAP_SET} units in ${overlapColumns.map((c) => `'${c}'`).join(", ")}`}.`);
-      else if (branch.overlap.expect !== undefined && n < branch.overlap.expect) {
-        warnings.push(`Loop '${title}': ${n} overlap units; ${branch.overlap.expect} are recommended.`);
+      else if (units.overlap.expect !== undefined && n < units.overlap.expect) {
+        warnings.push(`Loop '${title}': ${n} overlap units; ${units.overlap.expect} are recommended.`);
       }
     }
   }

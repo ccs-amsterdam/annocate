@@ -130,9 +130,6 @@
       {
         "type": "unit_loop",
         "label": "Headlines",
-        "units": [
-          {}
-        ],
         "layout": {
           "template": "# $unit.headline"
         },

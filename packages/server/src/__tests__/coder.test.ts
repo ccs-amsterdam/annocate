@@ -89,11 +89,6 @@ async function send(name: string, path: string, init: RequestInit = {}, headers:
   return res;
 }
 
-/** The query a client sends with the branch it chose (contracts NextUnitQuerySchema). */
-function branchQuery(branch?: number) {
-  return branch === undefined ? "" : `?branch=${branch}`;
-}
-
 /** A coder on device `name`, opened with `link` (`null`: the link the device was opened with before, if any). */
 function coder(name: string, invite: string | null = "demo-secret", app = () => server) {
   if (!devices.has(name)) devices.set(name, { cookies: new Map(), invite: null });
@@ -103,8 +98,8 @@ function coder(name: string, invite: string | null = "demo-secret", app = () => 
     send(name, path, init, device.invite ? { "x-link-secret": device.invite } : {}, app);
   return {
     session: async () => (await call("/session")).json() as Promise<SessionResponse>,
-    next: async (loop = "1", branch?: number) => {
-      const res = await call(`/loop/${loop}/next${branchQuery(branch)}`);
+    next: async (loop = "1") => {
+      const res = await call(`/loop/${loop}/next`);
       expect(res.status).toBe(200);
       return ((await res.json()) as { units: CoderUnitResponse[] }).units[0] ?? null;
     },
@@ -160,7 +155,7 @@ describe("coder flow", () => {
     // The coder codebook: no researcher notes, and loops without how units are handed out
     expect(session.codebook).not.toHaveProperty("note");
     const loop = session.codebook.items.find((i) => i.type === "unit_loop");
-    expect(loop?.type === "unit_loop" && loop.units.every((b) => !("mode" in b))).toBe(true);
+    expect(loop?.type === "unit_loop" && !("units" in loop)).toBe(true);
 
     const first = await c.next();
     expect(first?.externalId).toBe("unit-1");
@@ -245,7 +240,7 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
         {
           type: "unit_loop",
           label: "main_loop",
-          units: [{}],
+          units: {},
           layout: { template: "" },
           children: [sentimentQuestion],
           ...loop,
@@ -323,9 +318,9 @@ async function setSignIn(signIn: "off" | "optional" | "required") {
   expect(res.status).toBe(200);
 }
 
-/** The coder reached a random condition: its assigned value. */
+/** The coder reached a computed item: its value. */
 async function reach(c: ReturnType<typeof coder>, name: string) {
-  const res = await c.call(`/variables/condition/${name}`, { method: "POST" });
+  const res = await c.call(`/variables/computed/${name}`, { method: "POST" });
   expect(res.status).toBe(200);
   return ((await res.json()) as { value: VariableValue }).value.values;
 }
@@ -337,7 +332,7 @@ describe("shared queues", () => {
   it("pick up a redeploy and code each unit until coders agree", async () => {
     await coder("warmup").session(); // the server has the old version loaded
     await redeploy({
-      units: [{ criteria: { until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 }, priority: "saturate" } }],
+      units: { criteria: { until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 }, priority: "saturate" } },
     });
 
     const answers: Record<string, string> = { a: "positive", b: "negative", c: "positive" };
@@ -363,7 +358,7 @@ describe("shared queues", () => {
   });
 
   it("refuse annotations for units that were not handed to the coder", async () => {
-    await redeploy({ units: [{ criteria: { codersPerUnit: { min: 1, max: 1 } } }] });
+    await redeploy({ units: { criteria: { codersPerUnit: { min: 1, max: 1 } } } });
     const a = coder("a");
     const b = coder("b");
     const unitA = await a.next();
@@ -398,7 +393,7 @@ describe("shared queues under concurrency", () => {
         },
       });
     server = createApp(db, { secret: "test-secret", wrapStore: racing, devMode: true });
-    await redeploy({ units: [{ criteria: { codersPerUnit: { min: 1, max: 1 } } }] });
+    await redeploy({ units: { criteria: { codersPerUnit: { min: 1, max: 1 } } } });
     const a = coder("a");
     const unitA = (await a.next())!;
     const { coderId } = await a.session();
@@ -425,7 +420,7 @@ describe("coders", () => {
     await createSet("anna", ["unit-1"], "coder");
     await createSet("bob", ["unit-2", "unit-1"], "coder"); // unit-1: anna;bob
     await createSet("_overlap", ["unit-3"], "coder");
-    const deployed = await redeploy({ units: [{ overlap: { placement: "first" } }] }, [coders]);
+    const deployed = await redeploy({ units: { overlap: { placement: "first" } } }, [coders]);
     expect(deployed.links).toBe(2);
     const byCoder = Object.fromEntries((await links()).filter((l) => !l.retiredAt).map((l) => [l.params.coder, l.secret]));
     expect(Object.keys(byCoder).sort()).toEqual(["anna", "bob"]);
@@ -476,7 +471,7 @@ describe("coders", () => {
   it("can't mix email addresses and names, and the columns must be set columns", async () => {
     await createSet("anna", ["unit-1"], "coder");
     await createSet("b@example.org", ["unit-2"], "coder");
-    const design = await server.request("/api/study/1/design", { method: "POST", headers: adminHeaders, body: JSON.stringify(splitDesignItems([coders, { type: "unit_loop", units: [{}], layout: { template: "" }, children: [sentimentQuestion] }])) });
+    const design = await server.request("/api/study/1/design", { method: "POST", headers: adminHeaders, body: JSON.stringify(splitDesignItems([coders, { type: "unit_loop", units: {}, layout: { template: "" }, children: [sentimentQuestion] }])) });
     const { id } = (await design.json()) as { id: number };
     const deploy = await server.request("/api/study/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: id, units: true }) });
     expect(deploy.status).toBe(400);
@@ -555,7 +550,7 @@ describe("assigned conditions", () => {
     await createSet("a", ["unit-1"], "framing");
     await createSet("c", ["unit-2"], "framing");
     const session = sessionItem({ conditions: [{ name: "framing", values: ["a", "b"], assign: "random", units: "framing" }] });
-    const design = await server.request("/api/study/1/design", { method: "POST", headers: adminHeaders, body: JSON.stringify(splitDesignItems([session, { type: "unit_loop", units: [{}], layout: { template: "" }, children: [sentimentQuestion] }])) });
+    const design = await server.request("/api/study/1/design", { method: "POST", headers: adminHeaders, body: JSON.stringify(splitDesignItems([session, { type: "unit_loop", units: {}, layout: { template: "" }, children: [sentimentQuestion] }])) });
     const { id } = (await design.json()) as { id: number };
     const deploy = await server.request("/api/study/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: id, units: true }) });
     expect(deploy.status).toBe(400);
@@ -563,8 +558,8 @@ describe("assigned conditions", () => {
   });
 });
 
-describe("random conditions linked to a column", () => {
-  const part = { type: "question", name: "part", variable: { type: "random_condition", draw: "balanced", units: "parts" } };
+describe("computed items linked to a column", () => {
+  const part = { type: "computed", name: "part", variable: { type: "random", draw: "balanced", units: "parts" } };
 
   it("draw from the column's values when reached, or when a loop after them needs them", async () => {
     await createSet("p1", ["unit-1"], "parts");
@@ -582,7 +577,7 @@ describe("random conditions linked to a column", () => {
 
   it("don't select the units of loops before them", async () => {
     await createSet("p1", ["unit-1"], "parts");
-    const loopBefore = { type: "unit_loop", label: "before", units: [{}], layout: { template: "" }, children: [{ type: "question", name: "other", variable: { type: "confirm", question: "?" } }] };
+    const loopBefore = { type: "unit_loop", label: "before", units: {}, layout: { template: "" }, children: [{ type: "question", name: "other", variable: { type: "confirm", question: "?" } }] };
     await redeploy({}, [loopBefore, part]);
     const a = coder("a");
     const first = (await a.batch(10, "1")).map((u) => u.externalId);
@@ -602,7 +597,7 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     await createSet("a", ["unit-1", "unit-2"], "framing");
     await createSet("b", ["unit-1", "unit-3"], "framing");
     const session = sessionItem({ conditions: [{ name: "framing", values: ["a", "b"], assign: "link", units: "framing" }] });
-    await redeploy({ units: [{ criteria: { codersPerUnit: { max: 1 } } }] }, [session]);
+    await redeploy({ units: { criteria: { codersPerUnit: { max: 1 } } } }, [session]);
     const byValue = Object.fromEntries((await links()).filter((l) => !l.retiredAt).map((l) => [l.params.framing, l.secret]));
     const x = coder("x", byValue.a);
     const y = coder("y", byValue.b);
@@ -618,8 +613,8 @@ describe("assignment edge cases (review of the unit assignment)", () => {
 
   it("loops with the same columns and filter but another overlap count each get their own", async () => {
     await createSet("_overlap", ["unit-1", "unit-2", "unit-3"]);
-    const first = { type: "unit_loop", label: "first", units: [{ overlap: { placement: "first", max: 1 } }], layout: { template: "" }, children: [{ type: "question", name: "other", variable: { type: "confirm", question: "?" } }] };
-    await redeploy({ units: [{ overlap: { placement: "first", max: 2 } }] }, [first]);
+    const first = { type: "unit_loop", label: "first", units: { overlap: { placement: "first", max: 1 } }, layout: { template: "" }, children: [{ type: "question", name: "other", variable: { type: "confirm", question: "?" } }] };
+    await redeploy({ units: { overlap: { placement: "first", max: 2 } } }, [first]);
     const c = coder("c");
     // Loop 2 first: the order in which a server computes them doesn't matter
     const second = (await c.batch(20, "2")).length;
@@ -627,30 +622,24 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     expect(second - one).toBe(1);
   });
 
-  it("keeps a coder in the branch they were routed to, also when another branch has the same filter", async () => {
-    await createSet("_overlap", ["unit-1"]);
-    await redeploy({ units: [{ when: { script: "false" }, overlap: { placement: "disabled" } }, {}] });
+  it("hands out the same unfinished unit again, and marks each loop the coder reached", async () => {
+    const before = { type: "unit_loop", label: "before", units: {}, layout: { template: "" }, children: [{ type: "question", name: "other", variable: { type: "confirm", question: "?" } }] };
+    await redeploy({ units: { overlap: { placement: "disabled" } } }, [before]);
     const c = coder("c");
-    const first = await c.next("1", 1);
-    expect(first!.externalId).toBe("unit-1");
-    // Asked again without a choice: the same branch, so the same unfinished unit
-    expect((await c.next())!.id).toBe(first!.id);
-  });
-
-  it("doesn't take a routing from another loop for a branch with a condition", async () => {
-    const before = { type: "unit_loop", label: "before", units: [{}], layout: { template: "" }, children: [{ type: "question", name: "other", variable: { type: "confirm", question: "?" } }] };
-    await redeploy({ units: [{ when: { script: "false" } }, {}] }, [before]);
-    const c = coder("c");
+    const first = await c.next("2");
+    expect((await c.next("2"))!.id).toBe(first!.id);
     expect(await c.next("1")).not.toBeNull();
-    const res = await c.call("/loop/2/next");
-    expect(res.status).toBe(409);
-    expect(await res.json()).toMatchObject({ code: "branch_required" });
+    const { coderId } = await c.session();
+    const [stored] = await db.query<{ assignments: Record<string, unknown> }>("SELECT assignments FROM coders WHERE id = $1", [coderId]);
+    expect(stored.assignments).toEqual({ "1": { at: expect.any(Number) }, "2": { at: expect.any(Number) } });
+    // The units follow from the session: no branch to choose (an old client's `branch` is ignored)
+    expect((await c.call("/loop/2/next?branch=3")).status).toBe(200);
   });
 
-  it("a random condition drawn twice at once has one value, in the answers and the session", async () => {
+  it("a computed value drawn twice at once has one value, in the answers and the session", async () => {
     await createSet("p1", ["unit-1"], "parts");
     await createSet("p2", ["unit-2"], "parts");
-    const part = { type: "question", name: "part", variable: { type: "random_condition", draw: "random", units: "parts" } };
+    const part = { type: "computed", name: "part", variable: { type: "random", draw: "random", units: "parts" } };
     await redeploy({}, [part]);
     // Routing draws p1 (random() = 0); just after it found no value, another request of this coder drew p2
     let between: ((store: Store) => Promise<void>) | null = null;
@@ -675,7 +664,7 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     const c = coder("c");
     const { coderId } = await c.session();
     between = async (store) => {
-      await store.putCoderValues({ coderId, values: { part: { done: true, values: [{ value: "p2" }] } }, assigned: true, designVersionId: null });
+      await store.putCoderValues({ coderId, values: { part: { done: true, skip: false, values: [{ value: "p2" }] } }, assigned: true, designVersionId: null });
       await store.setSessionValue(coderId, "part", "p2");
     };
     const unit = await c.next();
@@ -710,7 +699,7 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     await createSet("a", ["unit-3"], "framing");
     await createSet("_overlap", ["unit-1", "unit-2"], "framing");
     const session = sessionItem({ coders: { column: "coder" }, conditions: [{ name: "framing", values: "free", assign: "link", units: "framing" }] });
-    await redeploy({ units: [{ overlap: { placement: "first", max: 1 } }] }, [session]);
+    await redeploy({ units: { overlap: { placement: "first", max: 1 } } }, [session]);
     const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
     expect((await coder("anna", secret).batch(10)).map((u) => u.externalId).sort()).toEqual(["unit-1", "unit-2"]);
     // Nor in the coders' progress
@@ -755,22 +744,22 @@ describe("loop filters and the overlap", () => {
   it("hands out the overlap first, last or spread, at most `max` of them, besides the coder's own units", async () => {
     await createSet("s1", ["unit-1", "unit-2"]);
     await createSet("_overlap", ["unit-2", "unit-3"]);
-    await redeploy({ units: [{ overlap: { placement: "first", max: 1 } }] }, [coders]);
+    await redeploy({ units: { overlap: { placement: "first", max: 1 } } }, [coders]);
     // unit-2 is overlap, not own: once, as overlap; only the first overlap unit
     expect(await order("first")).toEqual(["unit-2", "unit-1"]);
-    await redeploy({ units: [{ overlap: { placement: "last" } }] }, [coders]);
+    await redeploy({ units: { overlap: { placement: "last" } } }, [coders]);
     expect(await order("last")).toEqual(["unit-1", "unit-2", "unit-3"]);
     // Disabled: no overlap units at all
-    await redeploy({ units: [{ overlap: { placement: "disabled" } }] }, [coders]);
+    await redeploy({ units: { overlap: { placement: "disabled" } } }, [coders]);
     expect(await order("none")).toEqual(["unit-1"]);
     // No overlap settings: the overlap units are among the coder's own
-    await redeploy({ units: [{}] }, [coders]);
+    await redeploy({ units: {} }, [coders]);
     expect(await order("plain")).toEqual(["unit-1", "unit-2", "unit-3"]);
   });
 
   it("without a column dividing the units, the overlap is every column's: a shared queue places it", async () => {
     await createSet("_overlap", ["unit-3"], "extra");
-    await redeploy({ units: [{ criteria: { codersPerUnit: { min: 1, max: 1 } }, overlap: { placement: "last" } }] });
+    await redeploy({ units: { criteria: { codersPerUnit: { min: 1, max: 1 } }, overlap: { placement: "last" } } });
     expect(await order("first-coder")).toEqual(["unit-1", "unit-2", "unit-3"]);
     // The queue is done; the overlap is everyone's
     expect(await order("second-coder")).toEqual(["unit-3"]);
@@ -779,38 +768,27 @@ describe("loop filters and the overlap", () => {
   it("filter the session's units by a set column: only or except some values", async () => {
     await createSet("pre", ["unit-1"], "phase");
     await createSet("post", ["unit-2", "unit-3"], "phase");
-    await redeploy({ units: [{ filter: { column: "phase", only: ["post"] } }] });
+    await redeploy({ units: { filter: { column: "phase", only: ["post"] } } });
     expect(await order("only")).toEqual(["unit-2", "unit-3"]);
-    await redeploy({ units: [{ filter: { column: "phase", except: ["post"] } }] });
+    await redeploy({ units: { filter: { column: "phase", except: ["post"] } } });
     const all = await order("except");
     expect(all).toContain("unit-1");
     expect(all).not.toContain("unit-2");
   });
 });
 
-describe("routing by branch", () => {
-  it("keeps routing sticky and refuses branches that don't exist", async () => {
+describe("routing by session values", () => {
+  const condition = { type: "computed", name: "condition", variable: { type: "random", draw: "balanced", options: [{ value: "s1" }, { value: "s2" }], units: "g" } };
+
+  it("a computed value linked to a column selects the units; it can't be overwritten, and stays across restarts", async () => {
     await createSet("s1", ["unit-1"]);
     await createSet("s2", ["unit-2"]);
-    const condition = { type: "question", name: "condition", variable: { type: "random_condition", draw: "balanced", options: [{ value: "s1" }, { value: "s2" }] } };
-    await redeploy(
-      {
-        units: [
-          { when: { script: `$var.condition.is("s1")` }, filter: { column: "g", only: ["s1"] } },
-          { when: { script: `$var.condition.is("s2")` }, filter: { column: "g", only: ["s2"] } },
-        ],
-      },
-      [condition],
-    );
+    await redeploy({}, [condition]);
     const carol = coder("carol");
     expect(await reach(carol, "condition")).toEqual([{ value: "s1" }]);
-    const required = await carol.call("/loop/1/next");
-    expect(required.status).toBe(409);
-    expect(await required.json()).toMatchObject({ code: "branch_required" });
-    expect((await carol.call(`/loop/1/next${branchQuery(5)}`)).status).toBe(400);
-    const first = await carol.next("1", 0);
+    const first = await carol.next();
     expect(first!.externalId).toBe("unit-1");
-    // the client can't overwrite assigned variables
+    // the client can't overwrite computed values
     const tamper = await carol.call("/variables/coder", {
       method: "POST",
       body: JSON.stringify({ variables: { condition: { done: true, values: [{ value: "s2" }] } } }),
@@ -818,53 +796,37 @@ describe("routing by branch", () => {
     expect(tamper.status).toBe(204);
     expect((await carol.session()).variables.condition.values).toEqual([{ value: "s1" }]);
 
-    // even after a restart, carol keeps her routing (another choice is ignored)
+    // even after a restart, carol has the same units
     server = restart();
     const again = coder("carol", null);
     expect((await again.next())!.id).toBe(first!.id);
-    expect((await again.next("1", 1))!.id).toBe(first!.id);
-    const { coderId } = await again.session();
-    const [stored] = await db.query<{ assignments: unknown }>("SELECT assignments FROM coders WHERE id = $1", [coderId]);
-    expect(Object.values(stored.assignments as object)).toEqual([{ set: "all | g only s1", at: expect.any(Number) }]);
 
     // balanced across a restart: the counts are in the database
-    expect(await reach(coder("dave"), "condition")).toEqual([{ value: "s2" }]);
+    const dave = coder("dave");
+    expect(await reach(dave, "condition")).toEqual([{ value: "s2" }]);
+    expect((await dave.next())!.externalId).toBe("unit-2");
   });
 
-  it("keeps a coder's branch when the loop is moved or relabelled, not when what it hands out changes", async () => {
-    await createSet("s1", ["unit-1"]);
+  it("a coder's units follow the session when the loop moves or its settings change; what they coded stays theirs", async () => {
+    await createSet("s1", ["unit-1", "unit-3"]);
     await createSet("s2", ["unit-2"]);
-    const branches = (s2: object) => ({ units: [{ when: { script: "false" }, filter: { column: "g", only: ["s1"] } }, s2] });
-    await redeploy(branches({ filter: { column: "g", only: ["s2"] } }));
+    await redeploy({}, [condition]);
     const b = coder("b");
-    expect((await b.next("1", 1))!.externalId).toBe("unit-2");
-    // Another loop in front: this one is loop 2 now, and has another label. b keeps branch 2.
+    expect(await reach(b, "condition")).toEqual([{ value: "s1" }]);
+    const coded = (await b.next())!;
+    expect(coded.externalId).toBe("unit-1");
+    expect((await b.submit(coded.id, sentiment("positive"))).status).toBe(200);
+    // Another loop in front: this one is loop 2 now, and has another label
     const warmUp = { type: "question", name: "warm_up", variable: { type: "confirm", question: "?" } };
-    const before = { type: "unit_loop", label: "warm-up", layout: { template: "" }, units: [{ filter: { column: "g", only: ["s1"] } }], children: [warmUp] };
-    await redeploy({ label: "renamed", ...branches({ filter: { column: "g", only: ["s2"] } }) }, [before]);
-    expect((await b.next("2"))!.externalId).toBe("unit-2");
-    // Another filter: routed again (the first branch, as chosen now)
-    await redeploy(branches({ filter: { column: "g", except: ["s1"] } }));
-    expect((await b.next("1", 0))!.externalId).toBe("unit-1");
-  });
-
-  it("routes by the branch the client chose", async () => {
-    const leaning = { type: "question", name: "leaning", variable: { type: "nominal", question: "?", options: [{ value: "left" }, { value: "right" }] } };
-    await createSet("left_units", ["unit-1"]);
-    await redeploy({ units: [{ when: { script: `$var.leaning.is("left")` }, filter: { column: "g", only: ["left_units"] } }, {}] }, [leaning]);
-    const lefty = coder("lefty");
-    await lefty.call("/variables/coder", {
-      method: "POST",
-      body: JSON.stringify({ variables: { leaning: { done: true, values: [{ value: "left" }] } } }),
-    });
-    // the client evaluated `when` and chose branch 0
-    const unit = await lefty.next("1", 0);
-    await lefty.submit(unit!.id, sentiment("neutral"));
-    expect(await lefty.next()).toBeNull(); // only the one unit in left_units
-
-    const other = coder("other");
-    expect((await other.call("/loop/1/next")).status).toBe(409); // two branches: the client must choose
-    expect((await other.next("1", 1))!.externalId).toBe("unit-1");
+    const before = { type: "unit_loop", label: "warm-up", layout: { template: "" }, children: [warmUp] };
+    await redeploy({ label: "renamed" }, [condition, before]);
+    expect((await b.next("2"))!.externalId).toBe("unit-3");
+    // A filter that leaves out what b coded: b can still go back to it and change the answer
+    await createSet("late", ["unit-3"], "phase");
+    await redeploy({ units: { filter: { column: "phase", only: ["late"] } } }, [condition]);
+    expect((await b.call(`/loop/1/units/${coded.id}`)).status).toBe(200);
+    expect((await b.submit(coded.id, sentiment("negative"))).status).toBe(200);
+    expect((await b.next())!.externalId).toBe("unit-3");
   });
 });
 
@@ -1037,13 +999,11 @@ describe("practice and gold units", () => {
     const end = { type: "end", name: "low_quality", outcome: "screenout", message: "Thank you" };
     await redeploy(
       {
-        units: [
-          {
-            filter: { column: "g", only: ["s1"] },
-            practice: { placement: "first", questions: ["sentiment"] },
-            gold: { placement: "last", questions: ["sentiment"], health: { start: 2, wrong: -1, end: "low_quality" } },
-          },
-        ],
+        units: {
+          filter: { column: "g", only: ["s1"] },
+          practice: { placement: "first", questions: ["sentiment"] },
+          gold: { placement: "last", questions: ["sentiment"], health: { start: 2, wrong: -1, end: "low_quality" } },
+        },
       },
       [end],
     );
@@ -1082,7 +1042,7 @@ describe("auto questions", () => {
   const value = (v: string) => ({ done: true, skip: false, values: [{ value: v }] });
 
   it("are assigned when reached, once; coders who never reach them don't count", async () => {
-    const condition = { type: "question", name: "condition", variable: { type: "random_condition", draw: "balanced", options: [{ value: "a" }, { value: "b" }] } };
+    const condition = { type: "computed", name: "condition", variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }] } };
     await redeploy({}, [condition]);
     // Loading the session assigns nothing: a coder screened out before the question doesn't count
     const early = coder("early");
@@ -1091,15 +1051,15 @@ describe("auto questions", () => {
     expect(await reach(coder("first", null), "condition")).toEqual([{ value: "a" }]); // the same, reached again
     expect(await reach(coder("second"), "condition")).toEqual([{ value: "b" }]);
     expect(await reach(early, "condition")).toEqual([{ value: "a" }]);
-    expect((await coder("x").call("/variables/condition/nope", { method: "POST" })).status).toBe(404);
+    expect((await coder("x").call("/variables/computed/nope", { method: "POST" })).status).toBe(404);
   });
 
   it("balance within groups of earlier answers or session values (stratified)", async () => {
     const gender = { type: "question", name: "gender", variable: { type: "nominal", question: "Gender?", options: [{ value: "f" }, { value: "m" }] } };
     const condition = {
-      type: "question",
+      type: "computed",
       name: "condition",
-      variable: { type: "random_condition", draw: "balanced", options: [{ value: "a" }, { value: "b" }], stratify: ["gender", "session.wave"] },
+      variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }], stratify: ["gender", "session.wave"] },
     };
     await redeploy({}, [sessionItem({ params: [{ name: "wave", kind: "url", values: { list: [{ value: "1" }, { value: "2" }] }, default: "1" }] }), gender, condition]);
     const start = async (name: string, g: string, wave = "1") => {
@@ -1129,13 +1089,13 @@ describe("auto questions", () => {
 
 describe("coder-level answers", () => {
   it("are answer rows without a unit, one per question, assigned values marked; only changed answers are written", async () => {
-    const group = { type: "question", name: "group", variable: { type: "random_condition", draw: "random", options: [{ value: "a" }, { value: "b" }] } };
+    const group = { type: "computed", name: "group", variable: { type: "random", draw: "random", options: [{ value: "a" }, { value: "b" }] } };
     const age = { type: "question", name: "age", variable: { type: "numeric", question: "Age?" } };
     const city = { type: "question", name: "city", variable: { type: "nominal", question: "City?", options: [{ value: "Utrecht" }, { value: "Gent" }] } };
     await redeploy({}, [group, age, city]);
     const c = coder("surveyed");
     await c.session();
-    expect((await c.call("/variables/condition/group", { method: "POST" })).status).toBe(200);
+    expect((await c.call("/variables/computed/group", { method: "POST" })).status).toBe(200);
     const post = (variables: object) => c.call("/variables/coder", { method: "POST", body: JSON.stringify({ variables }) });
     const value = (v: string | number) => ({ done: true, skip: false, values: [{ value: v }] });
     expect((await post({ age: value(30), city: value("Utrecht") })).status).toBe(204);
@@ -1389,7 +1349,7 @@ describe("resuming and codebook updates", () => {
     const withVersion = (v: number) => ({ headers: { "x-annotinder-version": String(v) } });
     const answers = JSON.stringify({ unitId: unit!.id, variables: demo("neutral") });
 
-    await redeploy({ units: [{ mode: "all" }] }); // v2: only `sentiment`
+    await redeploy({ units: {} }); // v2: only `sentiment`
     const stale = await c.call("/variables/unit", { method: "POST", body: answers, ...withVersion(version) });
     expect(stale.status).toBe(409);
     expect(await stale.json()).toMatchObject({ code: "codebook_changed" });
@@ -1424,7 +1384,7 @@ describe("resuming and codebook updates", () => {
     const unit = await c.next();
     await c.submit(unit!.id, { ...demo("neutral"), actors_and_issues: { done: true, spans: [] } });
 
-    await redeploy({ units: [{ mode: "all" }] }); // v2: only `sentiment`
+    await redeploy({ units: {} }); // v2: only `sentiment`
     expect((await c.submit(unit!.id, sentiment("positive"))).status).toBe(200);
 
     const [stored] = await dbAnnotations();
@@ -1437,14 +1397,14 @@ describe("resuming and codebook updates", () => {
 
 describe("rebuilding from the database", () => {
   const agreeing = {
-    units: [{ criteria: { until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 } } }],
+    units: { criteria: { until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 } } },
   };
   const status = async () =>
     (await (await server.request("/api/study/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
 
   it("keeps saturation the same across a restart with an agreement rule", async () => {
     await redeploy({
-      units: [{ criteria: { until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 }, priority: "saturate" } }],
+      units: { criteria: { until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 }, priority: "saturate" } },
     });
     // two codings that disagree: the unit still needs a third coder
     const a = coder("a");
@@ -1477,7 +1437,7 @@ describe("rebuilding from the database", () => {
     const c = coder("upd");
     const unit = await c.next();
     await c.submit(unit!.id, { ...demo("neutral"), actors_and_issues: { done: true, spans: [] } });
-    await redeploy({ units: [{ mode: "all" }] }); // v2: only `sentiment`
+    await redeploy({ units: {} }); // v2: only `sentiment`
 
     server = restart();
     const again = coder("upd", null);
@@ -1489,13 +1449,13 @@ describe("rebuilding from the database", () => {
     const codings = () => db.query<{ agreement: Record<string, string> }>("SELECT agreement FROM unit_codings");
 
     // v2 changes the loop's questions (demo had six): finished units must be derived again
-    await redeploy({ units: [{ mode: "all" }] });
+    await redeploy({ units: {} });
     const c = coder("re");
     await c.submit((await c.next())!.id, sentiment("neutral"));
     expect(await codings()).toEqual([{ agreement: {} }]);
 
     // v3, same loop: kept
-    await redeploy({ units: [{ mode: "all" }] });
+    await redeploy({ units: {} });
     expect((await c.next())?.externalId).toBe("unit-2");
 
     // v4 adds an agreement rule: the codings are derived again, with its answers (also with two processes)
@@ -1525,7 +1485,7 @@ describe("finished units follow the current codebook", () => {
     name: "relevance",
     variable: { type: "nominal", question: "?", options: [{ value: "yes" }, { value: "no" }] },
   };
-  const fixedMain = { units: [{ mode: "all" }] };
+  const fixedMain = { units: {} };
 
   it("reopens finished units when a loop gains a question, and warns on deploy", async () => {
     expect((await redeploy(fixedMain)).warnings).toBeUndefined();
@@ -1572,7 +1532,7 @@ describe("finished units follow the current codebook", () => {
       type: "unit_loop",
       label: "second_loop",
       layout: { template: "" },
-      units: [{ mode: "all" }],
+      units: {},
       children: [relevance],
     };
     await redeploy(fixedMain, [second]);
@@ -1623,7 +1583,7 @@ describe("state in the database, not in memory", () => {
 
   it("hands out a shared queue's units once, also when two processes are asked at the same time", async () => {
     await createSet("pair", ["unit-1", "unit-2"]);
-    await redeploy({ units: [{ filter: { column: "g", only: ["pair"] }, criteria: { codersPerUnit: { min: 1, max: 1 } } }] });
+    await redeploy({ units: { filter: { column: "g", only: ["pair"] }, criteria: { codersPerUnit: { min: 1, max: 1 } } } });
     const other = restart();
     const [a, b] = await Promise.all([coder("left").next(), coder("right", "demo-secret", () => other).next()]);
     expect(new Set([a!.id, b!.id]).size).toBe(2);
@@ -1641,7 +1601,7 @@ describe("state in the database, not in memory", () => {
 
   it("leases a batch of a shared queue: other coders get what is left first", async () => {
     await createSet("queue", ["unit-1", "unit-2", "unit-3"]);
-    await redeploy({ units: [{ filter: { column: "g", only: ["queue"] }, criteria: { codersPerUnit: { min: 1, max: 1 } } }] });
+    await redeploy({ units: { filter: { column: "g", only: ["queue"] }, criteria: { codersPerUnit: { min: 1, max: 1 } } } });
     const a = coder("a-batch");
     const b = coder("b-batch");
     const held = await a.batch(2);
@@ -1834,7 +1794,7 @@ describe("unit fields in the design", () => {
     const created = await server.request("/api/study/1/design", {
       method: "POST",
       headers: adminHeaders,
-      body: JSON.stringify({ items: [{ type: "unit_loop", units: [{ mode: "all" }], layout: { template: "$unit.nowhere" }, children: [sentimentQuestion] }] }),
+      body: JSON.stringify({ items: [{ type: "unit_loop", units: {}, layout: { template: "$unit.nowhere" }, children: [sentimentQuestion] }] }),
     });
     const { id } = (await created.json()) as { id: number };
     const deploy = await server.request("/api/study/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: id }) });
@@ -1898,7 +1858,7 @@ describe("researcher preview", () => {
       headers: adminHeaders,
       body: JSON.stringify({
         note,
-        items: [{ type: "unit_loop", label: note, layout: { template: "" }, children: [sentimentQuestion], units: [{ mode: "all" }] }],
+        items: [{ type: "unit_loop", label: note, layout: { template: "" }, children: [sentimentQuestion], units: {} }],
       }),
     });
     expect(res.status).toBe(201);
@@ -2055,7 +2015,7 @@ describe("special units per coder", () => {
     // Another column: its gold units are everyone's, its overlap isn't this coder's
     await createSet("_gold", ["g1", "g2"], "h");
     await createSet("_overlap", ["unit-3"], "h");
-    await redeploy({ units: [{ gold: { placement: "last", questions: ["sentiment"] } }] }, [sessionItem({ coders: { column: "g" } })]);
+    await redeploy({ units: { gold: { placement: "last", questions: ["sentiment"] } } }, [sessionItem({ coders: { column: "g" } })]);
     const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
     const c = coder("routed", secret);
     const seen: string[] = [];

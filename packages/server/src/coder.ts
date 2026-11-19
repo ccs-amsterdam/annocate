@@ -134,10 +134,9 @@ export function coderApi(server: Server): Hono {
   session.get("/session", async (c) => c.json({ ...(await c.get("runtime").session(c.get("coder"))), canLogIn: c.get("canLogIn") }));
 
   session.get("/loop/:loop/next", async (c) => {
-    const query = NextUnitQuerySchema.safeParse({ branch: c.req.query("branch"), count: c.req.query("count") });
-    if (!query.success) return c.json({ error: "Invalid branch or count" }, 400);
-    const { branch, count } = query.data;
-    return c.json({ units: await c.get("runtime").nextUnits(c.get("coder"), c.req.param("loop"), { branch }, count) });
+    const query = NextUnitQuerySchema.safeParse({ count: c.req.query("count") });
+    if (!query.success) return c.json({ error: "Invalid count" }, 400);
+    return c.json({ units: await c.get("runtime").nextUnits(c.get("coder"), c.req.param("loop"), query.data.count) });
   });
 
   session.get("/loop/:loop/units/:unitId", async (c) =>
@@ -149,7 +148,7 @@ export function coderApi(server: Server): Hono {
     return c.json(await c.get("runtime").submitUnit(c.get("coder"), body.unitId, body.variables, body.loop, c.get("deviceId"), body.timings));
   });
 
-  session.post("/variables/condition/:name", async (c) => c.json({ value: await c.get("runtime").assignCondition(c.get("coder"), c.req.param("name")) }));
+  session.post("/variables/computed/:name", async (c) => c.json({ value: await c.get("runtime").computeVariable(c.get("coder"), c.req.param("name")) }));
 
   session.post("/end", async (c) => {
     const body = await parseBody(c, EndSessionSchema);

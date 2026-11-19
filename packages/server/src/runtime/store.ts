@@ -51,8 +51,8 @@ export interface Store {
   resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder>;
   /** Adds a device to a session (a transfer link): its key now finds this coder. Returns the device's row. */
   addDevice(coderId: number, coderKey: string, device: DeviceDetails): Promise<number | null>;
-  /** Stores where the coder is routed by a branch (`CoderAssignments`, by branch fingerprint), next to the others. */
-  routeCoder(coderId: number, branch: string, assignment: CoderAssignments[string]): Promise<void>;
+  /** Marks that the coder reached a loop (`CoderAssignments`, by loop key), next to the others. */
+  routeCoder(coderId: number, loop: string, assignment: CoderAssignments[string]): Promise<void>;
   /**
    * Adds a value to the coder's session values (a random condition that
    * selects units, once assigned), unless it has one already: returns the
@@ -209,11 +209,11 @@ export class DbStore implements Store {
     rules.count += added;
   }
 
-  async routeCoder(coderId: number, branch: string, assignment: CoderAssignments[string]): Promise<void> {
-    // Merged into the stored routings, so routings in two loops at once don't overwrite each other.
+  async routeCoder(coderId: number, loop: string, assignment: CoderAssignments[string]): Promise<void> {
+    // Merged into the stored marks, so two loops at once don't overwrite each other.
     const updated = await this.sql.query(
       "UPDATE coders SET assignments = coalesce(assignments, '{}'::jsonb) || jsonb_build_object($1::text, $2::jsonb) WHERE study_id = $3 AND id = $4 RETURNING id",
-      [branch, JSON.stringify(assignment), this.studyId, coderId],
+      [loop, JSON.stringify(assignment), this.studyId, coderId],
     );
     if (updated.length === 0) throw new HttpError(404, "Coder not found");
   }
@@ -521,8 +521,8 @@ async function findOrCreateCoder(
     );
     if (used.length === 0) throw new HttpError(401, "This link has been used up");
   }
-  // Conditions drawn at the start: balanced ones under a lock, counting the sessions that count (`drawCondition`)
-  for (const draw of draws) session[draw.name] = await drawCondition(sql, studyId, draw);
+  // Conditions drawn at the start: balanced ones under a lock, counting the sessions that count (`computeVariable`)
+  for (const draw of draws) session[draw.name] = await computeVariable(sql, studyId, draw);
   const created = await one<CoderRow>(
     sql,
     "INSERT INTO coders (study_id, email, participant_id, link_id, session) VALUES ($1, $2, $3, $4, $5) RETURNING *",
@@ -540,7 +540,7 @@ async function findOrCreateCoder(
  * and started or finished a unit in the last 24 hours (contracts
  * SET_ACTIVITY_MS): values of sessions that dropped out are handed out again.
  */
-async function drawCondition(sql: Sql, studyId: number, draw: SessionDraw): Promise<string> {
+async function computeVariable(sql: Sql, studyId: number, draw: SessionDraw): Promise<string> {
   if (draw.values.length === 0) throw new HttpError(409, `Condition '${draw.name}' has no values yet`);
   if (draw.draw === "random") return draw.values[Math.floor(Math.random() * draw.values.length)];
   await sql.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`${studyId}/session/${draw.name}`]);

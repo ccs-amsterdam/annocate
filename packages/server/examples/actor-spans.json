@@ -58,9 +58,6 @@
       {
         "type": "unit_loop",
         "label": "Texts",
-        "units": [
-          {}
-        ],
         "layout": {
           "template": "$unit.text"
         },

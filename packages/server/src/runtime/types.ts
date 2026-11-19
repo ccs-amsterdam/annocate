@@ -41,19 +41,15 @@ export interface Unit {
 }
 
 /**
- * Where a coder was routed by a branch (contracts `branchFingerprint`: the
- * branch's whole content, with the branches before it): their share. Stored so routing is sticky: the
- * coder stays in that branch while it is unchanged (also if the loop moves),
- * even if later answers would choose another; a changed branch routes them
- * again.
+ * That a coder reached a loop (for the progress counts). Their units in it
+ * follow from their session values, so nothing else is stored.
  */
 export interface LoopAssignment {
-  set: string;
-  /** When the coder was routed (ms); for `assign` mode, which counts recently active coders. */
+  /** When the coder first asked for the loop's units (ms). */
   at: number;
 }
 
-/** branch fingerprint -> where the coder was routed. */
+/** loop key (contracts `unitLoops`) -> when the coder reached it. */
 export type CoderAssignments = Record<string, LoopAssignment>;
 
 /** A coder as the runtime sees it. No email or other identifying data. */

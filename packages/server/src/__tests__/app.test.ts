@@ -59,7 +59,7 @@ describe("codebook routes", () => {
       {
         type: "unit_loop",
         label: "loop",
-        units: [{}],
+        units: {},
         layout: { template: "" },
         children: [{ type: "question", name: "q1", variable: { type: "confirm", question: "Confirm?" } }],
       },
@@ -299,7 +299,7 @@ describe("links, coder progress and overview", () => {
       }),
     )) as { id: number }[];
     const question = (name: string) => ({ type: "question", name, variable: { type: "confirm", question: "?" } });
-    const loop = { type: "unit_loop", label: "l", units: [{}], layout: { template: "" }, children: [question("q1"), question("q2")] };
+    const loop = { type: "unit_loop", label: "l", units: {}, layout: { template: "" }, children: [question("q1"), question("q2")] };
     const publish = async (items: object[], confirmLinks?: boolean) => {
       const codebook = await json(await app.request(`/api/study/${study.id}/design`, { method: "POST", headers: adminHeaders, body: JSON.stringify(splitDesignItems(items)) }));
       return app.request(`/api/study/${study.id}/deployment`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: codebook.id, confirmLinks }) });

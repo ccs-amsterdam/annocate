@@ -160,7 +160,7 @@ export async function createStudyFromExample(db: Sql, id: string, options: FromE
       );
       for (const [name, value] of Object.entries(values))
         check(name, coderTypes.get(name) as AnyVariableType | undefined, value);
-      const isAuto = (name: string) => coderTypes.get(name)?.type === "random_condition";
+      const isAuto = (name: string) => coderTypes.get(name)?.type === "random";
       const assigned = Object.fromEntries(Object.entries(values).filter(([name]) => isAuto(name)));
       const answered = Object.fromEntries(Object.entries(values).filter(([name]) => !isAuto(name)));
       await putCoderValues(tx, study.id, { coderId, values: assigned, assigned: true, designVersionId });

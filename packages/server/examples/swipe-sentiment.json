@@ -193,13 +193,11 @@
       {
         "type": "unit_loop",
         "label": "Headlines",
-        "units": [
-          {
-            "overlap": {
-              "placement": "spread"
-            }
+        "units": {
+          "overlap": {
+            "placement": "spread"
           }
-        ],
+        },
         "layout": {
           "template": "# $unit.headline"
         },
