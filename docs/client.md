@@ -360,7 +360,11 @@ The codebook's `session` item (at most one, always first) is never shown
 to coders: it declares the session's link and URL parameters and the
 participant id's URL parameter (`architecture.md` §7). The server reads
 them when a session starts; the client only sees the values, as
-`$session.<name>`. The editor's form is `SessionItemForm.tsx`.
+`$session.<name>`. The editor's form is `SessionItemForm.tsx`. The editor
+doesn't show it as an item in the tree: above the tree, `SessionHeader.tsx`
+edits the public title in place and lists the parameters, which open the
+form. (The design stores `session` and `public` apart from `items`; the
+editor holds them as this first item, `designItems`/`splitDesignItems`.)
 
 ## 5. Scripting sandbox: QuickJS
 

@@ -61,38 +61,21 @@ export function SessionItemForm({
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="-mb-3 text-sm font-semibold">Public</h2>
-      <section className="flex flex-col gap-1.5">
-        <label htmlFor="public-title" className="flex items-center gap-1.5 text-xs font-semibold">
-          Public title
-          <InfoTip label="About the public title">
-            What coders see as the study&apos;s name: on their list of studies (the coder home) and while coding. The study&apos;s own
-            name stays private, so it can say what the study is about. Without a title, coders see &quot;Untitled study&quot;.
-          </InfoTip>
-        </label>
-        <Input
-          id="public-title"
-          className="h-8 text-sm"
-          maxLength={200}
-          placeholder="e.g. Reading the news"
-          value={item.public?.title ?? ""}
-          onChange={(e) => {
-            const next: SessionItem = { ...item, public: { ...item.public, title: e.target.value } };
-            if (!e.target.value) delete next.public;
-            onChange(next);
-          }}
-        />
-      </section>
-      <h2 className="-mb-3 flex items-center gap-1.5 border-t border-border pt-4 text-sm font-semibold">
-        Session
+      {/* The public title is edited above the item tree (SessionHeader) */}
+      <h2 className="-mb-3 flex items-center gap-1.5 text-sm font-semibold">
+        Session parameters
         <InfoTip label="About the session">
           How a coder&apos;s session starts: the links and their parameters, URL parameters from a panel, the participant id, and the
           sample size per link.
         </InfoTip>
       </h2>
+      <p className="text-xs text-muted-foreground">
+        Values a session starts with, for conditions, texts and assigning sets. You don&apos;t make the links yourself: deploying makes a link
+        for every value of a link parameter (or combination of values), listed under Deploy › Links.
+      </p>
       <section className="flex flex-col gap-2">
         <h3 className="flex items-center gap-1.5 text-xs font-semibold">
-          Session parameters
+          Parameters
           <InfoTip label="About session parameters">
             Values a session starts with, used as <span className="font-mono">$session.name</span> in conditions, texts and to assign sets.
             A <strong>link parameter</strong> is fixed in the link: every value (or combination of values) gets its own link on the Links

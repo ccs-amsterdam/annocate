@@ -118,22 +118,23 @@ export function DesignTreeView({
   };
 
   const end: TreePosition = { into: null };
-  // Nothing yet but the Study entry (always there): the first item is added from the bar
-  const empty = items.every((item) => item.type === "session");
+  // The Study entry (always first) is shown above the tree (SessionHeader), not in it
+  const shown = items.filter((item) => item.type !== "session");
+  const top: TreePosition | null = shown.length > 0 ? { before: getItemKey(shown[0]) } : null;
   const count = ticked.length === 1 ? "1 item" : `${ticked.length} items`;
 
   return (
     <DesignTreeProvider value={state}>
-      {/* Only while moving or with items ticked (or to add the first item after the Study entry); how to edit is behind the tree's info icon */}
-      {!readOnly && (moving || ticked.length > 0 || empty) && (
+      {/* One bar, always there, so the tree doesn't move: Add item; with items ticked, Move and Delete; while moving, where to */}
+      {!readOnly && (
         <div className="sticky top-0 z-10 flex min-h-9 flex-wrap items-center gap-2 bg-card px-1 pb-1 text-xs text-muted-foreground">
           {moving ? (
             <>
               <span className="font-medium text-primary">
                 Click <CornerDownLeft className="inline h-3.5 w-3.5" /> on a row to move {count} below it
               </span>
-              {items.length > 0 && state.canMoveTo({ before: getItemKey(items[0]) }) && (
-                <Button size="sm" variant="outline" className="h-7" onClick={() => state.moveTo({ before: getItemKey(items[0]) })}>
+              {top && state.canMoveTo(top) && (
+                <Button size="sm" variant="outline" className="h-7" onClick={() => state.moveTo(top)}>
                   Move to the top
                 </Button>
               )}
@@ -162,14 +163,15 @@ export function DesignTreeView({
           ) : (
             <AddItemMenu
               label="Add item"
-              options={[{ position: end, label: "First item", types: insertableTypesAt(items, end) }]}
+              options={[{ position: end, label: shown.length ? "At the end" : "First item", types: insertableTypesAt(items, end) }]}
               onAdd={state.addAt}
             />
           )}
         </div>
       )}
       <div className="flex flex-col p-1 pb-3">
-        <TreeList nodes={items} parent={null} />
+        {shown.length === 0 && !readOnly && <p className="px-2 py-3 text-sm text-muted-foreground">No items yet: add the first one above.</p>}
+        <TreeList nodes={shown} parent={null} />
       </div>
     </DesignTreeProvider>
   );

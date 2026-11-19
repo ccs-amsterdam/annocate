@@ -8,9 +8,10 @@ summary: Values a session starts with - from its link or URL - as $session value
 A **session parameter** is a value a coder's session starts with, taken
 from the link they open. The codebook can use it anywhere as
 `$session.<name>`: in conditions, in texts, in an end item's return link,
-and to give coders a set of units. You declare them in the design's
-**Session** item: add it in the codebook tree (**+** at the top level,
-**Session**). It is always the first item.
+and to give coders a set of units. You declare them in the editor, above
+the item tree: click **Session parameters** (each parameter shows there
+as a chip). You don't make the links yourself: deploying makes a link per
+value, listed under **Deploy › Links**.
 
 There are two kinds:
 
@@ -24,7 +25,7 @@ back without them, and they appear in the results (`coders.csv`).
 
 ## Public title
 
-At the top of the Study entry: the **Public title**, what coders see as
+At the top of the item tree, in place: the **title shown to coders**, what coders see as
 the study's name, on their list of studies and in the coding screen's
 menu and browser tab. The study's own name stays private, so it can say what
 the study is about. Without one, coders see "Untitled study".

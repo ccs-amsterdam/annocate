@@ -120,7 +120,7 @@ new session starts empty: it doesn't include the earlier answers.
 
 Coders find the studies they started in this browser at **Annotate**
 (`/code`), with the study's public title (set at the top of the
-Study entry; the study's own name stays private) and how far they got, and continue them
+editor's item tree; the study's own name stays private) and how far they got, and continue them
 from there without the link. Logged-in coders also see their studies on
 other devices.
 
