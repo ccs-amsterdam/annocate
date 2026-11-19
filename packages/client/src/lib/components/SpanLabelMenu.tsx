@@ -1,0 +1,76 @@
+import { optionLabel, type Option, type SpanSlice } from "@annotinder/contracts";
+import { X } from "lucide-react";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { useCoderSettings } from "../context/CoderSettingsContext";
+import { getCodeButtonStyle } from "../utils/color";
+import { ShortcutBadge } from "./ShortcutBadge";
+
+/**
+ * The labels for a new span, right at the selection (on screens from `sm`
+ * up; on a phone they are in the docked answer pane, near the thumbs).
+ * Rendered as a zero-width anchor after the selection's last part. It
+ * doesn't take focus or close on clicks elsewhere: coders go on adjusting
+ * the selection in the text. Keys (1-9, Esc) are handled by the answer
+ * field, as for the pane's buttons.
+ */
+export function SpanLabelMenu({
+  options,
+  slices,
+  onLabel,
+  onCancel,
+}: {
+  options: Option[];
+  slices: SpanSlice[];
+  onLabel: (value: string) => void;
+  onCancel: () => void;
+}) {
+  const { theme } = useCoderSettings();
+  const isDark = theme === "dark";
+  return (
+    <Popover open modal={false}>
+      <PopoverAnchor asChild>
+        <span aria-hidden className="inline-block h-[1em] w-0 align-text-bottom" />
+      </PopoverAnchor>
+      <PopoverContent
+        side="bottom"
+        align="end"
+        sideOffset={6}
+        collisionPadding={8}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        // Keep the selection: a click here mustn't start a new one in the text
+        onMouseDown={(e) => e.preventDefault()}
+        className="hidden w-auto max-w-[min(28rem,calc(100vw-2rem))] flex-col gap-1.5 p-2 shadow-lg sm:flex"
+        aria-label={`Label "${slices.map((s) => s.text).join(" … ")}"`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-medium text-muted-foreground">Label as</span>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="relative flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+            title="Cancel selection (Esc)"
+            aria-label="Cancel selection"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {options.map((option, idx) => (
+            <button
+              key={String(option.value)}
+              type="button"
+              onClick={() => onLabel(String(option.value))}
+              className="relative flex cursor-pointer items-center justify-center rounded-md border px-2.5 py-1 text-xs font-semibold shadow-xs transition-transform hover:scale-105 active:scale-95"
+              style={getCodeButtonStyle(option.color, false, isDark)}
+            >
+              {idx < 9 && <ShortcutBadge shortcut={String(idx + 1)} />}
+              <span className="truncate">{optionLabel(option)}</span>
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}

@@ -3,6 +3,7 @@ import React, { useRef, useCallback, useEffect } from "react";
 import type { SpanAnswer, SpanSlice } from "@annotinder/contracts";
 import { useSpanAnnotation, type PendingSpan } from "../context/SpanAnnotationContext";
 import { getSpanHighlightStyle, getStackedUnderlineStyle } from "../utils/color";
+import { SpanLabelMenu } from "./SpanLabelMenu";
 
 /**
  * Truncates span text with an ellipsis in the middle if it exceeds maxLength.
@@ -407,7 +408,7 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
       `[data-span-id~="${annotation.focusedSpanId}"]`,
     );
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }, [annotation?.focusedSpanId]);
 
@@ -500,23 +501,17 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
     });
   }
 
-  const Container = inline ? "span" : "div";
-  return (
-    <Container className={inline ? undefined : "flex flex-col gap-2.5"}>
-      {/* Interactive Text View */}
-      <Container
-        ref={containerRef as React.Ref<HTMLDivElement & HTMLSpanElement>}
-        tabIndex={annotation ? 0 : undefined}
-        onKeyUp={annotation ? handleKeyUp : undefined}
-        className="whitespace-pre-wrap select-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 rounded p-1 transition-all leading-[1.8]"
-      >
-        {segments.map((seg, i) => {
+  // The labels for a new selection go right after its last part
+  let lastPending = -1;
+  if (pending?.mode === "create") segments.forEach((seg, i) => seg.isPending && (lastPending = i));
+
+  function renderSegment(seg: (typeof segments)[number], i: number) {
           if (seg.spans.length === 0) {
             if (seg.isPending) {
               return (
                 <mark
                   key={i}
-                  className="bg-primary/25 text-primary font-medium rounded-xs px-0.5 ring-2 ring-primary/60 animate-pulse"
+                  className="rounded-xs bg-wood/25 text-foreground ring-2 ring-wood/70"
                 >
                   {text.slice(seg.start, seg.end)}
                 </mark>
@@ -530,14 +525,16 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
             const isStart = span.slices.some((sl) => sl.offset === seg.start);
             const isEnd = span.slices.some((sl) => sl.offset + sl.length === seg.end);
             const spanSummary = span.slices.map((sl) => sl.text).join(" ... ");
+            const isFocused = annotation?.focusedSpanId === span.id;
             return (
               <mark
                 key={i}
+                data-span-id={span.id}
                 style={getSpanHighlightStyle({ color: colorFor(span.value), isStart, isEnd })}
                 title={`${labelFor(span.value)}: "${spanSummary}" (click to view labels)`}
                 onClick={(e) => handleSegmentClick(e, seg.spans)}
                 className={`cursor-pointer transition-opacity hover:opacity-85 font-normal ${
-                  seg.isPending ? "ring-2 ring-primary/80 ring-offset-1" : ""
+                  isFocused || seg.isPending ? "ring-2 ring-wood ring-offset-1 ring-offset-background" : ""
                 }`}
               >
                 {text.slice(seg.start, seg.end)}
@@ -567,13 +564,41 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
               title={`${title} (click to view labels)`}
               onClick={(e) => handleSegmentClick(e, seg.spans)}
               className={`cursor-pointer transition-opacity hover:opacity-85 font-normal ${
-                seg.isPending ? "ring-2 ring-primary/80 ring-offset-1" : ""
-              } ${isFocused ? "ring-2 ring-foreground/90 ring-offset-2 animate-pulse" : ""}`}
+                isFocused || seg.isPending ? "ring-2 ring-wood ring-offset-1 ring-offset-background" : ""
+              }`}
             >
               {text.slice(seg.start, seg.end)}
             </mark>
           );
-        })}
+  }
+
+  const Container = inline ? "span" : "div";
+  return (
+    <Container className={inline ? undefined : "flex flex-col gap-2.5"}>
+      {/* Interactive Text View */}
+      <Container
+        ref={containerRef as React.Ref<HTMLDivElement & HTMLSpanElement>}
+        tabIndex={annotation ? 0 : undefined}
+        onKeyUp={annotation ? handleKeyUp : undefined}
+        // The text being selected, the selection waiting for a label and the span being edited share one tint (wood)
+        className="whitespace-pre-wrap select-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 rounded p-1 transition-all leading-[1.8] selection:bg-wood/30 selection:text-foreground"
+      >
+        {segments.map((seg, i) => (
+          <React.Fragment key={i}>
+            {renderSegment(seg, i)}
+            {i === lastPending && pending && (
+              <SpanLabelMenu
+                options={annotation!.options}
+                slices={pending.slices}
+                onLabel={(value) => {
+                  annotation!.addSpan(pending.slices, value);
+                  annotation!.setPendingSpan(null);
+                }}
+                onCancel={() => annotation!.setPendingSpan(null)}
+              />
+            )}
+          </React.Fragment>
+        ))}
       </Container>
     </Container>
   );

@@ -50,6 +50,12 @@ export function SpanManageLabels({
 
   const activeSpan = spans.find((s) => s.id === selectedSpanId) ?? null;
 
+  // The span being edited is highlighted in the text
+  const activeId = activeSpan?.id ?? null;
+  useEffect(() => {
+    if (activeId) annotation.setFocusedSpanId(activeId);
+  }, [activeId, annotation]);
+
   // Keyboard navigation when in list mode
   useEffect(() => {
     if (activeSpan) return;

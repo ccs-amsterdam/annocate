@@ -73,8 +73,9 @@ While a span question is on screen, the text it selects in reacts to the
 mouse or finger:
 
 1. **Select text**: drag over it, or click a word (in word mode). The
-   selection is highlighted, and the answer area shows **Label as:** with
-   a button per option.
+   selection is highlighted, and a small **Label as** menu with a button
+   per option appears right below it. On a phone the buttons are in the
+   answer area at the bottom instead, within reach of the thumbs.
 2. **Adjust the selection** if needed: clicking a later word extends it to
    there (with gaps, clicking a word adds or removes it).
 3. **Pick a label**: click an option, or press its number key (**1** to
@@ -85,7 +86,7 @@ many spans as they like, and the same text can have more than one label: a
 name can be both a *Person* and a *Source*. Where spans overlap, they are
 shown with stacked underlines.
 
-**Clicking a marked span** shows its labels, with **Edit** to change or
+**Clicking a marked span** highlights it and shows its labels, with **Edit** to change or
 **Delete** a label, and **Create new label** to give the same text another
 label. **View labeled spans** lists all spans of the unit, for a quick check
 before going on.
