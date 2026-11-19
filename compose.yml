@@ -4,6 +4,14 @@
 # this machine that does HTTPS (Caddy). Build and start, with the commit:
 #   sudo ANNOTINDER_COMMIT=$(sudo -u sal git rev-parse --short HEAD) docker compose up -d --build
 
+# Container logs (`docker compose logs`) are files that Docker never trims by
+# itself: each service keeps at most 3 files of 10 MB.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   app:
     build:
@@ -13,6 +21,7 @@ services:
         ANNOTINDER_COMMIT: ${ANNOTINDER_COMMIT:-unknown}
     image: annotinder
     restart: unless-stopped
+    logging: *logging
     env_file: .env
     environment:
       DATABASE_URL: postgres://annotinder:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/annotinder
@@ -27,6 +36,7 @@ services:
   db:
     image: postgres:18.7-alpine
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_DB: annotinder
       POSTGRES_USER: annotinder
@@ -42,6 +52,7 @@ services:
     # A dump at the start and every day at 02:00 (UTC) into ./backups, kept 7 days
     image: postgres:18.7-alpine
     restart: unless-stopped
+    logging: *logging
     depends_on:
       db:
         condition: service_healthy

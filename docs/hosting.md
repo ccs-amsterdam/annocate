@@ -439,6 +439,10 @@ and a restore.
   admins), failed logins (`Login failed: ...`) and errors.
 - **The database and its dumps:** `sudo docker compose logs db db-backup`.
 - **Caddy** (certificates, proxy errors): `journalctl -u caddy -n 100`.
+- **How much is kept:** Docker keeps each service's log in files that it
+  never trims by itself, so `compose.yml` caps them at 3 files of 10 MB per
+  service (`x-logging`); older lines are dropped. Rebuilding or recreating a
+  container also starts a new log.
 
 After changing `.env`, apply it with `sudo docker compose up -d`, which
 recreates the app with the new settings. Check the startup lines in the
