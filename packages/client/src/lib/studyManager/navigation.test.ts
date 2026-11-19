@@ -414,3 +414,34 @@ describe("an end item", () => {
     expect(server.done.get("1")).toEqual([1, 2]);
   });
 });
+
+describe("quick repeated input (double clicks, fast swipes)", () => {
+  beforeEach(() => {
+    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+  });
+
+  it("a double click on an answer answers the question once", async () => {
+    const m = await started(server);
+    await m.answer(yes);
+    expect(where(m)).toBe("1:q1");
+    await Promise.all([m.answer(pick("A")), m.answer(pick("A"))]);
+    expect(where(m)).toBe("1:q2");
+  });
+
+  it("two quick presses of back go back two steps, in order", async () => {
+    const m = await started(server);
+    await answerUntil(m, "2:q2");
+    await Promise.all([m.goBack(), m.goBack()]);
+    expect(where(m)).toBe("1:q2");
+    await Promise.all([m.goForward(), m.goForward()]);
+    expect(where(m)).toBe("2:q2");
+  });
+
+  it("back pressed while an answer is still being handled goes back from where the answer led", async () => {
+    const m = await started(server);
+    await m.answer(yes);
+    await Promise.all([m.answer(pick("B")), m.goBack()]);
+    expect(where(m)).toBe("1:q1");
+    expect(shown(m)).toBe("B");
+  });
+});

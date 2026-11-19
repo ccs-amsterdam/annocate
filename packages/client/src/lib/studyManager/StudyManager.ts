@@ -657,6 +657,10 @@ export class StudyManager {
   }
 
   async jumpToLoopStep(stepIndex: number, allowAhead = false): Promise<void> {
+    await this.guarded(() => this.jumpToLoopStepNow(stepIndex, allowAhead));
+  }
+
+  private async jumpToLoopStepNow(stepIndex: number, allowAhead = false): Promise<void> {
     if (!this.activeLoop || !this.currentUnit || stepIndex < 0 || stepIndex >= this.loopSteps.length) return;
     if (!allowAhead) {
       const hasUnansweredEarlier = this.loopSteps
@@ -670,13 +674,13 @@ export class StudyManager {
   }
 
   async jumpToUnitQuestion(phaseIndex: number, stepIndex: number, allowAhead = false): Promise<void> {
-    if (phaseIndex < 0 || phaseIndex >= this.topSteps.length) return;
-    if (this.topIndex !== phaseIndex) {
-      await this.jumpToPhase(phaseIndex, allowAhead);
-    }
-    if (this.activeLoop && this.currentUnit && stepIndex >= 0 && stepIndex < this.loopSteps.length) {
-      await this.jumpToLoopStep(stepIndex, allowAhead);
-    }
+    await this.guarded(async () => {
+      if (phaseIndex < 0 || phaseIndex >= this.topSteps.length) return;
+      if (this.topIndex !== phaseIndex) await this.jumpToPhaseNow(phaseIndex, allowAhead);
+      if (this.activeLoop && this.currentUnit && stepIndex >= 0 && stepIndex < this.loopSteps.length) {
+        await this.jumpToLoopStepNow(stepIndex, allowAhead);
+      }
+    });
   }
 
   async jumpToPhase(phaseIndex: number, allowAhead = false): Promise<void> {
@@ -713,7 +717,13 @@ export class StudyManager {
   async answer(value: VariableValue): Promise<void> {
     const item = this.snapshot.currentItem;
     if (!item || item.type !== "question") return;
+    // The question on screen when the coder answered: by the time this runs
+    // (after operations before it), it must still be the one on screen.
+    const unitId = this.snapshot.currentUnit?.id ?? null;
     await this.guarded(async () => {
+      const now = this.snapshot.currentItem;
+      if (now?.type !== "question" || now.name !== item.name || (this.snapshot.currentUnit?.id ?? null) !== unitId)
+        return;
       const answers = this.activeLoop === null ? this.userVariableValues : this.unitVariableValues;
       const key = this.timingKey(item.name);
       if (key) this.timer.answered(key, JSON.stringify(answers[item.name]) !== JSON.stringify(value));
@@ -886,7 +896,19 @@ export class StudyManager {
    * failure shows as an error that `retry()` repeats; a new design version
    * (`codebook_changed`) loads the session again.
    */
-  private async guarded(operation: () => Promise<void>): Promise<void> {
+  private guarded(operation: () => Promise<void>): Promise<void> {
+    // One at a time, in the order they came (a double click, a fast swipe,
+    // back pressed while an answer is handled): each starts from where the
+    // one before left the coder.
+    const run = this.turn.then(() => this.runGuarded(operation));
+    this.turn = run.catch(() => {});
+    return run;
+  }
+
+  /** The end of the line of operations (`guarded`). */
+  private turn: Promise<void> = Promise.resolve();
+
+  private async runGuarded(operation: () => Promise<void>): Promise<void> {
     this.lastFailedOperation = operation;
     this.busy += 1;
     try {
