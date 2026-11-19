@@ -38,8 +38,12 @@ Headers:
 
 - `x-annotinder: 1` on every request (CSRF: cross-site forms can't send it);
 - `x-link-secret` from the URL (the link, `/code/<deployment>?link=<secret>`): create the coder on first
-  use. A retired link (no longer part of the deployed design) is 403
-  `link_inactive` for new sessions;
+  use. A new session without a link, or with an unknown one, is 404
+  `link_not_found`; a revoked link is 403 `link_revoked`, one at its
+  maximum number of sessions 403 `link_used_up`, and a retired one (no
+  longer part of the deployed design) 403 `link_inactive`. Sessions that
+  already started go on. 401 only ever means a login is needed
+  (`auth_required`, below);
 - `x-url-params`: the page's other query parameters. They hold the URL
   parameters the design's Study entry declares, its participant id
   parameter, and the optional `source` (stored on the coder as `$session`

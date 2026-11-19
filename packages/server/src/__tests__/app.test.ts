@@ -430,20 +430,20 @@ describe("links, coder progress and overview", () => {
     );
     expect(updated).toMatchObject({ label: "Panel", maxUses: 1, params: { batch: "unused" } });
     expect(await status(resolve("u1", unused.secret))).toBe(200);
-    expect(await status(resolve("u2", unused.secret))).toBe(401);
+    expect(await status(resolve("u2", unused.secret))).toBe(403); // link_used_up
 
     // A new secret: the old one stops working
     const renewed = await json(
       await app.request(`/api/study/${study.id}/links/${used.id}/secret`, { method: "POST", headers: adminHeaders }),
     );
     expect(renewed.secret).not.toBe(used.secret);
-    expect(await status(resolve("b", used.secret))).toBe(401);
+    expect(await status(resolve("b", used.secret))).toBe(404); // link_not_found
 
     const revoked = await json(
       await app.request(`/api/study/${study.id}/links/${used.id}/revoke`, { method: "POST", headers: adminHeaders }),
     );
     expect(revoked.revokedAt).not.toBeNull();
-    expect(await status(resolve("c", renewed.secret))).toBe(401);
+    expect(await status(resolve("c", renewed.secret))).toBe(403); // link_revoked
     // coders who already started keep their access
     expect(await status(resolve("a", used.secret))).toBe(200);
 

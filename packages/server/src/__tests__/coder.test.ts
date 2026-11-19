@@ -202,8 +202,13 @@ describe("coder flow", () => {
   });
 
   it("requires a valid link for new coders", async () => {
-    expect((await coder("coder-x", null).call("/session")).status).toBe(401);
-    expect((await coder("coder-x", "wrong").call("/session")).status).toBe(401);
+    // Link problems are 404 or 403 with a code; 401 only asks for a login (auth_required)
+    const none = await coder("coder-x", null).call("/session");
+    expect(none.status).toBe(404);
+    expect(await none.json()).toMatchObject({ code: "link_not_found" });
+    const wrong = await coder("coder-x", "wrong").call("/session");
+    expect(wrong.status).toBe(404);
+    expect(await wrong.json()).toMatchObject({ code: "link_not_found" });
   });
 
   it("returns 404 for unknown or undeployed studies", async () => {
@@ -1100,7 +1105,7 @@ describe("sessions", () => {
 
   it("sets no cookie when the link is refused", async () => {
     const res = await send("nobody", "/session", {}, { "x-link-secret": "wrong" });
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(404);
     expect(res.headers.getSetCookie()).toEqual([]);
   });
 });
@@ -1685,7 +1690,9 @@ describe("sessions across devices", () => {
 
     // A revoked link starts no new sessions, also not for a known participant; existing ones go on.
     await query(db, "UPDATE links SET revoked_at = now() WHERE secret = $1", [secret]);
-    expect((await send("device-3", "/session", {}, { ...link, "x-new-session": "1" })).status).toBe(401);
+    const refused = await send("device-3", "/session", {}, { ...link, "x-new-session": "1" });
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).toMatchObject({ code: "link_revoked" });
     expect((await send("device-2", "/session", {}, link)).status).toBe(200);
   });
 
@@ -2135,7 +2142,9 @@ describe("deployment settings", () => {
     const items = (await coder("first").session()).codebook.items as { type: string; redirectUrl?: string }[];
     expect(items.find((i) => i.type === "end")?.redirectUrl).toBe("https://panel.example/done?id=$session.participant");
     // maxUses 1: the demo link took "first"; a second new coder is refused
-    expect((await send("second", "/session", {}, { "x-link-secret": "demo-secret" })).status).toBe(401);
+    const second = await send("second", "/session", {}, { "x-link-secret": "demo-secret" });
+    expect(second.status).toBe(403);
+    expect(await second.json()).toMatchObject({ code: "link_used_up" });
   });
 });
 

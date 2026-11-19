@@ -143,8 +143,16 @@ export const CoderErrorCodeSchema = z.enum([
    * "This email address has no access to this study".
    */
   "email_not_allowed",
-  /** The link is no longer part of the deployed design (e.g. its set was removed): no new sessions. */
+  /** No link (a new session needs one), or an unknown link secret: 404. */
+  "link_not_found",
+  /** The researchers revoked the link: no new sessions (403). */
+  "link_revoked",
+  /** The link reached its maximum number of sessions (403). */
+  "link_used_up",
+  /** The link is no longer part of the deployed design (e.g. its set was removed): no new sessions (403). */
   "link_inactive",
+  /** The device's session key belongs to another study (403). */
+  "coder_key_invalid",
   /** Transfer token unknown, used or expired. */
   "transfer_invalid",
   /** A new design version was deployed since the session was loaded: load it again. */

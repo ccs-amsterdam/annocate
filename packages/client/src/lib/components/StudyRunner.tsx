@@ -319,10 +319,11 @@ function StudyRunnerContent({
     );
   }
 
-  if (snapshot.phase === "error" && snapshot.errorCode === "link_inactive") {
+  const linkNotice = snapshot.phase === "error" ? LINK_NOTICES[snapshot.errorCode ?? ""] : undefined;
+  if (linkNotice) {
     return (
-      <SessionNotice title="This link is no longer active">
-        <p>The researchers no longer use this link for new participants. If you were sent a new link, use that one.</p>
+      <SessionNotice title={linkNotice.title}>
+        <p>{linkNotice.text}</p>
       </SessionNotice>
     );
   }
@@ -682,6 +683,26 @@ function CoderSessionGate(props: StudyRunnerProps) {
     />
   );
 }
+
+/** What a coder sees when their link can't start a session (the server's error codes). */
+const LINK_NOTICES: Partial<Record<string, { title: string; text: string }>> = {
+  link_not_found: {
+    title: "This link doesn't work",
+    text: "Check that you opened the whole link you were given. If it still doesn't work, contact the researchers.",
+  },
+  link_revoked: {
+    title: "This link has been withdrawn",
+    text: "The researchers no longer accept new participants through this link. If you were sent a new link, use that one.",
+  },
+  link_used_up: {
+    title: "This link is full",
+    text: "As many people as the researchers planned have already started through this link. Thank you for your interest.",
+  },
+  link_inactive: {
+    title: "This link is no longer active",
+    text: "The researchers no longer use this link for new participants. If you were sent a new link, use that one.",
+  },
+};
 
 function SessionNotice({ title, children }: { title: string; children: ReactNode }) {
   return (

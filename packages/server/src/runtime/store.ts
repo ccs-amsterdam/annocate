@@ -610,7 +610,7 @@ async function knownCoder(db: Db, studyId: number, coderKey: string): Promise<Kn
     .from(coderDevices)
     .innerJoin(coders, eq(coders.id, coderDevices.coderId))
     .where(eq(coderDevices.keyHash, coderKey));
-  if (known && known.coder.studyId !== studyId) throw new HttpError(401, "Coder key belongs to a different study");
+  if (known && known.coder.studyId !== studyId) throw new HttpError(403, "This session belongs to another study", "coder_key_invalid");
   return known ?? null;
 }
 
@@ -644,11 +644,12 @@ async function findOrCreateCoder(
     const mine = await sessionOfEmail(db, studyId, login.email);
     if (mine) return { row: mine, deviceId: await addDevice(db, studyId, mine.id, coderKey, device) };
   }
-  if (!request.linkSecret) throw new HttpError(401, "Unknown coder; a valid link is needed");
+  // Link problems: 404 (no such link) or 403 (no new sessions), never 401, which only means "log in" (auth_required)
+  if (!request.linkSecret) throw new HttpError(404, "No session here: open the link you were given", "link_not_found");
   const [link] = await db.select().from(links).where(eq(links.secret, request.linkSecret));
-  if (!link || link.studyId !== studyId) throw new HttpError(401, "Invalid link secret");
+  if (!link || link.studyId !== studyId) throw new HttpError(404, "This link doesn't exist", "link_not_found");
   // Revoked or retired: no new sessions, also not for a known participant (existing sessions go on).
-  if (link.revokedAt !== null) throw new HttpError(401, "This link has been revoked");
+  if (link.revokedAt !== null) throw new HttpError(403, "This link has been revoked", "link_revoked");
   if (link.retiredAt !== null) throw new HttpError(403, "This link is no longer active", "link_inactive");
   // A participant id is a label, never a credential: a new device for a
   // known participant gets a *new* session, and only when asked for.
@@ -676,7 +677,7 @@ async function findOrCreateCoder(
       .set({ uses: sql`${links.uses} + 1` })
       .where(and(eq(links.id, link.id), or(sql`${maxUses} IS NULL`, lt(links.uses, maxUses))))
       .returning({ id: links.id });
-    if (used.length === 0) throw new HttpError(401, "This link has been used up");
+    if (used.length === 0) throw new HttpError(403, "This link has been used up", "link_used_up");
   }
   // Conditions drawn at the start: balanced ones under a lock, counting the sessions that count (`computeVariable`)
   for (const draw of draws) session[draw.name] = await computeVariable(db, studyId, draw);

@@ -64,18 +64,12 @@ To do on the server (the guide's steps):
      OAuth endpoints 600);
    - whether study admins see the MCP connections of their study's users;
    - whether a read-only connection requires the `READ` role.
-2. **Coder link errors**: a link that needs a login answers 401
-   `auth_required`, a login without access 403. **Decide** whether the
-   status codes stay as they are for the R and Python clients.
 3. **Balanced draws on a tie**: a balanced condition or computed variable
    gives the first value among those with the fewest sessions. **Decide**
    whether a tie should be broken at random.
 4. **The deletion log** (`coder_deletions`) keeps a deleted coder's email
    and participant id, so "delete for good" still records who was
    deleted. **Decide** whether that is intended.
-5. **Formatting**: there is a root `prettier` dependency but no format
-   script, and the configured `prettier-plugin-tailwindcss` isn't
-   installed. **Decide**: a `format` script with the plugin, or drop it.
 6. **Texts**: the README, the welcome page and the "About AnnoTinder"
    help topic from `philosophy.md` (pending the maintainer).
 
