@@ -518,10 +518,11 @@ UI then no longer brings up. The request stays until the coder is deleted.
 ### listCoderDeletions
 
 `GET /study/:studyId/coders/deletions` → `CoderDeletionSchema[]`, newest first:
-per deleted coder `coderId`, `participantId`, `email`, `requestedAt` (if
+per deleted coder `coderId`, `participantId`, `requestedAt` (if
 they asked), `deletedAt`, `deletedBy` and `answers` (rows deleted). Kept
 after the data is gone, with the ids downloaded results use, so the coder
-can be deleted from those too.
+can be deleted from those too. Not the email address: nothing that
+identifies the person is kept.
 
 ## Deploying
 

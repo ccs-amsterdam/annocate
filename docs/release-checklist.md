@@ -64,10 +64,7 @@ To do on the server (the guide's steps):
      OAuth endpoints 600);
    - whether study admins see the MCP connections of their study's users;
    - whether a read-only connection requires the `READ` role.
-4. **The deletion log** (`coder_deletions`) keeps a deleted coder's email
-   and participant id, so "delete for good" still records who was
-   deleted. **Decide** whether that is intended.
-6. **Texts**: the README, the welcome page and the "About AnnoTinder"
+2. **Texts**: the README, the welcome page and the "About AnnoTinder"
    help topic from `philosophy.md` (pending the maintainer).
 
 ## 3. Open work

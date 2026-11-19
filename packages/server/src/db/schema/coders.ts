@@ -56,7 +56,11 @@ export const coderDevices = pgTable(
   (t) => [index("coder_devices_coder").on(t.coderId)],
 );
 
-/** Coders whose data was deleted: who and when (no foreign key to the coder: it is gone). */
+/**
+ * Coders whose data was deleted: the ids downloaded results use, and when
+ * (no foreign key to the coder: it is gone). Not their email address: a
+ * deletion leaves nothing that identifies the person.
+ */
 export const coderDeletions = pgTable(
   "coder_deletions",
   {
@@ -66,7 +70,6 @@ export const coderDeletions = pgTable(
       .references(() => studies.id, { onDelete: "cascade" }),
     coderId: integer().notNull(),
     participantId: text(),
-    email: text(),
     requestedAt: timestamptz(),
     deletedAt: timestamptz().notNull().defaultNow(),
     deletedBy: text(),

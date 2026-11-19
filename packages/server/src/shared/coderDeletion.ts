@@ -11,7 +11,8 @@ import { annotationValues as a, coderDeletions, coders, units } from "../db/sche
  * retired ones. Selected by id, participant id or email, within the study.
  * Units nobody has answers for any more can be deleted again. Unit
  * versions stay: they hold unit content, not the coder's. Each deleted coder
- * is logged (`coder_deletions`), with the ids downloaded results use.
+ * is logged (`coder_deletions`), with the ids downloaded results use (not
+ * the email address).
  */
 export async function deleteCoders(
   db: Db,
@@ -42,7 +43,6 @@ export async function deleteCoders(
         studyId: coders.studyId,
         coderId: coders.id,
         participantId: coders.participantId,
-        email: coders.email,
         requestedAt: coders.deletionRequest,
         answers: sql<number>`(${tx
           .select({ n: sql`count(*)::int` })
@@ -91,7 +91,6 @@ export async function listCoderDeletions(db: Db, studyId: number): Promise<Coder
     .select({
       coderId: coderDeletions.coderId,
       participantId: coderDeletions.participantId,
-      email: coderDeletions.email,
       requestedAt: coderDeletions.requestedAt,
       deletedAt: coderDeletions.deletedAt,
       deletedBy: coderDeletions.deletedBy,

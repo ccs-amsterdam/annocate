@@ -85,7 +85,6 @@ export type DeleteCodersResponse = z.infer<typeof DeleteCodersResponseSchema>;
 export const CoderDeletionSchema = z.object({
   coderId: z.number().int().positive(),
   participantId: z.string().nullable(),
-  email: z.string().nullable(),
   /** When the coder asked for it, if they did. */
   requestedAt: z.coerce.date().nullable(),
   deletedAt: z.coerce.date(),

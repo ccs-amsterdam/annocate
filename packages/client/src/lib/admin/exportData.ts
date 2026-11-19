@@ -608,11 +608,10 @@ export function devicesTable(devices: Device[]): Table {
 /** The deletion log: coders whose data was deleted, so they can be deleted from earlier downloads too. */
 export function deletedCodersTable(deletions: CoderDeletion[]): Table {
   return {
-    headers: ["coder_id", "participant_id", "email", "requested_at", "deleted_at", "deleted_by", "answers"],
+    headers: ["coder_id", "participant_id", "requested_at", "deleted_at", "deleted_by", "answers"],
     rows: deletions.map((d) => [
       String(d.coderId),
       d.participantId ?? "",
-      d.email ?? "",
       time(d.requestedAt),
       time(d.deletedAt),
       d.deletedBy ?? "",

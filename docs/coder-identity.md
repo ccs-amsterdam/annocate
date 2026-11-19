@@ -303,7 +303,8 @@ retired ones; `units.coded` is recomputed. Unit versions stay (unit content).
 Nothing about coders is kept in memory, so nothing needs reloading. A
 deleted coder's browser later starts a new session
 from its link. Every deletion is logged (`coder_deletions`: coder id,
-participant id, email, requested, deleted, by whom, answer count), so the
+participant id, requested, deleted, by whom, answer count; not the
+email address), so the
 researcher can delete the coder from earlier downloads too
 (`GET /study/:studyId/coders/deletions`, the Coders tab, and
 `deleted_coders.csv` in the export).

@@ -258,7 +258,7 @@ function DeletionLog({ deletions }: { deletions: CoderDeletion[] }) {
         <thead>
           <tr className="border-b text-left text-xs text-muted-foreground">
             <th className="p-1.5 font-medium">Coder</th>
-            <th className="p-1.5 font-medium">Participant id / email</th>
+            <th className="p-1.5 font-medium">Participant id</th>
             <th className="p-1.5 font-medium">Asked</th>
             <th className="p-1.5 font-medium">Deleted</th>
             <th className="p-1.5 font-medium">By</th>
@@ -269,7 +269,7 @@ function DeletionLog({ deletions }: { deletions: CoderDeletion[] }) {
           {deletions.map((d) => (
             <tr key={`${d.coderId}-${String(d.deletedAt)}`} className="border-b last:border-0">
               <td className="p-1.5">#{d.coderId}</td>
-              <td className="p-1.5">{d.participantId ?? d.email ?? "–"}</td>
+              <td className="p-1.5">{d.participantId ?? "–"}</td>
               <td className="p-1.5 whitespace-nowrap text-muted-foreground">
                 {d.requestedAt ? formatWhen(d.requestedAt) : "–"}
               </td>

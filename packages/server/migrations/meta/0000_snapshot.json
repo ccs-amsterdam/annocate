@@ -1,5 +1,5 @@
 {
-  "id": "e4148f09-0954-48fb-b6a2-01f49304d44d",
+  "id": "7f90273a-f565-4f85-b662-6e9a7075a26d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -2468,12 +2468,6 @@
         },
         "participant_id": {
           "name": "participant_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "email": {
-          "name": "email",
           "type": "text",
           "primaryKey": false,
           "notNull": false

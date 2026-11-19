@@ -241,7 +241,6 @@ CREATE TABLE "coder_deletions" (
 	"study_id" integer NOT NULL,
 	"coder_id" integer NOT NULL,
 	"participant_id" text,
-	"email" text,
 	"requested_at" timestamp with time zone,
 	"deleted_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_by" text,
