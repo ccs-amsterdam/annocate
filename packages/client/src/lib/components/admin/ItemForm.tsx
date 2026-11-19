@@ -186,6 +186,7 @@ export function ItemForm({
             unitVariableNames={unitVariableNames}
             layoutFields={isInsideLoop ? loopNames?.selectable : undefined}
             stratifyChoices={[...availableQuestions.map((q) => q.name), ...sessionValueNames.map((n) => `session.${n}`)]}
+            setColumns={groups.map((g) => g.name)}
             onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
           />
           {isInsideLoop && loopNames && (

@@ -86,6 +86,7 @@ export function VariableTypeForm({
   unitVariableNames,
   layoutFields,
   stratifyChoices = [],
+  setColumns = [],
 }: {
   variable: AnyVariableType;
   onChange: (next: AnyVariableType) => void;
@@ -95,6 +96,8 @@ export function VariableTypeForm({
   layoutFields?: string[];
   /** For `auto`: what a balanced draw can balance within (earlier questions, `session.<name>`). */
   stratifyChoices?: string[];
+  /** For a random condition: the units' set columns it can be linked to. */
+  setColumns?: string[];
 }) {
   switch (variable.type) {
     case "nominal":
@@ -165,19 +168,66 @@ export function VariableTypeForm({
       return (
         <>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Source</label>
+            <label className="flex items-center gap-1 text-sm font-medium">
+              Drawn
+              <InfoTip label="About random conditions">
+                Assigned when a coder reaches this item, so earlier questions can come first (coders screened out before don&apos;t
+                count). Use it as <span className="font-mono">$var.name</span>. For a condition from the link, or drawn when the
+                session starts, use an assigned condition in the session settings instead.
+              </InfoTip>
+            </label>
             <select
               className="h-10 rounded-md border border-input bg-background px-3 text-sm"
               value={v.draw}
               onChange={(e) => onChange({ ...v, draw: e.target.value as typeof v.draw })}
             >
-              <option value="random">Random draw</option>
-              <option value="balanced">Balanced (option with fewest coders)</option>
+              <option value="balanced">Balanced (the value fewest coders have)</option>
+              <option value="random">Random</option>
             </select>
-            <p className="text-xs text-muted-foreground">
-              Assigned when a coder reaches this question (coders screened out before don&apos;t count). For values from the
-              link or URL (e.g. a condition per link), use a session parameter: $session.&lt;name&gt;.
-            </p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="flex items-center gap-1 text-sm font-medium">
+              Linked to units
+              <InfoTip label="About linking to units">
+                Linked to a set column, the coder&apos;s value also selects their units in the loops after this item: only units whose
+                cell holds it (and <span className="font-mono">_overlap</span> units).
+              </InfoTip>
+            </label>
+            <select
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              value={v.units ?? ""}
+              onChange={(e) => {
+                const next: typeof v = { ...v, units: e.target.value || undefined };
+                if (!next.units) {
+                  delete next.units;
+                  if (!next.options) next.options = [{ value: "control" }, { value: "experiment" }];
+                }
+                onChange(next);
+              }}
+            >
+              <option value="">Not linked to units</option>
+              {[...new Set([...setColumns, ...(v.units ? [v.units] : [])])].map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                  {setColumns.includes(c) ? "" : " (not in the units)"}
+                </option>
+              ))}
+            </select>
+            {v.units && (
+              <label className="flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={!v.options}
+                  onChange={(e) => {
+                    const next: typeof v = { ...v };
+                    if (e.target.checked) delete next.options;
+                    else next.options = [{ value: "control" }, { value: "experiment" }];
+                    onChange(next);
+                  }}
+                />
+                All values in the column (no fixed list)
+              </label>
+            )}
           </div>
           {v.draw === "balanced" && stratifyChoices.length > 0 && (
             <div className="flex flex-col gap-1">
@@ -207,8 +257,8 @@ export function VariableTypeForm({
               </p>
             </div>
           )}
-          <OptionsEditor
-            options={v.options ?? []}
+          {v.options && <OptionsEditor
+            options={v.options}
             onChange={(options) => onChange({ ...v, options })}
             extra={
               v.draw === "random"
@@ -224,7 +274,7 @@ export function VariableTypeForm({
                   )
                 : undefined
             }
-          />
+          />}
         </>
       );
     }
@@ -335,7 +385,7 @@ export const VARIABLE_TYPE_LABELS: Record<AnyVariableType["type"], string> = {
   scale: "Scale (items on the same options)",
   annotinder: "Swipe",
   confirm: "Confirm",
-  random_condition: "Random condition (assigned, not asked)",
+  random_condition: "Random condition (drawn, not asked)",
   span: "Span (select text)",
   relation: "Relation (link spans)",
   unspecified: "Not chosen yet",

@@ -31,7 +31,7 @@ cases; copy and adapt them.
 
 - In templates, as `{{ ... }}`: a loop's layout, question and instruction
   texts, and end item messages.
-- As the condition of a condition item or a coder group, in **Script** mode
+- As the condition of a Show if item or a loop branch, in **Script** mode
   (see [Conditions](conditions.md#script-mode)).
 - As the condition of a `::: if` block in a template (see
   [Showing parts conditionally](template-blocks.md)).

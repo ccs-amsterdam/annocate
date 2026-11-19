@@ -18,6 +18,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../help/HelpButton";
 import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
+import { AssignmentSettings } from "./AssignmentSettings";
 
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
@@ -63,16 +64,13 @@ export function SessionItemForm({
     <div className="flex flex-col gap-5">
       {/* The public title is edited above the item tree (SessionHeader) */}
       <h2 className="-mb-3 flex items-center gap-1.5 text-sm font-semibold">
-        Session parameters
+        Session
         <InfoTip label="About the session">
-          How a coder&apos;s session starts: the links and their parameters, URL parameters from a panel, the participant id, and the
-          sample size per link.
+          How a coder&apos;s session starts: which units are theirs (coders, conditions), the links and their parameters, URL parameters
+          from a panel, the participant id, and the sample size per link.
         </InfoTip>
       </h2>
-      <p className="text-xs text-muted-foreground">
-        Values a session starts with, for conditions and texts. You don&apos;t make the links yourself: deploying makes a link
-        for every value of a link parameter (or combination of values), listed under Deploy › Links.
-      </p>
+      <AssignmentSettings item={item} groups={groups} issues={issues} onChange={onChange} />
       <section className="flex flex-col gap-2">
         <h3 className="flex items-center gap-1.5 text-xs font-semibold">
           Parameters

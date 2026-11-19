@@ -1,4 +1,4 @@
-import { Link2, Settings2 } from "lucide-react";
+import { Link2, Settings2, Shuffle, Users } from "lucide-react";
 import { sessionItem, type SessionItem } from "@annotinder/contracts";
 import { cn } from "cn";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -50,12 +50,37 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
             "inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
             selected && "bg-wood/15 text-foreground",
           )}
-          title="Values a session starts with, from its link or URL: open to edit"
+          title="How a session starts: coders, conditions, link and URL parameters. Open to edit"
         >
           <Settings2 className="h-3.5 w-3.5" />
-          Session parameters
+          Session
           {issues > 0 && <span className="h-1.5 w-1.5 rounded-full bg-destructive" aria-label="Has problems" />}
         </button>
+        {session.coders && (
+          <button
+            type="button"
+            onClick={open}
+            className="inline-flex cursor-pointer items-center gap-1 rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] hover:border-wood/50"
+            title="The units are divided over coders, by this column"
+          >
+            <Users className="h-3 w-3 text-muted-foreground" />
+            {session.coders.column}
+            <span className="text-muted-foreground">coders</span>
+          </button>
+        )}
+        {(session.conditions ?? []).map((c) => (
+          <button
+            key={`c-${c.name}`}
+            type="button"
+            onClick={open}
+            className="inline-flex cursor-pointer items-center gap-1 rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] hover:border-wood/50"
+            title={c.assign === "link" ? "An assigned condition: a link per value" : "An assigned condition: drawn when a session starts"}
+          >
+            {c.assign === "link" ? <Link2 className="h-3 w-3 text-muted-foreground" /> : <Shuffle className="h-3 w-3 text-muted-foreground" />}
+            {c.name}
+            <span className="text-muted-foreground">condition</span>
+          </button>
+        ))}
         {session.params.map((p) => (
           <button
             key={p.name}
@@ -69,13 +94,13 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
             <span className="text-muted-foreground">{p.kind === "link" ? "link" : "URL"}</span>
           </button>
         ))}
-        {session.params.length === 0 && !readOnly && (
+        {session.params.length === 0 && !session.coders && !(session.conditions ?? []).length && !readOnly && (
           <button
             type="button"
             onClick={open}
             className="inline-flex cursor-pointer items-center gap-0.5 rounded px-1 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
           >
-            Add sessions parameters
+            Set up coders, conditions or links
           </button>
         )}
       </div>

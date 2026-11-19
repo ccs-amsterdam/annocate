@@ -1,5 +1,5 @@
 ---
-title: Conditions
+title: Show if (conditions)
 section: Editor
 order: 4
 summary: Show questions, loops or end items only when earlier answers (or the unit) say so.
@@ -169,7 +169,7 @@ units.
 ## Conditions in a layout or text
 
 To show part of a unit's layout, or of a question text, only in some cases,
-you don't need a condition item: write a `::: if` block in the template.
+you don't need a Show if item: write a `::: if` block in the template.
 
 ```example
 answers:

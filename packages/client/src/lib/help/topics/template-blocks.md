@@ -27,7 +27,7 @@ The fence lines themselves are never shown.
 
 `::: if <condition>` shows its lines only if the condition holds. The
 condition is the same kind of condition as in a
-[condition item](conditions.md): `$var.group.is('experiment')` holds if the
+[Show if item](conditions.md): `$var.group.is('experiment')` holds if the
 coder's answer to `group` is `experiment`.
 
 ```example
