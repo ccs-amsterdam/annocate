@@ -102,6 +102,15 @@ describe("data download", () => {
     expect(table.rows[0]).toEqual(["1", "p1", "", "Open link", at.toISOString(), at.toISOString(), "complete", at.toISOString(), "", "1", "42"]);
   });
 
+  it("orders the finished columns of unit loops naturally (2 before 10)", () => {
+    const table = codersTable([coder(1, { finished: { "Unit loop 10": 1, "Unit loop 2": 2, "Unit loop 1": 3 } })]);
+    expect(table.headers.filter((h) => h.startsWith("finished_"))).toEqual([
+      "finished_Unit loop 1",
+      "finished_Unit loop 2",
+      "finished_Unit loop 10",
+    ]);
+  });
+
   it("lists response times with the server's bound, and flags browsers that claim more time than the server saw", () => {
     const value = { done: true, skip: false, values: [{ value: 1 }] };
     const timing = (firstMs: number, totalMs: number) => ({ firstMs, totalMs, hiddenMs: 0, edits: 1 });

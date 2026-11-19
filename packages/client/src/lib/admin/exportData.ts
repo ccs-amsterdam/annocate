@@ -324,7 +324,10 @@ export function codersTable(
   nested: ReadonlySet<string> = new Set(),
   numeric: ReadonlySet<string> = new Set(),
 ): Table {
-  const loops = [...new Set(coders.flatMap((c) => Object.keys(c.finished)))].sort();
+  // Natural order, so "Unit loop 2" comes before "Unit loop 10"
+  const loops = [...new Set(coders.flatMap((c) => Object.keys(c.finished)))].sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true }),
+  );
   // Units of the special sets each coder finished (overlap, gold, practice)
   const specials = (["overlap", "gold", "practice"] as const).filter((kind) => coders.some((c) => c.special?.[kind]));
   // Session values (link and URL parameters, source), by their $session name

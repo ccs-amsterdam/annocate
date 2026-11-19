@@ -51,7 +51,7 @@ export function me(server: Server): Hono<Env> {
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     if (c.get("researcher").accountRole !== "user") throw new HttpError(409, "You are a researcher already");
     if (!(await getSettings(db)).registration.requests)
-      throw new HttpError(403, "This server doesn't take requests: ask for an invite link");
+      throw new HttpError(403, "This server doesn't take requests: ask its admins to invite your email address");
     await db
       .insert(researcherRequests)
       .values({ userId: await userId(c), message: parsed.data.message })

@@ -45,7 +45,7 @@ export function snapToWord(text: string, start: number, end: number): [number, n
 /**
  * Trims leading and trailing whitespace from a character range.
  */
-export function trimRangeWhitespace(
+function trimRangeWhitespace(
   text: string,
   offset: number,
   length: number,
