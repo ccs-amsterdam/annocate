@@ -7,6 +7,7 @@ what exists.
 | --- | --- |
 | [examples.md](examples.md): example jobs for learning AnnoTinder, later templates and a library of reusable flows | Examples built; templates and library not |
 | [setup-wizard.md](setup-wizard.md): a guided setup for a new job (annotate / survey / experiment, units and who codes what, question names), ending in the editor; recipes shared with examples | Built; next steps listed |
+| [unit-assignment.md](unit-assignment.md): dividing units over coders or groups by a unit column, set at study level; loops keep only a filter and distribution criteria (replaces the loop modes) | Proposed |
 | [sets-and-session-parameters.md](sets-and-session-parameters.md): set groups as columns, assign-a-set loops with overlap, session parameters in the codebook, links generated from them; auto variables assigned when reached, stratified balancing | Built |
 | [special-sets.md](special-sets.md): overlap at a rate (default for crowd coding), and the special sets `_gold` (silent checks, health) and `_practice` (feedback), `$unit._practice` | Built |
 | [design.md](design.md): the design as the single source of truth: declared unit fields (the job's field specification), codebook as the coders' part, design vs deployment, targets | Built (§1-5); open: sharing designs (§6), coders-per-set targets |
