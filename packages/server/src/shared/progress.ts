@@ -87,7 +87,9 @@ export async function listCoderProgress(sql: Sql, studyId: number): Promise<Code
   const special = (coderId: number, session: Record<string, string>, assignments: Record<string, unknown>) => {
     const out: CoderProgress["special"] = {};
     if (Object.keys(assignments ?? {}).length === 0) return out;
-    const overlapColumns = new Set(shareColumns.filter(([name]) => session?.[name] !== undefined).map(([, column]) => column));
+    const selected = shareColumns.filter(([name]) => session?.[name] !== undefined).map(([, column]) => column);
+    // The session's columns, or (no column divides its units) every column
+    const overlapColumns = new Set(selected.length > 0 ? selected : members.map((m) => m.grp));
     for (const [name, kind] of Object.entries(kinds) as [Kind, (typeof kinds)[Kind]][]) {
       const units = new Set(members.filter((m) => m.name === name && (name !== "_overlap" || overlapColumns.has(m.grp))).map((m) => m.unitId));
       if (units.size === 0) continue;

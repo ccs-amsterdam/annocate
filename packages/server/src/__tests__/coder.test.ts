@@ -620,6 +620,14 @@ describe("loop filters and the overlap", () => {
     expect(await order("plain")).toEqual(["unit-1", "unit-2", "unit-3"]);
   });
 
+  it("without a column dividing the units, the overlap is every column's: a shared queue places it", async () => {
+    await createSet("_overlap", ["unit-3"], "extra");
+    await redeploy({ units: [{ criteria: { codersPerUnit: { min: 1, max: 1 } }, overlap: { placement: "last" } }] });
+    expect(await order("first-coder")).toEqual(["unit-1", "unit-2", "unit-3"]);
+    // The queue is done; the overlap is everyone's
+    expect(await order("second-coder")).toEqual(["unit-3"]);
+  });
+
   it("filter the session's units by a set column: only or except some values", async () => {
     await createSet("pre", ["unit-1"], "phase");
     await createSet("post", ["unit-2", "unit-3"], "phase");

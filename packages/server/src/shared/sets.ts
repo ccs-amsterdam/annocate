@@ -238,9 +238,11 @@ export async function assignmentChecks(
         }
       }
       if (!branch.overlap || branch.overlap.placement === "disabled") continue;
-      const overlapColumns = (shares.get(key) ?? []).map((c) => c.column);
+      // The session's columns, or (no column divides the units) every column
+      const shareColumns = (shares.get(key) ?? []).map((c) => c.column);
+      const overlapColumns = shareColumns.length > 0 ? shareColumns : [...groups.keys()];
       const n = new Set(overlapColumns.flatMap((c) => unitsIn(c, OVERLAP_SET))).size;
-      if (n === 0) warnings.push(`Loop '${title}': the overlap is on, but ${overlapColumns.length === 0 ? "the units aren't divided by a column" : `no ${OVERLAP_SET} units in ${overlapColumns.map((c) => `'${c}'`).join(", ")}`}.`);
+      if (n === 0) warnings.push(`Loop '${title}': the overlap is on, but ${overlapColumns.length === 0 ? "no set column has overlap units" : `no ${OVERLAP_SET} units in ${overlapColumns.map((c) => `'${c}'`).join(", ")}`}.`);
       else if (branch.overlap.expect !== undefined && n < branch.overlap.expect) {
         warnings.push(`Loop '${title}': ${n} overlap units; ${branch.overlap.expect} are recommended.`);
       }

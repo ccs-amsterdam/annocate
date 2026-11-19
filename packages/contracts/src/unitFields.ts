@@ -130,7 +130,10 @@ export function checkUnitData(data: UnitData, fields: UnitField[]): string | nul
   for (const [name, value] of Object.entries(data)) {
     const type = known.get(name);
     if (type === undefined) return `Unknown field '${name}' (the fields are: ${fields.map((f) => f.name).join(", ")})`;
-    if (type === "set") return `Field '${name}' is a set column: its cells are uploaded as sets`;
+    if (type === "set") {
+      if (value !== null) return `Field '${name}' is a set column: its cells are uploaded as sets`;
+      continue;
+    }
     const actual = typeOfValue(value);
     if (actual !== null && actual !== type && !isAnswerColumn(name)) return `Field '${name}' is ${type}, got ${actual} (${JSON.stringify(value)})`;
   }

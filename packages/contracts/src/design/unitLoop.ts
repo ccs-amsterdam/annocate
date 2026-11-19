@@ -211,7 +211,7 @@ export function sharedDefaults(b: UnitBranch) {
 /** Loop-level distribution settings, shared by `unit_loop` items. */
 export const UnitLoopDistributionShape = {
   /** First matching branch is used for a coder (and sticks, even if their answers change later). `[{}]`: all the session's units. */
-  units: z.array(UnitBranchSchema).min(1, "A loop needs a branch (`{}`: all the session's units)"),
+  units: z.array(UnitBranchSchema).min(1, "Which units coders get isn't set yet: add a branch (`{}`: all the session's units)"),
   /** `random`: each coder gets the units (and the overlap units) in their own random order. Default `sequential`: the units' order. */
   order: z.enum(["sequential", "random"]).optional(),
 };

@@ -26,7 +26,7 @@ export function units(server: Server): Hono<Env> {
     const parsed = UnitsCreateBodySchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     const studyId = c.get("studyId");
-    const { units, overwrite, overwriteCoded } = parsed.data;
+    const { overwrite, overwriteCoded } = parsed.data;
 
     const firstUpload = (await unitCount(db, studyId)) === 0;
     const declared = await getUnitFields(db, studyId);
@@ -34,11 +34,11 @@ export function units(server: Server): Hono<Env> {
     if (firstUpload) {
       const latest = await latestDesignVersion(db, studyId);
       const used = latest ? fieldUsage(designVersionItems(latest)) : new Map();
-      const given = new Set(units.flatMap((u) => Object.keys(u.data)));
+      const given = new Set(parsed.data.units.flatMap((u) => Object.keys(u.data)));
       known = declared.filter((f) => used.has(f.name) && !given.has(f.name));
     }
     const added = addedFields(
-      units.map((u) => u.data),
+      parsed.data.units.map((u) => u.data),
       known,
     );
     if ("error" in added) return c.json({ error: added.error }, 400);
@@ -48,6 +48,12 @@ export function units(server: Server): Hono<Env> {
       return d ? { ...f, description: d } : f;
     };
     const fields = [...known, ...added.fields.map(describe)];
+    // Set columns aren't data (their cells are sets): an empty one given is left out
+    const setFields = new Set(fields.filter((f) => f.type === "set").map((f) => f.name));
+    const units = parsed.data.units.map((u) => ({
+      ...u,
+      data: Object.fromEntries(Object.entries(u.data).filter(([name, value]) => !(setFields.has(name) && value === null))),
+    }));
     for (const unit of units) {
       const problem = checkUnitData(unit.data, fields);
       if (problem) return c.json({ error: `Unit '${unit.externalId}': ${problem}` }, 400);

@@ -595,8 +595,10 @@ export class DeploymentRuntime {
       const listed = new Set((filter.only ?? filter.except ?? []).flatMap((value) => this.unitsOf(setKey(filter.column, value))));
       units = units.filter((id) => listed.has(id) === !!filter.only);
     }
-    // The overlap apart when the branch places it (or leaves it out)
-    const overlapAll = new Set(values.flatMap(([column]) => this.unitsOf(setKey(column, OVERLAP_SET))));
+    // The overlap apart when the branch places it (or leaves it out): of the session's columns, or
+    // (no column divides the units) of every column
+    const overlapColumns = values.length > 0 ? values.map(([column]) => column) : this.columns;
+    const overlapAll = new Set(overlapColumns.flatMap((column) => this.unitsOf(setKey(column, OVERLAP_SET))));
     let overlap = branch.overlap ? units.filter((id) => overlapAll.has(id)) : [];
     const own = branch.overlap ? units.filter((id) => !overlapAll.has(id)) : units;
     const max = branch.overlap?.max;
