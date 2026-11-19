@@ -75,7 +75,7 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
             onClick={open}
             className="inline-flex cursor-pointer items-center gap-0.5 rounded px-1 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
           >
-            <Plus className="h-3 w-3" /> add, e.g. a group per link
+            Add sessions parameters
           </button>
         )}
       </div>
