@@ -121,7 +121,6 @@ describe("itemEdit", () => {
       const loop: TopLevelItem = {
         type: "unit_loop",
         ...{ _key: "loop" },
-        units: [{}],
         layout: { template: "" },
         children: [
           {
@@ -140,7 +139,6 @@ describe("itemEdit", () => {
     const loop: TopLevelItem = {
       type: "unit_loop",
       ...{ _key: "loop" },
-      units: [{}],
       layout: { template: "" },
       children: [
         {
@@ -151,11 +149,11 @@ describe("itemEdit", () => {
       ],
     };
 
-    it("prevents moving question with auto inside loop", () => {
+    it("prevents moving a computed item inside a loop", () => {
       const autoQ: TopLevelItem = {
-        type: "question",
+        type: "computed",
         name: "auto_q",
-        variable: { type: "random_condition", draw: "random", options: [{ value: "a" }] },
+        variable: { type: "random", draw: "random", options: [{ value: "a" }] },
       };
       const items: TopLevelItem[] = [autoQ, loop];
       expect(canMoveItemTo(items, "auto_q", "in_loop_q", "before")).toBe(false);
@@ -166,7 +164,6 @@ describe("itemEdit", () => {
       const spanLoop: TopLevelItem = {
         type: "unit_loop",
         ...{ _key: "loop" },
-        units: [{}],
         layout: { template: "" },
         children: [
           {
@@ -240,7 +237,7 @@ describe("itemEdit", () => {
     // a, loop[ c[ x ] ], b
     const tree = (): TopLevelItem[] => [
       q("a") as TopLevelItem,
-      { _key: "loop", type: "unit_loop", units: [{}], layout: { template: "text" }, children: [cond("c", [q("x")])] } as unknown as TopLevelItem,
+      { _key: "loop", type: "unit_loop", layout: { template: "text" }, children: [cond("c", [q("x")])] } as unknown as TopLevelItem,
       q("b") as TopLevelItem,
       cond("empty"),
     ];

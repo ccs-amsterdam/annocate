@@ -2,7 +2,7 @@
 title: Experimental conditions
 section: Units and distribution
 order: 4.5
-summary: Assigned and random conditions - how coders get a condition, using it in the design, and giving each condition its own units.
+summary: Assigned and random values - how coders get a condition, using it in the design, and giving each condition its own units.
 ---
 
 A **condition** is a value a coder's session gets, such as `control` or
@@ -12,7 +12,7 @@ units. There are two kinds, which differ in *when* the value is set:
 | | Set | Defined in | Use it as |
 | --- | --- | --- | --- |
 | **Assigned condition** | When the session starts: by the link, or drawn | **Session**, above the item tree | `$session.<name>` |
-| **Random condition** | When the coder reaches it in the flow: drawn | an item in the tree ([Random conditions](random-condition.md)) | `$var.<name>` |
+| **Random value** | When the coder reaches it in the flow: drawn | an item in the tree ([Random values](random-condition.md)) | `$var.<name>` |
 
 ## Assigned conditions
 
@@ -34,18 +34,18 @@ conditions**:
 active in the last 24 hours, so someone who drops out doesn't hold a place.
 **Random** gives every session the same chance, as most experiments assume.
 
-## Random conditions
+## Random values
 
-A random condition is assigned when the coder reaches it, so you can ask
+A random value is drawn when the coder reaches it, so you can ask
 questions first: background questions, a pre-test, or to balance groups on
-earlier answers (stratified). See [Random conditions](random-condition.md).
+earlier answers (stratified). See [Random values](random-condition.md).
 
 ## Using a condition
 
 In any condition or script: `$session.framing.is("experiment")` (or
-`$var.framing` for a random condition). Use it in a
-[Show if](conditions.md) to show other questions or texts, in a loop's
-[coder groups](coder-groups.md), or in an end item's return link.
+`$var.framing` for a random value). Use it in a
+[Show if](conditions.md) to show other questions or texts, or in an end
+item's return link.
 
 ## Giving each condition its own units
 
@@ -61,7 +61,7 @@ are for every condition.
    the values are whatever the column holds: for instance 100 sets for a
    multilevel design, drawn balanced over coders.
 
-A random condition can be linked the same way; the loops after it in the
+A random value can be linked the same way; the loops after it in the
 flow then get its units.
 
 ## Two factors (cross-nested)

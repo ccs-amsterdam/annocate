@@ -37,7 +37,7 @@ function unitVar(name: string): InLoopQuestionItem {
 }
 
 function unitLoop(name: string, children: InLoopItem[]): UnitLoopItem {
-  return { _key: name, type: "unit_loop", units: [{}], layout: { template: "" }, children } as UnitLoopItem;
+  return { _key: name, type: "unit_loop", layout: { template: "" }, children } as UnitLoopItem;
 }
 
 const answered: VariableValue = { done: true, skip: false };

@@ -43,9 +43,7 @@ export type SetupDistribution =
    */
   | { mode: "crowd"; shared: Criteria; overlap: SetupOverlap }
   /** A set per experimental condition: the units whose `column` has one of the condition's values. */
-  | { mode: "groups"; column: string; values: Record<string, string[]> }
-  /** Decided later in the editor: the loop's units are not set. */
-  | { mode: "later" };
+  | { mode: "groups"; column: string; values: Record<string, string[]> };
 
 export const DISTRIBUTIONS: { mode: SetupDistribution["mode"]; label: string; help: string }[] = [
   { mode: "all", label: "Everyone codes everything", help: "Every coder codes every unit." },
@@ -64,14 +62,12 @@ export const DISTRIBUTIONS: { mode: SetupDistribution["mode"]; label: string; he
     label: "Experimental groups",
     help: "Each condition of the experiment gets its own units, chosen by the values of a column.",
   },
-  { mode: "later", label: "Decide later (advanced)", help: "Set who codes which units in the editor: the loop is marked to specify." },
 ];
 
 /** The settings an option starts with. */
 export function defaultDistribution(mode: SetupDistribution["mode"], columns: string[] = []): SetupDistribution {
   switch (mode) {
     case "all":
-    case "later":
       return { mode };
     case "sets":
       return { mode, source: "split", sets: 2, column: columns[0] ?? "", overlap: null, handOut: "rotate" };
@@ -168,12 +164,12 @@ const setName = (value: string) =>
 /** Whether a distribution puts the units in sets of a group: then gold and practice units can be mixed in. */
 export const hasSetGroup = (d: SetupDistribution) => d.mode === "sets" || d.mode === "crowd";
 
-/** A branch with the gold and practice checks the wizard asked for, on questions that are per-unit questions. */
-function withChecks(branch: object, checks: SetupAnswers["checks"], unitQuestions: string[]): object {
+/** A loop's units settings with the gold and practice checks the wizard asked for, on questions that are per-unit questions. */
+function withChecks(units: object, checks: SetupAnswers["checks"], unitQuestions: string[]): object {
   const gold = checks.gold.filter((q) => unitQuestions.includes(q));
   const practice = checks.practice.filter((q) => unitQuestions.includes(q));
   return {
-    ...branch,
+    ...units,
     ...(practice.length > 0 ? { practice: { placement: "first", questions: practice } } : {}),
     ...(gold.length > 0 ? { gold: { placement: "rate", every: DEFAULT_RATE, questions: gold } } : {}),
   };
@@ -317,13 +313,14 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
   const groups: NonNullable<RecipeInput["sets"]> = [];
   const conditions = a.experiment.conditions.map((c) => c.trim()).filter(Boolean);
   if (a.parts.experiment) {
-    // Experimental groups: the condition selects its units (a set column named after it, a value per condition)
+    // Experimental groups: a computed item, drawn when reached; linked to a column, it selects the
+    // units (a set column named after it, a value per condition)
     const linked = a.parts.annotate && a.distribution.mode === "groups";
     items.push({
-      type: "question",
+      type: "computed",
       name: a.experiment.name,
       variable: {
-        type: "random_condition",
+        type: "random",
         draw: a.experiment.assign,
         options: conditions.map((c) => (linked && setName(c) !== c ? { value: setName(c), label: c } : { value: linked ? setName(c) : c })),
         ...(linked ? { units: a.experiment.name } : {}),
@@ -335,15 +332,14 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
     const d = a.distribution;
     const { sets, overlap } = distributionSets(d, a.units);
     const overlapSet = overlap.length > 0 ? [{ name: OVERLAP_SET, units: overlap }] : [];
-    let branches: object[] = [];
+    let units: object = {};
     switch (d.mode) {
       case "all":
-        branches = [{}];
         break;
       case "sets":
         groups.push({ group: WIZARD_GROUP, sets: [...sets, ...overlapSet] });
         // Spread: best practice (first inflates reliability: coders are fresh and careful)
-        branches = [overlap.length > 0 ? { overlap: { placement: "spread" } } : {}];
+        if (overlap.length > 0) units = { overlap: { placement: "spread" } };
         // A link per set: the sets are the coders. Else one link: a set drawn when a session starts (the fewest sessions).
         session =
           d.handOut === "links"
@@ -353,7 +349,7 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
       case "crowd":
         // The overlap: everyone's (a column's _overlap, without a column dividing the units)
         if (overlap.length > 0) groups.push({ group: WIZARD_GROUP, sets: overlapSet });
-        branches = [{ criteria: d.shared, ...(overlap.length > 0 ? { overlap: { placement: "rate", every: DEFAULT_RATE, rest: "end" } } : {}) }];
+        units = { criteria: d.shared, ...(overlap.length > 0 ? { overlap: { placement: "rate", every: DEFAULT_RATE, rest: "end" } } : {}) };
         break;
       case "groups":
         // A set column named after the condition, a value per condition: the condition (drawn before the loop) selects its units
@@ -364,16 +360,15 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
             return { name: setName(condition), units: (a.units?.units ?? []).filter((u) => values.includes(valueOf(u, d.column))).map((u) => u.externalId) };
           }),
         });
-        branches = [{}];
         break;
-      case "later":
-        branches = [];
     }
+    // Gold and practice checks on the special units (assign sets, crowd coding)
+    if (hasSetGroup(d)) units = withChecks(units, a.checks, parseQuestions(a.questions.unit).map((q) => q.name));
     items.push({
       type: "unit_loop",
       label: "Units",
-      // Gold and practice checks on the special units (assign sets, crowd coding)
-      units: hasSetGroup(d) ? branches.map((b) => withChecks(b, a.checks, parseQuestions(a.questions.unit).map((q) => q.name))) : branches,
+      // Absent: all the session's units, once
+      ...(Object.keys(units).length > 0 ? { units } : {}),
       ...(a.order === "random" ? { order: "random" } : {}),
       layout: { template: layoutTemplate(a.layout) },
       children: parseQuestions(a.questions.unit).map(unspecified),

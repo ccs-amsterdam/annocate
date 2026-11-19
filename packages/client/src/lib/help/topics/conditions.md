@@ -186,7 +186,6 @@ Above the `::: if` line, the editor shows the condition in words with an
 **edit** link that opens the rules editor. See
 [Showing parts conditionally](template-blocks.md).
 
-Which units a coder gets can also depend on their answers: that is set in
-the unit loop's **Coder groups** (see
-[Coder groups in a loop](coder-groups.md)), with the same
-rules editor.
+Which units a coder gets is decided by the session's values (the coder,
+conditions linked to a unit column) and by [random values](random-condition.md)
+linked to a unit column, not by conditions in the flow.

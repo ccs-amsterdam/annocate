@@ -6,7 +6,6 @@ const loop = {
   _key: "k1",
   type: "unit_loop",
   label: "loop",
-  units: [{ mode: "all" }],
   layout: { template: "$unit.text" },
   children: [{ type: "question", name: "q", variable: { type: "confirm", question: "?" } }],
 } as unknown as DesignItem;

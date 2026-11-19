@@ -82,11 +82,11 @@ continue in the same order.
 In a shared queue, the queue's priority comes first, and the order decides
 among units that are equally far.
 
-## Different settings for different coders
+## Different units for different coders
 
-A loop can use other settings for some coders, for instance another filter
-for coders who answered a question differently: see
-[Coder groups](coder-groups.md).
+A loop has one set of settings for everyone. Which units a coder gets
+differs by their session: their coder value, and the conditions and
+[random values](random-condition.md) linked to a unit column.
 
 ## What coders see when they run out
 

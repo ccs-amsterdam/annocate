@@ -35,7 +35,7 @@ const TYPE_HELP: Record<AnyVariableType["type"], string> = {
   scale: "scale",
   annotinder: "swipe",
   confirm: "confirm",
-  random_condition: "random-condition",
+  random: "random-condition",
   span: "span",
   relation: "relation",
   unspecified: "question-types",
@@ -50,12 +50,13 @@ export function defaultItemForType(type: DesignItem["type"], name: string): Desi
         // The answer type is chosen in the form ("to specify" until then).
         variable: { type: "unspecified" },
       } as DesignItem;
+    case "computed":
+      return { type: "computed", name, variable: { type: "random", draw: "random", options: [{ value: "control" }, { value: "experiment" }] } };
     case "unit_loop":
       // Like a condition, a new loop starts empty: its questions are added in
-      // the tree. Which units coders get is chosen in its form ("to specify" until then).
+      // the tree. By default it hands out all the session's units, once (its form changes that).
       return {
         type: "unit_loop",
-        units: [],
         layout: { template: "" },
         children: [],
       } as DesignItem;
@@ -143,7 +144,7 @@ export function ItemForm({
         <div className="flex flex-col gap-1.5">
           <span className="flex items-center gap-1.5">
             <label className="text-xs font-semibold text-foreground">Item Name</label>
-            <HelpButton topic={item.type === "end" ? "end-items" : "questions"} label="Help" />
+            <HelpButton topic={item.type === "end" ? "end-items" : item.type === "computed" ? "random-condition" : "questions"} label="Help" />
           </span>
           <Input
             value={item.name}
@@ -201,6 +202,19 @@ export function ItemForm({
             />
           )}
           {/* Reference problems in the question and instruction texts, and others about the answer type */}
+          <IssueList issues={issuesAt(validationIssues, "variable")} />
+        </>
+      )}
+
+      {item.type === "computed" && (
+        <>
+          <VariableTypeForm
+            variable={item.variable}
+            unitVariableNames={unitVariableNames}
+            stratifyChoices={[...availableQuestions.map((q) => q.name), ...sessionValueNames.map((n) => `session.${n}`)]}
+            setColumns={groups.map((g) => g.name)}
+            onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
+          />
           <IssueList issues={issuesAt(validationIssues, "variable")} />
         </>
       )}

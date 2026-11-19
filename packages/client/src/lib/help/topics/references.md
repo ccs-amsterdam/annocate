@@ -2,7 +2,7 @@
 title: Referring to answers and unit data
 section: Editor
 order: 3
-summary: Use a unit's data ($unit), earlier answers ($var) and session values ($session) in texts, layouts, conditions, coder groups and redirect links.
+summary: Use a unit's data ($unit), earlier answers ($var) and session values ($session) in texts, layouts, conditions and redirect links.
 ---
 
 A **reference** is a name that AnnoTinder replaces with a value while the
@@ -132,11 +132,8 @@ empty text. See [Session parameters](session-parameters.md).
 | Conditions (condition items, `::: if`) | In a loop | Yes | Yes | Yes (a condition is a script) |
 | End item messages | In a loop | Yes | Yes | Yes |
 | End item redirect links | No | Yes | Yes | No |
-| Coder group conditions of a loop | No | Coder-level questions only | Yes | Yes |
 
-Coder group conditions give different coders different units: see
-[Coder groups in a loop](coder-groups.md). In redirect links
-the values are URL-encoded: see [Ending a session](end-items.md).
+In redirect links the values are URL-encoded: see [Ending a session](end-items.md).
 
 In texts and layouts, `$var` and `$unit` show their value as text. Inside
 `{{ }}` they are ordinary JavaScript values: see [Scripts](scripts.md).

@@ -10,7 +10,7 @@ describe("codebookMarkdown", () => {
       {
         type: "unit_loop",
         label: "articles",
-        units: [{ mode: "assign", group: "g", from: { draw: "balanced" }, gold: { placement: "last", questions: ["topic"] } }],
+        units: { gold: { placement: "last", questions: ["topic"] } },
         layout: { template: "$unit.headline" },
         children: [
           {

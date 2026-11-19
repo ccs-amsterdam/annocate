@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Code, Plus, Split, Trash2 } from "lucide-react";
+import { Code, Plus, Trash2 } from "lucide-react";
 import { cn } from "cn";
 import {
   CHECKABLE_TYPES,
@@ -19,7 +19,7 @@ import {
   type DesignIssue,
   type OverlapSettings,
   type SetGroupResponse,
-  type UnitBranch,
+  type LoopUnits,
   type UnitFilter,
   type UnitLayout,
   type UnitLoopItem,
@@ -30,7 +30,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useLoopTab, type LoopTab } from "./designEditor/loopTab";
 import { TemplateCodeEditor, type TemplateEditorApi } from "./jsonEditor/TemplateCodeEditor";
 import { ConditionDialog, TemplateInsertMenu } from "./TemplateInsertMenu";
-import { ConditionEditor } from "./ConditionEditor";
 import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
 import { HelpButton } from "../../help/HelpButton";
@@ -75,38 +74,10 @@ function agreementQuestions(items: DesignItem[]): string[] {
   });
 }
 
-/** A branch that hands out all the session's units, once. */
-const defaultBranch = (): UnitBranch => ({});
-
-/** A loop whose units aren't set: the session's units, once (the default). */
-function UnsetUnits({ onChoose }: { onChoose: () => void }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="rounded-md border border-amber-500/60 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300">
-        Which units coders get isn&apos;t set yet. By default a session codes all its units once: the units of its coder and
-        conditions (see the Study entry).
-      </p>
-      <Button type="button" variant="outline" size="sm" className="w-fit" onClick={onChoose}>
-        Code the session&apos;s units
-      </Button>
-    </div>
-  );
-}
-
-/** A branch without its condition (the only branch, or the last: "otherwise"). */
-function withoutWhen(branch: UnitBranch): UnitBranch {
-  const next = { ...branch };
-  delete next.when;
-  return next;
-}
-
-
 /**
  * Edits a unit_loop, in two tabs: how a unit is shown (the template and
  * its snippets), and which units coders get (contracts
- * unitLoop.ts: per branch a mode and an optional overlap set; with
- * branches, per branch a condition on coder-level questions; the order),
- * and how a unit is shown (the template and its snippets).
+ * unitLoop.ts: the loop's `units` settings, and the order).
  */
 export function UnitLoopForm({
   loop,
@@ -131,7 +102,7 @@ export function UnitLoopForm({
   groups: SetGroupResponse[];
   /** The study's unit fields, for completions in the template. */
   unitFields: string[];
-  /** Coder-level questions before the loop: what branch conditions may use. */
+  /** Coder-level questions before the loop: what the layout's conditions may use. */
   coderQuestions: { name: string; variable: AnyVariableType }[];
   validationIssues: DesignIssue[];
   readOnly?: boolean;
@@ -167,7 +138,6 @@ export function UnitLoopForm({
           loop={loop}
           client={client}
           groups={groups}
-          coderQuestions={coderQuestions}
           screenouts={screenouts}
           validationIssues={validationIssues}
           shareSources={shareSources}
@@ -203,12 +173,11 @@ function Section({ title, help, topic, children }: { title: string; help?: strin
   );
 }
 
-/** Which units coders get: the branch (or branches), and the order. */
+/** Which units coders get (the loop's `units`), and the order. */
 function UnitsTab({
   loop,
   client,
   groups,
-  coderQuestions,
   screenouts,
   validationIssues,
   shareSources,
@@ -217,90 +186,31 @@ function UnitsTab({
   loop: UnitLoopItem;
   client?: ResearcherApi;
   groups: SetGroupResponse[];
-  coderQuestions: { name: string; variable: AnyVariableType }[];
   screenouts: string[];
   validationIssues: DesignIssue[];
   shareSources: ShareSource[];
   onChange: (loop: UnitLoopItem) => void;
 }) {
-  const agreeable = agreementQuestions(loop.children as DesignItem[]);
-  const checkable = checkableQuestions(loop.children as DesignItem[]);
-  const setBranches = (units: UnitBranch[]) => onChange({ ...loop, units });
-  // Not set yet (the setup wizard's "decide later", or a new loop): choose how first.
-  if (!loop.units?.length) return <UnsetUnits onChoose={() => setBranches([defaultBranch()])} />;
-  const branches = loop.units;
-  const setBranch = (b: number, branch: UnitBranch) => setBranches(branches.map((x, i) => (i === b ? branch : x)));
-
-  // One branch without a condition: just its units. Several: every branch
-  // but the last has a condition ("if", "else if"); the last is "otherwise"
-  // (an older codebook may lack it: then coders matching no branch get no units).
-  const multi = branches.length > 1 || branches[0].when !== undefined;
-  const hasOtherwise = branches[branches.length - 1].when === undefined;
-  const branchLabel = (b: number) => (branches[b].when === undefined ? "Otherwise" : b === 0 ? "If" : "Else if");
-
-  const startBranches = () => setBranches([{ ...defaultBranch(), when: { script: "true" } }, ...branches]);
-  const addBranch = () => {
-    const added: UnitBranch = { ...defaultBranch(), when: { script: "true" } };
-    setBranches(hasOtherwise ? [...branches.slice(0, -1), added, branches[branches.length - 1]] : [...branches, added]);
+  const setUnits = (units: LoopUnits) => {
+    const next: UnitLoopItem = { ...loop, units };
+    // Nothing set: all the session's units, once (the default)
+    if (Object.keys(units).length === 0) delete next.units;
+    onChange(next);
   };
-  const removeBranch = (b: number) => {
-    const rest = branches.filter((_, i) => i !== b);
-    // Back to one branch: it has no condition.
-    setBranches(rest.length === 1 ? [withoutWhen(rest[0])] : rest);
-  };
-
-  const editor = (b: number) => (
-    <BranchEditor
-      branch={branches[b]}
-      client={client}
-      groups={groups}
-      agreeable={agreeable}
-      checkable={checkable}
-      answerKey={client && loop.layout ? { client, layout: loop.layout } : undefined}
-      screenouts={screenouts}
-      shareSources={shareSources}
-      issues={issuesAt(validationIssues, "units", b)}
-      onChange={(branch) => setBranch(b, branch)}
-    />
-  );
-
   return (
     <div className="flex flex-col gap-5">
-      {multi ? (
-        <Section title="Coder groups" help="The first group a coder is in decides their units (and keeps deciding them)." topic="coder-groups">
-          {branches.map((branch, b) => (
-            <div key={b} className="flex flex-col gap-3 rounded-md border border-border p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold">{branchLabel(b)}</span>
-                <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeBranch(b)} aria-label="Remove group">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              {branch.when && (
-                <ConditionEditor
-                  condition={branch.when}
-                  onChange={(when) => setBranch(b, { ...branch, when })}
-                  questions={coderQuestions}
-                  issues={issuesAt(validationIssues, "units", b, "when")}
-                />
-              )}
-              {editor(b)}
-            </div>
-          ))}
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={addBranch}>
-              <Plus className="h-3.5 w-3.5" /> Group
-            </Button>
-            {!hasOtherwise && (
-              <Button type="button" variant="outline" size="sm" onClick={() => setBranches([...branches, defaultBranch()])}>
-                <Plus className="h-3.5 w-3.5" /> Otherwise
-              </Button>
-            )}
-          </div>
-        </Section>
-      ) : (
-        editor(0)
-      )}
+      <UnitsEditor
+        units={loop.units ?? {}}
+        client={client}
+        groups={groups}
+        agreeable={agreementQuestions(loop.children as DesignItem[])}
+        checkable={checkableQuestions(loop.children as DesignItem[])}
+        answerKey={client && loop.layout ? { client, layout: loop.layout } : undefined}
+        screenouts={screenouts}
+        shareSources={shareSources}
+        issues={issuesAt(validationIssues, "units")}
+        onChange={setUnits}
+      />
 
       <Section title="Order" topic="unit-distribution#order">
         <select
@@ -312,16 +222,6 @@ function UnitsTab({
           <option value="random">Random (each coder their own order)</option>
         </select>
       </Section>
-
-      {!multi && (
-        <button
-          type="button"
-          onClick={startBranches}
-          className="flex w-fit cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-        >
-          <Split className="h-3.5 w-3.5" /> Different units for different coder groups…
-        </button>
-      )}
     </div>
   );
 }
@@ -550,9 +450,9 @@ function allColumns(groups: SetGroupResponse[]): SetGroupResponse | undefined {
   };
 }
 
-/** One branch's units: its filter, criteria (a shared queue), and the special units. */
-function BranchEditor({
-  branch,
+/** A loop's units: its filter, criteria (a shared queue), and the special units. */
+function UnitsEditor({
+  units: branch,
   groups,
   agreeable,
   checkable,
@@ -562,7 +462,7 @@ function BranchEditor({
   issues,
   onChange,
 }: {
-  branch: UnitBranch;
+  units: LoopUnits;
   shareSources: ShareSource[];
   answerKey?: AnswerKeyContext;
   client?: ResearcherApi;
@@ -571,13 +471,13 @@ function BranchEditor({
   checkable: AnswerKeyQuestion[];
   screenouts: string[];
   issues: DesignIssue[];
-  onChange: (branch: UnitBranch) => void;
+  onChange: (units: LoopUnits) => void;
 }) {
   const special = allColumns(groups);
   // The column with practice or gold units (their right answers are edited by column)
   const columnWith = (set: string) => groups.find((g) => g.sets.some((s) => s.name === set && s.unitIds.length > 0)) ?? groups[0];
   const canSpread = !branch.criteria || branch.criteria.unitsPerCoder?.max !== undefined;
-  const without = (key: keyof UnitBranch) => {
+  const without = (key: keyof LoopUnits) => {
     const next = { ...branch };
     delete next[key];
     return next;
@@ -624,7 +524,7 @@ function BranchEditor({
         canSpread={canSpread}
         onChange={(gold) => onChange(gold ? { ...branch, gold } : without("gold"))}
       />
-      <IssueList issues={issues.filter((issue) => !issue.path.includes("when"))} />
+      <IssueList issues={issues} />
     </div>
   );
 }

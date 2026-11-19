@@ -38,5 +38,5 @@ export function insertableTypesAt(items: TopLevelItem[], position: TreePosition)
   if (positionInLoop(items, position)) return ["question", "show_if", "end"];
   // (The Study entry is always there, first: never added)
   void items;
-  return ["question", "unit_loop", "show_if", "end"];
+  return ["question", "computed", "unit_loop", "show_if", "end"];
 }

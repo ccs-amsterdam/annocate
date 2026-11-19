@@ -31,7 +31,7 @@ Everything of a study is stored on the AnnoTinder server you use:
 What AnnoTinder itself does **not** store about coders: their name, their
 email address (unless the link has them [log in](links.md#login)), their IP address, details of their device beyond its kind, browser and operating system, or
 URL parameters other than the ones the design asks for (an
-[random condition](random-condition.md) that reads a URL parameter, and the participant
+[random value](random-condition.md) that reads a URL parameter, and the participant
 id if the link takes it from the URL). The web server in front of
 AnnoTinder may keep ordinary access logs; ask whoever runs it.
 
@@ -103,7 +103,7 @@ consent text.
 To run the study, a coder's browser gets:
 
 - **The whole codebook**, including all questions, conditions and option
-  values, also of other coder groups. Anyone who knows where to look
+  values, also those meant for other groups. Anyone who knows where to look
   could read it. Don't put anything in the codebook that participants must
   not see, such as the hypothesis in a condition's label.
 - **The unit fields the codebook uses**, also fields used only in a condition

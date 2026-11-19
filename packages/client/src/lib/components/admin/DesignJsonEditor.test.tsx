@@ -10,7 +10,6 @@ describe("DesignJsonEditor", () => {
     {
       type: "unit_loop",
       label: "loop",
-      units: [{ mode: "all" }],
       layout: { template: "# $unit.headline\n\n$unit.text", snippets: { intro: "Hi" } },
       children: [{ type: "question", name: "q", variable: { type: "nominal", question: "Long enough question text to break the line?", options: [{ value: "a" }] } }],
     },

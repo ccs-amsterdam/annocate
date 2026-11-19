@@ -205,10 +205,10 @@ export function canMoveItemTo(
       isInsideUnitLoop(items, keyOf(targetParent) || itemName(targetParent) || ""));
 
   // Check item type constraints:
-  if (sourceItem.type === "question") {
-    if (isTargetInLoop) {
-      if (sourceItem.variable?.type === "random_condition") return false;
-    } else {
+  if (sourceItem.type === "computed") {
+    if (isTargetInLoop) return false;
+  } else if (sourceItem.type === "question") {
+    if (!isTargetInLoop) {
       if (sourceItem.variable?.type === "span" || sourceItem.variable?.type === "relation") return false;
     }
   } else if (sourceItem.type === "unit_loop") {
@@ -224,8 +224,7 @@ export function canMoveItemTo(
     );
     const hasTopOnly = sourceDescendants.some(
       (d) =>
-        d.type === "unit_loop" ||
-        (d.type === "question" && d.variable?.type === "random_condition"),
+        d.type === "unit_loop" || d.type === "computed",
     );
 
     if (isTargetInLoop && hasTopOnly) return false;

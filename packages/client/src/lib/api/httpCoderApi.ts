@@ -34,11 +34,6 @@ async function toError(res: Response, path: string): Promise<CoderApiError> {
   }
 }
 
-/** The branch of a unit loop's `units` the client chose for the coder. */
-export interface BranchChoice {
-  branch: number;
-}
-
 /**
  * Client-side abstraction over "however we talk to a study's backend" (docs/client.md §2). `HttpCoderApi` is the only implementation for now
  * (talking to the server's coder API, packages/server); a future
@@ -47,11 +42,8 @@ export interface BranchChoice {
  */
 export interface CoderApi {
   getSession(): Promise<SessionResponse>;
-  /**
-   * The coder's next units in a loop (up to `count`), chosen by the server; empty when the coder is done with it.
-   * `branch`: the branch of the loop the client chose, (contracts NextUnitQuerySchema).
-   */
-  getNextUnits(loop: string, branch?: BranchChoice, count?: number): Promise<CoderUnitResponse[]>;
+  /** The coder's next units in a loop (up to `count`), chosen by the server; empty when the coder is done with it. */
+  getNextUnits(loop: string, count?: number): Promise<CoderUnitResponse[]>;
   /** A unit the coder already has in a loop (e.g. finished in an earlier visit), to navigate back to it. */
   getLoopUnit(loop: string, unitId: number): Promise<CoderUnitResponse>;
   /** A finished unit: answers to every question of the loop (`skip` for hidden ones), with how long each took. */
@@ -65,7 +57,7 @@ export interface CoderApi {
   /** The coder-level answers, with how long the questions visited since the last post took. */
   postCoderVariables(variables: Record<string, VariableValue>, timings?: Record<string, AnswerTiming>): Promise<void>;
   /** The coder reached an `auto` question: its value, assigned by the server (once). */
-  assignCondition(name: string): Promise<VariableValue>;
+  computeVariable(name: string): Promise<VariableValue>;
   /** The coder reached an `end` item (`unit`: the unit an end inside a unit loop was reached on), or without one finished the study. */
   endSession(item?: string, unit?: EndUnit): Promise<EndSessionResponse>;
   /** Goes back after finishing, while the server allows it (`reopen`). */
@@ -157,9 +149,8 @@ export class HttpCoderApi implements CoderApi {
     return session;
   }
 
-  async getNextUnits(loop: string, branch?: BranchChoice, count = 1): Promise<CoderUnitResponse[]> {
+  async getNextUnits(loop: string, count = 1): Promise<CoderUnitResponse[]> {
     const query = new URLSearchParams({ count: String(count) });
-    if (branch) query.set("branch", String(branch.branch));
     const path = coderEndpoints.getNextUnits.path.replace(":loop", encodeURIComponent(loop));
     return (await this.request<NextUnitsResponse>(`${path}?${query}`)).units;
   }
@@ -193,8 +184,8 @@ export class HttpCoderApi implements CoderApi {
     });
   }
 
-  async assignCondition(name: string): Promise<VariableValue> {
-    const path = coderEndpoints.assignCondition.path.replace(":name", encodeURIComponent(name));
+  async computeVariable(name: string): Promise<VariableValue> {
+    const path = coderEndpoints.computeVariable.path.replace(":name", encodeURIComponent(name));
     return (await this.request<{ value: VariableValue }>(path, { method: "POST" })).value;
   }
 

@@ -163,14 +163,14 @@ export function VariableTypeForm({
       const v = variable;
       return <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />;
     }
-    case "random_condition": {
+    case "random": {
       const v = variable;
       return (
         <>
           <div className="flex flex-col gap-1">
             <label className="flex items-center gap-1 text-sm font-medium">
               Drawn
-              <InfoTip label="About random conditions">
+              <InfoTip label="About random values">
                 Assigned when a coder reaches this item, so earlier questions can come first (coders screened out before don&apos;t
                 count). Use it as <span className="font-mono">$var.name</span>. For a condition from the link, or drawn when the
                 session starts, use an assigned condition in the session settings instead.
@@ -365,7 +365,7 @@ export function VariableTypeForm({
   }
 }
 
-export const VARIABLE_TYPE_OPTIONS_USER: UserVariableType["type"][] = ["nominal", "ordinal", "numeric", "scale", "annotinder", "confirm", "random_condition"];
+export const VARIABLE_TYPE_OPTIONS_USER: UserVariableType["type"][] = ["nominal", "ordinal", "numeric", "scale", "annotinder", "confirm"];
 export const VARIABLE_TYPE_OPTIONS_UNIT: UnitVariableType["type"][] = [
   "nominal",
   "ordinal",
@@ -385,7 +385,7 @@ export const VARIABLE_TYPE_LABELS: Record<AnyVariableType["type"], string> = {
   scale: "Scale (items on the same options)",
   annotinder: "Swipe",
   confirm: "Confirm",
-  random_condition: "Random condition (drawn, not asked)",
+  random: "Random value (drawn, not asked)",
   span: "Span (select text)",
   relation: "Relation (link spans)",
   unspecified: "Not chosen yet",
@@ -424,8 +424,8 @@ export function defaultVariableForAnyType(type: string): AnyVariableType {
       return { type: "annotinder", question: "", options: [{ value: "no", label: "No" }, { value: "yes", label: "Yes" }] };
     case "confirm":
       return { type: "confirm", question: "" };
-    case "random_condition":
-      return { type: "random_condition", draw: "random", options: [{ value: "control" }, { value: "experiment" }] };
+    case "random":
+      return { type: "random", draw: "random", options: [{ value: "control" }, { value: "experiment" }] };
     case "span":
       return { type: "span", question: "", fields: [], options: [{ value: "label_1", label: "Label 1" }] };
     case "relation":

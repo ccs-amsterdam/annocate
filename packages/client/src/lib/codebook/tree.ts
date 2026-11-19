@@ -97,11 +97,9 @@ export function itemAtPath(items: (TopLevelItem | InLoopItem)[], path: (string |
   return found;
 }
 
-/** What a unit loop goes over, for the codebook tree: its filter and whether it is shared, or the number of coder groups (branches). */
+/** What a unit loop goes over, for the codebook tree: its filter, whether it is shared, and the overlap. */
 export function loopUnitsSummary(loop: UnitLoopItem): string {
-  const branches = Array.isArray(loop.units) ? loop.units : [];
-  if (branches.length !== 1) return branches.length > 1 ? `${branches.length} coder groups` : "";
-  const branch = branches[0];
+  const branch = loop.units ?? {};
   const filter = branch.filter;
   const units = filter ? `${filter.column} ${filter.only ? "" : "not "}${(filter.only ?? filter.except ?? []).join(", ")}` : "the session's units";
   const overlap = branch.overlap && branch.overlap.placement !== "disabled" ? " + overlap" : "";
@@ -144,7 +142,7 @@ export interface Steps {
   /** The items to show, in order. */
   steps: DesignItem[];
   /**
-   * Answers of questions that are currently shown (or assigned, for `auto`).
+   * Answers of questions that are currently shown (or computed items reached).
    * Answers of questions a condition hides count as unanswered: a stale
    * answer to a hidden question never decides what comes next.
    */
@@ -178,9 +176,9 @@ async function walkSteps(
       return true;
     } else if (node.type !== "session") {
       if (answers[node.name] !== undefined) visible[node.name] = answers[node.name];
-      // `auto` questions are never asked: assigned by the server when the coder
-      // reaches them (a step until then, StudyManager asks for the value).
-      if (node.variable.type !== "random_condition" || answers[node.name] === undefined) steps.push(node);
+      // Computed items are never asked: computed by the server when the coder
+      // reaches them (an invisible step until then, StudyManager asks for the value).
+      if (node.type !== "computed" || answers[node.name] === undefined) steps.push(node);
     }
   }
   return false;

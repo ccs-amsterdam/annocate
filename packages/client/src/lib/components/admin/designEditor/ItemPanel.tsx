@@ -197,11 +197,11 @@ export function PreviewPanel({ client, draft }: { client: ResearcherApi; draft: 
   );
 }
 
-/** What selects a session's units: the coder and assigned conditions, and random conditions linked to units. */
+/** What selects a session's units: the coder and assigned conditions, and computed items linked to units. */
 function loopShareSources(items: readonly unknown[]) {
   const { session, items: rest } = splitDesignItems(items);
   const random = [...collectQuestions(rest as DesignItem[]).questions]
-    .filter(([, v]) => v.type === "random_condition")
+    .filter(([, v]) => v.type === "random")
     .map(([name, v]) => ({ name, units: (v as { units?: string }).units }));
   return shareSources(session, random);
 }

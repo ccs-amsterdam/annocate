@@ -18,8 +18,7 @@ import type {
   UnitData,
 } from "@annotinder/contracts";
 import { answerMatchesKey, parseAnswerKey, type AnswerAlternative, buildScope, unitScopeData, loopDependencies, unitLoops, collectQuestions, fillRedirectUrl, itemName, validateAnswer } from "@annotinder/contracts";
-import type { BranchChoice, CoderApi } from "../api/httpCoderApi";
-import { evaluateCondition } from "../codebook/conditions";
+import type { CoderApi } from "../api/httpCoderApi";
 import { ExpressionCache } from "../codebook/expressionCache";
 import { computeLoopSteps, computeTopLevelSteps, flattenTree, spanColumns, type StepContext } from "../codebook/tree";
 import { renderTemplate, staticTemplate, type RenderedTemplate } from "../codebook/renderTemplate";
@@ -1032,29 +1031,6 @@ export class StudyManager {
   }
 
   /**
-   * The branch of a loop's `units` for this coder: the first whose `when`
-   * holds; null if none matches. Evaluated here rather than on the
-   * server, so the server never needs the answers (docs/architecture.md
-   * §6). The server picks the units of the branch (and the coder's set).
-   */
-  private async chooseBranch(loop: CoderUnitLoopItem): Promise<BranchChoice | null> {
-    const scope = this.scope(this.coderVisible);
-    for (const [i, branch] of loop.units.entries()) {
-      if (branch.when && !(await evaluateCondition(branch.when, scope, this.expressionCache, `branch:${this.keyOf(loop)}:${i}`))) {
-        continue;
-      }
-      return { branch: i };
-    }
-    return null;
-  }
-
-  /**
-   * The next unit of a loop from the server, telling it the chosen
-   * branch (ignored once the coder is routed: routing is sticky). If no
-   * branch matches and the coder wasn't routed before, the coder has no
-   * units in this loop.
-   */
-  /**
    * The coder's next unit in a loop, or null when they are done with it.
    * Units come in batches (`UNIT_BATCH`), fetched again in the background
    * before the batch runs out, so the coder doesn't wait.
@@ -1085,14 +1061,7 @@ export class StudyManager {
     const queue = this.unitQueue(loop);
     queue.filling ??= (async () => {
       try {
-        const choice = await this.chooseBranch(loop);
-        let units: CoderUnitResponse[];
-        try {
-          units = await this.coderApi.getNextUnits(this.keyOf(loop), choice ?? undefined, UNIT_BATCH);
-        } catch (err) {
-          if (choice === null && errorCodeOf(err) === "branch_required") return;
-          throw err;
-        }
+        const units = await this.coderApi.getNextUnits(this.keyOf(loop), UNIT_BATCH);
         const known = new Set([...this.history(loop).entries.map((e) => e.unitId), ...queue.units.map((u) => u.id)]);
         queue.units.push(...units.filter((u) => !known.has(u.id)));
       } finally {
@@ -1266,11 +1235,11 @@ export class StudyManager {
       return;
     }
 
-    // An `auto` question without a value: the server assigns it now (the
-    // answers it may balance on saved first), and the flow goes on with it.
-    if (next.type === "question" && next.variable.type === "random_condition") {
+    // A computed item without a value: an invisible step. The server computes
+    // it now (the answers it may balance on saved first), and the flow goes on with it.
+    if (next.type === "computed") {
       await this.flush();
-      this.userVariableValues[next.name] = await this.coderApi.assignCondition(next.name);
+      this.userVariableValues[next.name] = await this.coderApi.computeVariable(next.name);
       this.topIndex -= 1;
       await this.advanceTop();
       return;

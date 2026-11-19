@@ -138,7 +138,7 @@ column of `coders.csv`, so you can check the panel's list against yours.
 
 For a survey experiment, give each participant a condition: an **assigned
 condition** drawn at the start (balanced or at random), or a
-[random condition](random-condition.md) drawn after some questions. Show
+[random value](random-condition.md) drawn after some questions. Show
 different material with [Show if](conditions.md) or `::: if` blocks. If the
 panel assigns the condition (for example two panel studies, one per
 condition), assign it **by link**: deploying makes a link per condition, to

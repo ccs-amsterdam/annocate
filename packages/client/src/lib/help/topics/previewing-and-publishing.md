@@ -89,7 +89,7 @@ then code the study as a coder would, with the study's real units:
 - Session values come from the preview page's URL (by parameter name), else
   their default or first value: with coders or conditions by link, the
   preview gets the first coder or value.
-- Conditions drawn at the start, and random conditions, are drawn for you
+- Conditions drawn at the start, and random values, are drawn for you
   as for any coder.
 
 The preview needs a saved design with at least one item and uploaded

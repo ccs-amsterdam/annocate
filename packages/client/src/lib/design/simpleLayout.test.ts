@@ -14,7 +14,7 @@ describe("simple layouts", () => {
 
   it("are a valid layout", () => {
     const template = simpleTemplate({ title: "headline", byline: "source", body: ["text"] });
-    const loop = { type: "unit_loop", units: [{ mode: "all" }], layout: { template }, children: [{ type: "question", name: "q", variable: { type: "confirm", question: "?" } }] };
+    const loop = { type: "unit_loop", layout: { template }, children: [{ type: "question", name: "q", variable: { type: "confirm", question: "?" } }] };
     expect(validateDesignItems([loop])).toEqual([]);
   });
 

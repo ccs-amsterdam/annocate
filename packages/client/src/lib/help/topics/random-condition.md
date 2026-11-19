@@ -1,11 +1,12 @@
 ---
-title: Random conditions
+title: Random values
 section: Question types
 order: 7
-summary: A condition drawn when the coder reaches it, without asking - for experiments that assign after a few questions, optionally with its own units.
+summary: A value drawn when the coder reaches it, without asking - for experiments that assign after a few questions, optionally with its own units.
 ---
 
-A **Random condition (drawn, not asked)** is never shown to coders.
+A **Random value** is an item of its own (a *computed* item: **+** in the
+tree, then **Random value**). It is never shown to coders.
 Instead, AnnoTinder gives every coder a value when they reach it in the
 flow: drawn at random, or balanced over the values (optionally within
 groups). You then use that value like any other answer: to show different
@@ -19,7 +20,7 @@ drawn at the start) is an **assigned condition** in **Session**: see
 
 ## Where it goes
 
-A random condition can only be placed **outside unit loops**: it is a
+A random value can only be placed **outside unit loops**: it is a
 property of the coder, not of a unit. It is assigned where it is in the
 codebook, when the coder gets there (see below). It has
 no question text, because nobody sees it. Its **Item Name** is how you
@@ -56,7 +57,7 @@ A value from the web address the coder opened (such as a panel's
 `PROLIFIC_PID`), or one fixed per link, is a
 [session parameter](session-parameters.md), declared in the design's
 session parameters: `$session.PROLIFIC_PID`, `$session.condition`. It is stored
-when the session starts, like the value of a random condition, and works in the same
+when the session starts, like the value of a random value, and works in the same
 places: conditions, texts, end items' return links.
 
 ## Balanced within groups
@@ -68,13 +69,13 @@ groups of**. With `gender`, the conditions are balanced among women, and
 among men, so both conditions get about as many women and as many men.
 With `session.wave`, each wave is balanced on its own.
 
-The questions must come before the random condition (outside unit loops), so
+The questions must come before the random value (outside unit loops), so
 coders have answered them when they reach it. A coder who skipped one is in
 the group of coders without an answer.
 
 ## Assigned when reached, never changed
 
-A coder's value is assigned when they **reach** the random condition in the
+A coder's value is assigned when they **reach** the random value in the
 codebook, not when they start. Put it where the assignment should happen:
 after the screening questions, so participants who are screened out never
 get a condition and don't count in the balance; after the questions it is
@@ -90,7 +91,7 @@ later only affects coders who reach the question after the change.
 
 ## Using the value
 
-An random condition is referred to like a nominal question with one answer:
+A random value is referred to like a nominal question with one answer:
 `$var.group.value` is the value, `$var.group.label` its label.
 
 **In conditions**, to ask questions only of one group:
@@ -118,11 +119,11 @@ Switch between *experiment* and *control* to see what each group sees.
 See [Showing parts conditionally](template-blocks.md).
 
 **For units**: under **Linked to units**, choose a set column of your
-units. The loops after the random condition then give each coder only the
+units. The loops after the random value then give each coder only the
 units whose cell holds their value (and the column's `_overlap` units).
 With **All values in the column**, the values are the column's own: for
 instance 100 sets for a multilevel design, drawn balanced over coders. See
 [Experimental conditions](experimental-conditions.md).
 
-In the results, the values of random conditions are in `coders.csv`, with the coders'
+In the results, the values of random values are in `coders.csv`, with the coders'
 other answers outside unit loops. See [Downloading results](results.md).

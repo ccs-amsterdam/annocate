@@ -158,7 +158,7 @@ A set column can't be deleted while the deployed or latest design version uses i
 
 `GET /study/<id>/annotations` gives every answer, one row per coder,
 question and unit (`unitId` is `null` for questions outside unit loops;
-`assigned: true` marks [random conditions](random-condition.md)), in the order they were written, a page at a time
+`assigned: true` marks [random values](random-condition.md)), in the order they were written, a page at a time
 (up to `limit` rows, at most 10000). Pass the page's `next` as `after` to get
 the next page, until `next` is `null`:
 

@@ -35,7 +35,7 @@ row in the tree open the loop on one of them.
 | Tab | What you set there |
 | --- | --- |
 | **Layout** | How a unit is shown: the **Template**, the **Colours** and the **Snippets** |
-| **Units** | Which of the session's units the loop codes (all, or a filter), crowd coding, the **Order**, the **Overlap**, practice and gold units, and coder groups |
+| **Units** | Which of the session's units the loop codes (all, or a filter), crowd coding, the **Order**, the **Overlap**, and practice and gold units |
 
 The template is where you write what coders see of each unit: see
 [Layout templates](layout-templates.md). The Units tab is explained in
@@ -57,7 +57,7 @@ question. Inside a loop, texts and conditions can use more than outside:
 
 Some answer types only make sense per unit, and only work inside a loop:
 [selecting text](span.md) and [relations](relation.md). The
-[random conditions](random-condition.md) work the other way round: only
+[random values](random-condition.md) work the other way round: only
 outside a loop.
 
 The loop's answers belong to the loop. After the loop, or in another loop,
@@ -71,12 +71,10 @@ Coder-level questions before the loop are answered once, and the loop can use
 their answers everywhere: in the layout, in its questions' texts and in its
 conditions. Typical uses:
 
-- an experimental group (a [random condition](random-condition.md)) that decides which
+- an experimental group (a [random value](random-condition.md)) that decides which
   version of a unit coders see, with `::: if` in the layout (see
   [Showing parts conditionally](template-blocks.md));
-- the coder's experience, to show extra instructions to beginners;
-- a choice that decides which units a coder gets (see
-  [Coder groups in a loop](coder-groups.md)).
+- the coder's experience, to show extra instructions to beginners.
 
 ```example
 unit:

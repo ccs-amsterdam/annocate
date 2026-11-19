@@ -36,6 +36,12 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     icon: HelpCircle,
     color: "text-[var(--iconcolor,var(--color-muted-foreground))]",
   },
+  computed: {
+    label: "Random value",
+    description: "A value drawn when coders reach it (e.g. an experimental group), never asked",
+    icon: Shuffle,
+    color: "text-[var(--iconcolor,var(--color-muted-foreground))]",
+  },
   unit_loop: {
     label: "Unit Loop",
     description: "Loop over units (all, or a set)",
@@ -72,7 +78,7 @@ const ANSWER_TYPE_ICONS: Record<AnyVariableType["type"], LucideIcon> = {
   scale: Grid3x3,
   annotinder: ArrowLeftRight,
   confirm: CircleCheck,
-  random_condition: Shuffle,
+  random: Shuffle,
   span: Highlighter,
   relation: Spline,
   unspecified: CircleDashed,

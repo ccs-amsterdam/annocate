@@ -20,7 +20,7 @@ much more (below).
    experiment.
 2. **The experiment**: the name of the condition, the conditions, and
    whether they are assigned balanced or at random (a
-   [random condition](random-condition.md)).
+   [random value](random-condition.md)).
 3. **Units**: the CSV file, as in [Uploading units](uploading-units.md), or
    none yet.
 4. **Who codes what**:
@@ -34,8 +34,7 @@ much more (below).
      coders coded a unit;
    - **Experimental groups**: the experiment's condition is linked to a
      [set column](sets.md), so each condition gets its own units (see
-     [Experimental conditions](experimental-conditions.md));
-   - **Decide later** in the editor.
+     [Experimental conditions](experimental-conditions.md)).
 
    Optionally with an [overlap](overlap.md) every coder codes.
 5. **How coders see a unit**: which field is the title, the byline and the
@@ -71,7 +70,7 @@ afterwards:
 | Questions asked only in some cases | [Conditions](conditions.md) |
 | Screening participants out, ending early, sending them back to a panel | [Ending a session](end-items.md) |
 | Crowd coding until coders agree on a question; units per coder; priority | [Shared queues](shared-queues.md#when-a-unit-is-done) |
-| Different units for coders by an earlier answer | [Coder groups in a loop](coder-groups.md) |
+| Different units for coders by an earlier answer | A [random value](random-condition.md) linked to a unit column |
 | Where the overlap comes (before, after, spread) | [Overlap](overlap.md#placement) |
 | A condition per link, or from a URL parameter | [Session parameters](session-parameters.md) |
 | Login, participant ids, max uses | [Links](links.md) |

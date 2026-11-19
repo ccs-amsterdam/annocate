@@ -34,7 +34,7 @@ Two rules explain most of it:
 | **Question renamed** | As removing the old question and adding a new one: units are unfinished again | Asked under the new name |
 | **Question text, instruction or layout** changed | Stay finished | Coders see the new text |
 | **Conditions or order** changed | Stay finished | Follow the new design |
-| **Distribution** changed (the loop's **Units** tab) | Coders keep the units they were given, as long as the loop still hands out those units in the same way; otherwise they are routed again (see [Coder groups in a loop](coder-groups.md#routing-is-sticky)) | The new rules apply |
+| **Distribution** changed (the loop's **Units** tab) | A coder's units follow the new settings; the units they already coded stay theirs (they can go back to them) | The new rules apply |
 
 Units and sets are drafts too: units you upload and sets you make while
 coding runs reach coders once you deploy them, with a design draft or on

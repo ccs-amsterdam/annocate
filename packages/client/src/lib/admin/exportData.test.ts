@@ -129,8 +129,7 @@ describe("data download", () => {
       [
         {
           type: "unit_loop",
-          units: [{}],
-          layout: { template: "" },
+            layout: { template: "" },
           children: [{ type: "question", name: "sentiment", variable: { type: "nominal", question: "?", options: [{ value: "pos", label }, { value: "neg" }] } }],
         },
       ] as TopLevelItem[];

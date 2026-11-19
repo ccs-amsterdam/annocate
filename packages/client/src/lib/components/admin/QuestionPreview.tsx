@@ -56,10 +56,10 @@ export function QuestionPreview({
   const [answerState, setAnswerState] = useState<{ value: VariableValue } | null>(null);
 
   const isVariable = item.type === "question";
+  const isComputed = item.type === "computed";
   const isLoop = item.type === "unit_loop";
   const isCondition = item.type === "show_if";
   const inLoop = isLoop || (isVariable && !!parentLoop);
-  const isAuto = isVariable && item.variable.type === "random_condition";
 
   const spanVariable = isVariable && inLoop && item.variable.type === "span" ? item.variable : null;
 
@@ -114,7 +114,7 @@ export function QuestionPreview({
           )}
 
           {/* Interactive Question Card */}
-          {isVariable && !isAuto && (
+          {isVariable && (
             <div className="p-4 bg-card">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
@@ -138,13 +138,13 @@ export function QuestionPreview({
             </div>
           )}
 
-          {/* Auto variables are assigned, never asked */}
-          {isVariable && isAuto && (
+          {/* Computed items are drawn, never asked */}
+          {isComputed && (
             <div className="p-4 text-sm">
-              <span className="text-xs font-semibold text-primary">Auto question</span>
+              <span className="text-xs font-semibold text-primary">Random value</span>
               <p className="mt-1 text-xs text-muted-foreground">
-                Coders never see this item. The server assigns its value when a coder starts; use it in conditions
-                and layout templates.
+                Coders never see this item. The server draws its value when a coder reaches it; use it as
+                <code className="mx-1 rounded bg-muted px-1 font-mono">$var.{item.name}</code> in conditions and texts.
               </p>
             </div>
           )}

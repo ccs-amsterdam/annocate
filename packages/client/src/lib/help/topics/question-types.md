@@ -36,7 +36,7 @@ every question has a type.
 
 See [Categories: nominal and ordinal](nominal-and-ordinal.md),
 [Numbers](numeric.md), [Scales](scale.md), [Swipe](swipe.md),
-[Confirm](confirm.md), [Auto questions](random-condition.md),
+[Confirm](confirm.md),
 [Selecting text (spans)](span.md) and [Relations](relation.md).
 
 ## Where each type can go

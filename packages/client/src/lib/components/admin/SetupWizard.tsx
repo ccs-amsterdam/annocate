@@ -382,12 +382,6 @@ function DistributionStep({ a, set }: StepProps) {
           </>
         )}
 
-        {d.mode === "later" && (
-          <p className="text-xs text-muted-foreground">
-            The unit loop is made without a choice: it is marked <em>to specify</em> in the editor, where its Units tab has every
-            option (also coder groups by any question, and more).
-          </p>
-        )}
       </div>
 
       {problems.length > 0 && (
@@ -572,8 +566,6 @@ function distributionSummary(d: SetupDistribution): string {
     }
     case "groups":
       return `Each condition codes its own units (by ${d.column}).`;
-    case "later":
-      return "Who codes which units: to set in the editor.";
   }
 }
 
