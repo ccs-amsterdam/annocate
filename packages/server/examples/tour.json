@@ -244,7 +244,7 @@
       },
       {
         "type": "unit_loop",
-        "label": "main_loop",
+        "label": "News items",
         "units": [
           {
             "mode": "all"

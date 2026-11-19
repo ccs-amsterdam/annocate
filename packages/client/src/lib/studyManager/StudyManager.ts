@@ -219,7 +219,7 @@ function getQuestionLabel(item: DesignItem): string {
     const q = item.variable.question;
     if (typeof q === "string" && q.trim().length > 0) return plainLabel(q) || (itemName(item) ?? "");
   }
-  if (item.type === "unit_loop") return item.label?.trim() || "Unit loop";
+  if (item.type === "unit_loop") return item.label?.trim() || "Units";
   return itemName(item) ?? "";
 }
 

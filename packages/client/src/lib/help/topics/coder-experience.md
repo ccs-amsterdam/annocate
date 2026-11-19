@@ -45,17 +45,20 @@ From left to right:
 
 | Element | What it does |
 | --- | --- |
-| Menu (three lines) | Opens the **Navigation** list: all steps of the study, with a tick for the ones done |
-| Position, e.g. `2` or `4.1` | Where the coder is: the 2nd step, or the 1st question of the loop that is the 4th step |
+| Menu (three lines) | The study's steps: its questions, numbered, and its unit loops with the unit the coder is at, e.g. **News items 12 / 40**. A tick marks what is done. Click a step to go to it; a loop opens at the coder's unit |
+| Unit button, e.g. `12 / 40` | In a unit loop: which unit the coder is at. Click it to go to another unit: first, previous, a number, next, or the last one they reached |
+| Question number | Which question this is: of the study, or in a unit loop of the unit (only if the unit has several questions) |
 | **<** and **>** | Go back and forward |
 | Monitor-and-phone icon | **Continue on another device** (below) |
 | Gear | **Settings**: light or dark, and keyboard shortcut badges |
 
-In the **Navigation** list, steps outside loops are listed by the first
-line of their question text, and a loop by its label (or *Unit loop*),
-with its questions under it and a selector **Unit 12 / 40** to jump to a
-unit. Give your loops a clear label and start each question with a short
-first line: that is what coders see here.
+A study that is just one unit loop has no menu: the unit button is
+enough. Without a known number of units (a shared queue without a
+maximum), the unit button shows only the unit's number.
+
+In the menu, questions are listed by the first line of their text, and
+a loop by its label (or *Units*). Give your loops a clear label and start
+each question with a short first line: that is what coders see there.
 
 ## Going back and forward
 

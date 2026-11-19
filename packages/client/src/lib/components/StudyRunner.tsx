@@ -20,6 +20,7 @@ import { DockedAnswerPane } from "./DockedAnswerPane";
 import { TemplateMarkdown } from "./TemplateMarkdown";
 import { SessionEnd } from "./SessionEnd";
 import { QuitMenu } from "./QuitMenu";
+import { CodingNav } from "./CodingNav";
 import { SwipeCard, SwipeProvider, SwipeSurface } from "./SwipeCard";
 import { buildValues } from "./answerFields/answerValue";
 import { Button } from "@/components/ui/button";
@@ -28,13 +29,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
   AlertTriangle,
   Loader2,
-  Menu,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  CircleDot,
   Check,
-  Layers,
   Settings,
   Sun,
   Moon,
@@ -191,7 +186,6 @@ function StudyRunnerContent({
     [baseUrl, linkSecret, urlParamsKey, newSession],
   );
   const { manager, snapshot } = useStudyManager(coderApi);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [navDirection, setNavDirection] = useState<"next" | "previous">("next");
 
   // Track global position to keep navDirection in sync with any navigation change
@@ -250,7 +244,7 @@ function StudyRunnerContent({
     }
   }, [currentUnitId, navDirection]);
 
-  // Global position counter label (e.g., "1", "2" for coder variables; "4.1", "4.2" for unit variables)
+  // Where the coder is ("2"; "4.1": the 1st question of the loop that is the 4th step), for the question's animation key
   const currentPositionLabel = useMemo(() => {
     if (!snapshot.currentItem) return null;
     const currentPhaseIdx = snapshot.navigation.currentPhaseIndex;
@@ -469,208 +463,20 @@ function StudyRunnerContent({
       )}
       {/* Top Header / Progress Bar */}
       <header className="flex h-11 shrink-0 items-center justify-between border-b border-bar-foreground/10 bg-bar px-3 sm:px-4 text-bar-foreground shadow-sm">
-        {/* Left Section: Menu Popover, Global Position Counter, Back/Forward Chevrons */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Overview Dropdown Menu */}
-          <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-bar-foreground hover:bg-bar-foreground/15 transition-colors cursor-pointer"
-                title="Overview & Navigation"
-                aria-label="Overview & Navigation"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-80 p-0 shadow-lg">
-              <div className="flex flex-col max-h-[80vh]">
-                {snapshot.title && <p className="border-b border-border/60 px-3.5 py-2.5 text-sm font-semibold text-foreground">{snapshot.title}</p>}
-                <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/60 text-xs font-semibold text-muted-foreground bg-muted/30">
-                  <span className="uppercase tracking-wider">Navigation</span>
-                  <span className="font-mono text-[11px]">
-                    {snapshot.navigation.phases.filter((p) => p.isCompleted).length} /{" "}
-                    {snapshot.navigation.phases.length}
-                  </span>
-                </div>
-
-                {/* List of Navigation Phases */}
-                <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
-                  {snapshot.navigation.phases.map((phase, pIdx) => {
-                    const phaseNumber = pIdx + 1;
-
-                    if (phase.type === "unit_loop") {
-                      const currentNum = (phase.currentUnitIndex ?? snapshot.navigation.currentUnitIndex ?? 0) + 1;
-                      const totalNum = Math.max(1, phase.totalUnits ?? phase.unitCount ?? snapshot.navigation.totalUnitsInHistory);
-
-                      return (
-                        <div key={phase.name} className="flex flex-col gap-0.5">
-                          {/* Unit Loop Header Row: Not highlighted when inside a unit variable, with direct unit scroll/select dropdown */}
-                          <div className="flex items-center justify-between rounded-md px-2 py-1.5 text-xs text-muted-foreground bg-muted/20">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                manager.jumpToPhase(phase.index);
-                                setMenuOpen(false);
-                              }}
-                              className="flex items-center gap-2 truncate cursor-pointer text-left flex-1 min-w-0"
-                              title={phase.label}
-                            >
-                              <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                                {phase.isCompleted ? (
-                                  <Check className="h-3.5 w-3.5 text-emerald-500" />
-                                ) : (
-                                  <Layers className="h-3.5 w-3.5 text-primary" />
-                                )}
-                              </span>
-                              <span className="truncate font-medium text-foreground">{phase.label}</span>
-                            </button>
-
-                            {/* Dropdown to scroll and pick unit index directly */}
-                            <div className="relative flex items-center shrink-0 ml-2">
-                              <select
-                                value={currentNum}
-                                onChange={(e) => {
-                                  const u = parseInt(e.target.value, 10);
-                                  if (!isNaN(u)) {
-                                    manager.jumpToUnit(u - 1);
-                                  }
-                                }}
-                                className="h-6 rounded border border-border bg-background px-1.5 pr-5 text-[11px] font-mono cursor-pointer appearance-none text-foreground hover:bg-muted/50 focus:outline-none"
-                                title="Select unit"
-                              >
-                                {Array.from({ length: totalNum }, (_, i) => (
-                                  <option key={i + 1} value={i + 1}>
-                                    Unit {i + 1} / {totalNum}
-                                  </option>
-                                ))}
-                              </select>
-                              <ChevronDown className="pointer-events-none absolute right-1 h-3 w-3 text-muted-foreground" />
-                            </div>
-                          </div>
-
-                          {/* Unit Questions (Indented child list with 4.1, 4.2 style numbers) */}
-                          {phase.questions && phase.questions.length > 0 && (
-                            <div className="ml-3 space-y-0.5 border-l border-border/60 pl-2">
-                              {phase.questions.map((q, qIdx) => {
-                                const questionNumber = `${phaseNumber}.${qIdx + 1}`;
-
-                                return (
-                                  <button
-                                    key={q.name}
-                                    type="button"
-                                    onClick={() => {
-                                      manager.jumpToPhase(phase.index);
-                                      setMenuOpen(false);
-                                    }}
-                                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors cursor-pointer text-left ${
-                                      q.isCurrent
-                                        ? "bg-primary/10 font-semibold text-primary"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                                    }`}
-                                    title={q.label}
-                                  >
-                                    <span className="font-mono text-[10px] min-w-[1.75rem] text-muted-foreground shrink-0">
-                                      {questionNumber}
-                                    </span>
-                                    <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-                                      {q.isCompleted ? (
-                                        <Check className="h-3.5 w-3.5 text-emerald-500" />
-                                      ) : q.isCurrent ? (
-                                        <CircleDot className="h-3.5 w-3.5 text-primary" />
-                                      ) : (
-                                        <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
-                                      )}
-                                    </span>
-                                    <span className="truncate">{q.label}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-
-                    // Coder / User Variable (Numbered 1, 2, etc.)
-                    return (
-                      <button
-                        key={phase.name}
-                        type="button"
-                        onClick={() => {
-                          manager.jumpToPhase(phase.index);
-                          setMenuOpen(false);
-                        }}
-                        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors cursor-pointer text-left ${
-                          phase.isCurrent
-                            ? "bg-primary/10 font-semibold text-primary"
-                            : "text-foreground hover:bg-muted/60"
-                        }`}
-                        title={phase.label}
-                      >
-                        <span className="font-mono text-[10px] min-w-[1.25rem] text-muted-foreground shrink-0">
-                          {phaseNumber}
-                        </span>
-                        <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                          {phase.isCompleted ? (
-                            <Check className="h-3.5 w-3.5 text-emerald-500" />
-                          ) : phase.isCurrent ? (
-                            <CircleDot className="h-3.5 w-3.5 text-primary" />
-                          ) : (
-                            <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
-                          )}
-                        </span>
-                        <span className="truncate">{phase.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Global position counter with minimum width so adjacent chevrons don't jump around */}
-          {currentPositionLabel && (
-            <span
-              className="inline-flex items-center justify-center min-w-[3.25rem] h-7 px-2 rounded-md bg-bar-foreground/15 font-mono text-xs font-semibold text-bar-foreground select-none"
-              title={`Question ${currentPositionLabel}`}
-            >
-              {currentPositionLabel}
-            </span>
-          )}
-
-          {/* Chevrons right next to the counter */}
-          <div className="flex items-center gap-0.5 shrink-0">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-bar-foreground hover:bg-bar-foreground/15 disabled:opacity-30 cursor-pointer"
-              disabled={!snapshot.navigation.canGoBack}
-              onClick={() => {
-                setNavDirection("previous");
-                manager.goBack();
-              }}
-              title="Go back"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-bar-foreground hover:bg-bar-foreground/15 disabled:opacity-30 cursor-pointer"
-              disabled={!snapshot.navigation.canGoForward}
-              onClick={() => {
-                setNavDirection("next");
-                manager.goForward();
-              }}
-              title="Go forward"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+        <CodingNav
+          navigation={snapshot.navigation}
+          title={snapshot.title}
+          onJumpToPhase={(index) => void manager.jumpToPhase(index)}
+          onJumpToUnit={(index) => void manager.jumpToUnit(index)}
+          onBack={() => {
+            setNavDirection("previous");
+            void manager.goBack();
+          }}
+          onForward={() => {
+            setNavDirection("next");
+            void manager.goForward();
+          }}
+        />
 
         {/* Right Section: Coder Settings Menu */}
         <div className="flex items-center gap-1 shrink-0">
