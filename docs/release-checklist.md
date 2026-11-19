@@ -1,220 +1,101 @@
 # Release checklist
 
-Where AnnoTinder stands before a first release (2026-10-30): what is done
-and checked, what needs a decision, and what is open. Items marked
-**decide** need the maintainer's choice; the rest are work.
+What to check and decide before a pilot server and before a first release.
+**Decide** marks an item that needs the maintainer's choice; the rest is
+work. What exists is described in the other docs; this file lists only
+what is open, plus the checks to repeat for every release.
 
-## 1. Done and checked
+## 1. Before a pilot server
 
-- **Server**: one Node server (Hono) with Postgres (PGlite for development
-  and tests), researcher API (`api/researcher.md`) and coder API
-  (`api/coder.md`). Stateless apart from each live job's deployment spec:
-  several processes can share a database (`architecture.md` §3), with the
-  exceptions in §4 below.
-- **Accounts**: per the lab's Authentication standard (2026-11-16): OIDC
-  login with the provider's second factor always, step-up for sensitive
-  actions, API keys that never do them; identities (`iss` + `sub`), roles
-  by user or email domain, invitations by email (JIT claiming) with the
-  safeguards, changing providers (account linking, re-claiming); plans
-  and limits, admin UI, audit log (`accounts.md`, `security.md`).
-- **Coding**: question types, unit loops with four distribution modes,
-  batches of units with answers saved in the background, soft pause,
-  closing sessions, quitting and deletion requests, transfer to another
-  device, coder login on invitations, URL parameters and panels.
-- **Results**: zip export (annotations with labels, coders, unit versions,
-  variables, README), paged annotations API.
-- **Hosting**: Dockerfile, Compose with optional Caddy TLS, `/health`
-  (`hosting.md`).
-- **Examples**: six example jobs (`plans/examples.md`), the "From an
-  example" dialog.
-- **Help**: help topics in the app, docs in `docs/`.
+1. **Login with a real provider.** Log in on a test server with the lab's
+   provider (Keycloak): a researcher with the provider's second factor
+   (`OIDC_MFA_CLAIM`), a step-up for a sensitive action, logging out, and
+   a coder signing in to a study with sign-in `required` (`hosting.md`,
+   `security.md` §1). The automated tests use a mock provider only.
+2. **Email coders, by hand.** A design whose coder column holds email
+   addresses: one link, sign-in required, each coder gets the units of
+   their address and another address gets 403 `email_not_allowed`. Not
+   covered by the e2e tests.
+3. **The shared login provider.** `SHARED_OIDC_ISSUERS`
+   (`server/src/shared/warnings.ts`) is empty: fill in the lab's shared
+   issuer, so a server using it gets the hardening warning about shared
+   logins (or remove the check). **Decide** which issuer.
+4. **Server settings** (`hosting.md`): `ANNOTINDER_SECRET`,
+   `ANNOTINDER_ADMINS`, the `OIDC_*` settings, `ANNOTINDER_PUBLIC_URL`, a
+   proxy with TLS and `ANNOTINDER_TRUST_PROXY=1` (the compose file sets
+   it). Never `AUTH_DEV_MODE` or `ANNOTINDER_DEMO`. One server process
+   (previews and answer limits are per process, `architecture.md` §11).
+5. **Backups**: daily (`hosting.md` "Backups"), and one test restore.
+6. **Read `security.md`** before inviting anyone outside the team.
 
-### Tests (all green on 2026-10-30)
+## 2. Decisions
 
-| Suite | Count | Command |
-| --- | --- | --- |
-| Contracts (unit) | 82 | `pnpm test` |
-| Client (unit) | 229 | `pnpm test` |
-| Server (unit and API) | 124 | `pnpm test` |
-| End-to-end (Playwright) | 11 | `pnpm test:e2e` |
+1. **MCP branch** (`claude/annotinder-mcp`): rebase onto this branch
+   before merging. Its `0006_oauth.sql` predates the Drizzle schema: its
+   tables go into `server/src/db/schema/` and `db:generate` makes the
+   migration. **Decide**:
+   - token lifetimes (proposed: access 1 hour, refresh 30 days);
+   - rate limits (proposed: client registration 10 per minute, other
+     OAuth endpoints 600);
+   - whether study admins see the MCP connections of their study's users;
+   - whether a read-only connection requires the `READ` role.
+2. **Coder link errors**: a link that needs a login answers 401
+   `auth_required`, a login without access 403. **Decide** whether the
+   status codes stay as they are for the R and Python clients.
+3. **Balanced draws on a tie**: a balanced condition or computed variable
+   gives the first value among those with the fewest sessions. **Decide**
+   whether a tie should be broken at random.
+4. **The deletion log** (`coder_deletions`) keeps a deleted coder's email
+   and participant id, so "delete for good" still records who was
+   deleted. **Decide** whether that is intended.
+5. **Formatting**: there is a root `prettier` dependency but no format
+   script, and the configured `prettier-plugin-tailwindcss` isn't
+   installed. **Decide**: a `format` script with the plugin, or drop it.
+6. **Texts**: the README, the welcome page and the "About AnnoTinder"
+   help topic from `philosophy.md` (pending the maintainer).
 
-The e2e tests (`packages/e2e`) run a browser against a server with a
-fresh database and the built client:
+## 3. Open work
 
-- coders swipe, fill in a survey with a screen-out, code an experiment,
-  and select and label spans;
-- sessions quit with a deletion request, move to another device, see a
-  pause, and follow a new design version;
-- the researcher creates jobs from an example and from a CSV through the
-  UI, edits the codebook, deploys, invites, and downloads the zip.
-
-Found and fixed while writing them: the scale question's submit button had
-no accessible name.
-
-### Security pass
-
-Researcher auth was reviewed by hand, and the server by an independent
-second read. No cross-job or cross-coder read or write was found. The
-review checked:
-
-- authorization on every route, including roles per job and the admin
-  routes;
-- job scoping of every id in a path or body;
-- CSRF (the `x-annotinder` header; CORS without credentials);
-- cookies (httpOnly, SameSite=Lax, Secure behind TLS);
-- OIDC (PKCE, state, nonce, verified email);
-- preview and transfer tokens;
-- SQL parameters;
-- markdown rendering and the `::html` sandbox;
-- redirect URLs;
-- error messages;
-- body sizes.
-
-Fixed:
-
-- A unitset could list units of another job. Nothing leaked, because every
-  read is scoped to the job, but counts were wrong and coders were handed
-  missing units.
-- Job users' emails were stored as typed. "Anna@Uni.nl" had no access.
-- Deployment ids with leading zeros (`/d/01`, `/d/001`, …) each made a
-  runtime in memory, without authentication.
-- Unknown invite secrets were cached: up to 10k entries, any length.
-- URL parameter values are now at most 256 characters. This also bounds the
-  pattern match on what a coder sends.
-- Redeeming a transfer link now re-checks suspension.
-- `Codings.record` copied a coder's list on every coding, which grew
-  quadratically.
-
-### Load test
-
-Postgres 17 in Docker; `packages/server/scripts/load-test.mjs`. Results
-are in `hosting.md` "Capacity".
-
-The setup: 10,000 units in a shared queue and 300 simulated coders. At a
-realistic pace, fetching the next 5 units takes 26 ms (p50) and 79 ms
-(p99), and saving a unit takes 10 ms. No unit was coded more often than
-its `maxCoders`.
-
-Fixed along the way:
-
-- **The connection pool starved.** Requests waiting for a queue's lock held
-  every connection, so saving took 2 s.
-- **Units went past `maxCoders`.** A pick could miss a unit finished during
-  it; this happened 75 times in one run. It now has a regression test.
-- **Leases were never removed**, so they only accumulated.
-- **Picks were slow.** They sorted all units and parsed timestamps.
-
-One shared queue serves about 25 picks per second at 10k units, fewer as
-codings grow. That is plenty at a realistic pace. Beyond it, see
-`architecture.md` §11 item 11.
-
-## 2. Decisions (decided 2026-10-31, built unless noted)
-
-1. **Second factor**: superseded (2026-11-16) by the lab's Authentication
-   standard: always the provider's (`OIDC_MFA_CLAIM`), no setting to turn
-   it off outside development mode, step-up for sensitive actions; no
-   passkeys of AnnoTinder's own (`security.md` §1).
-2. **Optional-login links link a login**: decided as intended. Whoever has
-   the session on their device may link a login's email to it.
-3. **A participant id on a new device**: the coder is told to continue on
-   their first device (or move the session there). A new session only
-   after confirming they can't get back to it (a lost device); it should be
-   rare (`coder-identity.md` §4). New sessions still don't count against
-   `maxUses`.
-4. **Coders receive the whole codebook** — still to decide; matters once
-   gold units exist (`plans/special-sets.md`: answers stay on the server).
-5. **Security headers**: built (`security.md` §2): a CSP on pages,
-   `frame-ancestors 'self'` plus `ANNOTINDER_FRAME_ANCESTORS`, `nosniff`,
-   referrer policy, HSTS over HTTPS. The e2e tests fail on violations.
-6. **CSV formula injection**: text starting with `=`, `+`, `-` or `@`
-   gets a leading `'` by default, explained in the README; an option at
-   download turns it off (`security.md` §4).
-7. **Rate limiting**: in the server, counted in an unlogged Postgres table
-   (`security.md` §3); generous defaults.
-8. **Migration reset** — done (2026-11-19): with the move to Drizzle the
-   migrations start again from one generated initial migration
-   (`0000_init.sql`, the schema as it was) and a hand-written
-   `0001_seed.sql` (unlogged `rate_limits`, the default plan, the settings
-   row); the SQL functions became TypeScript (`src/db/sql.ts`). From here
-   on migrations only add, made with `db:generate`.
-
-## 3. Open items (work)
-
-From the review list:
-
-- Layouts haven't been checked with `position: fixed` content (in `::html`
-  and in style blocks).
+- **R and Python clients** follow the researcher API's names: `study`
+  (not job), `links`, `design` (design versions), everything under
+  `/api`, computed variables (`POST /variables/computed/:name` in the
+  coder API).
+- **Answer keys**: the "Create gold values" dialog has no input for a
+  range (`3..5`); ranges are typed in the cell.
+- **Accessibility**: the researcher UI has about 55 form labels not linked
+  to their inputs (`label` without `htmlFor`, or inputs without `id`).
+- **Layouts** haven't been checked with `position: fixed` content (in
+  `::html` and style blocks).
 - The scale question's "Grid (columns)" layout label is unclear.
-- Relation questions' dropdowns show values, not labels.
-- Relation validation doesn't check for loops (A → B → A).
-- Invite presets (panel URL parameters) aren't validated against the
-  invite form's rules.
-- The export's `codebook_id` is a database id. It should be a version
-  number or be explained in the README.
-- The admin UI has 55 form labels not associated with their inputs
-  (accessibility): `label` without `htmlFor`, or inputs without `id`.
+- Relation questions: the dropdowns show values rather than labels, and
+  validation doesn't check for cycles (A → B → A).
+- **The design viewer** (`plans/design-viewer.md`) needs real release
+  versioning: the packages are at `0.0.0`.
 
-From the security review, low:
+Known limitations, documented rather than fixed:
 
-- Done (2026-11-16): API keys are made only in a web session with a recent
-  second factor (or by the server's operator, `keys` command), and never
-  do sensitive actions (`security.md` §1).
-- The routing check for unitset templates is wider than documented.
-  `part_{$var.x}` accepts any unitset named `part_*`; a bare `{$var.x}`
-  accepts every unitset. Fix: when the variable has options, check against
-  the possible names.
-- Done (2026-11-02): `annotation_values.coder_id` has a foreign key with
-  `ON DELETE CASCADE` (the migration reset), so a coder deleted while a
-  request is in flight can't leave orphan answers.
-- `coder_deletions` keeps the deleted coder's email and participant id, so
-  "delete for good" still keeps who was deleted. **Decide** whether that
-  log is intended.
-- Done (2026-11-02): a researcher-written URL parameter pattern can't
-  backtrack catastrophically: patterns with a repeated group that holds a
-  repetition or alternatives, or with a backreference, are refused
-  (contracts `slowPattern`); values stay capped at 256 characters.
+- A running session keeps its sign-in state: changing the study's sign-in
+  setting applies to new sessions.
+- A link's settings are cached by the server for up to 60 seconds.
+- A session that started from a link without a coder value, before the
+  coder column had values, gets 409 `not_assigned`.
+- A unit that a re-upload moves to another coder stays open to the coder
+  who coded it (the other coder gets it too).
+- A long-running development server's dev user hits the default plan's
+  limit of 20 studies; the e2e tests start a fresh database each run.
 
-Several server processes:
+## 4. Every release
 
-- Researcher previews live in one process's memory. Behind a load
-  balancer, a preview's requests must reach the same process (sticky
-  sessions), or previews move to the database.
-- A job's limit on answers (`answersPerJob`) is counted per process.
-- Picks from one shared queue are serialized across processes by the
-  database lock. More processes add no throughput for one queue (§1, load
-  test).
-
-Development and tests:
-
-- A long-running development server whose dev user creates many jobs hits
-  the default plan's limit of 20 jobs. The e2e tests start a fresh database
-  each run, so they don't.
-- The e2e tests drag-select with the mouse just inside a phrase's edges:
-  headless Chromium sometimes starts no selection from a character's exact
-  middle. This is not an app problem; manual drag-selection works.
-
-## 4. Recommendations for the first release
-
-0. A release bumps `RELEASE` (contracts `version.ts`) and every
-   `package.json` version together (a server test checks they agree), and
-   builds the image with `ANNOTINDER_COMMIT` (`hosting.md`, "Versions").
-   A breaking change to the design schema bumps `DESIGN_FORMAT_VERSION`.
-1. Read `security.md` (second factor, headers, rate limits) before
-   inviting anyone outside the team.
-2. Done: the migrations are reset (§2 item 8), with the `annotation_values`
-   foreign key from §3. **To do**: fold migrations `0004_provider_2fa` and
-   `0005_identities_roles` (the Authentication standard) into the initial
-   schema before the release; their data conversion (users become shadow
-   users, re-claimed by email) is then unneeded.
-3. Run one server process at first (previews and answer limits are
-   per-process). Put a proxy in front with TLS, and set
-   `ANNOTINDER_TRUST_PROXY=1` (the compose file does).
-4. Set `ANNOTINDER_SECRET` and `ANNOTINDER_ADMINS`, and a login provider
-   that meets the standard (`hosting.md`). Never set `AUTH_DEV_MODE` or
-   `ANNOTINDER_DEMO`.
-5. Back up the database daily (`hosting.md` "Backups"), and test a restore
-   once.
-6. Run `pnpm test`, `pnpm test:e2e` and the load test against the release
-   build.
-7. Consider the setup wizard (`plans/setup-wizard.md`) after the first
-   users, informed by where they get stuck.
+1. Bump `RELEASE` (contracts `version.ts`) and every `package.json`
+   version together (a server test checks they agree), and build the image
+   with `ANNOTINDER_COMMIT` (`hosting.md`, "Versions"). A breaking change
+   to the design schema bumps `DESIGN_FORMAT_VERSION`.
+2. Migrations only add: change `server/src/db/schema/` and run
+   `db:generate`; never edit a released migration.
+3. Run the checks: `pnpm build`, `pnpm typecheck`, `pnpm lint`,
+   `pnpm test`, `pnpm test:e2e`, and the load test
+   (`server/scripts/load-test.mjs`, results in `hosting.md` "Capacity")
+   against the release build.
+4. A security read of what changed: authorization and study scoping of
+   every new route and id, CSRF (`x-annotinder`), cookies, redirect URLs,
+   markdown and `::html` rendering, body sizes (`security.md`).

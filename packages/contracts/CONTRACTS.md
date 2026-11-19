@@ -3,11 +3,11 @@
 The shared, framework-agnostic API contract between an annotinder-client
 frontend and any compliant server backend. This package contains only zod
 schemas, their inferred TypeScript types, and small pure helper functions
-(position parsing, codebook nesting validation) — no server or client
+(position parsing, design validation) — no server or client
 runtime code, no HTTP client, no React.
 
 The server (`packages/server`) implements the three APIs: the researcher
-API (studies, codebooks, units, publishing; used by the researcher UI, R,
+API (studies, designs, units, deploying; used by the researcher UI, R,
 Python and other systems), the coder API (used by coders' browsers) and the
 admin API (server admins). Types the
 server uses internally (e.g. what its runtime reads from the database) live
@@ -15,49 +15,42 @@ in the server, not here.
 
 ## Design notes
 
-- **No OpenAPI/`zod-to-openapi`.** The old codebase used
-  `extendZodWithOpenApi`/`zod-to-openapi` pervasively to generate an OpenAPI
-  document. This package deliberately skips that in favor of plain
-  `.describe()` calls on schema fields, to keep the dependency footprint
-  small. Clients in other languages (R, Python) are instead served via
+- **No OpenAPI/`zod-to-openapi`.** Schema fields carry plain
+  `.describe()` calls, to keep the dependency footprint small. Clients in other languages (R, Python) are instead served via
   `pnpm generate:json-schema`, which walks the endpoint registry and emits a
   plain JSON Schema document per endpoint (see below) — enough to validate
   request/response shapes without needing an OpenAPI toolchain.
-- **Codebook as a tree.** A codebook is one JSON document: a list of
-  top-level items, where `unit_loop` and `condition` items nest their
-  `children`. `src/codebook/validation.ts` enforces the nesting rules:
-  - Item types: `question`, `end`, `condition` and `unit_loop`. A question
-    inside a loop is unit-level, outside it coder-level.
-  - `unit_loop` items may not be nested inside another `unit_loop`.
-  - `condition` items may appear (and be nested) anywhere.
-  - `question` and `end` items are always leaves; `span` and `relation`
-    questions only inside a loop.
-  - Item names must be unique within a codebook.
-  - `unit_loop` branches may only refer to coder-level variables defined
-    before the loop (see `src/codebook/unitLoop.ts`).
-
-  These rules are exposed both as a standalone function
-  (`validateCodebookItems`, for reuse by a codebook editor UI) and wired into
-  `CodebookItemsSchema` via `.superRefine` so they're enforced whenever a
-  codebook document is parsed.
+- **The design as a tree** (`docs/architecture.md` §6, `docs/glossary.md`).
+  A design version is one JSON document: `public`, `session`, `units` (the
+  declared unit fields) and `items`, a list of top-level items where
+  `unit_loop` and `show_if` items nest their `children`. Item types:
+  `session` (first, at most one), `question`, `computed`, `unit_loop`,
+  `show_if` and `end`. A question inside a loop is unit-level, outside it
+  coder-level; loops don't nest; `span` and `relation` questions only
+  inside a loop; item names are unique within a design.
+  `validateDesignItems` (`src/design/validation.ts`) checks these rules and
+  every reference, and `DesignItemsSchema` runs it whenever a design is
+  parsed. The coders' view of a design is the coder codebook
+  (`src/design/coderCodebook.ts`).
 - **Question types and answers** (`docs/client.md` §4). Options are
   `{ value, label?, color? }`: the value is stored and compared, the label
   shown; nominal values are strings, ordinal values numbers rising in
-  option order (`src/codebook/options.ts`). Types: `nominal`,
-  `ordinal`, `numeric`, `scale`, `annotinder`, `confirm`, `auto`, and in loops `span`
-  and `relation` (`src/codebook/variableTypes.ts`); plus the `end` item
-  (`src/codebook/item.ts`). `resolveLayout` (`src/codebook/answerLayout.ts`)
+  option order (`src/design/options.ts`). Types: `nominal`,
+  `ordinal`, `numeric`, `scale`, `annotinder`, `confirm`, `unspecified`
+  (not chosen yet), and in loops `span` and `relation`; computed items have
+  the variable type `random` (`src/design/variableTypes.ts`); plus the `end` item
+  (`src/design/item.ts`). `resolveLayout` (`src/design/answerLayout.ts`)
   says how a question is laid out.
 - **References and conditions** (`docs/client.md` §5):
-  `src/codebook/references.ts` (references, their shapes, scopes),
-  `src/codebook/condition.ts` (conditions are scripts; helper methods;
+  `src/design/references.ts` (references, their shapes, scopes),
+  `src/design/condition.ts` (conditions are scripts; helper methods;
   simple conditions parsed and evaluated without a JS engine).
-- **`VariableValue` is intentionally loose for now.** A coder's answer for a
+- **`VariableValue` is intentionally loose.** A coder's answer for a
   single variable (`src/variableValue.ts`) is a single object with optional
   `values`/`spans`/`relations` arrays rather than a schema-per-variable-type
-  discriminated union; `validateAnswer` (`src/codebook/answers.ts`) checks
+  discriminated union; `validateAnswer` (`src/design/answers.ts`) checks
   it against the variable. A discriminated union is an open item
-  (`docs/architecture.md` §10).
+  (`docs/architecture.md` §11).
 
 ## JSON Schema generation
 
