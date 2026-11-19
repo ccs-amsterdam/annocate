@@ -114,7 +114,7 @@ export async function loopVariables(sql: Sql, studyId: number, designVersionId: 
   const parsed = row ? DesignItemsSchema.safeParse(designVersionItems(row)) : null;
   if (!parsed?.success) return loops;
   const questions = (items: DesignItem[]): string[] =>
-    items.flatMap((i) => (i.type === "condition" ? questions(i.children as DesignItem[]) : "variable" in i ? [i.name] : []));
+    items.flatMap((i) => (i.type === "show_if" ? questions(i.children as DesignItem[]) : "variable" in i ? [i.name] : []));
   for (const { key, loop } of unitLoops(parsed.data)) {
     const title = loopTitle(loop, key);
     loops.set(loops.has(title) ? `${title} (${key})` : title, questions(loop.children as DesignItem[]));

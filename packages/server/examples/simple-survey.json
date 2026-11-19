@@ -38,7 +38,7 @@
         }
       },
       {
-        "type": "condition",
+        "type": "show_if",
         "condition": {
           "script": "$var.age.lt(18)"
         },
@@ -109,7 +109,7 @@
         }
       },
       {
-        "type": "condition",
+        "type": "show_if",
         "condition": {
           "script": "$var.sources.has('social')"
         },

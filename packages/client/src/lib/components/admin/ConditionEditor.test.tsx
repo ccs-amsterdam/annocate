@@ -5,7 +5,7 @@ import { ConditionEditor } from "./ConditionEditor";
 
 const items = [
   { type: "question", name: "role", variable: { type: "nominal", question: "?", options: [{ value: "student" }, { value: "expert", label: "Expert" }] } },
-  { type: "condition", condition: { script: "true" }, children: [{ type: "question", name: "inner", variable: { type: "confirm", question: "?" } }] },
+  { type: "show_if", condition: { script: "true" }, children: [{ type: "question", name: "inner", variable: { type: "confirm", question: "?" } }] },
   { type: "question", name: "later", variable: { type: "confirm", question: "?" } },
 ] as TopLevelItem[];
 

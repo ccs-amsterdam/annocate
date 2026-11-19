@@ -26,7 +26,7 @@ export function questionNumbers(items: readonly TreeNode[]): Map<string, number>
     for (const item of list) {
       if (item.type === "question") numbers.set(getItemKey(item), ++counter.n);
       else if (item.type === "unit_loop") walk(getChildren(item) ?? [], { n: 0 });
-      else if (item.type === "condition") walk(getChildren(item) ?? [], counter);
+      else if (item.type === "show_if") walk(getChildren(item) ?? [], counter);
     }
   };
   walk(items, { n: 0 });
@@ -35,8 +35,8 @@ export function questionNumbers(items: readonly TreeNode[]): Map<string, number>
 
 /** Item types that can be created at a position (no loops in a loop). */
 export function insertableTypesAt(items: TopLevelItem[], position: TreePosition): ItemType[] {
-  if (positionInLoop(items, position)) return ["question", "condition", "end"];
+  if (positionInLoop(items, position)) return ["question", "show_if", "end"];
   // (The Study entry is always there, first: never added)
   void items;
-  return ["question", "unit_loop", "condition", "end"];
+  return ["question", "unit_loop", "show_if", "end"];
 }

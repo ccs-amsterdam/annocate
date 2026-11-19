@@ -21,11 +21,11 @@ function confirm(name: string): TopLevelQuestionItem {
 }
 
 function topCondition(name: string, condition: Condition, children: TopLevelItem[]): TopLevelItem {
-  return { _key: name, type: "condition", condition, children } as TopLevelItem;
+  return { _key: name, type: "show_if", condition, children } as TopLevelItem;
 }
 
 function inLoopCondition(name: string, condition: Condition, children: InLoopItem[]): InLoopItem {
-  return { _key: name, type: "condition", condition, children } as InLoopItem;
+  return { _key: name, type: "show_if", condition, children } as InLoopItem;
 }
 
 function unitVar(name: string): InLoopQuestionItem {

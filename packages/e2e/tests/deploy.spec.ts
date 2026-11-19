@@ -62,7 +62,7 @@ test("the design's unit fields: how the codebook uses each, removing an unused o
         units: [{ mode: "all" }],
         layout: { template: "$unit.text" },
         children: [
-          { type: "condition", condition: { script: "$unit.year > 2000" }, children: [
+          { type: "show_if", condition: { script: "$unit.year > 2000" }, children: [
             { type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "a" }, { value: "b" }] } },
           ] },
         ],

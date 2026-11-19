@@ -58,9 +58,9 @@ export function defaultItemForType(type: DesignItem["type"], name: string): Desi
         layout: { template: "" },
         children: [],
       } as DesignItem;
-    case "condition":
+    case "show_if":
       return {
-        type: "condition",
+        type: "show_if",
         condition: { script: "true" },
         children: [],
       } as DesignItem;
@@ -124,17 +124,17 @@ export function ItemForm({
     <div className="flex flex-col gap-4">
       {item.type === "session" ? (
         <SessionItemForm item={item as SessionItem} groups={groups} issues={validationIssues} onChange={onChange} />
-      ) : item.type === "condition" || item.type === "unit_loop" ? (
+      ) : item.type === "show_if" || item.type === "unit_loop" ? (
         // Conditions and unit loops have no name: an optional label shows in the tree (and for loops in exports).
         <div className="flex flex-col gap-1.5">
           <span className="flex items-center gap-1.5">
             <label className="text-xs font-semibold text-foreground">Label (optional)</label>
-            <HelpButton topic={item.type === "condition" ? "conditions" : "unit-loops"} label="Help" />
+            <HelpButton topic={item.type === "show_if" ? "conditions" : "unit-loops"} label="Help" />
           </span>
           <Input
             value={item.label ?? ""}
             onChange={(e) => onChange({ ...item, label: e.target.value || undefined })}
-            placeholder={item.type === "condition" ? "Shown in the tree instead of the condition, e.g. Too young" : "e.g. News items"}
+            placeholder={item.type === "show_if" ? "Shown in the tree instead of the condition, e.g. Too young" : "e.g. News items"}
           />
         </div>
       ) : (
@@ -221,7 +221,7 @@ export function ItemForm({
         <EndItemFields item={item as EndItem} onChange={onChange} issues={validationIssues} />
       )}
 
-      {item.type === "condition" && (
+      {item.type === "show_if" && (
         <div className="flex flex-col gap-1.5 border-t border-border/60 pt-4">
           <span className="flex items-center gap-1.5">
             <label className="text-xs font-semibold text-foreground">Show the items in this condition if</label>

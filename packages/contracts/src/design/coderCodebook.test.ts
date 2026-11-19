@@ -12,7 +12,7 @@ describe("the coder codebook", () => {
         variable: { type: "auto", source: "balanced", stratify: ["session.wave"], options: [{ value: "a", label: "A", weight: 2 }] },
       },
       {
-        type: "condition",
+        type: "show_if",
         condition: { script: "true" },
         children: [
           {
@@ -32,7 +32,7 @@ describe("the coder codebook", () => {
     expect(toCoderItems(items)).toEqual([
       { type: "question", name: "condition", variable: { type: "auto", options: [{ value: "a", label: "A" }] } },
       {
-        type: "condition",
+        type: "show_if",
         condition: { script: "true" },
         children: [
           {

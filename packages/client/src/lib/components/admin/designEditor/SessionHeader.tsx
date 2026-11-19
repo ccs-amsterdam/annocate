@@ -1,4 +1,4 @@
-import { Link2, Plus, Settings2 } from "lucide-react";
+import { Link2, Settings2 } from "lucide-react";
 import { sessionItem, type SessionItem } from "@annotinder/contracts";
 import { cn } from "cn";
 import { InfoTip } from "@/components/ui/info-tip";

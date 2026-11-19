@@ -171,7 +171,7 @@ async function walkSteps(
   steps: DesignItem[],
 ): Promise<boolean> {
   for (const node of nodes) {
-    if (node.type === "condition") {
+    if (node.type === "show_if") {
       const scope = buildScope(ctx.questions, visible, unit?.data, ctx.session);
       if (await evaluateCondition(node.condition, scope, ctx.cache, `condition:${node.condition.script}`)) {
         if (await walkSteps(node.children, answers, visible, ctx, unit, steps)) return true;

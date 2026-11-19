@@ -122,15 +122,15 @@ export type InLoopItem =
   | InLoopQuestionItem
   | EndItem
   | {
-      type: "condition";
+      type: "show_if";
       label?: string;
       condition: Condition;
       children: InLoopItem[];
     };
 
-export const InLoopConditionItemSchema: z.ZodType<Extract<InLoopItem, { type: "condition" }>> = z.lazy(() =>
+export const InLoopConditionItemSchema: z.ZodType<Extract<InLoopItem, { type: "show_if" }>> = z.lazy(() =>
   z.object({
-    type: z.literal("condition"),
+    type: z.literal("show_if"),
     label: ConditionLabelSchema,
     condition: ConditionSchema.describe("A script over earlier answers ($var), and in a loop $unit"),
     children: z.array(InLoopItemSchema).min(1, "Condition must have at least one child item"),
@@ -169,15 +169,15 @@ export type TopLevelItem =
   | EndItem
   | SessionItem
   | {
-      type: "condition";
+      type: "show_if";
       label?: string;
       condition: Condition;
       children: TopLevelItem[];
     };
 
-export const TopLevelConditionItemSchema: z.ZodType<Extract<TopLevelItem, { type: "condition" }>> = z.lazy(() =>
+export const TopLevelConditionItemSchema: z.ZodType<Extract<TopLevelItem, { type: "show_if" }>> = z.lazy(() =>
   z.object({
-    type: z.literal("condition"),
+    type: z.literal("show_if"),
     label: ConditionLabelSchema,
     condition: ConditionSchema.describe("A script over earlier answers ($var), and in a loop $unit"),
     children: z.array(TopLevelItemSchema).min(1, "Condition must have at least one child item"),
@@ -197,7 +197,7 @@ export const TopLevelItemSchema: z.ZodType<TopLevelItem> = z.lazy(() =>
 /**
  * Any condition item (top level or inside loop).
  */
-export type ConditionItem = Extract<TopLevelItem | InLoopItem, { type: "condition" }>;
+export type ConditionItem = Extract<TopLevelItem | InLoopItem, { type: "show_if" }>;
 
 /**
  * Any codebook item anywhere in the tree.
@@ -206,7 +206,7 @@ export type DesignItem = TopLevelItem | InLoopItem;
 
 /** An item's name; conditions have none. */
 export function itemName(item: DesignItem): string | undefined {
-  return item.type === "condition" || item.type === "unit_loop" || item.type === "session" ? undefined : item.name;
+  return item.type === "show_if" || item.type === "unit_loop" || item.type === "session" ? undefined : item.name;
 }
 
 /**
@@ -224,7 +224,7 @@ export function unitLoops(items: readonly unknown[]): { key: string; loop: UnitL
       const item = raw as Partial<DesignItem> | null;
       if (!item || typeof item !== "object") continue;
       if (item.type === "unit_loop") loops.push({ key: String(loops.length + 1), loop: item as UnitLoopItem });
-      else if (item.type === "condition") walk(item.children);
+      else if (item.type === "show_if") walk(item.children);
     }
   };
   walk(items);

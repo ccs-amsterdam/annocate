@@ -23,7 +23,7 @@ import { flattenTree, keyOf } from "../codebook/tree";
 
 /** A condition; it has no name, so the tests identify it by its editor key. */
 function cond(key: string, children: DesignItem[] = []): TopLevelItem {
-  return { _key: key, type: "condition", condition: { script: "true" }, children: children as TopLevelItem[] } as TopLevelItem;
+  return { _key: key, type: "show_if", condition: { script: "true" }, children: children as TopLevelItem[] } as TopLevelItem;
 }
 
 describe("itemEdit", () => {
@@ -224,7 +224,7 @@ describe("itemEdit", () => {
     it("updates item properties while preserving children", () => {
       const items: TopLevelItem[] = [cond("p1", [cond("child")])];
       const next = updateItem(items, "p1", {
-        type: "condition",
+        type: "show_if",
         label: "relabeled",
         condition: { script: "$var.x.value > 1" },
       } as unknown as TopLevelItem);

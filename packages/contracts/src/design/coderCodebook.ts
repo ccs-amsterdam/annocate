@@ -26,7 +26,7 @@ export type CoderTopLevelItem =
   | (Omit<TopLevelQuestionItem, "variable"> & { variable: Exclude<TopLevelQuestionItem["variable"], AutoType> | CoderAutoType })
   | CoderUnitLoopItem
   | EndItem
-  | { type: "condition"; label?: string; condition: Condition; children: CoderTopLevelItem[] };
+  | { type: "show_if"; label?: string; condition: Condition; children: CoderTopLevelItem[] };
 
 /** The coder codebook of a deployed (or previewed) design version. */
 export const CoderCodebookSchema = z.object({
@@ -43,7 +43,7 @@ export function toCoderItems(items: readonly TopLevelItem[]): CoderTopLevelItem[
     switch (item.type) {
       case "session":
         return [];
-      case "condition":
+      case "show_if":
         return [{ ...item, children: toCoderItems(item.children) }];
       case "unit_loop": {
         const { units, ...loop } = item;

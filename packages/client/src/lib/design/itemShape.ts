@@ -4,7 +4,7 @@ import type { TopLevelItem } from "@annotinder/contracts";
 // a known type, a name (except conditions and unit loops), and for questions a variable with a type. Everything
 // else is left to validation, whose messages the editor shows.
 
-const ITEM_TYPES = ["question", "unit_loop", "condition", "end"];
+const ITEM_TYPES = ["question", "unit_loop", "show_if", "end"];
 
 /** Why a parsed value isn't an item the editor can show; null if it is. With `children`, they are checked too. */
 export function itemShapeError(raw: unknown, { children }: { children: boolean }): string | null {
@@ -12,7 +12,7 @@ export function itemShapeError(raw: unknown, { children }: { children: boolean }
   const item = raw as Record<string, unknown>;
   const label = typeof item.name === "string" && item.name ? `'${item.name}'` : "An item";
   if (typeof item.type !== "string" || !ITEM_TYPES.includes(item.type)) return `${label}: type must be one of ${ITEM_TYPES.join(", ")}`;
-  if (item.type !== "condition" && item.type !== "unit_loop" && typeof item.name !== "string") return `${label} needs a name`;
+  if (item.type !== "show_if" && item.type !== "unit_loop" && typeof item.name !== "string") return `${label} needs a name`;
   const isQuestion = item.type === "question";
   const variable = item.variable as { type?: unknown } | undefined;
   if (isQuestion && (!variable || typeof variable !== "object" || typeof variable.type !== "string")) {
@@ -48,13 +48,13 @@ export function itemsShapeError(raw: unknown): string | null {
  * no name: they match the one at the same place (the nth condition, or
  * loop, in the same parent).
  */
-type Unnamed = "condition" | "unit_loop";
-const unnamed = (type: unknown): type is Unnamed => type === "condition" || type === "unit_loop";
+type Unnamed = "show_if" | "unit_loop";
+const unnamed = (type: unknown): type is Unnamed => type === "show_if" || type === "unit_loop";
 
 export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLevelItem[] {
   const keys = new Map<string, string>();
   const index = (list: unknown[], parent: string) => {
-    const counts = { condition: 0, unit_loop: 0 };
+    const counts = { show_if: 0, unit_loop: 0 };
     for (const raw of list) {
       const item = raw as Record<string, unknown>;
       const id = unnamed(item.type) ? `${parent}/${String(item.type)} ${counts[item.type as Unnamed]++}` : typeof item.name === "string" ? item.name : null;
@@ -67,7 +67,7 @@ export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLe
 
   const used = new Set<string>();
   const walk = (list: unknown[], parent: string): unknown[] => {
-    const counts = { condition: 0, unit_loop: 0 };
+    const counts = { show_if: 0, unit_loop: 0 };
     return list.map((raw) => {
       const item = { ...(raw as Record<string, unknown>) };
       const id = unnamed(item.type) ? `${parent}/${String(item.type)} ${counts[item.type as Unnamed]++}` : typeof item.name === "string" ? item.name : null;

@@ -19,7 +19,7 @@ import { findItem, findParent, loopUnitsSummary } from "../../../codebook/tree";
 
 /** How an item is called in menus: its title, a condition by its condition, a loop by its position. */
 export function rowTitle(item: TreeNode): string {
-  if (item.type === "condition" && !item.label?.trim()) return `if ${describeCondition(item.condition)}`;
+  if (item.type === "show_if" && !item.label?.trim()) return `if ${describeCondition(item.condition)}`;
   if (item.type === "unit_loop") return treeLoopTitle(item);
   return itemTitle(item) || "(unnamed)";
 }
@@ -171,7 +171,7 @@ function ItemLabel({
         {number}
       </span>
       <ItemIcon item={item} />
-      {item.type === "condition" ? (
+      {item.type === "show_if" ? (
         // Conditions have no name: shown by their condition, unless they have a label.
         <span
           className={cn(

@@ -47,19 +47,19 @@ const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 
 /** The names of a loop's questions, in order (through conditions). */
 function questionNames(items: DesignItem[]): string[] {
-  return items.flatMap((i) => (i.type === "condition" ? questionNames(i.children as DesignItem[]) : "name" in i ? [i.name] : []));
+  return items.flatMap((i) => (i.type === "show_if" ? questionNames(i.children as DesignItem[]) : "name" in i ? [i.name] : []));
 }
 
 /** A loop's questions with their answer types (through conditions). */
 function questionsOf(items: DesignItem[]): { name: string; variable: AnyVariableType }[] {
-  return items.flatMap((i) => (i.type === "condition" ? questionsOf(i.children as DesignItem[]) : "variable" in i ? [{ name: i.name, variable: i.variable }] : []));
+  return items.flatMap((i) => (i.type === "show_if" ? questionsOf(i.children as DesignItem[]) : "variable" in i ? [{ name: i.name, variable: i.variable }] : []));
 }
 
 /** The loop's questions an agreement rule can compare (contracts `supportsAgreement`). */
 /** The loop's questions that gold and practice units can check (compared by value). */
 function checkableQuestions(items: DesignItem[]): AnswerKeyQuestion[] {
   return items.flatMap((i): AnswerKeyQuestion[] => {
-    if (i.type === "condition") return checkableQuestions(i.children as DesignItem[]);
+    if (i.type === "show_if") return checkableQuestions(i.children as DesignItem[]);
     return "variable" in i && (CHECKABLE_TYPES as readonly string[]).includes(i.variable.type) ? [{ name: i.name, variable: i.variable }] : [];
   });
 }
@@ -72,7 +72,7 @@ interface AnswerKeyContext {
 
 function agreementQuestions(items: DesignItem[]): string[] {
   return items.flatMap((i) => {
-    if (i.type === "condition") return agreementQuestions(i.children as DesignItem[]);
+    if (i.type === "show_if") return agreementQuestions(i.children as DesignItem[]);
     return "variable" in i && supportsAgreement(i.variable) ? [i.name] : [];
   });
 }

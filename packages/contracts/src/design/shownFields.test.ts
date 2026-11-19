@@ -11,7 +11,7 @@ const loop = {
   children: [
     { type: "question", name: "topic", variable: { type: "nominal", question: "Topic of {{$unit.text}}?", options: [{ value: "a" }] } },
     {
-      type: "condition",
+      type: "show_if",
       condition: { script: "$var.topic.is('a') && $var.age.gt(18)" },
       children: [{ type: "question", name: "tone", variable: { type: "nominal", question: "Tone?", options: [{ value: "x" }] } }],
     },
@@ -36,7 +36,7 @@ describe("fieldUsage", () => {
         units: [{ mode: "assign", group: "g", from: { draw: "balanced" }, gold: { placement: "last", questions: ["topic"] } }],
         layout: { template: "$unit.title" },
         children: [
-          { type: "condition", condition: { script: "$unit.year > 2000" }, children: [
+          { type: "show_if", condition: { script: "$unit.year > 2000" }, children: [
             { type: "question", name: "topic", variable: { type: "nominal", question: "About $unit.title?", options: [{ value: "a" }] } },
           ] },
           { type: "question", name: "who", variable: { type: "span", question: "Who?", fields: ["body"] } },

@@ -73,7 +73,7 @@ export function collectCoderVariables(items: TopLevelItem[]): Map<string, Variab
   const variables = new Map<string, VariableType>();
   const walk = (list: TopLevelItem[]) => {
     for (const item of list) {
-      if (item.type === "condition") walk(item.children);
+      if (item.type === "show_if") walk(item.children);
       else if (item.type !== "unit_loop" && item.type !== "end" && item.type !== "session") variables.set(item.name, item.variable);
     }
   };
@@ -83,7 +83,7 @@ export function collectCoderVariables(items: TopLevelItem[]): Map<string, Variab
 
 function collectQuestions(items: DesignItem[], into: Map<string, VariableType>) {
   for (const item of items) {
-    if (item.type === "condition") collectQuestions(item.children as DesignItem[], into);
+    if (item.type === "show_if") collectQuestions(item.children as DesignItem[], into);
     else if (item.type !== "unit_loop" && item.type !== "end" && item.type !== "session") into.set(item.name, item.variable);
   }
 }

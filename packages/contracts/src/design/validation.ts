@@ -450,7 +450,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       }
 
       // Check name validity and uniqueness (conditions have no name)
-      if (item.type === "condition" || item.type === "unit_loop") {
+      if (item.type === "show_if" || item.type === "unit_loop") {
         // Nothing refers to them by name (a loop is identified by its position).
       } else if (!item.name || item.name.trim() === "") {
         issue([...itemPath, "name"], "Item name cannot be empty");
@@ -500,7 +500,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           walk(item.children, [...itemPath, "children"], { name: key, snippets });
           loopAvailable = new Set();
         }
-      } else if (item.type === "condition") {
+      } else if (item.type === "show_if") {
         checkCondition(item.condition, {
           path: [...itemPath, "condition"],
           loop: loop?.name ?? null,
@@ -600,7 +600,7 @@ export function collectQuestions(items: unknown): {
       const item = raw as RawItem | null;
       if (!item || typeof item !== "object") continue;
       if (item.type === "unit_loop") walk(item.children, String(++loops));
-      else if (item.type === "condition") walk(item.children, loop);
+      else if (item.type === "show_if") walk(item.children, loop);
       else if (item.name && "variable" in item && item.variable && !questions.has(item.name)) {
         questions.set(item.name, item.variable as AnyVariableType);
         loopOf.set(item.name, loop);
@@ -637,7 +637,7 @@ export function availableQuestions(items: unknown[], at: Path): { name: string; 
         walk(item.children, [...itemPath, "children"]);
         if (found) return;
         result.splice(before);
-      } else if (item.type === "condition") {
+      } else if (item.type === "show_if") {
         walk(item.children, [...itemPath, "children"]);
       } else if (item.name && "variable" in item && item.variable) {
         result.push({ name: item.name, variable: item.variable as AnyVariableType });
@@ -658,7 +658,7 @@ function forEachQuestion(list: unknown, path: Path, visit: (item: RawItem & { va
   list.forEach((raw, i) => {
     const child = raw as RawItem | null;
     if (!child || typeof child !== "object") return;
-    if (child.type === "condition") forEachQuestion((child as { children?: unknown }).children, [...path, i, "children"], visit);
+    if (child.type === "show_if") forEachQuestion((child as { children?: unknown }).children, [...path, i, "children"], visit);
     else if (child.type !== "unit_loop") visit(child as RawItem & { variable?: unknown }, [...path, i]);
   });
 }

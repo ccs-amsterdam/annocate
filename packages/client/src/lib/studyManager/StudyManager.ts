@@ -51,7 +51,7 @@ export interface NavigationUnitQuestion {
 export interface NavigationPhase {
   index: number;
   name: string;
-  type: "unit_loop" | "condition" | "question" | "end";
+  type: "unit_loop" | "show_if" | "question" | "end";
   label: string;
   isCurrent: boolean;
   isCompleted: boolean;
@@ -151,7 +151,7 @@ function loopVariables(loop: CoderUnitLoopItem): Map<string, AnyVariableType> {
   const result = new Map<string, AnyVariableType>();
   const walk = (items: InLoopItem[]) => {
     for (const item of items) {
-      if (item.type === "condition") walk(item.children);
+      if (item.type === "show_if") walk(item.children);
       else if (item.type !== "end") result.set(item.name, item.variable);
     }
   };
@@ -1509,5 +1509,5 @@ export class StudyManager {
 
 /** A loop's questions in codebook order (through conditions), for `::: from` blocks in its layout. */
 function loopQuestionNames(loop: CoderUnitLoopItem): string[] {
-  return flattenTree(loop.children).flatMap((item) => (item.type === "condition" ? [] : (itemName(item) ?? [])));
+  return flattenTree(loop.children).flatMap((item) => (item.type === "show_if" ? [] : (itemName(item) ?? [])));
 }

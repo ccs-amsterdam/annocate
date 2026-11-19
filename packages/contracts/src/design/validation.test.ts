@@ -14,10 +14,10 @@ function unitLoop(name: string, children: InLoopItem[], template = "", snippets?
   return { type: "unit_loop", label: name, units: [{ mode: "all" }], layout: { template, snippets }, children };
 }
 function topCondition(name: string, children: TopLevelItem[], condition: Condition = { script: "true" }): TopLevelItem {
-  return { type: "condition", label: name, condition, children };
+  return { type: "show_if", label: name, condition, children };
 }
 function inLoopCondition(name: string, children: InLoopItem[], condition: Condition = { script: "true" }): InLoopItem {
-  return { type: "condition", label: name, condition, children };
+  return { type: "show_if", label: name, condition, children };
 }
 const select = (values: string[], extra: object = {}) => ({
   type: "nominal",

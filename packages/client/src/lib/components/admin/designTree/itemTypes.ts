@@ -43,8 +43,8 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     color: "text-primary-dark",
     blockClass: "border-y-2   rounded-none border-primary/20 py-1 my-1 [--iconcolor:var(--color-primary-dark)]",
   },
-  condition: {
-    label: "Condition",
+  show_if: {
+    label: "Show if",
     description: "Show items only if rules or a script hold",
     icon: GitBranch,
     color: "text-secondary-dark",

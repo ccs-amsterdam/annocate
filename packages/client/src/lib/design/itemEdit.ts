@@ -190,7 +190,7 @@ export function canMoveItemTo(
   let targetParent: (UnitLoopItem | ConditionItem) | null;
   if (position === "inside") {
     // Target must be a container with children
-    if (targetItem.type !== "unit_loop" && targetItem.type !== "condition") {
+    if (targetItem.type !== "unit_loop" && targetItem.type !== "show_if") {
       return false;
     }
     targetParent = targetItem as UnitLoopItem | ConditionItem;
@@ -215,7 +215,7 @@ export function canMoveItemTo(
     // Loops cannot be inside another loop
     if (isTargetInLoop) return false;
     if (position === "inside" && targetItem.type === "unit_loop") return false;
-  } else if (sourceItem.type === "condition") {
+  } else if (sourceItem.type === "show_if") {
     const sourceDescendants = flattenTree(
       childrenOf(sourceItem),
     );
@@ -248,7 +248,7 @@ export function canMoveToRootEnd(items: TopLevelItem[], sourceIdentifier: string
   ) {
     return false;
   }
-  if (sourceItem.type === "condition") {
+  if (sourceItem.type === "show_if") {
     const descendants = flattenTree(childrenOf(sourceItem));
     if (
       descendants.some(
@@ -412,7 +412,7 @@ export function indentItem(items: TopLevelItem[], identifier: string): TopLevelI
     if (idx > 0) {
       const prevSibling = list[idx - 1];
       if (
-        (prevSibling.type === "unit_loop" || prevSibling.type === "condition") &&
+        (prevSibling.type === "unit_loop" || prevSibling.type === "show_if") &&
         hasChildren(prevSibling)
       ) {
         const itemToIndent = list[idx];

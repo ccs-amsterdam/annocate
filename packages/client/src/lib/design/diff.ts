@@ -30,11 +30,11 @@ function locate(
   container: { id: string; title: string } | null = null,
   out = new Map<string, Located>(),
 ) {
-  const counts = { condition: 0, unit_loop: 0 };
+  const counts = { show_if: 0, unit_loop: 0 };
   for (const item of items) {
     const parentId = container?.id ?? "";
     const id =
-      item.type === "condition" || item.type === "unit_loop" ? `${parentId}/${item.type} ${counts[item.type]++}` : item.type === "session" ? "/session" : item.name;
+      item.type === "show_if" || item.type === "unit_loop" ? `${parentId}/${item.type} ${counts[item.type]++}` : item.type === "session" ? "/session" : item.name;
     out.set(id, { item, parent: container?.title ?? null, parentId });
     if ("children" in item && Array.isArray(item.children)) locate(item.children, { id, title: itemTitle(item) }, out);
   }

@@ -57,7 +57,7 @@ export function QuestionPreview({
 
   const isVariable = item.type === "question";
   const isLoop = item.type === "unit_loop";
-  const isCondition = item.type === "condition";
+  const isCondition = item.type === "show_if";
   const inLoop = isLoop || (isVariable && !!parentLoop);
   const isAuto = isVariable && item.variable.type === "auto";
 
