@@ -4,3 +4,4 @@
 **/.pglite
 .git
 .env
+backups

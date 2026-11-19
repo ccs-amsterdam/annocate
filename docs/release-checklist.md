@@ -2,31 +2,61 @@
 
 What to check and decide before a pilot server and before a first release.
 **Decide** marks an item that needs the maintainer's choice; the rest is
-work. What exists is described in the other docs; this file lists only
-what is open, plus the checks to repeat for every release.
+work. What exists is described in the other docs. This file lists what is
+open, what is ready for the pilot, and the checks to repeat for every
+release.
 
-## 1. Before a pilot server
+## 1. Pilot server
 
-1. **Login with a real provider.** Log in on a test server with the lab's
-   provider (Keycloak): a researcher with the provider's second factor
-   (`OIDC_MFA_CLAIM`), a step-up for a sensitive action, logging out, and
-   a coder signing in to a study with sign-in `required` (`hosting.md`,
-   `security.md` §1). The automated tests use a mock provider only.
-2. **Email coders, by hand.** A design whose coder column holds email
-   addresses: one link, sign-in required, each coder gets the units of
-   their address and another address gets 403 `email_not_allowed`. Not
-   covered by the e2e tests.
-3. **The shared login provider.** `SHARED_OIDC_ISSUERS`
-   (`server/src/shared/warnings.ts`) is empty: fill in the lab's shared
-   issuer, so a server using it gets the hardening warning about shared
-   logins (or remove the check). **Decide** which issuer.
-4. **Server settings** (`hosting.md`): `ANNOTINDER_SECRET`,
-   `ANNOTINDER_ADMINS`, the `OIDC_*` settings, `ANNOTINDER_PUBLIC_URL`, a
-   proxy with TLS and `ANNOTINDER_TRUST_PROXY=1` (the compose file sets
-   it). Never `AUTH_DEV_MODE` or `ANNOTINDER_DEMO`. One server process
-   (previews and answer limits are per process, `architecture.md` §11).
-5. **Backups**: daily (`hosting.md` "Backups"), and one test restore.
-6. **Read `security.md`** before inviting anyone outside the team.
+The step-by-step guide is `hosting.md`, "Pilot server, step by step": from
+an empty Ubuntu 24.04 VM to AnnoTinder on HTTPS, with the lab's Keycloak.
+
+Ready:
+
+- [x] The guide follows the lab's conventions: Caddy on the VM, the app in
+  `/opt/annotinder` owned by `sal`, `sudo docker compose`, ports on
+  `127.0.0.1` only.
+- [x] `compose.yml` has the app, Postgres 18 and a `db-backup` service with
+  daily dumps in `backups/`, as in the lab's Docker Compose standards. Tested
+  locally with the built image: the containers become healthy, the dumps are
+  written, and both the restore test of the guide and a full restore work.
+- [x] `.env.example` lists every setting, grouped into required and
+  optional, with comments.
+- [x] `scripts/smoke-test.sh <url> [api key]` checks a running server
+  (`hosting.md`, step 8).
+- [x] The e2e tests pass against real Postgres (16), not only PGlite.
+
+To do on the server (the guide's steps):
+
+1. **The hostname and DNS**, the VM (`setup-vm.sh --web --caddy`), and the
+   app folder (steps 1 to 3).
+2. **The Keycloak client** in the `idp` realm, with the redirect URI
+   `https://<host>/api/auth/callback` (step 4).
+3. **Settings** (step 5): `ANNOTINDER_PUBLIC_URL`, `ANNOTINDER_SECRET`,
+   `POSTGRES_PASSWORD`, the `OIDC_*` settings and `ANNOTINDER_ADMINS`. Never
+   `AUTH_DEV_MODE` or `ANNOTINDER_DEMO`. Run one server process (previews
+   and answer limits are per process, `architecture.md` §11).
+4. **The first build on the server** (step 6). The image has been built
+   here, but not yet on the VM.
+5. **Login with the real provider** (step 9). The automated tests use a mock
+   provider only. Check:
+   - a researcher with the provider's second factor (`OIDC_MFA_CLAIM`);
+   - a step-up for a sensitive action (an API key);
+   - logging out;
+   - a coder signing in to a study whose sign-in is `required`.
+6. **The smoke test with an API key**, and one full study (steps 8 and 9).
+7. **Backups:** add the VM to the nightly backup of `/opt`, and run the
+   restore test once (step 10).
+8. **Email coders, by hand.** Use a design whose coder column holds email
+   addresses, with one link and sign-in required. Each coder gets the units
+   of their own address; any other address gets 403 `email_not_allowed`.
+   The e2e tests don't cover this.
+9. **The shared login provider.** `SHARED_OIDC_ISSUERS`
+   (`server/src/shared/warnings.ts`) is empty. Fill in the lab's shared
+   issuer (`https://auth.societal-analytics.nl/realms/idp`?), so that a
+   server using it gets the hardening warning about shared logins, or
+   remove the check. **Decide** which issuer.
+10. **Read `security.md`** before inviting anyone outside the team.
 
 ## 2. Decisions
 
@@ -95,7 +125,10 @@ Known limitations, documented rather than fixed:
 3. Run the checks: `pnpm build`, `pnpm typecheck`, `pnpm lint`,
    `pnpm test`, `pnpm test:e2e`, and the load test
    (`server/scripts/load-test.mjs`, results in `hosting.md` "Capacity")
-   against the release build.
-4. A security read of what changed: authorization and study scoping of
+   against the release build. Run `pnpm test:e2e` once with `DATABASE_URL`
+   set to an empty Postgres database too, not only on PGlite.
+4. After updating a server (`hosting.md`, step 11): run
+   `scripts/smoke-test.sh` against it.
+5. A security read of what changed: authorization and study scoping of
    every new route and id, CSRF (`x-annotinder`), cookies, redirect URLs,
    markdown and `::html` rendering, body sizes (`security.md`).

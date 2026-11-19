@@ -8,8 +8,8 @@ Read in this order:
 
 1. [`docs/architecture.md`](docs/architecture.md): the server, the design
    and how it distributes units, resuming, design updates, the database.
-2. [`docs/hosting.md`](docs/hosting.md): running AnnoTinder (Docker
-   Compose, settings, login provider, backups, capacity).
+2. [`docs/hosting.md`](docs/hosting.md): running AnnoTinder (a pilot
+   server step by step, settings, login provider, backups, capacity).
 3. Accounts and security:
    [`docs/accounts.md`](docs/accounts.md) (account roles, becoming a
    researcher, limits, admins),
@@ -72,5 +72,7 @@ chromium`, or point `PLAYWRIGHT_CHROMIUM_PATH` at an installed Chromium.
 
 ## Hosting
 
-`docker compose up -d --build` runs AnnoTinder with Postgres, from
-`.env` (copy `.env.example`). See [`docs/hosting.md`](docs/hosting.md).
+`docker compose up -d --build` runs AnnoTinder with Postgres and daily
+database dumps, from `.env` (copy `.env.example`). `scripts/smoke-test.sh
+<url>` checks a running server. [`docs/hosting.md`](docs/hosting.md) has a
+step-by-step guide for a pilot server, and the settings.

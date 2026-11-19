@@ -28,6 +28,9 @@ pnpm-debug.log*
 .env
 .env.*.local
 
+# database dumps of the compose file's backup service
+backups/
+
 # local databases (the server's PGlite directory, old sqlite files)
 .pglite/
 *.sqlite
