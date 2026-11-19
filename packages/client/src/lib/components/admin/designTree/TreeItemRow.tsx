@@ -118,7 +118,7 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
 
           tree.selected === key ? "bg-wood/15" : "")}
       >
-        <ItemLabel item={item} selected={tree.selected === key} issue={tree.getIssue(item)} changed={tree.isChanged(item)} />
+        <ItemLabel item={item} number={tree.numberOf(key)} selected={tree.selected === key} issue={tree.getIssue(item)} changed={tree.isChanged(item)} />
       </button>
       {item.type === "unit_loop" && (
         // Open the loop on a tab of its form: also marks loops in the tree.
@@ -149,17 +149,27 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
 
 function ItemLabel({
   item,
+  number,
   selected = false,
   issue,
   changed = false,
 }: {
   item: TreeNode;
+  /** A question's number, as coders see it. */
+  number: number | null;
   selected?: boolean;
   issue: string | null;
   changed?: boolean;
 }) {
   return (
     <>
+      {/* Every row has the number's place, so the icons line up */}
+      <span
+        className="w-4 shrink-0 text-right font-mono text-[11px] text-muted-foreground"
+        title={number === null ? undefined : `Question ${number}, as coders see it`}
+      >
+        {number}
+      </span>
       <ItemIcon item={item} />
       {item.type === "condition" ? (
         // Conditions have no name: shown by their condition, unless they have a label.

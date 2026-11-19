@@ -14,6 +14,25 @@ export function getChildren(item: TreeNode): TreeNode[] | null {
   return null;
 }
 
+/**
+ * The questions' numbers, as the coding screen's top bar shows them: the
+ * questions outside unit loops 1, 2, 3, ...; in a unit loop, its questions
+ * from 1 (through conditions, in codebook order; a condition that hides a
+ * question doesn't renumber the rest here).
+ */
+export function questionNumbers(items: readonly TreeNode[]): Map<string, number> {
+  const numbers = new Map<string, number>();
+  const walk = (list: readonly TreeNode[], counter: { n: number }) => {
+    for (const item of list) {
+      if (item.type === "question") numbers.set(getItemKey(item), ++counter.n);
+      else if (item.type === "unit_loop") walk(getChildren(item) ?? [], { n: 0 });
+      else if (item.type === "condition") walk(getChildren(item) ?? [], counter);
+    }
+  };
+  walk(items, { n: 0 });
+  return numbers;
+}
+
 /** Item types that can be created at a position (no loops in a loop). */
 export function insertableTypesAt(items: TopLevelItem[], position: TreePosition): ItemType[] {
   if (positionInLoop(items, position)) return ["question", "condition", "end"];

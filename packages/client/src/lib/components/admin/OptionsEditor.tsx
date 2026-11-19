@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleHelp, X } from "lucide-react";
 import { SWIPE_DIRECTIONS, valueFromLabel, type Option } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
@@ -36,12 +36,30 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
   /** Changes to the list of options: renumbered while values follow the order. */
   const commit = (next: T[]) => onChange(auto ? renumber(next) : next);
   const update = (index: number, patch: Partial<T>) => onChange(options.map((o, i) => (i === index ? { ...o, ...patch } : o)));
+  // A moved option and the one it swapped places with slide past each other
+  const grid = useRef<HTMLDivElement>(null);
+  const swapped = useRef<{ moved: number; other: number } | null>(null);
   const move = (index: number, by: number) => {
     const next = [...options];
     const [moved] = next.splice(index, 1);
     next.splice(index + by, 0, moved);
+    swapped.current = { moved: index + by, other: index };
     commit(next);
   };
+  useLayoutEffect(() => {
+    const swap = swapped.current;
+    swapped.current = null;
+    if (!swap || !grid.current || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const cells = (row: number) => Array.from(grid.current!.querySelectorAll<HTMLElement>(`[data-option-row="${row}"]`));
+    const top = (row: number) => cells(row)[0]?.getBoundingClientRect().top ?? 0;
+    const dy = top(swap.other) - top(swap.moved);
+    const slide = (row: number, from: number) =>
+      cells(row).forEach((el) =>
+        el.animate([{ transform: `translateY(${from}px)` }, { transform: "none" }], { duration: 220, easing: "cubic-bezier(0.16, 1, 0.3, 1)" }),
+      );
+    slide(swap.moved, dy);
+    slide(swap.other, -dy);
+  }, [options]);
 
   const setLabel = (index: number, label: string) => {
     const option = options[index];
@@ -81,7 +99,7 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
           </label>
         )}
       </div>
-      <div className="grid grid-cols-[auto_1fr_8rem_5.5rem_auto] items-center gap-1.5 text-[11px] text-muted-foreground">
+      <div ref={grid} className="grid grid-cols-[auto_1fr_8rem_5.5rem_auto] items-center gap-1.5 text-[11px] text-muted-foreground">
         <span />
         <span>Label (shown)</span>
         <span>Value (stored)</span>
@@ -91,16 +109,18 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
           const Direction = swipe ? DIRECTION_ICONS[SWIPE_DIRECTIONS[i]] : null;
           return (
             <div key={i} className="contents">
-              <span className="flex w-5 justify-center">
+              <span data-option-row={i} className="flex w-5 justify-center">
                 {Direction ? <Direction className="size-4 text-foreground" aria-label={`swipe ${SWIPE_DIRECTIONS[i]}`} /> : i + 1}
               </span>
               <Input
+                data-option-row={i}
                 placeholder={String(option.value) || "label"}
                 value={option.label ?? ""}
                 onChange={(e) => setLabel(i, e.target.value)}
                 className="h-8 text-xs"
               />
               <Input
+                data-option-row={i}
                 placeholder="value"
                 type={ordinal ? "number" : "text"}
                 value={String(option.value)}
@@ -113,12 +133,13 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
                 className={`h-8 font-mono text-xs ${auto ? "bg-muted/40 text-muted-foreground" : ""}`}
               />
               <Input
+                data-option-row={i}
                 placeholder="color"
                 value={option.color ?? ""}
                 onChange={(e) => update(i, { color: e.target.value || undefined } as Partial<T>)}
                 className="h-8 text-xs"
               />
-              <span className="flex items-center">
+              <span data-option-row={i} className="flex items-center">
                 {extra?.(option, (patch) => update(i, patch))}
                 <Button type="button" variant="ghost" size="icon-sm" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">
                   <ArrowUp className="size-3.5" />

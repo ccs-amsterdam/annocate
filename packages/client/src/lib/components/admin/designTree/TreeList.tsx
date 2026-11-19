@@ -37,7 +37,10 @@ function TreeNodeView({ item }: { item: TreeNode }) {
     return (
       <>
         <PreviewLine position={before} />
-        <TreeItemRow item={item} />
+        {/* data-flip-key: glides to its new place when moved (useFlip in DesignTreeView) */}
+        <div data-flip-key={getItemKey(item)}>
+          <TreeItemRow item={item} />
+        </div>
         <PreviewLine position={after} />
       </>
     );
@@ -45,7 +48,7 @@ function TreeNodeView({ item }: { item: TreeNode }) {
   return (
     <>
       <PreviewLine position={before} />
-      <div className={cn("my-0.5 rounded-md pb-1", ITEM_TYPES[item.type].blockClass)}>
+      <div data-flip-key={getItemKey(item)} className={cn("my-0.5 rounded-md pb-1", ITEM_TYPES[item.type].blockClass)}>
         <TreeItemRow item={item} />
         <div className="pl-6">
           <TreeList nodes={children} parent={item} />

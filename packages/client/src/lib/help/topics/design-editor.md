@@ -38,6 +38,15 @@ and which units it hands out (*all units*, *part_1, shared*, or *2 coder groups*
 for a loop with two [coder groups](coder-groups.md), ...); a condition shows
 its condition in words (*if age < 18*), or its label if you gave it one.
 
+Questions are numbered as coders see them in the coding screen's top
+bar: the questions outside loops 1, 2, 3, ..., and in each loop its own
+questions from 1. Questions inside conditions count along; a condition
+that hides a question for a coder doesn't renumber the rest here.
+
+Above the tree are the **title shown to coders** (edit it in place) and
+the **Session parameters**: click them to open their form (see
+[Session parameters](session-parameters.md)).
+
 Click an item to open it on the right. A loop's row has two extra buttons
 that open the loop on its **Layout** or its **Units** tab.
 
@@ -62,7 +71,7 @@ out it goes. An empty loop or condition offers **Inside** it and **After**
 it. While you point at a place, a line in the tree shows where the item
 will go.
 
-In an empty codebook, click **Add item** above the tree.
+**Add item** above the tree adds an item at the end of the codebook.
 
 New questions are called `question_1`, `question_2`, ... and start as
 **Confirm** questions; rename them and choose the answer type. New end
@@ -76,7 +85,7 @@ New loops and conditions start empty: add their items with their own **+**.
 
 Tick the box in front of one or more items (it appears when you hover over
 a row). Ticking a loop or condition takes everything inside it along.
-Above the tree you now see how many items are selected, with:
+In place of **Add item** you now see how many items are selected, with:
 
 - **Delete**: deletes the ticked items and everything inside them, after
   asking once.

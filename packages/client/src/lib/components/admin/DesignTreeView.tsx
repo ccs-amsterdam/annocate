@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useFlip } from "../../hooks/useFlip";
 import { CornerDownLeft, Move, Trash2, X } from "lucide-react";
 import type { DesignIssue, TopLevelItem } from "@annotinder/contracts";
 import {
@@ -14,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { DesignTreeProvider, type DesignTreeState } from "./designTree/context";
 import { TreeList } from "./designTree/TreeList";
 import { AddItemMenu } from "./designTree/AddItemMenu";
-import { getItemKey, insertableTypesAt, type ItemType } from "./designTree/utils";
+import { getItemKey, insertableTypesAt, questionNumbers, type ItemType } from "./designTree/utils";
 
 interface DesignTreeViewProps {
   items: TopLevelItem[];
@@ -62,6 +63,9 @@ export function DesignTreeView({
   const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
   const [moving, setMoving] = useState(false);
   const [preview, setPreview] = useState<TreePosition[]>([]);
+  // Moved items glide to their new place
+  const list = useRef<HTMLDivElement>(null);
+  useFlip(list);
 
   // Ticked items that still exist (undo can remove them), not inside another ticked one.
   const ticked = topmostSelected(items, checked);
@@ -81,8 +85,10 @@ export function DesignTreeView({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [moving, checked.size]);
 
+  const numbers = questionNumbers(items);
   const state: DesignTreeState = {
     items,
+    numberOf: (key) => numbers.get(key) ?? null,
     selected,
     readOnly,
     select: onSelect,
@@ -169,7 +175,7 @@ export function DesignTreeView({
           )}
         </div>
       )}
-      <div className="flex flex-col p-1 pb-3">
+      <div ref={list} className="flex flex-col p-1 pb-3">
         {shown.length === 0 && !readOnly && <p className="px-2 py-3 text-sm text-muted-foreground">No items yet: add the first one above.</p>}
         <TreeList nodes={shown} parent={null} />
       </div>
