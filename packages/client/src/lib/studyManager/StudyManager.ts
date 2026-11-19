@@ -299,6 +299,8 @@ export class StudyManager {
   private resuming = false;
   /** Set by `reopen`: resuming stops at the last question instead of the end. */
   private backFromEnd = false;
+  /** The unit an `end` inside a loop was reached on: reopening goes back to it. */
+  private endedOn: EndUnit | null = null;
 
   private lastFailedOperation: (() => Promise<void>) | null = null;
   private starting: Promise<void> | null = null;
@@ -423,12 +425,20 @@ export class StudyManager {
       if (session.deletionRequest) this.publish({ deletionRequested: true });
       this.publish({ login: session.login ?? null, canLogIn: session.canLogIn ?? false });
       if (session.ended) {
+        this.endedOn = session.ended.unit ?? null;
         // The coder reached an `end` item before, or quit: show the ending
         // again, with the values the server still gives for it (endValues).
         const item = session.ended.item ? findEnd(this.stepItems, session.ended.item) : null;
         await this.refreshTopSteps();
         this.publish({ reopen: session.reopen ?? null });
         await this.publishEnding(item, this.endScope(session.endValues ?? null), session.ended.outcome === "quit");
+        return;
+      }
+      // Back from an end inside a loop (`reopen`): the unit it was reached on
+      const endedOn = this.backFromEnd ? this.endedOn : null;
+      this.endedOn = null;
+      if (endedOn && (await this.openEndedUnit(endedOn))) {
+        this.backFromEnd = false;
         return;
       }
       // Resume where the coder left off: skip answered questions and
@@ -444,6 +454,37 @@ export class StudyManager {
         errorCode: errorCodeOf(err),
       });
     }
+  }
+
+  /**
+   * Opens the unit an `end` inside a loop was reached on, at its last
+   * question (going back after the end). False if it isn't there any more.
+   */
+  private async openEndedUnit(target: EndUnit): Promise<boolean> {
+    await this.refreshTopSteps();
+    const index = this.topSteps.findIndex(
+      (step) => step.type === "unit_loop" && this.keyOf(step as CoderUnitLoopItem) === target.loop,
+    );
+    if (index < 0) return false;
+    const loop = this.topSteps[index] as CoderUnitLoopItem;
+    const entry = this.history(loop).entries.findIndex((e) => e.unitId === target.id);
+    if (entry < 0) return false;
+    this.topIndex = index;
+    this.maxReachedTopIndex = Math.max(this.maxReachedTopIndex, index);
+    this.leaveLoop();
+    this.activeLoop = loop;
+    await this.openEntry(entry);
+    await this.refreshLoopSteps();
+    this.loopIndex = this.lastQuestionIndex();
+    this.resuming = false;
+    await this.publishLoopStep();
+    return true;
+  }
+
+  /** The current unit's last question (not an `end` item its answers lead to); 0 if none. */
+  private lastQuestionIndex(): number {
+    for (let i = this.loopSteps.length - 1; i >= 0; i--) if (this.loopSteps[i].type !== "end") return i;
+    return 0;
   }
 
   /** A loop's key (`loopKeys`). */
@@ -550,7 +591,7 @@ export class StudyManager {
     if (inUnit && this.unitHistoryIndex > 0) {
       await this.openEntry(this.unitHistoryIndex - 1);
       await this.refreshLoopSteps();
-      this.loopIndex = Math.max(0, this.loopSteps.length - 1);
+      this.loopIndex = this.lastQuestionIndex();
       await this.publishLoopStep();
       return;
     }
@@ -565,7 +606,7 @@ export class StudyManager {
       this.activeLoop = prevTop as CoderUnitLoopItem;
       await this.openEntry(this.unitHistory.length - 1);
       await this.refreshLoopSteps();
-      this.loopIndex = Math.max(0, this.loopSteps.length - 1);
+      this.loopIndex = this.lastQuestionIndex();
       await this.publishLoopStep();
       return;
     }
@@ -1216,6 +1257,7 @@ export class StudyManager {
     // Everything is saved before the session ends (the server accepts nothing after).
     await this.flush();
     const ended = await this.coderApi.endSession(item?.name, unit);
+    this.endedOn = unit ?? null;
     this.publish({ reopen: ended?.reopen ?? null });
     await this.publishEnding(item, scope);
   }
@@ -1490,7 +1532,7 @@ export class StudyManager {
     await this.openEntry(index);
     await this.refreshLoopSteps();
     const firstOpen = this.loopSteps.findIndex((step) => this.unitVariableValues[itemName(step) ?? ""] === undefined);
-    this.loopIndex = atStart ? 0 : firstOpen === -1 ? Math.max(0, this.loopSteps.length - 1) : firstOpen;
+    this.loopIndex = atStart ? 0 : firstOpen === -1 ? this.lastQuestionIndex() : firstOpen;
     const firstStep = this.loopSteps[this.loopIndex];
     if (!firstStep) {
       // Degenerate loop with no steps: immediately move past it.

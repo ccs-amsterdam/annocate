@@ -1,6 +1,6 @@
 import type { CoderUnitResponse, EndUnit, SessionResponse, TopLevelItem, VariableValue } from "@annotinder/contracts";
 import { unitLoops } from "@annotinder/contracts";
-import type { CoderApi } from "../api/httpCoderApi";
+import { CoderApiError, type CoderApi } from "../api/httpCoderApi";
 
 // Tests only: an in-memory coder server with the real server's rules for
 // what the coding client sees (docs/api/coder.md): the next units are the
@@ -40,6 +40,12 @@ export interface FakeCoderServer extends CoderApi {
   served: Map<string, number[]>;
   /** Every API call, by name. */
   calls: string[];
+  /**
+   * A new design version: the session's codebook becomes `items`, and the
+   * next request (other than loading the session) answers 409
+   * `codebook_changed` without storing anything, as the server does.
+   */
+  redeploy(items: TopLevelItem[]): void;
 }
 
 const unitResponse = (unit: FakeUnit, variables: Record<string, VariableValue>): CoderUnitResponse => ({
@@ -52,7 +58,15 @@ const unitResponse = (unit: FakeUnit, variables: Record<string, VariableValue>):
 
 export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServer {
   const units = options.units ?? {};
-  const loops = unitLoops(options.items as never).map(({ key }) => key);
+  let items = options.items;
+  let loops = unitLoops(items as never).map(({ key }) => key);
+  /** The client's codebook is out of date: the next request is refused. */
+  let stale = false;
+  const check = () => {
+    if (!stale) return;
+    stale = false;
+    throw new CoderApiError("A new version of the study was deployed", 409, "codebook_changed");
+  };
   const server: FakeCoderServer = {
     coder: {},
     answers: new Map(),
@@ -61,8 +75,15 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
     served: new Map(),
     calls: [],
 
+    redeploy(next: TopLevelItem[]) {
+      items = next;
+      loops = unitLoops(items as never).map(({ key }) => key);
+      stale = true;
+    },
+
     async getSession(): Promise<SessionResponse> {
       server.calls.push("getSession");
+      stale = false;
       return {
         coderId: 1,
         studyId: 1,
@@ -70,7 +91,7 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
         codebook: {
           id: 1,
           title: options.title ?? null,
-          items: options.items,
+          items,
         } as unknown as SessionResponse["codebook"],
         progress: loops.map((key) => ({
           set: key,
@@ -87,6 +108,7 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
 
     async getNextUnits(loop: string, count = 1) {
       server.calls.push(`getNextUnits:${loop}`);
+      check();
       const done = new Set(server.done.get(loop) ?? []);
       const next = (units[loop] ?? []).filter((u) => !done.has(u.id)).slice(0, count);
       server.served.set(loop, [...(server.served.get(loop) ?? []), ...next.map((u) => u.id)]);
@@ -95,6 +117,7 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
 
     async getLoopUnit(loop: string, unitId: number) {
       server.calls.push(`getLoopUnit:${loop}/${unitId}`);
+      check();
       const unit = (units[loop] ?? []).find((u) => u.id === unitId);
       if (!unit) throw Object.assign(new Error("Unit not found"), { status: 404 });
       return unitResponse(unit, server.answers.get(`${loop}/${unitId}`) ?? {});
@@ -102,6 +125,7 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
 
     async postUnitVariables(unitId: number, variables: Record<string, VariableValue>, loop = "1") {
       server.calls.push(`postUnitVariables:${loop}/${unitId}`);
+      check();
       server.answers.set(`${loop}/${unitId}`, variables);
       const done = server.done.get(loop) ?? [];
       if (!done.includes(unitId)) server.done.set(loop, [...done, unitId]);
@@ -109,11 +133,13 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
 
     async postCoderVariables(variables: Record<string, VariableValue>) {
       server.calls.push("postCoderVariables");
+      check();
       Object.assign(server.coder, variables);
     },
 
     async computeVariable(name: string) {
       server.calls.push(`computeVariable:${name}`);
+      check();
       const value = options.computed?.[name] ?? ({ done: true, values: [{ value: "a" }] } as VariableValue);
       server.coder[name] = value;
       return value;
@@ -121,17 +147,20 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
 
     async endSession(item?: string, unit?: EndUnit) {
       server.calls.push(`endSession:${item ?? ""}`);
+      check();
       server.ended = { item, unit, outcome: "complete" };
       return { reopen: options.reopen === false ? null : { until: null } } as never;
     },
 
     async reopenSession() {
       server.calls.push("reopenSession");
+      check();
       server.ended = null;
     },
 
     async quitSession() {
       server.calls.push("quitSession");
+      check();
       server.ended = { outcome: "quit" };
     },
   };

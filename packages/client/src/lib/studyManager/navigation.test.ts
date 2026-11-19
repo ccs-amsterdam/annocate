@@ -55,6 +55,12 @@ async function started(server: FakeCoderServer): Promise<StudyManager> {
   return m;
 }
 
+/** Waits until a reload in the background (a new design version) is done. */
+async function idle(m: StudyManager): Promise<void> {
+  for (let i = 0; i < 50 && m.getSnapshot().phase === "loading"; i++) await settle();
+  await settle();
+}
+
 /** Answers every question until the coder is at `stop` (or finished): units' questions with "A". */
 async function answerUntil(m: StudyManager, stop: string): Promise<void> {
   for (let i = 0; i < 100 && where(m) !== stop && where(m) !== "finished"; i++) {
@@ -443,5 +449,161 @@ describe("quick repeated input (double clicks, fast swipes)", () => {
     await Promise.all([m.answer(pick("B")), m.goBack()]);
     expect(where(m)).toBe("1:q1");
     expect(shown(m)).toBe("B");
+  });
+});
+
+describe("practice units while navigating", () => {
+  const practice = (retry: boolean) => ({ retry, questions: { q1: { key: "A" } } });
+
+  it("a wrong answer shows feedback with the question; with retry, only the right answer goes on", async () => {
+    server = fakeCoderServer({
+      items: [loop("Coding", [pickQ("q1"), pickQ("q2")])],
+      units: { "1": [{ id: 1, practice: practice(true) }, { id: 2 }] },
+    });
+    const m = await started(server);
+    await m.answer(pick("B"));
+    expect(where(m)).toBe("1:q1");
+    expect(m.getSnapshot().practiceWrong).toMatchObject({ question: "q1", retry: true });
+    await m.continueAfterPractice(); // not with retry
+    expect(where(m)).toBe("1:q1");
+    await m.answer(pick("A"));
+    expect(where(m)).toBe("1:q2");
+    expect(m.getSnapshot().practiceWrong).toBeNull();
+    expect(m.getSnapshot().practiceRight).toBe(1);
+    // Back to the solved question and on again: not checked again
+    await m.goBack();
+    await m.answer(pick("B"));
+    expect(where(m)).toBe("1:q2");
+  });
+
+  it("without retry, the coder may go on with the wrong answer", async () => {
+    server = fakeCoderServer({
+      items: [loop("Coding", [pickQ("q1"), pickQ("q2")])],
+      units: { "1": [{ id: 1, practice: practice(false) }, { id: 2 }] },
+    });
+    const m = await started(server);
+    await m.answer(pick("B"));
+    expect(m.getSnapshot().practiceWrong).toMatchObject({ retry: false });
+    await m.continueAfterPractice();
+    expect(where(m)).toBe("1:q2");
+    await m.answer(pick("A"));
+    expect(picked(server.answers.get("1/1")!.q1)).toBe("B");
+  });
+});
+
+describe("a new design version while coding", () => {
+  it("mid-unit: the session loads again, and the coder continues on the same unit with their answers", async () => {
+    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2) } });
+    const m = await started(server);
+    await m.answer(yes);
+    await m.answer(pick("B"));
+    expect(where(m)).toBe("1:q2");
+    // A third question in the loop
+    server.redeploy([confirm("intro"), loop("Coding", [pickQ("q1"), pickQ("q2"), pickQ("q3")]), confirm("outro")]);
+    await m.answer(pick("A"));
+    await idle(m);
+    expect(where(m)).toBe("1:q3");
+    await m.goBack();
+    await m.goBack();
+    expect(where(m)).toBe("1:q1");
+    expect(shown(m)).toBe("B");
+    await answerUntil(m, "q:outro");
+    expect(Object.keys(server.answers.get("1/1")!).sort()).toEqual(["q1", "q2", "q3"]);
+  });
+
+  it("a removed question: its answer is dropped; the unsaved unit comes again with the rest", async () => {
+    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2) } });
+    const m = await started(server);
+    await m.answer(yes);
+    await m.answer(pick("A"));
+    server.redeploy([confirm("intro"), loop("Coding", [pickQ("q2")]), confirm("outro")]);
+    await m.answer(pick("A"));
+    await idle(m);
+    // Unit 1 wasn't saved: it comes again, its answer kept, to confirm under the new version
+    expect(where(m)).toBe("1:q2");
+    expect(shown(m)).toBe("A");
+    await m.answer(pick("A"));
+    expect(where(m)).toBe("2:q2");
+    expect(Object.keys(server.answers.get("1/1")!)).toEqual(["q2"]);
+  });
+});
+
+describe("preview navigation (free)", () => {
+  it("next goes ahead without answers, and a unit far ahead can be opened", async () => {
+    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    const m = await started(server);
+    expect(m.canGoForward(true)).toBe(true);
+    await m.goForward(true);
+    expect(where(m)).toBe("1:q1");
+    await m.goForward(true);
+    expect(where(m)).toBe("1:q2");
+    await m.jumpToUnit(2, true);
+    expect(where(m)).toBe("3:q1");
+    expect(m.getSnapshot().navigation.phases[1].units?.map((u) => u.id)).toEqual([1, 2, 3]);
+    await m.jumpToPhase(2, true);
+    expect(where(m)).toBe("q:outro");
+  });
+});
+
+describe("end items and quitting", () => {
+  const items = () => [
+    loop("Coding", [
+      pickQ("ok", ["yes", "no"]),
+      {
+        type: "show_if",
+        condition: { script: `$var.ok.is("no")` },
+        children: [{ type: "end", name: "stop", message: "Bye" }],
+      } as InLoopItem,
+    ]),
+    confirm("outro"),
+  ];
+
+  it("reopening after an end in a loop lands on that unit's last question", async () => {
+    server = fakeCoderServer({ items: items(), units: { "1": units(1, 2, 3) } });
+    const m = await started(server);
+    await m.answer(pick("yes"));
+    await m.answer(pick("no"));
+    expect(where(m)).toBe("finished");
+    await m.reopen();
+    expect(where(m)).toBe("2:ok");
+    await m.answer(pick("yes"));
+    expect(where(m)).toBe("3:ok");
+  });
+
+  it("quitting ends the session where the coder is; the end stays after a reload", async () => {
+    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2) } });
+    const m = await started(server);
+    await m.answer(yes);
+    await m.quit(false);
+    expect(where(m)).toBe("finished");
+    expect(m.getSnapshot().quit).toBe(true);
+    const again = await started(server);
+    expect(where(again)).toBe("finished");
+    expect(again.getSnapshot().quit).toBe(true);
+  });
+});
+
+describe("computed items", () => {
+  it("are computed when reached, never shown, and passed going back", async () => {
+    const items = [
+      confirm("intro"),
+      {
+        type: "computed",
+        name: "group",
+        variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }] },
+      },
+      { type: "show_if", condition: { script: `$var.group.is("a")` }, children: [confirm("for_a")] },
+      confirm("last"),
+    ] as TopLevelItem[];
+    server = fakeCoderServer({ items });
+    const m = await started(server);
+    await m.answer(yes);
+    expect(where(m)).toBe("q:for_a");
+    expect(server.calls).toContain("computeVariable:group");
+    await m.goBack();
+    expect(where(m)).toBe("q:intro");
+    await m.answer(yes);
+    expect(where(m)).toBe("q:for_a");
+    expect(server.calls.filter((c) => c === "computeVariable:group")).toHaveLength(1);
   });
 });
