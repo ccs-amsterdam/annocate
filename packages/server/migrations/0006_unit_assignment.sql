@@ -2,6 +2,12 @@
 -- decided per session (the coder column, conditions linked to set columns),
 -- and whether coders sign in is a setting of the study, not of a link.
 ALTER TABLE studies ADD COLUMN sign_in TEXT NOT NULL DEFAULT 'off' CHECK (sign_in IN ('off', 'optional', 'required'));
+-- A study whose links asked for sign-in keeps asking (required wins over optional)
+UPDATE studies s SET sign_in = CASE
+  WHEN EXISTS (SELECT 1 FROM links l WHERE l.study_id = s.id AND (l.auth = 'required' OR l.emails IS NOT NULL)) THEN 'required'
+  WHEN EXISTS (SELECT 1 FROM links l WHERE l.study_id = s.id AND l.auth = 'optional') THEN 'optional'
+  ELSE 'off'
+END;
 ALTER TABLE links DROP COLUMN auth;
 ALTER TABLE links DROP COLUMN emails;
 -- Routings were stored by the old loop modes: coders are routed again.
