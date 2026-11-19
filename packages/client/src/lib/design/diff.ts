@@ -1,7 +1,7 @@
 import { collectQuestions, optionLabel, questionValues, type AnyVariableType, type DesignItem, type InLoopItem, type TopLevelItem } from "@annotinder/contracts";
 import { itemTitle } from "../codebook/conditions";
 
-export type DesignChangeKind = "added" | "removed" | "changed" | "moved";
+type DesignChangeKind = "added" | "removed" | "changed" | "moved";
 
 export interface DesignChange {
   kind: DesignChangeKind;

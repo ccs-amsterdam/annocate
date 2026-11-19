@@ -13,7 +13,7 @@ import type { Server } from "../context.js";
  * standard's "Choosing an OIDC provider"). The provider's public hostname
  * isn't fixed yet: its issuer goes here once it is.
  */
-export const SHARED_OIDC_ISSUERS: readonly string[] = [];
+const SHARED_OIDC_ISSUERS: readonly string[] = [];
 
 const sameIssuer = (a: string, b: string) => a.replace(/\/+$/, "") === b.replace(/\/+$/, "");
 

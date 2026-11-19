@@ -44,7 +44,7 @@ export interface Unit {
  * That a coder reached a loop (for the progress counts). Their units in it
  * follow from their session values, so nothing else is stored.
  */
-export interface LoopAssignment {
+interface LoopAssignment {
   /** When the coder first asked for the loop's units (ms). */
   at: number;
 }

@@ -19,7 +19,7 @@ import { TeamSettings } from "./TeamSettings";
 import { ExampleNotice } from "./ExampleNotice";
 import { describeUnitChanges } from "../DeployDialog";
 
-export type OverviewTarget = "Units" | "Links" | "Coders";
+type OverviewTarget = "Units" | "Links" | "Coders";
 
 interface StudyOverviewProps {
   client: ResearcherApi;

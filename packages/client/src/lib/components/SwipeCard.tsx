@@ -42,7 +42,7 @@ export function useSwipe(): SwipeState | null {
 }
 
 /** The option for a direction (1st left, 2nd right, 3rd up). */
-export function optionFor(options: NominalOption[], direction: SwipeDirection): NominalOption | undefined {
+function optionFor(options: NominalOption[], direction: SwipeDirection): NominalOption | undefined {
   return options[SWIPE_DIRECTIONS.indexOf(direction)];
 }
 

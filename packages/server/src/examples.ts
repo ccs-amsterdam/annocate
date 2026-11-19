@@ -88,7 +88,7 @@ export function listExamples(): ExampleSummary[] {
 }
 
 /** An answer as stored, from its short form in an example file. */
-export function answerValue(short: ShortAnswer): VariableValue {
+function answerValue(short: ShortAnswer): VariableValue {
   if (Array.isArray(short)) return { done: true, skip: false, values: short.map((value) => ({ value })) };
   if (typeof short !== "object") return { done: true, skip: false, values: [{ value: short }] };
   if ("done" in short) return VariableValueSchema.parse(short);

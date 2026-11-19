@@ -132,7 +132,7 @@ export function assignAllColumns(
 }
 
 /** The values of a column that don't fit a type: how many, and a few examples. */
-export function badValues(rows: string[][], column: number, type: UnitFieldType): { count: number; examples: string[] } {
+function badValues(rows: string[][], column: number, type: UnitFieldType): { count: number; examples: string[] } {
   const bad = rows.map((r) => r[column] ?? "").filter((v) => parseFieldValue(v, type) === undefined);
   return { count: bad.length, examples: [...new Set(bad)].slice(0, 3) };
 }

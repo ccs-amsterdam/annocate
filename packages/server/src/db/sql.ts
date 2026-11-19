@@ -32,7 +32,7 @@ type RoleColumns = Columns<"role" | "studyId" | "userId" | "emailDomain" | "requ
 type UserColumns = Columns<"id" | "email" | "registeredAt" | "reactivatedAt" | "hasMfa">;
 
 /** Whether an email address is at a domain (`uni.nl`, or `*.uni.nl` for subdomains too); as `emailAtDomain` in shared/accounts.ts. */
-export function emailAtDomain(email: SQLWrapper, domain: SQLWrapper): SQL<boolean> {
+function emailAtDomain(email: SQLWrapper, domain: SQLWrapper): SQL<boolean> {
   const host = sql`split_part(${email}, '@', 2)`;
   const body = sql`CASE WHEN left(${domain}, 2) = '*.'
     THEN ${host} = substr(${domain}, 3) OR right(${host}, length(${domain}) - 1) = substr(${domain}, 2)

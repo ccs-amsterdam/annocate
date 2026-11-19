@@ -14,8 +14,8 @@ export async function api<T>(request: APIRequestContext, method: string, path: s
 /** A new study from an example, and the link of its (first) link. */
 export async function fromExample(request: APIRequestContext, example: string): Promise<{ study: StudyResponse; link: string }> {
   const study = await api<StudyResponse>(request, "POST", "/study/from-example", { example });
-  const [invite] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
-  return { study, link: `/code/${study.id}?link=${invite.secret}` };
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  return { study, link: `/code/${study.id}?link=${link.secret}` };
 }
 
 export async function answers(request: APIRequestContext, studyId: number): Promise<AnnotationRow[]> {
@@ -25,12 +25,6 @@ export async function answers(request: APIRequestContext, studyId: number): Prom
 export async function coders(request: APIRequestContext, studyId: number): Promise<CoderProgress[]> {
   return api<CoderProgress[]>(request, "GET", `/study/${studyId}/coders`);
 }
-
-/** Answers of coders who aren't example coders. */
-export function ownAnswers(rows: AnswerLike[], examples: number[]): AnswerLike[] {
-  return rows.filter((r) => !examples.includes(r.coderId));
-}
-type AnswerLike = { coderId: number };
 
 /** Waits until the coding screen shows this question. */
 export async function question(page: Page, text: string | RegExp): Promise<void> {

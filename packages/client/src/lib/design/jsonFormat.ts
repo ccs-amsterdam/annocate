@@ -4,7 +4,7 @@
 // `{ "value": "neg", "label": "Negative" }` or `"items": ["a", "b"]`.
 
 const INDENT = "  ";
-export const LINE_WIDTH = 100;
+const LINE_WIDTH = 100;
 
 const isPlain = (v: unknown) => v === null || typeof v !== "object";
 

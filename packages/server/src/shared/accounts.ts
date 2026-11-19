@@ -58,7 +58,7 @@ export async function ensureUser(db: Db, email: string): Promise<User> {
 }
 
 /** A user with their account role. */
-export async function userById(db: Db, id: number): Promise<User | null> {
+async function userById(db: Db, id: number): Promise<User | null> {
   const [user] = await db.select(userFields).from(users).where(eq(users.id, id));
   return user ?? null;
 }
@@ -285,7 +285,7 @@ export async function userForKey(db: Db, key: string): Promise<User | null> {
 // ---- registration ------------------------------------------------------------
 
 /** Whether an email address is at a domain rule's domain (`uni.nl`, or `*.uni.nl` for subdomains too). */
-export function emailAtDomain(email: string, domain: string): boolean {
+function emailAtDomain(email: string, domain: string): boolean {
   const host = email.slice(email.lastIndexOf("@") + 1).toLowerCase();
   if (domain.startsWith("*.")) {
     const base = domain.slice(2);

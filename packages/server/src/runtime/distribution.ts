@@ -334,7 +334,7 @@ function hashString(text: string): number {
  * never more than 2 x `every` own units apart. Seeded per coder and pool,
  * so the schedule is the same on every request.
  */
-export function rateDue(index: number, every: number, seed: number): number {
+function rateDue(index: number, every: number, seed: number): number {
   const random = seededRandom(seed);
   let position = 0;
   for (let i = 0; i <= index; i++) {

@@ -30,7 +30,7 @@ export interface RateLimits {
 export const DEFAULT_RATE_LIMITS: RateLimits = { coderStart: 300, transfer: 30, login: 60, researcher: 1200, coder: 10_000 };
 
 /** The client's address: the last X-Forwarded-For entry behind a proxy that sets it (`trustProxy`), else the connection's. */
-export function clientIp(c: Context, trustProxy: boolean): string {
+function clientIp(c: Context, trustProxy: boolean): string {
   if (trustProxy) {
     const forwarded = c.req.header("x-forwarded-for")?.split(",").at(-1)?.trim();
     if (forwarded) return forwarded;

@@ -25,7 +25,7 @@ export const HELP_SECTIONS = [
   "Results",
   "Design notes",
 ] as const;
-export type HelpSection = (typeof HELP_SECTIONS)[number];
+type HelpSection = (typeof HELP_SECTIONS)[number];
 
 const files = import.meta.glob("./topics/*.md", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 

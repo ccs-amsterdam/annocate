@@ -58,7 +58,7 @@ const COMPARE: Record<string, string> = { ">=": "≥", "<=": "≤", "===": "=", 
  * `$var.age.between(18, 65) && !$var.consent.answered` reads
  * `age between 18 and 65 and consent is not answered`.
  */
-export function readableCondition(condition: SimpleCondition, nested = false): string {
+function readableCondition(condition: SimpleCondition, nested = false): string {
   const value = (v: unknown) => (typeof v === "string" ? JSON.stringify(v) : String(v));
   switch (condition.op) {
     case "const":

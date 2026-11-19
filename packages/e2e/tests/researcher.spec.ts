@@ -33,7 +33,7 @@ test("a study from an example: the dialog, the overview note, and its results in
   expect(csvRows(files["coders.csv"])).toHaveLength(1 + 3);
 });
 
-test("your first study, as the help describes it: units, a codebook, publish, invite, code", async ({ page, request, browser }) => {
+test("your first study, as the help describes it: units, a design, deploy, a link, code", async ({ page, request, browser }) => {
   // 1. Create a study
   await page.goto("/research");
   await page.getByRole("button", { name: /Create new study/ }).click();
@@ -100,11 +100,11 @@ test("your first study, as the help describes it: units, a codebook, publish, in
   await page.getByLabel("Label").fill("Pilot coders");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("Pilot coders")).toBeVisible();
-  const [invite] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
 
   // A coder codes the three articles
   const coder = await (await browser.newContext()).newPage();
-  await coder.goto(`/code/${study.id}?link=${invite.secret}`);
+  await coder.goto(`/code/${study.id}?link=${link.secret}`);
   for (const topic of ["Disasters", "Politics", "Sports"]) {
     await question(coder, "What is this article mainly about?");
     await coder.getByRole("button", { name: new RegExp(topic) }).click();

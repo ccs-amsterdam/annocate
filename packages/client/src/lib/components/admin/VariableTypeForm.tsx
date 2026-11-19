@@ -391,7 +391,7 @@ export const VARIABLE_TYPE_LABELS: Record<AnyVariableType["type"], string> = {
   unspecified: "Not chosen yet",
 };
 
-export function defaultVariableForAnyType(type: string): AnyVariableType {
+function defaultVariableForAnyType(type: string): AnyVariableType {
   switch (type) {
     case "nominal":
       return { type: "nominal", question: "", options: [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }] };

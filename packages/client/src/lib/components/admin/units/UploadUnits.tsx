@@ -19,7 +19,7 @@ interface Csv {
 }
 
 /** A sets column (docs/plans/sets-and-session-parameters.md §1): the group it makes, and per unit (by id) its cell. */
-export interface CsvSetGroup {
+interface CsvSetGroup {
   group: string;
   cells: { externalId: string; cell: string }[];
 }

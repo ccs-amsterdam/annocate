@@ -2,15 +2,15 @@ import { z } from "zod";
 import { TopLevelItemSchema } from "./item.js";
 import { PublicInfoSchema, SessionSpecSchema } from "./session.js";
 
-// JSON Schemas of codebook items, for editors that check JSON as it is typed
-// (the codebook editor's JSON views: completion, hover texts from the
+// JSON Schemas of designs and their items, for editors that check JSON as it
+// is typed (the design editor's JSON views: completion, hover texts from the
 // schemas' descriptions, and unknown or missing fields). Validation
 // (validation.ts) remains what decides; references, names and nesting are
 // checked there, not here.
 
 type JsonSchema = Record<string, unknown>;
 
-let cached: { items: JsonSchema; item: JsonSchema; design: JsonSchema } | null = null;
+let cached: { item: JsonSchema; design: JsonSchema } | null = null;
 
 function build() {
   // Output shape: unknown fields are flagged (`additionalProperties: false`)
@@ -23,7 +23,7 @@ function build() {
     z.object({ public: PublicInfoSchema.nullable().optional(), session: SessionSpecSchema.optional(), items: z.array(TopLevelItemSchema) }).strict(),
     { io: "output", unrepresentable: "any", cycles: "ref", reused: "ref" },
   ) as JsonSchema;
-  cached = { items, item, design };
+  cached = { item, design };
   return cached;
 }
 
@@ -42,11 +42,6 @@ function dropChildren(node: unknown): void {
 /** The JSON Schema of a design as the editor's JSON view shows it: `{ public, session, items }`. */
 export function designJsonSchema(): JsonSchema {
   return (cached ?? build()).design;
-}
-
-/** The JSON Schema of a codebook's items (a list of top-level items). */
-export function designItemsJsonSchema(): JsonSchema {
-  return (cached ?? build()).items;
 }
 
 /** The JSON Schema of one item without its `children`, as the item editor shows it. */

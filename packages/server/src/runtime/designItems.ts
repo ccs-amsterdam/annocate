@@ -39,7 +39,7 @@ export function loopAgreementVariables(info: LoopInfo): string[] {
  * Whether distributing a loop's units depends on every coder's codings
  * (loaded for all coders, not only active ones): shared queues.
  */
-export function needsAllCodings(info: LoopInfo): boolean {
+function needsAllCodings(info: LoopInfo): boolean {
   return !!info.loop.units?.criteria;
 }
 

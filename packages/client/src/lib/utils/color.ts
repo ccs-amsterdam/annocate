@@ -56,7 +56,7 @@ function rgbaToHex(rgba: string): string {
 /**
  * Checks whether the environment currently has dark mode active via Tailwind's `dark` class.
  */
-export function isDarkMode(): boolean {
+function isDarkMode(): boolean {
   if (typeof document === "undefined") return false;
   return document.documentElement.classList.contains("dark");
 }

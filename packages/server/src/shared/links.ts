@@ -40,7 +40,7 @@ export function toLinkResponse(row: LinkRow): LinkResponse {
  * draft's: one per coder (unless they sign in), per value of a condition
  * assigned by link, and per combination of its link parameters' values.
  */
-export async function linksOf(db: Db, studyId: number, items: DesignItem[], live: boolean): Promise<Record<string, string>[]> {
+async function linksOf(db: Db, studyId: number, items: DesignItem[], live: boolean): Promise<Record<string, string>[]> {
   const session = sessionItem(items);
   const columns = [session?.coders?.column, ...(session?.conditions ?? []).map((c) => c.units)].filter((c): c is string => !!c);
   const sets = new Map<string, string[]>();

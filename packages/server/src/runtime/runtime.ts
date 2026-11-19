@@ -123,7 +123,7 @@ const SPECIAL = [
 type RandomVariable = Extract<VariableType, { type: "random" }>;
 
 /** How long a coder can go back after completing a session (docs/coder-identity.md §9). */
-export const REOPEN_MS = 15 * 60 * 1000;
+const REOPEN_MS = 15 * 60 * 1000;
 
 /**
  * The coder runtime of one deployed study (docs/architecture.md §3).

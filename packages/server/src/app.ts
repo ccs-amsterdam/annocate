@@ -141,7 +141,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
   api.use("/d/*", rateLimit(limiter, "coder", { memory: true }));
   api.use("/d/*", rateLimit(limiter, "coderStart", { when: (c) => !readDevice(c) }));
   api.use("/d/*", rateLimit(limiter, "transfer", { when: (c) => c.req.path.endsWith("/transfer/redeem") }));
-  // Logins, and confirming one with a passkey or a recovery code (against guessing)
+  // Logins and their callbacks (against guessing)
   for (const path of ["/auth/login", "/auth/callback"]) api.use(path, rateLimit(limiter, "login"));
   // Per account: the API key or login session (hashed: no secrets in the table), else per address.
   const accountKey = (c: Context) => {

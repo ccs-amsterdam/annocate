@@ -26,7 +26,7 @@ function get(): Theme {
   return current;
 }
 
-export function setTheme(theme: Theme): void {
+function setTheme(theme: Theme): void {
   current = theme;
   try {
     localStorage.setItem(STORAGE_KEY, theme);

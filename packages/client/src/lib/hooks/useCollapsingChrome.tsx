@@ -13,7 +13,7 @@ interface Chrome {
 const ChromeContext = createContext<Chrome>({ collapsed: false, show: () => {} });
 
 /** Whether the headers are hidden now (and a way to show them, e.g. on focus). */
-export const useChrome = () => useContext(ChromeContext);
+const useChrome = () => useContext(ChromeContext);
 
 /** How far to scroll down before the headers hide, and how much movement counts. */
 const HIDE_AFTER = 64;

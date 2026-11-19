@@ -7,7 +7,7 @@ import type { DesignVersionMeta } from "@annotinder/contracts";
  *            Preview work on.
  * - history: any other version. Read only, can be restored as the draft.
  */
-export type VersionStatus = "live" | "draft" | "history";
+type VersionStatus = "live" | "draft" | "history";
 
 export interface DesignVersions {
   liveId: number | null;

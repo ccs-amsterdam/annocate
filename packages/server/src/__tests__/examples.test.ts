@@ -56,7 +56,7 @@ describe("example studies", () => {
 
       // The researcher owns it, and it is deployed with an invitation
       expect((await researcher(`/api/study/${study.id}`)).status).toBe(200);
-      const [invite] = (await (await researcher(`/api/study/${study.id}/links`)).json()) as { secret: string }[];
+      const [link] = (await (await researcher(`/api/study/${study.id}/links`)).json()) as { secret: string }[];
       expect(
         (await (await researcher(`/api/study/${study.id}/deployment`)).json()) as { active: boolean },
       ).toMatchObject({ active: true });
@@ -76,7 +76,7 @@ describe("example studies", () => {
 
       // A coder can start
       const coder = await app.request(`/api/d/${study.id}/session`, {
-        headers: { "x-annotinder": "1", "x-link-secret": invite.secret },
+        headers: { "x-annotinder": "1", "x-link-secret": link.secret },
       });
       expect(coder.status).toBe(200);
     },

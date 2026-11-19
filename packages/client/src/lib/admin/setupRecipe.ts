@@ -13,7 +13,7 @@ export interface SetupParts {
   experiment: boolean;
 }
 
-export interface SetupExperiment {
+interface SetupExperiment {
   /** The condition's name (an `auto` question). */
   name: string;
   /** The conditions' values. */
@@ -125,7 +125,7 @@ export function questionLists(parts: SetupParts): ("before" | "unit" | "after")[
 }
 
 /** A question's name from what was typed: `How old are you?` -> `how_old_are_you`. */
-export function questionName(line: string): string {
+function questionName(line: string): string {
   return line
     .trim()
     .toLowerCase()
@@ -155,7 +155,7 @@ export function parseQuestions(lines: string[]): SetupQuestion[] {
 }
 
 /** The group the wizard puts its sets in. */
-export const WIZARD_GROUP = "sets";
+const WIZARD_GROUP = "sets";
 
 /** A set's name from a column's value: no `;` or `#`, and no leading `_` (reserved). */
 const setName = (value: string) =>
@@ -291,7 +291,7 @@ export function distributionProblems(a: SetupAnswers): string[] {
 }
 
 /** The layout's template (the editor's Layout tab refines it). */
-export function layoutTemplate(layout: SimpleLayout): string {
+function layoutTemplate(layout: SimpleLayout): string {
   return simpleTemplate(layout);
 }
 

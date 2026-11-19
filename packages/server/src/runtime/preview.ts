@@ -15,7 +15,7 @@ export function previewToken(secret: string, studyId: number, expiresAt: number)
   return `preview.${studyId}.${expiresAt}.${sign(secret, studyId, expiresAt)}`;
 }
 
-export function verifyPreviewToken(secret: string, studyId: number, token: string, now: number): boolean {
+function verifyPreviewToken(secret: string, studyId: number, token: string, now: number): boolean {
   const match = /^preview\.(\d+)\.(\d+)\.([0-9a-f]{64})$/.exec(token);
   if (!match || Number(match[1]) !== studyId || Number(match[2]) <= now) return false;
   return timingSafeEqual(Buffer.from(sign(secret, studyId, Number(match[2]))), Buffer.from(match[3]));

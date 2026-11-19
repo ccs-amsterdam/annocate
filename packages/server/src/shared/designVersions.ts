@@ -21,12 +21,12 @@ function storedItems(row: Pick<DesignVersionRow, "items">): TopLevelItem[] {
 }
 
 /** A stored design version's session (docs/plans/design.md §2): always there. */
-export function designVersionSession(row: Pick<DesignVersionRow, "session">): SessionSpec {
+function designVersionSession(row: Pick<DesignVersionRow, "session">): SessionSpec {
   return (row.session as SessionSpec | null) ?? EMPTY_SESSION;
 }
 
 /** A stored design version's public info (what coders see about the study), if any. */
-export function designVersionPublic(row: Partial<Pick<DesignVersionRow, "public">>): PublicInfo | null {
+function designVersionPublic(row: Partial<Pick<DesignVersionRow, "public">>): PublicInfo | null {
   return (row.public as PublicInfo | null | undefined) ?? null;
 }
 

@@ -42,8 +42,6 @@ export interface FromStage {
 
 /** How a typed block (`::: text|markdown|html|image [name]`) shows its content. */
 export type DisplayKind = "text" | "markdown" | "html" | "image";
-export const DISPLAY_KINDS: readonly DisplayKind[] = ["text", "markdown", "html", "image"];
-
 /**
  * A typed block: its content, with values put in as they are, shown as one
  * kind; with a name, the element is marked with it (`data-field`), so a

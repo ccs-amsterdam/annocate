@@ -18,7 +18,7 @@ const ACTIVITY_DAYS = 30;
  * Coder id -> units finished, per loop of the live codebook: every question
  * of the loop has a live answer (the rule of `listFinished`).
  */
-export async function finishedPerLoop(db: Db, studyId: number): Promise<Map<string, Map<number, number>>> {
+async function finishedPerLoop(db: Db, studyId: number): Promise<Map<string, Map<number, number>>> {
   const result = new Map<string, Map<number, number>>();
   const deployment = await getDeployment(db, studyId);
   if (!deployment) return result;

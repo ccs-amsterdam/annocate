@@ -325,7 +325,7 @@ const routeTree = rootRoute.addChildren([
   codeRoute,
 ]);
 
-export const router = createRouter({
+const router = createRouter({
   routeTree,
   // Plain query strings: values stay strings, as typed in a link
   parseSearch: (searchStr) => Object.fromEntries(new URLSearchParams(searchStr)),

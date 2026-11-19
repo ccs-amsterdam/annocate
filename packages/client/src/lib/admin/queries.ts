@@ -46,7 +46,7 @@ import type { ResearcherApi } from "../api/httpResearcherApi";
  * ancestor (see `AdminApp.tsx`, which supplies its own by default).
  */
 
-export const keys = {
+const keys = {
   studies: ["admin", "studies"] as const,
   examples: ["admin", "examples"] as const,
   study: (id?: number) => ["admin", "study", id ?? "current"] as const,

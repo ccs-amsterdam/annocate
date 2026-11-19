@@ -8,7 +8,7 @@ export type LoopTab = "layout" | "units";
 let current: LoopTab = "layout";
 const listeners = new Set<() => void>();
 
-export function setLoopTab(tab: LoopTab): void {
+function setLoopTab(tab: LoopTab): void {
   current = tab;
   listeners.forEach((l) => l());
 }

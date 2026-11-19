@@ -75,7 +75,7 @@ const question = (name: string) => ({
 });
 
 /** A study with two units and a one-question loop, deployed; returns its id. */
-async function setUpStudy(key: string): Promise<{ studyId: number; unitIds: number[]; invite: string }> {
+async function setUpStudy(key: string): Promise<{ studyId: number; unitIds: number[]; linkSecret: string }> {
   const study = (await call(key, "createStudy", {}, { name: "From R" })).data;
   const units = (
     await call(
@@ -110,17 +110,17 @@ async function setUpStudy(key: string): Promise<{ studyId: number; unitIds: numb
   ).data;
   expect((await call(key, "putDeployment", { studyId: study.id }, { designVersionId: codebook.id })).status).toBe(200);
   // Deploying made the study's link
-  const [invite] = (await call(key, "listLinks", { studyId: study.id })).data;
-  return { studyId: study.id, unitIds: units.map((u) => u.id), invite: invite.secret };
+  const [link] = (await call(key, "listLinks", { studyId: study.id })).data;
+  return { studyId: study.id, unitIds: units.map((u) => u.id), linkSecret: link.secret };
 }
 
 /** A coder (own session cookie) who codes every unit of the loop with `answer`. */
-async function code(studyId: number, invite: string, answer: string): Promise<void> {
+async function code(studyId: number, linkSecret: string, answer: string): Promise<void> {
   let cookie = "";
   const send = async (path: string, init: RequestInit = {}) => {
     const res = await app.request(`/api/d/${studyId}${path}`, {
       ...init,
-      headers: { "content-type": "application/json", "x-annotinder": "1", "x-link-secret": invite, cookie },
+      headers: { "content-type": "application/json", "x-annotinder": "1", "x-link-secret": linkSecret, cookie },
     });
     const [set] = res.headers.getSetCookie();
     if (set) cookie = set.split(";")[0];
@@ -210,9 +210,9 @@ describe("studies and roles", () => {
 describe("downloading annotations", () => {
   it("pages through every value in the order written, with unit and coder ids", async () => {
     const key = await keyFor("r@uni.nl");
-    const { studyId, unitIds, invite } = await setUpStudy(key);
-    await code(studyId, invite, "yes");
-    await code(studyId, invite, "no");
+    const { studyId, unitIds, linkSecret } = await setUpStudy(key);
+    await code(studyId, linkSecret, "yes");
+    await code(studyId, linkSecret, "no");
 
     const rows = [];
     let after: number | null = null;
@@ -241,8 +241,8 @@ describe("downloading annotations", () => {
 
   it("leaves out reset values unless asked for", async () => {
     const key = await keyFor("r@uni.nl");
-    const { studyId, unitIds, invite } = await setUpStudy(key);
-    await code(studyId, invite, "yes");
+    const { studyId, unitIds, linkSecret } = await setUpStudy(key);
+    await code(studyId, linkSecret, "yes");
     // Resetting answers is sensitive: a web session, not the key
     const reset = await call(
       await sessionFor("r@uni.nl"),

@@ -67,12 +67,12 @@ beforeEach(async () => {
  * Simulated browsers, by name: their cookies, and the link they were
  * opened with (a reload sends it again, like the client does from the URL).
  */
-let devices = new Map<string, { cookies: Map<string, string>; invite: string | null }>();
+let devices = new Map<string, { cookies: Map<string, string>; linkSecret: string | null }>();
 
 /** A request from a device: sends its cookies and the client header, keeps cookies it is given. */
 async function send(name: string, path: string, init: RequestInit = {}, headers: Record<string, string> = {}, app = () => server) {
   let device = devices.get(name);
-  if (!device) devices.set(name, (device = { cookies: new Map(), invite: null }));
+  if (!device) devices.set(name, (device = { cookies: new Map(), linkSecret: null }));
   const cookie = [...device.cookies].map(([k, v]) => `${k}=${v}`).join("; ");
   const res = await app().request(`/api/d/1${path}`, {
     ...init,
@@ -93,12 +93,12 @@ async function send(name: string, path: string, init: RequestInit = {}, headers:
 }
 
 /** A coder on device `name`, opened with `link` (`null`: the link the device was opened with before, if any). */
-function coder(name: string, invite: string | null = "demo-secret", app = () => server) {
-  if (!devices.has(name)) devices.set(name, { cookies: new Map(), invite: null });
+function coder(name: string, linkSecret: string | null = "demo-secret", app = () => server) {
+  if (!devices.has(name)) devices.set(name, { cookies: new Map(), linkSecret: null });
   const device = devices.get(name)!;
-  if (invite !== null) device.invite = invite;
+  if (linkSecret !== null) device.linkSecret = linkSecret;
   const call = (path: string, init?: RequestInit) =>
-    send(name, path, init, device.invite ? { "x-link-secret": device.invite } : {}, app);
+    send(name, path, init, device.linkSecret ? { "x-link-secret": device.linkSecret } : {}, app);
   return {
     session: async () => (await call("/session")).json() as Promise<SessionResponse>,
     next: async (loop = "1") => {
@@ -458,7 +458,7 @@ describe("coders", () => {
     expect(await (await send("anon", "/session", {}, { "x-link-secret": secret })).json()).toMatchObject({ code: "auth_required" });
     const login = async (device: string, email: string) => {
       const user = await ensureUser(db, email);
-      devices.set(device, { cookies: new Map([["annotinder_session", await createSession(db, user.id, CODER_LOGIN)]]), invite: null });
+      devices.set(device, { cookies: new Map([["annotinder_session", await createSession(db, user.id, CODER_LOGIN)]]), linkSecret: null });
     };
     await login("stranger", "c@example.org");
     expect(await (await send("stranger", "/session", {}, { "x-link-secret": secret })).json()).toMatchObject({ code: "email_not_allowed" });
@@ -589,7 +589,7 @@ describe("computed items linked to a column", () => {
 describe("assignment edge cases (review of the unit assignment)", () => {
   const login = async (device: string, email: string) => {
     const user = await ensureUser(db, email);
-    devices.set(device, { cookies: new Map([["annotinder_session", await createSession(db, user.id, CODER_LOGIN)]]), invite: null });
+    devices.set(device, { cookies: new Map([["annotinder_session", await createSession(db, user.id, CODER_LOGIN)]]), linkSecret: null });
   };
 
   it("a shared queue counts leases across shares: a unit in two conditions goes to one coder only", async () => {
@@ -1222,7 +1222,7 @@ describe("coder login", () => {
   /** A device logged in as this email (the researcher login's session cookie). */
   async function loggedIn(device: string, email: string) {
     const user = await ensureUser(db, email);
-    devices.set(device, { cookies: new Map([["annotinder_session", await createSession(db, user.id, CODER_LOGIN)]]), invite: null });
+    devices.set(device, { cookies: new Map([["annotinder_session", await createSession(db, user.id, CODER_LOGIN)]]), linkSecret: null });
   }
   const session = async (device: string, secret: string | null) => {
     const res = await send(device, "/session", {}, secret ? { "x-link-secret": secret } : {});
@@ -1287,7 +1287,7 @@ describe("sessions across devices", () => {
     await phone.submit(unit!.id, demo("neutral"));
 
     const transfer = (await (await phone.call("/transfer", { method: "POST" })).json()) as { token: string };
-    // The link carries no invite: the laptop gets the session cookie for that.
+    // The link carries no secret: the laptop gets the session cookie for that.
     const redeem = () => send("laptop", "/transfer/redeem", { method: "POST", body: JSON.stringify({ token: transfer.token }) });
     const redeemed = await redeem();
     expect(redeemed.status).toBe(200);

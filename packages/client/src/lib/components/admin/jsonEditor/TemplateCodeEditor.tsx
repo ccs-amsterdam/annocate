@@ -12,4 +12,4 @@ export function TemplateCodeEditor(props: MonacoTemplateProps) {
   );
 }
 
-export type { TemplateEditorApi, TemplateNames } from "./MonacoTemplate";
+export type { TemplateEditorApi } from "./MonacoTemplate";

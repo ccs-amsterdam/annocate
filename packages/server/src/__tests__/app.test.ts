@@ -372,9 +372,9 @@ describe("links, coder progress and overview", () => {
 
   it("reports coder progress and the overview from live answers", async () => {
     const { units, resolve, put, get } = await setup(batches(["batch 1"]));
-    const [invite] = await get("/links");
-    const coderA = await resolve("a", invite.secret);
-    await resolve("b", invite.secret);
+    const [link] = await get("/links");
+    const coderA = await resolve("a", link.secret);
+    await resolve("b", link.secret);
     await put(coderA.coderId, units[0].id, { q1: value("x"), q2: value("y") });
     await put(coderA.coderId, units[1].id, { q1: value("x") });
 

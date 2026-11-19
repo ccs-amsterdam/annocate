@@ -5,7 +5,7 @@ import { editorTheme, monaco, SCROLLBAR } from "./monacoSetup";
 import { useTheme } from "../../../context/theme";
 
 /** What a unit template can refer to, for completions. */
-export interface TemplateNames {
+interface TemplateNames {
   /** The study's unit fields. */
   fields: string[];
   /** The loop's snippets. */

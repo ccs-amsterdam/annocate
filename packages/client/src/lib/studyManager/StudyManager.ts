@@ -25,21 +25,21 @@ import { renderTemplate, staticTemplate, type RenderedTemplate } from "../codebo
 import type { QuestionTexts } from "../components/Question";
 import { QuestionTimer } from "./timing";
 
-export type StudyManagerPhase =
+type StudyManagerPhase =
   | "loading"
   | "user_variable"
   | "unit_variable"
   | "finished"
   | "error";
 
-export interface NavigationUnitItem {
+interface NavigationUnitItem {
   index: number;
   id: number;
   externalId: string;
   isCurrent: boolean;
 }
 
-export interface NavigationUnitQuestion {
+interface NavigationUnitQuestion {
   index: number;
   name: string;
   label: string;

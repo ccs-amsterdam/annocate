@@ -13,7 +13,7 @@ export function columnValues(groups: readonly SetGroupResponse[], column: string
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** How coders get in: every value an email address (one link, sign in), none (a link per coder), or a mix (an error). */
-export type CoderKind = "emails" | "names" | "mixed" | "none";
+type CoderKind = "emails" | "names" | "mixed" | "none";
 
 export interface CoderSummary {
   kind: CoderKind;

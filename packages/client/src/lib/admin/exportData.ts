@@ -617,7 +617,7 @@ may run such text as a formula.
  * `+`, `-` or `@` (or a tab or carriage return), unless it is a number
  * (`-3`, `+1.5e3`). OWASP's "CSV injection".
  */
-export const looksLikeFormula = (v: string) => /^[=+\-@\t\r]/.test(v) && !/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(v);
+const looksLikeFormula = (v: string) => /^[=+\-@\t\r]/.test(v) && !/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(v);
 
 /**
  * A table as CSV (RFC 4180 quoting), with a byte order mark so spreadsheet

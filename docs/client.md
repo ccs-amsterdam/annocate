@@ -536,7 +536,7 @@ from the Preview Study button. It uses a `ResearcherApi`
     than YAML: the structure is explicit (no indentation to get right in a
     browser), and the editor (Monaco, bundled and loaded only with the
     editor: `jsonEditor/`) completes and checks it against the codebook's
-    JSON Schema (contracts `designItemsJsonSchema`), with the schemas'
+    JSON Schema (contracts `designJsonSchema`), with the schemas'
     descriptions on hover. Formatting (`design/jsonFormat.ts`) keeps small
     objects on one line (an option: `{ "value": "neg", "label": "Negative" }`)
     and puts keys in reading order (`name`, `type`, `value`, `label` first,
