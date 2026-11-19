@@ -65,6 +65,7 @@ checkout finds it itself).
 | `PGPOOL_MAX` | Database connections per server process (default 20) |
 | `PGLITE_DIR` | Without `DATABASE_URL`: where the PGlite database lives (development; default `.pglite` in `packages/server`) |
 | `ANNOTINDER_CLIENT_DIR` | The built client; set in the image |
+| `ANNOTINDER_GUIDE_DIR` | The help topics and glossary the MCP server gives AI assistants (`api/mcp.md`); set in the image. Without it, read from the checkout |
 | `ANNOTINDER_DEMO` | `1`: an empty database gets the demo study. Development only |
 | `AUTH_DEV_MODE` | `1`: development auth headers instead of a login. The server refuses to start unless it listens on localhost only. **Never for a server other people use** |
 

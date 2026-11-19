@@ -8,6 +8,7 @@ import {
   StudyFromExampleSchema,
 } from "../study.js";
 import { RecipeSchema } from "../recipe.js";
+import { ConnectionSchema, OAuthApproveSchema, OAuthRedirectSchema, OAuthRequestInfoSchema } from "../oauth.js";
 import { DesignWriteSchema, DesignVersionSchema, DesignVersionMetaSchema } from "../design/designVersion.js";
 import { UnitsCreateBodySchema, UnitMetaSchema, UnitPageSchema, UnitResponseSchema } from "../unit.js";
 import { UnitFieldSchema, UnitsSpecSchema } from "../unitFields.js";
@@ -77,6 +78,20 @@ export const researcherEndpoints = {
   createApiKey: { method: "POST", path: "/me/keys", request: ApiKeyWriteSchema, response: ApiKeyCreatedSchema },
   /** Sensitive, as createApiKey. */
   revokeApiKey: { method: "POST", path: "/me/keys/:id/revoke", request: z.void(), response: ApiKeyResponseSchema },
+  /** AI assistants connected to the researcher's studies (docs/api/mcp.md). */
+  listConnections: { method: "GET", path: "/me/connections", request: z.void(), response: z.array(ConnectionSchema) },
+  /** Disconnects an assistant: its tokens stop working at once. */
+  revokeConnection: { method: "POST", path: "/me/connections/:id/revoke", request: z.void(), response: z.void() },
+  /** The consent page: an authorization request waiting for the researcher (docs/api/mcp.md). */
+  getOAuthRequest: { method: "GET", path: "/oauth/requests/:id", request: z.void(), response: OAuthRequestInfoSchema },
+  /** Sensitive (a recent second factor): allows the client for one study the researcher may edit. */
+  approveOAuthRequest: {
+    method: "POST",
+    path: "/oauth/requests/:id/approve",
+    request: OAuthApproveSchema,
+    response: OAuthRedirectSchema,
+  },
+  denyOAuthRequest: { method: "POST", path: "/oauth/requests/:id/deny", request: z.void(), response: OAuthRedirectSchema },
 
   listStudies: { method: "GET", path: "/study", request: z.void(), response: z.array(StudyResponseSchema) },
   createStudy: { method: "POST", path: "/study", request: StudyWriteSchema, response: StudyResponseSchema },

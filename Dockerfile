@@ -21,9 +21,13 @@ ARG ANNOTINDER_COMMIT=unknown
 WORKDIR /app
 COPY --from=build /out ./
 COPY --from=build /src/packages/client/dist ./client
+# What AI assistants read about designing (docs/api/mcp.md): the help topics and the glossary
+COPY --from=build /src/packages/client/src/lib/help/topics ./guide/topics
+COPY --from=build /src/docs/glossary.md ./guide/glossary.md
 ENV NODE_ENV=production \
     PORT=8787 \
     ANNOTINDER_CLIENT_DIR=/app/client \
+    ANNOTINDER_GUIDE_DIR=/app/guide \
     ANNOTINDER_COMMIT=$ANNOTINDER_COMMIT
 USER node
 EXPOSE 8787

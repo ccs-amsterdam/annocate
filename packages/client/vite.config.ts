@@ -17,6 +17,8 @@ export default defineConfig({
     // its paths (coder API, researcher API, admin API, login) to it.
     proxy: {
       "^/api(/|\\?|$)": process.env.SERVER_URL ?? "http://localhost:8787",
+      // OAuth discovery for AI assistants (docs/api/mcp.md)
+      "^/\\.well-known/(oauth-|openid-)": process.env.SERVER_URL ?? "http://localhost:8787",
     },
   },
 });

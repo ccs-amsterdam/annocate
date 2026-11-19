@@ -50,6 +50,30 @@ actions above (403 `not_with_api_key`). A key counts as having the second
 factor for everything else. The server's operator can make one on the
 command line (`pnpm keys create`).
 
+**AI assistants** (`api/mcp.md`): a researcher can connect an assistant to
+one study they may edit, on a consent page that needs a fresh second factor
+(step-up, as above; never with an API key). AnnoTinder is the OAuth server
+for it, for public clients only (PKCE `S256`, exact redirect URIs). Its tokens:
+
+- are stored only as hashes, bound to the user, client, study, scopes and
+  resource (`/api/mcp`), and work nowhere else: not on the researcher API
+  (`amcp_` tokens, unlike `atk_` keys), not for any other study;
+- read the design and save drafts only: never deploy, never units, coders,
+  answers or links;
+- last an hour (refresh tokens 30 days, replaced on every use); a code or
+  old refresh token used twice revokes the whole connection;
+- stop working when the user can no longer edit the study or is blocked;
+- are listed and revoked by the user (*Connected assistants*).
+
+Clients identified by a URL (client ID metadata documents) are fetched by
+the server: only from public addresses (no loopback, private or link-local
+ranges), no redirects, at most 64 KB, 5 seconds. The address is checked
+before connecting, so a host whose DNS changes between the check and the
+connection (DNS rebinding) could still reach an internal address once; the
+answer must then still be a valid metadata document to be used. Registering
+clients (`/api/oauth/register`) is rate limited (§3). Connecting and
+disconnecting are written to `security_log`.
+
 **Development mode** (`AUTH_DEV_MODE=1`): development headers
 (`x-dev-role`, `x-dev-email`) instead of a login. The server refuses to
 start in development mode unless it listens on localhost only (`HOST`).
@@ -118,6 +142,8 @@ timings are for that, `coder-identity.md` §10). Per minute
 | Redeeming "continue on another device" tokens | address | 30 |
 | Logging in | address | 60 |
 | The researcher API | account (API key or login), else address | 1200 |
+| Registering OAuth clients (AI assistants, `api/mcp.md`) | address | 10 |
+| The other OAuth endpoints and the MCP server | address | 600 |
 | All coder requests (in memory, per process) | address | 10,000 |
 
 A class or lab behind one address (hundreds of coders at once) stays well

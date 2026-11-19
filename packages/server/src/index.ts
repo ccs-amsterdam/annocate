@@ -100,6 +100,8 @@ const app = createApp(db, {
   https,
   rateLimits,
   trustProxy,
+  // What AI assistants read about designing (docs/api/mcp.md): the image's copy, else the checkout's
+  ...(process.env.ANNOTINDER_GUIDE_DIR ? { guideDir: process.env.ANNOTINDER_GUIDE_DIR } : {}),
 });
 
 const server = serve({ fetch: app.fetch, port, ...(host ? { hostname: host } : {}) }, (info) => {

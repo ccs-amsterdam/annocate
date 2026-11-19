@@ -23,6 +23,10 @@ export interface Server {
   admins: readonly string[];
   /** How recent (seconds) a login's second factor must be for sensitive actions (`AUTH_STEP_UP_MAX_AGE`, default 600). */
   stepUpMaxAge: number;
+  /** Fetches AI assistants' client metadata documents (oauth.ts; tests replace it). */
+  fetchClientMetadata: (url: string) => Promise<Response>;
+  /** The help topics and glossary served to AI assistants (mcpGuide.ts); null: none. */
+  guideDir: string | null;
 }
 
 /** Hono context variables, set by the auth middleware. */

@@ -24,6 +24,7 @@ import { useTheme } from "./lib/context/theme";
 import { WelcomePage } from "./pages/WelcomePage";
 import { CodeHomePage } from "./pages/CodeHomePage";
 import { CodePage } from "./pages/CodePage";
+import { ConnectPage } from "./pages/ConnectPage";
 import { Logo, LogoSmoke } from "./components/Logo";
 import { Popover, PopoverContent, PopoverTrigger } from "./components/ui/popover";
 
@@ -235,6 +236,7 @@ function ResearchPage({ location }: { location: AdminLocation }) {
 function ResearchLayout() {
   const { pathname, search } = useLocation();
   const parts = pathname.replace(/\/+$/, "").split("/").slice(2);
+  if (parts[0] === "connect") return <ConnectRoute requestId={(search as StringSearch).request ?? ""} />;
   let location: AdminLocation = { page: "studies" };
   if (parts[0] === "admin") location = { page: "server" };
   else if (parts[0] === "studies" && Number(parts[1]) > 0) {
@@ -247,6 +249,24 @@ function ResearchLayout() {
     };
   }
   return <ResearchPage location={location} />;
+}
+
+/** The consent page for an AI assistant (docs/api/mcp.md): behind the researcher login, as the rest of /research. */
+function ConnectRoute({ requestId }: { requestId: string }) {
+  const researcher = useResearcher();
+  return (
+    <WithHeader>
+      {!researcher.state ? (
+        <div className="flex h-full min-h-[300px] items-center justify-center p-8">
+          <LogoSmoke label="Loading…" />
+        </div>
+      ) : researcher.dev ? (
+        <ConnectPage client={devApi} requestId={requestId} />
+      ) : (
+        <ResearcherGate client={sessionApi}>{() => <ConnectPage client={sessionApi} requestId={requestId} />}</ResearcherGate>
+      )}
+    </WithHeader>
+  );
 }
 
 /** Search parameters as plain strings (a participant id "007" stays "007"). */
@@ -267,6 +287,7 @@ const welcomeRoute = createRoute({
 const researchRoute = createRoute({ getParentRoute: () => rootRoute, path: "/research", component: ResearchLayout });
 const researchIndexRoute = createRoute({ getParentRoute: () => researchRoute, path: "/" });
 const serverAdminRoute = createRoute({ getParentRoute: () => researchRoute, path: "/admin" });
+const connectRoute = createRoute({ getParentRoute: () => researchRoute, path: "/connect", validateSearch: stringSearch });
 const studyRoute = createRoute({
   getParentRoute: () => researchRoute,
   path: "/studies/$studyId",
@@ -320,7 +341,7 @@ const codeRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   welcomeRoute,
-  researchRoute.addChildren([researchIndexRoute, serverAdminRoute, studyRoute, studyTabRoute]),
+  researchRoute.addChildren([researchIndexRoute, serverAdminRoute, connectRoute, studyRoute, studyTabRoute]),
   codeHomeRoute,
   codeRoute,
 ]);

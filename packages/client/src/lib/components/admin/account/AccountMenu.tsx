@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import type { ApiKeyCreated, ApiKeyResponse, MeResponse } from "@annotinder/contracts";
+import type { ApiKeyCreated, ApiKeyResponse, Connection, MeResponse } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { KeyRound, LogIn, LogOut, Moon, Sun, UserCircle } from "lucide-react";
+import { Bot, KeyRound, LogIn, LogOut, Moon, Sun, UserCircle } from "lucide-react";
 import { useTheme } from "../../../context/theme";
 
 /**
@@ -28,6 +28,7 @@ export function AccountMenu({
   onLoggedOut?: () => void;
 }) {
   const [keysOpen, setKeysOpen] = useState(false);
+  const [connectionsOpen, setConnectionsOpen] = useState(false);
   const [theme, setTheme] = useTheme();
 
   async function logOut() {
@@ -87,6 +88,11 @@ export function AccountMenu({
               <KeyRound className="h-4 w-4" /> API keys
             </Button>
           )}
+          {me && (
+            <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={() => setConnectionsOpen(true)}>
+              <Bot className="h-4 w-4" /> Connected assistants
+            </Button>
+          )}
           {me && !dev && (
             <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={logOut}>
               <LogOut className="h-4 w-4" /> Log out
@@ -100,7 +106,63 @@ export function AccountMenu({
         </PopoverContent>
       </Popover>
       {keysOpen && <ApiKeysDialog client={client} onClose={() => setKeysOpen(false)} />}
+      {connectionsOpen && <ConnectionsDialog client={client} onClose={() => setConnectionsOpen(false)} />}
     </>
+  );
+}
+
+/** The AI assistants the researcher connected to a study (docs/api/mcp.md), to disconnect them. */
+function ConnectionsDialog({ client, onClose }: { client: ResearcherApi; onClose: () => void }) {
+  const [connections, setConnections] = useState<Connection[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const reload = useCallback(
+    () =>
+      client
+        .listConnections()
+        .then(setConnections)
+        .catch((err: unknown) => setError(String(err))),
+    [client],
+  );
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  async function disconnect(id: number) {
+    if (!confirm("Disconnect this assistant? It can no longer read or edit the study.")) return;
+    await client.revokeConnection(id).catch((err: unknown) => setError(String(err)));
+    await reload();
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Connected assistants</DialogTitle>
+          <DialogDescription>
+            AI assistants you allowed to read and edit a study's design. They save drafts only: you deploy them yourself.
+          </DialogDescription>
+        </DialogHeader>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+        <ul className="flex flex-col divide-y divide-border text-xs">
+          {connections?.map((c) => (
+            <li key={c.id} className="flex items-center justify-between gap-2 py-2">
+              <span>
+                <span className="font-medium">{c.client.name}</span> <span className="text-muted-foreground">on</span>{" "}
+                <span className="font-medium">{c.study.name}</span>
+                <span className="block text-muted-foreground">
+                  {c.scopes.includes("design:edit") ? "reads and edits the design" : "reads the design"} · connected{" "}
+                  {new Date(c.created).toLocaleDateString()} · last used {c.lastUsed ? new Date(c.lastUsed).toLocaleDateString() : "never"}
+                </span>
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => disconnect(c.id)}>
+                Disconnect
+              </Button>
+            </li>
+          ))}
+          {connections?.length === 0 && <li className="py-2 text-muted-foreground">No assistants connected.</li>}
+        </ul>
+      </DialogContent>
+    </Dialog>
   );
 }
 

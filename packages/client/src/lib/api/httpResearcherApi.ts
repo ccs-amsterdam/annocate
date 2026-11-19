@@ -41,6 +41,9 @@ import {
   type UnitVersionsQuery,
   type AnnotationsQuery,
   type AuthOptions,
+  type Connection,
+  type OAuthRedirect,
+  type OAuthRequestInfo,
 } from "@annotinder/contracts";
 
 /** A failed researcher API request, with its HTTP status (401: not logged in, 403: no role in the study). */
@@ -105,6 +108,13 @@ export interface ResearcherApi {
   /** A new API key: `key` is returned only this once. */
   createApiKey(label: string): Promise<ApiKeyCreated>;
   revokeApiKey(id: number): Promise<ApiKeyResponse>;
+  /** AI assistants connected to the researcher's studies (docs/api/mcp.md). */
+  listConnections(): Promise<Connection[]>;
+  revokeConnection(id: number): Promise<void>;
+  /** The consent page for an AI assistant's authorization request. */
+  getOAuthRequest(id: string): Promise<OAuthRequestInfo>;
+  approveOAuthRequest(id: string, studyId: number): Promise<OAuthRedirect>;
+  denyOAuthRequest(id: string): Promise<OAuthRedirect>;
 
   listStudies(): Promise<StudyResponse[]>;
   getStudy(id?: number): Promise<StudyResponse | null>;
@@ -294,6 +304,29 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async revokeApiKey(id: number): Promise<ApiKeyResponse> {
     return this.request(researcherEndpoints.revokeApiKey.path.replace(":id", String(id)), { method: "POST" });
+  }
+
+  async listConnections(): Promise<Connection[]> {
+    return this.request(researcherEndpoints.listConnections.path);
+  }
+
+  async revokeConnection(id: number): Promise<void> {
+    return this.request(researcherEndpoints.revokeConnection.path.replace(":id", String(id)), { method: "POST" });
+  }
+
+  async getOAuthRequest(id: string): Promise<OAuthRequestInfo> {
+    return this.request(researcherEndpoints.getOAuthRequest.path.replace(":id", encodeURIComponent(id)));
+  }
+
+  async approveOAuthRequest(id: string, studyId: number): Promise<OAuthRedirect> {
+    return this.request(researcherEndpoints.approveOAuthRequest.path.replace(":id", encodeURIComponent(id)), {
+      method: "POST",
+      body: JSON.stringify({ studyId }),
+    });
+  }
+
+  async denyOAuthRequest(id: string): Promise<OAuthRedirect> {
+    return this.request(researcherEndpoints.denyOAuthRequest.path.replace(":id", encodeURIComponent(id)), { method: "POST" });
   }
 
   async listAnnotations(query: AnnotationsQuery = {}): Promise<AnnotationPage> {

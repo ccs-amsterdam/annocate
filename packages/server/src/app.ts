@@ -41,6 +41,10 @@ import { sets } from "./researcher/sets.js";
 import { unitsFields } from "./researcher/units.fields.js";
 import { unitsPage } from "./researcher/units.page.js";
 import { units } from "./researcher/units.js";
+import { designJsonSchema } from "@annotinder/contracts";
+import { fetchPublic, oauth, oauthDiscovery } from "./oauth.js";
+import { mcp } from "./mcp.js";
+import { defaultGuideDir } from "./mcpGuide.js";
 
 export interface AppOptions {
   /** Signs preview tokens. Random per process if not given (previews then end with a restart). */
@@ -78,6 +82,10 @@ export interface AppOptions {
   rateLimits?: Partial<RateLimits>;
   /** Behind a proxy that sets X-Forwarded-For (`ANNOTINDER_TRUST_PROXY`): the client's address comes from it. */
   trustProxy?: boolean;
+  /** Tests: how AI assistants' client metadata documents are fetched (default: public addresses only, oauth.ts). */
+  fetchClientMetadata?: (url: string) => Promise<Response>;
+  /** The help topics and glossary for AI assistants (`ANNOTINDER_GUIDE_DIR`, mcpGuide.ts); default: the checkout's; null: none. */
+  guideDir?: string | null;
 }
 
 /**
@@ -103,6 +111,8 @@ export function createApp(db: Sql, options: AppOptions = {}) {
     secret,
     admins: (options.admins ?? []).map((e) => e.trim().toLowerCase()).filter(Boolean),
     stepUpMaxAge: options.stepUpMaxAge ?? 600,
+    fetchClientMetadata: options.fetchClientMetadata ?? fetchPublic,
+    guideDir: options.guideDir === undefined ? defaultGuideDir() : options.guideDir,
   };
 
   const app = new Hono<Env>();
@@ -133,6 +143,8 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   api.use("/study/*", bodyLimit({ maxSize: 256 * 1024 * 1024, onError: tooLarge }));
   api.use("/admin/*", bodyLimit({ maxSize: 1024 * 1024, onError: tooLarge }));
   api.use("/me/*", bodyLimit({ maxSize: 64 * 1024, onError: tooLarge }));
+  api.use("/oauth/*", bodyLimit({ maxSize: 64 * 1024, onError: tooLarge }));
+  api.use("/mcp", bodyLimit({ maxSize: 16 * 1024 * 1024, onError: tooLarge }));
 
   // Rate limits (docs/security.md): generous, against floods and guessing.
   const limiter = options.rateLimits
@@ -149,8 +161,16 @@ export function createApp(db: Sql, options: AppOptions = {}) {
     return credential ? `account:${createHash("sha256").update(credential).digest("hex").slice(0, 32)}` : null;
   };
   // ("/study/*" also matches "/study")
-  for (const path of ["/study/*", "/me/*", "/admin/*"])
+  for (const path of ["/study/*", "/me/*", "/admin/*", "/oauth/requests/*"])
     api.use(path, rateLimit(limiter, "researcher", { key: accountKey }));
+  // AI assistants (docs/api/mcp.md): registering, authorizing, tokens, the MCP endpoint
+  api.use("/oauth/register", rateLimit(limiter, "oauthRegister"));
+  for (const path of ["/oauth/authorize", "/oauth/token", "/oauth/revoke", "/mcp"]) api.use(path, rateLimit(limiter, "oauth"));
+  // Clients may run in a browser (CORS); they send no cookies, only tokens
+  for (const path of ["/oauth/register", "/oauth/token", "/oauth/revoke", "/mcp", "/schema/*"])
+    api.use(path, cors({ exposeHeaders: ["WWW-Authenticate"] }));
+  // The design's JSON Schema, for anyone writing designs (docs/api/mcp.md)
+  api.get("/schema/design.json", (c) => c.json(designJsonSchema()));
 
   // Coder API (coder.ts): same origin as the client, no CORS.
   api.use("/coder/*", rateLimit(limiter, "coder", { memory: true }));
@@ -185,11 +205,16 @@ export function createApp(db: Sql, options: AppOptions = {}) {
     deploymentPreview,
     annotationsReset,
     annotations,
+    oauth,
+    mcp,
   ])
     api.route("/", routes(server));
   // Anything else under /api: not found, as JSON (never the app)
   api.all("*", (c) => c.json({ error: "Not found" }, 404));
   app.route("/api", api);
+  // OAuth discovery for AI assistants, at the origin's root (RFC 8414, RFC 9728)
+  app.use("/.well-known/*", cors());
+  app.route("/", oauthDiscovery(server));
 
   if (options.clientDir) {
     const root = options.clientDir;

@@ -2,7 +2,7 @@
 
 Annotinder has two parts: the **client** (browser) and the **server**
 (TypeScript, `packages/server`; stores everything and runs the studies). The
-server serves two APIs.
+server serves three APIs, and an MCP server for AI assistants.
 
 ```
  ┌─────────────────────────────────┐   ┌──────────────────────────────┐
@@ -22,6 +22,7 @@ server serves two APIs.
 | **researcher API** | client: researcher UI (`ResearcherApi`); scripts (R, Python); other systems | managing studies: codebooks, units, links, deploying, progress | `researcherEndpoints` | [researcher.md](researcher.md) |
 | **coder API** | client: coding screen (`HttpCoderApi`, `StudyManager`) | coding: session, next unit, submitting answers | `coderEndpoints` | [coder.md](coder.md) |
 | **admin API** | client: server admin page (`ServerApi`) | accounts: roles, registration, plans and limits, blocking, suspending studies | `adminEndpoints` | [admin.md](admin.md) |
+| **MCP server** | AI assistants (Claude, ChatGPT, IDE agents) a researcher connected to one study | reading a design, saving drafts of it (never deploying) | `/api/mcp` (JSON-RPC), `/api/oauth/...` | [mcp.md](mcp.md) |
 
 The registries are in `packages/contracts/src/endpoints/`: one file per API,
 each entry `{ method, path, request, response }` with zod schemas.
@@ -35,6 +36,7 @@ app (its pages, e.g. `/research/...` and `/code/...`).
 
 - **The server** (`packages/server`): the researcher API in
   `src/researcher/` (one file per path), the coder API in `src/coder.ts`,
+  the MCP server in `src/mcp.ts` (with OAuth in `src/oauth.ts`),
   with the runtime in `src/runtime/` doing the work.
 - **The client** (`packages/client`) calls the researcher API
   (`api/httpResearcherApi.ts`) and the coder API (`api/httpCoderApi.ts`).
@@ -45,6 +47,7 @@ app (its pages, e.g. `/research/...` and `/code/...`).
 |---|---|
 | researcher API | The session cookie from logging in (same origin, with `x-annotinder: 1`), or a personal API key (`authorization: Bearer <key>`, also from other origins: CORS is allowed). The user's role per study is `READ`, `WRITE` or `ADMIN`. Development servers (`AUTH_DEV_MODE=1`, localhost only) also accept `x-dev-role` / `x-dev-email` headers. See [researcher.md](researcher.md). |
 | coder API | A session cookie the server sets (httpOnly, same origin as the client), created from a link secret. No CORS. [coder.md#sessions-and-headers](coder.md#sessions-and-headers) |
+| MCP server | OAuth access tokens (`authorization: Bearer amcp_a_...`) for one study, from AnnoTinder's own OAuth endpoints after the researcher allows it on `/research/connect`. They work only on `/api/mcp`. [mcp.md#oauth](mcp.md#oauth) |
 
 ## Deployment ids
 

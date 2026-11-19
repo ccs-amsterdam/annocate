@@ -19,13 +19,25 @@ export interface RateLimits {
   researcher: number;
   /** All coder requests (per IP): only against floods; counted in memory, per process. */
   coder: number;
+  /** AI assistants registering themselves as OAuth clients (per IP, docs/api/mcp.md). */
+  oauthRegister: number;
+  /** OAuth authorization and token requests, and the MCP endpoint (per IP). */
+  oauth: number;
 }
 
 /**
  * Defaults: a class or a lab behind one address (hundreds of coders at once)
  * stays well below them.
  */
-export const DEFAULT_RATE_LIMITS: RateLimits = { coderStart: 300, transfer: 30, login: 60, researcher: 1200, coder: 10_000 };
+export const DEFAULT_RATE_LIMITS: RateLimits = {
+  coderStart: 300,
+  transfer: 30,
+  login: 60,
+  researcher: 1200,
+  coder: 10_000,
+  oauthRegister: 10,
+  oauth: 600,
+};
 
 /** The client's address: the last X-Forwarded-For entry behind a proxy that sets it (`trustProxy`), else the connection's. */
 export function clientIp(c: Context, trustProxy: boolean): string {

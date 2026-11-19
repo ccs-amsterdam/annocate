@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { TopLevelItemSchema } from "./item.js";
+import { PublicInfoSchema, SessionSpecSchema } from "./session.js";
+import { UnitsSpecSchema } from "../unitFields.js";
 
 // JSON Schemas of codebook items, for editors that check JSON as it is typed
 // (the codebook editor's JSON views: completion, hover texts from the
@@ -41,4 +43,28 @@ export function designItemsJsonSchema(): JsonSchema {
 /** The JSON Schema of one item without its `children`, as the item editor shows it. */
 export function designItemJsonSchema(): JsonSchema {
   return (cached ?? build()).item;
+}
+
+let designCached: JsonSchema | null = null;
+
+/**
+ * The JSON Schema of a whole design (docs/plans/design.md): its public info,
+ * session, unit fields and items, as a design file holds it and AI
+ * assistants edit it (`GET /api/schema/design.json`). Validation remains
+ * what decides.
+ */
+export function designJsonSchema(): JsonSchema {
+  designCached ??= {
+    title: "AnnoTinder design",
+    ...(z.toJSONSchema(
+      z.object({
+        public: PublicInfoSchema.nullable().optional(),
+        session: SessionSpecSchema,
+        units: UnitsSpecSchema,
+        items: z.array(TopLevelItemSchema),
+      }),
+      { io: "output", unrepresentable: "any", cycles: "ref", reused: "ref" },
+    ) as JsonSchema),
+  };
+  return designCached;
 }
