@@ -145,6 +145,8 @@ interface UnitHistoryEntry {
   unitId: number;
   unit: CoderUnitResponse | null;
   answers: Record<string, VariableValue> | null;
+  /** The coder finished the unit (its answers were sent), now or in an earlier visit. */
+  done: boolean;
 }
 
 interface LoopHistory {
@@ -307,8 +309,16 @@ export class StudyManager {
    * serves the unit again (`reloadAfterPublish`).
    */
   private carryOver = new Map<string, Record<string, VariableValue>>();
-  /** Per loop key: units fetched ahead (a batch), not shown yet (`fetchNextUnit`). */
-  private unitQueues = new Map<string, { units: CoderUnitResponse[]; filling: Promise<void> | null }>();
+  /**
+   * Per loop key: units fetched ahead (a batch), not shown yet
+   * (`fetchNextUnit`), and every unit the queue ever held (`seen`): the server
+   * lists unfinished units first, so a unit handed out but not finished yet
+   * comes back in the next batch and must not be queued again.
+   */
+  private unitQueues = new Map<
+    string,
+    { units: CoderUnitResponse[]; filling: Promise<void> | null; seen: Set<number> }
+  >();
   /**
    * Answers still to be saved, in order: sent in the background, so the
    * coder never waits for the server (`save`). A unit's carries its answers,
@@ -446,7 +456,7 @@ export class StudyManager {
     let history = this.histories.get(name);
     if (!history) {
       const done = this.progress.get(name)?.doneUnitIds ?? [];
-      history = { entries: done.map((unitId) => ({ unitId, unit: null, answers: null })), index: -1 };
+      history = { entries: done.map((unitId) => ({ unitId, unit: null, answers: null, done: true })), index: -1 };
       this.histories.set(name, history);
     }
     return history;
@@ -489,27 +499,31 @@ export class StudyManager {
     if (this.snapshot.phase === "loading" || this.snapshot.phase === "error" || this.snapshot.phase === "finished") {
       return false;
     }
-    if (this.loopIndex > 0) return true;
-    if (this.unitHistoryIndex > 0) return true;
-    if (this.topIndex > 0) return true;
-    return false;
+    if (this.activeLoop && this.currentUnit) {
+      if (this.loopIndex > 0) return true;
+      if (this.unitHistoryIndex > 0) return true;
+    }
+    return this.previousTopIndex() >= 0;
   }
 
   canGoForward(allowFree = false): boolean {
     if (this.snapshot.phase === "loading" || this.snapshot.phase === "error" || this.snapshot.phase === "finished") {
       return false;
     }
+    const inUnit = this.activeLoop !== null && this.currentUnit !== null;
     if (allowFree) {
-      if (this.loopIndex < this.loopSteps.length - 1) return true;
-      if (this.unitHistoryIndex < this.unitHistory.length - 1) return true;
+      if (inUnit && this.loopIndex < this.loopSteps.length - 1) return true;
+      if (inUnit && this.unitHistoryIndex < this.unitHistory.length - 1) return true;
       if (this.topIndex < this.topSteps.length - 1) return true;
       return false;
     }
-    if (this.loopIndex < this.loopSteps.length - 1) {
+    if (inUnit) {
       const currentItem = this.loopSteps[this.loopIndex];
-      if (currentItem && this.unitVariableValues[itemName(currentItem) ?? ""] !== undefined) return true;
+      const answered = !!currentItem && this.unitVariableValues[itemName(currentItem) ?? ""] !== undefined;
+      if (this.loopIndex < this.loopSteps.length - 1) return answered;
+      // The unit's last question: on to the next unit the coder has, once it is answered
+      if (this.unitHistoryIndex < this.unitHistory.length - 1) return answered;
     }
-    if (this.unitHistoryIndex < this.unitHistory.length - 1) return true;
     if (this.topIndex < this.maxReachedTopIndex) return true;
     return false;
   }
@@ -524,15 +538,16 @@ export class StudyManager {
 
     this.syncCurrentUnitAnswers();
 
+    const inUnit = this.activeLoop !== null && this.currentUnit !== null;
     // 1. Step backward within current unit's questions
-    if (this.loopIndex > 0) {
+    if (inUnit && this.loopIndex > 0) {
       this.loopIndex -= 1;
       await this.publishLoopStep();
       return;
     }
 
     // 2. Step backward to previous unit in history
-    if (this.unitHistoryIndex > 0 && this.activeLoop) {
+    if (inUnit && this.unitHistoryIndex > 0) {
       await this.openEntry(this.unitHistoryIndex - 1);
       await this.refreshLoopSteps();
       this.loopIndex = Math.max(0, this.loopSteps.length - 1);
@@ -540,26 +555,31 @@ export class StudyManager {
       return;
     }
 
-    // 3. Step backward to previous top-level item
-    if (this.topIndex > 0) {
-      this.topIndex -= 1;
-      const prevTop = this.topSteps[this.topIndex];
-
-      if (prevTop.type === "unit_loop") {
-        this.activeLoop = prevTop as CoderUnitLoopItem;
-        if (this.unitHistory.length > 0) {
-          await this.openEntry(this.unitHistory.length - 1);
-          await this.refreshLoopSteps();
-          this.loopIndex = Math.max(0, this.loopSteps.length - 1);
-          await this.publishLoopStep();
-          return;
-        }
-      }
-
-      this.activeLoop = null;
-      this.currentUnit = null;
-      await this.publishTopStep(prevTop);
+    // 3. Step backward to the previous top-level item: a loop's last unit (a loop without units is passed)
+    const previous = this.previousTopIndex();
+    if (previous < 0) return;
+    this.topIndex = previous;
+    const prevTop = this.topSteps[previous];
+    if (prevTop.type === "unit_loop") {
+      this.leaveLoop();
+      this.activeLoop = prevTop as CoderUnitLoopItem;
+      await this.openEntry(this.unitHistory.length - 1);
+      await this.refreshLoopSteps();
+      this.loopIndex = Math.max(0, this.loopSteps.length - 1);
+      await this.publishLoopStep();
+      return;
     }
+    this.leaveLoop();
+    await this.publishTopStep(prevTop);
+  }
+
+  /** The top-level step going back leads to (a loop only if the coder has units in it); -1: none. */
+  private previousTopIndex(): number {
+    for (let i = this.topIndex - 1; i >= 0; i--) {
+      const step = this.topSteps[i];
+      if (step.type !== "unit_loop" || this.history(step as CoderUnitLoopItem).entries.length > 0) return i;
+    }
+    return -1;
   }
 
   async goForward(allowFree = false): Promise<void> {
@@ -571,15 +591,16 @@ export class StudyManager {
 
     this.syncCurrentUnitAnswers();
 
+    const inUnit = this.activeLoop !== null && this.currentUnit !== null;
     // 1. Forward within questions of current unit
-    if (this.loopIndex < this.loopSteps.length - 1) {
+    if (inUnit && this.loopIndex < this.loopSteps.length - 1) {
       this.loopIndex += 1;
       await this.publishLoopStep();
       return;
     }
 
     // 2. Forward to next unit in history
-    if (this.unitHistoryIndex < this.unitHistory.length - 1 && this.activeLoop) {
+    if (inUnit && this.unitHistoryIndex < this.unitHistory.length - 1) {
       await this.openEntry(this.unitHistoryIndex + 1);
       await this.refreshLoopSteps();
       this.loopIndex = 0;
@@ -596,13 +617,9 @@ export class StudyManager {
       this.topIndex += 1;
       const nextTop = this.topSteps[this.topIndex];
       if (nextTop.type === "unit_loop") {
-        this.activeLoop = nextTop as CoderUnitLoopItem;
-        this.currentUnit = null;
-        this.loopIndex = -1;
-        await this.advanceUnit();
+        await this.enterLoop(nextTop as CoderUnitLoopItem, true);
       } else {
-        this.activeLoop = null;
-        this.currentUnit = null;
+        this.leaveLoop();
         await this.publishTopStep(nextTop);
       }
     }
@@ -626,6 +643,7 @@ export class StudyManager {
         unitId: nextUnit.id,
         unit: nextUnit,
         answers: { ...carried, ...(nextUnit.variables ?? {}) },
+        done: false,
       });
     }
 
@@ -684,13 +702,10 @@ export class StudyManager {
         this.loopIndex = 0;
         await this.publishLoopStep();
       } else {
-        this.currentUnit = null;
-        this.loopIndex = -1;
-        await this.advanceUnit();
+        await this.enterLoop(target as CoderUnitLoopItem);
       }
     } else {
-      this.activeLoop = null;
-      this.currentUnit = null;
+      this.leaveLoop();
       await this.publishTopStep(target);
     }
   }
@@ -918,9 +933,7 @@ export class StudyManager {
     this.publish({ unsaved: 0, retrying: false });
     this.starting = null;
     this.userVariableValues = {};
-    this.unitVariableValues = {};
-    this.activeLoop = null;
-    this.currentUnit = null;
+    this.leaveLoop();
     this.expressionCache = new ExpressionCache();
     await this.start();
   }
@@ -1082,10 +1095,10 @@ export class StudyManager {
     return unit;
   }
 
-  private unitQueue(loop: CoderUnitLoopItem): { units: CoderUnitResponse[]; filling: Promise<void> | null } {
+  private unitQueue(loop: CoderUnitLoopItem) {
     const key = this.keyOf(loop);
     let queue = this.unitQueues.get(key);
-    if (!queue) this.unitQueues.set(key, (queue = { units: [], filling: null }));
+    if (!queue) this.unitQueues.set(key, (queue = { units: [], filling: null, seen: new Set<number>() }));
     return queue;
   }
 
@@ -1095,8 +1108,10 @@ export class StudyManager {
     queue.filling ??= (async () => {
       try {
         const units = await this.coderApi.getNextUnits(this.keyOf(loop), UNIT_BATCH);
-        const known = new Set([...this.history(loop).entries.map((e) => e.unitId), ...queue.units.map((u) => u.id)]);
-        queue.units.push(...units.filter((u) => !known.has(u.id)));
+        const known = new Set([...this.history(loop).entries.map((e) => e.unitId), ...queue.seen]);
+        const fresh = units.filter((u) => !known.has(u.id));
+        for (const u of fresh) queue.seen.add(u.id);
+        queue.units.push(...fresh);
       } finally {
         queue.filling = null;
       }
@@ -1234,8 +1249,7 @@ export class StudyManager {
         : null,
       redirectUrl: item.redirectUrl ? fillRedirectUrl(item.redirectUrl, scope) : null,
     };
-    this.activeLoop = null;
-    this.currentUnit = null;
+    this.leaveLoop();
     this.clearDraft();
     this.publish({
       phase: "finished",
@@ -1275,10 +1289,7 @@ export class StudyManager {
     }
 
     if (next.type === "unit_loop") {
-      this.activeLoop = next as CoderUnitLoopItem;
-      this.currentUnit = null;
-      this.loopIndex = -1;
-      await this.advanceUnit();
+      await this.enterLoop(next as CoderUnitLoopItem);
       return;
     }
 
@@ -1367,6 +1378,7 @@ export class StudyManager {
         if (name in this.userVariableValues) this.frozen.add(name);
       if (this.currentUnit && this.unitHistoryIndex >= 0 && this.unitHistoryIndex < this.unitHistory.length) {
         this.unitHistory[this.unitHistoryIndex].answers = { ...doneValues };
+        this.unitHistory[this.unitHistoryIndex].done = true;
       }
       await this.continueAfterUnit(next);
       return;
@@ -1419,7 +1431,10 @@ export class StudyManager {
       this.unitVariableValues = {};
       this.currentUnit = null;
     }
-    await this.nextUnitAtFrontier();
+    // The first unit the coder started and didn't finish (they went back from it), else a new one
+    const unfinished = this.activeLoop ? this.unitHistory.findIndex((entry) => !entry.done) : -1;
+    if (unfinished >= 0) await this.openAtFirstOpenStep(unfinished);
+    else await this.nextUnitAtFrontier();
   }
 
   private async nextUnitAtFrontier(): Promise<void> {
@@ -1428,7 +1443,7 @@ export class StudyManager {
     const nextUnit = await this.fetchNextUnit(this.activeLoop);
     if (!nextUnit) {
       // Loop finished: advance to the next top-level item.
-      this.activeLoop = null;
+      this.leaveLoop();
       await this.advanceTop();
       return;
     }
@@ -1439,23 +1454,55 @@ export class StudyManager {
       unitId: nextUnit.id,
       unit: nextUnit,
       answers: { ...carried, ...(nextUnit.variables ?? {}) },
+      done: false,
     });
-    await this.openEntry(this.unitHistory.length - 1);
+    await this.openAtFirstOpenStep(this.unitHistory.length - 1);
+  }
 
+  /**
+   * Opens a unit of the coder's history at its first question without a
+   * (still valid) answer: the unit may be partly done (reload mid-unit, the
+   * coder went back from it, or the codebook gained a question).
+   */
+  private async openAtFirstOpenStep(index: number, atStart = false): Promise<void> {
+    await this.openEntry(index);
     await this.refreshLoopSteps();
-    // Start at the first question without a (still valid) answer: the unit
-    // may be partly done (reload mid-unit, or the codebook gained a question).
     const firstOpen = this.loopSteps.findIndex((step) => this.unitVariableValues[itemName(step) ?? ""] === undefined);
-    this.loopIndex = firstOpen === -1 ? Math.max(0, this.loopSteps.length - 1) : firstOpen;
+    this.loopIndex = atStart ? 0 : firstOpen === -1 ? Math.max(0, this.loopSteps.length - 1) : firstOpen;
     const firstStep = this.loopSteps[this.loopIndex];
     if (!firstStep) {
       // Degenerate loop with no steps: immediately move past it.
+      this.loopIndex = -1;
       await this.advanceUnit();
       return;
     }
 
     this.resuming = false;
     await this.publishLoopStep();
+  }
+
+  /**
+   * Moving forward into a loop (the coder answered the question before it,
+   * or pressed next): its unit the coder started but didn't finish, if any
+   * (they went back from it), else the next unit from the server. `atStart`
+   * (next): at that unit's first question, else at its first unanswered one.
+   */
+  private async enterLoop(loop: CoderUnitLoopItem, atStart = false): Promise<void> {
+    this.leaveLoop();
+    this.activeLoop = loop;
+    const unfinished = this.unitHistory.findIndex((entry) => !entry.done);
+    if (unfinished >= 0) await this.openAtFirstOpenStep(unfinished, atStart);
+    else await this.nextUnitAtFrontier();
+  }
+
+  /** Not in a loop any more: nothing of its unit stays (navigation reads these). */
+  private leaveLoop(): void {
+    this.activeLoop = null;
+    this.currentUnit = null;
+    this.loopSteps = [];
+    this.loopIndex = -1;
+    this.unitVariableValues = {};
+    this.unitVisible = {};
   }
 
   private buildNavigation(): StudyManagerNavigation {
