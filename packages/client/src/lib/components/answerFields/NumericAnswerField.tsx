@@ -3,7 +3,7 @@ import { numericSteps, numericValueError, resolveLayout } from "@annotinder/cont
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { buildValues, initialValues } from "./answerValue";
-import { useNumberShortcuts } from "./OptionButtons";
+import { useNumberShortcuts } from "./optionLayout";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 
 type NumericVariable = Extract<QuestionVariable, { type: "numeric" }>;

@@ -1,4 +1,4 @@
-import { useCoderSettings } from "../context/CoderSettingsContext";
+import { useCoderSettings } from "../context/coderSettings";
 
 export interface ShortcutBadgeProps {
   shortcut: string;

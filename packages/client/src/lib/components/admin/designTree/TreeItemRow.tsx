@@ -14,7 +14,7 @@ import {
 } from "@annotinder/contracts";
 import { describeCondition, itemTitle } from "../../../codebook/conditions";
 import type { TreePosition } from "../../../design/itemEdit";
-import { VARIABLE_TYPE_LABELS } from "../VariableTypeForm";
+import { VARIABLE_TYPE_LABELS } from "../../../design/answerTypes";
 import { findItem, findParent, loopUnitsSummary } from "../../../codebook/tree";
 
 /** How an item is called in menus: its title, a condition by its condition, a loop by its position. */

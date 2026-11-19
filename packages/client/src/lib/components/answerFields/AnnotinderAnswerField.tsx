@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildValues } from "./answerValue";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
-import { useSwipe, type SwipeDirection } from "../SwipeCard";
+import { useSwipe, type SwipeDirection } from "../swipe";
 
 type AnnotinderVariable = Extract<QuestionVariable, { type: "annotinder" }>;
 

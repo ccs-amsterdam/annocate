@@ -15,7 +15,8 @@ import {
   useSearch,
 } from "@tanstack/react-router";
 import type { AuthOptions, MeResponse } from "@annotinder/contracts";
-import { AdminApp, TAB_SLUGS, type AdminLocation, type LeaveGuard, type TabId } from "./lib/components/admin/AdminApp";
+import { AdminApp, type AdminLocation, type LeaveGuard } from "./lib/components/admin/AdminApp";
+import { TAB_SLUGS, type TabId } from "./lib/admin/tabs";
 import { ResearcherGate } from "./lib/components/admin/account/ResearcherGate";
 import { AccountMenu } from "./lib/components/admin/account/AccountMenu";
 import { HttpResearcherApi } from "./lib/api/httpResearcherApi";

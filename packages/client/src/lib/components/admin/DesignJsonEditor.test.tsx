@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { TopLevelItem } from "@annotinder/contracts";
-import { DesignJsonEditor, getFoldableLineNumbers } from "./DesignJsonEditor";
+import { DesignJsonEditor } from "./DesignJsonEditor";
+import { getFoldableLineNumbers } from "../../design/jsonFolding";
 import { formatJson } from "../../design/jsonFormat";
 
 describe("DesignJsonEditor", () => {

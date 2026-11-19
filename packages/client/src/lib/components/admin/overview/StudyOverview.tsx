@@ -17,7 +17,7 @@ import { LoopProgress } from "./LoopProgress";
 import { LiveControls } from "./LiveControls";
 import { TeamSettings } from "./TeamSettings";
 import { ExampleNotice } from "./ExampleNotice";
-import { describeUnitChanges } from "../DeployDialog";
+import { describeUnitChanges } from "../../../admin/unitChanges";
 
 type OverviewTarget = "Units" | "Links" | "Coders";
 

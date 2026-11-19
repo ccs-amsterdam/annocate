@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { buildValues, initialValues } from "./answerValue";
-import { CompactRow, EndLabels, OptionButton, optionsContainerStyle, useNumberShortcuts } from "./OptionButtons";
+import { CompactRow, EndLabels, OptionButton } from "./OptionButtons";
+import { optionsContainerStyle, useNumberShortcuts } from "./optionLayout";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 
 type CategoricalVariable = Extract<QuestionVariable, { type: "nominal" | "ordinal" }>;

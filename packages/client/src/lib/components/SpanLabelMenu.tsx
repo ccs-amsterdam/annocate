@@ -2,7 +2,7 @@ import { useState } from "react";
 import { optionLabel, type Option, type SpanSlice } from "@annotinder/contracts";
 import { X } from "lucide-react";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
-import { useCoderSettings } from "../context/CoderSettingsContext";
+import { useCoderSettings } from "../context/coderSettings";
 import { getCodeButtonStyle } from "../utils/color";
 import { ShortcutBadge } from "./ShortcutBadge";
 

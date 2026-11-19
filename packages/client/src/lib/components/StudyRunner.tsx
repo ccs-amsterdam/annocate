@@ -13,7 +13,8 @@ import {
 import { useStudyManager } from "../studyManager/useStudyManager";
 import type { StudyManagerNavigation } from "../studyManager/StudyManager";
 import { SpanAnnotationProvider } from "../context/SpanAnnotationContext";
-import { CoderSettingsProvider, useCoderSettings } from "../context/CoderSettingsContext";
+import { CoderSettingsProvider } from "../context/CoderSettingsContext";
+import { useCoderSettings } from "../context/coderSettings";
 import { Question } from "./Question";
 import { UnitFields } from "./UnitFields";
 import { DockedAnswerPane } from "./DockedAnswerPane";

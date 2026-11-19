@@ -5,7 +5,8 @@ import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcher
 import { useDesignVersionQuery, useDesignVersionsQuery, useDeploymentQuery, usePendingChangesQuery, usePublishMutation, useUpdateDesignVersionMutation } from "../../admin/queries";
 import { describeVersions } from "../../design/versions";
 import { Button } from "@/components/ui/button";
-import { DeployDialog, describeUnitChanges } from "./DeployDialog";
+import { DeployDialog } from "./DeployDialog";
+import { describeUnitChanges } from "../../admin/unitChanges";
 
 /**
  * Everything is a draft until deployed (docs/plans/design.md §5): when a

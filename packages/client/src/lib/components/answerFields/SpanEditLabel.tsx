@@ -1,10 +1,10 @@
 import { optionLabel } from "@annotinder/contracts";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import type { SpanAnswer } from "@annotinder/contracts";
-import type { SpanAnnotationState } from "../../context/SpanAnnotationContext";
-import { useCoderSettings } from "../../context/CoderSettingsContext";
+import type { SpanAnnotationState } from "../../context/spanAnnotation";
+import { useCoderSettings } from "../../context/coderSettings";
 import { getCodeBadgeStyle, getCodeButtonStyle } from "../../utils/color";
-import { truncateSpanText } from "../SelectableText";
+import { truncateSpanText } from "../spanText";
 import { ShortcutBadge } from "../ShortcutBadge";
 import { Button } from "@/components/ui/button";
 import { Trash2, Check, ArrowLeft, X } from "lucide-react";
@@ -48,27 +48,30 @@ export function SpanEditLabel({
 
   const spanSummary = span.slices.map((s) => s.text).join(" ... ");
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     if (onCancel) {
       onCancel();
     } else {
       annotation.setPendingSpan(null);
       annotation.setFocusedSpanId(null);
     }
-  };
+  }, [annotation, onCancel]);
 
-  const handleCodeChange = (newCode: string) => {
-    if (newCode === span.value) return;
-    annotation.updateSpan(span.id, newCode);
-    if (onCodeChanged) {
-      onCodeChanged(newCode);
-    } else {
-      annotation.setPendingSpan(null);
-      annotation.setFocusedSpanId(null);
-    }
-  };
+  const handleCodeChange = useCallback(
+    (newCode: string) => {
+      if (newCode === span.value) return;
+      annotation.updateSpan(span.id, newCode);
+      if (onCodeChanged) {
+        onCodeChanged(newCode);
+      } else {
+        annotation.setPendingSpan(null);
+        annotation.setFocusedSpanId(null);
+      }
+    },
+    [annotation, span, onCodeChanged],
+  );
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     annotation.removeSpan(span.id);
     if (onDelete) {
       onDelete();
@@ -76,7 +79,7 @@ export function SpanEditLabel({
       annotation.setPendingSpan(null);
       annotation.setFocusedSpanId(null);
     }
-  };
+  }, [annotation, span, onDelete]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -106,7 +109,7 @@ export function SpanEditLabel({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [annotation, span, onCancel, onCodeChanged, onDelete]);
+  }, [annotation.options, handleCancel, handleCodeChange, handleDelete]);
 
   const badgeStyle = getCodeBadgeStyle(colorFor(span.value), isDark);
 

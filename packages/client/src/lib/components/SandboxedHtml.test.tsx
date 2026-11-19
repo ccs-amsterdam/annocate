@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReferenceScope } from "@annotinder/contracts";
 import { renderTemplate } from "../codebook/renderTemplate";
-import { RESIZE_SCRIPT, RESIZE_SCRIPT_HASH, SandboxFrame, sandboxDocument } from "./SandboxedHtml";
+import { RESIZE_SCRIPT, RESIZE_SCRIPT_HASH } from "@annotinder/contracts";
+import { SandboxFrame } from "./SandboxedHtml";
+import { sandboxDocument } from "./sandboxDocument";
 import { TemplateMarkdown } from "./TemplateMarkdown";
 
 describe("SandboxedHtml", () => {

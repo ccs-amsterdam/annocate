@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { snapToWord, getWordAtPosition, truncateSpanText, SelectableText, mergeSpanSlices, toggleSliceRange } from "./SelectableText";
+import { SelectableText } from "./SelectableText";
+import { snapToWord, getWordAtPosition, truncateSpanText, mergeSpanSlices, toggleSliceRange } from "./spanText";
 import { SpanAnnotationProvider } from "../context/SpanAnnotationContext";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { SpanAnswer } from "@annotinder/contracts";

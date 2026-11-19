@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DesignItem } from "@annotinder/contracts";
-import { itemFromJson, itemToJson } from "./ItemJsonEditor";
+import { itemFromJson, itemToJson } from "./itemJson";
 
 const loop = {
   _key: "k1",

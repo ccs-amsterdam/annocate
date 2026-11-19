@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { COMPUTED_TYPE_CARDS, answerTypeCards } from "./typeCardData";
-import { VARIABLE_TYPE_OPTIONS_UNIT, VARIABLE_TYPE_OPTIONS_USER } from "./VariableTypeForm";
+import { VARIABLE_TYPE_OPTIONS_UNIT, VARIABLE_TYPE_OPTIONS_USER } from "../../design/answerTypes";
 
 describe("type cards", () => {
   it("offer marking text and relations only in unit loops, and never 'type later' or random", () => {

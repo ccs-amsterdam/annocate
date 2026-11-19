@@ -10,7 +10,7 @@ import {
   SpanAnswerField,
   UnsupportedAnswerField,
 } from "./answerFields";
-import { useSpanAnnotation } from "../context/SpanAnnotationContext";
+import { useSpanAnnotation } from "../context/spanAnnotation";
 import { staticTemplate, type RenderedTemplate } from "../codebook/renderTemplate";
 import { TemplateMarkdown } from "./TemplateMarkdown";
 

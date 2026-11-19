@@ -33,7 +33,7 @@ import { clearBackup, writeBackup, type DesignBackup } from "../../../design/loc
 
 /** Unsaved edits are copied to the browser's storage this long after the last change. */
 const BACKUP_DELAY_MS = 1000;
-import { defaultItemForType } from "../ItemForm";
+import { defaultItemForType } from "../../../design/newItem";
 import type { ItemType } from "../designTree/utils";
 
 interface UseDesignDraftOptions {

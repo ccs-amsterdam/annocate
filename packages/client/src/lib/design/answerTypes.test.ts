@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AnyVariableType } from "@annotinder/contracts";
-import { switchVariableType } from "./VariableTypeForm";
+import { switchVariableType } from "./answerTypes";
 
 describe("switchVariableType", () => {
   const nominal: AnyVariableType = {

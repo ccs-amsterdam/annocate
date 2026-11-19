@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { designItems, type DesignVersion, type SignIn, type TopLevelItem, type UnitChanges } from "@annotinder/contracts";
+import { designItems, type DesignVersion, type SignIn, type TopLevelItem } from "@annotinder/contracts";
+import { describeUnitChanges } from "../../admin/unitChanges";
 import { AlertTriangle, Loader2, Rocket } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -28,17 +29,6 @@ interface DeployDialogProps {
    */
   onDeploy: (version: DesignVersion | null, note: string, units: boolean) => Promise<{ warnings?: string[] }>;
   onClose: () => void;
-}
-
-/** "3 added, 1 changed, sets changed": a unit change summary. */
-export function describeUnitChanges(c: UnitChanges): string {
-  const parts = [
-    c.added > 0 && `${c.added} added`,
-    c.changed > 0 && `${c.changed} changed`,
-    c.removed > 0 && `${c.removed} removed`,
-    c.sets && "sets changed",
-  ].filter(Boolean);
-  return parts.length > 0 ? parts.join(", ") : "no changes";
 }
 
 /**

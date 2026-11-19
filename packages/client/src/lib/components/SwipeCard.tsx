@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { optionLabel, SWIPE_DIRECTIONS, type NominalOption } from "@annotinder/contracts";
+import { SwipeContext, useSwipe, type SwipeDirection, type SwipeState } from "./swipe";
 
 // Swipe answering (docs/client.md §4): the card (the unit, or the question
 // card outside a loop) is dragged left, right or up, from anywhere on the
@@ -8,8 +9,6 @@ import { optionLabel, SWIPE_DIRECTIONS, type NominalOption } from "@annotinder/c
 // put while the card moves, so it can be read). Released past a threshold (or flung)
 // it flies off and the option is the answer; otherwise it springs back.
 // Buttons and arrow keys fly it off the same way (`useSwipe`).
-
-export type SwipeDirection = (typeof SWIPE_DIRECTIONS)[number];
 
 /** How far the card must be dragged to answer: a share of its width (sideways), or pixels (up). */
 const SIDEWAYS_SHARE = 0.3;
@@ -20,26 +19,6 @@ const FLING_MIN = 40;
 /** Movement before a press becomes a drag (so clicks and taps still work). */
 const DEAD_ZONE = 8;
 const FLY_MS = 220;
-
-interface SwipeState {
-  options: NominalOption[];
-  /** Flies the card off in a direction (from where a drag let go), then answers with its option. */
-  swipe: (direction: SwipeDirection, from?: { x: number; y: number }) => void;
-  /** The card's element registers here, so `swipe` can animate it. */
-  register: (card: HTMLDivElement | null) => void;
-  /** The surface's overlay (the option's label) registers here. */
-  registerOverlay: (overlay: HTMLDivElement | null) => void;
-  /** The registered card and its overlay (dragged from the `SwipeSurface`). */
-  card: () => HTMLDivElement | null;
-  overlay: () => HTMLDivElement | null;
-}
-
-const SwipeContext = createContext<SwipeState | null>(null);
-
-/** The swipe of the current question, if it is a swipe question with a card. */
-export function useSwipe(): SwipeState | null {
-  return useContext(SwipeContext);
-}
 
 /** The option for a direction (1st left, 2nd right, 3rd up). */
 function optionFor(options: NominalOption[], direction: SwipeDirection): NominalOption | undefined {

@@ -3,10 +3,10 @@ import { useState, useEffect } from "react";
 import type { SpanAnswer } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
-import { useSpanAnnotation } from "../../context/SpanAnnotationContext";
-import { useCoderSettings } from "../../context/CoderSettingsContext";
+import { useSpanAnnotation } from "../../context/spanAnnotation";
+import { useCoderSettings } from "../../context/coderSettings";
 import { getCodeBadgeStyle, getCodeButtonStyle } from "../../utils/color";
-import { truncateSpanText } from "../SelectableText";
+import { truncateSpanText } from "../spanText";
 import { ShortcutBadge } from "../ShortcutBadge";
 import { SpanManageLabels } from "./SpanManageLabels";
 import { SpanEditLabel } from "./SpanEditLabel";
@@ -75,13 +75,15 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
   const isManageMode = Boolean(pending && (pending.mode === "manage" || manageSpans.length > 0));
 
   // Reset list views if a new span is selected in document
+  const setIsViewingAllLabels = annotation?.setIsViewingAllLabels;
+  const setFocusedSpanId = annotation?.setFocusedSpanId;
   useEffect(() => {
     if (pending) {
-      setViewingAllLabels(false);
+      setIsViewingAllLabels?.(false);
       setEditingSpanFromList(null);
-      annotation?.setFocusedSpanId(null);
+      setFocusedSpanId?.(null);
     }
-  }, [pending]);
+  }, [pending, setIsViewingAllLabels, setFocusedSpanId]);
 
   // Keyboard navigation for Creation mode (hotkeys 1-9 and Escape)
   useEffect(() => {

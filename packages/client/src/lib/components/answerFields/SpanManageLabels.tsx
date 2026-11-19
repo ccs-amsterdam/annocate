@@ -1,10 +1,10 @@
 import { optionLabel } from "@annotinder/contracts";
 import { useState, useEffect } from "react";
 import type { SpanAnswer, SpanSlice } from "@annotinder/contracts";
-import type { SpanAnnotationState } from "../../context/SpanAnnotationContext";
-import { useCoderSettings } from "../../context/CoderSettingsContext";
+import type { SpanAnnotationState } from "../../context/spanAnnotation";
+import { useCoderSettings } from "../../context/coderSettings";
 import { getCodeBadgeStyle } from "../../utils/color";
-import { truncateSpanText } from "../SelectableText";
+import { truncateSpanText } from "../spanText";
 import { ShortcutBadge } from "../ShortcutBadge";
 import { SpanEditLabel } from "./SpanEditLabel";
 import { Button } from "@/components/ui/button";
