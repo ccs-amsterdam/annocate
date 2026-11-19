@@ -31,7 +31,7 @@ import { keepFields } from "../../design/simpleLayout";
 import { CsvUnitsForm } from "./units/UploadUnits";
 import { HelpButton } from "../../help/HelpButton";
 import { LayoutDesigner, UnitPreview } from "./LayoutDesigner";
-import { SharedSettings } from "./UnitLoopForm";
+import { SharedSettings } from "./unitLoop/UnitsEditor";
 
 // The setup wizard (docs/plans/setup-wizard.md): what the study does, the
 // experiment's conditions, the units and how they are shown, the names of
