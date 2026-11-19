@@ -47,7 +47,9 @@ Separating the two has three advantages:
   label ("Human interest" becomes `human_interest`) and keeps it in step with
   the label until you type a value yourself. Good values are short,
   lower case, and mean something on their own: someone reading your data
-  without the codebook should be able to guess them.
+  without the codebook should be able to guess them. Numbers work too, if
+  you need the codes of an existing codebook; see
+  [Numeric values](nominal-and-ordinal.md#numeric-values).
 - **Ordinal questions** (and scales) have number values that rise in the
   order of the options, 1, 2, 3 by default, so that "higher value" means
   "further along the scale". To use other numbers, such as -2 to 2 for a scale

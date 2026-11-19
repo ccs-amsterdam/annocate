@@ -2,6 +2,7 @@ import {
   cellsFromSets,
   type SetGroupResponse,
   collectQuestions,
+  hasNumericCodes,
   loopTitle,
   optionLabel,
   unitLoops,
@@ -35,7 +36,9 @@ import {
 // "value: text", a confirm question is `true`, and a question a condition
 // skipped is empty. Answers that don't fit one cell (spans, relations,
 // several answers) also get a `_json` column with everything (span
-// positions and fields, ids).
+// positions and fields, ids). In those, the codes of a question whose
+// option values are all plain numbers ("1", "2", "99"; not "01") are
+// numbers.
 
 export interface Table {
   headers: string[];
@@ -69,12 +72,24 @@ export function answerText(value: VariableValue | undefined, item?: string, writ
   return parts.join("; ");
 }
 
-/** An answer in full, as JSON (for the `_json` columns): values, spans with their fields and positions, relations with their span ids. */
-export function answerJson(value: VariableValue | undefined): string {
+/**
+ * An answer in full, as JSON (for the `_json` columns): values, spans with
+ * their fields and positions, relations with their span ids. With `numeric`
+ * (a question with numeric codes), its codes are written as numbers.
+ */
+export function answerJson(value: VariableValue | undefined, numeric = false): string {
   if (!value || value.skip) return "";
-  if (value.spans) return JSON.stringify(value.spans.map(({ id, value, field, slices }) => ({ id, value, field, slices })));
-  if (value.relations) return JSON.stringify(value.relations.map(({ id, value, fromId, toId }) => ({ id, value, fromId, toId })));
-  return JSON.stringify((value.values ?? []).map((v) => v.value));
+  const code = (v: OptionValue) => (numeric && typeof v === "string" ? Number(v) : v);
+  if (value.spans) return JSON.stringify(value.spans.map(({ id, value, field, slices }) => ({ id, value: code(value), field, slices })));
+  if (value.relations) return JSON.stringify(value.relations.map(({ id, value, fromId, toId }) => ({ id, value: code(value), fromId, toId })));
+  return JSON.stringify((value.values ?? []).map((v) => code(v.value)));
+}
+
+/** Questions whose option values are all plain numbers (numeric codes): numbers in the `_json` columns. */
+export function numericCodeQuestions(items: TopLevelItem[] | undefined): Set<string> {
+  if (!items) return new Set();
+  const numeric = [...collectQuestions(items).questions].filter(([, v]) => hasNumericCodes(optionsOf(v)));
+  return new Set(numeric.map(([name]) => name));
 }
 
 /** Questions whose answers don't fit one cell (spans, relations, several answers): they get a `_json` column. */
@@ -166,8 +181,15 @@ function answerColumns(values: Iterable<[string, VariableValue]>, order: string[
 
 const header = (c: Column) => `${c.item ? `${c.variable}.${c.item}` : c.variable}${c.label ? "_label" : c.json ? "_json" : ""}`;
 const time = (d: Date | string | null | undefined) => (d ? new Date(d).toISOString() : "");
-const cellOf = (value: VariableValue | undefined, c: Column, labels: Labels | undefined, designVersionId: number | null, spans?: ReadonlyMap<string, SpanAnswer>) =>
-  c.json ? answerJson(value) : answerText(value, c.item, c.label && labels ? labels.writer(c.variable, designVersionId) : asIs, spans);
+const cellOf = (
+  value: VariableValue | undefined,
+  c: Column,
+  labels: Labels | undefined,
+  designVersionId: number | null,
+  numeric: ReadonlySet<string>,
+  spans?: ReadonlyMap<string, SpanAnswer>,
+) =>
+  c.json ? answerJson(value, numeric.has(c.variable)) : answerText(value, c.item, c.label && labels ? labels.writer(c.variable, designVersionId) : asIs, spans);
 
 /** Question names in codebook order (the live codebook's, if given). */
 export function questionOrder(items: TopLevelItem[] | undefined): string[] {
@@ -193,6 +215,7 @@ export function annotationsTable(
   labels?: Labels,
   nested: ReadonlySet<string> = new Set(),
   versionOf: VersionOf = (id) => id,
+  numeric: ReadonlySet<string> = new Set(),
 ): Table {
   const coderById = new Map(coders.map((c) => [c.id, c]));
   // Per answer also the design version it was given under: its labels are the ones its coder saw.
@@ -252,7 +275,7 @@ export function annotationsTable(
       deviceId === null ? "" : String(deviceId),
       times?.client == null ? "" : String(times.client),
       times?.server == null ? "" : String(times.server),
-      ...columns.map((c) => cellOf(values.get(c.variable), c, labels, designVersions.get(c.variable) ?? first.designVersionId, spans)),
+      ...columns.map((c) => cellOf(values.get(c.variable), c, labels, designVersions.get(c.variable) ?? first.designVersionId, numeric, spans)),
       ];
     }),
   };
@@ -263,7 +286,12 @@ export function annotationsTable(
  * a row per answer, with when it was given and reset. The live answers that
  * replaced them, if any, are in annotations.csv.
  */
-export function resetAnswersTable(annotations: AnnotationRow[], labels?: Labels, versionOf: VersionOf = (id) => id): Table {
+export function resetAnswersTable(
+  annotations: AnnotationRow[],
+  labels?: Labels,
+  versionOf: VersionOf = (id) => id,
+  numeric: ReadonlySet<string> = new Set(),
+): Table {
   const reset = annotations.filter((a) => a.retiredAt);
   return {
     headers: ["unit_id", "unit_version_id", "coder_id", "participant_id", "variable", "value", ...(labels ? ["value_label"] : []), "value_json", "design_version", "answered", "reset_at"],
@@ -275,7 +303,7 @@ export function resetAnswersTable(annotations: AnnotationRow[], labels?: Labels,
       a.variable,
       answerText(a.value),
       ...(labels ? [answerText(a.value, undefined, labels.writer(a.variable, a.designVersionId))] : []),
-      answerJson(a.value),
+      answerJson(a.value, numeric.has(a.variable)),
       versionCell(versionOf, a.designVersionId),
       time(a.updated),
       time(a.retiredAt),
@@ -289,7 +317,13 @@ export function resetAnswersTable(annotations: AnnotationRow[], labels?: Labels,
  * per loop, and their coder-level answers (survey questions, `auto` groups;
  * labels from the live codebook).
  */
-export function codersTable(coders: CoderProgress[], order: string[] = [], labels?: Labels, nested: ReadonlySet<string> = new Set()): Table {
+export function codersTable(
+  coders: CoderProgress[],
+  order: string[] = [],
+  labels?: Labels,
+  nested: ReadonlySet<string> = new Set(),
+  numeric: ReadonlySet<string> = new Set(),
+): Table {
   const loops = [...new Set(coders.flatMap((c) => Object.keys(c.finished)))].sort();
   // Units of the special sets each coder finished (overlap, gold, practice)
   const specials = (["overlap", "gold", "practice"] as const).filter((kind) => coders.some((c) => c.special?.[kind]));
@@ -330,7 +364,7 @@ export function codersTable(coders: CoderProgress[], order: string[] = [], label
       ...sessionNames.map((n) => c.session?.[n] ?? ""),
       ...loops.map((l) => String(c.finished[l] ?? 0)),
       ...specials.map((kind) => String(c.special?.[kind]?.done ?? 0)),
-      ...columns.map((col) => cellOf(c.variables[col.variable], col, labels, null)),
+      ...columns.map((col) => cellOf(c.variables[col.variable], col, labels, null, numeric)),
     ]),
   };
 }

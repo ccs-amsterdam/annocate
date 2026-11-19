@@ -1,5 +1,6 @@
 import { TopLevelItemSchema, loopTitle, unitLoops, type DesignItem } from "./item.js";
 import type { AnyVariableType } from "./variableTypes.js";
+import { sameValue } from "./options.js";
 import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
 import { BUILTIN_SET_SOURCES, CHECKABLE_TYPES, goldColumn, practiceColumn, practiceMessageColumn, supportsAgreement, type UnitBranch } from "./unitLoop.js";
 import { sessionNames, setParameters, type SessionItem } from "./session.js";
@@ -546,6 +547,8 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   return issues;
 }
 
+const ORDER_METHODS: ReadonlySet<string> = new Set(["gt", "gte", "lt", "lte", "between"]);
+
 /**
  * What is wrong with the arguments of a helper call on this question (whose
  * method fits it): their number, and that they are its values (numeric: in
@@ -573,7 +576,8 @@ export function callArgumentProblems(variable: AnyVariableType, call: Pick<Simpl
   const values = questionValues(variable);
   if (!values) return [];
   return call.args
-    .filter((arg) => !values.includes(arg))
+    // `is(2)` matches the value "2"; order methods compare numbers only
+    .filter((arg) => !values.some((v) => (ORDER_METHODS.has(call.method) ? v === arg : sameValue(v, arg))))
     .map((arg) => `${JSON.stringify(arg)} is not an answer option of ${subject} (${values.map((v) => JSON.stringify(v)).join(", ")})`);
 }
 

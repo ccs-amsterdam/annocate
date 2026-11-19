@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleHelp, X } from "lucide-react";
 import { SWIPE_DIRECTIONS, valueFromLabel, type Option } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { HelpButton } from "../../help/HelpButton";
 
 const DIRECTION_ICONS = { left: ArrowLeft, right: ArrowRight, up: ArrowUp };
 
@@ -63,6 +65,7 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium">Options</label>
+        {!ordinal && <NumericCodesHelp />}
         {ordinal && (
           <label className="flex items-center gap-1.5 text-xs">
             <input
@@ -161,4 +164,39 @@ function isSequence(options: Option[]): boolean {
 
 function renumber<T extends Option>(options: T[]): T[] {
   return options.map((o, i) => ({ ...o, value: i + 1 }));
+}
+
+/** Where the "Custom values" box is for ordinal questions: that values can be numbers (the codes of an existing codebook). */
+function NumericCodesHelp() {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" className="inline-flex cursor-pointer items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary">
+          <CircleHelp className="h-3.5 w-3.5 shrink-0" />
+          Numeric values
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="flex w-80 flex-col gap-2 text-xs">
+        <p>
+          Values of nominal answers are text, but can use numbers if you prefer
+          labeled numeric values:
+
+        </p>
+        <div className="grid family-mono text-[11px] grid-cols-[4rem_1fr] text-primary/80">
+          <div className='font-bold'>Label</div>
+          <div className='font-bold'>Value</div>
+          <div>Politics</div>
+          <div>1</div>
+          <div>Economy</div>
+          <div>2</div>
+          <div>Other</div>
+          <div>999</div>
+        </div>
+        <p>
+          If all values are numbers, the variable is automatically exported as numeric type.
+        </p>
+        <HelpButton topic="nominal-and-ordinal#numeric-values">More about numeric values</HelpButton>
+      </PopoverContent>
+    </Popover>
+  );
 }

@@ -46,8 +46,27 @@ your own codes (for example `HI`, or the codes of an existing codebook).
 Values can't be empty, can't have spaces at the start or end, and must
 differ from each other.
 
-> Nominal values are always text. If you want numbers that rise in order,
-> you want an ordinal question.
+### Numeric values
+
+Nominal values can be numbers, for example when you use the codes of an
+existing codebook (1 = *Politics*, 2 = *Economy*, 99 = *Other*) or your
+analysis in SPSS or Stata expects them. Type the numbers in the value
+column. Click **Numeric values** above the options for a short reminder.
+
+- **Exports**: if *all* values of a question are plain numbers, they are
+  written as numbers wherever a file has types, such as the `_json`
+  columns. In the CSV columns they look the same either way, and R, SPSS
+  and spreadsheets read a column of numbers as numbers. A value with a
+  leading zero, such as `01`, keeps all of them text, so codes like `01`
+  and `02` stay intact.
+- **Conditions**: `$var.topic.is(2)` and `$var.topic.is("2")` both match
+  the value 2.
+- **No order**: the numbers are codes, not amounts, so conditions can't
+  use *greater than* or *lower than* on them. If the order matters, use
+  an ordinal question.
+
+We recommend text values such as `economy` unless you need numbers: in
+your data and conditions, `economy` is harder to mix up than `2`.
 
 ### Ordinal values are 1, 2, 3, ...
 

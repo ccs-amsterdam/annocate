@@ -79,8 +79,15 @@ describe("simple conditions", () => {
 });
 
 describe("applyHelper", () => {
-  it("never compares across types", () => {
-    expect(applyHelper({ value: 2 }, "is", ["2"])).toBe(false);
+  it("matches a number to the same value as text, but orders numbers only", () => {
+    expect(applyHelper({ value: "2" }, "is", [2])).toBe(true);
+    expect(applyHelper({ value: 2 }, "is", ["2"])).toBe(true);
+    expect(applyHelper({ value: "02" }, "is", [2])).toBe(false);
+    expect(applyHelper({ value: "2" }, "isAny", [1, 2])).toBe(true);
+    expect(applyHelper({ values: ["1", "3"] }, "has", [3])).toBe(true);
+    expect(applyHelper({ values: ["1", "3"] }, "hasAll", [1, 3])).toBe(true);
+    expect(applyHelper({ values: ["1", "3"] }, "hasAny", [2])).toBe(false);
+    expect(applyHelper({ value: "true" }, "is", [true])).toBe(false);
     expect(applyHelper({ value: "2" }, "gt", [1])).toBe(false);
     expect(applyHelper({ values: [] }, "hasAll", [])).toBe(false);
     expect(applyHelper(undefined, "count", [])).toBe(0);

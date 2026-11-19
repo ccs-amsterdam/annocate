@@ -4,6 +4,7 @@ import {
   printSimpleCondition,
   questionKind,
   referenceShape,
+  sameValue,
   METHOD_TEXT,
   type AnyVariableType,
   type CountComparison,
@@ -190,7 +191,9 @@ function conditionRow(condition: SimpleCondition, targets: RuleTarget[]): RuleRo
   const operator = target
     ? ruleOperators(target.kind).find((o) => o.method === inner.method && Boolean(o.negate) === negate && o.count === inner.compare?.op)
     : undefined;
-  const args = inner.compare ? [inner.compare.value] : inner.args;
+  // `.is(1)` for the value "1": the option's own value, so the editor finds it
+  const asOption = (a: OptionValue) => target?.options?.find((o) => sameValue(o.value, a))?.value ?? a;
+  const args = inner.compare ? [inner.compare.value] : inner.args.map(asOption);
   return { question: inner.question, ...(inner.item ? { item: inner.item } : {}), operator: operator?.key ?? "", args, raw: condition };
 }
 

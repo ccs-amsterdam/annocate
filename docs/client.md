@@ -418,8 +418,11 @@ Every method is false (`count()`: 0) while the question is unanswered.
 | numeric | `eq(n)`, `gt(n)`, `gte(n)`, `lt(n)`, `lte(n)`, `between(a, b)` |
 | span, relation | `has(v)`, `count()` |
 
-They compare values (never labels), with strict equality: `is("2")` never
-matches the ordinal value `2`. `applyHelper` (contracts) is the TypeScript
+They compare values (never labels). A number and a string are the same
+value if the number written out is the string (`sameValue`, contracts):
+nominal values are strings, and researchers with numeric codes write
+`is(2)` for the value `"2"` (so `is("2")` also matches the ordinal value
+`2`). Order methods take numbers only. `applyHelper` (contracts) is the TypeScript
 implementation; `HELPER_PRELUDE` adds the same methods to `$var` inside
 QuickJS; a client test checks that both agree.
 
@@ -724,7 +727,9 @@ from the Preview Study button. It uses a `ResearcherApi`
   question as `true`, skipped questions empty. Questions whose answers don't
   fit a cell (span, relation, nominal `multiple`, by the live codebook or
   the data) also get a `_json` column with the whole answer (spans with
-  field and slice offsets, relations with span ids, a list of values).
+  field and slice offsets, relations with span ids, a list of values);
+  in it, the values of a question whose option values are all plain
+  numbers (`"1"`, `"99"`; not `"01"`, by the live codebook) are numbers.
   UTF-8 with a byte order mark,
   so spreadsheet programs read it. Large studies would be better served by a
   streaming download from the server (later).

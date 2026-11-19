@@ -23,6 +23,30 @@ export const NominalOptionSchema = OptionSchema.extend({
 });
 export type NominalOption = z.infer<typeof NominalOptionSchema>;
 
+/**
+ * Whether two option values are the same code. Nominal values are strings,
+ * but researchers with numeric codes write `.is(1)` for the value "1": a
+ * number and a string are the same if the number written out is the string.
+ */
+export function sameValue(a: unknown, b: unknown): boolean {
+  return a === b || (typeof a !== typeof b && (typeof a === "number" || typeof b === "number") && String(a) === String(b));
+}
+
+/** Whether a string is a number written the plain way: "3", "-2", "1.5"; not "01", "1.0", "+3" or " 3". */
+export function isPlainNumber(value: string): boolean {
+  return value !== "" && Number.isFinite(Number(value)) && String(Number(value)) === value;
+}
+
+/**
+ * Whether all option values of a question with text values (nominal, swipe)
+ * are plain numbers, e.g. the codes of an existing codebook: they are
+ * exported as numbers where a file has types (JSON). Leading zeros ("01")
+ * keep the values text.
+ */
+export function hasNumericCodes(options: readonly { value: unknown }[] | undefined): boolean {
+  return !!options?.length && options.every((o) => typeof o.value === "string" && isPlainNumber(o.value));
+}
+
 /** What the coder sees for an option. */
 export function optionLabel(option: Pick<Option, "value" | "label">): string {
   return option.label ?? String(option.value);

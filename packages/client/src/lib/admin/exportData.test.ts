@@ -52,6 +52,8 @@ describe("data download", () => {
     expect(JSON.parse(answerJson(span))).toEqual([{ id: "s1", value: "actor", field: "text", slices: [{ offset: 0, length: 4, text: "Lena" }] }]);
     expect(answerJson({ done: true, skip: false, values: [{ value: "a" }, { value: "b" }] })).toBe('["a","b"]');
     expect(answerJson({ done: true, skip: true })).toBe("");
+    // Numeric codes are numbers in the JSON
+    expect(answerJson({ done: true, skip: false, values: [{ value: "1" }, { value: "99" }] }, true)).toBe("[1,99]");
   });
 
   it("makes a row per unit and coder, a column per question in codebook order", () => {

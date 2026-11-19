@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { OptionValue } from "./options.js";
+import { sameValue, type OptionValue } from "./options.js";
 import { HELPER_METHODS, type HelperMethod, type ReferenceScope } from "./references.js";
 
 // One condition notation, used by `condition` items and unit-loop branch
@@ -38,9 +38,9 @@ export function applyHelper(target: HelperTarget | undefined, method: HelperMeth
   switch (method) {
     case "is":
     case "eq":
-      return value !== null && value === a;
+      return value !== null && sameValue(value, a);
     case "isAny":
-      return value !== null && args.includes(value);
+      return value !== null && args.some((x) => sameValue(value, x));
     case "gt":
       return n !== null && typeof a === "number" && n > a;
     case "gte":
@@ -52,11 +52,11 @@ export function applyHelper(target: HelperTarget | undefined, method: HelperMeth
     case "between":
       return n !== null && typeof a === "number" && typeof b === "number" && n >= a && n <= b;
     case "has":
-      return values.includes(a as OptionValue);
+      return values.some((v) => sameValue(v, a));
     case "hasAny":
-      return args.some((x) => values.includes(x as OptionValue));
+      return args.some((x) => values.some((v) => sameValue(v, x)));
     case "hasAll":
-      return args.length > 0 && args.every((x) => values.includes(x as OptionValue));
+      return args.length > 0 && args.every((x) => values.some((v) => sameValue(v, x)));
     case "count":
       return values.length;
   }
@@ -64,13 +64,15 @@ export function applyHelper(target: HelperTarget | undefined, method: HelperMeth
 
 /**
  * JS for the script sandbox: a function that adds the helper methods to a
- * `$var` scope (JSON data) and returns it. Must match `applyHelper`.
+ * `$var` scope (JSON data) and returns it. Must match `applyHelper` (and
+ * `sameValue`).
  */
 export const HELPER_PRELUDE = `(($var) => {
+  const same = (a, b) => a === b || (typeof a !== typeof b && (typeof a === "number" || typeof b === "number") && String(a) === String(b));
   const one = (t) => {
     const n = () => (typeof t.value === "number" ? t.value : null);
-    t.is = t.eq = (v) => t.value !== null && t.value === v;
-    t.isAny = (...vs) => t.value !== null && vs.includes(t.value);
+    t.is = t.eq = (v) => t.value !== null && same(t.value, v);
+    t.isAny = (...vs) => t.value !== null && vs.some((v) => same(t.value, v));
     t.gt = (x) => n() !== null && typeof x === "number" && n() > x;
     t.gte = (x) => n() !== null && typeof x === "number" && n() >= x;
     t.lt = (x) => n() !== null && typeof x === "number" && n() < x;
@@ -78,9 +80,10 @@ export const HELPER_PRELUDE = `(($var) => {
     t.between = (a, b) => n() !== null && typeof a === "number" && typeof b === "number" && n() >= a && n() <= b;
   };
   const many = (t) => {
-    t.has = (v) => t.values.includes(v);
-    t.hasAny = (...vs) => vs.some((v) => t.values.includes(v));
-    t.hasAll = (...vs) => vs.length > 0 && vs.every((v) => t.values.includes(v));
+    const has = (v) => t.values.some((x) => same(x, v));
+    t.has = has;
+    t.hasAny = (...vs) => vs.some(has);
+    t.hasAll = (...vs) => vs.length > 0 && vs.every(has);
     t.count = () => t.values.length;
   };
   for (const e of Object.values($var)) {

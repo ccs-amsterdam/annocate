@@ -380,6 +380,12 @@ describe("reference validation", () => {
     ]);
     expect(check(`$var.edu.gte("2")`)).toEqual([`"2" is not an answer option of "edu" (1, 2, 3)`]);
     expect(check(`$var.edu.gte(4)`)).toEqual([`4 is not an answer option of "edu" (1, 2, 3)`]);
+    // Numeric codes: `is(2)` for the value "2" (but not "02")
+    const codes = questionVar("codes", select(["1", "2"]));
+    const checkCodes = (script: string) => messages([codes, topCondition("x", [questionVar("q")], { script })]);
+    expect(checkCodes(`$var.codes.is(2)`)).toEqual([]);
+    expect(checkCodes(`$var.codes.isAny(1, "2")`)).toEqual([]);
+    expect(checkCodes(`$var.codes.is(3)`)).toEqual([`3 is not an answer option of "codes" ("1", "2")`]);
     expect(check(`$var.age.between(18)`)).toEqual([`"between" needs 2 values`]);
     expect(check(`$var.age.gt(200)`)).toEqual([`200 is outside the range of "age" (0 to 120)`]);
     expect(check(`$var.topics.hasAll()`)).toEqual([`"has all of" needs at least 1 value`]);
