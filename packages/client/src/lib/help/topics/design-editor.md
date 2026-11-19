@@ -199,7 +199,9 @@ To avoid this, agree who edits when, and save often.
 one JSON document: useful for an overview, for copying a design between
 studies, or for larger edits such as renaming many things at once. The editor
 completes property names, checks the structure, and explains a property
-when you hover over it. **Fold details** collapses the details of
+when you hover over it. The document has three parts, as in an
+exported design: `public` (the title shown to coders), `session` (the
+session parameters) and `items` (the codebook). **Fold details** collapses the details of
 questions and layouts so that only the structure remains; **Unfold all**
 opens everything again; **Format** tidies the layout.
 

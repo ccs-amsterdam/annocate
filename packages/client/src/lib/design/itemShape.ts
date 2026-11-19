@@ -82,3 +82,21 @@ export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLe
   };
   return walk(next, "") as TopLevelItem[];
 }
+
+/** Why parsed text isn't a design the editor can show; null if it is. */
+export function designShapeError(raw: unknown): string | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return 'The design is an object: { "public": ..., "session": ..., "items": [ ... ] }';
+  const design = raw as Record<string, unknown>;
+  const unknown = Object.keys(design).filter((k) => !["public", "session", "items"].includes(k));
+  if (unknown.length) return `Unknown key${unknown.length > 1 ? "s" : ""} ${unknown.map((k) => `"${k}"`).join(", ")}: a design has "public", "session" and "items"`;
+  if (design.session !== undefined && (!design.session || typeof design.session !== "object" || Array.isArray(design.session))) {
+    return '"session" must be an object, e.g. { "params": [] }';
+  }
+  if (design.public !== undefined && design.public !== null && (typeof design.public !== "object" || Array.isArray(design.public))) {
+    return '"public" must be an object, e.g. { "title": "..." }, or null';
+  }
+  if ((design.items as unknown[] | undefined)?.some?.((i) => (i as { type?: unknown } | null)?.type === "session")) {
+    return 'The session goes in "session", not in "items"';
+  }
+  return itemsShapeError(design.items);
+}

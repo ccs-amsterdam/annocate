@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TopLevelItem } from "@annotinder/contracts";
-import { carryKeys, itemsShapeError } from "./itemShape";
+import { carryKeys, designShapeError, itemsShapeError } from "./itemShape";
 
 describe("item shape", () => {
   it("accepts lists of items the editor can show, checking children", () => {
@@ -30,5 +30,20 @@ describe("item shape", () => {
 
   it("doesn't ask conditions for a name", () => {
     expect(itemsShapeError([{ type: "condition", condition: { script: "true" }, children: [] }])).toBeNull();
+  });
+});
+
+describe("designShapeError", () => {
+  const question = { name: "q", type: "question", variable: { type: "confirm" } };
+  it("takes a design with its session and public info apart from the items", () => {
+    expect(designShapeError({ public: { title: "T" }, session: { params: [] }, items: [question] })).toBeNull();
+    expect(designShapeError({ items: [] })).toBeNull();
+    expect(designShapeError({ public: null, items: [question] })).toBeNull();
+  });
+  it("says what is wrong", () => {
+    expect(designShapeError([question])).toMatch(/is an object/);
+    expect(designShapeError({ items: [question], extra: 1 })).toMatch(/Unknown key "extra"/);
+    expect(designShapeError({ items: [{ type: "session", params: [] }] })).toMatch(/goes in "session"/);
+    expect(designShapeError({ session: [], items: [] })).toMatch(/"session" must be an object/);
   });
 });
