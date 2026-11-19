@@ -65,7 +65,7 @@ test("annotation with an experiment: a set of units per condition, questions bef
     children?: { name: string; variable: { type: string; question?: string } }[];
   }[];
   expect(items.map((i) => i.name ?? i.type)).toEqual(["condition", "age", "unit_loop", "comments"]);
-  // The experimental groups: a computed item (a random value) linked to the condition's set column
+  // The experimental groups: a computed item (a random condition) linked to the condition's set column
   expect(items[0]).toMatchObject({ type: "computed", variable: { type: "random", draw: "balanced", units: "condition" } });
   expect(items[2].children!.map((c) => [c.name, c.variable])).toEqual([
     ["how_credible_is_it", { type: "unspecified", question: "How credible is it?" }],
@@ -74,7 +74,7 @@ test("annotation with an experiment: a set of units per condition, questions bef
 
   // Specifying one: choose its answer type
   await page.getByText("age", { exact: true }).first().click();
-  await page.locator("select").filter({ hasText: "Choose an answer type" }).selectOption("numeric");
+  await page.getByRole("option", { name: /^Number/ }).click();
   await expect(page.getByText("to specify")).toHaveCount(3);
 });
 

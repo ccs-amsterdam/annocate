@@ -17,7 +17,7 @@ test("writing a codebook in the editor, as the help describes it, and saving it"
   // A unit loop
   // (Form labels aren't tied to their fields yet: placeholders find them.)
   await page.getByRole("button", { name: /Add item/ }).click();
-  await page.getByRole("button", { name: /^Unit Loop/ }).click();
+  await page.getByRole("button", { name: /^Unit loop/ }).click();
   await page.getByPlaceholder("e.g. News items").fill("News articles");
   // A new loop hands out all the session's units, once: nothing to specify
   await expect(page.getByText("to specify")).toHaveCount(0);
@@ -28,8 +28,10 @@ test("writing a codebook in the editor, as the help describes it, and saving it"
   await page.getByRole("button", { name: "Inside News articles" }).click();
   await page.getByRole("button", { name: /^Question/ }).first().click();
   await page.getByPlaceholder("e.g. sentiment, age").fill("topic");
-  // A new question has no answer type yet
-  await page.locator("select").filter({ hasText: "Choose an answer type" }).selectOption({ label: "Nominal (categories)" });
+  // A new question has no answer type yet: the form starts with the answer types as cards
+  await expect(page.getByText("Choose an answer type")).toBeVisible();
+  await page.getByRole("option", { name: /^Categories/ }).click();
+  await expect(page.getByRole("button", { name: "Change type" })).toBeVisible();
   await page.getByPlaceholder(/The question coders see/).fill("What is this article mainly about?");
 
   await page.getByRole("button", { name: "Save", exact: true }).click();
@@ -41,4 +43,39 @@ test("writing a codebook in the editor, as the help describes it, and saving it"
   expect(items).toMatchObject([
     { type: "unit_loop", label: "News articles", children: [{ name: "topic", variable: { type: "nominal", question: "What is this article mainly about?" } }] },
   ]);
+});
+
+test("a computed variable: a random condition linked to a set column", async ({ page, request }) => {
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Computed test" });
+  const units = await api<{ id: number; externalId: string }[]>(request, "POST", `/study/${study.id}/units`, {
+    units: [
+      { externalId: "u1", data: { text: "One" } },
+      { externalId: "u2", data: { text: "Two" } },
+    ],
+  });
+  await api(request, "PUT", `/study/${study.id}/sets/framing`, {
+    sets: [
+      { name: "control", unitIds: [units[0].id] },
+      { name: "experiment", unitIds: [units[1].id] },
+    ],
+  });
+  await page.goto("/research");
+  await page.getByText("Computed test").click();
+  await page.getByRole("button", { name: "Design", exact: true }).click();
+  await page.getByRole("button", { name: /Open the editor/ }).click();
+
+  await page.getByRole("button", { name: /Add item/ }).click();
+  await page.getByRole("button", { name: /^Computed variable/ }).click();
+  await page.getByPlaceholder("e.g. sentiment, age").fill("framing");
+  await expect(page.getByText("Random condition", { exact: true })).toBeVisible();
+  await expect(page.getByText("never shown to the coder")).toBeVisible();
+  await page.locator("select").filter({ hasText: "Not linked to units" }).selectOption("framing");
+
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect
+    .poll(async () => (await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`)).length, { timeout: 10_000 })
+    .toBe(1);
+  const [saved] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
+  const { items } = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${saved.id}`);
+  expect(items).toMatchObject([{ type: "computed", name: "framing", variable: { type: "random", units: "framing" } }]);
 });

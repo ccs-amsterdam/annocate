@@ -37,13 +37,13 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     color: "text-[var(--iconcolor,var(--color-muted-foreground))]",
   },
   computed: {
-    label: "Random value",
-    description: "A value drawn when coders reach it (e.g. an experimental group), never asked",
+    label: "Computed variable",
+    description: "A value AnnoTinder works out when coders reach it, never asked (e.g. a random condition)",
     icon: Shuffle,
     color: "text-[var(--iconcolor,var(--color-muted-foreground))]",
   },
   unit_loop: {
-    label: "Unit Loop",
+    label: "Unit loop",
     description: "Loop over units (all, or a set)",
     icon: Repeat,
     color: "text-primary-dark",
@@ -71,7 +71,7 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
 };
 
 /** Questions are shown with the icon of their answer type. */
-const ANSWER_TYPE_ICONS: Record<AnyVariableType["type"], LucideIcon> = {
+export const ANSWER_TYPE_ICONS: Record<AnyVariableType["type"], LucideIcon> = {
   nominal: Tag,
   ordinal: ListOrdered,
   numeric: Hash,

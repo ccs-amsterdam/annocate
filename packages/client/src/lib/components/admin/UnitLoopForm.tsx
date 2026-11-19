@@ -452,7 +452,7 @@ function allColumns(groups: SetGroupResponse[]): SetGroupResponse | undefined {
 
 /** A loop's units: its filter, criteria (a shared queue), and the special units. */
 function UnitsEditor({
-  units: branch,
+  units: settings,
   groups,
   agreeable,
   checkable,
@@ -476,53 +476,52 @@ function UnitsEditor({
   const special = allColumns(groups);
   // The column with practice or gold units (their right answers are edited by column)
   const columnWith = (set: string) => groups.find((g) => g.sets.some((s) => s.name === set && s.unitIds.length > 0)) ?? groups[0];
-  const canSpread = !branch.criteria || branch.criteria.unitsPerCoder?.max !== undefined;
+  const canSpread = !settings.criteria || settings.criteria.unitsPerCoder?.max !== undefined;
   const without = (key: keyof LoopUnits) => {
-    const next = { ...branch };
+    const next = { ...settings };
     delete next[key];
     return next;
   };
   return (
     <div className="flex flex-col gap-3">
       <p className="flex items-center gap-1 text-xs">
-        <span>{shareSummary(shareSources, branch.filter)}</span>
+        <span>{shareSummary(shareSources, settings.filter)}</span>
         <HelpButton topic="unit-distribution" label="Help: unit distribution" />
       </p>
-      <FilterEditor groups={groups} filter={branch.filter} onChange={(filter) => onChange(filter ? { ...branch, filter } : without("filter"))} />
+      <FilterEditor groups={groups} filter={settings.filter} onChange={(filter) => onChange(filter ? { ...settings, filter } : without("filter"))} />
       <label className="flex items-center gap-2 text-xs font-semibold">
         <input
           type="checkbox"
-          checked={!!branch.criteria}
-          onChange={(e) => onChange(e.target.checked ? { ...branch, criteria: { codersPerUnit: { min: 1 } } } : without("criteria"))}
+          checked={!!settings.criteria}
+          onChange={(e) => onChange(e.target.checked ? { ...settings, criteria: { codersPerUnit: { min: 1 } } } : without("criteria"))}
         />
         Share the units among coders (crowd coding): each unit until enough coders coded it
       </label>
-      {branch.criteria && (
-        <SharedSettings criteria={branch.criteria} agreeable={agreeable} onChange={(criteria) => onChange({ ...branch, criteria })} />
+      {settings.criteria && (
+        <SharedSettings criteria={settings.criteria} agreeable={agreeable} onChange={(criteria) => onChange({ ...settings, criteria })} />
       )}
       <OverlapEditor
-        overlap={branch.overlap}
-        required={false}
+        overlap={settings.overlap}
         group={special}
         canSpread={canSpread}
-        onChange={(overlap) => onChange(overlap ? { ...branch, overlap } : without("overlap"))}
+        onChange={(overlap) => onChange(overlap ? { ...settings, overlap } : without("overlap"))}
       />
       <PracticeEditor
-        practice={branch.practice}
+        practice={settings.practice}
         group={columnWith(PRACTICE_SET)}
         checkable={checkable}
         answerKey={answerKey}
         canSpread={canSpread}
-        onChange={(practice) => onChange(practice ? { ...branch, practice } : without("practice"))}
+        onChange={(practice) => onChange(practice ? { ...settings, practice } : without("practice"))}
       />
       <GoldEditor
-        gold={branch.gold}
+        gold={settings.gold}
         group={columnWith(GOLD_SET)}
         checkable={checkable}
         answerKey={answerKey}
         screenouts={screenouts}
         canSpread={canSpread}
-        onChange={(gold) => onChange(gold ? { ...branch, gold } : without("gold"))}
+        onChange={(gold) => onChange(gold ? { ...settings, gold } : without("gold"))}
       />
       <IssueList issues={issues} />
     </div>
@@ -749,19 +748,16 @@ export function SharedSettings({
 }
 
 /**
- * The overlap: the group's `_overlap` units, which every coder of the group
- * codes besides their own set; where they come, and how many. Required in
- * `assign` mode (choosing "disabled" too), so it is decided on purpose.
+ * The overlap: the `_overlap` units, which every coder codes besides their
+ * own units; where they come, and how many.
  */
 function OverlapEditor({
   overlap,
-  required,
   group,
   canSpread,
   onChange,
 }: {
   overlap: OverlapSettings | undefined;
-  required: boolean;
   group: SetGroupResponse | undefined;
   /** Spreading needs the number of units a coder gets: not known in a shared queue without max units per coder. */
   canSpread: boolean;
@@ -778,27 +774,21 @@ function OverlapEditor({
             <HelpButton topic="overlap" label="Help: overlap" />
           </span>
           <select
-            className={cn(selectClass, "w-fit font-normal", required && !overlap && "border-amber-500")}
+            className={cn(selectClass, "w-fit font-normal")}
             value={overlap?.placement ?? ""}
             onChange={(e) => {
               const placement = e.target.value as OverlapSettings["placement"] | "";
               onChange(placement === "" ? undefined : { ...overlap, placement });
             }}
           >
-            {required ? (
-              <option value="" disabled>
-                Choose…
-              </option>
-            ) : (
-              <option value="">None</option>
-            )}
+            <option value="">Among the coder&apos;s own units (default)</option>
             <option value="spread" disabled={!canSpread}>
               Spread through the coder&apos;s units (recommended){canSpread ? "" : " (needs max units per coder)"}
             </option>
             <option value="rate">At a rate: about one in every few units{canSpread ? "" : " (recommended for crowd coding)"}</option>
             <option value="first">First, before the coder&apos;s own units (inflates reliability)</option>
             <option value="last">Last, after them</option>
-            {required && <option value="disabled">Disabled: no overlap</option>}
+            <option value="disabled">Leave them out of this loop</option>
           </select>
         </label>
         {on && overlap.placement === "rate" && <RateFields value={overlap} onChange={(rate) => onChange({ ...overlap, ...rate })} />}

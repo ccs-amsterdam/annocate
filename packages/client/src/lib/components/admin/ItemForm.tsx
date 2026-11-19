@@ -19,13 +19,9 @@ import { issuesAt } from "./issues";
 import { Input } from "@/components/ui/input";
 import type { ShareSource } from "../../design/assignment";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  VariableTypeForm,
-  switchVariableType,
-  VARIABLE_TYPE_LABELS,
-  VARIABLE_TYPE_OPTIONS_USER,
-  VARIABLE_TYPE_OPTIONS_UNIT,
-} from "./VariableTypeForm";
+import { VariableTypeForm, switchVariableType, VARIABLE_TYPE_OPTIONS_USER, VARIABLE_TYPE_OPTIONS_UNIT } from "./VariableTypeForm";
+import { TypeCardGrid, TypeHeader } from "./TypeCards";
+import { COMPUTED_TYPE_CARDS, answerTypeCards } from "./typeCardData";
 
 /** The help topic for each answer type. */
 const TYPE_HELP: Record<AnyVariableType["type"], string> = {
@@ -122,6 +118,7 @@ export function ItemForm({
   };
 
   const nameError = getFieldError("name");
+  const answerCards = answerTypeCards(isInsideLoop ? VARIABLE_TYPE_OPTIONS_UNIT : VARIABLE_TYPE_OPTIONS_USER);
 
   return (
     <div className="flex flex-col gap-4">
@@ -159,33 +156,23 @@ export function ItemForm({
       {/* Item-specific fields */}
       {item.type === "question" && (
         <>
-          <div className="flex flex-col gap-1.5">
-            <span className="flex items-center gap-1.5">
-            <label className="text-xs font-semibold text-foreground">Answer Type</label>
-            <HelpButton topic={TYPE_HELP[item.variable.type]} label="Help: this answer type" />
-          </span>
-            <select
-              className={cn(
-                "h-9 rounded-md border border-input bg-background px-3 text-xs font-semibold",
-                item.variable.type === "unspecified" && "border-amber-500 text-amber-700 dark:text-amber-400",
-              )}
-              value={item.variable.type}
-              onChange={(e) =>
-                onChange({ ...item, variable: switchVariableType(item.variable, e.target.value as AnyVariableType["type"]) } as DesignItem)
-              }
-            >
-              {item.variable.type === "unspecified" && (
-                <option value="unspecified" disabled>
-                  Choose an answer type...
-                </option>
-              )}
-              {(isInsideLoop ? VARIABLE_TYPE_OPTIONS_UNIT : VARIABLE_TYPE_OPTIONS_USER).map((t) => (
-                <option key={t} value={t}>
-                  {VARIABLE_TYPE_LABELS[t]}
-                </option>
-              ))}
-            </select>
-          </div>
+          {item.variable.type === "unspecified" ? (
+            // A new question: choose what kind of answer it asks for
+            <div className="flex flex-col gap-1.5">
+              <span className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-foreground">Choose an answer type</span>
+                <HelpButton topic="question-types" label="Help: answer types" />
+              </span>
+              <TypeCardGrid cards={answerCards} onPick={(type) => onChange({ ...item, variable: switchVariableType(item.variable, type) } as DesignItem)} />
+            </div>
+          ) : (
+            <TypeHeader
+              cards={answerCards}
+              value={item.variable.type as (typeof answerCards)[number]["type"]}
+              onPick={(type) => onChange({ ...item, variable: switchVariableType(item.variable, type) } as DesignItem)}
+              help={<HelpButton topic={TYPE_HELP[item.variable.type]} label="Help: this answer type" />}
+            />
+          )}
           <VariableTypeForm
             variable={item.variable}
             unitVariableNames={unitVariableNames}
@@ -208,6 +195,13 @@ export function ItemForm({
 
       {item.type === "computed" && (
         <>
+          <TypeHeader
+            cards={COMPUTED_TYPE_CARDS}
+            value={item.variable.type}
+            onPick={(type) => onChange({ ...item, variable: switchVariableType(item.variable, type) } as DesignItem)}
+            help={<HelpButton topic="random-condition" label="Help: random conditions" />}
+          />
+          <p className="text-[11px] text-muted-foreground">Worked out when the coder reaches this point; never shown to the coder.</p>
           <VariableTypeForm
             variable={item.variable}
             unitVariableNames={unitVariableNames}
