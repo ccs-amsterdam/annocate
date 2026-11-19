@@ -77,8 +77,8 @@ Server-side design lives in
   finished unit ids, and units are loaded lazily (`architecture.md` §8.1).
   The rules (tested in `studyManager/navigation.test.ts`, against an
   in-memory server with the real one's rules, `fakeCoderServer.ts`):
-  - Back from a loop's first question goes to the previous unit's last
-    question; from a unit's first unit to the step before the loop. Back
+  - Back from a unit's first question goes to the previous unit's last
+    question; from the loop's first unit, to the step before the loop. Back
     from the step after a loop goes to its last unit; a loop the coder got
     no units in is passed. Back never lands on an `end` item.
   - Moving forward into a loop (Next, or answering the question before it
