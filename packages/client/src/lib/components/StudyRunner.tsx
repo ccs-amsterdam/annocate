@@ -24,6 +24,7 @@ import { QuitMenu } from "./QuitMenu";
 import { CodingNav, CodingProgress } from "./CodingNav";
 import { SwipeCard, SwipeProvider, SwipeSurface } from "./SwipeCard";
 import { buildValues } from "./answerFields/answerValue";
+import { dropRepeatedClick, useNoKeyRepeat } from "./inputGuards";
 import { Button } from "@/components/ui/button";
 import { LogoSmoke } from "@/components/Logo";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -190,6 +191,8 @@ function StudyRunnerContent({
     [baseUrl, linkSecret, urlParamsKey, newSession],
   );
   const { manager, snapshot } = useStudyManager(coderApi);
+  // A held-down key answers once
+  useNoKeyRepeat();
   const [navDirection, setNavDirection] = useState<"next" | "previous">("next");
 
   // Track global position to keep navDirection in sync with any navigation change
@@ -396,16 +399,19 @@ function StudyRunnerContent({
     manager.answer(val);
   };
 
+  // The second click of a double click doesn't answer the next question (inputGuards.ts)
   const answerField = (
-    <Question
-      // A fresh answer field per question and unit, starting from that answer
-      key={`${snapshot.currentUnit?.id ?? ""}/${item.name}`}
-      item={item}
-      onAnswer={handleAnswer}
-      initialValue={!isUnitVar ? snapshot.userVariableValues[item.name] : snapshot.currentUnitVariables?.[item.name]}
-      unitVariables={snapshot.currentUnitVariables ?? undefined}
-      texts={snapshot.currentTexts}
-    />
+    <div onClickCapture={dropRepeatedClick} className="contents">
+      <Question
+        // A fresh answer field per question and unit, starting from that answer
+        key={`${snapshot.currentUnit?.id ?? ""}/${item.name}`}
+        item={item}
+        onAnswer={handleAnswer}
+        initialValue={!isUnitVar ? snapshot.userVariableValues[item.name] : snapshot.currentUnitVariables?.[item.name]}
+        unitVariables={snapshot.currentUnitVariables ?? undefined}
+        texts={snapshot.currentTexts}
+      />
+    </div>
   );
   // A practice question answered wrongly: the feedback with the question (docs/architecture.md §6.2)
   const practiceWrong = snapshot.practiceWrong?.question === item.name ? snapshot.practiceWrong : null;

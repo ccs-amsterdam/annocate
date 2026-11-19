@@ -1,0 +1,184 @@
+import type { Page } from "@playwright/test";
+import type { StudyResponse, UnitResponse } from "@annotinder/contracts";
+import { expect, test } from "./fixtures";
+import { answers, api, question } from "./helpers";
+
+// Navigating while coding, in a real browser against the real server:
+// Previous and Next, the menu, changing an earlier answer, a reload, and
+// quick repeated input. The rules themselves are tested in the client
+// (studyManager/navigation.test.ts); these check the screen follows them.
+
+const TEXTS = ["First text", "Second text", "Third text"];
+
+const nominal = (name: string, text: string, options: string[]) => ({
+  type: "question",
+  name,
+  variable: { type: "nominal", question: text, options: options.map((value) => ({ value })) },
+});
+
+/** A deployed study: a question, a loop over three units with two questions each, a last question. */
+async function study(request: Parameters<typeof api>[0]): Promise<{ id: number; link: string }> {
+  const created = await api<StudyResponse>(request, "POST", "/study", { name: "Navigation" });
+  await api<UnitResponse[]>(request, "POST", `/study/${created.id}/units`, {
+    units: TEXTS.map((text, i) => ({ externalId: `u${i + 1}`, data: { text } })),
+  });
+  const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, {
+    items: [
+      { type: "question", name: "ready", variable: { type: "confirm", question: "Ready to start?" } },
+      {
+        type: "unit_loop",
+        label: "Texts",
+        layout: { template: "$unit.text" },
+        children: [
+          nominal("topic", "Topic?", ["politics", "other"]),
+          nominal("tone", "Tone?", ["positive", "negative"]),
+        ],
+      },
+      { type: "question", name: "done", variable: { type: "confirm", question: "All done?" } },
+    ],
+  });
+  await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
+  return { id: created.id, link: `/code/${created.id}?link=${link.secret}` };
+}
+
+/** The unit on screen and its question. */
+async function at(page: Page, text: string, q: string): Promise<void> {
+  await question(page, q);
+  await expect(page.getByText(text, { exact: true })).toBeVisible();
+}
+
+const previous = (page: Page) => page.getByRole("button", { name: "Previous", exact: true }).click();
+const next = (page: Page) => page.getByRole("button", { name: "Next", exact: true }).click();
+/** An answer option's button ("1 politics": its shortcut and label). */
+const option = (page: Page, name: string) => page.getByRole("button", { name: new RegExp(`^\\d* ?${name}$`) });
+
+/** The coder's unit answers saved so far, per unit and question (one row each). */
+async function saved(request: Parameters<typeof api>[0], id: number): Promise<string[]> {
+  const rows = (await answers(request, id)).filter((a) => a.unitId !== null);
+  return rows.map((a) => `${a.unitId}/${a.variable}`).sort();
+}
+
+test("Previous and Next: within a unit, between units, and out of and back into the loop", async ({
+  page,
+  request,
+}) => {
+  const { link } = await study(request);
+  await page.goto(link);
+  await page.getByRole("button", { name: "I confirm", exact: true }).click();
+  await at(page, TEXTS[0], "Topic?");
+  await option(page, "politics").click();
+  await at(page, TEXTS[0], "Tone?");
+
+  // Back to the question before the loop, and forward again: the same unit, the answer kept
+  await previous(page);
+  await at(page, TEXTS[0], "Topic?");
+  await expect(option(page, "politics")).toHaveAttribute("aria-pressed", "true");
+  await previous(page);
+  await question(page, "Ready to start?");
+  await next(page);
+  await at(page, TEXTS[0], "Topic?");
+  await next(page);
+  await at(page, TEXTS[0], "Tone?");
+  await option(page, "negative").click();
+  await at(page, TEXTS[1], "Topic?");
+
+  // Back to the previous unit's last question, with its answer
+  await previous(page);
+  await at(page, TEXTS[0], "Tone?");
+  await expect(option(page, "negative")).toHaveAttribute("aria-pressed", "true");
+  await next(page);
+  await at(page, TEXTS[1], "Topic?");
+});
+
+test("after the loop, one press of Previous goes to the last unit; changing it saves it again", async ({
+  page,
+  request,
+}) => {
+  const { id, link } = await study(request);
+  await page.goto(link);
+  await page.getByRole("button", { name: "I confirm", exact: true }).click();
+  for (const text of TEXTS) {
+    await at(page, text, "Topic?");
+    await option(page, "politics").click();
+    await at(page, text, "Tone?");
+    await option(page, "positive").click();
+  }
+  await question(page, "All done?");
+  await previous(page);
+  await at(page, TEXTS[2], "Tone?");
+  await option(page, "negative").click();
+  await question(page, "All done?");
+  await expect
+    .poll(async () => {
+      const rows = (await answers(request, id)).filter((a) => a.unitId !== null && a.variable === "tone");
+      return rows.map((a) => (a.value as { values: { value: string }[] }).values[0].value);
+    })
+    .toEqual(["positive", "positive", "negative"]);
+  // Each unit once
+  expect(await saved(request, id)).toHaveLength(6);
+});
+
+test("the menu: back to the first question, then to the loop where the coder was", async ({ page, request }) => {
+  const { link } = await study(request);
+  await page.goto(link);
+  await page.getByRole("button", { name: "I confirm", exact: true }).click();
+  await option(page, "politics").click();
+  await option(page, "positive").click();
+  await at(page, TEXTS[1], "Topic?");
+
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /Ready to start/ })
+    .click();
+  await question(page, "Ready to start?");
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /Texts/ }).click();
+  await at(page, TEXTS[1], "Topic?");
+});
+
+test("a reload mid-unit continues on that unit with its answers; finished units stay reachable", async ({
+  page,
+  request,
+}) => {
+  const { link } = await study(request);
+  await page.goto(link);
+  await page.getByRole("button", { name: "I confirm", exact: true }).click();
+  await option(page, "other").click();
+  await option(page, "positive").click();
+  await at(page, TEXTS[1], "Topic?");
+  await option(page, "politics").click();
+  await at(page, TEXTS[1], "Tone?");
+
+  await page.reload();
+  await at(page, TEXTS[1], "Tone?");
+  await previous(page);
+  await at(page, TEXTS[1], "Topic?");
+  await expect(option(page, "politics")).toHaveAttribute("aria-pressed", "true");
+  await previous(page);
+  await at(page, TEXTS[0], "Tone?");
+  await expect(option(page, "positive")).toHaveAttribute("aria-pressed", "true");
+});
+
+test("a double click, or a key held down, answers one question; the next isn't skipped", async ({ page, request }) => {
+  const { id, link } = await study(request);
+  await page.goto(link);
+  await page.getByRole("button", { name: "I confirm", exact: true }).click();
+  await at(page, TEXTS[0], "Topic?");
+  await option(page, "politics").dblclick();
+  await at(page, TEXTS[0], "Tone?");
+  await option(page, "positive").dblclick();
+  await at(page, TEXTS[1], "Topic?");
+  await expect.poll(() => saved(request, id)).toHaveLength(2);
+
+  // "1" held down: the first press answers, its repeats don't
+  await page.keyboard.press("1");
+  await at(page, TEXTS[1], "Tone?");
+  await page.evaluate(() => {
+    for (let i = 0; i < 5; i++)
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "1", repeat: true, bubbles: true }));
+  });
+  await page.waitForTimeout(300);
+  await at(page, TEXTS[1], "Tone?");
+});
