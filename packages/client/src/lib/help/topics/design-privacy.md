@@ -106,20 +106,18 @@ To run the study, a coder's browser gets:
   values, also those meant for other groups. Anyone who knows where to look
   could read it. Don't put anything in the codebook that participants must
   not see, such as the hypothesis in a condition's label.
-- **The unit fields the codebook uses**, also fields used only in a condition
-  or shown only later in the unit. Fields the codebook doesn't use are never
+- **The unit fields the design uses**, also fields used only in a condition
+  or shown only later in the unit. Fields the design doesn't use are never
   sent.
 - **Only the units they are given**, a few at a time (the next ones are
   loaded ahead). A coder can go back to units they coded, but can't browse
   the study's units.
 
-Conditions, including which group of a loop a coder belongs to, are worked
-out in the coder's browser. The server checks that the units a coder asks
-for are ones the design could give *someone*. A technically skilled coder
-could therefore get the units of another group of the same loop. Routing on
-answers is meant to organise honest coders, not to keep material secret.
-Random and balanced group assignment, session values from the link, and
-assigned sets are decided on the server: coders can't change their own group.
+Show if conditions are worked out in the coder's browser, so a technically
+skilled coder could read questions or texts meant for another group. Which
+units a coder gets is decided on the server, from the session's values (the
+coder, the conditions and the computed variables linked to units): coders
+can't change their own group or ask for another group's units.
 
 > If some coders must never see some material, put it in a separate study
 > with its own links.

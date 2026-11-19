@@ -23,7 +23,7 @@ drawn at the start) is an **assigned condition** in **Session**: see
 
 A random condition can only be placed **outside unit loops**: it is a
 property of the coder, not of a unit. It is assigned where it is in the
-codebook, when the coder gets there (see below). It has
+design, when the coder gets there (see below). It has
 no question text, because nobody sees it. Its **Item Name** is how you
 refer to it, e.g. `group`.
 
@@ -77,7 +77,7 @@ the group of coders without an answer.
 ## Assigned when reached, never changed
 
 A coder's value is assigned when they **reach** the random condition in the
-codebook, not when they start. Put it where the assignment should happen:
+design, not when they start. Put it where the assignment should happen:
 after the screening questions, so participants who are screened out never
 get a condition and don't count in the balance; after the questions it is
 stratified on.

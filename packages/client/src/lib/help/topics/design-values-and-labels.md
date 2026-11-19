@@ -70,7 +70,7 @@ coder saw), and `variables.csv` lists every version's labels, so a changed
 label stays traceable.
 
 > In a nominal question whose value still follows its label, editing the
-> label changes the value too. After you change a label in a codebook that
+> label changes the value too. After you change a label in a design that
 > coders already use, check the **Value (stored)** box: type the old value
 > back if it changed. The deploy dialog warns you if you forget (see below).
 

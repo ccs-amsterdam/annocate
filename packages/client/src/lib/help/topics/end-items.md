@@ -5,7 +5,7 @@ order: 6
 summary: End items end a coder's session early or on purpose - screened out or complete - with a message and an optional link back to a panel.
 ---
 
-Normally a session ends when the coder has gone through the whole codebook:
+Normally a session ends when the coder has gone through the whole design:
 they see *"Study Complete!"* and that's it. An **end item** ends the session
 at a point you choose, says how it ended, and can send the coder on to
 another website. You need one when:
@@ -19,7 +19,7 @@ another website. You need one when:
 
 An end item usually sits inside a [condition](conditions.md): it is only
 reached when the condition holds. An end item at the very end of the
-codebook is reached by everyone who finishes.
+design is reached by everyone who finishes.
 
 ```text
 Consent                   nominal: yes, no
@@ -34,7 +34,7 @@ End: done                 complete, back to the panel
 
 ## Adding an end item
 
-Click the **+** in the codebook tree where the session should end, and
+Click the **+** in the design tree where the session should end, and
 choose **End** (see [Adding items](design-editor.md#adding-items)). It has
 these fields:
 
@@ -58,9 +58,9 @@ completed, and both from those who simply stopped.
 | **Complete** | The coder did what was asked | *Study Complete!* |
 
 Sessions that end without an end item (the coder reached the end of the
-codebook) have an empty `ended` column. If you need to know who completed,
+design) have an empty `ended` column. If you need to know who completed,
 for example for payment, put an end item with the outcome **Complete** at
-the end of the codebook.
+the end of the design.
 
 ## What the coder sees
 
@@ -95,7 +95,7 @@ https://panel.example/return?status=screenout&id=$var.pid.value
 https://panel.example/return?status=complete&id=$var.pid.value&group=$var.group.value
 ```
 
-Here `pid` and `group` are questions of the codebook, typically
+Here `pid` and `group` are questions of the design, typically
 [random conditions](random-condition.md): `pid` taken from the link the participant
 came in with, `group` drawn at random. How to get a panel's participant id
 into the design is explained in
@@ -135,7 +135,7 @@ ends the session after saving the current unit's answers.
 
 ### Back to the panel
 
-At the end of the codebook, an end item **Complete** with the panel's
+At the end of the design, an end item **Complete** with the panel's
 completion link as **Redirect to (optional)**, and inside each screening condition one
 **Screened out** with the panel's screenout link.
 

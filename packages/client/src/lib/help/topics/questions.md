@@ -2,14 +2,14 @@
 title: Questions
 section: Editor
 order: 2
-summary: What a question item is - its name, its text and instruction, where it goes in the codebook, and its answer type.
+summary: What a question item is - its name, its text and instruction, where it goes in the design, and its answer type.
 ---
 
 A **question** is an item that coders answer. Every question has a
 **name**, a **question text**, an optional **instruction**, and an
 **answer type** that decides how coders answer and what is stored. You add
-one with the **+** in the codebook tree (see
-[The codebook editor](design-editor.md#adding-items)), and edit it in the
+one with the **+** in the design tree (see
+[The design editor](design-editor.md#adding-items)), and edit it in the
 form on the right.
 
 ## The name
@@ -17,7 +17,7 @@ form on the right.
 **Item Name** is how AnnoTinder knows the question. It is:
 
 - the **column name** in your results (`annotations.csv` or `coders.csv`);
-- how other parts of the codebook **refer** to the answer: `$var.topic`
+- how other parts of the design **refer** to the answer: `$var.topic`
   in a text, a layout or a condition (see
   [Referring to answers and unit data](references.md)).
 
@@ -26,7 +26,7 @@ Rules:
 - letters, digits and `_` only: `topic`, `tone_headline`, `q3_actor`. No
   spaces, dashes or accents;
 - at most 128 characters;
-- unique in the whole codebook, including end items. A second `topic`
+- unique in the whole design, including end items. A second `topic`
   gives the issue *Duplicate name 'topic'*.
 
 Choose short names that say what the question measures, as you would name
@@ -36,7 +36,7 @@ letter are easiest to use in R and Python.
 ### Renaming is a new question
 
 Answers are stored under the question's name. While you are still writing
-the codebook, rename freely. Once coders have answered, a new name is a new
+the design, rename freely. Once coders have answered, a new name is a new
 question: answers given under the old name stay in the data under the old
 name, coders are asked the "new" question again, and units they finished
 count as unfinished. Change the **question text** instead if you only

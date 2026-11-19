@@ -129,7 +129,7 @@ Empty: the coder is done with the loop. 409 while the study is paused
 (`active: false`).
 
 A loop can add the session's columns' **practice** and **gold** units
-(`docs/plans/special-sets.md`) among the coder's own, like the overlap.
+(`docs/architecture.md` §6.2) among the coder's own, like the overlap.
 Their answer columns (`<question>_practice`, `<question>_practice_message`,
 `<question>_gold`) are not in the unit's data. A practice unit's data has
 `_practice: true` (layouts and texts can use `$unit._practice`), and the
@@ -157,9 +157,9 @@ answers: to go back to it, e.g. after resuming.
 `POST /variables/unit` (`PostUnitVariablesSchema`) → 200 `SubmitUnitResponseSchema`
 
 One finished unit's answers: every question of the loop (`skip` for
-questions a condition hid). Validated against the codebook, then stored
+questions a condition hid). Validated against the design, then stored
 before the response; values of variables not sent (e.g. questions a
-codebook update removed) are kept. `timings`: per question, how long the
+design update removed) are kept. `timings`: per question, how long the
 coder took, as the browser measured it (`AnswerTimingSchema`,
 `coder-identity.md` §10).
 
@@ -185,7 +185,7 @@ answer that didn't change gets its timing updated.
 `POST /variables/computed/:name` → `{ value }` (a `VariableValue`)
 
 The coder reached the computed variable `name` (`variable.type: "random"`) in
-the codebook's flow (the client evaluates conditions): the server draws its
+the design's flow (the client evaluates conditions): the server draws its
 value now, once, and
 returns it; reached again, the same value. `draw: "random"` draws by
 weight; `"balanced"` takes the option the fewest coders who reached it
@@ -201,8 +201,8 @@ and the same `session.<name>` values. A random variable linked to units without
 
 The coder reached this `end` item, or (without `item`) finished the study:
 the session is over. The server stores the item and its outcome from the
-codebook (`screenout` or `complete`; without an item `complete`; 400 if the
-codebook has no such end item). An end inside a unit loop names the unit it
+design (`screenout` or `complete`; without an item `complete`; 400 if the
+design has no such end item). An end inside a unit loop names the unit it
 was reached on, `unit: { loop, id }` (400 unless the coder answered it; the
 client saves the unit first). Afterwards units and answers are refused with
 409 `session_ended`, and the session is closed unless the study keeps

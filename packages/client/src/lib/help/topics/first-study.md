@@ -2,7 +2,7 @@
 title: Your first study
 section: Getting started
 order: 2
-summary: Step by step from an empty study to coders at work - units, a small codebook, a layout, preview, deploy, links, results.
+summary: Step by step from an empty study to coders at work - units, a small design, a layout, preview, deploy, links, results.
 ---
 
 This page walks you through a complete, small study: coders read news
@@ -30,7 +30,7 @@ a003,Local team wins cup,"Thousands celebrated in the city centre after the fina
 > **Create new study** → **Guided setup** does steps 1 to 3 below in one go: say
 > whether you annotate units, ask questions or run an experiment, upload
 > the units, choose who codes what, and name your questions. The study then
-> opens in the codebook editor, with each question marked *to specify*:
+> opens in the design editor, with each question marked *to specify*:
 > choose its answer type there (step 3), then continue with step 4. See
 > [Guided setup](setup-wizard.md) for what it does and what only the editor
 > does.
@@ -40,7 +40,7 @@ a003,Local team wins cup,"Thousands celebrated in the city centre after the fina
    **Create Study**.
 
 The study opens on its **Overview** tab. The tabs along the top group the
-steps below: **Design** (the **Codebook** and **Units**), **Deploy**
+steps below: **Design** (the **Editor** and **Units**), **Deploy**
 (**Links** and **Coders**), **Results**, and the study's **Settings**.
 **Preview Study** at the top right tries the study as a coder.
 
@@ -55,9 +55,9 @@ steps below: **Design** (the **Codebook** and **Units**), **Deploy**
 
 More in [Uploading units](uploading-units.md).
 
-## 3. Write the codebook
+## 3. Write the design
 
-Open the **Editor** tab. On the left is the codebook as a tree of items;
+Open the **Editor** tab. On the left is the design as a tree of items;
 on the right the form of the item you select.
 
 **A unit loop.** Questions about units go inside a *unit loop*: the loop
@@ -98,7 +98,7 @@ News articles      the unit loop
   └ tone           ordinal: negative (1), neutral (2), positive (3)
 ```
 
-See [The codebook editor](design-editor.md) and
+See [The design editor](design-editor.md) and
 [Questions](questions.md) for everything the editor can do.
 
 ## 4. Say how a unit is shown

@@ -5,36 +5,36 @@ order: 4
 summary: Show questions, loops or end items only when earlier answers (or the unit) say so.
 ---
 
-A **condition** is an item in the codebook that holds other items, and shows
-them only when its rule holds. *"Ask about the actors only if the article is
+A **Show if** item holds other items, and shows them only when its
+condition holds. *"Ask about the actors only if the article is
 about politics"*, *"show the follow-up questions only to coders in the
 experiment group"*, *"end the session if the participant doesn't consent"*:
-each is a condition with the items it governs inside it.
+each is a Show if item with the items it governs inside it.
 
 ```text
 Topic                     nominal: politics, economy, sports, ...
-Condition: if topic is "politics"
+Show if: topic is "politics"
   ├ Actors                span: select the politicians mentioned
   └ Party                 nominal: ...
 Tone                      asked for every unit
 ```
 
 When the condition doesn't hold, the items inside are skipped and the coder
-goes straight on to the next item after the condition.
+goes straight on to the next item after the Show if item.
 
-## Adding a condition
+## Adding a Show if item
 
-1. In the codebook tree, add an item of the type **Condition** where the
-   condition should go (see [The codebook editor](design-editor.md)).
+1. In the design tree, add an item of the type **Show if** where the
+   condition should go (see [The design editor](design-editor.md)).
 2. Under **Show the items in this condition if**, set the rule (below).
-3. Add the items it governs *inside* the condition, or move existing items
+3. Add the items it governs *inside* the Show if item, or move existing items
    into it.
 4. Optionally give it a **Label (optional)**, such as *Politics only*. The
    tree shows the label instead of the rule.
 
-A condition can hold anything that may stand at its place: questions, other
-conditions, [end items](end-items.md), and at the top level also unit loops.
-A new condition holds always (its rule is `true`) until you add a rule.
+A Show if item can hold anything that may stand at its place: questions,
+other Show if items, [end items](end-items.md), and at the top level also unit loops.
+A new Show if item holds always (its rule is `true`) until you add a rule.
 
 ## The rules editor
 
@@ -56,7 +56,7 @@ what is wrong.
 
 | Question | Operators |
 | --- | --- |
-| Nominal (one answer), swipe, auto | is, is not, is one of, is none of |
+| Nominal (one answer), swipe, random condition | is, is not, is one of, is none of |
 | Ordinal | the same, and >, ≥, <, ≤ an option |
 | An item of a scale (shown as *scale › item*) | as ordinal |
 | Numeric | =, ≠, >, ≥, <, ≤, between |
@@ -110,7 +110,7 @@ Conditions compare answers with **helper methods**, called on the question
 
 | Method | Works on | Holds when the answer ... |
 | --- | --- | --- |
-| `is(v)` | one answer: nominal, ordinal, swipe, auto, scale item | is `v` |
+| `is(v)` | one answer: nominal, ordinal, swipe, random condition, scale item | is `v` |
 | `isAny(v1, v2, ...)` | the same | is one of them |
 | `gt(n)`, `gte(n)` | ordinal, numeric, scale item | is greater than (or equal to) `n` |
 | `lt(n)`, `lte(n)` | ordinal, numeric, scale item | is lower than (or equal to) `n` |

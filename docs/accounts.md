@@ -1,7 +1,6 @@
 # Accounts, registration and limits
 
-Status: implemented (2026-10-28); identities and roles per the lab's
-Authentication standard (2026-11-16). Complements `security.md` (login),
+Identities and roles follow the lab's Authentication standard. Complements `security.md` (login),
 `coder-identity.md` (coders) and `api/admin.md` (the endpoints).
 
 AnnoTinder is meant to be hosted for many researchers: a public server,
@@ -50,7 +49,7 @@ given, changed or restored.
   (their limits apply); `admin` also manages accounts, limits and
   registration (`api/admin.md`). Without one, a logged-in user is a `user`:
   codes, and works on studies they have a study role in (a student
-  assistant editing a codebook is a user with `WRITE` on that study).
+  assistant editing a design is a user with `WRITE` on that study).
 - **Admin roles only per user**: never by domain or for everyone (a check
   in the table). Giving or taking them is a sensitive action (`security.md`
   §1).

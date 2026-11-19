@@ -5,7 +5,7 @@ order: 5
 summary: Small JavaScript expressions in {{ }} and in conditions, for when a plain value or the rules editor isn't enough.
 ---
 
-Most codebooks never need a script. Values such as `$unit.headline` and
+Most designs never need a script. Values such as `$unit.headline` and
 `$var.topic.label` fill in texts, and the rules editor makes most
 conditions. A **script** is for the rest: a calculation, a shortened text, a
 choice between two sentences, a condition that mixes *and* and *or*.
@@ -31,7 +31,7 @@ cases; copy and adapt them.
 
 - In templates, as `{{ ... }}`: a loop's layout, question and instruction
   texts, and end item messages.
-- As the condition of a Show if item or a loop branch, in **Script** mode
+- As the condition of a Show if item, in **Script** mode
   (see [Conditions](conditions.md#script-mode)).
 - As the condition of a `::: if` block in a template (see
   [Showing parts conditionally](template-blocks.md)).
@@ -165,7 +165,7 @@ Scripts run in a closed-off sandbox in the coder's browser:
 - They only see `$unit`, `$var` and `$session`. They can't load anything from the
   internet, read or change the page, or remember anything between runs.
 - A script may run for at most 100 milliseconds and use at most 1 MB of
-  memory. That is plenty for anything a codebook needs.
+  memory. That is plenty for anything a design needs.
 - A script that fails (an error, a mistake in its writing, a timeout) shows
   nothing in a template, and counts as *false* as a condition. Coders don't
   see an error.

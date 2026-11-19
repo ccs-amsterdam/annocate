@@ -1,13 +1,13 @@
 # Identity, sessions and login
 
-Status: current (2026-10-28). Coder sessions without login (§4),
-coder login (§5) and researcher login (§7) are implemented.
-Complements `docs/architecture.md`.
+Coder sessions without login (§4), coder login (§5), researcher login
+(§7), quitting (§8) and closing sessions (§9). Complements
+`docs/architecture.md`.
 
 ## 1. Principles
 
 - **A login provider proves who someone is; the server decides whether they
-  get in** (study roles, the link's rules). The server keeps no passwords:
+  get in** (study roles, the study's sign-in setting). The server keeps no passwords:
   identity is a verified email address from the provider (§7).
 - **Only authentication unlocks earlier work from another device.** An id
   that comes from a link (a participant id in a survey URL, or one hidden in
@@ -35,20 +35,21 @@ sessions.
 
 ## 3. Links
 
-Links are made by deploying the codebook, one per combination of its link
-parameter values (`docs/architecture.md` §7); the researcher sets who may
-use each. A link no longer part of the design is retired: new sessions get
-403 `link_inactive` ("This link is no longer active"), sessions that
-started go on. Two independent settings:
+Links are made by deploying the design, one per combination of its coders,
+conditions assigned by link and link parameter values
+(`docs/architecture.md` §7). A link no longer part of the design is
+retired: new sessions get 403 `link_inactive` ("This link is no longer
+active"), sessions that started go on. Two independent settings decide how
+a session starts:
 
-|  | `auth: "none"` | `auth: "required"` (or `"optional"`) |
+|  | sign-in `off` | sign-in `required` (or `optional`) |
 | --- | --- | --- |
 | **no participant id** | anyone with the link starts a new session | login first; the same login resumes the same coder on any device |
 | **participant id** (`participantId` fixed on the link, or the Study entry's `participant: { param, pattern? }` + `?<param>=…`) | new session, labelled with the participant id | login first; the participant id is a label next to the identity |
 
 `optional` lets the coder choose: log in to be able to resume elsewhere, or
-continue anonymously. `emails` (an allowlist; it makes login required) and
-`maxUses` further restrict a link.
+continue anonymously. Email coders (`session.coders`) allow only their
+addresses, and a link's `maxUses` caps its sessions.
 
 **Duplicate participant ids** are allowed: a participant who can't reach
 their first session (§4) starts another, and so does anyone else holding a
@@ -58,7 +59,7 @@ carry it either way); researchers deal with duplicates in analysis. The
 risk guarded against is privacy (no session is opened by a label), not
 confusion at a panel company over a leaked link.
 
-## 4. Sessions without login (implemented)
+## 4. Sessions without login
 
 - **The device id.** A browser gets one random device id, the first time
   a link accepts it, in a cookie: `annotinder_device`, `HttpOnly`,
@@ -67,7 +68,7 @@ confusion at a panel company over a leaked link.
 - **The session in a study.** The server derives the device's key for a study
   on every request: SHA-256 of device id, deployment and participant id (the
   server reads the participant id from the URL parameters the client sends,
-  `x-url-params`, using the participant parameter of the codebook's Session
+  `x-url-params`, using the participant parameter of the design's Session
   item). Including the participant id keeps participants apart on
   a shared lab computer. The database stores only the key, in
   `coder_devices` (one row per device of a session), never the device id:
@@ -75,7 +76,7 @@ confusion at a panel company over a leaked link.
   data. The device id is long and random, so no secret is needed (rotating
   `ANNOTINDER_SECRET` logs no coder out). Each request finds the session
   by its key: one indexed query. Everything the study needs from the link and the URL
-  (the link's parameter values, the participant id, the codebook's URL
+  (the link's parameter values, the participant id, the design's URL
   parameters and `source`) is stored when the coder starts, so the link and
   URL details can be forgotten.
 - **Device details.** When a device joins a session, coarse details from
@@ -92,9 +93,9 @@ confusion at a panel company over a leaked link.
   full; at most 256 characters), is refused (400 `url_param_missing` /
   `url_param_invalid`), so a broken panel link shows at once. The values,
   with the link's own parameter values and the optional `?source=`, are
-  stored on the coder (`coders.session`) and are the codebook's `$session`
+  stored on the coder (`coders.session`) and are the design's `$session`
   values: `$session.participant`, `$session.source`, `$session.email` and
-  `$session.<name>`. The codebook declares them, so validation checks the
+  `$session.<name>`. The design declares them, so validation checks the
   names.
 - **Same device later.** The device cookie resumes the same coder, whatever
   link (or none) the coder comes back with, as long as it carries the same
@@ -160,7 +161,7 @@ confusion at a panel company over a leaked link.
   `public.title`), never the study's name: that is private, and may
   say what the study is about.
 
-## 5. Coder login (implemented, 2026-10-28)
+## 5. Coder login
 
 The researcher login (§7) for coders: the same provider and the same
 login cookie (`annotinder_session`, path `/`). A login doesn't replace the
@@ -170,23 +171,23 @@ AnnoTinder doesn't affect coding. The email is used again only to continue
 on another device. Code: `coder.ts` (the session middleware),
 `DeploymentRuntime.resolveCoder`, `runtime/store.ts` (`findOrCreateCoder`).
 
-- **When a login is read.** Only when it matters: on links with
-  `auth: "optional"` or `"required"` (or an `emails` list) while the
-  session has no email yet, and on a device without a session in this study
-  (to find the email's session). A session with an email, or on a link
-  without login, never looks at the login: no lookups while coding. A
-  link with `auth: "none"` ignores a login (a researcher trying their own
-  link starts an anonymous session). Never in previews.
-- **Required.** `required` (or an `emails` list) without a login: 401
-  `auth_required`; the client offers the login, which comes back to the same
-  page, and the new session gets the email. A login not on the `emails`
-  list: 403 `email_not_allowed`.
-- **Sets by email.** A codebook whose unit loop assigns sets by the login's
-  email (`from: { session: "email" }`) requires login on every link, and
-  only emails that are set names of that group can start; others get 403
-  `email_not_allowed` ("This email address has no access to this study").
+- **The study's setting.** Sign-in is a setting of the study
+  (`studies.sign_in`: `off`, `optional`, `required`), chosen at the first
+  deploy. A design whose coders are email addresses (`session.coders`)
+  forces `required`.
+- **When a login is read.** Only when it matters: in a study with sign-in
+  `optional` or `required` while the session has no email yet, and on a
+  device without a session in this study (to find the email's session). A
+  session with an email, or a study with sign-in `off`, never looks at the
+  login: no lookups while coding (a researcher trying their own link then
+  starts an anonymous session). Never in previews.
+- **Required.** Without a login: 401 `auth_required`; the client offers the
+  login, which comes back to the same page, and the new session gets the
+  email. With email coders, only the coders' addresses can start; others
+  get 403 `email_not_allowed` ("This email address has no access to this
+  study").
 - **Optional.** `GET /session` says `canLogIn` (the server offers a login,
-  the link is `optional`, the session has no email). Logging in links the
+  sign-in is `optional`, the session has no email). Logging in links the
   email to the session on this device.
 - **Another device.** Logging in on a device without a session in this study
   finds the email's session and adds the device to it (as a transfer link
@@ -218,7 +219,7 @@ log in twice.
   unit. Possible later: optionally treat sessions with the same participant
   id as one person for distribution.
 
-## 7. Researcher login (implemented, 2026-10-26)
+## 7. Researcher login
 
 Code: `server/src/oidc.ts`, `researcher/login.ts`, `shared/sessions.ts`;
 client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
@@ -266,7 +267,7 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
   at the provider (`architecture.md` §11).
 
 
-## 8. Quitting, and deleting a coder's data (implemented, 2026-10-28)
+## 8. Quitting, and deleting a coder's data
 
 Coders can always leave; their data can be deleted; nothing is deleted by
 accident or as a way to undo paid work.
@@ -297,7 +298,7 @@ whether research data is exempt is for the researcher's protocol, not a
 button. Any coder's data can
 be deleted (`POST /study/:studyId/coders/delete { coderIds?, participantIds?,
 emails? }`, ADMIN): the coders rows (device keys, participant id, coder-level
-answers, routing, the request) and all their `annotation_values`, also
+answers, the request) and all their `annotation_values`, also
 retired ones; `units.coded` is recomputed. Unit versions stay (unit content).
 Nothing about coders is kept in memory, so nothing needs reloading. A
 deleted coder's browser later starts a new session
@@ -314,7 +315,7 @@ Open: what GDPR requires for anonymous participants (no identifier at all)
 is for the researcher's protocol; AnnoTinder offers the request from the
 session and deletion by participant id or email.
 
-## 9. Closing finished sessions (implemented, 2026-10-28)
+## 9. Closing finished sessions
 
 A session that ended (an `end` item, finishing the study, or quitting) is
 **closed** unless its study keeps sessions open (`studies.keep_sessions_open`,
@@ -337,12 +338,12 @@ doesn't get their answers.
   until when.
 
 Not done, on purpose: limiting how far back coders can go *during* a
-session. Coder-level answers are needed in the browser anyway (conditions
-and branching use them), so hiding earlier screens would protect little;
+session. Coder-level answers are needed in the browser anyway (Show if
+conditions use them), so hiding earlier screens would protect little;
 a login with a second factor, or no login, does more for a half-finished
 session.
 
-## 10. Response times (implemented, 2026-10-28)
+## 10. Response times
 
 Always on: how long coders take per question, for analysis (e.g. reading
 time per unit) and for spotting bad faith (clicking through). Not shown in

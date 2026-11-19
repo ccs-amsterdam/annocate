@@ -6,7 +6,7 @@ summary: How a unit is shown to coders - one markdown text with the unit's data 
 ---
 
 Every unit loop has a **layout**: the text coders see above the questions, for
-each unit. You find it on the loop's **Layout** tab in the codebook editor.
+each unit. You find it on the loop's **Layout** tab in the design editor.
 
 Most layouts are a title, a byline and a body: the Layout tab starts as an
 empty sketch of a document, with the unit fields beside it. Click a place

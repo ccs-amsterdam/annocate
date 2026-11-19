@@ -13,7 +13,7 @@ client's server admin page (`ServerAdmin.tsx`, through `api/serverApi.ts`).
   with [`shared/accounts.ts`](../../packages/server/src/shared/accounts.ts) (registration, limits)
   and [`shared/limits.ts`](../../packages/server/src/shared/limits.ts) (checks).
 
-Admins don't get study data here: no codebooks, units or answers. Every
+Admins don't get study data here: no designs, units or answers. Every
 change is written to the admin log (`listAdminLog`). Non-admins get 403
 `admin_required`.
 

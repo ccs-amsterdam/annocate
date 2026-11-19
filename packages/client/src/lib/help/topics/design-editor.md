@@ -1,17 +1,17 @@
 ---
-title: The codebook editor
+title: The design editor
 section: Editor
 order: 1
 summary: The item tree, the item form, the preview, errors and warnings, saving, undo, reverting, backups and co-editors.
 ---
 
-The **Editor** tab (under **Design**) is where you write the codebook: the questions,
+The **Editor** tab (under **Design**) is where you write the design: the questions,
 unit loops, conditions and end items, in the order coders meet them. This
 page explains the editor itself. What the items mean is on their own pages:
 [Questions](questions.md), [Unit loops](unit-loops.md),
 [Conditions](conditions.md) and [Ending a session](end-items.md).
 
-**Design** opens with two cards: **Editor** (the codebook: which version
+**Design** opens with two cards: **Editor** (the design: which version
 coders use, whether there is a draft, how many questions and loops) and
 **Units** (how many units, and their columns with their types). Click one
 to open it; the tabs below the menu then switch between the two.
@@ -19,7 +19,7 @@ to open it; the tabs below the menu then switch between the two.
 From top to bottom, the tab has:
 
 - the **toolbar**: the number of issues and warnings, **Visual** or
-  **JSON**, undo and redo, **Revert**, **Export** (the codebook as a
+  **JSON**, undo and redo, **Revert**, **Export** (the design as a
   document: questions, instructions, options and what coders see, e.g.
   for a paper's appendix), **Versions**, **Save** and **Deploy…**;
 - a **banner** saying which design version you are editing and whether coders use
@@ -32,9 +32,9 @@ From top to bottom, the tab has:
 
 The tree shows every item, indented under the loop or condition it is in.
 Its icon shows what it is: a question has the icon of its answer type
-(hover over an icon to see the type), a loop a circular arrow, a condition
-a branch, an end item an exit arrow. A loop shows its label (or *Unit loop*)
-and which units it hands out (*the session's units*, *part_1, shared*, ...); a condition shows
+(hover over an icon to see the type), a loop a circular arrow, a Show if item
+a branching arrow, an end item an exit arrow. A loop shows its label (or *Unit loop*)
+and which units it hands out (*the session's units*, *part_1, shared*, ...); a Show if item shows
 its condition in words (*if age < 18*), or its label if you gave it one.
 
 Questions are numbered as coders see them in the coding screen's top
@@ -70,14 +70,14 @@ out it goes. An empty loop or condition offers **Inside** it and **After**
 it. While you point at a place, a line in the tree shows where the item
 will go.
 
-**Add item** above the tree adds an item at the end of the codebook.
+**Add item** above the tree adds an item at the end of the design.
 
 New questions are called `question_1`, `question_2`, ... and start as
 **Confirm** questions; rename them and choose the answer type. New end
 items are called `end_1`, ... and start as **Screened out (not eligible)**.
 New loops and conditions start empty: add their items with their own **+**.
 
-> To put an item at the very top of the codebook, add it below the first
+> To put an item at the very top of the design, add it below the first
 > item and then move it to the top (below).
 
 ## Moving and deleting
@@ -91,7 +91,7 @@ In place of **Add item** you now see how many items are selected, with:
 - **Move**: each row's **+** turns into an arrow (**Move below this
   item**). Click it on the row you want the items below; where that is
   ambiguous, it asks where, as when adding. **Move to the top** puts them
-  at the top of the codebook. The arrow only shows where the items may go:
+  at the top of the design. The arrow only shows where the items may go:
   a span question, for example, can't leave its loop.
 - The **×** (or **Esc**) clears the selection; **Cancel** (or **Esc**)
   stops moving.
@@ -136,7 +136,7 @@ This preview shows a single item. To try the whole study as a coder, use
 
 ## Errors and warnings
 
-The editor checks the codebook as you type. The toolbar counts the
+The editor checks the design as you type. The toolbar counts the
 results:
 
 - **issues** (red): things that must be fixed before you can preview or
@@ -157,7 +157,7 @@ You can **save** with issues: a draft is work in progress.
 - **Save** stores your changes as the design draft. You can save at any time; see
   [Preview, save and deploy](previewing-and-publishing.md#saving).
 - **Undo** and **Redo** (the curved arrows) step through your last 100
-  changes since you opened the codebook. Changes less than a second apart
+  changes since you opened the design. Changes less than a second apart
   count as one step, so a typed word is undone at once.
 - **Revert** goes back to the last save. Its menu lists the items you
   changed under **Revert item**: pick one to undo just that item (an item
@@ -172,14 +172,14 @@ browser also asks before you close or reload the page.
 
 A second after each change, the editor copies your unsaved changes to your
 browser's storage. If the browser closes or crashes, the next time you open
-AnnoTinder in that browser a banner says **You have unsaved codebook
+AnnoTinder in that browser a banner says **You have unsaved design
 changes**, for which study and from when:
 
-- **Continue editing** opens the codebook with your changes, still unsaved:
+- **Continue editing** opens the design with your changes, still unsaved:
   look them over and save.
 - **Discard** throws them away.
 
-There is one backup at a time (the codebook you were last editing), in this
+There is one backup at a time (the design you were last editing), in this
 browser only. The backup is removed when you save or discard your changes.
 It is a safety net, not a replacement for saving.
 
@@ -188,7 +188,7 @@ It is a safety net, not a replacement for saving.
 Everyone with access to the study (see [Working together](working-together.md))
 edits the same draft. Your unsaved changes
 are yours alone; once you save, others see them when they open the
-codebook.
+design.
 
 AnnoTinder doesn't show who else is editing right now. If someone saved the
 draft while you were editing, your save is stopped and a dialog says who
@@ -209,7 +209,7 @@ studies, or for larger edits such as renaming many things at once. The editor
 completes property names, checks the structure, and explains a property
 when you hover over it. The document has three parts, as in an
 exported design: `public` (the title shown to coders), `session` (the
-session parameters) and `items` (the codebook). **Fold details** collapses the details of
+session parameters) and `items` (the questions, loops and other items). **Fold details** collapses the details of
 questions and layouts so that only the structure remains; **Unfold all**
 opens everything again; **Format** tidies the layout.
 

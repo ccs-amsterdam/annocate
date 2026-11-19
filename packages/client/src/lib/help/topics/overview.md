@@ -11,7 +11,7 @@ questions about them. Researchers use it for content analysis, for training
 and evaluating classifiers, and for survey experiments in which participants
 judge material.
 
-It is built for research: the same codebook gives every coder the same task on
+It is built for research: the same design gives every coder the same task on
 every device, everything that coders saw and answered is kept, and a design
 can be shared so others can repeat the study.
 
@@ -61,7 +61,7 @@ Thank you             the end
 ## From draft to coders
 
 1. **Create a study** and upload your units (a CSV file).
-2. **Write the codebook** in the codebook editor. Save as often as you like:
+2. **Write the design** in the design editor. Save as often as you like:
    a saved design version is a draft only you and your co-editors see.
    Uploaded units are drafts too.
 3. **Preview** it: you code as a coder would, with your real units, without

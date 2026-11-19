@@ -119,13 +119,13 @@ coder sees before and after answering. Here `feedback` is a
 [confirm question](confirm.md) after `topic`: it shows the feedback and a
 button to go on.
 
-> A field the codebook uses is sent to the coder's browser, also when it is
+> A field the design uses is sent to the coder's browser, also when it is
 > only shown later. That is fine for training, but don't put the expert answer
 > of your *test* units in their data.
 
 ## Pilot, then test reliability
 
-1. **Preview** the codebook yourself, on your real units, at phone and desktop
+1. **Preview** the design yourself, on your real units, at phone and desktop
    size. Nothing is stored. See [Preview, save and deploy](previewing-and-publishing.md).
 2. **Pilot** with two or three coders on the same 30 to 50 units: a pilot
    set that every coder codes in full (a loop with only the `pilot` units, see

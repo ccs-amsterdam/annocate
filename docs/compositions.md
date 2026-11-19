@@ -1,12 +1,12 @@
 # Compositions: one set of parts, several products
 
-Status: decided (2026-10-26). The server and client are built; local coding
-from R and Python, and the R and Python packages, are not.
+The server and client are built; local coding from R and Python, and the R
+and Python packages, are not.
 
 Annotinder has two parts:
 
 - **server** (`packages/server`): one Node program. The researcher API
-  (studies, codebooks, units, sets, links, deployments, results) and the
+  (studies, designs, units, sets, links, deployments, results) and the
   coder API for coders (`/d/<studyId>`): distribution, validation, sessions.
   It owns the data, in Postgres: a Postgres server (`DATABASE_URL`), or
   PGlite (Postgres compiled to WebAssembly, in process) for tests and
@@ -15,7 +15,7 @@ Annotinder has two parts:
   Always served from the server's origin (session cookies).
 
 Other systems (AmCAT, R, Python) are **clients of the researcher API**: they
-push units, a codebook and study settings, and download annotations (maybe
+push units, a design and study settings, and download annotations (maybe
 later: a webhook that posts batches of annotations).
 
 The products below are compositions of these parts, not separate code. New
@@ -32,11 +32,11 @@ or project on its own infrastructure (Node and Postgres). For data that must
 stay in-house, and for teams.
 
 **Local coding from R and Python** (below): R or Python hosts the data, the
-browser runs the study. For developing a codebook with a live preview, and a
+browser runs the study. For developing a design with a live preview, and a
 researcher coding their own data. One coder.
 
 **R package and Python module**: both things in one package: a client of
-the researcher API of any annotinder server (studies, units, codebooks,
+the researcher API of any annotinder server (studies, units, designs,
 downloading annotations; the API is the public contract,
 `docs/api/researcher.md`), and the host for local coding.
 
@@ -55,8 +55,7 @@ R as it would to a server. One R process holds the state, which for one
 machine is exactly right. Python: the same with an embedded engine
 (`mini-racer`) and its standard HTTP server.
 
-**Spike (2026-10-28, R 4.3.3, V8 package 4.4.1 on engine 10.2, Linux):
-feasible.** The contracts (zod) and `distribution.ts` run unchanged from an
+**Tested (R 4.3.3, V8 package 4.4.1 on engine 10.2, Linux): feasible.** The contracts (zod) and `distribution.ts` run unchanged from an
 es2020 bundle (~500 KB minified, ~110 KB gzipped; zod's locales can go);
 loading takes under 0.1 s; promises (`await = TRUE`) and WebAssembly work;
 validating is about 2x slower than in Node; an httpuv round trip into V8

@@ -6,7 +6,7 @@ summary: Drafts and deployed design versions, saving, the versions dialog, previ
 ---
 
 A design goes through three stages: your **unsaved changes** in the
-codebook editor, a saved **draft** that you and your co-editors share, and a
+design editor, a saved **draft** that you and your co-editors share, and a
 **deployed** version that coders get. This works like Qualtrics or
 REDCap: you edit a draft, and coders only see your changes once you
 deploy it.
@@ -29,7 +29,7 @@ stays linked to the version of the unit its coder saw.
 
 ## Saving
 
-Click **Save** in the codebook editor's toolbar. You can save as often as
+Click **Save** in the design editor's toolbar. You can save as often as
 you like, also while the design still has issues: a draft is work in
 progress. Previewing and deploying need a design without issues.
 
@@ -37,7 +37,7 @@ A banner under the toolbar always says what you are looking at:
 
 | Banner | Means |
 | --- | --- |
-| **New codebook** | nothing is saved yet; the first save makes v1 |
+| **New design** | nothing is saved yet; the first save makes v1 |
 | **Draft v3: not live yet** | you are editing the draft; coders use the live version (if any) until you deploy it |
 | **v2 is live: coders are using it** | you opened the live version and there is no draft. It can't be changed, so the button says **Save as draft**: your changes become a new draft, and coders keep using v2 |
 | **Viewing v1, an older version** | a version from the history: read only |
@@ -97,7 +97,7 @@ units. If the latest version has issues, the preview says so: fix them,
 save, and open the preview again.
 
 > The editor also has a preview of the selected item, which shows your
-> unsaved changes at once. See [The codebook editor](design-editor.md).
+> unsaved changes at once. See [The design editor](design-editor.md).
 > Use it while writing, and the full preview to try the whole study.
 
 ## Deploying

@@ -19,7 +19,7 @@ server serves two APIs.
 
 | API | Called by | For | Contracts | Spec |
 |---|---|---|---|---|
-| **researcher API** | client: researcher UI (`ResearcherApi`); scripts (R, Python); other systems | managing studies: codebooks, units, links, deploying, progress | `researcherEndpoints` | [researcher.md](researcher.md) |
+| **researcher API** | client: researcher UI (`ResearcherApi`); scripts (R, Python); other systems | managing studies: designs, units, links, deploying, progress | `researcherEndpoints` | [researcher.md](researcher.md) |
 | **coder API** | client: coding screen (`HttpCoderApi`, `StudyManager`) | coding: session, next unit, submitting answers | `coderEndpoints` | [coder.md](coder.md) |
 | **admin API** | client: server admin page (`ServerApi`) | accounts: roles, registration, plans and limits, blocking, suspending studies | `adminEndpoints` | [admin.md](admin.md) |
 

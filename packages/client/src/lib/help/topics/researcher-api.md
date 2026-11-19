@@ -81,9 +81,9 @@ units, design versions and answers needs any role; changing them, and seeing
 links and coders, needs a role that may edit; deploying needs the
 study's admin role.
 
-A design version is the same JSON as in the codebook editor's JSON view: write it
-in the editor, copy it, and a script can save it to another study. (The API
-still calls a design version a codebook: `/study/<id>/design`, `designVersionId`.)
+A design version is the same JSON as in the design editor's JSON view: write it
+in the editor, copy it, and a script can save it to another study
+(`/study/<id>/design`).
 
 ## Uploading units
 

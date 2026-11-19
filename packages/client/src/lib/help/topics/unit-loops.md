@@ -8,7 +8,7 @@ summary: Questions that are asked once for every unit - how a loop works, and wh
 A **unit loop** repeats its questions for every unit a coder gets. The coder
 sees the first unit with its first question, answers the loop's questions
 about it, and then gets the next unit, until their units are done. Every
-codebook that codes material has at least one loop: the questions about
+design that codes material has at least one loop: the questions about
 news articles, tweets or images go inside it.
 
 Questions *outside* a loop are asked once per coder: a consent question, a
@@ -17,7 +17,7 @@ studies: some questions about the coder, then a loop over the units.
 
 ## Adding a loop
 
-In the codebook editor, click **+** in the tree and choose **Unit loop**. A
+In the design editor, click **+** in the tree and choose **Unit loop**. A
 new loop is empty: add its questions with **+**, choosing a place inside the
 loop, or move existing questions into it. A loop needs at least one item.
 
@@ -106,7 +106,7 @@ questions. Use this when a study has parts that work differently:
   articles;
 - a loop over units, then survey questions, then a second loop.
 
-Coders go through the loops in the order of the codebook. Each loop's
+Coders go through the loops in the order of the design. Each loop's
 answers are kept apart; coder-level answers can be used in every loop after
 them.
 
@@ -121,7 +121,7 @@ Coders can go back to earlier questions and units with the arrows at the
 top. The menu button next to them opens the navigation: the questions before
 the loop, the loop (by its label) with *Unit 3 / 20*, and the loop's
 questions. The number next to the arrows shows where they are: *2.1* is the
-first question of the second part of the codebook. See
+first question of the second part of the design. See
 [What coders see](coder-experience.md).
 
 ## Order of units

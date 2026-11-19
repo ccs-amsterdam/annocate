@@ -16,7 +16,7 @@ makes one link. Otherwise deploying makes a link per value, or per
 combination of values: a link per coder, per experimental condition, per
 class. See [The session](session-parameters.md).
 That way the design describes which links exist and what each one means,
-and the values a link carries are `$session` values in the codebook.
+and the values a link carries are `$session` values in the design.
 
 Coders can only start once a design version is deployed (see
 [Preview, save and deploy](previewing-and-publishing.md)).
@@ -78,7 +78,7 @@ other data you have on the same people.
   link without it doesn't start. A **pattern** (a regular expression, e.g.
   `[0-9]{6}`) makes the id fit a format.
 
-In the codebook the participant id is `$session.participant`, for instance
+In the design the participant id is `$session.participant`, for instance
 in an end item's return link.
 
 A participant id is only a label, **never a key**: anyone who has the link

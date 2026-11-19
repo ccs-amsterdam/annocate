@@ -47,7 +47,7 @@ A row for every unit a coder coded, in the order they coded them.
 | `unit_ms_server` | Milliseconds from the server handing out the unit to its last answer |
 | one column per question | The answers |
 
-The question columns are in the order of the codebook, named after the
+The question columns are in the order of the design, named after the
 questions. A [scale](scale.md) has a column per item, named
 `question.item`, such as `trust.police`.
 
@@ -107,7 +107,7 @@ questions) are only here, not in `annotations.csv`.
 The units as coders saw them, a row per **unit version**: `unit_version_id`,
 `unit_id`, a `hash` of the content, `deployed` (when that version was
 deployed), and a column per field of the unit as deployed. Only units that
-were coded are included. Coders were shown only the fields the codebook
+were coded are included. Coders were shown only the fields the design
 uses; the others (metadata, answer columns of gold units) are there for
 your analysis.
 

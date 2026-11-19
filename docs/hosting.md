@@ -24,9 +24,7 @@ The database schema is created and updated when the server starts: the
 server applies the migrations in `packages/server/migrations` that the
 database doesn't have yet (recorded in its `drizzle` schema), in order and
 under a lock, so several server processes can start at once. A database
-from an earlier release is updated in place. (Before the first release the
-migrations were reset to a new start, made by Drizzle: a test server from
-before 2026-11-19 has to start with a new database.)
+from an earlier release is updated in place.
 
 **Changing the schema** (development): edit the tables in
 `packages/server/src/db/schema/`, then run
@@ -119,7 +117,7 @@ docker compose up -d --build
 
 ## Several server processes
 
-The server keeps only each live study's deployment (codebook, sets,
+The server keeps only each live study's deployment (design, sets,
 settings) in memory, so several
 processes can share one database (`architecture.md` §3), e.g. compose
 replicas behind a proxy. Exceptions: researcher previews live in one

@@ -11,7 +11,7 @@ a particular study is their role there (see [Working together](working-together.
 
 | Role | Can |
 | --- | --- |
-| **User** | Code, and work on studies a researcher gave them a role in (for instance as a student assistant who edits the codebook) |
+| **User** | Code, and work on studies a researcher gave them a role in (for instance as a student assistant who edits the design) |
 | **Researcher** | Also create studies. The studies you create are yours: they count against your limits |
 | **Admin** | Also manage the server's users, limits and registration (see [Server admin](server-admin.md)) |
 

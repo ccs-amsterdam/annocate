@@ -73,12 +73,12 @@ whose name is in another field". This is a restriction, and it buys a lot:
 
 - **Every reference can be checked.** The editor knows exactly which fields
   and questions a template uses, so a typo or a question that comes later in
-  the codebook is an error before you deploy, not an empty space coders run
+  the design is an error before you deploy, not an empty space coders run
   into.
 - **Coders get only what is used.** AnnoTinder sends coders only the unit
-  fields the codebook refers to. Metadata columns you uploaded for your
+  fields the design refers to. Metadata columns you uploaded for your
   analysis (a source id, a classifier score, the expert answer) stay on the
-  server, unless the codebook uses them.
+  server, unless the design uses them.
 - **Unit versions are exact.** What a coder saw is the set of fields used,
   so AnnoTinder can store it. See
   [Keeping track of what coders saw](design-what-coders-saw.md).
@@ -125,7 +125,7 @@ are short JavaScript expressions. They run in a separate, sealed engine:
 
 Why JavaScript rather than a language of its own? Many researchers have seen
 it, it is well documented, and R can run it too (with the `V8` package), so
-a script in a published codebook can be checked outside AnnoTinder.
+a script in a published design can be checked outside AnnoTinder.
 
 Most conditions don't need a script at all: the **Rules** editor writes
 simple conditions, which AnnoTinder can check in more detail (for example,

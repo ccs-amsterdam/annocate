@@ -2,12 +2,12 @@
 title: Guided setup
 section: Getting started
 order: 2.5
-summary: Setting up a study quickly - what the guided setup asks, what it makes, and what only the codebook editor does.
+summary: Setting up a study quickly - what the guided setup asks, what it makes, and what only the design editor does.
 ---
 
 **Guided setup** (on the **Studies** page, under **Create new study**) is the
 quick way to a working study. It asks a few questions, makes the study, and
-opens it in the codebook editor. From then on the study is like any other:
+opens it in the design editor. From then on the study is like any other:
 everything it made can be changed in the editor, and the editor can do
 much more (below).
 

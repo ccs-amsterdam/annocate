@@ -91,7 +91,7 @@ response checked against its contract schema.
 | [getStudyUsers](#getstudyusers) | `GET /study/:id/users` | ADMIN | – | `StudyUserResponseSchema[]` |
 | [putStudyUsers](#putstudyusers) | `PUT /study/:id/users` | ADMIN | `StudyUsersWriteSchema` | – |
 | [getOverview](#getoverview) | `GET /study/:studyId/overview` | READ | – | `StudyOverviewSchema` |
-| **Codebooks** | | | | |
+| **Designs** | | | | |
 | [listDesignVersions](#listdesignversions) | `GET /study/:studyId/design` | READ | – | `DesignVersionMetaSchema[]` |
 | [getDesignVersion](#getdesignversion) | `GET /study/:studyId/design/:id` | READ | – | `DesignVersionSchema` |
 | [createDesignVersion](#createdesignversion) | `POST /study/:studyId/design` | WRITE | `DesignWriteSchema` | `DesignVersionSchema` |
@@ -219,7 +219,7 @@ development role in.)
 
 `GET /examples` → `ExampleSummarySchema[]`: the example studies this server
 ships (`packages/server/examples/<id>.json`): id, category, title, what it
-shows and what to try (`docs/plans/examples.md`).
+shows and what to try (`docs/examples.md`).
 
 ### createStudyFromExample
 
@@ -260,7 +260,7 @@ active lists), `signIn` (`off`, `optional`, `required`; the deploy dialog
 asks for it at the first deploy, and email coders need `required`), `keepSessionsOpen`: finished coder sessions stay open
 (off by default: `docs/coder-identity.md` §9), or `redirectUrls`: the
 deployment settings end items' `redirectSetting` names, e.g. a panel's
-return links (`docs/plans/design.md` §4); coders get them at once, without
+return links (`docs/architecture.md` §5); coders get them at once, without
 a deploy. `StudyResponseSchema` also has
 `suspendedAt` (a server admin suspended the study).
 
@@ -289,7 +289,7 @@ answers per day for the last 30 days. "Finished": every question of the
 loop has a live answer.
 Index answers by (study, created) to keep the per-day count cheap.
 
-## Codebooks
+## Designs
 
 Versions of the study's design, in order of creation. One is **live** (the
 deployment's); the latest, if unpublished, is the **draft**
@@ -362,7 +362,7 @@ hash of every unit, without data.
 
 `GET /study/:studyId/units/fields` → `UnitFieldSchema[]`: the study's fields, in
 column order: the latest design version's `units.fields`, the design's
-one specification of them (`docs/plans/design.md` §3). Match this static
+one specification of them (`docs/architecture.md` §8.4). Match this static
 path (and `/units/page`) before `/units/:id`.
 
 Uploads keep it up to date: new columns are added to the draft design (a
@@ -412,7 +412,7 @@ unit resets the fields.
 
 **Set columns.** A set column is a unit field of type `set`; its values
 are named sets of units (tables `unit_sets`, `unit_set_members`;
-`docs/plans/unit-assignment.md`). The endpoints call a column a *group* and
+`docs/architecture.md` §6). The endpoints call a column a *group* and
 its values *sets*. A column's name is like a field name; values are at most
 128 characters, without `;` or `#`. `_overlap`, `_practice` and `_gold` are
 reserved: the column's special units. A unit can have several values of a
@@ -491,9 +491,9 @@ participant id, started, last active, live answers, finished units per
 loop of the live design version, `special`: the units of the deployed
 `_overlap`, `_gold` and `_practice` sets they finished, of how many (for
 the kinds the study has), `variables`: their coder-level values
-(answers outside unit loops, and `auto` variables: random or balanced
-conditions), `session`: their `$session` values (link and URL parameters,
-`source`), `ended`: how the
+(answers outside unit loops, and computed variables), `session`: their
+`$session` values (link and URL parameters, `source`, the coder and
+assigned conditions), `ended`: how the
 session ended (at an `end` item: item, outcome `screenout` or `complete`;
 or outcome `quit`; and the time), or null, and `deletionRequest`: the
 coder's request to delete their answers (`at`, `postponedAt` once the
@@ -542,7 +542,7 @@ design version, with the draft units and sets if `units: true`
 (default false: the deployed ones stay, so a new design version or a pause deploys
 no units by accident; the first deploy always takes the draft's),
 or pause/resume with `active`. Units and sets are drafts until deployed
-(`docs/plans/design.md` §5):
+(`docs/architecture.md` §8.4):
 
 1. check that the design version passes validation (400 with `issues` if not:
    drafts may be saved with issues, coders only get valid designs), and

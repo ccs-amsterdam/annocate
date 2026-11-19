@@ -7,7 +7,7 @@ summary: All answer types at a glance, what each one measures, and when to use i
 
 Every question has an **answer type**: what kind of answer coders give, and
 so what ends up in your data. You pick it under **Answer Type** in the
-question's form in the codebook editor. This page compares the types; each
+question's form in the design editor. This page compares the types; each
 has its own page with the details.
 
 The type you choose is also a decision about **measurement level**: whether

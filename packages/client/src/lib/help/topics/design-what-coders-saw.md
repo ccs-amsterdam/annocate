@@ -18,7 +18,7 @@ a new version; earlier answers keep pointing to the old one.
 You edit a design as a **draft**. When you deploy it, that version becomes
 **live** and read only: it can never be changed again. To change the
 design, you edit a new draft and deploy that. Earlier versions stay in the
-version history (open **Versions** in the codebook editor), where you can view
+version history (open **Versions** in the design editor), where you can view
 them or use **Restore as draft** to continue from one.
 
 Every answer records the design version it was given under. So even if you

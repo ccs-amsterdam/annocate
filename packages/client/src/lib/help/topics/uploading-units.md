@@ -8,7 +8,7 @@ summary: Upload the material to code from a CSV file - ids, fields and their typ
 **Units** are the material coders code: news articles, tweets, survey
 answers, image links. You upload them as a CSV file on the **Units** tab of a
 study. Each row becomes a unit, and the columns you choose become its
-**fields**, which a codebook shows with `$unit.<field>`, for example
+**fields**, which a design shows with `$unit.<field>`, for example
 `$unit.headline`.
 
 A small file is enough to start: you can upload more units at any time, and
@@ -41,7 +41,7 @@ a002,Minister resigns,Morning Post,"The minister of finance stepped down after w
 ```
 
 > Only upload what coders may see, plus what you need to recognize the
-> units. Coders only ever receive the fields the codebook shows (see
+> units. Coders only ever receive the fields the design shows (see
 > [What coders get](#what-coders-get)), but keeping personal data out of the
 > study altogether is safest.
 
@@ -74,7 +74,7 @@ with a few example values. A column is uploaded when it has a name under
   called `body_text_clean`.
 
 Field names may contain letters, digits and `_`, and may not start with a
-digit (at most 64 characters). That way a codebook can use them as
+digit (at most 64 characters). That way a design can use them as
 `$unit.name`. A check mark shows that a column is fine; otherwise the
 problem is shown next to it.
 
@@ -94,12 +94,12 @@ You can change it. Values that don't fit the type are listed (for example
 *3 values aren't numbers ('n/a', '3,5')*) and block the upload until you fix
 the file or choose `text`.
 
-Numbers matter when a codebook calculates with a field or compares it (for
+Numbers matter when a design calculates with a field or compares it (for
 example *show this question only when `likes` is over 100*). Ids or codes
 with leading zeros, such as `007`, should be `text`: as a number they would
 become `7`.
 
-An empty cell is an empty value. In a codebook, an empty field shows
+An empty cell is an empty value. In a design, an empty field shows
 nothing.
 
 ### Set columns
@@ -126,11 +126,11 @@ uploads add to them:
 
 You can see the study's fields, with an icon for their type, at the top of the
 **Units** tab. They are part of the design: **Details**
-shows per field how the codebook uses it (*shown* to coders, *sent, not
+shows per field how the design uses it (*shown* to coders, *sent, not
 shown* when only conditions use it, *server only* for gold and practice
 answer columns, or *not used*), a description, and its type. A field the
-codebook doesn't use can be removed (with its values in the units). A field
-the codebook uses but no upload brought can be declared there; the
+design doesn't use can be removed (with its values in the units). A field
+the design uses but no upload brought can be declared there; the
 design can't be deployed until its fields are declared.
 
 ## Replacing units
@@ -166,10 +166,10 @@ are about. Replace them instead, if needed.
 
 ## What coders get
 
-Coders only receive the fields the codebook uses: the fields named in the
+Coders only receive the fields the design uses: the fields named in the
 loop's layout, in question texts, in conditions and so on. Other columns,
 such as metadata you need for analysis (a source, a date, a sample weight),
-stay on the server. If you later change the codebook to show another field,
+stay on the server. If you later change the design to show another field,
 coders get that field too once you deploy the change.
 
 ## Next steps

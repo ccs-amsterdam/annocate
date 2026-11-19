@@ -21,7 +21,7 @@ every 10); for the full data, download the results.
 | **Not deployed** | No design version is live yet: coders can't start |
 | **Live** | Coders can work, since the date shown |
 | **Paused** | Nothing new starts: no new sessions and no new units. Coders save what they have open (also units loaded ahead), then see that the study is paused, and continue where they were once you resume. **Pause** and **Resume** are next to the status |
-| **Live version** | The design version coders get, with its note. Click it to open it in the codebook editor |
+| **Live version** | The design version coders get, with its note. Click it to open it in the design editor |
 | **Draft** | Your changes that aren't deployed yet, if any |
 
 Uploading or replacing units and changing sets only change the drafts.

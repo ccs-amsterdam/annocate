@@ -77,7 +77,7 @@ coders.
 
 ## Sharing a design
 
-To give someone your design, open the codebook editor, switch to the
+To give someone your design, open the design editor, switch to the
 **JSON** view, and copy the whole text. They paste it into the **JSON** view
 of a study of their own. Scripts can do the same through the
 [researcher API](researcher-api.md).

@@ -12,7 +12,7 @@ a follow-up question can repeat the answer it follows up on, and a condition
 can show a question only to coders who gave a certain answer.
 
 There are two kinds, and they are written the same way everywhere in the
-codebook:
+design:
 
 | Write | What it refers to |
 | --- | --- |
@@ -59,7 +59,7 @@ what kind of answer it holds:
 
 | Question | Properties | Holds |
 | --- | --- | --- |
-| Nominal (one answer), ordinal, numeric, swipe, auto | `.value`, `.label` | One answer |
+| Nominal (one answer), ordinal, numeric, swipe, random condition | `.value`, `.label` | One answer |
 | Nominal with multiple answers | `.values`, `.labels` | A list of answers |
 | Span | `.values`, `.labels`, `.texts` | A list: one per selected span |
 | Relation | `.values`, `.labels` | A list: one per relation |
@@ -168,7 +168,7 @@ write `\$`: `\$unit.headline` shows `$unit.headline`.
 
 ## When a reference is wrong
 
-The editor checks every reference when you edit the codebook, and lists
+The editor checks every reference when you edit the design, and lists
 problems with the item they are in. Common messages:
 
 | Message (shortened) | What to do |

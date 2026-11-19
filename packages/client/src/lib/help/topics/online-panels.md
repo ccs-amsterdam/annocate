@@ -57,7 +57,7 @@ session parameters as **URL parameters**: a name for the design (`study`), the
 optionally with a pattern; or a list). Without a default a URL parameter is
 required.
 
-The codebook can then use them as **session values**:
+The design can then use them as **session values**:
 
 | Write | Gives |
 | --- | --- |
@@ -117,7 +117,7 @@ your message and is sent on after three seconds, or when they click
 column of `coders.csv`, so you can check the panel's list against yours.
 
 > Put an end item with the outcome **Complete** at the very end of the
-> codebook. Without it, participants who finish see AnnoTinder's own
+> design. Without it, participants who finish see AnnoTinder's own
 > closing screen and are not sent back to the panel.
 
 ## Screening and attention checks
@@ -174,7 +174,7 @@ share the units: every participant codes them all, possibly with the order
 
 ## Before you launch
 
-1. **Preview** the whole codebook, on a phone too: many panel participants
+1. **Preview** the whole design, on a phone too: many panel participants
    use one.
 2. Deploy, and open the panel link yourself with made-up values, e.g.
    `PROLIFIC_PID=test1&STUDY_ID=s1` (fitting your patterns). Go through to
