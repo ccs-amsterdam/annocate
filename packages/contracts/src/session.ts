@@ -118,7 +118,7 @@ export const SessionResponseSchema = z.object({
   session: z.record(z.string(), z.string()).default({}),
   /** The email of the login this session belongs to (docs/coder-identity.md §5); null without. Logged-in coders continue on any device by logging in there. */
   login: z.string().nullable().optional(),
-  /** The link lets the coder log in (`auth: "optional"`), and they haven't: offer it, to continue on other devices. */
+  /** The study lets coders sign in (`signIn: "optional"`), and they haven't: offer it, to continue on other devices. */
   canLogIn: z.boolean().optional(),
   /** With `ended`: what its end screen shows. */
   endValues: EndValuesSchema.nullable().optional(),
@@ -134,11 +134,11 @@ export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 export const CoderErrorCodeSchema = z.enum([
   /** Participant id already has a session; retry with `x-new-session: 1` to start another. */
   "participant_has_session",
-  /** The link requires login (also: it lists email addresses). */
+  /** The study requires sign-in (or its coders are email addresses). */
   "auth_required",
   /**
-   * The coder's login isn't one of the link's email addresses, or (sets by
-   * email) not one of the group's sets: "This email address has no access to this study".
+   * The coder's login isn't one of the coders (coders by email address):
+   * "This email address has no access to this study".
    */
   "email_not_allowed",
   /** The link is no longer part of the deployed design (e.g. its set was removed): no new sessions. */

@@ -8,8 +8,13 @@ import type { UnitData, UnitDataValue } from "./common.js";
  * (`checkUnitData`); deleting all units resets them. Values are stored typed,
  * so `{{$unit.count > 40}}` compares numbers. `null` is an empty value of
  * any type.
+ *
+ * A `set` field (docs/plans/unit-assignment.md) is a column whose cells name
+ * the sets a unit is in (`anna`, `anna;bob`, `_overlap`, `_gold`): who or
+ * which condition gets the unit. Its cells are stored as the set group of
+ * the same name (sets.ts), not in the units' data.
  */
-export const UnitFieldTypeSchema = z.enum(["text", "number", "boolean"]);
+export const UnitFieldTypeSchema = z.enum(["text", "number", "boolean", "set"]);
 export type UnitFieldType = z.infer<typeof UnitFieldTypeSchema>;
 
 export const UnitFieldSchema = z.object({
@@ -116,16 +121,20 @@ export function addedFields(units: UnitData[], fields: UnitField[]): { fields: U
   return added;
 }
 
-/** Why a unit's data doesn't fit the study's fields, or null if it does: the same fields, with fitting values. */
+/** The set columns of the unit fields (`set` fields: set groups, not data). */
+export const setColumns = (fields: readonly UnitField[]) => fields.filter((f) => f.type === "set").map((f) => f.name);
+
+/** Why a unit's data doesn't fit the study's fields, or null if it does: the same fields (set columns aside), with fitting values. */
 export function checkUnitData(data: UnitData, fields: UnitField[]): string | null {
   const known = new Map(fields.map((f) => [f.name, f.type]));
   for (const [name, value] of Object.entries(data)) {
     const type = known.get(name);
     if (type === undefined) return `Unknown field '${name}' (the fields are: ${fields.map((f) => f.name).join(", ")})`;
+    if (type === "set") return `Field '${name}' is a set column: its cells are uploaded as sets`;
     const actual = typeOfValue(value);
     if (actual !== null && actual !== type && !isAnswerColumn(name)) return `Field '${name}' is ${type}, got ${actual} (${JSON.stringify(value)})`;
   }
-  const missing = fields.find((f) => !(f.name in data));
+  const missing = fields.find((f) => f.type !== "set" && !(f.name in data));
   return missing ? `Missing field '${missing.name}'` : null;
 }
 
@@ -149,7 +158,7 @@ export function inferFieldType(values: string[]): UnitFieldType {
  * boolean, or null if empty. Text stays as is. Undefined if it doesn't parse.
  */
 export function parseFieldValue(raw: string, type: UnitFieldType): UnitDataValue | undefined {
-  if (type === "text") return raw;
+  if (type === "text" || type === "set") return raw;
   const value = raw.trim();
   if (value === "") return null;
   if (type === "number") return NUMBER.test(value) ? Number(value) : undefined;

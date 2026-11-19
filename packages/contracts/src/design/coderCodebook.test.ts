@@ -3,9 +3,9 @@ import type { TopLevelItem } from "./item.js";
 import { toCoderItems } from "./coderCodebook.js";
 
 describe("the coder codebook", () => {
-  it("leaves out how units are handed out, the Session item, and how auto questions are drawn", () => {
+  it("leaves out how units are handed out, the Session item, and how random conditions are drawn", () => {
     const items = [
-      { type: "session", params: [{ name: "part", kind: "link", values: { sets: "g" } }] },
+      { type: "session", params: [], coders: { column: "coder" } },
       {
         type: "question",
         name: "condition",
@@ -20,8 +20,8 @@ describe("the coder codebook", () => {
             label: "Main",
             order: "random",
             units: [
-              { when: { script: `$var.condition.is("a")` }, mode: "assign", group: "g", from: { session: "part" }, overlap: { placement: "spread" } },
-              { mode: "shared", set: { group: "g", set: "queue" }, until: { coders: 2 }, maxCoders: 2 },
+              { when: { script: `$var.condition.is("a")` }, filter: { column: "g", only: ["queue"] }, overlap: { placement: "spread" } },
+              { criteria: { codersPerUnit: { min: 2, max: 2 } } },
             ],
             layout: { template: "$unit.text" },
             children: [{ type: "question", name: "q", variable: { type: "confirm", question: "?" } }],
@@ -46,5 +46,10 @@ describe("the coder codebook", () => {
         ],
       },
     ]);
+  });
+
+  it("gives a random condition with a column's free values no options", () => {
+    const items = [{ type: "question", name: "set", variable: { type: "random_condition", draw: "random", units: "set" } }] as TopLevelItem[];
+    expect(toCoderItems(items)).toEqual([{ type: "question", name: "set", variable: { type: "random_condition", options: [] } }]);
   });
 });

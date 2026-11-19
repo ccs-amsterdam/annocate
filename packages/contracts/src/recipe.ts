@@ -3,6 +3,7 @@ import { DraftItemsSchema } from "./design/designVersion.js";
 import { PublicInfoSchema, SessionSpecSchema } from "./design/session.js";
 import { UnitDataSchema } from "./common.js";
 import { SetGroupNameSchema, SetNameSchema } from "./sets.js";
+import { SignInSchema } from "./study.js";
 
 /**
  * A recipe: everything a new study starts with, in one document
@@ -17,7 +18,7 @@ export const RecipeSchema = z.object({
   name: z.string().min(1).max(256),
   /** Units: your id, and the fields (the first unit's fields are the study's, as with an upload). */
   units: z.array(z.object({ id: z.string().min(1), data: UnitDataSchema })).default([]),
-  /** Set groups, by the units' ids (a set's units in order; `ordered`: that order was given). */
+  /** Set columns (`set` unit fields), by the units' ids (a set's units in order; `ordered`: that order was given). */
   sets: z
     .array(
       z.object({
@@ -28,6 +29,8 @@ export const RecipeSchema = z.object({
     .default([]),
   /** The first design version: a draft, or deployed with `publish` (then it must pass validation). */
   design: z.object({ note: z.string().max(1000).optional(), public: PublicInfoSchema.optional(), session: SessionSpecSchema.optional(), items: DraftItemsSchema }),
+  /** Whether coders sign in (the study's setting; default `off`). */
+  signIn: SignInSchema.optional(),
   /** Deploy the design, so coders can start right away (examples). Default: a draft. */
   publish: z.boolean().default(false),
 });

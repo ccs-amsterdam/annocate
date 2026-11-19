@@ -97,23 +97,13 @@ export type CoderDeletion = z.infer<typeof CoderDeletionSchema>;
  * An link (docs/coder-identity.md §3). Links are generated from
  * the deployed codebook: one per combination of its link parameters
  * (docs/plans/sets-and-session-parameters.md §4). The researcher manages
- * who may use a link, not which links exist.
+ * who may use a link, not which links exist. Whether coders sign in is a
+ * setting of the study (`StudyWrite.signIn`), not of a link.
  */
 export const LinkWriteSchema = z.object({
   label: z.string().min(1).max(128),
-  /**
-   * `none`: no login; work stays on the device unless transferred.
-   * `optional`: coders may log in to resume elsewhere. `required`: login first.
-   */
-  auth: z.enum(["none", "optional", "required"]).default("none"),
   /** A participant id fixed on this link (e.g. a personal link). A label, never a credential. */
   participantId: z.string().min(1).max(256).optional(),
-  /**
-   * Restrict the link to these email addresses: coders log in, and only
-   * these logins are let in. Stored on the server only; never part of the
-   * codebook.
-   */
-  emails: z.array(z.string().email()).optional(),
   /** Stop accepting new coders after this many. */
   maxUses: z.number().int().positive().optional(),
 });

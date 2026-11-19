@@ -37,6 +37,10 @@ describe("unit fields", () => {
     expect(checkUnitData({ a: "1", b: "x" }, fields)).toMatch(/is number/);
     expect(checkUnitData({ a: 1 }, fields)).toMatch(/Missing field 'b'/);
     expect(checkUnitData({ a: 1, b: "x", c: 2 }, fields)).toMatch(/Unknown field 'c'/);
+    // Set columns are sets, not data: never given, never missing
+    const withSet = [...fields, { name: "coder", type: "set" as const }];
+    expect(checkUnitData({ a: 1, b: "x" }, withSet)).toBeNull();
+    expect(checkUnitData({ a: 1, b: "x", coder: "anna" }, withSet)).toMatch(/is a set column/);
   });
 
   it("types answer columns as text, and lets them hold any value (cells like 3..5 or a|b)", () => {

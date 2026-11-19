@@ -2,14 +2,16 @@ import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
 import { ConditionSchema } from "./condition.js";
 import type { AnyVariableType } from "./variableTypes.js";
-import { SetGroupNameSchema, SetRefSchema } from "../sets.js";
+import { SetGroupNameSchema } from "../sets.js";
 
-// How a unit_loop gets its units (docs/architecture.md §6,
-// docs/plans/sets-and-session-parameters.md §2). The codebook describes the
-// *process* only: it refers to set groups and sets by name, and to coders
-// only through their answers and session values. Which units are in which
-// set lives with the units, so a codebook can be shared and reproduced
-// without revealing them.
+// How a unit_loop gets its units (docs/plans/unit-assignment.md §3). Who
+// gets which units is decided per session, not per loop: by the coder column
+// and the conditions linked to set columns (session.ts, the random
+// condition). A loop works within the session's units: an optional filter
+// on a set column, optional distribution criteria (a shared queue), and the
+// placement of special units. The codebook refers to set columns and their
+// values by name; which units are in them lives with the units, so a
+// codebook can be shared and reproduced without revealing them.
 
 /**
  * Whether coders' answers to a question can be compared for an agreement
@@ -24,7 +26,7 @@ export function supportsAgreement(variable: AnyVariableType): boolean {
 /** The key for "every unit in the study" (the server's sets are keyed `group/set`, `setKey`). */
 export const ALL_UNITS_SET = "__all__";
 
-/** How long a coder of an `assign` branch with a drawn set keeps their set without finishing it or being active (ms). */
+/** How long a session that hasn't finished counts for balancing (it is active, or started this long ago at most) (ms). */
 export const SET_ACTIVITY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -43,8 +45,9 @@ export const RateSettings = {
 export const DEFAULT_RATE = 10;
 
 /**
- * The overlap: the `_overlap` units of the branch's group, which every
- * coder codes besides their own set, e.g. for intercoder reliability.
+ * The overlap: the session's `_overlap` units (in every share of a column),
+ * which every coder codes besides their own units, e.g. for intercoder
+ * reliability. Without overlap settings they are among the coder's units.
  * `first` or `last` of the coder's units, `spread` evenly through them, at
  * a `rate` (`every`, `rest`), or `disabled`. `expect`: how many overlap
  * units the design wants (a warning when the group has fewer). `max`: use
@@ -63,8 +66,8 @@ export type OverlapSettings = z.infer<typeof OverlapSettingsSchema>;
 const CheckPlacementSchema = z.enum(["first", "last", "spread", "rate"]);
 
 /**
- * Practice units (docs/plans/special-sets.md §2): the group's `_practice`
- * units, before the coder's own units by default. For the `questions`
+ * Practice units (docs/plans/special-sets.md §2): the `_practice` units (of
+ * any set column), before the coder's own units by default. For the `questions`
  * listed, a unit's right answer is in its column `<question>_practice`
  * (optional per unit), and its own feedback in `<question>_practice_message`
  * (optional). Checked in the browser as each question is answered: a wrong
@@ -84,7 +87,7 @@ export const PracticeSettingsSchema = z.object({
 export type PracticeSettings = z.infer<typeof PracticeSettingsSchema>;
 
 /**
- * Gold units (§2): the group's `_gold` units, checked silently: for each of
+ * Gold units (§2): the `_gold` units (of any set column), checked silently: for each of
  * `questions`, the unit's column `<question>_gold` has the right answer.
  * With `health`: a score that starts at `start`, changes by `wrong` for a
  * wrong answer and by `right` for a right one (never above `start`); at 0 or
@@ -113,55 +116,35 @@ export const practiceMessageColumn = (question: string) => `${question}_practice
 /** Answer types a gold or practice question can have: compared by value. */
 export const CHECKABLE_TYPES = ["nominal", "ordinal", "annotinder", "numeric", "confirm"] as const;
 
-const branchBase = {
-  /**
-   * Absent = always matches. The first matching branch wins. Evaluated by
-   * the client, which tells the server the branch it chose.
-   */
-  when: ConditionSchema.optional(),
-};
-
-/** `all`: every coder of the branch codes every unit (of the study, or of one set). */
-export const AllUnitsBranchSchema = z.object({
-  ...branchBase,
-  mode: z.literal("all"),
-  set: SetRefSchema.optional(),
-});
+/**
+ * A loop's filter: only the session's units that are (`only`) or aren't
+ * (`except`) in these values of a set column. Reserved values count too
+ * (`except: ["_overlap"]`).
+ */
+export const UnitFilterSchema = z
+  .object({
+    column: SetGroupNameSchema,
+    only: z.array(z.string().min(1).max(128)).min(1).max(100).optional(),
+    except: z.array(z.string().min(1).max(128)).min(1).max(100).optional(),
+  })
+  .refine((f) => (f.only === undefined) !== (f.except === undefined), { message: "A filter has either only or except values", path: ["only"] });
+export type UnitFilter = z.infer<typeof UnitFilterSchema>;
 
 /**
- * `shared`: the units (of the study, or of one set) are shared among coders:
- * a queue that hands each unit out until it is done, either when
- * `until.coders` coders coded it, or when `until.agree` coders gave the
- * same answer to the question `until.on` -- and in any case once
- * `maxCoders` coded it. With a set, the overlap is its group's `_overlap`.
+ * Distribution criteria: the loop's units (within the session's) are a
+ * shared queue among the coders with the same units, handed out until done
+ * (crowd coding). A unit is done once `codersPerUnit.min` coders coded it,
+ * or, with `until`, once `until.agree` coders gave the same answer to the
+ * question `until.on`; it is never handed out to more than
+ * `codersPerUnit.max` coders (except to a coder below
+ * `unitsPerCoder.min`). Each coder gets at most `unitsPerCoder.max` units
+ * (besides the special ones).
  */
-export const SharedBranchSchema = z
+export const CriteriaSchema = z
   .object({
-    ...branchBase,
-    mode: z.literal("shared"),
-    set: SetRefSchema.optional(),
-    until: z.union([
-      z.object({ coders: z.number().int().min(1) }),
-      z.object({
-        agree: z.number().int().min(2),
-        /** A question inside this unit_loop with one categorical answer (`supportsAgreement`). */
-        on: SafeNameSchema,
-      }),
-    ]),
-    /**
-     * A unit is never handed out to more coders than this (finished codings),
-     * except to a coder below `minUnits`. When no unit needs more coders, a
-     * coder gets a unit below it. Required with `agree`; without it, `until.coders`.
-     */
-    maxCoders: z.number().int().min(1).optional(),
-    /** At most this many units per coder (besides the overlap). */
-    maxUnits: z.number().int().positive().optional(),
-    /**
-     * At least this many units per coder (besides the overlap): while a
-     * coder has fewer, `maxCoders` doesn't hold them back either (with
-     * `agree`: units coders don't agree on yet), least-coded units first.
-     */
-    minUnits: z.number().int().positive().optional(),
+    codersPerUnit: z.object({ min: z.number().int().min(1).optional(), max: z.number().int().min(1).optional() }).optional(),
+    until: z.object({ agree: z.number().int().min(2), on: SafeNameSchema }).optional(),
+    unitsPerCoder: z.object({ min: z.number().int().positive().optional(), max: z.number().int().positive().optional() }).optional(),
     /**
      * `cover`: prefer the least-coded units (every unit gets coded before any
      * is done). `saturate`: prefer units closest to done (done units arrive
@@ -170,129 +153,79 @@ export const SharedBranchSchema = z
     priority: z.enum(["cover", "saturate"]).optional(),
     /** A unit handed to a coder is reserved for them this long (default 900), then returns to the queue. */
     leaseSeconds: z.number().int().positive().optional(),
+  })
+  .refine((c) => !c.until || c.codersPerUnit?.max !== undefined, {
+    message: "Set the most coders per unit when coding until coders agree (otherwise a unit nobody agrees on is coded forever)",
+    path: ["codersPerUnit", "max"],
+  })
+  .refine((c) => c.codersPerUnit?.max === undefined || c.codersPerUnit.max >= (c.until?.agree ?? c.codersPerUnit.min ?? 1), {
+    message: "The most coders per unit must be at least the coders (or agreeing coders) a unit needs",
+    path: ["codersPerUnit", "max"],
+  })
+  .refine((c) => !c.until || c.codersPerUnit?.min === undefined, {
+    message: "With until, a unit is done when coders agree: leave out the minimum coders per unit",
+    path: ["codersPerUnit", "min"],
+  })
+  .refine((c) => c.unitsPerCoder?.min === undefined || c.unitsPerCoder.max === undefined || c.unitsPerCoder.min <= c.unitsPerCoder.max, {
+    message: "The minimum units per coder can't be more than the maximum",
+    path: ["unitsPerCoder", "min"],
+  });
+export type Criteria = z.infer<typeof CriteriaSchema>;
+
+/**
+ * A loop's branch (docs/plans/unit-assignment.md §3): which of the
+ * session's units the loop hands out and how. `{}`: all of them, once.
+ */
+export const UnitBranchSchema = z
+  .object({
+    /**
+     * Absent = always matches. The first matching branch wins. Evaluated by
+     * the client, which tells the server the branch it chose.
+     */
+    when: ConditionSchema.optional(),
+    filter: UnitFilterSchema.optional(),
+    criteria: CriteriaSchema.optional(),
     overlap: OverlapSettingsSchema.optional(),
     practice: PracticeSettingsSchema.optional(),
     gold: GoldSettingsSchema.optional(),
   })
-  .refine((b) => !("agree" in b.until) || b.maxCoders !== undefined, {
-    message: "Max coders is required when coding until coders agree (otherwise a unit nobody agrees on is coded forever)",
-    path: ["maxCoders"],
-  })
-  .refine((b) => b.maxCoders === undefined || b.maxCoders >= ("agree" in b.until ? b.until.agree : b.until.coders), {
-    message: "Max coders must be at least the number of coders (or agreeing coders) a unit needs",
-    path: ["maxCoders"],
-  })
-  .refine((b) => b.minUnits === undefined || b.maxUnits === undefined || b.minUnits <= b.maxUnits, {
-    message: "Min units per coder can't be more than max units per coder",
-    path: ["minUnits"],
-  })
-  .refine((b) => !b.overlap || b.overlap.placement === "disabled" || b.set !== undefined, {
-    message: "An overlap needs a set: it is the _overlap units of the set's group",
-    path: ["overlap"],
-  })
-  .refine((b) => b.overlap?.placement !== "spread" || b.maxUnits !== undefined, {
-    message: "Spreading the overlap units needs max units per coder (to know where to put them)",
-    path: ["overlap", "placement"],
-  })
-  .refine((b) => (!b.practice && !b.gold) || b.set !== undefined, {
-    message: "Practice and gold units need a set: they are the _practice and _gold units of the set's group",
-    path: ["set"],
-  })
-  .refine((b) => (b.practice?.placement !== "spread" && b.gold?.placement !== "spread") || b.maxUnits !== undefined, {
-    message: "Spreading practice or gold units needs max units per coder (to know where to put them)",
-    path: ["maxUnits"],
+  .refine((b) => !b.criteria || b.criteria.unitsPerCoder?.max !== undefined || ![b.overlap, b.practice, b.gold].some((s) => s?.placement === "spread"), {
+    message: "Spreading special units in a shared queue needs a maximum of units per coder (to know where to put them)",
+    path: ["criteria", "unitsPerCoder", "max"],
   });
-export type SharedBranch = z.infer<typeof SharedBranchSchema>;
+export type UnitBranch = z.infer<typeof UnitBranchSchema>;
 
-/** A shared branch's settings with their defaults filled in. */
-export function sharedDefaults(b: SharedBranch) {
+/** A branch's queue settings with their defaults filled in (null: no criteria, the coder codes all their units). */
+export function sharedDefaults(b: UnitBranch) {
+  const c = b.criteria;
+  if (!c) return null;
   return {
-    minCoders: "agree" in b.until ? b.until.agree : b.until.coders,
-    agreement: "agree" in b.until ? { variable: b.until.on, minAgree: b.until.agree } : undefined,
-    maxCoders: b.maxCoders,
-    priority: b.priority ?? "cover",
-    leaseSeconds: b.leaseSeconds ?? 900,
+    minCoders: c.until?.agree ?? c.codersPerUnit?.min ?? 1,
+    agreement: c.until ? { variable: c.until.on, minAgree: c.until.agree } : undefined,
+    maxCoders: c.codersPerUnit?.max,
+    priority: c.priority ?? "cover",
+    leaseSeconds: c.leaseSeconds ?? 900,
   };
 }
 
-/** Session values an `assign` branch can take a set from without declaring them: the login's email, the participant id. */
-export const BUILTIN_SET_SOURCES = ["email", "participant"] as const;
-
-/**
- * Where an `assign` branch's set comes from: drawn here (`balanced`: the
- * set with the fewest coders; `random`), or a session value naming the set
- * (a set-typed link or URL parameter of the group, or `email` /
- * `participant`).
- */
-export const SetSourceSchema = z.union([
-  z.object({ draw: z.enum(["balanced", "random"]) }),
-  z.object({ session: SafeNameSchema }),
-]);
-export type SetSource = z.infer<typeof SetSourceSchema>;
-
-/**
- * `assign`: each coder gets one set of `group` (its sets besides
- * `_overlap`), from `from`, and the group's overlap as `overlap` says
- * (a required, deliberate choice).
- */
-export const AssignBranchSchema = z.object({
-  ...branchBase,
-  mode: z.literal("assign"),
-  group: SetGroupNameSchema,
-  from: SetSourceSchema,
-  overlap: z.object(OverlapSettingsSchema.shape, {
-    error: (issue) => (issue.input === undefined ? "Choose the overlap: first, last, spread, or disabled" : undefined),
-  }),
-  practice: PracticeSettingsSchema.optional(),
-  gold: GoldSettingsSchema.optional(),
-});
-export type AssignBranch = z.infer<typeof AssignBranchSchema>;
-
-export const UnitBranchSchema = z.union([AllUnitsBranchSchema, SharedBranchSchema, AssignBranchSchema]);
-export type UnitBranch = z.infer<typeof UnitBranchSchema>;
-export type UnitMode = UnitBranch["mode"];
-
 /** Loop-level distribution settings, shared by `unit_loop` items. */
 export const UnitLoopDistributionShape = {
-  /** First matching branch is used for a coder (and sticks, even if their answers change later). */
-  units: z.array(UnitBranchSchema).min(1, "Which units coders get isn't set yet: choose how units are handed out"),
-  /** `random`: each coder gets the units (and the overlap units) in their own random order. Default `sequential`: the set's order. */
+  /** First matching branch is used for a coder (and sticks, even if their answers change later). `[{}]`: all the session's units. */
+  units: z.array(UnitBranchSchema).min(1, "A loop needs a branch (`{}`: all the session's units)"),
+  /** `random`: each coder gets the units (and the overlap units) in their own random order. Default `sequential`: the units' order. */
   order: z.enum(["sequential", "random"]).optional(),
 };
 
-/** The group whose `_overlap` a branch uses, if its overlap isn't disabled. */
-export function overlapGroup(branch: UnitBranch): string | null {
-  if (branch.mode === "assign") return branch.overlap.placement === "disabled" ? null : branch.group;
-  if (branch.mode === "shared" && branch.set && branch.overlap && branch.overlap.placement !== "disabled") return branch.set.group;
-  return null;
-}
-
-/** The group whose special sets (`_overlap`, `_practice`, `_gold`) a branch can use, if any. */
-export function branchGroup(branch: UnitBranch): string | null {
-  if (branch.mode === "assign") return branch.group;
-  if (branch.mode === "shared" && branch.set) return branch.set.group;
-  return null;
-}
-
-/** The groups a branch uses (for "is this group in use?"). */
-export function branchGroups(branch: UnitBranch): string[] {
-  if (branch.mode === "assign") return [branch.group];
-  return branch.set ? [branch.set.group] : [];
-}
-
 /**
  * What a coder's routing in a loop is stored by: which units a branch hands
- * out (its mode, set or group, and where the set comes from), not where the
- * loop is or what it is called. A coder keeps their routing as long as a
- * branch with the same fingerprint exists; changing these settings routes
- * them again. (Two loops whose branches hand out the same units share it.)
+ * out (its filter, and whether it is a shared queue), not where the loop is
+ * or what it is called. A coder keeps their branch as long as a branch with
+ * the same fingerprint exists.
  */
 export function branchFingerprint(branch: UnitBranch): string {
-  const what = JSON.stringify(
-    branch.mode === "assign" ? [branch.mode, branch.group, branch.from] : [branch.mode, branch.set ? [branch.set.group, branch.set.set] : null],
-  );
+  const what = JSON.stringify([branch.filter ?? null, !!branch.criteria]);
   // FNV-1a, 32 bits: short keys for the stored routing.
   let h = 0x811c9dc5;
   for (let i = 0; i < what.length; i++) h = Math.imul(h ^ what.charCodeAt(i), 0x01000193);
-  return `${branch.mode}-${(h >>> 0).toString(36)}`;
+  return `b-${(h >>> 0).toString(36)}`;
 }

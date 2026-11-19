@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
+import { SetGroupNameSchema } from "../sets.js";
 import {
   NominalOptionSchema,
   NominalOptionsSchema,
@@ -141,8 +142,14 @@ export const RandomConditionTypeSchema = z
   .object({
     type: z.literal("random_condition"),
     draw: z.enum(["random", "balanced"]),
-    /** The possible values. */
-    options: z.array(NominalOptionSchema.extend({ weight: z.number().positive().optional() })).min(1, "List at least one value"),
+    /** The possible values. Optional with `units`: then the column's values (its sets), whatever they are. */
+    options: z.array(NominalOptionSchema.extend({ weight: z.number().positive().optional() })).min(1, "List at least one value").optional(),
+    /**
+     * A set column of the units (docs/plans/unit-assignment.md §2): the
+     * coder's value then selects their units, in the loops after this
+     * question (only the units whose cell holds it).
+     */
+    units: SetGroupNameSchema.optional(),
     /**
      * Balanced within groups (stratified): coders count only against coders
      * with the same answers to these earlier coder-level questions, or the
@@ -152,6 +159,7 @@ export const RandomConditionTypeSchema = z
     stratify: z.array(z.string().min(1).max(80)).max(5).optional(),
   })
   .superRefine((v, ctx) => {
+    if (!v.options && !v.units) ctx.addIssue({ code: "custom", message: "List the values, or link the condition to a set column of the units", path: ["options"] });
     if (v.stratify?.length && v.draw !== "balanced") ctx.addIssue({ code: "custom", message: "Only a balanced draw can be balanced within groups", path: ["stratify"] });
     nominalValueErrors(v.options ?? []).forEach((message) => ctx.addIssue({ code: "custom", message, path: ["options"] }));
   });

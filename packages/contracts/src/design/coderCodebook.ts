@@ -8,8 +8,8 @@ import type { RandomConditionType } from "./variableTypes.js";
 // get of a codebook, only what the coding client needs. Unit loops keep
 // their layout, questions and order, and per branch only its condition (the
 // client picks the branch; the server works out the units). Left out: how
-// units are handed out (modes, sets, groups, overlap; later practice and
-// gold), the Session item (its values come with the session), and how
+// units are handed out (filters, criteria, overlap, practice and gold
+// settings), the Session item (its values come with the session), and how
 // random conditions are drawn (draw, weights, groups to balance within).
 
 /** A loop branch as coders get it: only its condition. */
@@ -17,8 +17,8 @@ export interface CoderBranch {
   when?: Condition;
 }
 
-/** An `auto` question's answer type as coders get it: its options (for labels), not how it is drawn. */
-export type CoderRandomConditionType = Pick<RandomConditionType, "type"> & { options: Omit<RandomConditionType["options"][number], "weight">[] };
+/** A random condition as coders get it: its options (for labels; none for a column's free values), not how it is drawn or which units it selects. */
+export type CoderRandomConditionType = Pick<RandomConditionType, "type"> & { options: Omit<NonNullable<RandomConditionType["options"]>[number], "weight">[] };
 
 export type CoderUnitLoopItem = Omit<UnitLoopItem, "units"> & { units: CoderBranch[] };
 
@@ -51,7 +51,7 @@ export function toCoderItems(items: readonly TopLevelItem[]): CoderTopLevelItem[
       }
       case "question": {
         if (item.variable.type !== "random_condition") return [item as CoderTopLevelItem];
-        const options = item.variable.options.map((o) => {
+        const options = (item.variable.options ?? []).map((o) => {
           const option = { ...o };
           delete option.weight;
           return option;

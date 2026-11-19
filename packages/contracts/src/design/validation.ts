@@ -2,8 +2,9 @@ import { TopLevelItemSchema, loopTitle, unitLoops, type DesignItem } from "./ite
 import type { AnyVariableType } from "./variableTypes.js";
 import { sameValue } from "./options.js";
 import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
-import { BUILTIN_SET_SOURCES, CHECKABLE_TYPES, goldColumn, practiceColumn, practiceMessageColumn, supportsAgreement, type UnitBranch } from "./unitLoop.js";
-import { sessionNames, setParameters, type SessionItem } from "./session.js";
+import { CHECKABLE_TYPES, goldColumn, practiceColumn, practiceMessageColumn, supportsAgreement, type UnitBranch } from "./unitLoop.js";
+import { RESERVED_SESSION_NAMES, sessionColumns, sessionItem, sessionNames, type SessionItem } from "./session.js";
+import { loopShareColumns } from "./assignment.js";
 import { expandSnippets, usesSnippets } from "./snippets.js";
 import { parseTemplateBlocks, templateNames, type DisplayNode, type FromStage, type TemplateNode } from "./templateBlocks.js";
 import {
@@ -116,9 +117,10 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   const coderAvailable = new Set<string>();
   /** Questions of the current loop seen so far. */
   let loopAvailable = new Set<string>();
-  /** `$session` names (declared parameters and the built-in ones), and set-typed parameters (name -> group). */
+  /** `$session` names (declared parameters, conditions and the built-in ones). */
   const sessionNamed = new Set(sessionNames(items));
-  const setParams = setParameters(items);
+  /** Set columns that select a session's units (the coder column, assigned conditions'): column -> what. */
+  const linkedColumns = new Map(sessionColumns(sessionItem(items)).map((c) => [c.column, c.name === "coder" ? "the coders" : `condition '${c.name}'`]));
 
   const seen = new Set<string>();
   const issue = (path: Path, message: string, warning = false) => {
@@ -314,26 +316,15 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     const loopQuestions = questionNames(loop.children);
     const branchCtx = (path: Path): RefContext => ({ path, loop: null, available: coderAvailable, branch: true });
     (Array.isArray(loop.units) ? loop.units : []).forEach((raw, b) => {
-      const branch = raw as Partial<UnitBranch> & { until?: { on?: unknown } };
+      const branch = raw as Partial<UnitBranch> | null;
       const path = [...itemPath, "units", b];
       checkCondition(branch?.when, branchCtx([...path, "when"]));
-      // A set from a session value: one the codebook declares as the sets of this group, or the email or participant id.
-      if (branch?.mode === "assign" && branch.from && "session" in branch.from) {
-        const name = branch.from.session;
-        const declared = setParams.get(name);
-        if (!(BUILTIN_SET_SOURCES as readonly string[]).includes(name)) {
-          if (declared === undefined) issue([...path, "from", "session"], `No session parameter '${name}': declare it in the Session item, with the sets of group '${branch.group}' as its values`);
-          else if (declared !== branch.group) {
-            issue([...path, "from", "session"], `Session parameter '${name}' holds the sets of group '${declared ?? "(none)"}', not '${branch.group}'`);
-          }
-        }
-      }
-      const overlap = branch?.mode === "assign" || branch?.mode === "shared" ? branch.overlap : undefined;
+      const overlap = branch?.overlap;
       if (overlap?.max !== undefined && overlap.expect !== undefined && overlap.max < overlap.expect) {
         issue([...path, "overlap", "max"], `At most ${overlap.max} overlap units, but the design expects ${overlap.expect}`);
       }
       // Practice and gold: questions of this loop with answers compared by value; a gold screen-out at an end item
-      const checks = branch?.mode === "assign" || branch?.mode === "shared" ? { practice: branch.practice, gold: branch.gold } : {};
+      const checks = { practice: branch?.practice, gold: branch?.gold };
       for (const [kind, settings] of Object.entries(checks) as ["practice" | "gold", { questions?: unknown; health?: { end?: unknown } } | undefined][]) {
         if (!settings) continue;
         (Array.isArray(settings.questions) ? settings.questions : []).forEach((name: unknown, q) => {
@@ -360,9 +351,9 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           else if (found !== "screenout") issue([...path, kind, "health", "end"], `End item '${end}' should be a screen-out (coders who fail the gold checks)`);
         }
       }
-      const agreement = branch?.mode === "shared" ? branch.until?.on : undefined;
+      const agreement = branch?.criteria?.until?.on;
       if (typeof agreement === "string") {
-        const at = [...path, "until", "on"];
+        const at = [...path, "criteria", "until", "on"];
         if (!loopQuestions.has(agreement)) issue(at, `Agreement question '${agreement}' is not a question in this loop`);
         else if (!supportsAgreement(questions.get(agreement)!)) {
           issue(
@@ -405,6 +396,20 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     const names = params.map((p) => p?.name);
     names.forEach((name, i) => {
       if (name && names.indexOf(name) !== i) issue([...itemPath, "params", i, "name"], `Two session parameters are named '${name}'`);
+    });
+    const conditions = Array.isArray(session.conditions) ? session.conditions : [];
+    conditions.forEach((cond, i) => {
+      const name = cond?.name;
+      if (!name) return;
+      if (names.includes(name) || conditions.findIndex((c) => c?.name === name) !== i) issue([...itemPath, "conditions", i, "name"], `Two session values are named '${name}'`);
+    });
+    // A column selects units for one session value
+    const columns = [
+      ...(session.coders?.column ? [{ column: session.coders.column, path: [...itemPath, "coders", "column"] }] : []),
+      ...conditions.flatMap((c, i) => (c?.units ? [{ column: c.units, path: [...itemPath, "conditions", i, "units"] }] : [])),
+    ];
+    columns.forEach(({ column, path }, i) => {
+      if (columns.findIndex((c) => c.column === column) !== i) issue(path, `Column '${column}' already selects units for another session value: use a column each`);
     });
     const keys = params.filter((p) => p?.kind === "url").map((p) => p.param ?? p.name);
     if (session.participant) keys.push(session.participant.param);
@@ -529,10 +534,17 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
         if (!loop && (item.variable?.type === "span" || item.variable?.type === "relation")) {
           issue([...itemPath, "variable", "type"], `Question '${item.name}' with answer type '${item.variable.type}' can only be used inside a unit_loop`);
         } else if (loop && item.variable?.type === "random_condition") {
-          issue([...itemPath, "variable", "type"], `Question '${item.name}' with answer type 'auto' can only be used outside a unit_loop`);
-        } else if (item.variable?.type === "random_condition" && item.variable.stratify) {
+          issue([...itemPath, "variable", "type"], `Random condition '${item.name}' can only be used outside a unit loop`);
+        } else if (item.variable?.type === "random_condition" && (item.variable.units || item.variable.stratify)) {
+          const units = item.variable.units;
+          if (units && item.name && (sessionNamed.has(item.name) || (RESERVED_SESSION_NAMES as readonly string[]).includes(item.name))) {
+            issue([...itemPath, "name"], `Random condition '${item.name}' selects units: its name can't also be a session value`);
+          }
+          if (units && linkedColumns.has(units)) {
+            issue([...itemPath, "variable", "units"], `Column '${units}' already selects units for ${linkedColumns.get(units)}: use a column each`);
+          }
           // Groups for a balanced draw: answers given before it, or session values
-          for (const name of item.variable.stratify) {
+          for (const name of item.variable.stratify ?? []) {
             const known = name.startsWith("session.") ? sessionNamed.has(name.slice("session.".length)) : available.has(name);
             if (!known) issue([...itemPath, "variable", "stratify"], `Question '${item.name}': balanced within '${name}', which is not a question before it or a session value (session.<name>)`);
           }
@@ -544,6 +556,32 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   }
 
   walk(items, [], null);
+
+  // A random condition linked to a column selects units in the loops after it only
+  const shares = loopShareColumns(items);
+  const linked: { name: string; column: string }[] = [];
+  forEachQuestion(items, [], (q) => {
+    const v = q.variable as { type?: unknown; units?: unknown } | undefined;
+    if (v?.type === "random_condition" && typeof v.units === "string" && q.name) linked.push({ name: q.name, column: v.units });
+  });
+  const loopPaths = new Map<string, Path>();
+  const findLoops = (list: unknown, path: Path) =>
+    (Array.isArray(list) ? list : []).forEach((raw, i) => {
+      const it = raw as RawItem | null;
+      if (it?.type === "unit_loop") loopPaths.set(String(loopPaths.size + 1), [...path, i]);
+      else if (it?.type === "show_if") findLoops(it.children, [...path, i, "children"]);
+    });
+  findLoops(items, []);
+  for (const [key, columns] of shares) {
+    for (const condition of linked) {
+      if (columns.some((c) => c.name === condition.name)) continue;
+      issue(
+        [...(loopPaths.get(key) ?? []), "units"],
+        `${loopTitles.get(key)} comes before random condition '${condition.name}': its units aren't selected by the condition's column '${condition.column}'`,
+        true,
+      );
+    }
+  }
   return issues;
 }
 

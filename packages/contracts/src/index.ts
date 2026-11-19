@@ -19,6 +19,7 @@ export * from "./design/unitLoop.js";
 export * from "./design/session.js";
 export * from "./design/item.js";
 export * from "./design/shownFields.js";
+export * from "./design/assignment.js";
 export * from "./design/validation.js";
 export * from "./design/answers.js";
 export * from "./design/designVersion.js";

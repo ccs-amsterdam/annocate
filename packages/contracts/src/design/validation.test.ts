@@ -11,7 +11,7 @@ function questionVar(name: string, variable: object = confirmVariable): TopLevel
   return { type: "question", name, variable } as TopLevelQuestionItem & InLoopQuestionItem;
 }
 function unitLoop(name: string, children: InLoopItem[], template = "", snippets?: Record<string, string>): TopLevelItem {
-  return { type: "unit_loop", label: name, units: [{ mode: "all" }], layout: { template, snippets }, children };
+  return { type: "unit_loop", label: name, units: [{}], layout: { template, snippets }, children };
 }
 function topCondition(name: string, children: TopLevelItem[], condition: Condition = { script: "true" }): TopLevelItem {
   return { type: "show_if", label: name, condition, children };
@@ -50,14 +50,8 @@ describe("validateDesignItems", () => {
     const valid: TopLevelItem[] = [
       slot,
       loop([
-        {
-          when: { script: `$var.slot.isAny("1", "2")` },
-          mode: "assign",
-          group: "coders",
-          from: { draw: "balanced" },
-          overlap: { placement: "first" },
-        },
-        { mode: "shared", set: { group: "pool", set: "main" }, until: { agree: 2, on: "q1" }, maxCoders: 4 },
+        { when: { script: `$var.slot.isAny("1", "2")` }, filter: { column: "phase", only: ["post"] }, overlap: { placement: "first" } },
+        { criteria: { until: { agree: 2, on: "q1" }, codersPerUnit: { max: 4 } } },
       ]),
     ];
     expect(validateDesignItems(valid)).toEqual([]);
@@ -65,79 +59,61 @@ describe("validateDesignItems", () => {
 
     const when = (value: string) => ({ script: `$var.slot.is("${value}")` });
     // variable defined after the loop
-    expect(messages([loop([{ when: when("1"), mode: "all" }]), slot])).toEqual(["$var.slot.is: 'slot' is asked after this point"]);
-    expect(messages([slot, loop([{ when: when("3"), mode: "all" }])])).toEqual([`"3" is not an answer option of "slot" ("1", "2")`]);
+    expect(messages([loop([{ when: when("1") }]), slot])).toEqual(["$var.slot.is: 'slot' is asked after this point"]);
+    expect(messages([slot, loop([{ when: when("3") }])])).toEqual([`"3" is not an answer option of "slot" ("1", "2")`]);
     // a question of the loop itself, or $unit, can't route
-    expect(messages([slot, loop([{ when: { script: "$var.q1.answered" }, mode: "all" }])])).toEqual([
+    expect(messages([slot, loop([{ when: { script: "$var.q1.answered" } }])])).toEqual([
       "$var.q1.answered: branches can only use coder-level questions from before the loop",
     ]);
-    expect(messages([slot, loop([{ when: { script: "$unit.x > 1" }, mode: "all" }])])).toEqual([
-      "$unit.x: branches can only use coder-level $var and $session references",
-    ]);
-    expect(messages([slot, loop([{ mode: "shared", until: { agree: 2, on: "nope" }, maxCoders: 3 }])])).toEqual([
+    expect(messages([slot, loop([{ when: { script: "$unit.x > 1" } }])])).toEqual(["$unit.x: branches can only use coder-level $var and $session references"]);
+    expect(messages([slot, loop([{ criteria: { until: { agree: 2, on: "nope" }, codersPerUnit: { max: 3 } } }])])).toEqual([
       "Agreement question 'nope' is not a question in this loop",
     ]);
-    expect(messages([slot, loop([{ mode: "shared", until: { agree: 2, on: "c1" }, maxCoders: 3 }])])).toEqual([
+    expect(messages([slot, loop([{ criteria: { until: { agree: 2, on: "c1" }, codersPerUnit: { max: 3 } } }])])).toEqual([
       `Agreement needs a question with one categorical answer (nominal without multiple answers, ordinal or swipe); "c1" is a confirm question`,
     ]);
   });
 
-  it("requires maxCoders with an agreement rule", () => {
-    const items = [
-      {
-        type: "unit_loop",
-        label: "loop",
-        units: [{ mode: "shared", until: { agree: 2, on: "q1" } }],
-        layout: { template: "" },
-        children: [questionVar("q1")],
-      },
-    ];
-    expect(() => DesignItemsSchema.parse(items)).toThrow(/Max coders is required/);
+  it("requires the most coders per unit with an agreement rule", () => {
+    const items = [{ type: "unit_loop", label: "loop", units: [{ criteria: { until: { agree: 2, on: "q1" } } }], layout: { template: "" }, children: [questionVar("q1")] }];
+    expect(() => DesignItemsSchema.parse(items)).toThrow(/most coders per unit when coding until coders agree/);
   });
 
-  it("checks the settings of each mode", () => {
+  it("checks a branch's filter and criteria", () => {
     const loop = (branch: object) => [
       { type: "unit_loop", label: "loop", units: [branch], layout: { template: "" }, children: [questionVar("q1", select(["a", "b"]))] },
     ];
-    const set = { group: "g", set: "a" };
-    expect(messages(loop({ mode: "shared", set, until: { coders: 3 }, maxCoders: 2 }))).toEqual([
-      "Max coders must be at least the number of coders (or agreeing coders) a unit needs",
+    expect(messages(loop({}))).toEqual([]);
+    expect(messages(loop({ criteria: { codersPerUnit: { min: 3, max: 2 } } }))).toEqual([
+      "The most coders per unit must be at least the coders (or agreeing coders) a unit needs",
     ]);
-    expect(messages(loop({ mode: "shared", set, until: { coders: 1 }, overlap: { placement: "spread" } }))).toEqual([
-      "Spreading the overlap units needs max units per coder (to know where to put them)",
+    expect(messages(loop({ criteria: { unitsPerCoder: { min: 5, max: 2 } } }))).toEqual(["The minimum units per coder can't be more than the maximum"]);
+    expect(messages(loop({ criteria: {}, overlap: { placement: "spread" } }))).toEqual([
+      "Spreading special units in a shared queue needs a maximum of units per coder (to know where to put them)",
     ]);
-    expect(messages(loop({ mode: "shared", set, until: { coders: 1 }, maxUnits: 10, overlap: { placement: "spread" } }))).toEqual([]);
-    expect(messages(loop({ mode: "shared", until: { coders: 1 }, overlap: { placement: "first" } }))).toEqual([
-      "An overlap needs a set: it is the _overlap units of the set's group",
-    ]);
-    // Assign: the overlap is a deliberate choice; its numbers make sense
-    expect(messages(loop({ mode: "assign", group: "g", from: { draw: "random" } }))).toEqual([expect.stringMatching(/overlap/i)]);
-    expect(messages(loop({ mode: "assign", group: "g", from: { draw: "random" }, overlap: { placement: "disabled" } }))).toEqual([]);
-    expect(messages(loop({ mode: "assign", group: "g", from: { draw: "random" }, overlap: { placement: "last", expect: 20, max: 10 } }))).toEqual([
-      "At most 10 overlap units, but the design expects 20",
-    ]);
-    expect(messages(loop({ mode: "all", set: { group: "_g", set: "a" } }))).toEqual([expect.stringMatching(/group's name/)]);
-    expect(messages(loop({ mode: "all", set: { group: "g", set: "_mine" } }))).toEqual([expect.stringMatching(/reserved/)]);
+    expect(messages(loop({ criteria: { unitsPerCoder: { max: 10 } }, overlap: { placement: "spread" } }))).toEqual([]);
+    // Without criteria a coder's units are known: spreading works
+    expect(messages(loop({ overlap: { placement: "spread" } }))).toEqual([]);
+    expect(messages(loop({ overlap: { placement: "last", expect: 20, max: 10 } }))).toEqual(["At most 10 overlap units, but the design expects 20"]);
+    expect(messages(loop({ filter: { column: "phase" } }))).toEqual(["A filter has either only or except values"]);
+    expect(messages(loop({ filter: { column: "phase", only: ["a"], except: ["b"] } }))).toEqual(["A filter has either only or except values"]);
+    expect(messages(loop({ filter: { column: "_phase", except: ["_overlap"] } }))).toEqual([expect.stringMatching(/group's name/)]);
+    expect(messages(loop({ mode: "all" }))).toEqual([]); // unknown keys are dropped
   });
 
-  it("takes an assigned set from a set-typed session parameter, the email or the participant id", () => {
-    const session = (params: object[]) => ({ type: "session", params });
-    const loop = (from: object) => ({
-      type: "unit_loop",
-      units: [{ mode: "assign", group: "coders", from, overlap: { placement: "disabled" } }],
-      layout: { template: "" },
-      children: [questionVar("q1")],
-    });
-    const linkSet = { name: "set", kind: "link", values: { sets: "coders" } };
-    expect(messages([session([linkSet]), loop({ session: "set" })])).toEqual([]);
-    expect(messages([loop({ session: "email" })])).toEqual([]);
-    expect(messages([loop({ session: "participant" })])).toEqual([]);
-    expect(messages([loop({ session: "set" })])).toEqual([
-      "No session parameter 'set': declare it in the Session item, with the sets of group 'coders' as its values",
+  it("checks random conditions linked to a set column", () => {
+    const random = (extra: object) => questionVar("set", { type: "random_condition", draw: "balanced", ...extra });
+    const loop = unitLoop("loop", [questionVar("q1")]);
+    expect(messages([random({ units: "set" }), loop])).toEqual([]);
+    expect(messages([random({})])).toEqual(["List the values, or link the condition to a set column of the units"]);
+    // A loop before it doesn't use it: a warning
+    expect(validateDesignItems([loop, random({ units: "set" })])).toEqual([
+      expect.objectContaining({ warning: true, message: expect.stringContaining("comes before random condition 'set'") }),
     ]);
-    expect(messages([session([{ ...linkSet, values: { sets: "other" } }]), loop({ session: "set" })])).toEqual([
-      "Session parameter 'set' holds the sets of group 'other', not 'coders'",
-    ]);
+    const session = { type: "session", params: [], coders: { column: "set" } };
+    expect(messages([session, random({ units: "set" })])).toEqual(["Column 'set' already selects units for the coders: use a column each"]);
+    const named = { type: "session", params: [], conditions: [{ name: "set", values: ["a"], assign: "link" }] };
+    expect(messages([named, random({ units: "other" })])).toEqual(["Random condition 'set' selects units: its name can't also be a session value"]);
   });
 });
 
@@ -161,10 +137,10 @@ describe("the Session item", () => {
     ];
     expect(messages([session({ params: dup })])).toEqual(["Two session parameters are named 'a'"]);
     expect(messages([session({ params: [{ name: "source", kind: "url", values: { open: {} } }] })])).toContain(
-      "participant, source and email are built in: choose another name",
+      "participant, source, email and coder are built in: choose another name",
     );
     expect(messages([session({ params: [{ name: "x", kind: "link", values: { open: {} } }] })])).toEqual([
-      "A link parameter needs its values (a list, or a group's sets): links are made for each",
+      "A link parameter needs a list of values: links are made for each",
     ]);
     expect(messages([session({ params: [{ name: "x", kind: "url", values: { list: [{ value: "a" }] }, default: "b" }] })])).toEqual([
       "The default 'b' is not one of the values",
@@ -174,12 +150,35 @@ describe("the Session item", () => {
   it("checks listed combinations against the link parameters", () => {
     const params = [
       { name: "cond", kind: "link", values: { list: [{ value: "a" }, { value: "b" }] } },
-      { name: "set", kind: "link", values: { sets: "coders" } },
+      { name: "set", kind: "link", values: { list: [{ value: "s1" }] } },
     ];
     expect(messages([session({ params, combinations: [{ cond: "a", set: "s1" }] })])).toEqual([]);
     expect(messages([session({ params, combinations: [{ cond: "c" }] })])).toEqual([
       "Combination 1 has no value for set",
       "Combination 1: 'c' is not a value of cond",
+    ]);
+  });
+});
+
+describe("coders and assigned conditions", () => {
+  const session = (extra: object) => ({ type: "session", params: [], ...extra });
+
+  it("are session values, named once, each by its own column", () => {
+    const conditions = [
+      { name: "framing", values: ["control", "experiment"], assign: "link", units: "framing" },
+      { name: "set", values: "free", assign: "random", units: "set" },
+    ];
+    const text = { type: "question", name: "q", variable: { type: "confirm", question: "$session.coder $session.framing $session.set" } };
+    expect(messages([session({ coders: { column: "coder" }, conditions }), text])).toEqual([]);
+    expect(messages([session({ conditions: [...conditions, { name: "framing", values: ["a"], assign: "link" }] })])).toEqual(["Two session values are named 'framing'"]);
+    expect(messages([session({ coders: { column: "framing" }, conditions })])).toEqual(["Column 'framing' already selects units for another session value: use a column each"]);
+    expect(messages([session({ conditions: [{ name: "coder", values: ["a"], assign: "link" }] })])).toEqual([
+      "participant, source, email and coder are built in: choose another name",
+    ]);
+    expect(messages([session({ conditions: [{ name: "x", values: "free", assign: "link" }] })])).toEqual(["Free values come from a set column: link the condition to one"]);
+    expect(messages([session({ conditions: [{ name: "x", values: ["a"], assign: "link", draw: "random" }] })])).toEqual(["Only a random assignment draws"]);
+    expect(messages([session({ conditions: [{ name: "x", values: ["a", "_b"], assign: "link" }] })])).toEqual([
+      "A value has no ; or #, no spaces at its ends, and doesn't start with _",
     ]);
   });
 });
@@ -250,7 +249,7 @@ describe("validateDesignItems (more)", () => {
       {
         type: "unit_loop",
         label: "empty_loop",
-        units: [{ mode: "all", set: "main" }],
+        units: [{}],
         layout: { template: "" },
         children: [],
       },
@@ -263,13 +262,13 @@ describe("validateDesignItems (more)", () => {
       {
         type: "unit_loop",
         label: "outer",
-        units: [{ mode: "all", set: "main" }],
+        units: [{}],
         layout: { template: "" },
         children: [
           {
             type: "unit_loop",
             label: "inner",
-            units: [{ mode: "all", set: "main" }],
+            units: [{}],
             layout: { template: "" },
             children: [questionVar("q1")],
           },
@@ -555,7 +554,7 @@ describe("availableQuestions", () => {
 describe("practice and gold units", () => {
   const loop = (branch: object, template = "$unit.text") => ({
     type: "unit_loop",
-    units: [{ mode: "assign", group: "g", from: { draw: "balanced" }, overlap: { placement: "spread" }, ...branch }],
+    units: [{ overlap: { placement: "spread" }, ...branch }],
     layout: { template },
     children: [questionVar("sentiment", select(["pos", "neg"])), questionVar("note", { type: "unspecified" })],
   });

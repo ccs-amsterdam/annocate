@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { loopDependencies, shownUnitFields, fieldUsage, undeclaredFields } from "./shownFields.js";
+import { loopDependencies, shownUnitFields, fieldUsage, undeclaredFields, designSetColumns, notSetColumns } from "./shownFields.js";
+import { loopShareColumns } from "./assignment.js";
 
 const loop = {
   type: "unit_loop",
   units: [
-    { mode: "all", when: { script: "$var.group.is('a') && $var.slot.is('1')" } },
-    { mode: "assign", group: "parts", from: { draw: "balanced" }, overlap: { placement: "disabled" } },
+    { when: { script: "$var.group.is('a') && $var.slot.is('1')" } },
+    { filter: { column: "parts", only: ["a"] }, overlap: { placement: "disabled" } },
   ],
   layout: { template: "{{$unit.headline}} as {{$var.role.label}}" },
   children: [
@@ -33,7 +34,7 @@ describe("fieldUsage", () => {
     const items = [
       {
         type: "unit_loop",
-        units: [{ mode: "assign", group: "g", from: { draw: "balanced" }, gold: { placement: "last", questions: ["topic"] } }],
+        units: [{ gold: { placement: "last", questions: ["topic"] } }],
         layout: { template: "$unit.title" },
         children: [
           { type: "show_if", condition: { script: "$unit.year > 2000" }, children: [
@@ -45,5 +46,30 @@ describe("fieldUsage", () => {
     ];
     expect(Object.fromEntries(fieldUsage(items))).toEqual({ title: "shown", year: "sent", body: "shown", topic_gold: "server" });
     expect(undeclaredFields(items, [{ name: "title" }])).toEqual(["body", "year", "topic_gold"]);
+  });
+});
+
+describe("set columns", () => {
+  const items = [
+    { type: "session", params: [], coders: { column: "coder" }, conditions: [{ name: "framing", values: ["a", "b"], assign: "link", units: "framing" }] },
+    { type: "unit_loop", units: [{}], layout: { template: "" }, children: [] },
+    { type: "show_if", condition: { script: "true" }, children: [{ type: "question", name: "set", variable: { type: "random_condition", draw: "balanced", units: "set" } }] },
+    { type: "unit_loop", units: [{ filter: { column: "phase", except: ["pre"] } }], layout: { template: "" }, children: [] },
+  ];
+
+  it("are the coder column, linked conditions' and filters' columns: used, and declared as set fields", () => {
+    expect(designSetColumns(items).sort()).toEqual(["coder", "framing", "phase", "set"]);
+    expect(Object.fromEntries(fieldUsage(items))).toEqual({ coder: "server", framing: "server", phase: "server", set: "server" });
+    expect(undeclaredFields(items, [{ name: "coder" }, { name: "framing" }])).toEqual(["phase", "set"]);
+    expect(notSetColumns(items, [{ name: "coder", type: "set" }, { name: "framing", type: "text" }])).toEqual(["framing"]);
+  });
+
+  it("select a loop's units: the session's, and random conditions before the loop", () => {
+    const shares = loopShareColumns(items);
+    expect(shares.get("1")).toEqual([
+      { name: "coder", column: "coder" },
+      { name: "framing", column: "framing" },
+    ]);
+    expect(shares.get("2")).toEqual([...shares.get("1")!, { name: "set", column: "set", random: true }]);
   });
 });

@@ -1,4 +1,5 @@
 import { unitLoops, type DesignItem, type UnitLoopItem } from "./item.js";
+import { sessionItem } from "./session.js";
 import { goldColumn, practiceColumn, practiceMessageColumn } from "./unitLoop.js";
 import { extractReferences, type Reference } from "./references.js";
 import { expandSnippets } from "./snippets.js";
@@ -109,7 +110,7 @@ export function fieldUsage(items: readonly unknown[]): Map<string, FieldUse> {
     for (const ref of loopReferences(loop, (f) => use(f, "shown"))) if (ref.ns === "unit") counts.set(ref.path[0], (counts.get(ref.path[0]) ?? 0) + 1);
     for (const [field, n] of counts) use(field, n > scriptCount(loop, field) ? "shown" : "sent");
     for (const branch of Array.isArray(loop.units) ? loop.units : []) {
-      if (branch.mode === "all") continue;
+      if (branch?.filter?.column) use(branch.filter.column, "server");
       for (const q of branch.gold?.questions ?? []) use(goldColumn(q), "server");
       for (const q of branch.practice?.questions ?? []) {
         use(practiceColumn(q), "server");
@@ -117,7 +118,35 @@ export function fieldUsage(items: readonly unknown[]): Map<string, FieldUse> {
       }
     }
   }
+  // The set columns the session's units come from
+  for (const column of designSetColumns(items)) use(column, "server");
   return usage;
+}
+
+/**
+ * The set columns a design names (docs/plans/unit-assignment.md): the coder
+ * column, the columns conditions (assigned or random) are linked to, and
+ * loop filters' columns. They must be `set` fields of the units.
+ */
+export function designSetColumns(items: readonly unknown[]): string[] {
+  const columns = new Set<string>();
+  const session = sessionItem(items);
+  if (session?.coders?.column) columns.add(session.coders.column);
+  for (const c of session?.conditions ?? []) if (c?.units) columns.add(c.units);
+  const walk = (list: unknown) => {
+    for (const raw of Array.isArray(list) ? list : []) {
+      const it = raw as { type?: unknown; variable?: { type?: unknown; units?: unknown }; children?: unknown; units?: unknown } | null;
+      if (it?.variable?.type === "random_condition" && typeof it.variable.units === "string") columns.add(it.variable.units);
+      if (it?.type === "unit_loop") {
+        for (const b of Array.isArray(it.units) ? (it.units as { filter?: { column?: unknown } }[]) : []) {
+          if (typeof b?.filter?.column === "string") columns.add(b.filter.column);
+        }
+      }
+      walk(it?.children);
+    }
+  };
+  walk(items);
+  return [...columns];
 }
 
 /** How often a loop's scripts (branch and condition) refer to `$unit.<field>`. */
@@ -147,4 +176,9 @@ function scriptCount(loop: UnitLoopItem, field: string): number {
 export function undeclaredFields(items: readonly unknown[], declared: readonly { name: string }[]): string[] {
   const names = new Set(declared.map((f) => f.name));
   return [...fieldUsage(items).keys()].filter((f) => !names.has(f) && f !== "id" && !f.startsWith("_"));
+}
+
+/** Columns the design selects units by (`designSetColumns`) that are declared, but not as `set` fields. */
+export function notSetColumns(items: readonly unknown[], declared: readonly { name: string; type: string }[]): string[] {
+  return designSetColumns(items).filter((c) => declared.some((f) => f.name === c && f.type !== "set"));
 }
