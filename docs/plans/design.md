@@ -119,7 +119,7 @@ what you deployed; deploying makes changes live.** That covers the design
 - Uploading units no longer changes a running study; a bar on the job page
   says what isn't deployed yet and opens the deploy dialog.
 
-**Storage** (built; migration 0026). Field values are stored once per job
+**Storage** (built). Field values are stored once per job
 by content; units have a draft (overwritten freely) and versions made only
 by deploys:
 

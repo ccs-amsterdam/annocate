@@ -263,7 +263,7 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
   - with 2FA: losing a second factor must not be recoverable by email alone,
     or a mailbox is enough after all.
 - **Not built:** a list of active sessions, logging out everywhere, logout
-  at the provider (`architecture.md` §10).
+  at the provider (`architecture.md` §11).
 
 
 ## 8. Quitting, and deleting a coder's data (implemented, 2026-10-28)

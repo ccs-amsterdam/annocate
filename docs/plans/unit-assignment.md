@@ -9,8 +9,9 @@ Status: built (2026-11-19, steps 1–4). Deviations from the text below:
   other types (a formula). The coder API draws it at
   `POST /variables/computed/:name`.
 - The coder and condition values are per session (`$session`).
-- Migration `0006_unit_assignment.sql` has the same number as the MCP
-  branch's `0006_oauth.sql`: renumber one when merging.
+- The MCP branch's `0006_oauth.sql` predates the move to Drizzle
+  (2026-11-19): when merging, its tables go into `src/db/schema/` and
+  `db:generate` makes the migration.
 
 ### Branches removed (2026-11-19)
 
@@ -39,8 +40,7 @@ session's units, once). Why:
 What stays: coders keep the units they coded (they can go back to them and
 change their answers, whatever their values or the loop's settings give
 them now), and the leases of a shared queue are loop-wide (shares overlap).
-`coders.assignments` only marks the loops a coder reached, for progress;
-migration `0007_loop_units.sql` resets it.
+`coders.assignments` only marks the loops a coder reached, for progress.
 
 Replaces the loop modes (`all`,
 `shared`, `assign`), set-backed link parameters (`values: {sets: group}`),

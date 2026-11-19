@@ -20,12 +20,25 @@ machine):
 docker compose --profile tls up -d --build
 ```
 
-The database schema is created and updated when the server starts
-(`packages/server/migrations`). Migrations only add: a new release's
-schema changes are new numbered files, applied in order, and a database
+The database schema is created and updated when the server starts: the
+server applies the migrations in `packages/server/migrations` that the
+database doesn't have yet (recorded in its `drizzle` schema), in order and
+under a lock, so several server processes can start at once. A database
 from an earlier release is updated in place. (Before the first release the
-migrations were reset to one, `0001_init.sql`: a test server from before
-that has to start with a new database.)
+migrations were reset to a new start, made by Drizzle: a test server from
+before 2026-11-19 has to start with a new database.)
+
+**Changing the schema** (development): edit the tables in
+`packages/server/src/db/schema/`, then run
+
+```
+pnpm --filter @annotinder/server db:generate
+```
+
+It writes a new migration (SQL, plus its snapshot in `migrations/meta/`)
+from the difference with the last one. Read it and commit it with the
+change; the next server start applies it. An applied migration is never
+edited. `packages/server/README.md` has the details.
 
 `GET /api/health` answers `{ ok: true, service, release, commit }` when the
 server runs (the image's health check uses it).
@@ -127,7 +140,7 @@ units:
 No unit was coded by more than its `maxCoders`. A shared queue hands out
 units one pick at a time (it holds a lock while it decides), and a pick
 reads the queue's codings: about 25 picks per second at 10k units and
-~12k codings, fewer as codings grow (`architecture.md` §10, item 11). That is
+~12k codings, fewer as codings grow (`architecture.md` §11, item 11). That is
 far more than coders at a realistic pace need (300 coders at 10 s per unit
 and batches of 5: 6 picks per second); studies without a shared queue
 don't take that lock.

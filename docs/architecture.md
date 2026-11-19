@@ -1,6 +1,6 @@
 # Annotinder server architecture
 
-Status: current (2026-10-26). One server, `packages/server`, on Postgres:
+Status: current (2026-11-19). One server, `packages/server`, on Postgres:
 `pg` against a Postgres server in production, PGlite (Postgres in
 WebAssembly, in process) for tests and development.
 
@@ -84,7 +84,7 @@ development, Vite proxies the server's paths.
    changes (version, annotation epoch, `revision`, suspension: one small
    query per request; researcher changes bump `revision`). So any number of
    server processes can serve the same study
-   (§10 has what is left).
+   (§11 has what is left).
 3. **Decisions that count other coders run under a lock.** Picking from a
    shared queue (and leasing the unit), drawing a balanced set (`assign` mode)
    and a `balanced` group run in one transaction holding a database lock on
@@ -493,7 +493,42 @@ Other open points:
 - `totalUnits` is unknown in a shared queue without `maxUnits`; the client
   then counts the units seen so far.
 
-## 9. Code map
+## 9. The database
+
+Postgres, through [Drizzle](https://orm.drizzle.team): `pg` against a
+Postgres server in production, PGlite in development and tests. The same
+code runs on both: one `Db` type is the database or a transaction, and
+functions take a `Db`, so they also run inside a caller's transaction
+(`db.transaction(async (tx) => ...)`).
+
+- **The schema** is TypeScript, one file per area in
+  `server/src/db/schema/`: accounts and server settings; studies, design
+  versions, deployments and links; units (values, versions, drafts, sets);
+  coders, devices and answers; distribution (leases, codings, serves); logs
+  and rate limits. Columns are camelCase in code and snake_case in the
+  database (Drizzle's `casing`). Row types come from the tables
+  (`typeof coders.$inferSelect`); JSONB columns name their type.
+- **Migrations** are generated from the schema (`pnpm --filter
+  @annotinder/server db:generate`) into `server/migrations/`, and applied
+  when a database is opened (Drizzle's `migrate()`; on Postgres under an
+  advisory lock, so server processes starting together apply them once).
+  Applied migrations are recorded in the `drizzle` schema. What Drizzle
+  can't express goes in a hand-written migration: `0001_seed.sql` makes
+  `rate_limits` unlogged and adds the default plan and the settings row.
+- **Queries** use the query builder. A few are `sql` templates, written as
+  named CTEs where they compare sets of rows: comparing the draft units
+  with the deployed ones (`shared/units.ts`), bulk inserts from arrays
+  (`unnest`, `INSERT ... SELECT`), advisory locks (distribution, units).
+  Long lists of ids go as one array parameter (`anyOf`), since a query
+  takes at most 65535 parameters.
+- **SQL expressions** shared by queries are TypeScript functions that build
+  SQL (`db/sql.ts`), not functions in the database: role resolution
+  (`roleApplies`, `accountRole`, `studyRole`) and a unit's data and hash
+  (`unitDraftData`, `unitVersionData`, `unitDataHash`, `unitValueHash`).
+  They change with the code, and a schema change never has to rewrite a
+  stored function.
+
+## 10. Code map
 
 | Where | What |
 | --- | --- |
@@ -508,7 +543,8 @@ Other open points:
 | `server/src/researcher/` | The researcher API, one file per path; `auth.ts` (sessions, API keys, dev headers), `login.ts` (`/auth/...`) |
 | `server/src/oidc.ts`, `shared/accounts.ts`, `shared/sessions.ts` | Researcher login with an OpenID Connect provider, users and API keys, sessions |
 | `server/src/shared/` | Database queries shared by both APIs (deployments, finished units, units, coders, ...) |
-| `server/migrations/`, `src/db.ts` | The data model (numbered SQL migrations) and the database (`Sql`: `pg` or PGlite) |
+| `server/src/db/` | The database (Drizzle on `pg` or PGlite): `schema/` the tables per area, `index.ts` opening it and applying the migrations, `sql.ts` SQL expressions (role resolution, unit data) |
+| `server/migrations/` | The migrations Drizzle generates from the schema (`db:generate`), plus the hand-written seed |
 | `server/src/runtime/registry.ts` | `Deployments`: lazily loads one runtime per deployment; failures aren't cached; revision bumps, status, preview tokens |
 | `server/src/runtime/runtime.ts` | `DeploymentRuntime`: spec, a coder's units, distribution under locks, computed variables, status |
 | `server/src/runtime/store.ts` | `Store`: what the runtime reads and writes; `DbStore` on the database |
@@ -527,7 +563,7 @@ runs coders end to end (a new app on the same database is a restart),
 against the contract schemas), `login.test.ts` login against a mock
 provider.
 
-## 10. Open questions and next steps
+## 11. Open questions and next steps
 
 Roughly in order:
 

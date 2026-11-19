@@ -81,8 +81,7 @@ public researcher API, so the R/Python clients follow):
    coders interpret units rather than having them do work
    (`philosophy.md`): the API (`/api/study/...`, `StudyResponse`,
    `listStudies`, error codes `study_paused`, `study_suspended`,
-   `study_full`), the database (`studies`, `roles.study_id`, `study_id`;
-   migration 0003), plan limits (`studies`, `unitsPerStudy`,
+   `study_full`), the database (`studies`, `roles.study_id`, `study_id`), plan limits (`studies`, `unitsPerStudy`,
    `codersPerStudy`, `answersPerStudy`), the client (`/research/studies/...`,
    `StudyManager`, `StudyRunner`) and the docs. Coders stay coders: the
    welcome page and header say Coder and Code.

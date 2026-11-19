@@ -106,7 +106,7 @@ Fixed along the way:
 
 One shared queue serves about 25 picks per second at 10k units, fewer as
 codings grow. That is plenty at a realistic pace. Beyond it, see
-`architecture.md` §10 item 11.
+`architecture.md` §11 item 11.
 
 ## 2. Decisions (decided 2026-10-31, built unless noted)
 
@@ -131,10 +131,12 @@ codings grow. That is plenty at a realistic pace. Beyond it, see
    download turns it off (`security.md` §4).
 7. **Rate limiting**: in the server, counted in an unlogged Postgres table
    (`security.md` §3); generous defaults.
-8. **Migration reset** — done (2026-11-02): the migrations are one
-   `0001_init.sql`, the schema as it was, with the foreign keys it lacked
-   (answers to coders and units, coders to links, deployments to design
-   versions, unit serves to units). From here on migrations only add.
+8. **Migration reset** — done (2026-11-19): with the move to Drizzle the
+   migrations start again from one generated initial migration
+   (`0000_init.sql`, the schema as it was) and a hand-written
+   `0001_seed.sql` (unlogged `rate_limits`, the default plan, the settings
+   row); the SQL functions became TypeScript (`src/db/sql.ts`). From here
+   on migrations only add, made with `db:generate`.
 
 ## 3. Open items (work)
 
