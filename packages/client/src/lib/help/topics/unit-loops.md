@@ -57,7 +57,7 @@ question. Inside a loop, texts and conditions can use more than outside:
 
 Some answer types only make sense per unit, and only work inside a loop:
 [selecting text](span.md) and [relations](relation.md). The
-[auto questions](auto.md) (`auto`) work the other way round: only
+[auto questions](random-condition.md) (`auto`) work the other way round: only
 outside a loop.
 
 The loop's answers belong to the loop. After the loop, or in another loop,
@@ -71,7 +71,7 @@ Coder-level questions before the loop are answered once, and the loop can use
 their answers everywhere: in the layout, in its questions' texts and in its
 conditions. Typical uses:
 
-- an experimental group (an [auto question](auto.md)) that decides which
+- an experimental group (an [auto question](random-condition.md)) that decides which
   version of a unit coders see, with `::: if` in the layout (see
   [Showing parts conditionally](template-blocks.md));
 - the coder's experience, to show extra instructions to beginners;

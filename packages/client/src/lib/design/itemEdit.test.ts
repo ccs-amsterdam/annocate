@@ -155,7 +155,7 @@ describe("itemEdit", () => {
       const autoQ: TopLevelItem = {
         type: "question",
         name: "auto_q",
-        variable: { type: "auto", source: "random", options: [{ value: "a" }] },
+        variable: { type: "random_condition", draw: "random", options: [{ value: "a" }] },
       };
       const items: TopLevelItem[] = [autoQ, loop];
       expect(canMoveItemTo(items, "auto_q", "in_loop_q", "before")).toBe(false);

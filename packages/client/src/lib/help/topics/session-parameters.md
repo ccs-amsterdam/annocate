@@ -57,7 +57,7 @@ some combinations** to list the combinations you need. See
 Use link parameters when *you* decide who gets which value: a link per
 class, a link per expert coder's set, or an experiment in which you send
 each condition's link to other people. When the value should be drawn
-(random or balanced), use an [auto question](auto.md) instead.
+(random or balanced), use an [auto question](random-condition.md) instead.
 
 ## Built-in values
 

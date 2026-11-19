@@ -64,7 +64,7 @@ function makeFlakyServer({ getNextUnit, ...overrides }: Partial<CoderApi> & { ge
     postCoderVariables: vi.fn(async () => {
       calls.postCoderVariables = (calls.postCoderVariables ?? 0) + 1;
     }),
-    assignAuto: vi.fn(async () => ({ done: true, skip: false, values: [{ value: "a" }] })),
+    assignCondition: vi.fn(async () => ({ done: true, skip: false, values: [{ value: "a" }] })),
     quitSession: vi.fn(async () => {
       calls.quitSession = (calls.quitSession ?? 0) + 1;
     }),
@@ -148,7 +148,7 @@ describe("StudyManager error-handling, rollback, and retry contract", () => {
 
   it("skips auto variables and uses their server-assigned values in conditions", async () => {
     const items = [
-      { type: "question", name: "group", variable: { type: "auto", source: "balanced", options: [{ value: "a" }, { value: "b" }] } },
+      { type: "question", name: "group", variable: { type: "random_condition", draw: "balanced", options: [{ value: "a" }, { value: "b" }] } },
       { type: "show_if", condition: { script: `$var.group.is("a")` }, children: [confirm("shown_to_a")] },
       confirm("everyone"),
     ] as TopLevelItem[];
@@ -475,7 +475,7 @@ describe("submitting a finished unit", () => {
 });
 
 describe("choosing a unit loop branch", () => {
-  const slot = { type: "question", name: "slot", variable: { type: "auto", source: "invite", options: [{ value: "1" }, { value: "2" }] } };
+  const slot = { type: "question", name: "slot", variable: { type: "random_condition", draw: "invite", options: [{ value: "1" }, { value: "2" }] } };
   const role = {
     type: "question",
     name: "role",
@@ -632,7 +632,7 @@ describe("a new codebook version while coding", () => {
 
 describe("end items", () => {
   const consent = { type: "question", name: "consent", variable: { type: "nominal", question: "?", options: [{ value: "yes" }, { value: "no" }] } };
-  const pid = { type: "question", name: "pid", variable: { type: "auto", source: "url_param", urlParam: "pid" } };
+  const pid = { type: "question", name: "pid", variable: { type: "random_condition", draw: "url_param", urlParam: "pid" } };
   const stop = {
     type: "end",
     name: "stop",
@@ -802,14 +802,14 @@ describe("auto questions", () => {
   it("are assigned by the server when reached, after earlier answers are saved; conditions then use the value", async () => {
     const order: string[] = [];
     const gender = { type: "question", name: "gender", variable: { type: "nominal", question: "Gender?", options: [{ value: "f" }, { value: "m" }] } };
-    const condition = { type: "question", name: "condition", variable: { type: "auto", source: "balanced", options: [{ value: "a" }, { value: "b" }], stratify: ["gender"] } };
+    const condition = { type: "question", name: "condition", variable: { type: "random_condition", draw: "balanced", options: [{ value: "a" }, { value: "b" }], stratify: ["gender"] } };
     const onlyB = { type: "show_if", condition: { script: `$var.condition.is("b")` }, children: [confirm("seen_b")] };
     const server = makeFlakyServer({
       getSession: vi.fn(async () => session([gender, condition, onlyB, confirm("last")] as TopLevelItem[])),
       postCoderVariables: vi.fn(async () => {
         order.push("save");
       }),
-      assignAuto: vi.fn(async (name: string) => {
+      assignCondition: vi.fn(async (name: string) => {
         order.push(`assign ${name}`);
         return { done: true, skip: false, values: [{ value: "b" }] };
       }),

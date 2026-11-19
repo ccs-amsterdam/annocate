@@ -96,7 +96,7 @@ https://panel.example/return?status=complete&id=$var.pid.value&group=$var.group.
 ```
 
 Here `pid` and `group` are questions of the codebook, typically
-[auto questions](auto.md): `pid` taken from the link the participant
+[auto questions](random-condition.md): `pid` taken from the link the participant
 came in with, `group` drawn at random. How to get a panel's participant id
 into the design is explained in
 [Online panels and crowd coding](online-panels.md).

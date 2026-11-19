@@ -1,8 +1,8 @@
 ---
-title: Auto questions
+title: Random conditions
 section: Question types
 order: 7
-summary: Auto questions give each coder a value without asking - for experimental groups and routing.
+summary: Random conditions give each coder a value without asking - for experimental groups and routing.
 ---
 
 An **Auto (assigned, not asked)** question is never shown to coders.

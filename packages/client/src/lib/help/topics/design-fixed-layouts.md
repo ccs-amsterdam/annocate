@@ -78,7 +78,7 @@ The answer layout is fixed, but some things can't be:
 
 AnnoTinder doesn't record which device a coder used. If it matters for your
 analysis, ask: a short question at the start, or, with a panel that passes
-it on, a [URL parameter](auto.md#url-parameter). If your material needs a large screen
+it on, a [URL parameter](random-condition.md#url-parameter). If your material needs a large screen
 (long articles, wide tables), say so in the recruitment text.
 
 ## Light or dark

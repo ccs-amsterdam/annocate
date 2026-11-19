@@ -1268,9 +1268,9 @@ export class StudyManager {
 
     // An `auto` question without a value: the server assigns it now (the
     // answers it may balance on saved first), and the flow goes on with it.
-    if (next.type === "question" && next.variable.type === "auto") {
+    if (next.type === "question" && next.variable.type === "random_condition") {
       await this.flush();
-      this.userVariableValues[next.name] = await this.coderApi.assignAuto(next.name);
+      this.userVariableValues[next.name] = await this.coderApi.assignCondition(next.name);
       this.topIndex -= 1;
       await this.advanceTop();
       return;

@@ -43,7 +43,7 @@ describe("validateDesignItems", () => {
   });
 
   it("checks that loop branches refer to preceding coder variables", () => {
-    const slot = questionVar("slot", { type: "auto", source: "balanced", options: [{ value: "1" }, { value: "2" }] });
+    const slot = questionVar("slot", { type: "random_condition", draw: "balanced", options: [{ value: "1" }, { value: "2" }] });
     const loop = (units: unknown): TopLevelItem =>
       ({ type: "unit_loop", label: "loop", units, layout: { template: "" }, children: [questionVar("q1", select(["a", "b"])), questionVar("c1")] }) as TopLevelItem;
 

@@ -19,7 +19,7 @@ There are two ways to do this in a unit loop:
 
 Coder groups work on **coder-level questions** and session values: questions
 outside unit loops, asked (or assigned) before the loop, such as an
-[auto question](auto.md) for an experimental condition, and
+[auto question](random-condition.md) for an experimental condition, and
 `$session` values from the link (see [Session parameters](session-parameters.md)).
 
 ## Coder groups

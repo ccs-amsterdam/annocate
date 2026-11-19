@@ -34,7 +34,7 @@ const TYPE_HELP: Record<AnyVariableType["type"], string> = {
   scale: "scale",
   annotinder: "swipe",
   confirm: "confirm",
-  auto: "auto",
+  random_condition: "random-condition",
   span: "span",
   relation: "relation",
   unspecified: "question-types",

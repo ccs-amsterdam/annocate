@@ -137,10 +137,10 @@ export const ConfirmTypeSchema = VariableBaseSchema.extend({
  * - `random`:    a (weighted) random draw from `options`
  * - `balanced`:  the option fewest coders have so far
  */
-export const AutoTypeSchema = z
+export const RandomConditionTypeSchema = z
   .object({
-    type: z.literal("auto"),
-    source: z.enum(["random", "balanced"]),
+    type: z.literal("random_condition"),
+    draw: z.enum(["random", "balanced"]),
     /** The possible values. */
     options: z.array(NominalOptionSchema.extend({ weight: z.number().positive().optional() })).min(1, "List at least one value"),
     /**
@@ -152,10 +152,10 @@ export const AutoTypeSchema = z
     stratify: z.array(z.string().min(1).max(80)).max(5).optional(),
   })
   .superRefine((v, ctx) => {
-    if (v.stratify?.length && v.source !== "balanced") ctx.addIssue({ code: "custom", message: "Only a balanced draw can be balanced within groups", path: ["stratify"] });
+    if (v.stratify?.length && v.draw !== "balanced") ctx.addIssue({ code: "custom", message: "Only a balanced draw can be balanced within groups", path: ["stratify"] });
     nominalValueErrors(v.options ?? []).forEach((message) => ctx.addIssue({ code: "custom", message, path: ["options"] }));
   });
-export type AutoType = z.infer<typeof AutoTypeSchema>;
+export type RandomConditionType = z.infer<typeof RandomConditionTypeSchema>;
 
 // ---- annotation-in-unit answer types (only valid inside a unit loop) ----
 
@@ -208,7 +208,7 @@ export const UserVariableTypeSchema = z.discriminatedUnion("type", [
   ScaleTypeSchema,
   AnnotinderTypeSchema,
   ConfirmTypeSchema,
-  AutoTypeSchema,
+  RandomConditionTypeSchema,
   UnspecifiedTypeSchema,
 ]);
 export type UserVariableType = z.infer<typeof UserVariableTypeSchema>;

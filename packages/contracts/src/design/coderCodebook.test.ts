@@ -9,7 +9,7 @@ describe("the coder codebook", () => {
       {
         type: "question",
         name: "condition",
-        variable: { type: "auto", source: "balanced", stratify: ["session.wave"], options: [{ value: "a", label: "A", weight: 2 }] },
+        variable: { type: "random_condition", draw: "balanced", stratify: ["session.wave"], options: [{ value: "a", label: "A", weight: 2 }] },
       },
       {
         type: "show_if",
@@ -30,7 +30,7 @@ describe("the coder codebook", () => {
       },
     ] as TopLevelItem[];
     expect(toCoderItems(items)).toEqual([
-      { type: "question", name: "condition", variable: { type: "auto", options: [{ value: "a", label: "A" }] } },
+      { type: "question", name: "condition", variable: { type: "random_condition", options: [{ value: "a", label: "A" }] } },
       {
         type: "show_if",
         condition: { script: "true" },

@@ -65,7 +65,7 @@ export interface CoderApi {
   /** The coder-level answers, with how long the questions visited since the last post took. */
   postCoderVariables(variables: Record<string, VariableValue>, timings?: Record<string, AnswerTiming>): Promise<void>;
   /** The coder reached an `auto` question: its value, assigned by the server (once). */
-  assignAuto(name: string): Promise<VariableValue>;
+  assignCondition(name: string): Promise<VariableValue>;
   /** The coder reached an `end` item (`unit`: the unit an end inside a unit loop was reached on), or without one finished the study. */
   endSession(item?: string, unit?: EndUnit): Promise<EndSessionResponse>;
   /** Goes back after finishing, while the server allows it (`reopen`). */
@@ -193,8 +193,8 @@ export class HttpCoderApi implements CoderApi {
     });
   }
 
-  async assignAuto(name: string): Promise<VariableValue> {
-    const path = coderEndpoints.assignAuto.path.replace(":name", encodeURIComponent(name));
+  async assignCondition(name: string): Promise<VariableValue> {
+    const path = coderEndpoints.assignCondition.path.replace(":name", encodeURIComponent(name));
     return (await this.request<{ value: VariableValue }>(path, { method: "POST" })).value;
   }
 

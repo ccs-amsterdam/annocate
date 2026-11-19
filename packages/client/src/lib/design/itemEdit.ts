@@ -207,7 +207,7 @@ export function canMoveItemTo(
   // Check item type constraints:
   if (sourceItem.type === "question") {
     if (isTargetInLoop) {
-      if (sourceItem.variable?.type === "auto") return false;
+      if (sourceItem.variable?.type === "random_condition") return false;
     } else {
       if (sourceItem.variable?.type === "span" || sourceItem.variable?.type === "relation") return false;
     }
@@ -225,7 +225,7 @@ export function canMoveItemTo(
     const hasTopOnly = sourceDescendants.some(
       (d) =>
         d.type === "unit_loop" ||
-        (d.type === "question" && d.variable?.type === "auto"),
+        (d.type === "question" && d.variable?.type === "random_condition"),
     );
 
     if (isTargetInLoop && hasTopOnly) return false;

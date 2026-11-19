@@ -319,7 +319,7 @@ async function link(settings: { auth?: string; emails?: string[]; participantId?
 
 /** The coder reached an `auto` question: its assigned value. */
 async function reach(c: ReturnType<typeof coder>, name: string) {
-  const res = await c.call(`/variables/auto/${name}`, { method: "POST" });
+  const res = await c.call(`/variables/condition/${name}`, { method: "POST" });
   expect(res.status).toBe(200);
   return ((await res.json()) as { value: VariableValue }).value.values;
 }
@@ -560,7 +560,7 @@ describe("routing by branch", () => {
   it("keeps routing sticky and refuses branches that don't exist", async () => {
     await createSet("s1", ["unit-1"]);
     await createSet("s2", ["unit-2"]);
-    const condition = { type: "question", name: "condition", variable: { type: "auto", source: "balanced", options: [{ value: "s1" }, { value: "s2" }] } };
+    const condition = { type: "question", name: "condition", variable: { type: "random_condition", draw: "balanced", options: [{ value: "s1" }, { value: "s2" }] } };
     await redeploy(
       {
         units: [
@@ -844,7 +844,7 @@ describe("auto questions", () => {
   const value = (v: string) => ({ done: true, skip: false, values: [{ value: v }] });
 
   it("are assigned when reached, once; coders who never reach them don't count", async () => {
-    const condition = { type: "question", name: "condition", variable: { type: "auto", source: "balanced", options: [{ value: "a" }, { value: "b" }] } };
+    const condition = { type: "question", name: "condition", variable: { type: "random_condition", draw: "balanced", options: [{ value: "a" }, { value: "b" }] } };
     await redeploy({}, [condition]);
     // Loading the session assigns nothing: a coder screened out before the question doesn't count
     const early = coder("early");
@@ -853,7 +853,7 @@ describe("auto questions", () => {
     expect(await reach(coder("first", null), "condition")).toEqual([{ value: "a" }]); // the same, reached again
     expect(await reach(coder("second"), "condition")).toEqual([{ value: "b" }]);
     expect(await reach(early, "condition")).toEqual([{ value: "a" }]);
-    expect((await coder("x").call("/variables/auto/nope", { method: "POST" })).status).toBe(404);
+    expect((await coder("x").call("/variables/condition/nope", { method: "POST" })).status).toBe(404);
   });
 
   it("balance within groups of earlier answers or session values (stratified)", async () => {
@@ -861,7 +861,7 @@ describe("auto questions", () => {
     const condition = {
       type: "question",
       name: "condition",
-      variable: { type: "auto", source: "balanced", options: [{ value: "a" }, { value: "b" }], stratify: ["gender", "session.wave"] },
+      variable: { type: "random_condition", draw: "balanced", options: [{ value: "a" }, { value: "b" }], stratify: ["gender", "session.wave"] },
     };
     await redeploy({}, [sessionItem({ params: [{ name: "wave", kind: "url", values: { list: [{ value: "1" }, { value: "2" }] }, default: "1" }] }), gender, condition]);
     const start = async (name: string, g: string, wave = "1") => {
@@ -891,13 +891,13 @@ describe("auto questions", () => {
 
 describe("coder-level answers", () => {
   it("are answer rows without a unit, one per question, assigned values marked; only changed answers are written", async () => {
-    const group = { type: "question", name: "group", variable: { type: "auto", source: "random", options: [{ value: "a" }, { value: "b" }] } };
+    const group = { type: "question", name: "group", variable: { type: "random_condition", draw: "random", options: [{ value: "a" }, { value: "b" }] } };
     const age = { type: "question", name: "age", variable: { type: "numeric", question: "Age?" } };
     const city = { type: "question", name: "city", variable: { type: "nominal", question: "City?", options: [{ value: "Utrecht" }, { value: "Gent" }] } };
     await redeploy({}, [group, age, city]);
     const c = coder("surveyed");
     await c.session();
-    expect((await c.call("/variables/auto/group", { method: "POST" })).status).toBe(200);
+    expect((await c.call("/variables/condition/group", { method: "POST" })).status).toBe(200);
     const post = (variables: object) => c.call("/variables/coder", { method: "POST", body: JSON.stringify({ variables }) });
     const value = (v: string | number) => ({ done: true, skip: false, values: [{ value: v }] });
     expect((await post({ age: value(30), city: value("Utrecht") })).status).toBe(204);

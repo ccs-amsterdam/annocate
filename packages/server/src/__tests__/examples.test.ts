@@ -112,7 +112,7 @@ describe("studies from a recipe", () => {
     {
       type: "question",
       name: "condition",
-      variable: { type: "auto", source: "random", options: [{ value: "x" }, { value: "y" }] },
+      variable: { type: "random_condition", draw: "random", options: [{ value: "x" }, { value: "y" }] },
     },
     {
       type: "unit_loop",

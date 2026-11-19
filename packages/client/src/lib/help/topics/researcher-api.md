@@ -157,7 +157,7 @@ A group can't be deleted while the deployed or latest design version uses it.
 
 `GET /study/<id>/annotations` gives every answer, one row per coder,
 question and unit (`unitId` is `null` for questions outside unit loops;
-`assigned: true` marks [auto questions](auto.md)), in the order they were written, a page at a time
+`assigned: true` marks [auto questions](random-condition.md)), in the order they were written, a page at a time
 (up to `limit` rows, at most 10000). Pass the page's `next` as `after` to get
 the next page, until `next` is `null`:
 

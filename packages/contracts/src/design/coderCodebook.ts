@@ -2,7 +2,7 @@ import { z } from "zod";
 import { IdSchema } from "../common.js";
 import type { Condition } from "./condition.js";
 import type { EndItem, InLoopItem, TopLevelItem, TopLevelQuestionItem, UnitLoopItem } from "./item.js";
-import type { AutoType } from "./variableTypes.js";
+import type { RandomConditionType } from "./variableTypes.js";
 
 // The coder codebook (docs/plans/special-sets.md §0): what coders' browsers
 // get of a codebook, only what the coding client needs. Unit loops keep
@@ -10,7 +10,7 @@ import type { AutoType } from "./variableTypes.js";
 // client picks the branch; the server works out the units). Left out: how
 // units are handed out (modes, sets, groups, overlap; later practice and
 // gold), the Session item (its values come with the session), and how
-// `auto` questions are drawn (source, weights, groups to balance within).
+// random conditions are drawn (draw, weights, groups to balance within).
 
 /** A loop branch as coders get it: only its condition. */
 export interface CoderBranch {
@@ -18,12 +18,12 @@ export interface CoderBranch {
 }
 
 /** An `auto` question's answer type as coders get it: its options (for labels), not how it is drawn. */
-export type CoderAutoType = Pick<AutoType, "type"> & { options: Omit<AutoType["options"][number], "weight">[] };
+export type CoderRandomConditionType = Pick<RandomConditionType, "type"> & { options: Omit<RandomConditionType["options"][number], "weight">[] };
 
 export type CoderUnitLoopItem = Omit<UnitLoopItem, "units"> & { units: CoderBranch[] };
 
 export type CoderTopLevelItem =
-  | (Omit<TopLevelQuestionItem, "variable"> & { variable: Exclude<TopLevelQuestionItem["variable"], AutoType> | CoderAutoType })
+  | (Omit<TopLevelQuestionItem, "variable"> & { variable: Exclude<TopLevelQuestionItem["variable"], RandomConditionType> | CoderRandomConditionType })
   | CoderUnitLoopItem
   | EndItem
   | { type: "show_if"; label?: string; condition: Condition; children: CoderTopLevelItem[] };
@@ -50,13 +50,13 @@ export function toCoderItems(items: readonly TopLevelItem[]): CoderTopLevelItem[
         return [{ ...loop, children: loop.children as InLoopItem[], units: units.map((b) => (b.when ? { when: b.when } : {})) }];
       }
       case "question": {
-        if (item.variable.type !== "auto") return [item as CoderTopLevelItem];
+        if (item.variable.type !== "random_condition") return [item as CoderTopLevelItem];
         const options = item.variable.options.map((o) => {
           const option = { ...o };
           delete option.weight;
           return option;
         });
-        return [{ ...item, variable: { type: "auto", options } }];
+        return [{ ...item, variable: { type: "random_condition", options } }];
       }
       default:
         return [item];

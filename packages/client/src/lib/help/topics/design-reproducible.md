@@ -32,7 +32,7 @@ The design may *name* things that only get a meaning in the study:
   `parts`*, drawn, or named by their link or login. See
   [Handing out units](unit-distribution.md).
 - **A group of coders**: *coders in the experimental group get this layout*,
-  where the group is an [auto question](auto.md) (drawn at random or
+  where the group is an [auto question](random-condition.md) (drawn at random or
   balanced), or a [session parameter](session-parameters.md) from the link.
 
 What the design never contains is a unit id, a participant id, an email

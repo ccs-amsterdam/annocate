@@ -528,9 +528,9 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       } else if (item.type === "question") {
         if (!loop && (item.variable?.type === "span" || item.variable?.type === "relation")) {
           issue([...itemPath, "variable", "type"], `Question '${item.name}' with answer type '${item.variable.type}' can only be used inside a unit_loop`);
-        } else if (loop && item.variable?.type === "auto") {
+        } else if (loop && item.variable?.type === "random_condition") {
           issue([...itemPath, "variable", "type"], `Question '${item.name}' with answer type 'auto' can only be used outside a unit_loop`);
-        } else if (item.variable?.type === "auto" && item.variable.stratify) {
+        } else if (item.variable?.type === "random_condition" && item.variable.stratify) {
           // Groups for a balanced draw: answers given before it, or session values
           for (const name of item.variable.stratify) {
             const known = name.startsWith("session.") ? sessionNamed.has(name.slice("session.".length)) : available.has(name);

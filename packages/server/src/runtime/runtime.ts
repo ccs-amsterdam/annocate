@@ -109,7 +109,7 @@ const SPECIAL = [
   { set: GOLD_SET, settings: (b: UnitBranch) => (b.mode === "all" ? undefined : b.gold) },
 ] as const;
 
-type AutoVariable = Extract<VariableType, { type: "auto" }>;
+type RandomCondition = Extract<VariableType, { type: "random_condition" }>;
 
 /** How long a coder can go back after completing a session (docs/coder-identity.md §9). */
 export const REOPEN_MS = 15 * 60 * 1000;
@@ -136,7 +136,7 @@ export class DeploymentRuntime {
   private coderVariableTypes = new Map<string, VariableType>();
   /** Loop key -> the coder-level questions it depends on (`loopDependencies`), frozen once a coder coded a unit there. */
   private dependencies = new Map<string, string[]>();
-  private autoVariables: [string, AutoVariable][] = [];
+  private randomConditions: [string, RandomCondition][] = [];
   /** Set key (`group/set`, and `__all__`) -> its units in order. */
   private sets = new Map<string, number[]>();
   /** Group -> its sets' names (without reserved ones). */
@@ -203,7 +203,7 @@ export class DeploymentRuntime {
     this.dependencies = new Map(
       [...loopDependencies(items)].map(([key, names]) => [key, names.filter((name) => this.coderVariableTypes.has(name))]),
     );
-    this.autoVariables = [...this.coderVariableTypes].filter((e): e is [string, AutoVariable] => e[1].type === "auto");
+    this.randomConditions = [...this.coderVariableTypes].filter((e): e is [string, RandomCondition] => e[1].type === "random_condition");
     this.applySets(spec);
     this.shownFields = shownUnitFields(items);
     this.questions = collectQuestions(items).questions;
@@ -299,15 +299,15 @@ export class DeploymentRuntime {
    * assigned it never changes. Coders who never reach it (screened out
    * before) don't count.
    */
-  async assignAuto(coder: Coder, name: string): Promise<VariableValue> {
+  async assignCondition(coder: Coder, name: string): Promise<VariableValue> {
     this.assertOpen(coder);
-    const variable = this.autoVariables.find(([n]) => n === name)?.[1];
+    const variable = this.randomConditions.find(([n]) => n === name)?.[1];
     if (!variable) throw new HttpError(404, `No auto question '${name}'`);
     const stored = (await this.store.coderValues(coder.coderId))[name];
     if (stored) return stored.value;
     const put = (store: Store, value: VariableValue) =>
       store.putCoderValues({ coderId: coder.coderId, values: { [name]: value }, assigned: true, designVersionId: this.spec.design.id });
-    if (variable.source === "random") {
+    if (variable.draw === "random") {
       const value = singleValue(this.drawWeighted(variable.options));
       await put(this.store, value);
       return value;
@@ -505,7 +505,7 @@ export class DeploymentRuntime {
     this.assertOpen(coder);
     const errors = validateVariables(this.coderVariableTypes, variables);
     if (errors.length > 0) throw new HttpError(400, errors.join("; "));
-    const auto = new Set(this.autoVariables.map(([name]) => name));
+    const auto = new Set(this.randomConditions.map(([name]) => name));
     const stored = await this.store.coderValues(coder.coderId);
     const open = (name: string) => !auto.has(name) && !stored[name]?.assigned && !stored[name]?.frozen;
     const changed = Object.fromEntries(

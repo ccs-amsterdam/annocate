@@ -160,7 +160,7 @@ export function VariableTypeForm({
       const v = variable;
       return <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />;
     }
-    case "auto": {
+    case "random_condition": {
       const v = variable;
       return (
         <>
@@ -168,8 +168,8 @@ export function VariableTypeForm({
             <label className="text-sm font-medium">Source</label>
             <select
               className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-              value={v.source}
-              onChange={(e) => onChange({ ...v, source: e.target.value as typeof v.source })}
+              value={v.draw}
+              onChange={(e) => onChange({ ...v, draw: e.target.value as typeof v.draw })}
             >
               <option value="random">Random draw</option>
               <option value="balanced">Balanced (option with fewest coders)</option>
@@ -179,7 +179,7 @@ export function VariableTypeForm({
               link or URL (e.g. a condition per link), use a session parameter: $session.&lt;name&gt;.
             </p>
           </div>
-          {v.source === "balanced" && stratifyChoices.length > 0 && (
+          {v.draw === "balanced" && stratifyChoices.length > 0 && (
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium">Balance within groups of (optional)</label>
               <div className="flex flex-wrap gap-1">
@@ -211,7 +211,7 @@ export function VariableTypeForm({
             options={v.options}
             onChange={(options) => onChange({ ...v, options })}
             extra={
-              v.source === "random"
+              v.draw === "random"
                 ? (option, update) => (
                     <Input
                       placeholder="weight"
@@ -315,7 +315,7 @@ export function VariableTypeForm({
   }
 }
 
-export const VARIABLE_TYPE_OPTIONS_USER: UserVariableType["type"][] = ["nominal", "ordinal", "numeric", "scale", "annotinder", "confirm", "auto"];
+export const VARIABLE_TYPE_OPTIONS_USER: UserVariableType["type"][] = ["nominal", "ordinal", "numeric", "scale", "annotinder", "confirm", "random_condition"];
 export const VARIABLE_TYPE_OPTIONS_UNIT: UnitVariableType["type"][] = [
   "nominal",
   "ordinal",
@@ -335,7 +335,7 @@ export const VARIABLE_TYPE_LABELS: Record<AnyVariableType["type"], string> = {
   scale: "Scale (items on the same options)",
   annotinder: "Swipe",
   confirm: "Confirm",
-  auto: "Auto (assigned, not asked)",
+  random_condition: "Random condition (assigned, not asked)",
   span: "Span (select text)",
   relation: "Relation (link spans)",
   unspecified: "Not chosen yet",
@@ -374,8 +374,8 @@ export function defaultVariableForAnyType(type: string): AnyVariableType {
       return { type: "annotinder", question: "", options: [{ value: "no", label: "No" }, { value: "yes", label: "Yes" }] };
     case "confirm":
       return { type: "confirm", question: "" };
-    case "auto":
-      return { type: "auto", source: "random", options: [{ value: "control" }, { value: "experiment" }] };
+    case "random_condition":
+      return { type: "random_condition", draw: "random", options: [{ value: "control" }, { value: "experiment" }] };
     case "span":
       return { type: "span", question: "", fields: [], options: [{ value: "label_1", label: "Label 1" }] };
     case "relation":

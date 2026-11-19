@@ -174,7 +174,7 @@ Scripts run in a closed-off sandbox in the coder's browser:
 - A script inside `{{ }}` can't contain `}}`.
 - A script is only run again when a value it uses changes. Don't use it for
   randomness (`Math.random()`): to assign coders to groups at random, use an
-  [auto question](auto.md).
+  [auto question](random-condition.md).
 
 ## Checking a script
 

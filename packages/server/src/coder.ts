@@ -149,7 +149,7 @@ export function coderApi(server: Server): Hono {
     return c.json(await c.get("runtime").submitUnit(c.get("coder"), body.unitId, body.variables, body.loop, c.get("deviceId"), body.timings));
   });
 
-  session.post("/variables/auto/:name", async (c) => c.json({ value: await c.get("runtime").assignAuto(c.get("coder"), c.req.param("name")) }));
+  session.post("/variables/condition/:name", async (c) => c.json({ value: await c.get("runtime").assignCondition(c.get("coder"), c.req.param("name")) }));
 
   session.post("/end", async (c) => {
     const body = await parseBody(c, EndSessionSchema);

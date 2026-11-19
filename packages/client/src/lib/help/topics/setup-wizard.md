@@ -20,7 +20,7 @@ much more (below).
    experiment.
 2. **The experiment**: the name of the condition, the conditions, and
    whether they are assigned balanced or at random (an
-   [auto question](auto.md)).
+   [auto question](random-condition.md)).
 3. **Units**: the CSV file, as in [Uploading units](uploading-units.md), or
    none yet.
 4. **Who codes what**: [everyone codes everything](unit-distribution.md),

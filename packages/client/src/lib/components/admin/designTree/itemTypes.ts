@@ -72,7 +72,7 @@ const ANSWER_TYPE_ICONS: Record<AnyVariableType["type"], LucideIcon> = {
   scale: Grid3x3,
   annotinder: ArrowLeftRight,
   confirm: CircleCheck,
-  auto: Shuffle,
+  random_condition: Shuffle,
   span: Highlighter,
   relation: Spline,
   unspecified: CircleDashed,

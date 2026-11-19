@@ -320,7 +320,7 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
     items.push({
       type: "question",
       name: a.experiment.name,
-      variable: { type: "auto", source: a.experiment.assign, options: conditions.map((value) => ({ value })) },
+      variable: { type: "random_condition", draw: a.experiment.assign, options: conditions.map((value) => ({ value })) },
     });
   }
   items.push(...parseQuestions(a.questions.before).map(unspecified));

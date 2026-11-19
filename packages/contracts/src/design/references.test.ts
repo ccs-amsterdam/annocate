@@ -100,7 +100,7 @@ const questions = new Map<string, AnyVariableType>([
   ["interest", { type: "scale", question: "?", options: [{ value: 1, label: "low" }, { value: 5, label: "high" }], items: [{ name: "tech" }] }],
   ["age", { type: "numeric", question: "?", labels: [{ value: 18, label: "adult" }] }],
   ["ok", { type: "confirm", question: "?" }],
-  ["slot", { type: "auto", source: "random", options: [{ value: "1" }] }],
+  ["slot", { type: "random_condition", draw: "random", options: [{ value: "1" }] }],
   ["ents", { type: "span", question: "?", fields: ["text"], options: [{ value: "PER", label: "Person" }] }],
 ]);
 

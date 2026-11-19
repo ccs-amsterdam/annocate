@@ -54,8 +54,8 @@
         "type": "question",
         "name": "group",
         "variable": {
-          "type": "auto",
-          "source": "random",
+          "type": "random_condition",
+          "draw": "random",
           "options": [
             {
               "value": "control"

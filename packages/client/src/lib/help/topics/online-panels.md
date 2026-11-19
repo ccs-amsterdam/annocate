@@ -137,7 +137,7 @@ column of `coders.csv`, so you can check the panel's list against yours.
 ## Experimental conditions
 
 For a survey experiment, give each participant a condition with an
-[auto question](auto.md) (**Random draw** or **Balanced**), and show
+[auto question](random-condition.md) (**Random draw** or **Balanced**), and show
 different material with conditions or `::: if` blocks. If the panel assigns
 the condition (for example two panel studies, one per condition), make the
 condition a **link parameter** with the conditions as its values: deploying
