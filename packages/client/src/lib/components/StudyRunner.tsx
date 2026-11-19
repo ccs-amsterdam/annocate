@@ -514,9 +514,11 @@ function StudyRunnerContent({
           initialSpans={spanVariable ? snapshot.currentUnitVariables?.[item.name]?.spans : undefined}
           variableName={item.name}
         >
-          {/* A size container: the answer pane's max height is a share of this area (cqh) */}
+          {/* A size container: the answer pane's max height is a share of this area (cqh). On a tall
+              desktop screen it has a max height and is centred, so the answers stay near the unit. */}
           {withSwipe(
-            <SwipeSurface className="flex flex-1 flex-col overflow-hidden relative [container-type:size]">
+            <div className="flex min-h-0 flex-1 flex-col lg:p-6">
+            <SwipeSurface className="relative flex w-full flex-1 flex-col overflow-hidden [container-type:size] lg:mx-auto lg:my-auto lg:max-h-[56rem] lg:max-w-3xl lg:rounded-2xl lg:border lg:border-border lg:bg-card lg:shadow-sm">
               {/* Scrollable Unit Content (Document). Stable gutter: a scrollbar appearing doesn't move the text. */}
               <div className="subtle-scrollbar flex-1 min-h-[100px] overflow-y-auto overflow-x-hidden p-3 sm:p-5 [scrollbar-gutter:stable]">
                 <div
@@ -541,7 +543,8 @@ function StudyRunnerContent({
                   {questionElement}
                 </div>
               </DockedAnswerPane>
-            </SwipeSurface>,
+            </SwipeSurface>
+            </div>,
           )}
         </SpanAnnotationProvider>
       ) : (

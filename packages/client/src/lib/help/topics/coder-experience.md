@@ -29,6 +29,11 @@ The screen has a bar at the top and the task below it.
   its top edge to make it larger or smaller; **Auto** (or a double click
   on the edge) fits it to the question again.
 
+On a large screen, the unit and the question are a card in the middle,
+at most about 900 pixels high, so the answers stay close to the text on
+a tall monitor. On phones and tablets they fill the screen, with the
+question at the bottom, within reach of the thumbs.
+
 **A question outside a loop** (consent, background questions, an
 instruction screen) is shown on its own, as a card in the middle of the
 screen.
