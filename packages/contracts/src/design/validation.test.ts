@@ -114,6 +114,11 @@ describe("validateDesignItems", () => {
     expect(messages([session, random({ units: "set" })])).toEqual(["Column 'set' already selects units for the coders: use a column each"]);
     const named = { type: "session", params: [], conditions: [{ name: "set", values: ["a"], assign: "link" }] };
     expect(messages([named, random({ units: "other" })])).toEqual(["Random condition 'set' selects units: its name can't also be a session value"]);
+    // One column per condition: drawn independently, two would rarely leave a session any units
+    const assigned = { type: "session", params: [], conditions: [{ name: "framing", values: "free", assign: "random", units: "set" }] };
+    expect(messages([assigned, random({ units: "set" })])).toEqual(["Column 'set' already selects units for condition 'framing': use a column each"]);
+    const second = questionVar("other", { type: "random_condition", draw: "random", units: "set" });
+    expect(messages([random({ units: "set" }), second])).toEqual(["Column 'set' already selects units for random condition 'set': use a column each"]);
   });
 });
 

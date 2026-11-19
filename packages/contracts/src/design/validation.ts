@@ -542,6 +542,9 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           }
           if (units && linkedColumns.has(units)) {
             issue([...itemPath, "variable", "units"], `Column '${units}' already selects units for ${linkedColumns.get(units)}: use a column each`);
+          } else if (units && item.name) {
+            // Drawn independently, two conditions on one column would rarely leave a session any units
+            linkedColumns.set(units, `random condition '${item.name}'`);
           }
           // Groups for a balanced draw: answers given before it, or session values
           for (const name of item.variable.stratify ?? []) {
