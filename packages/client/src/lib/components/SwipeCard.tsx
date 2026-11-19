@@ -4,7 +4,8 @@ import { optionLabel, SWIPE_DIRECTIONS, type NominalOption } from "@annotinder/c
 // Swipe answering (docs/client.md §4): the card (the unit, or the question
 // card outside a loop) is dragged left, right or up, from anywhere on the
 // surface around it (the whole coding area); the option for that
-// direction shows on it while dragging. Released past a threshold (or flung)
+// direction shows in the middle of the surface while dragging (it stays
+// put while the card moves, so it can be read). Released past a threshold (or flung)
 // it flies off and the option is the answer; otherwise it springs back.
 // Buttons and arrow keys fly it off the same way (`useSwipe`).
 
@@ -25,7 +26,9 @@ interface SwipeState {
   /** Flies the card off in a direction (from where a drag let go), then answers with its option. */
   swipe: (direction: SwipeDirection, from?: { x: number; y: number }) => void;
   /** The card's element registers here, so `swipe` can animate it. */
-  register: (card: HTMLDivElement | null, overlay: HTMLDivElement | null) => void;
+  register: (card: HTMLDivElement | null) => void;
+  /** The surface's overlay (the option's label) registers here. */
+  registerOverlay: (overlay: HTMLDivElement | null) => void;
   /** The registered card and its overlay (dragged from the `SwipeSurface`). */
   card: () => HTMLDivElement | null;
   overlay: () => HTMLDivElement | null;
@@ -107,13 +110,14 @@ export function SwipeProvider({
       window.setTimeout(() => {
         flying.current = false;
         onAnswer(option);
+        // The label fades out as the next step comes in
+        window.setTimeout(() => showOverlay(overlay.current, undefined, null, 0), 250);
         // The next step replaces the card (it is keyed per step); should the
         // same card stay (e.g. the answer failed), it comes back.
         window.setTimeout(() => {
           el.style.transition = "none";
           el.style.transform = "";
           el.style.opacity = "";
-          showOverlay(overlay.current, undefined, null, 0);
         }, 1000);
       }, FLY_MS);
     },
@@ -124,8 +128,10 @@ export function SwipeProvider({
     () => ({
       options,
       swipe: flyOff,
-      register: (c, o) => {
+      register: (c) => {
         card.current = c;
+      },
+      registerOverlay: (o) => {
         overlay.current = o;
       },
       card: () => card.current,
@@ -146,24 +152,16 @@ export function SwipeProvider({
 export function SwipeCard({ children, className = "" }: { children: ReactNode; className?: string }) {
   const swipe = useSwipe();
   const card = useRef<HTMLDivElement | null>(null);
-  const overlay = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    swipe?.register(card.current, overlay.current);
-    return () => swipe?.register(null, null);
+    swipe?.register(card.current);
+    return () => swipe?.register(null);
   }, [swipe]);
 
   if (!swipe) return <div className={className}>{children}</div>;
   return (
     <div ref={card} className={`relative select-none ${className}`} data-swipe-card="">
       {children}
-      <div
-        ref={overlay}
-        aria-hidden
-        className="pointer-events-none absolute inset-0 flex items-start justify-center rounded-[inherit] opacity-0 data-[direction=left]:justify-end data-[direction=right]:justify-start data-[direction=up]:items-end"
-      >
-        <span className="m-4 rounded-lg border-4 border-foreground bg-background/90 px-3 py-1 text-xl font-extrabold uppercase tracking-wide text-foreground shadow-lg" />
-      </div>
     </div>
   );
 }
@@ -177,6 +175,11 @@ export function SwipeCard({ children, className = "" }: { children: ReactNode; c
  */
 export function SwipeSurface({ children, className = "" }: { children: ReactNode; className?: string }) {
   const swipe = useSwipe();
+  const overlay = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    swipe?.registerOverlay(overlay.current);
+    return () => swipe?.registerOverlay(null);
+  }, [swipe]);
   const drag = useRef<{ id: number; x0: number; y0: number; t0: number; x: number; y: number; active: boolean } | null>(null);
   /** Whether an upward drag is a swipe (content at its bottom), which decides `touch-action`. */
   const [upAllowed, setUpAllowed] = useState(true);
@@ -262,7 +265,7 @@ export function SwipeSurface({ children, className = "" }: { children: ReactNode
 
   return (
     <div
-      className={`select-none ${className}`}
+      className={`relative select-none ${className}`}
       // Sideways is always ours; vertical scrolling stays the browser's, except
       // a swipe up when the content is at its bottom: then the browser only
       // scrolls back up ("pan-up" is the scroll direction: the finger moves down).
@@ -274,6 +277,14 @@ export function SwipeSurface({ children, className = "" }: { children: ReactNode
       data-swipe-surface=""
     >
       {children}
+      {/* The option for the direction of the drag: in the middle, still while the card moves */}
+      <div
+        ref={overlay}
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center opacity-0 transition-opacity duration-150"
+      >
+        <span className="rounded-xl border-4 border-foreground bg-background/95 px-5 py-2 text-2xl font-extrabold uppercase tracking-wide text-foreground shadow-xl" />
+      </div>
     </div>
   );
 }

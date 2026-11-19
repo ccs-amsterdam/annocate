@@ -32,7 +32,7 @@ swap directions.
 
 Give options a **Color** to make the directions easy to tell apart, such as
 red for *No* and green for *Yes*: the colour shows on the buttons and on
-the label that appears on the card while it is dragged.
+the label that appears in the middle of the screen while the card is dragged.
 
 > Put the options where coders expect them: *No* or *Not relevant* on the
 > left, *Yes* or *Relevant* on the right. Swapping them halfway through a
