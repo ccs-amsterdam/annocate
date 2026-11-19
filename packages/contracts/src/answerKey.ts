@@ -1,5 +1,5 @@
 /**
- * Right answers of gold and practice units (docs/plans/special-sets.md):
+ * Right answers of gold and practice units (docs/architecture.md §6.2):
  * the cell of a unit's answer column (`<question>_gold`, `<question>_practice`).
  *
  * | Cell                | Right when the answer is                      |
@@ -12,7 +12,7 @@
  * Alternatives combine: `a;b|c` is right for "a and b" and for "c".
  * Gold cells are checked on the server and never reach coders; practice
  * cells come with practice units and are checked in the browser, as each
- * question is answered (special-sets.md §2).
+ * question is answered (docs/architecture.md §6.2).
  */
 
 export type AnswerAlternative = { values: string[] } | { range: [number, number] };

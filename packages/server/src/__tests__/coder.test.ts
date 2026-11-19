@@ -237,7 +237,7 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
     headers: adminHeaders,
     body: JSON.stringify({
       note: "v2",
-      // A Session item among them goes into `session` (docs/plans/design.md §2)
+      // A Session item among them goes into `session` (docs/architecture.md §6)
       ...splitDesignItems([
         ...extraItems,
         {
@@ -262,7 +262,7 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
   return (await deploy.json()) as DeploymentResponse;
 }
 
-/** Deploys the draft units and sets with the deployed design version (docs/plans/design.md §5). */
+/** Deploys the draft units and sets with the deployed design version (docs/architecture.md §8.4). */
 async function deployDrafts(): Promise<DeploymentResponse> {
   const current = (await (await server.request("/api/study/1/deployment", { headers: adminHeaders })).json()) as { designVersionId: number };
   const res = await server.request("/api/study/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ designVersionId: current.designVersionId, units: true }) });

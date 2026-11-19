@@ -35,7 +35,7 @@ export const CoderProgressSchema = z.object({
   finished: z.record(z.string(), z.number().int().nonnegative()),
   /**
    * Units of the deployed special sets (`_overlap`, `_gold`, `_practice`;
-   * docs/plans/special-sets.md) the coder finished, of how many: the
+   * docs/architecture.md §6.2) the coder finished, of how many: the
    * special sets of the set groups the coder was routed to (empty before
    * routing, or in loops without a group).
    */
@@ -96,7 +96,7 @@ export type CoderDeletion = z.infer<typeof CoderDeletionSchema>;
 /**
  * An link (docs/coder-identity.md §3). Links are generated from
  * the deployed design version: one per combination of its link parameters
- * (docs/plans/sets-and-session-parameters.md §4). The researcher manages
+ * (docs/architecture.md §7). The researcher manages
  * who may use a link, not which links exist. Whether coders sign in is a
  * setting of the study (`StudyWrite.signIn`), not of a link.
  */

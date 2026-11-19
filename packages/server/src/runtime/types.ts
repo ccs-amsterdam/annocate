@@ -12,7 +12,7 @@ export interface DeploymentSpec {
   version: number;
   active: boolean;
   design: DesignVersion;
-  /** The deployed units (docs/plans/design.md §5); false: the drafts (a preview). */
+  /** The deployed units (docs/architecture.md §8.4); false: the drafts (a preview). */
   liveUnits: boolean;
   /** All sets coders get, keyed `group/set` (contracts `setKey`), plus `__all__` (every unit). */
   sets: { name: string; unitIds: number[] }[];
@@ -23,7 +23,7 @@ export interface DeploymentSpec {
   annotationEpoch: number;
   /** The study keeps finished sessions open (else they close: docs/coder-identity.md §9). */
   keepSessionsOpen: boolean;
-  /** Deployment settings: the URL per `redirectSetting` name of end items (docs/plans/design.md §4). */
+  /** Deployment settings: the URL per `redirectSetting` name of end items (docs/architecture.md §5). */
   redirectUrls: Record<string, string>;
   /** Whether coders sign in (the study's setting; coders by email address always do). */
   signIn: SignIn;

@@ -9,7 +9,7 @@ import { DeployDialog } from "./DeployDialog";
 import { describeUnitChanges } from "../../admin/unitChanges";
 
 /**
- * Everything is a draft until deployed (docs/plans/design.md §5): when a
+ * Everything is a draft until deployed (docs/architecture.md §8.4): when a
  * deployed study's drafts differ from what coders get, says what differs and
  * opens the deploy dialog. Draft units and sets are ticked there; a
  * design draft is offered, not ticked (it's deployed from the editor

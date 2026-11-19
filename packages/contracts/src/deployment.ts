@@ -4,7 +4,7 @@ import { IdSchema } from "./common.js";
 
 // Deploying a study (researcher API): which design version coders get, its status,
 // and previews. The coder side is the coder API (endpoints/coder.ts).
-// Everything is a draft until deployed (docs/plans/design.md §5): a
+// Everything is a draft until deployed (docs/architecture.md §8.4): a
 // deployed version is a design version with a snapshot of the units and sets.
 
 /** The draft's units compared with the deployed ones. */

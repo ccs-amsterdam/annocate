@@ -1,6 +1,6 @@
 # Plan: viewing a design from its file (reproducibility)
 
-Status: agreed 2026-11-02, not started. Decisions in §6.
+The design file exists (§1); the viewer does not.
 
 A study is reproducible when anyone with the design file can see what coders
 saw, years later, without an account or a server. So:
@@ -22,21 +22,24 @@ saw, years later, without an account or a server. So:
 {
   "format": "annotinder-design",
   "formatVersion": 1,          // the design schema (contracts); bumped on breaking changes
-  "client": { "release": "1.4.0", "commit": "a1b2c3d" }, // the client the study ran on
+  "client": { "release": "1.4.0", "commit": "a1b2c3d" }, // the client the study ran on: the release for people, the commit for exactness
   "exportedAt": "2026-11-02T10:00:00Z",
   "name": "Pilot",
   "design": { "items": [...], "session": {...}, "units": { "fields": [...] } }
 }
 ```
 
-- **Where it comes from:**
-  - Every design version can be downloaded from the editor (Export).
-  - The results export includes `design.json` for each deployed design
-    version that has answers.
-- **The client version per deployment:** the server records the release a
-  deployment ran on (`deployment_versions.client_version`). A server
-  upgrade during a study therefore shows up in the deploy history and in
-  the export, so "this study ran on 1.4.0" is a recorded fact.
+- **Where it comes from** (built: contracts `version.ts`, `RELEASE`,
+  `DESIGN_FORMAT_VERSION`, `DesignFileSchema`):
+  - Every design version can be downloaded from the editor (Export ›
+    Design file).
+  - The results export includes `designs/v<n>.json` for each deployed
+    design version that has answers.
+- **The client version per deployment:** the server records the release
+  and commit (`ANNOTINDER_COMMIT`) a deployment ran on. A server upgrade
+  during a study therefore shows up in the deploy history and in the
+  export, so "this study ran on 1.4.0" is a recorded fact. This needs real
+  release versioning: the packages are at `0.0.0`.
 - **Two different versions:**
   - `formatVersion` decides whether a viewer can read the file at all; the
     viewer validates the file with its contracts.
@@ -49,13 +52,12 @@ saw, years later, without an account or a server. So:
   `JobRunner` with a **local coder API** (an in-memory `CoderApi`) instead
   of the HTTP one. The researcher preview runs a real server session, so
   this local API is the main new piece. It needs to:
-  - serve the session and the coder codebook. Turning the design into the
-    coder codebook (`coderCodebook`) moves to contracts, so the viewer and
-    the server share it;
+  - serve the session and the coder codebook (contracts `toCoderItems`,
+    which the server uses too);
   - hand out units in file order. Distribution is not emulated: no sets,
     leases or quotas. A loop shows its units, or placeholders, one after
-    another. The viewer can choose a branch or a set, or use a session
-    parameter value from a picker;
+    another. The viewer picks session values (a coder, conditions, link
+    and URL parameters) from a picker;
   - keep answers in memory. Gold and practice feedback can run locally,
     since the answer-key logic is pure contracts code;
   - end where the design ends.
@@ -73,8 +75,8 @@ saw, years later, without an account or a server. So:
 
 ## 3. Versioned viewers
 
-- Each release builds the viewer as a static bundle at its own address,
-  e.g. `viewer.annotinder.org/1.4.0/`, with a `latest/`. The bundles are
+- Each release builds the viewer as a static bundle at its own address on
+  our own domain, `viewer.annotinder.org/1.4.0/`, with a `latest/`. The bundles are
   immutable and never rebuilt.
 - **Where they are hosted:** releases are built in CI, so the bundles can
   go to GitHub Pages or any static host for free. The release assets also
@@ -85,9 +87,10 @@ saw, years later, without an account or a server. So:
     file names.
   - If it can read the format but is a different release, it offers "Open
     in 1.4.0 (what coders saw)".
-- **A single-file viewer, maybe:** one self-contained `viewer.html` per
-  release (a few MB). It could go into the results export, so the archived
-  data carries its own viewer and doesn't depend on our hosting at all.
+- **A single-file viewer, on request:** one self-contained `viewer.html`
+  per release (a few MB), as a download per release or an option in the
+  results export, so archived data can carry its own viewer and not depend
+  on our hosting.
 
 ## 4. Compatibility rules this creates
 
@@ -95,30 +98,26 @@ saw, years later, without an account or a server. So:
   `formatVersion`, and breaking changes bump it.
 - Older files still open in their own viewer version, so new versions
   don't have to read every old format. An upgrade step (`v1 → v2`) is
-  optional: write one when it's cheap. This replaces "no migration code"
-  only after the release.
+  optional: write one when it's cheap. Before the first release there is
+  no migration code.
 - The coding client's rendering is part of the release, so even a design
   with an unchanged format can look different in a later version. That's
   why the version a study ran on is recorded (§1) and opened (§3).
 
-## 5. Steps
+## 5. Importing a design into a new study
 
-1. Done (2026-11-02): design file format (contracts `version.ts`:
-   `RELEASE`, `DESIGN_FORMAT_VERSION`, `DesignFileSchema`), Export ›
-   Design file in the editor, `designs/v<n>.json` in the results export,
-   and the release and commit per deployment (`ANNOTINDER_COMMIT`).
-2. Local coder API and the viewer page (`/viewer`, inside the app, no
+A design file can also start a study: "New study from a design file"
+makes a study with that design as its draft. Before any units are
+uploaded, it shows what they need (the declared unit fields with their
+types, the set columns and their values), so the upload can be checked
+against it.
+
+## 6. Steps
+
+1. Local coder API and the viewer page (`/viewer`, inside the app, no
    login), with placeholder units.
-3. Units from the export file.
-4. Release build: a versioned static viewer and the release zip, plus the
+2. Units from the export file.
+3. Release build: a versioned static viewer and the release zip, plus the
    "open in version" flow.
-5. Answers from the export: per coder, read-only.
-
-## 6. Decided (2026-11-02)
-
-- **`client` records both labels:** the release (for people) and the git
-  commit (for exactness), e.g. `"client": { "release": "1.4.0", "commit": "a1b2c3d" }`.
-  This needs real release versioning; the packages are at `0.0.0` now.
-- **Single-file viewer:** on request (a download per release, or an option
-  in the results export), not in every export.
-- **Hosting:** on our own domain (`viewer.annotinder.org/<release>/`).
+4. Answers from the export: per coder, read-only.
+5. Importing a design file into a new study (§5).

@@ -82,7 +82,7 @@ export const DEFAULT_RUNTIME_OPTIONS: RuntimeOptions = {
 export type { Coder };
 
 /**
- * A coder's units in a loop (docs/plans/unit-assignment.md): those whose
+ * A coder's units in a loop (docs/architecture.md §6): those whose
  * cells hold the session's values in every set column a value is linked to
  * (`_overlap` cells: in every share), within the loop's filter.
  * Shared by every coder with the same values: `key` names it (the pool of a
@@ -620,7 +620,7 @@ export class DeploymentRuntime {
   }
 
   /**
-   * A route's special units (docs/plans/special-sets.md): its practice,
+   * A route's special units (docs/architecture.md §6.2): its practice,
    * overlap and gold units, for those the loop places.
    */
   private specialUnits(route: Route): { set: string; units: number[]; placement: "first" | "last" | "spread" | "rate"; every?: number; rest?: "end" | "drop" }[] {
@@ -676,7 +676,7 @@ export class DeploymentRuntime {
   /**
    * A coder's units in a loop: their share, from their session values (null
    * while one of them has no value). Nothing is stored for this: a coder's
-   * units follow from the session (docs/plans/unit-assignment.md), and the
+   * units follow from the session (docs/architecture.md §6), and the
    * units a coder coded stay theirs (`loopUnit`, `submitUnit`).
    */
   private routeOf(coder: Coder, info: LoopInfo): Route | null {
@@ -884,7 +884,7 @@ export class DeploymentRuntime {
     // The coder-level answers this loop depends on can't change any more.
     await this.store.freezeCoderValues(coder.coderId, this.dependencies.get(info.key) ?? []);
 
-    // Gold units (docs/plans/special-sets.md): checked here, against the unit's answer columns (practice: in the browser).
+    // Gold units (docs/architecture.md §6.2): checked here, against the unit's answer columns (practice: in the browser).
     const route = this.routeOf(coder, info);
     if (!route) return {};
     const response: SubmitUnitResponse = {};
@@ -902,7 +902,7 @@ export class DeploymentRuntime {
   /**
    * A unit as the coder gets it. A practice unit is marked (`$unit._practice`)
    * and comes with its checks: the answer cells of the loop's practice
-   * questions and their feedback, checked in the browser (special-sets.md §2).
+   * questions and their feedback, checked in the browser (docs/architecture.md §6.2).
    * Gold cells never leave the server.
    */
   private coderUnit(route: Route | null, unit: { id: number; externalId: string; data: UnitData }, shown: UnitData, answers: Record<string, VariableValue>): CoderUnitResponse {

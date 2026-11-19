@@ -763,7 +763,7 @@ describe("computed items", () => {
   });
 });
 
-describe("practice and gold units (special-sets.md §2)", () => {
+describe("practice and gold units (docs/architecture.md §6.2)", () => {
   const A = { done: true, skip: false, values: [{ value: "A" }] };
   const B = { done: true, skip: false, values: [{ value: "B" }] };
   const practiceUnit = (retry: boolean): CoderUnitResponse => ({

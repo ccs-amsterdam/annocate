@@ -581,7 +581,7 @@ async function findOrCreateCoder(
   // A new session of a known participant is the same person: it doesn't use up the link.
   if (!knownParticipant) {
     // Checked and counted in one statement, so concurrent coders can't overrun `max_uses`.
-    // The link's own limit, else the design's sample size per link (docs/plans/design.md §4)
+    // The link's own limit, else the design's sample size per link (docs/architecture.md §5)
     const maxUses = sql`COALESCE(${links.maxUses}, ${request.sessionRules?.item?.maxUses ?? null}::int)`;
     const used = await db
       .update(links)

@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-// "Create gold values" (docs/plans/special-sets.md §4): goes through a
+// "Create gold values" (docs/architecture.md §6.2): goes through a
 // group's gold or practice units with the loop's layout, and writes the right
 // answers (and practice messages) into their answer columns (contracts
 // answerKey.ts for the cells).

@@ -20,7 +20,7 @@ import { HttpError } from "./shared/http.js";
 import type { StudyRow } from "./shared/studies.js";
 import { createStudyFromRecipe } from "./shared/recipes.js";
 
-// Example studies (docs/plans/examples.md): recipes (shared/recipes.ts) that
+// Example studies (docs/examples.md): recipes (shared/recipes.ts) that
 // ship with AnnoTinder, as files in `examples/<id>.json`, with a deployed
 // design and sometimes example answers. Making a study from one gives an
 // ordinary study, to try and adapt.

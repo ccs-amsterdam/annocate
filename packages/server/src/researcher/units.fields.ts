@@ -7,7 +7,7 @@ import { requireStudyUser } from "./auth.js";
 import { designVersionItems } from "../shared/designVersions.js";
 import { dropDraftFields, getUnitFields, latestDesignVersion, setUnitFields } from "../shared/units.js";
 
-// The design's unit fields (docs/plans/design.md §3).
+// The design's unit fields (docs/architecture.md §8.4).
 // Static path: mounted before units.$id.ts so `/study/:studyId/units/fields` is not read as a unit id.
 export function unitsFields(server: Server): Hono<Env> {
   const { db } = server;

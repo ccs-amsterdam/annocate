@@ -2,7 +2,7 @@ import { expect, test } from "./fixtures";
 import type { DesignVersion, StudyResponse, SetGroupResponse } from "@annotinder/contracts";
 import { api } from "./helpers";
 
-// The setup wizard (docs/plans/setup-wizard.md): through its steps to a study
+// The setup wizard (docs/examples.md): through its steps to a study
 // with a draft design version, opened in the editor to specify the questions.
 
 test("annotation with an experiment: a set of units per condition, questions before, per unit and after", async ({ page, request }) => {

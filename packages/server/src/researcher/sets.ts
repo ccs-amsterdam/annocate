@@ -22,8 +22,8 @@ async function groupInUse(db: Db, studyId: number, group: string): Promise<boole
   return rows.some((row) => designSetColumns(designVersionItems(row)).includes(group));
 }
 
-// Set groups (docs/plans/sets-and-session-parameters.md §1): the draft's.
-// Coders and links get them when they are deployed (docs/plans/design.md §5).
+// Set groups (docs/architecture.md §6.3): the draft's.
+// Coders and links get them when they are deployed (docs/architecture.md §8.4).
 export function sets(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();

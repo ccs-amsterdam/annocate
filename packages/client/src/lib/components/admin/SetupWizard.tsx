@@ -33,7 +33,7 @@ import { HelpButton } from "../../help/HelpButton";
 import { LayoutDesigner, UnitPreview } from "./LayoutDesigner";
 import { SharedSettings } from "./unitLoop/UnitsEditor";
 
-// The setup wizard (docs/plans/setup-wizard.md): what the study does, the
+// The setup wizard (docs/client.md §7, "Guided setup"): what the study does, the
 // experiment's conditions, the units and how they are shown, the names of
 // the questions, and who codes what. It makes a recipe (admin/setupRecipe.ts); the study then
 // opens in the design editor, where the questions get their answer types.
@@ -494,7 +494,7 @@ function QuestionsStep({ a, set }: StepProps) {
 }
 
 /**
- * Gold and practice checks (docs/plans/special-sets.md): per unit question,
+ * Gold and practice checks (docs/architecture.md §6.2): per unit question,
  * whether units with a known answer check it silently (gold) or with
  * feedback (practice), and whether the uploaded units have its answer column.
  */

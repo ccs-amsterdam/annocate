@@ -261,7 +261,7 @@ function Loading() {
 }
 
 /**
- * The deploys, newest first (docs/plans/design.md §5): which design version
+ * The deploys, newest first (docs/architecture.md §8.4): which design version
  * each made live and what changed. Deploys are numbered on their own (#3),
  * design versions as v2.
  */

@@ -7,7 +7,7 @@ import type { Server, Env } from "../context.js";
 import { requireStudyUser } from "./auth.js";
 import { forgetLink, toLinkResponse } from "../shared/links.js";
 
-// Links (docs/plans/sets-and-session-parameters.md §4): made from the
+// Links (docs/architecture.md §7): made from the
 // deployed design version (shared/links.ts `syncLinks`); here only their access
 // settings, revoking, and a new secret.
 /** A study's link, by id (from the path). */

@@ -1,6 +1,6 @@
 # Client: design decisions
 
-Status: current (2026-10-26). Server-side design lives in
+Server-side design lives in
 `architecture.md` and `coder-identity.md`; the APIs in `docs/api/`.
 
 ## 1. Packaging
@@ -28,8 +28,8 @@ Status: current (2026-10-26). Server-side design lives in
   (`AdminApp` gets its place and navigation as props);
   `AdminApp` brings its own TanStack `QueryClientProvider` unless it is
   given a `queryClient`. So they could be embedded in another React app
-  (e.g. AmCAT) later, as a component library build; there is none now,
-  until it is clear how AmCAT embeds AnnoTinder.
+  (e.g. AmCAT) as a component library build, once it is clear how AmCAT
+  embeds AnnoTinder.
 - **Hosting.** The client and the server always share an origin: coder and
   researcher sessions are httpOnly cookies (`coder-identity.md` §4, §7).
   In production the server serves the client (`docs/hosting.md`); in
@@ -92,8 +92,7 @@ Status: current (2026-10-26). Server-side design lives in
 ## 3. Unit layout and texts
 
 A unit's layout is **one markdown template** (`UnitLayoutSchema`:
-`template`, `snippets?`, `style?`, `colorScheme?`). It replaced the old app's
-typed field arrays and grid arrangement. Question and instruction texts are
+`template`, `snippets?`, `style?`, `colorScheme?`). Question and instruction texts are
 templates with the same syntax.
 
 - Rendering: `react-markdown` + `remark-gfm` (`components/TemplateMarkdown.tsx`);
@@ -190,7 +189,7 @@ A template is read in two steps: first the **text is put together**
   ```
 
   - `if` / `else if` / `else`: the first branch whose condition holds (the
-    same scripts as condition items) shows.
+    same scripts as Show if items) shows.
   - `from <question>`: shows from that question of the loop on (also when
     it is skipped); consecutive `from` fences form a chain of which the
     last reached stage shows, so a layout can change as the coder goes
@@ -240,7 +239,7 @@ Every option is `{ value, label?, color? }` (`contracts/src/design/options.ts`),
 as in SPSS or Stata value labels:
 
 - **The value** is what is stored, compared in conditions and exported.
-  Values are unique within a question. Changing one in a deployed codebook
+  Values are unique within a question. Changing one in a deployed design
   changes what earlier answers mean; the deploy dialog warns
   (`design/diff.ts` `valueChanges`).
 - **The label** is what coders see (default: the value). It can change
@@ -268,7 +267,7 @@ as in SPSS or Stata value labels:
 | `relation` | link two spans (loops only) | `relations: [{ id, fromId, toId, value }]` |
 
 Answers hold values, never labels. `validateAnswer` (contracts) checks them
-against the current codebook: values of the options, one per item for a
+against the current design: values of the options, one per item for a
 scale, at most one unless `multiple`, numbers within `min`/`max` and on the
 `step` grid (from `min`, or 0).
 
@@ -344,7 +343,7 @@ the buttons answer directly.
 ### End items
 
 An `end` item ends the coder's session when the coder reaches it, usually
-inside a condition: `outcome` `screenout` or `complete`, an optional
+inside a Show if item: `outcome` `screenout` or `complete`, an optional
 `message` (a template) and an optional `redirectUrl`, e.g. a panel
 company's return link, whose `$var` references are filled in URL-encoded.
 `StudyManager` tells the server (`POST /end`; in a loop after saving the
@@ -355,7 +354,7 @@ closed session: 409 `session_closed`, `coder-identity.md` §9).
 
 ### Study entry
 
-The codebook's `session` item (at most one, always first) is never shown
+The design's `session` item (at most one, always first) is never shown
 to coders: it declares the session's coders and assigned conditions
 (`architecture.md` §6.1), its link and URL parameters and the participant
 id's URL parameter (§7). The server reads
@@ -378,7 +377,7 @@ QuickJS. A script that fails counts as false (conditions) or empty
 (templates).
 
 Why not CEL: CEL is safe by design, but its bindings outside Go are thin;
-there is none for R. JavaScript is better known by codebook authors, R can
+there is none for R. JavaScript is better known by design authors, R can
 run it via `V8` (Jeroen Ooms' package), and scripts stay plain JS that any
 engine can run later. That suits reproducibility. Simple conditions don't
 need a JS engine at all: they are evaluated in plain TypeScript (below).
@@ -405,7 +404,7 @@ instruction texts, conditions and redirect links
 
 Using `.value` on a multiple-answer question or `.values` on a single one
 is a validation error, and so is the old `.code`. A numeric answer's label
-is its break-point label, if it has one. Every question of the codebook is
+is its break-point label, if it has one. Every question of the design is
 in `$var` (`buildScope`), so a script never throws on a question that isn't
 answered yet. Names must be literal: `$var[x]` or `Object.keys($var)` is an
 error, so validation can check every reference.
@@ -445,7 +444,7 @@ condition:
 - Anything else is an **advanced** script, run in QuickJS with the same
   references and helpers, e.g. `$var.age.gte(18) && $unit.source !== "blog"`.
 
-**Validation** (`validateDesignItems`) walks the codebook in document
+**Validation** (`validateDesignItems`) walks the design in document
 order and checks every reference in scripts, templates and texts: the
 question exists and comes before this point (not the question itself, not
 inside the condition's own children, not in another loop); the property or
@@ -479,7 +478,7 @@ pass with per-slot memoization:
 ## 7. Admin UI
 
 `components/admin/AdminApp.tsx` is a tabbed shell, grouped: Overview,
-Design (Codebook, Units), Deploy (Links, Coders), Results (Download),
+Design (Editor, Units), Deploy (Links, Coders), Results (Download),
 Settings; a group with several pages shows them as sub tabs. Preview opens
 from the Preview Study button. It uses a `ResearcherApi`
 (`api/httpResearcherApi.ts`).
@@ -499,8 +498,42 @@ from the Preview Study button. It uses a `ResearcherApi`
   server admin page for admins (`server/ServerAdmin.tsx`: hardening
   warnings, users with invitations and safeguards, plans, registration,
   studies, admin log; `docs/accounts.md`).
+- **Guided setup** (`SetupWizard.tsx`, `lib/admin/setupRecipe.ts`): a
+  short way to the skeleton of a new study, next to "From an example" and
+  an empty study on the studies page. It writes only what the editor
+  writes, as a recipe (`docs/examples.md`), and then opens the study in
+  the editor; there is no wizard mode and no way back into it. Steps:
+  1. **What do you want to do?** The name, and Annotate units, Ask
+     questions (a survey), Experiment (alone, a survey with an experiment).
+  2. **The experiment**: a condition's name and values, drawn balanced or
+     at random (a computed item, first in the design).
+  3. **Units**: the CSV upload of the Units tab (or later), and the order.
+  4. **Who codes what**: everyone everything; units divided into sets
+     (split or by a column, optionally with overlap), handed out by a link
+     per set (a coder column) or balanced per session (a random assigned
+     condition); crowd coding (the loop's criteria form, optional overlap);
+     or experimental groups (per condition the values of a column it
+     gets: the computed item linked to that column).
+  5. **How coders see a unit**: the layout sketch (`LayoutDesigner.tsx`,
+     `design/simpleLayout.ts`: title, byline and body fields, guessed from
+     field names), with a preview of the first unit. A loop's Layout tab
+     uses the same sketch while its template has that shape; otherwise the
+     template editor (**Advanced**).
+  6. **Questions**: names, one per line (a line that is a question becomes
+     the name and the question text); one list, or before, about each
+     unit, and after. Questions get the answer type `unspecified`, which
+     validation reports, so the design can't be previewed or deployed
+     until each is specified in the editor.
+  7. **Check and create**: a summary, and what still stops the study.
+     The design is created as a draft.
 
-- **Codebook editor**: edits the whole document in memory, validated
+  Possible next steps: specifying questions in the wizard with the
+  editor's own form; the wizard's steps offered in existing studies where
+  that part is empty; an overview checklist (units, a valid design,
+  previewed, deployed, someone started); more experiment designs
+  (conditions that change questions or layout rather than units).
+
+- **Design editor**: edits the whole document in memory, validated
   client-side with the contract's `validateDesignItems`, and saved as a
   whole with Save. Views:
   - **Visual**: the item tree, and the selected item as a form, as JSON
@@ -512,15 +545,15 @@ from the Preview Study button. It uses a `ResearcherApi`
     question on screen (for `::: from`), and answer pickers for the
     questions with options the layout uses (for `::: if` and values). The tree shows
     questions with the icon of their answer type, unit loops with their
-    filter and whether it is crowd coding (or "n coder groups"), and conditions by their condition, or by
-    their optional `label`. Conditions and unit loops have no name
+    filter and whether it is crowd coding, and Show if items by their condition, or by
+    their optional `label`. Show if items and unit loops have no name
     (names of questions are variables, of end items the stored way a
     session ended): a loop is identified by its position and shows its
-    label, or "Unit loop" (with its set next to it; messages and
+    label, or "Unit loop" (messages and
     exports, which have no tree, say "Unit loop <n>", `architecture.md`
-    §6.2). New loops and conditions start empty.
+    §6.2). New loops and Show if items start empty.
     Adding: a row's + (on hover) adds an item below it: after an item, at
-    the top of a loop or condition's children. Only the end of a container
+    the top of a loop or Show if item's children. Only the end of a container
     is ambiguous (after its last item, or inside an empty container, is
     also after the container, and so on outwards): there the menu asks
     where first, each place a level further out marked with one more
@@ -532,10 +565,10 @@ from the Preview Study button. It uses a `ResearcherApi`
     where it changes something); where that is ambiguous it asks, as
     adding does. "Move to the top" is in the toolbar. The items keep
     their order.
-  - **JSON**: the whole codebook (`DesignJsonEditor.tsx`). JSON rather
+  - **JSON**: the whole design (`DesignJsonEditor.tsx`). JSON rather
     than YAML: the structure is explicit (no indentation to get right in a
     browser), and the editor (Monaco, bundled and loaded only with the
-    editor: `jsonEditor/`) completes and checks it against the codebook's
+    editor: `jsonEditor/`) completes and checks it against the design's
     JSON Schema (contracts `designJsonSchema`), with the schemas'
     descriptions on hover. Formatting (`design/jsonFormat.ts`) keeps small
     objects on one line (an option: `{ "value": "neg", "label": "Negative" }`)
@@ -543,7 +576,7 @@ from the Preview Study button. It uses a `ResearcherApi`
     `children` last).
   - Both JSON views apply an edit as soon as it parses to items the tree
     can show (`design/itemShape.ts`; items keep their identity by name,
-    conditions by place);
+    Show if items by place);
     until then "Not applied" says why. Validation shows the rest, as for
     the forms.
 
@@ -551,8 +584,8 @@ from the Preview Study button. It uses a `ResearcherApi`
   click opens the item concerned. Unsaved edits are the researcher's own;
   the saved draft is shared with co-editors; deploying gives a version to
   coders. So:
-  - **Save** works while the codebook has issues (work in progress);
-    deploying and previewing need a valid codebook.
+  - **Save** works while the design has issues (work in progress);
+    deploying and previewing need a valid design.
   - A save carries the `revision` it is based on. If someone else saved
     meanwhile, a dialog says who and when, and offers "Save mine over
     theirs" or "Discard mine, load theirs".
@@ -567,7 +600,7 @@ from the Preview Study button. It uses a `ResearcherApi`
     a confirm), so it isn't mistaken for dropping unsaved changes.
   - **Backup**: unsaved edits are copied to the browser's localStorage a
     second after each change (`design/localBackup.ts`; one backup, the
-    codebook being edited; none if it doesn't fit), and cleared when they
+    design being edited; none if it doesn't fit), and cleared when they
     are saved or discarded. After the browser was closed, a banner anywhere
     in the researcher area offers to continue editing them (with the
     revision they were based on, so the conflict check still applies) or
@@ -612,11 +645,11 @@ from the Preview Study button. It uses a `ResearcherApi`
   `::: from`), editable, rendered with the real `renderTemplate` and
   `UnitFields`; `template` code blocks get template highlighting. A test
   checks the front matter, links and anchors, the topics the UI opens, and
-  that every example is a valid template (as a codebook) and renders.
+  that every example is a valid template (as a layout) and renders.
 - **Versions and deploying** (as in Qualtrics or REDCap: edit a draft,
-  deploy it), derived from `GET /codebook` and `GET /deployment`
+  deploy it), derived from `GET /design` and `GET /deployment`
   (`design/versions.ts`):
-  - *live*: the version coders get (the deployment's codebook), frozen,
+  - *live*: the version coders get (the deployment's design), frozen,
     since annotations refer to it (`designVersionId`);
   - *draft*: the latest version, if it isn't frozen; what the editor and
     Preview work on;
@@ -647,7 +680,7 @@ from the Preview Study button. It uses a `ResearcherApi`
   swipe options show their direction), `multiple`, a layout
   select whose `auto` entry names what auto picks, and for numeric
   questions the range, step presets and break-point labels.
-  Condition items use `ConditionEditor.tsx`: a
+  Show if items use `ConditionEditor.tsx`: a
   **Rules | Script** toggle over the same script. Rules mode reads and
   writes simple conditions that are a flat list of rows, all joined by
   "and" or all by "or" (`design/conditionRules.ts`): per row a question
@@ -681,7 +714,7 @@ from the Preview Study button. It uses a `ResearcherApi`
   their answers reset; a column can be deleted while no deployed or latest
   design uses it. Clicking a unit's id shows it
   in full.
-  A coded unit can only be replaced by uploading it again, after a warning (its answers keep the version their coder saw). The codebook editor warns about `$unit.x`
+  A coded unit can only be replaced by uploading it again, after a warning (its answers keep the version their coder saw). The design editor warns about `$unit.x`
   references to fields that don't exist (`design/unitFieldRefs.ts`).
 - **Overview** (`overview/`): live/paused/unpublished, the live and draft
   design versions (open them in the editor), unit/coder/link counts, set columns with their values' sizes,
@@ -699,10 +732,10 @@ from the Preview Study button. It uses a `ResearcherApi`
   URL parameters a link takes (copied with placeholders). Per link: label,
   max uses and a fixed participant id; revoke (no new coders) or a new
   secret. Retired links are listed separately. There is no "create": the
-  codebook's Study entry (`SessionItemForm.tsx`) declares the link and URL
+  design's Study entry (`SessionItemForm.tsx`) declares the link and URL
   parameters and the participant id's URL parameter.
 - **Coders**: per coder the link, started, last active, answers,
-  finished units per loop of the live codebook, and how the session ended
+  finished units per loop of the live design, and how the session ended
   at an `end` item or by quitting (`ended`). Open deletion requests are
   listed first (delete now or later), and deleted coders in a log. Per coder, or by participant ids or
   emails: reset their answers (kept as reset) or delete their data
@@ -714,7 +747,7 @@ from the Preview Study button. It uses a `ResearcherApi`
   answers were given under), with `fflate`:
   - `annotations.csv`: a row per unit and coder (with the unit version
     they saw and the design version), a column per question (a scale a
-    column per item), in the live codebook's order;
+    column per item), in the live design's order;
   - `coders.csv`: a row per coder with their coder-level answers, how
     their session ended and units finished per loop;
   - `units.csv`: the unit versions answers were given on (`architecture.md`
@@ -732,15 +765,15 @@ from the Preview Study button. It uses a `ResearcherApi`
   the live one. Several answers are joined with "; ", spans written as
   "value: text", relations as "value: from → to" (span texts), a confirm
   question as `true`, skipped questions empty. Questions whose answers don't
-  fit a cell (span, relation, nominal `multiple`, by the live codebook or
+  fit a cell (span, relation, nominal `multiple`, by the live design or
   the data) also get a `_json` column with the whole answer (spans with
   field and slice offsets, relations with span ids, a list of values);
   in it, the values of a question whose option values are all plain
-  numbers (`"1"`, `"99"`; not `"01"`, by the live codebook) are numbers.
+  numbers (`"1"`, `"99"`; not `"01"`, by the live design) are numbers.
   UTF-8 with a byte order mark,
   so spreadsheet programs read it. Large studies would be better served by a
   streaming download from the server (later).
-- **Preview** runs the study's latest codebook (deployed or not) as
+- **Preview** runs the study's latest design (deployed or not) as
   deployment `<studyId>.preview`, with a token from
   `POST /study/:studyId/deployment/preview`. Coders and answers stay in the
   server's memory; nothing is stored (`architecture.md` §5).
@@ -758,8 +791,8 @@ from the Preview Study button. It uses a `ResearcherApi`
 
 ## 9. Known gaps
 
-- Admin UI: no notice that someone else is editing the same codebook (a
-  conflict shows only when saving); codebook errors are shown as raw
+- Admin UI: no notice that someone else is editing the same design (a
+  conflict shows only when saving); design errors are shown as raw
   messages, not per field.
 - Spans: no
   "click a span to pick it" for relations; no per-field inline styling

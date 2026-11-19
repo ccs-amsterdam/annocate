@@ -21,7 +21,7 @@ const USE_LABEL: Record<FieldUse | "none", { label: string; title: string; class
 const TYPES: UnitFieldType[] = ["text", "number", "boolean"];
 
 /**
- * The design's unit fields (docs/plans/design.md §3): per field its type,
+ * The design's unit fields (docs/architecture.md §8.4): per field its type,
  * how the design (its latest version) uses it, and a description. Fields
  * the design doesn't use can be removed (their values leave the draft
  * units); fields it uses but the design doesn't declare can be declared.

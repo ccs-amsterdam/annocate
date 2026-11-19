@@ -2,7 +2,7 @@ import { expect, test } from "./fixtures";
 import type { StudyResponse } from "@annotinder/contracts";
 import { api, question } from "./helpers";
 
-// Practice and gold units (docs/plans/special-sets.md): a practice question
+// Practice and gold units (docs/architecture.md §6.2): a practice question
 // tells the coder when they are wrong, and they answer again; a gold unit is checked silently, and
 // running out of health ends the session at a screen-out.
 

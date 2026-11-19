@@ -17,14 +17,14 @@ export const StudyWriteSchema = z.object({
    */
   keepSessionsOpen: z.boolean().optional(),
   /**
-   * Whether coders sign in (docs/plans/unit-assignment.md §4), for the whole
+   * Whether coders sign in (docs/architecture.md §7), for the whole
    * study: `required` (before they start), `optional` (offered, to continue
    * on other devices) or `off`. Coders by email address always sign in.
    * Left out: unchanged (`off` for a new study).
    */
   signIn: SignInSchema.optional(),
   /**
-   * Deployment settings (docs/plans/design.md §4): per name, the URL end
+   * Deployment settings (docs/architecture.md §5): per name, the URL end
    * items with that `redirectSetting` send coders to, e.g. a panel's return
    * link, which differs per run. May contain `$var` and `$session`
    * references, like an end item's own URL. Left out: unchanged.
@@ -57,7 +57,7 @@ export type StudyResponse = z.infer<typeof StudyResponseSchema>;
 /**
  * An example study AnnoTinder ships (`GET /examples`): a design with units,
  * a link and sometimes example answers, to try and adapt
- * (docs/plans/examples.md).
+ * (docs/examples.md).
  */
 export const ExampleSummarySchema = z.object({
   id: z.string(),

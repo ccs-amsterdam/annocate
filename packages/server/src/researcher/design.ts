@@ -21,7 +21,7 @@ export function designVersions(server: Server): Hono<Env> {
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
     if (sessionItem(parsed.data.items)) return c.json({ error: "The session and public info go in `session` and `public`, not among the items" }, 400);
-    // The unit fields, unless given: the latest version's (docs/plans/design.md §3)
+    // The unit fields, unless given: the latest version's (docs/architecture.md §8.4)
     const units = parsed.data.units ?? (await getUnitFields(db, c.get("studyId")).then((fields) => ({ fields })));
     const [row] = await db
       .insert(versions)

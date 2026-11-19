@@ -20,7 +20,7 @@ function storedItems(row: Pick<DesignVersionRow, "items">): TopLevelItem[] {
   return (Array.isArray(row.items) ? row.items : []) as TopLevelItem[];
 }
 
-/** A stored design version's session (docs/plans/design.md §2): always there. */
+/** A stored design version's session (docs/architecture.md §6): always there. */
 function designVersionSession(row: Pick<DesignVersionRow, "session">): SessionSpec {
   return (row.session as SessionSpec | null) ?? EMPTY_SESSION;
 }
@@ -35,7 +35,7 @@ export function designVersionItems(row: Pick<DesignVersionRow, "items" | "sessio
   return designItems({ items: storedItems(row), session: designVersionSession(row), public: designVersionPublic(row) }) as TopLevelItem[];
 }
 
-/** A stored design version's unit fields (docs/plans/design.md §3). */
+/** A stored design version's unit fields (docs/architecture.md §8.4). */
 export function designVersionUnits(row: Pick<DesignVersionRow, "units">): UnitsSpec {
   const parsed = UnitsSpecSchema.safeParse(row.units);
   return parsed.success ? parsed.data : { fields: [] };

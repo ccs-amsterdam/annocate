@@ -4,7 +4,7 @@ import type { Condition } from "./condition.js";
 import type { ComputedItem, EndItem, InLoopItem, TopLevelItem, TopLevelQuestionItem, UnitLoopItem } from "./item.js";
 import type { RandomVariable } from "./variableTypes.js";
 
-// The coder codebook (docs/plans/special-sets.md §0): what coders' browsers
+// The coder codebook (docs/api/coder.md): what coders' browsers
 // get of a codebook, only what the coding client needs. Unit loops keep
 // their layout, questions and order (the server works out the units).
 // Left out: how units are handed out (the loop's `units`: filters,

@@ -9,7 +9,7 @@ import type { UnitData, UnitDataValue } from "./common.js";
  * so `{{$unit.count > 40}}` compares numbers. `null` is an empty value of
  * any type.
  *
- * A `set` field (docs/plans/unit-assignment.md) is a column whose cells name
+ * A `set` field (docs/architecture.md §6) is a column whose cells name
  * the sets a unit is in (`anna`, `anna;bob`, `_overlap`, `_gold`): who or
  * which condition gets the unit. Its cells are stored as the set group of
  * the same name (sets.ts), not in the units' data.
@@ -26,7 +26,7 @@ export const UnitFieldSchema = z.object({
 export type UnitField = z.infer<typeof UnitFieldSchema>;
 
 /**
- * The design's units (docs/plans/design.md §3): the study's unit fields and
+ * The design's units (docs/architecture.md §8.4): the study's unit fields and
  * their types, the one specification of them. Uploads write it (new
  * columns are added); the design's `$unit` references must be declared.
  */
@@ -44,7 +44,7 @@ export const UNIT_FIELD_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 export function unitFieldNameError(name: string): string | null {
   if (name.length > 64) return "at most 64 characters";
   if (!UNIT_FIELD_NAME.test(name)) return "only letters, digits and _, not starting with a digit";
-  // `$unit._practice` and the like are AnnoTinder's (docs/plans/special-sets.md §3)
+  // `$unit._practice` and the like are AnnoTinder's (docs/architecture.md §6.2)
   if (name.startsWith("_")) return "names starting with _ are reserved";
   return null;
 }

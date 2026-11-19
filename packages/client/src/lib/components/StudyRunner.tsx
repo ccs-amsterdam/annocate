@@ -403,7 +403,7 @@ function StudyRunnerContent({
       texts={snapshot.currentTexts}
     />
   );
-  // A practice question answered wrongly: the feedback with the question (special-sets.md §2)
+  // A practice question answered wrongly: the feedback with the question (docs/architecture.md §6.2)
   const practiceWrong = snapshot.practiceWrong?.question === item.name ? snapshot.practiceWrong : null;
   const practiceNote = practiceWrong && (
     <div role="alert" className="mx-4 mb-3 rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm">

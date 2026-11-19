@@ -12,7 +12,7 @@ const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 
 /**
- * Who gets which units (docs/plans/unit-assignment.md): the units divided
+ * Who gets which units (docs/architecture.md §6): the units divided
  * over coders, and assigned conditions, each optionally linked to a set
  * column of the units. Checked against the draft units as you edit; deploying
  * checks the same.

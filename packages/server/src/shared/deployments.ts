@@ -47,7 +47,7 @@ async function designVersion(db: Db, studyId: number, id?: number) {
 /**
  * Deploys: a design version, with the draft units and sets (`units`, always on
  * the first deploy) or the deployed ones. A new deployment version when the design version
- * or the units change (docs/plans/design.md §5), recorded with what
+ * or the units change (docs/architecture.md §8.4), recorded with what
  * changed. Freezes the design version. Warns when a loop gains questions while
  * coders already finished units in it: those units count as unfinished
  * again (docs/architecture.md §8.2).

@@ -32,7 +32,7 @@ interface DeployDialogProps {
 }
 
 /**
- * Deploying (docs/plans/design.md §5): everything is a draft until
+ * Deploying (docs/architecture.md §8.4): everything is a draft until
  * deployed. Lists both parts, the design draft (what changed compared
  * with the live version, and a version note) and the draft units and sets,
  * each with a checkbox; what is left out stays a draft. Shows the server's
@@ -58,7 +58,7 @@ export function DeployDialog({ client, open, version, versionNumber, live, liveN
   const changes = version && live ? diffDesigns(liveItems, draftItems) : null;
   const valueWarnings = version && live ? valueChanges(liveItems, draftItems) : [];
   const [note, setNote] = useState(() => version?.note ?? (changes ? summarizeChanges(changes) : live === null ? "First version" : ""));
-  // Whether coders sign in: chosen at the first deploy (docs/plans/unit-assignment.md §4), in Settings later
+  // Whether coders sign in: chosen at the first deploy (docs/architecture.md §7), in Settings later
   const study = useStudyQuery(client).data ?? null;
   const updateStudy = useUpdateStudyMutation(client);
   const groups = useSetGroupsQuery(client).data ?? [];

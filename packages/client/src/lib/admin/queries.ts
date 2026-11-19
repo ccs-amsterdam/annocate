@@ -363,7 +363,7 @@ export function useDeploymentStatusQuery(client: ResearcherApi, enabled: boolean
   });
 }
 
-/** What deploying the drafts would change (docs/plans/design.md §5). */
+/** What deploying the drafts would change (docs/architecture.md §8.4). */
 export function usePendingChangesQuery(client: ResearcherApi, enabled = true): UseQueryResult<PendingChanges> {
   return useQuery({ queryKey: keys.pending(client.studyId), queryFn: () => client.getPendingChanges(), enabled });
 }
@@ -446,7 +446,7 @@ export interface DeployVars {
 }
 
 /**
- * Deploys (docs/plans/design.md §5): a design version and the draft units. With
+ * Deploys (docs/architecture.md §8.4): a design version and the draft units. With
  * many links (contracts CONFIRM_LINKS) the server asks to confirm (409
  * `confirm_links`): deploy again with `confirmLinks`.
  */

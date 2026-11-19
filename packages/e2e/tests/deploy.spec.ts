@@ -2,7 +2,7 @@ import { expect, test } from "./fixtures";
 import { RELEASE, type StudyResponse } from "@annotinder/contracts";
 import { api } from "./helpers";
 
-// Everything is a draft until deployed (docs/plans/design.md §5): units and
+// Everything is a draft until deployed (docs/architecture.md §8.4): units and
 // sets too. Coders get the deployed snapshot.
 
 test("new units are drafts until deployed: the bar, the dialog, and then coders get them", async ({ page, request, browser }) => {

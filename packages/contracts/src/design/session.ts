@@ -2,8 +2,8 @@ import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
 import { SetGroupNameSchema } from "../sets.js";
 
-// Session parameters (docs/plans/sets-and-session-parameters.md §3), coders
-// and assigned conditions (docs/plans/unit-assignment.md): what a
+// Session parameters (docs/architecture.md §7), coders
+// and assigned conditions (docs/architecture.md §6): what a
 // link carries (link parameters, fixed in the link: one link per
 // combination of their values) and what may be added to it (URL parameters,
 // e.g. a panel's ids). All are `$session.<name>` values, stored on the
@@ -122,7 +122,7 @@ export const ParticipantParamSchema = z.object({ param: UrlParamNameSchema, patt
 export type ParticipantParam = z.infer<typeof ParticipantParamSchema>;
 
 /**
- * Coders (docs/plans/unit-assignment.md §1): the units are divided over
+ * Coders (docs/architecture.md §6.1): the units are divided over
  * coders by a set column; each of its values is a coder (`$session.coder`).
  * All values email addresses: one link, and coders sign in (they get the
  * units of their address). No email addresses: a link per coder.
@@ -138,7 +138,7 @@ export const ConditionValueSchema = z
   .refine((s) => !/[;#]/.test(s) && s.trim() === s && !s.startsWith("_"), "A value has no ; or #, no spaces at its ends, and doesn't start with _");
 
 /**
- * An assigned condition (§2): a session value (`$session.<name>`) with
+ * An assigned condition (docs/architecture.md §6.1): a session value (`$session.<name>`) with
  * fixed values or, linked to a set column, the column's values (`free`).
  * `assign: "link"`: a link per value. `random`: one link, the value drawn
  * when the session starts (`draw`: `balanced`, the default, the value the
@@ -165,7 +165,7 @@ export const ConditionSpecSchema = z
 export type ConditionSpec = z.infer<typeof ConditionSpecSchema>;
 
 /**
- * What coders see about a study (the design's `public`, docs/plans/design.md
+ * What coders see about a study (the design's `public`, docs/glossary.md
  * §2): its title, on the coder home and the coding screen. The study's
  * own name stays private (it may tell what the study is about). Room for a
  * description or a thumbnail later.
@@ -196,7 +196,7 @@ export const SessionItemSchema = z.object({
   /** Link parameter values per link (name -> value); absent: every combination. */
   combinations: z.array(z.record(SafeNameSchema, z.string())).max(2000).optional(),
   /**
-   * The sample size per link (docs/plans/design.md §4): each link takes at
+   * The sample size per link (docs/architecture.md §5): each link takes at
    * most this many sessions. A link's own limit (the deployment's) overrides it.
    */
   maxUses: z.number().int().positive().optional(),
@@ -206,7 +206,7 @@ export const SessionItemSchema = z.object({
 export type SessionItem = z.infer<typeof SessionItemSchema>;
 
 /**
- * The design's `session` (docs/plans/design.md §2): how a coder's session
+ * The design's `session` (docs/architecture.md §6): how a coder's session
  * starts. Always there; without parameters `{ params: [] }`.
  */
 export const SessionSpecSchema = SessionItemSchema.omit({ type: true, public: true });

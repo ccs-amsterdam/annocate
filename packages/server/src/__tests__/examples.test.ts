@@ -12,7 +12,7 @@ import { createApiKey, ensureUser, setServerRole } from "../shared/accounts.js";
 import { listExamples } from "../examples.js";
 import { emptyDb, query } from "./testDb.js";
 
-// Example studies (docs/plans/examples.md): every example makes a working study,
+// Example studies (docs/examples.md): every example makes a working study,
 // with valid example answers, that a coder can start coding.
 
 let db: Db;

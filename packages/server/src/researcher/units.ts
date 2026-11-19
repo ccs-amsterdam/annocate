@@ -15,7 +15,7 @@ export function units(server: Server): Hono<Env> {
     return c.json(rows.map(toUnitMeta));
   });
 
-  // Into the draft (docs/plans/design.md §5): coders get the units when they
+  // Into the draft (docs/architecture.md §8.4): coders get the units when they
   // are deployed. All or nothing: every unit must fit the design's unit
   // fields (§3), and existing units may only be replaced with `overwrite`.
   // New columns are added to the draft design's fields (units already stored

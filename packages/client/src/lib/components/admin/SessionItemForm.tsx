@@ -28,7 +28,7 @@ const valuesKind = (values: SessionValues) => ("list" in values ? "list" : "open
 
 /**
  * The design's Study entry, always first in the editor: its public info
- * (the title coders see) and its session (docs/plans/sets-and-session-parameters.md
+ * (the title coders see) and its session (docs/architecture.md §6
  * §3): link parameters (a link per combination of their values), URL
  * parameters (added to a link by whoever shares it, e.g. a panel), the
  * participant id's URL parameter and the sample size per link. Session

@@ -1,6 +1,6 @@
 import { fieldUsage, unitLoops, loopTitle, type AnyVariableType, type DesignItem, type TopLevelItem, type UnitLoopItem } from "@annotinder/contracts";
 
-// The codebook as a document (docs/plans/design.md §1): what coders see,
+// The codebook as a document (docs/glossary.md): what coders see,
 // for a paper's appendix or a colleague: questions with their instructions
 // and options, conditions, the unit fields coders are shown, end messages.
 // Not the design's internals: who codes which units, sets, gold and

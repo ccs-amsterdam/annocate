@@ -262,7 +262,7 @@ function SpecialSetNote({ group, set, what }: { group: SetGroupResponse | undefi
 /**
  * Practice units: the group's `_practice` units; for the questions checked,
  * coders are told after answering when they were wrong
- * (docs/plans/special-sets.md §2).
+ * (docs/architecture.md §6.2).
  */
 export function PracticeEditor({
   practice,
@@ -371,7 +371,7 @@ export function PracticeEditor({
 /**
  * Gold units: the group's `_gold` units, checked silently; with health, too
  * many wrong answers end the session at a screen-out
- * (docs/plans/special-sets.md §2).
+ * (docs/architecture.md §6.2).
  */
 export function GoldEditor({
   gold,

@@ -33,7 +33,7 @@ interface LinksPanelProps {
 }
 
 /**
- * The study's links (docs/plans/sets-and-session-parameters.md §4): made from
+ * The study's links (docs/architecture.md §7): made from
  * the deployed design, one per combination of its link parameters'
  * values. Here their access settings (label, login, emails, max uses), and
  * revoking or renewing a link. Links the design no longer makes are
@@ -327,7 +327,7 @@ function CopyLink({ link, disabled }: { link: string; disabled: boolean }) {
 /**
  * URL parameters with known values (a list): a link per
  * value, built here from the links (nothing is stored), e.g. to hand each
- * school or panel its own (docs/plans/special-sets.md §4). Other URL
+ * school or panel its own (docs/architecture.md §7). Other URL
  * parameters keep their placeholders.
  */
 function LinksPerValue({

@@ -14,7 +14,7 @@ function isDismissed(studyId: number): boolean {
 }
 
 /**
- * On a study made from an example (docs/plans/examples.md): which example,
+ * On a study made from an example (docs/examples.md): which example,
  * and what to try, until the researcher closes it (remembered in this
  * browser).
  */

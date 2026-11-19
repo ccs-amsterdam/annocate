@@ -32,7 +32,7 @@ export function deployment(server: Server): Hono<Env> {
     if (errors.length > 0 || !itemsValid(designVersionItems(version))) {
       return c.json({ error: "Fix the design's issues before deploying it", issues: errors }, 400);
     }
-    // The unit fields it uses must be declared (docs/plans/design.md §3)
+    // The unit fields it uses must be declared (docs/architecture.md §8.4)
     const undeclared = undeclaredFields(designVersionItems(version), designVersionUnits(version).fields);
     if (undeclared.length > 0) {
       return c.json({ error: `The design uses unit fields it doesn't declare: ${undeclared.join(", ")}`, code: "undeclared_fields" }, 400);
@@ -40,7 +40,7 @@ export function deployment(server: Server): Hono<Env> {
     // The units it runs: the drafts (`units`, and always the first time), or the deployed ones.
     const deployed = (await db.$count(deployments, eq(deployments.studyId, studyId))) > 0;
     const live = !parsed.data.units && deployed;
-    // Who gets which units: the set columns it names, the coders and conditions' values (docs/plans/unit-assignment.md §5)
+    // Who gets which units: the set columns it names, the coders and conditions' values (docs/architecture.md §6.3)
     const checks = await assignmentChecks(db, studyId, designVersionItems(version), designVersionUnits(version).fields, live);
     if (checks.errors.length > 0) return c.json({ error: checks.errors.join(" "), code: "assignment_invalid" }, 400);
     // Links follow the design's coders, conditions and link parameters (§4).

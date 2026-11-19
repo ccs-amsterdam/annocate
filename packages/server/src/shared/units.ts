@@ -16,7 +16,7 @@ import {
 import { anyOf, unitDataHash, unitDraftData, unitValueHash, unitVersionData } from "../db/sql.js";
 import { designVersionUnits, type DesignVersionRow } from "./designVersions.js";
 
-// Units (docs/plans/design.md §5): field values stored once per study
+// Units (docs/architecture.md §8.4): field values stored once per study
 // (unit_values). `unit_draft` is each unit's working copy; deploys make
 // versions (unit_versions + unit_version_fields), the current one with
 // to_deploy NULL. A replaced version no answer points to is deleted at the
@@ -92,7 +92,7 @@ export async function latestDesignVersion(db: Db, studyId: number): Promise<Desi
   return latest;
 }
 
-/** The study's unit fields: the latest design's (docs/plans/design.md §3). */
+/** The study's unit fields: the latest design's (docs/architecture.md §8.4). */
 export async function getUnitFields(db: Db, studyId: number): Promise<UnitField[]> {
   const latest = await latestDesignVersion(db, studyId);
   return latest ? designVersionUnits(latest).fields : [];

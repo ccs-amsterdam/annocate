@@ -3,7 +3,7 @@ import { SafeNameSchema } from "../common.js";
 import type { AnyVariableType } from "./variableTypes.js";
 import { SetGroupNameSchema } from "../sets.js";
 
-// How a unit_loop gets its units (docs/plans/unit-assignment.md §3). Who
+// How a unit_loop gets its units (docs/architecture.md §6.2). Who
 // gets which units is decided per session, not per loop: by the coder column
 // and the conditions linked to set columns (session.ts, the random
 // condition). A loop works within the session's units: an optional filter
@@ -29,7 +29,7 @@ export const ALL_UNITS_SET = "__all__";
 export const SET_ACTIVITY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * At a rate (docs/plans/special-sets.md §1): about one special unit per
+ * At a rate (docs/architecture.md §6.2): about one special unit per
  * `every` own units, at random (seeded per coder: a reload gives the same
  * order) but never more than 2 x `every` apart, so it works without
  * knowing how many units a coder gets (crowd coding). `rest`: special
@@ -65,7 +65,7 @@ export type OverlapSettings = z.infer<typeof OverlapSettingsSchema>;
 const CheckPlacementSchema = z.enum(["first", "last", "spread", "rate"]);
 
 /**
- * Practice units (docs/plans/special-sets.md §2): the `_practice` units (of
+ * Practice units (docs/architecture.md §6.2): the `_practice` units (of
  * any set column), before the coder's own units by default. For the `questions`
  * listed, a unit's right answer is in its column `<question>_practice`
  * (optional per unit), and its own feedback in `<question>_practice_message`
@@ -86,7 +86,7 @@ export const PracticeSettingsSchema = z.object({
 export type PracticeSettings = z.infer<typeof PracticeSettingsSchema>;
 
 /**
- * Gold units (§2): the `_gold` units (of any set column), checked silently: for each of
+ * Gold units (docs/architecture.md §6.2): the `_gold` units (of any set column), checked silently: for each of
  * `questions`, the unit's column `<question>_gold` has the right answer.
  * With `health`: a score that starts at `start`, changes by `wrong` for a
  * wrong answer and by `right` for a right one (never above `start`); at 0 or
@@ -107,7 +107,7 @@ export const GoldSettingsSchema = z.object({
 });
 export type GoldSettings = z.infer<typeof GoldSettingsSchema>;
 
-/** The answer column of a checked question on gold and practice units (docs/plans/special-sets.md). */
+/** The answer column of a checked question on gold and practice units (docs/architecture.md §6.2). */
 export const goldColumn = (question: string) => `${question}_gold`;
 export const practiceColumn = (question: string) => `${question}_practice`;
 export const practiceMessageColumn = (question: string) => `${question}_practice_message`;
@@ -172,7 +172,7 @@ export const CriteriaSchema = z
 export type Criteria = z.infer<typeof CriteriaSchema>;
 
 /**
- * How a loop hands out units (docs/plans/unit-assignment.md §3): which of
+ * How a loop hands out units (docs/architecture.md §6.2): which of
  * the session's units (a filter), and how (criteria, special units). `{}`
  * or absent: all the session's units, once.
  */

@@ -3,7 +3,7 @@ import { boolean, index, integer, jsonb, pgTable, primaryKey, text, unique } fro
 import { bytea, timestamptz } from "./columns.js";
 import { studies } from "./studies.js";
 
-// Units (docs/plans/design.md §5): a draft, versions made by deploys, sets.
+// Units (docs/architecture.md §8.4): a draft, versions made by deploys, sets.
 // A unit's data is field name -> value; names and values are stored once per
 // study and referred to by id.
 

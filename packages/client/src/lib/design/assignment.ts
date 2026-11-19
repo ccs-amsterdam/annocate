@@ -1,6 +1,6 @@
 import { ALL_UNITS_SET, RESERVED_SETS, type ConditionSpec, type SetGroupResponse } from "@annotinder/contracts";
 
-// Who gets which units (docs/plans/unit-assignment.md), as the editor shows
+// Who gets which units (docs/architecture.md §6), as the editor shows
 // it: the coders and conditions of the session, checked against the draft
 // units' set columns.
 

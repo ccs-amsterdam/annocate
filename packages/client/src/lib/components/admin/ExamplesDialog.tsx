@@ -6,7 +6,7 @@ import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcher
 import { useCreateStudyFromExampleMutation, useExamplesQuery } from "../../admin/queries";
 
 /**
- * "New study from an example" (docs/plans/examples.md): the examples by
+ * "New study from an example" (docs/examples.md): the examples by
  * category; the chosen one becomes an ordinary study, deployed, with an
  * link and sometimes example answers.
  */

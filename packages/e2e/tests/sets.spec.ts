@@ -2,7 +2,7 @@ import { expect, test } from "./fixtures";
 import type { StudyResponse, SetGroupResponse } from "@annotinder/contracts";
 import { answers, api, question } from "./helpers";
 
-// Sets and links (docs/plans/sets-and-session-parameters.md): a sets column
+// Sets and links (docs/architecture.md §6): a sets column
 // in the CSV makes a set column; as the design's coder column it makes a link
 // per value (coder), and a coder gets their units, with the overlap.
 

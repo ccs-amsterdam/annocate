@@ -58,7 +58,7 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
   );
   const finished = await finishedPerLoop(db, studyId);
   const values = await coderValues(db, studyId);
-  // Special units as deployed (docs/plans/unit-assignment.md): practice and gold units of any set
+  // Special units as deployed (docs/architecture.md §6): practice and gold units of any set
   // column are everyone's; the overlap is that of the coder column, or (no coders) of the columns
   // the coder's session values select units by. Counted for coders who were routed in a loop.
   const kinds = { _overlap: "overlap", _gold: "gold", _practice: "practice" } as const;

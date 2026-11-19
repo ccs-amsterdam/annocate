@@ -1,6 +1,6 @@
 import { sessionColumns, sessionItem } from "./session.js";
 
-// Who gets which units (docs/plans/unit-assignment.md): a session's units
+// Who gets which units (docs/architecture.md §6): a session's units
 // are those whose cells hold its values, in every set column a value is
 // linked to (its share). The coder (`session.coders`) and assigned
 // conditions with `units` hold for every loop; a random condition with

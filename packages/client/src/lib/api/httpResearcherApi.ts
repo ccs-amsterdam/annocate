@@ -109,7 +109,7 @@ export interface ResearcherApi {
   listStudies(): Promise<StudyResponse[]>;
   getStudy(id?: number): Promise<StudyResponse | null>;
   createStudy(body: StudyWrite): Promise<StudyResponse>;
-  /** The example studies AnnoTinder ships (docs/plans/examples.md). */
+  /** The example studies AnnoTinder ships (docs/examples.md). */
   listExamples(): Promise<ExampleSummary[]>;
   /** A new study from an example: units, a deployed design version, a link and example answers. */
   createStudyFromExample(body: StudyFromExample): Promise<StudyResponse>;
@@ -136,7 +136,7 @@ export interface ResearcherApi {
   createUnits(body: UnitsCreateBody): Promise<UnitResponse[]>;
   deleteUnit(id: number): Promise<void>;
 
-  /** The set groups (docs/plans/sets-and-session-parameters.md §1). */
+  /** The set groups (docs/architecture.md §6.3). */
   listSetGroups(live?: boolean): Promise<SetGroupResponse[]>;
   /** Makes or replaces a group; links with the group's sets follow. */
   putSetGroup(group: string, body: SetGroupWrite): Promise<SetGroupResponse>;

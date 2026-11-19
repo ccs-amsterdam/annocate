@@ -16,7 +16,7 @@ import { groupSets } from "./sets.js";
 import { designVersionItems } from "./designVersions.js";
 import { HttpError } from "./http.js";
 
-/** A row of `links`: a link (docs/plans/sets-and-session-parameters.md §4). */
+/** A row of `links`: a link (docs/architecture.md §7). */
 export type LinkRow = typeof linksTable.$inferSelect;
 
 export function toLinkResponse(row: LinkRow): LinkResponse {

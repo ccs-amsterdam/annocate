@@ -18,7 +18,7 @@ interface Csv {
   rows: string[][];
 }
 
-/** A sets column (docs/plans/sets-and-session-parameters.md §1): the group it makes, and per unit (by id) its cell. */
+/** A sets column (docs/architecture.md §6.3): the group it makes, and per unit (by id) its cell. */
 interface CsvSetGroup {
   group: string;
   cells: { externalId: string; cell: string }[];

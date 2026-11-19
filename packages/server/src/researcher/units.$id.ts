@@ -20,7 +20,7 @@ export function unit(server: Server): Hono<Env> {
     const id = Number(c.req.param("id"));
     const existing = await get(studyId, id);
     if (!existing) return c.json({ error: "Unit not found" }, 404);
-    // Out of the draft: deployed versions and answers keep it (docs/plans/design.md §5).
+    // Out of the draft: deployed versions and answers keep it (docs/architecture.md §8.4).
     await db.transaction((tx) => removeUnit(tx, studyId, id));
     return c.body(null, 204);
   });

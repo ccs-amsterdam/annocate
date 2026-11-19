@@ -20,7 +20,7 @@ export const VariableBaseSchema = z.object({
   /**
    * When the instruction shows, in a unit loop: `always` (default), `first`
    * (only for the first unit the coder answers this question on), or
-   * `practice` (only on practice units, docs/plans/special-sets.md).
+   * `practice` (only on practice units, docs/architecture.md §6.2).
    */
   instructionWhen: z.enum(["always", "first", "practice"]).optional(),
   focus: z
@@ -144,7 +144,7 @@ export const RandomVariableSchema = z
     /** The possible values. Optional with `units`: then the column's values (its sets), whatever they are. */
     options: z.array(NominalOptionSchema.extend({ weight: z.number().positive().optional() })).min(1, "List at least one value").optional(),
     /**
-     * A set column of the units (docs/plans/unit-assignment.md §2): the
+     * A set column of the units (docs/architecture.md §6.1): the
      * coder's value then selects their units, in the loops after this
      * question (only the units whose cell holds it).
      */
@@ -201,7 +201,7 @@ export type RelationType = z.infer<typeof RelationTypeSchema>;
 
 /**
  * A question whose answer type isn't chosen yet: what the setup wizard
- * makes from a question name (docs/plans/setup-wizard.md). Saving works;
+ * makes from a question name (docs/examples.md). Saving works;
  * validation reports it, so the design can't be previewed or deployed
  * until the researcher chooses a type in the editor.
  */

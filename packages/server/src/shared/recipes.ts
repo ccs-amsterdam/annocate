@@ -20,7 +20,7 @@ import { checkLinkCount, syncLinks } from "./links.js";
 import { assignmentChecks, putSetGroup } from "./sets.js";
 import { saveUnits } from "./units.js";
 
-// Recipes (contracts recipe.ts, docs/plans/setup-wizard.md): a new study's
+// Recipes (contracts recipe.ts, docs/examples.md): a new study's
 // units, set groups and first design version in one document; deploying it makes
 // its links (shared/links.ts `syncLinks`). Example
 // studies and the setup wizard both make studies through here.
@@ -121,7 +121,7 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
   fields = [...fields, ...groups.map((name) => ({ name, type: "set" as const }))];
 
   // The design: deployed, or the first draft
-  // With the units' fields (docs/plans/design.md §3)
+  // With the units' fields (docs/architecture.md §8.4)
   const [designVersion] = await tx
     .insert(designVersions)
     .values({

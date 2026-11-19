@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { IdSchema } from "./common.js";
 
-// Set groups (docs/plans/sets-and-session-parameters.md §1): a group is a
+// Set groups (docs/architecture.md §6.3): a group is a
 // column of the units; each unit's cell names the set(s) it is in, e.g.
 // `s1`, `s1;s2`, or `s1#3;s2#1` (positions). The design refers to a group
 // by name, and to a set as `{ group, set }`. Names starting with `_` are
@@ -13,7 +13,7 @@ export const OVERLAP_SET = "_overlap";
 /** Reserved set names (a leading `_`). */
 export const RESERVED_SETS = [OVERLAP_SET, "_practice", "_gold"] as const;
 
-/** Units with a known answer: coders are told when they are wrong (docs/plans/special-sets.md). */
+/** Units with a known answer: coders are told when they are wrong (docs/architecture.md §6.2). */
 export const PRACTICE_SET = "_practice";
 /** Units with a known answer: coders are checked silently. */
 export const GOLD_SET = "_gold";

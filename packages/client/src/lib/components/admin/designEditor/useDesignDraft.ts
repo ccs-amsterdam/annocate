@@ -75,7 +75,7 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
   const serialized = useMemo(() => JSON.stringify(cleanItems), [cleanItems]);
   const savedSerialized = useMemo(() => JSON.stringify(stripKeys(saved)), [saved]);
   // Errors and warnings. Drafts can be saved with errors; deploying needs none.
-  // Plus the unit fields it uses that the design doesn't declare (docs/plans/design.md §3): the open
+  // Plus the unit fields it uses that the design doesn't declare (docs/architecture.md §8.4): the open
   // version's fields, as the server checks them at deploy (a new design gets the study's current fields)
   const studyFields = useUnitFieldsQuery(client).data;
   const declared = version ? version.units.fields : studyFields;

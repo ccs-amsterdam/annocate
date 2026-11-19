@@ -64,7 +64,7 @@ export const CoderUnitResponseSchema = z.object({
   data: UnitDataSchema,
   variables: z.record(z.string(), VariableValueSchema),
   /**
-   * A practice unit's checks (special-sets.md §2), for the browser: per
+   * A practice unit's checks (docs/architecture.md §6.2), for the browser: per
    * question the unit's answer cell (`<question>_practice`, answerKey.ts) and
    * its own feedback; the loop's feedback template; whether coders must
    * answer again until right.

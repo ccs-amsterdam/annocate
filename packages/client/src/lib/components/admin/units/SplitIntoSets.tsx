@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { HelpButton } from "../../../help/HelpButton";
 
 /**
- * Fills a new set column (docs/plans/unit-assignment.md): splits units (all,
+ * Fills a new set column (docs/architecture.md §6): splits units (all,
  * or those with one value) evenly over values `s1..sN`, or over names you
  * give (e.g. the coders, or their email addresses), plus optionally
  * `_overlap` units that every coder or group gets too (e.g. for intercoder

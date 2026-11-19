@@ -64,7 +64,7 @@ export function annotations(server: Server): Hono<Env> {
   );
 
   // Unit versions (contracts UnitVersionSchema), oldest first: every answer
-  // points to the version deployed when it was given (docs/plans/design.md §5).
+  // points to the version deployed when it was given (docs/architecture.md §8.4).
   app.get("/study/:studyId/unit-versions", requireStudyUser(server, "READ"), async (c) => {
     const parsed = UnitVersionsQuerySchema.safeParse(c.req.query());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);

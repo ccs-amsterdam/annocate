@@ -84,7 +84,7 @@ export function loopDependencies(items: readonly unknown[]): Map<string, string[
 }
 
 /**
- * How a design uses each unit field (docs/plans/design.md §3):
+ * How a design uses each unit field (docs/architecture.md §8.4):
  * - `shown`: in a layout, a question or instruction text, an end message,
  *   or selected in by a span question: coders see it;
  * - `sent`: only in conditions the browser evaluates: sent to coders, not
@@ -120,7 +120,7 @@ export function fieldUsage(items: readonly unknown[]): Map<string, FieldUse> {
 }
 
 /**
- * The set columns a design names (docs/plans/unit-assignment.md): the coder
+ * The set columns a design names (docs/architecture.md §6): the coder
  * column, the columns conditions (assigned or random) are linked to, and
  * loop filters' columns. They must be `set` fields of the units.
  */

@@ -2,7 +2,7 @@ import { expect, test } from "./fixtures";
 import type { StudyResponse, UnitResponse } from "@annotinder/contracts";
 import { api, question } from "./helpers";
 
-// Who gets which units (docs/plans/unit-assignment.md): the session settings
+// Who gets which units (docs/architecture.md §6): the session settings
 // show the coders and conditions against the units; the first deploy asks
 // whether coders sign in; a condition drawn at the start, linked to a set
 // column, gives each session the units of its value.

@@ -32,7 +32,7 @@ export const DesignWriteSchema = z.object({
   note: z.string().max(1000).optional(),
   items: DraftItemsSchema,
   /**
-   * The unit fields (docs/plans/design.md §3). Left out: kept as they are
+   * The unit fields (docs/architecture.md §8.4). Left out: kept as they are
    * (uploads keep them up to date).
    */
   units: UnitsSpecSchema.optional(),
@@ -42,7 +42,7 @@ export const DesignWriteSchema = z.object({
    */
   public: PublicInfoSchema.nullable().optional(),
   /**
-   * The session (docs/plans/design.md §2): URL and link parameters, the
+   * The session (docs/architecture.md §6): URL and link parameters, the
    * participant id, link combinations. `POST`: absent, no parameters.
    * `PUT`: absent keeps it. Not an item: `items` can't hold it.
    */

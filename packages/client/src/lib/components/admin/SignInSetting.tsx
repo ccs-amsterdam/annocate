@@ -2,7 +2,7 @@ import type { SignIn } from "@annotinder/contracts";
 import { InfoTip } from "@/components/ui/info-tip";
 
 /**
- * Whether coders sign in (docs/plans/unit-assignment.md §4): for the whole
+ * Whether coders sign in (docs/architecture.md §7): for the whole
  * study, not per link. Coders given by email address always sign in: then
  * the choice is shown, locked.
  */

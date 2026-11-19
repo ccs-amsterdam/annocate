@@ -7,7 +7,7 @@ import { SignInSchema } from "./study.js";
 
 /**
  * A recipe: everything a new study starts with, in one document
- * (docs/plans/setup-wizard.md). Example studies are recipes (with example
+ * (docs/examples.md). Example studies are recipes (with example
  * answers), the setup wizard writes one, and later templates will be
  * recipes without units. `POST /study/from-recipe` makes a study from it in
  * one transaction; afterwards it is an ordinary study. Its links follow from

@@ -141,7 +141,7 @@ export const researcherEndpoints = {
     response: z.array(UnitFieldSchema),
   },
   /**
-   * Replaces the draft design's unit fields (docs/plans/design.md §3):
+   * Replaces the draft design's unit fields (docs/architecture.md §8.4):
    * declare, retype (the units' values must fit), describe, or remove
    * fields the design doesn't use (their values leave the draft units).
    */
@@ -162,7 +162,7 @@ export const researcherEndpoints = {
   },
   deleteUnit: { method: "DELETE", path: "/study/:studyId/units/:id", request: z.void(), response: z.void() },
 
-  /** The set groups (docs/plans/sets-and-session-parameters.md §1), each with its sets in order. */
+  /** The set groups (docs/architecture.md §6.3), each with its sets in order. */
   /** The draft's set groups; `?live=true`: the deployed ones. */
   listSetGroups: {
     method: "GET",
@@ -247,7 +247,7 @@ export const researcherEndpoints = {
     request: DeploymentWriteSchema,
     response: DeploymentResponseSchema,
   },
-  /** What deploying the drafts would change (docs/plans/design.md §5). */
+  /** What deploying the drafts would change (docs/architecture.md §8.4). */
   getPendingChanges: {
     method: "GET",
     path: "/study/:studyId/deployment/pending",

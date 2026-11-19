@@ -1,8 +1,8 @@
 import { MAX_SESSION_VALUE, coderAccess, conditionValues, sessionParamKey, type SessionItem, type SignIn } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 
-// A new session's `$session` values (docs/plans/sets-and-session-parameters.md
-// §3, docs/plans/unit-assignment.md): the link's parameters, the coder (by
+// A new session's `$session` values (docs/architecture.md §6
+// §3, docs/architecture.md §6): the link's parameters, the coder (by
 // link or by the login's email), conditions assigned by link, the URL
 // parameters the codebook declares, `source`, and the participant id. Fixed
 // when the session starts; conditions drawn at the start are drawn by the

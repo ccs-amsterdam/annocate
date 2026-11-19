@@ -31,10 +31,10 @@ import { unitSetMembers, unitSets, units } from "../db/schema/index.js";
 import { HttpError } from "./http.js";
 import { getUnitFields, lockUnits, servedUnits, setUnitFields, unitIds } from "./units.js";
 
-// Set groups (docs/plans/sets-and-session-parameters.md §1): sets
+// Set groups (docs/architecture.md §6.3): sets
 // (`unit_sets`: group, name) and their units (`unit_set_members`), with an
 // optional position. A set is in position order if its units have
-// positions, else in the units' order. Two copies (docs/plans/design.md §5):
+// positions, else in the units' order. Two copies (docs/architecture.md §8.4):
 // the draft's, and the deployed (`live`) ones a deploy copies from it.
 
 /** A set column of the draft. */
@@ -139,7 +139,7 @@ export async function runtimeSets(db: Db, studyId: number, live: boolean): Promi
 
 /**
  * Checks of a design about to be deployed against the study's set columns
- * (docs/plans/unit-assignment.md §5). Errors: a column the design selects
+ * (docs/architecture.md §6.3). Errors: a column the design selects
  * units by isn't a set column; coder values mix email addresses and other
  * names; a condition's fixed values aren't all in its column. Warnings: a
  * column without values, units no session gets, values of a column a

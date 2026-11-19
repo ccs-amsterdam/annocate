@@ -109,7 +109,7 @@ export interface StudyManagerSnapshot {
   retrying: boolean;
   navigation: StudyManagerNavigation;
   /**
-   * A practice question answered wrongly (special-sets.md §2): the feedback,
+   * A practice question answered wrongly (docs/architecture.md §6.2): the feedback,
    * shown with the question. With `retry` the coder answers again until
    * right; without, they may go on (`continueAfterPractice`). Null otherwise.
    */
@@ -712,7 +712,7 @@ export class StudyManager {
   private practiceTries = new Map<string, number>();
 
   /**
-   * A practice unit's question (special-sets.md §2), checked as it is
+   * A practice unit's question (docs/architecture.md §6.2), checked as it is
    * answered: right flashes a check; wrong shows the feedback with the
    * question. Returns whether the coder goes on now (right, a question
    * without a check, or wrong without `retry`... after `continueAfterPractice`).

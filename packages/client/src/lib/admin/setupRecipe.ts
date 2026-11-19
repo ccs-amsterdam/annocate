@@ -1,7 +1,7 @@
 import { CriteriaSchema, DEFAULT_RATE, OVERLAP_SET, RESERVED_SETS, seededShuffle, type Criteria, type RecipeInput, type SessionSpec, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
 import { placedFields, simpleTemplate, type SimpleLayout } from "../design/simpleLayout";
 
-// The setup wizard (docs/plans/setup-wizard.md) as data: what the
+// The setup wizard (docs/client.md §7, "Guided setup") as data: what the
 // researcher chose, and the recipe it makes. The wizard asks no question
 // details: questions are made by name, with no answer type yet, to specify
 // in the editor.
@@ -14,7 +14,7 @@ export interface SetupParts {
 }
 
 interface SetupExperiment {
-  /** The condition's name (an `auto` question). */
+  /** The condition's name (a computed item, drawn at random). */
   name: string;
   /** The conditions' values. */
   conditions: string[];
@@ -98,7 +98,7 @@ export interface SetupAnswers {
   questions: { before: string[]; unit: string[]; after: string[] };
   /**
    * Per-unit questions checked on units with a known answer
-   * (docs/plans/special-sets.md): `gold` silently, `practice` with
+   * (docs/architecture.md §6.2): `gold` silently, `practice` with
    * feedback. Only with sets (assign sets, crowd coding).
    */
   checks: { gold: string[]; practice: string[] };

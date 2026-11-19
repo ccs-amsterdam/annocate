@@ -1,6 +1,6 @@
 # Annotinder server architecture
 
-Status: current (2026-11-19). One server, `packages/server`, on Postgres:
+One server, `packages/server`, on Postgres:
 `pg` against a Postgres server in production, PGlite (Postgres in
 WebAssembly, in process) for tests and development.
 
@@ -19,11 +19,9 @@ language, breaks down for:
 
 So the server (TypeScript) runs the study: distribution, validation, sessions.
 Other systems (AmCAT, R, Python) don't run a server of their own: they use
-the researcher API to push units, codebooks and settings, and to download
-annotations. (An earlier design split the server into a "db server" in any
-language and a "study server"; it was merged back on 2026-10-26, since that
-split cost an API and a trust scheme between the two and served no real
-case.)
+the researcher API to push units, designs and settings, and to download
+annotations. One server, rather than a storage server and a separate study
+server, avoids an API and a trust scheme between the two.
 
 ## 2. Roles
 
@@ -33,7 +31,7 @@ case.)
                 ▼ /study/...                             ▼ /d/<deploymentId>/...
  ┌─────────────────────────────────────────────────────────────────────┐
  │ server (TypeScript, packages/server)                                │
- │  researcher API: studies, codebooks, units, sets, links,               │
+ │  researcher API: studies, designs, units, sets, links,               │
  │    deployment, progress, results                                    │
  │  runtime (per deployment): distribution, leases, validation;        │
  │    state in the database, only the deployment spec in memory        │
@@ -55,11 +53,11 @@ and a page per API, with a section per endpoint.
 
 **The runtime** (`src/runtime/`) runs a deployed study for coders. It:
 
-- resolves coders and serves the session and codebook;
-- decides which unit a coder gets next, following the codebook's unit
+- resolves coders and serves the session and design;
+- decides which unit a coder gets next, following the design's unit
   loops (all units or one set, a shared queue with leases and stopping
   rules, or one set of a group per coder; plus an overlap);
-- validates annotations against the codebook;
+- validates annotations against the design;
 - writes them to the database;
 - keeps only the deployment spec in memory (§3): any number of server
   processes can serve a study.
@@ -94,7 +92,7 @@ development, Vite proxies the server's paths.
    a loop when the coder answered every question of it (§8.2):
    `unit_codings` has a row per finished (loop, unit, coder), with the
    answers to the loop's agreement questions, written with the answers.
-   What finishes a loop depends on the codebook, so when that changes (a
+   What finishes a loop depends on the design, so when that changes (a
    redeploy whose loops have other positions, questions or agreement
    questions: `codingsSignature`) or
    answers are reset (`annotationEpoch`), they are derived from the answers
@@ -117,9 +115,9 @@ the client, so the server stores only ciphertext (`plans/encryption.md`).
 ## 5. Lifecycle
 
 **Deploy.** A researcher calls `PUT /study/:studyId/deployment` with
-`{ designVersionId, units, active }`: the codebook, with the draft units and
+`{ designVersionId, units, active }`: the design, with the draft units and
 sets (new unit versions, §8.4) or the deployed ones. The server bumps the
-deployment `version` when either changed, and freezes the codebook. Every
+deployment `version` when either changed, and freezes the design. Every
 runtime checks the deployment's stamp on each request and re-reads it when
 it changed; other changes coders' runtimes read (study settings, resets)
 bump `deployments.revision` for that
@@ -128,7 +126,7 @@ to; requests with an older one get 409 `codebook_changed`, and the client
 loads the session again (`api/coder.md`).
 
 **Coder links.** Links are made by deploying: one per
-combination of the codebook's link parameter values (§7). They point at the
+combination of the design's link parameter values (§7). They point at the
 client with the deployment id (the study id) and the link's secret; the
 client calls `/d/<studyId>/...`.
 
@@ -141,7 +139,7 @@ client calls `/d/<studyId>/...`.
    (the link's parameter values, URL parameters, `source`, the coder and
    assigned conditions, §6.1, §7); on every
    request after that, one query finds it.
-2. **`GET /session`.** Returns the codebook, per-loop progress, and the
+2. **`GET /session`.** Returns the coder codebook (the coders' view of the design), per-loop progress, and the
    coder's variables (so client-side conditions can use drawn values).
 3. **`GET /loop/:loop/next?count=k`.** The runtime works out the coder's
    units from their session values (§6), drawing any computed variable linked
@@ -162,14 +160,14 @@ client calls `/d/<studyId>/...`.
 deployment id `<studyId>.preview` and a token signed with the server's secret
 (`ANNOTINDER_SECRET`; random per process if not set, so previews then end
 with a restart). The client opens it like a link. The runtime runs the
-latest codebook (checked on every request, so edits show at once) with the
+latest design (checked on every request, so edits show at once) with the
 real units, but keeps coders and answers in memory (`preview.ts`): a
 preview stores nothing, and is gone when the server forgets the deployment.
 
 **Researcher status.** `GET /study/:studyId/deployment/status`: units complete /
 started / leased, codings and coders.
 
-## 6. Distribution: the codebook describes the process
+## 6. Distribution: the design describes the process
 
 **Principle.** The design can name parameters, but never bind them. The
 design is meant to be shared and reproduced. So it describes *how* units
@@ -182,7 +180,12 @@ There are three layers:
 | Set columns | per column, named sets of units in order (e.g. column `coder`: `anna`, `bob`, `_overlap`) | data, not process |
 | Links | made from the design's coders, conditions assigned by link and link parameters, with a label, max uses and a fixed participant id | no (stored on the server only) |
 
-The full model, and why: `plans/unit-assignment.md`.
+**Why at the session level.** One idea, *who is this session for*, decides
+a session's units: the coder column and the conditions linked to a column.
+Loops only filter and distribute within those units. A common setup
+("three links for my three coders, with some overlap") is then one setting
+and one column, rather than a set group, a link parameter and a loop
+setting that have to agree.
 
 ### 6.1 A session's units
 
@@ -267,7 +270,24 @@ own units by `placement`: `first`, `last`, `spread` evenly (needs the
 number of units a coder gets: with criteria, `unitsPerCoder.max`), `rate`
 (about one in `every`), or `disabled`. Overlap options: `expect` (a deploy
 warning when there are fewer) and `max` with `pick` (`first` or a seeded
-`random` draw). See `plans/special-sets.md` for practice and gold.
+`random` draw). A unit is in one special set of a column at most.
+
+- **Answer columns.** For each checked question `q`, the right answer is in
+  the unit column `q_gold` (gold) or `q_practice` (practice), and a
+  practice unit's own feedback in `q_practice_message` (optional). These
+  columns are never served to coders. Answer cells (contracts
+  `answerKey.ts`): `positive` (exactly this), `a;b` (these together),
+  `positive|neutral` (any of these), `3..5` (a number in the range).
+- **Practice** is checked in the browser as each question is answered (the
+  practice unit comes with its answer cells). A wrong answer shows the
+  unit's message, the loop's `message` (a template with `$unit` and
+  `$var`) or the expected answer; the coder answers again until right
+  (`retry`, the default) or may go on. The tries are stored with the
+  answer's timing.
+- **Gold** is checked on the server; coders see nothing. With `health`, a
+  score starts at `start` and changes by `wrong` and `right` (never above
+  `start`); at 0 the session ends at the end item `end` (a screen-out),
+  which the coder sees at once.
 
 The pools behind this are internal (`server/src/runtime/distribution.ts`):
 a loop has a pool for the coder's own units (a queue with criteria, else
@@ -278,11 +298,13 @@ values, recomputed on each request; nothing about them is stored.
 `coders.assignments` only marks the loops a coder reached (by loop key,
 `{ "<loop>": { "at": <ms> } }`), for the progress counts. A coder keeps the
 units they coded in a loop (they can open and answer them again), even if
-their values or the loop's settings no longer give them those units. Loops
-used to have branches (per-group settings chosen by a `when` condition in
-the client, stored per branch fingerprint); they were removed (2026-11-19,
-`plans/unit-assignment.md`): who gets which units is decided by the
-session's values and computed variables linked to a column.
+their values or the loop's settings no longer give them those units.
+
+**One `units` per loop.** Groups that need other units differ in their
+session values (a condition or computed variable linked to a column), not
+in per-group loop settings: those would duplicate a loop's questions under
+the same names, so groups' answers couldn't be told apart. Per-group
+settings belong with value branches (`plans/question-loops.md` §5).
 
 **Loops have no name.** Within one design version a loop is identified by
 its position (`unitLoops`: `"1"`, `"2"`, ...): the coder API's
@@ -314,9 +336,9 @@ function, `splitIntoSets` in contracts `sets.ts`).
 
 ## 7. Coder variables, session parameters and links
 
-**Computed variables** (`type: "computed"`, for now with `variable.type:
-"random"`) are drawn, never asked, and never changed afterwards. They are drawn when the coder *reaches* them in
-the design's flow: the client saves the answers so far, then asks the
+**Computed variables** (`type: "computed"`; the one variable type is
+`random`) are drawn, never asked, and never changed afterwards. They are
+drawn when the coder *reaches* them in the design's flow: the client saves the answers so far, then asks the
 server (`POST /variables/computed/:name`), and goes on with the value.
 Coders screened out before one never get a value, so they don't count in
 the balance.
@@ -333,7 +355,7 @@ the balance.
 The server refuses to let the client overwrite drawn values.
 
 **Frozen answers.** A coder-level answer a unit loop depends on (the loop's
-layout, questions, conditions or branches refer to it: contracts
+layout, questions or Show if conditions refer to it: contracts
 `loopDependencies`) is frozen once the coder coded a unit in that loop.
 `annotation_values.frozen` is set when a unit is submitted; later values
 for it are ignored, and the coding screen shows it read-only.
@@ -379,15 +401,15 @@ researcher sets only a link's label, `maxUses` and a fixed participant id.
 coders force `required`. Participant ids and login:
 `docs/coder-identity.md`.
 
-## 8. Resuming, and codebook updates
+## 8. Resuming, and design updates
 
-### 8.1 Resuming a session (implemented)
+### 8.1 Resuming a session
 
 When a coder reopens a session (reload, transfer, next day), the client
 continues where they left off:
 
 - **Top-level questions** that already have an answer that fits the current
-  codebook are skipped. They stay reachable by navigating back.
+  design are skipped. They stay reachable by navigating back.
 - **Unit loops.** `GET /session` returns, per loop, the finished unit ids
   in order and `totalUnits` (their set plus the overlap, or in a shared
   queue `maxUnits` plus the overlap; `null` when it depends on other coders). The client rebuilds the loop's history from those ids,
@@ -399,16 +421,16 @@ continues where they left off:
   charge of distribution.
 - **Within the unit at the frontier,** the client starts at the first
   question without a valid answer. That unit can be partly answered after a
-  reload mid-unit, or after a codebook update added a question.
+  reload mid-unit, or after a design update added a question.
 
 Finished units are identified by id, not by position: positions shift
 between visits when distribution is dynamic.
 
-### 8.2 What happens when the codebook changes
+### 8.2 What happens when the design changes
 
 A researcher deploys a new design version for a running study. Answers are
 keyed by question name, and the server and client always check them
-against the **current** codebook (`validateAnswer`, shared via contracts):
+against the **current** design (`validateAnswer`, shared via contracts):
 
 | Change | Units the coder already finished | Unit in progress / new units |
 | --- | --- | --- |
@@ -416,7 +438,7 @@ against the **current** codebook (`validateAnswer`, shared via contracts):
 | Question removed | old answers kept in the database, no longer shown | not asked |
 | Option values changed (an answer's value removed) | stay finished; the answer is dropped from view and asked again if the coder navigates back and resubmits | asked again |
 | Question renamed | = removed + added | = removed + added |
-| Conditions / order changed | stay finished | follow the new codebook |
+| Show if / order changed | stay finished | follow the new design |
 | Distribution changed | the coder's units follow the new settings; units they coded stay theirs (§6.2) | new rules apply |
 
 How it works:
@@ -425,21 +447,21 @@ How it works:
   `updated`, `designVersionId` and `retiredAt`. Only live rows (`retiredAt` empty)
   count, and only those must be unique. Writes upsert per variable, so
   answers to questions a later version removed are never overwritten. They
-  stay as data, tagged with the codebook they were written under.
-- **"Finished" is computed from the current codebook**: a unit is finished
+  stay as data, tagged with the design they were written under.
+- **"Finished" is computed from the current design**: a unit is finished
   in a loop when *every* question of that loop has a live value. Questions a
   condition hid are stored as `skip`. The runtime only accepts complete
-  units, so a stored unit is always complete under the codebook it was
+  units, so a stored unit is always complete under the design it was
   written with. Finished codings are rows of `unit_codings`, written with
   the answers (the runtime decides which loops a submit finishes, §3);
   `listFinished` (a query by the loop's variable names) derives them again
-  when the codebook or the annotation epoch changes. Finished units are
+  when the design or the annotation epoch changes. Finished units are
   tracked per loop, so a unit in two loops is finished in each separately.
 - **Order** in a coder's progress is when they first finished the unit
   (`unit_codings.created`), so editing a finished unit doesn't move it.
 - **Adding a question to a loop reopens its finished units** (they lack the
   new answer). Coders get them back first, with their earlier answers, and
-  answer only what's new. Deploying such a codebook returns a warning with
+  answer only what's new. Deploying such a design returns a warning with
   the number of affected codings.
 - **Reset** (`POST /study/:studyId/annotations/reset { variables, unitIds?,
   coderIds? }`, a researcher action): retires live values instead of
@@ -447,10 +469,26 @@ How it works:
   analysis. It bumps the deployment's `annotationEpoch`, so the runtime
   reloads.
 
-### 8.4 Units: drafts and versions
+### 8.3 Choosing what reopens (open)
 
-Everything is a draft until deployed (`plans/design.md` §5), units and
-sets too:
+With "finished = all current questions answered", adding a question always
+reopens finished units, and a reset reopens chosen units explicitly. Still
+open: letting the researcher add a question *without* reopening, e.g. by
+naming the variables that define "finished" per loop (default: all). Hold
+off until a real case asks for it.
+
+Other open points:
+
+- `totalUnits` is unknown in a shared queue without `maxUnits`; the client
+  then counts the units seen so far.
+
+### 8.4 Units: drafts, versions and fields
+
+Everything is a draft until deployed: the design, the units and the set
+columns. A preview runs the draft; a deploy makes it live. The design
+declares the unit fields it expects (`units.fields`: name and type, e.g.
+`text`, `image`, `set`); uploads are checked against them and the deploy
+checks that every field the design uses exists.
 
 - **Values** (`unit_values`): every field value once per study, by content
   (sha256, as 32 bytes: md5 pairs can be made on purpose). Field names are
@@ -466,32 +504,19 @@ sets too:
   only coded content is kept. `deployment_versions` records what each
   deployed version changed.
 - **Sets** (`unit_sets`: group and name, `unit_set_members`): the draft's,
-  and the deployed (`live`) ones a deploy copies from it. No history:
-  coders' routing records their set.
+  and the deployed (`live`) ones a deploy copies from it. No history: a
+  coder's units follow from their session values (§6.1).
 - Coders get the current versions, with only the fields the codebook
   uses (`shownUnitFields`: other columns, e.g. metadata or answer columns,
   stay on the server). Every answer points to the full unit version its
-  coder saw (`annotation_values.unit_version_id`) and to its codebook
-  version; what was shown is that version limited to that codebook's shown
+  coder saw (`annotation_values.unit_version_id`) and to its design
+  version; what was shown is that version limited to that design's shown
   fields.
 - A unit can be replaced after it was coded, with a warning
   (`overwriteCoded`): a new version, deployed with the next deploy;
   earlier answers keep theirs, so spans can always be read against the
   text they were made on. A unit with versions or answers is never
   deleted, only taken out of the draft.
-
-### 8.3 Open: choosing what reopens
-
-With "finished = all current questions answered", adding a question always
-reopens finished units, and a reset reopens chosen units explicitly. Still
-open: letting the researcher add a question *without* reopening, e.g. by
-naming the variables that define "finished" per loop (default: all). Hold
-off until a real case asks for it.
-
-Other open points:
-
-- `totalUnits` is unknown in a shared queue without `maxUnits`; the client
-  then counts the units seen so far.
 
 ## 9. The database
 
@@ -580,7 +605,7 @@ Roughly in order:
 2. **Deploying follow-ups.**
    - A dry run of a deploy, so the reopen warnings (§8.2) show before
      confirming instead of after.
-   - Choosing what reopens after a codebook update (§8.3).
+   - Choosing what reopens after a design update (§8.3).
 3. **Local coding from R and Python** (`compositions.md`): R or Python runs
    the runtime (V8) and serves the coder API; then the R and Python
    packages. (Not a standalone local app or binaries: see "Not planned"
@@ -597,8 +622,8 @@ Roughly in order:
    open: a purge that blanks a value everywhere (privacy).
 7. **Keeping history.** Unit versions are kept (§8.4). Answers reset by a
    researcher are kept as retired rows; a coder changing an answer updates
-   it in place (decided: no history of a coder's own edits for now; adding
-   it later is a new table, not a change to this one).
+   it in place (no history of a coder's own edits; adding it later is a
+   new table, not a change to this one).
 8. **Sessions.** For researchers: a list of active sessions, logging out
    everywhere, logging out at the provider.
 9. **Multimedia.** Images, audio and video in units should probably **not**
@@ -606,11 +631,11 @@ Roughly in order:
    server returns short-lived signed URLs to a blob store. This keeps the
    runtime's memory JSON-only.
 10. **Semantic validation.** Validation checks variable names, option
-    values, items, and the arguments of helpers in simple conditions. Running codebook conditions (QuickJS)
+    values, items, and the arguments of helpers in simple conditions. Running Show if conditions (QuickJS)
     server-side, to reject answers to questions the coder should never
-    have seen, would be the next step. Conditions and branch choice run on
-    the client today (§6.2), which keeps client-side encryption of answers
-    possible (`plans/encryption.md`).
+    have seen, would be the next step. Show if conditions run in the
+    client, which keeps client-side encryption of answers possible
+    (`plans/encryption.md`).
 11. **Scale.** A pick from a shared queue reads the loop's finished codings
     and leases (bounded by units x `codersPerUnit.max`), under the queue's lock
     (taken in turn within a process before a connection is used, so
@@ -623,11 +648,14 @@ Roughly in order:
     aggregates kept in the database if it gets polled.
 12. **Admin unit cache.** A client-side cache of units for the researcher
     UI (IndexedDB), compared by ids and hashes.
-
-13. **Planned, not built** (`plans/`): gold checks, question loops, example
-    studies, a login shared with AmCAT, and
-    (on hold) encrypting answers in the browser.
+13. **Sample size targets.** Coders per set column value, or a target
+    number of sessions per condition, with the Links page showing how far
+    each is.
+14. **Planned, not built** (`plans/`): question loops and value branches,
+    the design viewer (including importing a design file into a new study),
+    templates and an examples library (`examples.md`), and (on hold)
+    encrypting answers in the browser.
 
 Smaller things worth an issue: a swipe-card UI for the `annotinder` answer
 type; `VariableValue` as a discriminated union; a live preview of a
-codebook item while editing it. Client gaps: `client.md` §9.
+design item while editing it. Client gaps: `client.md` §9.
