@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, CircleCheck, Link2, Loader2 } from "lucide-react";
+import { ArrowRight, CircleCheck, Link2, Loader2, LogOut } from "lucide-react";
 import { continueUrl, loadStudies, type StudyEntry } from "../lib/session/studies";
 
-const ENDED: Record<string, string> = { complete: "Finished", screenout: "Ended", quit: "Stopped" };
+const ENDED: Record<string, string> = { complete: "Finished", screenout: "Ended", quit: "Quit" };
 
 function when(date: Date): string {
   return date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: date.getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
@@ -90,7 +90,7 @@ function StudyCard({ entry }: { entry: StudyEntry }) {
             study.ended === "complete" ? "bg-leaf/20 font-medium text-leaf-strong" : "bg-muted text-muted-foreground"
           }`}
         >
-          <CircleCheck className="h-3.5 w-3.5" />
+          {study.ended === "quit" ? <LogOut className="h-3.5 w-3.5" /> : <CircleCheck className="h-3.5 w-3.5" />}
           {ended}
         </span>
       ) : (

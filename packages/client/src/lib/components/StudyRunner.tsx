@@ -55,6 +55,8 @@ export interface StudyRunnerProps {
   preview?: boolean;
   /** Start a new session rather than continue this browser's (e.g. resetting a preview). */
   newSession?: boolean;
+  /** The coder's overview of their studies, linked from the end screen. */
+  homeUrl?: string;
 }
 
 interface ContentProps extends StudyRunnerProps {
@@ -178,6 +180,7 @@ function StudyRunnerContent({
   transferUrl,
   preview,
   onFinished,
+  homeUrl,
 }: ContentProps) {
   // By content: a new object with the same params must not restart the session.
   const urlParamsKey = JSON.stringify(urlParams ?? {});
@@ -361,6 +364,7 @@ function StudyRunnerContent({
         onReopen={() => manager.reopen()}
         preview={preview}
         onFinished={onFinished}
+        homeUrl={homeUrl}
       />
     );
   }

@@ -35,6 +35,7 @@ export function CodePage({
         urlParams={urlParams}
         transferToken={transfer}
         onTransferRedeemed={onTransferRedeemed}
+        homeUrl="/code"
       />
     </div>
   );

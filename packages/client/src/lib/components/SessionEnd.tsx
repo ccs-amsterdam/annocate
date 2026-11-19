@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, LogOut } from "lucide-react";
+import { ArrowRight, CheckCircle2, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Reopen } from "@annotinder/contracts";
 import type { SessionEnding } from "../studyManager/StudyManager";
@@ -24,6 +24,8 @@ interface SessionEndProps {
   /** In a preview, the redirect is shown but not followed. */
   preview?: boolean;
   onFinished?: () => void;
+  /** The coder's overview of their studies (`/code`): linked at the bottom; without it, not. */
+  homeUrl?: string;
 }
 
 /**
@@ -32,7 +34,17 @@ interface SessionEndProps {
  * answers to be deleted here, and go back for a few minutes after finishing
  * (`reopen`; afterwards the session is closed, docs/coder-identity.md §9).
  */
-export function SessionEnd({ ending, quit = false, deletionRequested = false, onRequestDeletion, reopen = null, onReopen, preview, onFinished }: SessionEndProps) {
+export function SessionEnd({
+  ending,
+  quit = false,
+  deletionRequested = false,
+  onRequestDeletion,
+  reopen = null,
+  onReopen,
+  preview,
+  onFinished,
+  homeUrl,
+}: SessionEndProps) {
   const redirect = ending?.redirectUrl ?? null;
   const [asking, setAsking] = useState(false);
 
@@ -53,7 +65,7 @@ export function SessionEnd({ ending, quit = false, deletionRequested = false, on
           {quit ? "You quit this study" : screenout ? "Thank you" : "Study Complete!"}
         </h2>
         {quit ? (
-          <p className="mt-2 text-sm text-muted-foreground">Thank you for your time. You can close this page.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Thank you for your time.</p>
         ) : ending?.message ? (
           <div className="template-markdown mt-2 text-sm text-muted-foreground">
             <TemplateMarkdown rendered={ending.message} />
@@ -96,6 +108,17 @@ export function SessionEnd({ ending, quit = false, deletionRequested = false, on
               Ask to delete my answers
             </button>
           )
+        )}
+        {/* Done here: where to go next, unless a redirect takes the coder back (e.g. to a panel) */}
+        {!redirect && !preview && (
+          <div className="mt-6 flex w-full flex-col items-center gap-2 border-t border-border/60 pt-4 text-sm text-muted-foreground">
+            <p>You can close this window now.</p>
+            {homeUrl && (
+              <a href={homeUrl} className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+                Go to your studies <ArrowRight className="h-4 w-4" />
+              </a>
+            )}
+          </div>
         )}
         {onRequestDeletion && (
           <QuitDialog choice={asking ? "delete" : null} onClose={() => setAsking(false)} onQuit={() => onRequestDeletion()} />
