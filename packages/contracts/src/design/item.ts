@@ -5,7 +5,7 @@ import { UnitLayoutSchema } from "./layout.js";
 import { outputText, parseTemplate, referenceValue, type ReferenceScope } from "./references.js";
 import { UnitLoopDistributionShape } from "./unitLoop.js";
 import { SessionItemSchema, type SessionItem } from "./session.js";
-import { UserVariableTypeSchema, UnitVariableTypeSchema } from "./variableTypes.js";
+import { ComputedVariableSchema, UserVariableTypeSchema, UnitVariableTypeSchema } from "./variableTypes.js";
 
 const ItemBaseSchema = z.object({
   name: SafeNameSchema,
@@ -55,6 +55,19 @@ export const EndItemSchema = ItemBaseSchema.extend({
   ),
 });
 export type EndItem = z.infer<typeof EndItemSchema>;
+
+/**
+ * A computed variable: a value the study works out itself, not asked. Its
+ * `name` is the variable's name (`$var.<name>`); stored like an answer.
+ * `variable.type`: `random` (a random condition, drawn by the server when
+ * the coder reaches it; optionally linked to a set column of the units).
+ * Coder level only (not inside a unit loop).
+ */
+export const ComputedItemSchema = ItemBaseSchema.extend({
+  type: z.literal("computed"),
+  variable: ComputedVariableSchema,
+});
+export type ComputedItem = z.infer<typeof ComputedItemSchema>;
 
 /** The deployment settings end items send coders to (`redirectSetting`), by name. */
 export function redirectSettings(items: readonly unknown[]): string[] {
@@ -165,6 +178,7 @@ export type UnitLoopItem = z.infer<typeof UnitLoopItemSchema>;
  */
 export type TopLevelItem =
   | TopLevelQuestionItem
+  | ComputedItem
   | UnitLoopItem
   | EndItem
   | SessionItem
@@ -187,6 +201,7 @@ export const TopLevelConditionItemSchema: z.ZodType<Extract<TopLevelItem, { type
 export const TopLevelItemSchema: z.ZodType<TopLevelItem> = z.lazy(() =>
   z.union([
     TopLevelQuestionItemSchema,
+    ComputedItemSchema,
     UnitLoopItemSchema,
     EndItemSchema,
     SessionItemSchema,
@@ -213,8 +228,7 @@ export function itemName(item: DesignItem): string | undefined {
  * The unit loops of a codebook in document order, with their key: their
  * position (`"1"`, `"2"`, ...). The key identifies a loop within one
  * design version (the coder API's `/loop/:loop`, progress, distribution
- * state); a coder's routing is stored by branch (`branchFingerprint`), so
- * reordering or relabelling loops moves nobody.
+ * state).
  */
 export function unitLoops(items: readonly unknown[]): { key: string; loop: UnitLoopItem }[] {
   const loops: { key: string; loop: UnitLoopItem }[] = [];

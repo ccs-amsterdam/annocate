@@ -4,16 +4,13 @@ import { loopShareColumns } from "./assignment.js";
 
 const loop = {
   type: "unit_loop",
-  units: [
-    { when: { script: "$var.group.is('a') && $var.slot.is('1')" } },
-    { filter: { column: "parts", only: ["a"] }, overlap: { placement: "disabled" } },
-  ],
+  units: { filter: { column: "parts", only: ["a"] }, overlap: { placement: "disabled" } },
   layout: { template: "{{$unit.headline}} as {{$var.role.label}}" },
   children: [
     { type: "question", name: "topic", variable: { type: "nominal", question: "Topic of {{$unit.text}}?", options: [{ value: "a" }] } },
     {
       type: "show_if",
-      condition: { script: "$var.topic.is('a') && $var.age.gt(18)" },
+      condition: { script: "$var.topic.is('a') && $var.age.gt(18) && $var.group.is('a') && $var.slot.is('1')" },
       children: [{ type: "question", name: "tone", variable: { type: "nominal", question: "Tone?", options: [{ value: "x" }] } }],
     },
   ],
@@ -24,7 +21,7 @@ describe("what unit loops refer to", () => {
     expect(shownUnitFields([loop]).sort()).toEqual(["headline", "text"]);
   });
 
-  it("lists the coder-level questions a loop depends on: in its layout, conditions and branches, not its own questions", () => {
+  it("lists the coder-level questions a loop depends on: in its layout and conditions, not its own questions", () => {
     expect(loopDependencies([loop]).get("1")?.sort()).toEqual(["age", "group", "role", "slot"]);
   });
 });
@@ -34,7 +31,7 @@ describe("fieldUsage", () => {
     const items = [
       {
         type: "unit_loop",
-        units: [{ gold: { placement: "last", questions: ["topic"] } }],
+        units: { gold: { placement: "last", questions: ["topic"] } },
         layout: { template: "$unit.title" },
         children: [
           { type: "show_if", condition: { script: "$unit.year > 2000" }, children: [
@@ -52,9 +49,9 @@ describe("fieldUsage", () => {
 describe("set columns", () => {
   const items = [
     { type: "session", params: [], coders: { column: "coder" }, conditions: [{ name: "framing", values: ["a", "b"], assign: "link", units: "framing" }] },
-    { type: "unit_loop", units: [{}], layout: { template: "" }, children: [] },
-    { type: "show_if", condition: { script: "true" }, children: [{ type: "question", name: "set", variable: { type: "random_condition", draw: "balanced", units: "set" } }] },
-    { type: "unit_loop", units: [{ filter: { column: "phase", except: ["pre"] } }], layout: { template: "" }, children: [] },
+    { type: "unit_loop", layout: { template: "" }, children: [] },
+    { type: "show_if", condition: { script: "true" }, children: [{ type: "computed", name: "set", variable: { type: "random", draw: "balanced", units: "set" } }] },
+    { type: "unit_loop", units: { filter: { column: "phase", except: ["pre"] } }, layout: { template: "" }, children: [] },
   ];
 
   it("are the coder column, linked conditions' and filters' columns: used, and declared as set fields", () => {

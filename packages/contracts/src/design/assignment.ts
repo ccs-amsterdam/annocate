@@ -10,7 +10,7 @@ import { sessionColumns, sessionItem } from "./session.js";
 export interface ShareColumn {
   name: string;
   column: string;
-  /** A random condition (coder-level question), assigned when reached: else a session value. */
+  /** A computed item (a random value), drawn when reached: else a session value. */
   random?: boolean;
 }
 
@@ -33,7 +33,7 @@ export function loopShareColumns(items: readonly unknown[]): Map<string, ShareCo
         out.set(String(loops), [...base, ...random]);
         continue;
       }
-      if (it.variable?.type === "random_condition" && typeof it.variable.units === "string" && typeof it.name === "string") {
+      if (it.type === "computed" && it.variable?.type === "random" && typeof it.variable.units === "string" && typeof it.name === "string") {
         if (!random.some((r) => r.name === it.name)) random.push({ name: it.name, column: it.variable.units, random: true });
       }
       if (it.type === "show_if") walk(it.children);

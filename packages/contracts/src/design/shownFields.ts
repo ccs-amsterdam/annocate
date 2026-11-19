@@ -7,7 +7,7 @@ import { allTemplateReferences } from "./templateBlocks.js";
 
 /**
  * Every reference a unit loop makes: in its layout (with its snippets),
- * question texts, conditions and end messages, and its branches' `when`. References are always literal (validation refuses
+ * question texts, conditions and end messages. References are always literal (validation refuses
  * `$unit[...]`), so the list is complete. Span questions' fields go to
  * `spanFields`.
  */
@@ -18,9 +18,6 @@ function loopReferences(loop: UnitLoopItem, spanFields?: (field: string) => void
   const script = (source: unknown) => typeof source === "string" && refs.push(...extractReferences(source).references);
 
   text(loop.layout?.template);
-  for (const branch of Array.isArray(loop.units) ? loop.units : []) {
-    script(branch?.when?.script);
-  }
   const walk = (list: unknown) => {
     if (!Array.isArray(list)) return;
     for (const raw of list) {
@@ -109,13 +106,12 @@ export function fieldUsage(items: readonly unknown[]): Map<string, FieldUse> {
     const counts = new Map<string, number>();
     for (const ref of loopReferences(loop, (f) => use(f, "shown"))) if (ref.ns === "unit") counts.set(ref.path[0], (counts.get(ref.path[0]) ?? 0) + 1);
     for (const [field, n] of counts) use(field, n > scriptCount(loop, field) ? "shown" : "sent");
-    for (const branch of Array.isArray(loop.units) ? loop.units : []) {
-      if (branch?.filter?.column) use(branch.filter.column, "server");
-      for (const q of branch.gold?.questions ?? []) use(goldColumn(q), "server");
-      for (const q of branch.practice?.questions ?? []) {
-        use(practiceColumn(q), "server");
-        use(practiceMessageColumn(q), "server");
-      }
+    const units = loop.units;
+    if (units?.filter?.column) use(units.filter.column, "server");
+    for (const q of units?.gold?.questions ?? []) use(goldColumn(q), "server");
+    for (const q of units?.practice?.questions ?? []) {
+      use(practiceColumn(q), "server");
+      use(practiceMessageColumn(q), "server");
     }
   }
   // The set columns the session's units come from
@@ -136,11 +132,10 @@ export function designSetColumns(items: readonly unknown[]): string[] {
   const walk = (list: unknown) => {
     for (const raw of Array.isArray(list) ? list : []) {
       const it = raw as { type?: unknown; variable?: { type?: unknown; units?: unknown }; children?: unknown; units?: unknown } | null;
-      if (it?.variable?.type === "random_condition" && typeof it.variable.units === "string") columns.add(it.variable.units);
+      if (it?.type === "computed" && it.variable?.type === "random" && typeof it.variable.units === "string") columns.add(it.variable.units);
       if (it?.type === "unit_loop") {
-        for (const b of Array.isArray(it.units) ? (it.units as { filter?: { column?: unknown } }[]) : []) {
-          if (typeof b?.filter?.column === "string") columns.add(b.filter.column);
-        }
+        const column = (it.units as { filter?: { column?: unknown } } | undefined)?.filter?.column;
+        if (typeof column === "string") columns.add(column);
       }
       walk(it?.children);
     }
@@ -149,13 +144,12 @@ export function designSetColumns(items: readonly unknown[]): string[] {
   return [...columns];
 }
 
-/** How often a loop's scripts (branch and condition) refer to `$unit.<field>`. */
+/** How often a loop's scripts (its conditions) refer to `$unit.<field>`. */
 function scriptCount(loop: UnitLoopItem, field: string): number {
   let n = 0;
   const count = (script: unknown) => {
     for (const ref of extractReferences(String(script ?? "")).references) if (ref.ns === "unit" && ref.path[0] === field) n++;
   };
-  for (const branch of Array.isArray(loop.units) ? loop.units : []) count(branch?.when?.script);
   const walk = (list: unknown) => {
     if (!Array.isArray(list)) return;
     for (const raw of list) {

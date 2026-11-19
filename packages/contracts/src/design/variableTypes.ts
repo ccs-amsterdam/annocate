@@ -130,17 +130,16 @@ export const ConfirmTypeSchema = VariableBaseSchema.extend({
 });
 
 /**
- * An "auto" variable: assigned rather than asked, e.g. an experimental
- * condition. Assigned once, on the server, and never changed afterwards.
- * Values a link brings (link and URL parameters) are session parameters
- * instead (`$session`, the Session item).
+ * A random condition (a `computed` item's variable, item.ts): drawn rather
+ * than asked, on the server, once, and never changed afterwards. Values a
+ * link brings are assigned conditions instead (`session.conditions`).
  *
  * - `random`:    a (weighted) random draw from `options`
  * - `balanced`:  the option fewest coders have so far
  */
-export const RandomConditionTypeSchema = z
+export const RandomVariableSchema = z
   .object({
-    type: z.literal("random_condition"),
+    type: z.literal("random"),
     draw: z.enum(["random", "balanced"]),
     /** The possible values. Optional with `units`: then the column's values (its sets), whatever they are. */
     options: z.array(NominalOptionSchema.extend({ weight: z.number().positive().optional() })).min(1, "List at least one value").optional(),
@@ -159,11 +158,15 @@ export const RandomConditionTypeSchema = z
     stratify: z.array(z.string().min(1).max(80)).max(5).optional(),
   })
   .superRefine((v, ctx) => {
-    if (!v.options && !v.units) ctx.addIssue({ code: "custom", message: "List the values, or link the condition to a set column of the units", path: ["options"] });
+    if (!v.options && !v.units) ctx.addIssue({ code: "custom", message: "List the values, or link the variable to a set column of the units", path: ["options"] });
     if (v.stratify?.length && v.draw !== "balanced") ctx.addIssue({ code: "custom", message: "Only a balanced draw can be balanced within groups", path: ["stratify"] });
     nominalValueErrors(v.options ?? []).forEach((message) => ctx.addIssue({ code: "custom", message, path: ["options"] }));
   });
-export type RandomConditionType = z.infer<typeof RandomConditionTypeSchema>;
+export type RandomVariable = z.infer<typeof RandomVariableSchema>;
+
+/** What a `computed` item computes (item.ts): a random condition (later also a formula). */
+export const ComputedVariableSchema = z.discriminatedUnion("type", [RandomVariableSchema]);
+export type ComputedVariable = z.infer<typeof ComputedVariableSchema>;
 
 // ---- annotation-in-unit answer types (only valid inside a unit loop) ----
 
@@ -216,7 +219,6 @@ export const UserVariableTypeSchema = z.discriminatedUnion("type", [
   ScaleTypeSchema,
   AnnotinderTypeSchema,
   ConfirmTypeSchema,
-  RandomConditionTypeSchema,
   UnspecifiedTypeSchema,
 ]);
 export type UserVariableType = z.infer<typeof UserVariableTypeSchema>;
@@ -239,4 +241,5 @@ export const UnitVariableTypeSchema = z.discriminatedUnion("type", [
 ]);
 export type UnitVariableType = z.infer<typeof UnitVariableTypeSchema>;
 
-export type AnyVariableType = UnitVariableType | UserVariableType;
+/** Any variable an item produces: a question's answer type, or a computed item's (`computed`). */
+export type AnyVariableType = UnitVariableType | UserVariableType | ComputedVariable;

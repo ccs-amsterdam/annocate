@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
-import { ConditionSchema } from "./condition.js";
 import type { AnyVariableType } from "./variableTypes.js";
 import { SetGroupNameSchema } from "../sets.js";
 
@@ -173,16 +172,12 @@ export const CriteriaSchema = z
 export type Criteria = z.infer<typeof CriteriaSchema>;
 
 /**
- * A loop's branch (docs/plans/unit-assignment.md §3): which of the
- * session's units the loop hands out and how. `{}`: all of them, once.
+ * How a loop hands out units (docs/plans/unit-assignment.md §3): which of
+ * the session's units (a filter), and how (criteria, special units). `{}`
+ * or absent: all the session's units, once.
  */
-export const UnitBranchSchema = z
+export const LoopUnitsSchema = z
   .object({
-    /**
-     * Absent = always matches. The first matching branch wins. Evaluated by
-     * the client, which tells the server the branch it chose.
-     */
-    when: ConditionSchema.optional(),
     filter: UnitFilterSchema.optional(),
     criteria: CriteriaSchema.optional(),
     overlap: OverlapSettingsSchema.optional(),
@@ -193,10 +188,13 @@ export const UnitBranchSchema = z
     message: "Spreading special units in a shared queue needs a maximum of units per coder (to know where to put them)",
     path: ["criteria", "unitsPerCoder", "max"],
   });
-export type UnitBranch = z.infer<typeof UnitBranchSchema>;
+export type LoopUnits = z.infer<typeof LoopUnitsSchema>;
 
-/** A branch's queue settings with their defaults filled in (null: no criteria, the coder codes all their units). */
-export function sharedDefaults(b: UnitBranch) {
+/** A loop's units settings (`{}` when absent: all the session's units, once). */
+export const loopUnits = (loop: { units?: LoopUnits }): LoopUnits => loop.units ?? {};
+
+/** A loop's queue settings with their defaults filled in (null: no criteria, the coder codes all their units). */
+export function sharedDefaults(b: LoopUnits) {
   const c = b.criteria;
   if (!c) return null;
   return {
@@ -210,26 +208,8 @@ export function sharedDefaults(b: UnitBranch) {
 
 /** Loop-level distribution settings, shared by `unit_loop` items. */
 export const UnitLoopDistributionShape = {
-  /** First matching branch is used for a coder (and sticks, even if their answers change later). `[{}]`: all the session's units. */
-  units: z.array(UnitBranchSchema).min(1, "Which units coders get isn't set yet: add a branch (`{}`: all the session's units)"),
+  /** Which of the session's units the loop hands out and how. Absent: all of them, once. */
+  units: LoopUnitsSchema.optional(),
   /** `random`: each coder gets the units (and the overlap units) in their own random order. Default `sequential`: the units' order. */
   order: z.enum(["sequential", "random"]).optional(),
 };
-
-/**
- * What a coder's routing in a loop is stored by: the branch with the
- * branches before it, in full (conditions, filters, criteria, placements),
- * not where the loop is or what it is called. A coder keeps their branch
- * while these are unchanged: a changed branch, or a changed branch before
- * it (which could now be the one taken), routes them again. Another loop
- * only shares the routing if its branches up to this one are the same, so
- * a branch is never taken without its conditions (and those before it)
- * having been evaluated.
- */
-export function branchFingerprint(branches: readonly UnitBranch[], index: number): string {
-  const what = JSON.stringify(branches.slice(0, index + 1));
-  // FNV-1a, 32 bits: short keys for the stored routing.
-  let h = 0x811c9dc5;
-  for (let i = 0; i < what.length; i++) h = Math.imul(h ^ what.charCodeAt(i), 0x01000193);
-  return `b-${(h >>> 0).toString(36)}`;
-}

@@ -15,14 +15,8 @@ import {
 /** The most units handed out (and, in a shared queue, leased) to a coder at once. */
 export const MAX_UNIT_BATCH = 20;
 
-/**
- * Query of `GET /loop/:loop/next`: the branch of the loop's `units` the
- * client chose (by evaluating their conditions; the server decides the
- * set). Needed only until the coder is routed in the loop; a loop with one
- * branch without a condition needs none.
- */
+/** Query of `GET /loop/:loop/next`. */
 export const NextUnitQuerySchema = z.object({
-  branch: z.coerce.number().int().min(0).optional(),
   /** How many of the coder's next units (a batch): the client asks again before it runs out. */
   count: z.coerce.number().int().min(1).max(MAX_UNIT_BATCH).default(1),
 });
@@ -79,12 +73,12 @@ export const coderEndpoints = {
     response: z.void(),
   },
   /**
-   * The coder reached an `auto` question (in the flow of the codebook): the
-   * server assigns its value now, once (random or balanced, counting only
+   * The coder reached a computed item (in the flow of the codebook): the
+   * server computes its value now, once (random or balanced, counting only
    * coders who reached it; stratified by the answers saved so far), and
    * returns it. Reached again: the same value.
    */
-  assignCondition: { method: "POST", path: "/variables/condition/:name", request: z.void(), response: z.object({ value: VariableValueSchema }) },
+  computeVariable: { method: "POST", path: "/variables/computed/:name", request: z.void(), response: z.object({ value: VariableValueSchema }) },
   /** The coder reached an `end` item: the session is over (screened out or complete). */
   endSession: { method: "POST", path: "/end", request: EndSessionSchema, response: EndSessionResponseSchema },
   /** Goes back after finishing (within `reopenUntil`): the session is open again. */

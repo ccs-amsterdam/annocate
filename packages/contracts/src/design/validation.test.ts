@@ -11,7 +11,7 @@ function questionVar(name: string, variable: object = confirmVariable): TopLevel
   return { type: "question", name, variable } as TopLevelQuestionItem & InLoopQuestionItem;
 }
 function unitLoop(name: string, children: InLoopItem[], template = "", snippets?: Record<string, string>): TopLevelItem {
-  return { type: "unit_loop", label: name, units: [{}], layout: { template, snippets }, children };
+  return { type: "unit_loop", label: name, layout: { template, snippets }, children };
 }
 function topCondition(name: string, children: TopLevelItem[], condition: Condition = { script: "true" }): TopLevelItem {
   return { type: "show_if", label: name, condition, children };
@@ -42,46 +42,30 @@ describe("validateDesignItems", () => {
     expect(messages(items)).toEqual(["Question 'age' has no answer type yet: choose one", "Question 'topic' has no answer type yet: choose one"]);
   });
 
-  it("checks that loop branches refer to preceding coder variables", () => {
-    const slot = questionVar("slot", { type: "random_condition", draw: "balanced", options: [{ value: "1" }, { value: "2" }] });
+  it("checks a loop's agreement question", () => {
     const loop = (units: unknown): TopLevelItem =>
       ({ type: "unit_loop", label: "loop", units, layout: { template: "" }, children: [questionVar("q1", select(["a", "b"])), questionVar("c1")] }) as TopLevelItem;
-
-    const valid: TopLevelItem[] = [
-      slot,
-      loop([
-        { when: { script: `$var.slot.isAny("1", "2")` }, filter: { column: "phase", only: ["post"] }, overlap: { placement: "first" } },
-        { criteria: { until: { agree: 2, on: "q1" }, codersPerUnit: { max: 4 } } },
-      ]),
-    ];
+    const valid = [loop({ filter: { column: "phase", only: ["post"] }, criteria: { until: { agree: 2, on: "q1" }, codersPerUnit: { max: 4 } }, overlap: { placement: "first" } })];
     expect(validateDesignItems(valid)).toEqual([]);
     expect(() => DesignItemsSchema.parse(valid)).not.toThrow();
-
-    const when = (value: string) => ({ script: `$var.slot.is("${value}")` });
-    // variable defined after the loop
-    expect(messages([loop([{ when: when("1") }]), slot])).toEqual(["$var.slot.is: 'slot' is asked after this point"]);
-    expect(messages([slot, loop([{ when: when("3") }])])).toEqual([`"3" is not an answer option of "slot" ("1", "2")`]);
-    // a question of the loop itself, or $unit, can't route
-    expect(messages([slot, loop([{ when: { script: "$var.q1.answered" } }])])).toEqual([
-      "$var.q1.answered: branches can only use coder-level questions from before the loop",
-    ]);
-    expect(messages([slot, loop([{ when: { script: "$unit.x > 1" } }])])).toEqual(["$unit.x: branches can only use coder-level $var and $session references"]);
-    expect(messages([slot, loop([{ criteria: { until: { agree: 2, on: "nope" }, codersPerUnit: { max: 3 } } }])])).toEqual([
+    expect(messages([loop({ criteria: { until: { agree: 2, on: "nope" }, codersPerUnit: { max: 3 } } })])).toEqual([
       "Agreement question 'nope' is not a question in this loop",
     ]);
-    expect(messages([slot, loop([{ criteria: { until: { agree: 2, on: "c1" }, codersPerUnit: { max: 3 } } }])])).toEqual([
+    expect(messages([loop({ criteria: { until: { agree: 2, on: "c1" }, codersPerUnit: { max: 3 } } })])).toEqual([
       `Agreement needs a question with one categorical answer (nominal without multiple answers, ordinal or swipe); "c1" is a confirm question`,
     ]);
+    // Branches are gone: a list of settings is not a loop's units
+    expect(DesignItemsSchema.safeParse([loop([{}])]).success).toBe(false);
   });
 
   it("requires the most coders per unit with an agreement rule", () => {
-    const items = [{ type: "unit_loop", label: "loop", units: [{ criteria: { until: { agree: 2, on: "q1" } } }], layout: { template: "" }, children: [questionVar("q1")] }];
+    const items = [{ type: "unit_loop", label: "loop", units: { criteria: { until: { agree: 2, on: "q1" } } }, layout: { template: "" }, children: [questionVar("q1")] }];
     expect(() => DesignItemsSchema.parse(items)).toThrow(/most coders per unit when coding until coders agree/);
   });
 
-  it("checks a branch's filter and criteria", () => {
-    const loop = (branch: object) => [
-      { type: "unit_loop", label: "loop", units: [branch], layout: { template: "" }, children: [questionVar("q1", select(["a", "b"]))] },
+  it("checks a loop's filter and criteria", () => {
+    const loop = (units: object) => [
+      { type: "unit_loop", label: "loop", units, layout: { template: "" }, children: [questionVar("q1", select(["a", "b"]))] },
     ];
     expect(messages(loop({}))).toEqual([]);
     expect(messages(loop({ criteria: { codersPerUnit: { min: 3, max: 2 } } }))).toEqual([
@@ -101,24 +85,32 @@ describe("validateDesignItems", () => {
     expect(messages(loop({ mode: "all" }))).toEqual([]); // unknown keys are dropped
   });
 
-  it("checks random conditions linked to a set column", () => {
-    const random = (extra: object) => questionVar("set", { type: "random_condition", draw: "balanced", ...extra });
+  it("checks computed items: outside loops, linked to a set column, a column each", () => {
+    const random = (extra: object, name = "set") => ({ type: "computed", name, variable: { type: "random", draw: "balanced", ...extra } });
     const loop = unitLoop("loop", [questionVar("q1")]);
     expect(messages([random({ units: "set" }), loop])).toEqual([]);
-    expect(messages([random({})])).toEqual(["List the values, or link the condition to a set column of the units"]);
+    expect(messages([random({ options: [{ value: "a" }] }), loop])).toEqual([]);
+    expect(messages([random({})])).toEqual(["List the values, or link the variable to a set column of the units"]);
+    // Usable as $var.<name> after it
+    const after = topCondition("c", [loop], { script: `$var.set.is("a")` });
+    expect(messages([random({ options: [{ value: "a" }, { value: "b" }] }), after])).toEqual([]);
+    expect(messages([after, random({ options: [{ value: "a" }] })])).toEqual(["$var.set.is: 'set' is asked after this point"]);
+    // Not in a loop
+    expect(messages([unitLoop("loop", [questionVar("q1"), random({ options: [{ value: "a" }] }, "inner") as unknown as InLoopItem])])).toContain(
+      "Computed item 'inner' can only be used outside a unit loop",
+    );
     // A loop before it doesn't use it: a warning
     expect(validateDesignItems([loop, random({ units: "set" })])).toEqual([
-      expect.objectContaining({ warning: true, message: expect.stringContaining("comes before random condition 'set'") }),
+      expect.objectContaining({ warning: true, message: expect.stringContaining("comes before computed item 'set'") }),
     ]);
     const session = { type: "session", params: [], coders: { column: "set" } };
     expect(messages([session, random({ units: "set" })])).toEqual(["Column 'set' already selects units for the coders: use a column each"]);
     const named = { type: "session", params: [], conditions: [{ name: "set", values: ["a"], assign: "link" }] };
-    expect(messages([named, random({ units: "other" })])).toEqual(["Random condition 'set' selects units: its name can't also be a session value"]);
-    // One column per condition: drawn independently, two would rarely leave a session any units
+    expect(messages([named, random({ units: "other" })])).toEqual(["Computed item 'set' selects units: its name can't also be a session value"]);
+    // One value per column: drawn independently, two would rarely leave a session any units
     const assigned = { type: "session", params: [], conditions: [{ name: "framing", values: "free", assign: "random", units: "set" }] };
     expect(messages([assigned, random({ units: "set" })])).toEqual(["Column 'set' already selects units for condition 'framing': use a column each"]);
-    const second = questionVar("other", { type: "random_condition", draw: "random", units: "set" });
-    expect(messages([random({ units: "set" }), second])).toEqual(["Column 'set' already selects units for random condition 'set': use a column each"]);
+    expect(messages([random({ units: "set" }), random({ units: "set" }, "other")])).toEqual(["Column 'set' already selects units for computed item 'set': use a column each"]);
   });
 });
 
@@ -254,7 +246,6 @@ describe("validateDesignItems (more)", () => {
       {
         type: "unit_loop",
         label: "empty_loop",
-        units: [{}],
         layout: { template: "" },
         children: [],
       },
@@ -267,14 +258,12 @@ describe("validateDesignItems (more)", () => {
       {
         type: "unit_loop",
         label: "outer",
-        units: [{}],
         layout: { template: "" },
         children: [
           {
             type: "unit_loop",
             label: "inner",
-            units: [{}],
-            layout: { template: "" },
+                layout: { template: "" },
             children: [questionVar("q1")],
           },
         ],
@@ -557,9 +546,9 @@ describe("availableQuestions", () => {
 });
 
 describe("practice and gold units", () => {
-  const loop = (branch: object, template = "$unit.text") => ({
+  const loop = (units: object, template = "$unit.text") => ({
     type: "unit_loop",
-    units: [{ overlap: { placement: "spread" }, ...branch }],
+    units: { overlap: { placement: "spread" }, ...units },
     layout: { template },
     children: [questionVar("sentiment", select(["pos", "neg"])), questionVar("note", { type: "unspecified" })],
   });

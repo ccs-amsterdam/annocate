@@ -147,8 +147,6 @@ export const CoderErrorCodeSchema = z.enum([
   "transfer_invalid",
   /** A new design version was deployed since the session was loaded: load it again. */
   "codebook_changed",
-  /** `GET /loop/:loop/next` needs the client's branch choice (`branch`), see NextUnitQuerySchema. */
-  "branch_required",
   /** The session has no units in this loop: it started before the coder column had its values. */
   "not_assigned",
   /** The coder reached an `end` item or quit: no more units or answers. */
