@@ -42,7 +42,7 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
     items: [
       {
         type: "unit_loop",
-        units: [{ overlap: { placement: "first" } }],
+        units: { overlap: { placement: "first" } },
         layout: { template: "$unit.text" },
         children: [{ type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] } }],
       },

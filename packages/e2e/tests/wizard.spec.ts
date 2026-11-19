@@ -65,6 +65,8 @@ test("annotation with an experiment: a set of units per condition, questions bef
     children?: { name: string; variable: { type: string; question?: string } }[];
   }[];
   expect(items.map((i) => i.name ?? i.type)).toEqual(["condition", "age", "unit_loop", "comments"]);
+  // The experimental groups: a computed item (a random value) linked to the condition's set column
+  expect(items[0]).toMatchObject({ type: "computed", variable: { type: "random", draw: "balanced", units: "condition" } });
   expect(items[2].children!.map((c) => [c.name, c.variable])).toEqual([
     ["how_credible_is_it", { type: "unspecified", question: "How credible is it?" }],
     ["topic", { type: "unspecified" }],
@@ -130,14 +132,12 @@ test("crowd coding with an overlap; the loop's units are set by the wizard", asy
 
   const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "Crowd pilot")!;
   const [draft] = await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`);
-  const [loop] = (await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${draft.id}`)).items as { units: unknown[]; layout: { template: string } }[];
-  expect(loop.units).toEqual([
-    {
-      criteria: { codersPerUnit: { min: 2, max: 2 } },
-      overlap: { placement: "rate", every: 10, rest: "end" },
-      gold: { placement: "rate", every: 10, questions: ["sentiment"] },
-    },
-  ]);
+  const [loop] = (await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${draft.id}`)).items as { units: unknown; layout: { template: string } }[];
+  expect(loop.units).toEqual({
+    criteria: { codersPerUnit: { min: 2, max: 2 } },
+    overlap: { placement: "rate", every: 10, rest: "end" },
+    gold: { placement: "rate", every: 10, questions: ["sentiment"] },
+  });
   expect(loop.layout.template).toBe("# $unit.headline\n\n$unit.text");
   const [group] = await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`);
   // The overlap: everyone's, in a set column of its own (the queue is all units)

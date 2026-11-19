@@ -19,10 +19,7 @@ test("writing a codebook in the editor, as the help describes it, and saving it"
   await page.getByRole("button", { name: /Add item/ }).click();
   await page.getByRole("button", { name: /^Unit Loop/ }).click();
   await page.getByPlaceholder("e.g. News items").fill("News articles");
-  // A new loop's units are to specify: every coder codes every unit
-  await expect(page.getByText("to specify")).toHaveCount(1);
-  await page.getByRole("tab", { name: /Units/ }).click();
-  await page.getByRole("button", { name: "Code the session's units" }).click();
+  // A new loop hands out all the session's units, once: nothing to specify
   await expect(page.getByText("to specify")).toHaveCount(0);
 
   // The first question, inside the loop: the row's "+", then where, then what
@@ -42,6 +39,6 @@ test("writing a codebook in the editor, as the help describes it, and saving it"
   const [saved] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
   const { items } = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${saved.id}`);
   expect(items).toMatchObject([
-    { type: "unit_loop", label: "News articles", units: [{}], children: [{ name: "topic", variable: { type: "nominal", question: "What is this article mainly about?" } }] },
+    { type: "unit_loop", label: "News articles", children: [{ name: "topic", variable: { type: "nominal", question: "What is this article mainly about?" } }] },
   ]);
 });

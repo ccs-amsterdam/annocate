@@ -9,7 +9,7 @@ import { api, question } from "./helpers";
 
 const loop = (overlap?: unknown) => ({
   type: "unit_loop",
-  units: [overlap ? { overlap } : {}],
+  units: overlap ? { overlap } : {},
   layout: { template: "$unit.text" },
   children: [{ type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] } }],
 });
@@ -89,7 +89,7 @@ test("two loops filter one set column: first the pre units, then the post units"
   const filtered = (only: string, name: string, text: string) => ({
     ...loop(),
     label: name,
-    units: [{ filter: { column: "phase", only: [only] } }],
+    units: { filter: { column: "phase", only: [only] } },
     children: [{ type: "question", name, variable: { type: "nominal", question: text, options: [{ value: "yes" }, { value: "no" }] } }],
   });
   const design = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {

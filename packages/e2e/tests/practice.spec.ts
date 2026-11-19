@@ -40,12 +40,10 @@ test("a practice question gives feedback when wrong, answered again until right;
     items: [
       {
         type: "unit_loop",
-        units: [
-          {
-            practice: { placement: "first", questions: ["topic"] },
-            gold: { placement: "last", questions: ["topic"], health: { start: 1, wrong: -1, end: "low_quality" } },
-          },
-        ],
+        units: {
+          practice: { placement: "first", questions: ["topic"] },
+          gold: { placement: "last", questions: ["topic"], health: { start: 1, wrong: -1, end: "low_quality" } },
+        },
         layout: { template: "$unit.text" },
         children: [{ type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] } }],
       },
@@ -104,7 +102,7 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
       {
         type: "unit_loop",
         name: "articles",
-        units: [{ gold: { placement: "last", questions: ["topic"] } }],
+        units: { gold: { placement: "last", questions: ["topic"] } },
         layout: { template: "$unit.text" },
         children: [{ type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] } }],
       },
