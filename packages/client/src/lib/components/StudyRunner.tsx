@@ -457,7 +457,8 @@ function StudyRunnerContent({
   const slideClass = navDirection === "next" ? "animate-slide-in-right" : "animate-slide-in-left";
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-background">
+    // A container: the layout follows the coding area's width, not the window's (a phone-sized preview on a desktop)
+    <div className="@container flex h-full w-full flex-col overflow-hidden bg-background">
       {rightFlash && (
         <div role="status" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
           <div className="flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-lg font-semibold text-white shadow-lg animate-in fade-in zoom-in-90">
@@ -523,8 +524,8 @@ function StudyRunnerContent({
           {/* A size container: the answer pane's max height is a share of this area (cqh). On a tall
               desktop screen it has a max height and is centred, so the answers stay near the unit. */}
           {withSwipe(
-            <div className="flex min-h-0 flex-1 flex-col lg:p-6">
-            <SwipeSurface className="relative flex w-full flex-1 flex-col overflow-hidden [container-type:size] lg:mx-auto lg:my-auto lg:max-h-[56rem] lg:max-w-3xl lg:rounded-2xl lg:border lg:border-border lg:bg-card lg:shadow-sm">
+            <div className="flex min-h-0 flex-1 flex-col @5xl:p-6">
+            <SwipeSurface className="relative flex w-full flex-1 flex-col overflow-hidden [container-type:size] @5xl:mx-auto @5xl:my-auto @5xl:max-h-[56rem] @5xl:max-w-3xl @5xl:rounded-2xl @5xl:border @5xl:border-border @5xl:bg-card @5xl:shadow-sm">
               {/* Scrollable Unit Content (Document). Stable gutter: a scrollbar appearing doesn't move the text. */}
               <div className="subtle-scrollbar flex-1 min-h-[100px] overflow-y-auto overflow-x-hidden p-3 sm:p-5 [scrollbar-gutter:stable]">
                 <div

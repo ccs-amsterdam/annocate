@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { optionLabel, type Option, type SpanSlice } from "@annotinder/contracts";
 import { X } from "lucide-react";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
@@ -6,8 +7,11 @@ import { getCodeButtonStyle } from "../utils/color";
 import { ShortcutBadge } from "./ShortcutBadge";
 
 /**
- * The labels for a new span, right at the selection (on screens from `sm`
- * up; on a phone they are in the docked answer pane, near the thumbs).
+ * The labels for a new span, right at the selection (when the coding area
+ * is at least 42rem wide, as the answer pane's `@2xl`; narrower, as on a
+ * phone or in a phone-sized preview, they are in the docked answer pane,
+ * near the thumbs). The menu is in a portal, outside the coding area's
+ * container, so it measures that area itself.
  * Rendered as a zero-width anchor after the selection's last part. It
  * doesn't take focus or close on clicks elsewhere: coders go on adjusting
  * the selection in the text. Keys (1-9, Esc) are handled by the answer
@@ -26,10 +30,16 @@ export function SpanLabelMenu({
 }) {
   const { theme } = useCoderSettings();
   const isDark = theme === "dark";
+  const [wide, setWide] = useState(false);
+  const measure = (anchor: HTMLSpanElement | null) => {
+    const area = anchor?.closest<HTMLElement>(".\\@container");
+    if (area) setWide(area.clientWidth >= 42 * parseFloat(getComputedStyle(document.documentElement).fontSize));
+  };
+  if (!wide) return <span ref={measure} aria-hidden className="inline-block w-0" />;
   return (
     <Popover open modal={false}>
       <PopoverAnchor asChild>
-        <span aria-hidden className="inline-block h-[1em] w-0 align-text-bottom" />
+        <span ref={measure} aria-hidden className="inline-block h-[1em] w-0 align-text-bottom" />
       </PopoverAnchor>
       <PopoverContent
         side="bottom"
@@ -41,7 +51,7 @@ export function SpanLabelMenu({
         onInteractOutside={(e) => e.preventDefault()}
         // Keep the selection: a click here mustn't start a new one in the text
         onMouseDown={(e) => e.preventDefault()}
-        className="hidden w-auto max-w-[min(28rem,calc(100vw-2rem))] flex-col gap-1.5 p-2 shadow-lg sm:flex"
+        className="flex w-auto max-w-[min(28rem,calc(100vw-2rem))] flex-col gap-1.5 p-2 shadow-lg"
         aria-label={`Label "${slices.map((s) => s.text).join(" … ")}"`}
       >
         <div className="flex items-center justify-between gap-2">

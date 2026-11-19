@@ -161,11 +161,11 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
             </div>
 
             {/* From sm up the labels are at the selection (SpanLabelMenu); on a phone here, near the thumbs */}
-            <p className="hidden text-xs text-muted-foreground sm:block">
+            <p className="hidden text-xs text-muted-foreground @2xl:block">
               Pick a label at the selection{annotation && annotation.options.length > 1 ? `, or press 1 to ${Math.min(9, annotation.options.length)}` : ""}.
             </p>
             {/* Code choices flexing to fill the row without trailing blank space */}
-            <div className="flex flex-wrap items-center gap-2 pt-0.5 sm:hidden">
+            <div className="flex flex-wrap items-center gap-2 pt-0.5 @2xl:hidden">
               {annotation?.options.map((c, idx) => (
                 <button
                   key={c.value}
