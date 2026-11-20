@@ -93,22 +93,32 @@ export function FieldsPanel({ client, fields }: { client: ResearcherApi; fields:
                   <tr key={f.name} className="border-t border-border">
                     <td className="px-2 py-1 font-mono">{f.name}</td>
                     <td className="px-2 py-1">
-                      <select
-                        aria-label={`Type of ${f.name}`}
-                        className="h-7 rounded-md border border-input bg-background px-1.5"
-                        value={f.type}
-                        onChange={(e) =>
-                          put(
-                            fields.map((x) =>
-                              x.name === f.name ? { ...x, type: e.target.value as UnitFieldType } : x,
-                            ),
-                          )
-                        }
-                      >
-                        {TYPES.map((t) => (
-                          <option key={t}>{t}</option>
-                        ))}
-                      </select>
+                      {f.type === "set" ? (
+                        // A set column is made by uploading sets; it can't become another type here
+                        <span
+                          className="inline-flex h-7 items-center px-1.5"
+                          title="A set column: its values are sets of units, made by an upload with a sets column"
+                        >
+                          set
+                        </span>
+                      ) : (
+                        <select
+                          aria-label={`Type of ${f.name}`}
+                          className="h-7 rounded-md border border-input bg-background px-1.5"
+                          value={f.type}
+                          onChange={(e) =>
+                            put(
+                              fields.map((x) =>
+                                x.name === f.name ? { ...x, type: e.target.value as UnitFieldType } : x,
+                              ),
+                            )
+                          }
+                        >
+                          {TYPES.map((t) => (
+                            <option key={t}>{t}</option>
+                          ))}
+                        </select>
+                      )}
                     </td>
                     <td className="px-2 py-1">
                       <span title={use.title} className={`rounded px-1.5 py-0.5 ${use.className}`}>
