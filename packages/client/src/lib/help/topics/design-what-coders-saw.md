@@ -67,7 +67,7 @@ them (see [Resetting answers](changing-a-live-design.md#resetting-answers)).
 ## When a unit is finished
 
 A unit is **finished** for a coder when every question of the loop, in the
-*current* design version, has an answer. Questions a condition hid count as
+_current_ design version, has an answer. Questions a condition hid count as
 answered: they are stored as skipped.
 
 Because "finished" follows the current design version, adding a question to a loop
@@ -79,18 +79,18 @@ or changing conditions or order, leaves finished units finished.
 
 This is a choice with a trade-off: your data stays complete (every finished
 unit has an answer to every question), but adding a question to a running study
-costs coders time. AnnoTinder can't yet add a question *without* reopening
+costs coders time. AnnoTinder can't yet add a question _without_ reopening
 finished units. See
 [Changing a design while coding runs](changing-a-live-design.md).
 
 ## In your download
 
-| File | What it records |
-| --- | --- |
-| `annotations.csv` | Per unit and coder: `unit_version_id` (what they saw), `design_version` (the design version: v<n>, as in `designs/v<n>.json`), `first_answer` and `last_change`, and the answers |
-| `units.csv` | Each unit version that has answers, with the fields as shown. Join on `unit_version_id` |
-| `variables.csv` | Each design version's questions, options and labels. Join on `design_version` |
-| `designs/v<n>.json` | Each design version as a whole (questions, layouts, how units were handed out, session, unit fields), with the AnnoTinder release and commit it ran on |
+| File                | What it records                                                                                                                                                                  |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `annotations.csv`   | Per unit and coder: `unit_version_id` (what they saw), `design_version` (the design version: v<n>, as in `designs/v<n>.json`), `first_answer` and `last_change`, and the answers |
+| `units.csv`         | Each unit version that has answers, with the fields as shown. Join on `unit_version_id`                                                                                          |
+| `variables.csv`     | Each design version's questions, options and labels. Join on `design_version`                                                                                                    |
+| `designs/v<n>.json` | Each design version as a whole (questions, layouts, how units were handed out, session, unit fields), with the AnnoTinder release and commit it ran on                           |
 
 The `_label` columns show the label in the version the answer was given
 under, which is what the coder saw. See [Downloading results](results.md).

@@ -10,12 +10,12 @@ a **value**, which is stored. This is how SPSS and Stata handle categorical
 variables ("value labels"), and how R's factors separate levels from labels.
 It keeps your data stable while the wording coders see can still improve.
 
-| | Label | Value |
-| --- | --- | --- |
-| What it is for | People: coders, and you when you read results | Data: storage, conditions, analysis |
-| Example (nominal) | Human interest story | `human_interest` |
-| Example (ordinal) | Somewhat negative | `2` |
-| Safe to change after coding started? | Yes | No |
+|                                      | Label                                         | Value                               |
+| ------------------------------------ | --------------------------------------------- | ----------------------------------- |
+| What it is for                       | People: coders, and you when you read results | Data: storage, conditions, analysis |
+| Example (nominal)                    | Human interest story                          | `human_interest`                    |
+| Example (ordinal)                    | Somewhat negative                             | `2`                                 |
+| Safe to change after coding started? | Yes                                           | No                                  |
 
 ## Values are data, labels are for people
 
@@ -24,7 +24,7 @@ that works with answers uses the value:
 
 - **The results**: the answer columns hold values. The `_label` columns next
   to them (on by default) add the label the coder saw.
-- **Conditions**: a rule such as *topic is Politics* is stored as a
+- **Conditions**: a rule such as _topic is Politics_ is stored as a
   comparison with the value, `$var.topic.is("politics")`.
 - **Assigned groups and coder routing**: a coder group's condition, such as
   `$var.group.is("treatment")`, compares the value.
@@ -65,7 +65,7 @@ materials.
 
 You can change a label at any time, also after coding started. Earlier
 answers keep their value, so they keep their meaning. The download shows, for
-each answer, the label *in the design version it was given under* (what the
+each answer, the label _in the design version it was given under_ (what the
 coder saw), and `variables.csv` lists every version's labels, so a changed
 label stays traceable.
 
@@ -94,21 +94,21 @@ every value at once.
 > follow the order of the options. Moving an option, or adding one anywhere
 > but at the end, renumbers the options after it: an answer stored as `3` then
 > means something else, although no value disappeared. The deploy dialog
-> warns when an option ends up with another value (*the value 3 was "Agree"
-> and is now "Neutral"*). Add new options at the end, or make a new question.
+> warns when an option ends up with another value (_the value 3 was "Agree"
+> and is now "Neutral"_). Add new options at the end, or make a new question.
 
 ## The deploy warnings
 
 When you deploy, the dialog compares the design draft with the deployed version and
 warns about value changes before you confirm:
 
-| Warning | What it means |
-| --- | --- |
-| *'topic' no longer has the value "eco": earlier answers with it no longer fit.* | An option's value was changed or the option was removed |
-| *'tone' changed from nominal to ordinal: earlier answers no longer fit.* | The question's type changed |
-| *'tone': the value 3 was "Agree" and is now "Neutral": earlier answers 3 will read as "Neutral".* | An option moved to another value, e.g. ordinal options renumbered after a move |
+| Warning                                                                                           | What it means                                                                  |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| _'topic' no longer has the value "eco": earlier answers with it no longer fit._                   | An option's value was changed or the option was removed                        |
+| _'tone' changed from nominal to ordinal: earlier answers no longer fit._                          | The question's type changed                                                    |
+| _'tone': the value 3 was "Agree" and is now "Neutral": earlier answers 3 will read as "Neutral"._ | An option moved to another value, e.g. ordinal options renumbered after a move |
 
-After deploying, AnnoTinder may also tell you that a loop *gained questions*:
+After deploying, AnnoTinder may also tell you that a loop _gained questions_:
 coders get the units they finished back, to answer only the new questions.
 See [Changing a design while coding runs](changing-a-live-design.md).
 

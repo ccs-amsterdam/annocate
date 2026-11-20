@@ -27,7 +27,7 @@ So the layout is a property of the **question**, not of the device:
 
 - **Auto** (the default) picks a layout once, from the question's options,
   and that layout is used everywhere. The editor's **Layout** select shows
-  what Auto picks, for example *Auto (Grid, 2 columns)*.
+  what Auto picks, for example _Auto (Grid, 2 columns)_.
 - A layout you choose yourself is also used everywhere.
 
 See [How answers are laid out](answer-layouts.md) for all layouts.
@@ -39,13 +39,13 @@ picks a layout that fits a small phone (about 360 pixels wide), using at most
 half of its height for the answers, so the unit stays visible above them.
 Larger screens show the same layout, centred.
 
-| Question | What Auto picks |
-| --- | --- |
-| Nominal | A row for 2 or 3 short labels; else a grid of 2 columns, else 1 column, as long as it fits half the screen; else a dropdown |
-| Ordinal | A row for 2 or 3 options; else 1 column (the order reads top to bottom) if it fits; else a compact row of buttons that show the values |
-| Numeric | Buttons for up to 11 values; a slider for a larger range; a number field when there is no minimum or maximum |
-| Scale | A compact row per item |
-| Swipe | The unit is a card to swipe; buttons and arrow keys work too |
+| Question | What Auto picks                                                                                                                        |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Nominal  | A row for 2 or 3 short labels; else a grid of 2 columns, else 1 column, as long as it fits half the screen; else a dropdown            |
+| Ordinal  | A row for 2 or 3 options; else 1 column (the order reads top to bottom) if it fits; else a compact row of buttons that show the values |
+| Numeric  | Buttons for up to 11 values; a slider for a larger range; a number field when there is no minimum or maximum                           |
+| Scale    | A compact row per item                                                                                                                 |
+| Swipe    | The unit is a card to swipe; buttons and arrow keys work too                                                                           |
 
 So a single question never needs scrolling. A scale with many items may;
 then **Continue** scrolls to the first item without an answer, so none is
@@ -58,8 +58,8 @@ of buttons with short labels, but only as a dropdown with long ones.
 
 You can override Auto, for example to keep a 5-point scale in one row even if
 Auto would use a column. If the layout you choose doesn't fit a small phone,
-the editor warns you (*"These options don't fit side by side on a small
-phone"*). The warning is advice: you may accept it if you know your coders
+the editor warns you (_"These options don't fit side by side on a small
+phone"_). The warning is advice: you may accept it if you know your coders
 use larger screens.
 
 Check what coders see in **Preview**, with the phone sizes, including
@@ -110,5 +110,5 @@ buttons) keeps following the coder. See
 ## Further reading
 
 - Couper, M. P., Tourangeau, R., Conrad, F. G., & Crawford, S. D. (2004).
-  What they see is what we get: Response options for web surveys. *Social
-  Science Computer Review*, 22(1), 111-127.
+  What they see is what we get: Response options for web surveys. _Social
+  Science Computer Review_, 22(1), 111-127.

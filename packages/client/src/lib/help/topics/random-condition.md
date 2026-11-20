@@ -13,7 +13,7 @@ flow: drawn at random, or balanced over the values (optionally within
 groups). You then use that value like any other answer: to show different
 questions or texts, or to give each condition its own units.
 
-Use it when the condition should be assigned *after* some questions: a
+Use it when the condition should be assigned _after_ some questions: a
 pre-test, background questions, or to balance groups on earlier answers.
 A condition that should be set when the session starts (by the link, or
 drawn at the start) is an **assigned condition** in **Session**: see
@@ -31,10 +31,10 @@ refer to it, e.g. `group`.
 
 Under **Drawn**, choose how the value is assigned:
 
-| Drawn | The coder gets |
-| --- | --- |
-| **Random** | One of the options, at random. Give options a **weight** to make some more likely: weights 2 and 1 give about two thirds and one third |
-| **Balanced (the value fewest coders have)** | The option that the fewest coders have so far, so groups stay as equal as possible. A tie is broken at random |
+| Drawn                                       | The coder gets                                                                                                                         |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| **Random**                                  | One of the options, at random. Give options a **weight** to make some more likely: weights 2 and 1 give about two thirds and one third |
+| **Balanced (the value fewest coders have)** | The option that the fewest coders have so far, so groups stay as equal as possible. A tie is broken at random                          |
 
 The **Options** list the values the question can take, each with a value
 and an optional label, as for a [nominal question](nominal-and-ordinal.md).
@@ -116,7 +116,7 @@ answers:
 $unit.text
 ```
 
-Switch between *experiment* and *control* to see what each group sees.
+Switch between _experiment_ and _control_ to see what each group sees.
 See [Showing parts conditionally](template-blocks.md).
 
 **For units**: under **Linked to units**, choose a set column of your

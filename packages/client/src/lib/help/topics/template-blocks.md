@@ -167,7 +167,7 @@ questions. A few things to know:
 - A question that is skipped (its condition doesn't hold) still counts as
   reached once the coder is past it.
 - `::: from` only works in a loop's layout, and only with questions of that
-  loop (*"'x' is not a question of this loop"*).
+  loop (_"'x' is not a question of this loop"_).
 - **Insert** › **Show from…** lists the loop's questions and writes the block
   for you.
 
@@ -202,9 +202,9 @@ Anything that should show in every stage goes outside the block.
 
 Outside a `::: from` block, the layout can't use the answers to the loop's
 own questions: the layout is shown before any of them is answered.
-AnnoTinder reports this as *"'sentiment' is answered in this loop; use it
-inside ::: from topics"* (naming the question after it). Inside
-a `::: from` block, the questions *before* its question can be used, in
+AnnoTinder reports this as _"'sentiment' is answered in this loop; use it
+inside ::: from topics"_ (naming the question after it). Inside
+a `::: from` block, the questions _before_ its question can be used, in
 values and in conditions:
 
 ```example
@@ -257,14 +257,14 @@ the outer one more colons.
 
 The template editor lists problems below the template. The most common:
 
-| Message | What to do |
-| --- | --- |
-| *::: if is not closed (end it with :::)* | Add a closing fence with the same number of colons |
-| *This ::: closes a block opened with 4 colons: use ::::* | Match the colons of the closing fence to its opening fence |
-| *::: closes nothing: no block is open* | Remove the extra `:::`, or add the block's opening fence |
-| *::: else must follow a ::: if (with as many colons)* | Put the `::: else` inside an `::: if` block, with the same colons |
-| *Unknown block "when"* | Use one of `if`, `else if`, `else`, `from`, `style`, `text`, `markdown`, `html`, `image` |
-| *::: if needs a condition* | Write the condition after `::: if` |
+| Message                                                  | What to do                                                                               |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| _::: if is not closed (end it with :::)_                 | Add a closing fence with the same number of colons                                       |
+| _This ::: closes a block opened with 4 colons: use ::::_ | Match the colons of the closing fence to its opening fence                               |
+| _::: closes nothing: no block is open_                   | Remove the extra `:::`, or add the block's opening fence                                 |
+| _::: else must follow a ::: if (with as many colons)_    | Put the `::: else` inside an `::: if` block, with the same colons                        |
+| _Unknown block "when"_                                   | Use one of `if`, `else if`, `else`, `from`, `style`, `text`, `markdown`, `html`, `image` |
+| _::: if needs a condition_                               | Write the condition after `::: if`                                                       |
 
 ## In question texts
 

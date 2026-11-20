@@ -16,13 +16,13 @@ every 10); for the full data, download the results.
 
 ### Status
 
-| Shows | Meaning |
-| --- | --- |
-| **Not deployed** | No design version is live yet: coders can't start |
-| **Live** | Coders can work, since the date shown |
-| **Paused** | Nothing new starts: no new sessions and no new units. Coders save what they have open (also units loaded ahead), then see that the study is paused, and continue where they were once you resume. **Pause** and **Resume** are next to the status |
-| **Live version** | The design version coders get, with its note. Click it to open it in the design editor |
-| **Draft** | Your changes that aren't deployed yet, if any |
+| Shows            | Meaning                                                                                                                                                                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Not deployed** | No design version is live yet: coders can't start                                                                                                                                                                                                 |
+| **Live**         | Coders can work, since the date shown                                                                                                                                                                                                             |
+| **Paused**       | Nothing new starts: no new sessions and no new units. Coders save what they have open (also units loaded ahead), then see that the study is paused, and continue where they were once you resume. **Pause** and **Resume** are next to the status |
+| **Live version** | The design version coders get, with its note. Click it to open it in the design editor                                                                                                                                                            |
+| **Draft**        | Your changes that aren't deployed yet, if any                                                                                                                                                                                                     |
 
 Uploading or replacing units and changing sets only change the drafts.
 Once you deploy them (or a design version), or reset answers, coders get
@@ -31,12 +31,12 @@ as they were).
 
 ### Numbers
 
-| Tile | Big number | Below it |
-| --- | --- | --- |
-| **Units** | Units in the study | The number of set columns |
-| **Coders started** | Coders who answered at least one question (assigned values don't count) | All coders who opened a link, and how many were active in the last 24 hours |
-| **Finished codings** | Units finished, counted per coder: a unit two coders finished counts twice | All answers given, and when the last one was |
-| **Active links** | Links that are not revoked, retired or used up | All links |
+| Tile                 | Big number                                                                 | Below it                                                                    |
+| -------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| **Units**            | Units in the study                                                         | The number of set columns                                                   |
+| **Coders started**   | Coders who answered at least one question (assigned values don't count)    | All coders who opened a link, and how many were active in the last 24 hours |
+| **Finished codings** | Units finished, counted per coder: a unit two coders finished counts twice | All answers given, and when the last one was                                |
+| **Active links**     | Links that are not revoked, retired or used up                             | All links                                                                   |
 
 Click a tile to go to the tab with the details.
 
@@ -49,10 +49,10 @@ came in.
 
 ### Progress
 
-Per unit loop, and per share within it (a coder, a condition, or *all
-units*), a bar with the number of
+Per unit loop, and per share within it (a coder, a condition, or _all
+units_), a bar with the number of
 **complete** units out of all units, and the number of coders who were
-given units from it. What *complete* means depends on how the loop hands
+given units from it. What _complete_ means depends on how the loop hands
 out units (see [Handing out units](unit-distribution.md)):
 
 - **Crowd coding** (a shared queue): the unit was coded by enough coders (or
@@ -63,28 +63,28 @@ out units (see [Handing out units](unit-distribution.md)):
   keeps the bar from filling up, so read it together with the Coders tab.
 
 A share appears here once the first coder was given units from it; a
-loop over all units of the study shows *all units*. Progress is counted for
+loop over all units of the study shows _all units_. Progress is counted for
 the live design version.
 
 ## The Coders tab
 
 Every coder who opened a link, most recently active first:
 
-| Column | Shows |
-| --- | --- |
-| **Coder** | The participant id, or a number if they have none |
-| **Link** | The label of the link they came in with |
-| **Started** | When they first opened the link |
-| **Last active** | When they last gave an answer |
-| **Answers** | All their answers: one per question (per unit, in loops), including questions outside unit loops and questions a condition skipped |
-| **Finished in ...** | Per unit loop: the units for which they answered every question of the loop |
+| Column              | Shows                                                                                                                              |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Coder**           | The participant id, or a number if they have none                                                                                  |
+| **Link**            | The label of the link they came in with                                                                                            |
+| **Started**         | When they first opened the link                                                                                                    |
+| **Last active**     | When they last gave an answer                                                                                                      |
+| **Answers**         | All their answers: one per question (per unit, in loops), including questions outside unit loops and questions a condition skipped |
+| **Finished in ...** | Per unit loop: the units for which they answered every question of the loop                                                        |
 
-A unit loop is called by its label, or *Unit loop 1*, *Unit loop 2*, ...
+A unit loop is called by its label, or _Unit loop 1_, _Unit loop 2_, ...
 if it has none: give loops a label to make this table easier to read.
 
-**Ended** says how a session ended: *Complete* or
-*Screened out* at an [end item](end-items.md) (hover it to see which), or
-*Quit* when the coder stopped for good; `coders.csv` in the results has the
+**Ended** says how a session ended: _Complete_ or
+_Screened out_ at an [end item](end-items.md) (hover it to see which), or
+_Quit_ when the coder stopped for good; `coders.csv` in the results has the
 same in its `ended` column.
 
 ## Deleting a coder's data

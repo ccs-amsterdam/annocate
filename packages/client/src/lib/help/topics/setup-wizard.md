@@ -37,6 +37,7 @@ much more (below).
      [Experimental conditions](experimental-conditions.md)).
 
    Optionally with an [overlap](overlap.md) every coder codes.
+
 5. **How coders see a unit**: which field is the title, the byline and the
    body, with a preview of the first unit (see
    [Layout templates](layout-templates.md)).
@@ -64,17 +65,17 @@ Then save, [preview and deploy](previewing-and-publishing.md).
 The guided setup leaves these out to stay short. Add them in the editor
 afterwards:
 
-| What | Where to read about it |
-| --- | --- |
-| Answer types, options, scales, text selection | [Choosing a question type](question-types.md) |
-| Questions asked only in some cases | [Conditions](conditions.md) |
-| Screening participants out, ending early, sending them back to a panel | [Ending a session](end-items.md) |
-| Crowd coding until coders agree on a question; units per coder; priority | [Shared queues](shared-queues.md#when-a-unit-is-done) |
-| Different units for coders by an earlier answer | A [random condition](random-condition.md) linked to a unit column |
-| Where the overlap comes (before, after, spread) | [Overlap](overlap.md#placement) |
-| A condition per link, or from a URL parameter | [Session parameters](session-parameters.md) |
-| Login, participant ids, max uses | [Links](links.md) |
-| Prolific and other online panels | [Online panels and crowd coding](online-panels.md) |
+| What                                                                      | Where to read about it                                                                                                  |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Answer types, options, scales, text selection                             | [Choosing a question type](question-types.md)                                                                           |
+| Questions asked only in some cases                                        | [Conditions](conditions.md)                                                                                             |
+| Screening participants out, ending early, sending them back to a panel    | [Ending a session](end-items.md)                                                                                        |
+| Crowd coding until coders agree on a question; units per coder; priority  | [Shared queues](shared-queues.md#when-a-unit-is-done)                                                                   |
+| Different units for coders by an earlier answer                           | A [random condition](random-condition.md) linked to a unit column                                                       |
+| Where the overlap comes (before, after, spread)                           | [Overlap](overlap.md#placement)                                                                                         |
+| A condition per link, or from a URL parameter                             | [Session parameters](session-parameters.md)                                                                             |
+| Login, participant ids, max uses                                          | [Links](links.md)                                                                                                       |
+| Prolific and other online panels                                          | [Online panels and crowd coding](online-panels.md)                                                                      |
 | Layouts beyond a title, byline and body: styles, blocks, conditions, HTML | [Layout templates](layout-templates.md), [Showing parts conditionally](template-blocks.md), [HTML in a layout](html.md) |
-| Reusable pieces of a layout | [Snippets](snippets.md) |
-| More than one unit loop | [Unit loops](unit-loops.md) |
+| Reusable pieces of a layout                                               | [Snippets](snippets.md)                                                                                                 |
+| More than one unit loop                                                   | [Unit loops](unit-loops.md)                                                                                             |

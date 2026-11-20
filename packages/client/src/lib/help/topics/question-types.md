@@ -17,20 +17,20 @@ just as you would for a survey item.
 
 ## All types
 
-| Answer type (in the editor) | Coders... | Stored as | Use it for |
-| --- | --- | --- | --- |
-| **Nominal (categories)** | pick one option, or several | text values, e.g. `economy` | topics, actors, genres, yes/no |
-| **Ordinal (ordered options)** | pick one of ordered options | numbers 1, 2, 3, ... | tone (negative to positive), intensity, agreement |
-| **Numeric (interval/ratio)** | give a number, with buttons, a slider or a box | a number | counts, age, a 0-100 feeling thermometer |
-| **Scale (items on the same options)** | rate several items on the same options | a number per item | a Likert battery, rating one text on several aspects |
-| **Swipe** | swipe the card left, right (or up) | text values | fast yes/no judgements, crowd coding on phones |
-| **Confirm** | click one button | only that it was clicked | instructions, consent, "I have read the text" |
-| **Auto (assigned, not asked)** | nothing: never shown | text values | experimental groups, routing coders to units |
-| **Span (select text)** | select words in the text and label them | the selected text and its position | named entities, quotes, arguments, frames in a sentence |
-| **Relation (link spans)** | link two selected spans with a label | pairs of spans with a label | who criticizes whom, claim and evidence |
+| Answer type (in the editor)           | Coders...                                      | Stored as                          | Use it for                                              |
+| ------------------------------------- | ---------------------------------------------- | ---------------------------------- | ------------------------------------------------------- |
+| **Nominal (categories)**              | pick one option, or several                    | text values, e.g. `economy`        | topics, actors, genres, yes/no                          |
+| **Ordinal (ordered options)**         | pick one of ordered options                    | numbers 1, 2, 3, ...               | tone (negative to positive), intensity, agreement       |
+| **Numeric (interval/ratio)**          | give a number, with buttons, a slider or a box | a number                           | counts, age, a 0-100 feeling thermometer                |
+| **Scale (items on the same options)** | rate several items on the same options         | a number per item                  | a Likert battery, rating one text on several aspects    |
+| **Swipe**                             | swipe the card left, right (or up)             | text values                        | fast yes/no judgements, crowd coding on phones          |
+| **Confirm**                           | click one button                               | only that it was clicked           | instructions, consent, "I have read the text"           |
+| **Auto (assigned, not asked)**        | nothing: never shown                           | text values                        | experimental groups, routing coders to units            |
+| **Span (select text)**                | select words in the text and label them        | the selected text and its position | named entities, quotes, arguments, frames in a sentence |
+| **Relation (link spans)**             | link two selected spans with a label           | pairs of spans with a label        | who criticizes whom, claim and evidence                 |
 
 A question made with **Guided setup** starts without a type: the tree marks
-it **to specify**, and **Answer Type** says *Choose an answer type...*. The
+it **to specify**, and **Answer Type** says _Choose an answer type..._. The
 design can be saved like that, but not previewed or deployed until
 every question has a type.
 
@@ -55,11 +55,11 @@ doesn't fit.
 
 ## Measurement levels
 
-| Level | Answer types | Values | Typical statistics |
-| --- | --- | --- | --- |
-| Nominal | Nominal, Swipe, Auto, Span, Relation | text | frequencies, crosstabs, Krippendorff's alpha (nominal) |
-| Ordinal | Ordinal, Scale | numbers rising in the order of the options | medians, rank correlations, alpha (ordinal) |
-| Interval/ratio | Numeric | any number in a range | means, regression, alpha (interval) |
+| Level          | Answer types                         | Values                                     | Typical statistics                                     |
+| -------------- | ------------------------------------ | ------------------------------------------ | ------------------------------------------------------ |
+| Nominal        | Nominal, Swipe, Auto, Span, Relation | text                                       | frequencies, crosstabs, Krippendorff's alpha (nominal) |
+| Ordinal        | Ordinal, Scale                       | numbers rising in the order of the options | medians, rank correlations, alpha (ordinal)            |
+| Interval/ratio | Numeric                              | any number in a range                      | means, regression, alpha (interval)                    |
 
 A few rules of thumb:
 

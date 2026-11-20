@@ -26,28 +26,28 @@ condition, shared with the others in that condition.
 The numbers sit in a small table, each with an **at least** and an **at
 most**:
 
-| | at least | at most |
-| --- | --- | --- |
-| **Units per coder** | every coder gets this many units (see [A minimum per coder](#a-minimum-per-coder)) | a coder never gets more |
-| **Coders per unit** | a unit is done once this many coders coded it | when no unit needs more coders, a unit can still go up to this many |
-| *or* **Agreement per unit** | a unit is done once this many coders agree on the question you pick | a unit is never coded by more coders, agreement or not |
+|                             | at least                                                                           | at most                                                             |
+| --------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| **Units per coder**         | every coder gets this many units (see [A minimum per coder](#a-minimum-per-coder)) | a coder never gets more                                             |
+| **Coders per unit**         | a unit is done once this many coders coded it                                      | when no unit needs more coders, a unit can still go up to this many |
+| _or_ **Agreement per unit** | a unit is done once this many coders agree on the question you pick                | a unit is never coded by more coders, agreement or not              |
 
 ## When a unit is done
 
 In the second row you choose one of two rules:
 
-- **Coders per unit**: the unit is done once *at least* coders finished it.
+- **Coders per unit**: the unit is done once _at least_ coders finished it.
   `1` gives every unit one coding, the cheapest way through a large sample;
   `2` or `3` give you several codings per unit, for majority votes or
   reliability.
-- **Agreement per unit**, on a question: the unit is done once *at least*
+- **Agreement per unit**, on a question: the unit is done once _at least_
   coders gave the same answer to that question. Only questions of the loop with a
   single categorical answer can be chosen: categories (nominal, without
   multiple answers), ordinal questions and swipes. Coders who skipped the
   question (it was hidden by a condition) don't count towards agreement.
 
-An agreement rule spends codings where they are needed. *"Until 2 coders
-agree on `sentiment`, at most 5"* gives clear-cut units 2 codings, and
+An agreement rule spends codings where they are needed. _"Until 2 coders
+agree on `sentiment`, at most 5"_ gives clear-cut units 2 codings, and
 difficult units up to 5, until two coders agree or the maximum is reached.
 
 A coder counts once they **finished** the unit: answered all its questions.
@@ -58,7 +58,7 @@ A coder who opens a unit and leaves doesn't count.
 The **at most** of the second row is the most coders a unit ever gets. With
 an agreement rule it is required, so a unit nobody agrees on isn't coded
 forever. With **Coders per unit** it may stay empty: then it is the same as
-*at least*. It can't be below *at least*.
+_at least_. It can't be below _at least_.
 
 **At most units per coder** (overlap units come on top) is worth setting in
 most studies:
@@ -67,12 +67,12 @@ most studies:
   sample;
 - with a panel (Prolific and the like), it fixes the size of each task, so
   you can pay everyone the same and estimate the time;
-- coders see their progress (*unit 12 of 40*). Without a maximum, AnnoTinder
+- coders see their progress (_unit 12 of 40_). Without a maximum, AnnoTinder
   doesn't know how many units a coder will get, and can only count the units
   they have done so far;
 - spreading [overlap](overlap.md) units through a coder's units needs it.
 
-A rough sample size: with 1000 units, *until 3 coders coded it* and **Max
+A rough sample size: with 1000 units, _until 3 coders coded it_ and **Max
 units per coder** 50, you need at least 1000 × 3 / 50 = 60 coders who finish.
 Recruit a few more, because some will stop early.
 
@@ -80,7 +80,7 @@ Recruit a few more, because some will stop early.
 
 When no unit needs more coders (every unit is done, or reserved by coders
 working on it), a coder who asks for a unit still gets one, as long as some
-unit isn't **full**: coded by *at most* coders (finished codings count, not
+unit isn't **full**: coded by _at most_ coders (finished codings count, not
 reservations), or agreed on. Among those, the coder gets the units with the
 fewest codings and reservations, so extra codings are spread. A coder only
 gets nothing once every unit is full.
@@ -93,14 +93,14 @@ instance a panel that pays for 20 units, or a design where every coder must
 code enough units to estimate their own reliability.
 
 **At least units per coder** solves this. While a coder has fewer units,
-*at most coders per unit* gives way too: the coder may get a unit that
+_at most coders per unit_ gives way too: the coder may get a unit that
 already has the most coders. With an agreement rule, a unit coders agree on
 is never handed out again; with **Coders per unit**, any unit can be. The
 coder gets the units with the fewest codings first, so extra codings are
 spread over the units. With an agreement rule, a coder can still end up
 with fewer than the minimum if coders agree on every unit.
 
-The price is codings past *at most*. Set the minimum only as high as your
+The price is codings past _at most_. Set the minimum only as high as your
 design needs.
 
 ## Priority
@@ -153,7 +153,7 @@ which every coder codes every unit:
   Krippendorff's alpha, which handles any number of coders per unit and
   missing codings.
 - **Units have different numbers of codings** with an agreement rule:
-  between the number that must agree and *at most* coders per unit. A unit with
+  between the number that must agree and _at most_ coders per unit. A unit with
   more codings was harder to agree on; that is information in itself.
 - **Agreement rules make the data look more reliable than they are.** Coding
   stops as soon as coders agree, so disagreements that a third coder would
@@ -161,7 +161,7 @@ which every coder codes every unit:
   an agreement rule. Add an [overlap](overlap.md) set that every coder codes
   in full, and compute reliability on that.
 - **Majority labels.** With several codings per unit, the usual final label
-  is the most frequent answer. With *until 2 agree*, that is the answer the
+  is the most frequent answer. With _until 2 agree_, that is the answer the
   agreeing coders gave.
 - **Coders differ in how much they coded.** A few coders may do many units.
   Check per coder (the `coder_id` column of the [results](results.md)) that

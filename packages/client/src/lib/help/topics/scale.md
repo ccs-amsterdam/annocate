@@ -7,8 +7,8 @@ summary: Several items rated on the same options, such as a Likert battery, in o
 
 A **Scale (items on the same options)** question asks coders to rate
 several **items** on the same ordered options, all on one screen. It is the
-familiar Likert battery from surveys (*How much do you agree with each of
-these statements?*), and it works just as well for content analysis: rate
+familiar Likert battery from surveys (_How much do you agree with each of
+these statements?_), and it works just as well for content analysis: rate
 one article on how emotional, how balanced and how sensational it is.
 
 Each item is answered on its own, and stored in its own column, so a scale
@@ -21,7 +21,7 @@ Under **Items**, each row is one item:
 
 - **name**: how the item is stored and referred to, e.g. `emotional`. Use
   letters, numbers and `_`. Each name must be unique within the scale.
-- **label**: what coders see, e.g. *The article appeals to emotions*. If you
+- **label**: what coders see, e.g. _The article appeals to emotions_. If you
   leave it empty, coders see the name, with spaces for the `_`.
 
 Click **+ Add item** to add an item, and the cross to remove one. A scale
@@ -33,16 +33,16 @@ The **Options** work exactly as for an
 [ordinal question](nominal-and-ordinal.md#ordinal-values-are-1-2-3):
 a label coders see, a value that rises with the order (1, 2, 3, ... or your
 own with **Custom values**), and an optional colour. A new scale starts with
-five options from *Strongly disagree* to *Strongly agree*.
+five options from _Strongly disagree_ to _Strongly agree_.
 
 ## Compact or grid
 
 Under **Layout**:
 
-| Layout | Coders see |
-| --- | --- |
+| Layout                                                                                        | Coders see                                                                                                                                                                             |
+| --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Compact (values; the selected one shows its label)**: the default, also what **Auto** picks | each item's label, with a row of buttons under it showing the values (1 2 3 4 5); the labels of the first and last option above the items. The chosen button grows and shows its label |
-| **Grid (columns)** | a table: the items as rows, the option labels as column heads, and a round button in every cell |
+| **Grid (columns)**                                                                            | a table: the items as rows, the option labels as column heads, and a round button in every cell                                                                                        |
 
 **Compact** is made for phones: each item takes one short row, however
 long the option labels are. Coders see the full labels only for the two
@@ -79,11 +79,11 @@ alone; **Enter** continues.
 
 Each item can be referred to on its own:
 
-| Reference | Gives |
-| --- | --- |
+| Reference                          | Gives                             |
+| ---------------------------------- | --------------------------------- |
 | `$var.media.items.emotional.value` | the value of the item `emotional` |
-| `$var.media.items.emotional.label` | its label, e.g. *Agree* |
-| `$var.media.values` | all item values, as a list |
+| `$var.media.items.emotional.label` | its label, e.g. _Agree_           |
+| `$var.media.values`                | all item values, as a list        |
 
 In conditions, compare an item, not the whole scale: for example
 `$var.interest.items.technology.gte(4)` shows a follow-up question only to

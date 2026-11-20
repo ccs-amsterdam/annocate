@@ -6,9 +6,9 @@ summary: Show questions, loops or end items only when earlier answers (or the un
 ---
 
 A **Show if** item holds other items, and shows them only when its
-condition holds. *"Ask about the actors only if the article is
-about politics"*, *"show the follow-up questions only to coders in the
-experiment group"*, *"end the session if the participant doesn't consent"*:
+condition holds. _"Ask about the actors only if the article is
+about politics"_, _"show the follow-up questions only to coders in the
+experiment group"_, _"end the session if the participant doesn't consent"_:
 each is a Show if item with the items it governs inside it.
 
 ```text
@@ -27,9 +27,9 @@ goes straight on to the next item after the Show if item.
 1. In the design tree, add an item of the type **Show if** where the
    condition should go (see [The design editor](design-editor.md)).
 2. Under **Show the items in this condition if**, set the rule (below).
-3. Add the items it governs *inside* the Show if item, or move existing items
+3. Add the items it governs _inside_ the Show if item, or move existing items
    into it.
-4. Optionally give it a **Label (optional)**, such as *Politics only*. The
+4. Optionally give it a **Label (optional)**, such as _Politics only_. The
    tree shows the label instead of the rule.
 
 A Show if item can hold anything that may stand at its place: questions,
@@ -42,8 +42,8 @@ Most conditions can be made by choosing from lists. With **Rules**
 selected, each rule is a row: a question, an operator and a value.
 
 - Click **+ Rule** to add a row; the bin icon removes one.
-- With more than one row, choose **All rules must hold** (*and*) or **Any
-  rule may hold** (*or*).
+- With more than one row, choose **All rules must hold** (_and_) or **Any
+  rule may hold** (_or_).
 - Without any rows, the condition always holds.
 
 You can choose from the questions answered before the condition (see
@@ -54,32 +54,32 @@ what is wrong.
 
 ### Operators per question type
 
-| Question | Operators |
-| --- | --- |
-| Nominal (one answer), swipe, random condition | is, is not, is one of, is none of |
-| Ordinal | the same, and >, ≥, <, ≤ an option |
-| An item of a scale (shown as *scale › item*) | as ordinal |
-| Numeric | =, ≠, >, ≥, <, ≤, between |
-| Nominal with multiple answers | has, doesn't have, has any of, has none of, has all of, count ≥, count ≤ |
-| Span, relation | has, doesn't have, count ≥, count ≤ |
-| Confirm, a scale as a whole | only *is answered* and *is not answered* |
+| Question                                      | Operators                                                                |
+| --------------------------------------------- | ------------------------------------------------------------------------ |
+| Nominal (one answer), swipe, random condition | is, is not, is one of, is none of                                        |
+| Ordinal                                       | the same, and >, ≥, <, ≤ an option                                       |
+| An item of a scale (shown as _scale › item_)  | as ordinal                                                               |
+| Numeric                                       | =, ≠, >, ≥, <, ≤, between                                                |
+| Nominal with multiple answers                 | has, doesn't have, has any of, has none of, has all of, count ≥, count ≤ |
+| Span, relation                                | has, doesn't have, count ≥, count ≤                                      |
+| Confirm, a scale as a whole                   | only _is answered_ and _is not answered_                                 |
 
 Every question also has **is answered** and **is not answered**.
 
-> Rules that say "not" (*is not*, *is none of*, *doesn't have*, *≠*) also
+> Rules that say "not" (_is not_, _is none of_, _doesn't have_, _≠_) also
 > hold when the question isn't answered, for example because a condition
-> skipped it. If that matters, add a rule *is answered* and choose **All
+> skipped it. If that matters, add a rule _is answered_ and choose **All
 > rules must hold**.
 
 Ordinal comparisons use the option values, which rise in the order of the
-options: *tone > Neutral* holds for the options after *Neutral*.
+options: _tone > Neutral_ holds for the options after _Neutral_.
 
 ## Script mode
 
 Click **Script** to see or write the condition as a short script. The rules
-editor writes scripts too: *topic is "politics"* is
+editor writes scripts too: _topic is "politics"_ is
 `$var.topic.is("politics")`, and two rules with **All rules must hold** are
-joined with `&&` (*and*); with **Any rule may hold**, with `||` (*or*).
+joined with `&&` (_and_); with **Any rule may hold**, with `||` (_or_).
 
 ```text
 $var.topic.is("politics")
@@ -90,13 +90,13 @@ $var.topics.hasAny("politics", "economy") || $var.tone.lte(2)
 
 Write a script when the rules editor can't express what you need:
 
-- a mix of *and* and *or*: `$var.consent.answered && ($var.age.lt(18) || $var.country.is("other"))`;
+- a mix of _and_ and _or_: `$var.consent.answered && ($var.age.lt(18) || $var.country.is("other"))`;
 - a unit's data, inside a loop: `$unit.source === "blog"`;
 - anything else JavaScript can do (see [Scripts](scripts.md)).
 
 A script can be switched back to **Rules** if it is a list of rules joined
-by all *and* or all *or*: helper methods and `.answered`, each possibly with
-`!` (*not*) in front. Anything else stays a script; trying to switch shows
+by all _and_ or all _or_: helper methods and `.answered`, each possibly with
+`!` (_not_) in front. Anything else stays a script; trying to switch shows
 why.
 
 Under the script, **References and helpers you can use here** lists every
@@ -108,18 +108,18 @@ click one to add it. A syntax error is shown as you type.
 Conditions compare answers with **helper methods**, called on the question
 (or on a scale item):
 
-| Method | Works on | Holds when the answer ... |
-| --- | --- | --- |
-| `is(v)` | one answer: nominal, ordinal, swipe, random condition, scale item | is `v` |
-| `isAny(v1, v2, ...)` | the same | is one of them |
-| `gt(n)`, `gte(n)` | ordinal, numeric, scale item | is greater than (or equal to) `n` |
-| `lt(n)`, `lte(n)` | ordinal, numeric, scale item | is lower than (or equal to) `n` |
-| `eq(n)` | numeric | equals `n` |
-| `between(a, b)` | numeric | is from `a` up to and including `b` |
-| `has(v)` | multiple answers, span, relation | includes `v` |
-| `hasAny(v1, v2, ...)` | multiple answers | includes at least one of them |
-| `hasAll(v1, v2, ...)` | multiple answers | includes all of them |
-| `count()` | multiple answers, span, relation | gives the number of answers, e.g. `$var.topics.count() >= 2` |
+| Method                | Works on                                                          | Holds when the answer ...                                    |
+| --------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------ |
+| `is(v)`               | one answer: nominal, ordinal, swipe, random condition, scale item | is `v`                                                       |
+| `isAny(v1, v2, ...)`  | the same                                                          | is one of them                                               |
+| `gt(n)`, `gte(n)`     | ordinal, numeric, scale item                                      | is greater than (or equal to) `n`                            |
+| `lt(n)`, `lte(n)`     | ordinal, numeric, scale item                                      | is lower than (or equal to) `n`                              |
+| `eq(n)`               | numeric                                                           | equals `n`                                                   |
+| `between(a, b)`       | numeric                                                           | is from `a` up to and including `b`                          |
+| `has(v)`              | multiple answers, span, relation                                  | includes `v`                                                 |
+| `hasAny(v1, v2, ...)` | multiple answers                                                  | includes at least one of them                                |
+| `hasAll(v1, v2, ...)` | multiple answers                                                  | includes all of them                                         |
+| `count()`             | multiple answers, span, relation                                  | gives the number of answers, e.g. `$var.topics.count() >= 2` |
 
 A few things to know:
 
@@ -143,7 +143,7 @@ after it, it counts as **unanswered**: `.answered` is false and helpers are
 false, also if the coder answered it before going back and changing an
 earlier answer.
 
-- **Inside a unit loop**, a skipped question is stored as *skipped* with the
+- **Inside a unit loop**, a skipped question is stored as _skipped_ with the
   unit's other answers, and is empty in the results. A unit is finished when
   every question of the loop is answered or skipped.
 - **Outside a loop**, a skipped question is not asked, and is empty in the

@@ -34,8 +34,8 @@ Links follow the deployed design and the study's deployed sets:
   again, with the same address.
 
 A retired link is never deleted: coders and their answers keep referring to
-the link they came in with. Opening it shows *"This link is no longer
-active"*; coders who already started with it keep working.
+the link they came in with. Opening it shows _"This link is no longer
+active"_; coders who already started with it keep working.
 
 Deploying a design that makes more than 500 links asks you to confirm;
 at most 2000 links are possible. List the combinations you need in the
@@ -45,10 +45,10 @@ session parameters instead of every combination.
 
 The pencil icon in a link's row (**Who may use this link**) sets:
 
-| Setting | What it does |
-| --- | --- |
-| **Label** | For you: it appears in the Coders tab and the results |
-| **Max uses** | Stop accepting new coders after this many |
+| Setting                  | What it does                                                           |
+| ------------------------ | ---------------------------------------------------------------------- |
+| **Label**                | For you: it appears in the Coders tab and the results                  |
+| **Max uses**             | Stop accepting new coders after this many                              |
 | **Fixed participant id** | Everyone who uses this link gets this participant id (a personal link) |
 
 Whether coders sign in is set for the whole study (see [Login](#login)).
@@ -84,8 +84,8 @@ in an end item's return link.
 A participant id is only a label, **never a key**: anyone who has the link
 could type it in. So a participant id never gives access to earlier work.
 If someone opens a link with a participant id that already has a session on
-another device (or browser), they see *"You already started on another
-device"*, and how to continue there, or move the session here with
+another device (or browser), they see _"You already started on another
+device"_, and how to continue there, or move the session here with
 **Continue on another device** (or by logging in, where the link allows
 it). Only if they confirm that they can't get back to the earlier session
 (a lost device, cleared browser data) can they start a new session here,
@@ -117,7 +117,7 @@ link or QR code it shows on the second (see
 ## Max uses
 
 **Max uses** limits how many coders can start with a link. Once that many
-have started, the status becomes *used up* and new coders get the message
+have started, the status becomes _used up_ and new coders get the message
 that the link has been used up. Coders who already started can still
 continue. A participant who starts a new session on another device (see
 above) doesn't count as a new use.
@@ -127,15 +127,15 @@ only once (max uses 1).
 
 ## The list of links
 
-| Column | Shows |
-| --- | --- |
-| **Label** | The label (made from the link's values; you can change it) |
-| **Values** | The link parameter values the link carries |
-| **Link** | **Copy link** copies the link, with placeholders for URL parameters it needs |
-| **Access** | Who may use it: anyone, a login, email addresses, a fixed participant id |
-| **Uses** | How many coders started with it (and the maximum) |
-| **Status** | *open*, *used up*, *revoked* or *retired* |
-| **Created** | When it was made |
+| Column      | Shows                                                                        |
+| ----------- | ---------------------------------------------------------------------------- |
+| **Label**   | The label (made from the link's values; you can change it)                   |
+| **Values**  | The link parameter values the link carries                                   |
+| **Link**    | **Copy link** copies the link, with placeholders for URL parameters it needs |
+| **Access**  | Who may use it: anyone, a login, email addresses, a fixed participant id     |
+| **Uses**    | How many coders started with it (and the maximum)                            |
+| **Status**  | _open_, _used up_, _revoked_ or _retired_                                    |
+| **Created** | When it was made                                                             |
 
 **Revoke** stops new sessions with the link, also new sessions of a
 participant id that already has one. Coders who already started keep
@@ -160,7 +160,7 @@ first deploy, and can change it in the study's **Settings**.
 - **Coders who are email addresses** (units divided over coders by
   email): there is one link, and sign-in is always required. Each coder
   gets the units of the address they signed in with; other addresses see
-  *"This email address has no access to this study"*. See
+  _"This email address has no access to this study"_. See
   [Giving each coder their own units](own-units.md).
 
 The coder's email address is stored with their session: it appears in the

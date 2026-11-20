@@ -49,8 +49,8 @@ lists the loop's snippets, and typing `[[` in the template editor suggests
 their names. The trash button removes a snippet.
 
 > Renaming a snippet doesn't change the places that use it. The editor then
-> reports *[[old_name]]: there is no snippet 'old_name' in this loop's
-> layout*, so you can find them.
+> reports _[[old_name]]: there is no snippet 'old_name' in this loop's
+> layout_, so you can find them.
 
 ## Where snippets work
 
@@ -65,8 +65,8 @@ as text before the template is read:
 Snippets also work in the texts of the loop's questions and instructions, so
 a long instruction can be shared by several questions.
 
-They don't work outside a loop (*Snippets ([[name]]) can only be used in a
-unit loop's layout and its questions' texts*), and not in condition items or
+They don't work outside a loop (_Snippets ([[name]]) can only be used in a
+unit loop's layout and its questions' texts_), and not in condition items or
 end items, also not inside a loop: the editor reports the same message. For a
 condition you need in several places, use it in the layout as
 `::: if [[name]]`.
@@ -77,11 +77,11 @@ In code (between backticks) `[[name]]` stays as it is.
 Because a snippet is pasted in as text, everything in it works as if it were
 written in the template: markdown, values (`$unit.headline`), scripts,
 blocks, and other snippets. And for the same reason it takes no suffix:
-`[[intro]]::markdown` is an error (*a snippet takes no suffix*). To show a
+`[[intro]]::markdown` is an error (_a snippet takes no suffix_). To show a
 snippet's text as markdown, it already is: the template is markdown.
 
 A snippet may use other snippets, but not itself, also not through another
-one (*the snippet includes itself (a → b → a)*).
+one (_the snippet includes itself (a → b → a)_).
 
 ## Banners per group
 

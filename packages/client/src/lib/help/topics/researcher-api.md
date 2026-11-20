@@ -23,7 +23,7 @@ assumes you have written a script that calls a web API before.
 A script logs in with a personal **API key**:
 
 1. Click your account (top right) and choose **API keys**.
-2. Type what the key is for, such as *laptop R scripts*, and click
+2. Type what the key is for, such as _laptop R scripts_, and click
    **Create**.
 3. Copy the key (it starts with `atk_`). It is shown only once.
 
@@ -62,19 +62,19 @@ curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/a
 
 ## What scripts can do
 
-| Task | Request |
-| --- | --- |
-| List your studies, create a study | `GET /study`, `POST /study` with `{ "name": ... }` |
-| Upload units (at most 200 per request) | `POST /study/<id>/units` |
-| List the study's fields | `GET /study/<id>/units/fields` |
-| List set columns, replace or delete one | `GET /study/<id>/sets`; `PUT`, `DELETE /study/<id>/sets/<column>` |
-| Save a design version | `POST /study/<id>/design` with `{ "items": [...], "note": ... }` |
+| Task                                                                         | Request                                                                                                                  |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| List your studies, create a study                                            | `GET /study`, `POST /study` with `{ "name": ... }`                                                                       |
+| Upload units (at most 200 per request)                                       | `POST /study/<id>/units`                                                                                                 |
+| List the study's fields                                                      | `GET /study/<id>/units/fields`                                                                                           |
+| List set columns, replace or delete one                                      | `GET /study/<id>/sets`; `PUT`, `DELETE /study/<id>/sets/<column>`                                                        |
+| Save a design version                                                        | `POST /study/<id>/design` with `{ "items": [...], "note": ... }`                                                         |
 | Deploy: a design version and the draft units and sets (this makes its links) | `PUT /study/<id>/deployment` with `{ "designVersionId": ..., "units": true }` (without `units`, the deployed units stay) |
-| What deploying would change; the deployed versions | `GET /study/<id>/deployment/pending`, `GET /study/<id>/deployment/versions` |
-| List links, or change who may use one | `GET /study/<id>/links`; `PUT /study/<id>/links/<link id>` |
-| Coders, with their answers outside unit loops | `GET /study/<id>/coders` |
-| Answers in unit loops, a page at a time | `GET /study/<id>/annotations` |
-| Units as coders saw them, a page at a time | `GET /study/<id>/unit-versions` |
+| What deploying would change; the deployed versions                           | `GET /study/<id>/deployment/pending`, `GET /study/<id>/deployment/versions`                                              |
+| List links, or change who may use one                                        | `GET /study/<id>/links`; `PUT /study/<id>/links/<link id>`                                                               |
+| Coders, with their answers outside unit loops                                | `GET /study/<id>/coders`                                                                                                 |
+| Answers in unit loops, a page at a time                                      | `GET /study/<id>/annotations`                                                                                            |
+| Units as coders saw them, a page at a time                                   | `GET /study/<id>/unit-versions`                                                                                          |
 
 What you may do depends on your role in the study, as on the pages: reading
 units, design versions and answers needs any role; changing them, and seeing

@@ -5,9 +5,9 @@ order: 3
 summary: Why a design never contains unit ids or coders, why sets are lists, and how to share a design so others can repeat your study.
 ---
 
-An AnnoTinder design describes *how* a study runs: the questions, the
+An AnnoTinder design describes _how_ a study runs: the questions, the
 conditions, how units are shown, and the rules by which units are handed out.
-It never says *which* units or *which* people. Those live next to it, in the
+It never says _which_ units or _which_ people. Those live next to it, in the
 study: the units, their sets and the links.
 
 This split is deliberate. A design that holds only the process can be
@@ -16,22 +16,22 @@ units and with their own coders.
 
 ## Three layers
 
-| Layer | Holds | Shared with the study? |
-| --- | --- | --- |
-| **Design** | Questions, conditions, layouts, per loop the rules for handing out units, and the session parameters links carry. It refers to sets and groups by name, and to coders only through their answers and session values | Yes: this is the instrument |
-| **Set columns** | Which coder or condition each unit is for, such as `anna`, `anna;bob`, `_overlap` in a column `coder` | As data, if you may share the units |
-| **Links** | Made from the design's coders, conditions and link parameters, with labels, participant ids and max uses | No: they are about your coders |
+| Layer           | Holds                                                                                                                                                                                                               | Shared with the study?              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| **Design**      | Questions, conditions, layouts, per loop the rules for handing out units, and the session parameters links carry. It refers to sets and groups by name, and to coders only through their answers and session values | Yes: this is the instrument         |
+| **Set columns** | Which coder or condition each unit is for, such as `anna`, `anna;bob`, `_overlap` in a column `coder`                                                                                                               | As data, if you may share the units |
+| **Links**       | Made from the design's coders, conditions and link parameters, with labels, participant ids and max uses                                                                                                            | No: they are about your coders      |
 
 ## The design names, but never binds
 
-The design may *name* things that only get a meaning in the study:
+The design may _name_ things that only get a meaning in the study:
 
-- **A set**: *every coder codes the units of set `gold`*. Which units are
+- **A set**: _every coder codes the units of set `gold`_. Which units are
   in `gold` is decided by the set, not the design.
-- **Units that depend on the coder or condition**: *units are divided over
-  coders by the column `coder`*, or *the condition `framing` is linked to the
-  column `framing`*. See [Handing out units](unit-distribution.md).
-- **A group of coders**: *coders in the experimental group get this layout*,
+- **Units that depend on the coder or condition**: _units are divided over
+  coders by the column `coder`_, or _the condition `framing` is linked to the
+  column `framing`_. See [Handing out units](unit-distribution.md).
+- **A group of coders**: _coders in the experimental group get this layout_,
   where the group is a [condition](experimental-conditions.md), drawn or
   set by the link.
 

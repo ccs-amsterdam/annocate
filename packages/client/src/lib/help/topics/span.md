@@ -15,12 +15,12 @@ text to select in.
 
 ## Setting up a span question
 
-| Setting | What it does |
-| --- | --- |
-| **Select in** | The parts of the unit coders can select in (see below) |
-| **Default Selection Mode** | Whether selections snap to whole words or not |
-| **Options** | The labels coders give to spans, e.g. *Person*, *Organisation*, *Place* |
-| **Allow gaps (discontinuous spans with multiple fragments)** | Whether one span can consist of several separate pieces |
+| Setting                                                      | What it does                                                            |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| **Select in**                                                | The parts of the unit coders can select in (see below)                  |
+| **Default Selection Mode**                                   | Whether selections snap to whole words or not                           |
+| **Options**                                                  | The labels coders give to spans, e.g. _Person_, _Organisation_, _Place_ |
+| **Allow gaps (discontinuous spans with multiple fragments)** | Whether one span can consist of several separate pieces                 |
 
 The **Options** are like those of a [nominal question](nominal-and-ordinal.md):
 a label coders see, a value that is stored, and a colour. Give span options
@@ -61,8 +61,8 @@ Coders can't change this setting themselves.
 ### Gaps
 
 Normally a span is one continuous piece of text. With **Allow gaps**, a span
-can consist of several pieces (*fragments*), for example a quote that is
-interrupted by *"she said"*. Coders then click or select further words to
+can consist of several pieces (_fragments_), for example a quote that is
+interrupted by _"she said"_. Coders then click or select further words to
 add them to the span, and click them again to take them out.
 
 Coders can always change and delete their spans.
@@ -83,7 +83,7 @@ mouse or finger:
 
 The span now shows in the text in the option's colour. Coders can mark as
 many spans as they like, and the same text can have more than one label: a
-name can be both a *Person* and a *Source*. Where spans overlap, they are
+name can be both a _Person_ and a _Source_. Where spans overlap, they are
 shown with stacked underlines.
 
 **Clicking a marked span** highlights it and shows its labels, with **Edit** to change or
@@ -121,11 +121,11 @@ column has everything, including the positions. See
 
 ## Using the answers
 
-| Reference | Gives |
-| --- | --- |
+| Reference            | Gives                                                        |
+| -------------------- | ------------------------------------------------------------ |
 | `$var.actors.values` | the values of all spans, e.g. `person, person, organisation` |
-| `$var.actors.labels` | their labels |
-| `$var.actors.texts` | the selected texts |
+| `$var.actors.labels` | their labels                                                 |
+| `$var.actors.texts`  | the selected texts                                           |
 
 Conditions can ask whether a span with a label was marked
 (`$var.actors.has("person")`) or how many spans there are

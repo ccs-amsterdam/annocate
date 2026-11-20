@@ -9,11 +9,11 @@ Everyone who logs in to an AnnoTinder server has an account with one of
 three roles. They are about the server as a whole; what someone may do in
 a particular study is their role there (see [Working together](working-together.md)).
 
-| Role | Can |
-| --- | --- |
-| **User** | Code, and work on studies a researcher gave them a role in (for instance as a student assistant who edits the design) |
-| **Researcher** | Also create studies. The studies you create are yours: they count against your limits |
-| **Admin** | Also manage the server's users, limits and registration (see [Server admin](server-admin.md)) |
+| Role           | Can                                                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **User**       | Code, and work on studies a researcher gave them a role in (for instance as a student assistant who edits the design) |
+| **Researcher** | Also create studies. The studies you create are yours: they count against your limits                                 |
+| **Admin**      | Also manage the server's users, limits and registration (see [Server admin](server-admin.md))                         |
 
 Coders don't need an account at all, unless their link asks them to
 [log in](links.md#login).

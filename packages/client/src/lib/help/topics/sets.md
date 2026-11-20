@@ -29,15 +29,15 @@ The easiest way is a column in the file you upload, with the column type
 **set**. Its name is the column's name in the design; each cell lists the
 unit's values:
 
-| Cell | Means |
-| --- | --- |
-| `anna` | for `anna` |
-| `anna;bob` | for `anna` and for `bob` |
-| `_overlap` | for everyone: every coder or condition codes it |
+| Cell        | Means                                                                                    |
+| ----------- | ---------------------------------------------------------------------------------------- |
+| `anna`      | for `anna`                                                                               |
+| `anna;bob`  | for `anna` and for `bob`                                                                 |
+| `_overlap`  | for everyone: every coder or condition codes it                                          |
 | `_practice` | a practice unit, for everyone (see [Overlap, gold and practice units](special-units.md)) |
-| `_gold` | a gold unit, for everyone |
-| `anna#3` | for `anna`, as her third unit (the order, for loops in set order) |
-| *(empty)* | for nobody: deploying warns about such units |
+| `_gold`     | a gold unit, for everyone                                                                |
+| `anna#3`    | for `anna`, as her third unit (the order, for loops in set order)                        |
+| _(empty)_   | for nobody: deploying warns about such units                                             |
 
 Values can't contain `;` or `#`. Names starting with `_` are the special
 ones above. A column's name is letters, digits and `_`, starting with a
@@ -53,11 +53,11 @@ order. The table has a column per set column, showing each unit's cell.
 
 To divide units without a column in your file, click **Fill a set column**:
 
-| Setting | What it does |
-| --- | --- |
-| **Names** | The values to divide over, one per line: coder names or email addresses. Or a number, for `s1`, `s2`, ... |
-| **Overlap** | Units set aside as `_overlap`, as a percentage or a number of units |
-| **Column** | The column's name (new, or one to replace) |
+| Setting     | What it does                                                                                              |
+| ----------- | --------------------------------------------------------------------------------------------------------- |
+| **Names**   | The values to divide over, one per line: coder names or email addresses. Or a number, for `s1`, `s2`, ... |
+| **Overlap** | Units set aside as `_overlap`, as a percentage or a number of units                                       |
+| **Column**  | The column's name (new, or one to replace)                                                                |
 
 The units are shuffled, the overlap is taken, and the rest is divided
 evenly: with 1000 units, 4 names and 10% overlap, 100 units are
@@ -82,7 +82,7 @@ units a coder already got stay theirs.
 
 ## Sets are lists, not rules
 
-A set is a fixed list of units, not a rule such as *"all units from 2024"*.
+A set is a fixed list of units, not a rule such as _"all units from 2024"_.
 It doesn't change when you upload more units, and its order stays the
 same: a running study doesn't change because someone uploaded material,
 and the results say exactly which units were for whom. The design names

@@ -43,12 +43,12 @@ what coders would see. Try adding `**Source:** $unit.source` on a new line.
 
 There are three kinds of values:
 
-| Write | What is filled in |
-| --- | --- |
-| `$unit.headline` | The unit's `headline` field: a column of the units you uploaded |
-| `$unit.id` | The unit's id (the column whose type was **unit id** when you uploaded) |
+| Write              | What is filled in                                                                                    |
+| ------------------ | ---------------------------------------------------------------------------------------------------- |
+| `$unit.headline`   | The unit's `headline` field: a column of the units you uploaded                                      |
+| `$unit.id`         | The unit's id (the column whose type was **unit id** when you uploaded)                              |
 | `$var.topic.label` | The coder's answer to the question `topic` (see [Referring to answers and unit data](references.md)) |
-| `{{ ... }}` | The result of a small script, for anything else (see [Scripts](scripts.md)) |
+| `{{ ... }}`        | The result of a small script, for anything else (see [Scripts](scripts.md))                          |
 
 The editor helps you: type `$` and it lists the unit fields and questions you
 can use. Fields that don't exist in the study's units are marked with a warning,
@@ -87,15 +87,15 @@ $unit.text
 
 ## Suffixes: showing a value as something else
 
-When a field *does* contain markdown, an image link or HTML, add a **suffix**
+When a field _does_ contain markdown, an image link or HTML, add a **suffix**
 after the value to say how to show it:
 
-| Suffix | Shows the value as |
-| --- | --- |
-| `::text` | Plain text. The default, so you never need to write it |
-| `::markdown` | Markdown: `**bold**` becomes **bold** |
-| `::image` | An image: the value is the image's URL |
-| `::html` | HTML, in a safe frame (see [HTML in a layout](html.md)) |
+| Suffix       | Shows the value as                                      |
+| ------------ | ------------------------------------------------------- |
+| `::text`     | Plain text. The default, so you never need to write it  |
+| `::markdown` | Markdown: `**bold**` becomes **bold**                   |
+| `::image`    | An image: the value is the image's URL                  |
+| `::html`     | HTML, in a safe frame (see [HTML in a layout](html.md)) |
 
 ```example
 unit:
@@ -115,7 +115,7 @@ $unit.photo::image
 > available for as long as the study runs.
 
 A suffix also works after a script: `{{ $unit.text.toUpperCase() }}::markdown`.
-It goes *after* the closing `}}`, never inside it.
+It goes _after_ the closing `}}`, never inside it.
 
 ## Markdown in the template itself
 

@@ -14,10 +14,10 @@ can show a question only to coders who gave a certain answer.
 There are two kinds, and they are written the same way everywhere in the
 design:
 
-| Write | What it refers to |
-| --- | --- |
-| `$unit.headline` | The field `headline` of the unit on screen: a column of the units you uploaded |
-| `$var.topic.label` | The coder's answer to the question named `topic` |
+| Write              | What it refers to                                                              |
+| ------------------ | ------------------------------------------------------------------------------ |
+| `$unit.headline`   | The field `headline` of the unit on screen: a column of the units you uploaded |
+| `$var.topic.label` | The coder's answer to the question named `topic`                               |
 
 ```example
 unit:
@@ -57,14 +57,14 @@ the editor (not an error, because you may upload the units later).
 the answer to that question. Which properties a question has depends on
 what kind of answer it holds:
 
-| Question | Properties | Holds |
-| --- | --- | --- |
-| Nominal (one answer), ordinal, numeric, swipe, random condition | `.value`, `.label` | One answer |
-| Nominal with multiple answers | `.values`, `.labels` | A list of answers |
-| Span | `.values`, `.labels`, `.texts` | A list: one per selected span |
-| Relation | `.values`, `.labels` | A list: one per relation |
-| Scale | `.values`, `.items.<item>.value`, `.items.<item>.label` | One answer per item |
-| Confirm | only `.answered` | Nothing but whether it was clicked |
+| Question                                                        | Properties                                              | Holds                              |
+| --------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------- |
+| Nominal (one answer), ordinal, numeric, swipe, random condition | `.value`, `.label`                                      | One answer                         |
+| Nominal with multiple answers                                   | `.values`, `.labels`                                    | A list of answers                  |
+| Span                                                            | `.values`, `.labels`, `.texts`                          | A list: one per selected span      |
+| Relation                                                        | `.values`, `.labels`                                    | A list: one per relation           |
+| Scale                                                           | `.values`, `.items.<item>.value`, `.items.<item>.label` | One answer per item                |
+| Confirm                                                         | only `.answered`                                        | Nothing but whether it was clicked |
 
 Every question also has `.answered`: `true` if the coder answered it,
 `false` if not (yet), or if a [condition](conditions.md) skipped it.
@@ -77,16 +77,16 @@ example, or `.values` on a question with one.
 
 Every option of a question has a **value** (what is stored and exported,
 such as `human_interest` or `3`) and a **label** (what the coder sees,
-such as *Human interest* or *Agree*).
+such as _Human interest_ or _Agree_).
 
 - `.value` and `.values` give the stored values. Use them in conditions and
   anywhere the result is compared or used by a program, such as a redirect
   link.
 - `.label` and `.labels` give what the coder saw. Use them in texts that
-  coders read: *"You said the article is about **$var.topic.label**"*.
+  coders read: _"You said the article is about **$var.topic.label**"_.
 
 For a numeric question, `.label` is the label of the number if you gave it
-one (a break-point label such as *Very much*), and otherwise the number
+one (a break-point label such as _Very much_), and otherwise the number
 itself. For span questions, `.texts` gives the selected text of each span,
 and `.values` the option each span was labelled with.
 
@@ -112,12 +112,12 @@ order.
 
 `$session` holds values of the coder's session, fixed when they start:
 
-| Reference | Gives |
-| --- | --- |
-| `$session.participant` | The participant id, if the link gives one |
-| `$session.source` | The `?source=` of the link, if given |
-| `$session.email` | The email the coder logged in with, if any |
-| `$session.<name>` | A link or URL parameter of the design's session parameters (above the item tree), e.g. a condition per link or a panel's study id |
+| Reference              | Gives                                                                                                                             |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `$session.participant` | The participant id, if the link gives one                                                                                         |
+| `$session.source`      | The `?source=` of the link, if given                                                                                              |
+| `$session.email`       | The email the coder logged in with, if any                                                                                        |
+| `$session.<name>`      | A link or URL parameter of the design's session parameters (above the item tree), e.g. a condition per link or a panel's study id |
 
 The design's **Session** item declares the parameters, so the editor
 checks the names. A session without a value (such as `source`) gives an
@@ -125,13 +125,13 @@ empty text. See [Session parameters](session-parameters.md).
 
 ## Where references work
 
-| Where | `$unit` | `$var` | `$session` | `{{ }}` |
-| --- | --- | --- | --- | --- |
-| A loop's layout | Yes | Yes | Yes | Yes |
-| Question and instruction texts | In a loop | Yes | Yes | Yes |
-| Conditions (condition items, `::: if`) | In a loop | Yes | Yes | Yes (a condition is a script) |
-| End item messages | In a loop | Yes | Yes | Yes |
-| End item redirect links | No | Yes | Yes | No |
+| Where                                  | `$unit`   | `$var` | `$session` | `{{ }}`                       |
+| -------------------------------------- | --------- | ------ | ---------- | ----------------------------- |
+| A loop's layout                        | Yes       | Yes    | Yes        | Yes                           |
+| Question and instruction texts         | In a loop | Yes    | Yes        | Yes                           |
+| Conditions (condition items, `::: if`) | In a loop | Yes    | Yes        | Yes (a condition is a script) |
+| End item messages                      | In a loop | Yes    | Yes        | Yes                           |
+| End item redirect links                | No        | Yes    | Yes        | No                            |
 
 In redirect links the values are URL-encoded: see [Ending a session](end-items.md).
 
@@ -171,18 +171,18 @@ write `\$`: `\$unit.headline` shows `$unit.headline`.
 The editor checks every reference when you edit the design, and lists
 problems with the item they are in. Common messages:
 
-| Message (shortened) | What to do |
-| --- | --- |
-| `'topc' is not a question` | A typo, or the question was renamed or deleted |
-| `'topic' is asked after this point` | Move the question before the place that uses it |
+| Message (shortened)                                                   | What to do                                                                                   |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `'topc' is not a question`                                            | A typo, or the question was renamed or deleted                                               |
+| `'topic' is asked after this point`                                   | Move the question before the place that uses it                                              |
 | `'sentiment' is answered in this loop; use it inside ::: from topics` | In a loop's layout, use the loop's own answers inside a `::: from` block of a later question |
-| `a question can't refer to itself` | Refer to the answer from a later question instead |
-| `'tone' is a question of another unit loop` | Loop answers can only be used in their own loop |
-| `$unit.text can only be used inside a unit loop` | There is no unit outside a loop |
-| `which has no .value; use .values, .labels or .answered` | Use a property this kind of question has |
-| `$var.topic needs a property` | Add `.value`, `.label`, ... |
-| `$var.topic.is(...) can only be used inside {{ }}` | Helper methods work in scripts and conditions, not as a plain value |
-| `$unit.headlne is not a unit field` (warning) | A typo, or the units don't have this column |
+| `a question can't refer to itself`                                    | Refer to the answer from a later question instead                                            |
+| `'tone' is a question of another unit loop`                           | Loop answers can only be used in their own loop                                              |
+| `$unit.text can only be used inside a unit loop`                      | There is no unit outside a loop                                                              |
+| `which has no .value; use .values, .labels or .answered`              | Use a property this kind of question has                                                     |
+| `$var.topic needs a property`                                         | Add `.value`, `.label`, ...                                                                  |
+| `$var.topic.is(...) can only be used inside {{ }}`                    | Helper methods work in scripts and conditions, not as a plain value                          |
+| `$unit.headlne is not a unit field` (warning)                         | A typo, or the units don't have this column                                                  |
 
 In a loop's layout, the editor helps you write references: type `$` and it
 lists the unit fields and questions you can use there. In a condition's

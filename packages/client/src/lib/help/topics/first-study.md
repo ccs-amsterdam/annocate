@@ -27,21 +27,19 @@ a003,Local team wins cup,"Thousands celebrated in the city centre after the fina
 > link, and often example answers) to try and change. Its overview
 > says what to try.
 >
-> To copy a study you have, from this or another server, choose **Create new
-> study** → **From a file** and pick its download (the zip from Results).
-> Units, set columns, design and settings come along; coders and answers
-> don't.
+> To start from a design you have (a design file from a study's download or
+> the editor's Export menu), choose **Create new study** → **From a file**.
 >
 > **Create new study** → **Guided setup** does steps 1 to 3 below in one go: say
 > whether you annotate units, ask questions or run an experiment, upload
 > the units, choose who codes what, and name your questions. The study then
-> opens in the design editor, with each question marked *to specify*:
+> opens in the design editor, with each question marked _to specify_:
 > choose its answer type there (step 3), then continue with step 4. See
 > [Guided setup](setup-wizard.md) for what it does and what only the editor
 > does.
 
 1. On the **Studies** page, click **Create new study**, then **Empty study**.
-2. Give it a name under **Study Name**, for example *News pilot*, and click
+2. Give it a name under **Study Name**, for example _News pilot_, and click
    **Create Study**.
 
 The study opens on its **Overview** tab. The tabs along the top group the
@@ -65,25 +63,25 @@ More in [Uploading units](uploading-units.md).
 Open the **Editor** tab. On the left is the design as a tree of items;
 on the right the form of the item you select.
 
-**A unit loop.** Questions about units go inside a *unit loop*: the loop
+**A unit loop.** Questions about units go inside a _unit loop_: the loop
 asks its questions for every unit a coder gets.
 
 1. Click **Add item**, then **Unit loop**.
-2. In the loop's form, type a **Label (optional)** such as *News articles*.
+2. In the loop's form, type a **Label (optional)** such as _News articles_.
    Coders see it in their menu.
 
 **The first question.**
 
 1. Hover over the loop's row in the tree and click the **+** at the right.
-   The menu asks *where*: choose **Inside News articles**, then
+   The menu asks _where_: choose **Inside News articles**, then
    **Question**.
 2. Change **Item Name** to `topic`. The name is the question's column in
    your results.
-3. A new question has no answer type yet (it is marked *to specify*): set
+3. A new question has no answer type yet (it is marked _to specify_): set
    **Answer Type** to **Nominal (categories)**.
-4. Under **Question**, type *What is this article mainly about?*
-5. Under **Options**, change the labels to *Politics* and *Disasters*, and
-   click **+ Add option** for a third, *Sports*. The values (what is stored)
+4. Under **Question**, type _What is this article mainly about?_
+5. Under **Options**, change the labels to _Politics_ and _Disasters_, and
+   click **+ Add option** for a third, _Sports_. The values (what is stored)
    follow the labels: `politics`, `disasters`, `sports`.
 
 **The second question.**
@@ -91,8 +89,8 @@ asks its questions for every unit a coder gets.
 1. Hover over `topic` in the tree, click its **+** and choose
    **After topic**, then **Question**.
 2. Name it `tone`, set **Answer Type** to **Ordinal (ordered options)**,
-   and type the question *How negative or positive is the article?*
-3. Give the three options the labels *Negative*, *Neutral* and *Positive*.
+   and type the question _How negative or positive is the article?_
+3. Give the three options the labels _Negative_, _Neutral_ and _Positive_.
    Their values are 1, 2 and 3.
 
 The tree now looks like this:
@@ -123,8 +121,9 @@ Select the loop in the tree. Its form has two tabs:
   `$unit.headline` is filled in with each unit's headline. For more than a
   title, byline and body (styles, blocks, conditions), click **Advanced**
   and write the template yourself. See [Layout templates](layout-templates.md).
+
 - **Units**: which units coders get. A new loop has none chosen yet (it is
-  marked *to specify*): click **Code the session's units**. Without
+  marked _to specify_): click **Code the session's units**. Without
   coders or conditions in the design, every coder gets every unit. That
   is what we want here. See [Handing out units](unit-distribution.md).
 
@@ -143,7 +142,7 @@ $unit.text
 ## 5. Save and preview
 
 Click **Save** above the tree. Your design is now saved as a **draft**
-(design version 1, *v1*): you and your co-editors see it, coders don't. If the
+(design version 1, _v1_): you and your co-editors see it, coders don't. If the
 toolbar shows a red count of issues, click it to see what to fix; you can
 save with issues, but not preview or deploy.
 
@@ -167,8 +166,8 @@ the sets are drafts until you deploy them again. See
 Deploying made a link for the study: you don't create links by hand.
 
 1. Open the **Links** tab.
-2. Optionally, click the pencil icon to give the link a label (e.g. *Pilot
-   coders*).
+2. Optionally, click the pencil icon to give the link a label (e.g. _Pilot
+   coders_).
 3. Click **Copy link** in the table and send the link to your coders.
 
 Anyone who opens the link starts their own session. See

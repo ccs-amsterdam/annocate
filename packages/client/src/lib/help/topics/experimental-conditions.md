@@ -7,12 +7,12 @@ summary: Assigned and random conditions - how coders get a condition, using it i
 
 A **condition** is a value a coder's session gets, such as `control` or
 `experiment`, which the design uses to show different questions, texts or
-units. There are two kinds, which differ in *when* the value is set:
+units. There are two kinds, which differ in _when_ the value is set:
 
-| | Set | Defined in | Use it as |
-| --- | --- | --- | --- |
-| **Assigned condition** | When the session starts: by the link, or drawn | **Session**, above the item tree | `$session.<name>` |
-| **Random condition** | When the coder reaches it in the flow: drawn | an item in the tree ([Random conditions](random-condition.md)) | `$var.<name>` |
+|                        | Set                                            | Defined in                                                     | Use it as         |
+| ---------------------- | ---------------------------------------------- | -------------------------------------------------------------- | ----------------- |
+| **Assigned condition** | When the session starts: by the link, or drawn | **Session**, above the item tree                               | `$session.<name>` |
+| **Random condition**   | When the coder reaches it in the flow: drawn   | an item in the tree ([Random conditions](random-condition.md)) | `$var.<name>`     |
 
 ## Assigned conditions
 
@@ -24,11 +24,11 @@ conditions**:
   column** when it is linked to units (below).
 - **How it is assigned**:
 
-| Choice | Links | Who gets which value |
-| --- | --- | --- |
-| **By link: a link per value** | one per value | you, by who you send which link |
-| **At the start: one link, balanced** | one | the value with the fewest sessions so far |
-| **At the start: one link, random** | one | a random condition |
+| Choice                               | Links         | Who gets which value                      |
+| ------------------------------------ | ------------- | ----------------------------------------- |
+| **By link: a link per value**        | one per value | you, by who you send which link           |
+| **At the start: one link, balanced** | one           | the value with the fewest sessions so far |
+| **At the start: one link, random**   | one           | a random condition                        |
 
 **Balanced** keeps groups equal: it counts finished sessions and sessions
 active in the last 24 hours, so someone who drops out doesn't hold a place.

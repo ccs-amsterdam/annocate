@@ -7,13 +7,13 @@ summary: Overlap units that every coder codes besides their own set - for interc
 
 An **overlap** is a set of units that every coder codes in full, besides
 their own units. When coders divide the work (each their own units, or a
-shared queue), the overlap gives you units that *all* of them coded, so you
+shared queue), the overlap gives you units that _all_ of them coded, so you
 can compare them: for intercoder reliability, or to check coders against
 units with a known answer.
 
 The overlap is the value `_overlap` in a [set column](sets.md): the
 column the design divides units over (its coders, or a condition linked to
-units). To have only *some* coders code a unit, write their values
+units). To have only _some_ coders code a unit, write their values
 together instead: `anna;bob`.
 
 ## Setting it up
@@ -35,12 +35,12 @@ An overlap unit comes once per coder, as overlap. With the overlap
 
 ## Placement
 
-| Placed | What coders get |
-| --- | --- |
-| **Spread through them** (the default) | The overlap units evenly spread among their own units |
-| **At a rate** | About one overlap unit in every 10 of their own (you choose the number), at random |
-| **First** | First all overlap units, then their own |
-| **Last** | First their own units, then the overlap units |
+| Placed                                | What coders get                                                                    |
+| ------------------------------------- | ---------------------------------------------------------------------------------- |
+| **Spread through them** (the default) | The overlap units evenly spread among their own units                              |
+| **At a rate**                         | About one overlap unit in every 10 of their own (you choose the number), at random |
+| **First**                             | First all overlap units, then their own                                            |
+| **Last**                              | First their own units, then the overlap units                                      |
 
 With **Spread through them**, a coder with 100 own units and 4 overlap units
 gets an overlap unit after every 20 of their own units. If a coder runs out
@@ -48,7 +48,7 @@ of own units sooner, the overlap units that are left come at the end.
 
 Spreading needs to know how many units a coder will get. In a shared queue
 that is **Units per coder, at most**, so the option needs it (the menu says
-*needs max units per coder* until it is set).
+_needs max units per coder_ until it is set).
 
 **At a rate** doesn't need to know: after each of their own units, a coder
 gets an overlap unit with a chance of one in 10 (or the number you set),

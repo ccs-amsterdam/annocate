@@ -3,7 +3,7 @@ import { DraftItemsSchema } from "./design/designVersion.js";
 import { PublicInfoSchema, SessionSpecSchema } from "./design/session.js";
 import { UnitDataSchema } from "./common.js";
 import { SetGroupNameSchema, SetNameSchema } from "./sets.js";
-import { SignInSchema, StudyWriteSchema } from "./study.js";
+import { SignInSchema } from "./study.js";
 import { UnitsSpecSchema } from "./unitFields.js";
 
 /**
@@ -36,8 +36,7 @@ export const RecipeSchema = z.object({
     public: PublicInfoSchema.optional(),
     session: SessionSpecSchema.optional(),
     /**
-     * The unit fields, declared (types, descriptions), as in a design file:
-     * a study file brings its own. Fields the units have that aren't
+     * The unit fields, declared (types, descriptions), as in a design file. Fields the units have that aren't
      * declared are added as with an upload; the units' values must fit.
      * Without it, the fields are read from the units.
      */
@@ -46,10 +45,6 @@ export const RecipeSchema = z.object({
   }),
   /** Whether coders sign in (the study's setting; default `off`). */
   signIn: SignInSchema.optional(),
-  /** Finished sessions stay open (the study's setting; default no). */
-  keepSessionsOpen: z.boolean().optional(),
-  /** Deployment settings: the URLs of end items' `redirectSetting`s (the study's setting). */
-  redirectUrls: StudyWriteSchema.shape.redirectUrls,
   /** Deploy the design, so coders can start right away (examples). Default: a draft. */
   publish: z.boolean().default(false),
 });

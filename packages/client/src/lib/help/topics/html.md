@@ -68,13 +68,13 @@ name (`::: html scores`), so that a question can **Focus on** it
 The frame is sealed off from everything else. That has consequences for what
 HTML can do:
 
-| In the HTML | In the frame |
-| --- | --- |
-| `<script>` and `onclick="..."` | Don't run: only AnnoTinder's own script, which sizes the frame, runs |
-| Images from the web: `<img src="https://...">` | Don't load: only images included in the HTML itself, as `data:` URLs |
-| Stylesheets and fonts from the web | Don't load: use `<style>` and `style="..."` in the HTML, and fonts the device has |
-| Forms and buttons | Can't send anything |
-| Links | Can't open new windows or leave the coding screen |
+| In the HTML                                    | In the frame                                                                      |
+| ---------------------------------------------- | --------------------------------------------------------------------------------- |
+| `<script>` and `onclick="..."`                 | Don't run: only AnnoTinder's own script, which sizes the frame, runs              |
+| Images from the web: `<img src="https://...">` | Don't load: only images included in the HTML itself, as `data:` URLs              |
+| Stylesheets and fonts from the web             | Don't load: use `<style>` and `style="..."` in the HTML, and fonts the device has |
+| Forms and buttons                              | Can't send anything                                                               |
+| Links                                          | Can't open new windows or leave the coding screen                                 |
 
 The HTML also can't see the coder's answers, their session or anything else
 in AnnoTinder, and nothing is sent anywhere.

@@ -5,13 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
 import { useCreateStudyFromRecipeMutation } from "../../admin/queries";
-import { readStudyFile, type ReadStudyFile } from "../../admin/studyFile";
+import { readDesignFile, type DesignImport } from "../../admin/designImport";
 
 /**
- * "New study from a file" (docs/client.md §7): a study's download (.zip,
- * its study.json) makes a copy of the study: its units, set columns,
- * design (as a draft) and settings, without coders or answers. A design
- * file (.json) makes a study with that design and no units yet.
+ * "New study from a file" (docs/client.md §7): a design file (.json) makes
+ * a study with that design as a draft, and no units yet.
  */
 export function ImportStudyDialog({
   client,
@@ -23,7 +21,7 @@ export function ImportStudyDialog({
   onClose: () => void;
 }) {
   const create = useCreateStudyFromRecipeMutation(client);
-  const [read, setRead] = useState<ReadStudyFile | null>(null);
+  const [read, setRead] = useState<DesignImport | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -35,7 +33,7 @@ export function ImportStudyDialog({
     if (!file) return;
     setFileName(file.name);
     try {
-      const result = readStudyFile(file.name, new Uint8Array(await file.arrayBuffer()));
+      const result = readDesignFile(new Uint8Array(await file.arrayBuffer()));
       setRead(result);
       setName(result.recipe.name);
     } catch (e) {
@@ -55,19 +53,18 @@ export function ImportStudyDialog({
           New study from a file
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          A study&apos;s download (the .zip from Results › Download data) makes a copy of that study: its units, set
-          columns, design and settings. Its coders and answers stay where they are. A design file (.json) makes a study
-          with that design, to add units to.
+          A design file (from a study&apos;s download, designs/v1.json, or Export › Design file in the editor) makes a
+          study with that design, to add units to.
         </p>
 
         <label className="mt-4 flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed border-border p-5 text-center text-sm hover:border-primary/50">
           <FileUp className="h-6 w-6 text-primary" />
-          <span className="font-medium text-foreground">{fileName ?? "Choose a .zip or .json file"}</span>
+          <span className="font-medium text-foreground">{fileName ?? "Choose a design file (.json)"}</span>
           <input
             type="file"
-            accept=".zip,.json,application/zip,application/json"
+            accept=".json,application/json"
             className="sr-only"
-            aria-label="Study or design file"
+            aria-label="Design file"
             onChange={(e) => void choose(e.target.files?.[0])}
           />
         </label>
@@ -80,26 +77,10 @@ export function ImportStudyDialog({
 
         {read && (
           <div className="mt-3 rounded-lg bg-muted/50 p-3 text-sm" data-testid="import-summary">
-            {read.kind === "study" ? (
-              <ul className="list-disc space-y-0.5 pl-4">
-                <li>
-                  {read.units} unit{read.units === 1 ? "" : "s"}
-                </li>
-                {read.sets.map((g) => (
-                  <li key={g.name}>
-                    Set column <strong>{g.name}</strong>: {g.sets} set{g.sets === 1 ? "" : "s"}
-                  </li>
-                ))}
-                <li>
-                  A design with {read.items} item{read.items === 1 ? "" : "s"} at the top, as a draft
-                </li>
-              </ul>
-            ) : (
-              <p>
-                A design with {read.items} item{read.items === 1 ? "" : "s"} at the top, as a draft. No units: upload
-                them in the new study.
-              </p>
-            )}
+            <p>
+              A design with {read.items} item{read.items === 1 ? "" : "s"} at the top, as a draft. No units: upload them
+              in the new study.
+            </p>
             <p className="mt-2 text-xs text-muted-foreground">
               Made with AnnoTinder {read.release}. Deploy the design to get links for coders.
             </p>

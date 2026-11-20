@@ -18,15 +18,15 @@ don't need an account, and nothing is shared outside the study.
 
 Everything of a study is stored on the AnnoTinder server you use:
 
-| What | Includes |
-| --- | --- |
-| **Units** | The data you uploaded, and each unit as coders saw it (see [Keeping track of what coders saw](design-what-coders-saw.md)) |
-| **Design versions** | Every saved and deployed version |
-| **Links** | Their settings: label, link parameter values, login, emails, participant id, uses |
-| **Coders** | Per session: the link used, the participant id (if any), the answers to questions outside unit loops, assigned groups, which units they were given, when they started, and how the session ended |
-| **Devices** | Per device a coder used: the kind of device (phone, tablet, desktop), browser and operating system, and on which device each answer was given |
-| **Answers** | Per unit and question: the answer, when it was first given and last changed, and the design version and unit version |
-| **Response times** | Per question: how long it was on screen until the first answer and in total, how long the page was hidden meanwhile, and how often the answer changed (measured in the coder's browser); per unit, when the server handed it out. Always recorded: mention it in your participant information if it matters for your study |
+| What                | Includes                                                                                                                                                                                                                                                                                                                   |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Units**           | The data you uploaded, and each unit as coders saw it (see [Keeping track of what coders saw](design-what-coders-saw.md))                                                                                                                                                                                                  |
+| **Design versions** | Every saved and deployed version                                                                                                                                                                                                                                                                                           |
+| **Links**           | Their settings: label, link parameter values, login, emails, participant id, uses                                                                                                                                                                                                                                          |
+| **Coders**          | Per session: the link used, the participant id (if any), the answers to questions outside unit loops, assigned groups, which units they were given, when they started, and how the session ended                                                                                                                           |
+| **Devices**         | Per device a coder used: the kind of device (phone, tablet, desktop), browser and operating system, and on which device each answer was given                                                                                                                                                                              |
+| **Answers**         | Per unit and question: the answer, when it was first given and last changed, and the design version and unit version                                                                                                                                                                                                       |
+| **Response times**  | Per question: how long it was on screen until the first answer and in total, how long the page was hidden meanwhile, and how often the answer changed (measured in the coder's browser); per unit, when the server handed it out. Always recorded: mention it in your participant information if it matters for your study |
 
 What AnnoTinder itself does **not** store about coders: their name, their
 email address (unless the link has them [log in](links.md#login)), their IP address, details of their device beyond its kind, browser and operating system, or
@@ -61,7 +61,7 @@ A **participant id** links a coder's answers to another record: a panel's
 participant id, a code from a lab schedule. It is stored with the coder, and
 shown on the **Coders** tab and in the download.
 
-A participant id is a *label*, not a password. Anyone who has a link with
+A participant id is a _label_, not a password. Anyone who has a link with
 that id in it could open it. So AnnoTinder never lets a participant id unlock
 earlier answers: opening a participant's link on a new device does not show
 the answers given on the first device. Instead, the coder is told they already

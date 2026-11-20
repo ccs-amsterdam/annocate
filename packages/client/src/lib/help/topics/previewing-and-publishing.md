@@ -11,11 +11,11 @@ design editor, a saved **draft** that you and your co-editors share, and a
 REDCap: you edit a draft, and coders only see your changes once you
 deploy it.
 
-| Stage | Who sees it | How you get there |
-| --- | --- | --- |
-| Unsaved changes | only you, in this browser | editing |
-| Draft | you and your co-editors, and **Preview** | **Save** |
-| Live version | coders | **Deploy…** |
+| Stage           | Who sees it                              | How you get there |
+| --------------- | ---------------------------------------- | ----------------- |
+| Unsaved changes | only you, in this browser                | editing           |
+| Draft           | you and your co-editors, and **Preview** | **Save**          |
+| Live version    | coders                                   | **Deploy…**       |
 
 Every saved design version gets a number: v1, v2, ... Deployed versions can never
 change again, so every answer stays linked to the exact version it was
@@ -35,12 +35,12 @@ progress. Previewing and deploying need a design without issues.
 
 A banner under the toolbar always says what you are looking at:
 
-| Banner | Means |
-| --- | --- |
-| **New design** | nothing is saved yet; the first save makes v1 |
-| **Draft v3: not live yet** | you are editing the draft; coders use the live version (if any) until you deploy it |
+| Banner                              | Means                                                                                                                                                                   |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **New design**                      | nothing is saved yet; the first save makes v1                                                                                                                           |
+| **Draft v3: not live yet**          | you are editing the draft; coders use the live version (if any) until you deploy it                                                                                     |
 | **v2 is live: coders are using it** | you opened the live version and there is no draft. It can't be changed, so the button says **Save as draft**: your changes become a new draft, and coders keep using v2 |
-| **Viewing v1, an older version** | a version from the history: read only |
+| **Viewing v1, an older version**    | a version from the history: read only                                                                                                                                   |
 
 If you leave the **Editor** tab with unsaved changes, AnnoTinder asks
 whether to **Save changes** or **Discard changes**. Unsaved changes are
@@ -62,11 +62,11 @@ saved, and by whom), and a tag:
 
 Its buttons:
 
-| Button | What it does |
-| --- | --- |
-| **Edit** / **View** | opens the draft to edit, or another version to read |
+| Button               | What it does                                                                                                                                                     |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Edit** / **View**  | opens the draft to edit, or another version to read                                                                                                              |
 | **Restore as draft** | copies an older (or the live) version into the draft. If there is a draft, its content is replaced, after you confirm. Then deploy it to go back to that version |
-| **Delete draft** | deletes the draft and everything saved in it since the live version, for all editors. It asks first, and can't be undone |
+| **Delete draft**     | deletes the draft and everything saved in it since the live version, for all editors. It asks first, and can't be undone                                         |
 
 To go back to an earlier version, restore it as the draft and deploy that.
 Nothing is ever lost this way: the version you go back from stays in the
@@ -78,8 +78,8 @@ Click **Preview Study** at the top right. You
 then code the study as a coder would, with the study's real units:
 
 - The preview runs the **latest saved version**: the draft if there is one,
-  otherwise the live version. A label above it says which (*Previewing v3
-  (draft)*). Save first: unsaved changes are not in the preview.
+  otherwise the live version. A label above it says which (_Previewing v3
+  (draft)_). Save first: unsaved changes are not in the preview.
 - Nothing you answer is stored, and you don't show up as a coder in
   progress or results.
 - **Mobile**, **Desktop** and **Full Width** switch the screen size. Pick a

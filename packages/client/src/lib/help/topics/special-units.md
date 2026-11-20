@@ -9,10 +9,10 @@ Three values of a [set column](sets.md) have a special meaning. Every unit
 loop mixes them in with each coder's own units, wherever the units come
 from (all units, divided over coders, or a condition's):
 
-| Set | Its units | Coders notice |
-| --- | --- | --- |
-| `_overlap` | coded by every coder: to compare coders (reliability) | nothing |
-| `_gold` | have a known answer: coders are checked silently | nothing, unless they fail (below) |
+| Set         | Its units                                                | Coders notice                       |
+| ----------- | -------------------------------------------------------- | ----------------------------------- |
+| `_overlap`  | coded by every coder: to compare coders (reliability)    | nothing                             |
+| `_gold`     | have a known answer: coders are checked silently         | nothing, unless they fail (below)   |
 | `_practice` | have a known answer: coders are told when they are wrong | feedback per question, answer again |
 
 Keep each unit in at most one of them: a gold unit that is also an overlap
@@ -37,7 +37,7 @@ a5,A new park opens.,_practice,,positive,It is good news for the neighbourhood.
 ```
 
 Upload it and choose **set** as the type of the `part` column. Coders never
-get the answer columns: the Units page shows them as *server only*.
+get the answer columns: the Units page shows them as _server only_.
 
 ## Or let AnnoTinder make them
 
@@ -55,12 +55,12 @@ get the answer columns: the Units page shows them as *server only*.
 
 A cell holds the right answer to one question:
 
-| Cell | Right when the answer is |
-| --- | --- |
-| `positive` | exactly this option |
-| `a;b` | exactly these options together (a question with several answers) |
-| `positive\|neutral` | any of them |
-| `3..5` | a number from 3 to 5 |
+| Cell                | Right when the answer is                                         |
+| ------------------- | ---------------------------------------------------------------- |
+| `positive`          | exactly this option                                              |
+| `a;b`               | exactly these options together (a question with several answers) |
+| `positive\|neutral` | any of them                                                      |
+| `3..5`              | a number from 3 to 5                                             |
 
 An empty cell: the unit isn't checked for that question. Deploying warns
 about units without answers and answers that can never be right: a value
@@ -93,10 +93,10 @@ first time a coder sees the question.
 
 Turn on **Gold** in the loop and tick the questions to check. Coders see
 nothing: gold units look like any other. With **End the session when a coder
-answers too many wrong**, every coder starts with a *health* (e.g. 5) that
+answers too many wrong**, every coder starts with a _health_ (e.g. 5) that
 goes down per wrong answer (e.g. by 1), and up per right one if you like
 (never above the start). At 0 the session ends at an
-[end item](end-items.md) with the outcome *screen-out*: its message and
+[end item](end-items.md) with the outcome _screen-out_: its message and
 redirect apply.
 
 The answers to gold units are in the results like any other, so you can

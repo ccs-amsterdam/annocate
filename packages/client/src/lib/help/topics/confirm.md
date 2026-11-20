@@ -11,7 +11,7 @@ whenever you want coders to read something before they continue:
 
 - **Instructions** at the start of a study, or before a new part of it.
 - **Information and consent** in a survey experiment.
-- **A check in a unit loop**: *I have read the whole article* before the
+- **A check in a unit loop**: _I have read the whole article_ before the
   questions about it.
 - **A closing message**, such as a thank-you before the session ends.
 
@@ -46,8 +46,8 @@ own page, say), but if participants must be able to say no inside
 AnnoTinder, use a [nominal question](nominal-and-ordinal.md) with two
 options instead:
 
-1. A nominal question `consent` with the options *I agree* (`yes`) and
-   *I do not agree* (`no`).
+1. A nominal question `consent` with the options _I agree_ (`yes`) and
+   _I do not agree_ (`no`).
 2. A condition that holds when `$var.consent.is("no")`, with an
    [end item](end-items.md) in it that ends the session as screened out.
 

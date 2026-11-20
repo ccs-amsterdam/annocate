@@ -33,9 +33,9 @@ From top to bottom, the tab has:
 The tree shows every item, indented under the loop or condition it is in.
 Its icon shows what it is: a question has the icon of its answer type
 (hover over an icon to see the type), a loop a circular arrow, a Show if item
-a branching arrow, an end item an exit arrow. A loop shows its label (or *Unit loop*)
-and which units it hands out (*the session's units*, *part_1, shared*, ...); a Show if item shows
-its condition in words (*if age < 18*), or its label if you gave it one.
+a branching arrow, an end item an exit arrow. A loop shows its label (or _Unit loop_)
+and which units it hands out (_the session's units_, _part_1, shared_, ...); a Show if item shows
+its condition in words (_if age < 18_), or its label if you gave it one.
 
 Questions are numbered as coders see them in the coding screen's top
 bar: the questions outside loops 1, 2, 3, ..., and in each loop its own
@@ -128,7 +128,7 @@ and controls above it:
   change while coders go through a unit's questions (`::: from`, see
   [Showing parts conditionally](template-blocks.md)).
 - A picker for each question that the layout uses, with its options and
-  *(no answer)*: try how the layout looks after each answer.
+  _(no answer)_: try how the layout looks after each answer.
 
 This preview shows a single item. To try the whole study as a coder, use
 **Preview Study** at the top right (see
@@ -161,7 +161,7 @@ You can **save** with issues: a draft is work in progress.
   count as one step, so a typed word is undone at once.
 - **Revert** goes back to the last save. Its menu lists the items you
   changed under **Revert item**: pick one to undo just that item (an item
-  you added is removed: *new: removes it*). **Revert all changes** undoes
+  you added is removed: _new: removes it_). **Revert all changes** undoes
   everything since the last save. A revert is itself a step you can undo.
 
 If you leave the **Editor** tab with unsaved changes, a dialog asks

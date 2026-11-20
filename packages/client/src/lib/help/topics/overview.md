@@ -19,24 +19,24 @@ can be shared so others can repeat the study.
 
 Everything belongs to a **study**: one study or coding project. A study has:
 
-| Part | What it is | Where |
-| --- | --- | --- |
-| **Design** | The questions coders answer, in order, how units are shown and handed out, and the unit fields and session parameters. Its versions are v1, v2, ... | Design › Editor |
-| **Units** | The material to code: rows of data, each with an id and fields such as `headline` and `text` | Design › Units |
-| **Sets** | Named lists of units, in groups, for handing out different units to different coders | Design › Units |
-| **Links** | The links coders open to start, made when you deploy | Deploy › Links |
-| **Coders** | Everyone who started, and how far they got | Deploy › Coders |
-| **Results** | All answers, as a download | Results tab |
+| Part        | What it is                                                                                                                                          | Where           |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| **Design**  | The questions coders answer, in order, how units are shown and handed out, and the unit fields and session parameters. Its versions are v1, v2, ... | Design › Editor |
+| **Units**   | The material to code: rows of data, each with an id and fields such as `headline` and `text`                                                        | Design › Units  |
+| **Sets**    | Named lists of units, in groups, for handing out different units to different coders                                                                | Design › Units  |
+| **Links**   | The links coders open to start, made when you deploy                                                                                                | Deploy › Links  |
+| **Coders**  | Everyone who started, and how far they got                                                                                                          | Deploy › Coders |
+| **Results** | All answers, as a download                                                                                                                          | Results tab     |
 
 ## How a design is built
 
 A design is mainly a list of **items**, shown to coders one at a time:
 
-- **Questions**, such as *"What is the main topic?"*. Each has a name (its
+- **Questions**, such as _"What is the main topic?"_. Each has a name (its
   column in the results) and an answer type: categories, a number, a scale,
   a swipe, text selection, and more. See [Question types](question-types.md).
 - **Unit loops**: a group of questions asked for every unit a coder gets. The
-  loop says *which* units a coder gets and *how* a unit is shown. See
+  loop says _which_ units a coder gets and _how_ a unit is shown. See
   [Unit loops](unit-loops.md).
 - **Conditions**: items that are only shown when an earlier answer says so.
   See [Conditions](conditions.md).

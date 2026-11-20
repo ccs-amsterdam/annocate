@@ -64,7 +64,7 @@ Large files are uploaded in batches; the button shows how far it is.
 
 The table under **Columns to upload** has a row per column of your file,
 with a few example values. A column is uploaded when it has a name under
-**Upload as field**; columns left empty (*not uploaded*) are ignored.
+**Upload as field**; columns left empty (_not uploaded_) are ignored.
 
 - Click **Use column names** to upload every column (except the id column)
   under its own name. Names are made valid: lower case, other characters
@@ -82,20 +82,20 @@ problem is shown next to it.
 
 Every field has a **Type**:
 
-| Type | Values | Example |
-| --- | --- | --- |
-| `text` | anything | headlines, texts, image links |
-| `number` | numbers, with a decimal point | `128`, `-3.5`, `1e6` |
-| `boolean` | `true` or `false` | whether a post was deleted |
+| Type      | Values                        | Example                       |
+| --------- | ----------------------------- | ----------------------------- |
+| `text`    | anything                      | headlines, texts, image links |
+| `number`  | numbers, with a decimal point | `128`, `-3.5`, `1e6`          |
+| `boolean` | `true` or `false`             | whether a post was deleted    |
 
 AnnoTinder suggests the type from the values: `number` if every filled-in
 value is a number, `boolean` if every one is `true` or `false`, else `text`.
 You can change it. Values that don't fit the type are listed (for example
-*3 values aren't numbers ('n/a', '3,5')*) and block the upload until you fix
+_3 values aren't numbers ('n/a', '3,5')_) and block the upload until you fix
 the file or choose `text`.
 
 Numbers matter when a design calculates with a field or compares it (for
-example *show this question only when `likes` is over 100*). Ids or codes
+example _show this question only when `likes` is over 100_). Ids or codes
 with leading zeros, such as `007`, should be `text`: as a number they would
 become `7`.
 
@@ -118,7 +118,7 @@ All units of a study have the same fields. The first upload sets them; later
 uploads add to them:
 
 - A column named like an existing field is uploaded as that field and keeps
-  its type (*existing field*).
+  its type (_existing field_).
 - New columns become new fields. Units uploaded before have no value for
   them.
 - If no column is uploaded as an existing field, AnnoTinder warns you: the
@@ -126,9 +126,9 @@ uploads add to them:
 
 You can see the study's fields, with an icon for their type, at the top of the
 **Units** tab. They are part of the design: **Details**
-shows per field how the design uses it (*shown* to coders, *sent, not
-shown* when only conditions use it, *server only* for gold and practice
-answer columns, or *not used*), a description, and its type. A field the
+shows per field how the design uses it (_shown_ to coders, _sent, not
+shown_ when only conditions use it, _server only_ for gold and practice
+answer columns, or _not used_), a description, and its type. A field the
 design doesn't use can be removed (with its values in the units). A field
 the design uses but no upload brought can be declared there; the
 design can't be deployed until its fields are declared.

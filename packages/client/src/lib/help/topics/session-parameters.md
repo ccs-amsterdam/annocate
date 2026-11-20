@@ -10,12 +10,12 @@ session starts with. The design uses each of them as `$session.<name>`.
 You don't make links yourself: deploying makes them from these settings,
 listed under **Deploy › Links**.
 
-| Setting | What it is | Links |
-| --- | --- | --- |
-| **Coders** | Units divided over coders, by a set column | a link per coder, or one sign-in link for email addresses |
-| **Assigned conditions** | Values such as `control` and `experiment` | a link per value, or one link that draws |
-| **Link parameters** | Other values fixed per link, such as a class | a link per value |
-| **URL parameters** | Values added to a link by whoever shares it | none |
+| Setting                 | What it is                                   | Links                                                     |
+| ----------------------- | -------------------------------------------- | --------------------------------------------------------- |
+| **Coders**              | Units divided over coders, by a set column   | a link per coder, or one sign-in link for email addresses |
+| **Assigned conditions** | Values such as `control` and `experiment`    | a link per value, or one link that draws                  |
+| **Link parameters**     | Other values fixed per link, such as a class | a link per value                                          |
+| **URL parameters**      | Values added to a link by whoever shares it  | none                                                      |
 
 The values are stored with the session when it starts, so coders can come
 back without them, and they appear in the results (`coders.csv`).
@@ -69,12 +69,12 @@ than a link parameter: they can be drawn and linked to units.
 
 ## Built-in values
 
-| Value | What it is |
-| --- | --- |
-| `$session.participant` | The participant id (see below, and [Links](links.md#participant-ids)) |
-| `$session.source` | The `?source=` of any link, if given: where a coder came from (a newsletter, a QR code). Never required |
-| `$session.email` | The email the coder signed in with, if any |
-| `$session.coder` | The coder, when units are divided over coders |
+| Value                  | What it is                                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| `$session.participant` | The participant id (see below, and [Links](links.md#participant-ids))                                   |
+| `$session.source`      | The `?source=` of any link, if given: where a coder came from (a newsletter, a QR code). Never required |
+| `$session.email`       | The email the coder signed in with, if any                                                              |
+| `$session.coder`       | The coder, when units are divided over coders                                                           |
 
 These names can't be used for your own parameters.
 

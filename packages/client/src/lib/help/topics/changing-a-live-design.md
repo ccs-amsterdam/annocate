@@ -17,24 +17,24 @@ Two rules explain most of it:
 - **Answers are stored per question name**, together with the design
   version they were given under. A new version doesn't touch them.
 - **A unit counts as finished when every question of its loop has an
-  answer** in the *current* version (a question a condition hid counts as
+  answer** in the _current_ version (a question a condition hid counts as
   answered: it is stored as skipped). Add a question, and units finished
   before lack its answer.
 
 ## What each change does
 
-| Change | Units coders already finished | The unit a coder has open, and units still to come |
-| --- | --- | --- |
-| **Question added** to a loop | Unfinished again: coders get them back, with their earlier answers, and only answer what is new | The new question is asked |
-| **Question added** outside a loop | (not about units) Coders are asked it once they switch to the new version, before they continue | Asked |
-| **Question removed** | Their answers stay in the data (and in the download), but the question is no longer asked | Not asked |
-| **Option value** removed or changed | Stay finished. Answers with the old value stay in the data, but no longer fit the question: a coder who goes back to such a unit must answer it again | Only the current options |
-| **Option label** changed | Nothing changes: answers hold values, not labels | Coders see the new label |
-| **Answer type** changed | As a removed value: earlier answers no longer fit | The new type |
-| **Question renamed** | As removing the old question and adding a new one: units are unfinished again | Asked under the new name |
-| **Question text, instruction or layout** changed | Stay finished | Coders see the new text |
-| **Conditions or order** changed | Stay finished | Follow the new design |
-| **Distribution** changed (the loop's **Units** tab) | A coder's units follow the new settings; the units they already coded stay theirs (they can go back to them) | The new rules apply |
+| Change                                              | Units coders already finished                                                                                                                         | The unit a coder has open, and units still to come |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| **Question added** to a loop                        | Unfinished again: coders get them back, with their earlier answers, and only answer what is new                                                       | The new question is asked                          |
+| **Question added** outside a loop                   | (not about units) Coders are asked it once they switch to the new version, before they continue                                                       | Asked                                              |
+| **Question removed**                                | Their answers stay in the data (and in the download), but the question is no longer asked                                                             | Not asked                                          |
+| **Option value** removed or changed                 | Stay finished. Answers with the old value stay in the data, but no longer fit the question: a coder who goes back to such a unit must answer it again | Only the current options                           |
+| **Option label** changed                            | Nothing changes: answers hold values, not labels                                                                                                      | Coders see the new label                           |
+| **Answer type** changed                             | As a removed value: earlier answers no longer fit                                                                                                     | The new type                                       |
+| **Question renamed**                                | As removing the old question and adding a new one: units are unfinished again                                                                         | Asked under the new name                           |
+| **Question text, instruction or layout** changed    | Stay finished                                                                                                                                         | Coders see the new text                            |
+| **Conditions or order** changed                     | Stay finished                                                                                                                                         | Follow the new design                              |
+| **Distribution** changed (the loop's **Units** tab) | A coder's units follow the new settings; the units they already coded stay theirs (they can go back to them)                                          | The new rules apply                                |
 
 Units and sets are drafts too: units you upload and sets you make while
 coding runs reach coders once you deploy them, with a design draft or on

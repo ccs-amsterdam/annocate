@@ -67,15 +67,13 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
       ownerId: options.ownerId,
       origin: options.origin ?? null,
       signIn: recipe.signIn ?? "off",
-      keepSessionsOpen: recipe.keepSessionsOpen ?? false,
-      redirectUrls: recipe.redirectUrls ?? {},
     })
     .returning();
   const study = made!;
   if (options.ownerId !== null && options.ownerIsAdmin)
     await tx.insert(roles).values({ role: "ADMIN", studyId: study.id, userId: options.ownerId });
 
-  // Units, with the declared fields (a study file's) and those the units add
+  // Units, with the declared fields (a design file's) and those the units add
   const unitIds = new Map<string, number>();
   const declared = recipe.design.units?.fields ?? [];
   const names = declared.map((f) => f.name);

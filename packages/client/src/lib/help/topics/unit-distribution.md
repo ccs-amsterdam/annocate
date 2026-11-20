@@ -14,21 +14,21 @@ Two things decide which units a coder gets:
    part (a filter), and either every unit once or as a shared queue
    (crowd coding).
 
-A loop doesn't decide *who* gets which units: that is in the design's
+A loop doesn't decide _who_ gets which units: that is in the design's
 **Session** and in your [set columns](sets.md).
 
 ## The session's units
 
-| The design says | A session gets |
-| --- | --- |
-| nothing | all units |
-| **Units are divided over coders** (column `coder`) | the units of its coder (see [Giving each coder their own units](own-units.md)) |
+| The design says                                    | A session gets                                                                         |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| nothing                                            | all units                                                                              |
+| **Units are divided over coders** (column `coder`) | the units of its coder (see [Giving each coder their own units](own-units.md))         |
 | a condition **linked to units** (column `framing`) | the units of its condition (see [Experimental conditions](experimental-conditions.md)) |
-| both | the units that match both |
+| both                                               | the units that match both                                                              |
 
 Units in a column's `_overlap` are for everyone. The loop's **Units** tab
-says in one line what a session gets, for example *"A session gets the
-units of its coder × framing."*
+says in one line what a session gets, for example _"A session gets the
+units of its coder × framing."_
 
 ## A loop's units
 
@@ -63,10 +63,10 @@ through them. See [Overlap](overlap.md) and
 
 Under **Order** you choose in which order a coder gets their units:
 
-| Order | What coders get |
-| --- | --- |
-| **In set order** | The units in the order of their set (or the order they were uploaded). Every coder gets the same order. |
-| **Random (each coder their own order)** | Every coder gets the units in their own random order. |
+| Order                                   | What coders get                                                                                         |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **In set order**                        | The units in the order of their set (or the order they were uploaded). Every coder gets the same order. |
+| **Random (each coder their own order)** | Every coder gets the units in their own random order.                                                   |
 
 A random order is fixed per coder: after a reload, or the next day, they
 continue in the same order.

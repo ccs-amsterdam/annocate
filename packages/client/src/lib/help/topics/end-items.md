@@ -6,7 +6,7 @@ summary: End items end a coder's session early or on purpose - screened out or c
 ---
 
 Normally a session ends when the coder has gone through the whole design:
-they see *"Study Complete!"* and that's it. An **end item** ends the session
+they see _"Study Complete!"_ and that's it. An **end item** ends the session
 at a point you choose, says how it ended, and can send the coder on to
 another website. You need one when:
 
@@ -38,24 +38,24 @@ Click the **+** in the design tree where the session should end, and
 choose **End** (see [Adding items](design-editor.md#adding-items)). It has
 these fields:
 
-| Field | What it does |
-| --- | --- |
-| **Item Name** | Its name, e.g. `too_young`. Shown in the editor and stored with the coder's session. |
-| **Outcome** | **Screened out (not eligible)** or **Complete** |
-| **Message (optional)** | Shown on the last screen. Markdown, and it can use references such as `$var.group.label` |
-| **Redirect to (optional)** | A web address to send the coder to, e.g. a panel's return link |
+| Field                      | What it does                                                                             |
+| -------------------------- | ---------------------------------------------------------------------------------------- |
+| **Item Name**              | Its name, e.g. `too_young`. Shown in the editor and stored with the coder's session.     |
+| **Outcome**                | **Screened out (not eligible)** or **Complete**                                          |
+| **Message (optional)**     | Shown on the last screen. Markdown, and it can use references such as `$var.group.label` |
+| **Redirect to (optional)** | A web address to send the coder to, e.g. a panel's return link                           |
 
 ## Screened out or complete
 
-The outcome says *why* the session ended. It is stored with the coder and
+The outcome says _why_ the session ended. It is stored with the coder and
 is in the `ended` column of `coders.csv` in the results (with the time in
 `ended_at`), so you can tell screened-out participants from those who
 completed, and both from those who simply stopped.
 
-| Outcome | Use for | Heading the coder sees |
-| --- | --- | --- |
-| **Screened out (not eligible)** | No consent, not in the target group, failed attention check | *Thank you* |
-| **Complete** | The coder did what was asked | *Study Complete!* |
+| Outcome                         | Use for                                                     | Heading the coder sees |
+| ------------------------------- | ----------------------------------------------------------- | ---------------------- |
+| **Screened out (not eligible)** | No consent, not in the target group, failed attention check | _Thank you_            |
+| **Complete**                    | The coder did what was asked                                | _Study Complete!_      |
 
 Sessions that end without an end item (the coder reached the end of the
 design) have an empty `ended` column. If you need to know who completed,
@@ -65,13 +65,13 @@ the end of the design.
 ## What the coder sees
 
 The last screen shows the heading, then your message, or if there is none,
-a standard sentence (*"This is the end of the study for you."* for a
+a standard sentence (_"This is the end of the study for you."_ for a
 screenout). With a redirect link there is a **Continue** button, and the
 coder is sent on automatically after three seconds.
 
 The message is a template, like a question text: markdown, references and
 `{{ }}` all work, e.g.
-*"Thank you! Your completion code is **C1234**."* An end item inside a unit
+_"Thank you! Your completion code is **C1234**."_ An end item inside a unit
 loop can also use the unit's data. [Snippets](snippets.md) don't work in end
 items, also not inside a loop: the message is shown outside the loop's
 layout.
@@ -109,8 +109,8 @@ An unanswered question leaves its place in the link empty.
 
 ### Consent refused
 
-A first question *"Do you agree to take part?"* with the options *Yes* and
-*No*, then a condition *consent is "no"* with an end item **Screened out**
+A first question _"Do you agree to take part?"_ with the options _Yes_ and
+_No_, then a condition _consent is "no"_ with an end item **Screened out**
 inside it, with a short message thanking them. Everything else comes after
 the condition, so only those who agreed continue.
 
@@ -124,8 +124,8 @@ participants don't spend time on the rest.
 ### Failed attention check
 
 An attention check is a question with one obviously right answer, such as
-*"To show you are reading carefully, choose 'Somewhat disagree'"*. Put a
-condition *check is not "somewhat_disagree"* after it, with a screenout end
+_"To show you are reading carefully, choose 'Somewhat disagree'"_. Put a
+condition _check is not "somewhat_disagree"_ after it, with a screenout end
 item inside. Inside a unit loop, the same works per unit: an end item there
 ends the session after saving the current unit's answers.
 

@@ -5,8 +5,8 @@ order: 2
 summary: Questions where coders pick from a list of options - with or without an order.
 ---
 
-Most content analysis questions are about categories: *What is the main
-topic?*, *Who is the main actor?*, *What is the tone?*. In AnnoTinder these
+Most content analysis questions are about categories: _What is the main
+topic?_, _Who is the main actor?_, _What is the tone?_. In AnnoTinder these
 are **Nominal (categories)** and **Ordinal (ordered options)** questions.
 
 - **Nominal**: the options have no order. Topics, actors, genres, yes/no.
@@ -19,11 +19,11 @@ are **Nominal (categories)** and **Ordinal (ordered options)** questions.
 
 Both types have a list of **Options**. Each option has three parts:
 
-| Column | What it is |
-| --- | --- |
-| **Label (shown)** | What coders see on the button, e.g. *Human interest* |
-| **Value (stored)** | What is saved and exported, e.g. `human_interest` |
-| **Color** | Optional: a colour for the button, e.g. `#22c55e` or `green` |
+| Column             | What it is                                                   |
+| ------------------ | ------------------------------------------------------------ |
+| **Label (shown)**  | What coders see on the button, e.g. _Human interest_         |
+| **Value (stored)** | What is saved and exported, e.g. `human_interest`            |
+| **Color**          | Optional: a colour for the button, e.g. `#22c55e` or `green` |
 
 Click **+ Add option** to add one. The arrows on each row move it up or down,
 the cross removes it. The order in the list is the order coders see.
@@ -38,7 +38,7 @@ mean a different category. See [Values and labels](design-values-and-labels.md).
 
 In a nominal question, a value is text. While you type a label, the value is
 filled in for you: lower case, with `_` for spaces and punctuation, and
-without accents. *Human interest* becomes `human_interest`, *Économie*
+without accents. _Human interest_ becomes `human_interest`, _Économie_
 becomes `economie`.
 
 Once you edit a value by hand, it stops following the label, so you can use
@@ -49,11 +49,11 @@ differ from each other.
 ### Numeric values
 
 Nominal values can be numbers, for example when you use the codes of an
-existing codebook (1 = *Politics*, 2 = *Economy*, 99 = *Other*) or your
+existing codebook (1 = _Politics_, 2 = _Economy_, 99 = _Other_) or your
 analysis in SPSS or Stata expects them. Type the numbers in the value
 column. Click **Numeric values** above the options for a short reminder.
 
-- **Exports**: if *all* values of a question are plain numbers, they are
+- **Exports**: if _all_ values of a question are plain numbers, they are
   written as numbers wherever a file has types, such as the `_json`
   columns. In the CSV columns they look the same either way, and R, SPSS
   and spreadsheets read a column of numbers as numbers. A value with a
@@ -62,7 +62,7 @@ column. Click **Numeric values** above the options for a short reminder.
 - **Conditions**: `$var.topic.is(2)` and `$var.topic.is("2")` both match
   the value 2.
 - **No order**: the numbers are codes, not amounts, so conditions can't
-  use *greater than* or *lower than* on them. If the order matters, use
+  use _greater than_ or _lower than_ on them. If the order matters, use
   an ordinal question.
 
 We recommend text values such as `economy` unless you need numbers: in
@@ -109,15 +109,15 @@ In references and conditions they are a list: `$var.topics.values`,
 ## How the options are laid out
 
 Under **Layout** you choose how the options are shown. **Auto** chooses for
-you, and says what it chose, such as *Auto (Grid, 2 columns)*.
+you, and says what it chose, such as _Auto (Grid, 2 columns)_.
 
-| Layout | Nominal | Ordinal | Shows the options as |
-| --- | --- | --- | --- |
-| **Row (one row)** | yes | yes | buttons side by side |
-| **Grid (columns)** | yes | yes | buttons in 1 to 4 **Columns** |
-| **Flex (buttons wrap)** | yes | | buttons that fill a line and wrap to the next |
-| **Compact (values; the selected one shows its label)** | | yes | one row of small buttons with the values; the end labels above |
-| **Dropdown with filter** | yes | yes | a list that opens; coders can type to filter it |
+| Layout                                                 | Nominal | Ordinal | Shows the options as                                           |
+| ------------------------------------------------------ | ------- | ------- | -------------------------------------------------------------- |
+| **Row (one row)**                                      | yes     | yes     | buttons side by side                                           |
+| **Grid (columns)**                                     | yes     | yes     | buttons in 1 to 4 **Columns**                                  |
+| **Flex (buttons wrap)**                                | yes     |         | buttons that fill a line and wrap to the next                  |
+| **Compact (values; the selected one shows its label)** |         | yes     | one row of small buttons with the values; the end labels above |
+| **Dropdown with filter**                               | yes     | yes     | a list that opens; coders can type to filter it                |
 
 For nominal questions, auto uses a row for up to three short options, then
 a grid of two or one columns, and a dropdown for long lists. For ordinal
@@ -142,8 +142,8 @@ You can switch a question between **Nominal (categories)** and **Ordinal
 - **To ordinal**: the options keep their order and labels, and get the
   values 1, 2, 3, ... An option without a label gets its old value as its
   label, so coders see the same text.
-- **To nominal**: each option gets a value made from its label (*Very
-  negative* becomes `very_negative`).
+- **To nominal**: each option gets a value made from its label (_Very
+  negative_ becomes `very_negative`).
 
 **Allow several answers** is switched off, because ordinal questions take
 one answer. The layout is kept if the new type has it, otherwise it goes
@@ -154,14 +154,14 @@ back to auto.
 
 ## Using the answers
 
-| Reference | Gives | For |
-| --- | --- | --- |
-| `$var.topic.value` | the value, e.g. `economy` or `3` | one answer |
-| `$var.topic.label` | the label, e.g. *Economy* | one answer |
-| `$var.topics.values` / `.labels` | a list | several answers |
+| Reference                        | Gives                            | For             |
+| -------------------------------- | -------------------------------- | --------------- |
+| `$var.topic.value`               | the value, e.g. `economy` or `3` | one answer      |
+| `$var.topic.label`               | the label, e.g. _Economy_        | one answer      |
+| `$var.topics.values` / `.labels` | a list                           | several answers |
 
-Conditions can compare answers: a nominal answer with *is* or *is one of*,
-an ordinal answer also with *greater than*, *lower than* and so on (for
+Conditions can compare answers: a nominal answer with _is_ or _is one of_,
+an ordinal answer also with _greater than_, _lower than_ and so on (for
 example `$var.tone.gte(4)`). See [Conditions](conditions.md).
 
 In the results, each question has a column with the values and, with

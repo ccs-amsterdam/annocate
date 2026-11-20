@@ -337,7 +337,7 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
   );
 }
 
-/** "Create new study": the guided setup, an example, a file (a download or a design), or an empty study. */
+/** "Create new study": the guided setup, an example, a design file, or an empty study. */
 function CreateStudyMenu({
   onWizard,
   onExample,
@@ -384,12 +384,7 @@ function CreateStudyMenu({
           onWizard,
         )}
         {item(<Sparkles className="h-4 w-4" />, "From an example", "A ready study to try and change.", onExample)}
-        {item(
-          <FileUp className="h-4 w-4" />,
-          "From a file",
-          "A copy of a study from its download, or a design file.",
-          onImport,
-        )}
+        {item(<FileUp className="h-4 w-4" />, "From a file", "A study with the design of a design file.", onImport)}
         {item(<Plus className="h-4 w-4" />, "Empty study", "Start from scratch in the editor.", onEmpty)}
       </PopoverContent>
     </Popover>

@@ -8,8 +8,8 @@ summary: Relation questions - link two spans that coders selected, with a label 
 A **Relation (link spans)** question asks coders to connect spans they
 marked earlier in the same unit, and to say how they are connected. For
 example: after marking the actors in a news article with a
-[span question](span.md), coders link *who criticizes whom*, *who supports
-whom*, or which statement is the *evidence* for which claim. This is the
+[span question](span.md), coders link _who criticizes whom_, _who supports
+whom_, or which statement is the _evidence_ for which claim. This is the
 basis of network analyses of actors, claims and arguments.
 
 Like span questions, relation questions only work inside a unit loop.
@@ -19,11 +19,11 @@ Like span questions, relation questions only work inside a unit loop.
 A relation question builds on one or two span questions **earlier in the
 same loop**:
 
-| Setting | What it does |
-| --- | --- |
-| **Options** | The kinds of relation, e.g. *criticizes*, *supports*, *agrees with* |
-| **From (span question)** | The span question whose spans are where a relation starts |
-| **To (span question)** | The span question whose spans are where it ends |
+| Setting                  | What it does                                                        |
+| ------------------------ | ------------------------------------------------------------------- |
+| **Options**              | The kinds of relation, e.g. _criticizes_, _supports_, _agrees with_ |
+| **From (span question)** | The span question whose spans are where a relation starts           |
+| **To (span question)**   | The span question whose spans are where it ends                     |
 
 **From** and **To** can be the same span question: linking actors to other
 actors. They can also differ: linking actors (from an `actors` question) to
@@ -31,15 +31,15 @@ the issues they talk about (from an `issues` question).
 
 The editor lists the loop's questions under **From** and **To**; pick span
 questions that come **before** the relation question. Anything else is
-reported as an error, such as *Relation 'from' refers to 'tone' which is
-not a preceding span question*.
+reported as an error, such as _Relation 'from' refers to 'tone' which is
+not a preceding span question_.
 
-Relations have a direction: *A criticizes B* is not *B criticizes A*. Name
+Relations have a direction: _A criticizes B_ is not _B criticizes A_. Name
 the options so that the direction is clear, and read them as
-*from ... to*.
+_from ... to_.
 
 To offer only some spans as start or end, for example only spans labelled
-*person* as the one who criticizes, add `values` to `from` or `to` in the
+_person_ as the one who criticizes, add `values` to `from` or `to` in the
 JSON view:
 
 ```json
@@ -60,7 +60,7 @@ spans. They see three lists (side by side on a wide screen):
 Clicking **Link** adds the relation to the list under it; the cross next to
 a relation removes it. Coders can add as many relations as they like, then
 click **Done**, which counts them. **Skip** goes on without relations; it
-is stored as skipped, not as *no relations*.
+is stored as skipped, not as _no relations_.
 
 If coders notice that a span is missing, they can go back to the span
 question, add it, and come forward again. The relations they made before
@@ -86,10 +86,10 @@ question's `_json` column, so you can rebuild the network. See
 
 ## Using the answers
 
-| Reference | Gives |
-| --- | --- |
+| Reference           | Gives                                                    |
+| ------------------- | -------------------------------------------------------- |
 | `$var.links.values` | the values of all relations, e.g. `criticizes, supports` |
-| `$var.links.labels` | their labels |
+| `$var.links.labels` | their labels                                             |
 
 Conditions can ask whether a relation of a kind was made
 (`$var.links.has("criticizes")`) and how many there are

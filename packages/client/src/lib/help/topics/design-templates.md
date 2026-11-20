@@ -25,8 +25,8 @@ filled in.
   with a value in the middle, a table, a field shown twice. A form only offers
   the arrangements its designer thought of.
 - **One syntax everywhere.** Question texts, instructions and end messages
-  use the same syntax, so a question can say *"Is **$unit.headline** about
-  politics?"*.
+  use the same syntax, so a question can say _"Is **$unit.headline** about
+  politics?"_.
 - **It copies as text.** Templates are part of the design's JSON, so they
   move with it when you share a design.
 
@@ -61,7 +61,7 @@ Showing data literally by default has three reasons:
   That only works if the text on screen is exactly the text in the data, so
   span questions select in plain-text fields only.
 
-When your data *is* formatted (articles you prepared as markdown or HTML),
+When your data _is_ formatted (articles you prepared as markdown or HTML),
 you say so once, with the suffix. See
 [Text is shown as text](layout-templates.md#text-is-shown-as-text).
 

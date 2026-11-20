@@ -38,7 +38,7 @@ After deploying, the link under **Deploy** › **Links** ends in
 `<participant id>` with the panel's placeholder, which the panel fills in
 for each participant. On Prolific that is `{{%PROLIFIC_PID%}}`; other panels
 have their own (check their documentation). On the link itself (the pencil
-icon) you can set a **Label**, e.g. *Prolific pilot*, and **Max uses**: a
+icon) you can set a **Label**, e.g. _Prolific pilot_, and **Max uses**: a
 little above the number of places in the study, as a safety net if the link
 leaks.
 
@@ -59,11 +59,11 @@ required.
 
 The design can then use them as **session values**:
 
-| Write | Gives |
-| --- | --- |
-| `$session.participant` | The participant id |
-| `$session.study` | The value of the URL parameter `STUDY_ID` |
-| `$session.source` | The optional `?source=` of any link |
+| Write                  | Gives                                     |
+| ---------------------- | ----------------------------------------- |
+| `$session.participant` | The participant id                        |
+| `$session.study`       | The value of the URL parameter `STUDY_ID` |
+| `$session.source`      | The optional `?source=` of any link       |
 
 Session values work everywhere: in texts, conditions, end items' messages
 and return links. A link that misses a required parameter, or has a value
@@ -97,12 +97,12 @@ End: done                 complete → panel's completion link
 ```
 
 A panel gives every study its own links, so they belong to the run, not to
-the design: in the end item, choose **Then send coders to**: *A panel's
-return link*, and give it a name (e.g. `panel_complete`). Put the links
+the design: in the end item, choose **Then send coders to**: _A panel's
+return link_, and give it a name (e.g. `panel_complete`). Put the links
 themselves in the study's **Settings**, under **Panel return links**; they
 take effect at once, without deploying, and someone who reuses your design
 fills in their own. Deploying warns about a name without a link. (A fixed
-link, the same for every run, can go in the end item itself: *This URL*.)
+link, the same for every run, can go in the end item itself: _This URL_.)
 
 Use `$session` (or `$var`) references where the panel wants values:
 
@@ -113,7 +113,7 @@ https://app.prolific.com/submissions/complete?cc=C1A2B3C4
 
 Values are URL-encoded, so they can't break the link. The participant sees
 your message and is sent on after three seconds, or when they click
-**Continue**. The outcome (*screenout* or *complete*) is in the `ended`
+**Continue**. The outcome (_screenout_ or _complete_) is in the `ended`
 column of `coders.csv`, so you can check the panel's list against yours.
 
 > Put an end item with the outcome **Complete** at the very end of the
@@ -161,7 +161,7 @@ For 600 units, each coded by 3 participants, 20 units per participant:
 halfway: the units held by someone who stops (up to five) go back to the
 queue after 15 minutes.
 
-When every unit is full (coded by *at most* coders, or agreed on),
+When every unit is full (coded by _at most_ coders, or agreed on),
 participants who arrive later get no units in that
 loop and go on to the next item: with an end item **Complete** after the
 loop, they are sent back right away. Watch the **Progress** on the Overview

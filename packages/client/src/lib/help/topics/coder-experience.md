@@ -48,20 +48,20 @@ answers, sliders, number inputs and scales have a **Continue** button.
 
 From left to right:
 
-| Element | What it does |
-| --- | --- |
-| Menu (three lines) | Opens the menu (below). Not there if the study is just one unit loop |
-| Where the coder is: `3` | The 3rd question |
+| Element                                  | What it does                                                                                  |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Menu (three lines)                       | Opens the menu (below). Not there if the study is just one unit loop                          |
+| Where the coder is: `3`                  | The 3rd question                                                                              |
 | In a unit loop, a stack icon and `4 · 2` | Unit 4, its 2nd question (just `4` if a unit has one question). Opens the loop's menu (below) |
-| **<** and **>** | Go back and forward |
-| Monitor-and-phone icon | **Continue on another device** (below) |
-| Gear | **Settings**: light or dark, and keyboard shortcut badges |
+| **<** and **>**                          | Go back and forward                                                                           |
+| Monitor-and-phone icon                   | **Continue on another device** (below)                                                        |
+| Gear                                     | **Settings**: light or dark, and keyboard shortcut badges                                     |
 
 In a unit loop whose number of units is known, a thin line along the
 bottom of the bar shows how many of them the coder has done.
 
 **The menu** lists the study's questions the coder got to, by the first
-line of their text, and its unit loops, by their label (or *Units*), with
+line of their text, and its unit loops, by their label (or _Units_), with
 the unit the coder is at. Questions they haven't got to are not listed:
 conditions may skip them. A tick marks what is done. Click a question to
 go to it; click a loop to go to the coder's unit in it.
@@ -113,7 +113,7 @@ Coders can close the page whenever they like. When they open the link
 again, in the same browser, they continue where they left off, also the
 next day or weeks later: questions they answered are skipped, and in a loop
 they get the next unit. Earlier units stay reachable with **<**, and the
-position shows how far they are (*Unit 31 / 100*).
+position shows how far they are (_Unit 31 / 100_).
 
 If they close the page halfway through a unit, the answers to that unit
 were not saved yet. They get the same unit again and answer it from the
@@ -150,13 +150,13 @@ the other device.
 
 On a computer, coders can answer most questions without the mouse:
 
-| Keys | Where | What they do |
-| --- | --- | --- |
-| **1** to **9** | options shown as buttons | pick that option (the badges on the buttons show the numbers) |
-| **1** to **9**, **Enter** | scales | answer the first item that has no answer yet; Enter continues |
-| **←** **→** **↑** | swipe questions | swipe left, right or up |
-| **1** to **9**, **Esc** | span questions, after selecting text | give the selection that label, or cancel it |
-| **Backspace** / **Delete** | span questions, after clicking in the text | remove the last span |
+| Keys                       | Where                                      | What they do                                                  |
+| -------------------------- | ------------------------------------------ | ------------------------------------------------------------- |
+| **1** to **9**             | options shown as buttons                   | pick that option (the badges on the buttons show the numbers) |
+| **1** to **9**, **Enter**  | scales                                     | answer the first item that has no answer yet; Enter continues |
+| **←** **→** **↑**          | swipe questions                            | swipe left, right or up                                       |
+| **1** to **9**, **Esc**    | span questions, after selecting text       | give the selection that label, or cancel it                   |
+| **Backspace** / **Delete** | span questions, after clicking in the text | remove the last span                                          |
 
 In **Settings**, **Shortcuts** hides the number badges for coders who find
 them distracting; the keys keep working.

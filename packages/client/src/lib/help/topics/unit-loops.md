@@ -11,7 +11,7 @@ about it, and then gets the next unit, until their units are done. Every
 design that codes material has at least one loop: the questions about
 news articles, tweets or images go inside it.
 
-Questions *outside* a loop are asked once per coder: a consent question, a
+Questions _outside_ a loop are asked once per coder: a consent question, a
 few survey questions, an experimental group. Together the two make up most
 studies: some questions about the coder, then a loop over the units.
 
@@ -22,20 +22,20 @@ new loop is empty: add its questions with **+**, choosing a place inside the
 loop, or move existing questions into it. A loop needs at least one item.
 
 A loop has no name, but you can give it a **Label (optional)**, such as
-*News items* or *Training*. The label is shown in the tree, in the coders'
+_News items_ or _Training_. The label is shown in the tree, in the coders'
 navigation menu and in the `loop` column of the downloaded `variables.csv`.
-Without a label, the loop is called *Unit loop* (in messages and downloads
-*Unit loop 1*, *Unit loop 2*, by position).
+Without a label, the loop is called _Unit loop_ (in messages and downloads
+_Unit loop 1_, _Unit loop 2_, by position).
 
 ## The Layout and Units tabs
 
 A selected loop has two tabs. The two small buttons at the end of the loop's
 row in the tree open the loop on one of them.
 
-| Tab | What you set there |
-| --- | --- |
-| **Layout** | How a unit is shown: the **Template**, the **Colours** and the **Snippets** |
-| **Units** | Which of the session's units the loop codes (all, or a filter), crowd coding, the **Order**, the **Overlap**, and practice and gold units |
+| Tab        | What you set there                                                                                                                        |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **Layout** | How a unit is shown: the **Template**, the **Colours** and the **Snippets**                                                               |
+| **Units**  | Which of the session's units the loop codes (all, or a filter), crowd coding, the **Order**, the **Overlap**, and practice and gold units |
 
 The template is where you write what coders see of each unit: see
 [Layout templates](layout-templates.md). The Units tab is explained in
@@ -51,7 +51,7 @@ question. Inside a loop, texts and conditions can use more than outside:
   politics?"*, and a condition can show a question only for some units
   (`$unit.source == "Twitter"`);
 - the answers to the loop's earlier questions for the same unit, for
-  follow-up questions (*"Which party?"* only if the coder said a party is
+  follow-up questions (_"Which party?"_ only if the coder said a party is
   mentioned);
 - the answers to coder-level questions asked before the loop.
 
@@ -61,8 +61,8 @@ Some answer types only make sense per unit, and only work inside a loop:
 outside a loop.
 
 The loop's answers belong to the loop. After the loop, or in another loop,
-you can't refer to them: AnnoTinder says *"'topic' is a question of another
-unit loop"*. A loop can't be inside another loop, but it can be inside a
+you can't refer to them: AnnoTinder says _"'topic' is a question of another
+unit loop"_. A loop can't be inside another loop, but it can be inside a
 condition, for a loop that only some coders get.
 
 ## Questions before the loop
@@ -119,8 +119,8 @@ that coders swipe.
 
 Coders can go back to earlier questions and units with the arrows at the
 top. The menu button next to them opens the navigation: the questions before
-the loop, the loop (by its label) with *Unit 3 / 20*, and the loop's
-questions. The number next to the arrows shows where they are: *2.1* is the
+the loop, the loop (by its label) with _Unit 3 / 20_, and the loop's
+questions. The number next to the arrows shows where they are: _2.1_ is the
 first question of the second part of the design. See
 [What coders see](coder-experience.md).
 

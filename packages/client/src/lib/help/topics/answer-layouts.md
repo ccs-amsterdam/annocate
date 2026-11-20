@@ -21,7 +21,7 @@ options in one row are read differently from a list, a dropdown hides the
 options until it is opened, a slider invites answers near where it starts.
 If phone users saw a list and desktop users a row, part of a difference
 between them could come from the layout rather than from the coders (a
-*mode effect*). See [The same form on every device](design-fixed-layouts.md).
+_mode effect_). See [The same form on every device](design-fixed-layouts.md).
 
 So layouts are designed for the smallest common phones, about 360 pixels
 wide, and the answer area should fit in about half of such a screen, so the
@@ -31,15 +31,15 @@ centered.
 ## What Auto chooses
 
 **Auto** chooses a layout from the question's options, once, for every
-device. The **Layout** list shows its choice, such as *Auto (Grid, 2
-columns)*, and it updates as you edit the options.
+device. The **Layout** list shows its choice, such as _Auto (Grid, 2
+columns)_, and it updates as you edit the options.
 
-| Answer type | Auto chooses |
-| --- | --- |
+| Answer type | Auto chooses                                                                                                                                                                                                                                                      |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Nominal** | **Row** if there are at most three options and they fit side by side; else a **Grid** of 2 columns (up to twelve options, labels up to about 18 characters) or of 1 column (up to six options, labels up to about 40 characters); else a **Dropdown with filter** |
-| **Ordinal** | **Row** for up to three options, a **Grid** of 1 column for up to six, **Compact** for more |
-| **Numeric** | **Number input** without a minimum or maximum; **Buttons** for up to 11 numbers (0 to 10); a **Slider** for more |
-| **Scale** | **Compact** |
+| **Ordinal** | **Row** for up to three options, a **Grid** of 1 column for up to six, **Compact** for more                                                                                                                                                                       |
+| **Numeric** | **Number input** without a minimum or maximum; **Buttons** for up to 11 numbers (0 to 10); a **Slider** for more                                                                                                                                                  |
+| **Scale**   | **Compact**                                                                                                                                                                                                                                                       |
 
 **Swipe** questions are always swiped, and **Confirm**, **Span** and
 **Relation** questions have their own fixed form; they have no layout
@@ -47,17 +47,17 @@ setting.
 
 ## The layouts
 
-| Layout | For | Shows |
-| --- | --- | --- |
-| **Row (one row)** | nominal, ordinal | all options side by side, equally wide |
-| **Grid (columns)** | nominal, ordinal | buttons in 1 to 4 columns: choose under **Columns** |
-| **Flex (buttons wrap)** | nominal | buttons as wide as their label, filling each line and wrapping to the next |
-| **Compact (values; the selected one shows its label)** | ordinal, scale | one row of small buttons showing the values; the first and last label above it; the chosen button grows and shows its label |
-| **Dropdown with filter** | nominal, ordinal | one field that opens a list; coders can type to filter it |
-| **Buttons (one per value)** | numeric | a button for every allowed number |
-| **Slider** | numeric | a slider, and **Continue** |
-| **Number input** | numeric | a box to type a number, and **Continue** |
-| **Grid (columns)** | scale | a table with the items as rows and the options as columns |
+| Layout                                                 | For              | Shows                                                                                                                       |
+| ------------------------------------------------------ | ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Row (one row)**                                      | nominal, ordinal | all options side by side, equally wide                                                                                      |
+| **Grid (columns)**                                     | nominal, ordinal | buttons in 1 to 4 columns: choose under **Columns**                                                                         |
+| **Flex (buttons wrap)**                                | nominal          | buttons as wide as their label, filling each line and wrapping to the next                                                  |
+| **Compact (values; the selected one shows its label)** | ordinal, scale   | one row of small buttons showing the values; the first and last label above it; the chosen button grows and shows its label |
+| **Dropdown with filter**                               | nominal, ordinal | one field that opens a list; coders can type to filter it                                                                   |
+| **Buttons (one per value)**                            | numeric          | a button for every allowed number                                                                                           |
+| **Slider**                                             | numeric          | a slider, and **Continue**                                                                                                  |
+| **Number input**                                       | numeric          | a box to type a number, and **Continue**                                                                                    |
+| **Grid (columns)**                                     | scale            | a table with the items as rows and the options as columns                                                                   |
 
 The pages per type say more: [nominal and ordinal](nominal-and-ordinal.md#how-the-options-are-laid-out),
 [numbers](numeric.md#layouts) and [scales](scale.md#compact-or-grid).
@@ -89,12 +89,12 @@ When you choose a layout yourself for a nominal or ordinal question, the
 editor checks whether it fits on a small phone, and warns under the
 **Layout** setting if it doesn't:
 
-| Warning | Meaning |
-| --- | --- |
-| *These options don't fit side by side on a small phone* | **Row** with too many or too long options |
-| *This grid doesn't fit half a small phone screen; coders would have to scroll* | **Grid** with too many rows, or labels too long for the columns |
-| *This layout doesn't fit half a small phone screen; coders would have to scroll* | **Flex** with too many options |
-| *Too many options for one row of the compact layout* | **Compact** with more than about twelve options |
+| Warning                                                                          | Meaning                                                         |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| _These options don't fit side by side on a small phone_                          | **Row** with too many or too long options                       |
+| _This grid doesn't fit half a small phone screen; coders would have to scroll_   | **Grid** with too many rows, or labels too long for the columns |
+| _This layout doesn't fit half a small phone screen; coders would have to scroll_ | **Flex** with too many options                                  |
+| _Too many options for one row of the compact layout_                             | **Compact** with more than about twelve options                 |
 
 A warning doesn't stop you from saving or deploying. Labels on buttons
 wrap onto several lines rather than being cut off, so nothing becomes

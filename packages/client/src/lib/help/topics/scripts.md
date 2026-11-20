@@ -8,7 +8,7 @@ summary: Small JavaScript expressions in {{ }} and in conditions, for when a pla
 Most designs never need a script. Values such as `$unit.headline` and
 `$var.topic.label` fill in texts, and the rules editor makes most
 conditions. A **script** is for the rest: a calculation, a shortened text, a
-choice between two sentences, a condition that mixes *and* and *or*.
+choice between two sentences, a condition that mixes _and_ and _or_.
 
 A script is one **JavaScript expression**: a formula, like one in a
 spreadsheet cell, that gives a value. In a template you write it between
@@ -152,7 +152,7 @@ $unit.text.length > 2000 && !$var.skim.is("yes")
 
 - Text is shown as text, exactly as it is (see
   [Text is shown as text](layout-templates.md#text-is-shown-as-text)). To
-  show a result as markdown, an image or HTML, put a suffix *after* the
+  show a result as markdown, an image or HTML, put a suffix _after_ the
   closing braces: `{{ ... }}::markdown`.
 - Numbers are shown as numbers, `true` and `false` as those words.
 - Lists are joined with commas.
@@ -167,7 +167,7 @@ Scripts run in a closed-off sandbox in the coder's browser:
 - A script may run for at most 100 milliseconds and use at most 1 MB of
   memory. That is plenty for anything a design needs.
 - A script that fails (an error, a mistake in its writing, a timeout) shows
-  nothing in a template, and counts as *false* as a condition. Coders don't
+  nothing in a template, and counts as _false_ as a condition. Coders don't
   see an error.
 - A script is one expression: no `let`, `if` or `for` statements. Use
   `? :` instead of `if`, and `.map()` or `.filter()` instead of `for`.

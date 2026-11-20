@@ -13,18 +13,17 @@ to that moment.
 The zip is named after the study and the date, such as
 `news_tone_2026-10-27.zip`, and contains:
 
-| File | A row per | What is in it |
-| --- | --- | --- |
-| `annotations.csv` | unit and coder | the answers to the questions in unit loops |
-| `coders.csv` | coder | who they are, how far they got, and their answers outside unit loops |
-| `units.csv` | unit version | the units as coders saw them |
-| `variables.csv` | design version, question and option | the questions, their values and labels |
-| `designs/v<n>.json` | design version | the whole design, with the AnnoTinder release and commit it ran on: to archive or reproduce the study |
-| `devices.csv` | device | the devices coders used (kind, browser, operating system) |
-| `timings.csv` | answer | how long coders took per question |
-| `deleted_coders.csv` | deleted coder | coders whose data was deleted, to delete them from earlier downloads too |
-| `study.json` | | the study as it is now (units, set columns, design, settings), to make a copy of it: **Create new study** → **From a file**, here or on another server |
-| `README.txt` | | what the columns mean |
+| File                 | A row per                           | What is in it                                                                                         |
+| -------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `annotations.csv`    | unit and coder                      | the answers to the questions in unit loops                                                            |
+| `coders.csv`         | coder                               | who they are, how far they got, and their answers outside unit loops                                  |
+| `units.csv`          | unit version                        | the units as coders saw them                                                                          |
+| `variables.csv`      | design version, question and option | the questions, their values and labels                                                                |
+| `designs/v<n>.json`  | design version                      | the whole design, with the AnnoTinder release and commit it ran on: to archive or reproduce the study |
+| `devices.csv`        | device                              | the devices coders used (kind, browser, operating system)                                             |
+| `timings.csv`        | answer                              | how long coders took per question                                                                     |
+| `deleted_coders.csv` | deleted coder                       | coders whose data was deleted, to delete them from earlier downloads too                              |
+| `README.txt`         |                                     | what the columns mean                                                                                 |
 
 The files are UTF-8, with a marker at the start so that spreadsheet programs
 read accents correctly. Times are in UTC, written like
@@ -34,19 +33,19 @@ read accents correctly. Times are in UTC, written like
 
 A row for every unit a coder coded, in the order they coded them.
 
-| Column | Meaning |
-| --- | --- |
-| `unit_id` | Your id of the unit (the id column of your upload) |
-| `unit_version_id` | The version of the unit the coder saw: see `units.csv` |
-| `coder_id` | The coder: see `coders.csv` |
-| `participant_id` | The coder's participant id, if they have one (e.g. from a panel) |
-| `link` | The label of the link the coder came in with |
-| `first_answer`, `last_change` | When the coder first answered about this unit, and last changed an answer |
-| `design_version` | The design version (its number, v1, v2, ...; `designs/v<n>.json`) the unit was first answered under (the `_label` columns use each answer's own version): see `variables.csv` |
-| `device_id` | The device the unit was (last) answered on: see `devices.csv` |
-| `unit_ms_client` | Milliseconds the unit's questions were on screen, as the coder's browser measured them: see `timings.csv` |
-| `unit_ms_server` | Milliseconds from the server handing out the unit to its last answer |
-| one column per question | The answers |
+| Column                        | Meaning                                                                                                                                                                       |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `unit_id`                     | Your id of the unit (the id column of your upload)                                                                                                                            |
+| `unit_version_id`             | The version of the unit the coder saw: see `units.csv`                                                                                                                        |
+| `coder_id`                    | The coder: see `coders.csv`                                                                                                                                                   |
+| `participant_id`              | The coder's participant id, if they have one (e.g. from a panel)                                                                                                              |
+| `link`                        | The label of the link the coder came in with                                                                                                                                  |
+| `first_answer`, `last_change` | When the coder first answered about this unit, and last changed an answer                                                                                                     |
+| `design_version`              | The design version (its number, v1, v2, ...; `designs/v<n>.json`) the unit was first answered under (the `_label` columns use each answer's own version): see `variables.csv` |
+| `device_id`                   | The device the unit was (last) answered on: see `devices.csv`                                                                                                                 |
+| `unit_ms_client`              | Milliseconds the unit's questions were on screen, as the coder's browser measured them: see `timings.csv`                                                                     |
+| `unit_ms_server`              | Milliseconds from the server handing out the unit to its last answer                                                                                                          |
+| one column per question       | The answers                                                                                                                                                                   |
 
 The question columns are in the order of the design, named after the
 questions. A [scale](scale.md) has a column per item, named
@@ -65,7 +64,7 @@ questions. A [scale](scale.md) has a column per item, named
   `; `, for example `economy; politics`.
 - **Selected text** ([spans](span.md)) is written as `value: text`, for
   example `person: Angela Merkel`, several spans joined with `; `. A span
-  with gaps has its parts joined with ` … `.
+  with gaps has its parts joined with `…`.
 - **Relations** are written as `value: from → to`, with the texts of the two
   spans, for example `criticizes: Merkel → Commission`.
 - **A confirm question** (a button) is `true` once clicked.
@@ -81,7 +80,7 @@ questions. A [scale](scale.md) has a column per item, named
   question's JSON); for several answers a list of values. Read it with
   `jsonlite::fromJSON` in R or `json.loads` in Python.
 
-Values are the reason codebooks have values *and* labels: you can improve a
+Values are the reason codebooks have values _and_ labels: you can improve a
 label while coding runs, and the values stay comparable. See
 [Values and labels](design-values-and-labels.md).
 
@@ -89,16 +88,16 @@ label while coding runs, and the values stay comparable. See
 
 A row per coder who started.
 
-| Column | Meaning |
-| --- | --- |
-| `coder_id`, `participant_id`, `email`, `link` | Who the coder is (`email` for coders who [logged in](links.md#login)) |
-| `started`, `last_active` | When they started, and when they last answered |
-| `ended`, `ended_at` | `complete` or `screenout` if their session ended at an end item (see [Ending a session](end-items.md)), `quit` if the coder quit, and when |
-| `deletion_requested` | When the coder asked for their answers to be deleted, if they did and you haven't deleted them yet (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)) |
-| `session.<name>` | The session's values: its coder (`session.coder`), its assigned conditions, and its link and URL parameters (the participant id is `participant_id`) |
-| `finished_<loop>` | How many units they finished in each unit loop, such as `finished_News items` |
-| `overlap_finished`, `gold_finished`, `practice_finished` | How many units of the deployed `_overlap`, `_gold` and `_practice` sets they finished, if the study has them (see [Overlap, gold and practice units](special-units.md)) |
-| one column per question | Their answers outside unit loops, and their [random conditions](random-condition.md) |
+| Column                                                   | Meaning                                                                                                                                                                           |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `coder_id`, `participant_id`, `email`, `link`            | Who the coder is (`email` for coders who [logged in](links.md#login))                                                                                                             |
+| `started`, `last_active`                                 | When they started, and when they last answered                                                                                                                                    |
+| `ended`, `ended_at`                                      | `complete` or `screenout` if their session ended at an end item (see [Ending a session](end-items.md)), `quit` if the coder quit, and when                                        |
+| `deletion_requested`                                     | When the coder asked for their answers to be deleted, if they did and you haven't deleted them yet (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)) |
+| `session.<name>`                                         | The session's values: its coder (`session.coder`), its assigned conditions, and its link and URL parameters (the participant id is `participant_id`)                              |
+| `finished_<loop>`                                        | How many units they finished in each unit loop, such as `finished_News items`                                                                                                     |
+| `overlap_finished`, `gold_finished`, `practice_finished` | How many units of the deployed `_overlap`, `_gold` and `_practice` sets they finished, if the study has them (see [Overlap, gold and practice units](special-units.md))           |
+| one column per question                                  | Their answers outside unit loops, and their [random conditions](random-condition.md)                                                                                              |
 
 Answers outside unit loops (consent, background questions, a survey's
 questions) are only here, not in `annotations.csv`.
@@ -136,16 +135,16 @@ device.
 How long coders took, a row per answer, in milliseconds, as the coder's
 browser measured it:
 
-| Column | Meaning |
-| --- | --- |
-| `unit_id` | The unit (empty for questions outside unit loops) |
-| `coder_id`, `participant_id`, `variable` | The coder and the question |
-| `first_ms` | Time on screen until the first answer |
-| `total_ms` | Time on screen over all visits (going back adds to it) |
-| `hidden_ms` | Time the page was hidden meanwhile: another tab, a minimized window (not in `total_ms`) |
-| `edits` | How often the answer changed |
-| `server_ms` | The server's own measure: for a unit, from handing it out to its last answer (the same for all its questions); outside units, the time since the coder's previous answer |
-| `exceeds_server` | `true` if the browser claims more time than the server saw (for a unit: all its questions together) |
+| Column                                   | Meaning                                                                                                                                                                  |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `unit_id`                                | The unit (empty for questions outside unit loops)                                                                                                                        |
+| `coder_id`, `participant_id`, `variable` | The coder and the question                                                                                                                                               |
+| `first_ms`                               | Time on screen until the first answer                                                                                                                                    |
+| `total_ms`                               | Time on screen over all visits (going back adds to it)                                                                                                                   |
+| `hidden_ms`                              | Time the page was hidden meanwhile: another tab, a minimized window (not in `total_ms`)                                                                                  |
+| `edits`                                  | How often the answer changed                                                                                                                                             |
+| `server_ms`                              | The server's own measure: for a unit, from handing it out to its last answer (the same for all its questions); outside units, the time since the coder's previous answer |
+| `exceeds_server`                         | `true` if the browser claims more time than the server saw (for a unit: all its questions together)                                                                      |
 
 A browser can be tampered with; the server can't. So use `server_ms` to
 check the browser's times: `exceeds_server` marks a manipulated (or
@@ -215,14 +214,14 @@ d = (annotations
 
 ## Joining the files
 
-| To add | Join on |
-| --- | --- |
-| a coder's details and background answers to their annotations | `coder_id` |
-| the unit as the coder saw it | `unit_version_id` |
-| the device an answer was given on | `device_id` in `devices.csv` |
-| response times to the answers | `unit_id`, `coder_id` and `variable` in `timings.csv` |
-| the labels of a design version | `design_version` and `variable` (and `value`) in `variables.csv` |
-| your own data (metadata not shown to coders) | `unit_id`, with the id column of your own file |
+| To add                                                        | Join on                                                          |
+| ------------------------------------------------------------- | ---------------------------------------------------------------- |
+| a coder's details and background answers to their annotations | `coder_id`                                                       |
+| the unit as the coder saw it                                  | `unit_version_id`                                                |
+| the device an answer was given on                             | `device_id` in `devices.csv`                                     |
+| response times to the answers                                 | `unit_id`, `coder_id` and `variable` in `timings.csv`            |
+| the labels of a design version                                | `design_version` and `variable` (and `value`) in `variables.csv` |
+| your own data (metadata not shown to coders)                  | `unit_id`, with the id column of your own file                   |
 
 ## More detail with scripts
 

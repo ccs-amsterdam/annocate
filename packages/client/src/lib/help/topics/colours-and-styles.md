@@ -45,21 +45,21 @@ A style block can be inside a `::: markdown` block, but not inside a
 
 Any CSS property can be used. These are the ones you are most likely to need:
 
-| Property | Example | Does |
-| --- | --- | --- |
-| `font-size` | `font-size: 120%` | Larger or smaller text, relative to the normal size |
-| `font-weight` | `font-weight: 700` | Bold (400 is normal) |
-| `font-style` | `font-style: italic` | Italic |
-| `font-family` | `font-family: Georgia, serif` | Another font (one the coder's device has) |
-| `color` | `color: darkred` | Text colour |
-| `background` | `background: #fff8e1` | Background colour |
-| `border` | `border: 1px solid var(--border)` | A line around the part |
-| `border-radius` | `border-radius: 8px` | Rounded corners |
-| `padding` | `padding: 0.75em 1em` | Space inside the border |
-| `margin-top` | `margin-top: 1em` | Space above the part |
-| `text-align` | `text-align: center` | Centred text |
-| `max-width` | `max-width: 30em` | Keep lines short |
-| `opacity` | `opacity: 0.7` | Fainter |
+| Property        | Example                           | Does                                                |
+| --------------- | --------------------------------- | --------------------------------------------------- |
+| `font-size`     | `font-size: 120%`                 | Larger or smaller text, relative to the normal size |
+| `font-weight`   | `font-weight: 700`                | Bold (400 is normal)                                |
+| `font-style`    | `font-style: italic`              | Italic                                              |
+| `font-family`   | `font-family: Georgia, serif`     | Another font (one the coder's device has)           |
+| `color`         | `color: darkred`                  | Text colour                                         |
+| `background`    | `background: #fff8e1`             | Background colour                                   |
+| `border`        | `border: 1px solid var(--border)` | A line around the part                              |
+| `border-radius` | `border-radius: 8px`              | Rounded corners                                     |
+| `padding`       | `padding: 0.75em 1em`             | Space inside the border                             |
+| `margin-top`    | `margin-top: 1em`                 | Space above the part                                |
+| `text-align`    | `text-align: center`              | Centred text                                        |
+| `max-width`     | `max-width: 30em`                 | Keep lines short                                    |
+| `opacity`       | `opacity: 0.7`                    | Fainter                                             |
 
 Prefer sizes in `%` or `em` (relative to the text around it) over `px`, so
 the proportions stay right on every screen.
@@ -114,15 +114,15 @@ A colour written as a name or code, like `darkred` or `#fff8e1`, stays the
 same in light and dark mode, and may be hard to read in one of them. These
 colours of AnnoTinder's own theme change with it:
 
-| Write | Colour |
-| --- | --- |
-| `var(--foreground)` | Normal text |
+| Write                     | Colour                               |
+| ------------------------- | ------------------------------------ |
+| `var(--foreground)`       | Normal text                          |
 | `var(--muted-foreground)` | Grey text, for secondary information |
-| `var(--background)` | The page background |
-| `var(--muted)` | A soft background, for highlights |
-| `var(--border)` | Lines and borders |
-| `var(--primary)` | AnnoTinder's accent colour |
-| `var(--destructive)` | Red, for warnings |
+| `var(--background)`       | The page background                  |
+| `var(--muted)`            | A soft background, for highlights    |
+| `var(--border)`           | Lines and borders                    |
+| `var(--primary)`          | AnnoTinder's accent colour           |
+| `var(--destructive)`      | Red, for warnings                    |
 
 Use them where you can. When the material needs its own colours, fix the
 look with the **Colours** setting (below).
@@ -133,9 +133,9 @@ A style block holds CSS declarations only: no selectors, class names,
 `:hover` or media queries. It styles the text in the block, not the
 answer buttons or the rest of the screen. The template editor reports:
 
-- *"bold" is not a CSS declaration (property: value)*: each part between
+- _"bold" is not a CSS declaration (property: value)_: each part between
   `;` needs a property, a colon and a value;
-- *position: fixed isn't allowed: it would place the text over the app*:
+- _position: fixed isn't allowed: it would place the text over the app_:
   `position: fixed` and `position: sticky` would take the text out of the
   unit and over the questions, so they are refused.
 
@@ -160,11 +160,11 @@ colours.
 
 The **Colours** setting on the loop's **Layout** tab decides:
 
-| Option | The unit is shown |
-| --- | --- |
-| **Follow the coder's light or dark mode** | In the coder's choice (the default) |
-| **Always light** | Always in light colours, on a light background |
-| **Always dark** | Always in dark colours, on a dark background |
+| Option                                    | The unit is shown                              |
+| ----------------------------------------- | ---------------------------------------------- |
+| **Follow the coder's light or dark mode** | In the coder's choice (the default)            |
+| **Always light**                          | Always in light colours, on a light background |
+| **Always dark**                           | Always in dark colours, on a dark background   |
 
 With **Always light** or **Always dark**, only the unit gets fixed colours:
 it is shown on its own background, with a little space around it. The

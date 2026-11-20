@@ -27,7 +27,7 @@ Rules:
   spaces, dashes or accents;
 - at most 128 characters;
 - unique in the whole design, including end items. A second `topic`
-  gives the issue *Duplicate name 'topic'*.
+  gives the issue _Duplicate name 'topic'_.
 
 Choose short names that say what the question measures, as you would name
 variables in R or SPSS: `tone`, not `question_4`. Names that start with a
@@ -68,7 +68,7 @@ Is *$unit.headline* about politics?
 Try both answers to `role` above. A question can only refer to questions
 that come **before** it (it can't refer to itself, or to a question asked
 later), and only a question in a loop can use `$unit`. The editor checks
-this and says what is wrong, e.g. *'topic' is asked after this point*. More
+this and says what is wrong, e.g. _'topic' is asked after this point_. More
 in [Layout templates](layout-templates.md) and
 [Referring to answers and unit data](references.md).
 
@@ -109,11 +109,11 @@ the fields it selects in unless you choose otherwise.
 
 Where you put a question in the tree decides how often it is asked:
 
-| Where | Asked | Answers end up in |
-| --- | --- | --- |
-| Outside a unit loop | once per coder | `coders.csv`: a row per coder |
-| Inside a unit loop | once per unit, for every unit the coder gets | `annotations.csv`: a row per unit and coder |
-| Inside a condition | only when the condition holds; otherwise skipped, and left empty in the results | as above |
+| Where               | Asked                                                                           | Answers end up in                           |
+| ------------------- | ------------------------------------------------------------------------------- | ------------------------------------------- |
+| Outside a unit loop | once per coder                                                                  | `coders.csv`: a row per coder               |
+| Inside a unit loop  | once per unit, for every unit the coder gets                                    | `annotations.csv`: a row per unit and coder |
+| Inside a condition  | only when the condition holds; otherwise skipped, and left empty in the results | as above                                    |
 
 Questions outside a loop are for things about the coder or participant:
 consent, background questions, a check of the instructions, an

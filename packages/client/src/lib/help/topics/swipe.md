@@ -20,22 +20,22 @@ a label (shown).
 A swipe question has **two or three options**. Their order in the
 **Options** list is their direction, shown by the arrow in front of each:
 
-| Position | Direction |
-| --- | --- |
-| 1st | swipe left |
-| 2nd | swipe right |
-| 3rd (optional) | swipe up |
+| Position       | Direction   |
+| -------------- | ----------- |
+| 1st            | swipe left  |
+| 2nd            | swipe right |
+| 3rd (optional) | swipe up    |
 
-A new swipe question has *No* on the left and *Yes* on the right. **+ Add
+A new swipe question has _No_ on the left and _Yes_ on the right. **+ Add
 option** disappears once there are three. Use the arrows on each row to
 swap directions.
 
 Give options a **Color** to make the directions easy to tell apart, such as
-red for *No* and green for *Yes*: the colour shows on the buttons and on
+red for _No_ and green for _Yes_: the colour shows on the buttons and on
 the label that appears in the middle of the screen while the card is dragged.
 
-> Put the options where coders expect them: *No* or *Not relevant* on the
-> left, *Yes* or *Relevant* on the right. Swapping them halfway through a
+> Put the options where coders expect them: _No_ or _Not relevant_ on the
+> left, _Yes_ or _Relevant_ on the right. Swapping them halfway through a
 > study confuses coders.
 
 ## How coders answer
@@ -71,7 +71,7 @@ Swiping works best for **quick, simple judgements on many units**:
 - **Training and validation data** for a classifier, where you need many
   labels on simple categories.
 - **Survey experiments** where participants judge a series of messages
-  (*Would you share this post?*).
+  (_Would you share this post?_).
 
 It is less suitable when:
 
@@ -89,8 +89,8 @@ It is less suitable when:
 ## Using the answers
 
 A swipe answer works like a single nominal answer: `$var.relevant.value`
-is the value (`yes`), `$var.relevant.label` the label (*Yes*), and
-conditions can use *is* and *is one of*, for example to ask follow-up
+is the value (`yes`), `$var.relevant.label` the label (_Yes_), and
+conditions can use _is_ and _is one of_, for example to ask follow-up
 questions only for relevant units. See [Conditions](conditions.md).
 
 A swipe question can also decide when a shared unit has been coded enough

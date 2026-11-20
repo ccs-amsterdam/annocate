@@ -21,13 +21,13 @@ The list shows every account, most recently logged in first. Per user:
 - **Role**: user, researcher or admin (see [Accounts and limits](accounts.md)).
 - **Plan**: their own plan; else their email domain's, else the default.
 - **Limits**: overrides for this user only, on top of their plan: a number,
-  or *none* for no limit.
+  or _none_ for no limit.
 - **Block**: logs them out, and stops their logins and API keys until
   unblocked. Their studies stay.
-- Marks: *invited* (not logged in yet), *invitation expired*, *no 2FA*
-  (their latest login lacked the second factor), *email not verified*
-  (their provider didn't confirm their address), *not linked* (while
-  moving to another login provider) and *roles off* (see below).
+- Marks: _invited_ (not logged in yet), _invitation expired_, _no 2FA_
+  (their latest login lacked the second factor), _email not verified_
+  (their provider didn't confirm their address), _not linked_ (while
+  moving to another login provider) and _roles off_ (see below).
 
 **Invite** someone by email to make them a researcher (or admin) before
 they first log in: their first login with that address (verified by the
@@ -96,7 +96,7 @@ The top of this page lists what makes the server less secure:
   verification not required** (`AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION`):
   weaker security for teaching and other servers without sensitive data.
 - **Roles for unverified email addresses**: users with roles whose login
-  provider didn't confirm their address (marked *email not verified*).
+  provider didn't confirm their address (marked _email not verified_).
   Check that they are the right people.
 - Researchers logging in **without the second factor signal**: check the
   provider's two-factor settings and `OIDC_MFA_CLAIM`.

@@ -16,20 +16,20 @@ usually the better choice.
 
 ## Range and steps
 
-| Setting | What it does |
-| --- | --- |
+| Setting     | What it does                                                         |
+| ----------- | -------------------------------------------------------------------- |
 | **Minimum** | The lowest number coders can give. Leave it empty for no lower limit |
-| **Maximum** | The highest number. Leave it empty for no upper limit |
-| **Steps** | Which numbers are allowed in between |
+| **Maximum** | The highest number. Leave it empty for no upper limit                |
+| **Steps**   | Which numbers are allowed in between                                 |
 
 **Steps** has three presets and a custom setting:
 
-| Steps | Allowed numbers (from a minimum of 0) |
-| --- | --- |
-| **Whole numbers** | 0, 1, 2, 3, ... (the default) |
-| **One decimal** | 0, 0.1, 0.2, ... |
-| **Two decimals** | 0, 0.01, 0.02, ... |
-| **Custom** | Any step you type, e.g. 5 for 0, 5, 10, ... or 0.5 for halves |
+| Steps             | Allowed numbers (from a minimum of 0)                         |
+| ----------------- | ------------------------------------------------------------- |
+| **Whole numbers** | 0, 1, 2, 3, ... (the default)                                 |
+| **One decimal**   | 0, 0.1, 0.2, ...                                              |
+| **Two decimals**  | 0, 0.01, 0.02, ...                                            |
+| **Custom**        | Any step you type, e.g. 5 for 0, 5, 10, ... or 0.5 for halves |
 
 Steps count from the minimum (or from 0 without one): with a minimum of 1
 and steps of 2, coders can give 1, 3, 5, and so on. The minimum must be below the maximum.
@@ -41,30 +41,30 @@ A new numeric question starts with a range of 0 to 10.
 Under **Labels (optional)**, click **+ Add label** to put a word at a
 number, for example:
 
-| Number | Label |
-| --- | --- |
-| 0 | Very cold |
-| 50 | Neutral |
-| 100 | Very warm |
+| Number | Label     |
+| ------ | --------- |
+| 0      | Very cold |
+| 50     | Neutral   |
+| 100    | Very warm |
 
 Coders see the labels under the buttons or the slider, each at its place
 on the range. With a number box, they are shown as a hint under it
-(*0: Very cold · 50: Neutral · 100: Very warm*). A label must lie within
+(_0: Very cold · 50: Neutral · 100: Very warm_). A label must lie within
 the range.
 
 Labels also show up in references: if a coder answers exactly 50,
-`$var.thermo.label` is *Neutral*; for any other number it is the number
+`$var.thermo.label` is _Neutral_; for any other number it is the number
 itself.
 
 ## Layouts
 
 Under **Layout**, choose how coders give the number:
 
-| Layout | Coders see | Needs |
-| --- | --- | --- |
-| **Buttons (one per value)** | a button for every allowed number; one click answers | a minimum and a maximum |
-| **Slider** | a slider, and **Continue** | a minimum and a maximum |
-| **Number input** | a box to type in, and **Continue** | nothing: works with an open range |
+| Layout                      | Coders see                                           | Needs                             |
+| --------------------------- | ---------------------------------------------------- | --------------------------------- |
+| **Buttons (one per value)** | a button for every allowed number; one click answers | a minimum and a maximum           |
+| **Slider**                  | a slider, and **Continue**                           | a minimum and a maximum           |
+| **Number input**            | a box to type in, and **Continue**                   | nothing: works with an open range |
 
 **Auto** chooses from the range:
 
@@ -72,8 +72,8 @@ Under **Layout**, choose how coders give the number:
 - up to 11 allowed numbers (such as 0 to 10): **buttons**;
 - more: a **slider**.
 
-The **Layout** list shows what auto chose, e.g. *Auto (Buttons (one per
-value))*.
+The **Layout** list shows what auto chose, e.g. _Auto (Buttons (one per
+value))_.
 
 ### Buttons
 
@@ -98,14 +98,14 @@ handle starts, and that fine positions are hard to hit on a phone.
 ### Number input
 
 A box to type a number in, with **Continue** (or Enter). Numbers outside
-the range or between steps are refused with a message such as *This is
-above the maximum 120*. Use it for counts and other numbers with no
-natural maximum, such as *How many sources are quoted?*, and for age.
+the range or between steps are refused with a message such as _This is
+above the maximum 120_. Use it for counts and other numbers with no
+natural maximum, such as _How many sources are quoted?_, and for age.
 
 ## Using the answers
 
 `$var.<question>.value` is the number. Conditions can compare it with
-*equals*, *greater than*, *lower than*, *between* and so on, for example
+_equals_, _greater than_, _lower than_, _between_ and so on, for example
 `$var.age.lt(18)` to [end the session](end-items.md) for minors. See
 [Conditions](conditions.md).
 

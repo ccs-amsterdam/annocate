@@ -197,7 +197,7 @@ describe("studies from a recipe", () => {
     expect(await studyCount()).toBe(0);
   });
 
-  it("a study file's recipe: declared unit fields (types, descriptions, order) and the study's settings", async () => {
+  it("a design file's unit fields: declared types, descriptions and order", async () => {
     const res = await post({
       ...recipe,
       units: [
@@ -214,17 +214,9 @@ describe("studies from a recipe", () => {
           ],
         },
       },
-      keepSessionsOpen: true,
-      signIn: "optional",
-      redirectUrls: { panel: "https://panel.example/done" },
     });
     expect(res.status, await res.clone().text()).toBe(201);
     const study = StudyResponseSchema.parse(await res.json());
-    expect(study).toMatchObject({
-      keepSessionsOpen: true,
-      signIn: "optional",
-      redirectUrls: { panel: "https://panel.example/done" },
-    });
     const [{ units: spec }] = await query<{ units: { fields: unknown[] } }>(
       db,
       "SELECT units FROM design_versions WHERE study_id = $1",

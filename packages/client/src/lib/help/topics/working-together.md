@@ -15,12 +15,12 @@ On the study's **Settings** tab, **Who has access** lists the people of the stud
 their roles. Only admins of the study see this list and can change it.
 
 - **Add** someone with their email address and a role. If they have logged
-  in before, the role is theirs at once; otherwise they are *invited*, and
+  in before, the role is theirs at once; otherwise they are _invited_, and
   see the study once they log in with that address (verified by their login
-  provider) within 3 months. An unused invitation *expires*.
+  provider) within 3 months. An unused invitation _expires_.
 - The role belongs to the person, not the address: if their address changes
   at their login provider, they keep their access.
-- A role can be *turned off* to protect the study, when an invitation
+- A role can be _turned off_ to protect the study, when an invitation
   expired or someone comes back after more than a year without a second
   factor. **Restore** turns it on again: only if you're sure the address is
   still theirs.
@@ -34,10 +34,10 @@ accident.
 
 ## Roles
 
-| Role | Can |
-| --- | --- |
-| **Read** | See the study, its coders' progress, and download the results |
-| **Write** | Also edit and save the design draft (and preview it), upload units, make sets and manage links |
+| Role      | Can                                                                                                                                                |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Read**  | See the study, its coders' progress, and download the results                                                                                      |
+| **Write** | Also edit and save the design draft (and preview it), upload units, make sets and manage links                                                     |
 | **Admin** | Also deploy the design, units and sets, pause the study, reset answers, delete coders' data, rename or delete the study, and manage who has access |
 
 Give people the smallest role that lets them do their work. Coders are not

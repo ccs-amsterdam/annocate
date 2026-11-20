@@ -17,7 +17,7 @@ part, with some units that everyone codes so you can measure reliability.
    units over the names you type (see [Set columns](sets.md)).
 2. **Tell the design.** In the editor, open **Session** above the item tree
    and tick **Units are divided over coders**, with `coder` as the column.
-   The form shows what it found: *"3 coders: names, so a link per coder"*.
+   The form shows what it found: _"3 coders: names, so a link per coder"_.
 3. **Deploy.** Every coder gets their own link.
 4. **Send the links.** **Deploy › Links** lists them, labelled with the
    coder: send Anna the `anna` link, and so on.
@@ -30,9 +30,9 @@ set anything on the loop for this.
 Units that several coders should code:
 
 | Cell in the `coder` column | Who codes the unit |
-| --- | --- |
-| `anna;bob` | Anna and Bob |
-| `_overlap` | every coder |
+| -------------------------- | ------------------ |
+| `anna;bob`                 | Anna and Bob       |
+| `_overlap`                 | every coder        |
 
 Units in `_overlap` are placed among each coder's own units: spread through
 them by default (see [Overlap](overlap.md)). **Fill a set column** can set

@@ -2,7 +2,6 @@ import { z } from "zod";
 import { UnitsSpecSchema } from "./unitFields.js";
 import { DesignItemsSchema } from "./design/designVersion.js";
 import { EMPTY_SESSION, PublicInfoSchema, SessionSpecSchema } from "./design/session.js";
-import { RecipeSchema } from "./recipe.js";
 
 /**
  * The release of AnnoTinder (server, client and contracts are released
@@ -70,24 +69,3 @@ export function designFile(
     } as DesignFile["design"],
   };
 }
-
-/** The study file's format (`formatVersion`): bumped on a breaking change, as the design file's. */
-export const STUDY_FORMAT_VERSION = 1;
-
-/**
- * A study file (`study.json` in the results download): the study as it is,
- * to make a copy of it, here or on another server ("New study from a
- * file"). It is a recipe (`POST /study/from-recipe`): the name, the units
- * with their current data, the set columns, the latest design version
- * (with its unit fields) as a draft, and the study's settings. Coders,
- * answers and links are not part of it: the copy starts without coders.
- */
-export const StudyFileSchema = z.object({
-  format: z.literal("annotinder-study"),
-  formatVersion: z.number().int().positive(),
-  client: ClientVersionSchema,
-  exportedAt: z.coerce.date(),
-  recipe: RecipeSchema,
-});
-export type StudyFile = z.infer<typeof StudyFileSchema>;
-export type StudyFileInput = z.input<typeof StudyFileSchema>;

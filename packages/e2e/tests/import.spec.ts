@@ -1,5 +1,3 @@
-import { type Page } from "@playwright/test";
-import { strFromU8, unzipSync } from "fflate";
 import type {
   DesignVersion,
   DesignVersionMeta,
@@ -10,17 +8,7 @@ import type {
 import { expect, test } from "./fixtures";
 import { api, fromExample } from "./helpers";
 
-// A copy of a study from its download: study.json in the zip, imported
-// with Create new study › From a file. And a study from a design file.
-
-async function downloadZip(page: Page): Promise<Buffer> {
-  await page.getByRole("button", { name: "Results" }).click();
-  const [download] = await Promise.all([
-    page.waitForEvent("download"),
-    page.getByRole("button", { name: /Download zip/ }).click(),
-  ]);
-  return Buffer.concat(await (await download.createReadStream()).toArray());
-}
+// A study from a design file: Create new study › From a file.
 
 /** What makes a study, to compare a copy with its original. */
 async function contents(request: Parameters<typeof api>[0], id: number) {
@@ -37,41 +25,6 @@ async function contents(request: Parameters<typeof api>[0], id: number) {
     design: { items: design.items, session: design.session, units: design.units, public: design.public },
   };
 }
-
-test("a download makes a copy of the study: units, sets, design and settings, without coders", async ({
-  page,
-  request,
-}) => {
-  const { study } = await fromExample(request, "swipe-sentiment");
-  await page.goto(`/research/studies/${study.id}`);
-  const zip = await downloadZip(page);
-  const files = unzipSync(new Uint8Array(zip));
-  expect(JSON.parse(strFromU8(files["study.json"]))).toMatchObject({ format: "annotinder-study", formatVersion: 1 });
-
-  await page.goto("/research");
-  await page.getByRole("button", { name: /Create new study/ }).click();
-  await page.getByRole("menuitem", { name: /From a file/ }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Study or design file").setInputFiles({
-    name: "Sentiment_2026-11-19.zip",
-    mimeType: "application/zip",
-    buffer: zip,
-  });
-  await expect(dialog.getByTestId("import-summary")).toContainText(/\d+ units/);
-  await dialog.getByLabel("Study name").fill("Sentiment, again");
-  await dialog.getByRole("button", { name: "Create study" }).click();
-  // The copy opens in the editor
-  await expect(page).toHaveURL(/\/research\/studies\/\d+\/editor/);
-  const copyId = Number(/\/research\/studies\/(\d+)/.exec(page.url())![1]);
-  expect(copyId).not.toBe(study.id);
-
-  const copy = await api<StudyResponse>(request, "GET", `/study/${copyId}`);
-  expect(copy.name).toBe("Sentiment, again");
-  expect(await contents(request, copyId)).toEqual(await contents(request, study.id));
-  // No coders, nothing deployed
-  expect(await api<unknown[]>(request, "GET", `/study/${copyId}/coders`)).toEqual([]);
-  expect(await api<unknown>(request, "GET", `/study/${copyId}/deployment`)).toBeNull();
-});
 
 test("a design file makes a study with that design and no units; other files are refused with a reason", async ({
   page,
@@ -95,9 +48,9 @@ test("a design file makes a study with that design and no units; other files are
   await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /From a file/ }).click();
   const dialog = page.getByRole("dialog");
-  const input = dialog.getByLabel("Study or design file");
+  const input = dialog.getByLabel("Design file");
   await input.setInputFiles({ name: "notes.json", mimeType: "application/json", buffer: Buffer.from('{"a":1}') });
-  await expect(dialog.getByRole("alert")).toContainText("isn't an AnnoTinder study or design file");
+  await expect(dialog.getByRole("alert")).toContainText("isn't an AnnoTinder design file");
   await expect(dialog.getByRole("button", { name: "Create study" })).toBeDisabled();
 
   await input.setInputFiles({

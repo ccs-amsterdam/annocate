@@ -23,12 +23,12 @@ about names.
 
 ## The four types
 
-| Block | Shows its content as |
-| --- | --- |
-| `::: text` | Plain text, exactly as it is |
+| Block          | Shows its content as                                            |
+| -------------- | --------------------------------------------------------------- |
+| `::: text`     | Plain text, exactly as it is                                    |
 | `::: markdown` | Markdown: values that contain markdown are read as markdown too |
-| `::: html` | HTML, in a safe frame (see [HTML in a layout](html.md)) |
-| `::: image` | An image: the content is the image's address (URL) |
+| `::: html`     | HTML, in a safe frame (see [HTML in a layout](html.md))         |
+| `::: image`    | An image: the content is the image's address (URL)              |
 
 A suffix is the short form of a block around one value: `$unit.body::markdown`
 is the same as
@@ -65,7 +65,7 @@ $unit.towns
 
 Use a markdown block when your data contains markdown and you want to put
 text of your own around it, or combine several fields into one text. Keep in
-mind that *all* markdown in the values is then read: a `*` or `_` in a tweet
+mind that _all_ markdown in the values is then read: a `*` or `_` in a tweet
 can turn text italic. For plain texts, values outside a block are safer.
 
 ### Text blocks
@@ -113,10 +113,10 @@ with values from the unit in it, for example a mock social media post. See
 ### Rules
 
 - **No suffixes inside.** Values in a typed block are put in as they are, so
-  `$unit.body::markdown` inside a `::: markdown` block is an error: *Inside a
-  ::: markdown block values are put in as they are: leave out ::markdown*.
-- **No typed blocks inside typed blocks.** *A ::: html block can't be inside
-  a ::: markdown block.* Typed blocks can be inside `::: if`, `::: from` and
+  `$unit.body::markdown` inside a `::: markdown` block is an error: _Inside a
+  ::: markdown block values are put in as they are: leave out ::markdown_.
+- **No typed blocks inside typed blocks.** _A ::: html block can't be inside
+  a ::: markdown block._ Typed blocks can be inside `::: if`, `::: from` and
   `::: style` blocks, and `::: if` and `::: from` blocks can be inside them.
 - **`::: style` only inside markdown.** Inside a `::: text`, `::: html` or
   `::: image` block, style the content in its own way (in HTML: with
@@ -131,20 +131,20 @@ shown as a part of its own, not inside a sentence.
 AnnoTinder gives the parts of a layout **ids**, so questions can refer to
 them:
 
-| What the layout shows | Its id |
-| --- | --- |
-| A unit field: `$unit.headline` (also with a suffix) | `unit.headline` |
-| An answer: `$var.topic.label` | `var.topic` |
-| A typed block with a name: `::: html scores` | `scores` |
-| A script: `{{ ... }}` | None (put it in a named block to give it one) |
+| What the layout shows                               | Its id                                        |
+| --------------------------------------------------- | --------------------------------------------- |
+| A unit field: `$unit.headline` (also with a suffix) | `unit.headline`                               |
+| An answer: `$var.topic.label`                       | `var.topic`                                   |
+| A typed block with a name: `::: html scores`        | `scores`                                      |
+| A script: `{{ ... }}`                               | None (put it in a named block to give it one) |
 
 Values inside a typed block are part of the block's content: they have no
 id of their own.
 
 A block's name comes after its type: `::: markdown intro`,
 `::: html scores`. A name is letters, digits and `_` (no dots), and must be
-different from the other names in the layout (*Two blocks are named
-'intro': names must be unique*).
+different from the other names in the layout (_Two blocks are named
+'intro': names must be unique_).
 
 ### Focus on
 
@@ -158,8 +158,8 @@ headline for the first question, a table further down for the next.
 A [span question](span.md) focuses on the fields it selects in, unless you
 choose otherwise.
 
-If the layout no longer shows an id, the editor reports: *'unit.title' is
-not shown in the layout (as $unit.title)*.
+If the layout no longer shows an id, the editor reports: _'unit.title' is
+not shown in the layout (as $unit.title)_.
 
 ### Fields span questions select in
 
@@ -170,5 +170,5 @@ exactly what is in your data, and the positions of the spans point into
 the field as it was shown (kept in `units.csv`).
 
 A field shown with `::markdown` or inside a typed block can't be selected
-in. The editor then says *Span question 'actors' selects text in the unit
-field 'text', but the layout doesn't show it as plain text ($unit.text)*.
+in. The editor then says _Span question 'actors' selects text in the unit
+field 'text', but the layout doesn't show it as plain text ($unit.text)_.

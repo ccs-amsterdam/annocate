@@ -16,7 +16,7 @@ of defaults to depart from on purpose, not as rules.
 
 ## Start from the unit of analysis
 
-Decide first what one judgement is *about*: a whole news article, a
+Decide first what one judgement is _about_: a whole news article, a
 paragraph, a sentence, a tweet, an image. In AnnoTinder that is a **unit**:
 one row of the CSV file you upload. Everything a unit loop asks, it asks once
 per unit.
@@ -41,13 +41,13 @@ per unit.
 Each question should ask for one judgement, with one answer coders can give
 without weighing two things against each other.
 
-- **Split compound questions.** *"Is the article negative about the
-  government?"* mixes a target and a tone. Ask *"Is the government
-  mentioned?"*, then *"What is the tone towards the government?"*.
+- **Split compound questions.** _"Is the article negative about the
+  government?"_ mixes a target and a tone. Ask _"Is the government
+  mentioned?"_, then _"What is the tone towards the government?"_.
 - **Filter first.** If a question only makes sense for some units, ask a
   filter question first and show the follow-ups only when they apply, with a
   [condition](conditions.md). Coders then don't have to pick "not applicable"
-  over and over, and your data says *why* a question is empty: it was skipped.
+  over and over, and your data says _why_ a question is empty: it was skipped.
 - **Keep each question's frame small.** Coders read the unit once, then answer
   several questions about it. Put the questions in the order a careful reader
   would think about them: from general (is this about politics?) to specific
@@ -121,7 +121,7 @@ button to go on.
 
 > A field the design uses is sent to the coder's browser, also when it is
 > only shown later. That is fine for training, but don't put the expert answer
-> of your *test* units in their data.
+> of your _test_ units in their data.
 
 ## Pilot, then test reliability
 
@@ -215,11 +215,11 @@ fit too:
 
 ## Further reading
 
-- Krippendorff, K. (2018). *Content Analysis: An Introduction to Its
-  Methodology* (4th ed.). Sage.
-- Neuendorf, K. A. (2017). *The Content Analysis Guidebook* (2nd ed.). Sage.
+- Krippendorff, K. (2018). _Content Analysis: An Introduction to Its
+  Methodology_ (4th ed.). Sage.
+- Neuendorf, K. A. (2017). _The Content Analysis Guidebook_ (2nd ed.). Sage.
 - Benoit, K., Conway, D., Lauderdale, B. E., Laver, M., & Mikhaylov, S.
-  (2016). Crowd-sourced text analysis. *American Political Science Review*,
+  (2016). Crowd-sourced text analysis. _American Political Science Review_,
   110(2), 278-295.
 - Lind, F., Gruber, M., & Boomgaarden, H. G. (2017). Content analysis by the
-  crowd. *Communication Methods and Measures*, 11(3), 191-209.
+  crowd. _Communication Methods and Measures_, 11(3), 191-209.
