@@ -385,6 +385,37 @@ edits the public title in place and lists the parameters, which open the
 form. (The design stores `session` and `public` apart from `items`; the
 editor holds them as this first item, `designItems`/`splitDesignItems`.)
 
+### Editor modes
+
+The Study entry's `uses` (`architecture.md` §6, "The session") says what
+the design is made of, and the editor shows only that. The bar at the top
+of the tree (`designEditor/DesignUsesBar.tsx`) has **Annotate units**,
+**Questions** or **Both**, and **Experiment**. A choice that would hide
+something the design has is disabled; its tooltip names what is in the way
+(contracts `usesConflicts`).
+
+- **Annotate units**: one unit loop and nothing outside it. The tree shows
+  the loop's items as the top level, under a fixed **Units** row (the loop's
+  settings: not ticked, moved or deleted; `singleLoop`). Choosing it adds
+  the loop if there is none (`draft.setUses`). Nothing can be added outside
+  the loop.
+- **Questions**: no unit loops in the add menu; no Units page or Units card
+  on the Design page (`useDesignUses`); the session form has no coder
+  column and conditions can't be linked to units.
+- **Both**: everything, any number of loops.
+- Without **Experiment**: no computed items in the add menu, and in the
+  session form conditions only to hand out units. Computed items also need
+  questions outside the units (`insertableTypesAt`).
+
+A design without `uses` gets the one worked out from it when the editor
+opens it (`withUses` in `useDesignDraft`), so the mode changes only when the
+researcher changes it: a new design starts as Both, without an experiment.
+
+The tree's last row is **At the end** (`STUDY_END_KEY`): the study's normal
+end (`session.end`), edited with an end item's fields without the outcome
+(`StudyEndPanel` in `ItemPanel.tsx`). End items in the tree are for ending
+early.
+
 ## 5. Scripting sandbox: QuickJS
 
 Script conditions and `{{...}}` template values are plain JavaScript

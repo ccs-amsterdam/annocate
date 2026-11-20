@@ -14,8 +14,21 @@ import { issueIsAbout } from "../../codebook/tree";
 import { Button } from "@/components/ui/button";
 import { DesignTreeProvider, type DesignTreeState } from "./designTree/context";
 import { TreeList } from "./designTree/TreeList";
+import { TreeItemRow } from "./designTree/TreeItemRow";
 import { AddItemMenu } from "./designTree/AddItemMenu";
-import { getItemKey, insertableTypesAt, questionNumbers, type ItemType } from "./designTree/utils";
+import {
+  getItemKey,
+  insertableTypesAt,
+  questionNumbers,
+  singleLoop,
+  STUDY_END_KEY,
+  type ItemType,
+  type TreeNode,
+} from "./designTree/utils";
+import { TreeRow } from "./designTree/TreeRow";
+import { cn } from "cn";
+import { Flag } from "lucide-react";
+import { sessionItem } from "@annotinder/contracts";
 
 interface DesignTreeViewProps {
   items: TopLevelItem[];
@@ -86,6 +99,8 @@ export function DesignTreeView({
   }, [moving, checked.size]);
 
   const numbers = questionNumbers(items);
+  // Annotating only: the loop's items are the top level
+  const loop = singleLoop(items);
   const state: DesignTreeState = {
     items,
     numberOf: (key) => numbers.get(key) ?? null,
@@ -121,11 +136,12 @@ export function DesignTreeView({
 
     isChanged: (item) => changed?.has(getItemKey(item)) ?? false,
     getIssue: (item) => validationIssues.find((issue) => issueIsAbout(items, issue, item))?.message ?? null,
+    singleLoop: loop ? getItemKey(loop) : null,
   };
 
-  const end: TreePosition = { into: null };
-  // The Study entry (always first) is shown above the tree (SessionHeader), not in it
-  const shown = items.filter((item) => item.type !== "session");
+  const end: TreePosition = { into: loop ? getItemKey(loop) : null };
+  // The Study entry (always first) is shown above the tree (SessionHeader), not in it; annotating only, the loop's items
+  const shown: TreeNode[] = loop ? (loop.children as TreeNode[]) : items.filter((item) => item.type !== "session");
   const top: TreePosition | null = shown.length > 0 ? { before: getItemKey(shown[0]) } : null;
   const count = ticked.length === 1 ? "1 item" : `${ticked.length} items`;
 
@@ -185,8 +201,52 @@ export function DesignTreeView({
         {shown.length === 0 && !readOnly && (
           <p className="px-2 py-3 text-sm text-muted-foreground">No items yet: add the first one above.</p>
         )}
-        <TreeList nodes={shown} parent={null} />
+        {loop && <TreeItemRow item={loop} />}
+        <TreeList nodes={shown} parent={loop} />
+        <StudyEndRow items={items} selected={selected === STUDY_END_KEY} onSelect={() => onSelect(STUDY_END_KEY)} />
       </div>
     </DesignTreeProvider>
+  );
+}
+
+/**
+ * The study's normal end (the Study entry's `end`), always the tree's last
+ * row: what coders see when they get through the whole design, and where
+ * they are sent. End items in the tree are for ending early.
+ */
+function StudyEndRow({
+  items,
+  selected,
+  onSelect,
+}: {
+  items: TopLevelItem[];
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const end = sessionItem(items)?.end;
+  const summary = end?.redirectSetting
+    ? `then to ${end.redirectSetting}`
+    : end?.redirectUrl
+      ? "then to a URL"
+      : end?.message
+        ? "a message"
+        : "the default thank-you";
+  return (
+    <TreeRow className="mt-1 border-t border-border/60 pt-1">
+      <span className="mr-px h-3.5 w-3.5 shrink-0" aria-hidden />
+      <button
+        type="button"
+        onClick={onSelect}
+        className={cn(
+          "flex min-w-0 flex-1 cursor-pointer items-center gap-1 rounded pl-1 text-left",
+          selected && "bg-wood/15",
+        )}
+      >
+        <span className="w-4 shrink-0" />
+        <Flag className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className={cn("truncate px-1.5 py-0.5", selected ? "font-semibold" : "font-medium")}>At the end</span>
+        <span className="truncate text-xs text-muted-foreground">{summary}</span>
+      </button>
+    </TreeRow>
   );
 }

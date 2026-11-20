@@ -34,10 +34,10 @@ accident.
 
 ## Roles
 
-| Role      | Can                                                                                                                                                |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Read**  | See the study, its coders' progress, and download the results                                                                                      |
-| **Write** | Also edit and save the design draft (and preview it), upload units, make sets and manage links                                                     |
+| Role      | Can                                                                                                                                                        |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Read**  | See the study, its coders' progress, and download the results                                                                                              |
+| **Write** | Also edit and save the design draft (and preview it), upload units, make sets and manage links                                                             |
 | **Admin** | Also deploy the design, units and sets, pause the study, reset answers, delete coders' data, rename, export or delete the study, and manage who has access |
 
 Give people the smallest role that lets them do their work. Coders are not

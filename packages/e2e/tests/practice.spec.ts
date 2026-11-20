@@ -133,8 +133,8 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
   await page.getByText("Gold answers").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
   await page.getByRole("button", { name: /Open the editor/ }).click();
-  await page.getByRole("button", { name: /^Unit loop/ }).click();
-  await page.getByRole("tab", { name: /Units/ }).click();
+  // One loop and nothing else: annotating only, the loop's row is "Units"; its Units tab
+  await page.getByTitle("Units: which units coders get").click();
   await page.getByRole("button", { name: "Create gold values…" }).click();
 
   const dialog = page.getByRole("dialog");

@@ -8,6 +8,7 @@ import {
   type SetGroupResponse,
   type DesignIssue,
   type EndItem,
+  type DesignUses,
 } from "@annotinder/contracts";
 import { cn } from "cn";
 import { UnitLoopForm } from "./UnitLoopForm";
@@ -53,9 +54,12 @@ export function ItemForm({
   isInsideLoop = false,
   screenouts = [],
   shareSources,
+  uses = { content: "both", experiment: true },
   onChange,
 }: {
   item: DesignItem;
+  /** What the design uses (contracts `designUses`): the session form shows what that needs. */
+  uses?: DesignUses;
   /** For "Generate sets…" in a loop's form. */
   client?: ResearcherApi;
   /** The study's set groups (loops' sets, session parameters with a group's sets). */
@@ -92,7 +96,13 @@ export function ItemForm({
   return (
     <div className="flex flex-col gap-4">
       {item.type === "session" ? (
-        <SessionItemForm item={item as SessionItem} groups={groups} issues={validationIssues} onChange={onChange} />
+        <SessionItemForm
+          item={item as SessionItem}
+          groups={groups}
+          issues={validationIssues}
+          uses={uses}
+          onChange={onChange}
+        />
       ) : item.type === "show_if" || item.type === "unit_loop" ? (
         // Conditions and unit loops have no name: an optional label shows in the tree (and for loops in exports).
         <div className="flex flex-col gap-1.5">
@@ -237,18 +247,21 @@ export function ItemForm({
 }
 
 /** An `end` item: how the session ends, the message shown, and where the coder is sent. */
-function EndItemFields({
+/** An end item's outcome, message and redirect; `studyEnd`: the study's normal end (no outcome: complete). */
+export function EndItemFields({
   item,
   onChange,
   issues,
+  studyEnd = false,
 }: {
   item: EndItem;
   onChange: (updated: DesignItem) => void;
   issues: DesignIssue[];
+  studyEnd?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-3 border-t border-border/60 pt-4">
-      <div className="flex flex-col gap-1.5">
+    <div className={studyEnd ? "flex flex-col gap-3" : "flex flex-col gap-3 border-t border-border/60 pt-4"}>
+      <div className={studyEnd ? "hidden" : "flex flex-col gap-1.5"}>
         <span className="flex items-center gap-1.5">
           <label className="text-xs font-semibold text-foreground">Outcome</label>
           <HelpButton topic="end-items" label="Help: ending a session" />

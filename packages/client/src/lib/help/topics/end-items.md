@@ -5,10 +5,11 @@ order: 6
 summary: End items end a coder's session early or on purpose - screened out or complete - with a message and an optional link back to a panel.
 ---
 
-Normally a session ends when the coder has gone through the whole design:
-they see _"Study Complete!"_ and that's it. An **end item** ends the session
-at a point you choose, says how it ended, and can send the coder on to
-another website. You need one when:
+Normally a session ends when the coder has gone through the whole design.
+What they see then, and where they go next (e.g. back to a panel), is set
+at **At the end**, the last row of the editor's tree. An **end item** ends
+the session early, at a point you choose, says how it ended, and can send
+the coder on to another website. You need one when:
 
 - a participant **doesn't consent**, or **doesn't fit** the study (too
   young, wrong country);
@@ -18,8 +19,8 @@ another website. You need one when:
   [Online panels and crowd coding](online-panels.md)).
 
 An end item usually sits inside a [condition](conditions.md): it is only
-reached when the condition holds. An end item at the very end of the
-design is reached by everyone who finishes.
+reached when the condition holds. For everyone who finishes, use **At the
+end** instead.
 
 ```text
 Consent                   nominal: yes, no
@@ -29,7 +30,7 @@ Age                       numeric
 Condition: if age < 18
   └ End: too_young        screened out
 Unit loop                 20 news articles
-End: done                 complete, back to the panel
+At the end                "Thank you!", back to the panel
 ```
 
 ## Adding an end item
@@ -135,9 +136,9 @@ ends the session after saving the current unit's answers.
 
 ### Back to the panel
 
-At the end of the design, an end item **Complete** with the panel's
-completion link as **Redirect to (optional)**, and inside each screening condition one
-**Screened out** with the panel's screenout link.
+**At the end** sends coders to the panel's completion link, and inside each
+screening condition an end item **Screened out** sends them to the panel's
+screenout link.
 
 ## Where end items can go
 

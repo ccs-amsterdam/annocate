@@ -28,6 +28,24 @@ From top to bottom, the tab has:
   the right and, on wide screens, a **preview** of that item in a third
   column.
 
+## What the design uses
+
+The bar at the top of the tree says what the design is made of, so the
+editor shows only what you need:
+
+- **Annotate units**: coders code units. The design is one unit loop: the
+  tree shows its items directly, under a **Units** row that opens the
+  loop's layout and which units coders get.
+- **Questions**: coders answer questions, without units. There is no Units
+  page.
+- **Both**: questions and unit loops, in any order and number.
+- **Experiment**: conditions that vary what coders get (in the Session
+  form), and with questions, computed items such as a random condition.
+
+A choice that would hide something your design has is greyed out: hover it
+to see what is in the way. A condition that only hands out units (linked to
+a set column) belongs to annotating, not to the experiment.
+
 ## The tree
 
 The tree shows every item, indented under the loop or condition it is in.
@@ -48,6 +66,10 @@ the **Session parameters**: click them to open their form (see
 
 Click an item to open it on the right. A loop's row has two extra buttons
 that open the loop on its **Layout** or its **Units** tab.
+
+The tree's last row, **At the end**, is what coders see when they get
+through the whole study, and where they go next (for example back to a
+panel). See [Ending a session](end-items.md).
 
 Two marks can appear after an item:
 

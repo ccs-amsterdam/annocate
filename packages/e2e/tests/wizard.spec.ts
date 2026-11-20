@@ -5,7 +5,7 @@ import { api } from "./helpers";
 // The setup wizard (docs/examples.md): through its steps to a study
 // with a draft design version, opened in the editor to specify the questions.
 
-test("annotation with an experiment: a set of units per condition, questions before, per unit and after", async ({
+test("annotation with questions and an experiment: a set of units per condition, questions before, per unit and after", async ({
   page,
   request,
 }) => {
@@ -13,7 +13,8 @@ test("annotation with an experiment: a set of units per condition, questions bef
   await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /Guided setup/ }).click();
   await page.getByLabel("Study name").fill("Framing study");
-  // Annotate is on; add the experiment
+  // Annotate is on; add questions and the experiment (with questions, the condition is a computed item before them)
+  await page.getByRole("button", { name: /Ask questions/ }).click();
   await page.getByRole("button", { name: /Experiment/ }).click();
   await page.getByRole("button", { name: "Next" }).click();
 

@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from "lucide-react";
-import type { ConditionSpec, DesignIssue, SessionItem, SetGroupResponse } from "@annotinder/contracts";
+import type { ConditionSpec, DesignIssue, DesignUses, SessionItem, SetGroupResponse } from "@annotinder/contracts";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -21,13 +21,17 @@ export function AssignmentSettings({
   item,
   groups,
   issues,
+  uses,
   onChange,
 }: {
   item: SessionItem;
   groups: SetGroupResponse[];
   issues: DesignIssue[];
+  /** What the design uses: questions only have no coder column and no conditions linked to units. */
+  uses: DesignUses;
   onChange: (item: SessionItem) => void;
 }) {
+  const units = uses.content !== "questions";
   const columns = groups.map((g) => g.name);
   const coders = item.coders ? coderSummary(columnValues(groups, item.coders.column)) : null;
   const conditions = item.conditions ?? [];
@@ -45,90 +49,103 @@ export function AssignmentSettings({
     ]);
   };
 
+  // Without units and without an experiment, a session has no conditions to start with
+  const showConditions = uses.experiment || units || conditions.length > 0;
   return (
     <>
-      <section className="flex flex-col gap-2">
-        <h3 className="flex items-center gap-1.5 text-xs font-semibold">
-          Coders
-          <InfoTip label="About coders">
-            Divide the units over coders with a set column in the units: each unit says who codes it (
-            <span className="font-mono">anna</span>, <span className="font-mono">anna;bob</span> for both,{" "}
-            <span className="font-mono">_overlap</span> for everyone). Names give a link per coder; email addresses give
-            one link where coders sign in and get their own units.
-          </InfoTip>
-          <HelpButton topic="sets" label="Help: dividing units" />
-        </h3>
-        <label className="flex items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            checked={item.coders !== undefined}
-            onChange={(e) => {
-              onChange({
-                ...item,
-                coders: e.target.checked
-                  ? { column: columns.includes("coder") ? "coder" : (columns[0] ?? "coder") }
-                  : undefined,
-              });
-            }}
-          />
-          Units are divided over coders
-        </label>
-        {item.coders && (
-          <div className="flex flex-col gap-1.5 rounded-md border border-border p-2">
-            <label className={labelClass}>
-              Column with the coders
-              <ColumnSelect
-                label="Column with the coders"
-                columns={columns}
-                value={item.coders.column}
-                onChange={(column) => onChange({ ...item, coders: { column: column ?? "coder" } })}
-              />
-            </label>
-            {coders && (
-              <CoderNote
-                kind={coders.kind}
-                count={coders.count}
-                notEmails={coders.notEmails}
-                column={item.coders.column}
-                known={columns.includes(item.coders.column)}
-              />
-            )}
-            <IssueList issues={issuesAt(issues, "coders")} />
-          </div>
-        )}
-      </section>
+      {(units || item.coders) && (
+        <section className="flex flex-col gap-2">
+          <h3 className="flex items-center gap-1.5 text-xs font-semibold">
+            Coders
+            <InfoTip label="About coders">
+              Divide the units over coders with a set column in the units: each unit says who codes it (
+              <span className="font-mono">anna</span>, <span className="font-mono">anna;bob</span> for both,{" "}
+              <span className="font-mono">_overlap</span> for everyone). Names give a link per coder; email addresses
+              give one link where coders sign in and get their own units.
+            </InfoTip>
+            <HelpButton topic="sets" label="Help: dividing units" />
+          </h3>
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={item.coders !== undefined}
+              onChange={(e) => {
+                onChange({
+                  ...item,
+                  coders: e.target.checked
+                    ? { column: columns.includes("coder") ? "coder" : (columns[0] ?? "coder") }
+                    : undefined,
+                });
+              }}
+            />
+            Units are divided over coders
+          </label>
+          {item.coders && (
+            <div className="flex flex-col gap-1.5 rounded-md border border-border p-2">
+              <label className={labelClass}>
+                Column with the coders
+                <ColumnSelect
+                  label="Column with the coders"
+                  columns={columns}
+                  value={item.coders.column}
+                  onChange={(column) => onChange({ ...item, coders: { column: column ?? "coder" } })}
+                />
+              </label>
+              {coders && (
+                <CoderNote
+                  kind={coders.kind}
+                  count={coders.count}
+                  notEmails={coders.notEmails}
+                  column={item.coders.column}
+                  known={columns.includes(item.coders.column)}
+                />
+              )}
+              <IssueList issues={issuesAt(issues, "coders")} />
+            </div>
+          )}
+        </section>
+      )}
 
-      <section className="flex flex-col gap-2">
-        <h3 className="flex items-center gap-1.5 text-xs font-semibold">
-          Assigned conditions
-          <InfoTip label="About assigned conditions">
-            A condition a session starts with: from its link (a link per value), or drawn when it starts (one link,
-            random or balanced). Use it as <span className="font-mono">$session.name</span> in Show if blocks and texts.
-            Linked to a set column, its value also selects the session&apos;s units. For a condition drawn later in the
-            flow, add a computed variable (Random condition) instead.
-          </InfoTip>
-        </h3>
-        {conditions.map((condition, i) => (
-          <ConditionEditor
-            key={i}
-            condition={condition}
-            columns={columns}
-            groups={groups}
-            issues={issuesAt(issues, "conditions", i)}
-            onChange={(next) => setConditions(conditions.map((c, j) => (j === i ? next : c)))}
-            onRemove={() => setConditions(conditions.filter((_, j) => j !== i))}
-          />
-        ))}
-        <Button type="button" variant="outline" size="sm" className="w-fit" onClick={addCondition}>
-          <Plus className="h-3.5 w-3.5" /> Condition
-        </Button>
-        {(item.coders || conditions.some((c) => c.assign === "link")) && (
-          <p className="text-[11px] text-muted-foreground">
-            Deploying makes {links} link{links === 1 ? "" : "s"} for these
-            {item.params.some((p) => p.kind === "link") ? ", times the link parameters below" : ""}.
-          </p>
-        )}
-      </section>
+      {showConditions && (
+        <section className="flex flex-col gap-2">
+          <h3 className="flex items-center gap-1.5 text-xs font-semibold">
+            Assigned conditions
+            <InfoTip label="About assigned conditions">
+              A condition a session starts with: from its link (a link per value), or drawn when it starts (one link,
+              random or balanced). Use it as <span className="font-mono">$session.name</span> in Show if blocks and
+              texts. Linked to a set column, its value also selects the session&apos;s units. For a condition drawn
+              later in the flow, add a computed variable (Random condition) instead.
+            </InfoTip>
+          </h3>
+          {!uses.experiment && units && (
+            <p className="text-[11px] text-muted-foreground">
+              Without an experiment, a condition only hands out units: link it to a set column. Turn on Experiment at
+              the top of the editor for conditions that vary what coders get.
+            </p>
+          )}
+          {conditions.map((condition, i) => (
+            <ConditionEditor
+              key={i}
+              canLinkUnits={units || condition.units !== undefined}
+              condition={condition}
+              columns={columns}
+              groups={groups}
+              issues={issuesAt(issues, "conditions", i)}
+              onChange={(next) => setConditions(conditions.map((c, j) => (j === i ? next : c)))}
+              onRemove={() => setConditions(conditions.filter((_, j) => j !== i))}
+            />
+          ))}
+          <Button type="button" variant="outline" size="sm" className="w-fit" onClick={addCondition}>
+            <Plus className="h-3.5 w-3.5" /> Condition
+          </Button>
+          {(item.coders || conditions.some((c) => c.assign === "link")) && (
+            <p className="text-[11px] text-muted-foreground">
+              Deploying makes {links} link{links === 1 ? "" : "s"} for these
+              {item.params.some((p) => p.kind === "link") ? ", times the link parameters below" : ""}.
+            </p>
+          )}
+        </section>
+      )}
     </>
   );
 }
@@ -207,6 +224,7 @@ function ColumnSelect({
 
 function ConditionEditor({
   condition,
+  canLinkUnits,
   columns,
   groups,
   issues,
@@ -214,6 +232,8 @@ function ConditionEditor({
   onRemove,
 }: {
   condition: ConditionSpec;
+  /** The design has units (else no "Linked to units"). */
+  canLinkUnits: boolean;
   columns: string[];
   groups: SetGroupResponse[];
   issues: DesignIssue[];
@@ -266,23 +286,25 @@ function ConditionEditor({
           <option value="random">At the start: one link, random</option>
         </select>
       </label>
-      <label className={labelClass}>
-        Linked to units
-        <ColumnSelect
-          label="Linked to units"
-          optional
-          columns={columns}
-          value={condition.units}
-          onChange={(units) => {
-            const next: ConditionSpec = { ...condition, units };
-            if (!units) {
-              delete next.units;
-              if (next.values === "free") next.values = ["control", "experiment"];
-            }
-            onChange(next);
-          }}
-        />
-      </label>
+      {canLinkUnits && (
+        <label className={labelClass}>
+          Linked to units
+          <ColumnSelect
+            label="Linked to units"
+            optional
+            columns={columns}
+            value={condition.units}
+            onChange={(units) => {
+              const next: ConditionSpec = { ...condition, units };
+              if (!units) {
+                delete next.units;
+                if (next.values === "free") next.values = ["control", "experiment"];
+              }
+              onChange(next);
+            }}
+          />
+        </label>
+      )}
       <div className={labelClass}>
         <span className="flex items-center gap-2">
           Values

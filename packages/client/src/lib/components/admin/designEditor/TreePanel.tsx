@@ -3,15 +3,17 @@ import { flattenTree } from "../../../codebook/tree";
 import { DesignTreeView } from "../DesignTreeView";
 import type { DesignDraft } from "./useDesignDraft";
 import { SessionHeader } from "./SessionHeader";
+import { DesignUsesBar } from "./DesignUsesBar";
 
 /** Left column of the visual editor: the item tree. */
 export function TreePanel({ draft, readOnly }: { draft: DesignDraft; readOnly: boolean }) {
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card px-1 pt-2 shadow-xs">
+      <DesignUsesBar draft={draft} readOnly={readOnly} />
       <SessionHeader draft={draft} readOnly={readOnly} />
       <div className="flex items-center gap-1 px-2 pt-2 pb-1">
         <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
-          Items ({flattenTree(draft.items).filter((i) => i.type !== "session").length})
+          Items ({flattenTree(draft.items).filter((i) => i.type !== "session" && i.type !== "unit_loop").length})
         </span>
         {!readOnly && draft.items.length > 1 && (
           <InfoTip label="How to edit the tree">

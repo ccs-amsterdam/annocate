@@ -7,7 +7,10 @@ import {
   itemName,
   templateNames,
   expandSnippets,
+  sessionItem,
+  designUses,
   type DesignItem,
+  type EndItem,
   type TopLevelItem,
 } from "@annotinder/contracts";
 import { AlertTriangle, ArrowLeft, Code2, Edit3, Eye } from "lucide-react";
@@ -18,7 +21,9 @@ import { itemTitle } from "../../../codebook/conditions";
 import { ItemForm } from "../ItemForm";
 import { Button } from "@/components/ui/button";
 import { ItemPreview } from "./ItemPreview";
-import { getItemKey } from "../designTree/utils";
+import { getItemKey, STUDY_END_KEY } from "../designTree/utils";
+import { EndItemFields } from "../ItemForm";
+import { HelpButton } from "../../../help/HelpButton";
 import { ITEM_TYPES } from "../designTree/itemTypes";
 import { SegmentedToggle } from "./SegmentedToggle";
 import { shareSources } from "../../../design/assignment";
@@ -50,6 +55,8 @@ export function ItemPanel({
   const pane: ItemPane = previewBeside && chosenPane === "preview" ? "edit" : chosenPane;
   const item = draft.selectedItem;
   const itemWarnings = item ? warnings.filter((w) => w.item === itemTitle(item)) : [];
+
+  if (draft.selected === STUDY_END_KEY) return <StudyEndPanel draft={draft} readOnly={readOnly} onBack={onBack} />;
 
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs">
@@ -179,6 +186,7 @@ function ItemEditForm({
         isInsideLoop={isInsideUnitLoop(items, key)}
         screenouts={item.type === "unit_loop" ? screenoutEnds(cleanItems) : undefined}
         shareSources={item.type === "unit_loop" ? loopShareSources(cleanItems) : undefined}
+        uses={designUses(items)}
         onChange={(next) => draft.update(key, next)}
       />
     </fieldset>
@@ -217,4 +225,56 @@ function loopShareSources(items: readonly unknown[]) {
     .filter(([, v]) => v.type === "random")
     .map(([name, v]) => ({ name, units: (v as { units?: string }).units }));
   return shareSources(session, random);
+}
+
+/**
+ * The study's normal end (the Study entry's `end`): what coders see when
+ * they get through the whole design, and where they are sent (e.g. a
+ * panel's return link). Edited with an end item's fields, without its
+ * outcome (always complete).
+ */
+function StudyEndPanel({ draft, readOnly, onBack }: { draft: DesignDraft; readOnly: boolean; onBack?: () => void }) {
+  const end = sessionItem(draft.items)?.end ?? {};
+  const studyIndex = draft.items.findIndex((i) => i.type === "session");
+  const issues = draft.validationIssues
+    .filter((i) => i.path[0] === studyIndex && i.path[1] === "end")
+    .map((i) => ({ ...i, path: i.path.slice(2) }));
+  return (
+    <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+      <div className="flex items-center gap-2 border-b border-border/80 bg-muted/30 px-3 py-1.5">
+        {onBack && (
+          <Button type="button" variant="ghost" size="sm" className="-ml-2 h-7 gap-1 px-2" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4" />
+            Items
+          </Button>
+        )}
+        <span className="inline-flex items-center rounded-md border border-border bg-background px-2 py-0.5 text-xs font-semibold shadow-2xs">
+          At the end
+        </span>
+        <HelpButton topic="end-items" label="Help: the end of the study" />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        <p className="mb-3 text-sm text-muted-foreground">
+          What coders see when they get through the whole study, and where they go next. To end a session early (a
+          screen-out, a full quota), add an End item where it should happen.
+        </p>
+        <fieldset disabled={readOnly} className="contents">
+          <EndItemFields
+            studyEnd
+            item={{ type: "end", name: "_end", outcome: "complete", ...end }}
+            issues={issues}
+            onChange={(next) => {
+              const { message, redirectUrl, redirectSetting } = next as EndItem;
+              const updated = {
+                ...(message ? { message } : {}),
+                ...(redirectUrl !== undefined ? { redirectUrl } : {}),
+                ...(redirectSetting !== undefined ? { redirectSetting } : {}),
+              };
+              draft.setStudyEnd(Object.keys(updated).length > 0 ? updated : undefined);
+            }}
+          />
+        </fieldset>
+      </div>
+    </div>
+  );
 }

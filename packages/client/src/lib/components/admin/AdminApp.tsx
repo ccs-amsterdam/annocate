@@ -40,6 +40,7 @@ import { PendingDeployBar } from "./PendingDeployBar";
 import { openHelp } from "../../help/helpStore";
 import { DesignLanding } from "./DesignLanding";
 import type { TabId } from "../../admin/tabs";
+import { useDesignUses } from "../../admin/useDesignUses";
 
 /**
  * Where the researcher is (the app's URL, router.tsx): the studies, the server
@@ -267,6 +268,11 @@ function StudyAdminView({
   const studyQuery = useStudyQuery(client);
   const allStudiesQuery = useStudiesQuery(rootClient);
   const study = studyQuery.data;
+  // Questions only: no units, so no Units page (the Design section's start page shows the editor alone)
+  const noUnits = useDesignUses(client)?.content === "questions";
+  const groups = GROUPS.map((g) =>
+    g.label === "Design" && noUnits ? { ...g, pages: g.pages.filter((p) => p.id !== "Units") } : g,
+  );
 
   const [isDesignDirty, setIsDesignDirty] = useState(false);
   // Leaving the editor with unsaved edits (a tab, another study, the browser's back button): asked first
@@ -326,7 +332,7 @@ function StudyAdminView({
 
             {/* The sections */}
             <nav className="flex gap-0.5 overflow-x-auto" aria-label="Study">
-              {GROUPS.map((g) => {
+              {groups.map((g) => {
                 const Icon = g.icon;
                 const active = g.start === tab || g.pages.some((p) => p.id === tab);
                 return (
@@ -363,7 +369,7 @@ function StudyAdminView({
           </div>
           {/* The active section's pages */}
           {(() => {
-            const group = GROUPS.find((g) => g.pages.some((p) => p.id === tab));
+            const group = groups.find((g) => g.pages.some((p) => p.id === tab));
             if (!group || group.pages.length < 2) return null;
             return (
               <nav className="-mb-px flex gap-1 overflow-x-auto" aria-label={group.label}>

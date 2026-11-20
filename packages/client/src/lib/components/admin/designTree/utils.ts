@@ -1,4 +1,4 @@
-import { itemName, type DesignItem, type InLoopItem, type TopLevelItem } from "@annotinder/contracts";
+import { designUses, itemName, type DesignItem, type InLoopItem, type TopLevelItem } from "@annotinder/contracts";
 import { positionInLoop, type TreePosition } from "../../../design/itemEdit";
 
 export type TreeNode = TopLevelItem | InLoopItem;
@@ -33,10 +33,34 @@ export function questionNumbers(items: readonly TreeNode[]): Map<string, number>
   return numbers;
 }
 
-/** Item types that can be created at a position (no loops in a loop). */
+/**
+ * Item types that can be created at a position: no loops in a loop, and
+ * only what the design uses (contracts `designUses`): without units no unit
+ * loops; annotating only, nothing outside its one loop; computed items
+ * with an experiment and questions outside the units.
+ */
 export function insertableTypesAt(items: TopLevelItem[], position: TreePosition): ItemType[] {
   if (positionInLoop(items, position)) return ["question", "show_if", "end"];
   // (The Study entry is always there, first: never added)
-  void items;
-  return ["question", "computed", "unit_loop", "show_if", "end"];
+  const uses = designUses(items);
+  if (uses.content === "annotate") return [];
+  return [
+    "question",
+    ...(uses.experiment ? (["computed"] as const) : []),
+    ...(uses.content === "both" ? (["unit_loop"] as const) : []),
+    "show_if",
+    "end",
+  ];
 }
+
+/** Annotating only (contracts `designUses`): the one unit loop, whose items the tree shows as the top level; else null. */
+export function singleLoop(items: TopLevelItem[]): Extract<TopLevelItem, { type: "unit_loop" }> | null {
+  if (designUses(items).content !== "annotate") return null;
+  const loops = items.filter((i) => i.type === "unit_loop");
+  return loops.length === 1 && items.every((i) => i.type === "unit_loop" || i.type === "session")
+    ? (loops[0] as Extract<TopLevelItem, { type: "unit_loop" }>)
+    : null;
+}
+
+/** The key of the "At the end" row: the study's normal end (the Study entry's `end`), not an item. */
+export const STUDY_END_KEY = "__study_end";

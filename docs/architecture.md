@@ -371,7 +371,22 @@ session:
     - { name: study, kind: url, param: STUDY_ID, values: { open: { pattern: "[0-9a-f]{24}" } } }
   participant: { param: PROLIFIC_PID }     # the participant id from the URL
   combinations: [...]                      # optional: only these link combinations
+  end: { message: "Thank you!", redirectSetting: panel_return }   # the study's normal end
+  uses: { content: annotate, experiment: false }                 # what the design is made of (the editor)
 ```
+
+- **`end`**: what coders see when they get through the whole design, and
+  where they are sent (`redirectUrl`, or `redirectSetting`: a deployment
+  setting). Coders get it as an end item `_end` after the last item
+  (contracts `toCoderItems`; the name is reserved); end items in the
+  design are for ending early.
+- **`uses`** (contracts `uses.ts`): `content` is `annotate` (one unit loop,
+  nothing outside it), `questions` (no loops, no units) or `both`;
+  `experiment`: conditions not linked to units, and computed items (a
+  condition linked to a set column says which units a session gets: part
+  of annotating). Without it, it is worked out from the design
+  (`inferUses`); a design that doesn't fit what it declares has issues
+  (`usesConflicts`). Only the editor uses it.
 
 - **Link parameters** (`kind: "link"`) are fixed in the link; values a
   `list` (`{ value, label? }`).

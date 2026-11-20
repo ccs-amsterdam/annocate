@@ -60,11 +60,16 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
   const inTicked = ticked && !tree.checked.has(key);
   const positions = tree.readOnly ? [] : tree.addPositions(key);
   // Moving: the places below this row the ticked items may go.
-  const options: AddOption[] = (tree.moving ? positions.filter(tree.canMoveTo) : positions).map((position) => ({
-    position,
-    label: positionLabel(tree.items, position),
-    types: insertableTypesAt(tree.items, position),
-  }));
+  const options: AddOption[] = (tree.moving ? positions.filter(tree.canMoveTo) : positions)
+    .map((position) => ({
+      position,
+      label: positionLabel(tree.items, position),
+      types: insertableTypesAt(tree.items, position),
+    }))
+    // Places where nothing may go (annotating only: outside the loop)
+    .filter((o) => o.types.length > 0);
+  // Annotating only: the one loop's row stands for its settings ("Units"), always there
+  const fixedLoop = tree.singleLoop === key;
 
   const action = tree.readOnly ? null : tree.moving ? (
     <AddItemMenu
@@ -92,8 +97,10 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
       )}
     >
       {/* The Study entry is always there, first: not moved or deleted */}
-      {!tree.readOnly && item.type === "session" && <span className="mr-px h-3.5 w-3.5 shrink-0" aria-hidden />}
-      {!tree.readOnly && item.type !== "session" && (
+      {!tree.readOnly && (item.type === "session" || fixedLoop) && (
+        <span className="mr-px h-3.5 w-3.5 shrink-0" aria-hidden />
+      )}
+      {!tree.readOnly && item.type !== "session" && !fixedLoop && (
         <input
           type="checkbox"
           aria-label={`Select ${rowTitle(item)}`}
@@ -117,7 +124,7 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
         )}
       >
         <ItemLabel
-          item={item}
+          item={fixedLoop ? ({ ...item, label: "Units" } as TreeNode) : item}
           number={tree.numberOf(key)}
           selected={tree.selected === key}
           issue={tree.getIssue(item)}

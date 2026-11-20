@@ -11,6 +11,7 @@ import {
   type SessionParam,
   type SessionValues,
   type SetGroupResponse,
+  type DesignUses,
 } from "@annotinder/contracts";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -38,11 +39,14 @@ export function SessionItemForm({
   item,
   groups,
   issues,
+  uses,
   onChange,
 }: {
   item: SessionItem;
   groups: SetGroupResponse[];
   issues: DesignIssue[];
+  /** What the design uses: without units no coder column; without an experiment, conditions only select units. */
+  uses: DesignUses;
   onChange: (item: SessionItem) => void;
 }) {
   const setsOf = (group: string) =>
@@ -78,7 +82,7 @@ export function SessionItemForm({
           parameters, URL parameters from a panel, the participant id, and the sample size per link.
         </InfoTip>
       </h2>
-      <AssignmentSettings item={item} groups={groups} issues={issues} onChange={onChange} />
+      <AssignmentSettings item={item} groups={groups} issues={issues} uses={uses} onChange={onChange} />
       <section className="flex flex-col gap-2">
         <h3 className="flex items-center gap-1.5 text-xs font-semibold">
           Parameters

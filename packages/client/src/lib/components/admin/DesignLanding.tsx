@@ -10,6 +10,7 @@ import {
   useUnitsQuery,
 } from "../../admin/queries";
 import { describeVersions } from "../../design/versions";
+import { useDesignUses } from "../../admin/useDesignUses";
 
 /**
  * The Design section's start (docs/client.md §7): the two parts of a design,
@@ -39,6 +40,8 @@ export function DesignLanding({
   const loops = current.data ? unitLoops(items).length : null;
   const units = unitsQuery.data?.length ?? null;
   const fields = fieldsQuery.data ?? [];
+  // Questions only: no units
+  const noUnits = useDesignUses(client)?.content === "questions";
 
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-4 py-2 sm:grid-cols-2">
@@ -66,40 +69,42 @@ export function DesignLanding({
           </Fact>
         )}
       </DesignCard>
-      <DesignCard
-        icon={<Layers className="h-6 w-6" />}
-        title="Units"
-        description="What coders code: texts, images or other material, uploaded as a table with a column per field."
-        action="Open the units"
-        onClick={() => onOpen("Units")}
-      >
-        <Fact label="Units">
-          {units === null ? (
-            "…"
-          ) : units === 0 ? (
-            <span className="text-muted-foreground">none yet: upload a file</span>
-          ) : (
-            units
-          )}
-        </Fact>
-        <Fact label="Columns">
-          {fields.length === 0 ? (
-            <span className="text-muted-foreground">none yet</span>
-          ) : (
-            <span className="flex flex-wrap gap-1">
-              {fields.map((f) => (
-                <span
-                  key={f.name}
-                  className="rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px]"
-                  title={f.description}
-                >
-                  {f.name} <span className="text-muted-foreground">{f.type}</span>
-                </span>
-              ))}
-            </span>
-          )}
-        </Fact>
-      </DesignCard>
+      {!noUnits && (
+        <DesignCard
+          icon={<Layers className="h-6 w-6" />}
+          title="Units"
+          description="What coders code: texts, images or other material, uploaded as a table with a column per field."
+          action="Open the units"
+          onClick={() => onOpen("Units")}
+        >
+          <Fact label="Units">
+            {units === null ? (
+              "…"
+            ) : units === 0 ? (
+              <span className="text-muted-foreground">none yet: upload a file</span>
+            ) : (
+              units
+            )}
+          </Fact>
+          <Fact label="Columns">
+            {fields.length === 0 ? (
+              <span className="text-muted-foreground">none yet</span>
+            ) : (
+              <span className="flex flex-wrap gap-1">
+                {fields.map((f) => (
+                  <span
+                    key={f.name}
+                    className="rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px]"
+                    title={f.description}
+                  >
+                    {f.name} <span className="text-muted-foreground">{f.type}</span>
+                  </span>
+                ))}
+              </span>
+            )}
+          </Fact>
+        </DesignCard>
+      )}
     </div>
   );
 }
