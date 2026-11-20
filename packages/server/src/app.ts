@@ -59,7 +59,7 @@ export interface AppOptions {
    * is where browsers reach this server (and the client), e.g.
    * `https://annotinder.com`; the provider redirects to `<publicUrl>/api/auth/callback`.
    */
-  login?: { oidc: OidcOptions; publicUrl: string; previous?: { oidc: OidcOptions; until: Date } };
+  login?: { oidc: OidcOptions; publicUrl: string; accountUrl?: string; previous?: { oidc: OidcOptions; until: Date } };
   /** Emails that are admins (docs/accounts.md). */
   admins?: string[];
   /** How recent (seconds) a login's second factor must be for sensitive actions (`AUTH_STEP_UP_MAX_AGE`, default 600). */
@@ -97,6 +97,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
       ? {
           oidc: new Oidc(options.login.oidc),
           publicUrl: options.login.publicUrl.replace(/\/$/, ""),
+          accountUrl: options.login.accountUrl ?? null,
           previous: options.login.previous
             ? { oidc: new Oidc(options.login.previous.oidc), until: options.login.previous.until }
             : null,

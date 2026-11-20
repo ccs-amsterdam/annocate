@@ -31,6 +31,7 @@ function newApp(
         ...(mfaClaim ? { mfaClaim } : {}),
       },
       publicUrl: PUBLIC_URL,
+      accountUrl: `${ISSUER}/account`,
     },
     admins,
   });
@@ -184,7 +185,9 @@ describe("researcher login", () => {
     app = newApp(["jane@uni.nl"], undefined, { disable2fa: true });
     const b = browser();
     await b.logIn({ ...verified, amr: ["pwd"], auth_time: secondsAgo(20 * 60) });
-    expect(await (await b.api("/api/me")).json()).toMatchObject({ twoFactor: { required: false, freshUntil: null } });
+    expect(await (await b.api("/api/me")).json()).toMatchObject({
+      twoFactor: { enabled: false, used: false, freshUntil: null },
+    });
     expect((await b.api("/api/study", { method: "POST", body: JSON.stringify({ name: "x" }) })).status).toBe(201);
     const key = await b.api("/api/me/keys", { method: "POST", body: JSON.stringify({ label: "R" }) });
     expect(key.status).toBe(403);
@@ -202,34 +205,52 @@ describe("researcher login", () => {
     expect(warnings).not.toContain("no_2fa_signal");
   });
 
-  it("always requires the provider's second factor for researcher access (OIDC_MFA_CLAIM, default amr:mfa)", async () => {
-    app = newApp(["jane@uni.nl"]);
+  it("researchers work without a second factor; server admin access needs one (OIDC_MFA_CLAIM, default amr:mfa)", async () => {
+    await query(db, "INSERT INTO roles (role, email_domain) VALUES ('researcher', 'uni.nl')");
+    app = newApp(["boss@uni.nl"]);
+    // A researcher without a second factor: works, and is told where to set one up
     const b = browser();
-    // Logged in, but without a second factor: only GET /me (and coding)
     expect(await b.logIn({ ...verified, amr: ["pwd"] })).toBe("/studies?x=1");
     expect(await (await b.api("/api/me")).json()).toMatchObject({
-      role: "admin",
-      twoFactor: { required: true, freshUntil: null },
+      role: "researcher",
+      twoFactor: { enabled: true, used: false, setupUrl: `${ISSUER}/account`, adminOff: false, freshUntil: null },
     });
-    const study = await b.api("/api/study", { method: "POST", body: JSON.stringify({ name: "x" }) });
-    expect(study.status).toBe(403);
-    expect(await study.json()).toMatchObject({ code: "mfa_required" });
-    expect((await b.api("/api/me/keys")).status).toBe(403);
-    // Another amr value than the configured one doesn't count
-    await b.logIn({ ...verified, amr: ["pwd", "otp"] });
-    expect(await (await b.api("/api/me")).json()).toMatchObject({ twoFactor: { required: true } });
-
-    expect(await b.logIn(verified)).toBe("/studies?x=1");
-    expect(await (await b.api("/api/me")).json()).toMatchObject({ twoFactor: { required: false } });
     expect((await b.api("/api/study", { method: "POST", body: JSON.stringify({ name: "x" }) })).status).toBe(201);
+    // ... but sensitive actions need a login with one
+    expect(
+      await (await b.api("/api/me/keys", { method: "POST", body: JSON.stringify({ label: "R" }) })).json(),
+    ).toMatchObject({
+      code: "step_up_required",
+    });
+
+    // A server admin without a second factor works as a researcher; admin pages say why not
+    const admin = browser();
+    await admin.logIn({ ...verified, email: "boss@uni.nl", sub: "boss", amr: ["pwd"] });
+    expect(await (await admin.api("/api/me")).json()).toMatchObject({
+      role: "researcher",
+      twoFactor: { used: false, adminOff: true },
+    });
+    const users = await admin.api("/api/admin/users");
+    expect(users.status).toBe(403);
+    expect(await users.json()).toMatchObject({ code: "mfa_required" });
+    // Another amr value than the configured one doesn't count
+    await admin.logIn({ ...verified, email: "boss@uni.nl", sub: "boss", amr: ["pwd", "otp"] });
+    expect((await admin.api("/api/admin/users")).status).toBe(403);
+    // With one: admin
+    await admin.logIn({ ...verified, email: "boss@uni.nl", sub: "boss" });
+    expect(await (await admin.api("/api/me")).json()).toMatchObject({
+      role: "admin",
+      twoFactor: { used: true, adminOff: false },
+    });
+    expect((await admin.api("/api/admin/users")).ok).toBe(true);
 
     // An acr value instead (e.g. SURFconext's assurance level)
-    app = newApp(["jane@uni.nl"], { claim: "acr", value: "loa2" });
+    app = newApp(["boss@uni.nl"], { claim: "acr", value: "loa2" });
     const c = browser();
-    await c.logIn(verified);
-    expect(await (await c.api("/api/me")).json()).toMatchObject({ twoFactor: { required: true } });
-    await c.logIn({ ...verified, amr: ["pwd"], acr: "loa2" });
-    expect(await (await c.api("/api/me")).json()).toMatchObject({ twoFactor: { required: false } });
+    await c.logIn({ ...verified, email: "boss@uni.nl", sub: "boss" });
+    expect(await (await c.api("/api/me")).json()).toMatchObject({ role: "researcher", twoFactor: { adminOff: true } });
+    await c.logIn({ ...verified, email: "boss@uni.nl", sub: "boss", amr: ["pwd"], acr: "loa2" });
+    expect(await (await c.api("/api/me")).json()).toMatchObject({ role: "admin" });
   });
 
   it("asks for a recent second factor for sensitive actions (step-up with max_age, auth_time checked here)", async () => {
@@ -237,7 +258,7 @@ describe("researcher login", () => {
     const b = browser();
     // Logged in with a second factor, but 20 minutes ago: normal work goes on, an API key needs a new login
     await b.logIn({ ...verified, auth_time: secondsAgo(20 * 60) });
-    expect(await (await b.api("/api/me")).json()).toMatchObject({ twoFactor: { required: false, freshUntil: null } });
+    expect(await (await b.api("/api/me")).json()).toMatchObject({ twoFactor: { used: true, freshUntil: null } });
     expect((await b.api("/api/study", { method: "POST", body: JSON.stringify({ name: "x" }) })).status).toBe(201);
     const key = await b.api("/api/me/keys", { method: "POST", body: JSON.stringify({ label: "R" }) });
     expect(key.status).toBe(403);

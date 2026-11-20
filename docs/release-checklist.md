@@ -40,7 +40,8 @@ To do on the server (the guide's steps):
    here, but not yet on the VM.
 5. **Login with the real provider** (step 9). The automated tests use a mock
    provider only. Check:
-   - a researcher with the provider's second factor (`OIDC_MFA_CLAIM`);
+   - a researcher without a second factor (the orange shield, its link to
+     `OIDC_ACCOUNT_URL`) and an admin with one (`OIDC_MFA_CLAIM`);
    - a step-up for a sensitive action (an API key);
    - logging out;
    - a coder signing in to a study whose sign-in is `required`.

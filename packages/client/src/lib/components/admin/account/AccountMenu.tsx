@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { KeyRound, LogIn, LogOut, Moon, Sun, UserCircle } from "lucide-react";
+import { ExternalLink, KeyRound, LogIn, LogOut, Moon, ShieldAlert, Sun, UserCircle } from "lucide-react";
 import { useTheme } from "../../../context/theme";
 
 /**
  * The user menu of the top bar: who is logged in, their API keys, light or
- * dark mode, and logging in or out. `me` null: not logged in (`canLogIn`:
+ * dark mode, and logging in or out. A login without a second factor shows
+ * an orange shield, and the menu says what it is needed for and links to
+ * the login provider's page to set one up (`TwoFactorNote`). `me` null: not logged in (`canLogIn`:
  * the server has a login). `dev`: a development server without login, where
  * everyone is the development user.
  */
@@ -29,6 +31,7 @@ export function AccountMenu({
 }) {
   const [keysOpen, setKeysOpen] = useState(false);
   const [theme, setTheme] = useTheme();
+  const noSecondFactor = !!me && !dev && me.twoFactor.enabled && !me.twoFactor.used;
 
   async function logOut() {
     await client.logout();
@@ -47,6 +50,7 @@ export function AccountMenu({
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="sm" className="gap-1.5 text-xs" aria-label="Account and settings">
+            {noSecondFactor && <ShieldAlert className="h-4 w-4 text-ember" aria-label="No second factor" role="img" />}
             <UserCircle className="h-5 w-5" />
             <span className="hidden max-w-48 truncate sm:inline">{me ? me.email : "Not logged in"}</span>
           </Button>
@@ -65,6 +69,7 @@ export function AccountMenu({
               <div className="text-muted-foreground">Not logged in</div>
             )}
           </div>
+          {me && noSecondFactor && <TwoFactorNote me={me} onLogIn={logIn} />}
           <div className="my-1 border-t border-border" />
           <div className="flex items-center justify-between px-2 py-1 text-xs">
             Theme
@@ -103,6 +108,43 @@ export function AccountMenu({
       </Popover>
       {keysOpen && <ApiKeysDialog client={client} onClose={() => setKeysOpen(false)} />}
     </>
+  );
+}
+
+/** A login without a second factor: what it is needed for, and where to set one up. */
+function TwoFactorNote({ me, onLogIn }: { me: MeResponse; onLogIn: () => void }) {
+  return (
+    <div role="note" className="mx-1 mb-1 rounded-md border border-ember/40 bg-ember/10 p-2 text-xs">
+      <p className="flex items-center gap-1.5 font-semibold">
+        <ShieldAlert className="h-3.5 w-3.5 text-ember" /> Add a second factor
+      </p>
+      {me.twoFactor.adminOff && (
+        <p className="mt-1">Your server admin access is off until you log in with a second factor.</p>
+      )}
+      <p className="mt-1 text-muted-foreground">
+        You logged in without one (an authenticator app or a passkey). It is needed for API keys, deleting answers or a
+        study, and admin roles.
+      </p>
+      {me.twoFactor.setupUrl ? (
+        <a
+          href={me.twoFactor.setupUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-1.5 inline-flex items-center gap-1 font-medium text-primary underline-offset-2 hover:underline"
+        >
+          Set one up with your login provider <ExternalLink className="h-3 w-3" />
+        </a>
+      ) : (
+        <p className="mt-1.5">Ask the server&apos;s administrators how to set one up.</p>
+      )}
+      <p className="mt-1 text-muted-foreground">
+        Then{" "}
+        <button type="button" onClick={onLogIn} className="font-medium text-primary underline-offset-2 hover:underline">
+          log in again
+        </button>{" "}
+        (a login during which you set it up doesn&apos;t count yet: log in once more).
+      </p>
+    </div>
   );
 }
 

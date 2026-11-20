@@ -56,12 +56,24 @@ export const MeResponseSchema = z.object({
   canRequestResearcher: z.boolean(),
   /**
    * The second factor, which the login provider checks (docs/security.md).
-   * `required`: this login didn't use one: only coding, `GET /me` and
-   * logging out work (log in again with a second factor). `freshUntil`:
-   * until when sensitive actions (API keys, deleting answers, admin roles)
-   * work without logging in again (step-up); null: they need a new login now.
+   * Researchers work without one; sensitive actions (API keys, deleting
+   * answers, coders' data or a study, admin roles) and server admin access
+   * need a login with one.
+   * - `enabled`: the server asks for it (false with `AUTH_INSECURE_DISABLE_2FA`);
+   * - `used`: this login used one;
+   * - `setupUrl`: where to set one up (the provider's account page, `OIDC_ACCOUNT_URL`);
+   * - `adminOff`: a server admin whose login had none: admin access is off
+   *   until they log in with one;
+   * - `freshUntil`: until when sensitive actions work without logging in
+   *   again (step-up); null: they need a new login now.
    */
-  twoFactor: z.object({ required: z.boolean(), freshUntil: z.coerce.date().nullable() }),
+  twoFactor: z.object({
+    enabled: z.boolean(),
+    used: z.boolean(),
+    setupUrl: z.string().nullable(),
+    adminOff: z.boolean(),
+    freshUntil: z.coerce.date().nullable(),
+  }),
   /**
    * While the server moves to another login provider: this user hasn't
    * linked their login there yet (`/auth/login?link=1`), so they lose access

@@ -208,6 +208,7 @@ needs no quoting or escaping.
 | `OIDC_HOST` | `https://auth.societal-analytics.nl/realms/idp` | The issuer. The server reads `<OIDC_HOST>/.well-known/openid-configuration` at the first login, so the VM must be able to reach it. |
 | `OIDC_CLIENT_ID` | e.g. `annotinder-example-org` | The client ID from step 4. |
 | `OIDC_CLIENT_SECRET` | from step 4 | The client secret from step 4. |
+| `OIDC_ACCOUNT_URL` | `https://auth.societal-analytics.nl/realms/idp/account` | The provider's account page, where users set up a second factor themselves; AnnoTinder links to it. Required (the server doesn't start without it), unless `AUTH_INSECURE_DISABLE_2FA`. For Keycloak: `<OIDC_HOST>/account`. |
 | `ANNOTINDER_ADMINS` | e.g. `a.researcher@vu.nl,b.researcher@vu.nl` | The server's first admins: these addresses get the admin role at login, with a verified address. Further admins can be made in the app. |
 | `OIDC_MFA_CLAIM` | leave out (default `amr:mfa`) | Which ID token claim counts as a second factor (step 4). For SURFconext it would be `acr:<level>`. |
 | `AUTH_STEP_UP_MAX_AGE` | leave out (default `600`) | Sensitive actions (API keys, admin changes) need a second factor from the last 10 minutes. After that, AnnoTinder sends the user to Keycloak again (`max_age`) for a fresh one. |
@@ -320,9 +321,10 @@ All checks passed.
 
 ### 9. First admin login
 
-1. **A second factor first.** Second factors are optional in `idp`, and
-   AnnoTinder requires one for researcher access. If the admin has none
-   yet, they set up an authenticator app in Keycloak's account console:
+1. **A second factor first.** Second factors are optional in `idp`;
+   AnnoTinder needs one for server admin access and sensitive actions
+   (researchers can work without one). If the admin has none yet, they set
+   up an authenticator app in Keycloak's account console:
    `https://auth.societal-analytics.nl/realms/idp/account`, then **Account
    security → Signing in**.
 2. **Log in.** Open `https://annotinder.example.org/research` and click
@@ -458,7 +460,7 @@ log.
 | Back at AnnoTinder with "Logging in didn't work", and the log has `Login failed: invalid_client` (or `unauthorized_client`) | A wrong client secret or client ID. Copy the secret again from the **Credentials** tab. |
 | "Logging in didn't work", with no error in the log | The login took too long, or the server restarted during it without `ANNOTINDER_SECRET`. Try again, and set the secret. |
 | "Your login provider did not confirm your email address" | `email_verified` is not `true`: the user hasn't verified the address in Keycloak, or the client lacks the `email` scope (step 4). |
-| "A second factor is needed" | The ID token's `amr` has no `mfa`. Either the user has no second factor in `idp` (set it up in the account console, step 9), or they set one up during this login: that login holds only `pwd`, so log out and in again. Else the client lacks the `amr` scope, or `OIDC_MFA_CLAIM` isn't `amr:mfa`. |
+| No admin role, and the user menu shows an orange shield ("Add a second factor") | The ID token's `amr` has no `mfa`, so admin access is off for this login. Either the user has no second factor in `idp` (set it up in the account console, step 9), or they set one up during this login: that login holds only `pwd`, so log out and in again. Else the client lacks the `amr` scope, or `OIDC_MFA_CLAIM` isn't `amr:mfa`. |
 | "That login didn't confirm it's you" after a sensitive action | The step-up login came back without a second factor from the last `AUTH_STEP_UP_MAX_AGE` seconds. Log in again with the second factor. Also check that the VM's clock is right (`timedatectl`). |
 | Logged in, but no admin role | The address isn't in `ANNOTINDER_ADMINS` (the log's startup line lists the admins), or it isn't verified. The role is given at login: log out and in again after changing `.env` and recreating the app. |
 | "Logging in didn't work" every time, or the login doesn't stick | The site was opened at another address than `ANNOTINDER_PUBLIC_URL` (e.g. `http://`, or the IP address). Keycloak sends the browser back to the public address, where the cookie from the start of the login doesn't exist. Use the public address. |
@@ -487,6 +489,7 @@ two-line site block of step 7.
 | `OIDC_HOST`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | The researcher login ([Login provider](#login-provider)): the provider's issuer, and the client ID and secret. Without them, nobody can log in |
 | `OIDC_MFA_CLAIM` | Which ID token claim counts as a second factor: `amr:mfa` (default) or `acr:<value>`. See `security.md` §1 |
 | `OIDC_PREVIOUS_HOST`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_MFA_CLAIM`, `OIDC_PREVIOUS_UNTIL` | While moving to another login provider: the previous one, accepted until `OIDC_PREVIOUS_UNTIL` (a date), so users can link their new login. See `accounts.md`, "Changing providers" |
+| `OIDC_ACCOUNT_URL` | The provider's account page, where users set up a second factor; required unless `AUTH_INSECURE_DISABLE_2FA`. See `security.md` §1 |
 | `AUTH_STEP_UP_MAX_AGE` | How many seconds a login's second factor stays fresh for sensitive actions (default 600). See `security.md` §1 |
 | `AUTH_INSECURE_DISABLE_2FA`, `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION` | `true`: weaker security for teaching and other servers without sensitive data ("Login provider" below; `security.md` §1) |
 | `ANNOTINDER_ADMINS` | Comma-separated email addresses that get the admin role when they log in: the server's first admins (`accounts.md`) |
@@ -529,7 +532,12 @@ Authentik, Zitadel, or SURFconext.
   - a second factor that it signals in the ID token (`OIDC_MFA_CLAIM`);
   - step-up (`max_age`, `auth_time`).
 
-  Researcher access needs the second factor.
+  - an account page where users set up a second factor themselves
+    (`OIDC_ACCOUNT_URL`). OpenID Connect has no standard way to find it,
+    so it is a setting.
+
+  Server admin access and sensitive actions need the second factor;
+  researchers can work without one, and are shown where to set it up.
 - **A provider without these, for teaching or a low-sensitivity server**
   (e.g. a free Auth0 tenant, which has no usable 2FA signal): turn the
   missing requirement off with `AUTH_INSECURE_DISABLE_2FA=true` or

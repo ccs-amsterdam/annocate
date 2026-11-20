@@ -504,9 +504,10 @@ from the Preview Study button. It uses a `ResearcherApi`
 (`api/httpResearcherApi.ts`).
 
 - **Login**: `account/ResearcherGate.tsx` shows its children to a logged-in
-  researcher and a login screen otherwise (with the 2FA recommendation and
-  the reason a login was refused); `account/AccountMenu.tsx` has the
-  researcher's email, their API keys, the light/dark switch and logging out
+  researcher and a login screen otherwise (with the reason a login was
+  refused); `account/AccountMenu.tsx` has the researcher's email (with an
+  orange shield and a note linking to the provider's account page when the
+  login had no second factor), their API keys, the light/dark switch and logging out
   (`docs/coder-identity.md` §7). The app (`App.tsx`) uses them when the
   server has login, and development headers on a development server (no
   login, development auth).

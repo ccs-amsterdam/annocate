@@ -12,7 +12,7 @@ const LOGIN_ERRORS: Record<LoginError, string> = {
   blocked: "This account is blocked on this server. Contact its administrators if you think this is a mistake.",
   login_failed: "Logging in didn't work. Please try again.",
   step_up_failed:
-    "That login didn't confirm it's you: log in with your second factor (your login provider may ask for it), then try again.",
+    "That login didn't confirm it's you: it needs to be recent, and with a second factor (an authenticator app or a passkey). Set one up with your login provider if you haven't (the account menu links to it), then try again.",
   link_failed:
     "That login couldn't be linked to your account: it belongs to another account here, or you were no longer logged in.",
 };
@@ -93,7 +93,7 @@ export function ResearcherGate({
     };
   }, [client]);
 
-  if (state.status === "in" && !state.me.twoFactor.required)
+  if (state.status === "in")
     return (
       <>
         {state.me.linkNeeded && <LinkBanner client={client} />}
@@ -111,25 +111,6 @@ export function ResearcherGate({
 
   function logIn(options: LoginUrlOptions = {}) {
     window.location.assign(client.loginUrl(thisPage(), options));
-  }
-
-  // Logged in, but without a second factor: researcher access needs one (from the login provider)
-  if (state.status === "in") {
-    return (
-      <div className="flex h-full items-center justify-center p-6">
-        <div className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <h1 className="font-heading text-lg font-bold">A second factor is needed</h1>
-          <p className="text-sm text-muted-foreground">
-            You&apos;re logged in as {state.me.email}, but without a second factor (such as an authenticator app or a
-            passkey). Managing studies needs one: turn on two-factor authentication with your login provider, then log
-            in again.
-          </p>
-          <Button onClick={() => logIn()}>
-            <ShieldCheck className="mr-2 h-4 w-4" /> Log in again
-          </Button>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -158,7 +139,8 @@ export function ResearcherGate({
             )}
             <p className="flex gap-2 text-xs text-muted-foreground">
               <ShieldCheck className="h-4 w-4 shrink-0" />
-              Managing studies needs two-factor authentication with your login provider.
+              Some actions (API keys, deleting data, admin roles) need two-factor authentication with your login
+              provider.
             </p>
           </>
         ) : (

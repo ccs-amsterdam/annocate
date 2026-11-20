@@ -40,10 +40,10 @@ on the server (`docs/accounts.md`): `user` (codes; works on studies they have
 a role in), `researcher` (also creates studies, within their limits), `admin`
 (also the [admin API](admin.md)).
 
-**Second factor.** Researcher access needs a login with the provider's
-second factor: a session without one gets 403 `mfa_required`, except
-`GET /me` (which says so in `twoFactor`) and logging out (`security.md` §1).
-API keys count as having one. **Sensitive actions** (creating or revoking
+**Second factor.** Researchers work without the provider's second factor;
+server admin access needs a login with one (else the account role is
+`researcher`, and admin endpoints answer 403 `mfa_required`;
+`security.md` §1). API keys count as having one. **Sensitive actions** (creating or revoking
 API keys, resetting answers, deleting coders' data or a study, changing a
 study's ADMINs or the server admin role) need a web session whose second
 factor is at most `AUTH_STEP_UP_MAX_AGE` seconds old: 403
@@ -166,10 +166,12 @@ email (`docs/accounts.md` §1).
 `GET /me` → `MeResponseSchema`: the email the request is authenticated as,
 their account `role`, their `limits` and `usage` (studies they own and their
 units), an open `researcherRequest`, whether the server takes requests
-(`canRequestResearcher`), and `twoFactor`: `required` (this login lacks the
-provider's second factor: nothing else works until they log in with one) and
-`freshUntil` (until when sensitive actions work without logging in again;
-null: they need a step-up login now).
+(`canRequestResearcher`), and `twoFactor`: `enabled` (the server asks for a
+second factor), `used` (this login had one), `setupUrl` (the provider's
+account page, `OIDC_ACCOUNT_URL`), `adminOff` (a server admin whose login
+had none: admin access is off) and `freshUntil` (until when sensitive
+actions work without logging in again; null: they need a step-up login
+now).
 
 ### requestResearcher
 

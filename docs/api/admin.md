@@ -2,7 +2,7 @@
 
 The server admin's endpoints (account role `admin`, `docs/accounts.md`),
 under `/api/admin/...`, with the researcher API's authentication (session
-cookie or API key; the second factor applies, and the sensitive actions
+cookie or API key; a session needs a login with the second factor, and the sensitive actions
 below need a recent one in a web session, never an API key: `security.md` §1). Called by the
 client's server admin page (`ServerAdmin.tsx`, through `api/serverApi.ts`).
 

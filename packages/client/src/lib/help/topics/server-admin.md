@@ -77,10 +77,12 @@ researcher.
 
 ## Second factor
 
-Managing studies and the server needs a login with the login provider's
-second factor (which claim says so: `OIDC_MFA_CLAIM`), unless the server
-turned that off (`AUTH_INSECURE_DISABLE_2FA`, below). Coding never
-requires it. A researcher who lost their second factor turns to the
+Server admin access needs a login with the login provider's second factor
+(which claim says so: `OIDC_MFA_CLAIM`), unless the server turned that off
+(`AUTH_INSECURE_DISABLE_2FA`, below): without one, an admin works as a
+researcher. Researchers can work without one; the account menu shows them
+an orange shield with a link to set one up (`OIDC_ACCOUNT_URL`). Coding
+never requires it. A researcher who lost their second factor turns to the
 login provider's helpdesk: AnnoTinder has none of its own.
 
 Sensitive actions (API keys, deleting answers, coders' data or a study, and
@@ -98,8 +100,9 @@ The top of this page lists what makes the server less secure:
 - **Roles for unverified email addresses**: users with roles whose login
   provider didn't confirm their address (marked _email not verified_).
   Check that they are the right people.
-- Researchers logging in **without the second factor signal**: check the
-  provider's two-factor settings and `OIDC_MFA_CLAIM`.
+- Server admins logging in **without the second factor signal** (their
+  admin access is off): if they did use one, check the provider's
+  two-factor settings and `OIDC_MFA_CLAIM`.
 - A **move to another login provider** (`OIDC_PREVIOUS_*`): how many users
   haven't linked their new login yet, and, after its end date, to remove the
   old provider's settings.

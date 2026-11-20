@@ -23,12 +23,23 @@ each of these itself, because providers don't always do what was asked:
 | **A second factor, signalled** | 2FA, and a claim saying it was used: `OIDC_MFA_CLAIM`, `amr:mfa` (default) or `acr:<value>` (e.g. SURFconext's `acr:http://test.surfconext.nl/assurance/loa2`). Can be turned off (`AUTH_INSECURE_DISABLE_2FA`, below). |
 | **Step-up** | Honours `max_age`, and returns `auth_time` in the ID token. Can't be turned off. |
 
-**The second factor is required** for researcher access, unless
-`AUTH_INSECURE_DISABLE_2FA` (below). A login without the 2FA claim only
-gets `GET /me` and logging out (403 `mfa_required`); the client asks to
-turn on 2FA at the provider and log in again. (Stricter than the lab
-standard, which asks for 2FA only for sensitive actions.) Coding never needs a
-second factor, nor a login. Account recovery (a lost phone) is the
+**Who needs the second factor** (unless `AUTH_INSECURE_DISABLE_2FA`, below):
+
+- **Researchers** work without one. The client shows an orange shield by
+  the account menu, with what 2FA is needed for and a link to the
+  provider's account page (`OIDC_ACCOUNT_URL`) to set it up. Users set it
+  up themselves: with 2FA required, `OIDC_ACCOUNT_URL` is required too (the
+  server refuses to start without it), because a server where an
+  administrator must set up 2FA for everyone can't be maintained. OpenID
+  Connect discovery has no standard field for an account page.
+- **Sensitive actions** (below) need a recent login with one (step-up), as
+  the lab standard asks.
+- **Server admins**: the admin role only applies to a login with one.
+  Without it they work as a researcher (`GET /me`: `twoFactor.adminOff`),
+  and admin endpoints answer 403 `mfa_required`. Stricter than the lab
+  standard.
+
+Coding never needs a second factor, nor a login. Account recovery (a lost phone) is the
 provider's: AnnoTinder has no second factor of its own.
 
 **Step-up for sensitive actions.** These need a web session whose login
@@ -53,9 +64,9 @@ server less secure. Never on a server with sensitive research data. Both
 are logged at every start and shown as hardening warnings; turning one off
 again restores the requirement.
 
-- `AUTH_INSECURE_DISABLE_2FA=true`: no second factor, for researcher access
+- `AUTH_INSECURE_DISABLE_2FA=true`: no second factor, for admin access
   or for sensitive actions, which still need a recent login (step-up with
-  `auth_time`). Whether a login used 2FA is still recorded (`has_mfa`, the
+  `auth_time`); `OIDC_ACCOUNT_URL` is optional then. Whether a login used 2FA is still recorded (`has_mfa`, the
   *no 2FA* mark). For providers without a usable 2FA signal, such as a free
   Auth0 tenant. The risk: whoever has a user's password, or their mailbox
   (to reset it), can do that user's sensitive actions.
@@ -87,7 +98,7 @@ Never for a server other people use.
 | 2FA not required | `AUTH_INSECURE_DISABLE_2FA` is set: not for sensitive data. |
 | Email verification not required | `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION` is set: not for sensitive data. |
 | Roles for unverified email addresses | Users with roles whose provider didn't confirm their address (marked "email not verified" in *Users*): check that they are the right people. |
-| No 2FA signal | Researchers logged in recently without the 2FA claim, so they can't work: check the provider's 2FA and `OIDC_MFA_CLAIM`. Not shown with `AUTH_INSECURE_DISABLE_2FA`. |
+| No 2FA signal | Server admins logged in recently without the 2FA claim, so their admin access is off: if they did use a second factor, check the provider's 2FA and `OIDC_MFA_CLAIM`. Not shown with `AUTH_INSECURE_DISABLE_2FA`. |
 | Migration not finished | `OIDC_PREVIOUS_*` is set: until `OIDC_PREVIOUS_UNTIL`, how many users haven't linked their login at the new provider (marked "not linked" in *Users*); after it, remove those settings. |
 
 **Who someone is**: their login at the provider (`iss` + `sub`), not their
@@ -192,6 +203,7 @@ answer to it.
 | --- | --- |
 | `OIDC_HOST`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | The login provider (§1) |
 | `OIDC_MFA_CLAIM` | Which claim counts as a second factor: `amr:mfa` (default) or `acr:<value>` (§1) |
+| `OIDC_ACCOUNT_URL` | The provider's account page, where users set up a second factor; required unless `AUTH_INSECURE_DISABLE_2FA` (§1) |
 | `OIDC_PREVIOUS_*`, `OIDC_PREVIOUS_UNTIL` | The previous login provider while moving to another (`accounts.md` "Changing providers") |
 | `AUTH_STEP_UP_MAX_AGE` | Seconds a login stays fresh for sensitive actions (default 600, §1) |
 | `AUTH_INSECURE_DISABLE_2FA` | `true`: no second factor required (weaker security, §1) |

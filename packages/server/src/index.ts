@@ -15,7 +15,9 @@ import { parseMfaClaim, type MfaClaim } from "./oidc.js";
 //
 // Researcher login, as in the lab's Authentication standard (docs/security.md):
 // OIDC_HOST (the provider's issuer), OIDC_CLIENT_ID, OIDC_CLIENT_SECRET,
-// OIDC_MFA_CLAIM (amr:mfa, default, or acr:<value>), AUTH_STEP_UP_MAX_AGE
+// OIDC_MFA_CLAIM (amr:mfa, default, or acr:<value>), OIDC_ACCOUNT_URL (the
+// provider's account page, where users set up a second factor: required
+// unless AUTH_INSECURE_DISABLE_2FA), AUTH_STEP_UP_MAX_AGE
 // (seconds, default 600), and during a move to another provider
 // OIDC_PREVIOUS_HOST, OIDC_PREVIOUS_CLIENT_ID, OIDC_PREVIOUS_CLIENT_SECRET,
 // OIDC_PREVIOUS_MFA_CLAIM, OIDC_PREVIOUS_UNTIL; AUTH_DEV_MODE=1 (development
@@ -74,6 +76,7 @@ const login =
           mfaClaim: parseMfaClaim(process.env.OIDC_MFA_CLAIM),
         },
         publicUrl: ANNOTINDER_PUBLIC_URL || `http://localhost:${port}`,
+        ...(process.env.OIDC_ACCOUNT_URL?.trim() ? { accountUrl: process.env.OIDC_ACCOUNT_URL.trim() } : {}),
         ...(previous ? { previous } : {}),
       }
     : undefined;
@@ -94,6 +97,15 @@ const insecure = {
   disable2fa: insecureFlag("AUTH_INSECURE_DISABLE_2FA"),
   disableEmailVerification: insecureFlag("AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION"),
 };
+// With 2FA required, users must be able to set it up themselves: the provider's account page
+if (login && !insecure.disable2fa) {
+  const url = login.accountUrl;
+  if (!url)
+    throw new Error(
+      "OIDC_ACCOUNT_URL is required: the login provider's account page, where users set up a second factor (for Keycloak <OIDC_HOST>/account). Or set AUTH_INSECURE_DISABLE_2FA=true (docs/security.md).",
+    );
+  if (!/^https?:\/\//.test(url)) throw new Error(`OIDC_ACCOUNT_URL must be a web address, not "${url}"`);
+}
 const admins = (process.env.ANNOTINDER_ADMINS ?? "").split(",");
 const clientDir = process.env.ANNOTINDER_CLIENT_DIR || undefined;
 const frameAncestors = (process.env.ANNOTINDER_FRAME_ANCESTORS ?? "").split(/[\s,]+/).filter(Boolean);

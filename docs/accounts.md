@@ -77,7 +77,7 @@ email reassignment"):
 
 - **Dormant users**: given before they came back after more than a year
   away (`reactivated_at`), while their latest login had no second factor.
-  With the second factor always required this is rare.
+  Rare for admins, whose admin role needs a second factor anyway.
 - **Expired invitations**: claimed more than 3 months after it was given
   (`registered_at > granted_at + 3 months`). An unclaimed invitation shows
   as expired after 3 months; its roles don't move to a user who claims it.
@@ -150,9 +150,10 @@ Every admin change is logged (`admin_log`).
 
 ## 5. Second factor
 
-Researcher and admin access always needs the login provider's second
-factor (`OIDC_MFA_CLAIM`); a login without it still works for coding, and
-`GET /me` says so (`twoFactor`). The session records it (`sessions.mfa`,
+Researchers work without the login provider's second factor
+(`OIDC_MFA_CLAIM`); server admin access needs it (the admin role applies
+only to a login with one), and `GET /me` says how things stand
+(`twoFactor`). The session records it (`sessions.mfa`,
 `sessions.auth_time`). Sensitive actions (API keys, deleting answers or
 coders' data or a study, admin roles) need it recent (step-up), and never
 work with an API key: `security.md` §1.

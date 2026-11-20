@@ -3,7 +3,7 @@ import { ApiKeyWriteSchema, ResearcherRequestWriteSchema, type MeResponse } from
 import type { Server, Env } from "../context.js";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { identities, researcherRequests } from "../db/schema/index.js";
-import { freshUntil, lacksMfa, requireResearcher, requireSensitive } from "./auth.js";
+import { freshUntil, requireResearcher, requireSensitive } from "./auth.js";
 import { HttpError } from "../shared/http.js";
 import { createApiKey, effectiveLimits, getSettings, listApiKeys, revokeApiKey, usage } from "../shared/accounts.js";
 
@@ -42,12 +42,18 @@ export function me(server: Server): Hono<Env> {
       usage: await usage(db, id),
       researcherRequest: request ? { at: request.at } : null,
       canRequestResearcher: (await getSettings(db)).registration.requests,
-      twoFactor: { required: lacksMfa(server, researcher), freshUntil: freshUntil(server, researcher) },
+      twoFactor: {
+        enabled: !server.insecure.disable2fa,
+        used: researcher.mfa,
+        setupUrl: server.login?.accountUrl ?? null,
+        adminOff: researcher.adminOff ?? false,
+        freshUntil: freshUntil(server, researcher),
+      },
       linkNeeded: await linkNeeded(id),
     };
   }
 
-  app.get("/me", requireResearcher(server, { withoutMfa: true }), async (c) => c.json(await meResponse(c)));
+  app.get("/me", requireResearcher(server), async (c) => c.json(await meResponse(c)));
 
   app.post("/me/researcher-request", signedIn, async (c) => {
     const parsed = ResearcherRequestWriteSchema.safeParse(await c.req.json().catch(() => undefined));

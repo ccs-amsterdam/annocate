@@ -16,7 +16,13 @@ export interface Server {
    * configured. `previous`: the provider being moved away from
    * (`OIDC_PREVIOUS_*`), accepted until `until` (docs/accounts.md "Changing providers").
    */
-  login: { oidc: Oidc; publicUrl: string; previous: { oidc: Oidc; until: Date } | null } | null;
+  login: {
+    oidc: Oidc;
+    publicUrl: string;
+    /** The provider's account page, where users set up a second factor (`OIDC_ACCOUNT_URL`). */
+    accountUrl: string | null;
+    previous: { oidc: Oidc; until: Date } | null;
+  } | null;
   /** Signs short-lived cookies and preview tokens. */
   secret: string;
   /** Emails that are admins on this server (`ANNOTINDER_ADMINS`), lowercased; admins can make more. */

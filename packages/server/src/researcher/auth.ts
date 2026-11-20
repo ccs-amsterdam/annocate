@@ -58,6 +58,8 @@ export interface Researcher {
   authTime: Date | null;
   /** Development headers only: the role the request claims. */
   devRole?: Role;
+  /** A server admin whose login had no second factor: they work as a researcher until they log in with one. */
+  adminOff?: boolean;
 }
 
 async function authenticate(c: Context, server: Server): Promise<Researcher | null> {
@@ -71,15 +73,19 @@ async function authenticate(c: Context, server: Server): Promise<Researcher | nu
   const session = getCookie(c, SESSION_COOKIE);
   if (session && c.req.header(CLIENT_HEADER) === "1") {
     const user = await userForSession(server.db, session);
-    if (user)
+    if (user) {
+      // Server admin access needs a login with a second factor (unless AUTH_INSECURE_DISABLE_2FA)
+      const adminOff = user.role === "admin" && !user.mfa && !server.insecure.disable2fa;
       return {
         email: user.email,
         userId: user.id,
-        accountRole: user.role,
+        accountRole: adminOff ? "researcher" : user.role,
         via: "session",
         mfa: user.mfa,
         authTime: user.authTime,
+        ...(adminOff ? { adminOff } : {}),
       };
+    }
   }
   const devRole = c.req.header("x-dev-role") as Role | undefined;
   if (server.devMode && devRole && devRole in ROLE_RANK) {
@@ -105,13 +111,6 @@ async function roleIn(server: Server, researcher: Researcher, studyId: number): 
       : researcher.devRole;
   return ROLE_RANK[row.role] < ROLE_RANK[researcher.devRole] ? null : researcher.devRole;
 }
-
-/** Whether this login lacks the second factor researcher access needs (none needed with `AUTH_INSECURE_DISABLE_2FA`). */
-export const lacksMfa = (server: Server, researcher: Researcher) => !server.insecure.disable2fa && !researcher.mfa;
-const MFA_REQUIRED = {
-  error: "Researcher access needs a login with a second factor: log in again with one",
-  code: "mfa_required",
-} as const;
 
 /** Until when a researcher may do sensitive actions without logging in again; null: not now (docs/security.md "Step-up"). */
 export function freshUntil(server: Server, researcher: Researcher): Date | null {
@@ -151,18 +150,23 @@ export function requireSensitive(server: Server) {
 
 /**
  * Middleware: an authenticated user (401 otherwise), as `researcher`; with
- * `role`, at least that account role (403). A login without a required
- * second factor is refused (403 `mfa_required`) unless `withoutMfa`.
+ * `role`, at least that account role (403). Researchers work without a
+ * second factor; server admin access needs one (403 `mfa_required` for an
+ * admin whose login had none).
  */
-export function requireResearcher(
-  server: Server,
-  { role, withoutMfa = false }: { role?: AccountRole; withoutMfa?: boolean } = {},
-) {
+export function requireResearcher(server: Server, { role }: { role?: AccountRole } = {}) {
   return async (c: Context<Env>, next: Next) => {
     const researcher = await authenticate(c, server);
     if (!researcher) return c.json({ error: "Unauthorized" }, 401);
-    if (!withoutMfa && lacksMfa(server, researcher)) return c.json(MFA_REQUIRED, 403);
     if (role && !accountRoleAtLeast(researcher.accountRole, role)) {
+      if (role === "admin" && researcher.adminOff)
+        return c.json(
+          {
+            error: "Server admin access needs a login with a second factor: log in again with one",
+            code: "mfa_required",
+          },
+          403,
+        );
       return c.json({ error: `This needs a ${role} account`, code: `${role}_required` }, 403);
     }
     c.set("researcher", researcher);
@@ -179,7 +183,6 @@ export function requireStudyUser(server: Server, minRole: Role) {
   return async (c: Context<Env>, next: Next) => {
     const researcher = await authenticate(c, server);
     if (!researcher) return c.json({ error: "Unauthorized" }, 401);
-    if (lacksMfa(server, researcher)) return c.json(MFA_REQUIRED, 403);
 
     const raw = c.req.param("studyId");
     const studyId = raw ? Number(raw) : NaN;
