@@ -38,7 +38,11 @@
       "title": "A tour of AnnoTinder"
     },
     "session": {
-      "params": []
+      "params": [],
+      "uses": {
+        "content": "both",
+        "experiment": true
+      }
     },
     "items": [
       {

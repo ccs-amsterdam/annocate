@@ -52,7 +52,11 @@
       "title": "Who acts in the news?"
     },
     "session": {
-      "params": []
+      "params": [],
+      "uses": {
+        "content": "annotate",
+        "experiment": false
+      }
     },
     "items": [
       {

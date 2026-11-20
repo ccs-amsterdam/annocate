@@ -15,7 +15,14 @@
       "title": "A short survey"
     },
     "session": {
-      "params": []
+      "params": [],
+      "end": {
+        "message": "Thank you for taking part!"
+      },
+      "uses": {
+        "content": "questions",
+        "experiment": false
+      }
     },
     "items": [
       {
@@ -190,12 +197,6 @@
             }
           ]
         }
-      },
-      {
-        "type": "end",
-        "name": "done",
-        "outcome": "complete",
-        "message": "Thank you for taking part!"
       }
     ]
   },

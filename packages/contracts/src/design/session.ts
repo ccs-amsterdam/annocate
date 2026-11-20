@@ -213,6 +213,43 @@ export type PublicInfo = z.infer<typeof PublicInfoSchema>;
  * runtime and the editor work on it there; it is stored as the design's
  * `session` and `public` (`splitDesignItems`).
  */
+/**
+ * The study's normal end (the Study entry's `end`): what coders see when
+ * they get through the whole design, and where they are sent, e.g. a
+ * panel's return link. End items in the design are for ending early. Coders
+ * get it as an end item named `_end` after the last item (`toCoderItems`).
+ */
+export const StudyEndSchema = z.object({
+  message: z.string().optional().describe("Shown at the end: a markdown template like a question text."),
+  redirectUrl: z
+    .string()
+    .optional()
+    .describe("Where to send the coder, e.g. a panel's return link. May contain $var references (URL-encoded)."),
+  redirectSetting: SafeNameSchema.optional().describe(
+    "Instead of redirectUrl: the name of a deployment setting holding the URL (the study's settings).",
+  ),
+});
+export type StudyEnd = z.infer<typeof StudyEndSchema>;
+
+/** The end item coders get for the study's normal end (`StudyEndSchema`). Reserved: no item may have this name. */
+export const STUDY_END_NAME = "_end";
+
+/**
+ * What a design is made of (the Study entry's `uses`), so the editor shows
+ * only what it needs (docs/client.md §5, "Editor modes"):
+ * - `content`: `annotate` (one unit loop, nothing outside it), `questions`
+ *   (no unit loops, no units), or `both`;
+ * - `experiment`: conditions that don't select units, and computed items
+ *   (a condition linked to a set column says which units a session gets:
+ *   part of annotating).
+ * Left out: worked out from the design (`inferUses`).
+ */
+export const DesignUsesSchema = z.object({
+  content: z.enum(["annotate", "questions", "both"]),
+  experiment: z.boolean(),
+});
+export type DesignUses = z.infer<typeof DesignUsesSchema>;
+
 export const SessionItemSchema = z.object({
   type: z.literal("session"),
   label: z.string().optional(),
@@ -229,6 +266,10 @@ export const SessionItemSchema = z.object({
    * most this many sessions. A link's own limit (the deployment's) overrides it.
    */
   maxUses: z.number().int().positive().optional(),
+  /** The study's normal end: its message and redirect. */
+  end: StudyEndSchema.optional(),
+  /** What the design is made of, for the editor. */
+  uses: DesignUsesSchema.optional(),
   /** The design's `public` (stored apart from the session). */
   public: PublicInfoSchema.optional(),
 });

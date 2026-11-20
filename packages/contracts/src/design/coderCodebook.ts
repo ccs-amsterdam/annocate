@@ -3,6 +3,7 @@ import { IdSchema } from "../common.js";
 import type { Condition } from "./condition.js";
 import type { ComputedItem, EndItem, InLoopItem, TopLevelItem, TopLevelQuestionItem, UnitLoopItem } from "./item.js";
 import type { RandomVariable } from "./variableTypes.js";
+import { STUDY_END_NAME, type SessionItem } from "./session.js";
 
 // The coder codebook (docs/api/coder.md): what coders' browsers
 // get of a codebook, only what the coding client needs. Unit loops keep
@@ -40,12 +41,21 @@ export type CoderCodebook = z.infer<typeof CoderCodebookSchema>;
 
 /** Strips a codebook's items to what coders get. */
 export function toCoderItems(items: readonly TopLevelItem[]): CoderTopLevelItem[] {
+  // The study's normal end (the Study entry's `end`): an end item after the last item
+  const study = items.find((i) => i.type === "session") as SessionItem | undefined;
+  const end: CoderTopLevelItem[] = study?.end
+    ? [{ type: "end", name: STUDY_END_NAME, outcome: "complete", ...study.end } as CoderTopLevelItem]
+    : [];
+  return [...coderItems(items), ...end];
+}
+
+function coderItems(items: readonly TopLevelItem[]): CoderTopLevelItem[] {
   return items.flatMap((item): CoderTopLevelItem[] => {
     switch (item.type) {
       case "session":
         return [];
       case "show_if":
-        return [{ ...item, children: toCoderItems(item.children) }];
+        return [{ ...item, children: coderItems(item.children) }];
       case "unit_loop": {
         const loop: CoderUnitLoopItem = { ...item, children: item.children as InLoopItem[] };
         delete (loop as Partial<UnitLoopItem>).units;

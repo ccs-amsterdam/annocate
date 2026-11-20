@@ -163,6 +163,10 @@
       "params": [],
       "coders": {
         "column": "coder"
+      },
+      "uses": {
+        "content": "annotate",
+        "experiment": false
       }
     },
     "items": [

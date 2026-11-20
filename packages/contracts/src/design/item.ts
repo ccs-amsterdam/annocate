@@ -80,6 +80,9 @@ export function redirectSettings(items: readonly unknown[]): string[] {
       const item = raw as { type?: unknown; redirectSetting?: unknown; children?: unknown } | null;
       if (!item || typeof item !== "object") continue;
       if (item.type === "end" && typeof item.redirectSetting === "string") names.add(item.redirectSetting);
+      // The study's normal end (the Study entry's `end`)
+      const end = item.type === "session" ? (item as { end?: { redirectSetting?: unknown } }).end : undefined;
+      if (typeof end?.redirectSetting === "string") names.add(end.redirectSetting);
       walk(item.children);
     }
   };

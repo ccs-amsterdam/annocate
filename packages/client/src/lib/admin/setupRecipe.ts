@@ -5,6 +5,7 @@ import {
   RESERVED_SETS,
   seededShuffle,
   type Criteria,
+  type DesignUses,
   type RecipeInput,
   type SessionSpec,
   type UnitCreate,
@@ -136,11 +137,18 @@ export const DEFAULT_SETUP: SetupAnswers = {
   checks: { gold: [], practice: [] },
 };
 
-/** Where questions go: a survey (or experiment) alone has one list; annotation with either has three. */
+/** Where questions go: a survey (or experiment) alone has one list; annotation with a survey has three. */
 export function questionLists(parts: SetupParts): ("before" | "unit" | "after")[] {
-  const asks = parts.survey || parts.experiment;
   if (!parts.annotate) return ["before"];
-  return asks ? ["before", "unit", "after"] : ["unit"];
+  return parts.survey ? ["before", "unit", "after"] : ["unit"];
+}
+
+/** What the design is made of (the Study entry's `uses`): the editor shows what the choices need. */
+export function setupUses(parts: SetupParts): DesignUses {
+  return {
+    content: !parts.annotate ? "questions" : parts.survey ? "both" : "annotate",
+    experiment: parts.experiment,
+  };
 }
 
 /** A question's name from what was typed: `How old are you?` -> `how_old_are_you`. */
@@ -358,10 +366,21 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
   let session: SessionSpec | undefined;
   const groups: NonNullable<RecipeInput["sets"]> = [];
   const conditions = a.experiment.conditions.map((c) => c.trim()).filter(Boolean);
-  if (a.parts.experiment) {
+  const linked = a.parts.annotate && a.distribution.mode === "groups";
+  /** Conditions drawn when a session starts (annotating without questions: nothing to put a computed item between). */
+  const drawn: NonNullable<SessionSpec["conditions"]> = [];
+  if (a.parts.experiment && a.parts.annotate && !a.parts.survey) {
+    // Linked to a column, the condition selects the units (a set column named after it, a value per condition)
+    drawn.push({
+      name: a.experiment.name,
+      values: conditions.map((c) => (linked ? setName(c) : c)),
+      assign: "random",
+      draw: a.experiment.assign,
+      ...(linked ? { units: a.experiment.name } : {}),
+    });
+  } else if (a.parts.experiment) {
     // Experimental groups: a computed item, drawn when reached; linked to a column, it selects the
     // units (a set column named after it, a value per condition)
-    const linked = a.parts.annotate && a.distribution.mode === "groups";
     items.push({
       type: "computed",
       name: a.experiment.name,
@@ -439,8 +458,14 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
     });
     if (lists.includes("after")) items.push(...parseQuestions(a.questions.after).map(unspecified));
   }
-  // The title coders see, only when given
+  // The title coders see, only when given; what the design is made of, for the editor
   const title = a.publicTitle.trim();
+  const study: SessionSpec = {
+    ...(session ?? { params: [] }),
+    conditions: [...drawn, ...(session?.conditions ?? [])],
+    uses: setupUses(a.parts),
+  };
+  if (study.conditions!.length === 0) delete study.conditions;
   return {
     name: a.name.trim(),
     units: (a.units?.units ?? []).map((u) => ({ id: u.externalId, data: u.data })),
@@ -448,7 +473,7 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
     design: {
       note: "Made with the setup wizard",
       ...(title ? { public: { title } } : {}),
-      ...(session ? { session } : {}),
+      session: study,
       items,
     },
   };

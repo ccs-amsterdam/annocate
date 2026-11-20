@@ -1,4 +1,6 @@
 import {
+  STUDY_END_NAME,
+  sessionItem,
   unitLoops,
   validateVariables,
   type AnyVariableType,
@@ -113,8 +115,12 @@ export function agreementKey(variables: Record<string, VariableValue>, variable:
     .join("|");
 }
 
-/** The `end` item with this name, anywhere in the design. */
+/** The `end` item with this name, anywhere in the design; `_end`: the study's normal end (the Study entry's `end`). */
 export function findEndItem(items: readonly DesignItem[], name: string): EndItem | null {
+  if (name === STUDY_END_NAME) {
+    const end = sessionItem(items)?.end;
+    return end ? ({ type: "end", name, outcome: "complete", ...end } as EndItem) : null;
+  }
   for (const item of items) {
     if (item.type === "end" && item.name === name) return item;
     if ("children" in item) {

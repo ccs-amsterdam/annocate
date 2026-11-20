@@ -2467,6 +2467,27 @@ describe("end items", () => {
     expect(coders[0].ended).toMatchObject({ item: "screen_out_young", outcome: "screenout" });
   });
 
+  it("the study's normal end (the Study entry's end): coders get it as the last item; its redirect setting is resolved", async () => {
+    await server.request("/api/study/1", {
+      method: "PUT",
+      headers: adminHeaders,
+      body: JSON.stringify({ name: "Demo study", redirectUrls: { panel: "https://panel.example/done" } }),
+    });
+    await redeploy({}, [sessionItem({ end: { message: "Thank you", redirectSetting: "panel" } })]);
+    const c = coder("finisher");
+    const items = (await c.session()).codebook.items;
+    expect(items.at(-1)).toEqual({
+      type: "end",
+      name: "_end",
+      outcome: "complete",
+      message: "Thank you",
+      redirectUrl: "https://panel.example/done",
+    });
+    const end = await c.call("/end", { method: "POST", body: JSON.stringify({ item: "_end" }) });
+    expect(end.status).toBe(200);
+    expect((await c.session()).ended).toMatchObject({ item: "_end", outcome: "complete" });
+  });
+
   it("inside a unit loop: remember the unit; the closed session gets only what the end screen uses", async () => {
     // An end in the loop whose message uses a unit field and an answer
     await redeploy({

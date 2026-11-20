@@ -10,7 +10,16 @@ import {
   supportsAgreement,
   type LoopUnits,
 } from "./unitLoop.js";
-import { RESERVED_SESSION_NAMES, sessionColumns, sessionItem, sessionNames, type SessionItem } from "./session.js";
+import {
+  RESERVED_SESSION_NAMES,
+  STUDY_END_NAME,
+  sessionColumns,
+  sessionItem,
+  sessionNames,
+  type DesignUses,
+  type SessionItem,
+} from "./session.js";
+import { usesConflicts } from "./uses.js";
 import { loopShareColumns } from "./assignment.js";
 import { expandSnippets, usesSnippets } from "./snippets.js";
 import {
@@ -122,6 +131,14 @@ function flattenUnions(
   });
 }
 /** What the item schemas can't check: names, structure, references (see validateDesignItems). */
+/** How issues name a design's `uses`. */
+function usesLabel(uses: DesignUses): string {
+  const content = { annotate: "Annotating units only", questions: "Questions only", both: "Questions and units" }[
+    uses.content
+  ];
+  return uses.experiment ? content : `${content}, no experiment`;
+}
+
 export function semanticIssues(items: unknown[]): DesignIssue[] {
   const issues: DesignIssue[] = [];
   const { questions, loopOf } = collectQuestions(items);
@@ -604,6 +621,8 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
         if (!/^[a-zA-Z0-9_]+$/.test(item.name)) {
           issue([...itemPath, "name"], `Name '${item.name}' contains invalid characters (letters, numbers and _ only)`);
         }
+        if (item.name === STUDY_END_NAME)
+          issue([...itemPath, "name"], `'${STUDY_END_NAME}' is the study's own end: choose another name`);
         if (seenNames.has(item.name)) issue([...itemPath, "name"], `Duplicate name '${item.name}'`);
         else seenNames.set(item.name, itemPath);
       }
@@ -710,6 +729,28 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   }
 
   walk(items, [], null);
+
+  // The study's normal end: its texts may use the coder-level answers
+  const studyIndex = items.findIndex((i) => (i as RawItem | null)?.type === "session");
+  const studyEnd =
+    studyIndex >= 0
+      ? (items[studyIndex] as { end?: { message?: unknown; redirectUrl?: unknown; redirectSetting?: unknown } }).end
+      : undefined;
+  if (studyEnd) {
+    const path = [studyIndex, "end"];
+    const ctx = { loop: null, available: coderAvailable, snippets: undefined };
+    checkTemplate(studyEnd.message, { ...ctx, path: [...path, "message"] }, "text");
+    checkTemplate(studyEnd.redirectUrl, { ...ctx, path: [...path, "redirectUrl"] }, "url");
+    if (typeof studyEnd.redirectUrl === "string" && !/^https?:\/\//.test(studyEnd.redirectUrl))
+      issue([...path, "redirectUrl"], "The redirect URL must start with https:// (or http://)");
+    if (typeof studyEnd.redirectUrl === "string" && typeof studyEnd.redirectSetting === "string")
+      issue([...path, "redirectSetting"], "Give a redirect URL or a deployment setting, not both");
+  }
+
+  // What the design is made of (`uses`): the design must fit what it declares
+  const declared = sessionItem(items)?.uses;
+  if (declared)
+    for (const c of usesConflicts(declared, items)) issue(c.path, `${usesLabel(declared)}: not with ${c.message}`);
 
   // A computed value linked to a column selects units in the loops after it only
   const shares = loopShareColumns(items);
