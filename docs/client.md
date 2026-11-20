@@ -520,8 +520,11 @@ from the Preview Study button. It uses a `ResearcherApi`
   warnings, users with invitations and safeguards, plans, registration,
   studies, admin log; `docs/accounts.md`).
 - **From a file** (`ImportStudyDialog.tsx`, `lib/admin/designImport.ts`):
-  a study from a design file; it shows what the file holds, then sends it
-  as a recipe and opens the new study in the editor (`docs/examples.md`).
+  a study export (gzip: its manifest is read in the browser to show what it
+  holds, then the file goes to `POST /study/import`, with or without coders)
+  or a design file (sent as a recipe, `docs/examples.md`); the new study
+  opens in the editor. The export itself is in the study's Settings
+  (`StudySettings.tsx`, `docs/hosting.md` "Moving a study").
 - **Guided setup** (`SetupWizard.tsx`, `lib/admin/setupRecipe.ts`): a
   short way to the skeleton of a new study, next to "From an example" and
   an empty study on the studies page. It writes only what the editor

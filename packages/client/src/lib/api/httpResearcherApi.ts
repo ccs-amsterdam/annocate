@@ -115,6 +115,10 @@ export interface ResearcherApi {
   createStudyFromExample(body: StudyFromExample): Promise<StudyResponse>;
   /** A new study from a recipe (the setup wizard): units, set groups, a design (a draft unless `publish`; deploying makes its links). */
   createStudyFromRecipe(body: RecipeInput): Promise<StudyResponse>;
+  /** The study export (coders and answers included), with its file name. Sensitive: may ask for a step-up login. */
+  exportStudy(): Promise<{ file: string; bytes: Blob }>;
+  /** A new study from a study export's bytes; `coders: false` leaves out coders and their answers. */
+  importStudy(bytes: Uint8Array, options?: { name?: string; coders?: boolean }): Promise<StudyResponse>;
   updateStudy(id: number, body: StudyWrite): Promise<StudyResponse>;
   deleteStudy(id: number): Promise<void>;
   getStudyUsers(id: number): Promise<StudyUserResponse[]>;
@@ -239,9 +243,16 @@ export class HttpResearcherApi implements ResearcherApi {
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
+    const res = await this.send(path, init);
+    if (res.status === 204) return undefined as T;
+    return res.json() as Promise<T>;
+  }
+
+  /** A request whose response is ok (else a `ResearcherApiError`), with this client's authentication; `contentType` of the body. */
+  private async send(path: string, init?: RequestInit, contentType?: string): Promise<Response> {
     const res = await fetch(`${this.config.baseUrl}${path}`, {
       ...init,
-      headers: this.headers(),
+      headers: { ...this.headers(), ...(contentType ? { "content-type": contentType } : {}) },
       credentials: "same-origin",
     });
     if (!res.ok) {
@@ -267,8 +278,7 @@ export class HttpResearcherApi implements ResearcherApi {
       }
       throw error;
     }
-    if (res.status === 204) return undefined as T;
-    return res.json() as Promise<T>;
+    return res;
   }
 
   async getAuthOptions(): Promise<AuthOptions> {
@@ -349,6 +359,26 @@ export class HttpResearcherApi implements ResearcherApi {
       method: "POST",
       body: JSON.stringify(body),
     });
+  }
+
+  async exportStudy(): Promise<{ file: string; bytes: Blob }> {
+    const studyId = this.requireStudyId();
+    const res = await this.send(researcherEndpoints.exportStudy.path.replace(":id", String(studyId)));
+    const file = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? "study.annotinder.gz";
+    return { file, bytes: await res.blob() };
+  }
+
+  async importStudy(bytes: Uint8Array, options: { name?: string; coders?: boolean } = {}): Promise<StudyResponse> {
+    const query = new URLSearchParams({
+      ...(options.name ? { name: options.name } : {}),
+      ...(options.coders === false ? { coders: "false" } : {}),
+    });
+    const res = await this.send(
+      `${researcherEndpoints.importStudy.path}${query.size ? `?${query}` : ""}`,
+      { method: "POST", body: bytes as BodyInit },
+      "application/octet-stream",
+    );
+    return res.json() as Promise<StudyResponse>;
   }
 
   async createStudyFromRecipe(body: RecipeInput): Promise<StudyResponse> {

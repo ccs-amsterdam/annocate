@@ -232,3 +232,14 @@ row per answer with when it was given (`answered`) and reset (`reset_at`).
 
 Scripts can get the same data from the API, also only what is new since
 the last download. See [Scripts and the researcher API](researcher-api.md).
+
+## Backing up or moving a study
+
+The download is for analysis. To keep the whole study (to restore it, or
+move it to another AnnoTinder server), use **Settings** → **Export study**
+(for the study's admins): one file with the units, design versions, links,
+coders and their answers. **Create new study** → **From a file** makes a
+copy of the study from it, with or without the coders and answers. The
+copy gets new links (send coders the new ones), and new coder ids: match
+coders by participant id with earlier downloads. The file holds coders'
+data: keep it as safe as the study.

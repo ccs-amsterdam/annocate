@@ -41,6 +41,7 @@ import { sets } from "./researcher/sets.js";
 import { unitsFields } from "./researcher/units.fields.js";
 import { unitsPage } from "./researcher/units.page.js";
 import { units } from "./researcher/units.js";
+import { studyExports } from "./researcher/studyExport.js";
 
 export interface AppOptions {
   /** Signs preview tokens. Random per process if not given (previews then end with a restart). */
@@ -174,6 +175,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
     me,
     admin,
     examples,
+    studyExports,
     studies,
     study,
     studyUsers,

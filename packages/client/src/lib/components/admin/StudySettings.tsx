@@ -15,12 +15,13 @@ import { SignInSetting } from "./SignInSetting";
 import { InfoTip } from "@/components/ui/info-tip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2 } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
+import { ResearcherApiError } from "../../api/httpResearcherApi";
 
 /**
  * Study settings (docs/client.md §7), shown at the bottom of the overview: edit
- * the study name, toggle archived status, keep finished sessions open, or
- * delete the study.
+ * the study name, toggle archived status, keep finished sessions open,
+ * export the whole study, or delete the study.
  */
 export function StudySettings({ client, onDeleted }: { client: ResearcherApi; onDeleted?: () => void }) {
   const studyQuery = useStudyQuery(client);
@@ -187,6 +188,8 @@ function StudyEditForm({
         )}
       </form>
 
+      <StudyExport client={client} />
+
       {/* Danger Zone */}
       <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 shadow-sm">
         <h3 className="flex items-center gap-1 text-sm font-semibold text-destructive">
@@ -237,6 +240,55 @@ function StudyEditForm({
         )}
         {deleteStudy.isError && <p className="mt-2 text-xs text-destructive">{deleteStudy.error.message}</p>}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The whole study as one file (coders and answers included), to restore it
+ * or move it to another server: Create new study › From a file imports it
+ * (docs/hosting.md "Moving a study"). A study ADMIN's sensitive action.
+ */
+function StudyExport({ client }: { client: ResearcherApi }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function download() {
+    setBusy(true);
+    setError(null);
+    try {
+      const { file, bytes } = await client.exportStudy();
+      const url = URL.createObjectURL(bytes);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      // A step-up login was offered (the client asks); other errors show
+      if (!(e instanceof ResearcherApiError && e.code === "step_up_required"))
+        setError(e instanceof ResearcherApiError ? e.reason : e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+      <h3 className="flex items-center gap-1 text-sm font-semibold">
+        Export the whole study
+        <InfoTip label="About the study export">
+          One file with everything: units, design versions, links, coders and their answers. Import it with Create new
+          study › From a file, on this or another AnnoTinder server (the same release or a newer one). It holds
+          coders&apos; data: keep it as safe as the study. For an analysis, use the download on the Results tab.
+        </InfoTip>
+      </h3>
+      <p className="mt-1 text-xs text-muted-foreground">To back up the study, or move it to another server.</p>
+      <Button type="button" variant="outline" size="sm" className="mt-3 gap-1.5" disabled={busy} onClick={download}>
+        <Download className="h-4 w-4" />
+        {busy ? "Exporting..." : "Export study"}
+      </Button>
+      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
     </div>
   );
 }

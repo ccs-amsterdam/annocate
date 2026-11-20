@@ -69,3 +69,28 @@ export function designFile(
     } as DesignFile["design"],
   };
 }
+
+/**
+ * A study export (`<study>_<date>.annotinder.gz`, docs/hosting.md "Moving a
+ * study"): the whole study, coders and answers included, to restore or move
+ * it to another server. Gzipped JSON lines: this manifest, then one line per
+ * row (`{ "table": "units", "row": {...} }`), each row as the database holds
+ * it. Rows are as of the database's migration (`migration`): an importing
+ * server applies its newer migrations to them first, so an export opens on
+ * any later release. Not meant to be read or edited by hand; the results
+ * download is for analysis.
+ */
+export const STUDY_EXPORT_FORMAT_VERSION = 1;
+
+export const StudyExportManifestSchema = z.object({
+  format: z.literal("annotinder-study-export"),
+  formatVersion: z.number().int().positive(),
+  client: ClientVersionSchema,
+  exportedAt: z.coerce.date(),
+  /** The database's last migration when exported: its position and name (`migrations/meta/_journal.json`). */
+  migration: z.object({ idx: z.number().int().nonnegative(), tag: z.string() }),
+  study: z.object({ name: z.string() }),
+  /** The tables in the file, in the order their rows come (parents first), with their number of rows. */
+  tables: z.array(z.object({ name: z.string(), rows: z.number().int().nonnegative() })),
+});
+export type StudyExportManifest = z.infer<typeof StudyExportManifestSchema>;

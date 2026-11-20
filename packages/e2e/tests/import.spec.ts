@@ -6,9 +6,11 @@ import type {
   UnitPage,
 } from "@annotinder/contracts";
 import { expect, test } from "./fixtures";
-import { api, fromExample } from "./helpers";
+import { answers, api, coders, fromExample } from "./helpers";
 
-// A study from a design file: Create new study › From a file.
+// Create new study › From a file: a copy of a study from its export
+// (Settings › Export study), coders and answers included, and a study from a
+// design file.
 
 /** What makes a study, to compare a copy with its original. */
 async function contents(request: Parameters<typeof api>[0], id: number) {
@@ -48,7 +50,7 @@ test("a design file makes a study with that design and no units; other files are
   await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /From a file/ }).click();
   const dialog = page.getByRole("dialog");
-  const input = dialog.getByLabel("Design file");
+  const input = dialog.getByLabel("Study export or design file");
   await input.setInputFiles({ name: "notes.json", mimeType: "application/json", buffer: Buffer.from('{"a":1}') });
   await expect(dialog.getByRole("alert")).toContainText("isn't an AnnoTinder design file");
   await expect(dialog.getByRole("button", { name: "Create study" })).toBeDisabled();
@@ -66,4 +68,42 @@ test("a design file makes a study with that design and no units; other files are
   expect(copy.units).toEqual([]);
   expect(copy.design.items).toEqual(design.items);
   expect(copy.design.units).toEqual(design.units);
+});
+
+test("a study export makes a copy of the study, with its coders and answers, under new ids", async ({
+  page,
+  request,
+}) => {
+  const { study } = await fromExample(request, "swipe-sentiment");
+  await page.goto(`/research/studies/${study.id}`);
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Export study" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/\.annotinder\.gz$/);
+  const bytes = Buffer.concat(await (await download.createReadStream()).toArray());
+
+  await page.goto("/research");
+  await page.getByRole("button", { name: /Create new study/ }).click();
+  await page.getByRole("menuitem", { name: /From a file/ }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Study export or design file").setInputFiles({
+    name: download.suggestedFilename(),
+    mimeType: "application/gzip",
+    buffer: bytes,
+  });
+  await expect(dialog.getByTestId("import-summary")).toContainText(/3 coders with 30 answers/);
+  await dialog.getByLabel("Study name").fill("Sentiment, moved");
+  await dialog.getByRole("button", { name: "Create study" }).click();
+  await expect(page).toHaveURL(/\/research\/studies\/\d+\/editor/);
+  const copyId = Number(/\/research\/studies\/(\d+)/.exec(page.url())![1]);
+  expect(copyId).not.toBe(study.id);
+
+  expect((await api<StudyResponse>(request, "GET", `/study/${copyId}`)).name).toBe("Sentiment, moved");
+  expect(await contents(request, copyId)).toEqual(await contents(request, study.id));
+  const [before, after] = [await coders(request, study.id), await coders(request, copyId)];
+  expect(after.map((c) => c.participantId)).toEqual(before.map((c) => c.participantId));
+  expect(after.map((c) => c.id).filter((id) => before.some((b) => b.id === id))).toEqual([]);
+  expect((await answers(request, copyId)).length).toBe((await answers(request, study.id)).length);
 });

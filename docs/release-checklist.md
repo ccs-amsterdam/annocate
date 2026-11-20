@@ -52,7 +52,11 @@ To do on the server (the guide's steps):
    addresses, with one link and sign-in required. Each coder gets the units
    of their own address; any other address gets 403 `email_not_allowed`.
    The e2e tests don't cover this.
-9. **Read `security.md`** before inviting anyone outside the team.
+9. **Move a study.** The tests export and import on PGlite and on
+   Postgres 16 (`TEST_DATABASE_URL`). On the pilot server (Postgres 18),
+   export a study with answers from Settings and import it (`hosting.md`
+   "Moving a study"); compare the two downloads.
+10. **Read `security.md`** before inviting anyone outside the team.
 
 ## 2. Decisions
 

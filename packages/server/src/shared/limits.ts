@@ -73,3 +73,23 @@ export function checkAnswerSize(name: string, value: unknown, answerBytes: numbe
       "answer_too_large",
     );
 }
+
+/** Refuses an imported study (already written, in the caller's transaction) past its owner's limits on units and coders. */
+export async function checkImportedStudy(db: Db, studyId: number): Promise<void> {
+  const { ownerId, limits } = await studyLimits(db, studyId);
+  if (limits.unitsPerStudy != null) {
+    const n = await db.$count(unitsTable, and(eq(unitsTable.studyId, studyId), eq(unitsTable.inDraft, true)));
+    if (n > limits.unitsPerStudy)
+      throw limitReached(`A study can have at most ${limits.unitsPerStudy} units; this one has ${n}`);
+  }
+  if (limits.units != null && ownerId !== null) {
+    const { units } = await usage(db, ownerId);
+    if (units > limits.units)
+      throw limitReached(`You can have at most ${limits.units} units in all your studies; with this one, ${units}`);
+  }
+  if (limits.codersPerStudy != null) {
+    const n = await db.$count(coders, eq(coders.studyId, studyId));
+    if (n > limits.codersPerStudy)
+      throw limitReached(`A study can have at most ${limits.codersPerStudy} coders; this one has ${n}`);
+  }
+}

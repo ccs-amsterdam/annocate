@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { strToU8 } from "fflate";
+import { gzipSync, strToU8 } from "fflate";
 import { EMPTY_SESSION, RecipeSchema, designFile } from "@annotinder/contracts";
-import { readDesignFile } from "./designImport";
+import { readDesignFile, readExportSummary } from "./designImport";
 
 const design = {
   note: "v3",
@@ -37,5 +37,44 @@ describe("a new study from a design file", () => {
     const f = designFile(design, { name: "x", version: 1, client: { release: "9.0.0", commit: "x" } });
     expect(() => readDesignFile(bytes({ ...f, formatVersion: 99 }))).toThrow(/newer AnnoTinder \(9.0.0\)/);
     expect(() => readDesignFile(bytes({ ...f, design: {} }))).toThrow(/has no design/);
+  });
+});
+
+describe("a study export's manifest, read before importing", () => {
+  const manifest = {
+    format: "annotinder-study-export",
+    formatVersion: 1,
+    client: { release: "0.1.0", commit: "abc1234" },
+    exportedAt: "2026-11-20T10:00:00.000Z",
+    migration: { idx: 1, tag: "0001_seed" },
+    study: { name: "Framing" },
+    tables: [
+      { name: "studies", rows: 1 },
+      { name: "design_versions", rows: 2 },
+      { name: "units", rows: 20 },
+      { name: "coders", rows: 3 },
+      { name: "annotation_values", rows: 30 },
+    ],
+  };
+  const exportFile = (m: object, rows: string[] = ['{"table":"studies","row":{}}']) =>
+    gzipSync(strToU8([JSON.stringify(m), ...rows].join("\n")));
+
+  it("says what the study holds", () => {
+    expect(readExportSummary(exportFile(manifest))).toMatchObject({
+      name: "Framing",
+      release: "0.1.0",
+      units: 20,
+      coders: 3,
+      answers: 30,
+      designVersions: 2,
+    });
+  });
+
+  it("says what is wrong with other files", () => {
+    expect(() => readExportSummary(strToU8("plain text"))).toThrow(/can't be unpacked/);
+    expect(() => readExportSummary(exportFile({ hello: 1 }))).toThrow(/isn't a study export/);
+    expect(() =>
+      readExportSummary(exportFile({ ...manifest, formatVersion: 9, client: { release: "9.0.0", commit: "x" } })),
+    ).toThrow(/newer AnnoTinder \(9.0.0\)/);
   });
 });

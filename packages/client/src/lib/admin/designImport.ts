@@ -1,9 +1,17 @@
-import { DESIGN_FORMAT_VERSION, type RecipeInput } from "@annotinder/contracts";
+import {
+  DESIGN_FORMAT_VERSION,
+  STUDY_EXPORT_FORMAT_VERSION,
+  StudyExportManifestSchema,
+  type RecipeInput,
+} from "@annotinder/contracts";
+import { gunzipSync } from "fflate";
 
-// A new study from a design file (`designs/v<n>.json` in the results
-// download, or Export › Design file in the editor): the design as a draft,
-// with its unit fields, and no units yet. Made through
-// `POST /study/from-recipe`.
+// New studies from files (Create new study › From a file): a design file
+// (`designs/v<n>.json` in the results download, or Export › Design file in
+// the editor) makes a study with that design as a draft, with its unit
+// fields and no units yet (`POST /study/from-recipe`); a study export
+// (`.annotinder.gz`, a study's Settings) is sent to the server as it is
+// (`POST /study/import`), after showing what its manifest says.
 
 /** What a design file holds, to show before making the study. */
 export interface DesignImport {
@@ -49,4 +57,47 @@ export function readDesignFile(bytes: Uint8Array): DesignImport {
     publish: false,
   } as RecipeInput;
   return { recipe, items: design.items.length, release };
+}
+
+/** What a study export holds (its manifest, read in the browser), to show before importing it. */
+export interface ExportSummary {
+  name: string;
+  release: string;
+  exportedAt: Date;
+  units: number;
+  coders: number;
+  answers: number;
+  designVersions: number;
+}
+
+/** Reads a study export's manifest (`StudyExportManifestSchema`). Throws with a message for people. */
+export function readExportSummary(bytes: Uint8Array): ExportSummary {
+  let text: string;
+  try {
+    // Only the start: the manifest is the first line
+    text = new TextDecoder().decode(gunzipSync(bytes));
+  } catch {
+    throw new Error("This file can't be unpacked: a study export is a .annotinder.gz file from a study's Settings.");
+  }
+  let manifest: unknown;
+  try {
+    manifest = JSON.parse(text.slice(0, text.indexOf("\n") === -1 ? undefined : text.indexOf("\n")));
+  } catch {
+    throw new Error("This isn't a study export.");
+  }
+  const parsed = StudyExportManifestSchema.safeParse(manifest);
+  if (!parsed.success) throw new Error("This isn't a study export.");
+  const m = parsed.data;
+  if (m.formatVersion > STUDY_EXPORT_FORMAT_VERSION)
+    throw new Error(`This export was made with a newer AnnoTinder (${m.client.release}): update this server first.`);
+  const rows = (table: string) => m.tables.find((t) => t.name === table)?.rows ?? 0;
+  return {
+    name: m.study.name,
+    release: m.client.release,
+    exportedAt: m.exportedAt,
+    units: rows("units"),
+    coders: rows("coders"),
+    answers: rows("annotation_values"),
+    designVersions: rows("design_versions"),
+  };
 }

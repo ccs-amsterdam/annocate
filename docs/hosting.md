@@ -576,6 +576,44 @@ from the difference with the last one. Read it, and commit it with the
 change; the next server start applies it. An applied migration is never
 edited. `packages/server/README.md` has the details.
 
+Migrations also upgrade **study exports** (below): an import applies them
+to a database that holds that one study. So a migration must work on any
+subset of studies: no data it inserts that rows depend on, nothing that
+assumes other studies or users are there. A new table that holds a study's
+data goes into `EXPORTED` or `NOT_EXPORTED` in
+`server/src/shared/studyExport.ts` (a test fails otherwise).
+
+## Moving a study
+
+A study's **Settings › Export study** downloads the whole study as one file
+(`<study>_<date>.annotinder.gz`): units, design versions, deployments,
+links, coders, their devices and answers. **Create new study › From a
+file** on this or another server imports it as a new study, with or
+without its coders and answers. Exporting is for the study's ADMINs, and a
+sensitive action (a recent login with a second factor): the file holds
+coders' data, such as participant ids and the emails of coders who logged
+in.
+
+- **Format** (contracts `StudyExportManifestSchema`): gzipped JSON lines, a
+  manifest, then each row as the database holds it (`to_jsonb`). The
+  manifest names the release and the database's last migration.
+- **Importing** (`server/src/shared/studyExport.ts`) loads the rows into an
+  empty in-memory database at that migration, applies the newer migrations,
+  and copies the result into this database in one transaction. An export
+  from an older release therefore opens on a newer one; one from a newer
+  release is refused, and so is one from a database whose migrations this
+  release doesn't know.
+- **What changes**: every row gets a new id (from the tables' own
+  sequences) and references are renumbered. The importer owns the study
+  (and is its ADMIN); links get new secrets (send coders the new links);
+  coders' browsers can't continue (their device keys are new), but a coder
+  who logged in finds their session by logging in. Codings are derived from
+  the answers again.
+- **What stays behind**: the study's other users and their roles, leases,
+  transfer links. Coder ids in results downloaded before the move differ
+  from those after it; match coders by participant id.
+- The importer's limits apply (studies, units, coders).
+
 ## Versions
 
 Each deployment records the release and commit it ran on, in the deploy

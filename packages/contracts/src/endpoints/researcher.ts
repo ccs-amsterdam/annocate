@@ -95,6 +95,19 @@ export const researcherEndpoints = {
     request: RecipeSchema,
     response: StudyResponseSchema,
   },
+  /**
+   * A study export: the whole study (coders and answers included) as a gzipped
+   * file (`StudyExportManifestSchema`). Study ADMIN, and sensitive (a recent
+   * login with a second factor; never an API key): it holds coders' data.
+   */
+  exportStudy: { method: "GET", path: "/study/:id/export", request: z.void(), response: z.void() },
+  /**
+   * A new study from a study export (the request body: the file's bytes).
+   * Query: `name` (else the exported one), `coders=false` (without coders
+   * and their answers). Its migrations are applied first; ids are new, the
+   * importer owns it. 201 with the study.
+   */
+  importStudy: { method: "POST", path: "/study/import", request: z.void(), response: StudyResponseSchema },
   getStudy: { method: "GET", path: "/study/:id", request: z.void(), response: StudyResponseSchema },
   updateStudy: { method: "PUT", path: "/study/:id", request: StudyWriteSchema, response: StudyResponseSchema },
   deleteStudy: { method: "DELETE", path: "/study/:id", request: z.void(), response: z.void() },

@@ -274,6 +274,27 @@ a deploy. `StudyResponseSchema` also has
 
 `DELETE /study/:id` → 204. Removes the study and everything in it.
 
+### exportStudy
+
+`GET /study/:id/export` → the study export (`application/gzip`, a file
+`<study>_<date>.annotinder.gz`): the whole study, coders and answers
+included, as gzipped JSON lines (a manifest, `StudyExportManifestSchema`,
+then the rows). Study ADMIN, and sensitive: a web session with a recent
+second factor (403 `step_up_required`), never an API key (403
+`not_with_api_key`). Logged in `security_log` (`study_exported`). See
+`docs/hosting.md` "Moving a study".
+
+### importStudy
+
+`POST /study/import` with the export's bytes as the body → `StudyResponseSchema`
+(201): a new study from it, owned by the importer (a researcher, within
+their limits). Query: `name` (else the exported one), `coders=false`
+(without coders, their devices and answers; links' uses start at 0). The
+export's rows are migrated to this release first; every id is new and
+links get new secrets. 400 `export_invalid` for a file that isn't an
+export, comes from a newer release or from a database this release doesn't
+know.
+
 ### getStudyUsers
 
 `GET /study/:id/users` → `StudyUserResponseSchema[]`: email and role per

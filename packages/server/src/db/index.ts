@@ -25,7 +25,7 @@ export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 export type Database = Db & { close(): Promise<void> };
 
 const options = { schema, casing: "snake_case" } as const;
-const migrationsFolder = fileURLToPath(new URL("../../migrations/", import.meta.url));
+export const migrationsFolder = fileURLToPath(new URL("../../migrations/", import.meta.url));
 
 /** A PGlite database: in memory, or in a directory. */
 export async function openPglite(dataDir?: string): Promise<Database> {

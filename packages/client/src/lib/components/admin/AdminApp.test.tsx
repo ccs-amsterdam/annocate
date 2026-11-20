@@ -10,6 +10,8 @@ const stubClient: ResearcherApi = {
   listExamples: async () => [],
   createStudyFromExample: () => new Promise(() => {}),
   createStudyFromRecipe: () => new Promise(() => {}),
+  exportStudy: () => new Promise(() => {}),
+  importStudy: () => new Promise(() => {}),
   createStudy: () => new Promise(() => {}),
   deleteStudy: () => new Promise(() => {}),
   getStudy: () => new Promise(() => {}),
