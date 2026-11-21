@@ -11,7 +11,7 @@ import { useLoopTab, type LoopTab } from "./designEditor/loopTab";
 import { issuesAt } from "./issues";
 import { type ShareSource } from "../../design/assignment";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { selectClass, checkableQuestions, agreementQuestions } from "./unitLoop/helpers";
+import { selectClass, checkableQuestions } from "./unitLoop/helpers";
 import { Section } from "./unitLoop/Section";
 import { LayoutTab } from "./unitLoop/LayoutTab";
 import { UnitsEditor } from "./unitLoop/UnitsEditor";
@@ -137,7 +137,6 @@ function UnitsTab({
         units={loop.units ?? {}}
         client={client}
         groups={groups}
-        agreeable={agreementQuestions(loop.children as DesignItem[])}
         checkable={checkableQuestions(loop.children as DesignItem[])}
         answerKey={client && loop.layout ? { client, layout: loop.layout } : undefined}
         screenouts={screenouts}

@@ -1,6 +1,7 @@
 import { cn } from "cn";
 import {
   GOLD_SET,
+  OVERLAP_SET,
   PRACTICE_SET,
   type Criteria,
   type DesignIssue,
@@ -15,16 +16,17 @@ import { shareSummary, valueCounts, type ShareSource } from "../../../design/ass
 import { type AnswerKeyQuestion } from "../units/AnswerKeyDialog";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { selectClass, labelClass, type AnswerKeyContext, allColumns, numberOrUndefined, range } from "./helpers";
-import { OverlapEditor, PracticeEditor, GoldEditor } from "./SpecialUnits";
+import { GoldChecks, PlacementRow, PracticeChecks } from "./SpecialUnits";
 
-// A unit loop's units settings: which of the session's units it hands out (a
-// filter on a set column), a shared queue's criteria, and its special units.
+// A unit loop's units settings (contracts `LoopUnitsSchema`), like a filter
+// on the coder's units: some values of a set column, the coder's own units
+// yes or no, and where the special units go; with the checks on practice and
+// gold units. Who gets which units is the invitation's.
 
-/** A loop's units: its filter, criteria (a shared queue), and the special units. */
+/** A loop's units: its filter, the coder's own units, the special units and their checks. */
 export function UnitsEditor({
   units: settings,
   groups,
-  agreeable,
   checkable,
   answerKey,
   screenouts,
@@ -37,73 +39,86 @@ export function UnitsEditor({
   answerKey?: AnswerKeyContext;
   client?: ResearcherApi;
   groups: SetGroupResponse[];
-  agreeable: string[];
   checkable: AnswerKeyQuestion[];
   screenouts: string[];
   issues: DesignIssue[];
   onChange: (units: LoopUnits) => void;
 }) {
   const special = allColumns(groups);
+  const count = (set: string) => special?.sets.find((s) => s.name === set)?.unitIds.length ?? 0;
   // The column with practice or gold units (their right answers are edited by column)
   const columnWith = (set: string) =>
     groups.find((g) => g.sets.some((s) => s.name === set && s.unitIds.length > 0)) ?? groups[0];
-  const canSpread = !settings.criteria || settings.criteria.unitsPerCoder?.max !== undefined;
-  const without = (key: keyof LoopUnits) => {
-    const next = { ...settings };
-    delete next[key];
-    return next;
+  const set = <K extends keyof LoopUnits>(key: K, value: LoopUnits[K] | undefined) => {
+    const next = { ...settings, [key]: value };
+    if (value === undefined) delete next[key];
+    onChange(next);
   };
+  const shows = (kind: "practice" | "gold", set: string, check: unknown) =>
+    settings[kind] !== "ignore" && (count(set) > 0 || check !== undefined);
   return (
     <div className="flex flex-col gap-3">
       <p className="flex items-center gap-1 text-xs">
         <span>{shareSummary(shareSources, settings.filter)}</span>
         <HelpButton topic="unit-distribution" label="Help: unit distribution" />
       </p>
-      <FilterEditor
-        groups={groups}
-        filter={settings.filter}
-        onChange={(filter) => onChange(filter ? { ...settings, filter } : without("filter"))}
-      />
-      <label className="flex items-center gap-2 text-xs font-semibold">
-        <input
-          type="checkbox"
-          checked={!!settings.criteria}
-          onChange={(e) =>
-            onChange(e.target.checked ? { ...settings, criteria: { codersPerUnit: { min: 1 } } } : without("criteria"))
-          }
+      <FilterEditor groups={groups} filter={settings.filter} onChange={(filter) => set("filter", filter)} />
+      <div className="grid w-fit grid-cols-[auto_2.5rem_auto] items-center gap-x-3 gap-y-1.5">
+        <span className="text-xs font-semibold">The coder&apos;s own units</span>
+        <span />
+        <select
+          className={`${selectClass} w-fit font-normal`}
+          aria-label="The coder's own units"
+          value={settings.own === false ? "no" : "yes"}
+          onChange={(e) => set("own", e.target.value === "no" ? false : undefined)}
+        >
+          <option value="yes">Include</option>
+          <option value="no">Leave out (only special units)</option>
+        </select>
+        <PlacementRow
+          label="Overlap units"
+          help="overlap"
+          count={count(OVERLAP_SET)}
+          value={settings.overlap}
+          onChange={(p) => set("overlap", p === "spread" ? undefined : p)}
         />
-        Share the units among coders (crowd coding): each unit until enough coders coded it
-      </label>
-      {settings.criteria && (
-        <SharedSettings
-          criteria={settings.criteria}
-          agreeable={agreeable}
-          onChange={(criteria) => onChange({ ...settings, criteria })}
+        <PlacementRow
+          label="Practice units"
+          count={count(PRACTICE_SET)}
+          value={settings.practice}
+          onChange={(p) => set("practice", p === "spread" ? undefined : p)}
+        />
+        <PlacementRow
+          label="Gold units"
+          help="special-units"
+          count={count(GOLD_SET)}
+          value={settings.gold}
+          onChange={(p) => set("gold", p === "spread" ? undefined : p)}
+        />
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Special units are those marked {OVERLAP_SET}, {PRACTICE_SET} or {GOLD_SET} in a set column. Spread in a shared
+        queue without a maximum of units per coder: about one in ten.
+      </p>
+      {shows("practice", PRACTICE_SET, settings.practiceCheck) && (
+        <PracticeChecks
+          check={settings.practiceCheck}
+          group={columnWith(PRACTICE_SET)}
+          checkable={checkable}
+          answerKey={answerKey}
+          onChange={(check) => set("practiceCheck", check)}
         />
       )}
-      <OverlapEditor
-        overlap={settings.overlap}
-        group={special}
-        canSpread={canSpread}
-        onChange={(overlap) => onChange(overlap ? { ...settings, overlap } : without("overlap"))}
-      />
-      <PracticeEditor
-        practice={settings.practice}
-        group={columnWith(PRACTICE_SET)}
-        checkable={checkable}
-        answerKey={answerKey}
-        canSpread={canSpread}
-        onChange={(practice) => onChange(practice ? { ...settings, practice } : without("practice"))}
-      />
-      <GoldEditor
-        gold={settings.gold}
-        group={columnWith(GOLD_SET)}
-        checkable={checkable}
-        answerKey={answerKey}
-        screenouts={screenouts}
-        canSpread={canSpread}
-        onChange={(gold) => onChange(gold ? { ...settings, gold } : without("gold"))}
-      />
+      {shows("gold", GOLD_SET, settings.goldCheck) && (
+        <GoldChecks
+          check={settings.goldCheck}
+          group={columnWith(GOLD_SET)}
+          checkable={checkable}
+          answerKey={answerKey}
+          screenouts={screenouts}
+          onChange={(check) => set("goldCheck", check)}
+        />
+      )}
       <IssueList issues={issues} />
     </div>
   );
@@ -139,7 +154,7 @@ function FilterEditor({
             );
           }}
         >
-          <option value="">All the session&apos;s units</option>
+          <option value="">All the coder&apos;s units</option>
           <option value="only">Only those with a value of a set column</option>
           <option value="except">Except those with a value of a set column</option>
         </select>

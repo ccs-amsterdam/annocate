@@ -1,13 +1,13 @@
 import { useState } from "react";
 import {
-  coderAccess,
   designItems,
+  inviteOf,
   sessionItem,
-  sessionParamKey,
+  urlParamKey,
   type LinkResponse,
   type SessionItem,
-  type SessionParam,
   type TopLevelItem,
+  type UrlParam,
 } from "@annotinder/contracts";
 import { Ban, Check, Copy, KeyRound, Pencil, RotateCcw } from "lucide-react";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
@@ -47,27 +47,26 @@ export function LinksPanel({ client }: LinksPanelProps) {
   const version = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data;
   const items = (version ? designItems(version) : []) as TopLevelItem[];
   const session = sessionItem(items);
+  const invite = inviteOf(session);
   // The deployed sets: links are the deployed design's
   const groups = useSetGroupsQuery(client, true).data ?? [];
   const [showRetired, setShowRetired] = useState(false);
 
   // The URL parameters a link takes, with placeholders the panel (or the researcher) fills in.
   const urlParams = [
-    ...(session?.participant ? [`${session.participant.param}=<participant id>`] : []),
-    ...(session?.params ?? [])
-      .filter((p) => p.kind === "url" && p.default === undefined)
-      .map((p) => `${sessionParamKey(p)}=<${p.name}>`),
+    ...(invite.mode === "crowd" && invite.participant ? [`${invite.participant.param}=<participant id>`] : []),
+    ...(session?.urlParams ?? []).filter((p) => p.default === undefined).map((p) => `${urlParamKey(p)}=<${p.name}>`),
   ];
   const linkOf = (link: LinkResponse) => {
     const url = codeLinkUrl(link.studyId, link.secret);
     return urlParams.length ? `${url}${url.includes("?") ? "&" : "?"}${urlParams.join("&")}` : url;
   };
-  // Coders by email address: only those addresses may code, and they sign in.
-  const coderColumn = session?.coders?.column;
+  // Coders signing in with their email address: only those addresses may code.
+  const coderColumn = invite.mode === "coders" && invite.link === "login" ? invite.column : undefined;
   const coderValues = coderColumn
     ? (groups.find((g) => g.name === coderColumn)?.sets ?? []).map((s) => s.name).filter((n) => !n.startsWith("_"))
     : [];
-  const emailCoders = coderValues.length > 0 && coderAccess(coderValues) === "email";
+  const emailCoders = coderValues.length > 0;
 
   const links = linksQuery.data ?? [];
   const active = links.filter((l) => !l.retiredAt);
@@ -389,14 +388,14 @@ function CopyLink({ link, disabled }: { link: string; disabled: boolean }) {
 function LinksPerValue({ session, links }: { session: SessionItem | null; links: { label: string; link: string }[] }) {
   const [param, setParam] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const params = (session?.params ?? []).filter((p) => p.kind === "url" && !("open" in p.values));
+  const params = (session?.urlParams ?? []).filter((p) => p.values !== undefined);
   if (params.length === 0) return null;
-  const valuesOf = (p: SessionParam): string[] => ("list" in p.values ? p.values.list.map((v) => String(v.value)) : []);
+  const valuesOf = (p: UrlParam): string[] => (p.values ?? []).map((v) => String(v.value));
   const chosen = params.find((p) => p.name === param) ?? null;
   const rows = chosen
     ? links.flatMap(({ label, link }) =>
         valuesOf(chosen).map((value) => {
-          const key = sessionParamKey(chosen);
+          const key = urlParamKey(chosen);
           const placeholder = `${key}=<${chosen.name}>`;
           const filled = `${key}=${encodeURIComponent(value)}`;
           return {

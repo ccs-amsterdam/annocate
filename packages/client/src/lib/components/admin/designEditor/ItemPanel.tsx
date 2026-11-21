@@ -8,7 +8,7 @@ import {
   templateNames,
   expandSnippets,
   sessionItem,
-  designUses,
+  supportsAgreement,
   type DesignItem,
   type EndItem,
   type TopLevelItem,
@@ -186,7 +186,7 @@ function ItemEditForm({
         isInsideLoop={isInsideUnitLoop(items, key)}
         screenouts={item.type === "unit_loop" ? screenoutEnds(cleanItems) : undefined}
         shareSources={item.type === "unit_loop" ? loopShareSources(cleanItems) : undefined}
-        uses={designUses(items)}
+        agreementQuestions={item.type === "session" ? agreementQuestions(cleanItems) : undefined}
         onChange={(next) => draft.update(key, next)}
       />
     </fieldset>
@@ -218,13 +218,24 @@ export function PreviewPanel({ client, draft }: { client: ResearcherApi; draft: 
   );
 }
 
-/** What selects a session's units: the coder and assigned conditions, and computed items linked to units. */
+/** What selects a session's units: the invitation's coder, and computed items linked to units. */
 function loopShareSources(items: readonly unknown[]) {
   const { session, items: rest } = splitDesignItems(items);
   const random = [...collectQuestions(rest as DesignItem[]).questions]
     .filter(([, v]) => v.type === "random")
     .map(([name, v]) => ({ name, units: (v as { units?: string }).units }));
-  return shareSources(session, random);
+  return shareSources(session.invite, random);
+}
+
+/** The unit loops' questions whose answers coders can agree on (a crowd's agreement rule). */
+function agreementQuestions(items: TopLevelItem[]): string[] {
+  const names = new Set<string>();
+  for (const loop of items) {
+    if (loop.type !== "unit_loop") continue;
+    for (const q of flattenTree(loop.children as TopLevelItem[]))
+      if (q.type === "question" && supportsAgreement(q.variable)) names.add(q.name);
+  }
+  return [...names];
 }
 
 /**

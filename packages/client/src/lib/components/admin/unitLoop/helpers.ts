@@ -3,7 +3,6 @@ import {
   GOLD_SET,
   OVERLAP_SET,
   PRACTICE_SET,
-  supportsAgreement,
   type AnyVariableType,
   type DesignItem,
   type SetGroupResponse,
@@ -36,7 +35,6 @@ export function questionsOf(items: DesignItem[]): { name: string; variable: AnyV
   );
 }
 
-/** The loop's questions an agreement rule can compare (contracts `supportsAgreement`). */
 /** The loop's questions that gold and practice units can check (compared by value). */
 export function checkableQuestions(items: DesignItem[]): AnswerKeyQuestion[] {
   return items.flatMap((i): AnswerKeyQuestion[] => {
@@ -51,13 +49,6 @@ export function checkableQuestions(items: DesignItem[]): AnswerKeyQuestion[] {
 export interface AnswerKeyContext {
   client: ResearcherApi;
   layout: UnitLayout;
-}
-
-export function agreementQuestions(items: DesignItem[]): string[] {
-  return items.flatMap((i) => {
-    if (i.type === "show_if") return agreementQuestions(i.children as DesignItem[]);
-    return "variable" in i && supportsAgreement(i.variable) ? [i.name] : [];
-  });
 }
 
 /**

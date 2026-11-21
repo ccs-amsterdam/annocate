@@ -39,12 +39,6 @@ export interface DesignTreeState {
   numberOf: (key: string) => number | null;
   /** Whether the item has unsaved changes. */
   isChanged: (item: DesignItem) => boolean;
-  /**
-   * Annotating only: the key of the one unit loop, whose items the tree
-   * shows as the top level (its own row is the "Units" settings: not
-   * ticked, moved or deleted). Null otherwise.
-   */
-  singleLoop: string | null;
 }
 
 const DesignTreeContext = createContext<DesignTreeState | null>(null);

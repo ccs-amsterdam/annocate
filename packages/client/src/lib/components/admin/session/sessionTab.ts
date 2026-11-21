@@ -1,0 +1,25 @@
+import { useSyncExternalStore } from "react";
+
+/** The Study entry form's parts (SessionItemForm): who codes, and the URL parameters. */
+export type SessionTab = "invite" | "urlParams";
+
+// The open part, shared by the form and the buttons above the tree (SessionHeader), which open it on a part.
+let current: SessionTab = "invite";
+const listeners = new Set<() => void>();
+
+function setSessionTab(tab: SessionTab): void {
+  current = tab;
+  listeners.forEach((l) => l());
+}
+
+export function useSessionTab(): [SessionTab, (tab: SessionTab) => void] {
+  const tab = useSyncExternalStore(
+    (l) => {
+      listeners.add(l);
+      return () => listeners.delete(l);
+    },
+    () => current,
+    () => current,
+  );
+  return [tab, setSessionTab];
+}

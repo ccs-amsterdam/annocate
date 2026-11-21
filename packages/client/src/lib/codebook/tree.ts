@@ -97,15 +97,16 @@ export function itemAtPath(items: (TopLevelItem | InLoopItem)[], path: (string |
   return found;
 }
 
-/** What a unit loop goes over, for the codebook tree: its filter, whether it is shared, and the overlap. */
+/** What a unit loop goes over, for the codebook tree: its filter, and special units not spread (the default). */
 export function loopUnitsSummary(loop: UnitLoopItem): string {
   const branch = loop.units ?? {};
   const filter = branch.filter;
   const units = filter
     ? `${filter.column} ${filter.only ? "" : "not "}${(filter.only ?? filter.except ?? []).join(", ")}`
-    : "the session's units";
-  const overlap = branch.overlap && branch.overlap.placement !== "disabled" ? " + overlap" : "";
-  return `${units}${branch.criteria ? ", shared" : ""}${overlap}`;
+    : "the coder's units";
+  const special = (["overlap", "practice", "gold"] as const).filter((k) => branch[k] && branch[k] !== "spread");
+  const own = branch.own === false ? ", only special units" : "";
+  return `${units}${own}${special.map((k) => `, ${k} ${branch[k] === "ignore" ? "left out" : branch[k]}`).join("")}`;
 }
 
 /**

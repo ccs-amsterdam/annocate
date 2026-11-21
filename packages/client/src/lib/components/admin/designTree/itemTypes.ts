@@ -9,6 +9,7 @@ import {
   HelpCircle,
   ListOrdered,
   Link2,
+  ListChecks,
   LogOut,
   Repeat,
   Shuffle,
@@ -30,6 +31,13 @@ interface ItemTypeInfo {
 }
 
 export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
+  questions: {
+    label: "Questions",
+    description: "A block of questions for coders (before, between or after unit loops)",
+    icon: ListChecks,
+    color: "text-secondary-dark",
+    blockClass: "border-y-2 rounded-none border-secondary/20 py-1 my-1",
+  },
   question: {
     label: "Question",
     description: "Prompt coder for an answer",
@@ -58,7 +66,7 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
   },
   session: {
     label: "Session",
-    description: "Link and URL parameters ($session), participant id",
+    description: "Coder invitations and URL parameters",
     icon: Link2,
     color: "text-muted-foreground",
   },

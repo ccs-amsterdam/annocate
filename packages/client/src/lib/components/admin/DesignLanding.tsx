@@ -10,7 +10,6 @@ import {
   useUnitsQuery,
 } from "../../admin/queries";
 import { describeVersions } from "../../design/versions";
-import { useDesignUses } from "../../admin/useDesignUses";
 
 /**
  * The Design section's start (docs/client.md §7): the two parts of a design,
@@ -41,7 +40,6 @@ export function DesignLanding({
   const units = unitsQuery.data?.length ?? null;
   const fields = fieldsQuery.data ?? [];
   // Questions only: no units
-  const noUnits = useDesignUses(client)?.content === "questions";
 
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-4 py-2 sm:grid-cols-2">
@@ -69,7 +67,7 @@ export function DesignLanding({
           </Fact>
         )}
       </DesignCard>
-      {!noUnits && (
+      {
         <DesignCard
           icon={<Layers className="h-6 w-6" />}
           title="Units"
@@ -104,7 +102,7 @@ export function DesignLanding({
             )}
           </Fact>
         </DesignCard>
-      )}
+      }
     </div>
   );
 }

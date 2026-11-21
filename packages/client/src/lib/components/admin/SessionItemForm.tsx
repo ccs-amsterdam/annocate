@@ -1,253 +1,128 @@
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Globe, Link2, Plus, Trash2 } from "lucide-react";
 import {
-  CONFIRM_LINKS,
-  MAX_LINKS,
-  OVERLAP_SET,
-  linkCombinations,
-  linkKey,
+  urlParamKey,
   type DesignIssue,
   type SessionItem,
-  type SessionParam,
-  type SessionValues,
   type SetGroupResponse,
-  type DesignUses,
+  type UrlParam,
 } from "@annotinder/contracts";
+import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../help/HelpButton";
 import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
-import { AssignmentSettings } from "./AssignmentSettings";
+import { SegmentedToggle } from "./designEditor/SegmentedToggle";
+import { InvitationSettings } from "./session/InvitationSettings";
+import { useSessionTab } from "./session/sessionTab";
 
-const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 
-/** What a parameter's values are, as a select value. */
-const valuesKind = (values: SessionValues) => ("list" in values ? "list" : "open");
-
 /**
- * The design's Study entry, always first in the editor: its public info
- * (the title coders see) and its session (docs/architecture.md §6
- * §3): link parameters (a link per combination of their values), URL
- * parameters (added to a link by whoever shares it, e.g. a panel), the
- * participant id's URL parameter and the sample size per link. Session
- * values are `$session.<name>`.
+ * The design's Study entry (docs/architecture.md §6), in two parts: the
+ * coder invitation (who codes, and how they get in) and the URL parameters
+ * (values a link carries, e.g. from a panel: `$session.<name>`). The public
+ * title is edited above the tree, the normal end in its "At the end" row.
  */
 export function SessionItemForm({
   item,
   groups,
   issues,
-  uses,
+  client,
+  agreementQuestions = [],
   onChange,
 }: {
   item: SessionItem;
   groups: SetGroupResponse[];
   issues: DesignIssue[];
-  /** What the design uses: without units no coder column; without an experiment, conditions only select units. */
-  uses: DesignUses;
+  /** To make a coders' column (absent: read only). */
+  client?: ResearcherApi;
+  /** Unit loop questions an agreement rule can use. */
+  agreementQuestions?: string[];
   onChange: (item: SessionItem) => void;
 }) {
-  const setsOf = (group: string) =>
-    groups
-      .find((g) => g.name === group)
-      ?.sets.filter((s) => s.name !== OVERLAP_SET)
-      .map((s) => s.name) ?? [];
-  const params = item.params;
-  const setParam = (i: number, param: SessionParam) =>
-    onChange({ ...item, params: params.map((p, j) => (j === i ? param : p)) });
-  const linkParams = params.filter((p) => p.kind === "link");
-  // Every combination (ignoring the listed ones), and those that make links
-  const all = linkCombinations({ ...item, combinations: undefined }, setsOf);
-  const links = linkCombinations(item, setsOf);
-  const chosen = new Set((item.combinations ?? []).map(linkKey));
-
-  const addParam = () => {
-    let n = params.length + 1;
-    while (params.some((p) => p.name === `param_${n}`)) n++;
-    onChange({
-      ...item,
-      params: [...params, { name: `param_${n}`, kind: "link", values: { list: [{ value: "a" }, { value: "b" }] } }],
-    });
+  const [tab, setTab] = useSessionTab();
+  const set = <K extends "invite" | "urlParams">(key: K, value: SessionItem[K] | undefined) => {
+    const next = { ...item, [key]: value };
+    if (value === undefined) delete next[key];
+    onChange(next);
   };
-
   return (
-    <div className="flex flex-col gap-5">
-      {/* The public title is edited above the item tree (SessionHeader) */}
-      <h2 className="-mb-3 flex items-center gap-1.5 text-sm font-semibold">
-        Session
-        <InfoTip label="About the session">
-          How a coder&apos;s session starts: which units are theirs (coders, conditions), the links and their
-          parameters, URL parameters from a panel, the participant id, and the sample size per link.
-        </InfoTip>
-      </h2>
-      <AssignmentSettings item={item} groups={groups} issues={issues} uses={uses} onChange={onChange} />
-      <section className="flex flex-col gap-2">
-        <h3 className="flex items-center gap-1.5 text-xs font-semibold">
-          Parameters
-          <InfoTip label="About session parameters">
-            Values a session starts with, used as <span className="font-mono">$session.name</span> in conditions and
-            texts. A <strong>link parameter</strong> is fixed in the link: every value (or combination of values) gets
-            its own link on the Links page. A <strong>URL parameter</strong> is added to a link by whoever shares it
-            (e.g. <span className="font-mono">?wave=2</span>). Built in:{" "}
-            <span className="font-mono">$session.participant</span>, <span className="font-mono">$session.source</span>{" "}
-            (the optional <span className="font-mono">?source=</span> of any link) and{" "}
-            <span className="font-mono">$session.email</span>.
-          </InfoTip>
-          <HelpButton topic="session-parameters" label="Help: session parameters" />
-        </h3>
-        {params.map((param, i) => (
-          <ParamEditor
-            key={i}
-            param={param}
-            issues={issuesAt(issues, "params", i)}
-            onChange={(next) => setParam(i, next)}
-            onRemove={() => onChange({ ...item, params: params.filter((_, j) => j !== i) })}
-          />
-        ))}
-        <Button type="button" variant="outline" size="sm" className="w-fit" onClick={addParam}>
-          <Plus className="h-3.5 w-3.5" /> Parameter
-        </Button>
-      </section>
-
-      {linkParams.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h3 className="text-xs font-semibold">Links</h3>
-          <p
-            className={`text-[11px] ${links.length > CONFIRM_LINKS ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}
-          >
-            Deploying makes {links.length} link{links.length === 1 ? "" : "s"}
-            {item.combinations ? ` (of ${all.length} combinations)` : ""}.
-            {links.length > MAX_LINKS
-              ? ` At most ${MAX_LINKS} are possible: choose the combinations you need.`
-              : links.length > CONFIRM_LINKS
-                ? " That is a lot: deploying asks to confirm."
-                : ""}
-          </p>
-          {linkParams.length > 1 && (
-            <label className="flex items-center gap-2 text-xs">
-              <input
-                type="checkbox"
-                checked={item.combinations !== undefined}
-                onChange={(e) => {
-                  const next = { ...item };
-                  if (e.target.checked) next.combinations = all.slice(0, MAX_LINKS);
-                  else delete next.combinations;
-                  onChange(next);
-                }}
-              />
-              Only some combinations
-            </label>
-          )}
-          {item.combinations !== undefined && (
-            <div className="flex max-h-60 flex-col gap-0.5 overflow-y-auto rounded-md border border-border p-2 text-xs">
-              {all.slice(0, 500).map((combo) => {
-                const key = linkKey(combo);
-                return (
-                  <label key={key} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={chosen.has(key)}
-                      onChange={(e) =>
-                        onChange({
-                          ...item,
-                          combinations: e.target.checked
-                            ? [...(item.combinations ?? []), combo]
-                            : (item.combinations ?? []).filter((c) => linkKey(c) !== key),
-                        })
-                      }
-                    />
-                    <span className="font-mono">
-                      {Object.entries(combo)
-                        .map(([k, v]) => `${k}=${v}`)
-                        .join(", ")}
-                    </span>
-                  </label>
-                );
-              })}
-              {all.length > 500 && (
-                <span className="text-muted-foreground">
-                  … and {all.length - 500} more (edit them in the JSON view)
-                </span>
-              )}
-            </div>
-          )}
-        </section>
+    <div className="flex flex-col gap-4">
+      <SegmentedToggle
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: "invite", label: "Coder invitations", icon: Globe },
+          { value: "urlParams", label: "URL parameters", icon: Link2 },
+        ]}
+      />
+      {tab === "invite" ? (
+        <InvitationSettings
+          invite={item.invite}
+          groups={groups}
+          issues={issues}
+          client={client}
+          agreementQuestions={agreementQuestions}
+          onChange={(invite) => set("invite", invite)}
+        />
+      ) : (
+        <UrlParamsSettings
+          params={item.urlParams ?? []}
+          issues={issuesAt(issues, "urlParams")}
+          onChange={(params) => set("urlParams", params.length > 0 ? params : undefined)}
+        />
       )}
-
-      <section className="flex flex-col gap-1">
-        <label className="flex flex-col gap-1 text-xs font-semibold">
-          <span className="flex items-center gap-1">
-            Sessions per link (sample size)
-            <InfoTip label="About the sample size per link">
-              Each link takes at most this many sessions, e.g. 40 per condition. A link&apos;s own limit (Deploy, Links)
-              overrides it.
-            </InfoTip>
-          </span>
-          <Input
-            type="number"
-            min={1}
-            className="h-8 w-28 text-xs font-normal"
-            placeholder="no limit"
-            value={item.maxUses ?? ""}
-            onChange={(e) => {
-              const next = { ...item, maxUses: e.target.value === "" ? undefined : Number(e.target.value) };
-              if (next.maxUses === undefined) delete next.maxUses;
-              onChange(next);
-            }}
-          />
-        </label>
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <label className="flex items-center gap-2 text-xs font-semibold">
-          <input
-            type="checkbox"
-            checked={item.participant !== undefined}
-            onChange={(e) => {
-              const next = { ...item };
-              if (e.target.checked) next.participant = { param: "PROLIFIC_PID" };
-              else delete next.participant;
-              onChange(next);
-            }}
-          />
-          Participant id from a URL parameter
-          <HelpButton topic="online-panels" label="Help: online panels" />
-        </label>
-        {item.participant && (
-          <div className="flex flex-wrap gap-3 pl-6">
-            <label className={labelClass}>
-              URL parameter
-              <Input
-                className="h-8 w-48 font-mono text-xs font-normal"
-                value={item.participant.param}
-                onChange={(e) => onChange({ ...item, participant: { ...item.participant!, param: e.target.value } })}
-              />
-            </label>
-            <label className={labelClass}>
-              Pattern (optional)
-              <Input
-                className="h-8 w-48 font-mono text-xs font-normal"
-                placeholder="e.g. [0-9a-f]{24}"
-                value={item.participant.pattern ?? ""}
-                onChange={(e) =>
-                  onChange({ ...item, participant: { ...item.participant!, pattern: e.target.value || undefined } })
-                }
-              />
-            </label>
-            <InfoTip label="About participant ids">
-              Required to start: a link without it, or with a value not matching the pattern, is refused. A participant
-              id is a label, not a password: the same id on another device starts a new session (after asking).
-            </InfoTip>
-          </div>
-        )}
-      </section>
-
-      <IssueList issues={issues.filter((i) => !i.path.includes("params"))} />
+      <IssueList issues={issues.filter((i) => !i.path.includes("invite") && !i.path.includes("urlParams"))} />
     </div>
   );
 }
+
+function UrlParamsSettings({
+  params,
+  issues,
+  onChange,
+}: {
+  params: UrlParam[];
+  issues: DesignIssue[];
+  onChange: (params: UrlParam[]) => void;
+}) {
+  const add = () => {
+    let n = params.length + 1;
+    while (params.some((p) => p.name === `param_${n}`)) n++;
+    onChange([...params, { name: `param_${n}` }]);
+  };
+  return (
+    <section className="flex flex-col gap-2">
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        Values a link carries, added by whoever shares it (e.g. <span className="font-mono">?wave=2</span>, or a
+        panel&apos;s study id). Use them as <span className="font-mono">$session.name</span> in conditions and texts.
+        <InfoTip label="About URL parameters">
+          A parameter without a default is required: a link without it doesn&apos;t start. Built in:{" "}
+          <span className="font-mono">$session.source</span> (the optional <span className="font-mono">?source=</span>{" "}
+          of any link), and <span className="font-mono">$session.participant</span> with a crowd&apos;s participant id.
+        </InfoTip>
+        <HelpButton topic="session-parameters" label="Help: URL parameters" />
+      </p>
+      {params.map((param, i) => (
+        <ParamEditor
+          key={i}
+          param={param}
+          issues={issuesAt(issues, i)}
+          onChange={(next) => onChange(params.map((p, j) => (j === i ? next : p)))}
+          onRemove={() => onChange(params.filter((_, j) => j !== i))}
+        />
+      ))}
+      <Button type="button" variant="outline" size="sm" className="w-fit" onClick={add}>
+        <Plus className="h-3.5 w-3.5" /> URL parameter
+      </Button>
+    </section>
+  );
+}
+
+type ValuesKind = "any" | "list" | "pattern";
 
 function ParamEditor({
   param,
@@ -255,53 +130,52 @@ function ParamEditor({
   onChange,
   onRemove,
 }: {
-  param: SessionParam;
+  param: UrlParam;
   issues: DesignIssue[];
-  onChange: (param: SessionParam) => void;
+  onChange: (param: UrlParam) => void;
   onRemove: () => void;
 }) {
-  const kind = valuesKind(param.values);
-  const setKind = (next: "link" | "url") => {
-    const p: SessionParam = { ...param, kind: next };
-    if (next === "link") {
-      delete p.param;
-      delete p.default;
-      if ("open" in p.values) p.values = { list: [{ value: "a" }] };
-    }
-    onChange(p);
+  const kind: ValuesKind = param.values ? "list" : param.pattern !== undefined ? "pattern" : "any";
+  const update = (patch: Partial<UrlParam>) => {
+    const next = { ...param, ...patch } as UrlParam & Record<string, unknown>;
+    for (const [k, v] of Object.entries(patch)) if (v === undefined) delete next[k];
+    onChange(next);
   };
-  const setValues = (values: SessionValues) => onChange({ ...param, values });
+  const setKind = (next: ValuesKind) =>
+    update({
+      values: next === "list" ? [{ value: "a" }] : undefined,
+      pattern: next === "pattern" ? "[0-9]+" : undefined,
+    });
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border p-3">
       <div className="flex flex-wrap items-end gap-3">
         <label className={labelClass}>
           Name
           <Input
-            className="h-8 w-40 font-mono text-xs font-normal"
+            className="h-8 w-36 font-mono text-xs font-normal"
             value={param.name}
-            onChange={(e) => onChange({ ...param, name: e.target.value })}
+            onChange={(e) => update({ name: e.target.value })}
           />
         </label>
         <label className={labelClass}>
-          Kind
-          <select
-            className={`${selectClass} font-normal`}
-            value={param.kind}
-            onChange={(e) => setKind(e.target.value as "link" | "url")}
-          >
-            <option value="link">Link parameter (a link per value)</option>
-            <option value="url">URL parameter (?{param.param ?? param.name}=…)</option>
-          </select>
+          In the URL as
+          <Input
+            className="h-8 w-36 font-mono text-xs font-normal"
+            placeholder={param.name}
+            value={param.param ?? ""}
+            onChange={(e) => update({ param: e.target.value || undefined })}
+          />
         </label>
         <label className={labelClass}>
           Values
           <select
-            className={`${selectClass} font-normal`}
+            className="h-8 rounded-md border border-input bg-background px-2 text-xs font-normal"
             value={kind}
-            onChange={(e) => setValues(e.target.value === "list" ? { list: [{ value: "a" }] } : { open: {} })}
+            onChange={(e) => setKind(e.target.value as ValuesKind)}
           >
+            <option value="any">Any value</option>
             <option value="list">From a list</option>
-            {param.kind === "url" && <option value="open">Any value</option>}
+            <option value="pattern">Matching a pattern</option>
           </select>
         </label>
         <Button
@@ -315,58 +189,45 @@ function ParamEditor({
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>
-
-      {"list" in param.values && (
+      {param.values && (
         <ListValues
-          values={param.values.list.map((v) => v.value)}
-          onChange={(list) => setValues({ list: list.map((value) => ({ value })) })}
+          values={param.values.map((v) => v.value)}
+          onChange={(list) => update({ values: list.length > 0 ? list.map((value) => ({ value })) : [{ value: "" }] })}
         />
       )}
-      {"open" in param.values && (
+      {param.pattern !== undefined && (
         <label className={labelClass}>
-          Pattern (optional)
+          Pattern
           <Input
             className="h-8 w-56 font-mono text-xs font-normal"
             placeholder="e.g. [0-9]+"
-            value={param.values.open.pattern ?? ""}
-            onChange={(e) => setValues({ open: { pattern: e.target.value || undefined } })}
+            value={param.pattern}
+            onChange={(e) => update({ pattern: e.target.value })}
           />
         </label>
       )}
-
-      {param.kind === "url" && (
-        <div className="flex flex-wrap items-end gap-3">
-          <label className={labelClass}>
-            URL key
-            <Input
-              className="h-8 w-40 font-mono text-xs font-normal"
-              placeholder={param.name}
-              value={param.param ?? ""}
-              onChange={(e) => onChange({ ...param, param: e.target.value || undefined })}
-            />
-          </label>
-          <label className={labelClass}>
-            Default
-            <Input
-              className="h-8 w-40 text-xs font-normal"
-              placeholder="none: required"
-              value={param.default ?? ""}
-              onChange={(e) => onChange({ ...param, default: e.target.value || undefined })}
-            />
-          </label>
-          <span className="text-[11px] text-muted-foreground">
-            {param.default === undefined
-              ? "Required: a link without it doesn't start."
-              : "Used when the link has none."}
-          </span>
-        </div>
-      )}
+      <div className="flex flex-wrap items-end gap-3">
+        <label className={labelClass}>
+          Default
+          <Input
+            className="h-8 w-40 text-xs font-normal"
+            placeholder="none: required"
+            value={param.default ?? ""}
+            onChange={(e) => update({ default: e.target.value || undefined })}
+          />
+        </label>
+        <span className="text-[11px] text-muted-foreground">
+          {param.default === undefined
+            ? `Required: a link without ?${urlParamKey(param)}= doesn't start.`
+            : "Used when the link has none."}
+        </span>
+      </div>
       <label className={labelClass}>
         Description (optional)
         <Input
           className="h-8 text-xs font-normal"
           value={param.description ?? ""}
-          onChange={(e) => onChange({ ...param, description: e.target.value || undefined })}
+          onChange={(e) => update({ description: e.target.value || undefined })}
         />
       </label>
       <IssueList issues={issues} />

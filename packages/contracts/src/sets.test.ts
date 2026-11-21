@@ -55,6 +55,16 @@ describe("splitIntoSets", () => {
       { name: "_overlap", units: [1] },
     ]);
   });
+
+  it("gives each unit to several sets: coders per unit", () => {
+    const ids = Array.from({ length: 6 }, (_, i) => i + 1);
+    const sets = splitIntoSets(ids, { sets: 3, perUnit: 2, shuffle: false });
+    expect(sets.map((s) => s.units)).toEqual([
+      [1, 3, 4, 6],
+      [1, 2, 4, 5],
+      [2, 3, 5, 6],
+    ]);
+  });
 });
 
 describe("addToSets", () => {

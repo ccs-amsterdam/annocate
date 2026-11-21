@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { TopLevelItem } from "@annotinder/contracts";
-import { insertableTypesAt, singleLoop } from "./utils";
+import { insertableTypesAt, topBlocks } from "./utils";
 
-const session = (uses?: object) => ({ type: "session", params: [], ...(uses ? { uses } : {}) });
-const question = (name: string) => ({ type: "question", name, variable: { type: "confirm", question: "?" } });
+const session = { type: "session", _key: "S" };
+const question = (key: string) => ({
+  type: "question",
+  _key: key,
+  name: key,
+  variable: { type: "confirm", question: "?" },
+});
 const loop = (key: string) => ({
   type: "unit_loop",
   _key: key,
@@ -12,28 +17,23 @@ const loop = (key: string) => ({
 });
 const items = (...list: object[]) => list as unknown as TopLevelItem[];
 
-describe("what the editor offers, by what the design uses", () => {
-  it("annotating only: nothing outside the one loop, whose items are the top level", () => {
-    const design = items(session({ content: "annotate", experiment: true }), loop("L"));
-    expect(insertableTypesAt(design, { into: null })).toEqual([]);
-    expect(insertableTypesAt(design, { into: "L" })).toEqual(["question", "show_if", "end"]);
-    expect(singleLoop(design)).toMatchObject({ _key: "L" });
-    // Worked out from the design: one loop and nothing else
-    expect(singleLoop(items(session(), loop("L")))).toMatchObject({ _key: "L" });
+describe("the tree's blocks", () => {
+  const design = items(session, question("a"), question("b"), loop("L1"), loop("L2"), question("c"));
+
+  it("groups the items between unit loops in Questions blocks", () => {
+    expect(
+      topBlocks(design).map((b) =>
+        b.kind === "loop"
+          ? (b.item as unknown as { _key: string })._key
+          : b.items.map((i) => (i as unknown as { _key: string })._key),
+      ),
+    ).toEqual([["a", "b"], "L1", "L2", ["c"]]);
   });
 
-  it("questions only: no unit loops; computed items with an experiment", () => {
-    expect(
-      insertableTypesAt(items(session({ content: "questions", experiment: false }), question("q")), { into: null }),
-    ).toEqual(["question", "show_if", "end"]);
-    expect(
-      insertableTypesAt(items(session({ content: "questions", experiment: true }), question("q")), { into: null }),
-    ).toEqual(["question", "computed", "show_if", "end"]);
-  });
-
-  it("both: questions, loops, and computed items with an experiment", () => {
-    const design = items(session({ content: "both", experiment: false }), question("q"), loop("L"));
-    expect(insertableTypesAt(design, { into: null })).toEqual(["question", "unit_loop", "show_if", "end"]);
-    expect(singleLoop(design)).toBeNull();
+  it("offers blocks between blocks, and items in them", () => {
+    expect(insertableTypesAt(design, { into: null })).toEqual(["questions", "unit_loop"]);
+    expect(insertableTypesAt(design, { after: "L1" })).toEqual(["questions", "unit_loop"]);
+    expect(insertableTypesAt(design, { after: "a" })).toEqual(["question", "computed", "show_if", "end"]);
+    expect(insertableTypesAt(design, { into: "L1" })).toEqual(["question", "show_if", "end"]);
   });
 });

@@ -402,17 +402,10 @@ function DistributionStep({ a, set }: StepProps) {
               units={a.units?.units.length ?? 0}
               onChange={(overlap) => update({ overlap })}
             />
-            <fieldset className="space-y-1.5">
-              <legend className="text-xs font-medium text-muted-foreground">How coders get a set</legend>
-              <label className="flex items-center gap-2">
-                <input type="radio" checked={d.handOut === "rotate"} onChange={() => update({ handOut: "rotate" })} />
-                One link: each new coder gets the set with the fewest coders
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="radio" checked={d.handOut === "links"} onChange={() => update({ handOut: "links" })} />A
-                link per set (made when you deploy): you decide who gets which (e.g. a few expert coders)
-              </label>
-            </fieldset>
+            <p className="text-xs text-muted-foreground">
+              Each set is a coder&apos;s: deploying makes a link per coder. You can rename the coders (or use their
+              email addresses) on the Units page.
+            </p>
             {a.units && sets.length > 0 && (
               <p className="text-xs text-muted-foreground">
                 {sets.map((s) => `${s.name}: ${s.units.length}`).join(", ")}
@@ -722,7 +715,7 @@ function distributionSummary(d: SetupDistribution): string {
     case "all":
       return "Every coder codes every unit.";
     case "sets":
-      return `${d.source === "split" ? `The units in ${d.sets} sets` : `A set per value of ${d.column}`}, one per coder${overlap}; ${d.handOut === "links" ? "a link per set" : "each new session gets the set with the fewest sessions"}.`;
+      return `${d.source === "split" ? `The units in ${d.sets} sets` : `A set per value of ${d.column}`}, one per coder${overlap}; a link per coder.`;
     case "crowd": {
       const until = d.shared.until;
       const coders = d.shared.codersPerUnit?.min ?? 1;
@@ -763,8 +756,8 @@ function CreateStep({ a, problems }: { a: SetupAnswers; problems: string[] }) {
     lines.push(`${count("unit")} question(s) about each unit.`);
     if (lists.includes("after") && count("after") > 0) lines.push(`${count("after")} question(s) after the units.`);
   }
-  const perSet = a.parts.annotate && d.mode === "sets" && d.handOut === "links";
-  lines.push(perSet ? "A link per set, made when you publish." : "An open link, made when you publish.");
+  const perSet = a.parts.annotate && d.mode === "sets";
+  lines.push(perSet ? "A link per coder, made when you deploy." : "An open link, made when you deploy.");
   return (
     <>
       <ul className="list-disc space-y-1 pl-5 text-sm text-foreground">

@@ -33,6 +33,6 @@ export function defaultItemForType(type: DesignItem["type"], name: string): Desi
     case "end":
       return { type: "end", name, outcome: "screenout" };
     case "session":
-      return { type: "session", params: [] };
+      return { type: "session" };
   }
 }

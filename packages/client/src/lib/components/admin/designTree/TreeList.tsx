@@ -1,10 +1,63 @@
+import { ListChecks } from "lucide-react";
 import { cn } from "cn";
+import type { TopLevelItem } from "@annotinder/contracts";
 import type { TreePosition } from "../../../design/itemEdit";
 import { TreeItemRow } from "./TreeItemRow";
 import { ITEM_TYPES } from "./itemTypes";
-import { InsertionLine } from "./TreeRow";
+import { InsertionLine, TreeRow } from "./TreeRow";
+import { AddItemMenu } from "./AddItemMenu";
 import { samePosition, useDesignTree } from "./context";
-import { getChildren, getItemKey, type TreeNode } from "./utils";
+import { getChildren, getItemKey, topBlocks, type TreeNode } from "./utils";
+
+/**
+ * The design's top level as blocks (`topBlocks`): unit loops, and the items
+ * between them as Questions blocks. The blocks are only how the tree shows
+ * them: the design keeps one list.
+ */
+export function BlockList({ items }: { items: TopLevelItem[] }) {
+  const tree = useDesignTree();
+  return (
+    <div className="flex flex-col">
+      {topBlocks(items).map((block) => {
+        if (block.kind === "loop") return <TreeNodeView key={getItemKey(block.item)} item={block.item} />;
+        const last = block.items[block.items.length - 1];
+        const after: TreePosition = { after: getItemKey(last) };
+        const count = block.items.length;
+        return (
+          <div key={block.key} className={cn("my-0.5 rounded-md pb-1", ITEM_TYPES.questions.blockClass)}>
+            <TreeRow
+              dimActions
+              actions={
+                tree.readOnly || tree.moving ? null : (
+                  <AddItemMenu
+                    title="Add a unit loop after this block"
+                    options={[{ position: after, label: "After this block", types: ["unit_loop"] }]}
+                    onAdd={tree.addAt}
+                    onPreview={tree.setPreview}
+                  />
+                )
+              }
+            >
+              {!tree.readOnly && <span className="mr-px h-3.5 w-3.5 shrink-0" aria-hidden />}
+              <span className="w-4 shrink-0" />
+              <ListChecks className={cn("h-4 w-4 shrink-0", ITEM_TYPES.questions.color)} />
+              <span className="truncate px-1.5 py-0.5 font-medium">Questions</span>
+              <span className="truncate text-xs text-muted-foreground">
+                {count === 1 ? "1 item" : `${count} items`}
+              </span>
+            </TreeRow>
+            <div className="pl-6">
+              {block.items.map((item) => (
+                <TreeNodeView key={getItemKey(item)} item={item as TreeNode} />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      <PreviewLine position={{ into: null }} />
+    </div>
+  );
+}
 
 interface TreeListProps {
   nodes: TreeNode[];

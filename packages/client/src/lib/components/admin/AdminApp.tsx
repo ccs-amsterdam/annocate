@@ -40,7 +40,6 @@ import { PendingDeployBar } from "./PendingDeployBar";
 import { openHelp } from "../../help/helpStore";
 import { DesignLanding } from "./DesignLanding";
 import type { TabId } from "../../admin/tabs";
-import { useDesignUses } from "../../admin/useDesignUses";
 
 /**
  * Where the researcher is (the app's URL, router.tsx): the studies, the server
@@ -268,11 +267,7 @@ function StudyAdminView({
   const studyQuery = useStudyQuery(client);
   const allStudiesQuery = useStudiesQuery(rootClient);
   const study = studyQuery.data;
-  // Questions only: no units, so no Units page (the Design section's start page shows the editor alone)
-  const noUnits = useDesignUses(client)?.content === "questions";
-  const groups = GROUPS.map((g) =>
-    g.label === "Design" && noUnits ? { ...g, pages: g.pages.filter((p) => p.id !== "Units") } : g,
-  );
+  const groups = GROUPS;
 
   const [isDesignDirty, setIsDesignDirty] = useState(false);
   // Leaving the editor with unsaved edits (a tab, another study, the browser's back button): asked first

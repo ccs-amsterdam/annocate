@@ -148,6 +148,8 @@ export function splitIntoSets<T>(
     shuffle?: boolean;
     seed?: number;
     prefix?: string;
+    /** Each unit (but the overlap) goes to this many sets (e.g. coders per unit; default 1, at most `sets`). */
+    perUnit?: number;
   },
 ): { name: string; units: T[] }[] {
   const ids = options.shuffle === false ? [...units] : seededShuffle(units, options.seed ?? 0);
@@ -158,6 +160,16 @@ export function splitIntoSets<T>(
   const overlap = ids.slice(0, overlapN);
   const rest = ids.slice(overlapN);
   const n = Math.max(1, options.sets);
+  const perUnit = Math.min(n, Math.max(1, Math.floor(options.perUnit ?? 1)));
+  if (perUnit > 1) {
+    // Unit i to sets i, i+1, ... (mod n): every set gets about as many
+    const out = Array.from({ length: n }, (_, p) => ({ name: `${options.prefix ?? "s"}${p + 1}`, units: [] as T[] }));
+    rest.forEach((unit, i) => {
+      for (let j = 0; j < perUnit; j++) out[(i + j) % n].units.push(unit);
+    });
+    if (overlap.length > 0) out.push({ name: OVERLAP_SET, units: overlap });
+    return out;
+  }
   const base = Math.floor(rest.length / n);
   const extra = rest.length % n;
   const out: { name: string; units: T[] }[] = [];

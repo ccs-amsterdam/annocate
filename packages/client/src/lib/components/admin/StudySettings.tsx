@@ -6,12 +6,9 @@ import {
   useDesignVersionsQuery,
   useCreateStudyMutation,
   useDeleteStudyMutation,
-  useSetGroupsQuery,
   useStudyQuery,
   useUpdateStudyMutation,
 } from "../../admin/queries";
-import { coderSummary, columnValues } from "../../design/assignment";
-import { SignInSetting } from "./SignInSetting";
 import { InfoTip } from "@/components/ui/info-tip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,7 +77,6 @@ function StudyEditForm({
   const [name, setName] = useState(study.name);
   const [archived, setArchived] = useState(study.archived);
   const [keepOpen, setKeepOpen] = useState(study.keepSessionsOpen);
-  const [signIn, setSignIn] = useState(study.signIn);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [redirects, setRedirects] = useState<Record<string, string>>(study.redirectUrls ?? {});
   // The end items' redirect settings in the latest design version, and any URL already set
@@ -91,15 +87,8 @@ function StudyEditForm({
   ];
   // Compared as saved: without empty URLs, in any key order (the server stores JSONB)
   const redirectsDirty = JSON.stringify(setUrls(redirects)) !== JSON.stringify(setUrls(study.redirectUrls ?? {}));
-  const coderColumn = latest?.session?.coders?.column;
-  const groups = useSetGroupsQuery(client).data ?? [];
-  const emailCoders = !!coderColumn && coderSummary(columnValues(groups, coderColumn)).kind === "emails";
   const dirty =
-    name !== study.name ||
-    archived !== study.archived ||
-    keepOpen !== study.keepSessionsOpen ||
-    signIn !== study.signIn ||
-    redirectsDirty;
+    name !== study.name || archived !== study.archived || keepOpen !== study.keepSessionsOpen || redirectsDirty;
 
   return (
     <div className="max-w-md space-y-6">
@@ -114,7 +103,6 @@ function StudyEditForm({
               name,
               archived,
               keepSessionsOpen: keepOpen,
-              signIn: emailCoders ? "required" : signIn,
               redirectUrls,
             },
           });
@@ -134,8 +122,6 @@ function StudyEditForm({
           />
           <span>Archived (hide from active coding lists)</span>
         </label>
-
-        <SignInSetting value={signIn} onChange={setSignIn} emailCoders={emailCoders} />
 
         <label className="flex cursor-pointer items-start gap-2 text-sm text-foreground">
           <input

@@ -2,14 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import {
   undeclaredFields,
   designItems,
-  inferUses,
   splitDesignItems,
   DesignConflictSchema,
   validateDesignItems,
   type DesignConflict,
   type DesignIssue,
   type DesignItem,
-  type DesignUses,
+  type SessionItem,
   type StudyEnd,
   type DesignVersion,
   type TopLevelItem,
@@ -65,7 +64,7 @@ interface UseDesignDraftOptions {
 export function useDesignDraft({ client, version, readOnly, onSaved, restore }: UseDesignDraftOptions) {
   const [items, setItemsState] = useState<TopLevelItem[]>(() =>
     // The Study entry (session and public info) is edited as the first item (contracts designItems), stored next to the items
-    ensureKeys(restore ? restore.items : withUses(designItems(version ?? { items: [] }) as TopLevelItem[])),
+    ensureKeys(restore ? restore.items : (designItems(version ?? { items: [] }) as TopLevelItem[])),
   );
   const [selected, setSelected] = useState<string | null>(null);
   // The items as last saved (with the same keys), to tell what changed and to revert to
@@ -166,8 +165,10 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
   }
 
   function createItem(type: ItemType) {
-    const name = getUniqueItemName(items, type);
-    return { ...defaultItemForType(type, name), _key: generateKey() };
+    // A new Questions block (the tree's grouping): its first question
+    const itemType = type === "questions" ? "question" : type;
+    const name = getUniqueItemName(items, itemType);
+    return { ...defaultItemForType(itemType, name), _key: generateKey() };
   }
 
   function insertAt(position: TreePosition, type: ItemType) {
@@ -201,27 +202,21 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
     );
   }
 
-  /**
-   * What the design uses (the Study entry's `uses`); annotating only adds
-   * the unit loop it needs if there is none.
-   */
-  function setUses(uses: DesignUses) {
-    let next = items.map((i) => (i.type === "session" ? ({ ...i, uses } as TopLevelItem) : i));
-    if (uses.content === "annotate" && !next.some((i) => i.type === "unit_loop"))
-      next = ensureKeys(insertAtPosition(next, { into: null }, createItem("unit_loop")));
-    setItems(next);
+  /** A setting of the Study entry (its `invite`, `urlParams` or `end`); undefined: removed. */
+  function setSession<K extends "invite" | "urlParams" | "end">(field: K, value: SessionItem[K] | undefined) {
+    setItems(
+      items.map((i) => {
+        if (i.type !== "session") return i;
+        const next = { ...i, [field]: value } as TopLevelItem & Partial<SessionItem>;
+        if (value === undefined) delete next[field];
+        return next;
+      }),
+    );
   }
 
   /** The study's normal end (the Study entry's `end`); undefined: none. */
   function setStudyEnd(end: StudyEnd | undefined) {
-    setItems(
-      items.map((i) => {
-        if (i.type !== "session") return i;
-        const next = { ...i, ...(end ? { end } : {}) } as TopLevelItem & { end?: StudyEnd };
-        if (!end) delete next.end;
-        return next;
-      }),
-    );
+    setSession("end", end);
   }
 
   function update(key: string, next: DesignItem) {
@@ -297,7 +292,7 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
     remove,
     move,
     update,
-    setUses,
+    setSession,
     setStudyEnd,
     replaceAll,
     undo: undoChange,
@@ -309,20 +304,6 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
 }
 
 export type DesignDraft = ReturnType<typeof useDesignDraft>;
-
-/**
- * The items with what the design uses (the Study entry's `uses`) fixed:
- * a design without it gets the one worked out from it (contracts
- * `inferUses`), so the editor's mode changes only when the researcher
- * changes it, not with every item added (a new design's first loop
- * doesn't make it "annotating only"). Saving stores it.
- */
-function withUses(items: TopLevelItem[]): TopLevelItem[] {
-  const study = items.find((i) => i.type === "session") as (TopLevelItem & { uses?: unknown }) | undefined;
-  if (!study || study.uses) return items;
-  const uses = inferUses(items);
-  return items.map((i) => (i === study ? ({ ...i, uses } as TopLevelItem) : i));
-}
 
 /** Asks the browser to confirm closing or reloading the tab while there are unsaved changes. */
 function useWarnBeforeUnload(active: boolean) {

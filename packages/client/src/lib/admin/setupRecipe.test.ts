@@ -55,19 +55,16 @@ describe("setup wizard recipes", () => {
     expect(questionLists({ annotate: true, survey: true, experiment: false })).toEqual(["before", "unit", "after"]);
   });
 
-  it("the title coders see goes into the session, only when given; the session says what the design uses", () => {
-    expect(setupRecipe(setup({})).design.session).toEqual({
-      params: [],
-      uses: { content: "annotate", experiment: false },
-    });
+  it("the title coders see goes into the design's public info, only when given", () => {
+    expect(setupRecipe(setup({})).design.session).toEqual({});
     expect(setupRecipe(setup({ publicTitle: "  Reading the news " })).design.public).toEqual({
       title: "Reading the news",
     });
     const links = setup({
       publicTitle: "News",
-      distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null, handOut: "links" },
+      distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null },
     });
-    expect(setupRecipe(links).design.session).toMatchObject({ coders: { column: "sets" } });
+    expect(setupRecipe(links).design.session).toMatchObject({ invite: { mode: "coders", column: "coders" } });
     expect(setupRecipe(links).design.public).toEqual({ title: "News" });
   });
 
@@ -80,7 +77,7 @@ describe("setup wizard recipes", () => {
     expect(setupRecipe(a).sets).toEqual([]);
   });
 
-  it("assign sets: split, with overlap, handed out by one rotating link", () => {
+  it("assign sets: split over coders, with overlap, a link each", () => {
     const a = setup({
       distribution: {
         ...defaultDistribution("sets"),
@@ -92,23 +89,21 @@ describe("setup wizard recipes", () => {
     expect(otherIssues(a)).toEqual([]);
     const recipe = setupRecipe(a);
     const [group] = recipe.sets!;
-    expect(group.group).toBe("sets");
+    expect(group.group).toBe("coders");
     const sizes = Object.fromEntries(group.sets.map((s) => [s.name, s.units.length]));
-    expect(sizes).toEqual({ s1: 3, s2: 3, s3: 2, _overlap: 2 });
+    expect(sizes).toEqual({ coder_1: 3, coder_2: 3, coder_3: 2, _overlap: 2 });
     // Every unit once
     expect(new Set(group.sets.flatMap((s) => s.units)).size).toBe(10);
-    // One link: a set drawn when a session starts, the one with the fewest sessions
+    // The sets are the coders, a link each; the overlap spread (the default)
     expect(setupRecipe(a).design.session).toEqual({
-      params: [],
-      conditions: [{ name: "sets", values: "free", assign: "random", units: "sets" }],
-      uses: { content: "annotate", experiment: false },
+      invite: { mode: "coders", column: "coders", link: "per_coder" },
     });
-    expect(loopOf(a).units).toEqual({ overlap: { placement: "spread" } });
+    expect(loopOf(a).units).toBeUndefined();
   });
 
   it("assign sets by a column, a link per set", () => {
     const a = setup({
-      distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null, handOut: "links" },
+      distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null },
     });
     expect(otherIssues(a)).toEqual([]);
     const recipe = setupRecipe(a);
@@ -118,17 +113,13 @@ describe("setup wizard recipes", () => {
       ["c", 2],
     ]);
     // The links: the sets are the coders, a link each
-    expect(recipe.design.session).toEqual({
-      params: [],
-      coders: { column: "sets" },
-      uses: { content: "annotate", experiment: false },
-    });
+    expect(recipe.design.session).toEqual({ invite: { mode: "coders", column: "coders", link: "per_coder" } });
     expect(loopOf(a).units).toBeUndefined();
   });
 
   it("gold and practice checks on per-unit questions, with a sets column keeping _gold and _practice", () => {
     const a = setup({
-      distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null, handOut: "rotate" },
+      distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null },
     });
     const units = a.units!.units.map((u, i) =>
       i === 0
@@ -148,8 +139,9 @@ describe("setup wizard recipes", () => {
     expect(
       loopOf({ ...a, units: { ...a.units!, units }, checks: { gold: ["topic"], practice: ["topic", "nope"] } }).units,
     ).toEqual({
-      practice: { placement: "first", questions: ["topic"] },
-      gold: { placement: "rate", every: 10, questions: ["topic"] },
+      practice: "before",
+      practiceCheck: { questions: ["topic"] },
+      goldCheck: { questions: ["topic"] },
     });
   });
 
@@ -165,10 +157,13 @@ describe("setup wizard recipes", () => {
     expect(setupProblems(a)).toEqual([]);
     // The agreement question needs a categorical type: reported until it is specified
     expect(otherIssues(a).map((i) => i.message)).toEqual([expect.stringContaining("sentiment")]);
-    expect(loopOf(a).units).toEqual({
-      criteria: { until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 }, unitsPerCoder: { min: 2, max: 5 } },
-      overlap: { placement: "rate", every: 10, rest: "end" },
+    expect(setupRecipe(a).design.session).toEqual({
+      invite: {
+        mode: "crowd",
+        units: { until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 }, unitsPerCoder: { min: 2, max: 5 } },
+      },
     });
+    expect(loopOf(a).units).toBeUndefined();
     // The overlap: everyone's, in a column of its own
     expect(setupRecipe(a).sets![0].sets.map((s) => [s.name, s.units.length])).toEqual([["_overlap", 2]]);
   });
@@ -176,7 +171,10 @@ describe("setup wizard recipes", () => {
   it("crowd coding without overlap: a queue over all units", () => {
     const a = setup({ distribution: { mode: "crowd", shared: { codersPerUnit: { min: 2, max: 2 } }, overlap: null } });
     expect(otherIssues(a)).toEqual([]);
-    expect(loopOf(a).units).toEqual({ criteria: { codersPerUnit: { min: 2, max: 2 } } });
+    expect(setupRecipe(a).design.session).toEqual({
+      invite: { mode: "crowd", units: { codersPerUnit: { min: 2, max: 2 } } },
+    });
+    expect(loopOf(a).units).toBeUndefined();
     expect(setupRecipe(a).sets).toEqual([]);
   });
 
@@ -187,10 +185,7 @@ describe("setup wizard recipes", () => {
     });
     // Gold units come from a set column's _gold (added on the Units page)
     expect(setupRecipe(a).sets).toEqual([]);
-    expect(loopOf(a).units).toMatchObject({
-      criteria: { codersPerUnit: { min: 2, max: 2 } },
-      gold: { questions: ["topic"] },
-    });
+    expect(loopOf(a).units).toEqual({ goldCheck: { questions: ["topic"] } });
   });
 
   it("sets from a column: values with the same set name are one set; special units stay out of the overlap", () => {
@@ -207,7 +202,6 @@ describe("setup wizard recipes", () => {
         sets: 0,
         column: "group",
         overlap: { by: "units", value: 2 },
-        handOut: "rotate",
       },
     });
     const sets = Object.fromEntries(setupRecipe(a).sets![0].sets.map((s) => [s.name, s.units]));
@@ -219,7 +213,7 @@ describe("setup wizard recipes", () => {
     expect(sets._overlap).not.toContain("u2");
   });
 
-  it("experimental groups, annotating only: a condition drawn at the start, linked to a set column with a value per condition", () => {
+  it("experimental groups, annotating only: the condition first (a computed item), linked to a set column with a value per condition", () => {
     const a = setup({
       parts: { annotate: true, survey: false, experiment: true },
       distribution: { mode: "groups", column: "group", values: { control: ["a"], treatment: ["b", "c"] } },
@@ -232,15 +226,12 @@ describe("setup wizard recipes", () => {
       ["control", 4],
       ["treatment", 6],
     ]);
-    // One unit loop, nothing outside it: the condition is the session's
-    expect((recipe.design.items as { type: string }[]).map((i) => i.type)).toEqual(["unit_loop"]);
-    expect(recipe.design.session).toEqual({
-      params: [],
-      conditions: [
-        { name: "condition", values: ["control", "treatment"], assign: "random", draw: "balanced", units: "condition" },
-      ],
-      uses: { content: "annotate", experiment: true },
+    // The condition, then the loop
+    expect((recipe.design.items as { type: string }[]).map((i) => i.type)).toEqual(["computed", "unit_loop"]);
+    expect(recipe.design.items[0]).toMatchObject({
+      variable: { type: "random", draw: "balanced", units: "condition" },
     });
+    expect(recipe.design.session).toEqual({});
     expect(loopOf(a).units).toBeUndefined();
   });
 
@@ -261,7 +252,6 @@ describe("setup wizard recipes", () => {
       type: "computed",
       variable: { type: "random", units: "condition" },
     });
-    expect(recipe.design.session).toMatchObject({ uses: { content: "both", experiment: true } });
   });
 
   it("a survey alone, or an experiment alone (a survey with an experiment)", () => {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { designItems, type DesignVersion, type SignIn, type TopLevelItem } from "@annotinder/contracts";
+import { designItems, type DesignVersion, type TopLevelItem } from "@annotinder/contracts";
 import { describeUnitChanges } from "../../admin/unitChanges";
 import { AlertTriangle, Loader2, Rocket } from "lucide-react";
 import {
@@ -15,9 +15,7 @@ import { diffDesigns, summarizeChanges, valueChanges, type DesignChange } from "
 import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../help/HelpButton";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { usePendingChangesQuery, useSetGroupsQuery, useStudyQuery, useUpdateStudyMutation } from "../../admin/queries";
-import { coderSummary, columnValues } from "../../design/assignment";
-import { SignInSetting } from "./SignInSetting";
+import { usePendingChangesQuery } from "../../admin/queries";
 
 interface DeployDialogProps {
   client: ResearcherApi;
@@ -82,15 +80,6 @@ export function DeployDialog({
   const [note, setNote] = useState(
     () => version?.note ?? (changes ? summarizeChanges(changes) : live === null ? "First version" : ""),
   );
-  // Whether coders sign in: chosen at the first deploy (docs/architecture.md §7), in Settings later
-  const study = useStudyQuery(client).data ?? null;
-  const updateStudy = useUpdateStudyMutation(client);
-  const groups = useSetGroupsQuery(client).data ?? [];
-  const coderColumn = (version ?? live)?.session?.coders?.column;
-  const emailCoders = !!coderColumn && coderSummary(columnValues(groups, coderColumn)).kind === "emails";
-  const [signInChoice, setSignInChoice] = useState<SignIn | null>(null);
-  const signIn: SignIn = emailCoders ? "required" : (signInChoice ?? study?.signIn ?? "off");
-
   function close() {
     setState({ step: "confirm" });
     onClose();
@@ -99,8 +88,6 @@ export function DeployDialog({
   async function deploy() {
     setState({ step: "publishing" });
     try {
-      if (firstDeploy && study && signIn !== study.signIn)
-        await updateStudy.mutateAsync({ id: study.id, body: { name: study.name, archived: study.archived, signIn } });
       const result = await onDeploy(deployDesign ? version : null, note.trim(), useUnits);
       if (result.warnings?.length) setState({ step: "done", warnings: result.warnings });
       else close();
@@ -219,13 +206,6 @@ export function DeployDialog({
                   <p className="text-xs text-muted-foreground">The units stay drafts, for a later deploy.</p>
                 )}
               </section>
-              {firstDeploy && (
-                <section className="space-y-1 rounded-md border border-border p-3">
-                  <SignInSetting value={signIn} onChange={setSignInChoice} emailCoders={emailCoders} />
-                  <p className="text-xs text-muted-foreground">You can change this later under Settings.</p>
-                </section>
-              )}
-
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 What happens when you deploy
                 <InfoTip label="What happens when you deploy">

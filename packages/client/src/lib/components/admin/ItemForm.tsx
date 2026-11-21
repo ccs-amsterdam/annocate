@@ -8,7 +8,6 @@ import {
   type SetGroupResponse,
   type DesignIssue,
   type EndItem,
-  type DesignUses,
 } from "@annotinder/contracts";
 import { cn } from "cn";
 import { UnitLoopForm } from "./UnitLoopForm";
@@ -54,12 +53,12 @@ export function ItemForm({
   isInsideLoop = false,
   screenouts = [],
   shareSources,
-  uses = { content: "both", experiment: true },
+  agreementQuestions,
   onChange,
 }: {
   item: DesignItem;
-  /** What the design uses (contracts `designUses`): the session form shows what that needs. */
-  uses?: DesignUses;
+  /** For the Study entry: unit loop questions a crowd's agreement rule can use. */
+  agreementQuestions?: string[];
   /** For "Generate sets…" in a loop's form. */
   client?: ResearcherApi;
   /** The study's set groups (loops' sets, session parameters with a group's sets). */
@@ -100,7 +99,8 @@ export function ItemForm({
           item={item as SessionItem}
           groups={groups}
           issues={validationIssues}
-          uses={uses}
+          client={client}
+          agreementQuestions={agreementQuestions}
           onChange={onChange}
         />
       ) : item.type === "show_if" || item.type === "unit_loop" ? (
