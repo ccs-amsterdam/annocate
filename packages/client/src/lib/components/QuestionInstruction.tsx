@@ -71,7 +71,8 @@ export function QuestionInstruction({
         type="button"
         onClick={() => setOpen(true)}
         title="Instruction (?)"
-        aria-label="Instruction"
+        aria-label={seen ? "Instruction" : "Instruction, not read yet"}
+        aria-keyshortcuts="?"
         className="relative inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
         <HelpCircle className="size-5" />

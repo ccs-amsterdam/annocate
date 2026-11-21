@@ -22,7 +22,9 @@ export function ShortcutBadge({ shortcut, position = "top-right", className = ""
         : "right-1.5 top-1/2 -translate-y-1/2";
 
   return (
+    // Hidden from screen readers: the key isn't part of the button's name
     <kbd
+      aria-hidden="true"
       className={`absolute ${posClass} pointer-events-none z-20 inline-flex h-4 min-w-[1rem] items-center justify-center rounded border border-border/80 bg-background/95 px-1 font-mono text-[9px] leading-none font-semibold text-foreground shadow-xs select-none ${className}`}
     >
       {shortcut}

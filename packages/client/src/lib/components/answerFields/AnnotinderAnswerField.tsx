@@ -11,6 +11,12 @@ type AnnotinderVariable = Extract<QuestionVariable, { type: "annotinder" }>;
 const ICONS = { left: ArrowLeft, right: ArrowRight, up: ArrowUp };
 /** The arrow key of each direction: it always answers (the mapping's keys too). */
 const ARROWS: Record<SwipeDirection, string> = { left: "ArrowLeft", right: "ArrowRight", up: "ArrowUp" };
+/** Where each button is for the numpad: left and right below, up above them (keys 1, 3 and 5). */
+const NUMPAD_POSITION: Record<SwipeDirection, { row: number; col: number }> = {
+  left: { row: 1, col: 0 },
+  right: { row: 1, col: 2 },
+  up: { row: 0, col: 1 },
+};
 
 /**
  * A swipe question: the card (the unit, see `SwipeCard`) is swiped left,
@@ -29,13 +35,11 @@ export function AnnotinderAnswerField({ variable, onAnswer }: AnswerFieldProps<A
     else onAnswer(buildValues([{ value: option.value }]));
   };
 
-  // Where each is for the numpad: left and right below, up above them (1, 3 and 5)
-  const POS = { left: { row: 1, col: 0 }, right: { row: 1, col: 2 }, up: { row: 0, col: 1 } };
   const targets = [
     options.map((o, i) => ({
       label: optionLabel(o),
       keys: [ARROWS[SWIPE_DIRECTIONS[i]]],
-      pos: POS[SWIPE_DIRECTIONS[i]],
+      pos: NUMPAD_POSITION[SWIPE_DIRECTIONS[i]],
     })),
   ];
   useKeyTargets(targets, (_, index) => choose(SWIPE_DIRECTIONS[index]));
@@ -61,11 +65,12 @@ export function AnnotinderAnswerField({ variable, onAnswer }: AnswerFieldProps<A
               variant="outline"
               aria-label={`${optionLabel(option)} (swipe ${direction})`}
               className={`h-10 min-w-0 flex-1 gap-1.5 px-2 ${direction === "right" ? "flex-row-reverse" : ""}`}
-              style={option.color ? { borderColor: option.color, color: option.color } : undefined}
+              // The option's color on the border and arrow; the label stays readable text
+              style={option.color ? { borderColor: option.color } : undefined}
               data-key-target=""
               onClick={() => choose(direction)}
             >
-              <Icon className="size-4 shrink-0" />
+              <Icon className="size-4 shrink-0" style={option.color ? { color: option.color } : undefined} />
               <span className="truncate font-medium">{optionLabel(option)}</span>
             </Button>
           );

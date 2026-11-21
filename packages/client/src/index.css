@@ -84,6 +84,22 @@
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, var(--primary) 45%, transparent) transparent;
   }
+
+  /* A visible keyboard focus on everything that can be pressed (components
+     with their own focus ring override this with utilities). */
+  :where(
+    button,
+    a,
+    summary,
+    [role="button"],
+    [role="radio"],
+    [role="checkbox"],
+    [role="option"],
+    [tabindex]
+  ):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }
 
 /* Phase 4/5 will port the ShadCN CSS variable theme (colors, radii, etc.)
