@@ -446,6 +446,12 @@ describe("links, coder progress and overview", () => {
     expect(await status(resolve("c", renewed.secret))).toBe(403); // link_revoked
     // coders who already started keep their access
     expect(await status(resolve("a", used.secret))).toBe(200);
+    // Reopened: new coders again
+    const reopened = await json(
+      await app.request(`/api/study/${study.id}/links/${used.id}/reopen`, { method: "POST", headers: adminHeaders }),
+    );
+    expect(reopened.revokedAt).toBeNull();
+    expect(await status(resolve("c2", renewed.secret))).toBe(200);
 
     // Republished with other values: "unused" is retired, "new" made; "used" keeps its row
     expect((await publish([batches(["used", "new"]), loop])).status).toBe(200);

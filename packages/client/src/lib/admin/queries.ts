@@ -340,6 +340,10 @@ export function useRevokeLinkMutation(client: ResearcherApi) {
   return useLinkMutation(client, (id: number) => client.revokeLink(id));
 }
 
+export function useReopenLinkMutation(client: ResearcherApi) {
+  return useLinkMutation(client, (id: number) => client.reopenLink(id));
+}
+
 export function useRenewLinkSecretMutation(client: ResearcherApi) {
   return useLinkMutation(client, (id: number) => client.renewLinkSecret(id));
 }

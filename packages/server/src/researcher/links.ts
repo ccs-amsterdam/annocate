@@ -52,6 +52,17 @@ export function links(server: Server): Hono<Env> {
     return c.json(toLinkResponse(row));
   });
 
+  // Open to new coders again (undoes a revoke)
+  app.post("/study/:studyId/links/:id/reopen", requireStudyUser(server, "WRITE"), async (c) => {
+    const [row] = await db
+      .update(linksTable)
+      .set({ revokedAt: null })
+      .where(link(c.get("studyId"), c.req.param("id")))
+      .returning();
+    if (!row) return c.json({ error: "Link not found" }, 404);
+    return c.json(toLinkResponse(row));
+  });
+
   // A new secret: the old link stops working (e.g. it was shared too widely); sessions that started go on.
   app.post("/study/:studyId/links/:id/secret", requireStudyUser(server, "WRITE"), async (c) => {
     const [old] = await db

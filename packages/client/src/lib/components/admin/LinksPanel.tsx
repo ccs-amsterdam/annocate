@@ -9,7 +9,7 @@ import {
   type SessionParam,
   type TopLevelItem,
 } from "@annotinder/contracts";
-import { Ban, Check, Copy, KeyRound, Pencil } from "lucide-react";
+import { Ban, Check, Copy, KeyRound, Pencil, RotateCcw } from "lucide-react";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import {
   useDesignVersionQuery,
@@ -17,6 +17,7 @@ import {
   useLinksQuery,
   useRenewLinkSecretMutation,
   useRevokeLinkMutation,
+  useReopenLinkMutation,
   useSetGroupsQuery,
   useUpdateLinkMutation,
 } from "../../admin/queries";
@@ -194,11 +195,12 @@ function accessOf(link: LinkResponse): string {
 
 function LinkRow({ client, link, url }: { client: ResearcherApi; link: LinkResponse; url: string }) {
   const revoke = useRevokeLinkMutation(client);
+  const reopen = useReopenLinkMutation(client);
   const renew = useRenewLinkSecretMutation(client);
   const [editing, setEditing] = useState(false);
   const status = statusOf(link);
   const values = Object.entries(link.params);
-  const error = revoke.error ?? renew.error;
+  const error = revoke.error ?? reopen.error ?? renew.error;
 
   return (
     <>
@@ -265,6 +267,15 @@ function LinkRow({ client, link, url }: { client: ResearcherApi; link: LinkRespo
                   confirm(`Revoke "${link.label}"? New coders can't join with it; started coders keep working.`) &&
                   revoke.mutate(link.id)
                 }
+              />
+            )}
+            {status === "revoked" && (
+              <IconButton
+                icon={RotateCcw}
+                iconClassName="h-3.5 w-3.5"
+                label="Reopen: new coders can join with this link again"
+                disabled={reopen.isPending}
+                onClick={() => reopen.mutate(link.id)}
               />
             )}
           </div>

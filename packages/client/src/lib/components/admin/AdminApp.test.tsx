@@ -40,6 +40,7 @@ const stubClient: ResearcherApi = {
   listLinks: () => new Promise(() => {}),
   updateLink: () => new Promise(() => {}),
   revokeLink: () => new Promise(() => {}),
+  reopenLink: () => new Promise(() => {}),
   renewLinkSecret: () => new Promise(() => {}),
   getOverview: () => new Promise(() => {}),
   getDeploymentStatus: () => new Promise(() => {}),

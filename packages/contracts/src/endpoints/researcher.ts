@@ -232,9 +232,17 @@ export const researcherEndpoints = {
     request: LinkWriteSchema,
     response: LinkResponseSchema,
   },
+  /** No new coders from this link (coders who started keep working); a redeploy keeps it revoked. Undone by `reopenLink`. */
   revokeLink: {
     method: "POST",
     path: "/study/:studyId/links/:id/revoke",
+    request: z.void(),
+    response: LinkResponseSchema,
+  },
+  /** A revoked link takes new coders again. */
+  reopenLink: {
+    method: "POST",
+    path: "/study/:studyId/links/:id/reopen",
     request: z.void(),
     response: LinkResponseSchema,
   },

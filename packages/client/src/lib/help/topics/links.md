@@ -139,7 +139,9 @@ only once (max uses 1).
 
 **Revoke** stops new sessions with the link, also new sessions of a
 participant id that already has one. Coders who already started keep
-working. Retired links are listed separately, below the active ones.
+working. It stays revoked when you deploy again; **Reopen** (the arrow on a
+revoked link) lets new coders in again. Retired links are listed
+separately, below the active ones.
 
 ## Login
 

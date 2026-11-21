@@ -160,6 +160,8 @@ export interface ResearcherApi {
   updateLink(id: number, body: LinkWrite): Promise<LinkResponse>;
   /** No new coders from this link; coders who started keep working. */
   revokeLink(id: number): Promise<LinkResponse>;
+  /** A revoked link takes new coders again. */
+  reopenLink(id: number): Promise<LinkResponse>;
   /** A new secret: the old link stops working. */
   renewLinkSecret(id: number): Promise<LinkResponse>;
 
@@ -556,6 +558,10 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async revokeLink(id: number): Promise<LinkResponse> {
     return this.request(this.studyPath(researcherEndpoints.revokeLink.path, id), { method: "POST" });
+  }
+
+  async reopenLink(id: number): Promise<LinkResponse> {
+    return this.request(this.studyPath(researcherEndpoints.reopenLink.path, id), { method: "POST" });
   }
 
   async renewLinkSecret(id: number): Promise<LinkResponse> {

@@ -112,6 +112,7 @@ response checked against its contract schema.
 | [listLinks](#listlinks) | `GET /study/:studyId/links` | WRITE | – | `LinkResponseSchema[]` |
 | [updateLink](#updatelink) | `PUT /study/:studyId/links/:id` | WRITE | `LinkWriteSchema` | `LinkResponseSchema` |
 | [revokeLink](#revokelink) | `POST /study/:studyId/links/:id/revoke` | WRITE | – | `LinkResponseSchema` |
+| [reopenLink](#reopenlink) | `POST /study/:studyId/links/:id/reopen` | WRITE | – | `LinkResponseSchema` |
 | [renewLinkSecret](#renewlinksecret) | `POST /study/:studyId/links/:id/secret` | WRITE | – | `LinkResponseSchema` |
 | [listCoders](#listcoders) | `GET /study/:studyId/coders` | READ | – | `CoderProgressSchema[]` |
 | [deleteCoders](#deletecoders) | `POST /study/:studyId/coders/delete` | ADMIN | `DeleteCodersSchema` | `DeleteCodersResponseSchema` |
@@ -503,7 +504,13 @@ first, with `params` (the link parameter values it carries), `uses`,
 ### revokeLink
 
 `POST /study/:studyId/links/:id/revoke` → `LinkResponseSchema`. No new
-coders from this link; coders who already started keep working.
+coders from this link; coders who already started keep working. A redeploy
+keeps it revoked.
+
+### reopenLink
+
+`POST /study/:studyId/links/:id/reopen` → `LinkResponseSchema`. Undoes a
+revoke: new coders can join with the link again.
 
 ### renewLinkSecret
 
