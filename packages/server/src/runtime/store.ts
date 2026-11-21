@@ -4,8 +4,8 @@ import { and, asc, eq, inArray, isNotNull, isNull, lt, or, sql, type AnyColumn }
 import type { Db } from "../db/index.js";
 import {
   annotationValues,
-  coderDevices,
-  coders,
+  sessionDevices,
+  coderSessions,
   deployments,
   links,
   studies,
@@ -64,17 +64,17 @@ export interface Store {
   /** The coder for a coder key, created from a link on first use (docs/coder-identity.md). */
   resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder>;
   /** Adds a device to a session (a transfer link): its key now finds this coder. Returns the device's row. */
-  addDevice(coderId: number, coderKey: string, device: DeviceDetails): Promise<number | null>;
+  addDevice(sessionId: number, coderKey: string, device: DeviceDetails): Promise<number | null>;
   /** Marks that the coder reached a loop (`CoderAssignments`, by loop key), next to the others. */
-  routeCoder(coderId: number, loop: string, assignment: CoderAssignments[string]): Promise<void>;
+  routeCoder(sessionId: number, loop: string, assignment: CoderAssignments[string]): Promise<void>;
   /**
    * Adds a value to the coder's session values (a random condition that
    * selects units, once assigned), unless it has one already: returns the
    * value it has. A session value never changes, so its units don't either.
    */
-  setSessionValue(coderId: number, name: string, value: string): Promise<string>;
+  setSessionValue(sessionId: number, name: string, value: string): Promise<string>;
   /** Stores how the session ended (null: reopened). */
-  setEnded(coderId: number, ended: SessionEnd | null): Promise<void>;
+  setEnded(sessionId: number, ended: SessionEnd | null): Promise<void>;
   /** A "continue on another device" link (only its hash is stored). */
   createTransfer(tokenHash: string, transfer: Transfer): Promise<void>;
   /** Uses up a transfer link: what it was for, if it exists and hasn't expired. */
@@ -82,24 +82,24 @@ export interface Store {
   /** Writes coder-level values (answers outside unit loops, assigned values): answer rows without a unit. Assigned and frozen ones stay. */
   putCoderValues(write: CoderValuesWrite): Promise<void>;
   /** The coder's live coder-level answers, by variable. */
-  coderValues(coderId: number): Promise<Record<string, CoderValue>>;
+  coderValues(sessionId: number): Promise<Record<string, CoderValue>>;
   /** Freezes these coder-level answers of the coder (`CoderValue.frozen`). */
-  freezeCoderValues(coderId: number, names: string[]): Promise<void>;
+  freezeCoderValues(sessionId: number, names: string[]): Promise<void>;
   /** Records the coder's request to delete their answers (a new request replaces a postponed one). */
-  requestDeletion(coderId: number, request: DeletionRequest): Promise<void>;
+  requestDeletion(sessionId: number, request: DeletionRequest): Promise<void>;
   listFinished(request: FinishedRequest): Promise<Finished[]>;
   /** One coder's live answers for one unit, by variable (empty if none). */
-  unitAnswers(coderId: number, unitId: number): Promise<Record<string, VariableValue>>;
+  unitAnswers(sessionId: number, unitId: number): Promise<Record<string, VariableValue>>;
   /** Writes one unit's answers, and the codings they finish (`AnnotationWrite.codings`), together. */
   putAnnotation(write: AnnotationWrite): Promise<void>;
   /** Finished codings, oldest first: in a loop, of a coder, or both. */
-  listCodings(filter: { loop?: string; coderId?: number }): Promise<Coding[]>;
+  listCodings(filter: { loop?: string; sessionId?: number }): Promise<Coding[]>;
   /** What the stored codings were derived under (the codebook's loops and the annotation epoch), if anything. */
   codingsBasis(): Promise<string | null>;
   /** Replaces all codings of the study, derived under `basis`. */
   replaceCodings(basis: string, codings: Coding[]): Promise<void>;
   /** The leases of a loop (all coders'), or one coder's (all loops). Also expired ones. */
-  listLeases(filter: { loop?: string; coderId?: number }): Promise<Lease[]>;
+  listLeases(filter: { loop?: string; sessionId?: number }): Promise<Lease[]>;
   /** Stores leases (a coder holds up to a batch per queue), or renews them. */
   putLeases(leases: Lease[]): Promise<void>;
   /**
@@ -122,9 +122,9 @@ export interface Store {
    * first was (the server's bound on their time: docs/coder-identity.md
    * §10), and the version last shown (stored with their answers).
    */
-  recordServe(coderId: number, unitId: number, unitVersionId: number): Promise<void>;
+  recordServe(sessionId: number, unitId: number, unitVersionId: number): Promise<void>;
   /** The unit version last shown to the coder (`recordServe`), if any. */
-  servedVersion(coderId: number, unitId: number): Promise<number | null>;
+  servedVersion(sessionId: number, unitId: number): Promise<number | null>;
   /** Refuses answers that are too large, or that would take the study past its limit on answers (shared/limits.ts). */
   checkAnswers(variables: Record<string, VariableValue>): Promise<void>;
 }
@@ -139,8 +139,8 @@ export class DbStore implements Store {
   ) {}
 
   /** This study's coder (by id). */
-  private coder(coderId: number) {
-    return and(eq(coders.studyId, this.studyId), eq(coders.id, coderId));
+  private coder(sessionId: number) {
+    return and(eq(coderSessions.studyId, this.studyId), eq(coderSessions.id, sessionId));
   }
 
   async deploymentStamp(): Promise<string | null> {
@@ -173,9 +173,13 @@ export class DbStore implements Store {
   }
 
   async listCoders(): Promise<Coder[]> {
-    return (await this.db.select().from(coders).where(eq(coders.studyId, this.studyId)).orderBy(asc(coders.id))).map(
-      toCoder,
-    );
+    return (
+      await this.db
+        .select()
+        .from(coderSessions)
+        .where(eq(coderSessions.studyId, this.studyId))
+        .orderBy(asc(coderSessions.id))
+    ).map(toCoder);
   }
 
   async resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder> {
@@ -192,11 +196,11 @@ export class DbStore implements Store {
     return { coder: toCoder(coder), deviceId };
   }
 
-  coderValues(coderId: number): Promise<Record<string, CoderValue>> {
-    return coderAnswers(this.db, this.studyId, coderId);
+  coderValues(sessionId: number): Promise<Record<string, CoderValue>> {
+    return coderAnswers(this.db, this.studyId, sessionId);
   }
 
-  async freezeCoderValues(coderId: number, names: string[]): Promise<void> {
+  async freezeCoderValues(sessionId: number, names: string[]): Promise<void> {
     if (names.length === 0) return;
     const a = annotationValues;
     await this.db
@@ -205,7 +209,7 @@ export class DbStore implements Store {
       .where(
         and(
           eq(a.studyId, this.studyId),
-          eq(a.coderId, coderId),
+          eq(a.sessionId, sessionId),
           isNull(a.unitId),
           isNull(a.retiredAt),
           eq(a.frozen, false),
@@ -218,8 +222,8 @@ export class DbStore implements Store {
     await this.db.transaction((tx) => putCoderValues(tx, this.studyId, write));
   }
 
-  async addDevice(coderId: number, coderKey: string, device: DeviceDetails): Promise<number | null> {
-    return addDevice(this.db, this.studyId, coderId, coderKey, device);
+  async addDevice(sessionId: number, coderKey: string, device: DeviceDetails): Promise<number | null> {
+    return addDevice(this.db, this.studyId, sessionId, coderKey, device);
   }
 
   /** The answer size and the study's answer limit, and its answers so far: read again at most once a minute. */
@@ -245,32 +249,36 @@ export class DbStore implements Store {
     rules.count += added;
   }
 
-  async routeCoder(coderId: number, loop: string, assignment: CoderAssignments[string]): Promise<void> {
+  async routeCoder(sessionId: number, loop: string, assignment: CoderAssignments[string]): Promise<void> {
     // Merged into the stored marks, so two loops at once don't overwrite each other.
     const updated = await this.db
-      .update(coders)
+      .update(coderSessions)
       .set({
-        assignments: sql`coalesce(${coders.assignments}, '{}'::jsonb) || jsonb_build_object(${loop}::text, ${JSON.stringify(assignment)}::jsonb)`,
+        assignments: sql`coalesce(${coderSessions.assignments}, '{}'::jsonb) || jsonb_build_object(${loop}::text, ${JSON.stringify(assignment)}::jsonb)`,
       })
-      .where(this.coder(coderId))
-      .returning({ id: coders.id });
+      .where(this.coder(sessionId))
+      .returning({ id: coderSessions.id });
     if (updated.length === 0) throw new HttpError(404, "Coder not found");
   }
 
-  async setSessionValue(coderId: number, name: string, value: string): Promise<string> {
+  async setSessionValue(sessionId: number, name: string, value: string): Promise<string> {
     // Set once: a value already there stays
     const [updated] = await this.db
-      .update(coders)
+      .update(coderSessions)
       .set({
-        session: sql`CASE WHEN ${coders.session} ? ${name}::text THEN ${coders.session} ELSE ${coders.session} || jsonb_build_object(${name}::text, ${value}::text) END`,
+        session: sql`CASE WHEN ${coderSessions.session} ? ${name}::text THEN ${coderSessions.session} ELSE ${coderSessions.session} || jsonb_build_object(${name}::text, ${value}::text) END`,
       })
-      .where(this.coder(coderId))
-      .returning({ value: sql<string>`${coders.session}->>${name}::text` });
+      .where(this.coder(sessionId))
+      .returning({ value: sql<string>`${coderSessions.session}->>${name}::text` });
     return updated?.value ?? value;
   }
 
-  async setEnded(coderId: number, ended: SessionEnd | null): Promise<void> {
-    const updated = await this.db.update(coders).set({ ended }).where(this.coder(coderId)).returning({ id: coders.id });
+  async setEnded(sessionId: number, ended: SessionEnd | null): Promise<void> {
+    const updated = await this.db
+      .update(coderSessions)
+      .set({ ended })
+      .where(this.coder(sessionId))
+      .returning({ id: coderSessions.id });
     if (updated.length === 0) throw new HttpError(404, "Coder not found");
   }
 
@@ -283,36 +291,36 @@ export class DbStore implements Store {
     const [redeemed] = await this.db
       .delete(transfers)
       .where(and(eq(transfers.tokenHash, tokenHash), eq(transfers.studyId, this.studyId)))
-      .returning({ coderId: transfers.coderId, participant: transfers.participant, expires: transfers.expires });
+      .returning({ sessionId: transfers.sessionId, coder: transfers.coder, expires: transfers.expires });
     if (!redeemed || redeemed.expires <= now) return null;
     return redeemed;
   }
 
-  async requestDeletion(coderId: number, request: DeletionRequest): Promise<void> {
-    await this.db.update(coders).set({ deletionRequest: request }).where(this.coder(coderId));
+  async requestDeletion(sessionId: number, request: DeletionRequest): Promise<void> {
+    await this.db.update(coderSessions).set({ deletionRequest: request }).where(this.coder(sessionId));
   }
 
   async listFinished(request: FinishedRequest): Promise<Finished[]> {
     return request.loops.length === 0 ? [] : listFinished(this.db, this.studyId, request);
   }
 
-  async unitAnswers(coderId: number, unitId: number): Promise<Record<string, VariableValue>> {
+  async unitAnswers(sessionId: number, unitId: number): Promise<Record<string, VariableValue>> {
     const a = annotationValues;
     const found = await this.db
       .select({ variable: a.variable, value: a.value })
       .from(a)
-      .where(and(eq(a.studyId, this.studyId), eq(a.coderId, coderId), eq(a.unitId, unitId), isNull(a.retiredAt)));
+      .where(and(eq(a.studyId, this.studyId), eq(a.sessionId, sessionId), eq(a.unitId, unitId), isNull(a.retiredAt)));
     return Object.fromEntries(found.map((r) => [r.variable, r.value]));
   }
 
-  async listCodings(filter: { loop?: string; coderId?: number }): Promise<Coding[]> {
+  async listCodings(filter: { loop?: string; sessionId?: number }): Promise<Coding[]> {
     // Times as epoch ms: a shared queue reads every coding of the loop for each pick, and parsing timestamps dominated.
     const epochMs = (column: AnyColumn) => sql<number>`(extract(epoch FROM ${column}) * 1000)::float8`;
     const found = await this.db
       .select({
         loop: unitCodings.loopKey,
         unitId: unitCodings.unitId,
-        coderId: unitCodings.coderId,
+        sessionId: unitCodings.sessionId,
         agreement: unitCodings.agreement,
         created: epochMs(unitCodings.created),
         updated: epochMs(unitCodings.updated),
@@ -322,7 +330,7 @@ export class DbStore implements Store {
         and(
           eq(unitCodings.studyId, this.studyId),
           filter.loop === undefined ? undefined : eq(unitCodings.loopKey, filter.loop),
-          filter.coderId === undefined ? undefined : eq(unitCodings.coderId, filter.coderId),
+          filter.sessionId === undefined ? undefined : eq(unitCodings.sessionId, filter.sessionId),
         ),
       )
       .orderBy(asc(unitCodings.created), asc(unitCodings.unitId));
@@ -346,12 +354,12 @@ export class DbStore implements Store {
     });
   }
 
-  async listLeases(filter: { loop?: string; coderId?: number }): Promise<Lease[]> {
+  async listLeases(filter: { loop?: string; sessionId?: number }): Promise<Lease[]> {
     return this.db
       .select({
         loop: unitLeases.loopKey,
         set: unitLeases.setName,
-        coderId: unitLeases.coderId,
+        sessionId: unitLeases.sessionId,
         unitId: unitLeases.unitId,
         expires: unitLeases.expires,
       })
@@ -360,7 +368,7 @@ export class DbStore implements Store {
         and(
           eq(unitLeases.studyId, this.studyId),
           filter.loop === undefined ? undefined : eq(unitLeases.loopKey, filter.loop),
-          filter.coderId === undefined ? undefined : eq(unitLeases.coderId, filter.coderId),
+          filter.sessionId === undefined ? undefined : eq(unitLeases.sessionId, filter.sessionId),
         ),
       );
   }
@@ -374,13 +382,13 @@ export class DbStore implements Store {
           studyId: this.studyId,
           loopKey: l.loop,
           setName: l.set,
-          coderId: l.coderId,
+          sessionId: l.sessionId,
           unitId: l.unitId,
           expires: l.expires,
         })),
       )
       .onConflictDoUpdate({
-        target: [unitLeases.studyId, unitLeases.loopKey, unitLeases.setName, unitLeases.coderId, unitLeases.unitId],
+        target: [unitLeases.studyId, unitLeases.loopKey, unitLeases.setName, unitLeases.sessionId, unitLeases.unitId],
         set: { expires: sql`excluded.expires` },
       });
   }
@@ -398,26 +406,26 @@ export class DbStore implements Store {
         Array.isArray(variable) ? inArray(a.variable, variable) : eq(a.variable, variable),
       );
     // The coders who answered the first variable, with their answers to all of them
-    const answeredFirst = this.db.select({ coderId: a.coderId }).from(a).where(coderLevel(variables[0]!));
+    const answeredFirst = this.db.select({ sessionId: a.sessionId }).from(a).where(coderLevel(variables[0]!));
     const found = await this.db
       .select({
-        coderId: a.coderId,
+        sessionId: a.sessionId,
         variable: a.variable,
         value: a.value,
-        session: coders.session,
-        participant: coders.participantId,
+        session: coderSessions.session,
+        participant: coderSessions.coder,
       })
       .from(a)
-      .innerJoin(coders, eq(coders.id, a.coderId))
-      .where(and(coderLevel(variables), inArray(a.coderId, answeredFirst)));
+      .innerJoin(coderSessions, eq(coderSessions.id, a.sessionId))
+      .where(and(coderLevel(variables), inArray(a.sessionId, answeredFirst)));
     const byCoder = new Map<number, { values: Record<string, VariableValue>; session: Record<string, string> }>();
     for (const r of found) {
-      if (!byCoder.has(r.coderId))
-        byCoder.set(r.coderId, {
+      if (!byCoder.has(r.sessionId))
+        byCoder.set(r.sessionId, {
           values: {},
           session: { ...r.session, ...(r.participant ? { participant: r.participant } : {}) },
         });
-      byCoder.get(r.coderId)!.values[r.variable] = r.value;
+      byCoder.get(r.sessionId)!.values[r.variable] = r.value;
     }
     return [...byCoder.values()];
   }
@@ -468,7 +476,7 @@ export class DbStore implements Store {
           .values({
             studyId,
             unitId: write.unitId,
-            coderId: write.coderId,
+            sessionId: write.sessionId,
             variable,
             value,
             designVersionId: write.designVersionId ?? null,
@@ -480,7 +488,7 @@ export class DbStore implements Store {
           })
           .onConflictDoUpdate({
             // The live answer (the partial unique index annotation_values_live)
-            target: [a.unitId, a.coderId, a.variable],
+            target: [a.unitId, a.sessionId, a.variable],
             targetWhere: isNull(a.retiredAt),
             set: {
               value: sql`excluded.value`,
@@ -497,7 +505,7 @@ export class DbStore implements Store {
         await insertCoding(tx, studyId, {
           loop: coding.loop,
           unitId: write.unitId,
-          coderId: write.coderId,
+          sessionId: write.sessionId,
           agreement: coding.agreement,
           created: now,
           updated: now,
@@ -509,7 +517,7 @@ export class DbStore implements Store {
             and(
               eq(unitLeases.studyId, studyId),
               eq(unitLeases.loopKey, coding.loop),
-              eq(unitLeases.coderId, write.coderId),
+              eq(unitLeases.sessionId, write.sessionId),
               eq(unitLeases.unitId, write.unitId),
             ),
           );
@@ -518,7 +526,7 @@ export class DbStore implements Store {
     });
   }
 
-  async recordServe(coderId: number, unitId: number, unitVersionId: number): Promise<void> {
+  async recordServe(sessionId: number, unitId: number, unitVersionId: number): Promise<void> {
     await this.db.transaction(async (tx) => {
       // No deploy deletes the version meanwhile; one deleted just before: none recorded
       await lockUnits(tx, this.studyId, "read");
@@ -528,20 +536,20 @@ export class DbStore implements Store {
         .where(eq(unitVersions.id, unitVersionId));
       await tx
         .insert(unitServes)
-        .values({ studyId: this.studyId, coderId, unitId, unitVersionId: version?.id ?? null })
+        .values({ studyId: this.studyId, sessionId, unitId, unitVersionId: version?.id ?? null })
         .onConflictDoUpdate({
-          target: [unitServes.coderId, unitServes.unitId],
+          target: [unitServes.sessionId, unitServes.unitId],
           set: { unitVersionId: sql`excluded.unit_version_id` },
           setWhere: sql`${unitServes.unitVersionId} IS DISTINCT FROM excluded.unit_version_id`,
         });
     });
   }
 
-  async servedVersion(coderId: number, unitId: number): Promise<number | null> {
+  async servedVersion(sessionId: number, unitId: number): Promise<number | null> {
     const [served] = await this.db
       .select({ versionId: unitServes.unitVersionId })
       .from(unitServes)
-      .where(and(eq(unitServes.coderId, coderId), eq(unitServes.unitId, unitId)));
+      .where(and(eq(unitServes.sessionId, sessionId), eq(unitServes.unitId, unitId)));
     return served?.versionId ?? null;
   }
 }
@@ -555,15 +563,15 @@ async function advisoryLock(tx: Db, key: string): Promise<void> {
 async function addDevice(
   db: Db,
   studyId: number,
-  coderId: number,
+  sessionId: number,
   coderKey: string,
   device: DeviceDetails = { type: null, browser: null, os: null },
 ): Promise<number> {
   const [added] = await db
-    .insert(coderDevices)
-    .values({ studyId, coderId, keyHash: coderKey, deviceType: device.type, browser: device.browser, os: device.os })
-    .onConflictDoUpdate({ target: coderDevices.keyHash, set: { coderId: sql`excluded.coder_id` } })
-    .returning({ id: coderDevices.id });
+    .insert(sessionDevices)
+    .values({ studyId, sessionId, keyHash: coderKey, deviceType: device.type, browser: device.browser, os: device.os })
+    .onConflictDoUpdate({ target: sessionDevices.keyHash, set: { sessionId: sql`excluded.session_id` } })
+    .returning({ id: sessionDevices.id });
   return added!.id;
 }
 
@@ -571,9 +579,9 @@ async function addDevice(
 async function sessionOfEmail(db: Db, studyId: number, email: string): Promise<CoderRow | undefined> {
   const [found] = await db
     .select()
-    .from(coders)
-    .where(and(eq(coders.studyId, studyId), sql`lower(${coders.email}) = lower(${email})`))
-    .orderBy(sql`${coders.id} DESC`)
+    .from(coderSessions)
+    .where(and(eq(coderSessions.studyId, studyId), sql`lower(${coderSessions.email}) = lower(${email})`))
+    .orderBy(sql`${coderSessions.id} DESC`)
     .limit(1);
   return found;
 }
@@ -586,13 +594,13 @@ async function insertCoding(db: Db, studyId: number, c: Coding): Promise<void> {
       studyId,
       loopKey: c.loop,
       unitId: c.unitId,
-      coderId: c.coderId,
+      sessionId: c.sessionId,
       agreement: c.agreement,
       created: c.created,
       updated: c.updated,
     })
     .onConflictDoUpdate({
-      target: [unitCodings.studyId, unitCodings.loopKey, unitCodings.unitId, unitCodings.coderId],
+      target: [unitCodings.studyId, unitCodings.loopKey, unitCodings.unitId, unitCodings.sessionId],
       set: { agreement: sql`excluded.agreement`, updated: sql`excluded.updated` },
     });
 }
@@ -606,10 +614,10 @@ interface KnownCoder {
 /** The session a device key has in this study, if any. */
 async function knownCoder(db: Db, studyId: number, coderKey: string): Promise<KnownCoder | null> {
   const [known] = await db
-    .select({ coder: coders, deviceId: coderDevices.id })
-    .from(coderDevices)
-    .innerJoin(coders, eq(coders.id, coderDevices.coderId))
-    .where(eq(coderDevices.keyHash, coderKey));
+    .select({ coder: coderSessions, deviceId: sessionDevices.id })
+    .from(sessionDevices)
+    .innerJoin(coderSessions, eq(coderSessions.id, sessionDevices.sessionId))
+    .where(eq(sessionDevices.keyHash, coderKey));
   if (known && known.coder.studyId !== studyId)
     throw new HttpError(403, "This session belongs to another study", "coder_key_invalid");
   return known ?? null;
@@ -633,9 +641,9 @@ async function findOrCreateCoder(
     const other = await sessionOfEmail(db, studyId, login.email);
     if (other) return { row: other, deviceId: await addDevice(db, studyId, other.id, coderKey, device) };
     const [linked] = await db
-      .update(coders)
+      .update(coderSessions)
       .set({ email: login.email.toLowerCase() })
-      .where(eq(coders.id, known.coder.id))
+      .where(eq(coderSessions.id, known.coder.id))
       .returning();
     return { row: linked!, deviceId: known.deviceId };
   }
@@ -663,9 +671,9 @@ async function findOrCreateCoder(
     await advisoryLock(db, `pick_name:${studyId}:${name}`);
     const [taken] = await db
       .select()
-      .from(coders)
-      .where(and(eq(coders.studyId, studyId), sql`${coders.session}->>'coder' = ${name}`))
-      .orderBy(asc(coders.id))
+      .from(coderSessions)
+      .where(and(eq(coderSessions.studyId, studyId), sql`${coderSessions.session}->>'coder' = ${name}`))
+      .orderBy(asc(coderSessions.id))
       .limit(1);
     if (taken) {
       if ((invite.nameDevices ?? "first") === "first")
@@ -676,17 +684,17 @@ async function findOrCreateCoder(
   }
   // A participant id is a label, never a credential: a new device for a
   // known participant gets a *new* session, and only when asked for.
-  const { participantId, session } = sessionValues(
+  const { coder, session } = sessionValues(
     request.sessionRules ?? { item: null, setsOf: () => [] },
-    { params, participantId: link.participantId },
+    { params, coder: link.coder },
     request.urlParams ?? {},
     login?.email ?? null,
   );
   const knownParticipant =
-    participantId !== null &&
-    (await db.$count(coders, and(eq(coders.studyId, studyId), eq(coders.participantId, participantId)))) > 0;
+    coder !== null &&
+    (await db.$count(coderSessions, and(eq(coderSessions.studyId, studyId), eq(coderSessions.coder, coder)))) > 0;
   if (knownParticipant && !request.newSession) {
-    throw new HttpError(409, "This participant already has a session on another device", "participant_has_session");
+    throw new HttpError(409, "This participant already has a session on another device", "coder_has_session");
   }
   if (request.paused) throw new HttpError(409, "This study is paused", "study_paused");
   await checkNewCoder(db, studyId);
@@ -704,8 +712,8 @@ async function findOrCreateCoder(
     if (used.length === 0) throw new HttpError(403, "This link has been used up", "link_used_up");
   }
   const [created] = await db
-    .insert(coders)
-    .values({ studyId, email: login?.email.toLowerCase() ?? null, participantId, linkId: link.id, session })
+    .insert(coderSessions)
+    .values({ studyId, email: login?.email.toLowerCase() ?? null, coder, linkId: link.id, session })
     .returning();
   // A new session on a device that had one (`newSession`): the device moves to the new one.
   return { row: created!, deviceId: await addDevice(db, studyId, created!.id, coderKey, device) };

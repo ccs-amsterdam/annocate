@@ -1,5 +1,5 @@
 {
-  "id": "72533cf7-39b4-4e2d-8e7d-d0341225ffc8",
+  "id": "94b17d74-058d-4937-85a2-98086df29737",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1234,8 +1234,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "participant_id": {
-          "name": "participant_id",
+        "coder": {
+          "name": "coder",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -2133,8 +2133,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "coder_id": {
-          "name": "coder_id",
+        "session_id": {
+          "name": "session_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -2225,7 +2225,7 @@
               "nulls": "last"
             },
             {
-              "expression": "coder_id",
+              "expression": "session_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2294,7 +2294,7 @@
               "nulls": "last"
             },
             {
-              "expression": "coder_id",
+              "expression": "session_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2316,7 +2316,7 @@
           "name": "annotation_values_coder_live",
           "columns": [
             {
-              "expression": "coder_id",
+              "expression": "session_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2349,12 +2349,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "annotation_values_coder_id_coders_id_fk": {
-          "name": "annotation_values_coder_id_coders_id_fk",
+        "annotation_values_session_id_coder_sessions_id_fk": {
+          "name": "annotation_values_session_id_coder_sessions_id_fk",
           "tableFrom": "annotation_values",
-          "tableTo": "coders",
+          "tableTo": "coder_sessions",
           "columnsFrom": [
-            "coder_id"
+            "session_id"
           ],
           "columnsTo": [
             "id"
@@ -2401,10 +2401,10 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "annotation_values_device_id_coder_devices_id_fk": {
-          "name": "annotation_values_device_id_coder_devices_id_fk",
+        "annotation_values_device_id_session_devices_id_fk": {
+          "name": "annotation_values_device_id_session_devices_id_fk",
           "tableFrom": "annotation_values",
-          "tableTo": "coder_devices",
+          "tableTo": "session_devices",
           "columnsFrom": [
             "device_id"
           ],
@@ -2421,117 +2421,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.coder_deletions": {
-      "name": "coder_deletions",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "coder_deletions_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "study_id": {
-          "name": "study_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "coder_id": {
-          "name": "coder_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "participant_id": {
-          "name": "participant_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "requested_at": {
-          "name": "requested_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "deleted_by": {
-          "name": "deleted_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "answers": {
-          "name": "answers",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "coder_deletions_study": {
-          "name": "coder_deletions_study",
-          "columns": [
-            {
-              "expression": "study_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "deleted_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "coder_deletions_study_id_studies_id_fk": {
-          "name": "coder_deletions_study_id_studies_id_fk",
-          "tableFrom": "coder_deletions",
-          "tableTo": "studies",
-          "columnsFrom": [
-            "study_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.coder_devices": {
-      "name": "coder_devices",
+    "public.coder_sessions": {
+      "name": "coder_sessions",
       "schema": "",
       "columns": {
         "id": {
@@ -2541,131 +2432,7 @@
           "notNull": true,
           "identity": {
             "type": "always",
-            "name": "coder_devices_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "2147483647",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "study_id": {
-          "name": "study_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "coder_id": {
-          "name": "coder_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "key_hash": {
-          "name": "key_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "device_type": {
-          "name": "device_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "browser": {
-          "name": "browser",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "os": {
-          "name": "os",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created": {
-          "name": "created",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "coder_devices_coder": {
-          "name": "coder_devices_coder",
-          "columns": [
-            {
-              "expression": "coder_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "coder_devices_study_id_studies_id_fk": {
-          "name": "coder_devices_study_id_studies_id_fk",
-          "tableFrom": "coder_devices",
-          "tableTo": "studies",
-          "columnsFrom": [
-            "study_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "coder_devices_coder_id_coders_id_fk": {
-          "name": "coder_devices_coder_id_coders_id_fk",
-          "tableFrom": "coder_devices",
-          "tableTo": "coders",
-          "columnsFrom": [
-            "coder_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "coder_devices_key_hash_key": {
-          "name": "coder_devices_key_hash_key",
-          "nullsNotDistinct": false,
-          "columns": [
-            "key_hash"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.coders": {
-      "name": "coders",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "coders_id_seq",
+            "name": "coder_sessions_id_seq",
             "schema": "public",
             "increment": "1",
             "startWith": "1",
@@ -2693,8 +2460,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "participant_id": {
-          "name": "participant_id",
+        "coder": {
+          "name": "coder",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -2734,8 +2501,8 @@
         }
       },
       "indexes": {
-        "coders_email": {
-          "name": "coders_email",
+        "coder_sessions_email": {
+          "name": "coder_sessions_email",
           "columns": [
             {
               "expression": "study_id",
@@ -2755,8 +2522,8 @@
           "method": "btree",
           "with": {}
         },
-        "coders_participant": {
-          "name": "coders_participant",
+        "coder_sessions_coder": {
+          "name": "coder_sessions_coder",
           "columns": [
             {
               "expression": "study_id",
@@ -2765,7 +2532,7 @@
               "nulls": "last"
             },
             {
-              "expression": "participant_id",
+              "expression": "coder",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2778,9 +2545,9 @@
         }
       },
       "foreignKeys": {
-        "coders_study_id_studies_id_fk": {
-          "name": "coders_study_id_studies_id_fk",
-          "tableFrom": "coders",
+        "coder_sessions_study_id_studies_id_fk": {
+          "name": "coder_sessions_study_id_studies_id_fk",
+          "tableFrom": "coder_sessions",
           "tableTo": "studies",
           "columnsFrom": [
             "study_id"
@@ -2791,9 +2558,9 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "coders_link_id_links_id_fk": {
-          "name": "coders_link_id_links_id_fk",
-          "tableFrom": "coders",
+        "coder_sessions_link_id_links_id_fk": {
+          "name": "coder_sessions_link_id_links_id_fk",
+          "tableFrom": "coder_sessions",
           "tableTo": "links",
           "columnsFrom": [
             "link_id"
@@ -2807,6 +2574,239 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.session_deletions": {
+      "name": "session_deletions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "session_deletions_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "study_id": {
+          "name": "study_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "coder": {
+          "name": "coder",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requested_at": {
+          "name": "requested_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_by": {
+          "name": "deleted_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "answers": {
+          "name": "answers",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "session_deletions_study": {
+          "name": "session_deletions_study",
+          "columns": [
+            {
+              "expression": "study_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "deleted_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "session_deletions_study_id_studies_id_fk": {
+          "name": "session_deletions_study_id_studies_id_fk",
+          "tableFrom": "session_deletions",
+          "tableTo": "studies",
+          "columnsFrom": [
+            "study_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.session_devices": {
+      "name": "session_devices",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "session_devices_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "study_id": {
+          "name": "study_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key_hash": {
+          "name": "key_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "device_type": {
+          "name": "device_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "browser": {
+          "name": "browser",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "os": {
+          "name": "os",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created": {
+          "name": "created",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "session_devices_session": {
+          "name": "session_devices_session",
+          "columns": [
+            {
+              "expression": "session_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "session_devices_study_id_studies_id_fk": {
+          "name": "session_devices_study_id_studies_id_fk",
+          "tableFrom": "session_devices",
+          "tableTo": "studies",
+          "columnsFrom": [
+            "study_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "session_devices_session_id_coder_sessions_id_fk": {
+          "name": "session_devices_session_id_coder_sessions_id_fk",
+          "tableFrom": "session_devices",
+          "tableTo": "coder_sessions",
+          "columnsFrom": [
+            "session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "session_devices_key_hash_key": {
+          "name": "session_devices_key_hash_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "key_hash"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -2827,14 +2827,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "coder_id": {
-          "name": "coder_id",
+        "session_id": {
+          "name": "session_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "participant": {
-          "name": "participant",
+        "coder": {
+          "name": "coder",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -2861,12 +2861,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "transfers_coder_id_coders_id_fk": {
-          "name": "transfers_coder_id_coders_id_fk",
+        "transfers_session_id_coder_sessions_id_fk": {
+          "name": "transfers_session_id_coder_sessions_id_fk",
           "tableFrom": "transfers",
-          "tableTo": "coders",
+          "tableTo": "coder_sessions",
           "columnsFrom": [
-            "coder_id"
+            "session_id"
           ],
           "columnsTo": [
             "id"
@@ -2903,8 +2903,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "coder_id": {
-          "name": "coder_id",
+        "session_id": {
+          "name": "session_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -2936,7 +2936,7 @@
           "name": "unit_codings_coder",
           "columns": [
             {
-              "expression": "coder_id",
+              "expression": "session_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2987,12 +2987,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "unit_codings_coder_id_coders_id_fk": {
-          "name": "unit_codings_coder_id_coders_id_fk",
+        "unit_codings_session_id_coder_sessions_id_fk": {
+          "name": "unit_codings_session_id_coder_sessions_id_fk",
           "tableFrom": "unit_codings",
-          "tableTo": "coders",
+          "tableTo": "coder_sessions",
           "columnsFrom": [
-            "coder_id"
+            "session_id"
           ],
           "columnsTo": [
             "id"
@@ -3008,7 +3008,7 @@
             "study_id",
             "loop_key",
             "unit_id",
-            "coder_id"
+            "session_id"
           ]
         }
       },
@@ -3039,8 +3039,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "coder_id": {
-          "name": "coder_id",
+        "session_id": {
+          "name": "session_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -3073,12 +3073,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "unit_leases_coder_id_coders_id_fk": {
-          "name": "unit_leases_coder_id_coders_id_fk",
+        "unit_leases_session_id_coder_sessions_id_fk": {
+          "name": "unit_leases_session_id_coder_sessions_id_fk",
           "tableFrom": "unit_leases",
-          "tableTo": "coders",
+          "tableTo": "coder_sessions",
           "columnsFrom": [
-            "coder_id"
+            "session_id"
           ],
           "columnsTo": [
             "id"
@@ -3107,7 +3107,7 @@
             "study_id",
             "loop_key",
             "set_name",
-            "coder_id",
+            "session_id",
             "unit_id"
           ]
         }
@@ -3127,8 +3127,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "coder_id": {
-          "name": "coder_id",
+        "session_id": {
+          "name": "session_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -3168,12 +3168,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "unit_serves_coder_id_coders_id_fk": {
-          "name": "unit_serves_coder_id_coders_id_fk",
+        "unit_serves_session_id_coder_sessions_id_fk": {
+          "name": "unit_serves_session_id_coder_sessions_id_fk",
           "tableFrom": "unit_serves",
-          "tableTo": "coders",
+          "tableTo": "coder_sessions",
           "columnsFrom": [
-            "coder_id"
+            "session_id"
           ],
           "columnsTo": [
             "id"
@@ -3212,7 +3212,7 @@
         "unit_serves_pkey": {
           "name": "unit_serves_pkey",
           "columns": [
-            "coder_id",
+            "session_id",
             "unit_id"
           ]
         }

@@ -60,7 +60,7 @@ const keys = {
   unitPages: (studyId?: number) => ["admin", "study", studyId ?? "current", "units", "page"] as const,
   sets: (studyId?: number) => ["admin", "study", studyId ?? "current", "sets"] as const,
   coders: (studyId?: number) => ["admin", "study", studyId ?? "current", "coders"] as const,
-  coderDeletions: (studyId?: number) => ["admin", "study", studyId ?? "current", "coders", "deletions"] as const,
+  sessionDeletions: (studyId?: number) => ["admin", "study", studyId ?? "current", "coders", "deletions"] as const,
   deployment: (studyId?: number) => ["admin", "study", studyId ?? "current", "deployment"] as const,
   deploymentStatus: (studyId?: number) => ["admin", "study", studyId ?? "current", "deployment", "status"] as const,
   pending: (studyId?: number) => ["admin", "study", studyId ?? "current", "deployment", "pending"] as const,
@@ -306,7 +306,7 @@ export function useCodersQuery(client: ResearcherApi): UseQueryResult<CoderProgr
 
 /** The study's deletion log: coders whose data was deleted. */
 export function useCoderDeletionsQuery(client: ResearcherApi): UseQueryResult<CoderDeletion[]> {
-  return useQuery({ queryKey: keys.coderDeletions(client.studyId), queryFn: () => client.listCoderDeletions() });
+  return useQuery({ queryKey: keys.sessionDeletions(client.studyId), queryFn: () => client.listCoderDeletions() });
 }
 
 /** Delete coders' data, now or later (a deletion request); both refresh the coder list (and the counts on the overview). */
@@ -315,7 +315,7 @@ export function useCoderDeletionMutations(client: ResearcherApi) {
   const onSuccess = () => queryClient.invalidateQueries({ queryKey: keys.study(client.studyId) });
   return {
     remove: useMutation({ mutationFn: (select: DeleteCoders) => client.deleteCoders(select), onSuccess }),
-    postpone: useMutation({ mutationFn: (coderId: number) => client.postponeDeletion(coderId), onSuccess }),
+    postpone: useMutation({ mutationFn: (sessionId: number) => client.postponeDeletion(sessionId), onSuccess }),
   };
 }
 

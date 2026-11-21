@@ -14,7 +14,7 @@ test("a coder swipes through their set with the arrow keys; every answer is save
     await page.waitForTimeout(400);
   }
   await expect(page.getByText(/completed|Thank you/i).first()).toBeVisible();
-  const mine = (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null);
+  const mine = (await answers(request, study.id)).filter((a) => !examples.includes(a.sessionId) && a.unitId !== null);
   expect(mine).toHaveLength(10);
   expect(new Set(mine.map((a) => a.unitId)).size).toBe(10);
 });
@@ -23,7 +23,7 @@ test("a swipe starts anywhere on the screen, and 1, 2, 3 answer too", async ({ p
   const { study, link } = await fromExample(request, "swipe-sentiment");
   const examples = (await coders(request, study.id)).map((c) => c.id);
   const mine = async () =>
-    (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null);
+    (await answers(request, study.id)).filter((a) => !examples.includes(a.sessionId) && a.unitId !== null);
   await page.goto(link);
   await question(page, "Is this headline good news or bad news?");
   await page.waitForTimeout(500);
@@ -78,7 +78,7 @@ test("a respondent under 18 is screened out; an adult fills in the whole survey,
   await adult.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(adult.getByText("Thank you for taking part!")).toBeVisible();
 
-  const rows = (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId));
+  const rows = (await answers(request, study.id)).filter((a) => !examples.includes(a.sessionId));
   const byVariable = (name: string) =>
     rows.filter((a) => a.variable === name).map((a) => a.value.values?.map((v) => v.value));
   expect(byVariable("age").sort()).toEqual([[15], [30]]);
@@ -112,7 +112,7 @@ test("a participant in the experiment reads their version of the article and ans
   await page.getByRole("button", { name: economic ? /Costs and jobs/ : /fisherman/ }).click();
   await expect(page.getByText(/the wind farm is not real/)).toBeVisible();
 
-  const rows = (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId));
+  const rows = (await answers(request, study.id)).filter((a) => !examples.includes(a.sessionId));
   const condition = rows.find((a) => a.variable === "condition");
   expect(condition?.assigned).toBe(true);
   expect(condition?.value.values?.[0].value).toBe(economic ? "economic" : "human_interest");
@@ -158,9 +158,9 @@ test("a coder selects actors in a text and labels them", async ({ page, request 
   await page.getByRole("button", { name: "Done (1)" }).click();
   await question(page, "Select every person and organisation mentioned in the text.");
   await expect
-    .poll(async () => (await answers(request, study.id)).filter((x) => !examples.includes(x.coderId)).length)
+    .poll(async () => (await answers(request, study.id)).filter((x) => !examples.includes(x.sessionId)).length)
     .toBe(1);
-  const [row] = (await answers(request, study.id)).filter((x) => !examples.includes(x.coderId));
+  const [row] = (await answers(request, study.id)).filter((x) => !examples.includes(x.sessionId));
   expect(row.value.spans).toMatchObject([{ value: "person", field: "text", slices: [{ text: "Anna de Wit" }] }]);
 });
 

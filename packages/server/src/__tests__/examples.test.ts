@@ -68,7 +68,7 @@ describe("example studies", () => {
       const page = AnnotationPageSchema.parse(
         await (await researcher(`/api/study/${study.id}/annotations?limit=10000`)).json(),
       );
-      const answered = new Set(page.annotations.map((a: AnnotationRow) => a.coderId));
+      const answered = new Set(page.annotations.map((a: AnnotationRow) => a.sessionId));
       expect(coders.every((c) => answered.has(c.id))).toBe(true);
       // Their finished units count (every question of the loop answered)
       const units = page.annotations.filter((a) => a.unitId !== null).length;

@@ -89,7 +89,7 @@ export type DeploymentResponse = z.infer<typeof DeploymentResponseSchema>;
 export const ResetAnnotationsSchema = z.object({
   variables: z.array(z.string()).min(1),
   unitIds: z.array(IdSchema).optional(),
-  coderIds: z.array(IdSchema).optional(),
+  sessionIds: z.array(IdSchema).optional(),
 });
 export type ResetAnnotations = z.infer<typeof ResetAnnotationsSchema>;
 

@@ -295,7 +295,7 @@ describe("annotations: finished counts and resets", () => {
     await query(db, "INSERT INTO links (study_id, label, secret) VALUES ($1, 'x', 'annotations-link')", [study.id]);
     const { coder } = await store.resolveCoder({ coderKey: "k", linkSecret: "annotations-link" });
     const put = (unitId: number, variables: Record<string, VariableValue>) =>
-      store.putAnnotation({ unitId, coderId: coder.coderId, variables });
+      store.putAnnotation({ unitId, sessionId: coder.sessionId, variables });
     const finished = (variables: string[], values?: string[]) =>
       store.listFinished({ loops: [{ loop: "l", variables, values }] });
     return { study, units, coder, put, finished };
@@ -411,8 +411,8 @@ describe("links, coder progress and overview", () => {
     expect((await publish(session ? [session, loop] : [loop])).status).toBe(200);
     const resolve = async (coderKey: string, linkSecret: string) =>
       (await store.resolveCoder({ coderKey, linkSecret })).coder;
-    const put = (coderId: number, unitId: number, variables: Record<string, VariableValue>) =>
-      store.putAnnotation({ unitId, coderId, variables });
+    const put = (sessionId: number, unitId: number, variables: Record<string, VariableValue>) =>
+      store.putAnnotation({ unitId, sessionId, variables });
     const get = async (path: string) =>
       json(await app.request(`/api/study/${study.id}${path}`, { headers: adminHeaders }));
     return { study, units, loop, publish, resolve, put, get };
@@ -499,8 +499,8 @@ describe("links, coder progress and overview", () => {
     const [link] = await get("/links");
     const coderA = await resolve("a", link.secret);
     await resolve("b", link.secret);
-    await put(coderA.coderId, units[0].id, { q1: value("x"), q2: value("y") });
-    await put(coderA.coderId, units[1].id, { q1: value("x") });
+    await put(coderA.sessionId, units[0].id, { q1: value("x"), q2: value("y") });
+    await put(coderA.sessionId, units[1].id, { q1: value("x") });
 
     const coders = await get("/coders");
     expect(coders[0]).toMatchObject({ linkLabel: "batch 1", answers: 3, finished: { l: 1 } });

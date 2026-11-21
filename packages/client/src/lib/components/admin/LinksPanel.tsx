@@ -187,7 +187,7 @@ const STATUS_STYLE: Record<LinkStatus, string> = {
 
 /** Who may use a link, in a few words (sign-in is the invitation's). */
 function accessOf(link: LinkResponse): string {
-  return link.participantId ? `participant ${link.participantId}` : "anyone";
+  return link.coder ? `coder ${link.coder}` : "anyone";
 }
 
 function LinkRow({ client, link, url }: { client: ResearcherApi; link: LinkResponse; url: string }) {
@@ -295,7 +295,7 @@ function AccessForm({ client, link, onDone }: { client: ResearcherApi; link: Lin
   const update = useUpdateLinkMutation(client);
   const [label, setLabel] = useState(link.label);
   const [maxUses, setMaxUses] = useState(link.maxUses === undefined ? "" : String(link.maxUses));
-  const [participantId, setParticipantId] = useState(link.participantId ?? "");
+  const [coderId, setCoderId] = useState(link.coder ?? "");
 
   async function save() {
     await update.mutateAsync({
@@ -303,7 +303,7 @@ function AccessForm({ client, link, onDone }: { client: ResearcherApi; link: Lin
       body: {
         label,
         maxUses: maxUses === "" ? undefined : Number(maxUses),
-        participantId: participantId.trim() || undefined,
+        coder: coderId.trim() || undefined,
       },
     });
     onDone();
@@ -332,8 +332,8 @@ function AccessForm({ client, link, onDone }: { client: ResearcherApi; link: Lin
           aria-label="Fixed participant id"
           className="w-48"
           placeholder="Fixed participant id"
-          value={participantId}
-          onChange={(e) => setParticipantId(e.target.value)}
+          value={coderId}
+          onChange={(e) => setCoderId(e.target.value)}
         />
       </div>
       <p className="text-[11px] text-muted-foreground">

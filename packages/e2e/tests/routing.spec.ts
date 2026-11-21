@@ -57,7 +57,7 @@ test("the coder home lists the studies this browser takes part in, to continue t
   await expect
     .poll(
       async () =>
-        (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null).length,
+        (await answers(request, study.id)).filter((a) => !examples.includes(a.sessionId) && a.unitId !== null).length,
     )
     .toBe(1);
   await page.goto("/code");

@@ -42,7 +42,7 @@ async function retireAnnotations(db: Db, studyId: number, request: ResetAnnotati
         inArray(a.variable, request.variables),
         // None given: all
         request.unitIds?.length ? anyOf(a.unitId, request.unitIds) : undefined,
-        request.coderIds?.length ? anyOf(a.coderId, request.coderIds) : undefined,
+        request.sessionIds?.length ? anyOf(a.sessionId, request.sessionIds) : undefined,
       ),
     )
     .returning({ id: a.id });

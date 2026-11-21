@@ -102,7 +102,7 @@ async function contents(studyId: number) {
     links: links.map((l) => ({ label: l.label, params: l.params, maxUses: l.maxUses, uses: l.uses })),
     coders: coders.map((c) => ({ ...c, id: undefined, link: undefined, linkId: undefined, lastActive: undefined })),
     answers: answers.map((a) => ({
-      coder: coderIndex.get(a.coderId),
+      coder: coderIndex.get(a.sessionId),
       unit: a.unitId === null ? null : unitIds.get(a.unitId),
       design: a.designVersionId === null ? null : versionIndex.get(a.designVersionId),
       variable: a.variable,

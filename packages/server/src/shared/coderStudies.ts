@@ -1,7 +1,7 @@
 import { and, desc, eq, isNotNull, isNull, sql, type SQL } from "drizzle-orm";
 import type { CoderStudy } from "@annotinder/contracts";
 import type { Db } from "../db/index.js";
-import { annotationValues as a, coders, deployments, designVersions, studies } from "../db/schema/index.js";
+import { annotationValues as a, coderSessions, deployments, designVersions, studies } from "../db/schema/index.js";
 
 /**
  * Coders' sessions as studies for the coder home (contracts
@@ -14,23 +14,25 @@ export async function coderStudies(db: Db, where: SQL | undefined): Promise<Code
   const unitsAnswered = db
     .select({ n: sql<number>`count(DISTINCT ${a.unitId})::int` })
     .from(a)
-    .where(and(eq(a.coderId, coders.id), isNotNull(a.unitId), isNull(a.retiredAt)));
-  const lastAnswer = sql<string | null>`(SELECT max(${a.updated}) FROM ${a} WHERE ${a.coderId} = ${coders.id})`;
+    .where(and(eq(a.sessionId, coderSessions.id), isNotNull(a.unitId), isNull(a.retiredAt)));
+  const lastAnswer = sql<
+    string | null
+  >`(SELECT max(${a.updated}) FROM ${a} WHERE ${a.sessionId} = ${coderSessions.id})`;
   const rows = await db
     .select({
-      studyId: coders.studyId,
+      studyId: coderSessions.studyId,
       title: sql<string | null>`${designVersions.public}->>'title'`,
-      created: coders.created,
-      ended: coders.ended,
+      created: coderSessions.created,
+      ended: coderSessions.ended,
       units: sql<number>`(${unitsAnswered})`,
       lastActive: lastAnswer,
     })
-    .from(coders)
-    .innerJoin(studies, eq(studies.id, coders.studyId))
-    .innerJoin(deployments, eq(deployments.studyId, coders.studyId))
+    .from(coderSessions)
+    .innerJoin(studies, eq(studies.id, coderSessions.studyId))
+    .innerJoin(deployments, eq(deployments.studyId, coderSessions.studyId))
     .innerJoin(designVersions, eq(designVersions.id, deployments.designVersionId))
     .where(and(isNull(studies.suspendedAt), where))
-    .orderBy(desc(sql`COALESCE(${lastAnswer}, ${coders.created})`));
+    .orderBy(desc(sql`COALESCE(${lastAnswer}, ${coderSessions.created})`));
   return rows.map((r) => {
     const lastActive = r.lastActive ? new Date(r.lastActive) : null;
     return {

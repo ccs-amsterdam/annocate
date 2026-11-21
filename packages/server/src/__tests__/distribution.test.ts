@@ -19,7 +19,7 @@ function setup() {
   /** Simulates a coder getting and finishing their next unit. */
   const codeNext = (
     main: UnitPool,
-    coderId: number,
+    sessionId: number,
     opts: {
       overlap?: OverlapPlacement;
       order?: "sequential" | "random";
@@ -30,7 +30,7 @@ function setup() {
     } = {},
   ) => {
     const now = opts.now ?? 0;
-    const next = pickNext(main, opts.overlap ? [opts.overlap] : [], coderId, codings, {
+    const next = pickNext(main, opts.overlap ? [opts.overlap] : [], sessionId, codings, {
       order: opts.order ?? "sequential",
       maxUnits: opts.maxUnits,
       minUnits: opts.minUnits,
@@ -38,14 +38,14 @@ function setup() {
       now,
     });
     if (!next) return null;
-    next.pool.take(coderId, next.unitId, now);
-    codings.record(coderId, next.unitId, answer(opts.code ?? "x"));
+    next.pool.take(sessionId, next.unitId, now);
+    codings.record(sessionId, next.unitId, answer(opts.code ?? "x"));
     return next.unitId;
   };
   /** Every unit a coder gets, in order. */
-  const codeAll = (main: UnitPool, coderId: number, opts: Parameters<typeof codeNext>[2] = {}) => {
+  const codeAll = (main: UnitPool, sessionId: number, opts: Parameters<typeof codeNext>[2] = {}) => {
     const ids: number[] = [];
-    for (let id = codeNext(main, coderId, opts); id !== null; id = codeNext(main, coderId, opts)) ids.push(id);
+    for (let id = codeNext(main, sessionId, opts); id !== null; id = codeNext(main, sessionId, opts)) ids.push(id);
     return ids;
   };
   return { codings, pool, codeNext, codeAll };
@@ -61,9 +61,9 @@ describe("fixed pools", () => {
 
   it("shuffle per coder in random order, deterministically", () => {
     const ids = Array.from({ length: 20 }, (_, i) => i + 1);
-    const run = (coderId: number) => {
+    const run = (sessionId: number) => {
       const { pool, codeAll } = setup();
-      return codeAll(pool(ids), coderId, { order: "random" });
+      return codeAll(pool(ids), sessionId, { order: "random" });
     };
     const order = run(1);
     expect(run(1)).toEqual(order);
@@ -105,9 +105,9 @@ describe("overlap", () => {
   it("comes at a rate: about one in `every`, never more than 2 x every apart, the same per coder on every request", () => {
     const own = Array.from({ length: 60 }, (_, i) => i + 1);
     const special = [101, 102, 103, 104, 105];
-    const run = (coderId: number, rest: "end" | "drop") => {
+    const run = (sessionId: number, rest: "end" | "drop") => {
       const { pool, codeAll } = setup();
-      return codeAll(pool(own), coderId, {
+      return codeAll(pool(own), sessionId, {
         overlap: { pool: pool(special, null, "overlap"), placement: "rate", every: 10, rest },
       });
     };

@@ -12,7 +12,7 @@ import type { Db } from "../db/index.js";
 import { anyOf } from "../db/sql.js";
 import {
   annotationValues as a,
-  coders as codersTable,
+  coderSessions as codersTable,
   designVersions,
   links,
   unitCodings,
@@ -42,14 +42,17 @@ async function finishedPerLoop(db: Db, studyId: number): Promise<Map<string, Map
     if (variables.length === 0) continue;
     // (unit, coder) pairs with a live answer to every question of the loop
     const finished = db
-      .select({ coderId: a.coderId })
+      .select({ sessionId: a.sessionId })
       .from(a)
       .where(and(eq(a.studyId, studyId), isNotNull(a.unitId), isNull(a.retiredAt), inArray(a.variable, variables)))
-      .groupBy(a.unitId, a.coderId)
+      .groupBy(a.unitId, a.sessionId)
       .having(sql`count(DISTINCT ${a.variable}) = ${variables.length}`)
       .as("finished");
-    const rows = await db.select({ coderId: finished.coderId, n: count() }).from(finished).groupBy(finished.coderId);
-    result.set(loop, new Map(rows.map((r) => [r.coderId, r.n])));
+    const rows = await db
+      .select({ sessionId: finished.sessionId, n: count() })
+      .from(finished)
+      .groupBy(finished.sessionId);
+    result.set(loop, new Map(rows.map((r) => [r.sessionId, r.n])));
   }
   return result;
 }
@@ -65,11 +68,11 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
   const activity = new Map(
     (
       await db
-        .select({ coderId: a.coderId, answers: count(), lastActive: max(a.updated) })
+        .select({ sessionId: a.sessionId, answers: count(), lastActive: max(a.updated) })
         .from(a)
         .where(given(studyId))
-        .groupBy(a.coderId)
-    ).map((r) => [r.coderId, r]),
+        .groupBy(a.sessionId)
+    ).map((r) => [r.sessionId, r]),
   );
   const finished = await finishedPerLoop(db, studyId);
   const values = await coderValues(db, studyId);
@@ -84,13 +87,13 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
     .innerJoin(unitSetMembers, eq(unitSetMembers.setId, unitSets.id))
     .where(and(eq(unitSets.studyId, studyId), eq(unitSets.live, true), inArray(unitSets.name, Object.keys(kinds))));
   const doneRows = await db
-    .selectDistinct({ coderId: unitCodings.coderId, unitId: unitCodings.unitId })
+    .selectDistinct({ sessionId: unitCodings.sessionId, unitId: unitCodings.unitId })
     .from(unitCodings)
     .where(
       and(eq(unitCodings.studyId, studyId), anyOf(unitCodings.unitId, [...new Set(members.map((m) => m.unitId))])),
     );
   const done = new Map<number, Set<number>>();
-  for (const r of doneRows) done.set(r.coderId, (done.get(r.coderId) ?? new Set()).add(r.unitId));
+  for (const r of doneRows) done.set(r.sessionId, (done.get(r.sessionId) ?? new Set()).add(r.unitId));
   const deployment = await getDeployment(db, studyId);
   const [deployed] = deployment
     ? await db
@@ -103,7 +106,7 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
   const shareColumns = deployed
     ? [...new Map([...loopShareColumns(designVersionItems(deployed)).values()].flat().map((c) => [c.name, c.column]))]
     : [];
-  const special = (coderId: number, session: Record<string, string>, assignments: Record<string, unknown>) => {
+  const special = (sessionId: number, session: Record<string, string>, assignments: Record<string, unknown>) => {
     const out: CoderProgress["special"] = {};
     if (Object.keys(assignments ?? {}).length === 0) return out;
     const selected = shareColumns.filter(([name]) => session?.[name] !== undefined);
@@ -124,7 +127,7 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
           .map((m) => m.unitId),
       );
       if (units.size === 0) continue;
-      out[kind] = { done: [...units].filter((id) => done.get(coderId)?.has(id)).length, total: units.size };
+      out[kind] = { done: [...units].filter((id) => done.get(sessionId)?.has(id)).length, total: units.size };
     }
     return out;
   };
@@ -132,7 +135,7 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
   return coders.map(({ coder: c, linkLabel }) => ({
     id: c.id,
     ...(c.email && showEmails ? { email: c.email } : {}),
-    ...(c.participantId ? { participantId: c.participantId } : {}),
+    ...(c.coder ? { coder: c.coder } : {}),
     linkId: c.linkId,
     linkLabel,
     started: c.created,
@@ -157,8 +160,10 @@ export async function studyOverview(db: Db, studyId: number, now = new Date()): 
   const [answers] = await db
     .select({
       total: count(),
-      coders: countDistinct(a.coderId),
-      activeLastDay: sql<number>`count(DISTINCT ${a.coderId}) FILTER (WHERE ${a.updated} >= ${dayAgo})`.mapWith(Number),
+      coders: countDistinct(a.sessionId),
+      activeLastDay: sql<number>`count(DISTINCT ${a.sessionId}) FILTER (WHERE ${a.updated} >= ${dayAgo})`.mapWith(
+        Number,
+      ),
       last: max(a.updated),
     })
     .from(a)
@@ -189,7 +194,7 @@ async function activityPerDay(db: Db, studyId: number, now: Date): Promise<Study
     days.push(new Date(now.getTime() - i * DAY_MS).toISOString().slice(0, 10));
   const day = sql<string>`to_char(${a.created} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`;
   const rows = await db
-    .select({ day, answers: count(), coders: countDistinct(a.coderId) })
+    .select({ day, answers: count(), coders: countDistinct(a.sessionId) })
     .from(a)
     .where(and(eq(a.studyId, studyId), eq(a.assigned, false), gte(a.created, new Date(`${days[0]}T00:00:00Z`))))
     .groupBy(day);

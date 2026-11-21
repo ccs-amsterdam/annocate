@@ -52,7 +52,7 @@ describe("a study export's manifest, read before importing", () => {
       { name: "studies", rows: 1 },
       { name: "design_versions", rows: 2 },
       { name: "units", rows: 20 },
-      { name: "coders", rows: 3 },
+      { name: "coder_sessions", rows: 3 },
       { name: "annotation_values", rows: 30 },
     ],
   };

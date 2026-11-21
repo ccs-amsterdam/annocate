@@ -103,7 +103,7 @@ test("a study export makes a copy of the study, with its coders and answers, und
   expect((await api<StudyResponse>(request, "GET", `/study/${copyId}`)).name).toBe("Sentiment, moved");
   expect(await contents(request, copyId)).toEqual(await contents(request, study.id));
   const [before, after] = [await coders(request, study.id), await coders(request, copyId)];
-  expect(after.map((c) => c.participantId)).toEqual(before.map((c) => c.participantId));
+  expect(after.map((c) => c.coder)).toEqual(before.map((c) => c.coder));
   expect(after.map((c) => c.id).filter((id) => before.some((b) => b.id === id))).toEqual([]);
   expect((await answers(request, copyId)).length).toBe((await answers(request, study.id)).length);
 });

@@ -7,7 +7,7 @@ import { SESSION_COOKIE } from "./researcher/login.js";
 import { requireClientHeader } from "./runtime/session.js";
 import { coderStudies } from "./shared/coderStudies.js";
 import { sql } from "drizzle-orm";
-import { coders } from "./db/schema/index.js";
+import { coderSessions } from "./db/schema/index.js";
 
 /**
  * Coder routes outside a deployment (`/api/coder`, contracts
@@ -21,7 +21,7 @@ export function coderAccount(server: Server): Hono<Env> {
     const cookie = getCookie(c, SESSION_COOKIE);
     const user = cookie ? await userForSession(server.db, cookie) : null;
     if (!user) throw new HttpError(401, "Log in to see your studies on other devices", "auth_required");
-    return c.json(await coderStudies(server.db, sql`lower(${coders.email}) = lower(${user.email})`));
+    return c.json(await coderStudies(server.db, sql`lower(${coderSessions.email}) = lower(${user.email})`));
   });
   return app;
 }

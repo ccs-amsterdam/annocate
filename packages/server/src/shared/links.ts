@@ -28,7 +28,7 @@ export function toLinkResponse(row: LinkRow): LinkResponse {
     secret: row.secret,
     uses: row.uses,
     ...(row.maxUses !== null ? { maxUses: row.maxUses } : {}),
-    ...(row.participantId !== null ? { participantId: row.participantId } : {}),
+    ...(row.coder !== null ? { coder: row.coder } : {}),
     created: row.created,
     revokedAt: row.revokedAt,
     params: row.params,

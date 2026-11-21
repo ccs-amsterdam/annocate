@@ -96,7 +96,7 @@ export function readExportSummary(bytes: Uint8Array): ExportSummary {
     release: m.client.release,
     exportedAt: m.exportedAt,
     units: rows("units"),
-    coders: rows("coders"),
+    coders: rows("coder_sessions"),
     answers: rows("annotation_values"),
     designVersions: rows("design_versions"),
   };

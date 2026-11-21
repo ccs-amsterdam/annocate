@@ -13,7 +13,7 @@ import {
 } from "@annotinder/contracts";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { Db } from "./db/index.js";
-import { annotationValues, coders, links as linksTable, units, unitVersions } from "./db/schema/index.js";
+import { annotationValues, coderSessions, links as linksTable, units, unitVersions } from "./db/schema/index.js";
 import { collectCoderVariables, collectLoops } from "./runtime/designItems.js";
 import { putCoderValues } from "./shared/coders.js";
 import { HttpError } from "./shared/http.js";
@@ -155,16 +155,16 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
       if (Object.keys(coder.session).length > 0 && !link)
         throw new Error(`examples/${id}.json: no link for example coder ${i + 1}'s session`);
       const [made] = await tx
-        .insert(coders)
+        .insert(coderSessions)
         .values({
           studyId: study.id,
-          participantId: `Example coder ${i + 1}`,
+          coder: `Example coder ${i + 1}`,
           linkId: link?.id ?? firstLink,
           session: coder.session,
           ended: { outcome: "complete", at: new Date() },
         })
-        .returning({ id: coders.id });
-      const coderId = made!.id;
+        .returning({ id: coderSessions.id });
+      const sessionId = made!.id;
       const values = Object.fromEntries(
         Object.entries(coder.variables).map(([name, short]) => [name, answerValue(short)]),
       );
@@ -173,8 +173,8 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
       const isAuto = (name: string) => coderTypes.get(name)?.type === "random";
       const assigned = Object.fromEntries(Object.entries(values).filter(([name]) => isAuto(name)));
       const answered = Object.fromEntries(Object.entries(values).filter(([name]) => !isAuto(name)));
-      await putCoderValues(tx, study.id, { coderId, values: assigned, assigned: true, designVersionId });
-      await putCoderValues(tx, study.id, { coderId, values: answered, designVersionId });
+      await putCoderValues(tx, study.id, { sessionId, values: assigned, assigned: true, designVersionId });
+      await putCoderValues(tx, study.id, { sessionId, values: answered, designVersionId });
 
       for (const [externalId, answers] of Object.entries(coder.units)) {
         // A finished unit: every question of a loop answered (`skip` for hidden ones)
@@ -194,7 +194,7 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
           await tx.insert(annotationValues).values({
             studyId: study.id,
             unitId: uid,
-            coderId,
+            sessionId,
             variable: name,
             value,
             designVersionId,

@@ -15,49 +15,49 @@ export type SharedRule = ReturnType<typeof sharedDefaults>;
  */
 export type AgreementKeys = Record<string, string | null>;
 
-/** Finished codings: unitId -> coderId -> agreement keys, plus each coder's finish order. Shared by all pools. */
+/** Finished codings: unitId -> sessionId -> agreement keys, plus each coder's finish order. Shared by all pools. */
 export class Codings {
   private byUnit = new Map<number, Map<number, AgreementKeys>>();
   private byCoder = new Map<number, number[]>();
-  /** coderId -> when they last finished a unit (ms). */
+  /** sessionId -> when they last finished a unit (ms). */
   private lastAt = new Map<number, number>();
 
   /** `at`: when the coder finished it (ms). */
-  record(coderId: number, unitId: number, keys: AgreementKeys, at = 0): void {
+  record(sessionId: number, unitId: number, keys: AgreementKeys, at = 0): void {
     let unit = this.byUnit.get(unitId);
     if (!unit) this.byUnit.set(unitId, (unit = new Map()));
-    if (!unit.has(coderId)) {
-      const done = this.byCoder.get(coderId);
+    if (!unit.has(sessionId)) {
+      const done = this.byCoder.get(sessionId);
       if (done) done.push(unitId);
-      else this.byCoder.set(coderId, [unitId]);
+      else this.byCoder.set(sessionId, [unitId]);
     }
-    unit.set(coderId, keys);
-    if (at > (this.lastAt.get(coderId) ?? 0)) this.lastAt.set(coderId, at);
+    unit.set(sessionId, keys);
+    if (at > (this.lastAt.get(sessionId) ?? 0)) this.lastAt.set(sessionId, at);
   }
 
   /** When the coder last finished a unit here (ms), 0 if never. */
-  lastFinished(coderId: number): number {
-    return this.lastAt.get(coderId) ?? 0;
+  lastFinished(sessionId: number): number {
+    return this.lastAt.get(sessionId) ?? 0;
   }
 
   forUnit(unitId: number): Map<number, AgreementKeys> {
     return this.byUnit.get(unitId) ?? new Map();
   }
 
-  has(coderId: number, unitId: number): boolean {
-    return this.byUnit.get(unitId)?.has(coderId) ?? false;
+  has(sessionId: number, unitId: number): boolean {
+    return this.byUnit.get(unitId)?.has(sessionId) ?? false;
   }
 
   /** Drops the coder's codings (rebuilt from their annotations when they return). */
-  forget(coderId: number): void {
-    for (const unitId of this.doneBy(coderId)) this.byUnit.get(unitId)?.delete(coderId);
-    this.byCoder.delete(coderId);
-    this.lastAt.delete(coderId);
+  forget(sessionId: number): void {
+    for (const unitId of this.doneBy(sessionId)) this.byUnit.get(unitId)?.delete(sessionId);
+    this.byCoder.delete(sessionId);
+    this.lastAt.delete(sessionId);
   }
 
   /** Unit ids the coder finished, in the order they finished them. */
-  doneBy(coderId: number): number[] {
-    return this.byCoder.get(coderId) ?? [];
+  doneBy(sessionId: number): number[] {
+    return this.byCoder.get(sessionId) ?? [];
   }
 }
 
@@ -70,9 +70,9 @@ export class Codings {
 export class UnitPool {
   private units: number[];
   private unitSet: Set<number>;
-  /** unitId -> coderId -> lease expiry (ms). Dynamic only. */
+  /** unitId -> sessionId -> lease expiry (ms). Dynamic only. */
   private leases = new Map<number, Map<number, number>>();
-  /** coderId -> the units leased to them, in the order handed out. Dynamic only; a coder holds up to a batch. */
+  /** sessionId -> the units leased to them, in the order handed out. Dynamic only; a coder holds up to a batch. */
   private coderLeases = new Map<number, number[]>();
 
   constructor(
@@ -105,7 +105,7 @@ export class UnitPool {
   removeUnit(unitId: number): void {
     if (!this.unitSet.delete(unitId)) return;
     this.units = this.units.filter((id) => id !== unitId);
-    for (const coderId of this.leases.get(unitId)?.keys() ?? []) this.dropLease(coderId, unitId);
+    for (const sessionId of this.leases.get(unitId)?.keys() ?? []) this.dropLease(sessionId, unitId);
     this.leases.delete(unitId);
   }
 
@@ -116,14 +116,14 @@ export class UnitPool {
    * `take` for the unit actually handed out.
    */
   best(
-    coderId: number,
+    sessionId: number,
     now: number,
     shuffleSeed: number | null,
     { reach = "slots" }: { reach?: Reach } = {},
   ): number | undefined {
     const order = shuffleSeed === null ? this.units : seededShuffle(this.units, shuffleSeed);
     const rule = this.rule;
-    if (!rule) return order.find((id) => !this.codings.has(coderId, id));
+    if (!rule) return order.find((id) => !this.codings.has(sessionId, id));
 
     // Within the open slots: least coded first (`cover`), or most coded
     // (`saturate`). Past them (`Reach`): least coded first, counting
@@ -133,7 +133,7 @@ export class UnitPool {
     let found: number | undefined;
     let lowest = Infinity;
     for (const id of order) {
-      if (this.codings.has(coderId, id)) continue;
+      if (this.codings.has(sessionId, id)) continue;
       let score: number;
       if (reach === "slots") {
         if (this.openSlots(id, now) <= 0) continue;
@@ -153,23 +153,23 @@ export class UnitPool {
   }
 
   /** Leases as stored (also expired ones: an expired lease is still the coder's own unit, `heldLease`). */
-  loadLeases(leases: { coderId: number; unitId: number; expires: number }[]): void {
-    for (const { coderId, unitId, expires } of leases) {
+  loadLeases(leases: { sessionId: number; unitId: number; expires: number }[]): void {
+    for (const { sessionId, unitId, expires } of leases) {
       if (!this.unitSet.has(unitId)) continue;
       let unitLeases = this.leases.get(unitId);
       if (!unitLeases) this.leases.set(unitId, (unitLeases = new Map()));
-      unitLeases.set(coderId, expires);
-      this.addLease(coderId, unitId);
+      unitLeases.set(sessionId, expires);
+      this.addLease(sessionId, unitId);
     }
   }
 
   /** Marks a unit as handed out to this coder (leases it, for dynamic pools; a lease held already is renewed). */
-  take(coderId: number, unitId: number, now: number): void {
+  take(sessionId: number, unitId: number, now: number): void {
     if (!this.rule) return;
     let unitLeases = this.leases.get(unitId);
     if (!unitLeases) this.leases.set(unitId, (unitLeases = new Map()));
-    unitLeases.set(coderId, now + this.rule.leaseSeconds * 1000);
-    this.addLease(coderId, unitId);
+    unitLeases.set(sessionId, now + this.rule.leaseSeconds * 1000);
+    this.addLease(sessionId, unitId);
   }
 
   /**
@@ -179,33 +179,33 @@ export class UnitPool {
    * a coder may reach past `maxCoders` anyway, `Reach`). Leases of units
    * that are done are dropped on the way.
    */
-  heldLease(coderId: number): number | undefined {
-    for (const unitId of [...(this.coderLeases.get(coderId) ?? [])]) {
-      if (!this.codings.has(coderId, unitId) && !this.isSaturated(unitId)) return unitId;
-      this.dropLease(coderId, unitId);
-      this.leases.get(unitId)?.delete(coderId);
+  heldLease(sessionId: number): number | undefined {
+    for (const unitId of [...(this.coderLeases.get(sessionId) ?? [])]) {
+      if (!this.codings.has(sessionId, unitId) && !this.isSaturated(unitId)) return unitId;
+      this.dropLease(sessionId, unitId);
+      this.leases.get(unitId)?.delete(sessionId);
     }
     return undefined;
   }
 
-  private addLease(coderId: number, unitId: number): void {
-    const held = this.coderLeases.get(coderId) ?? [];
-    if (!held.includes(unitId)) this.coderLeases.set(coderId, [...held, unitId]);
+  private addLease(sessionId: number, unitId: number): void {
+    const held = this.coderLeases.get(sessionId) ?? [];
+    if (!held.includes(unitId)) this.coderLeases.set(sessionId, [...held, unitId]);
   }
 
-  private dropLease(coderId: number, unitId: number): void {
-    const held = (this.coderLeases.get(coderId) ?? []).filter((id) => id !== unitId);
-    if (held.length > 0) this.coderLeases.set(coderId, held);
-    else this.coderLeases.delete(coderId);
+  private dropLease(sessionId: number, unitId: number): void {
+    const held = (this.coderLeases.get(sessionId) ?? []).filter((id) => id !== unitId);
+    if (held.length > 0) this.coderLeases.set(sessionId, held);
+    else this.coderLeases.delete(sessionId);
   }
 
   /** Whether the coder may submit an annotation for this unit (as far as this pool is concerned). */
-  canSubmit(coderId: number, unitId: number): boolean {
+  canSubmit(sessionId: number, unitId: number): boolean {
     if (!this.has(unitId)) return false;
     if (!this.rule) return true;
     // Own earlier coding (editing after going back), or leased to this coder.
     // An expired lease is still honoured: worst case one coding too many.
-    return this.codings.has(coderId, unitId) || (this.coderLeases.get(coderId) ?? []).includes(unitId);
+    return this.codings.has(sessionId, unitId) || (this.coderLeases.get(sessionId) ?? []).includes(unitId);
   }
 
   isComplete(unitId: number): boolean {
@@ -259,10 +259,10 @@ export class UnitPool {
     const unitLeases = this.leases.get(unitId);
     if (!unitLeases) return 0;
     let n = 0;
-    for (const [coderId, expires] of unitLeases) {
+    for (const [sessionId, expires] of unitLeases) {
       // A lease ends when it expires or when its coder finished the unit.
-      if (expires > now && !this.codings.has(coderId, unitId)) n++;
-      else unitLeases.delete(coderId);
+      if (expires > now && !this.codings.has(sessionId, unitId)) n++;
+      else unitLeases.delete(sessionId);
     }
     return n;
   }
@@ -366,29 +366,29 @@ function rateDue(index: number, every: number, seed: number): number {
 export function pickNext(
   main: UnitPool,
   extras: OverlapPlacement[],
-  coderId: number,
+  sessionId: number,
   codings: Codings,
   options: { order: "sequential" | "random"; maxUnits?: number; minUnits?: number; seed: number; now: number },
 ): { pool: UnitPool; unitId: number } | null {
   // Resume a unit leased to this coder (they reloaded, or went back and forth).
-  const held = main.heldLease(coderId);
+  const held = main.heldLease(sessionId);
   if (held !== undefined) return { pool: main, unitId: held };
 
-  const done = codings.doneBy(coderId);
+  const done = codings.doneBy(sessionId);
   const doneOwn = done.filter((id) => main.has(id) && !extras.some((e) => e.pool.has(id))).length;
-  const shuffleSeed = options.order === "random" ? options.seed + coderId : null;
+  const shuffleSeed = options.order === "random" ? options.seed + sessionId : null;
   let own: number | undefined;
   if (options.maxUnits === undefined || doneOwn < options.maxUnits) {
-    own = main.best(coderId, options.now, shuffleSeed);
-    own ??= main.best(coderId, options.now, shuffleSeed, { reach: "full" });
+    own = main.best(sessionId, options.now, shuffleSeed);
+    own ??= main.best(sessionId, options.now, shuffleSeed, { reach: "full" });
     if (own === undefined && options.minUnits !== undefined && doneOwn < options.minUnits) {
-      own = main.best(coderId, options.now, shuffleSeed, { reach: "pastMax" });
+      own = main.best(sessionId, options.now, shuffleSeed, { reach: "pastMax" });
     }
   }
   const expected = options.maxUnits ?? main.size;
   let fallback: { pool: UnitPool; unitId: number } | null = null;
   for (const extra of extras) {
-    const unitId = extra.pool.best(coderId, options.now, shuffleSeed);
+    const unitId = extra.pool.best(sessionId, options.now, shuffleSeed);
     if (unitId === undefined) continue;
     // At a rate with `drop`: what is left when the own units run out isn't coded.
     const dropRest = extra.placement === "rate" && extra.rest === "drop";
@@ -396,7 +396,9 @@ export function pickNext(
     if ((own === undefined && !dropRest) || extra.placement === "before") return { pool: extra.pool, unitId };
     if (extra.placement === "rate" && own !== undefined) {
       const doneExtra = done.filter((id) => extra.pool.has(id)).length;
-      if (doneOwn >= rateDue(doneExtra, extra.every ?? 10, hashString(`${options.seed}/${coderId}/${extra.pool.set}`)))
+      if (
+        doneOwn >= rateDue(doneExtra, extra.every ?? 10, hashString(`${options.seed}/${sessionId}/${extra.pool.set}`))
+      )
         return { pool: extra.pool, unitId };
     }
     if (extra.placement === "spread") {

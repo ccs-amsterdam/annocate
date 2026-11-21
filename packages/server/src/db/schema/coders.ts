@@ -14,8 +14,8 @@ import { units, unitVersions } from "./units.js";
  * assignments: the loops they reached; ended: how the session ended;
  * deletion_request: they asked for their answers to be deleted.
  */
-export const coders = pgTable(
-  "coders",
+export const coderSessions = pgTable(
+  "coder_sessions",
   {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     studyId: integer()
@@ -23,7 +23,7 @@ export const coders = pgTable(
       .references(() => studies.id, { onDelete: "cascade" }),
     linkId: integer().references(() => links.id),
     email: text(),
-    participantId: text(),
+    coder: text(),
     session: jsonb().$type<Record<string, string>>().notNull().default({}),
     assignments: jsonb().$type<CoderAssignments>().notNull().default({}),
     created: timestamptz().notNull().defaultNow(),
@@ -31,29 +31,29 @@ export const coders = pgTable(
     deletionRequest: jsonb().$type<DeletionRequest>(),
   },
   (t) => [
-    index("coders_email").on(t.studyId, sql`lower(${t.email})`),
-    index("coders_participant").on(t.studyId, t.participantId),
+    index("coder_sessions_email").on(t.studyId, sql`lower(${t.email})`),
+    index("coder_sessions_coder").on(t.studyId, t.coder),
   ],
 );
 
 /** A coder's devices (a cookie; key_hash: its hash), with coarse details. */
-export const coderDevices = pgTable(
-  "coder_devices",
+export const sessionDevices = pgTable(
+  "session_devices",
   {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     studyId: integer()
       .notNull()
       .references(() => studies.id, { onDelete: "cascade" }),
-    coderId: integer()
+    sessionId: integer()
       .notNull()
-      .references(() => coders.id, { onDelete: "cascade" }),
-    keyHash: text().notNull().unique("coder_devices_key_hash_key"),
+      .references(() => coderSessions.id, { onDelete: "cascade" }),
+    keyHash: text().notNull().unique("session_devices_key_hash_key"),
     deviceType: text(),
     browser: text(),
     os: text(),
     created: timestamptz().notNull().defaultNow(),
   },
-  (t) => [index("coder_devices_coder").on(t.coderId)],
+  (t) => [index("session_devices_session").on(t.sessionId)],
 );
 
 /**
@@ -61,21 +61,21 @@ export const coderDevices = pgTable(
  * (no foreign key to the coder: it is gone). Not their email address: a
  * deletion leaves nothing that identifies the person.
  */
-export const coderDeletions = pgTable(
-  "coder_deletions",
+export const sessionDeletions = pgTable(
+  "session_deletions",
   {
     id: bigint({ mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
     studyId: integer()
       .notNull()
       .references(() => studies.id, { onDelete: "cascade" }),
-    coderId: integer().notNull(),
-    participantId: text(),
+    sessionId: integer().notNull(),
+    coder: text(),
     requestedAt: timestamptz(),
     deletedAt: timestamptz().notNull().defaultNow(),
     deletedBy: text(),
     answers: integer().notNull(),
   },
-  (t) => [index("coder_deletions_study").on(t.studyId, t.deletedAt)],
+  (t) => [index("session_deletions_study").on(t.studyId, t.deletedAt)],
 );
 
 /** Continuing a session on another device: a short-lived token (stored as a hash). */
@@ -84,10 +84,10 @@ export const transfers = pgTable("transfers", {
   studyId: integer()
     .notNull()
     .references(() => studies.id, { onDelete: "cascade" }),
-  coderId: integer()
+  sessionId: integer()
     .notNull()
-    .references(() => coders.id, { onDelete: "cascade" }),
-  participant: text(),
+    .references(() => coderSessions.id, { onDelete: "cascade" }),
+  coder: text(),
   expires: timestamptz().notNull(),
 });
 
@@ -106,13 +106,13 @@ export const annotationValues = pgTable(
     studyId: integer()
       .notNull()
       .references(() => studies.id, { onDelete: "cascade" }),
-    coderId: integer()
+    sessionId: integer()
       .notNull()
-      .references(() => coders.id, { onDelete: "cascade" }),
+      .references(() => coderSessions.id, { onDelete: "cascade" }),
     unitId: integer().references(() => units.id),
     unitVersionId: integer().references(() => unitVersions.id),
     designVersionId: integer().references(() => designVersions.id),
-    deviceId: integer().references(() => coderDevices.id, { onDelete: "set null" }),
+    deviceId: integer().references(() => sessionDevices.id, { onDelete: "set null" }),
     variable: text().notNull(),
     value: jsonb().$type<VariableValue>().notNull(),
     timing: jsonb().$type<AnswerTiming>(),
@@ -123,14 +123,14 @@ export const annotationValues = pgTable(
     retiredAt: timestamptz(),
   },
   (t) => [
-    index("annotation_values_coder").on(t.studyId, t.coderId, t.unitId),
+    index("annotation_values_coder").on(t.studyId, t.sessionId, t.unitId),
     index("annotation_values_created").on(t.studyId, t.created),
     index("annotation_values_variable").on(t.studyId, t.variable),
     uniqueIndex("annotation_values_live")
-      .on(t.unitId, t.coderId, t.variable)
+      .on(t.unitId, t.sessionId, t.variable)
       .where(sql`${t.retiredAt} IS NULL`),
     uniqueIndex("annotation_values_coder_live")
-      .on(t.coderId, t.variable)
+      .on(t.sessionId, t.variable)
       .where(sql`${t.retiredAt} IS NULL AND ${t.unitId} IS NULL`),
   ],
 );

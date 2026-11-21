@@ -19,7 +19,7 @@ import { HelpButton } from "../../help/HelpButton";
 import { ResetAnswersDialog, type ResetScope } from "./ResetAnswersDialog";
 
 /** How a coder is named in the UI: participant id, email or number. */
-const coderName = (c: CoderProgress) => c.participantId ?? c.email ?? `#${c.id}`;
+const coderName = (c: CoderProgress) => c.coder ?? c.email ?? `#${c.id}`;
 
 /** How a session ended, in words. */
 function endedText(ended: CoderProgress["ended"]): string {
@@ -51,7 +51,7 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
   const [deleting, setDeleting] = useState<{ select: DeleteCoders; names: string[] } | null>(null);
   const [byId, setById] = useState(false);
   const [resetting, setResetting] = useState<ResetScope | null>(null);
-  const deleteCoder = (c: CoderProgress) => setDeleting({ select: { coderIds: [c.id] }, names: [coderName(c)] });
+  const deleteCoder = (c: CoderProgress) => setDeleting({ select: { sessionIds: [c.id] }, names: [coderName(c)] });
 
   return (
     <div className="flex flex-col gap-2">
@@ -154,7 +154,7 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
               {coders.map((coder) => (
                 <tr key={coder.id} className="border-b last:border-0">
                   <td className="p-2">
-                    {coder.participantId || coder.email ? (
+                    {coder.coder || coder.email ? (
                       coderName(coder)
                     ) : (
                       <span className="text-muted-foreground">#{coder.id}</span>
@@ -194,7 +194,7 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
                       size="icon-sm"
                       aria-label={`Reset ${coderName(coder)}'s answers`}
                       title="Reset this coder's answers"
-                      onClick={() => setResetting({ coderIds: [coder.id], label: coderName(coder) })}
+                      onClick={() => setResetting({ sessionIds: [coder.id], label: coderName(coder) })}
                     >
                       <RotateCcw className="h-3.5 w-3.5" />
                     </Button>
@@ -267,9 +267,9 @@ function DeletionLog({ deletions }: { deletions: CoderDeletion[] }) {
         </thead>
         <tbody>
           {deletions.map((d) => (
-            <tr key={`${d.coderId}-${String(d.deletedAt)}`} className="border-b last:border-0">
-              <td className="p-1.5">#{d.coderId}</td>
-              <td className="p-1.5">{d.participantId ?? "–"}</td>
+            <tr key={`${d.sessionId}-${String(d.deletedAt)}`} className="border-b last:border-0">
+              <td className="p-1.5">#{d.sessionId}</td>
+              <td className="p-1.5">{d.coder ?? "–"}</td>
               <td className="p-1.5 whitespace-nowrap text-muted-foreground">
                 {d.requestedAt ? formatWhen(d.requestedAt) : "–"}
               </td>
@@ -301,9 +301,7 @@ function DeleteByIdDialog({
     .split(/[\n,]/)
     .map((t) => t.trim())
     .filter(Boolean);
-  const matches = coders.filter((c) =>
-    wanted.some((w) => w === c.participantId || w.toLowerCase() === c.email?.toLowerCase()),
-  );
+  const matches = coders.filter((c) => wanted.some((w) => w === c.coder || w.toLowerCase() === c.email?.toLowerCase()));
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
@@ -335,7 +333,7 @@ function DeleteByIdDialog({
             variant="destructive"
             disabled={matches.length === 0}
             onClick={() => {
-              onFound({ coderIds: matches.map((c) => c.id) }, matches.map(coderName));
+              onFound({ sessionIds: matches.map((c) => c.id) }, matches.map(coderName));
               setText("");
             }}
           >

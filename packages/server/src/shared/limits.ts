@@ -1,7 +1,7 @@
 import type { Limits } from "@annotinder/contracts";
 import { and, eq } from "drizzle-orm";
 import type { Db } from "../db/index.js";
-import { coders, studies, units as unitsTable } from "../db/schema/index.js";
+import { coderSessions, studies, units as unitsTable } from "../db/schema/index.js";
 import { effectiveLimits, getSettings, usage } from "./accounts.js";
 import { HttpError } from "./http.js";
 
@@ -59,7 +59,7 @@ export async function checkUnitUpload(
 export async function checkNewCoder(db: Db, studyId: number): Promise<void> {
   const { limits } = await studyLimits(db, studyId);
   if (limits.codersPerStudy == null) return;
-  if ((await db.$count(coders, eq(coders.studyId, studyId))) >= limits.codersPerStudy)
+  if ((await db.$count(coderSessions, eq(coderSessions.studyId, studyId))) >= limits.codersPerStudy)
     throw new HttpError(403, "This study doesn't take new coders any more", "study_full");
 }
 
@@ -88,7 +88,7 @@ export async function checkImportedStudy(db: Db, studyId: number): Promise<void>
       throw limitReached(`You can have at most ${limits.units} units in all your studies; with this one, ${units}`);
   }
   if (limits.codersPerStudy != null) {
-    const n = await db.$count(coders, eq(coders.studyId, studyId));
+    const n = await db.$count(coderSessions, eq(coderSessions.studyId, studyId));
     if (n > limits.codersPerStudy)
       throw limitReached(`A study can have at most ${limits.codersPerStudy} coders; this one has ${n}`);
   }

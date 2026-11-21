@@ -44,10 +44,10 @@ const fits = (value: string, pattern?: string) => !pattern || new RegExp(`^(?:${
  */
 export function sessionValues(
   rules: SessionRules,
-  link: { params: Record<string, string>; participantId: string | null },
+  link: { params: Record<string, string>; coder: string | null },
   urlParams: Record<string, string>,
   email: string | null,
-): { participantId: string | null; session: Record<string, string> } {
+): { coder: string | null; session: Record<string, string> } {
   const read = (key: string) => {
     const value = urlParams[key]?.trim();
     if (value && value.length > MAX_SESSION_VALUE)
@@ -71,7 +71,7 @@ export function sessionValues(
   if (source !== undefined) session.source = source;
 
   if (loginRequired(rules) && !email) throw new HttpError(401, "This study requires login", "auth_required");
-  let participantId = link.participantId;
+  let id = link.coder;
   const invite = inviteOf(rules.item);
   if (invite.mode === "coders") {
     // The coder: the login's email, or the link's
@@ -93,11 +93,11 @@ export function sessionValues(
     if (value === undefined)
       throw new HttpError(400, `This link needs the URL parameter "${invite.participant.param}"`, "url_param_missing");
     if (!fits(value, invite.participant.pattern)) throw invalid(invite.participant.param);
-    participantId = value;
+    id = value;
   } else if (invite.login && email) {
-    participantId ??= email.toLowerCase();
+    id ??= email.toLowerCase();
   }
-  return { participantId, session };
+  return { coder: id, session };
 }
 
 /**

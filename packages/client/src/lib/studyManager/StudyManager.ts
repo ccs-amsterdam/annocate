@@ -96,7 +96,7 @@ export interface StudyManagerSnapshot {
   userVariableValues: Record<string, VariableValue>;
   currentUnitVariables: Record<string, VariableValue> | null;
   error: string | null;
-  /** Machine-readable error code from the server (e.g. `participant_has_session`), if any. */
+  /** Machine-readable error code from the server (e.g. `coder_has_session`), if any. */
   errorCode: string | null;
   /** With phase `finished`: the `end` item that ended the session, if one did. */
   ending: SessionEnding | null;
@@ -421,7 +421,7 @@ export class StudyManager {
       this.histories.clear();
       this.progress = new Map(session.progress.map((p) => [p.set, p]));
       this.session = session.session ?? {};
-      this.coderId = session.coderId;
+      this.sessionId = session.sessionId;
       if (session.deletionRequest) this.publish({ deletionRequested: true });
       this.publish({ login: session.login ?? null, canLogIn: session.canLogIn ?? false });
       if (session.ended) {
@@ -1197,10 +1197,10 @@ export class StudyManager {
   }
 
   /** The coder (from the session): the browser's draft of a unit is theirs. */
-  private coderId: number | null = null;
+  private sessionId: number | null = null;
 
   private get draftKey(): string | null {
-    return this.coderId === null ? null : `annotinder:unit-draft:${this.coderId}`;
+    return this.sessionId === null ? null : `annotinder:unit-draft:${this.sessionId}`;
   }
 
   /**

@@ -59,7 +59,7 @@ export type CoderAssignments = Record<string, LoopAssignment>;
 
 /** A coder as the runtime sees it. No email or other identifying data. */
 export interface Coder {
-  coderId: number;
+  sessionId: number;
   assignments: CoderAssignments;
   /** Set once the coder reached an `end` item or quit: the session is over. */
   ended: SessionEnd | null;
@@ -90,7 +90,7 @@ export interface ResolveCoderRequest {
   /**
    * The coder confirmed starting a new session although their participant
    * id already has one (on another device). Without it: 409
-   * `participant_has_session`. Also: a device that has a session starts
+   * `coder_has_session`. Also: a device that has a session starts
    * a fresh one (previews' "start over").
    */
   newSession?: boolean;
@@ -110,7 +110,7 @@ export interface ResolveCoderRequest {
   pickedName?: string;
 }
 
-/** A coder, and the device the request came from (`coder_devices`; null in previews). */
+/** A coder, and the device the request came from (`session_devices`; null in previews). */
 export interface ResolvedCoder {
   coder: Coder;
   deviceId: number | null;
@@ -118,9 +118,9 @@ export interface ResolvedCoder {
 
 /** A "continue on another device" link (docs/coder-identity.md §4). */
 export interface Transfer {
-  coderId: number;
-  /** The session's participant id: the new device gets a key for the participant's link too. */
-  participant: string | null;
+  sessionId: number;
+  /** The session's coder id: the new device gets a key for a link that carries it too. */
+  coder: string | null;
   expires: Date;
 }
 
@@ -135,7 +135,7 @@ export interface CoderValue {
 
 /** Coder-level values to write, a row each (`assigned`: by the server, not answered). */
 export interface CoderValuesWrite {
-  coderId: number;
+  sessionId: number;
   values: Record<string, VariableValue>;
   assigned?: boolean;
   designVersionId?: number | null;
@@ -152,7 +152,7 @@ export interface CoderValuesWrite {
 export interface Coding {
   loop: string;
   unitId: number;
-  coderId: number;
+  sessionId: number;
   /** The coder's answers to the loop's agreement questions (`agreementKey`), by variable. */
   agreement: Record<string, string | null>;
   /** When the coder first finished it (orders their progress), and last changed it. */
@@ -164,7 +164,7 @@ export interface Coding {
 export interface Lease {
   loop: string;
   set: string;
-  coderId: number;
+  sessionId: number;
   unitId: number;
   expires: Date;
 }
@@ -188,14 +188,14 @@ export interface FinishedRequest {
     values?: string[];
   }[];
   /** Only this coder's rows. */
-  coderId?: number;
+  sessionId?: number;
 }
 
 export interface Finished {
   loop: string;
   /** `null` for coder-level groups. */
   unitId: number | null;
-  coderId: number;
+  sessionId: number;
   /** Earliest `created` of the group's live values. Orders a coder's progress. */
   created: Date;
   values?: Record<string, VariableValue>;
@@ -209,13 +209,13 @@ export interface Finished {
  */
 export interface AnnotationWrite {
   unitId: number;
-  coderId: number;
+  sessionId: number;
   variables: Record<string, VariableValue>;
   /** The deployed codebook the coder answered under. */
   designVersionId?: number;
   /** The unit version the coder saw (`Store.unitVersion`). */
   unitVersionId?: number;
-  /** The device the answers were given on (`coder_devices`). */
+  /** The device the answers were given on (`session_devices`). */
   deviceId?: number | null;
   /** How long the coder took per question, as their browser measured it (by variable). */
   timings?: Record<string, AnswerTiming>;

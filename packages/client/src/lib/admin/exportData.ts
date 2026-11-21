@@ -254,7 +254,7 @@ export function annotationsTable(
   // Answers outside unit loops (no unit) are in coders.csv.
   for (const a of annotations) {
     if (a.unitId === null) continue;
-    const key = `${a.unitId}/${a.coderId}`;
+    const key = `${a.unitId}/${a.sessionId}`;
     let row = byUnitCoder.get(key);
     if (!row)
       byUnitCoder.set(
@@ -284,8 +284,8 @@ export function annotationsTable(
     headers: [
       "unit_id",
       "unit_version_id",
-      "coder_id",
-      "participant_id",
+      "session_id",
+      "coder",
       "link",
       "first_answer",
       "last_change",
@@ -296,15 +296,15 @@ export function annotationsTable(
       ...columns.map(header),
     ],
     rows: [...byUnitCoder.values()].map(({ first, last, deviceId, values, designVersions }) => {
-      const times = unitTimes.get(`${first.unitId}/${first.coderId}`);
+      const times = unitTimes.get(`${first.unitId}/${first.sessionId}`);
       // The unit's spans, by id, so relations can name them by their text
       const spans = new Map([...values.values()].flatMap((v) => (v.spans ?? []).map((s) => [s.id, s] as const)));
       return [
         first.externalId ?? "",
         first.unitVersionId === null ? "" : String(first.unitVersionId),
-        String(first.coderId),
-        first.participantId ?? "",
-        coderById.get(first.coderId)?.linkLabel ?? "",
+        String(first.sessionId),
+        first.coder ?? "",
+        coderById.get(first.sessionId)?.linkLabel ?? "",
         time(first.created),
         time(last),
         versionCell(versionOf, first.designVersionId),
@@ -342,8 +342,8 @@ export function resetAnswersTable(
     headers: [
       "unit_id",
       "unit_version_id",
-      "coder_id",
-      "participant_id",
+      "session_id",
+      "coder",
       "variable",
       "value",
       ...(labels ? ["value_label"] : []),
@@ -355,8 +355,8 @@ export function resetAnswersTable(
     rows: reset.map((a) => [
       a.externalId ?? "",
       a.unitVersionId === null ? "" : String(a.unitVersionId),
-      String(a.coderId),
-      a.participantId ?? "",
+      String(a.sessionId),
+      a.coder ?? "",
       a.variable,
       answerText(a.value),
       ...(labels ? [answerText(a.value, undefined, labels.writer(a.variable, a.designVersionId))] : []),
@@ -369,7 +369,7 @@ export function resetAnswersTable(
 }
 
 /**
- * Coders as a table: who they are (link, participant id), when they
+ * Coders as a table: who they are (link, coder), when they
  * started and were last active, how their session ended, units finished
  * per loop, and their coder-level answers (survey questions, `auto` groups;
  * labels from the live design version).
@@ -397,8 +397,8 @@ export function codersTable(
   );
   return {
     headers: [
-      "coder_id",
-      "participant_id",
+      "session_id",
+      "coder",
       "email",
       "link",
       "started",
@@ -413,7 +413,7 @@ export function codersTable(
     ],
     rows: coders.map((c) => [
       String(c.id),
-      c.participantId ?? "",
+      c.coder ?? "",
       c.email ?? "",
       c.linkLabel ?? "",
       time(c.started),
@@ -508,7 +508,7 @@ function unitTimings(
   const out = new Map<string, { client: number | null; hidden: number; server: number | null }>();
   for (const a of annotations) {
     if (a.unitId === null) continue;
-    const key = `${a.unitId}/${a.coderId}`;
+    const key = `${a.unitId}/${a.sessionId}`;
     let t = out.get(key);
     if (!t) out.set(key, (t = { client: null, hidden: 0, server: null }));
     if (a.timing) {
@@ -533,9 +533,9 @@ export function timingsTable(annotations: AnnotationRow[], coders: CoderProgress
   const started = new Map(coders.map((c) => [c.id, c.started ? new Date(c.started).getTime() : null]));
   const answeredAt = new Map<number, number[]>();
   for (const a of annotations) {
-    const list = answeredAt.get(a.coderId) ?? [];
+    const list = answeredAt.get(a.sessionId) ?? [];
     list.push(new Date(a.created).getTime());
-    answeredAt.set(a.coderId, list);
+    answeredAt.set(a.sessionId, list);
   }
   const units = unitTimings(annotations);
   const ms = (v: number | null) => (v === null ? "" : String(Math.round(v)));
@@ -545,22 +545,22 @@ export function timingsTable(annotations: AnnotationRow[], coders: CoderProgress
     let server: number | null;
     let exceeds: boolean | null;
     if (a.unitId !== null) {
-      const unit = units.get(`${a.unitId}/${a.coderId}`);
+      const unit = units.get(`${a.unitId}/${a.sessionId}`);
       server = unit?.server ?? null;
       exceeds =
         server === null || unit?.client == null ? null : unit.client + unit.hidden > server + TIMING_TOLERANCE_MS;
     } else {
       const created = new Date(a.created).getTime();
-      const before = (answeredAt.get(a.coderId) ?? []).filter((v) => v < created);
-      const from = before.length > 0 ? Math.max(...before) : (started.get(a.coderId) ?? null);
+      const before = (answeredAt.get(a.sessionId) ?? []).filter((v) => v < created);
+      const from = before.length > 0 ? Math.max(...before) : (started.get(a.sessionId) ?? null);
       server = from === null ? null : created - from;
       exceeds = server === null || t.firstMs === null ? null : t.firstMs > server + TIMING_TOLERANCE_MS;
     }
     return [
       [
         a.externalId ?? "",
-        String(a.coderId),
-        a.participantId ?? "",
+        String(a.sessionId),
+        a.coder ?? "",
         a.variable,
         ms(t.firstMs),
         ms(t.totalMs),
@@ -575,8 +575,8 @@ export function timingsTable(annotations: AnnotationRow[], coders: CoderProgress
   return {
     headers: [
       "unit_id",
-      "coder_id",
-      "participant_id",
+      "session_id",
+      "coder",
       "variable",
       "first_ms",
       "total_ms",
@@ -593,10 +593,10 @@ export function timingsTable(annotations: AnnotationRow[], coders: CoderProgress
 /** The devices coders used (`device_id` in annotations.csv): coarse details, when each joined its session. */
 export function devicesTable(devices: Device[]): Table {
   return {
-    headers: ["device_id", "coder_id", "device_type", "browser", "os", "first_used"],
+    headers: ["device_id", "session_id", "device_type", "browser", "os", "first_used"],
     rows: devices.map((d) => [
       String(d.id),
-      String(d.coderId),
+      String(d.sessionId),
       d.type ?? "",
       d.browser ?? "",
       d.os ?? "",
@@ -608,10 +608,10 @@ export function devicesTable(devices: Device[]): Table {
 /** The deletion log: coders whose data was deleted, so they can be deleted from earlier downloads too. */
 export function deletedCodersTable(deletions: CoderDeletion[]): Table {
   return {
-    headers: ["coder_id", "participant_id", "requested_at", "deleted_at", "deleted_by", "answers"],
+    headers: ["session_id", "coder", "requested_at", "deleted_at", "deleted_by", "answers"],
     rows: deletions.map((d) => [
-      String(d.coderId),
-      d.participantId ?? "",
+      String(d.sessionId),
+      d.coder ?? "",
       time(d.requestedAt),
       time(d.deletedAt),
       d.deletedBy ?? "",
@@ -639,8 +639,10 @@ annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
                  in the design version the answer was given under.`
                      : ""
                  }
-coders.csv       A row per coder: participant id, email (coders who logged
-                 in), link, started, last
+coders.csv       A row per coder session (session_id): the coder (their name
+                 or id: a coders' column value, a panel's id from the URL, or
+                 the email they signed in with), email (where signing in was
+                 required), link, started, last
                  active, how their session ended (complete, screenout or
                  quit), when they asked for their answers to be deleted
                  (deletion_requested; not done yet), their session values
@@ -680,8 +682,8 @@ timings.csv      Response times, a row per answer: as the coder's browser
                  than the server saw (a tampered client). unit_id is empty
                  for answers outside unit loops.
 deleted_coders.csv  Coders whose data was deleted from AnnoTinder (for
-                 instance a participant who withdrew), by coder_id and
-                 participant_id: delete them from earlier downloads too.
+                 instance a coder who withdrew), by session_id and coder:
+                 delete them from earlier downloads too.
 reset_answers.csv  (if included) Answers a researcher reset, a row per
                  answer, with when it was given (answered) and reset
                  (reset_at). Units are coded again after a reset; the new
@@ -694,7 +696,7 @@ empty. Questions with spans, relations or several answers also have a _json
 column with the full answer: spans with their field and, per fragment, the
 offset and length in that field of the unit version (units.csv), relations
 with the ids of their spans.
-Join annotations and coders on coder_id. Times are UTC (ISO 8601).
+Join annotations and coders on session_id. Times are UTC (ISO 8601).
 ${
   spreadsheetSafe
     ? `

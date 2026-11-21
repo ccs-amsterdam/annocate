@@ -108,7 +108,7 @@ export const links = pgTable(
       .references(() => studies.id, { onDelete: "cascade" }),
     label: text().notNull(),
     secret: text().notNull().unique("links_secret_key"),
-    participantId: text(),
+    coder: text(),
     params: jsonb().$type<Record<string, string>>().notNull().default({}),
     linkKey: text().notNull().default("[]"),
     maxUses: integer(),

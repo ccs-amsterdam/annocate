@@ -972,7 +972,7 @@ describe("a draft of the unit on screen (browser storage)", () => {
       makeFlakyServer({
         getSession: vi.fn(
           async () =>
-            ({ ...session([unitLoop("main", [unitVar("q1"), unitVar("q2")])]), coderId: 42 }) as SessionResponse,
+            ({ ...session([unitLoop("main", [unitVar("q1"), unitVar("q2")])]), sessionId: 42 }) as SessionResponse,
         ),
         getNextUnit: vi.fn(async () => unit(3)),
         postUnitVariables: vi.fn(async () => ({})),

@@ -29,8 +29,8 @@ export const AnnotationRowSchema = z.object({
   unitId: IdSchema.nullable(),
   /** The unit's external id (the researcher's own id); null without a unit. */
   externalId: z.string().nullable(),
-  coderId: IdSchema,
-  participantId: z.string().nullable(),
+  sessionId: IdSchema,
+  coder: z.string().nullable(),
   variable: z.string(),
   value: VariableValueSchema,
   /** The design version the coder answered under. */
@@ -98,7 +98,7 @@ export type UnitVersionPage = z.infer<typeof UnitVersionPageSchema>;
  */
 export const DeviceSchema = z.object({
   id: IdSchema,
-  coderId: IdSchema,
+  sessionId: IdSchema,
   type: z.enum(["phone", "tablet", "desktop"]).nullable(),
   browser: z.string().nullable(),
   os: z.string().nullable(),

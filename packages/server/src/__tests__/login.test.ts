@@ -304,7 +304,10 @@ describe("researcher login", () => {
       await asKey(`/api/study/${study.id}/annotations/reset`, { method: "POST", body: JSON.stringify({}) }),
     );
     await refused(
-      await asKey(`/api/study/${study.id}/coders/delete`, { method: "POST", body: JSON.stringify({ coderIds: [1] }) }),
+      await asKey(`/api/study/${study.id}/coders/delete`, {
+        method: "POST",
+        body: JSON.stringify({ sessionIds: [1] }),
+      }),
     );
     await refused(await asKey(`/api/study/${study.id}`, { method: "DELETE" }));
     // Study roles: READ and WRITE can be given; the study's ADMINs can't be changed

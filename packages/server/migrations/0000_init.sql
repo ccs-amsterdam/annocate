@@ -130,7 +130,7 @@ CREATE TABLE "links" (
 	"study_id" integer NOT NULL,
 	"label" text NOT NULL,
 	"secret" text NOT NULL,
-	"participant_id" text,
+	"coder" text,
 	"params" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"link_key" text DEFAULT '[]' NOT NULL,
 	"max_uses" integer,
@@ -219,7 +219,7 @@ CREATE TABLE "units" (
 CREATE TABLE "annotation_values" (
 	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "annotation_values_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
 	"study_id" integer NOT NULL,
-	"coder_id" integer NOT NULL,
+	"session_id" integer NOT NULL,
 	"unit_id" integer,
 	"unit_version_id" integer,
 	"design_version_id" integer,
@@ -234,35 +234,12 @@ CREATE TABLE "annotation_values" (
 	"retired_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "coder_deletions" (
-	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "coder_deletions_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
-	"study_id" integer NOT NULL,
-	"coder_id" integer NOT NULL,
-	"participant_id" text,
-	"requested_at" timestamp with time zone,
-	"deleted_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"deleted_by" text,
-	"answers" integer NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "coder_devices" (
-	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "coder_devices_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
-	"study_id" integer NOT NULL,
-	"coder_id" integer NOT NULL,
-	"key_hash" text NOT NULL,
-	"device_type" text,
-	"browser" text,
-	"os" text,
-	"created" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "coder_devices_key_hash_key" UNIQUE("key_hash")
-);
---> statement-breakpoint
-CREATE TABLE "coders" (
-	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "coders_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
+CREATE TABLE "coder_sessions" (
+	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "coder_sessions_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
 	"study_id" integer NOT NULL,
 	"link_id" integer,
 	"email" text,
-	"participant_id" text,
+	"coder" text,
 	"session" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"assignments" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"created" timestamp with time zone DEFAULT now() NOT NULL,
@@ -270,11 +247,34 @@ CREATE TABLE "coders" (
 	"deletion_request" jsonb
 );
 --> statement-breakpoint
+CREATE TABLE "session_deletions" (
+	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "session_deletions_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
+	"study_id" integer NOT NULL,
+	"session_id" integer NOT NULL,
+	"coder" text,
+	"requested_at" timestamp with time zone,
+	"deleted_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_by" text,
+	"answers" integer NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "session_devices" (
+	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "session_devices_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
+	"study_id" integer NOT NULL,
+	"session_id" integer NOT NULL,
+	"key_hash" text NOT NULL,
+	"device_type" text,
+	"browser" text,
+	"os" text,
+	"created" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "session_devices_key_hash_key" UNIQUE("key_hash")
+);
+--> statement-breakpoint
 CREATE TABLE "transfers" (
 	"token_hash" text PRIMARY KEY NOT NULL,
 	"study_id" integer NOT NULL,
-	"coder_id" integer NOT NULL,
-	"participant" text,
+	"session_id" integer NOT NULL,
+	"coder" text,
 	"expires" timestamp with time zone NOT NULL
 );
 --> statement-breakpoint
@@ -282,30 +282,30 @@ CREATE TABLE "unit_codings" (
 	"study_id" integer NOT NULL,
 	"loop_key" text NOT NULL,
 	"unit_id" integer NOT NULL,
-	"coder_id" integer NOT NULL,
+	"session_id" integer NOT NULL,
 	"agreement" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"created" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "unit_codings_pkey" PRIMARY KEY("study_id","loop_key","unit_id","coder_id")
+	CONSTRAINT "unit_codings_pkey" PRIMARY KEY("study_id","loop_key","unit_id","session_id")
 );
 --> statement-breakpoint
 CREATE TABLE "unit_leases" (
 	"study_id" integer NOT NULL,
 	"loop_key" text NOT NULL,
 	"set_name" text NOT NULL,
-	"coder_id" integer NOT NULL,
+	"session_id" integer NOT NULL,
 	"unit_id" integer NOT NULL,
 	"expires" timestamp with time zone NOT NULL,
-	CONSTRAINT "unit_leases_pkey" PRIMARY KEY("study_id","loop_key","set_name","coder_id","unit_id")
+	CONSTRAINT "unit_leases_pkey" PRIMARY KEY("study_id","loop_key","set_name","session_id","unit_id")
 );
 --> statement-breakpoint
 CREATE TABLE "unit_serves" (
 	"study_id" integer NOT NULL,
-	"coder_id" integer NOT NULL,
+	"session_id" integer NOT NULL,
 	"unit_id" integer NOT NULL,
 	"unit_version_id" integer,
 	"first_served" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "unit_serves_pkey" PRIMARY KEY("coder_id","unit_id")
+	CONSTRAINT "unit_serves_pkey" PRIMARY KEY("session_id","unit_id")
 );
 --> statement-breakpoint
 CREATE TABLE "admin_log" (
@@ -363,26 +363,26 @@ ALTER TABLE "unit_versions" ADD CONSTRAINT "unit_versions_study_id_studies_id_fk
 ALTER TABLE "unit_versions" ADD CONSTRAINT "unit_versions_unit_id_units_id_fk" FOREIGN KEY ("unit_id") REFERENCES "public"."units"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "units" ADD CONSTRAINT "units_study_id_studies_id_fk" FOREIGN KEY ("study_id") REFERENCES "public"."studies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "annotation_values" ADD CONSTRAINT "annotation_values_study_id_studies_id_fk" FOREIGN KEY ("study_id") REFERENCES "public"."studies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "annotation_values" ADD CONSTRAINT "annotation_values_coder_id_coders_id_fk" FOREIGN KEY ("coder_id") REFERENCES "public"."coders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "annotation_values" ADD CONSTRAINT "annotation_values_session_id_coder_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."coder_sessions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "annotation_values" ADD CONSTRAINT "annotation_values_unit_id_units_id_fk" FOREIGN KEY ("unit_id") REFERENCES "public"."units"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "annotation_values" ADD CONSTRAINT "annotation_values_unit_version_id_unit_versions_id_fk" FOREIGN KEY ("unit_version_id") REFERENCES "public"."unit_versions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "annotation_values" ADD CONSTRAINT "annotation_values_design_version_id_design_versions_id_fk" FOREIGN KEY ("design_version_id") REFERENCES "public"."design_versions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "annotation_values" ADD CONSTRAINT "annotation_values_device_id_coder_devices_id_fk" FOREIGN KEY ("device_id") REFERENCES "public"."coder_devices"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "coder_deletions" ADD CONSTRAINT "coder_deletions_study_id_studies_id_fk" FOREIGN KEY ("study_id") REFERENCES "public"."studies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "coder_devices" ADD CONSTRAINT "coder_devices_study_id_studies_id_fk" FOREIGN KEY ("study_id") REFERENCES "public"."studies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "coder_devices" ADD CONSTRAINT "coder_devices_coder_id_coders_id_fk" FOREIGN KEY ("coder_id") REFERENCES "public"."coders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "coders" ADD CONSTRAINT "coders_study_id_studies_id_fk" FOREIGN KEY ("study_id") REFERENCES "public"."studies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "coders" ADD CONSTRAINT "coders_link_id_links_id_fk" FOREIGN KEY ("link_id") REFERENCES "public"."links"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "annotation_values" ADD CONSTRAINT "annotation_values_device_id_session_devices_id_fk" FOREIGN KEY ("device_id") REFERENCES "public"."session_devices"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "coder_sessions" ADD CONSTRAINT "coder_sessions_study_id_studies_id_fk" FOREIGN KEY ("study_id") REFERENCES "public"."studies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "coder_sessions" ADD CONSTRAINT "coder_sessions_link_id_links_id_fk" FOREIGN KEY ("link_id") REFERENCES "public"."links"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "session_deletions" ADD CONSTRAINT "session_deletions_study_id_studies_id_fk" FOREIGN KEY ("study_id") REFERENCES "public"."studies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "session_devices" ADD CONSTRAINT "session_devices_study_id_studies_id_fk" FOREIGN KEY ("study_id") REFERENCES "public"."studies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "session_devices" ADD CONSTRAINT "session_devices_session_id_coder_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."coder_sessions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "transfers" ADD CONSTRAINT "transfers_study_id_studies_id_fk" FOREIGN KEY ("study_id") REFERENCES "public"."studies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "transfers" ADD CONSTRAINT "transfers_coder_id_coders_id_fk" FOREIGN KEY ("coder_id") REFERENCES "public"."coders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "transfers" ADD CONSTRAINT "transfers_session_id_coder_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."coder_sessions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "unit_codings" ADD CONSTRAINT "unit_codings_study_id_studies_id_fk" FOREIGN KEY ("study_id") REFERENCES "public"."studies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "unit_codings" ADD CONSTRAINT "unit_codings_unit_id_units_id_fk" FOREIGN KEY ("unit_id") REFERENCES "public"."units"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "unit_codings" ADD CONSTRAINT "unit_codings_coder_id_coders_id_fk" FOREIGN KEY ("coder_id") REFERENCES "public"."coders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "unit_codings" ADD CONSTRAINT "unit_codings_session_id_coder_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."coder_sessions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "unit_leases" ADD CONSTRAINT "unit_leases_study_id_studies_id_fk" FOREIGN KEY ("study_id") REFERENCES "public"."studies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "unit_leases" ADD CONSTRAINT "unit_leases_coder_id_coders_id_fk" FOREIGN KEY ("coder_id") REFERENCES "public"."coders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "unit_leases" ADD CONSTRAINT "unit_leases_session_id_coder_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."coder_sessions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "unit_leases" ADD CONSTRAINT "unit_leases_unit_id_units_id_fk" FOREIGN KEY ("unit_id") REFERENCES "public"."units"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "unit_serves" ADD CONSTRAINT "unit_serves_study_id_studies_id_fk" FOREIGN KEY ("study_id") REFERENCES "public"."studies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "unit_serves" ADD CONSTRAINT "unit_serves_coder_id_coders_id_fk" FOREIGN KEY ("coder_id") REFERENCES "public"."coders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "unit_serves" ADD CONSTRAINT "unit_serves_session_id_coder_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."coder_sessions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "unit_serves" ADD CONSTRAINT "unit_serves_unit_id_units_id_fk" FOREIGN KEY ("unit_id") REFERENCES "public"."units"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "unit_serves" ADD CONSTRAINT "unit_serves_unit_version_id_unit_versions_id_fk" FOREIGN KEY ("unit_version_id") REFERENCES "public"."unit_versions"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "security_log" ADD CONSTRAINT "security_log_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -403,14 +403,14 @@ CREATE INDEX "unit_draft_value" ON "unit_draft" USING btree ("value_id");--> sta
 CREATE INDEX "unit_set_members_unit" ON "unit_set_members" USING btree ("unit_id");--> statement-breakpoint
 CREATE INDEX "unit_version_fields_value" ON "unit_version_fields" USING btree ("value_id");--> statement-breakpoint
 CREATE INDEX "unit_versions_current" ON "unit_versions" USING btree ("unit_id") WHERE "unit_versions"."to_deploy" IS NULL;--> statement-breakpoint
-CREATE INDEX "annotation_values_coder" ON "annotation_values" USING btree ("study_id","coder_id","unit_id");--> statement-breakpoint
+CREATE INDEX "annotation_values_coder" ON "annotation_values" USING btree ("study_id","session_id","unit_id");--> statement-breakpoint
 CREATE INDEX "annotation_values_created" ON "annotation_values" USING btree ("study_id","created");--> statement-breakpoint
 CREATE INDEX "annotation_values_variable" ON "annotation_values" USING btree ("study_id","variable");--> statement-breakpoint
-CREATE UNIQUE INDEX "annotation_values_live" ON "annotation_values" USING btree ("unit_id","coder_id","variable") WHERE "annotation_values"."retired_at" IS NULL;--> statement-breakpoint
-CREATE UNIQUE INDEX "annotation_values_coder_live" ON "annotation_values" USING btree ("coder_id","variable") WHERE "annotation_values"."retired_at" IS NULL AND "annotation_values"."unit_id" IS NULL;--> statement-breakpoint
-CREATE INDEX "coder_deletions_study" ON "coder_deletions" USING btree ("study_id","deleted_at");--> statement-breakpoint
-CREATE INDEX "coder_devices_coder" ON "coder_devices" USING btree ("coder_id");--> statement-breakpoint
-CREATE INDEX "coders_email" ON "coders" USING btree ("study_id",lower("email"));--> statement-breakpoint
-CREATE INDEX "coders_participant" ON "coders" USING btree ("study_id","participant_id");--> statement-breakpoint
-CREATE INDEX "unit_codings_coder" ON "unit_codings" USING btree ("coder_id","loop_key","created");--> statement-breakpoint
+CREATE UNIQUE INDEX "annotation_values_live" ON "annotation_values" USING btree ("unit_id","session_id","variable") WHERE "annotation_values"."retired_at" IS NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "annotation_values_coder_live" ON "annotation_values" USING btree ("session_id","variable") WHERE "annotation_values"."retired_at" IS NULL AND "annotation_values"."unit_id" IS NULL;--> statement-breakpoint
+CREATE INDEX "coder_sessions_email" ON "coder_sessions" USING btree ("study_id",lower("email"));--> statement-breakpoint
+CREATE INDEX "coder_sessions_coder" ON "coder_sessions" USING btree ("study_id","coder");--> statement-breakpoint
+CREATE INDEX "session_deletions_study" ON "session_deletions" USING btree ("study_id","deleted_at");--> statement-breakpoint
+CREATE INDEX "session_devices_session" ON "session_devices" USING btree ("session_id");--> statement-breakpoint
+CREATE INDEX "unit_codings_coder" ON "unit_codings" USING btree ("session_id","loop_key","created");--> statement-breakpoint
 CREATE INDEX "security_log_user" ON "security_log" USING btree ("user_id","at");

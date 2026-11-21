@@ -2,19 +2,19 @@ import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import type { VariableValue } from "@annotinder/contracts";
 import type { Coder, CoderValue, CoderValuesWrite } from "../runtime/types.js";
 import type { Db } from "../db/index.js";
-import { annotationValues as a, coders } from "../db/schema/index.js";
+import { annotationValues as a, coderSessions } from "../db/schema/index.js";
 
 /** A row of `coders`. */
-export type CoderRow = typeof coders.$inferSelect;
+export type CoderRow = typeof coderSessions.$inferSelect;
 
 /** A coder as the runtime sees it: no identifying data, except the email the coder linked themselves. */
 export function toCoder(row: CoderRow): Coder {
   return {
-    coderId: row.id,
+    sessionId: row.id,
     assignments: row.assignments ?? {},
     ended: row.ended,
     deletionRequest: row.deletionRequest,
-    session: { ...row.session, ...(row.participantId ? { participant: row.participantId } : {}) },
+    session: { ...row.session, ...(row.coder ? { participant: row.coder } : {}) },
     linkId: row.linkId,
     email: row.email,
   };
@@ -27,28 +27,28 @@ const liveCoderLevel = (studyId: number) => and(eq(a.studyId, studyId), isNull(a
 export async function coderValues(
   db: Db,
   studyId: number,
-  coderId?: number,
+  sessionId?: number,
 ): Promise<Map<number, Record<string, VariableValue>>> {
   const rows = await db
-    .select({ coderId: a.coderId, variable: a.variable, value: a.value })
+    .select({ sessionId: a.sessionId, variable: a.variable, value: a.value })
     .from(a)
-    .where(and(liveCoderLevel(studyId), coderId === undefined ? undefined : eq(a.coderId, coderId)))
+    .where(and(liveCoderLevel(studyId), sessionId === undefined ? undefined : eq(a.sessionId, sessionId)))
     .orderBy(asc(a.id));
   const byCoder = new Map<number, Record<string, VariableValue>>();
   for (const row of rows) {
-    let values = byCoder.get(row.coderId);
-    if (!values) byCoder.set(row.coderId, (values = {}));
+    let values = byCoder.get(row.sessionId);
+    if (!values) byCoder.set(row.sessionId, (values = {}));
     values[row.variable] = row.value;
   }
   return byCoder;
 }
 
 /** One coder's live coder-level answers, with whether they can still change. */
-export async function coderAnswers(db: Db, studyId: number, coderId: number): Promise<Record<string, CoderValue>> {
+export async function coderAnswers(db: Db, studyId: number, sessionId: number): Promise<Record<string, CoderValue>> {
   const rows = await db
     .select({ variable: a.variable, value: a.value, assigned: a.assigned, frozen: a.frozen })
     .from(a)
-    .where(and(liveCoderLevel(studyId), eq(a.coderId, coderId)));
+    .where(and(liveCoderLevel(studyId), eq(a.sessionId, sessionId)));
   return Object.fromEntries(rows.map(({ variable, ...rest }) => [variable, rest]));
 }
 
@@ -64,7 +64,7 @@ export async function putCoderValues(db: Db, studyId: number, write: CoderValues
       .insert(a)
       .values({
         studyId,
-        coderId: write.coderId,
+        sessionId: write.sessionId,
         variable,
         value,
         designVersionId: write.designVersionId ?? null,
@@ -76,7 +76,7 @@ export async function putCoderValues(db: Db, studyId: number, write: CoderValues
       })
       .onConflictDoUpdate({
         // The live coder-level answer (the partial unique index annotation_values_coder_live)
-        target: [a.coderId, a.variable],
+        target: [a.sessionId, a.variable],
         targetWhere: and(isNull(a.retiredAt), isNull(a.unitId)),
         set: {
           value: sql`excluded.value`,
@@ -94,7 +94,7 @@ export async function putCoderValues(db: Db, studyId: number, write: CoderValues
       .update(a)
       .set({ timing: timing(variable) })
       .where(
-        and(liveCoderLevel(studyId), eq(a.coderId, write.coderId), eq(a.variable, variable), eq(a.assigned, false)),
+        and(liveCoderLevel(studyId), eq(a.sessionId, write.sessionId), eq(a.variable, variable), eq(a.assigned, false)),
       );
   }
 }

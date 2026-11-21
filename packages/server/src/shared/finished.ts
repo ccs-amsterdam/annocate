@@ -1,7 +1,7 @@
 import type { VariableValue } from "@annotinder/contracts";
 import { and, asc, eq, inArray, isNotNull, isNull, min, sql } from "drizzle-orm";
 import type { Db } from "../db/index.js";
-import { annotationValues as a, coders } from "../db/schema/index.js";
+import { annotationValues as a, coderSessions } from "../db/schema/index.js";
 import type { Finished, FinishedRequest } from "../runtime/types.js";
 import { coderValues } from "./coders.js";
 
@@ -24,21 +24,21 @@ export async function listFinished(db: Db, studyId: number, request: FinishedReq
       isNotNull(a.unitId),
       isNull(a.retiredAt),
       inArray(a.variable, variables),
-      request.coderId === undefined ? undefined : eq(a.coderId, request.coderId),
+      request.sessionId === undefined ? undefined : eq(a.sessionId, request.sessionId),
     );
 
   for (const group of request.loops) {
     if (group.level === "coder") {
-      result.push(...(await listFinishedCoders(db, studyId, group, request.coderId)));
+      result.push(...(await listFinishedCoders(db, studyId, group, request.sessionId)));
       continue;
     }
     const variables = [...new Set(group.variables)];
     const created = min(a.created);
     const finished = await db
-      .select({ unitId: sql<number>`${a.unitId}`, coderId: a.coderId, created: created.mapWith(a.created) })
+      .select({ unitId: sql<number>`${a.unitId}`, sessionId: a.sessionId, created: created.mapWith(a.created) })
       .from(a)
       .where(liveAnswers(variables))
-      .groupBy(a.unitId, a.coderId)
+      .groupBy(a.unitId, a.sessionId)
       .having(sql`count(*) = ${variables.length}`)
       .orderBy(asc(created), asc(a.unitId));
 
@@ -47,11 +47,11 @@ export async function listFinished(db: Db, studyId: number, request: FinishedReq
     const values = new Map<string, Record<string, VariableValue>>();
     if (wanted.length > 0) {
       const rows = await db
-        .select({ unitId: a.unitId, coderId: a.coderId, variable: a.variable, value: a.value })
+        .select({ unitId: a.unitId, sessionId: a.sessionId, variable: a.variable, value: a.value })
         .from(a)
         .where(liveAnswers(wanted));
       for (const row of rows) {
-        const key = `${row.unitId}/${row.coderId}`;
+        const key = `${row.unitId}/${row.sessionId}`;
         values.set(key, { ...values.get(key), [row.variable]: row.value });
       }
     }
@@ -60,9 +60,9 @@ export async function listFinished(db: Db, studyId: number, request: FinishedReq
       result.push({
         loop: group.loop,
         unitId: row.unitId,
-        coderId: row.coderId,
+        sessionId: row.sessionId,
         created: row.created!,
-        ...(wanted.length > 0 ? { values: values.get(`${row.unitId}/${row.coderId}`) ?? {} } : {}),
+        ...(wanted.length > 0 ? { values: values.get(`${row.unitId}/${row.sessionId}`) ?? {} } : {}),
       });
     }
   }
@@ -74,14 +74,16 @@ async function listFinishedCoders(
   db: Db,
   studyId: number,
   group: FinishedRequest["loops"][number],
-  coderId: number | undefined,
+  sessionId: number | undefined,
 ): Promise<Finished[]> {
   const rows = await db
-    .select({ id: coders.id, created: coders.created })
-    .from(coders)
-    .where(and(eq(coders.studyId, studyId), coderId === undefined ? undefined : eq(coders.id, coderId)))
-    .orderBy(asc(coders.id));
-  const values = await coderValues(db, studyId, coderId);
+    .select({ id: coderSessions.id, created: coderSessions.created })
+    .from(coderSessions)
+    .where(
+      and(eq(coderSessions.studyId, studyId), sessionId === undefined ? undefined : eq(coderSessions.id, sessionId)),
+    )
+    .orderBy(asc(coderSessions.id));
+  const values = await coderValues(db, studyId, sessionId);
   const result: Finished[] = [];
   for (const coder of rows) {
     const own = values.get(coder.id) ?? {};
@@ -89,7 +91,7 @@ async function listFinishedCoders(
     result.push({
       loop: group.loop,
       unitId: null,
-      coderId: coder.id,
+      sessionId: coder.id,
       created: coder.created,
       ...(group.values?.length
         ? { values: Object.fromEntries(group.values.filter((v) => v in own).map((v) => [v, own[v]])) }

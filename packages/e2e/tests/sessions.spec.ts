@@ -18,7 +18,7 @@ test("a coder quits and asks for their answers to be deleted; the researcher see
   await page.keyboard.press("ArrowLeft");
   // The next unit asks the same question: wait for the answer to be saved
   const own = async () =>
-    (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null);
+    (await answers(request, study.id)).filter((a) => !examples.includes(a.sessionId) && a.unitId !== null);
   await expect.poll(async () => (await own()).length).toBe(1);
   await page.getByRole("button", { name: "Stop" }).click();
   await page.getByRole("button", { name: /Quit and ask to delete my answers/ }).click();
@@ -31,9 +31,9 @@ test("a coder quits and asks for their answers to be deleted; the researcher see
   expect(mine[0].ended?.outcome).toBe("quit");
   expect(mine[0].deletionRequest).toBeTruthy();
   // The answer given before quitting was saved
-  expect((await answers(request, study.id)).filter((a) => a.coderId === mine[0].id && a.unitId !== null)).toHaveLength(
-    1,
-  );
+  expect(
+    (await answers(request, study.id)).filter((a) => a.sessionId === mine[0].id && a.unitId !== null),
+  ).toHaveLength(1);
 });
 
 test("a coder continues on another device with the transfer link", async ({ page, request, browser }) => {
@@ -59,7 +59,7 @@ test("a coder continues on another device with the transfer link", async ({ page
   await expect
     .poll(
       async () =>
-        (await answers(request, study.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null).length,
+        (await answers(request, study.id)).filter((a) => !examples.includes(a.sessionId) && a.unitId !== null).length,
     )
     .toBe(2);
 });

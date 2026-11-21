@@ -89,7 +89,7 @@ export type EndSession = z.infer<typeof EndSessionSchema>;
 
 /** Response for `GET /session`. */
 export const SessionResponseSchema = z.object({
-  coderId: IdSchema,
+  sessionId: IdSchema,
   studyId: IdSchema,
   /** The deployed codebook coders get now: its coder codebook (only what coding needs). */
   codebook: CoderCodebookSchema,
@@ -135,7 +135,7 @@ export type SessionResponse = z.infer<typeof SessionResponseSchema>;
  */
 export const CoderErrorCodeSchema = z.enum([
   /** Participant id already has a session; retry with `x-new-session: 1` to start another. */
-  "participant_has_session",
+  "coder_has_session",
   /** A link where coders pick their name: pick one (`GET /names`), and send it as `x-coder-name` (409). */
   "name_required",
   /** The picked name is another device's (a name is the first device's that picks it): pick another (409). */

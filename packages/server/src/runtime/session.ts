@@ -47,8 +47,8 @@ export function writeDevice(c: Context, deviceId: string): void {
 }
 
 /** A device's key for its session in a deployment (with this participant id, if the link carries one). */
-export function coderKey(deviceId: string, deploymentId: string, participantId?: string | null): Promise<string> {
-  return sha256(`${deviceId}\n${deploymentId}\n${participantId ?? ""}`);
+export function coderKey(deviceId: string, deploymentId: string, coder?: string | null): Promise<string> {
+  return sha256(`${deviceId}\n${deploymentId}\n${coder ?? ""}`);
 }
 
 async function sha256(text: string): Promise<string> {

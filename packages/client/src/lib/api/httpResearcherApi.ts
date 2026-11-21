@@ -151,7 +151,7 @@ export interface ResearcherApi {
   /** Deletes coders and all their answers for good, by id, participant id or email (ADMIN). */
   deleteCoders(select: DeleteCoders): Promise<DeleteCodersResponse>;
   /** Deletes later: the coder's deletion request stays, but is no longer brought up (ADMIN). */
-  postponeDeletion(coderId: number): Promise<void>;
+  postponeDeletion(sessionId: number): Promise<void>;
   /** The study's deletion log, newest first. */
   listCoderDeletions(): Promise<CoderDeletion[]>;
   /** The links (made from the deployed design version), active ones first. */
@@ -532,8 +532,8 @@ export class HttpResearcherApi implements ResearcherApi {
     });
   }
 
-  async postponeDeletion(coderId: number): Promise<void> {
-    await this.request(this.studyPath(researcherEndpoints.postponeDeletion.path, coderId), { method: "POST" });
+  async postponeDeletion(sessionId: number): Promise<void> {
+    await this.request(this.studyPath(researcherEndpoints.postponeDeletion.path, sessionId), { method: "POST" });
   }
 
   async listCoderDeletions(): Promise<CoderDeletion[]> {

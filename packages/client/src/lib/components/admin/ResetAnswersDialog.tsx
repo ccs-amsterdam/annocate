@@ -15,7 +15,7 @@ import { HelpButton } from "../../help/HelpButton";
 
 /** Whose or which answers to reset: some coders, some units, or (neither) everyone's. */
 export interface ResetScope {
-  coderIds?: number[];
+  sessionIds?: number[];
   unitIds?: number[];
   /** How the scope is described, e.g. "coder P12" or "3 units". */
   label: string;
@@ -127,7 +127,7 @@ export function ResetAnswersDialog({
               onClick={() =>
                 reset.mutate({
                   variables: [...chosen],
-                  ...(scope?.coderIds ? { coderIds: scope.coderIds } : {}),
+                  ...(scope?.sessionIds ? { sessionIds: scope.sessionIds } : {}),
                   ...(scope?.unitIds ? { unitIds: scope.unitIds } : {}),
                 })
               }

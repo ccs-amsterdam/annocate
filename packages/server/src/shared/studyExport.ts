@@ -14,9 +14,9 @@ import { getTableConfig, type PgTable } from "drizzle-orm/pg-core";
 import { migrationsFolder, rows, type Db } from "../db/index.js";
 import {
   annotationValues,
-  coderDeletions,
-  coderDevices,
-  coders,
+  sessionDeletions,
+  sessionDevices,
+  coderSessions,
   deploymentVersions,
   deployments,
   designVersions,
@@ -68,9 +68,9 @@ const EXPORTED: { table: PgTable; coders?: true }[] = [
   { table: unitVersionFields },
   { table: unitSets },
   { table: unitSetMembers },
-  { table: coders, coders: true },
-  { table: coderDevices, coders: true },
-  { table: coderDeletions, coders: true },
+  { table: coderSessions, coders: true },
+  { table: sessionDevices, coders: true },
+  { table: sessionDeletions, coders: true },
   { table: annotationValues, coders: true },
   { table: unitServes, coders: true },
 ];
@@ -345,10 +345,10 @@ function transform(
     case "deployments":
       // The codings are derived from the answers again
       return { ...r, codings_basis: null };
-    case "coder_devices":
+    case "session_devices":
       // A device's key is a hash of its cookie: the browsers are on the old server
       return { ...r, key_hash: createHash("sha256").update(randomBytes(32)).digest("hex") };
-    case "coders": {
+    case "coder_sessions": {
       const ended = r.ended as { unit?: { loop: string; id: number } } | null;
       const unitId = ended?.unit ? ids.get("units")?.get(ended.unit.id) : undefined;
       return ended?.unit ? { ...r, ended: { ...ended, unit: unitId ? { ...ended.unit, id: unitId } : undefined } } : r;

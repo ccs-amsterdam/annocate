@@ -15,7 +15,7 @@ import type { Db } from "../db/index.js";
 import {
   adminLog,
   annotationValues,
-  coders,
+  coderSessions,
   domainPlans,
   identities,
   plans,
@@ -116,7 +116,7 @@ async function toAdminUser(db: Db, { user, ...row }: UserRow): Promise<AdminUser
 
 /** Studies with their owner and how much they hold. */
 function selectStudies(db: Db) {
-  const counted = (table: typeof units | typeof coders | typeof annotationValues, where?: SQL) =>
+  const counted = (table: typeof units | typeof coderSessions | typeof annotationValues, where?: SQL) =>
     sql<number>`(${db
       .select({ n: sql`count(*)::int` })
       .from(table)
@@ -130,7 +130,7 @@ function selectStudies(db: Db) {
       archived: studies.archived,
       suspendedAt: studies.suspendedAt,
       units: counted(units, sql`${units.inDraft}`),
-      coders: counted(coders),
+      coders: counted(coderSessions),
       answers: counted(annotationValues),
     })
     .from(studies)

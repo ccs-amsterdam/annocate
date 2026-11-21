@@ -85,7 +85,7 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
       server.calls.push("getSession");
       stale = false;
       return {
-        coderId: 1,
+        sessionId: 1,
         studyId: 1,
         version: 1,
         codebook: {

@@ -154,23 +154,23 @@ async function unitByExternalId(externalId: string): Promise<{ id: number }> {
 async function dbAnnotations() {
   const rows = await query<{
     unitId: number;
-    coderId: number;
+    sessionId: number;
     variable: string;
     value: VariableValue;
     designVersionId: number;
   }>(
     db,
-    `SELECT unit_id AS "unitId", coder_id AS "coderId", variable, value, design_version_id AS "designVersionId"
-     FROM annotation_values WHERE unit_id IS NOT NULL AND retired_at IS NULL ORDER BY unit_id, coder_id`,
+    `SELECT unit_id AS "unitId", session_id AS "sessionId", variable, value, design_version_id AS "designVersionId"
+     FROM annotation_values WHERE unit_id IS NOT NULL AND retired_at IS NULL ORDER BY unit_id, session_id`,
   );
   const byUnit = new Map<
     string,
-    { unitId: number; coderId: number; variables: Record<string, VariableValue>; designVersionIds: number[] }
+    { unitId: number; sessionId: number; variables: Record<string, VariableValue>; designVersionIds: number[] }
   >();
   for (const row of rows) {
-    const key = `${row.unitId}/${row.coderId}`;
+    const key = `${row.unitId}/${row.sessionId}`;
     if (!byUnit.has(key))
-      byUnit.set(key, { unitId: row.unitId, coderId: row.coderId, variables: {}, designVersionIds: [] });
+      byUnit.set(key, { unitId: row.unitId, sessionId: row.sessionId, variables: {}, designVersionIds: [] });
     byUnit.get(key)!.variables[row.variable] = row.value;
     byUnit.get(key)!.designVersionIds.push(row.designVersionId);
   }
@@ -353,7 +353,7 @@ let extraLinks = 0;
  * them on a link). Made directly: links come from the deployed design version,
  * so a later deploy retires it.
  */
-async function link(settings: { participantId?: string; maxUses?: number } = {}) {
+async function link(settings: { coder?: string; maxUses?: number } = {}) {
   const secret = `extra-${++extraLinks}`;
   const [{ id }] = await query<{ id: number }>(
     db,
@@ -500,11 +500,11 @@ describe("shared queues under concurrency", () => {
     await redeploy({}, [crowd({ codersPerUnit: { min: 1, max: 1 } })]);
     const a = coder("a");
     const unitA = (await a.next())!;
-    const { coderId } = await a.session();
+    const { sessionId } = await a.session();
     between = (store) =>
       store.putAnnotation({
         unitId: unitA.id,
-        coderId,
+        sessionId,
         variables: { sentiment: { done: true, skip: false, values: [{ value: "neutral" }] } },
         codings: [{ loop: "1", agreement: {} }],
       });
@@ -621,14 +621,14 @@ describe("coders", () => {
     const refused = await start("p2", "anna");
     expect(refused.status).toBe(409);
     expect(await refused.json()).toMatchObject({ code: "name_taken" });
-    expect(((await (await start("p1")).json()) as SessionResponse).coderId).toBe(anna.coderId);
+    expect(((await (await start("p1")).json()) as SessionResponse).sessionId).toBe(anna.sessionId);
 
     // Shared by devices: picking a name continues its session
     await redeploy({}, [
       sessionItem({ invite: { mode: "coders", column: "coder", link: "pick_name", nameDevices: "any" } }),
     ]);
     const shared = (await (await start("p3", "anna")).json()) as SessionResponse;
-    expect(shared.coderId).toBe(anna.coderId);
+    expect(shared.sessionId).toBe(anna.sessionId);
     expect((await names()).names.every((n) => !n.taken)).toBe(true);
 
     // Names are shown to anyone with the link: no email addresses
@@ -830,11 +830,11 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     const first = await c.next("2");
     expect((await c.next("2"))!.id).toBe(first!.id);
     expect(await c.next("1")).not.toBeNull();
-    const { coderId } = await c.session();
+    const { sessionId } = await c.session();
     const [stored] = await query<{ assignments: Record<string, unknown> }>(
       db,
-      "SELECT assignments FROM coders WHERE id = $1",
-      [coderId],
+      "SELECT assignments FROM coder_sessions WHERE id = $1",
+      [sessionId],
     );
     expect(stored.assignments).toEqual({ "1": { at: expect.any(Number) }, "2": { at: expect.any(Number) } });
     // The units follow from the session: no branch to choose (an old client's `branch` is ignored)
@@ -868,15 +868,15 @@ describe("assignment edge cases (review of the unit assignment)", () => {
       });
     server = createApp(db, { secret: "test-secret", runtime: { random: () => 0 }, wrapStore: racing, devMode: true });
     const c = coder("c");
-    const { coderId } = await c.session();
+    const { sessionId } = await c.session();
     between = async (store) => {
       await store.putCoderValues({
-        coderId,
+        sessionId,
         values: { part: { done: true, skip: false, values: [{ value: "p2" }] } },
         assigned: true,
         designVersionId: null,
       });
-      await store.setSessionValue(coderId, "part", "p2");
+      await store.setSessionValue(sessionId, "part", "p2");
     };
     const unit = await c.next();
     expect(between).toBeNull();
@@ -935,7 +935,7 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     const again = (await (
       await send("a", "/session", {}, { "x-link-secret": secret, "x-new-session": "1" })
     ).json()) as SessionResponse;
-    expect(again.coderId).toBe(first.coderId);
+    expect(again.sessionId).toBe(first.sessionId);
   });
 
   it("a session without a coder value is told it has no units yet", async () => {
@@ -1071,11 +1071,11 @@ describe("sessions", () => {
     expect(set).toContain("Path=/api/d");
 
     const deviceId = devices.get("browser")!.cookies.get("annotinder_device")!;
-    const { coderId } = (await res.json()) as SessionResponse;
+    const { sessionId } = (await res.json()) as SessionResponse;
     const [stored] = await query<{ key_hash: string; device_type: string; browser: string; os: string }>(
       db,
-      "SELECT key_hash, device_type, browser, os FROM coder_devices WHERE coder_id = $1",
-      [coderId],
+      "SELECT key_hash, device_type, browser, os FROM session_devices WHERE session_id = $1",
+      [sessionId],
     );
     const { createHash } = await import("node:crypto");
     expect(stored).toEqual({
@@ -1085,11 +1085,11 @@ describe("sessions", () => {
       os: "iOS",
     });
     // The device id itself is stored nowhere
-    expect(JSON.stringify(await query(db, "SELECT * FROM coders"))).not.toContain(deviceId);
+    expect(JSON.stringify(await query(db, "SELECT * FROM coder_sessions"))).not.toContain(deviceId);
 
     // the cookie continues the session; it isn't set again
     const again = await send("browser", "/session", {}, { "x-link-secret": "demo-secret" });
-    expect(((await again.json()) as SessionResponse).coderId).toBe(coderId);
+    expect(((await again.json()) as SessionResponse).sessionId).toBe(sessionId);
     expect(again.headers.getSetCookie()).toEqual([]);
   });
 
@@ -1122,8 +1122,8 @@ describe("sessions", () => {
     ).json()) as SessionResponse;
     const b = (await (await send("shared", "/session", {}, { "x-link-secret": other })).json()) as SessionResponse;
     const bare = (await (await send("shared", "/session")).json()) as SessionResponse; // no link at all
-    expect(b.coderId).toBe(a.coderId);
-    expect(bare.coderId).toBe(a.coderId);
+    expect(b.sessionId).toBe(a.sessionId);
+    expect(bare.sessionId).toBe(a.sessionId);
 
     await redeploy({}, [crowd(undefined, { participant: { param: "participant" } })]);
     const panel = "demo-secret";
@@ -1133,7 +1133,7 @@ describe("sessions", () => {
     const p2 = (await (
       await send("shared", "/session", {}, { "x-link-secret": panel, "x-url-params": "participant=P2" })
     ).json()) as SessionResponse;
-    expect(new Set([a.coderId, p1.coderId, p2.coderId]).size).toBe(3);
+    expect(new Set([a.sessionId, p1.sessionId, p2.sessionId]).size).toBe(3);
     // One cookie for all of it
     expect(devices.get("shared")!.cookies.size).toBe(1);
   });
@@ -1191,7 +1191,7 @@ describe("URL parameters", () => {
     expect(ok.session).toEqual({ participant: "ab12", study: "s1", src: "mail", wave: "1", source: "newsletter" });
     // The same link again (the client sends the page's parameters with every request): the same session
     const again = (await (await start("u4", "PROLIFIC_PID=ab12&STUDY_ID=s1&src=mail")).json()) as SessionResponse;
-    expect(again.coderId).toBe(ok.coderId);
+    expect(again.sessionId).toBe(ok.sessionId);
     // Kept without the other parameters, also after a restart (the participant id is part of the device's session key)
     server = restart();
     expect(
@@ -1201,7 +1201,7 @@ describe("URL parameters", () => {
     const coders = (await (
       await server.request("/api/study/1/coders", { headers: adminHeaders })
     ).json()) as CoderProgress[];
-    expect(coders.find((c) => c.participantId === "ab12")?.session, JSON.stringify(coders)).toEqual({
+    expect(coders.find((c) => c.coder === "ab12")?.session, JSON.stringify(coders)).toEqual({
       study: "s1",
       src: "mail",
       wave: "1",
@@ -1241,7 +1241,7 @@ describe("quitting and deleting a coder's data", () => {
 
     const listed = async () =>
       ((await (await server.request("/api/study/1/coders", { headers: adminHeaders })).json()) as CoderProgress[]).find(
-        (c) => c.participantId === "P77",
+        (c) => c.coder === "P77",
       );
     const before = (await listed())!;
     expect(before.deletionRequest).toMatchObject({ at: expect.any(String) });
@@ -1258,28 +1258,28 @@ describe("quitting and deleting a coder's data", () => {
     const del = await server.request("/api/study/1/coders/delete", {
       method: "POST",
       headers: adminHeaders,
-      body: JSON.stringify({ participantIds: ["P77"] }),
+      body: JSON.stringify({ coders: ["P77"] }),
     });
-    expect(await del.json()).toEqual({ coderIds: [before.id], answers: 1 });
+    expect(await del.json()).toEqual({ sessionIds: [before.id], answers: 1 });
     expect(await listed()).toBeUndefined();
     const log = await (await server.request("/api/study/1/coders/deletions", { headers: adminHeaders })).json();
     expect(log).toEqual([
       expect.objectContaining({
-        coderId: before.id,
-        participantId: "P77",
+        sessionId: before.id,
+        coder: "P77",
         requestedAt: expect.any(String),
         deletedAt: expect.any(String),
         answers: 1,
       }),
     ]);
-    expect((await query(db, "SELECT 1 FROM annotation_values WHERE coder_id = $1", [before.id])).length).toBe(0);
+    expect((await query(db, "SELECT 1 FROM annotation_values WHERE session_id = $1", [before.id])).length).toBe(0);
     // Nothing matches: nothing deleted
     const none = await server.request("/api/study/1/coders/delete", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({ emails: ["x@y.z"] }),
     });
-    expect(await none.json()).toEqual({ coderIds: [], answers: 0 });
+    expect(await none.json()).toEqual({ sessionIds: [], answers: 0 });
   });
 });
 
@@ -1660,20 +1660,20 @@ describe("coder login", () => {
     expect(devices.get("phone")!.cookies.has("annotinder_device")).toBe(true);
     // After that the device cookie alone is the session: logging out doesn't matter
     devices.get("phone")!.cookies.delete("annotinder_session");
-    expect((await session("phone", secret)).body.coderId).toBe(phone.body.coderId);
+    expect((await session("phone", secret)).body.sessionId).toBe(phone.body.sessionId);
 
     // Another device, without the link: the login finds the session, and the device joins it
     await loggedIn("laptop", "A@example.org");
-    expect((await session("laptop", null)).body.coderId).toBe(phone.body.coderId);
+    expect((await session("laptop", null)).body.sessionId).toBe(phone.body.sessionId);
     devices.get("laptop")!.cookies.delete("annotinder_session");
-    expect((await session("laptop", null)).body.coderId).toBe(phone.body.coderId);
+    expect((await session("laptop", null)).body.sessionId).toBe(phone.body.sessionId);
     // A transfer link works too
     expect((await send("phone", "/transfer", { method: "POST" })).status).toBe(200);
 
     const coders = (await (
       await server.request("/api/study/1/coders", { headers: adminHeaders })
     ).json()) as CoderProgress[];
-    expect(coders.find((c) => c.id === phone.body.coderId)?.email).toBe("a@example.org");
+    expect(coders.find((c) => c.id === phone.body.sessionId)?.email).toBe("a@example.org");
   });
 
   it("coders may always sign in: links the email to the session started on the device, not shown to researchers", async () => {
@@ -1683,23 +1683,23 @@ describe("coder login", () => {
     const user = await ensureUser(db, "c@example.org");
     devices.get("tablet")!.cookies.set("annotinder_session", await createSession(db, user.id, CODER_LOGIN));
     const after = await session("tablet", secret);
-    expect(after.body).toMatchObject({ coderId: before.body.coderId, login: "c@example.org" });
+    expect(after.body).toMatchObject({ sessionId: before.body.sessionId, login: "c@example.org" });
     await loggedIn("desktop", "c@example.org");
-    expect((await session("desktop", secret)).body.coderId).toBe(before.body.coderId);
+    expect((await session("desktop", secret)).body.sessionId).toBe(before.body.sessionId);
 
     // One session per email in a study: a device that started its own, then logs in, continues the email's session
     const own = await session("phone", secret);
-    expect(own.body.coderId).not.toBe(before.body.coderId);
+    expect(own.body.sessionId).not.toBe(before.body.sessionId);
     const phoneUser = await ensureUser(db, "c@example.org");
     devices.get("phone")!.cookies.set("annotinder_session", await createSession(db, phoneUser.id, CODER_LOGIN));
-    expect((await session("phone", secret)).body.coderId).toBe(before.body.coderId);
+    expect((await session("phone", secret)).body.sessionId).toBe(before.body.sessionId);
 
     // The researcher sees no email where the invitation doesn't require sign-in
     const coders = (await (
       await server.request("/api/study/1/coders", { headers: adminHeaders })
     ).json()) as CoderProgress[];
-    expect(coders.find((c) => c.id === before.body.coderId)).toMatchObject({ id: before.body.coderId });
-    expect(coders.find((c) => c.id === before.body.coderId)!.email).toBeUndefined();
+    expect(coders.find((c) => c.id === before.body.sessionId)).toMatchObject({ id: before.body.sessionId });
+    expect(coders.find((c) => c.id === before.body.sessionId)!.email).toBeUndefined();
   });
 });
 
@@ -1732,24 +1732,24 @@ describe("sessions across devices", () => {
 
     const first = await send("device-1", "/session", {}, link);
     expect(first.status).toBe(200);
-    const firstCoder = ((await first.json()) as SessionResponse).coderId;
+    const firstCoder = ((await first.json()) as SessionResponse).sessionId;
 
     // Same participant link on a new device: explained refusal, not a resumed session.
     const second = await send("device-2", "/session", {}, link);
     expect(second.status).toBe(409);
-    expect(await second.json()).toMatchObject({ code: "participant_has_session" });
+    expect(await second.json()).toMatchObject({ code: "coder_has_session" });
 
     // Confirmed: a new, separate session with the same participant id.
     const confirmed = await send("device-2", "/session", {}, { ...link, "x-new-session": "1" });
     expect(confirmed.status).toBe(200);
-    const secondCoder = ((await confirmed.json()) as SessionResponse).coderId;
+    const secondCoder = ((await confirmed.json()) as SessionResponse).sessionId;
     expect(secondCoder).not.toBe(firstCoder);
-    const rows = await query(db, "SELECT participant_id FROM coders WHERE participant_id = 'P123'");
+    const rows = await query(db, "SELECT coder FROM coder_sessions WHERE coder = 'P123'");
     expect(rows).toHaveLength(2);
 
     // and that device keeps its new session
     const reload = await send("device-2", "/session", {}, link);
-    expect(((await reload.json()) as SessionResponse).coderId).toBe(secondCoder);
+    expect(((await reload.json()) as SessionResponse).sessionId).toBe(secondCoder);
 
     // A revoked link starts no new sessions, also not for a known participant; existing ones go on.
     await query(db, "UPDATE links SET revoked_at = now() WHERE secret = $1", [secret]);
@@ -2015,7 +2015,7 @@ describe("state in the database, not in memory", () => {
     expect((await phone.call("/transfer/redeem", { method: "POST", body: JSON.stringify({ token }) })).status).toBe(
       200,
     );
-    expect((await phone.session()).coderId).toBe((await c.session()).coderId);
+    expect((await phone.session()).sessionId).toBe((await c.session()).sessionId);
     // Pausing the study on one process is seen at once by the other
     server = other;
     const deployment = (await (await server.request("/api/study/1/deployment", { headers: adminHeaders })).json()) as {
@@ -2428,7 +2428,7 @@ describe("researcher preview", () => {
 
   it("keeps the preview's coders and answers out of the database", async () => {
     await draft("draft");
-    const coders = async () => (await query<{ n: number }>(db, "SELECT COUNT(*)::int AS n FROM coders"))[0].n;
+    const coders = async () => (await query<{ n: number }>(db, "SELECT COUNT(*)::int AS n FROM coder_sessions"))[0].n;
     const before = await coders();
     const { deploymentId, token } = await openPreview();
     const call = previewer(deploymentId, token);
@@ -2647,7 +2647,7 @@ describe("the coder home", () => {
     const c = coder("laptop");
     await c.session();
     const user = await ensureUser(db, "coder@uni.nl");
-    await query(db, "UPDATE coders SET email = 'coder@uni.nl' WHERE id = (SELECT max(id) FROM coders)");
+    await query(db, "UPDATE coder_sessions SET email = 'coder@uni.nl' WHERE id = (SELECT max(id) FROM coder_sessions)");
     const sessions = (cookie?: string) =>
       server.request("/api/coder/sessions", {
         headers: { "x-annotinder": "1", ...(cookie ? { cookie: `${SESSION_COOKIE}=${cookie}` } : {}) },

@@ -7,7 +7,14 @@ import {
 } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
 import { and, asc, eq, gt, isNull } from "drizzle-orm";
-import { annotationValues as a, coderDevices, coders, units, unitServes, unitVersions } from "../db/schema/index.js";
+import {
+  annotationValues as a,
+  sessionDevices,
+  coderSessions,
+  units,
+  unitServes,
+  unitVersions,
+} from "../db/schema/index.js";
 import { unitDataHash, unitVersionData } from "../db/sql.js";
 import { requireStudyUser } from "./auth.js";
 
@@ -29,8 +36,8 @@ export function annotations(server: Server): Hono<Env> {
         id: a.id,
         unitId: a.unitId,
         externalId: units.externalId,
-        coderId: a.coderId,
-        participantId: coders.participantId,
+        sessionId: a.sessionId,
+        coder: coderSessions.coder,
         variable: a.variable,
         value: a.value,
         designVersionId: a.designVersionId,
@@ -45,8 +52,8 @@ export function annotations(server: Server): Hono<Env> {
       })
       .from(a)
       .leftJoin(units, eq(units.id, a.unitId))
-      .leftJoin(coders, eq(coders.id, a.coderId))
-      .leftJoin(unitServes, and(eq(unitServes.coderId, a.coderId), eq(unitServes.unitId, a.unitId)))
+      .leftJoin(coderSessions, eq(coderSessions.id, a.sessionId))
+      .leftJoin(unitServes, and(eq(unitServes.sessionId, a.sessionId), eq(unitServes.unitId, a.unitId)))
       .where(and(eq(a.studyId, c.get("studyId")), gt(a.id, after ?? 0), retired ? undefined : isNull(a.retiredAt)))
       .orderBy(asc(a.id))
       .limit(limit + 1);
@@ -62,16 +69,16 @@ export function annotations(server: Server): Hono<Env> {
     c.json(
       await db
         .select({
-          id: coderDevices.id,
-          coderId: coderDevices.coderId,
-          type: coderDevices.deviceType,
-          browser: coderDevices.browser,
-          os: coderDevices.os,
-          created: coderDevices.created,
+          id: sessionDevices.id,
+          sessionId: sessionDevices.sessionId,
+          type: sessionDevices.deviceType,
+          browser: sessionDevices.browser,
+          os: sessionDevices.os,
+          created: sessionDevices.created,
         })
-        .from(coderDevices)
-        .where(eq(coderDevices.studyId, c.get("studyId")))
-        .orderBy(asc(coderDevices.id)),
+        .from(sessionDevices)
+        .where(eq(sessionDevices.studyId, c.get("studyId")))
+        .orderBy(asc(sessionDevices.id)),
     ),
   );
 

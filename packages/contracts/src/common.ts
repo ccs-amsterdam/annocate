@@ -4,7 +4,7 @@ import { z } from "zod";
  * A "safe" identifier: alphanumeric + underscores only. Used for design
  * item names, unit field names, etc. Kept intentionally restrictive so names
  * can be used directly as object keys / variable identifiers on the client
- * (e.g. `unit.variables[coderId][name]`) without escaping concerns.
+ * (e.g. `unit.variables[sessionId][name]`) without escaping concerns.
  */
 export const SafeNameSchema = z
   .string()

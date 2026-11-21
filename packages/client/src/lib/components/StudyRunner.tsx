@@ -284,7 +284,7 @@ function StudyRunnerContent({
     );
   }
 
-  if (snapshot.phase === "error" && snapshot.errorCode === "participant_has_session") {
+  if (snapshot.phase === "error" && snapshot.errorCode === "coder_has_session") {
     return <ParticipantElsewhere onStartNewSession={onStartNewSession} />;
   }
 

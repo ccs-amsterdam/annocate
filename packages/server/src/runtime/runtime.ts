@@ -338,7 +338,7 @@ export class DeploymentRuntime {
           {
             loop: row.loop,
             unitId: row.unitId,
-            coderId: row.coderId,
+            sessionId: row.sessionId,
             agreement: agreementKeys(row.values ?? {}, info),
             created: row.created,
             updated: row.created,
@@ -352,7 +352,7 @@ export class DeploymentRuntime {
   /** Finished codings as distribution reads them. */
   private static codingsOf(rows: Coding[]): Codings {
     const codings = new Codings();
-    for (const row of rows) codings.record(row.coderId, row.unitId, row.agreement, new Date(row.updated).getTime());
+    for (const row of rows) codings.record(row.sessionId, row.unitId, row.agreement, new Date(row.updated).getTime());
     return codings;
   }
 
@@ -394,25 +394,25 @@ export class DeploymentRuntime {
     const linked = async (value: VariableValue): Promise<VariableValue> => {
       const plain = valueOf(value);
       if (!variable.units || plain === undefined) return value;
-      const kept = await this.store.setSessionValue(coder.coderId, name, String(plain));
+      const kept = await this.store.setSessionValue(coder.sessionId, name, String(plain));
       coder.session = { ...coder.session, [name]: kept };
       return kept === String(plain) ? value : singleValue(kept);
     };
-    const stored = (await this.store.coderValues(coder.coderId))[name];
+    const stored = (await this.store.coderValues(coder.sessionId))[name];
     if (stored) return linked(stored.value);
     // Already in the session (e.g. its answers were reset): the same value again, not a new draw
     const kept = variable.units ? coder.session[name] : undefined;
     const put = (store: Store, value: VariableValue) =>
       store.putCoderValues({
-        coderId: coder.coderId,
+        sessionId: coder.sessionId,
         values: { [name]: value },
         assigned: true,
         designVersionId: this.spec.design.id,
       });
     if (variable.draw === "random" || kept !== undefined) {
       // Under the coder's own lock: two requests of this coder at once draw once (the first write wins)
-      const value = await this.store.locked(`condition/${name}/${coder.coderId}`, async (store) => {
-        const again = (await store.coderValues(coder.coderId))[name];
+      const value = await this.store.locked(`condition/${name}/${coder.sessionId}`, async (store) => {
+        const again = (await store.coderValues(coder.sessionId))[name];
         if (again) return again.value;
         const value = singleValue(kept ?? this.drawWeighted(options));
         await put(store, value);
@@ -423,9 +423,9 @@ export class DeploymentRuntime {
     const stratify = variable.stratify ?? [];
     const value = await this.store.locked(`balanced/${name}`, async (store) => {
       // Another request of this coder may have assigned it meanwhile
-      const again = (await store.coderValues(coder.coderId))[name];
+      const again = (await store.coderValues(coder.sessionId))[name];
       if (again) return again.value;
-      const own = await store.coderValues(coder.coderId);
+      const own = await store.coderValues(coder.sessionId);
       const stratum = (values: Record<string, VariableValue | undefined>, session: Record<string, string>) =>
         JSON.stringify(
           stratify.map((s) =>
@@ -473,8 +473,8 @@ export class DeploymentRuntime {
       .replace(/=+$/, "");
     const expires = new Date(this.options.now() + this.options.transferTtlMs);
     await this.store.createTransfer(await sha256(token), {
-      coderId: coder.coderId,
-      participant: coder.session.participant ?? null,
+      sessionId: coder.sessionId,
+      coder: coder.session.participant ?? null,
       expires,
     });
     return { token, expiresAt: expires };
@@ -491,18 +491,18 @@ export class DeploymentRuntime {
   ): Promise<void> {
     const transfer = await this.store.redeemTransfer(await sha256(token), new Date(this.options.now()));
     if (!transfer) throw new HttpError(404, "This link has expired or was already used", "transfer_invalid");
-    for (const key of await keys(transfer.participant)) await this.store.addDevice(transfer.coderId, key, device);
+    for (const key of await keys(transfer.coder)) await this.store.addDevice(transfer.sessionId, key, device);
   }
 
   /** The session for the client. */
   async session(coder: Coder): Promise<SessionResponse> {
-    const values = await this.store.coderValues(coder.coderId);
+    const values = await this.store.coderValues(coder.sessionId);
     const [endValues, codings] = await Promise.all([
       this.endValues(coder, values),
-      this.store.listCodings({ coderId: coder.coderId }),
+      this.store.listCodings({ sessionId: coder.sessionId }),
     ]);
     return {
-      coderId: coder.coderId,
+      sessionId: coder.sessionId,
       studyId: this.spec.studyId,
       // Only what coding needs (contracts toCoderItems): not how units are handed out
       codebook: this.coderCodebook,
@@ -542,7 +542,7 @@ export class DeploymentRuntime {
     if (item !== undefined && !end) throw new HttpError(400, `No end item '${item}'`);
     if (
       unit &&
-      (!this.loops.has(unit.loop) || Object.keys(await this.store.unitAnswers(coder.coderId, unit.id)).length === 0)
+      (!this.loops.has(unit.loop) || Object.keys(await this.store.unitAnswers(coder.sessionId, unit.id)).length === 0)
     ) {
       throw new HttpError(400, "The end's unit is not one you answered");
     }
@@ -552,7 +552,7 @@ export class DeploymentRuntime {
       outcome: end?.outcome ?? "complete",
       at: new Date(this.options.now()),
     };
-    await this.store.setEnded(coder.coderId, coder.ended);
+    await this.store.setEnded(coder.sessionId, coder.ended);
     return { reopen: this.reopen(coder) };
   }
 
@@ -575,7 +575,7 @@ export class DeploymentRuntime {
     if (!coder.ended) return;
     if (!this.reopen(coder)) throw new HttpError(409, "This session has ended", "session_closed");
     coder.ended = null;
-    await this.store.setEnded(coder.coderId, null);
+    await this.store.setEnded(coder.sessionId, null);
   }
 
   /** An ended session is closed, unless the study keeps sessions open: the coder gets only what the end screen shows. */
@@ -601,7 +601,7 @@ export class DeploymentRuntime {
     if (ended.unit) {
       const [data, answers] = await Promise.all([
         this.getUnits([ended.unit.id]).then((units) => units.get(ended.unit!.id)?.data ?? {}),
-        this.store.unitAnswers(coder.coderId, ended.unit.id),
+        this.store.unitAnswers(coder.sessionId, ended.unit.id),
       ]);
       unit = { data: pick(data, names("unit")), variables: pick(answers, vars) };
     }
@@ -617,11 +617,11 @@ export class DeploymentRuntime {
     const at = new Date(this.options.now());
     if (!coder.ended) {
       coder.ended = { outcome: "quit", at };
-      await this.store.setEnded(coder.coderId, coder.ended);
+      await this.store.setEnded(coder.sessionId, coder.ended);
     }
     if (requestDeletion) {
       coder.deletionRequest = { at };
-      await this.store.requestDeletion(coder.coderId, coder.deletionRequest);
+      await this.store.requestDeletion(coder.sessionId, coder.deletionRequest);
     }
   }
 
@@ -644,7 +644,7 @@ export class DeploymentRuntime {
     const errors = validateVariables(this.coderVariableTypes, variables);
     if (errors.length > 0) throw new HttpError(400, errors.join("; "));
     const auto = new Set(this.randomVariables.map(([name]) => name));
-    const stored = await this.store.coderValues(coder.coderId);
+    const stored = await this.store.coderValues(coder.sessionId);
     const open = (name: string) => !auto.has(name) && !stored[name]?.assigned && !stored[name]?.frozen;
     const changed = Object.fromEntries(
       Object.entries(variables).filter(
@@ -658,7 +658,7 @@ export class DeploymentRuntime {
     if (Object.keys(changed).length === 0 && Object.keys(timed).length === 0) return;
     await this.store.checkAnswers(changed);
     await this.store.putCoderValues({
-      coderId: coder.coderId,
+      sessionId: coder.sessionId,
       values: changed,
       designVersionId: this.spec.design.id,
       deviceId,
@@ -829,7 +829,7 @@ export class DeploymentRuntime {
       throw new HttpError(409, "No units are assigned to you yet: ask the researcher for a new link", "not_assigned");
     if (!coder.assignments[info.key]) {
       const assignment = { at: this.options.now() };
-      await this.store.routeCoder(coder.coderId, info.key, assignment);
+      await this.store.routeCoder(coder.sessionId, info.key, assignment);
       coder.assignments = { ...coder.assignments, [info.key]: assignment };
     }
     return route;
@@ -858,8 +858,8 @@ export class DeploymentRuntime {
     return Promise.all(
       units.map(async (unit) => {
         const [shown, answers] = await Promise.all([
-          this.markServed(coder.coderId, unit),
-          this.store.unitAnswers(coder.coderId, unit.id),
+          this.markServed(coder.sessionId, unit),
+          this.store.unitAnswers(coder.sessionId, unit.id),
         ]);
         return this.coderUnit(route, unit, shown.data, answers);
       }),
@@ -873,7 +873,7 @@ export class DeploymentRuntime {
     // Leases first: finishing a unit (not under this lock) adds the coding and
     // drops the lease, so a coding finished in between is still seen, as a coding.
     const leases = shared ? await store.listLeases({ loop: info.key }) : [];
-    const rows = await store.listCodings(shared ? { loop: info.key } : { loop: info.key, coderId: coder.coderId });
+    const rows = await store.listCodings(shared ? { loop: info.key } : { loop: info.key, sessionId: coder.sessionId });
     const codings = DeploymentRuntime.codingsOf(rows);
     const { main, extras } = this.pools(route, codings, leases);
     // Picks ids first, then reads them in one query: a unit deleted since the
@@ -884,7 +884,7 @@ export class DeploymentRuntime {
       const wanted: typeof picked = [];
       while (picked.length + wanted.length < count) {
         const now = this.options.now();
-        const next = pickNext(main, extras, coder.coderId, codings, {
+        const next = pickNext(main, extras, coder.sessionId, codings, {
           order: info.loop.order ?? "sequential",
           maxUnits: route.units.criteria?.unitsPerCoder?.max,
           minUnits: route.units.criteria?.unitsPerCoder?.min,
@@ -892,9 +892,9 @@ export class DeploymentRuntime {
           now,
         });
         if (!next) break;
-        if (next.pool.rule) next.pool.take(coder.coderId, next.unitId, now);
+        if (next.pool.rule) next.pool.take(coder.sessionId, next.unitId, now);
         // As if finished, for the rest of this batch: the next pick moves on (and counts it for `maxUnits` and the overlap's place).
-        codings.record(coder.coderId, next.unitId, {}, now);
+        codings.record(coder.sessionId, next.unitId, {}, now);
         wanted.push(next);
       }
       if (wanted.length === 0) break;
@@ -918,7 +918,7 @@ export class DeploymentRuntime {
         .map((p) => ({
           loop: info.key,
           set: p.pool.set,
-          coderId: coder.coderId,
+          sessionId: coder.sessionId,
           unitId: p.unitId,
           expires: new Date(now + p.pool.rule!.leaseSeconds * 1000),
         })),
@@ -935,9 +935,9 @@ export class DeploymentRuntime {
     if (!this.loops.has(loopName)) throw new HttpError(404, `No unit loop '${loopName}'`);
     const route = this.routeOf(coder, this.loops.get(loopName)!);
     const [answers, leases, coded] = await Promise.all([
-      this.store.unitAnswers(coder.coderId, unitId),
-      this.store.listLeases({ coderId: coder.coderId }),
-      this.store.listCodings({ loop: loopName, coderId: coder.coderId }),
+      this.store.unitAnswers(coder.sessionId, unitId),
+      this.store.listLeases({ sessionId: coder.sessionId }),
+      this.store.listCodings({ loop: loopName, sessionId: coder.sessionId }),
     ]);
     const answered = Object.keys(answers).length > 0;
     const held = leases.some((l) => l.loop === loopName && l.unitId === unitId);
@@ -948,7 +948,7 @@ export class DeploymentRuntime {
       throw new HttpError(404, "This unit is not part of your session");
     const unit = (await this.getUnits([unitId])).get(unitId);
     if (!unit) throw new HttpError(404, "Unit not found");
-    const shown = await this.markServed(coder.coderId, unit);
+    const shown = await this.markServed(coder.sessionId, unit);
     return this.coderUnit(route, unit, shown.data, answers);
   }
 
@@ -967,8 +967,8 @@ export class DeploymentRuntime {
   ): Promise<SubmitUnitResponse> {
     this.assertOpen(coder);
     // Leases first (as in `pick`): a submit of this unit finishing in between shows up as a coding.
-    const leases = await this.store.listLeases({ coderId: coder.coderId });
-    const own = await this.store.listCodings({ coderId: coder.coderId });
+    const leases = await this.store.listLeases({ sessionId: coder.sessionId });
+    const own = await this.store.listCodings({ sessionId: coder.sessionId });
     // Units in the coder's route; in a shared queue only their own earlier
     // codings (editing after going back) or the unit leased to them (an
     // expired lease still counts: at worst one coding too many).
@@ -1003,20 +1003,20 @@ export class DeploymentRuntime {
     // Values of other variables (e.g. questions an update removed) are left
     // alone, so they stay as data. With them: the unit version the coder
     // saw (which may be older than the unit's content now).
-    let unitVersionId = (await this.store.servedVersion(coder.coderId, unitId)) ?? undefined;
+    let unitVersionId = (await this.store.servedVersion(coder.sessionId, unitId)) ?? undefined;
     if (unitVersionId === undefined) {
       const unit = (await this.getUnits([unitId])).get(unitId);
       unitVersionId = unit && (await this.shownVersion(unit)).versionId;
     }
     // The loops these answers (with the unit's earlier ones) finish the unit in.
-    const merged = { ...(await this.store.unitAnswers(coder.coderId, unitId)), ...variables };
+    const merged = { ...(await this.store.unitAnswers(coder.sessionId, unitId)), ...variables };
     const codings = finishedLoops(merged, this.loops.values()).map((l) => ({
       loop: l.key,
       agreement: agreementKeys(merged, l),
     }));
     await this.store.putAnnotation({
       unitId,
-      coderId: coder.coderId,
+      sessionId: coder.sessionId,
       variables,
       designVersionId: this.spec.design.id,
       unitVersionId,
@@ -1025,7 +1025,7 @@ export class DeploymentRuntime {
       codings,
     });
     // The coder-level answers this loop depends on can't change any more.
-    await this.store.freezeCoderValues(coder.coderId, this.dependencies.get(info.key) ?? []);
+    await this.store.freezeCoderValues(coder.sessionId, this.dependencies.get(info.key) ?? []);
 
     // Gold units (docs/architecture.md §6.2): checked here, against the unit's answer columns (practice: in the browser).
     const route = this.routeOf(coder, info);
@@ -1090,7 +1090,7 @@ export class DeploymentRuntime {
     goldUnits: number[],
   ): Promise<number> {
     const health = gold.health!;
-    const codings = (await this.store.listCodings({ coderId: coder.coderId, loop }))
+    const codings = (await this.store.listCodings({ sessionId: coder.sessionId, loop }))
       .filter((c) => goldUnits.includes(c.unitId))
       .sort((a, b) => new Date(a.created).getTime() - new Date(b.created).getTime());
     const units = await this.getUnits(codings.map((c) => c.unitId));
@@ -1098,7 +1098,7 @@ export class DeploymentRuntime {
     for (const coding of codings) {
       const unit = units.get(coding.unitId);
       if (!unit) continue;
-      const answers = await this.store.unitAnswers(coder.coderId, coding.unitId);
+      const answers = await this.store.unitAnswers(coder.sessionId, coding.unitId);
       for (const name of gold.questions ?? []) {
         const expected = parseAnswerKey(unit.data[goldColumn(name)]);
         if (expected === null) continue;
@@ -1127,7 +1127,7 @@ export class DeploymentRuntime {
       const codings = DeploymentRuntime.codingsOf(rows.filter((r) => r.loop === loop));
       const routes = allCoders.flatMap((c) => {
         const route = c.assignments[loop] ? this.routeOf(c, info) : null;
-        return route ? [{ coderId: c.coderId, route }] : [];
+        return route ? [{ sessionId: c.sessionId, route }] : [];
       });
       // One row per pool: a set with its rule (a shared queue, or handed out whole).
       const pools = new Map<string, { pool: UnitPool; coders: number[] }>();
@@ -1136,7 +1136,7 @@ export class DeploymentRuntime {
         .map((l) => ({ ...l, expires: new Date(l.expires).getTime() }));
       // Shares overlap (`_overlap`, `a;b`): a unit is listed once, in the first row that has it
       const listed = new Set<number>();
-      for (const { coderId, route } of routes) {
+      for (const { sessionId, route } of routes) {
         const routed = this.pools(route, codings, []);
         for (const pool of [routed.main, ...routed.extras.map((e) => e.pool)]) {
           const key = `${pool.set}/${JSON.stringify(pool.rule)}`;
@@ -1151,7 +1151,7 @@ export class DeploymentRuntime {
             for (const id of row.unitIds) listed.add(id);
             pools.set(key, { pool: row, coders: [] });
           }
-          pools.get(key)!.coders.push(coderId);
+          pools.get(key)!.coders.push(sessionId);
         }
       }
       for (const { pool, coders } of pools.values()) {
@@ -1185,9 +1185,9 @@ export class DeploymentRuntime {
   }
 
   /** Records which version of a unit the coder was shown; returns it. */
-  private async markServed(coderId: number, unit: Unit): Promise<{ data: UnitData; versionId: number }> {
+  private async markServed(sessionId: number, unit: Unit): Promise<{ data: UnitData; versionId: number }> {
     const shown = await this.shownVersion(unit);
-    await this.store.recordServe(coderId, unit.id, shown.versionId);
+    await this.store.recordServe(sessionId, unit.id, shown.versionId);
     return shown;
   }
 

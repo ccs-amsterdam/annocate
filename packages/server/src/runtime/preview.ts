@@ -46,10 +46,10 @@ export class PreviewStore implements Store {
   private coders = new Map<number, Coder>();
   /** Device keys -> coder id: a device's preview session (a new one on "start over"). */
   private devices = new Map<string, number>();
-  /** `<unitId>/<coderId>` -> the coder's answers and when they were first written. */
+  /** `<unitId>/<sessionId>` -> the coder's answers and when they were first written. */
   private annotations = new Map<
     string,
-    { unitId: number; coderId: number; variables: Record<string, VariableValue>; created: Date; updated: Date }
+    { unitId: number; sessionId: number; variables: Record<string, VariableValue>; created: Date; updated: Date }
   >();
   /** Coder-level answers, per coder. */
   private values = new Map<number, Record<string, CoderValue>>();
@@ -78,7 +78,7 @@ export class PreviewStore implements Store {
       request.linkSecret !== undefined && verifyPreviewToken(this.secret, this.studyId, request.linkSecret, this.now());
     if (!valid) throw new HttpError(401, "This preview link has expired; open the preview again");
     const coder: Coder = {
-      coderId: this.coders.size + 1,
+      sessionId: this.coders.size + 1,
       assignments: {},
       ended: null,
       deletionRequest: null,
@@ -87,13 +87,13 @@ export class PreviewStore implements Store {
       email: null,
       created: new Date(this.now()),
     };
-    this.coders.set(coder.coderId, coder);
-    this.devices.set(request.coderKey, coder.coderId);
+    this.coders.set(coder.sessionId, coder);
+    this.devices.set(request.coderKey, coder.sessionId);
     return { coder: { ...coder }, deviceId: null };
   }
 
-  async addDevice(coderId: number, coderKey: string): Promise<number | null> {
-    this.devices.set(coderKey, coderId);
+  async addDevice(sessionId: number, coderKey: string): Promise<number | null> {
+    this.devices.set(coderKey, sessionId);
     return null;
   }
 
@@ -105,21 +105,21 @@ export class PreviewStore implements Store {
     return null;
   }
 
-  async routeCoder(coderId: number, loop: string, assignment: CoderAssignments[string]): Promise<void> {
-    const coder = this.coders.get(coderId);
+  async routeCoder(sessionId: number, loop: string, assignment: CoderAssignments[string]): Promise<void> {
+    const coder = this.coders.get(sessionId);
     if (!coder) throw new HttpError(404, "Coder not found");
     coder.assignments = { ...coder.assignments, [loop]: assignment };
   }
 
-  async setSessionValue(coderId: number, name: string, value: string): Promise<string> {
-    const coder = this.coders.get(coderId);
+  async setSessionValue(sessionId: number, name: string, value: string): Promise<string> {
+    const coder = this.coders.get(sessionId);
     if (!coder) return value;
     if (coder.session[name] === undefined) coder.session = { ...coder.session, [name]: value };
     return coder.session[name];
   }
 
-  async setEnded(coderId: number, ended: SessionEnd | null): Promise<void> {
-    const coder = this.coders.get(coderId);
+  async setEnded(sessionId: number, ended: SessionEnd | null): Promise<void> {
+    const coder = this.coders.get(sessionId);
     if (!coder) throw new HttpError(404, "Coder not found");
     coder.ended = ended;
   }
@@ -137,47 +137,47 @@ export class PreviewStore implements Store {
   }
 
   async putCoderValues(write: CoderValuesWrite): Promise<void> {
-    const values = this.coderAnswers(write.coderId);
+    const values = this.coderAnswers(write.sessionId);
     for (const [name, value] of Object.entries(write.values)) {
       if (values[name]?.assigned || values[name]?.frozen) continue;
       values[name] = { value, assigned: write.assigned ?? false, frozen: false };
     }
   }
 
-  async coderValues(coderId: number): Promise<Record<string, CoderValue>> {
-    return { ...this.coderAnswers(coderId) };
+  async coderValues(sessionId: number): Promise<Record<string, CoderValue>> {
+    return { ...this.coderAnswers(sessionId) };
   }
 
-  async freezeCoderValues(coderId: number, names: string[]): Promise<void> {
-    const values = this.coderAnswers(coderId);
+  async freezeCoderValues(sessionId: number, names: string[]): Promise<void> {
+    const values = this.coderAnswers(sessionId);
     for (const name of names) if (values[name]) values[name] = { ...values[name], frozen: true };
   }
 
-  private coderAnswers(coderId: number): Record<string, CoderValue> {
-    let values = this.values.get(coderId);
-    if (!values) this.values.set(coderId, (values = {}));
+  private coderAnswers(sessionId: number): Record<string, CoderValue> {
+    let values = this.values.get(sessionId);
+    if (!values) this.values.set(sessionId, (values = {}));
     return values;
   }
 
-  async requestDeletion(coderId: number, request: DeletionRequest): Promise<void> {
-    const coder = this.coders.get(coderId);
+  async requestDeletion(sessionId: number, request: DeletionRequest): Promise<void> {
+    const coder = this.coders.get(sessionId);
     if (coder) coder.deletionRequest = request;
   }
 
-  async unitAnswers(coderId: number, unitId: number): Promise<Record<string, VariableValue>> {
-    return { ...this.annotations.get(`${unitId}/${coderId}`)?.variables };
+  async unitAnswers(sessionId: number, unitId: number): Promise<Record<string, VariableValue>> {
+    return { ...this.annotations.get(`${unitId}/${sessionId}`)?.variables };
   }
 
-  /** `<loop>/<unitId>/<coderId>` -> a finished coding. */
+  /** `<loop>/<unitId>/<sessionId>` -> a finished coding. */
   private codings = new Map<string, Coding>();
   private basis: string | null = null;
 
-  async listCodings(filter: { loop?: string; coderId?: number }): Promise<Coding[]> {
+  async listCodings(filter: { loop?: string; sessionId?: number }): Promise<Coding[]> {
     return [...this.codings.values()]
       .filter(
         (c) =>
           (filter.loop === undefined || c.loop === filter.loop) &&
-          (filter.coderId === undefined || c.coderId === filter.coderId),
+          (filter.sessionId === undefined || c.sessionId === filter.sessionId),
       )
       .sort((a, b) => a.created.getTime() - b.created.getTime() || a.unitId - b.unitId);
   }
@@ -187,34 +187,34 @@ export class PreviewStore implements Store {
   }
 
   async replaceCodings(basis: string, codings: Coding[]): Promise<void> {
-    this.codings = new Map(codings.map((c) => [`${c.loop}/${c.unitId}/${c.coderId}`, c]));
+    this.codings = new Map(codings.map((c) => [`${c.loop}/${c.unitId}/${c.sessionId}`, c]));
     this.basis = basis;
   }
 
-  /** `<loop>/<set>/<coderId>/<unitId>` -> a lease. */
+  /** `<loop>/<set>/<sessionId>/<unitId>` -> a lease. */
   private leases = new Map<string, Lease>();
 
-  async listLeases(filter: { loop?: string; coderId?: number }): Promise<Lease[]> {
+  async listLeases(filter: { loop?: string; sessionId?: number }): Promise<Lease[]> {
     return [...this.leases.values()].filter(
       (l) =>
         (filter.loop === undefined || l.loop === filter.loop) &&
-        (filter.coderId === undefined || l.coderId === filter.coderId),
+        (filter.sessionId === undefined || l.sessionId === filter.sessionId),
     );
   }
 
   async putLeases(leases: Lease[]): Promise<void> {
-    for (const lease of leases) this.leases.set(`${lease.loop}/${lease.set}/${lease.coderId}/${lease.unitId}`, lease);
+    for (const lease of leases) this.leases.set(`${lease.loop}/${lease.set}/${lease.sessionId}/${lease.unitId}`, lease);
   }
 
   async coderValuesOf(
     variables: string[],
   ): Promise<{ values: Record<string, VariableValue>; session: Record<string, string> }[]> {
-    return [...this.values].flatMap(([coderId, values]) =>
+    return [...this.values].flatMap(([sessionId, values]) =>
       values[variables[0]]
         ? [
             {
               values: Object.fromEntries(variables.flatMap((v) => (values[v] ? [[v, values[v].value]] : []))),
-              session: this.coders.get(coderId)?.session ?? {},
+              session: this.coders.get(sessionId)?.session ?? {},
             },
           ]
         : [],
@@ -226,35 +226,35 @@ export class PreviewStore implements Store {
     return fn(this);
   }
 
-  /** unitId/coderId -> the unit version last shown. */
+  /** unitId/sessionId -> the unit version last shown. */
   private served = new Map<string, number>();
 
-  async recordServe(coderId: number, unitId: number, unitVersionId: number): Promise<void> {
-    this.served.set(`${unitId}/${coderId}`, unitVersionId);
+  async recordServe(sessionId: number, unitId: number, unitVersionId: number): Promise<void> {
+    this.served.set(`${unitId}/${sessionId}`, unitVersionId);
   }
 
-  async servedVersion(coderId: number, unitId: number): Promise<number | null> {
-    return this.served.get(`${unitId}/${coderId}`) ?? null;
+  async servedVersion(sessionId: number, unitId: number): Promise<number | null> {
+    return this.served.get(`${unitId}/${sessionId}`) ?? null;
   }
 
   async putAnnotation(w: AnnotationWrite): Promise<void> {
     const now = new Date(this.now());
-    const key = `${w.unitId}/${w.coderId}`;
+    const key = `${w.unitId}/${w.sessionId}`;
     const existing = this.annotations.get(key);
     this.annotations.set(key, {
       unitId: w.unitId,
-      coderId: w.coderId,
+      sessionId: w.sessionId,
       variables: { ...existing?.variables, ...w.variables },
       created: existing?.created ?? now,
       updated: now,
     });
     for (const coding of w.codings ?? []) {
-      const key = `${coding.loop}/${w.unitId}/${w.coderId}`;
+      const key = `${coding.loop}/${w.unitId}/${w.sessionId}`;
       const existing = this.codings.get(key);
       this.codings.set(key, {
         loop: coding.loop,
         unitId: w.unitId,
-        coderId: w.coderId,
+        sessionId: w.sessionId,
         agreement: coding.agreement,
         created: existing?.created ?? now,
         updated: now,
@@ -271,23 +271,29 @@ export class PreviewStore implements Store {
           : {};
       if (group.level === "coder") {
         for (const c of this.coders.values()) {
-          if (request.coderId !== undefined && c.coderId !== request.coderId) continue;
+          if (request.sessionId !== undefined && c.sessionId !== request.sessionId) continue;
           const variables = Object.fromEntries(
-            Object.entries(this.values.get(c.coderId) ?? {}).map(([k, v]) => [k, v.value]),
+            Object.entries(this.values.get(c.sessionId) ?? {}).map(([k, v]) => [k, v.value]),
           );
           if (group.variables.every((v) => v in variables)) {
-            rows.push({ loop: group.loop, unitId: null, coderId: c.coderId, created: c.created, ...pick(variables) });
+            rows.push({
+              loop: group.loop,
+              unitId: null,
+              sessionId: c.sessionId,
+              created: c.created,
+              ...pick(variables),
+            });
           }
         }
         continue;
       }
       for (const a of this.annotations.values()) {
-        if (request.coderId !== undefined && a.coderId !== request.coderId) continue;
+        if (request.sessionId !== undefined && a.sessionId !== request.sessionId) continue;
         if (group.variables.every((v) => v in a.variables)) {
           rows.push({
             loop: group.loop,
             unitId: a.unitId,
-            coderId: a.coderId,
+            sessionId: a.sessionId,
             created: a.created,
             ...pick(a.variables),
           });

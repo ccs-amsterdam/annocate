@@ -21,7 +21,7 @@ export const CoderProgressSchema = z.object({
   id: IdSchema,
   email: z.string().email().optional(),
   /** External label (e.g. a panel company's participant id); see docs/coder-identity.md. */
-  participantId: z.string().optional(),
+  coder: z.string().optional(),
   /** The link the coder came in through; null for coders from before this was recorded. */
   linkId: IdSchema.nullable(),
   linkLabel: z.string().nullable(),
@@ -61,18 +61,18 @@ export type CoderProgress = z.infer<typeof CoderProgressSchema>;
  */
 export const DeleteCodersSchema = z
   .object({
-    coderIds: z.array(z.number().int().positive()).optional(),
-    participantIds: z.array(z.string().min(1)).optional(),
+    sessionIds: z.array(z.number().int().positive()).optional(),
+    coders: z.array(z.string().min(1)).optional(),
     emails: z.array(z.string().min(1)).optional(),
   })
-  .refine((d) => (d.coderIds?.length ?? 0) + (d.participantIds?.length ?? 0) + (d.emails?.length ?? 0) > 0, {
+  .refine((d) => (d.sessionIds?.length ?? 0) + (d.coders?.length ?? 0) + (d.emails?.length ?? 0) > 0, {
     message: "Name at least one coder id, participant id or email",
   });
 export type DeleteCoders = z.infer<typeof DeleteCodersSchema>;
 
 /** Response of `POST /study/:studyId/coders/delete`: the coders deleted, and how many answers they had. */
 export const DeleteCodersResponseSchema = z.object({
-  coderIds: z.array(z.number().int().positive()),
+  sessionIds: z.array(z.number().int().positive()),
   answers: z.number().int().nonnegative(),
 });
 export type DeleteCodersResponse = z.infer<typeof DeleteCodersResponseSchema>;
@@ -83,8 +83,8 @@ export type DeleteCodersResponse = z.infer<typeof DeleteCodersResponseSchema>;
  * results they downloaded earlier: it has the identifiers those results use.
  */
 export const CoderDeletionSchema = z.object({
-  coderId: z.number().int().positive(),
-  participantId: z.string().nullable(),
+  sessionId: z.number().int().positive(),
+  coder: z.string().nullable(),
   /** When the coder asked for it, if they did. */
   requestedAt: z.coerce.date().nullable(),
   deletedAt: z.coerce.date(),
@@ -104,7 +104,7 @@ export type CoderDeletion = z.infer<typeof CoderDeletionSchema>;
 export const LinkWriteSchema = z.object({
   label: z.string().min(1).max(128),
   /** A participant id fixed on this link (e.g. a personal link). A label, never a credential. */
-  participantId: z.string().min(1).max(256).optional(),
+  coder: z.string().min(1).max(256).optional(),
   /** Stop accepting new coders after this many. */
   maxUses: z.number().int().positive().optional(),
 });

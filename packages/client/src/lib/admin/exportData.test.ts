@@ -16,16 +16,16 @@ import {
 const at = new Date("2026-11-01T10:00:00Z");
 const row = (
   unitId: number,
-  coderId: number,
+  sessionId: number,
   variable: string,
   value: AnnotationRow["value"],
   minutes = 0,
 ): AnnotationRow => ({
-  id: unitId * 100 + coderId,
+  id: unitId * 100 + sessionId,
   unitId,
   externalId: `u${unitId}`,
-  coderId,
-  participantId: coderId === 1 ? "p1" : null,
+  sessionId,
+  coder: sessionId === 1 ? "p1" : null,
   variable,
   value,
   designVersionId: 2,
@@ -104,8 +104,8 @@ describe("data download", () => {
     expect(table.headers).toEqual([
       "unit_id",
       "unit_version_id",
-      "coder_id",
-      "participant_id",
+      "session_id",
+      "coder",
       "link",
       "first_answer",
       "last_change",
@@ -172,14 +172,14 @@ describe("data download", () => {
   it("makes a row per coder with their coder-level answers and how they ended", () => {
     const table = codersTable([
       coder(1, {
-        participantId: "p1",
+        coder: "p1",
         variables: { age: { done: true, skip: false, values: [{ value: 42 }] } },
         ended: { item: "done", outcome: "complete", at },
       }),
     ]);
     expect(table.headers).toEqual([
-      "coder_id",
-      "participant_id",
+      "session_id",
+      "coder",
       "email",
       "link",
       "started",
@@ -299,8 +299,8 @@ describe("data download", () => {
     expect(table.headers).toEqual([
       "unit_id",
       "unit_version_id",
-      "coder_id",
-      "participant_id",
+      "session_id",
+      "coder",
       "variable",
       "value",
       "value_json",

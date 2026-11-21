@@ -15,7 +15,7 @@ import { userForSession } from "./shared/sessions.js";
 import { deviceDetails } from "./shared/devices.js";
 import { coderStudies } from "./shared/coderStudies.js";
 import { and, eq } from "drizzle-orm";
-import { coderDevices, coders } from "./db/schema/index.js";
+import { sessionDevices, coderSessions } from "./db/schema/index.js";
 import { SESSION_COOKIE } from "./researcher/login.js";
 import { coderKey, newDeviceId, readDevice, requireClientHeader, writeDevice } from "./runtime/session.js";
 import type { Coder, DeploymentRuntime } from "./runtime/runtime.js";
@@ -24,7 +24,7 @@ import type { Coder, DeploymentRuntime } from "./runtime/runtime.js";
 const VERSION_HEADER = "x-annotinder-version";
 
 interface Env {
-  /** `deviceId`: the device's row (`coder_devices`; null in previews). `canLogIn`: the link offers a login the session hasn't used. */
+  /** `deviceId`: the device's row (`session_devices`; null in previews). `canLogIn`: the link offers a login the session hasn't used. */
   Variables: { runtime: DeploymentRuntime; coder: Coder; deviceId: number | null; canLogIn: boolean };
 }
 
@@ -75,10 +75,13 @@ export function coderApi(server: Server): Hono {
     const [study] = await coderStudies(
       server.db,
       and(
-        eq(coders.studyId, Number(deploymentId)),
+        eq(coderSessions.studyId, Number(deploymentId)),
         eq(
-          coders.id,
-          server.db.select({ id: coderDevices.coderId }).from(coderDevices).where(eq(coderDevices.keyHash, key)),
+          coderSessions.id,
+          server.db
+            .select({ id: sessionDevices.sessionId })
+            .from(sessionDevices)
+            .where(eq(sessionDevices.keyHash, key)),
         ),
       ),
     );

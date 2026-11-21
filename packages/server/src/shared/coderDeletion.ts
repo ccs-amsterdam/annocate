@@ -2,7 +2,7 @@ import { and, desc, eq, exists, inArray, or, sql } from "drizzle-orm";
 import type { CoderDeletion, DeleteCoders, DeleteCodersResponse } from "@annotinder/contracts";
 import type { Db } from "../db/index.js";
 import { anyOf } from "../db/sql.js";
-import { annotationValues as a, coderDeletions, coders, units } from "../db/schema/index.js";
+import { annotationValues as a, sessionDeletions, coderSessions, units } from "../db/schema/index.js";
 
 /**
  * Deletes coders and everything they answered, for good (a participant
@@ -11,7 +11,7 @@ import { annotationValues as a, coderDeletions, coders, units } from "../db/sche
  * retired ones. Selected by id, participant id or email, within the study.
  * Units nobody has answers for any more can be deleted again. Unit
  * versions stay: they hold unit content, not the coder's. Each deleted coder
- * is logged (`coder_deletions`), with the ids downloaded results use (not
+ * is logged (`session_deletions`), with the ids downloaded results use (not
  * the email address).
  */
 export async function deleteCoders(
@@ -23,42 +23,42 @@ export async function deleteCoders(
   return db.transaction(async (tx) => {
     const emails = (select.emails ?? []).map((e) => e.toLowerCase());
     const selected = await tx
-      .select({ id: coders.id })
-      .from(coders)
+      .select({ id: coderSessions.id })
+      .from(coderSessions)
       .where(
         and(
-          eq(coders.studyId, studyId),
+          eq(coderSessions.studyId, studyId),
           or(
-            inArray(coders.id, select.coderIds ?? []),
-            inArray(coders.participantId, select.participantIds ?? []),
-            inArray(sql`lower(${coders.email})`, emails),
+            inArray(coderSessions.id, select.sessionIds ?? []),
+            inArray(coderSessions.coder, select.coders ?? []),
+            inArray(sql`lower(${coderSessions.email})`, emails),
           ),
         ),
       );
     const ids = selected.map((c) => c.id);
-    if (ids.length === 0) return { coderIds: [], answers: 0 };
-    const theirs = and(eq(coders.studyId, studyId), inArray(coders.id, ids));
+    if (ids.length === 0) return { sessionIds: [], answers: 0 };
+    const theirs = and(eq(coderSessions.studyId, studyId), inArray(coderSessions.id, ids));
     const logged = await tx
       .select({
-        studyId: coders.studyId,
-        coderId: coders.id,
-        participantId: coders.participantId,
-        requestedAt: coders.deletionRequest,
+        studyId: coderSessions.studyId,
+        sessionId: coderSessions.id,
+        coder: coderSessions.coder,
+        requestedAt: coderSessions.deletionRequest,
         answers: sql<number>`(${tx
           .select({ n: sql`count(*)::int` })
           .from(a)
-          .where(and(eq(a.studyId, coders.studyId), eq(a.coderId, coders.id)))})`,
+          .where(and(eq(a.studyId, coderSessions.studyId), eq(a.sessionId, coderSessions.id)))})`,
       })
-      .from(coders)
+      .from(coderSessions)
       .where(theirs);
     await tx
-      .insert(coderDeletions)
+      .insert(sessionDeletions)
       .values(logged.map((c) => ({ ...c, requestedAt: c.requestedAt ? new Date(c.requestedAt.at) : null, deletedBy })));
     const removed = await tx
       .delete(a)
-      .where(and(eq(a.studyId, studyId), inArray(a.coderId, ids)))
+      .where(and(eq(a.studyId, studyId), inArray(a.sessionId, ids)))
       .returning({ unitId: a.unitId });
-    await tx.delete(coders).where(theirs);
+    await tx.delete(coderSessions).where(theirs);
     const touched = [...new Set(removed.flatMap((r) => (r.unitId === null ? [] : [r.unitId])))];
     await tx
       .update(units)
@@ -71,17 +71,23 @@ export async function deleteCoders(
         ),
       })
       .where(and(eq(units.studyId, studyId), anyOf(units.id, touched)));
-    return { coderIds: ids, answers: removed.length };
+    return { sessionIds: ids, answers: removed.length };
   });
 }
 
 /** Deletes later: the request stays, marked postponed, and is no longer brought up. Returns false if there is none. */
-export async function postponeDeletion(db: Db, studyId: number, coderId: number): Promise<boolean> {
+export async function postponeDeletion(db: Db, studyId: number, sessionId: number): Promise<boolean> {
   const rows = await db
-    .update(coders)
-    .set({ deletionRequest: sql`${coders.deletionRequest} || jsonb_build_object('postponedAt', now())` })
-    .where(and(eq(coders.studyId, studyId), eq(coders.id, coderId), sql`${coders.deletionRequest} IS NOT NULL`))
-    .returning({ id: coders.id });
+    .update(coderSessions)
+    .set({ deletionRequest: sql`${coderSessions.deletionRequest} || jsonb_build_object('postponedAt', now())` })
+    .where(
+      and(
+        eq(coderSessions.studyId, studyId),
+        eq(coderSessions.id, sessionId),
+        sql`${coderSessions.deletionRequest} IS NOT NULL`,
+      ),
+    )
+    .returning({ id: coderSessions.id });
   return rows.length > 0;
 }
 
@@ -89,14 +95,14 @@ export async function postponeDeletion(db: Db, studyId: number, coderId: number)
 export async function listCoderDeletions(db: Db, studyId: number): Promise<CoderDeletion[]> {
   return db
     .select({
-      coderId: coderDeletions.coderId,
-      participantId: coderDeletions.participantId,
-      requestedAt: coderDeletions.requestedAt,
-      deletedAt: coderDeletions.deletedAt,
-      deletedBy: coderDeletions.deletedBy,
-      answers: coderDeletions.answers,
+      sessionId: sessionDeletions.sessionId,
+      coder: sessionDeletions.coder,
+      requestedAt: sessionDeletions.requestedAt,
+      deletedAt: sessionDeletions.deletedAt,
+      deletedBy: sessionDeletions.deletedBy,
+      answers: sessionDeletions.answers,
     })
-    .from(coderDeletions)
-    .where(eq(coderDeletions.studyId, studyId))
-    .orderBy(desc(coderDeletions.deletedAt), desc(coderDeletions.id));
+    .from(sessionDeletions)
+    .where(eq(sessionDeletions.studyId, studyId))
+    .orderBy(desc(sessionDeletions.deletedAt), desc(sessionDeletions.id));
 }
