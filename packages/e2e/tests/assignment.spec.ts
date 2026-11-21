@@ -194,3 +194,19 @@ test("a link where coders pick their name: a name stays on the first device that
   await second.getByRole("button", { name: "bob", exact: true }).click();
   await expect(second.getByText("Bob's text")).toBeVisible();
 });
+
+test("the preview runs as a coder picked above it", async ({ page, request }) => {
+  const study = await studyWithColumn(request, "Preview as", "coder", {
+    "Anna's text": "anna",
+    "Bob's text": "bob",
+  });
+  await api(request, "POST", `/study/${study.id}/design`, {
+    session: { invite: { mode: "coders", column: "coder", link: "per_coder" } },
+    items: [loop()],
+  });
+  await page.goto(`/research/studies/${study.id}/overview`);
+  await page.getByRole("button", { name: "Preview", exact: true }).click();
+  await expect(page.getByText("Anna's text")).toBeVisible();
+  await page.getByLabel("Preview as coder").selectOption("bob");
+  await expect(page.getByText("Bob's text")).toBeVisible();
+});
