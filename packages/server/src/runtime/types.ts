@@ -2,7 +2,6 @@ import type { DeviceDetails } from "../shared/devices.js";
 import type { SessionRules } from "./sessionValues.js";
 import type {
   AnswerTiming,
-  SignIn,
   DesignVersion,
   DeletionRequest,
   SessionEnd,
@@ -33,8 +32,6 @@ export interface DeploymentSpec {
   keepSessionsOpen: boolean;
   /** Deployment settings: the URL per `redirectSetting` name of end items (docs/architecture.md §5). */
   redirectUrls: Record<string, string>;
-  /** Whether coders sign in (the study's setting; coders by email address always do). */
-  signIn: SignIn;
 }
 
 /** A unit's content, as the runtime reads it. */

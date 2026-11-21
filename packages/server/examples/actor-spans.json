@@ -51,13 +51,7 @@
     "public": {
       "title": "Who acts in the news?"
     },
-    "session": {
-      "params": [],
-      "uses": {
-        "content": "annotate",
-        "experiment": false
-      }
-    },
+    "session": {},
     "items": [
       {
         "type": "unit_loop",

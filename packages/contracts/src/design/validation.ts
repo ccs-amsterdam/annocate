@@ -16,10 +16,8 @@ import {
   sessionColumns,
   sessionItem,
   sessionNames,
-  type DesignUses,
   type SessionItem,
 } from "./session.js";
-import { usesConflicts } from "./uses.js";
 import { loopShareColumns } from "./assignment.js";
 import { expandSnippets, usesSnippets } from "./snippets.js";
 import {
@@ -131,14 +129,6 @@ function flattenUnions(
   });
 }
 /** What the item schemas can't check: names, structure, references (see validateDesignItems). */
-/** How issues name a design's `uses`. */
-function usesLabel(uses: DesignUses): string {
-  const content = { annotate: "Annotating units only", questions: "Questions only", both: "Questions and units" }[
-    uses.content
-  ];
-  return uses.experiment ? content : `${content}, no experiment`;
-}
-
 export function semanticIssues(items: unknown[]): DesignIssue[] {
   const issues: DesignIssue[] = [];
   const { questions, loopOf } = collectQuestions(items);
@@ -385,22 +375,15 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     {
       const branch = loop.units && typeof loop.units === "object" ? loop.units : null;
       const path = [...itemPath, "units"];
-      const overlap = branch?.overlap;
-      if (overlap?.max !== undefined && overlap.expect !== undefined && overlap.max < overlap.expect) {
-        issue(
-          [...path, "overlap", "max"],
-          `At most ${overlap.max} overlap units, but the design expects ${overlap.expect}`,
-        );
-      }
       // Practice and gold: questions of this loop with answers compared by value; a gold screen-out at an end item
-      const checks = { practice: branch?.practice, gold: branch?.gold };
+      const checks = { practice: branch?.practiceCheck, gold: branch?.goldCheck };
       for (const [kind, settings] of Object.entries(checks) as [
         "practice" | "gold",
         { questions?: unknown; health?: { end?: unknown } } | undefined,
       ][]) {
         if (!settings) continue;
         (Array.isArray(settings.questions) ? settings.questions : []).forEach((name: unknown, q) => {
-          const at = [...path, kind, "questions", q];
+          const at = [...path, `${kind}Check`, "questions", q];
           if (typeof name !== "string" || !loopQuestions.has(name))
             return issue(
               at,
@@ -422,7 +405,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           for (const column of columns) {
             if (new RegExp(`\\$unit\\.${column}\\b`).test(shown))
               issue(
-                [...path, kind],
+                [...path, `${kind}Check`],
                 `The answer column ${column} is shown to coders (in the layout or a question): it must stay hidden`,
               );
           }
@@ -432,26 +415,14 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           const found = endItems.get(end);
           if (!found)
             issue(
-              [...path, kind, "health", "end"],
+              [...path, `${kind}Check`, "health", "end"],
               `No end item '${end}': the session ends there when health runs out`,
             );
           else if (found !== "screenout")
             issue(
-              [...path, kind, "health", "end"],
+              [...path, `${kind}Check`, "health", "end"],
               `End item '${end}' should be a screen-out (coders who fail the gold checks)`,
             );
-        }
-      }
-      const agreement = branch?.criteria?.until?.on;
-      if (typeof agreement === "string") {
-        const at = [...path, "criteria", "until", "on"];
-        if (!loopQuestions.has(agreement))
-          issue(at, `Agreement question '${agreement}' is not a question in this loop`);
-        else if (!supportsAgreement(questions.get(agreement)!)) {
-          issue(
-            at,
-            `Agreement needs a question with one categorical answer (nominal without multiple answers, ordinal or swipe); "${agreement}" is ${describeQuestion(questions.get(agreement)!)}`,
-          );
         }
       }
     }
@@ -487,72 +458,43 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     return snippets;
   }
 
-  /** The Session item: first, once, top level; its parameters' names unique, combinations of its link parameters. */
+  /** The Study entry: first, once, top level; its URL parameters' names and keys unique; the invitation's agreement question. */
   function checkSession(item: RawItem, itemPath: Path, index: number, nested: boolean) {
     if (nested || index !== 0) issue([...itemPath, "type"], "The Session item comes first in the design, at the top");
     if (items.filter((i) => (i as { type?: unknown } | null)?.type === "session").length > 1)
       issue([...itemPath, "type"], "A design has one Session item");
     const session = item as unknown as Partial<SessionItem>;
-    const params = Array.isArray(session.params) ? session.params : [];
+    const params = Array.isArray(session.urlParams) ? session.urlParams : [];
     const names = params.map((p) => p?.name);
     names.forEach((name, i) => {
       if (name && names.indexOf(name) !== i)
-        issue([...itemPath, "params", i, "name"], `Two session parameters are named '${name}'`);
+        issue([...itemPath, "urlParams", i, "name"], `Two URL parameters are named '${name}'`);
     });
-    const conditions = Array.isArray(session.conditions) ? session.conditions : [];
-    conditions.forEach((cond, i) => {
-      const name = cond?.name;
-      if (!name) return;
-      if (names.includes(name) || conditions.findIndex((c) => c?.name === name) !== i)
-        issue([...itemPath, "conditions", i, "name"], `Two session values are named '${name}'`);
-    });
-    // A column selects units for one session value
-    const columns = [
-      ...(session.coders?.column ? [{ column: session.coders.column, path: [...itemPath, "coders", "column"] }] : []),
-      ...conditions.flatMap((c, i) =>
-        c?.units ? [{ column: c.units, path: [...itemPath, "conditions", i, "units"] }] : [],
-      ),
-    ];
-    columns.forEach(({ column, path }, i) => {
-      if (columns.findIndex((c) => c.column === column) !== i)
-        issue(path, `Column '${column}' already selects units for another session value: use a column each`);
-    });
-    const keys = params.filter((p) => p?.kind === "url").map((p) => p.param ?? p.name);
-    if (session.participant) keys.push(session.participant.param);
+    const invite = session.invite;
+    const keys = params.map((p) => p?.param ?? p?.name);
+    if (invite?.mode === "crowd" && invite.participant) keys.push(invite.participant.param);
     keys.forEach((key, i) => {
-      if (keys.indexOf(key) !== i) issue([...itemPath, "params"], `Two URL parameters use the key '${key}'`);
+      if (keys.indexOf(key) !== i) issue([...itemPath, "urlParams"], `Two URL parameters use the key '${key}'`);
       if (key === "source")
-        issue([...itemPath, "params"], "'source' is always accepted as a URL parameter (tracking): use another key");
+        issue([...itemPath, "urlParams"], "'source' is always accepted as a URL parameter (tracking): use another key");
     });
     params.forEach((p, i) => {
-      if (
-        p?.kind === "url" &&
-        p.default !== undefined &&
-        p.values &&
-        "list" in p.values &&
-        !p.values.list.some((v) => v.value === p.default)
-      ) {
-        issue([...itemPath, "params", i, "default"], `The default '${p.default}' is not one of the values`);
-      }
+      if (p?.default !== undefined && p.values && !p.values.some((v) => v.value === p.default))
+        issue([...itemPath, "urlParams", i, "default"], `The default '${p.default}' is not one of the values`);
     });
-    const linkParams = params.filter((p) => p?.kind === "link");
-    (session.combinations ?? []).forEach((combo, c) => {
-      const comboNames = Object.keys(combo ?? {});
-      const missing = linkParams.filter((p) => !comboNames.includes(p.name)).map((p) => p.name);
-      const extra = comboNames.filter((n) => !linkParams.some((p) => p.name === n));
-      if (missing.length > 0)
-        issue([...itemPath, "combinations", c], `Combination ${c + 1} has no value for ${missing.join(", ")}`);
-      if (extra.length > 0)
-        issue([...itemPath, "combinations", c], `Combination ${c + 1}: ${extra.join(", ")} is not a link parameter`);
-      for (const p of linkParams) {
-        const value = combo?.[p.name];
-        if (value !== undefined && p.values && "list" in p.values && !p.values.list.some((v) => v.value === value)) {
-          issue([...itemPath, "combinations", c], `Combination ${c + 1}: '${value}' is not a value of ${p.name}`);
-        }
-      }
-    });
-    if (session.combinations && linkParams.length === 0)
-      issue([...itemPath, "combinations"], "Combinations need link parameters");
+    // A crowd's agreement rule: a question with one categorical answer, in a unit loop
+    const agreement = invite?.mode === "crowd" ? invite.units?.until?.on : undefined;
+    if (typeof agreement === "string") {
+      const at = [...itemPath, "invite", "units", "until", "on"];
+      const variable = questions.get(agreement);
+      if (!variable || loopOf.get(agreement) === null)
+        issue(at, `Agreement question '${agreement}' is not a question in a unit loop`);
+      else if (!supportsAgreement(variable))
+        issue(
+          at,
+          `Agreement needs a question with one categorical answer (nominal without multiple answers, ordinal or swipe); "${agreement}" is ${describeQuestion(variable)}`,
+        );
+    }
   }
 
   /** A computed item: outside loops; a random one linked to a column selects units (one value per column); stratified on earlier answers or session values. */
@@ -746,11 +688,6 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     if (typeof studyEnd.redirectUrl === "string" && typeof studyEnd.redirectSetting === "string")
       issue([...path, "redirectSetting"], "Give a redirect URL or a deployment setting, not both");
   }
-
-  // What the design is made of (`uses`): the design must fit what it declares
-  const declared = sessionItem(items)?.uses;
-  if (declared)
-    for (const c of usesConflicts(declared, items)) issue(c.path, `${usesLabel(declared)}: not with ${c.message}`);
 
   // A computed value linked to a column selects units in the loops after it only
   const shares = loopShareColumns(items);

@@ -120,8 +120,8 @@ export function coderApi(server: Server): Hono {
       deploymentId,
       participantParam ? urlParams[participantParam]?.trim() || undefined : undefined,
     );
-    // Logins matter where the link takes them, or where sets are assigned by email.
-    const takesLogin = !!link && (link.login !== "none" || runtime.needsLogin);
+    // Coders can always sign in on a link (to continue on other devices); where the study requires it, they must.
+    const takesLogin = !!link;
     // A login (the same as researchers', §5) is read only when it matters:
     // to link a session to its email once, or to find the email's session on
     // a new device. Never in previews.
@@ -145,7 +145,7 @@ export function coderApi(server: Server): Hono {
     // Only once the coder was accepted (a link may be invalid or used up).
     if (device !== existingDevice) writeDevice(c, device);
     c.set("deviceId", deviceId);
-    c.set("canLogIn", !!server.login && link?.login === "optional" && coder.email === null);
+    c.set("canLogIn", !!server.login && !!link && coder.email === null);
     c.set("coder", coder);
     await next();
   });

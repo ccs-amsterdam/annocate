@@ -64,13 +64,8 @@
       "title": "News and you"
     },
     "session": {
-      "params": [],
       "end": {
         "message": "Thank you for coding the headlines!"
-      },
-      "uses": {
-        "content": "both",
-        "experiment": false
       }
     },
     "items": [

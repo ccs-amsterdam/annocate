@@ -1,11 +1,10 @@
 import {
   ALL_UNITS_SET,
-  OVERLAP_SET,
   PRACTICE_SET,
   GOLD_SET,
   coderAccess,
+  inviteOf,
   designSetColumns,
-  loopShareColumns,
   notSetColumns,
   sessionColumns,
   sessionItem,
@@ -211,19 +210,17 @@ export async function assignmentChecks(
   }
 
   const session = sessionItem(items);
-  if (session?.coders && coderAccess(valuesOf(session.coders.column)) === "mixed") {
-    errors.push(
-      `The coders (column '${session.coders.column}') are partly email addresses: make them all email addresses (coders sign in) or none (a link each).`,
-    );
+  const invite = inviteOf(session);
+  if (invite.mode === "coders" && invite.link === "login") {
+    const access = coderAccess(valuesOf(invite.column));
+    if (access === "mixed" || access === "link")
+      errors.push(
+        `Coders sign in with their email address, but the coders (column '${invite.column}') aren't all email addresses: make them email addresses, or give each coder a link.`,
+      );
   }
-  // Conditions' and computed items' fixed values, and the column's other values
+  // Computed items' fixed values, and the column's other values
   const random = collectQuestions(items).questions;
   const linked = [
-    ...(session?.conditions ?? []).flatMap((c) =>
-      c.units
-        ? [{ name: `Condition '${c.name}'`, column: c.units, values: c.values === "free" ? null : c.values }]
-        : [],
-    ),
     ...[...random].flatMap(([name, v]) =>
       v.type === "random" && v.units
         ? [
@@ -259,62 +256,47 @@ export async function assignmentChecks(
       );
   }
 
-  // Special units the loops place
+  // The checks on practice and gold units the loops configure
   const special = (set: string) => [...new Set([...groups.keys()].flatMap((g) => unitsIn(g, set)))];
-  const shares = loopShareColumns(items);
   const { questions } = collectQuestions(items);
   for (const { key, loop } of unitLoops(items)) {
     const title = loopTitle(loop, key);
-    {
-      const units = loopUnits(loop);
-      for (const [set, settings, column] of [
-        [PRACTICE_SET, units.practice, practiceColumn],
-        [GOLD_SET, units.gold, goldColumn],
-      ] as const) {
-        if (!settings) continue;
-        const specials = special(set);
-        if (specials.length === 0) {
-          warnings.push(
-            `Loop '${title}': ${set === GOLD_SET ? "gold" : "practice"} units are on, but no set column has ${set} units.`,
-          );
-          continue;
-        }
-        const rows = (await servedUnits(db, studyId, live, specials)).sort((a, b) => a.id - b.id);
-        for (const question of settings.questions ?? []) {
-          const empty = rows.filter((r) => parseAnswerKey(r.data[column(question)]) === null);
-          // Right answers that can never be right: not an option, not a number, a range without options in it
-          const variable = questions.get(question) as Parameters<typeof answerKeyProblems>[1];
-          const odd = rows.flatMap((r) => {
-            const answer = parseAnswerKey(r.data[column(question)]);
-            return answer ? answerKeyProblems(answer, variable).map((v) => `${r.externalId}: ${v}`) : [];
-          });
-          if (odd.length > 0) {
-            warnings.push(
-              `Loop '${title}': ${column(question)} has answers that don't fit '${question}' (${odd.slice(0, 5).join(", ")}${odd.length > 5 ? ", …" : ""}): those can never be right.`,
-            );
-          }
-          if (empty.length === 0) continue;
-          const which =
-            empty
-              .slice(0, 5)
-              .map((r) => r.externalId)
-              .join(", ") + (empty.length > 5 ? ", …" : "");
-          warnings.push(
-            `Loop '${title}': ${empty.length} ${set} unit${empty.length === 1 ? " has" : "s have"} no right answer for '${question}' in column ${column(question)} (${which})${set === GOLD_SET ? ": they aren't checked" : ": no feedback on them"}.`,
-          );
-        }
-      }
-      if (!units.overlap || units.overlap.placement === "disabled") continue;
-      // The session's columns, or (no column divides the units) every column
-      const shareColumns = (shares.get(key) ?? []).map((c) => c.column);
-      const overlapColumns = shareColumns.length > 0 ? shareColumns : [...groups.keys()];
-      const n = new Set(overlapColumns.flatMap((c) => unitsIn(c, OVERLAP_SET))).size;
-      if (n === 0)
+    const units = loopUnits(loop);
+    for (const [set, check, column] of [
+      [PRACTICE_SET, units.practice === "ignore" ? undefined : units.practiceCheck, practiceColumn],
+      [GOLD_SET, units.gold === "ignore" ? undefined : units.goldCheck, goldColumn],
+    ] as const) {
+      if (!check) continue;
+      const specials = special(set);
+      if (specials.length === 0) {
         warnings.push(
-          `Loop '${title}': the overlap is on, but ${overlapColumns.length === 0 ? "no set column has overlap units" : `no ${OVERLAP_SET} units in ${overlapColumns.map((c) => `'${c}'`).join(", ")}`}.`,
+          `Loop '${title}': it checks ${set === GOLD_SET ? "gold" : "practice"} units, but no set column has ${set} units.`,
         );
-      else if (units.overlap.expect !== undefined && n < units.overlap.expect) {
-        warnings.push(`Loop '${title}': ${n} overlap units; ${units.overlap.expect} are recommended.`);
+        continue;
+      }
+      const rows = (await servedUnits(db, studyId, live, specials)).sort((a, b) => a.id - b.id);
+      for (const question of check.questions ?? []) {
+        const empty = rows.filter((r) => parseAnswerKey(r.data[column(question)]) === null);
+        // Right answers that can never be right: not an option, not a number, a range without options in it
+        const variable = questions.get(question) as Parameters<typeof answerKeyProblems>[1];
+        const odd = rows.flatMap((r) => {
+          const answer = parseAnswerKey(r.data[column(question)]);
+          return answer ? answerKeyProblems(answer, variable).map((v) => `${r.externalId}: ${v}`) : [];
+        });
+        if (odd.length > 0) {
+          warnings.push(
+            `Loop '${title}': ${column(question)} has answers that don't fit '${question}' (${odd.slice(0, 5).join(", ")}${odd.length > 5 ? ", …" : ""}): those can never be right.`,
+          );
+        }
+        if (empty.length === 0) continue;
+        const which =
+          empty
+            .slice(0, 5)
+            .map((r) => r.externalId)
+            .join(", ") + (empty.length > 5 ? ", …" : "");
+        warnings.push(
+          `Loop '${title}': ${empty.length} ${set} unit${empty.length === 1 ? " has" : "s have"} no right answer for '${question}' in column ${column(question)} (${which})${set === GOLD_SET ? ": they aren't checked" : ": no feedback on them"}.`,
+        );
       }
     }
   }

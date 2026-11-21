@@ -1,5 +1,4 @@
-import { sql } from "drizzle-orm";
-import { boolean, check, index, integer, jsonb, pgTable, primaryKey, text } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, primaryKey, text } from "drizzle-orm/pg-core";
 import type { DeploymentChanges } from "@annotinder/contracts";
 import { users } from "./accounts.js";
 import { timestamptz } from "./columns.js";
@@ -11,25 +10,19 @@ import { timestamptz } from "./columns.js";
  * A study. owner_id: who created it (counts against their plan); origin: an
  * example or recipe it came from; keep_sessions_open: coders' sessions
  * aren't closed when they finish; redirect_urls: panel return links by
- * setting name; suspended_at: blocked by an admin; sign_in: whether coders
- * sign in (off, optional, required).
+ * setting name; suspended_at: blocked by an admin.
  */
-export const studies = pgTable(
-  "studies",
-  {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    name: text().notNull(),
-    ownerId: integer().references(() => users.id, { onDelete: "set null" }),
-    origin: text(),
-    archived: boolean().notNull().default(false),
-    keepSessionsOpen: boolean().notNull().default(false),
-    redirectUrls: jsonb().$type<Record<string, string>>().notNull().default({}),
-    created: timestamptz().notNull().defaultNow(),
-    suspendedAt: timestamptz(),
-    signIn: text().$type<"off" | "optional" | "required">().notNull().default("off"),
-  },
-  (t) => [check("studies_sign_in_check", sql`${t.signIn} IN ('off', 'optional', 'required')`)],
-);
+export const studies = pgTable("studies", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  name: text().notNull(),
+  ownerId: integer().references(() => users.id, { onDelete: "set null" }),
+  origin: text(),
+  archived: boolean().notNull().default(false),
+  keepSessionsOpen: boolean().notNull().default(false),
+  redirectUrls: jsonb().$type<Record<string, string>>().notNull().default({}),
+  created: timestamptz().notNull().defaultNow(),
+  suspendedAt: timestamptz(),
+});
 
 /**
  * Design versions: the questions and their order (items), the session

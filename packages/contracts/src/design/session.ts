@@ -1,14 +1,14 @@
 import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
 import { SetGroupNameSchema } from "../sets.js";
+import { CriteriaSchema } from "./unitLoop.js";
 
-// Session parameters (docs/architecture.md §7), coders
-// and assigned conditions (docs/architecture.md §6): what a
-// link carries (link parameters, fixed in the link: one link per
-// combination of their values) and what may be added to it (URL parameters,
-// e.g. a panel's ids). All are `$session.<name>` values, stored on the
-// session when it starts. Declared by the design's Session item, so the
-// links follow from the design instead of being made by hand.
+// How coders come to a study (the Study entry, docs/architecture.md §6-7):
+// the coder invitation (`invite`: specific coders with a link each or a
+// login, or a crowd with one link), and the URL parameters a link may
+// carry (context such as a distribution channel, or a panel's ids for its
+// return link). All are `$session.<name>` values, stored on the session
+// when it starts.
 
 /** Session values that can't be declared: the participant id, the `source` URL parameter, the login's email, the coder (`session.coders`). */
 export const RESERVED_SESSION_NAMES = ["participant", "source", "email", "coder"] as const;
@@ -86,50 +86,32 @@ export const UrlParamPatternSchema = z
   });
 
 /**
- * A session parameter's values: a list, or open (URL parameters only: any
- * value up to 256 characters, optionally matching a pattern).
+ * A URL parameter (docs/architecture.md §7): added to the link as
+ * `?<param>=<value>` by whoever shares it (default key: the name), e.g. a
+ * distribution channel or a panel's id for its return link. Required unless
+ * it has a `default`. Its value may be any (up to 256 characters), match a
+ * `pattern`, or be one of `values`.
  */
-export const SessionValuesSchema = z.union([
-  z.object({
-    list: z
-      .array(z.object({ value: z.string().min(1).max(MAX_SESSION_VALUE), label: z.string().optional() }))
-      .min(1, "List at least one value"),
-  }),
-  z.object({ open: z.object({ pattern: UrlParamPatternSchema.optional() }) }),
-]);
-export type SessionValues = z.infer<typeof SessionValuesSchema>;
-
-/**
- * A session parameter. `link`: fixed in the link; every combination of the
- * link parameters' values gets a link (or the listed `combinations`).
- * `url`: added to the link as `?<param>=<value>` by whoever shares it;
- * required unless it has a `default`.
- */
-export const SessionParamSchema = z
+export const UrlParamSchema = z
   .object({
     name: SafeNameSchema,
-    kind: z.enum(["link", "url"]),
-    values: SessionValuesSchema,
-    /** URL parameters: the key in the link (default: the name). */
     param: UrlParamNameSchema.optional(),
-    /** URL parameters: the value when the link has none (otherwise the parameter is required). */
+    values: z
+      .array(z.object({ value: z.string().min(1).max(MAX_SESSION_VALUE), label: z.string().optional() }))
+      .min(1, "List at least one value")
+      .max(1000)
+      .optional(),
+    pattern: UrlParamPatternSchema.optional(),
     default: z.string().max(MAX_SESSION_VALUE).optional(),
-    /** What it is, for the researcher (shown on the Invitations page). */
+    /** What it is, for the researcher. */
     description: z.string().max(500).optional(),
   })
   .refine((p) => !(RESERVED_SESSION_NAMES as readonly string[]).includes(p.name), {
     message: "participant, source, email and coder are built in: choose another name",
     path: ["name"],
   })
-  .refine((p) => p.kind === "url" || !("open" in p.values), {
-    message: "A link parameter needs a list of values: links are made for each",
-    path: ["values"],
-  })
-  .refine((p) => p.kind === "url" || (p.param === undefined && p.default === undefined), {
-    message: "Only URL parameters have a URL key or a default",
-    path: ["kind"],
-  });
-export type SessionParam = z.infer<typeof SessionParamSchema>;
+  .refine((p) => !(p.values && p.pattern), { message: "Give values or a pattern, not both", path: ["pattern"] });
+export type UrlParam = z.infer<typeof UrlParamSchema>;
 
 /** The participant id from a URL parameter of the link (e.g. a panel's `PROLIFIC_PID`), required to start. */
 export const ParticipantParamSchema = z.object({
@@ -139,59 +121,41 @@ export const ParticipantParamSchema = z.object({
 export type ParticipantParam = z.infer<typeof ParticipantParamSchema>;
 
 /**
- * Coders (docs/architecture.md §6.1): the units are divided over
- * coders by a set column; each of its values is a coder (`$session.coder`).
- * All values email addresses: one link, and coders sign in (they get the
- * units of their address). No email addresses: a link per coder.
+ * Specific coders (docs/architecture.md §6.1): the units are divided over
+ * coders by a set column; each of its values is a coder (`$session.coder`,
+ * also the participant id). `link`: `per_coder`, a link each; `login`, one
+ * link where coders sign in and get the units of their address (the
+ * column's values are all email addresses).
  */
-export const CodersSpecSchema = z.object({ column: SetGroupNameSchema });
-export type CodersSpec = z.infer<typeof CodersSpecSchema>;
-
-/** A value of a condition (also a set name when the condition is linked to a column). */
-export const ConditionValueSchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .refine(
-    (s) => !/[;#]/.test(s) && s.trim() === s && !s.startsWith("_"),
-    "A value has no ; or #, no spaces at its ends, and doesn't start with _",
-  );
+export const CodersInviteSchema = z.object({
+  mode: z.literal("coders"),
+  column: SetGroupNameSchema,
+  link: z.enum(["per_coder", "login"]),
+});
+export type CodersInvite = z.infer<typeof CodersInviteSchema>;
 
 /**
- * An assigned condition (docs/architecture.md §6.1): a session value (`$session.<name>`) with
- * fixed values or, linked to a set column, the column's values (`free`).
- * `assign: "link"`: a link per value. `random`: one link, the value drawn
- * when the session starts (`draw`: `balanced`, the default, the value the
- * fewest sessions have; or `random`). With `units` (a set column) the value
- * selects the session's units: those whose cell holds it.
+ * A crowd (docs/architecture.md §6.1): one link for everyone. The
+ * participant id from a URL parameter (`participant`), or coders sign in
+ * (`login`: their email is the participant id). `units`: a shared queue of
+ * the units, handed out until done (without it, every coder gets all units).
+ * `maxCoders`: the link takes at most this many sessions.
  */
-export const ConditionSpecSchema = z
-  .object({
-    name: SafeNameSchema,
-    values: z.union([z.array(ConditionValueSchema).min(1, "List at least one value").max(1000), z.literal("free")]),
-    assign: z.enum(["link", "random"]),
-    draw: z.enum(["balanced", "random"]).optional(),
-    units: SetGroupNameSchema.optional(),
-    /** What it is, for the researcher. */
-    description: z.string().max(500).optional(),
-  })
-  .refine((c) => c.values !== "free" || c.units !== undefined, {
-    message: "Free values come from a set column: link the condition to one",
-    path: ["values"],
-  })
-  .refine((c) => c.assign === "random" || c.draw === undefined, {
-    message: "Only a random assignment draws",
-    path: ["draw"],
-  })
-  .refine((c) => c.values === "free" || new Set(c.values).size === c.values.length, {
-    message: "A value is listed twice",
-    path: ["values"],
-  })
-  .refine((c) => !(RESERVED_SESSION_NAMES as readonly string[]).includes(c.name), {
-    message: "participant, source, email and coder are built in: choose another name",
-    path: ["name"],
-  });
-export type ConditionSpec = z.infer<typeof ConditionSpecSchema>;
+export const CrowdInviteSchema = z.object({
+  mode: z.literal("crowd"),
+  participant: ParticipantParamSchema.optional(),
+  login: z.boolean().optional(),
+  units: CriteriaSchema.optional(),
+  maxCoders: z.number().int().positive().optional(),
+});
+export type CrowdInvite = z.infer<typeof CrowdInviteSchema>;
+
+/** How coders come to the study: specific coders, or a crowd (the default: one open link). */
+export const InviteSchema = z.discriminatedUnion("mode", [CodersInviteSchema, CrowdInviteSchema]);
+export type Invite = z.infer<typeof InviteSchema>;
+
+/** Without an invitation: a crowd, one open link, every coder gets all units. */
+export const DEFAULT_INVITE: Invite = { mode: "crowd" };
 
 /**
  * What coders see about a study (the design's `public`, docs/glossary.md
@@ -234,42 +198,15 @@ export type StudyEnd = z.infer<typeof StudyEndSchema>;
 /** The end item coders get for the study's normal end (`StudyEndSchema`). Reserved: no item may have this name. */
 export const STUDY_END_NAME = "_end";
 
-/**
- * What a design is made of (the Study entry's `uses`), so the editor shows
- * only what it needs (docs/client.md §5, "Editor modes"):
- * - `content`: `annotate` (one unit loop, nothing outside it), `questions`
- *   (no unit loops, no units), or `both`;
- * - `experiment`: conditions that don't select units, and computed items
- *   (a condition linked to a set column says which units a session gets:
- *   part of annotating).
- * Left out: worked out from the design (`inferUses`).
- */
-export const DesignUsesSchema = z.object({
-  content: z.enum(["annotate", "questions", "both"]),
-  experiment: z.boolean(),
-});
-export type DesignUses = z.infer<typeof DesignUsesSchema>;
-
 export const SessionItemSchema = z.object({
   type: z.literal("session"),
   label: z.string().optional(),
-  params: z.array(SessionParamSchema).max(20),
-  /** Units are divided over coders, by this set column. */
-  coders: CodersSpecSchema.optional(),
-  /** Assigned conditions: per link, or drawn when the session starts. */
-  conditions: z.array(ConditionSpecSchema).max(10).optional(),
-  participant: ParticipantParamSchema.optional(),
-  /** Link parameter values per link (name -> value); absent: every combination. */
-  combinations: z.array(z.record(SafeNameSchema, z.string())).max(2000).optional(),
-  /**
-   * The sample size per link (docs/architecture.md §5): each link takes at
-   * most this many sessions. A link's own limit (the deployment's) overrides it.
-   */
-  maxUses: z.number().int().positive().optional(),
+  /** How coders come to the study. Absent: a crowd with one open link. */
+  invite: InviteSchema.optional(),
+  /** The URL parameters a link may carry. */
+  urlParams: z.array(UrlParamSchema).max(20).optional(),
   /** The study's normal end: its message and redirect. */
   end: StudyEndSchema.optional(),
-  /** What the design is made of, for the editor. */
-  uses: DesignUsesSchema.optional(),
   /** The design's `public` (stored apart from the session). */
   public: PublicInfoSchema.optional(),
 });
@@ -277,13 +214,13 @@ export type SessionItem = z.infer<typeof SessionItemSchema>;
 
 /**
  * The design's `session` (docs/architecture.md §6): how a coder's session
- * starts. Always there; without parameters `{ params: [] }`.
+ * starts. Always there (`{}`: the defaults).
  */
 export const SessionSpecSchema = SessionItemSchema.omit({ type: true, public: true });
 export type SessionSpec = z.infer<typeof SessionSpecSchema>;
 
-/** A session without parameters: the default. */
-export const EMPTY_SESSION: SessionSpec = { params: [] };
+/** A session with the defaults: an open link for a crowd, no URL parameters. */
+export const EMPTY_SESSION: SessionSpec = {};
 
 /**
  * A design's items with the Study entry (its session and public info) as
@@ -317,7 +254,7 @@ export function splitDesignItems<T>(items: readonly T[]): {
 }
 
 /** The URL key of a URL parameter. */
-export const sessionParamKey = (p: SessionParam) => p.param ?? p.name;
+export const urlParamKey = (p: UrlParam) => p.param ?? p.name;
 
 /** The Study entry among a design's items (`designItems`), if there. */
 export function sessionItem(items: readonly unknown[]): SessionItem | null {
@@ -325,77 +262,49 @@ export function sessionItem(items: readonly unknown[]): SessionItem | null {
   return (found as SessionItem | undefined) ?? null;
 }
 
-/** The names `$session` has under a design: its parameters, its conditions and the built-in ones. */
+/** A design's coder invitation (`DEFAULT_INVITE` without one). */
+export const inviteOf = (item: SessionItem | null | undefined): Invite => item?.invite ?? DEFAULT_INVITE;
+
+/** Whether coders must sign in to start: specific coders with a login, or a crowd that requires it. */
+export function loginRequired(item: SessionItem | null | undefined): boolean {
+  const invite = inviteOf(item);
+  return invite.mode === "coders" ? invite.link === "login" : invite.login === true;
+}
+
+/** The names `$session` has under a design: its URL parameters and the built-in ones. */
 export function sessionNames(items: readonly unknown[]): string[] {
-  const item = sessionItem(items);
-  const named = [...(item?.params ?? []), ...(item?.conditions ?? [])].map((p) => p?.name);
+  const named = (sessionItem(items)?.urlParams ?? []).map((p) => p?.name);
   return [...RESERVED_SESSION_NAMES, ...named.filter((n): n is string => typeof n === "string")];
 }
 
 /** A simple email address check (coder values: all or none are addresses). */
 export const isEmail = (value: string) => /^[^\s@;#]+@[^\s@;#]+\.[^\s@;#]+$/.test(value);
 
-/**
- * How coders get in, from their values (the coder column's sets): `email`,
- * all are addresses (one link, sign in); `link`, none are (a link each);
- * `mixed` (an error at deploy); `none`, no values (yet).
- */
+/** Whether a coder column's values are email addresses: `email` (all), `link` (none), `mixed`, or `none` (no values yet). */
 export function coderAccess(values: readonly string[]): "email" | "link" | "mixed" | "none" {
   if (values.length === 0) return "none";
   const emails = values.filter(isEmail).length;
   return emails === values.length ? "email" : emails === 0 ? "link" : "mixed";
 }
 
-/** A condition's values: its list, or (free) its column's values. */
-export function conditionValues(
-  condition: Pick<ConditionSpec, "values" | "units">,
-  setsOf: (group: string) => string[],
-): string[] {
-  return condition.values === "free" ? (condition.units ? setsOf(condition.units) : []) : condition.values;
-}
-
-/**
- * The session values that select a session's units: the coder (`coder`,
- * by the coder column) and the conditions linked to a set column, each as
- * session name -> column.
- */
+/** The session values that select a session's units: the coder (`coder`, by the coder column), as session name -> column. */
 export function sessionColumns(item: SessionItem | null): { name: string; column: string }[] {
-  return [
-    ...(item?.coders ? [{ name: "coder", column: item.coders.column }] : []),
-    ...(item?.conditions ?? []).flatMap((c) => (c.units ? [{ name: c.name, column: c.units }] : [])),
-  ];
+  const invite = inviteOf(item);
+  return invite.mode === "coders" ? [{ name: "coder", column: invite.column }] : [];
 }
 
 /**
- * The links a design makes: one per combination of the coders (when they
- * don't sign in), the values of conditions assigned per link, and the
- * values of its link parameters (or the listed `combinations` of those),
- * each as name -> value. `setsOf` gives a set column's values (from the
- * units, without reserved ones). One link (no values) without any.
+ * The links a design makes, each as its values (name -> value): a link per
+ * coder (specific coders with a link each), else one link (no values).
+ * `setsOf` gives a set column's values (from the units, without reserved ones).
  */
 export function linkCombinations(
   item: SessionItem | null,
   setsOf: (group: string) => string[],
 ): Record<string, string>[] {
-  const dimensions: { name: string; values: string[] }[] = [];
-  if (item?.coders) {
-    const coders = setsOf(item.coders.column);
-    if (coderAccess(coders) === "link") dimensions.push({ name: "coder", values: coders });
-  }
-  for (const c of item?.conditions ?? [])
-    if (c.assign === "link") dimensions.push({ name: c.name, values: conditionValues(c, setsOf) });
-  const linkParams = (item?.params ?? []).filter((p) => p.kind === "link");
-  const valuesOf = (p: SessionParam): string[] => ("list" in p.values ? p.values.list.map((v) => v.value) : []);
-  let params: Record<string, string>[];
-  if (item?.combinations && linkParams.length > 0) {
-    params = item.combinations.filter((c) => linkParams.every((p) => valuesOf(p).includes(c[p.name])));
-  } else {
-    params = [{}];
-    for (const p of linkParams) params = params.flatMap((c) => valuesOf(p).map((v) => ({ ...c, [p.name]: v })));
-  }
-  let combos: Record<string, string>[] = [{}];
-  for (const d of dimensions) combos = combos.flatMap((c) => d.values.map((v) => ({ ...c, [d.name]: v })));
-  return combos.flatMap((c) => params.map((p) => ({ ...c, ...p })));
+  const invite = inviteOf(item);
+  if (invite.mode === "coders" && invite.link === "per_coder") return setsOf(invite.column).map((coder) => ({ coder }));
+  return [{}];
 }
 
 /** A link's key: its parameter values in a canonical form (names sorted). */

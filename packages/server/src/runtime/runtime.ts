@@ -11,7 +11,6 @@ import {
   type ShareColumn,
   loopDependencies,
   loopTitle,
-  seededShuffle,
   sessionItem,
   setKey,
   sharedDefaults,
@@ -21,7 +20,6 @@ import {
   practiceMessageColumn,
   parseAnswerKey,
   answerMatchesKey,
-  type GoldSettings,
   type SubmitUnitResponse,
   toCoderItems,
   DEFAULT_RATE,
@@ -33,8 +31,8 @@ import {
   type EndValues,
   type Reopen,
   type SessionResponse,
-  type LoopUnits,
-  loopUnits,
+  type ResolvedLoopUnits,
+  inviteOf,
   type TransferResponse,
   type TopLevelItem,
   type VariableValue,
@@ -110,7 +108,7 @@ interface Share {
 
 /** A coder's units in a loop: the loop's settings, and their share. */
 interface Route {
-  units: LoopUnits;
+  units: ResolvedLoopUnits;
   share: Share;
 }
 
@@ -118,7 +116,7 @@ const PLACEMENTS = { first: "before", last: "after", spread: "spread", rate: "ra
 
 /** A route's pools, with the state they were loaded with. */
 interface Routed {
-  units: LoopUnits;
+  units: ResolvedLoopUnits;
   main: UnitPool;
   /** The special sets' pools besides the coder's own units: practice, overlap, gold (in that order of precedence). */
   extras: OverlapPlacement[];
@@ -126,13 +124,13 @@ interface Routed {
 
 /** The special units a loop can mix in, in order of precedence when several are due. */
 const SPECIAL = [
-  { set: PRACTICE_SET, units: (s: Share) => s.practice, settings: (b: LoopUnits) => b.practice },
+  { set: PRACTICE_SET, units: (s: Share) => s.practice, settings: (b: ResolvedLoopUnits) => b.practice },
   {
     set: OVERLAP_SET,
     units: (s: Share) => s.overlap,
-    settings: (b: LoopUnits) => (b.overlap?.placement === "disabled" ? undefined : b.overlap),
+    settings: (b: ResolvedLoopUnits) => (b.overlap?.placement === "disabled" ? undefined : b.overlap),
   },
-  { set: GOLD_SET, units: (s: Share) => s.gold, settings: (b: LoopUnits) => b.gold },
+  { set: GOLD_SET, units: (s: Share) => s.gold, settings: (b: ResolvedLoopUnits) => b.gold },
 ] as const;
 
 type RandomVariable = Extract<VariableType, { type: "random" }>;
@@ -219,7 +217,6 @@ export class DeploymentRuntime {
             keepSessionsOpen: spec.keepSessionsOpen,
             sets: spec.sets,
             redirectUrls: spec.redirectUrls,
-            signIn: spec.signIn,
           };
           this.applySets(spec);
           // Panel return links are deployment settings: they change without a new version
@@ -279,18 +276,19 @@ export class DeploymentRuntime {
     this.columns = [...columns];
   }
 
-  /** What the codebook asks of a new session (its Session item), the set columns' values, and sign-in. */
+  /** What the codebook asks of a new session (its Session item), and the set columns' values. */
   private get sessionRules(): SessionRules {
     const items = this.spec.design.items as TopLevelItem[];
-    return { item: sessionItem(items), setsOf: (group) => this.groups.get(group) ?? [], signIn: this.spec.signIn };
+    return { item: sessionItem(items), setsOf: (group) => this.groups.get(group) ?? [] };
   }
 
-  /** The URL parameter with the participant id (the codebook's Session item), if any: part of a device's session key. */
+  /** The URL parameter with a crowd's participant id, if any: part of a device's session key. */
   get participantParam(): string | null {
-    return sessionItem(this.spec.design.items as TopLevelItem[])?.participant?.param ?? null;
+    const invite = inviteOf(sessionItem(this.spec.design.items as TopLevelItem[]));
+    return invite.mode === "crowd" ? (invite.participant?.param ?? null) : null;
   }
 
-  /** Coders log in to start: the study requires it, or coders are email addresses. */
+  /** Coders log in to start (contracts `loginRequired`). */
   get needsLogin(): boolean {
     return loginRequired(this.sessionRules);
   }
@@ -666,7 +664,7 @@ export class DeploymentRuntime {
    * (a computed item not reached yet, a coder without a coder value).
    * Cached by key, until the sets change.
    */
-  private shareOf(coder: Coder, loop: string, settings: LoopUnits): Share | null {
+  private shareOf(coder: Coder, loop: string, settings: ResolvedLoopUnits): Share | null {
     const columns = this.shareColumns.get(loop) ?? [];
     const values: [string, string][] = [];
     let coderColumn: string | null = null;
@@ -683,7 +681,9 @@ export class DeploymentRuntime {
       (filter
         ? ` | ${filter.column} ${filter.only ? "only" : "except"} ${(filter.only ?? filter.except ?? []).join(",")}`
         : "") +
-      (settings.overlap ? ` | overlap ${JSON.stringify(settings.overlap)}` : "");
+      (settings.overlap && !["spread", "rate"].includes(settings.overlap.placement)
+        ? ` | overlap ${settings.overlap.placement}`
+        : "");
     const cached = this.shares.get(key);
     if (cached) return cached;
 
@@ -717,15 +717,8 @@ export class DeploymentRuntime {
         ? values.map(([column]) => column)
         : this.columns;
     const overlapAll = new Set(overlapColumns.flatMap((column) => this.unitsOf(setKey(column, OVERLAP_SET))));
-    let overlap = settings.overlap ? units.filter((id) => overlapAll.has(id)) : [];
+    const overlap = settings.overlap ? units.filter((id) => overlapAll.has(id)) : [];
     const own = settings.overlap ? units.filter((id) => !overlapAll.has(id)) : units;
-    const max = settings.overlap?.max;
-    if (max !== undefined && overlap.length > max) {
-      overlap =
-        settings.overlap?.pick === "random"
-          ? seededShuffle(overlap, this.spec.studyId).slice(0, max)
-          : overlap.slice(0, max);
-    }
     const all = (set: string) => [...new Set(this.columns.flatMap((c) => this.unitsOf(setKey(c, set))))];
     const share: Share = { key, own, overlap, practice: all(PRACTICE_SET), gold: all(GOLD_SET) };
     this.shares.set(key, share);
@@ -760,7 +753,7 @@ export class DeploymentRuntime {
 
   /** The coder's own units of a route, without the special units. */
   private ownUnits(route: Route): number[] {
-    return route.share.own;
+    return route.units.own ? route.share.own : [];
   }
 
   /** All units of a route (own and special units). */
@@ -799,7 +792,7 @@ export class DeploymentRuntime {
    * units a coder coded stay theirs (`loopUnit`, `submitUnit`).
    */
   private routeOf(coder: Coder, info: LoopInfo): Route | null {
-    const units = loopUnits(info.loop);
+    const units = info.units;
     const share = this.shareOf(coder, info.key, units);
     return share ? { units, share } : null;
   }
@@ -1075,7 +1068,12 @@ export class DeploymentRuntime {
    * finished them: `wrong` when wrong, `right` when right (never above
    * `start`). Rebuilt from their answers and the units' answer columns.
    */
-  private async goldHealth(coder: Coder, loop: string, gold: GoldSettings, goldUnits: number[]): Promise<number> {
+  private async goldHealth(
+    coder: Coder,
+    loop: string,
+    gold: NonNullable<ResolvedLoopUnits["gold"]>,
+    goldUnits: number[],
+  ): Promise<number> {
     const health = gold.health!;
     const codings = (await this.store.listCodings({ coderId: coder.coderId, loop }))
       .filter((c) => goldUnits.includes(c.unitId))
@@ -1086,7 +1084,7 @@ export class DeploymentRuntime {
       const unit = units.get(coding.unitId);
       if (!unit) continue;
       const answers = await this.store.unitAnswers(coder.coderId, coding.unitId);
-      for (const name of gold.questions) {
+      for (const name of gold.questions ?? []) {
         const expected = parseAnswerKey(unit.data[goldColumn(name)]);
         if (expected === null) continue;
         value = answerMatchesKey(answers[name], expected)

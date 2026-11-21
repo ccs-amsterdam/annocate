@@ -96,11 +96,10 @@ export const CoderDeletionSchema = z.object({
 export type CoderDeletion = z.infer<typeof CoderDeletionSchema>;
 
 /**
- * An link (docs/coder-identity.md §3). Links are generated from
- * the deployed design version: one per combination of its link parameters
- * (docs/architecture.md §7). The researcher manages
- * who may use a link, not which links exist. Whether coders sign in is a
- * setting of the study (`StudyWrite.signIn`), not of a link.
+ * A link (docs/coder-identity.md §3). Links are generated from the
+ * deployed design version's coder invitation: a link per coder, or one link
+ * (docs/architecture.md §7). The researcher manages who may use a link, not
+ * which links exist.
  */
 export const LinkWriteSchema = z.object({
   label: z.string().min(1).max(128),

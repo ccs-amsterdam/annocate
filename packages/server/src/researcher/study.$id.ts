@@ -5,7 +5,6 @@ import { studies } from "../db/schema/index.js";
 import type { Server, Env } from "../context.js";
 import { requireSensitive, requireStudyUser } from "./auth.js";
 import { toStudyResponse } from "../shared/studies.js";
-import { forgetStudyLinks } from "../shared/links.js";
 
 export function study(server: Server): Hono<Env> {
   const { db } = server;
@@ -23,7 +22,7 @@ export function study(server: Server): Hono<Env> {
     const parsed = StudyWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-    const { name, archived, keepSessionsOpen, redirectUrls, signIn } = parsed.data;
+    const { name, archived, keepSessionsOpen, redirectUrls } = parsed.data;
     const [row] = await db
       .update(studies)
       // Left out: kept (except archived: false)
@@ -32,13 +31,11 @@ export function study(server: Server): Hono<Env> {
         archived: archived ?? false,
         ...(keepSessionsOpen !== undefined ? { keepSessionsOpen } : {}),
         ...(redirectUrls ? { redirectUrls } : {}),
-        ...(signIn ? { signIn } : {}),
       })
       .where(eq(studies.id, c.get("studyId")))
       .returning();
-    // The runtime reads whether sessions stay open, sign-in and the redirect URLs with the deployment.
+    // The runtime reads whether sessions stay open and the redirect URLs with the deployment.
     await server.deployments.refresh(c.get("studyId"));
-    forgetStudyLinks(c.get("studyId"));
     return c.json(toStudyResponse(row!));
   });
 

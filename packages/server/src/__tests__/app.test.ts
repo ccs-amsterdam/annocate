@@ -358,7 +358,19 @@ describe("annotations: finished counts and resets", () => {
 describe("links, coder progress and overview", () => {
   const value = (code: string): VariableValue => ({ done: true, skip: false, values: [{ value: code }] });
 
-  async function setup(session?: object) {
+  /** Sets the coders of the set column `batch` (one empty set each). */
+  const setCoders = async (studyId: number, names: string[]) => {
+    const res = await app.request(`/api/study/${studyId}/sets/batch`, {
+      method: "PUT",
+      headers: adminHeaders,
+      body: JSON.stringify({ sets: names.map((name) => ({ name, unitIds: [] })) }),
+    });
+    expect(res.status, await res.clone().text()).toBe(200);
+  };
+  const coders = { type: "session", invite: { mode: "coders", column: "batch", link: "per_coder" } };
+
+  async function setup(names?: string[]) {
+    const session = names ? coders : undefined;
     const study = await createStudy();
     const store = new DbStore(db, study.id);
     const units = (await json(
@@ -381,6 +393,7 @@ describe("links, coder progress and overview", () => {
       layout: { template: "" },
       children: [question("q1"), question("q2")],
     };
+    if (names) await setCoders(study.id, names);
     const publish = async (items: object[], confirmLinks?: boolean) => {
       const codebook = await json(
         await app.request(`/api/study/${study.id}/design`, {
@@ -392,7 +405,7 @@ describe("links, coder progress and overview", () => {
       return app.request(`/api/study/${study.id}/deployment`, {
         method: "PUT",
         headers: adminHeaders,
-        body: JSON.stringify({ designVersionId: codebook.id, confirmLinks }),
+        body: JSON.stringify({ designVersionId: codebook.id, units: true, confirmLinks }),
       });
     };
     expect((await publish(session ? [session, loop] : [loop])).status).toBe(200);
@@ -404,17 +417,12 @@ describe("links, coder progress and overview", () => {
       json(await app.request(`/api/study/${study.id}${path}`, { headers: adminHeaders }));
     return { study, units, loop, publish, resolve, put, get };
   }
-  const batches = (values: string[]) => ({
-    type: "session",
-    params: [{ name: "batch", kind: "link", values: { list: values.map((value) => ({ value })) } }],
-  });
-
-  it("makes a link per link parameter value; links are revoked, renewed or retired, never deleted", async () => {
-    const { study, loop, publish, resolve, get } = await setup(batches(["used", "unused"]));
+  it("makes a link per coder; links are revoked, renewed or retired, never deleted", async () => {
+    const { study, loop, publish, resolve, get } = await setup(["used", "waiting"]);
     const links = await get("/links");
     expect(links.map((i: { label: string; params: object }) => [i.label, i.params])).toEqual([
-      ["used", { batch: "used" }],
-      ["unused", { batch: "unused" }],
+      ["used", { coder: "used" }],
+      ["waiting", { coder: "waiting" }],
     ]);
     const [used, unused] = links;
     expect(await status(resolve("a", used.secret))).toBe(200);
@@ -428,7 +436,7 @@ describe("links, coder progress and overview", () => {
         body: JSON.stringify({ label: "Panel", maxUses: 1 }),
       }),
     );
-    expect(updated).toMatchObject({ label: "Panel", maxUses: 1, params: { batch: "unused" } });
+    expect(updated).toMatchObject({ label: "Panel", maxUses: 1, params: { coder: "waiting" } });
     expect(await status(resolve("u1", unused.secret))).toBe(200);
     expect(await status(resolve("u2", unused.secret))).toBe(403); // link_used_up
 
@@ -453,33 +461,41 @@ describe("links, coder progress and overview", () => {
     expect(reopened.revokedAt).toBeNull();
     expect(await status(resolve("c2", renewed.secret))).toBe(200);
 
-    // Republished with other values: "unused" is retired, "new" made; "used" keeps its row
-    expect((await publish([batches(["used", "new"]), loop])).status).toBe(200);
+    // Republished with other coders: "waiting" is retired, "new" made; "used" keeps its row
+    await setCoders(study.id, ["used", "zeta"]);
+    expect((await publish([coders, loop])).status).toBe(200);
     const after = await get("/links");
     expect(
-      after.map((i: { params: { batch: string }; retiredAt: string | null }) => [i.params.batch, i.retiredAt === null]),
+      after.map((i: { params: { coder: string }; retiredAt: string | null }) => [i.params.coder, i.retiredAt === null]),
     ).toEqual([
       ["used", true],
-      ["new", true],
-      ["unused", false],
+      ["zeta", true],
+      ["waiting", false],
     ]);
     expect(await status(resolve("d", unused.secret))).toBe(403);
   });
 
   it("asks to confirm many links, and refuses too many", async () => {
-    const { loop, publish } = await setup();
-    const many = (n: number) => batches(Array.from({ length: n }, (_, i) => `b${i}`));
-    const confirm = await publish([many(501), loop]);
+    const { study, loop, publish } = await setup();
+    const many = (n: number) =>
+      setCoders(
+        study.id,
+        Array.from({ length: n }, (_, i) => `b${i}`),
+      );
+    await many(501);
+    const confirm = await publish([coders, loop]);
     expect(confirm.status).toBe(409);
     expect(await json(confirm)).toMatchObject({ code: "confirm_links" });
-    expect((await publish([many(2001), loop], true)).status).toBe(400);
-    const ok = await publish([many(501), loop], true);
+    await many(2001);
+    expect((await publish([coders, loop], true)).status).toBe(400);
+    await many(501);
+    const ok = await publish([coders, loop], true);
     expect(ok.status).toBe(200);
     expect((await json(ok)).links).toBe(501);
   });
 
   it("reports coder progress and the overview from live answers", async () => {
-    const { units, resolve, put, get } = await setup(batches(["batch 1"]));
+    const { units, resolve, put, get } = await setup(["batch 1"]);
     const [link] = await get("/links");
     const coderA = await resolve("a", link.secret);
     await resolve("b", link.secret);

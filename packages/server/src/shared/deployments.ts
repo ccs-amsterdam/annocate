@@ -221,7 +221,7 @@ async function buildSpec(
   meta: Pick<DeploymentSpec, "version" | "active" | "annotationEpoch" | "liveUnits">,
 ): Promise<DeploymentSpec> {
   const [study] = await db
-    .select({ keepSessionsOpen: studies.keepSessionsOpen, redirectUrls: studies.redirectUrls, signIn: studies.signIn })
+    .select({ keepSessionsOpen: studies.keepSessionsOpen, redirectUrls: studies.redirectUrls })
     .from(studies)
     .where(eq(studies.id, studyId));
   return {
@@ -229,7 +229,6 @@ async function buildSpec(
     ...meta,
     keepSessionsOpen: study?.keepSessionsOpen ?? false,
     redirectUrls: study?.redirectUrls ?? {},
-    signIn: study?.signIn ?? "off",
     // The runtime works on the items with the session first
     design: { ...toDesignVersion(versionRow), items: designVersionItems(versionRow) },
     sets: await runtimeSets(db, studyId, meta.liveUnits),

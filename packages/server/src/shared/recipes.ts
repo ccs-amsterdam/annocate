@@ -66,7 +66,6 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
       name: recipe.name,
       ownerId: options.ownerId,
       origin: options.origin ?? null,
-      signIn: recipe.signIn ?? "off",
     })
     .returning();
   const study = made!;

@@ -11,7 +11,7 @@ import { loopShareColumns } from "./assignment.js";
 
 const loop = {
   type: "unit_loop",
-  units: { filter: { column: "parts", only: ["a"] }, overlap: { placement: "disabled" } },
+  units: { filter: { column: "parts", only: ["a"] }, overlap: "ignore" },
   layout: { template: "{{$unit.headline}} as {{$var.role.label}}" },
   children: [
     {
@@ -44,7 +44,7 @@ describe("fieldUsage", () => {
     const items = [
       {
         type: "unit_loop",
-        units: { gold: { placement: "last", questions: ["topic"] } },
+        units: { gold: "after", goldCheck: { questions: ["topic"] } },
         layout: { template: "$unit.title" },
         children: [
           {
@@ -74,12 +74,7 @@ describe("fieldUsage", () => {
 
 describe("set columns", () => {
   const items = [
-    {
-      type: "session",
-      params: [],
-      coders: { column: "coder" },
-      conditions: [{ name: "framing", values: ["a", "b"], assign: "link", units: "framing" }],
-    },
+    { type: "session", invite: { mode: "coders", column: "coder", link: "per_coder" } },
     { type: "unit_loop", layout: { template: "" }, children: [] },
     {
       type: "show_if",
@@ -94,29 +89,25 @@ describe("set columns", () => {
     },
   ];
 
-  it("are the coder column, linked conditions' and filters' columns: used, and declared as set fields", () => {
-    expect(designSetColumns(items).sort()).toEqual(["coder", "framing", "phase", "set"]);
+  it("are the coder column, computed items' and filters' columns: used, and declared as set fields", () => {
+    expect(designSetColumns(items).sort()).toEqual(["coder", "phase", "set"]);
     expect(Object.fromEntries(fieldUsage(items))).toEqual({
       coder: "server",
-      framing: "server",
       phase: "server",
       set: "server",
     });
-    expect(undeclaredFields(items, [{ name: "coder" }, { name: "framing" }])).toEqual(["phase", "set"]);
+    expect(undeclaredFields(items, [{ name: "coder" }, { name: "set" }])).toEqual(["phase"]);
     expect(
       notSetColumns(items, [
         { name: "coder", type: "set" },
-        { name: "framing", type: "text" },
+        { name: "set", type: "text" },
       ]),
-    ).toEqual(["framing"]);
+    ).toEqual(["set"]);
   });
 
-  it("select a loop's units: the session's, and random conditions before the loop", () => {
+  it("select a loop's units: the coder's, and computed items before the loop", () => {
     const shares = loopShareColumns(items);
-    expect(shares.get("1")).toEqual([
-      { name: "coder", column: "coder" },
-      { name: "framing", column: "framing" },
-    ]);
+    expect(shares.get("1")).toEqual([{ name: "coder", column: "coder" }]);
     expect(shares.get("2")).toEqual([...shares.get("1")!, { name: "set", column: "set", random: true }]);
   });
 });

@@ -150,9 +150,7 @@ CREATE TABLE "studies" (
 	"keep_sessions_open" boolean DEFAULT false NOT NULL,
 	"redirect_urls" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"created" timestamp with time zone DEFAULT now() NOT NULL,
-	"suspended_at" timestamp with time zone,
-	"sign_in" text DEFAULT 'off' NOT NULL,
-	CONSTRAINT "studies_sign_in_check" CHECK ("studies"."sign_in" IN ('off', 'optional', 'required'))
+	"suspended_at" timestamp with time zone
 );
 --> statement-breakpoint
 CREATE TABLE "unit_draft" (

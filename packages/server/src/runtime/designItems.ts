@@ -1,11 +1,14 @@
 import {
   STUDY_END_NAME,
+  effectiveLoopUnits,
+  inviteOf,
   sessionItem,
   unitLoops,
   validateVariables,
   type AnyVariableType,
   type DesignItem,
   type EndItem,
+  type ResolvedLoopUnits,
   type TopLevelItem,
   type UnitLoopItem,
   type VariableValue,
@@ -21,19 +24,23 @@ export interface LoopInfo {
   key: string;
   loop: UnitLoopItem;
   variables: Map<string, VariableType>;
+  /** How the loop hands out units: its settings with a crowd's shared queue (contracts `effectiveLoopUnits`). */
+  units: ResolvedLoopUnits;
 }
 
 export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
+  const invite = inviteOf(sessionItem(items));
+  const criteria = invite.mode === "crowd" ? invite.units : undefined;
   return unitLoops(items).map(({ key, loop }) => {
     const variables = new Map<string, VariableType>();
     collectQuestions(loop.children as DesignItem[], variables);
-    return { key, loop, variables };
+    return { key, loop, variables, units: effectiveLoopUnits(loop, criteria) };
   });
 }
 
 /** The question a loop with criteria compares for agreement: what distribution needs to know of finished codings. */
 export function loopAgreementVariables(info: LoopInfo): string[] {
-  const on = info.loop.units?.criteria?.until?.on;
+  const on = info.units.criteria?.until?.on;
   return on ? [on] : [];
 }
 
@@ -42,7 +49,7 @@ export function loopAgreementVariables(info: LoopInfo): string[] {
  * (loaded for all coders, not only active ones): shared queues.
  */
 function needsAllCodings(info: LoopInfo): boolean {
-  return !!info.loop.units?.criteria;
+  return !!info.units.criteria;
 }
 
 /**

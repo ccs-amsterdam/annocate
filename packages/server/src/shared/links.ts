@@ -5,13 +5,14 @@ import {
   DesignItemsSchema,
   linkCombinations,
   linkKey,
+  sessionColumns,
   sessionItem,
   type DesignItem,
   type LinkResponse,
 } from "@annotinder/contracts";
 import { and, asc, eq, inArray, isNotNull, isNull, notInArray, sql } from "drizzle-orm";
 import type { Db } from "../db/index.js";
-import { deployments, designVersions, links as linksTable, studies } from "../db/schema/index.js";
+import { deployments, designVersions, links as linksTable } from "../db/schema/index.js";
 import { groupSets } from "./sets.js";
 import { designVersionItems } from "./designVersions.js";
 import { HttpError } from "./http.js";
@@ -37,16 +38,12 @@ export function toLinkResponse(row: LinkRow): LinkResponse {
 
 /**
  * The links a design makes with the deployed set columns (`live`) or the
- * draft's: one per coder (unless they sign in), per value of a condition
- * assigned by link, and per combination of its link parameters' values.
+ * draft's: one per coder (specific coders with a link each), else one.
  */
 async function linksOf(db: Db, studyId: number, items: DesignItem[], live: boolean): Promise<Record<string, string>[]> {
   const session = sessionItem(items);
-  const columns = [session?.coders?.column, ...(session?.conditions ?? []).map((c) => c.units)].filter(
-    (c): c is string => !!c,
-  );
   const sets = new Map<string, string[]>();
-  for (const column of new Set(columns)) sets.set(column, await groupSets(db, studyId, column, live));
+  for (const { column } of sessionColumns(session)) sets.set(column, await groupSets(db, studyId, column, live));
   return linkCombinations(session, (group) => sets.get(group) ?? []);
 }
 
@@ -136,11 +133,9 @@ export async function syncLinks(db: Db, studyId: number, options: { secrets?: st
   return keep.size;
 }
 
-/** What the coder API needs to know about a link on every request (the session cookie, login), by secret. */
+/** What the coder API needs to know about a link on every request, by secret. */
 export interface LinkInfo {
   studyId: number;
-  /** Whether its study takes sign-ins (the study's `signIn`). */
-  login: "none" | "optional" | "required";
 }
 
 /** Known links, by secret, for a minute (read on every coder request). */
@@ -151,13 +146,11 @@ export async function linkInfo(db: Db, secret: string): Promise<LinkInfo | null>
   let cached = links.get(secret);
   if (!cached || cached.until < Date.now()) {
     const [row] = await db
-      .select({ studyId: linksTable.studyId, signIn: studies.signIn })
+      .select({ studyId: linksTable.studyId })
       .from(linksTable)
-      .innerJoin(studies, eq(studies.id, linksTable.studyId))
       .where(eq(linksTable.secret, secret));
     if (!row) return null; // not cached: anyone can send any secret
-    const login = row.signIn === "off" ? "none" : row.signIn;
-    cached = { info: { studyId: row.studyId, login }, until: Date.now() + 60_000 };
+    cached = { info: { studyId: row.studyId }, until: Date.now() + 60_000 };
     if (links.size > 10_000) links.clear();
     links.set(secret, cached);
   }
@@ -167,9 +160,4 @@ export async function linkInfo(db: Db, secret: string): Promise<LinkInfo | null>
 /** Forgets cached link info (after a link's access settings changed). */
 export function forgetLink(secret: string): void {
   links.delete(secret);
-}
-
-/** Forgets the cached info of a study's links (after its sign-in setting changed). */
-export function forgetStudyLinks(studyId: number): void {
-  for (const [secret, { info }] of links) if (info.studyId === studyId) links.delete(secret);
 }

@@ -1,5 +1,11 @@
 import { listSetGroups } from "./sets.js";
-import { loopShareColumns, type CoderProgress, type StudyOverview } from "@annotinder/contracts";
+import {
+  loopShareColumns,
+  type CoderProgress,
+  type StudyOverview,
+  loginRequired,
+  sessionItem,
+} from "@annotinder/contracts";
 import { designVersionItems } from "./designVersions.js";
 import { and, asc, count, countDistinct, eq, gte, inArray, isNotNull, isNull, max, sql } from "drizzle-orm";
 import type { Db } from "../db/index.js";
@@ -92,6 +98,8 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
         .from(designVersions)
         .where(eq(designVersions.id, deployment.designVersionId))
     : [];
+  // Coders' emails only where the study requires sign-in: elsewhere coders sign in for themselves (other devices)
+  const showEmails = deployed ? loginRequired(sessionItem(designVersionItems(deployed))) : false;
   const shareColumns = deployed
     ? [...new Map([...loopShareColumns(designVersionItems(deployed)).values()].flat().map((c) => [c.name, c.column]))]
     : [];
@@ -123,7 +131,7 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
 
   return coders.map(({ coder: c, linkLabel }) => ({
     id: c.id,
-    ...(c.email ? { email: c.email } : {}),
+    ...(c.email && showEmails ? { email: c.email } : {}),
     ...(c.participantId ? { participantId: c.participantId } : {}),
     linkId: c.linkId,
     linkLabel,

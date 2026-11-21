@@ -160,24 +160,16 @@
       "title": "Good news, bad news"
     },
     "session": {
-      "params": [],
-      "coders": {
-        "column": "coder"
-      },
-      "uses": {
-        "content": "annotate",
-        "experiment": false
+      "invite": {
+        "mode": "coders",
+        "column": "coder",
+        "link": "per_coder"
       }
     },
     "items": [
       {
         "type": "unit_loop",
         "label": "Headlines",
-        "units": {
-          "overlap": {
-            "placement": "spread"
-          }
-        },
         "layout": {
           "template": "# $unit.headline"
         },

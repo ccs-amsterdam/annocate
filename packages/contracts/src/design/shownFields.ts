@@ -117,8 +117,8 @@ export function fieldUsage(items: readonly unknown[]): Map<string, FieldUse> {
     for (const [field, n] of counts) use(field, n > scriptCount(loop, field) ? "shown" : "sent");
     const units = loop.units;
     if (units?.filter?.column) use(units.filter.column, "server");
-    for (const q of units?.gold?.questions ?? []) use(goldColumn(q), "server");
-    for (const q of units?.practice?.questions ?? []) {
+    for (const q of units?.goldCheck?.questions ?? []) use(goldColumn(q), "server");
+    for (const q of units?.practiceCheck?.questions ?? []) {
       use(practiceColumn(q), "server");
       use(practiceMessageColumn(q), "server");
     }
@@ -130,14 +130,14 @@ export function fieldUsage(items: readonly unknown[]): Map<string, FieldUse> {
 
 /**
  * The set columns a design names (docs/architecture.md §6): the coder
- * column, the columns conditions (assigned or random) are linked to, and
+ * column, the columns computed items are linked to, and
  * loop filters' columns. They must be `set` fields of the units.
  */
 export function designSetColumns(items: readonly unknown[]): string[] {
   const columns = new Set<string>();
   const session = sessionItem(items);
-  if (session?.coders?.column) columns.add(session.coders.column);
-  for (const c of session?.conditions ?? []) if (c?.units) columns.add(c.units);
+  const invite = session?.invite;
+  if (invite?.mode === "coders" && invite.column) columns.add(invite.column);
   const walk = (list: unknown) => {
     for (const raw of Array.isArray(list) ? list : []) {
       const it = raw as {

@@ -1,10 +1,6 @@
 import { z } from "zod";
 import { IdSchema, RoleSchema } from "./common.js";
 
-/** Whether coders sign in: for the whole study. */
-export const SignInSchema = z.enum(["off", "optional", "required"]);
-export type SignIn = z.infer<typeof SignInSchema>;
-
 /** A "study", the sole top-level entity in the new data model (CONTRACTS.md). */
 export const StudyWriteSchema = z.object({
   name: z.string().min(1).max(256),
@@ -16,13 +12,6 @@ export const StudyWriteSchema = z.object({
    * (docs/coder-identity.md §9). Left out: unchanged.
    */
   keepSessionsOpen: z.boolean().optional(),
-  /**
-   * Whether coders sign in (docs/architecture.md §7), for the whole
-   * study: `required` (before they start), `optional` (offered, to continue
-   * on other devices) or `off`. Coders by email address always sign in.
-   * Left out: unchanged (`off` for a new study).
-   */
-  signIn: SignInSchema.optional(),
   /**
    * Deployment settings (docs/architecture.md §5): per name, the URL end
    * items with that `redirectSetting` send coders to, e.g. a panel's return
@@ -45,7 +34,6 @@ export const StudyResponseSchema = StudyWriteSchema.extend({
   id: IdSchema,
   created: z.coerce.date(),
   keepSessionsOpen: z.boolean(),
-  signIn: SignInSchema,
   redirectUrls: z.record(z.string(), z.string()),
   /** Set when a server admin suspended the study: no coding and no changes (reading and deleting data still work). */
   suspendedAt: z.coerce.date().nullable().optional(),

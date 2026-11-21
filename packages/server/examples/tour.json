@@ -37,13 +37,7 @@
     "public": {
       "title": "A tour of AnnoTinder"
     },
-    "session": {
-      "params": [],
-      "uses": {
-        "content": "both",
-        "experiment": true
-      }
-    },
+    "session": {},
     "items": [
       {
         "type": "question",

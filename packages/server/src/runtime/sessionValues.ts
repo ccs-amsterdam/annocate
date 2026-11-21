@@ -1,61 +1,53 @@
 import {
   MAX_SESSION_VALUE,
-  coderAccess,
-  conditionValues,
-  sessionParamKey,
+  inviteOf,
+  loginRequired as designLoginRequired,
+  urlParamKey,
   type SessionItem,
-  type SignIn,
 } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 
-// A new session's `$session` values (docs/architecture.md §6
-// §3, docs/architecture.md §6): the link's parameters, the coder (by
-// link or by the login's email), conditions assigned by link, the URL
-// parameters the codebook declares, `source`, and the participant id. Fixed
-// when the session starts; conditions drawn at the start are drawn by the
-// store (`draws`), under a lock.
+// A new session's `$session` values and participant id (docs/architecture.md
+// §6-7): the URL parameters the design declares, `source`, and per the coder
+// invitation the coder (by their link or their login's email) or a crowd's
+// participant id (a URL parameter, or the login's email). Fixed when the
+// session starts.
 
 /** What the codebook asks of a new session, and the set columns' values. */
 export interface SessionRules {
   item: SessionItem | null;
   /** A set column's values (its sets, without reserved ones). */
   setsOf: (group: string) => string[];
-  /** Whether coders sign in (the study's setting). */
-  signIn: SignIn;
 }
 
-/** A condition to draw when the session starts (`assign: "random"`): its values, and how. */
-export interface SessionDraw {
-  name: string;
-  values: string[];
-  draw: "balanced" | "random";
-}
+/** Specific coders who sign in: their units are their address's. */
+export const emailCoders = (rules: SessionRules) => {
+  const invite = inviteOf(rules.item);
+  return invite.mode === "coders" && invite.link === "login";
+};
 
-/** How coders get in: by email (sign in) when the coder column's values are email addresses. */
-export const emailCoders = (rules: SessionRules) =>
-  !!rules.item?.coders && coderAccess(rules.setsOf(rules.item.coders.column)) === "email";
-
-/** Whether a new session needs a login: the study requires it, or coders are email addresses. */
-export const loginRequired = (rules: SessionRules) => rules.signIn === "required" || emailCoders(rules);
+/** Whether a new session needs a login (contracts `loginRequired`). */
+export const loginRequired = (rules: SessionRules) => designLoginRequired(rules.item);
 
 /** Whether a value fits a pattern (in full). */
 const fits = (value: string, pattern?: string) => !pattern || new RegExp(`^(?:${pattern})$`).test(value);
 
 /**
  * The participant id and `$session` values of a new session. A missing
- * required URL parameter or one with a value the codebook doesn't accept is
+ * required URL parameter or one with a value the design doesn't accept is
  * refused (400 `url_param_missing` / `url_param_invalid`), so such a link
- * doesn't start. With email coders only their emails may start, and with
- * sign-in required only logins (401 `auth_required` without a login, 403
- * `email_not_allowed`). A link's coder or condition value that is no longer
- * one: 403 `link_inactive`.
+ * doesn't start. Where sign-in is required only logins (401
+ * `auth_required`), and with email coders only their addresses (403
+ * `email_not_allowed`). A link's coder that is no longer one: 403
+ * `link_inactive`. Specific coders' participant id is their coder value;
+ * a crowd's is its URL parameter, or with a login the email.
  */
 export function sessionValues(
   rules: SessionRules,
   link: { params: Record<string, string>; participantId: string | null },
   urlParams: Record<string, string>,
   email: string | null,
-): { participantId: string | null; session: Record<string, string>; draws: SessionDraw[] } {
+): { participantId: string | null; session: Record<string, string> } {
   const read = (key: string) => {
     const value = urlParams[key]?.trim();
     if (value && value.length > MAX_SESSION_VALUE)
@@ -66,88 +58,67 @@ export function sessionValues(
     new HttpError(400, `The URL parameter "${key}" has a value this link doesn't accept`, "url_param_invalid");
 
   const session: Record<string, string> = {};
-  for (const p of rules.item?.params ?? []) {
-    if (p.kind === "link") {
-      if (link.params[p.name] !== undefined) session[p.name] = link.params[p.name];
-      continue;
-    }
-    const key = sessionParamKey(p);
+  for (const p of rules.item?.urlParams ?? []) {
+    const key = urlParamKey(p);
     const value = read(key) ?? p.default;
     if (value === undefined)
       throw new HttpError(400, `This link needs the URL parameter "${key}"`, "url_param_missing");
-    const ok = "list" in p.values ? p.values.list.some((v) => v.value === value) : fits(value, p.values.open.pattern);
+    const ok = p.values ? p.values.some((v) => v.value === value) : fits(value, p.pattern);
     if (!ok) throw invalid(key);
     session[p.name] = value;
   }
   const source = read("source");
   if (source !== undefined) session.source = source;
 
-  let participantId = link.participantId;
-  const participant = rules.item?.participant;
-  if (participant) {
-    const value = read(participant.param);
-    if (value === undefined)
-      throw new HttpError(400, `This link needs the URL parameter "${participant.param}"`, "url_param_missing");
-    if (!fits(value, participant.pattern)) throw invalid(participant.param);
-    participantId = value;
-  }
-
   if (loginRequired(rules) && !email) throw new HttpError(401, "This study requires login", "auth_required");
-  const inactive = () => new HttpError(403, "This link is no longer active", "link_inactive");
-  // The coder: the login's email (email coders) or the link's
-  const coders = rules.item?.coders;
-  if (coders) {
-    const values = rules.setsOf(coders.column);
-    if (emailCoders(rules)) {
+  let participantId = link.participantId;
+  const invite = inviteOf(rules.item);
+  if (invite.mode === "coders") {
+    // The coder: the login's email, or the link's
+    const values = rules.setsOf(invite.column);
+    let coder: string | undefined;
+    if (invite.link === "login") {
       const lower = email!.toLowerCase();
-      const coder = values.find((v) => v.toLowerCase() === lower);
+      coder = values.find((v) => v.toLowerCase() === lower);
       if (coder === undefined)
         throw new HttpError(403, "This email address has no access to this study", "email_not_allowed");
-      session.coder = coder;
     } else if (link.params.coder !== undefined) {
-      if (!values.includes(link.params.coder)) throw inactive();
-      session.coder = link.params.coder;
+      if (!values.includes(link.params.coder))
+        throw new HttpError(403, "This link is no longer active", "link_inactive");
+      coder = link.params.coder;
     }
+    if (coder !== undefined) session.coder = coder;
+  } else if (invite.participant) {
+    const value = read(invite.participant.param);
+    if (value === undefined)
+      throw new HttpError(400, `This link needs the URL parameter "${invite.participant.param}"`, "url_param_missing");
+    if (!fits(value, invite.participant.pattern)) throw invalid(invite.participant.param);
+    participantId = value;
+  } else if (invite.login && email) {
+    participantId ??= email.toLowerCase();
   }
-  // Conditions: the link's value, or drawn
-  const draws: SessionDraw[] = [];
-  for (const condition of rules.item?.conditions ?? []) {
-    const values = conditionValues(condition, rules.setsOf);
-    if (condition.assign === "random") {
-      draws.push({ name: condition.name, values, draw: condition.draw ?? "balanced" });
-      continue;
-    }
-    const value = link.params[condition.name];
-    if (value === undefined || !values.includes(value)) throw inactive();
-    session[condition.name] = value;
-  }
-  return { participantId, session, draws };
+  return { participantId, session };
 }
 
 /**
  * A preview session's values: like a link's, but never refused. Values come
- * from the preview page's URL parameters (link parameters too, by name),
- * else the default or first value.
+ * from the preview page's URL parameters (the coder too, by name), else the
+ * default or first value.
  */
 export function previewSessionValues(rules: SessionRules, urlParams: Record<string, string>): Record<string, string> {
   const session: Record<string, string> = {};
   const given = (key: string) => urlParams[key]?.trim().slice(0, MAX_SESSION_VALUE) || undefined;
-  for (const p of rules.item?.params ?? []) {
-    const first = "list" in p.values ? p.values.list[0]?.value : undefined;
-    const value =
-      given(p.kind === "url" ? sessionParamKey(p) : p.name) ?? (p.kind === "url" ? p.default : undefined) ?? first;
+  for (const p of rules.item?.urlParams ?? []) {
+    const value = given(urlParamKey(p)) ?? p.default ?? p.values?.[0]?.value;
     if (value !== undefined) session[p.name] = value;
   }
-  // The coder and the conditions: as given (by name), else the first value
-  if (rules.item?.coders) {
-    const coder = given("coder") ?? rules.setsOf(rules.item.coders.column)[0];
+  const invite = inviteOf(rules.item);
+  if (invite.mode === "coders") {
+    const coder = given("coder") ?? rules.setsOf(invite.column)[0];
     if (coder !== undefined) session.coder = coder;
+  } else if (invite.participant) {
+    const participant = given(invite.participant.param);
+    if (participant) session.participant = participant;
   }
-  for (const condition of rules.item?.conditions ?? []) {
-    const value = given(condition.name) ?? conditionValues(condition, rules.setsOf)[0];
-    if (value !== undefined) session[condition.name] = value;
-  }
-  const participant = rules.item?.participant && urlParams[rules.item.participant.param]?.trim();
-  if (participant) session.participant = participant.slice(0, MAX_SESSION_VALUE);
   return session;
 }

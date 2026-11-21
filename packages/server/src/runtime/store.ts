@@ -1,6 +1,6 @@
 import type { DeviceDetails } from "../shared/devices.js";
-import { SET_ACTIVITY_MS, type DeletionRequest, type SessionEnd, type VariableValue } from "@annotinder/contracts";
-import { and, asc, eq, gt, inArray, isNotNull, isNull, lt, or, sql, type AnyColumn } from "drizzle-orm";
+import { inviteOf, type DeletionRequest, type SessionEnd, type VariableValue } from "@annotinder/contracts";
+import { and, asc, eq, inArray, isNotNull, isNull, lt, or, sql, type AnyColumn } from "drizzle-orm";
 import type { Db } from "../db/index.js";
 import {
   annotationValues,
@@ -20,7 +20,7 @@ import { coderAnswers, putCoderValues, toCoder, type CoderRow } from "../shared/
 import { getDeploymentSpec, getPreviewSpec } from "../shared/deployments.js";
 import { listFinished } from "../shared/finished.js";
 import { HttpError } from "../shared/http.js";
-import { emailCoders, sessionValues, type SessionDraw } from "./sessionValues.js";
+import { emailCoders, sessionValues } from "./sessionValues.js";
 import { getSettings } from "../shared/accounts.js";
 import { checkAnswerSize, checkNewCoder, studyLimits } from "../shared/limits.js";
 import { lockUnits, servedUnits } from "../shared/units.js";
@@ -40,7 +40,6 @@ import type {
   Transfer,
   Unit,
 } from "./types.js";
-import { leastUsed } from "./draws.js";
 
 /**
  * What the runtime reads from and writes to the database, for one study: the
@@ -655,8 +654,8 @@ async function findOrCreateCoder(
   if (link.retiredAt !== null) throw new HttpError(403, "This link is no longer active", "link_inactive");
   // A participant id is a label, never a credential: a new device for a
   // known participant gets a *new* session, and only when asked for.
-  const { participantId, session, draws } = sessionValues(
-    request.sessionRules ?? { item: null, setsOf: () => [], signIn: "off" },
+  const { participantId, session } = sessionValues(
+    request.sessionRules ?? { item: null, setsOf: () => [] },
     { params: link.params, participantId: link.participantId },
     request.urlParams ?? {},
     login?.email ?? null,
@@ -672,8 +671,10 @@ async function findOrCreateCoder(
   // A new session of a known participant is the same person: it doesn't use up the link.
   if (!knownParticipant) {
     // Checked and counted in one statement, so concurrent coders can't overrun `max_uses`.
-    // The link's own limit, else the design's sample size per link (docs/architecture.md §5)
-    const maxUses = sql`COALESCE(${links.maxUses}, ${request.sessionRules?.item?.maxUses ?? null}::int)`;
+    // The link's own limit, else a crowd's most coders (docs/architecture.md §5)
+    const invite = inviteOf(request.sessionRules?.item);
+    const maxCoders = invite.mode === "crowd" ? (invite.maxCoders ?? null) : null;
+    const maxUses = sql`COALESCE(${links.maxUses}, ${maxCoders}::int)`;
     const used = await db
       .update(links)
       .set({ uses: sql`${links.uses} + 1` })
@@ -681,48 +682,12 @@ async function findOrCreateCoder(
       .returning({ id: links.id });
     if (used.length === 0) throw new HttpError(403, "This link has been used up", "link_used_up");
   }
-  // Conditions drawn at the start: balanced ones under a lock, counting the sessions that count (`computeVariable`)
-  for (const draw of draws)
-    session[draw.name] = await computeVariable(db, studyId, draw, request.random ?? Math.random);
   const [created] = await db
     .insert(coders)
     .values({ studyId, email: login?.email.toLowerCase() ?? null, participantId, linkId: link.id, session })
     .returning();
   // A new session on a device that had one (`newSession`): the device moves to the new one.
   return { row: created!, deviceId: await addDevice(db, studyId, created!.id, coderKey, device) };
-}
-
-/**
- * A condition's value for a new session (`assign: "random"`): drawn at
- * random, or balanced: the value the fewest sessions have (a tie broken at
- * random), under a lock (released with the transaction that creates the
- * session). Sessions that completed count, and those that haven't ended
- * and started or finished a unit in the last 24 hours (contracts
- * SET_ACTIVITY_MS): values of sessions that dropped out are handed out again.
- */
-async function computeVariable(db: Db, studyId: number, draw: SessionDraw, random: () => number): Promise<string> {
-  if (draw.values.length === 0) throw new HttpError(409, `Condition '${draw.name}' has no values yet`);
-  if (draw.draw === "random")
-    return draw.values[Math.min(draw.values.length - 1, Math.floor(random() * draw.values.length))]!;
-  await advisoryLock(db, `${studyId}/session/${draw.name}`);
-  const since = new Date(Date.now() - SET_ACTIVITY_MS);
-  const value = sql<string>`${coders.session}->>${draw.name}::text`;
-  const recentlyCoded = db
-    .select({ one: sql`1` })
-    .from(unitCodings)
-    .where(and(eq(unitCodings.studyId, studyId), eq(unitCodings.coderId, coders.id), gt(unitCodings.updated, since)));
-  // Sessions that count: completed, or not ended and active in the last day
-  const counting = or(
-    sql`${coders.ended}->>'outcome' = 'complete'`,
-    and(isNull(coders.ended), or(gt(coders.created, since), sql`EXISTS (${recentlyCoded})`)),
-  );
-  const found = await db
-    .select({ value, n: sql<number>`count(*)::int` })
-    .from(coders)
-    .where(and(eq(coders.studyId, studyId), sql`${value} IS NOT NULL`, counting))
-    .groupBy(sql`1`); // the value (by position: its parameter is another each time it's written)
-  const counts = new Map(found.map((r) => [r.value, r.n]));
-  return leastUsed(draw.values, (v) => counts.get(v) ?? 0, random);
 }
 
 /** Per database and key, the last call in line (`inTurn`). */

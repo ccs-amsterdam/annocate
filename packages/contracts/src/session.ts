@@ -120,7 +120,7 @@ export const SessionResponseSchema = z.object({
   session: z.record(z.string(), z.string()).default({}),
   /** The email of the login this session belongs to (docs/coder-identity.md §5); null without. Logged-in coders continue on any device by logging in there. */
   login: z.string().nullable().optional(),
-  /** The study lets coders sign in (`signIn: "optional"`), and they haven't: offer it, to continue on other devices. */
+  /** Coders may sign in (the server has a login), and this one hasn't: offer it, to continue on other devices. */
   canLogIn: z.boolean().optional(),
   /** With `ended`: what its end screen shows. */
   endValues: EndValuesSchema.nullable().optional(),

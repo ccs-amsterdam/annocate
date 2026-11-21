@@ -59,48 +59,7 @@ describe("validateDesignItems", () => {
     ]);
   });
 
-  it("checks a loop's agreement question", () => {
-    const loop = (units: unknown): TopLevelItem =>
-      ({
-        type: "unit_loop",
-        label: "loop",
-        units,
-        layout: { template: "" },
-        children: [questionVar("q1", select(["a", "b"])), questionVar("c1")],
-      }) as TopLevelItem;
-    const valid = [
-      loop({
-        filter: { column: "phase", only: ["post"] },
-        criteria: { until: { agree: 2, on: "q1" }, codersPerUnit: { max: 4 } },
-        overlap: { placement: "first" },
-      }),
-    ];
-    expect(validateDesignItems(valid)).toEqual([]);
-    expect(() => DesignItemsSchema.parse(valid)).not.toThrow();
-    expect(messages([loop({ criteria: { until: { agree: 2, on: "nope" }, codersPerUnit: { max: 3 } } })])).toEqual([
-      "Agreement question 'nope' is not a question in this loop",
-    ]);
-    expect(messages([loop({ criteria: { until: { agree: 2, on: "c1" }, codersPerUnit: { max: 3 } } })])).toEqual([
-      `Agreement needs a question with one categorical answer (nominal without multiple answers, ordinal or swipe); "c1" is a confirm question`,
-    ]);
-    // Branches are gone: a list of settings is not a loop's units
-    expect(DesignItemsSchema.safeParse([loop([{}])]).success).toBe(false);
-  });
-
-  it("requires the most coders per unit with an agreement rule", () => {
-    const items = [
-      {
-        type: "unit_loop",
-        label: "loop",
-        units: { criteria: { until: { agree: 2, on: "q1" } } },
-        layout: { template: "" },
-        children: [questionVar("q1")],
-      },
-    ];
-    expect(() => DesignItemsSchema.parse(items)).toThrow(/most coders per unit when coding until coders agree/);
-  });
-
-  it("checks a loop's filter and criteria", () => {
+  it("checks a loop's units: a filter, special units placed, and the checks on practice and gold units", () => {
     const loop = (units: object) => [
       {
         type: "unit_loop",
@@ -111,21 +70,12 @@ describe("validateDesignItems", () => {
       },
     ];
     expect(messages(loop({}))).toEqual([]);
-    expect(messages(loop({ criteria: { codersPerUnit: { min: 3, max: 2 } } }))).toEqual([
-      "The most coders per unit must be at least the coders (or agreeing coders) a unit needs",
-    ]);
-    expect(messages(loop({ criteria: { unitsPerCoder: { min: 5, max: 2 } } }))).toEqual([
-      "The minimum units per coder can't be more than the maximum",
-    ]);
-    expect(messages(loop({ criteria: {}, overlap: { placement: "spread" } }))).toEqual([
-      "Spreading special units in a shared queue needs a maximum of units per coder (to know where to put them)",
-    ]);
-    expect(messages(loop({ criteria: { unitsPerCoder: { max: 10 } }, overlap: { placement: "spread" } }))).toEqual([]);
-    // Without criteria a coder's units are known: spreading works
-    expect(messages(loop({ overlap: { placement: "spread" } }))).toEqual([]);
-    expect(messages(loop({ overlap: { placement: "last", expect: 20, max: 10 } }))).toEqual([
-      "At most 10 overlap units, but the design expects 20",
-    ]);
+    expect(
+      messages(
+        loop({ filter: { column: "phase", only: ["post"] }, own: false, overlap: "ignore", practice: "before" }),
+      ),
+    ).toEqual([]);
+    expect(messages(loop({ overlap: "first" }))).toEqual([expect.stringContaining("Invalid option")]);
     expect(messages(loop({ filter: { column: "phase" } }))).toEqual(["A filter has either only or except values"]);
     expect(messages(loop({ filter: { column: "phase", only: ["a"], except: ["b"] } }))).toEqual([
       "A filter has either only or except values",
@@ -134,6 +84,8 @@ describe("validateDesignItems", () => {
       expect.stringMatching(/group's name/),
     ]);
     expect(messages(loop({ mode: "all" }))).toEqual([]); // unknown keys are dropped
+    // Branches are gone: a list of settings is not a loop's units
+    expect(DesignItemsSchema.safeParse(loop([{}] as unknown as object)).success).toBe(false);
   });
 
   it("checks computed items: outside loops, linked to a set column, a column each", () => {
@@ -162,22 +114,13 @@ describe("validateDesignItems", () => {
     expect(validateDesignItems([loop, random({ units: "set" })])).toEqual([
       expect.objectContaining({ warning: true, message: expect.stringContaining("comes before computed item 'set'") }),
     ]);
-    const session = { type: "session", params: [], coders: { column: "set" } };
+    const session = { type: "session", invite: { mode: "coders", column: "set", link: "per_coder" } };
     expect(messages([session, random({ units: "set" })])).toEqual([
       "Column 'set' already selects units for the coders: use a column each",
     ]);
-    const named = { type: "session", params: [], conditions: [{ name: "set", values: ["a"], assign: "link" }] };
-    expect(messages([named, random({ units: "other" })])).toEqual([
+    const param = { type: "session", urlParams: [{ name: "set" }] };
+    expect(messages([param, random({ units: "other" })])).toEqual([
       "Computed item 'set' selects units: its name can't also be a session value",
-    ]);
-    // One value per column: drawn independently, two would rarely leave a session any units
-    const assigned = {
-      type: "session",
-      params: [],
-      conditions: [{ name: "framing", values: "free", assign: "random", units: "set" }],
-    };
-    expect(messages([assigned, random({ units: "set" })])).toEqual([
-      "Column 'set' already selects units for condition 'framing': use a column each",
     ]);
     expect(messages([random({ units: "set" }), random({ units: "set" }, "other")])).toEqual([
       "Column 'set' already selects units for computed item 'set': use a column each",
@@ -186,86 +129,69 @@ describe("validateDesignItems", () => {
 });
 
 describe("the Session item", () => {
-  const session = (extra: object) => ({ type: "session", params: [], ...extra });
+  const session = (extra: object) => ({ type: "session", ...extra });
   const q = questionVar("q1");
 
-  it("declares $session names; others are refused", () => {
+  it("declares $session names (its URL parameters and the built-in ones); others are refused", () => {
     const text = {
       type: "question",
       name: "q",
       variable: {
         type: "confirm",
-        question: "Hi $session.group, $session.participant, $session.source, $session.email",
+        question: "Hi $session.group, $session.participant, $session.source, $session.email, $session.coder",
       },
     };
-    const params = [{ name: "group", kind: "link", values: { list: [{ value: "a" }, { value: "b" }] } }];
-    expect(messages([session({ params }), text])).toEqual([]);
+    expect(messages([session({ urlParams: [{ name: "group" }] }), text])).toEqual([]);
     expect(messages([text])).toEqual(["$session.group: no session parameter 'group' (declare it in the Session item)"]);
   });
 
-  it("comes first, once; its parameters are named once, not built in, and link parameters list their values", () => {
+  it("comes first, once; its URL parameters are named once, not built in, with one key each", () => {
     expect(messages([q, session({})])).toEqual(["The Session item comes first in the design, at the top"]);
     expect(messages([session({}), session({})])).toEqual(expect.arrayContaining(["A design has one Session item"]));
-    const dup = [
-      { name: "a", kind: "url", values: { open: {} } },
-      { name: "a", kind: "url", param: "b", values: { open: {} } },
-    ];
-    expect(messages([session({ params: dup })])).toEqual(["Two session parameters are named 'a'"]);
-    expect(messages([session({ params: [{ name: "source", kind: "url", values: { open: {} } }] })])).toContain(
-      "participant, source, email and coder are built in: choose another name",
-    );
-    expect(messages([session({ params: [{ name: "x", kind: "link", values: { open: {} } }] })])).toEqual([
-      "A link parameter needs a list of values: links are made for each",
+    expect(messages([session({ urlParams: [{ name: "a" }, { name: "a", param: "b" }] })])).toEqual([
+      "Two URL parameters are named 'a'",
+    ]);
+    expect(messages([session({ urlParams: [{ name: "a" }, { name: "b", param: "a" }] })])).toEqual([
+      "Two URL parameters use the key 'a'",
     ]);
     expect(
-      messages([session({ params: [{ name: "x", kind: "url", values: { list: [{ value: "a" }] }, default: "b" }] })]),
-    ).toEqual(["The default 'b' is not one of the values"]);
-  });
-
-  it("checks listed combinations against the link parameters", () => {
-    const params = [
-      { name: "cond", kind: "link", values: { list: [{ value: "a" }, { value: "b" }] } },
-      { name: "set", kind: "link", values: { list: [{ value: "s1" }] } },
-    ];
-    expect(messages([session({ params, combinations: [{ cond: "a", set: "s1" }] })])).toEqual([]);
-    expect(messages([session({ params, combinations: [{ cond: "c" }] })])).toEqual([
-      "Combination 1 has no value for set",
-      "Combination 1: 'c' is not a value of cond",
-    ]);
-  });
-});
-
-describe("coders and assigned conditions", () => {
-  const session = (extra: object) => ({ type: "session", params: [], ...extra });
-
-  it("are session values, named once, each by its own column", () => {
-    const conditions = [
-      { name: "framing", values: ["control", "experiment"], assign: "link", units: "framing" },
-      { name: "set", values: "free", assign: "random", units: "set" },
-    ];
-    const text = {
-      type: "question",
-      name: "q",
-      variable: { type: "confirm", question: "$session.coder $session.framing $session.set" },
-    };
-    expect(messages([session({ coders: { column: "coder" }, conditions }), text])).toEqual([]);
-    expect(
-      messages([session({ conditions: [...conditions, { name: "framing", values: ["a"], assign: "link" }] })]),
-    ).toEqual(["Two session values are named 'framing'"]);
-    expect(messages([session({ coders: { column: "framing" }, conditions })])).toEqual([
-      "Column 'framing' already selects units for another session value: use a column each",
-    ]);
-    expect(messages([session({ conditions: [{ name: "coder", values: ["a"], assign: "link" }] })])).toEqual([
+      messages([
+        session({ urlParams: [{ name: "a", param: "PID" }], invite: { mode: "crowd", participant: { param: "PID" } } }),
+      ]),
+    ).toEqual(["Two URL parameters use the key 'PID'"]);
+    expect(messages([session({ urlParams: [{ name: "source" }] })])).toContain(
       "participant, source, email and coder are built in: choose another name",
-    ]);
-    expect(messages([session({ conditions: [{ name: "x", values: "free", assign: "link" }] })])).toEqual([
-      "Free values come from a set column: link the condition to one",
-    ]);
-    expect(messages([session({ conditions: [{ name: "x", values: ["a"], assign: "link", draw: "random" }] })])).toEqual(
-      ["Only a random assignment draws"],
     );
-    expect(messages([session({ conditions: [{ name: "x", values: ["a", "_b"], assign: "link" }] })])).toEqual([
-      "A value has no ; or #, no spaces at its ends, and doesn't start with _",
+    expect(messages([session({ urlParams: [{ name: "x", values: [{ value: "a" }], default: "b" }] })])).toEqual([
+      "The default 'b' is not one of the values",
+    ]);
+    expect(messages([session({ urlParams: [{ name: "x", values: [{ value: "a" }], pattern: "a" }] })])).toEqual([
+      "Give values or a pattern, not both",
+    ]);
+  });
+
+  it("checks the invitation: specific coders by a set column, or a crowd with a shared queue", () => {
+    const loop = unitLoop("loop", [questionVar("q1", select(["a", "b"])), questionVar("c1")]);
+    const crowd = (units: object) => session({ invite: { mode: "crowd", units } });
+    expect(messages([session({ invite: { mode: "coders", column: "coders", link: "per_coder" } }), loop])).toEqual([]);
+    expect(messages([session({ invite: { mode: "coders", link: "per_coder" } })])).toEqual([
+      expect.stringContaining("Invalid input"),
+    ]);
+    expect(messages([crowd({ until: { agree: 2, on: "q1" }, codersPerUnit: { max: 4 } }), loop])).toEqual([]);
+    expect(messages([crowd({ until: { agree: 2, on: "nope" }, codersPerUnit: { max: 3 } }), loop])).toEqual([
+      "Agreement question 'nope' is not a question in a unit loop",
+    ]);
+    expect(messages([crowd({ until: { agree: 2, on: "c1" }, codersPerUnit: { max: 3 } }), loop])).toEqual([
+      `Agreement needs a question with one categorical answer (nominal without multiple answers, ordinal or swipe); "c1" is a confirm question`,
+    ]);
+    expect(messages([crowd({ until: { agree: 2, on: "q1" } }), loop])).toEqual([
+      expect.stringContaining("most coders per unit when coding until coders agree"),
+    ]);
+    expect(messages([crowd({ codersPerUnit: { min: 3, max: 2 } })])).toEqual([
+      "The most coders per unit must be at least the coders (or agreeing coders) a unit needs",
+    ]);
+    expect(messages([crowd({ unitsPerCoder: { min: 5, max: 2 } })])).toEqual([
+      "The minimum units per coder can't be more than the maximum",
     ]);
   });
 });
@@ -678,7 +604,7 @@ describe("end items", () => {
 
   it("can end the session inside a condition, with a message and a redirect", () => {
     const items = [
-      { type: "session", params: [{ name: "pid", kind: "url", values: { open: {} } }] },
+      { type: "session", urlParams: [{ name: "pid" }] },
       questionVar("consent", select(["yes", "no"])),
       topCondition(
         "gate",
@@ -726,7 +652,7 @@ describe("availableQuestions", () => {
 describe("practice and gold units", () => {
   const loop = (units: object, template = "$unit.text") => ({
     type: "unit_loop",
-    units: { overlap: { placement: "spread" }, ...units },
+    units: { overlap: "spread", ...units },
     layout: { template },
     children: [questionVar("sentiment", select(["pos", "neg"])), questionVar("note", { type: "unspecified" })],
   });
@@ -734,12 +660,13 @@ describe("practice and gold units", () => {
 
   it("check loop questions with a value to compare, and a screen-out end item", () => {
     const ok = loop({
-      practice: { placement: "first", questions: ["sentiment"] },
-      gold: { placement: "spread", questions: ["sentiment"], health: { start: 3, wrong: -1, end: "low_quality" } },
+      practice: "before",
+      practiceCheck: { questions: ["sentiment"] },
+      goldCheck: { questions: ["sentiment"], health: { start: 3, wrong: -1, end: "low_quality" } },
     });
     expect(messages([ok, end]).filter((m) => /practice|gold|end item/i.test(m))).toEqual([]);
     const bad = loop({
-      gold: { placement: "spread", questions: ["nope", "note"], health: { start: 3, wrong: -1, end: "missing" } },
+      goldCheck: { questions: ["nope", "note"], health: { start: 3, wrong: -1, end: "missing" } },
     });
     expect(messages([bad, end])).toEqual(
       expect.arrayContaining([
@@ -751,7 +678,7 @@ describe("practice and gold units", () => {
   });
 
   it("keep the answer columns hidden from coders", () => {
-    const shown = loop({ gold: { placement: "first", questions: ["sentiment"] } }, "$unit.text $unit.sentiment_gold");
+    const shown = loop({ goldCheck: { questions: ["sentiment"] } }, "$unit.text $unit.sentiment_gold");
     expect(messages([shown])).toEqual(
       expect.arrayContaining([expect.stringContaining("sentiment_gold is shown to coders")]),
     );

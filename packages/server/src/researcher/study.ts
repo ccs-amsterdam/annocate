@@ -43,7 +43,6 @@ export function studies(server: Server): Hono<Env> {
           archived: parsed.data.archived ?? false,
           ownerId,
           keepSessionsOpen: parsed.data.keepSessionsOpen ?? false,
-          signIn: parsed.data.signIn ?? "off",
         })
         .returning();
       // Development headers keep the bootstrap rule instead (a study without user roles is open).

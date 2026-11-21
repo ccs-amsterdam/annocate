@@ -1,6 +1,6 @@
 {
-  "id": "0e1647c7-c130-43c6-81cf-092f47ce1420",
-  "prevId": "7f90273a-f565-4f85-b662-6e9a7075a26d",
+  "id": "37f5ac76-3831-4feb-b647-a0d851bb92f7",
+  "prevId": "72533cf7-39b4-4e2d-8e7d-d0341225ffc8",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1411,13 +1411,6 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
-        },
-        "sign_in": {
-          "name": "sign_in",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'off'"
         }
       },
       "indexes": {},
@@ -1439,12 +1432,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "studies_sign_in_check": {
-          "name": "studies_sign_in_check",
-          "value": "\"studies\".\"sign_in\" IN ('off', 'optional', 'required')"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.unit_draft": {

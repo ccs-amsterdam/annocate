@@ -15,13 +15,8 @@
       "title": "A short study"
     },
     "session": {
-      "params": [],
       "end": {
         "message": "Thank you! The article was written for this study: the wind farm is not real."
-      },
-      "uses": {
-        "content": "questions",
-        "experiment": true
       }
     },
     "items": [

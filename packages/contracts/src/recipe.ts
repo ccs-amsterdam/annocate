@@ -3,7 +3,6 @@ import { DraftItemsSchema } from "./design/designVersion.js";
 import { PublicInfoSchema, SessionSpecSchema } from "./design/session.js";
 import { UnitDataSchema } from "./common.js";
 import { SetGroupNameSchema, SetNameSchema } from "./sets.js";
-import { SignInSchema } from "./study.js";
 import { UnitsSpecSchema } from "./unitFields.js";
 
 /**
@@ -43,8 +42,6 @@ export const RecipeSchema = z.object({
     units: UnitsSpecSchema.optional(),
     items: DraftItemsSchema,
   }),
-  /** Whether coders sign in (the study's setting; default `off`). */
-  signIn: SignInSchema.optional(),
   /** Deploy the design, so coders can start right away (examples). Default: a draft. */
   publish: z.boolean().default(false),
 });
