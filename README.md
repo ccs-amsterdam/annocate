@@ -74,6 +74,7 @@ chromium`, or point `PLAYWRIGHT_CHROMIUM_PATH` at an installed Chromium.
 ## Hosting
 
 `docker compose up -d --build` runs AnnoTinder with Postgres and daily
-database dumps, from `.env` (copy `.env.example`). `scripts/smoke-test.sh
+database dumps, from `.env` (copy `.env.example`), and optionally Caddy for
+HTTPS (`COMPOSE_PROFILES=caddy`). `scripts/smoke-test.sh
 <url>` checks a running server. [`docs/hosting.md`](docs/hosting.md) has a
 step-by-step guide for a pilot server, and the settings.

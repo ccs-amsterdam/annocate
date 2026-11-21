@@ -1,0 +1,7 @@
+# The `caddy` profile of compose.yml (docs/hosting.md, "Caddy in Docker").
+# The site is ANNOTINDER_PUBLIC_URL from .env (https://<host>): Caddy gets a
+# Let's Encrypt certificate for that host and forwards to the app on
+# 127.0.0.1:8787 (Caddy runs in the host's network).
+{$ANNOTINDER_PUBLIC_URL} {
+	reverse_proxy 127.0.0.1:8787
+}

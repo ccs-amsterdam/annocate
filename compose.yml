@@ -3,6 +3,8 @@
 # dumps in `backups/`. The app listens on 127.0.0.1:8787 only, for a proxy on
 # this machine that does HTTPS (Caddy). Build and start, with the commit:
 #   sudo ANNOTINDER_COMMIT=$(sudo -u sal git rev-parse --short HEAD) docker compose up -d --build
+# On a server with nothing else on ports 80 and 443, the `caddy` profile runs
+# that proxy here as well (COMPOSE_PROFILES=caddy in .env, or --profile caddy).
 
 # Container logs (`docker compose logs`) are files that Docker never trims by
 # itself: each service keeps at most 3 files of 10 MB.
@@ -68,5 +70,28 @@ services:
       - ./scripts/db-backup.sh:/db-backup.sh:ro
       - ./backups:/backups
 
+  caddy:
+    # Optional (the `caddy` profile): HTTPS on ports 80 and 443 for
+    # ANNOTINDER_PUBLIC_URL, instead of a Caddy installed on the host. In the
+    # host's network, so the app sees the real client addresses (also over
+    # IPv6) and the Caddyfile forwards to 127.0.0.1:8787 as on the host.
+    image: caddy:2.11.9-alpine
+    profiles: [caddy]
+    restart: unless-stopped
+    logging: *logging
+    network_mode: host
+    environment:
+      ANNOTINDER_PUBLIC_URL: ${ANNOTINDER_PUBLIC_URL:?set ANNOTINDER_PUBLIC_URL in .env}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # The certificates and the ACME account: keep them, or Let's Encrypt's
+      # rate limits may refuse new ones after a few recreations
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
 volumes:
   db-data:
+  caddy-data:
+  caddy-config:

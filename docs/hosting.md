@@ -479,6 +479,40 @@ does TLS and forwards to it, keeping the `Host` header and setting
 `X-Forwarded-Proto` and `X-Forwarded-For`. Caddy does all of that with the
 two-line site block of step 7.
 
+### Caddy in Docker
+
+On a server where nothing else uses ports 80 and 443, the compose file can
+run Caddy as well, so no proxy needs to be installed on the host. It is the
+optional `caddy` service, in the profile of the same name. Turn it on in
+`.env`:
+
+```bash
+COMPOSE_PROFILES=caddy
+```
+
+and start as usual (or pass `--profile caddy` to each `docker compose`
+command instead):
+
+```bash
+ANNOTINDER_COMMIT=$(git rev-parse --short HEAD) docker compose up -d --build
+```
+
+Caddy serves `ANNOTINDER_PUBLIC_URL` (`caddy/Caddyfile`), gets a Let's
+Encrypt certificate for its host by itself, and forwards to the app on
+`127.0.0.1:8787`. Before the first start:
+
+- DNS for the host points to the server (step 1);
+- ports 80 and 443 (TCP, and 443/UDP for HTTP/3) are open in the firewall,
+  and nothing else listens on them, such as a Caddy or nginx on the host.
+
+Caddy runs in the host's network (`network_mode: host`) rather than behind
+ports that Docker publishes: that way the app sees each visitor's own
+address, also over IPv6, for its rate limits, and the firewall applies to
+Caddy as to any program on the host. The certificates are kept in the
+`caddy-data` volume; don't delete it, or Let's Encrypt may refuse new
+certificates for a while. Caddy's log: `docker compose logs caddy`. After a
+change to `caddy/Caddyfile`, `docker compose restart caddy`.
+
 ## Settings
 
 | Variable | What |
