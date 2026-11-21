@@ -21,6 +21,7 @@ The zip is named after the study and the date, such as
 | `variables.csv`      | design version, question and option | the questions, their values and labels                                                                |
 | `designs/v<n>.json`  | design version                      | the whole design, with the AnnoTinder release and commit it ran on: to archive or reproduce the study |
 | `devices.csv`        | device                              | the devices coders used (kind, browser, operating system)                                             |
+| `display_changes.csv` | change of a coder's display        | their keys for answers, screen width and theme, and when each changed                                 |
 | `timings.csv`        | answer                              | how long coders took per question                                                                     |
 | `deleted_coders.csv` | deleted coder session               | coders whose data was deleted, to delete them from earlier downloads too                              |
 | `README.txt`         |                                     | what the columns mean                                                                                 |
@@ -94,6 +95,7 @@ A row per coder session (`session_id`): a coder who started again on another dev
 | `started`, `last_active`                                 | When they started, and when they last answered                                                                                                                                    |
 | `ended`, `ended_at`                                      | `complete` or `screenout` if their session ended at an end item (see [Ending a session](end-items.md)), `quit` if the coder quit, and when                                        |
 | `deletion_requested`                                     | When the coder asked for their answers to be deleted, if they did and you haven't deleted them yet (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)) |
+| `display`                                                | How their screen looked: their keys for answers, in a [responsive](answer-layouts.md#fixed-or-responsive) study the width, where they choose it the theme; each distinct one, e.g. `numbers, narrow; numpad, wide` |
 | `session.<name>`                                         | The session's values: its URL parameters and `source` (its coder is the `coder` column)                                                                                           |
 | `finished_<loop>`                                        | How many units they finished in each unit loop, such as `finished_News items`                                                                                                     |
 | `overlap_finished`, `gold_finished`, `practice_finished` | How many units of the deployed `_overlap`, `_gold` and `_practice` sets they finished, if the study has them (see [Overlap, gold and practice units](special-units.md))           |
@@ -129,6 +131,17 @@ The devices coders used, a row per device: `device_id`, `session_id`,
 A coder who continued on another device has a row for each. These are
 coarse categories, as survey tools report them, not a fingerprint of the
 device.
+
+## display_changes.csv
+
+How each coder's screen looked, a row per change: `session_id`, `at` (when),
+`keys` (`numbers`, `numpad`, `letters` or `filter`), `width` (`narrow` or
+`wide`, only in [responsive](answer-layouts.md#fixed-or-responsive) studies,
+where layouts follow it) and `theme` (`light` or `dark`, where coders choose
+it). The first row of a session is when it started; a width that changed
+back within a few seconds (a window being resized) isn't listed. To know
+how a coder's screen looked when they gave an answer, take their last row
+before the answer's time. At most 100 rows per session.
 
 ## timings.csv
 

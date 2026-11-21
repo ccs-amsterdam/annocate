@@ -1198,6 +1198,25 @@ describe("URL parameters", () => {
   });
 });
 
+describe("the coder's display", () => {
+  it("is recorded when it changes, with when; the same again isn't; at most 100", async () => {
+    const c = coder("screen");
+    const post = (entry: object) => c.call("/display", { method: "POST", body: JSON.stringify(entry) });
+    expect((await post({ keys: "numbers", width: "narrow" })).status).toBe(204);
+    await post({ keys: "numbers", width: "narrow" });
+    await post({ keys: "numpad", width: "wide" });
+    expect((await post({ keys: "" })).status).toBe(400);
+    const progress = async () =>
+      ((await (await server.request("/api/study/1/coders", { headers: adminHeaders })).json()) as CoderProgress[])[0];
+    expect((await progress()).display).toEqual([
+      { keys: "numbers", width: "narrow", at: expect.any(String) },
+      { keys: "numpad", width: "wide", at: expect.any(String) },
+    ]);
+    for (let i = 0; i < 120; i++) await post({ keys: i % 2 ? "letters" : "numbers" });
+    expect((await progress()).display).toHaveLength(100);
+  });
+});
+
 describe("the coder's id from the URL", () => {
   it("is $session.coder; optional: a link without it starts without one", async () => {
     await redeploy({}, [crowd(undefined, { coderParam: { param: "PID", optional: true } })]);

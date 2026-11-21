@@ -2,6 +2,7 @@ import { Hono, type Context } from "hono";
 import {
   EndSessionSchema,
   QuitSessionSchema,
+  DisplayEntrySchema,
   NextUnitQuerySchema,
   PostCoderVariablesSchema,
   PostUnitVariablesSchema,
@@ -203,6 +204,12 @@ export function coderApi(server: Server): Hono {
 
   session.post("/reopen", async (c) => {
     await c.get("runtime").reopenSession(c.get("coder"));
+    return c.body(null, 204);
+  });
+
+  session.post("/display", async (c) => {
+    const body = await parseBody(c, DisplayEntrySchema);
+    await c.get("runtime").recordDisplay(c.get("coder"), body);
     return c.body(null, 204);
   });
 

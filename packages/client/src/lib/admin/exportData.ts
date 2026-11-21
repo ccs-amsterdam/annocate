@@ -12,6 +12,7 @@ import {
   type CoderDeletion,
   type Device,
   type CoderProgress,
+  type DisplayChange,
   type OptionValue,
   type TopLevelItem,
   type UnitVersion,
@@ -409,6 +410,7 @@ export function codersTable(
       "ended",
       "ended_at",
       "deletion_requested",
+      "display",
       ...sessionNames.map((n) => `session.${n}`),
       ...loops.map((l) => `finished_${l}`),
       ...specials.map((kind) => `${kind}_finished`),
@@ -424,6 +426,7 @@ export function codersTable(
       c.ended?.outcome ?? "",
       time(c.ended?.at),
       time(c.deletionRequest?.at),
+      displaySummary(c.display ?? []),
       ...sessionNames.map((n) => c.session?.[n] ?? ""),
       ...loops.map((l) => String(c.finished[l] ?? 0)),
       ...specials.map((kind) => String(c.special?.[kind]?.done ?? 0)),
@@ -602,6 +605,22 @@ export function timingsTable(annotations: AnnotationRow[], coders: CoderProgress
   };
 }
 
+/** A session's displays in a cell: each distinct one once, in order ("numbers, wide; numpad, wide"). */
+export function displaySummary(changes: readonly DisplayChange[]): string {
+  const shown = changes.map((d) => [d.keys, d.width, d.theme].filter(Boolean).join(", "));
+  return [...new Set(shown)].join("; ");
+}
+
+/** How coders' screens looked, a row per change: join answers on session_id and their time. */
+export function displayChangesTable(coders: CoderProgress[]): Table {
+  return {
+    headers: ["session_id", "at", "keys", "width", "theme"],
+    rows: coders.flatMap((c) =>
+      (c.display ?? []).map((d) => [String(c.id), d.at, d.keys, d.width ?? "", d.theme ?? ""]),
+    ),
+  };
+}
+
 /** The devices coders used (`device_id` in annotations.csv): coarse details, when each joined its session. */
 export function devicesTable(devices: Device[]): Table {
   return {
@@ -676,6 +695,12 @@ designs/v<n>.json  Each design version answers were given under (and the
                  were handed out, session, unit fields), with the AnnoTinder
                  release and commit it ran on (client). Open it in the
                  design viewer of that release to see what coders saw.
+display_changes.csv  How each coder's screen looked, a row per change: their
+                 keys for answers (numbers, numpad, letters, filter), in
+                 responsive studies the width (narrow or wide), and where
+                 coders choose it the theme; at: when it changed. Join
+                 answers on session_id and time. coders.csv's display
+                 column lists each session's displays.
 devices.csv      The devices coders used: device type (phone, tablet,
                  desktop), browser and operating system, and when each
                  joined its coder's session (a coder who continued on

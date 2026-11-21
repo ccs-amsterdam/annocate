@@ -28,7 +28,7 @@ import { dropRepeatedClick } from "./inputGuards";
 import { KeyboardProvider } from "../keyboard/KeyboardProvider";
 import { useBaseKeys } from "../keyboard/hooks";
 import { DisplayContext, useDisplay, type DisplayState } from "../display/context";
-import { useWidthClass } from "../display/hooks";
+import { useDisplayLog, useWidthClass } from "../display/hooks";
 import { MAPPINGS, mappingById } from "../keyboard/mappings";
 import { Button } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -241,18 +241,30 @@ function StudyRunnerContent({
   const { manager, snapshot } = useStudyManager(coderApi);
   const [navDirection, setNavDirection] = useState<"next" | "previous">("next");
   // How the coding screen looks: the study's display setting, and the coding area's width
-  const screen = useRef<HTMLDivElement>(null);
-  const width = useWidthClass(screen);
+  const [width, screen] = useWidthClass();
   const display: DisplayState = {
     layouts: snapshot.display.layouts ?? "fixed",
     theme: snapshot.display.theme ?? "coder",
     width,
   };
-  const { lockTheme } = useCoderSettings();
+  const { lockTheme, keyMapping, theme: shownTheme } = useCoderSettings();
   useEffect(() => {
     lockTheme(display.theme === "coder" ? null : display.theme);
     return () => lockTheme(null);
   }, [display.theme, lockTheme]);
+  // Recorded with the session: the keys (the numpad only where it works), the width where layouts follow it,
+  // the theme where the coder chooses it
+  const loaded = snapshot.phase !== "loading" && snapshot.phase !== "error";
+  useDisplayLog(
+    coderApi.postDisplay ? (entry) => coderApi.postDisplay!(entry) : undefined,
+    loaded
+      ? {
+          keys: keyMapping === "numpad" && display.layouts !== "responsive" ? "numbers" : keyMapping,
+          ...(display.layouts === "responsive" ? { width } : {}),
+          ...(display.theme === "coder" ? { theme: shownTheme } : {}),
+        }
+      : null,
+  );
   // The keys that work whatever the mapping: arrows, Shift + arrows, Backspace, Enter
   useBaseKeys({
     canGoBack: snapshot.navigation.canGoBack,

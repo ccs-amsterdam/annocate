@@ -39,6 +39,7 @@ const row = (
 });
 const coder = (id: number, extra: Partial<CoderProgress> = {}): CoderProgress => ({
   id,
+  display: [],
   linkId: 1,
   linkLabel: "Open link",
   started: at,
@@ -175,6 +176,11 @@ describe("data download", () => {
         coder: "p1",
         variables: { age: { done: true, skip: false, values: [{ value: 42 }] } },
         ended: { item: "done", outcome: "complete", at },
+        display: [
+          { keys: "numbers", width: "narrow", at: "2026-01-01T10:00:00.000Z" },
+          { keys: "numpad", width: "wide", at: "2026-01-01T10:05:00.000Z" },
+          { keys: "numbers", width: "narrow", at: "2026-01-01T10:09:00.000Z" },
+        ],
       }),
     ]);
     expect(table.headers).toEqual([
@@ -187,6 +193,7 @@ describe("data download", () => {
       "ended",
       "ended_at",
       "deletion_requested",
+      "display",
       "finished_main",
       "age",
     ]);
@@ -200,9 +207,21 @@ describe("data download", () => {
       "complete",
       at.toISOString(),
       "",
+      "numbers, narrow; numpad, wide",
       "1",
       "42",
     ]);
+  });
+
+  it("lists every change of a coder's display, to join answers by time", async () => {
+    const { displayChangesTable } = await import("./exportData");
+    const table = displayChangesTable([
+      coder(3, { display: [{ keys: "letters", theme: "dark", at: "2026-01-01T10:00:00.000Z" }] }),
+    ]);
+    expect(table).toEqual({
+      headers: ["session_id", "at", "keys", "width", "theme"],
+      rows: [["3", "2026-01-01T10:00:00.000Z", "letters", "", "dark"]],
+    });
   });
 
   it("orders the finished columns of unit loops naturally (2 before 10)", () => {

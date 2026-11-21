@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { IdSchema } from "./common.js";
-import { DeletionRequestSchema, SessionEndSchema } from "./session.js";
+import { DeletionRequestSchema, DisplayChangeSchema, SessionEndSchema } from "./session.js";
 import { VariableValueSchema } from "./variableValue.js";
 
 /**
@@ -51,6 +51,8 @@ export const CoderProgressSchema = z.object({
   session: z.record(z.string(), z.string()),
   /** Set if the coder asked for their answers to be deleted (until the researcher deletes their data). */
   deletionRequest: DeletionRequestSchema.nullable(),
+  /** How their screen looked, and when it changed (keys, width class, theme; docs/client.md §4 "Display"). */
+  display: z.array(DisplayChangeSchema),
 });
 export type CoderProgress = z.infer<typeof CoderProgressSchema>;
 

@@ -10,6 +10,7 @@ import {
   TransferResponseSchema,
   RedeemTransferSchema,
   RedeemTransferResponseSchema,
+  DisplayEntrySchema,
 } from "../session.js";
 
 /** The most units handed out (and, in a shared queue, leased) to a coder at once. */
@@ -106,6 +107,8 @@ export const coderEndpoints = {
    */
   quitSession: { method: "POST", path: "/quit", request: QuitSessionSchema, response: z.void() },
   createTransfer: { method: "POST", path: "/transfer", request: z.void(), response: TransferResponseSchema },
+  /** How the coder's screen looks now (keys, width class, theme): recorded when it changed. */
+  postDisplay: { method: "POST", path: "/display", request: DisplayEntrySchema, response: z.void() },
   /**
    * A `pick_name` link's names (with `x-link-secret`): the coders' column's
    * values, and which are taken (another device's, where a name is the first

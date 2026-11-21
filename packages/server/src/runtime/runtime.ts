@@ -37,6 +37,7 @@ import {
   type TopLevelItem,
   type VariableValue,
   type PickNamesResponse,
+  type DisplayEntry,
 } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 import { Codings, UnitPool, pickNext, type AgreementKeys, type OverlapPlacement } from "./distribution.js";
@@ -614,6 +615,11 @@ export class DeploymentRuntime {
    * item stays). With `requestDeletion` they ask for their answers to be
    * deleted, also after the session ended; the researcher decides.
    */
+  /** How the coder's screen looks now (docs/client.md §4 "Display"): recorded when it changed. */
+  async recordDisplay(coder: Coder, entry: DisplayEntry): Promise<void> {
+    await this.store.recordDisplay(coder.sessionId, entry);
+  }
+
   async quitSession(coder: Coder, requestDeletion: boolean): Promise<void> {
     const at = new Date(this.options.now());
     if (!coder.ended) {

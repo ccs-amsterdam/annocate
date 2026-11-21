@@ -244,7 +244,8 @@ CREATE TABLE "coder_sessions" (
 	"assignments" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"created" timestamp with time zone DEFAULT now() NOT NULL,
 	"ended" jsonb,
-	"deletion_request" jsonb
+	"deletion_request" jsonb,
+	"display" jsonb DEFAULT '[]'::jsonb NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "session_deletions" (

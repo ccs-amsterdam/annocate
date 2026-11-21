@@ -147,6 +147,7 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
     ended: c.ended,
     deletionRequest: c.deletionRequest,
     session: c.session,
+    display: c.display,
   }));
 }
 

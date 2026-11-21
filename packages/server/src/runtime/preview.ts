@@ -159,6 +159,9 @@ export class PreviewStore implements Store {
     return values;
   }
 
+  /** Previews keep nothing. */
+  async recordDisplay(): Promise<void> {}
+
   async requestDeletion(sessionId: number, request: DeletionRequest): Promise<void> {
     const coder = this.coders.get(sessionId);
     if (coder) coder.deletionRequest = request;

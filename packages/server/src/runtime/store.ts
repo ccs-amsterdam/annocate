@@ -1,5 +1,12 @@
 import type { DeviceDetails } from "../shared/devices.js";
-import { inviteOf, type DeletionRequest, type SessionEnd, type VariableValue } from "@annotinder/contracts";
+import {
+  MAX_DISPLAY_CHANGES,
+  inviteOf,
+  type DeletionRequest,
+  type DisplayEntry,
+  type SessionEnd,
+  type VariableValue,
+} from "@annotinder/contracts";
 import { and, asc, eq, inArray, isNotNull, isNull, lt, or, sql, type AnyColumn } from "drizzle-orm";
 import type { Db } from "../db/index.js";
 import {
@@ -87,6 +94,8 @@ export interface Store {
   freezeCoderValues(sessionId: number, names: string[]): Promise<void>;
   /** Records the coder's request to delete their answers (a new request replaces a postponed one). */
   requestDeletion(sessionId: number, request: DeletionRequest): Promise<void>;
+  /** Records how the coder's screen looks now, if it changed (at most MAX_DISPLAY_CHANGES). */
+  recordDisplay(sessionId: number, entry: DisplayEntry): Promise<void>;
   listFinished(request: FinishedRequest): Promise<Finished[]>;
   /** One coder's live answers for one unit, by variable (empty if none). */
   unitAnswers(sessionId: number, unitId: number): Promise<Record<string, VariableValue>>;
@@ -298,6 +307,21 @@ export class DbStore implements Store {
 
   async requestDeletion(sessionId: number, request: DeletionRequest): Promise<void> {
     await this.db.update(coderSessions).set({ deletionRequest: request }).where(this.coder(sessionId));
+  }
+
+  async recordDisplay(sessionId: number, entry: DisplayEntry): Promise<void> {
+    // Appended when it differs from the last one, while there are fewer than the most
+    const change = JSON.stringify({ ...entry, at: new Date().toISOString() });
+    await this.db
+      .update(coderSessions)
+      .set({ display: sql`${coderSessions.display} || jsonb_build_array(${change}::jsonb)` })
+      .where(
+        and(
+          this.coder(sessionId),
+          sql`jsonb_array_length(${coderSessions.display}) < ${MAX_DISPLAY_CHANGES}`,
+          sql`(jsonb_array_length(${coderSessions.display}) = 0 OR (${coderSessions.display} -> -1) - 'at' <> ${JSON.stringify(entry)}::jsonb)`,
+        ),
+      );
   }
 
   async listFinished(request: FinishedRequest): Promise<Finished[]> {

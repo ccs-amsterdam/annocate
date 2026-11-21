@@ -237,6 +237,18 @@ be deleted (also after the session ended): `GET /session` then returns
 A one-time token to continue this session on another device ("Continue on
 another device").
 
+### postDisplay
+
+`POST /display` (`DisplayEntrySchema`: `{ keys, width?, theme? }`) → 204
+
+How the coder's screen looks now (docs/client.md §4 "Display"): their keys
+for answers, in responsive studies the width class (`narrow` / `wide`),
+where coders choose it the theme. Sent when the coding screen starts and
+when it changes (a width change after 3 seconds without another). Recorded
+on the session with a timestamp when it differs from the last entry, at most
+`MAX_DISPLAY_CHANGES` (100); the researcher's coder list shows them
+(`CoderProgress.display`).
+
 ### getNames
 
 `GET /names` (with `x-link-secret`) → `PickNamesResponseSchema`

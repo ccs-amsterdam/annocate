@@ -9,6 +9,7 @@ import {
   type CoderUnitResponse,
   type NextUnitsResponse,
   type PickNamesResponse,
+  type DisplayEntry,
   type TransferResponse,
   type VariableValue,
 } from "@annotinder/contracts";
@@ -65,6 +66,8 @@ export interface CoderApi {
   reopenSession(): Promise<void>;
   /** The coder quits (the session ends, if it hadn't); with `requestDeletion` they ask for their answers to be deleted. */
   quitSession(requestDeletion: boolean): Promise<void>;
+  /** How the coder's screen looks now (keys, width class, theme): recorded when it changed. */
+  postDisplay?(entry: DisplayEntry): Promise<void>;
   /** A one-time token to continue this session on another device (docs/coder-identity.md). */
   createTransfer?(): Promise<TransferResponse>;
 }
@@ -217,5 +220,9 @@ export class HttpCoderApi implements CoderApi {
 
   async quitSession(requestDeletion: boolean): Promise<void> {
     await this.request(coderEndpoints.quitSession.path, { method: "POST", body: JSON.stringify({ requestDeletion }) });
+  }
+
+  async postDisplay(entry: DisplayEntry): Promise<void> {
+    await this.request(coderEndpoints.postDisplay.path, { method: "POST", body: JSON.stringify(entry) });
   }
 }

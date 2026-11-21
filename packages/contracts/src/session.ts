@@ -53,6 +53,24 @@ export const DeletionRequestSchema = z.object({
 });
 export type DeletionRequest = z.infer<typeof DeletionRequestSchema>;
 
+/**
+ * How a coder's screen looked (docs/client.md §4 "Display"), sent by the
+ * coding screen when it starts and when it changes: their keys for answers;
+ * in responsive studies the width class; where the study lets them choose,
+ * their theme. Recorded with a timestamp on the session.
+ */
+export const DisplayEntrySchema = z.object({
+  keys: z.string().min(1).max(20),
+  width: z.enum(["narrow", "wide"]).optional(),
+  theme: z.enum(["light", "dark"]).optional(),
+});
+export type DisplayEntry = z.infer<typeof DisplayEntrySchema>;
+/** A recorded change of display: the entry and when (ISO time). */
+export const DisplayChangeSchema = DisplayEntrySchema.extend({ at: z.string() });
+export type DisplayChange = z.infer<typeof DisplayChangeSchema>;
+/** At most this many changes are recorded per session (resizing can't flood it). */
+export const MAX_DISPLAY_CHANGES = 100;
+
 /** Body for `POST /quit`: the coder stops for good, optionally asking for their answers to be deleted. */
 export const QuitSessionSchema = z.object({ requestDeletion: z.boolean().default(false) });
 export type QuitSession = z.infer<typeof QuitSessionSchema>;

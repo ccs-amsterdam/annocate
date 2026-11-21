@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import type { StudyResponse, UnitResponse } from "@annotinder/contracts";
 import { expect, test } from "./fixtures";
-import { answers, api, question } from "./helpers";
+import { answers, api, coders, question } from "./helpers";
 
 // Navigating while coding, in a real browser against the real server:
 // Previous and Next, the menu, changing an earlier answer, a reload, and
@@ -350,4 +350,49 @@ test("display: the numpad only in a responsive study (three columns, 7 8 9 at th
   await expect(badges).toHaveText(["7", "8", "9", "4"]);
   await page.keyboard.press("8");
   await expect(page.getByRole("button", { name: /economy/ })).toHaveAttribute("aria-pressed", "true");
+});
+
+test("display: each coder's keys and screen are recorded when they change; quick resizes only where they end", async ({
+  page,
+  request,
+}) => {
+  const created = await api<StudyResponse>(request, "POST", "/study", { name: "Display log" });
+  await api<UnitResponse[]>(request, "POST", `/study/${created.id}/units`, {
+    units: [{ externalId: "u1", data: { text: "First text" } }],
+  });
+  const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, {
+    session: { display: { layouts: "responsive" } },
+    items: [
+      {
+        type: "unit_loop",
+        layout: { template: "$unit.text" },
+        children: [nominal("topic", "Topic?", ["politics", "other"])],
+      },
+    ],
+  });
+  await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
+  const logged = async () =>
+    (await coders(request, created.id))[0]?.display.map((d) => [d.keys, d.width ?? "", d.theme ?? ""].join(" ")) ?? [];
+
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto(`/code/${created.id}?link=${link.secret}`);
+  await question(page, "Topic?");
+  await expect.poll(logged).toEqual([expect.stringMatching(/^numbers narrow (light|dark)$/)]);
+
+  // A change of keys: recorded right away
+  await page.getByRole("button", { name: "Coder Settings" }).click();
+  await page.getByLabel("Keys for answers").selectOption("letters");
+  await page.keyboard.press("Escape");
+  await expect.poll(logged).toHaveLength(2);
+
+  // Wide, then narrow again within 3 seconds: nothing; then wide for good: one entry
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await page.waitForTimeout(500);
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.waitForTimeout(3500);
+  expect(await logged()).toHaveLength(2);
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await expect.poll(logged, { timeout: 8000 }).toHaveLength(3);
+  expect((await logged())[2]).toMatch(/^letters wide/);
 });

@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { bigint, boolean, index, integer, jsonb, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
-import type { AnswerTiming, DeletionRequest, SessionEnd, VariableValue } from "@annotinder/contracts";
+import type { AnswerTiming, DeletionRequest, DisplayChange, SessionEnd, VariableValue } from "@annotinder/contracts";
 import type { CoderAssignments } from "../../runtime/types.js";
 import { timestamptz } from "./columns.js";
 import { designVersions, links, studies } from "./studies.js";
@@ -29,6 +29,8 @@ export const coderSessions = pgTable(
     created: timestamptz().notNull().defaultNow(),
     ended: jsonb().$type<SessionEnd>(),
     deletionRequest: jsonb().$type<DeletionRequest>(),
+    /** How the coder's screen looked, and when it changed (keys, width class, theme), at most 100. */
+    display: jsonb().$type<DisplayChange[]>().notNull().default([]),
   },
   (t) => [
     index("coder_sessions_email").on(t.studyId, sql`lower(${t.email})`),

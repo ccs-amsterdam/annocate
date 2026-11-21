@@ -393,6 +393,13 @@ desktop is narrow).
   use numbers, swipe 4 / 6 / 8.
 - `theme: light | dark` shows that theme instead of the coder's choice
   (`CoderSettings.lockTheme`; the switch is hidden).
+- Each coder's display is recorded with their session (`useDisplayLog`,
+  `POST /display`): the keys, the width class in responsive studies, the
+  theme where coders choose it; when the session starts and when it
+  changes. A change of the width alone waits 3 seconds (a newer one
+  replaces it). The server appends an entry that differs from the last one,
+  at most 100 (`coder_sessions.display`); the results have a `display`
+  column in coders.csv and display_changes.csv.
 
 ### Keyboard
 
