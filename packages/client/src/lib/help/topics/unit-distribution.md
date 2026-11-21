@@ -20,12 +20,12 @@ A loop doesn't decide _who_ gets which units: that is in the design's
 
 ## The coder's units
 
-| The design says                                                  | A coder gets                                                                           |
-| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| nothing (a crowd)                                                | all units                                                                              |
-| **Specific coders** in the Coder invitations (column `coders`)   | their own units (see [Giving each coder their own units](own-units.md))                |
-| a random condition **linked to units** (column `framing`)        | the units of their condition (see [Experimental conditions](experimental-conditions.md)) |
-| both                                                             | the units that match both                                                              |
+| The design says                                                | A coder gets                                                                             |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| nothing (a crowd)                                              | all units                                                                                |
+| **Specific coders** in the Coder invitations (column `coders`) | their own units (see [Giving each coder their own units](own-units.md))                  |
+| a random condition **linked to units** (column `framing`)      | the units of their condition (see [Experimental conditions](experimental-conditions.md)) |
+| both                                                           | the units that match both                                                                |
 
 Units in a column's `_overlap` are for everyone. The loop's **Units** tab
 says in one line what a coder gets.

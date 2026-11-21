@@ -34,7 +34,7 @@ as they were).
 | Tile                 | Big number                                                                 | Below it                                                                    |
 | -------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | **Units**            | Units in the study                                                         | The number of set columns                                                   |
-| **Coders started**   | Coders who answered at least one question (random conditions don't count)   | All coders who opened a link, and how many were active in the last 24 hours |
+| **Coders started**   | Coders who answered at least one question (random conditions don't count)  | All coders who opened a link, and how many were active in the last 24 hours |
 | **Finished codings** | Units finished, counted per coder: a unit two coders finished counts twice | All answers given, and when the last one was                                |
 | **Active links**     | Links that are not revoked, retired or used up                             | All links                                                                   |
 

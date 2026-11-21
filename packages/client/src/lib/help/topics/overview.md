@@ -19,14 +19,14 @@ can be shared so others can repeat the study.
 
 Everything belongs to a **study**: one study or coding project. A study has:
 
-| Part        | What it is                                                                                                                                          | Where           |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| Part        | What it is                                                                                                                                                         | Where           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- |
 | **Design**  | The questions coders answer, in order, how units are shown and handed out, the unit fields, the coder invitations and URL parameters. Its versions are v1, v2, ... | Design › Editor |
-| **Units**   | The material to code: rows of data, each with an id and fields such as `headline` and `text`                                                        | Design › Units  |
-| **Sets**    | Named lists of units, in groups, for handing out different units to different coders                                                                | Design › Units  |
-| **Links**   | The links coders open to start, made when you deploy                                                                                                | Deploy › Links  |
-| **Coders**  | Everyone who started, and how far they got                                                                                                          | Deploy › Coders |
-| **Results** | All answers, as a download                                                                                                                          | Results tab     |
+| **Units**   | The material to code: rows of data, each with an id and fields such as `headline` and `text`                                                                       | Design › Units  |
+| **Sets**    | Named lists of units, in groups, for handing out different units to different coders                                                                               | Design › Units  |
+| **Links**   | The links coders open to start, made when you deploy                                                                                                               | Deploy › Links  |
+| **Coders**  | Everyone who started, and how far they got                                                                                                                         | Deploy › Coders |
+| **Results** | All answers, as a download                                                                                                                                         | Results tab     |
 
 ## How a design is built
 

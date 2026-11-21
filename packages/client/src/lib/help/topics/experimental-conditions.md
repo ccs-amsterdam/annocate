@@ -22,10 +22,10 @@ In a **Questions** block of the tree, add an item with **+**, choose
   to units, **All values in the column** (below).
 - **Drawn**:
 
-| Choice                                      | Who gets which value                      |
-| ------------------------------------------- | ----------------------------------------- |
-| **Balanced (the value fewest coders have)** | the value with the fewest coders so far   |
-| **Random**                                  | a random value (optionally weighted)      |
+| Choice                                      | Who gets which value                    |
+| ------------------------------------------- | --------------------------------------- |
+| **Balanced (the value fewest coders have)** | the value with the fewest coders so far |
+| **Random**                                  | a random value (optionally weighted)    |
 
 **Balanced** keeps groups equal. **Random** gives every coder the same
 chance, as most experiments assume.

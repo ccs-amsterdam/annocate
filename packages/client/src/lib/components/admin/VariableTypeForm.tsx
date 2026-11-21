@@ -127,6 +127,7 @@ export function VariableTypeForm({
           <OptionsEditor
             key="ordinal"
             level="ordinal"
+            specials
             options={v.options}
             onChange={(options) => onChange({ ...v, options })}
           />
@@ -452,11 +453,12 @@ function CategoricalFields({
         <OptionsEditor
           key="ordinal"
           level="ordinal"
+          specials
           options={v.options}
           onChange={(options) => onChange({ ...v, options })}
         />
       ) : (
-        <OptionsEditor key="nominal" options={v.options} onChange={(options) => onChange({ ...v, options })} />
+        <OptionsEditor key="nominal" specials options={v.options} onChange={(options) => onChange({ ...v, options })} />
       )}
       {v.type === "nominal" && (
         <label className="flex items-center gap-2 text-sm">

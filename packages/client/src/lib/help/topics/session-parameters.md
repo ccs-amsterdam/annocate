@@ -23,13 +23,13 @@ as `session.<name>`).
 
 Click **+ URL parameter** and set:
 
-| Setting           | What it is                                                                  |
-| ----------------- | --------------------------------------------------------------------------- |
-| **Name**          | The name in the design: `$session.<name>`                                   |
-| **In the URL as** | The key in the link, e.g. `STUDY_ID` (default: the name)                    |
-| **Values**        | **Any value**, **From a list** (one per line) or **Matching a pattern**     |
-| **Default**       | Used when the link has none. Without a default the parameter is required    |
-| **Description**   | For you and your colleagues: what the parameter is for                      |
+| Setting           | What it is                                                               |
+| ----------------- | ------------------------------------------------------------------------ |
+| **Name**          | The name in the design: `$session.<name>`                                |
+| **In the URL as** | The key in the link, e.g. `STUDY_ID` (default: the name)                 |
+| **Values**        | **Any value**, **From a list** (one per line) or **Matching a pattern**  |
+| **Default**       | Used when the link has none. Without a default the parameter is required |
+| **Description**   | For you and your colleagues: what the parameter is for                   |
 
 Any value is up to 256 characters. A **pattern** is a regular expression
 the whole value must match, such as `[0-9]{6}` or `a|b|c`.
@@ -51,10 +51,10 @@ with the value filled in.
 
 ## Built-in values
 
-| Value                  | What it is                                                                                                      |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `$session.source`      | The `?source=` of any link, if given: where a coder came from (a newsletter, a QR code). Never required         |
-| `$session.coder`       | Who the coder is: with specific coders their value in the coders' column (see [Giving each coder their own units](own-units.md)); with a crowd the coder id from its URL parameter, or the email address of coders who must sign in (see [Links](links.md#coder-ids)) |
+| Value             | What it is                                                                                                                                                                                                                                                            |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$session.source` | The `?source=` of any link, if given: where a coder came from (a newsletter, a QR code). Never required                                                                                                                                                               |
+| `$session.coder`  | Who the coder is: with specific coders their value in the coders' column (see [Giving each coder their own units](own-units.md)); with a crowd the coder id from its URL parameter, or the email address of coders who must sign in (see [Links](links.md#coder-ids)) |
 
 These names can't be used for your own parameters.
 

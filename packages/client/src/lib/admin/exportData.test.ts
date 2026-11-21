@@ -284,8 +284,8 @@ describe("data download", () => {
     expect(mixed.rows[0][mixed.headers.indexOf("sentiment_label")]).toBe("Positive");
 
     expect(variablesTable(new Map([[2, version("Good")]])).rows).toEqual([
-      ["2", "Unit loop 1", "sentiment", "nominal", "?", "pos", "Good"],
-      ["2", "Unit loop 1", "sentiment", "nominal", "?", "neg", "neg"],
+      ["2", "Unit loop 1", "sentiment", "nominal", "?", "pos", "Good", ""],
+      ["2", "Unit loop 1", "sentiment", "nominal", "?", "neg", "neg", ""],
     ]);
   });
 

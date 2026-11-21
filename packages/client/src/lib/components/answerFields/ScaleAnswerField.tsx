@@ -1,9 +1,16 @@
 import { useRef, useState } from "react";
-import { optionLabel, resolveLayout, type Option } from "@annotinder/contracts";
+import {
+  SPECIAL_KEYS,
+  optionLabel,
+  ordinaryOptions,
+  resolveLayout,
+  specialOptions,
+  type Option,
+} from "@annotinder/contracts";
 import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildValues } from "./answerValue";
-import { CompactRow, EndLabels } from "./OptionButtons";
+import { CompactRow, EndLabels, SpecialButton } from "./OptionButtons";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 import { useKeyTargets } from "../../keyboard/hooks";
 
@@ -20,6 +27,10 @@ const itemLabel = (item: { name: string; label?: string }) => item.label ?? item
 export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFieldProps<ScaleVariable>) {
   const { layout } = resolveLayout(variable);
   const items = variable.items;
+  // The scale's points, then its special options (don't know, not applicable), apart
+  const points = ordinaryOptions(variable.options);
+  const specials = specialOptions(variable.options);
+  const columns = [...points, ...specials];
   const [selected, setSelected] = useState<Record<string, Option["value"]>>(() =>
     Object.fromEntries((initialValue?.values ?? []).filter((v) => v.item !== undefined).map((v) => [v.item!, v.value])),
   );
@@ -45,9 +56,12 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
   }
 
   // The keyboard answers the first unanswered item; Enter continues.
-  const points = variable.options.map((o) => ({ label: optionLabel(o) }));
-  const targets = items.map(() => points);
-  useKeyTargets(targets, (item, index) => select(items[item].name, variable.options[index]), {
+  const keyed = columns.map((o) => ({
+    label: optionLabel(o),
+    ...(o.special ? { fixed: SPECIAL_KEYS[o.special] } : {}),
+  }));
+  const targets = items.map(() => keyed);
+  useKeyTargets(targets, (item, index) => select(items[item].name, columns[index]), {
     activeGroup: items.findIndex((item) => selected[item.name] === undefined),
     onEnter: submit,
   });
@@ -63,8 +77,11 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
             <thead>
               <tr>
                 <th />
-                {variable.options.map((option) => (
-                  <th key={String(option.value)} className="px-1 text-center text-xs font-normal text-muted-foreground">
+                {columns.map((option, i) => (
+                  <th
+                    key={String(option.value)}
+                    className={`px-1 text-center text-xs font-normal text-muted-foreground ${i === points.length ? "border-l border-dashed border-border" : ""}`}
+                  >
                     {optionLabel(option)}
                   </th>
                 ))}
@@ -76,10 +93,13 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
                   <th scope="row" className="pr-2 text-left font-normal">
                     {itemLabel(item)}
                   </th>
-                  {variable.options.map((option) => {
+                  {columns.map((option, i) => {
                     const checked = selected[item.name] === option.value;
                     return (
-                      <td key={String(option.value)} className="text-center">
+                      <td
+                        key={String(option.value)}
+                        className={`text-center ${i === points.length ? "border-l border-dashed border-border" : ""}`}
+                      >
                         <input
                           type="radio"
                           className="size-5 cursor-pointer accent-primary"
@@ -99,7 +119,7 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
         </div>
       ) : (
         <>
-          <EndLabels options={variable.options} />
+          <EndLabels options={points} />
           <div className="flex flex-col gap-1.5">
             {items.map((item) => (
               <div
@@ -108,12 +128,22 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
                 className={`flex flex-col gap-0.5 ${highlight(item.name)}`}
               >
                 <div className="text-center text-sm text-foreground">{itemLabel(item)}</div>
-                <CompactRow
-                  options={variable.options}
-                  selected={selected[item.name]}
-                  onSelect={(o) => select(item.name, o)}
-                  label={itemLabel(item)}
-                />
+                <div className="flex items-center gap-1.5">
+                  <CompactRow
+                    options={points}
+                    selected={selected[item.name]}
+                    onSelect={(o) => select(item.name, o)}
+                    label={itemLabel(item)}
+                  />
+                  {specials.map((option) => (
+                    <SpecialButton
+                      key={String(option.value)}
+                      option={option}
+                      selected={selected[item.name] === option.value}
+                      onClick={() => select(item.name, option)}
+                    />
+                  ))}
+                </div>
               </div>
             ))}
           </div>

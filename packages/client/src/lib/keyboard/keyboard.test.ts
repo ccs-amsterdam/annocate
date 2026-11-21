@@ -57,6 +57,14 @@ describe("the numbers mapping", () => {
     expect(targetForKey(numbersMapping, group, "2")).toBe(-1);
     expect(targetForKey(numbersMapping, group, "x")).toBe(-1);
   });
+
+  it("leaves fixed keys (special options) out of the numbering", async () => {
+    const { keysOf } = await import("./mappings");
+    const group = [{ label: "a" }, { label: "Don't know", fixed: "." }, { label: "b" }, { label: "n/a", fixed: "0" }];
+    expect(keysOf(numbersMapping, group)).toEqual(["1", ".", "2", "0"]);
+    expect(targetForKey(numbersMapping, group, "0")).toBe(3);
+    expect(targetForKey(numbersMapping, group, "2")).toBe(2);
+  });
 });
 
 describe("moving focus with the arrow keys", () => {

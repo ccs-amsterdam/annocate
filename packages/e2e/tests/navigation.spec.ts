@@ -217,3 +217,61 @@ test("the keyboard: arrows move between answers and Space chooses; Shift + arrow
   await page.keyboard.press("Enter");
   await at(page, TEXTS[0], "Tone?");
 });
+
+test("special options: apart from the others, chosen with 0 and . in every question, the only answer of several", async ({
+  page,
+  request,
+}) => {
+  const created = await api<StudyResponse>(request, "POST", "/study", { name: "Special options" });
+  await api<UnitResponse[]>(request, "POST", `/study/${created.id}/units`, {
+    units: [{ externalId: "u1", data: { text: "First text" } }],
+  });
+  const options = [
+    { value: "politics" },
+    { value: "other" },
+    { value: "dk", label: "Don't know", special: "dont_know" },
+    { value: "na", label: "Not about anything", special: "not_applicable" },
+  ];
+  const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, {
+    items: [
+      {
+        type: "unit_loop",
+        layout: { template: "$unit.text" },
+        children: [
+          { type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options } },
+          {
+            type: "question",
+            name: "topics",
+            variable: { type: "nominal", question: "Topics?", options, multiple: true },
+          },
+        ],
+      },
+    ],
+  });
+  await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
+  await page.goto(`/code/${created.id}?link=${link.secret}`);
+  await question(page, "Topic?");
+  // Their badges: . and 0 (the others are numbered 1, 2)
+  const special = page.locator("[data-special]");
+  await expect(special).toHaveCount(2);
+  await expect(page.locator("[data-special=dont_know] kbd")).toHaveText(".");
+  await expect(page.locator("[data-special=not_applicable] kbd")).toHaveText("0");
+  await page.keyboard.press(".");
+  await question(page, "Topics?");
+  // Several answers: a special option clears the others, and they clear it
+  await page.keyboard.press("1");
+  await page.keyboard.press("2");
+  await page.keyboard.press("0");
+  await expect(page.locator("[aria-pressed=true]")).toHaveCount(1);
+  await expect(page.locator("[data-special=not_applicable]")).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("1");
+  await expect(page.locator("[data-special=not_applicable]")).toHaveAttribute("aria-pressed", "false");
+  await page.keyboard.press("Enter");
+  await expect.poll(async () => (await answers(request, created.id)).length).toBe(2);
+  const saved = await answers(request, created.id);
+  const values = (name: string) =>
+    (saved.find((a) => a.variable === name)!.value as { values: { value: string }[] }).values.map((v) => v.value);
+  expect(values("topic")).toEqual(["dk"]);
+  expect(values("topics")).toEqual(["politics"]);
+});

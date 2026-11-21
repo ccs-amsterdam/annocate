@@ -1,11 +1,19 @@
 import { useCallback, useMemo, useState } from "react";
-import { optionLabel, resolveLayout, type Option, type OptionValue } from "@annotinder/contracts";
+import {
+  SPECIAL_KEYS,
+  optionLabel,
+  ordinaryOptions,
+  resolveLayout,
+  specialOptions,
+  type Option,
+  type OptionValue,
+} from "@annotinder/contracts";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { buildValues, initialValues } from "./answerValue";
-import { CompactRow, EndLabels, OptionButton } from "./OptionButtons";
+import { CompactRow, EndLabels, OptionButton, SpecialOptionsRow } from "./OptionButtons";
 import { optionsContainerStyle } from "./optionLayout";
 import { useKeyTargets } from "../../keyboard/hooks";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
@@ -25,6 +33,11 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
   const [selected, setSelected] = useState<OptionValue[]>(() => initialValues(initialValue));
   const selectedSet = useMemo(() => new Set(selected), [selected]);
 
+  // Categories (or scale points) first, the special options after them, apart
+  const ordinary = ordinaryOptions(variable.options);
+  const specials = specialOptions(variable.options);
+  const shown = [...ordinary, ...specials];
+
   const pick = useCallback(
     (option: Option) => {
       if (!multiple) {
@@ -32,11 +45,14 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
         onAnswer(buildValues([{ value: option.value }]));
         return;
       }
-      setSelected((current) =>
-        current.includes(option.value) ? current.filter((v) => v !== option.value) : [...current, option.value],
-      );
+      // Several answers: a special option is the only answer (it clears the others, and they clear it)
+      const special = new Set<OptionValue>(variable.options.filter((o) => o.special).map((o) => o.value));
+      setSelected((current) => {
+        if (current.includes(option.value)) return current.filter((v) => v !== option.value);
+        return option.special ? [option.value] : [...current.filter((v) => !special.has(v)), option.value];
+      });
     },
-    [multiple, onAnswer],
+    [multiple, onAnswer, variable.options],
   );
 
   const submit = () => {
@@ -47,36 +63,53 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
   };
 
   // The options for the keyboard (a dropdown has its own filter box)
-  const targets = layout === "dropdown" ? null : [variable.options.map((o) => ({ label: optionLabel(o) }))];
-  const [keys = []] = useKeyTargets(targets, (_, index) => pick(variable.options[index]), {
+  const targets =
+    layout === "dropdown"
+      ? null
+      : [shown.map((o) => ({ label: optionLabel(o), ...(o.special ? { fixed: SPECIAL_KEYS[o.special] } : {}) }))];
+  const [keys = []] = useKeyTargets(targets, (_, index) => pick(shown[index]), {
     // Several answers: Enter continues (as the Continue button)
     onEnter: multiple ? submit : undefined,
   });
 
   let field;
   if (layout === "dropdown") {
-    field = <OptionsDropdown options={variable.options} selected={selectedSet} multiple={multiple} onPick={pick} />;
+    field = <OptionsDropdown options={shown} selected={selectedSet} multiple={multiple} onPick={pick} />;
   } else if (layout === "compact") {
     field = (
       <div className="flex flex-col gap-1">
-        <EndLabels options={variable.options} />
-        <CompactRow options={variable.options} selected={selected[0]} onSelect={pick} />
+        <EndLabels options={ordinary} />
+        <CompactRow options={ordinary} selected={selected[0]} onSelect={pick} />
+        <SpecialOptionsRow
+          options={specials}
+          isSelected={(o) => selectedSet.has(o.value)}
+          keys={keys.slice(ordinary.length)}
+          onPick={pick}
+        />
       </div>
     );
   } else {
-    const container = optionsContainerStyle(layout, variable.options.length, columns);
+    const container = optionsContainerStyle(layout, ordinary.length, columns);
     field = (
-      <div className={container.className} style={container.style}>
-        {variable.options.map((option, index) => (
-          <OptionButton
-            key={String(option.value)}
-            option={option}
-            selected={selectedSet.has(option.value)}
-            shortcut={keys[index]}
-            check={multiple}
-            onClick={() => pick(option)}
-          />
-        ))}
+      <div className="flex flex-col gap-1.5">
+        <div className={container.className} style={container.style}>
+          {ordinary.map((option, index) => (
+            <OptionButton
+              key={String(option.value)}
+              option={option}
+              selected={selectedSet.has(option.value)}
+              shortcut={keys[index]}
+              check={multiple}
+              onClick={() => pick(option)}
+            />
+          ))}
+        </div>
+        <SpecialOptionsRow
+          options={specials}
+          isSelected={(o) => selectedSet.has(o.value)}
+          keys={keys.slice(ordinary.length)}
+          onPick={pick}
+        />
       </div>
     );
   }

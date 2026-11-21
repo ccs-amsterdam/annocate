@@ -89,6 +89,27 @@ has a different bright colour, nothing stands out. Uncoloured options in
 the compact layout get a shade that goes from light to dark along the
 scale.
 
+### Special options
+
+Some answers aren't one of the categories or a point on the scale: the
+coder doesn't know, or the question doesn't apply to this unit. Mark such an
+option under **Special**:
+
+| Special            | Key   | For example                                          |
+| ------------------ | ----- | ---------------------------------------------------- |
+| **Not applicable** | **0** | "Not applicable", "Doesn't mention it", "None of these" |
+| **Don't know**     | **.** | "Don't know", "Can't tell", "Prefer not to say"      |
+
+Special options are shown apart, under the other options and in a quieter
+style, and coders choose them with the same key in every question and every
+study. With several answers, a special option is the only answer: choosing
+it clears the others, and choosing another option clears it. On an ordinal
+question it stays outside the scale: its value doesn't have to rise with
+the others (while values follow the order it gets 98 for don't know and 99
+for not applicable), and in `variables.csv` of the results its `special`
+column says what it is, so an analysis can leave it out. A question has each
+kind once. Scales have special options too; swipe questions don't.
+
 ## Several answers
 
 A nominal question can take several answers: tick **Allow several
@@ -129,7 +150,7 @@ and when to choose your own.
 ## Number keys
 
 Coders with a keyboard can press **1** to **9** to pick the first nine
-options. The buttons show the number in a small badge (coders can hide
+options (special options: **0** and **.**). The buttons show the number in a small badge (coders can hide
 these with **Shortcuts** in their settings menu). In a question with
 several answers, a number key ticks or unticks an option. The dropdown
 layout has no number keys: coders type to filter instead.

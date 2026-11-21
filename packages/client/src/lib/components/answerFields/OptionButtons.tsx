@@ -21,6 +21,8 @@ interface OptionButtonProps {
 
 export function OptionButton({ option, selected, shortcut, check, onClick }: OptionButtonProps) {
   const { theme } = useCoderSettings();
+  if (option.special)
+    return <SpecialButton option={option} selected={selected} shortcut={shortcut} onClick={onClick} />;
   const customStyle = getCodeButtonStyle(option.color, selected, theme === "dark");
   return (
     <Button
@@ -38,6 +40,55 @@ export function OptionButton({ option, selected, shortcut, check, onClick }: Opt
       <span className="min-w-0 break-words">{optionLabel(option)}</span>
       {check && selected && <Check className="size-3.5 shrink-0" />}
     </Button>
+  );
+}
+
+/** A special option (not applicable, don't know): small and muted, apart from the other options. */
+export function SpecialButton({ option, selected, shortcut, onClick }: Omit<OptionButtonProps, "check">) {
+  return (
+    <Button
+      type="button"
+      variant={selected ? "secondary" : "ghost"}
+      aria-pressed={selected}
+      className={`relative h-8 border border-dashed px-3 text-xs font-normal whitespace-normal ${
+        selected ? "border-foreground/40 text-foreground" : "border-border text-muted-foreground"
+      }`}
+      data-key-target=""
+      data-special={option.special}
+      onClick={onClick}
+    >
+      {shortcut && <ShortcutBadge shortcut={shortcut} />}
+      {optionLabel(option)}
+    </Button>
+  );
+}
+
+/** The special options of a question, in a row under the others. */
+export function SpecialOptionsRow({
+  options,
+  isSelected,
+  keys,
+  onPick,
+}: {
+  options: Option[];
+  isSelected: (option: Option) => boolean;
+  /** Their keys (badges), in the same order. */
+  keys?: (string | null)[];
+  onPick: (option: Option) => void;
+}) {
+  if (options.length === 0) return null;
+  return (
+    <div className="flex flex-wrap justify-end gap-1.5 border-t border-dashed border-border/70 pt-1.5">
+      {options.map((option, i) => (
+        <SpecialButton
+          key={String(option.value)}
+          option={option}
+          selected={isSelected(option)}
+          shortcut={keys?.[i]}
+          onClick={() => onPick(option)}
+        />
+      ))}
+    </div>
   );
 }
 

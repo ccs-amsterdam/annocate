@@ -6,8 +6,10 @@
 export interface KeyTarget {
   /** Its label (for mappings that type labels). */
   label: string;
-  /** Keys that always choose it, whatever the mapping (e.g. a swipe's arrow). */
+  /** Keys that also choose it, whatever the mapping (e.g. a swipe's arrow; no badge). */
   keys?: string[];
+  /** Its own key instead of the mapping's, shown on its badge (special options: 0 and .). */
+  fixed?: string;
   disabled?: boolean;
 }
 
@@ -15,7 +17,7 @@ export interface KeyMapping {
   id: string;
   /** How the coder's settings call it. */
   name: string;
-  /** The key of each target of a group (null: none), shown on its badge and pressed to choose it. */
+  /** The key of each target of a group (null: none), shown on its badge and pressed to choose it. Gets the targets without a fixed key. */
   assign(group: readonly KeyTarget[]): (string | null)[];
 }
 
@@ -26,9 +28,16 @@ export const numbersMapping: KeyMapping = {
   assign: (group) => group.map((_, i) => (i < 9 ? String(i + 1) : null)),
 };
 
-/** The target of a group a key chooses (its mapped key or one of its fixed keys), or -1. */
+/** The key of each target of a group: its fixed key, else the mapping's (which assigns the others in order). */
+export function keysOf(mapping: KeyMapping, group: readonly KeyTarget[]): (string | null)[] {
+  const free = group.filter((t) => t.fixed === undefined);
+  const assigned = mapping.assign(free);
+  let i = 0;
+  return group.map((t) => t.fixed ?? assigned[i++] ?? null);
+}
+
+/** The target of a group a key chooses (its key, or one of its extra keys), or -1. */
 export function targetForKey(mapping: KeyMapping, group: readonly KeyTarget[], key: string): number {
-  const assigned = mapping.assign(group);
-  const index = group.findIndex((t, i) => !t.disabled && (assigned[i] === key || t.keys?.includes(key)));
-  return index;
+  const keys = keysOf(mapping, group);
+  return group.findIndex((t, i) => !t.disabled && (keys[i] === key || t.keys?.includes(key)));
 }

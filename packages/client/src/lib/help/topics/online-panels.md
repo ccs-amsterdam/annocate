@@ -62,11 +62,11 @@ required.
 
 The design can then use them as **session values**:
 
-| Write                  | Gives                                     |
-| ---------------------- | ----------------------------------------- |
-| `$session.coder`       | The coder id (here the panel's id)        |
-| `$session.study`       | The value of the URL parameter `STUDY_ID` |
-| `$session.source`      | The optional `?source=` of any link       |
+| Write             | Gives                                     |
+| ----------------- | ----------------------------------------- |
+| `$session.coder`  | The coder id (here the panel's id)        |
+| `$session.study`  | The value of the URL parameter `STUDY_ID` |
+| `$session.source` | The optional `?source=` of any link       |
 
 Session values work everywhere: in texts, conditions, end items' messages
 and return links. A link that misses a required parameter, or has a value

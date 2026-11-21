@@ -23,10 +23,10 @@ Coders can only start once a design version is deployed (see
 In the editor, **Coder invitations** (above the item tree) says who codes
 and how they get in. Choose one of two:
 
-| Invitation          | Who codes                                                     | Links                                                         |
-| ------------------- | ------------------------------------------------------------- | ------------------------------------------------------------- |
+| Invitation          | Who codes                                                     | Links                                                                         |
+| ------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | **Specific coders** | Coders you know, each with their own units (a set column)     | **A link per coder**, or **one link** where coders pick their name or sign in |
-| **Crowd**           | Anyone with the link, e.g. from an online panel or newsletter | One link                                                      |
+| **Crowd**           | Anyone with the link, e.g. from an online panel or newsletter | One link                                                                      |
 
 **Specific coders**: choose the **Column with the coders**, a set column of
 the units whose values are the coders (or **Make the column…** to make one).

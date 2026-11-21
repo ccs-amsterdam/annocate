@@ -33,9 +33,9 @@ _Unit loop 1_, _Unit loop 2_, by position).
 A selected loop has two tabs. The two small buttons at the end of the loop's
 row in the tree open the loop on one of them.
 
-| Tab        | What you set there                                                                                                                        |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| **Layout** | How a unit is shown: the **Template**, the **Colours** and the **Snippets**                                                               |
+| Tab        | What you set there                                                                                                                                 |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Layout** | How a unit is shown: the **Template**, the **Colours** and the **Snippets**                                                                        |
 | **Units**  | Which of the coder's units the loop codes (all, or a filter; their own units or not), the **Order**, and where overlap, practice and gold units go |
 
 The template is where you write what coders see of each unit: see

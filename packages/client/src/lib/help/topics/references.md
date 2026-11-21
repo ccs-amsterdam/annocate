@@ -112,11 +112,11 @@ order.
 
 `$session` holds values of the coder's session, fixed when they start:
 
-| Reference              | Gives                                                                                                                             |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `$session.coder`       | Who the coder is: their value in the coders' column, a crowd's coder id from the URL, or a sign-in email; empty if not known     |
-| `$session.source`      | The `?source=` of the link, if given                                                                                              |
-| `$session.<name>`      | A URL parameter of the design (**URL parameters**, above the item tree), e.g. a wave or a panel's study id                        |
+| Reference         | Gives                                                                                                                        |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `$session.coder`  | Who the coder is: their value in the coders' column, a crowd's coder id from the URL, or a sign-in email; empty if not known |
+| `$session.source` | The `?source=` of the link, if given                                                                                         |
+| `$session.<name>` | A URL parameter of the design (**URL parameters**, above the item tree), e.g. a wave or a panel's study id                   |
 
 The design's **URL parameters** declare the names, so the editor checks
 them. A session without a value (such as `source`) gives an empty text. See

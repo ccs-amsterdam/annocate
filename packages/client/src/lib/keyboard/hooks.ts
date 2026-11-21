@@ -2,7 +2,7 @@ import { useContext, useEffect, useRef } from "react";
 import { PRIORITY, type KeyHandler, type ScopeOptions } from "./controller";
 import { KeyboardContext } from "./context";
 import { arrowDirection, focusChosen, focusKeepsArrows, moveFocus } from "./focus";
-import { numbersMapping, targetForKey, type KeyMapping, type KeyTarget } from "./mappings";
+import { keysOf, numbersMapping, targetForKey, type KeyMapping, type KeyTarget } from "./mappings";
 
 /** The coder's keyboard mapping (numbers without a provider). */
 export function useKeyMapping(): KeyMapping {
@@ -69,7 +69,7 @@ export function useKeyTargets(
     groups !== null,
     { priority: PRIORITY.field },
   );
-  return (groups ?? []).map((group) => mapping.assign(group));
+  return (groups ?? []).map((group) => keysOf(mapping, group));
 }
 
 export interface BaseKeys {

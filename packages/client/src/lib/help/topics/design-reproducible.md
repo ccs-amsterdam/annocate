@@ -16,11 +16,11 @@ units and with their own coders.
 
 ## Three layers
 
-| Layer           | Holds                                                                                                                                                                                                               | Shared with the study?              |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| Layer           | Holds                                                                                                                                                                                                                                 | Shared with the study?              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
 | **Design**      | Questions, conditions, layouts, per loop the rules for handing out units, the coder invitations and the URL parameters links carry. It refers to sets and groups by name, and to coders only through their answers and session values | Yes: this is the instrument         |
-| **Set columns** | Which coder or condition each unit is for, such as `anna`, `anna;bob`, `_overlap` in a column `coder`                                                                                                               | As data, if you may share the units |
-| **Links**       | Made from the design's coder invitations (one link, or one per coder), with labels, fixed coder ids and max uses                                                                                                    | No: they are about your coders      |
+| **Set columns** | Which coder or condition each unit is for, such as `anna`, `anna;bob`, `_overlap` in a column `coder`                                                                                                                                 | As data, if you may share the units |
+| **Links**       | Made from the design's coder invitations (one link, or one per coder), with labels, fixed coder ids and max uses                                                                                                                      | No: they are about your coders      |
 
 ## The design names, but never binds
 

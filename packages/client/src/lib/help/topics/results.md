@@ -90,11 +90,11 @@ A row per coder session (`session_id`): a coder who started again on another dev
 
 | Column                                                   | Meaning                                                                                                                                                                           |
 | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `session_id`, `coder`, `email`, `link`                   | Who the coder is (`email` where the invitation requires [sign-in](links.md#login))                                                                                                 |
+| `session_id`, `coder`, `email`, `link`                   | Who the coder is (`email` where the invitation requires [sign-in](links.md#login))                                                                                                |
 | `started`, `last_active`                                 | When they started, and when they last answered                                                                                                                                    |
 | `ended`, `ended_at`                                      | `complete` or `screenout` if their session ended at an end item (see [Ending a session](end-items.md)), `quit` if the coder quit, and when                                        |
 | `deletion_requested`                                     | When the coder asked for their answers to be deleted, if they did and you haven't deleted them yet (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)) |
-| `session.<name>`                                         | The session's values: its URL parameters and `source` (its coder is the `coder` column)                                                                                          |
+| `session.<name>`                                         | The session's values: its URL parameters and `source` (its coder is the `coder` column)                                                                                           |
 | `finished_<loop>`                                        | How many units they finished in each unit loop, such as `finished_News items`                                                                                                     |
 | `overlap_finished`, `gold_finished`, `practice_finished` | How many units of the deployed `_overlap`, `_gold` and `_practice` sets they finished, if the study has them (see [Overlap, gold and practice units](special-units.md))           |
 | one column per question                                  | Their answers outside unit loops, and their [random conditions](random-condition.md)                                                                                              |
@@ -135,16 +135,16 @@ device.
 How long coders took, a row per answer, in milliseconds, as the coder's
 browser measured it:
 
-| Column                                   | Meaning                                                                                                                                                                  |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `unit_id`                                | The unit (empty for questions outside unit loops)                                                                                                                        |
-| `session_id`, `coder`, `variable`        | The coder and the question                                                                                                                                               |
-| `first_ms`                               | Time on screen until the first answer                                                                                                                                    |
-| `total_ms`                               | Time on screen over all visits (going back adds to it)                                                                                                                   |
-| `hidden_ms`                              | Time the page was hidden meanwhile: another tab, a minimized window (not in `total_ms`)                                                                                  |
-| `edits`                                  | How often the answer changed                                                                                                                                             |
-| `server_ms`                              | The server's own measure: for a unit, from handing it out to its last answer (the same for all its questions); outside units, the time since the coder's previous answer |
-| `exceeds_server`                         | `true` if the browser claims more time than the server saw (for a unit: all its questions together)                                                                      |
+| Column                            | Meaning                                                                                                                                                                  |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `unit_id`                         | The unit (empty for questions outside unit loops)                                                                                                                        |
+| `session_id`, `coder`, `variable` | The coder and the question                                                                                                                                               |
+| `first_ms`                        | Time on screen until the first answer                                                                                                                                    |
+| `total_ms`                        | Time on screen over all visits (going back adds to it)                                                                                                                   |
+| `hidden_ms`                       | Time the page was hidden meanwhile: another tab, a minimized window (not in `total_ms`)                                                                                  |
+| `edits`                           | How often the answer changed                                                                                                                                             |
+| `server_ms`                       | The server's own measure: for a unit, from handing it out to its last answer (the same for all its questions); outside units, the time since the coder's previous answer |
+| `exceeds_server`                  | `true` if the browser claims more time than the server saw (for a unit: all its questions together)                                                                      |
 
 A browser can be tampered with; the server can't. So use `server_ms` to
 check the browser's times: `exceeds_server` marks a manipulated (or

@@ -1,10 +1,19 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleHelp, X } from "lucide-react";
-import { SWIPE_DIRECTIONS, valueFromLabel, type Option } from "@annotinder/contracts";
+import {
+  SPECIAL_NAMES,
+  SPECIAL_OPTIONS,
+  SPECIAL_VALUES,
+  SWIPE_DIRECTIONS,
+  valueFromLabel,
+  type Option,
+  type SpecialOption,
+} from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HelpButton } from "../../help/HelpButton";
+import { InfoTip } from "@/components/ui/info-tip";
 
 const DIRECTION_ICONS = { left: ArrowLeft, right: ArrowRight, up: ArrowUp };
 
@@ -16,6 +25,8 @@ export interface OptionsEditorProps<T extends Option> {
   max?: number;
   /** Swipe options: shows the direction of each (1st left, 2nd right, 3rd up). */
   swipe?: boolean;
+  /** Options can be special (not applicable, don't know): categories, ordinal and scale questions. */
+  specials?: boolean;
   /** Extra columns per option, e.g. the weight of an `auto` option. */
   extra?: (option: T, update: (patch: Partial<T>) => void) => React.ReactNode;
 }
@@ -35,6 +46,7 @@ export function OptionsEditor<T extends Option>({
   level = "nominal",
   max,
   swipe,
+  specials,
   extra,
 }: OptionsEditorProps<T>) {
   const ordinal = level === "ordinal";
@@ -89,9 +101,20 @@ export function OptionsEditor<T extends Option>({
     commit([...options, { value } as T]);
   };
 
-  const rising = options.every(
-    (o, i) => i === 0 || (typeof o.value === "number" && o.value > (options[i - 1].value as number)),
+  // Special options are outside the order
+  const ordered = options.filter((o) => !o.special);
+  const rising = ordered.every(
+    (o, i) => i === 0 || (typeof o.value === "number" && o.value > (ordered[i - 1].value as number)),
   );
+  const setSpecial = (index: number, special: SpecialOption | undefined) => {
+    const next = options.map((o, i) => {
+      if (i !== index) return o;
+      const changed = { ...o, special } as T;
+      if (!special) delete changed.special;
+      return changed;
+    });
+    commit(next);
+  };
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -115,12 +138,23 @@ export function OptionsEditor<T extends Option>({
       </div>
       <div
         ref={grid}
-        className="grid grid-cols-[auto_1fr_8rem_5.5rem_auto] items-center gap-1.5 text-[11px] text-muted-foreground"
+        className={`grid ${specials ? "grid-cols-[auto_1fr_7rem_5rem_7.5rem_auto]" : "grid-cols-[auto_1fr_8rem_5.5rem_auto]"} items-center gap-1.5 text-[11px] text-muted-foreground`}
       >
         <span />
         <span>Label (shown)</span>
         <span>Value (stored)</span>
         <span>Color</span>
+        {specials && (
+          <span className="flex items-center gap-1">
+            Special
+            <InfoTip label="About special options">
+              An answer outside the categories or the scale. Coders get it with the same key in every study: 0 for not
+              applicable, . for don&apos;t know. It is shown apart from the other options, is the only answer when there
+              can be several, and on an ordinal scale stays outside its order. The label is yours, e.g. &quot;Prefer not
+              to say&quot; (don&apos;t know) or &quot;None of these&quot; (not applicable).
+            </InfoTip>
+          </span>
+        )}
         <span />
         {options.map((option, i) => {
           const Direction = swipe ? DIRECTION_ICONS[SWIPE_DIRECTIONS[i]] : null;
@@ -162,6 +196,22 @@ export function OptionsEditor<T extends Option>({
                 onChange={(e) => update(i, { color: e.target.value || undefined } as Partial<T>)}
                 className="h-8 text-xs"
               />
+              {specials && (
+                <select
+                  data-option-row={i}
+                  aria-label="Special"
+                  className="h-8 rounded-md border border-input bg-background px-1 text-xs"
+                  value={option.special ?? ""}
+                  onChange={(e) => setSpecial(i, (e.target.value || undefined) as SpecialOption | undefined)}
+                >
+                  <option value="">–</option>
+                  {SPECIAL_OPTIONS.map((kind) => (
+                    <option key={kind} value={kind}>
+                      {SPECIAL_NAMES[kind]}
+                    </option>
+                  ))}
+                </select>
+              )}
               <span data-option-row={i} className="flex items-center">
                 {extra?.(option, (patch) => update(i, patch))}
                 <Button
@@ -210,13 +260,15 @@ export function OptionsEditor<T extends Option>({
   );
 }
 
-/** Whether ordinal values are 1..n in option order. */
+/** Whether ordinal values follow the order: 1..n, and special options their own values (98, 99). */
 function isSequence(options: Option[]): boolean {
-  return options.every((o, i) => o.value === i + 1);
+  return renumber(options).every((o, i) => o.value === options[i].value);
 }
 
+/** Values that follow the order: 1..n for the scale's points, special options their own (outside the scale). */
 function renumber<T extends Option>(options: T[]): T[] {
-  return options.map((o, i) => ({ ...o, value: i + 1 }));
+  let n = 0;
+  return options.map((o) => ({ ...o, value: o.special ? SPECIAL_VALUES[o.special] : ++n }));
 }
 
 /** Where the "Custom values" box is for ordinal questions: that values can be numbers (the codes of an existing codebook). */

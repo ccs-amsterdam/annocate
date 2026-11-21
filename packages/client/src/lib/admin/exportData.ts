@@ -488,13 +488,22 @@ export function variablesTable(
       const names = variable.type === "scale" ? variable.items.map((i) => `${name}.${i.name}`) : [name];
       const options = optionsOf(variable) ?? [];
       for (const n of names) {
-        if (options.length === 0) rows.push([versionCell(versionOf, id), loop, n, variable.type, text, "", ""]);
+        if (options.length === 0) rows.push([versionCell(versionOf, id), loop, n, variable.type, text, "", "", ""]);
         for (const o of options)
-          rows.push([versionCell(versionOf, id), loop, n, variable.type, text, String(o.value), optionLabel(o)]);
+          rows.push([
+            versionCell(versionOf, id),
+            loop,
+            n,
+            variable.type,
+            text,
+            String(o.value),
+            optionLabel(o),
+            "special" in o && o.special ? o.special : "",
+          ]);
       }
     }
   }
-  return { headers: ["design_version", "loop", "variable", "type", "question", "value", "label"], rows };
+  return { headers: ["design_version", "loop", "variable", "type", "question", "value", "label", "special"], rows };
 }
 
 /** Leeway when comparing the browser's times with the server's (clocks, network). */
@@ -660,7 +669,8 @@ units.csv        The units as deployed, a row per version: a unit replaced
                  unit): its values, e.g. anna or anna;_overlap (#n: its
                  position in an ordered set).
 variables.csv    Per design version (design_version), question and option: the question text,
-                 the stored value and its label.
+                 the stored value, its label, and special (not_applicable,
+                 dont_know: an answer outside the categories or the scale).
 designs/v<n>.json  Each design version answers were given under (and the
                  live one): the whole design (questions, layouts, how units
                  were handed out, session, unit fields), with the AnnoTinder

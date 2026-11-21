@@ -4,6 +4,8 @@ import { SetGroupNameSchema } from "../sets.js";
 import {
   NominalOptionSchema,
   NominalOptionsSchema,
+  noSpecialOptions,
+  NO_SPECIAL_MESSAGE,
   OrdinalOptionsSchema,
   SwipeOptionsSchema,
   nominalValueErrors,
@@ -211,7 +213,7 @@ export const SpanTypeSchema = VariableBaseSchema.extend({
       'The unit fields to select spans in (each span records its field), e.g. ["headline", "text"]: fields the layout ' +
         "shows as plain text, `$unit.<field>` (docs/client.md §3)",
     ),
-  options: NominalOptionsSchema,
+  options: NominalOptionsSchema.refine(noSpecialOptions, NO_SPECIAL_MESSAGE),
   selectionMode: z.enum(["word", "character"]).optional(),
   gaps: z.boolean().optional(),
 });
@@ -225,7 +227,7 @@ export const RelationOptionsSchema = z.object({
 export type RelationOptions = z.infer<typeof RelationOptionsSchema>;
 export const RelationTypeSchema = VariableBaseSchema.extend({
   type: z.literal("relation"),
-  options: NominalOptionsSchema,
+  options: NominalOptionsSchema.refine(noSpecialOptions, NO_SPECIAL_MESSAGE),
   from: RelationOptionsSchema,
   to: RelationOptionsSchema,
 });
