@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
+import { useAnswerLayout } from "../../display/hooks";
 import {
   SPECIAL_KEYS,
   optionLabel,
   ordinaryOptions,
-  resolveLayout,
   specialOptions,
   type Option,
   type OptionValue,
@@ -27,7 +27,7 @@ type CategoricalVariable = Extract<QuestionVariable, { type: "nominal" | "ordina
  */
 export function CategoricalAnswerField({ variable, onAnswer, initialValue }: AnswerFieldProps<CategoricalVariable>) {
   const multiple = variable.type === "nominal" && Boolean(variable.multiple);
-  const resolved = resolveLayout(variable);
+  const resolved = useAnswerLayout(variable);
   const layout = "columns" in resolved ? resolved.layout : "grid";
   const columns = "columns" in resolved ? resolved.columns : 1;
   const [selected, setSelected] = useState<OptionValue[]>(() => initialValues(initialValue));

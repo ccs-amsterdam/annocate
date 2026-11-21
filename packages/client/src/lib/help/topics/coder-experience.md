@@ -151,14 +151,14 @@ the other device.
 
 On a computer, coders can answer without the mouse. Some keys always work:
 
-| Keys                       | What they do                                                                     |
-| -------------------------- | -------------------------------------------------------------------------------- |
-| **←** **→** **↑** **↓**    | move between the answer buttons (the focused one has a ring)                     |
-| **Space** / **Enter**      | choose the focused button                                                        |
-| **Enter**                  | continue, once the question was answered (with several answers: like Continue)  |
-| **Shift + ←** / **→**      | the previous or next question (the badges on those buttons say so)              |
-| **Backspace**              | back to the previous question, its answer focused to change it at once           |
-| **0** / **.**              | the special options: not applicable, don't know (in every question and study)    |
+| Keys                    | What they do                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------ |
+| **←** **→** **↑** **↓** | move between the answer buttons (the focused one has a ring)                   |
+| **Space** / **Enter**   | choose the focused button                                                      |
+| **Enter**               | continue, once the question was answered (with several answers: like Continue) |
+| **Shift + ←** / **→**   | the previous or next question (the badges on those buttons say so)             |
+| **Backspace**           | back to the previous question, its answer focused to change it at once         |
+| **0** / **.**           | the special options: not applicable, don't know (in every question and study)  |
 
 Swipe questions keep their arrows as answers: **←** **→** **↑** swipe left,
 right or up. In span questions, after selecting text, the keys give the
@@ -167,11 +167,11 @@ selection a label (**Esc** cancels), and **Backspace** removes the last span.
 Which keys choose the other answers is the coder's choice, under **Keys for
 answers** in their settings menu (it is remembered in their browser):
 
-| Keys for answers   | Choose an option with                                                                                  |
-| ------------------ | ------------------------------------------------------------------------------------------------------ |
-| **Numbers**        | **1** to **9**, in the order of the options (the default)                                              |
-| **Numpad**         | the numpad key where the button is: the bottom row **1 2 3**, then **4 5 6** and **7 8 9**             |
-| **Letters**        | home-row letters **a s d f j k l …**, for touch typists                                                |
+| Keys for answers   | Choose an option with                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------- |
+| **Numbers**        | **1** to **9**, in the order of the options (the default)                                               |
+| **Numpad**         | the numpad key where the button is: the bottom row **1 2 3**, then **4 5 6** and **7 8 9**              |
+| **Letters**        | home-row letters **a s d f j k l …**, for touch typists                                                 |
 | **Type to filter** | typing part of a label: the others fade, **Enter** chooses the first match, **Esc** clears (long lists) |
 
 Where a choice can't work, a question uses numbers instead: the numpad

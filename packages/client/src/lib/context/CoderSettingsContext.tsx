@@ -20,7 +20,10 @@ function write(key: string, value: string): void {
 
 export function CoderSettingsProvider({ children }: { children: React.ReactNode }) {
   // Shared with the researcher UI (theme.ts).
-  const [theme, setTheme] = useTheme();
+  // A study can show one theme for everyone (its display setting): shown instead of the coder's choice
+  const [locked, lockTheme] = useState<"light" | "dark" | null>(null);
+  const [chosen, setTheme] = useTheme(locked);
+  const theme = locked ?? chosen;
 
   // The badges: shown by default on devices with a keyboard (not on touch-only devices)
   const [showShortcuts, setShowShortcutsState] = useState<boolean>(() => {
@@ -42,7 +45,16 @@ export function CoderSettingsProvider({ children }: { children: React.ReactNode 
 
   return (
     <CoderSettingsContext.Provider
-      value={{ theme, setTheme, showShortcuts, setShowShortcuts, keyMapping, setKeyMapping }}
+      value={{
+        theme,
+        setTheme,
+        themeLocked: locked !== null,
+        lockTheme,
+        showShortcuts,
+        setShowShortcuts,
+        keyMapping,
+        setKeyMapping,
+      }}
     >
       {children}
     </CoderSettingsContext.Provider>

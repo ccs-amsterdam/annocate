@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { numericSteps, numericValueError, resolveLayout } from "@annotinder/contracts";
+import { useAnswerLayout } from "../../display/hooks";
+import { numericSteps, numericValueError } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { buildValues, initialValues } from "./answerValue";
@@ -20,7 +21,7 @@ function decimals(step: number): number {
  * shown under the buttons or slider, and as hints next to an input.
  */
 export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerFieldProps<NumericVariable>) {
-  const { layout } = resolveLayout(variable);
+  const { layout } = useAnswerLayout(variable);
   const step = variable.step ?? 1;
   const initial = initialValues(initialValue)[0];
   const [value, setValue] = useState<number | null>(typeof initial === "number" ? initial : null);

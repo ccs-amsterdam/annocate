@@ -27,8 +27,11 @@ import { buildValues } from "./answerFields/answerValue";
 import { dropRepeatedClick } from "./inputGuards";
 import { KeyboardProvider } from "../keyboard/KeyboardProvider";
 import { useBaseKeys } from "../keyboard/hooks";
+import { DisplayContext, useDisplay, type DisplayState } from "../display/context";
+import { useWidthClass } from "../display/hooks";
 import { MAPPINGS, mappingById } from "../keyboard/mappings";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { LogoSmoke } from "@/components/Logo";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -76,7 +79,12 @@ interface ContentProps extends StudyRunnerProps {
  * Dropdown popover menu for coder-level settings (Dark/Light mode, Shortcut badges).
  */
 function CoderSettingsMenu() {
-  const { theme, setTheme, showShortcuts, setShowShortcuts, keyMapping, setKeyMapping } = useCoderSettings();
+  const { theme, setTheme, themeLocked, showShortcuts, setShowShortcuts, keyMapping, setKeyMapping } =
+    useCoderSettings();
+  // The numpad needs layouts that adapt (a responsive study); a study may show one theme for everyone
+  const display = useDisplay();
+  const numpadAllowed = display.layouts === "responsive";
+  const shownMapping = keyMapping === "numpad" && !numpadAllowed ? "numbers" : keyMapping;
 
   return (
     <Popover>
@@ -98,7 +106,10 @@ function CoderSettingsMenu() {
         {/* Theme Setting */}
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-foreground">Appearance</label>
-          <div className="grid grid-cols-2 gap-1.5">
+          {themeLocked && (
+            <p className="text-[11px] leading-tight text-muted-foreground">This study is shown {theme} for everyone.</p>
+          )}
+          <div className={`grid grid-cols-2 gap-1.5 ${themeLocked ? "hidden" : ""}`}>
             <button
               type="button"
               onClick={() => setTheme("light")}
@@ -158,17 +169,27 @@ function CoderSettingsMenu() {
           <select
             id="key-mapping"
             className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
-            value={keyMapping}
+            value={shownMapping}
             onChange={(e) => setKeyMapping(e.target.value)}
           >
             {MAPPINGS.map((m) => (
-              <option key={m.id} value={m.id}>
+              <option key={m.id} value={m.id} disabled={m.id === "numpad" && !numpadAllowed}>
                 {m.name}
+                {m.id === "numpad" && !numpadAllowed ? " (not in this study)" : ""}
               </option>
             ))}
           </select>
+          {!numpadAllowed && (
+            <p className="flex items-start gap-1 text-[11px] leading-tight text-muted-foreground">
+              <InfoTip label="Why no numpad?">
+                Numpad keys need layouts that adapt to them: buttons in three columns. This study shows every coder the
+                same layout (a setting of the study, Display: layouts fixed), so the numpad isn&apos;t available here.
+              </InfoTip>
+              Numpad: not in this study
+            </p>
+          )}
           <p className="text-[11px] leading-tight text-muted-foreground">
-            {mappingById(keyMapping).description}. Always: arrows and Space, Shift + ← → for previous and next,
+            {mappingById(shownMapping).description}. Always: arrows and Space, Shift + ← → for previous and next,
             Backspace to go back, 0 not applicable, . don&apos;t know.
           </p>
         </div>
@@ -219,6 +240,19 @@ function StudyRunnerContent({
   );
   const { manager, snapshot } = useStudyManager(coderApi);
   const [navDirection, setNavDirection] = useState<"next" | "previous">("next");
+  // How the coding screen looks: the study's display setting, and the coding area's width
+  const screen = useRef<HTMLDivElement>(null);
+  const width = useWidthClass(screen);
+  const display: DisplayState = {
+    layouts: snapshot.display.layouts ?? "fixed",
+    theme: snapshot.display.theme ?? "coder",
+    width,
+  };
+  const { lockTheme } = useCoderSettings();
+  useEffect(() => {
+    lockTheme(display.theme === "coder" ? null : display.theme);
+    return () => lockTheme(null);
+  }, [display.theme, lockTheme]);
   // The keys that work whatever the mapping: arrows, Shift + arrows, Backspace, Enter
   useBaseKeys({
     canGoBack: snapshot.navigation.canGoBack,
@@ -532,137 +566,139 @@ function StudyRunnerContent({
   const slideClass = navDirection === "next" ? "animate-slide-in-right" : "animate-slide-in-left";
 
   return (
-    // A container: the layout follows the coding area's width, not the window's (a phone-sized preview on a desktop)
-    <div className="@container flex h-full w-full flex-col overflow-hidden bg-background">
-      {rightFlash && (
-        <div role="status" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
-          <div className="flex animate-in items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-lg font-semibold text-white shadow-lg zoom-in-90 fade-in">
-            <CircleCheck className="h-6 w-6" /> Correct
+    <DisplayContext.Provider value={display}>
+      {/* A container: the layout follows the coding area's width, not the window's (a phone-sized preview on a desktop) */}
+      <div ref={screen} className="@container flex h-full w-full flex-col overflow-hidden bg-background">
+        {rightFlash && (
+          <div role="status" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
+            <div className="flex animate-in items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-lg font-semibold text-white shadow-lg zoom-in-90 fade-in">
+              <CircleCheck className="h-6 w-6" /> Correct
+            </div>
           </div>
-        </div>
-      )}
-      {/* Top Header / Progress Bar */}
-      <header className="relative flex h-11 shrink-0 items-center justify-between border-b border-bar-foreground/10 bg-bar px-3 text-bar-foreground shadow-sm sm:px-4">
-        <CodingProgress navigation={snapshot.navigation} />
-        <CodingNav
-          navigation={snapshot.navigation}
-          title={snapshot.title}
-          onJumpToPhase={(index) => void manager.jumpToPhase(index)}
-          onJumpToUnit={(index) => void manager.jumpToUnit(index)}
-          onJumpToQuestion={(index) => void manager.jumpToLoopStep(index)}
-          onBack={() => {
-            setNavDirection("previous");
-            void manager.goBack();
-          }}
-          onForward={() => {
-            setNavDirection("next");
-            void manager.goForward();
-          }}
-        />
-
-        {/* Right Section: Coder Settings Menu */}
-        <div className="flex shrink-0 items-center gap-1">
-          {snapshot.retrying && (
-            <span
-              className="flex items-center gap-1 text-xs"
-              role="status"
-              title="Your answers are kept and saved as soon as the connection is back."
-            >
-              <CloudOff className="h-4 w-4" />
-              <span className="hidden sm:inline">Not saved yet: no connection</span>
-            </span>
-          )}
-          {!preview && (
-            <TransferMenu
-              coderApi={coderApi}
-              transferUrl={transferUrl ?? defaultTransferUrl}
-              login={snapshot.login}
-              canLogIn={snapshot.canLogIn}
-            />
-          )}
-          <CoderSettingsMenu />
-          <QuitMenu
-            onQuit={(requestDeletion) => manager.quit(requestDeletion)}
-            canTransfer={!preview && !!coderApi.createTransfer}
-            login={snapshot.login}
+        )}
+        {/* Top Header / Progress Bar */}
+        <header className="relative flex h-11 shrink-0 items-center justify-between border-b border-bar-foreground/10 bg-bar px-3 text-bar-foreground shadow-sm sm:px-4">
+          <CodingProgress navigation={snapshot.navigation} />
+          <CodingNav
+            navigation={snapshot.navigation}
+            title={snapshot.title}
+            onJumpToPhase={(index) => void manager.jumpToPhase(index)}
+            onJumpToUnit={(index) => void manager.jumpToUnit(index)}
+            onJumpToQuestion={(index) => void manager.jumpToLoopStep(index)}
+            onBack={() => {
+              setNavDirection("previous");
+              void manager.goBack();
+            }}
+            onForward={() => {
+              setNavDirection("next");
+              void manager.goForward();
+            }}
           />
-        </div>
-      </header>
 
-      {/* Main Content Area: Responsive Split View */}
-      {hasUnitLayout ? (
-        <SpanAnnotationProvider
-          key={`unit-${snapshot.currentUnit!.id}`}
-          fields={spanVariable?.fields ?? []}
-          options={spanVariable?.options ?? []}
-          defaultSelectionMode={spanVariable?.selectionMode ?? "word"}
-          allowGaps={spanVariable?.gaps ?? false}
-          initialSpans={spanVariable ? snapshot.currentUnitVariables?.[item.name]?.spans : undefined}
-          variableName={item.name}
-        >
-          {/* A size container: the answer pane's max height is a share of this area (cqh). On a tall
+          {/* Right Section: Coder Settings Menu */}
+          <div className="flex shrink-0 items-center gap-1">
+            {snapshot.retrying && (
+              <span
+                className="flex items-center gap-1 text-xs"
+                role="status"
+                title="Your answers are kept and saved as soon as the connection is back."
+              >
+                <CloudOff className="h-4 w-4" />
+                <span className="hidden sm:inline">Not saved yet: no connection</span>
+              </span>
+            )}
+            {!preview && (
+              <TransferMenu
+                coderApi={coderApi}
+                transferUrl={transferUrl ?? defaultTransferUrl}
+                login={snapshot.login}
+                canLogIn={snapshot.canLogIn}
+              />
+            )}
+            <CoderSettingsMenu />
+            <QuitMenu
+              onQuit={(requestDeletion) => manager.quit(requestDeletion)}
+              canTransfer={!preview && !!coderApi.createTransfer}
+              login={snapshot.login}
+            />
+          </div>
+        </header>
+
+        {/* Main Content Area: Responsive Split View */}
+        {hasUnitLayout ? (
+          <SpanAnnotationProvider
+            key={`unit-${snapshot.currentUnit!.id}`}
+            fields={spanVariable?.fields ?? []}
+            options={spanVariable?.options ?? []}
+            defaultSelectionMode={spanVariable?.selectionMode ?? "word"}
+            allowGaps={spanVariable?.gaps ?? false}
+            initialSpans={spanVariable ? snapshot.currentUnitVariables?.[item.name]?.spans : undefined}
+            variableName={item.name}
+          >
+            {/* A size container: the answer pane's max height is a share of this area (cqh). On a tall
               desktop screen it has a max height and is centred, so the answers stay near the unit. */}
-          {withSwipe(
-            <div className="flex min-h-0 flex-1 flex-col @5xl:p-6">
-              <SwipeSurface className="[container-type:size] relative flex w-full flex-1 flex-col overflow-hidden @5xl:mx-auto @5xl:my-auto @5xl:max-h-[56rem] @5xl:max-w-3xl @5xl:rounded-2xl @5xl:border @5xl:border-border @5xl:bg-card @5xl:shadow-sm">
-                {/* Scrollable Unit Content (Document). Stable gutter: a scrollbar appearing doesn't move the text. */}
-                <div className="min-h-[100px] flex-1 subtle-scrollbar [scrollbar-gutter:stable] overflow-x-hidden overflow-y-auto p-3 sm:p-5">
-                  <div
-                    key={unitAnimationKey}
-                    className={`mx-auto max-w-2xl ${unitSlideClass}`}
-                    onAnimationEnd={() => setUnitSlideClass("")}
-                  >
-                    {swipeVariable ? (
-                      // The unit moves when swiped; on a card only if the question asks for one (no layout jump otherwise)
-                      <SwipeCard
-                        key={variableKey}
-                        className={
-                          swipeVariable.card
-                            ? "rounded-2xl border border-border bg-card p-4 shadow-md sm:p-5"
-                            : "rounded-2xl bg-background"
-                        }
-                      >
+            {withSwipe(
+              <div className="flex min-h-0 flex-1 flex-col @5xl:p-6">
+                <SwipeSurface className="[container-type:size] relative flex w-full flex-1 flex-col overflow-hidden @5xl:mx-auto @5xl:my-auto @5xl:max-h-[56rem] @5xl:max-w-3xl @5xl:rounded-2xl @5xl:border @5xl:border-border @5xl:bg-card @5xl:shadow-sm">
+                  {/* Scrollable Unit Content (Document). Stable gutter: a scrollbar appearing doesn't move the text. */}
+                  <div className="min-h-[100px] flex-1 subtle-scrollbar [scrollbar-gutter:stable] overflow-x-hidden overflow-y-auto p-3 sm:p-5">
+                    <div
+                      key={unitAnimationKey}
+                      className={`mx-auto max-w-2xl ${unitSlideClass}`}
+                      onAnimationEnd={() => setUnitSlideClass("")}
+                    >
+                      {swipeVariable ? (
+                        // The unit moves when swiped; on a card only if the question asks for one (no layout jump otherwise)
+                        <SwipeCard
+                          key={variableKey}
+                          className={
+                            swipeVariable.card
+                              ? "rounded-2xl border border-border bg-card p-4 shadow-md sm:p-5"
+                              : "rounded-2xl bg-background"
+                          }
+                        >
+                          <UnitFields
+                            layout={snapshot.currentUnitLayout!}
+                            rendered={snapshot.currentUnitTemplate!}
+                            focus={focus}
+                            focusDim={focusDim}
+                          />
+                        </SwipeCard>
+                      ) : (
                         <UnitFields
                           layout={snapshot.currentUnitLayout!}
                           rendered={snapshot.currentUnitTemplate!}
                           focus={focus}
                           focusDim={focusDim}
                         />
-                      </SwipeCard>
-                    ) : (
-                      <UnitFields
-                        layout={snapshot.currentUnitLayout!}
-                        rendered={snapshot.currentUnitTemplate!}
-                        focus={focus}
-                        focusDim={focusDim}
-                      />
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* Compact, Thumb-Friendly Docked Bottom Answer Form */}
-                <DockedAnswerPane>
-                  <div key={variableKey} className={slideClass}>
-                    {questionElement}
-                  </div>
-                </DockedAnswerPane>
-              </SwipeSurface>
-            </div>,
-          )}
-        </SpanAnnotationProvider>
-      ) : (
-        /* Standalone Question (intro, survey, user variable without document) */
-        withSwipe(
-          <SwipeSurface className="flex flex-1 items-center justify-center overflow-x-hidden overflow-y-auto p-4 sm:p-8">
-            <div key={variableKey} className={`mx-auto w-full max-w-xl ${slideClass}`}>
-              <SwipeCard className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-8">
-                {questionElement}
-              </SwipeCard>
-            </div>
-          </SwipeSurface>,
-        )
-      )}
-    </div>
+                  {/* Compact, Thumb-Friendly Docked Bottom Answer Form */}
+                  <DockedAnswerPane>
+                    <div key={variableKey} className={slideClass}>
+                      {questionElement}
+                    </div>
+                  </DockedAnswerPane>
+                </SwipeSurface>
+              </div>,
+            )}
+          </SpanAnnotationProvider>
+        ) : (
+          /* Standalone Question (intro, survey, user variable without document) */
+          withSwipe(
+            <SwipeSurface className="flex flex-1 items-center justify-center overflow-x-hidden overflow-y-auto p-4 sm:p-8">
+              <div key={variableKey} className={`mx-auto w-full max-w-xl ${slideClass}`}>
+                <SwipeCard className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-8">
+                  {questionElement}
+                </SwipeCard>
+              </div>
+            </SwipeSurface>,
+          )
+        )}
+      </div>
+    </DisplayContext.Provider>
   );
 }
 

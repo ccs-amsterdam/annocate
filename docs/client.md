@@ -372,6 +372,28 @@ seconds). The server stores the outcome; the session then refuses units and
 answers (409 `session_ended`), and a reload shows the ending again (a
 closed session: 409 `session_closed`, `coder-identity.md` §9).
 
+### Display
+
+The Study entry's `display` (`{ layouts?: "fixed" | "responsive", theme?:
+"coder" | "light" | "dark" }`, the editor's **Display** part) reaches coders
+in the coder codebook. The coding screen provides it (`display/context.ts`)
+with the coding area's width class (`useWidthClass`: a ResizeObserver,
+narrow below 600 px; the area, not the window: a phone-sized preview on a
+desktop is narrow).
+
+- `layouts: fixed` (default): `resolveLayout(variable)`, the same for every
+  coder. `responsive`: fields ask `useAnswerLayout`, which passes a
+  `LayoutContext` (width class and the coder's keys): auto layouts use up to
+  5 buttons in a row or 3 columns when wide, 3-column grids with the
+  numpad, and buttons instead of a dropdown when typing to filter. Layouts a
+  researcher chose are kept.
+- The numpad mapping only applies in responsive designs (`useKeyMapping`
+  falls back to numbers; the settings menu greys it out and says why). It is
+  top-aligned (7 8 9, 4 5 6, 1 2 3 by row; none beyond the first 9), scales
+  use numbers, swipe 4 / 6 / 8.
+- `theme: light | dark` shows that theme instead of the coder's choice
+  (`CoderSettings.lockTheme`; the switch is hidden).
+
 ### Keyboard
 
 The coding screen has one key listener (`keyboard/KeyboardProvider.tsx`)

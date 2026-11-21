@@ -14,7 +14,7 @@ explains what it does, and when to choose a layout yourself.
 
 A question's layout is fixed: every coder sees the same form, on a phone,
 a tablet or a large screen. It does not rearrange itself for small
-screens.
+screens (unless the study is [responsive](#fixed-or-responsive)).
 
 That is deliberate. How answer options are shown affects the answers:
 options in one row are read differently from a list, a dropdown hides the
@@ -27,6 +27,26 @@ So layouts are designed for the smallest common phones, about 360 pixels
 wide, and the answer area should fit in about half of such a screen, so the
 unit stays visible above it. On a larger screen the same form is shown,
 centered.
+
+## Fixed or responsive
+
+The study's **Display** settings (above the item tree, next to Coder
+invitations) can change this for the whole study:
+
+- **Fixed** (the default): what this page describes. Auto layouts follow the
+  options only, and every coder sees the same form.
+- **Responsive**: auto layouts also follow the screen and the coder's keys.
+  On wider screens a question can use a row of up to five buttons, or three
+  columns. Coders who choose the numpad keys get buttons in three columns, so
+  every option has its key where it is on the numpad (**7 8 9** at the top).
+  Coders who type to filter get buttons instead of a dropdown.
+
+Layouts you chose for a question yourself stay as they are in both. Choose
+responsive when the layout doesn't matter for your answers, as in many
+annotation jobs, and coders benefit from working their own way; keep fixed
+for surveys and experiments, where it can matter (above). With responsive,
+each coder's display (their keys, and a narrow or wide screen) is recorded
+with their session in the results, so an analysis can check for it.
 
 ## What Auto chooses
 

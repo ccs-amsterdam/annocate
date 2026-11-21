@@ -256,6 +256,7 @@ export class DeploymentRuntime {
     this.coderCodebook = {
       id: spec.design.id,
       title: spec.design.public?.title ?? null,
+      ...(sessionItem(items)?.display ? { display: sessionItem(items)!.display } : {}),
       items: resolveRedirects(toCoderItems(items), spec.redirectUrls),
     };
   }

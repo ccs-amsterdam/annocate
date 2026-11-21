@@ -208,6 +208,21 @@ export type StudyEnd = z.infer<typeof StudyEndSchema>;
 /** The end item coders get for the study's normal end (`StudyEndSchema`). Reserved: no item may have this name. */
 export const STUDY_END_NAME = "_end";
 
+/**
+ * How the coding screen looks (docs/client.md §4 "Display"). `layouts`:
+ * `fixed` (default), an "auto" layout follows the options only, the same for
+ * every coder; `responsive`, it also follows the screen and the coder's keys
+ * (with the numpad: 3-column grids), and the numpad is available. Layouts a
+ * researcher picked are kept either way. `theme`: `coder` (default) lets
+ * coders choose light or dark; `light` / `dark` for everyone (e.g. images
+ * made for one background).
+ */
+export const DisplaySchema = z.object({
+  layouts: z.enum(["fixed", "responsive"]).optional(),
+  theme: z.enum(["coder", "light", "dark"]).optional(),
+});
+export type Display = z.infer<typeof DisplaySchema>;
+
 export const SessionItemSchema = z.object({
   type: z.literal("session"),
   label: z.string().optional(),
@@ -217,6 +232,8 @@ export const SessionItemSchema = z.object({
   urlParams: z.array(UrlParamSchema).max(20).optional(),
   /** The study's normal end: its message and redirect. */
   end: StudyEndSchema.optional(),
+  /** How the coding screen looks: layouts fixed or responsive, the theme. */
+  display: DisplaySchema.optional(),
   /** The design's `public` (stored apart from the session). */
   public: PublicInfoSchema.optional(),
 });

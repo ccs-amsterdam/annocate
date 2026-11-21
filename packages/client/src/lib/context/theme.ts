@@ -43,11 +43,16 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-/** The theme, and a setter; applies it to the page while the component is mounted. */
-export function useTheme(): [Theme, (theme: Theme) => void] {
+/**
+ * The theme, and a setter; applies it to the page while the component is
+ * mounted. `override`: a theme to show instead, without changing the choice
+ * (a study shown light or dark for everyone).
+ */
+export function useTheme(override: Theme | null = null): [Theme, (theme: Theme) => void] {
   const theme = useSyncExternalStore(subscribe, get, () => "light" as Theme);
+  const shown = override ?? theme;
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-  }, [theme]);
+    document.documentElement.classList.toggle("dark", shown === "dark");
+  }, [shown]);
   return [theme, setTheme];
 }

@@ -52,3 +52,24 @@ describe("special options", () => {
     expect(specialOptions(options).map((o) => o.value)).toEqual(["na"]);
   });
 });
+
+describe("responsive layouts", () => {
+  it("auto follows the screen and the coder's keys; a chosen layout stays", async () => {
+    const { resolveLayout } = await import("./answerLayout.js");
+    const nominal = (labels: string[], layout?: string) =>
+      ({ type: "nominal", question: "?", options: labels.map((value) => ({ value })), layout }) as never;
+    const five = nominal(["one", "two", "three", "four", "five"]);
+    expect(resolveLayout(five)).toEqual({ layout: "grid", columns: 2 });
+    expect(resolveLayout(five, { width: "narrow" })).toEqual({ layout: "grid", columns: 2 });
+    expect(resolveLayout(five, { width: "wide" })).toEqual({ layout: "row", columns: 1 });
+    expect(resolveLayout(five, { width: "narrow", keys: "numpad" })).toEqual({ layout: "grid", columns: 3 });
+    expect(resolveLayout(nominal(["a", "b"], "grid"), { width: "wide", keys: "numpad" })).toEqual({
+      layout: "grid",
+      columns: 1,
+    });
+    // Long lists: a dropdown, but buttons for typing to filter
+    const many = nominal(Array.from({ length: 30 }, (_, i) => `a fairly long category ${i}`));
+    expect(resolveLayout(many)).toEqual({ layout: "dropdown", columns: 1 });
+    expect(resolveLayout(many, { width: "narrow", keys: "filter" })).toEqual({ layout: "flex", columns: 1 });
+  });
+});

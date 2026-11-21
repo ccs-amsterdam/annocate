@@ -3,7 +3,7 @@ import { IdSchema } from "../common.js";
 import type { Condition } from "./condition.js";
 import type { ComputedItem, EndItem, InLoopItem, TopLevelItem, TopLevelQuestionItem, UnitLoopItem } from "./item.js";
 import type { RandomVariable } from "./variableTypes.js";
-import { STUDY_END_NAME, type SessionItem } from "./session.js";
+import { DisplaySchema, STUDY_END_NAME, type SessionItem } from "./session.js";
 
 // The coder codebook (docs/api/coder.md): what coders' browsers
 // get of a codebook, only what the coding client needs. Unit loops keep
@@ -35,6 +35,8 @@ export const CoderCodebookSchema = z.object({
   id: IdSchema,
   /** The study's public title (the design's `public.title`); null without one. */
   title: z.string().nullable(),
+  /** How the coding screen looks (the Study entry's `display`); absent: the defaults. */
+  display: DisplaySchema.optional(),
   items: z.custom<CoderTopLevelItem[]>((v) => Array.isArray(v)),
 });
 export type CoderCodebook = z.infer<typeof CoderCodebookSchema>;

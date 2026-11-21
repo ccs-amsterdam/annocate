@@ -16,31 +16,10 @@ import { ConditionDialog, TemplateInsertMenu } from "../TemplateInsertMenu";
 import { IssueList } from "../IssueList";
 import { parseSimpleLayout, simpleTemplate } from "../../../design/simpleLayout";
 import { LayoutDesigner } from "../LayoutDesigner";
-import { selectClass, questionNames, questionsOf } from "./helpers";
+import { questionNames, questionsOf } from "./helpers";
 import { Section } from "./Section";
 
-// The unit loop form's Layout tab: how a unit is shown (template, snippets, colour scheme).
-
-/** Light, dark, or the coder's mode. */
-function ColourScheme({ layout, onChange }: { layout: UnitLayout; onChange: (layout: UnitLayout) => void }) {
-  return (
-    <Section title="Colours" topic="colours-and-styles#light-or-dark">
-      <select
-        className={`${selectClass} w-fit`}
-        value={layout.colorScheme ?? ""}
-        onChange={(e) => {
-          const next = { ...layout, colorScheme: (e.target.value || undefined) as UnitLayout["colorScheme"] };
-          if (!next.colorScheme) delete next.colorScheme;
-          onChange(next);
-        }}
-      >
-        <option value="">Follow the coder&apos;s light or dark mode</option>
-        <option value="light">Always light</option>
-        <option value="dark">Always dark</option>
-      </select>
-    </Section>
-  );
-}
+// The unit loop form's Layout tab: how a unit is shown (template, snippets).
 
 /** How a unit is shown: a simple form (title, byline, body), or the markdown template and its snippets. */
 export function LayoutTab({
@@ -102,7 +81,6 @@ export function LayoutTab({
           )}
           <IssueList issues={issues} />
         </Section>
-        <ColourScheme layout={layout} onChange={(next) => onChange({ ...loop, layout: next })} />
         <button
           type="button"
           onClick={() => setAdvanced(true)}
@@ -179,16 +157,11 @@ export function LayoutTab({
       </Section>
 
       {/* Optional: open by itself when in use */}
-      <details
-        className="group rounded-md border border-border/70 px-3 py-2"
-        open={snippets.length > 0 || layout.colorScheme !== undefined}
-      >
+      <details className="group rounded-md border border-border/70 px-3 py-2" open={snippets.length > 0}>
         <summary className="cursor-pointer text-xs font-medium text-muted-foreground select-none hover:text-foreground">
-          More layout options: colours, snippets
+          More layout options: snippets
         </summary>
         <div className="mt-3 flex flex-col gap-4">
-          <ColourScheme layout={layout} onChange={(next) => onChange({ ...loop, layout: next })} />
-
           <Section title="Snippets" topic="snippets">
             {snippets.map(([name, value], i) => (
               <div key={i} className="flex flex-col gap-1 rounded-md border border-border p-2">

@@ -305,3 +305,49 @@ test("the coder chooses the keys for answers: letters, or typing to filter", asy
   await page.keyboard.press("Enter");
   await at(page, TEXTS[1], "Tone?");
 });
+
+test("display: the numpad only in a responsive study (three columns, 7 8 9 at the top); a study shown dark", async ({
+  page,
+  request,
+}) => {
+  const make = async (name: string, display: object) => {
+    const created = await api<StudyResponse>(request, "POST", "/study", { name });
+    await api<UnitResponse[]>(request, "POST", `/study/${created.id}/units`, {
+      units: [{ externalId: "u1", data: { text: "First text" } }],
+    });
+    const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, {
+      session: { display },
+      items: [
+        {
+          type: "unit_loop",
+          layout: { template: "$unit.text" },
+          children: [nominal("topic", "Topic?", ["politics", "economy", "sports", "other"])],
+        },
+      ],
+    });
+    await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
+    const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
+    return `/code/${created.id}?link=${link.secret}`;
+  };
+  const settings = () => page.getByRole("button", { name: "Coder Settings" }).click();
+
+  // Fixed (the default): no numpad
+  await page.goto(await make("Fixed display", { theme: "dark" }));
+  await question(page, "Topic?");
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await settings();
+  await expect(page.getByText("This study is shown dark for everyone.")).toBeVisible();
+  await expect(page.getByRole("option", { name: /Numpad/ })).toBeDisabled();
+  await page.keyboard.press("Escape");
+
+  // Responsive: the numpad, buttons in three columns
+  await page.goto(await make("Responsive display", { layouts: "responsive" }));
+  await question(page, "Topic?");
+  await settings();
+  await page.getByLabel("Keys for answers").selectOption("numpad");
+  await page.keyboard.press("Escape");
+  const badges = page.locator("[data-key-target] kbd");
+  await expect(badges).toHaveText(["7", "8", "9", "4"]);
+  await page.keyboard.press("8");
+  await expect(page.getByRole("button", { name: /economy/ })).toHaveAttribute("aria-pressed", "true");
+});

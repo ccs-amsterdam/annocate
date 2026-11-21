@@ -1,12 +1,6 @@
 import { useRef, useState } from "react";
-import {
-  SPECIAL_KEYS,
-  optionLabel,
-  ordinaryOptions,
-  resolveLayout,
-  specialOptions,
-  type Option,
-} from "@annotinder/contracts";
+import { useAnswerLayout } from "../../display/hooks";
+import { SPECIAL_KEYS, optionLabel, ordinaryOptions, specialOptions, type Option } from "@annotinder/contracts";
 import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildValues } from "./answerValue";
@@ -25,7 +19,7 @@ const itemLabel = (item: { name: string; label?: string }) => item.label ?? item
  * scrolls to it and highlights it instead.
  */
 export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFieldProps<ScaleVariable>) {
-  const { layout } = resolveLayout(variable);
+  const { layout } = useAnswerLayout(variable);
   const items = variable.items;
   // The scale's points, then its special options (don't know, not applicable), apart
   const points = ordinaryOptions(variable.options);

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Globe, Link2, Plus, Trash2 } from "lucide-react";
+import { Globe, Link2, Monitor, Plus, Trash2 } from "lucide-react";
 import {
   urlParamKey,
   type DesignIssue,
@@ -17,6 +17,7 @@ import { issuesAt } from "./issues";
 import { SegmentedToggle } from "./designEditor/SegmentedToggle";
 import { InvitationSettings } from "./session/InvitationSettings";
 import { useSessionTab } from "./session/sessionTab";
+import { DisplaySettings } from "./session/DisplaySettings";
 
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 
@@ -44,6 +45,11 @@ export function SessionItemForm({
   onChange: (item: SessionItem) => void;
 }) {
   const [tab, setTab] = useSessionTab();
+  const setDisplay = (display: NonNullable<SessionItem["display"]>) => {
+    const next: SessionItem = { ...item, display };
+    if (Object.keys(display).length === 0) delete next.display;
+    onChange(next);
+  };
   const set = <K extends "invite" | "urlParams">(key: K, value: SessionItem[K] | undefined) => {
     const next = { ...item, [key]: value };
     if (value === undefined) delete next[key];
@@ -57,9 +63,12 @@ export function SessionItemForm({
         options={[
           { value: "invite", label: "Coder invitations", icon: Globe },
           { value: "urlParams", label: "URL parameters", icon: Link2 },
+          { value: "display", label: "Display", icon: Monitor },
         ]}
       />
-      {tab === "invite" ? (
+      {tab === "display" ? (
+        <DisplaySettings display={item.display} onChange={(display) => setDisplay(display)} />
+      ) : tab === "invite" ? (
         <InvitationSettings
           invite={item.invite}
           groups={groups}

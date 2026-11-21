@@ -39,27 +39,26 @@ export const numbersMapping: KeyMapping = {
   assign: (group) => group.map((_, i) => (i < 9 ? String(i + 1) : null)),
 };
 
-/** The numpad's keys by row from the bottom: 1 2 3, 4 5 6, 7 8 9. */
+/** The numpad's keys by row from the top, as on the numpad: 7 8 9, 4 5 6, 1 2 3. */
 const NUMPAD = [
-  ["1", "2", "3"],
-  ["4", "5", "6"],
   ["7", "8", "9"],
+  ["4", "5", "6"],
+  ["1", "2", "3"],
 ];
 
 /**
- * The numpad: keys where the buttons are, the bottom row 1 2 3, the one
- * above it 4 5 6, the top 7 8 9. For buttons in at most 3 rows and 3
- * columns; other questions use numbers.
+ * The numpad (responsive designs only, docs/client.md §4 "Display"): the
+ * key where the button is, the first row always 7 8 9, then 4 5 6 and 1 2 3,
+ * so a place has the same key in every question. Buttons in 3 columns (the
+ * layouts make them so); beyond the first 9 none (the arrows reach them).
+ * Targets without a place (a scale's points) use numbers.
  */
 export const numpadMapping: KeyMapping = {
   id: "numpad",
   name: "Numpad",
-  description: "The numpad's keys where the buttons are (up to 3 × 3; else numbers)",
-  supports: (group) => group.length > 0 && group.every((t) => t.pos !== undefined && t.pos.row < 3 && t.pos.col < 3),
-  assign: (group) => {
-    const rows = Math.max(...group.map((t) => t.pos!.row)) + 1;
-    return group.map((t) => NUMPAD[rows - 1 - t.pos!.row][t.pos!.col]);
-  },
+  description: "The numpad's keys where the buttons are (7 8 9 at the top)",
+  supports: (group) => group.length > 0 && group.every((t) => t.pos !== undefined && t.pos.col < 3),
+  assign: (group) => group.map((t) => NUMPAD[t.pos!.row]?.[t.pos!.col] ?? null),
 };
 
 /** Letters in order of how easily touch typists reach them: the home row first. */

@@ -9,13 +9,28 @@ import type {
   ScaleLayout,
 } from "./variableTypes.js";
 
-// How an answer form is laid out (docs/client.md §4). `auto` is fixed per
-// question, not per device, so every coder sees the same form: it is chosen
-// for the smallest phones (about 360 px wide) within a height budget of half
-// such a screen. Larger screens show the same layout, centered.
+// How an answer form is laid out (docs/client.md §4). In a fixed design
+// (the default) `auto` is fixed per question, not per device, so every coder
+// sees the same form: it is chosen for the smallest phones (about 360 px
+// wide) within a height budget of half such a screen; larger screens show the
+// same layout, centered. A responsive design's `auto` also follows the screen
+// and the coder's keys (LayoutContext).
 
 /** The design screen: a small phone, minus the page gutters. */
 export const DESIGN_WIDTH = 344;
+/** The question column on wider screens (tablets, computers): it doesn't grow beyond this. */
+export const WIDE_WIDTH = 560;
+
+/**
+ * What a responsive design's "auto" layouts also follow (docs/client.md §4
+ * "Display"): the screen (`narrow`: a phone; `wide`: more room) and the
+ * coder's keys (the numpad: 3-column grids; typing to filter: buttons, no
+ * dropdown). Fixed designs pass none: the same layout for every coder.
+ */
+export interface LayoutContext {
+  width: "narrow" | "wide";
+  keys?: string;
+}
 /** Half the height of a small phone. */
 export const HEIGHT_BUDGET = 320;
 /** A button row: about 40 px tall plus the gap. */
@@ -34,32 +49,38 @@ export type ResolvedLayout =
 
 const labelWidth = (labels: string[]) => Math.max(0, ...labels.map((l) => l.length)) * CHAR + PADDING;
 
-/** Whether n buttons fit side by side in one row. */
-function fitsRow(labels: string[]): boolean {
+/** Whether n buttons fit side by side in one row (at most 3 on a phone, 5 with more room). */
+function fitsRow(labels: string[], width = DESIGN_WIDTH): boolean {
   const n = labels.length;
-  return n <= 3 && labelWidth(labels) <= (DESIGN_WIDTH - (n - 1) * GAP) / n;
+  return n <= (width > DESIGN_WIDTH ? 5 : 3) && labelWidth(labels) <= (width - (n - 1) * GAP) / n;
 }
 
 /** Whether a grid with `columns` columns fits in width (labels on one line) and height. */
-function fitsGrid(labels: string[], columns: number): boolean {
+function fitsGrid(labels: string[], columns: number, width = DESIGN_WIDTH): boolean {
   const rows = Math.ceil(labels.length / columns);
-  return rows * ROW <= HEIGHT_BUDGET && labelWidth(labels) <= (DESIGN_WIDTH - (columns - 1) * GAP) / columns;
+  return rows * ROW <= HEIGHT_BUDGET && labelWidth(labels) <= (width - (columns - 1) * GAP) / columns;
 }
 
-function categorical(variable: CategoricalType): ResolvedLayout {
+function categorical(variable: CategoricalType, context?: LayoutContext): ResolvedLayout {
   // Special options are laid out apart, under the others
   const labels = ordinaryOptions(variable.options).map(optionLabel);
   if (variable.layout && variable.layout !== "auto") {
     return { layout: variable.layout, columns: variable.layout === "grid" ? (variable.columns ?? 1) : 1 };
   }
+  // Responsive: the numpad's 3 columns, the same in every question
+  if (context?.keys === "numpad") return { layout: "grid", columns: 3 };
+  const width = context?.width === "wide" ? WIDE_WIDTH : DESIGN_WIDTH;
   if (variable.type === "ordinal") {
-    if (labels.length <= 3) return { layout: "row", columns: 1 };
+    if (labels.length <= 3 || (context && fitsRow(labels, width))) return { layout: "row", columns: 1 };
     if (labels.length * ROW <= HEIGHT_BUDGET) return { layout: "grid", columns: 1 };
     return { layout: "compact", columns: 1 };
   }
-  if (fitsRow(labels)) return { layout: "row", columns: 1 };
-  if (fitsGrid(labels, 2)) return { layout: "grid", columns: 2 };
-  if (fitsGrid(labels, 1)) return { layout: "grid", columns: 1 };
+  if (fitsRow(labels, width)) return { layout: "row", columns: 1 };
+  if (context?.width === "wide" && fitsGrid(labels, 3, width)) return { layout: "grid", columns: 3 };
+  if (fitsGrid(labels, 2, width)) return { layout: "grid", columns: 2 };
+  if (fitsGrid(labels, 1, width)) return { layout: "grid", columns: 1 };
+  // Typing to filter works on buttons: no dropdown
+  if (context?.keys === "filter") return { layout: "flex", columns: 1 };
   return { layout: "dropdown", columns: 1 };
 }
 
@@ -77,11 +98,11 @@ function numeric(variable: NumericType): ResolvedLayout {
 }
 
 /** The layout a question is shown with: its own, or what `auto` picks. */
-export function resolveLayout(variable: AnyVariableType): ResolvedLayout {
+export function resolveLayout(variable: AnyVariableType, context?: LayoutContext): ResolvedLayout {
   switch (variable.type) {
     case "nominal":
     case "ordinal":
-      return categorical(variable);
+      return categorical(variable, context);
     case "numeric":
       return numeric(variable);
     case "scale":

@@ -84,15 +84,20 @@ describe("moving focus with the arrow keys", () => {
 });
 
 describe("the other mappings", () => {
-  it("numpad: keys where the buttons are, the bottom row 1 2 3; beyond 3 x 3 numbers", async () => {
+  it("numpad: the key where the button is, 7 8 9 at the top in every question; without places numbers", async () => {
     const { keysOf, numpadMapping } = await import("./mappings");
-    const grid = (n: number, cols: number) =>
-      Array.from({ length: n }, (_, i) => ({ label: `${i}`, pos: { row: Math.floor(i / cols), col: i % cols } }));
-    expect(keysOf(numpadMapping, grid(3, 3))).toEqual(["1", "2", "3"]);
-    expect(keysOf(numpadMapping, grid(6, 3))).toEqual(["4", "5", "6", "1", "2", "3"]);
-    expect(keysOf(numpadMapping, grid(4, 2))).toEqual(["4", "5", "1", "2"]);
-    expect(keysOf(numpadMapping, grid(4, 4))).toEqual(["1", "2", "3", "4"]);
-    // Without positions (buttons that wrap): numbers
+    const grid = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({ label: `${i}`, pos: { row: Math.floor(i / 3), col: i % 3 } }));
+    expect(keysOf(numpadMapping, grid(3))).toEqual(["7", "8", "9"]);
+    expect(keysOf(numpadMapping, grid(5))).toEqual(["7", "8", "9", "4", "5"]);
+    expect(keysOf(numpadMapping, grid(11)).slice(6)).toEqual(["1", "2", "3", null, null]);
+    // Swipe: left, right below up
+    const swipe = [
+      { label: "l", pos: { row: 1, col: 0 } },
+      { label: "r", pos: { row: 1, col: 2 } },
+      { label: "u", pos: { row: 0, col: 1 } },
+    ];
+    expect(keysOf(numpadMapping, swipe)).toEqual(["4", "6", "8"]);
     expect(keysOf(numpadMapping, [{ label: "a" }, { label: "b" }])).toEqual(["1", "2"]);
   });
 

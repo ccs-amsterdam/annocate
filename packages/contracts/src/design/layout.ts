@@ -27,11 +27,5 @@ export const UnitLayoutSchema = z.object({
       "Named pieces of the template, put in with [[name]] as if typed there (anywhere: lines, block fences, scripts)",
     ),
   style: z.record(z.string(), z.string()).optional().describe("Optional inline CSS for the layout's root container"),
-  colorScheme: z
-    .enum(["light", "dark"])
-    .optional()
-    .describe(
-      "Always show the unit in light or dark colours (e.g. for styled content). Default: follow the coder's setting.",
-    ),
 });
 export type UnitLayout = z.infer<typeof UnitLayoutSchema>;

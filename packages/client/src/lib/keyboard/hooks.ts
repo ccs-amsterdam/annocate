@@ -1,6 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { PRIORITY, type KeyHandler, type KeyPress, type ScopeOptions } from "./controller";
 import { KeyboardContext } from "./context";
+import { useDisplay } from "../display/context";
 import { arrowDirection, focusChosen, focusKeepsArrows, moveFocus } from "./focus";
 import {
   effectiveMapping,
@@ -12,9 +13,11 @@ import {
   type KeyTarget,
 } from "./mappings";
 
-/** The coder's keyboard mapping (numbers without a provider). */
+/** The coder's keyboard mapping (numbers without a provider; the numpad only in responsive designs). */
 export function useKeyMapping(): KeyMapping {
-  return useContext(KeyboardContext)?.mapping ?? numbersMapping;
+  const mapping = useContext(KeyboardContext)?.mapping ?? numbersMapping;
+  const display = useDisplay();
+  return mapping.id === "numpad" && display.layouts !== "responsive" ? numbersMapping : mapping;
 }
 
 /**

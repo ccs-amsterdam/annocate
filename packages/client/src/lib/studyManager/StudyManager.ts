@@ -13,6 +13,7 @@ import type {
   CoderUnitResponse,
   SessionResponse,
   AnyVariableType,
+  Display,
   EndItem,
   ReferenceScope,
   UnitData,
@@ -125,6 +126,8 @@ export interface StudyManagerSnapshot {
   practiceRight: number;
   /** The study's public title (the design's `session.public.title`), null without one. */
   title: string | null;
+  /** How the coding screen looks (the Study entry's `display`): layouts and theme. */
+  display: Display;
 }
 
 /** How the session ended at an `end` item: its message and redirect, with their values filled in. */
@@ -358,6 +361,7 @@ export class StudyManager {
     practiceWrong: null,
     practiceRight: 0,
     title: null,
+    display: {},
     navigation: {
       canGoBack: false,
       canGoForward: false,
@@ -406,7 +410,7 @@ export class StudyManager {
       this.publish({ phase: "loading", error: null, errorCode: null });
       const session: SessionResponse = await this.coderApi.getSession();
       this.items = session.codebook.items;
-      this.publish({ title: session.codebook.title ?? null });
+      this.publish({ title: session.codebook.title ?? null, display: session.codebook.display ?? {} });
       this.loopKeys = new Map(unitLoops(this.items).map(({ key, loop }) => [loop, key]));
       this.dependencies = loopDependencies(this.items);
       this.frozen = new Set(session.frozen ?? []);

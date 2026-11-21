@@ -1,4 +1,4 @@
-import { Globe, Link2, Users, type LucideIcon } from "lucide-react";
+import { Globe, Link2, Monitor, Users, type LucideIcon } from "lucide-react";
 import { inviteOf, sessionItem, type Invite, type SessionItem } from "@annotinder/contracts";
 import { cn } from "cn";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -67,6 +67,18 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
           issues={issuesOf("urlParams")}
           title="Values a link carries, e.g. from a panel. Open to edit"
           onClick={() => open("urlParams")}
+        />
+        <HeaderButton
+          icon={Monitor}
+          label="Display"
+          summary={[
+            session.display?.layouts === "responsive" ? "responsive" : "fixed layouts",
+            ...(session.display?.theme && session.display.theme !== "coder" ? [`always ${session.display.theme}`] : []),
+          ].join(", ")}
+          selected={selected && tab === "display"}
+          issues={issuesOf("display")}
+          title="How the coding screen looks: layouts and theme. Open to edit"
+          onClick={() => open("display")}
         />
       </div>
     </div>
