@@ -185,8 +185,8 @@ answer to it.
 ## 5. Coders
 
 - **Sessions** are a device cookie (`coder-identity.md` §4): httpOnly, and
-  only a hash is stored. A participant id is a label, never a key: a link
-  with a known participant id on a new device doesn't continue that session.
+  only a hash is stored. A coder id is a label, never a key: a link
+  with a known coder id on a new device doesn't continue that session.
   The coder is asked to continue on their first device, and can only start
   again after confirming they can't get back to it.
 - **Logging in** on a link that allows it links the login's email to the

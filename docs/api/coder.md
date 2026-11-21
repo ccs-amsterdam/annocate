@@ -46,13 +46,13 @@ Headers:
   (`auth_required`, below);
 - `x-url-params`: the page's other query parameters. They hold the URL
   parameters the design's Study entry declares (`urlParams`), a crowd
-  invitation's participant id parameter, and the optional `source` (stored
-  on the coder as `$session` values, with the link's coder; at most 256
+  invitation's coder id parameter (`coderParam`), and the optional `source` (stored
+  on the session as `$session` values, with the coder; at most 256
   characters each; a missing or invalid one is 400 `url_param_missing` /
-  `url_param_invalid`). The participant id is also part of the device's key
-  for the session (a device keeps a session per participant id);
+  `url_param_invalid`). The crowd's coder id is also part of the device's key
+  for the session (a device keeps a session per coder id);
 - `x-new-session: 1` (first request only): start another session for a
-  participant that already has one;
+  coder id that already has one (after 409 `coder_has_session`);
 - the login cookie (`annotinder_session`, from `/auth/login`): read only to
   link the session to its email once, or to find the email's session on a
   new device (`coder-identity.md` §5). Where the coder invitation requires
@@ -86,8 +86,8 @@ needs: unit loops keep their layout, questions and order, without their
 `units` (the server works out the units: no filters, placements or
 checks); no Study entry, no researcher notes, and computed variables only with
 their options (an invisible step: the client asks `computeVariable`). Creates
-the coder and session on first use, with its `$session` values: the coder
-(by the link or the login's email), the URL parameters and `source`.
+the session on first use, with its `$session` values: the coder
+(`coder`: who the coder is, `coder-identity.md` §2), the URL parameters and `source`.
 `login`: the email of the login the session belongs to, or null;
 `canLogIn`: the link offers a login the coder hasn't used. `frozen`: the
 coder-level answers that can't change any more, because the coder coded
@@ -102,7 +102,7 @@ never the study's name, which is private), when it
 started and was last active, how it ended (`ended`: `complete`,
 `screenout`, `quit`; null while it goes on) and the units answered. 404
 without a session; never starts one. The device's key includes the
-participant id, so `x-url-params` with it finds the session of a link
+crowd's coder id from the URL, so `x-url-params` with it finds the session of a link
 that carries one. The server can't list a device's studies (its keys are
 per study, §4 of coder-identity.md): the browser remembers which it
 opened (`client/src/lib/session/studies.ts`) and asks each.

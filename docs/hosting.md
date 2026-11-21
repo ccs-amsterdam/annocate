@@ -591,7 +591,7 @@ links, coders, their devices and answers. **Create new study › From a
 file** on this or another server imports it as a new study, with or
 without its coders and answers. Exporting is for the study's ADMINs, and a
 sensitive action (a recent login with a second factor): the file holds
-coders' data, such as participant ids and the emails of coders who logged
+coders' data, such as coder ids and the emails of coders who logged
 in.
 
 - **Format** (contracts `StudyExportManifestSchema`): gzipped JSON lines, a
@@ -610,8 +610,8 @@ in.
   who logged in finds their session by logging in. Codings are derived from
   the answers again.
 - **What stays behind**: the study's other users and their roles, leases,
-  transfer links. Coder ids in results downloaded before the move differ
-  from those after it; match coders by participant id.
+  transfer links. Session ids in results downloaded before the move differ
+  from those after it; match coders by their coder id (`coder`).
 - The importer's limits apply (studies, units, coders).
 
 ## Versions

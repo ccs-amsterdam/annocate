@@ -390,14 +390,18 @@ from `items`; the editor holds them as this first item,
 `designItems`/`splitDesignItems`.)
 
 The coders form picks the coders' column and how coders get in (a link per
-coder, or one link where they sign in with the column's email addresses);
+coder, one link where they pick their name, or one link where they sign in
+with the column's email addresses);
 "Make the column…" (`session/CoderSetDialog.tsx`) makes that column: a
 number of coders (`coder_1`, ...), names or email addresses, coders per
 unit, an overlap for every coder (% or units) and the column's name
 (`splitIntoSets` with `perUnit`, written with `PUT /sets/:column`). The
-crowd form has the participant id's URL parameter, "Coders sign in", the
-most coders, and "Share the units among coders" (the criteria form,
-`SharedSettings` in `unitLoop/UnitsEditor.tsx`).
+crowd form has "Coder id from a URL parameter" (`coderParam`: the URL
+parameter, a pattern and "Required"), "Coders sign in", the most coders,
+and "Share the units among coders" (`share`: the criteria form,
+`SharedSettings` in `unitLoop/UnitsEditor.tsx`). Without a unit loop
+nothing is hidden: validation warns that the unit settings aren't used
+yet.
 
 The tree's last row is **At the end** (`STUDY_END_KEY`): the study's normal
 end (`session.end`), edited with an end item's fields without the outcome
@@ -439,7 +443,7 @@ instruction texts, conditions and redirect links
 | `$var.<q>.values` | all items' values, in item order | scale |
 | `$var.<q>.items.<item>.value`, `.label` | one item | scale |
 | `$var.<q>.answered` | answered and not skipped | any |
-| `$session.participant`, `.source`, `.coder`, `$session.<name>` | the session's participant id, `?source=`, the coder (specific coders), and the URL parameters the design's Study entry declares (strings; empty when absent) | |
+| `$session.coder`, `.source`, `$session.<name>` | who the coder is (specific coders' value in the column, a crowd's coder id from the URL, or the login's email where a crowd requires sign-in), `?source=`, and the URL parameters the design's Study entry declares (strings; empty when absent) | |
 
 Using `.value` on a multiple-answer question or `.values` on a single one
 is a validation error, and so is the old `.code`. A numeric answer's label
@@ -560,7 +564,7 @@ from the Preview Study button. It uses a `ResearcherApi`
      optionally with overlap), the sets are coders (column `coders`,
      values `coder_1`, ... or the column's), each with their own link
      (specific coders, `per_coder`); crowd coding (the criteria form, put
-     on the crowd invitation's `units`, optional overlap); or experimental
+     on the crowd invitation's `share`, optional overlap); or experimental
      groups (per condition the values of a column it gets: the computed
      item linked to that column).
   5. **How coders see a unit**: the layout sketch (`LayoutDesigner.tsx`,
@@ -795,7 +799,7 @@ from the Preview Study button. It uses a `ResearcherApi`
   status, and the URL parameters a link takes (copied with placeholders;
   for a URL parameter with listed values, a link per value can be listed
   and copied, built from the links, nothing stored). Per link: label, max
-  uses and a fixed participant id; revoke (no new coders), reopen a
+  uses and a fixed coder id ("Fixed coder id"); revoke (no new coders), reopen a
   revoked link, or a new secret. Links whose coder is gone are retired and
   listed separately. There is no "create": the design's Study entry
   (`SessionItemForm.tsx`) declares the coder invitation and URL
@@ -803,7 +807,7 @@ from the Preview Study button. It uses a `ResearcherApi`
 - **Coders**: per coder the link, started, last active, answers,
   finished units per loop of the live design, and how the session ended
   at an `end` item or by quitting (`ended`). Open deletion requests are
-  listed first (delete now or later), and deleted coders in a log. Per coder, or by participant ids or
+  listed first (delete now or later), and deleted coders in a log. Per coder session, or by coder ids or
   emails: reset their answers (kept as reset) or delete their data
   (`coder-identity.md` §8).
 - **Results** (`ResultsPanel.tsx`, `admin/exportData.ts`): one zip,

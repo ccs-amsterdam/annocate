@@ -110,7 +110,7 @@ that stores them. Where it runs is the researcher's choice: annotinder.com
 (hosted by us, in the EU), or self-hosted (e.g. a university server) for
 sensitive data.
 
-A possible hardening, not planned yet: encrypting participants' answers in
+A possible hardening, not planned yet: encrypting coders' answers in
 the client, so the server stores only ciphertext (`plans/encryption.md`).
 
 ## 5. Lifecycle
@@ -133,12 +133,12 @@ client calls `/d/<studyId>/...`.
 
 **Coder session.**
 
-1. **First request.** The runtime resolves the coder by device key (a hash
-   of the device cookie's id, the deployment and the participant id, see
+1. **First request.** The runtime resolves the session by device key (a hash
+   of the device cookie's id, the deployment and a crowd's coder id, see
    `coder-identity.md` §4) and link
-   secret, creating the coder if needed and storing its participant id and
-   `$session` values (URL parameters, `source`, and the coder by its link
-   or login, §6.1, §7; `server/src/runtime/sessionValues.ts`); on every
+   secret, creating the session if needed and storing its coder and
+   `$session` values (URL parameters, `source`, and the coder, §6.1, §7;
+   `server/src/runtime/sessionValues.ts`); on every
    request after that, one query finds it.
 2. **`GET /session`.** Returns the coder codebook (the coders' view of the design), per-loop progress, and the
    coder's variables (so client-side conditions can use drawn values).
@@ -179,7 +179,7 @@ There are three layers:
 | --- | --- | --- |
 | Design | questions, computed items, `show_if` items, `unit_loop` filters and placements, the session (the coder invitation with a crowd's distribution criteria, URL parameters, the normal end); refers to set columns and their values by name, and to coders only via `$session` values and coder-level answers | yes |
 | Set columns | per column, named sets of units in order (e.g. column `coders`: `anna`, `bob`, `_overlap`) | data, not process |
-| Links | made from the design's coder invitation (one, or one per coder), with a label, max uses and a fixed participant id | no (stored on the server only) |
+| Links | made from the design's coder invitation (one, or one per coder), with a label, max uses and a fixed coder id | no (stored on the server only) |
 
 **Why at the session level.** One idea, *who is this session for*, decides
 a session's units: the coder column and the random conditions linked to a
@@ -203,9 +203,9 @@ session:
 session:
   invite:
     mode: crowd                                     # the default: { mode: crowd }
-    participant: { param: PROLIFIC_PID, pattern: "[0-9a-f]{24}" }   # optional
+    coderParam: { param: PROLIFIC_PID, pattern: "[0-9a-f]{24}" }    # optional: the coder id
     login: true                                     # optional: coders must sign in
-    units:                                          # optional: a shared queue (crowd coding)
+    share:                                          # optional: a shared queue (crowd coding)
       until: { agree: 2, on: sentiment }            # or codersPerUnit: { min: 1 }
       codersPerUnit: { max: 5 }
       unitsPerCoder: { max: 100 }
@@ -223,15 +223,29 @@ session:
   then `x-coder-name`; 409 `name_required` until they do). `nameDevices:
   "first"` (the default): a name is the first device's that picks it, others
   get 409 `name_taken`; `"any"`: picking a name continues its session (a team
-  sharing devices). The names are shown to anyone with the link, so a deploy
-  refuses email addresses there. The coder is `$session.coder`.
-- **A crowd** (`mode: "crowd"`): one link. `participant`: the participant
-  id from a URL parameter, required (400 `url_param_missing` /
-  `url_param_invalid`). `login`: coders must sign in (401 `auth_required`
-  otherwise); the email is the participant id. `units`: distribution
-  criteria (`CriteriaSchema`, §6.2) applied in every unit loop. Without
-  them every coder codes all units. `maxCoders`: the link starts at most
-  this many sessions (a link's own `maxUses` overrides it).
+  sharing devices). The names are shown to anyone with the link (a feature
+  for a trusted team; email addresses are allowed). The coder is
+  `$session.coder`.
+- **A crowd** (`mode: "crowd"`): one link. `coderParam`: the coder id
+  from a URL parameter (`{ param, pattern?, optional? }`), required (400
+  `url_param_missing` / `url_param_invalid`) unless `optional: true` (a link
+  without it then starts without a coder id). `login`: coders must sign in
+  (401 `auth_required` otherwise); without a `coderParam` value the email is
+  the coder id. `share`: distribution criteria (`CriteriaSchema`, §6.2)
+  applied in every unit loop. Without them every coder codes all units.
+  `maxCoders`: the link starts at most this many sessions (a link's own
+  `maxUses` overrides it).
+- **Who the coder is** (`$session.coder`, the session's `coder`): specific
+  coders' value in the column (by their link, the picked name or the
+  login's address), a crowd's id from `coderParam`, else the login's email
+  where the crowd requires sign-in, or a coder id fixed on a link. A new
+  device for a coder who already has a session is asked first (409
+  `coder_has_session`, `coder-identity.md` §4).
+- **Without a unit loop** the unit settings (specific coders' own units, a
+  crowd's `share`) are kept but not used: validation warns ("... but the
+  design has no unit loop yet"), and the links still follow the invitation
+  (specific coders without units are valid, e.g. a survey of known
+  experts).
 - **Computed variables** (`type: "computed"`, `variable.type: "random"`, §7)
   are drawn when reached; with `units` they also select units, for the
   loops after them. They are the design's experimental conditions.
@@ -272,7 +286,7 @@ units:                   # optional
 - **`own: false`**: the loop has only the special units (e.g. a practice
   round before the real coding).
 - **Without a shared queue**: every coder codes all their units once.
-- **A shared queue** (a crowd invitation's `units`, `CriteriaSchema`): each
+- **A shared queue** (a crowd invitation's `share`, `CriteriaSchema`): each
   loop's units are a queue shared by the sessions with the same units (the
   same values of linked columns), within the filter. `effectiveLoopUnits`
   combines a loop's settings with it; an `until` rule applies only in loops
@@ -401,7 +415,7 @@ for it are ignored, and the coding screen shows it read-only.
 
 ```yaml
 session:
-  invite: { mode: crowd, participant: { param: PROLIFIC_PID } }
+  invite: { mode: crowd, coderParam: { param: PROLIFIC_PID } }
   urlParams:
     - { name: study, param: STUDY_ID, pattern: "[0-9a-f]{24}" }
     - { name: wave, values: [{ value: "1" }, { value: "2" }], default: "1" }
@@ -420,10 +434,10 @@ session:
   At most 256 characters. A missing required value is 400
   `url_param_missing`, one that doesn't fit 400 `url_param_invalid`.
 
-All are `$session.<name>`, stored on the coder when the session starts.
-Built in: `$session.source` (an optional `?source=` on any link),
-`$session.participant` (a crowd's participant id) and `$session.coder`
-(specific coders); `email` is reserved too. Experimental conditions are
+All are `$session.<name>`, stored on the session when it starts.
+Built in: `$session.source` (an optional `?source=` on any link) and
+`$session.coder` (who the coder is, §6.1); `coder` and `source` are
+reserved. Experimental conditions are
 computed items, never session values.
 
 **Links** (stored on the server, never in the design) are made by
@@ -435,12 +449,13 @@ link no longer made (e.g. its coder is gone) is **retired** (403
 `link_inactive` for new coders; coders who started keep working), never
 deleted. A revoked link stops new coders and stays revoked through a
 redeploy until it is reopened. The researcher sets only a link's label,
-`maxUses` and a fixed participant id.
+`maxUses` and a fixed coder id (`coder`; "Fixed coder id" on the Links
+page).
 
 **Sign-in** follows the coder invitation: required for specific coders
 with `link: "login"` and a crowd with `login: true`; elsewhere coders may
 sign in to keep their session across devices, and researchers don't see
-their email. Participant ids and login: `docs/coder-identity.md`.
+their email. Coder ids and login: `docs/coder-identity.md`.
 
 ## 8. Resuming, and design updates
 
@@ -505,7 +520,7 @@ How it works:
   answer only what's new. Deploying such a design returns a warning with
   the number of affected codings.
 - **Reset** (`POST /study/:studyId/annotations/reset { variables, unitIds?,
-  coderIds? }`, a researcher action): retires live values instead of
+  sessionIds? }`, a researcher action): retires live values instead of
   deleting them. The units are unfinished again; the old values stay for
   analysis. It bumps the deployment's `annotationEpoch`, so the runtime
   reloads.

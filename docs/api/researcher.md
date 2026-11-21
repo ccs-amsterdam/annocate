@@ -495,8 +495,8 @@ first, with `params` (`{ coder }` for a coder's link, else `{}`), `uses`,
 ### updateLink
 
 `PUT /study/:studyId/links/:id` (`LinkWriteSchema`) →
-`LinkResponseSchema`. The link's `label`, `maxUses` and a fixed
-`participantId`. Full replace of these settings. Sign-in is the design's
+`LinkResponseSchema`. The link's `label`, `maxUses` and a fixed coder
+id (`coder`, the session's `$session.coder`). Full replace of these settings. Sign-in is the design's
 coder invitation, not a link's. A link's `maxUses` overrides a crowd
 invitation's `maxCoders`.
 
@@ -519,8 +519,8 @@ coders who already started keep working.
 
 ### listCoders
 
-`GET /study/:studyId/coders` → `CoderProgressSchema[]`: per coder the link,
-participant id, started, last active, live answers, finished units per
+`GET /study/:studyId/coders` → `CoderProgressSchema[]`: per coder session
+(`id`) the link, the coder id (`coder`), started, last active, live answers, finished units per
 loop of the live design version, `special`: the units of the deployed
 `_overlap`, `_gold` and `_practice` sets they finished, of how many (for
 the kinds the study has), `variables`: their coder-level values
@@ -534,10 +534,10 @@ researcher chose to delete later), or null.
 
 ### deleteCoders
 
-`POST /study/:studyId/coders/delete` (`DeleteCodersSchema`: `{ coderIds?,
-participantIds?, emails? }`, at least one) → `{ coderIds, answers }`. ADMIN.
-Deletes the matching coders of the study and all their answers, also reset
-ones, for good (a participant withdrew; docs/coder-identity.md §8). Units
+`POST /study/:studyId/coders/delete` (`DeleteCodersSchema`: `{ sessionIds?,
+coders?, emails? }`, at least one) → `{ sessionIds, answers }`. ADMIN.
+Deletes the matching coder sessions of the study and all their answers, also reset
+ones, for good (a coder withdrew; docs/coder-identity.md §8). Units
 nobody has answers for any more can be deleted again; unit versions stay.
 Each deleted coder is logged (listCoderDeletions); `deletedBy` is the
 researcher's email.
@@ -551,7 +551,7 @@ UI then no longer brings up. The request stays until the coder is deleted.
 ### listCoderDeletions
 
 `GET /study/:studyId/coders/deletions` → `CoderDeletionSchema[]`, newest first:
-per deleted coder `coderId`, `participantId`, `requestedAt` (if
+per deleted coder session `sessionId`, `coder`, `requestedAt` (if
 they asked), `deletedAt`, `deletedBy` and `answers` (rows deleted). Kept
 after the data is gone, with the ids downloaded results use, so the coder
 can be deleted from those too. Not the email address: nothing that
@@ -646,7 +646,7 @@ preview's coder API answers 409 `design_invalid`.
 ### resetAnnotations
 
 `POST /study/:studyId/annotations/reset` → `{ retired }`. Retires the live values
-of these variables (optionally only some units or coders): kept for
+of these variables (optionally only some units, `unitIds`, or coder sessions, `sessionIds`): kept for
 analysis, but they no longer count, so the units are coded again. Bumps
 the deployment's `annotationEpoch`: runtimes re-read it and derive the
 finished codings again. Only answers to units are reset.
@@ -659,9 +659,9 @@ Implementation: [`researcher/annotations.ts`](../../packages/server/src/research
 ### listAnnotations
 
 `GET /study/:studyId/annotations?after=&limit=&retired=` → `AnnotationPageSchema`:
-one row per answer: unit, coder and variable (`value` is a
-`VariableValue`), with the unit's `externalId`, the coder's
-`participantId`, the design version it was answered under, the unit
+one row per answer: unit, coder session (`sessionId`) and variable (`value` is a
+`VariableValue`), with the unit's `externalId`, the coder id
+(`coder`), the design version it was answered under, the unit
 version the coder saw (`unitVersionId`), the device (`deviceId`), how
 long the coder took as their browser measured it (`timing`), for unit
 answers when the server first handed the unit to the coder (`servedAt`),

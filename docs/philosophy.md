@@ -33,7 +33,7 @@ AnnoTinder brings both traditions into one design. From content analysis
 it takes the protocol: a codebook, training with feedback (practice
 units), checks against known answers (gold units), and overlap between
 coders to measure agreement. From survey and experimental research it
-takes the participant: questions about coders before and after coding,
+takes the person: questions about coders before and after coding,
 randomly assigned conditions, links for panels, and respect for people's
 time and their right to withdraw. Because both live in one study, you
 decide where the annotator stands: as noise to reduce (train, check,
@@ -45,7 +45,7 @@ groups read the same texts).
    (the exact unit version and design version), when, and how long it
    took. Agreement, gold checks and overlap are measurements too, not just
    quality control.
-2. **Coders are participants.** You can measure things about them as well:
+2. **Coders are research subjects too.** You can measure things about them as well:
    surveys before and after, experimental conditions, practice. Their
    experience comes first: fast, mobile and clear, with the right to quit
    and to have their data deleted.

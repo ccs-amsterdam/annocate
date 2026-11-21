@@ -10,7 +10,7 @@ Coder sessions without login (§4), coder login (§5), researcher login
   get in** (study roles, the design's coder invitation). The server keeps no passwords:
   identity is a verified email address from the provider (§7).
 - **Only authentication unlocks earlier work from another device.** An id
-  that comes from a link (a participant id in a survey URL, or one hidden in
+  that comes from a link (a coder id in a survey URL, or one hidden in
   a personal link) is a *label*, not a credential. Anyone holding the link
   could use it. So it never gives access to earlier annotations.
 - **Unauthenticated work stays on the device it was done on**, unless the
@@ -20,16 +20,16 @@ Coder sessions without login (§4), coder login (§5), researcher login
 
 | Term | What it is | Where it lives |
 | --- | --- | --- |
-| **Coder** (`coderId`) | One annotation session in a study: a set of answers, unit assignments and progress. Everything (annotations, routing, distribution) is keyed by `coderId`. Shown to coders as "your session". | database |
+| **Coder session** (`sessionId`) | One coder's annotation session in a study: a set of answers, unit assignments and progress. Everything (annotations, routing, distribution) is keyed by `sessionId`. Shown to coders as "your session". | database (`coder_sessions`) |
 | **Device id** | Random secret the server gives a browser once, for all studies, in an httpOnly cookie (`annotinder_device`), so page scripts never see it. Never stored by the server. | the coder's browser (httpOnly cookie) |
-| **Device key** | A device's key for its session in one study: SHA-256 of device id, deployment and participant id. The database stores only this, so nothing links one device's sessions across studies. A session has one per device that joined it. | database (`coder_devices`) |
-| **Participant id** | External label from the researcher or a panel company, e.g. a Prolific/Qualtrics participant id. It is fixed on a personal link (`participantId`), taken from a URL parameter a crowd invitation names (`invite.participant: { param, pattern? }`, e.g. `PROLIFIC_PID`), a crowd login's email, or the coder value of specific coders. Never a credential. | database (on the coder) |
-| **Linked email** | A verified email address from a login (§5), linked to the session once. Lets the coder continue on another device by logging in there. | database (`coders.email`) |
+| **Device key** | A device's key for its session in one study: SHA-256 of device id, deployment and the coder id from the URL (a crowd's `coderParam`, if any). The database stores only this, so nothing links one device's sessions across studies. A session has one per device that joined it. | database (`session_devices`) |
+| **Coder** (coder id, `coder`) | Who the coder is: `$session.coder`, the session's `coder` field and the results' `coder` column. For specific coders their value in the coders' column (by their link, the name they picked, or their login's email); for a crowd the id from the URL parameter its invitation names (`invite.coderParam: { param, pattern?, optional? }`, e.g. a panel's `PROLIFIC_PID`), else the login's email where the crowd requires sign-in; or a coder id fixed on a link (`coder`). A label, never a credential. | database (`coder_sessions.coder`) |
+| **Linked email** | A verified email address from a login (§5), linked to the session once. Lets the coder continue on another device by logging in there. | database (`coder_sessions.email`) |
 | **Transfer link** | One-time, short-lived link that adds another device to the session. | database (`transfers`, token hash only; 15 min) |
 
-Every coder (session) has one or more device keys. Some also have a
-participant id; some also have a linked email. For
-analysis, researchers group coders by participant id or email when they want
+Every coder session has one or more device keys. Some also have a
+coder id; some also have a linked email. For
+analysis, researchers group sessions by coder id or email when they want
 to merge sessions of the same person. The system itself never merges
 sessions.
 
@@ -43,12 +43,12 @@ sessions that started go on. A revoked link (403 `link_revoked`) can be
 reopened. The design's coder invitation (`session.invite`,
 `architecture.md` §6.1) decides how a session starts:
 
-| Invitation | Sign-in | The participant id |
+| Invitation | Sign-in | The coder (`$session.coder`) |
 | --- | --- | --- |
-| specific coders, `link: "per_coder"` | optional | none (the link's coder is `$session.coder`) |
-| specific coders, `link: "pick_name"` | optional | none (the picked name is `$session.coder`; with `nameDevices: "first"` a name is the first device's, with `"any"` picking it continues its session) |
-| specific coders, `link: "login"` | required; only the column's addresses (403 `email_not_allowed`) | none (the login's address is `$session.coder`) |
-| crowd | optional | none, or `participantId` fixed on the link, or `invite.participant` + `?<param>=…` |
+| specific coders, `link: "per_coder"` | optional | the link's coder |
+| specific coders, `link: "pick_name"` | optional | the picked name (with `nameDevices: "first"` a name is the first device's, with `"any"` picking it continues its session) |
+| specific coders, `link: "login"` | required; only the column's addresses (403 `email_not_allowed`) | the login's address |
+| crowd | optional | none, or a coder id fixed on the link (`coder`), or `invite.coderParam` + `?<param>=…` (required unless `optional: true`; without it, an optional parameter starts without an id) |
 | crowd with `login: true` | required (401 `auth_required`) | the login's email (unless the URL or link gives one) |
 
 Coders can always log in, to resume elsewhere; where sign-in is optional
@@ -56,10 +56,10 @@ they may also continue anonymously, and researchers don't see their
 email (contracts `loginRequired`). A link's `maxUses` (or a crowd's
 `maxCoders`) caps its sessions.
 
-**Duplicate participant ids** are allowed: a participant who can't reach
+**Duplicate coder ids** are allowed: a coder who can't reach
 their first session (§4) starts another, and so does anyone else holding a
-link with a fixed participant id. Each is its own coder with the same
-`participant_id` (and `$session.participant`, so end redirects to a panel
+link with a fixed coder id. Each is its own session with the same
+`coder` (and `$session.coder`, so end redirects to a panel
 carry it either way); researchers deal with duplicates in analysis. The
 risk guarded against is privacy (no session is opened by a label), not
 confusion at a panel company over a leaked link.
@@ -71,17 +71,17 @@ confusion at a panel company over a leaked link.
   `SameSite=Lax`, `Secure` over https, `Path=/api/d`, 400 days. One cookie for
   all studies, so cookies don't pile up for coders who do many studies.
 - **The session in a study.** The server derives the device's key for a study
-  on every request: SHA-256 of device id, deployment and participant id (the
-  server reads the participant id from the URL parameters the client sends,
-  `x-url-params`, using the participant parameter of a crowd invitation,
-  `invite.participant`). Including the participant id keeps participants apart on
+  on every request: SHA-256 of device id, deployment and coder id (the
+  server reads the coder id from the URL parameters the client sends,
+  `x-url-params`, using the coder id parameter of a crowd invitation,
+  `invite.coderParam`). Including the coder id keeps coders apart on
   a shared lab computer. The database stores only the key, in
-  `coder_devices` (one row per device of a session), never the device id:
+  `session_devices` (one row per device of a session), never the device id:
   sessions of one device in different studies can't be linked from stored
   data. The device id is long and random, so no secret is needed (rotating
   `ANNOTINDER_SECRET` logs no coder out). Each request finds the session
   by its key: one indexed query. Everything the study needs from the link and the URL
-  (the link's coder, the participant id, the design's URL parameters and
+  (the coder, the design's URL parameters and
   `source`) is stored when the coder starts, so the link and URL details
   can be forgotten.
 - **Device details.** When a device joins a session, coarse details from
@@ -92,20 +92,19 @@ confusion at a panel company over a leaked link.
   `GET /study/:studyId/devices` and in the export (`devices.csv`).
 - **Session values.** The design's Study entry declares the URL
   parameters (`urlParams`, `architecture.md` §7; e.g. a panel's study and
-  session ids) and, for a crowd, the participant id's (`invite.participant:
-  { param, pattern? }`). A new session without a required one, or with a
+  session ids) and, for a crowd, the coder id's (`invite.coderParam:
+  { param, pattern?, optional? }`). A new session without a required one, or with a
   value that doesn't fit (its list, or a pattern, a regular expression
   matched in full; at most 256 characters), is refused (400
   `url_param_missing` / `url_param_invalid`), so a broken panel link shows
-  at once (`runtime/sessionValues.ts`). The values, with the coder (by the
-  link or the login's email) and the optional `?source=`, are stored on the
-  coder (`coders.session`) and are the design's `$session` values:
-  `$session.participant`, `$session.source`, `$session.coder` and
-  `$session.<name>`. The design declares them, so validation checks the
+  at once (`runtime/sessionValues.ts`). The values, with the coder (§2,
+  Coder) and the optional `?source=`, are stored on the
+  session (`coder_sessions.session`) and are the design's `$session` values:
+  `$session.coder`, `$session.source` and `$session.<name>`. The design declares them, so validation checks the
   names.
-- **Same device later.** The device cookie resumes the same coder, whatever
+- **Same device later.** The device cookie resumes the same session, whatever
   link (or none) the coder comes back with, as long as it carries the same
-  participant id (a participant link with another id is another session).
+  coder id in the URL (a crowd link with another id is another session).
 - **CSRF.** Every coder API request must carry `x-annotinder: 1`, which a
   cross-site form or image can't send, and the coder API sends no CORS
   headers, so cross-origin scripts can't either. This relies on the client
@@ -117,15 +116,15 @@ confusion at a panel company over a leaked link.
   2. The client shows it as a link and a QR code.
   3. Opening the link on the new device calls
      `POST /d/:deployment/transfer/redeem`, which adds that device to the
-     session: its keys for this study (without a participant id, as the
-     transfer link carries none, and with the session's participant id, for
-     when it comes back with the participant's link). Both devices can now
+     session: its keys for this study (without a coder id, as the
+     transfer link carries none, and with the session's coder id, for
+     when it comes back with the coder's link). Both devices can now
      continue the same session.
 
   Tokens are stored as hashes in the database (`transfers`), deleted when
   used.
 - **Offer the link early** (not built). Switching devices halfway is rare
-  (panel participants finish in one sitting), so "Continue on another
+  (panel coders finish in one sitting), so "Continue on another
   device" stays in the menu. For long studies, the client also offers it once
   at the start: "Want to finish later on another device? Save this link."
   It is optional and asks nothing of the coder. It needs a link that stays
@@ -133,26 +132,28 @@ confusion at a panel company over a leaked link.
   token stored in the database, revocable); open point.
   We don't add PINs or passwords: forgotten easily, and little gain over a
   link.
-- **A participant link opened on a new device** (no cookie, and that
-  participant already has a session):
-  1. The server refuses to silently create a second coder. It answers
-     `409 { code: "participant_has_session" }`.
+- **A link with a coder id opened on a new device** (no cookie, and that
+  coder already has a session): a crowd link with the coder id in the URL,
+  a link with a fixed coder id, or a specific coder's own link (link per
+  coder):
+  1. The server refuses to silently create a second session. It answers
+     `409 { code: "coder_has_session" }`.
   2. The client explains: "continue on the original device, or make a
      transfer link there".
   3. Only for a coder who can't get back to the earlier session (a lost
      device, cleared browser data): **I can't get back to my earlier
      session…** asks them to confirm that, and explains that starting again
      should rarely be needed. Then **Start a new session** retries with
-     `x-new-session: 1` (first request only) and creates a new coder with
-     the same participant id, for this device. The new coder cannot see
+     `x-new-session: 1` (first request only) and creates a new session with
+     the same coder id, for this device. The new session cannot see
      the earlier annotations. It exists so a coder who lost their device,
      or got a personal link a researcher sent to several people by
      mistake, can still take part.
 
-  New sessions of a known participant don't count toward the link's
+  New sessions of a known coder don't count toward the link's
   `maxUses`.
 
-  Privacy note: this tells someone holding the link that the participant
+  Privacy note: this tells someone holding the link that the coder
   id was used before. They learn nothing else.
 - **Anonymous links on a new device** simply start a new session. There is
   nothing to detect.
@@ -219,9 +220,9 @@ log in twice.
 - **A long-lived "continue later" link** (§4, "Offer the link early"):
   a longer-lived transfer token, one per session, revocable from the device that has the session. Should it be
   single use (each redeem makes a new one)?
-- **Duplicate work across sessions of one participant.** Shared queues
-  count codings per coder, so two sessions of one person can code the same
-  unit. Possible later: optionally treat sessions with the same participant
+- **Duplicate work across sessions of one coder.** Shared queues
+  count codings per session, so two sessions of one person can code the same
+  unit. Possible later: optionally treat sessions with the same coder
   id as one person for distribution.
 
 ## 7. Researcher login
@@ -285,15 +286,15 @@ accident or as a way to undo paid work.
 - *Quit this study*: `POST /quit` ends the session (`ended: { outcome:
   "quit", at }`, no item); answers so far are kept.
 - *Quit and ask to delete my answers*: `POST /quit { requestDeletion: true
-  }` also records `coders.deletion_request = { at }`. The coder types a
+  }` also records `coder_sessions.deletion_request = { at }`. The coder types a
   word to confirm. It works after the session ended too (the end screen
   offers it), and isn't offered in previews.
 
 A request, not a deletion: AnnoTinder can't know whether the researcher
 already holds the data elsewhere, and immediate deletion would let a paid
-participant finish, get paid and withdraw the work. The request needs no
+coder finish, get paid and withdraw the work. The request needs no
 proof of identity: it comes from the session itself. Coders without a
-participant id or login can't be identified otherwise.
+coder id or login can't be identified otherwise.
 
 **Researcher side** (Coders tab): open requests are listed first, with
 *Delete now* or *Delete later* (`POST /study/:studyId/coders/:id/deletion-request/postpone`:
@@ -301,14 +302,14 @@ participant id or login can't be identified otherwise.
 the row stays marked, until the data is deleted). Declining isn't offered:
 whether research data is exempt is for the researcher's protocol, not a
 button. Any coder's data can
-be deleted (`POST /study/:studyId/coders/delete { coderIds?, participantIds?,
-emails? }`, ADMIN): the coders rows (device keys, participant id, coder-level
+be deleted (`POST /study/:studyId/coders/delete { sessionIds?, coders?,
+emails? }`, ADMIN): the sessions (device keys, coder id, coder-level
 answers, the request) and all their `annotation_values`, also
 retired ones; `units.coded` is recomputed. Unit versions stay (unit content).
 Nothing about coders is kept in memory, so nothing needs reloading. A
 deleted coder's browser later starts a new session
-from its link. Every deletion is logged (`coder_deletions`: coder id,
-participant id, requested, deleted, by whom, answer count; not the
+from its link. Every deletion is logged (`session_deletions`: session id,
+coder id, requested, deleted, by whom, answer count; not the
 email address), so the
 researcher can delete the coder from earlier downloads too
 (`GET /study/:studyId/coders/deletions`, the Coders tab, and
@@ -317,9 +318,9 @@ researcher can delete the coder from earlier downloads too
 The export has `ended` = `quit`, a `deletion_requested` column (when the
 coder asked, while not yet deleted) and `deleted_coders.csv`.
 
-Open: what GDPR requires for anonymous participants (no identifier at all)
+Open: what GDPR requires for anonymous coders (no identifier at all)
 is for the researcher's protocol; AnnoTinder offers the request from the
-session and deletion by participant id or email.
+session and deletion by coder id or email.
 
 ## 9. Closing finished sessions
 
