@@ -16,7 +16,7 @@ import { userForSession } from "./shared/sessions.js";
 import { deviceDetails } from "./shared/devices.js";
 import { coderStudies } from "./shared/coderStudies.js";
 import { and, eq } from "drizzle-orm";
-import { sessionDevices, coderSessions } from "./db/schema/index.js";
+import { sessionDevices, coderSessions, links } from "./db/schema/index.js";
 import { SESSION_COOKIE } from "./researcher/login.js";
 import { coderKey, newDeviceId, readDevice, requireClientHeader, writeDevice } from "./runtime/session.js";
 import type { Coder, DeploymentRuntime } from "./runtime/runtime.js";
@@ -95,6 +95,13 @@ export function coderApi(server: Server): Hono {
     const link = secret && /^\d+$/.test(deploymentId) ? await linkInfo(server.db, secret) : null;
     if (!link || String(link.studyId) !== deploymentId)
       throw new HttpError(404, "This link doesn't exist", "link_not_found");
+    // Names only for a link that still takes new coders (as starting a session checks)
+    const [state] = await server.db
+      .select({ revokedAt: links.revokedAt, retiredAt: links.retiredAt })
+      .from(links)
+      .where(eq(links.secret, secret!));
+    if (state?.revokedAt) throw new HttpError(403, "This link has been revoked", "link_revoked");
+    if (state?.retiredAt) throw new HttpError(403, "This link is no longer active", "link_inactive");
     const runtime = await server.deployments.get(deploymentId);
     await runtime.refresh();
     return c.json(await runtime.pickNames());

@@ -12,7 +12,7 @@ import type {
 import { RELEASE, splitDesignItems } from "@annotinder/contracts";
 import type { Db } from "../db/index.js";
 import { and, eq, isNull } from "drizzle-orm";
-import { annotationValues, units } from "../db/schema/index.js";
+import { annotationValues, links as linksTable, units } from "../db/schema/index.js";
 import { unitDraftData, unitVersionData } from "../db/sql.js";
 import { emptyDb, query } from "./testDb.js";
 import { seed } from "../seed.js";
@@ -638,6 +638,14 @@ describe("coders", () => {
     await createSet("c@example.org", ["unit-3"], "coder");
     await deployDrafts();
     expect((await names()).names.map((n) => n.name)).toContain("c@example.org");
+
+    // A revoked link lists no names
+    await db.update(linksTable).set({ revokedAt: new Date() }).where(eq(linksTable.secret, secret));
+    const revoked = await server.request("/api/d/1/names", {
+      headers: { "x-annotinder": "1", "x-link-secret": secret },
+    });
+    expect(revoked.status).toBe(403);
+    expect(await revoked.json()).toMatchObject({ code: "link_revoked" });
   });
 
   it("signing in needs email addresses, and the column must be a set column", async () => {

@@ -168,6 +168,9 @@ export async function exportStudy(db: Db, studyId: number): Promise<{ name: stri
   return { name, bytes: gzipSync(Buffer.from(text, "utf8")) };
 }
 
+/** The largest export this server unpacks (below the largest string Node can hold). */
+const MAX_UNPACKED_BYTES = 400 * 1024 * 1024;
+
 const invalid = (message: string) => new HttpError(400, message, "export_invalid");
 
 /** Reads an export file: its manifest, and its rows per table. */
@@ -177,8 +180,11 @@ function readExport(bytes: Buffer): {
 } {
   let text: string;
   try {
-    text = gunzipSync(bytes).toString("utf8");
-  } catch {
+    // A cap on the unpacked size: a small file can unpack to gigabytes
+    text = gunzipSync(bytes, { maxOutputLength: MAX_UNPACKED_BYTES }).toString("utf8");
+  } catch (e) {
+    if ((e as { code?: string }).code === "ERR_BUFFER_TOO_LARGE")
+      throw invalid(`This study export is too large: over ${MAX_UNPACKED_BYTES / 1024 / 1024} MB unpacked`);
     throw invalid("This isn't a study export: it can't be unpacked (a .annotinder.gz file from a study's Settings)");
   }
   const lines = text.split("\n").filter((l) => l.trim());
