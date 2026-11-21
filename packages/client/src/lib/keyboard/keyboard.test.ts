@@ -82,3 +82,34 @@ describe("moving focus with the arrow keys", () => {
     expect(nearest(from, grid, "up")).toBe(-1);
   });
 });
+
+describe("the other mappings", () => {
+  it("numpad: keys where the buttons are, the bottom row 1 2 3; beyond 3 x 3 numbers", async () => {
+    const { keysOf, numpadMapping } = await import("./mappings");
+    const grid = (n: number, cols: number) =>
+      Array.from({ length: n }, (_, i) => ({ label: `${i}`, pos: { row: Math.floor(i / cols), col: i % cols } }));
+    expect(keysOf(numpadMapping, grid(3, 3))).toEqual(["1", "2", "3"]);
+    expect(keysOf(numpadMapping, grid(6, 3))).toEqual(["4", "5", "6", "1", "2", "3"]);
+    expect(keysOf(numpadMapping, grid(4, 2))).toEqual(["4", "5", "1", "2"]);
+    expect(keysOf(numpadMapping, grid(4, 4))).toEqual(["1", "2", "3", "4"]);
+    // Without positions (buttons that wrap): numbers
+    expect(keysOf(numpadMapping, [{ label: "a" }, { label: "b" }])).toEqual(["1", "2"]);
+  });
+
+  it("letters: the home row first; beyond 26 options numbers", async () => {
+    const { keysOf, lettersMapping } = await import("./mappings");
+    const options = (n: number) => Array.from({ length: n }, (_, i) => ({ label: `${i}` }));
+    expect(keysOf(lettersMapping, options(5))).toEqual(["a", "s", "d", "f", "j"]);
+    expect(keysOf(lettersMapping, [...options(2), { label: "n/a", fixed: "0" }])).toEqual(["a", "s", "0"]);
+    expect(keysOf(lettersMapping, options(27))[0]).toBe("1");
+  });
+
+  it("type to filter: a word of the label starts with what was typed", async () => {
+    const { labelMatches } = await import("./mappings");
+    expect(labelMatches("Human interest", "int")).toBe(true);
+    expect(labelMatches("Human interest", "hu")).toBe(true);
+    expect(labelMatches("Économie", "eco")).toBe(true);
+    expect(labelMatches("Politics", "lit")).toBe(false);
+    expect(labelMatches("Anything", "")).toBe(true);
+  });
+});

@@ -16,10 +16,12 @@ interface OptionButtonProps {
   shortcut?: string | null;
   /** Show a check when selected (questions with several answers). */
   check?: boolean;
+  /** Typing to filter: it doesn't match. */
+  dimmed?: boolean;
   onClick: () => void;
 }
 
-export function OptionButton({ option, selected, shortcut, check, onClick }: OptionButtonProps) {
+export function OptionButton({ option, selected, shortcut, check, dimmed, onClick }: OptionButtonProps) {
   const { theme } = useCoderSettings();
   if (option.special)
     return <SpecialButton option={option} selected={selected} shortcut={shortcut} onClick={onClick} />;
@@ -29,9 +31,9 @@ export function OptionButton({ option, selected, shortcut, check, onClick }: Opt
       type="button"
       variant={selected ? "default" : "outline"}
       aria-pressed={selected}
-      className={`relative h-auto min-h-10 justify-center gap-1.5 px-3 py-1.5 text-sm leading-snug whitespace-normal ${
+      className={`relative h-auto min-h-10 justify-center gap-1.5 px-3 py-1.5 text-sm leading-snug whitespace-normal transition-opacity ${
         customStyle ? "" : selected ? "border-primary" : "border-border hover:bg-muted/50"
-      }`}
+      } ${dimmed ? "opacity-30" : ""}`}
       style={customStyle}
       data-key-target=""
       onClick={onClick}
@@ -44,7 +46,7 @@ export function OptionButton({ option, selected, shortcut, check, onClick }: Opt
 }
 
 /** A special option (not applicable, don't know): small and muted, apart from the other options. */
-export function SpecialButton({ option, selected, shortcut, onClick }: Omit<OptionButtonProps, "check">) {
+export function SpecialButton({ option, selected, shortcut, onClick }: Omit<OptionButtonProps, "check" | "dimmed">) {
   return (
     <Button
       type="button"

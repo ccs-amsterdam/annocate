@@ -5,6 +5,9 @@ export interface CoderSettingsContextValue {
   setTheme: (theme: "light" | "dark") => void;
   showShortcuts: boolean;
   setShowShortcuts: (show: boolean) => void;
+  /** Which keys choose answers (keyboard/mappings.ts `MappingId`). */
+  keyMapping: string;
+  setKeyMapping: (id: string) => void;
 }
 
 export const CoderSettingsContext = createContext<CoderSettingsContextValue | null>(null);
@@ -18,6 +21,8 @@ export function useCoderSettings(): CoderSettingsContextValue {
       setTheme: () => {},
       showShortcuts: true,
       setShowShortcuts: () => {},
+      keyMapping: "numbers",
+      setKeyMapping: () => {},
     };
   }
   return ctx;

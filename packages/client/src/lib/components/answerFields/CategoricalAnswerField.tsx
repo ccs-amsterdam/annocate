@@ -63,14 +63,30 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
   };
 
   // The options for the keyboard (a dropdown has its own filter box)
+  // Where each option is (row and column), for the numpad: rows and grids; flex wraps unpredictably
+  const posOf = (i: number) =>
+    layout === "row" || layout === "compact"
+      ? { row: 0, col: i }
+      : layout === "grid"
+        ? { row: Math.floor(i / columns), col: i % columns }
+        : undefined;
   const targets =
     layout === "dropdown"
       ? null
-      : [shown.map((o) => ({ label: optionLabel(o), ...(o.special ? { fixed: SPECIAL_KEYS[o.special] } : {}) }))];
-  const [keys = []] = useKeyTargets(targets, (_, index) => pick(shown[index]), {
+      : [
+          shown.map((o, i) =>
+            o.special
+              ? { label: optionLabel(o), fixed: SPECIAL_KEYS[o.special] }
+              : { label: optionLabel(o), pos: posOf(i) },
+          ),
+        ];
+  const keyboard = useKeyTargets(targets, (_, index) => pick(shown[index]), {
     // Several answers: Enter continues (as the Continue button)
     onEnter: multiple ? submit : undefined,
+    filterable: true,
   });
+  const keys = keyboard.keys[0] ?? [];
+  const dimmed = (index: number) => keyboard.filter !== "" && !keyboard.matches[0]?.[index];
 
   let field;
   if (layout === "dropdown") {
@@ -99,6 +115,7 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
               option={option}
               selected={selectedSet.has(option.value)}
               shortcut={keys[index]}
+              dimmed={dimmed(index)}
               check={multiple}
               onClick={() => pick(option)}
             />
@@ -116,6 +133,12 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
 
   return (
     <div className="flex flex-col gap-2">
+      {keyboard.filter && (
+        <p className="text-center text-xs text-muted-foreground" role="status">
+          <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-foreground">{keyboard.filter}</span> Enter
+          chooses the first match, Esc clears
+        </p>
+      )}
       {field}
       {multiple && (
         <Button type="button" className="h-10" disabled={!selected.length} onClick={submit}>

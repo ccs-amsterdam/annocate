@@ -372,6 +372,34 @@ seconds). The server stores the outcome; the session then refuses units and
 answers (409 `session_ended`), and a reload shows the ending again (a
 closed session: 409 `session_closed`, `coder-identity.md` §9).
 
+### Keyboard
+
+The coding screen has one key listener (`keyboard/KeyboardProvider.tsx`)
+and a `KeyController` with scopes that get key presses in turn: menus (the
+jump menu, exclusive: keys it doesn't use never reach the question behind
+it) over span editors over answer fields, over the base layer. Typing in
+text fields, modifiers and held-down keys are handled there once.
+
+- Answer fields declare their choices (`useKeyTargets`: groups of
+  targets, a scale a group per item, the active group the first item
+  without an answer) and get each target's key for its badge. A target may
+  have a fixed key outside the mapping (special options: 0 and .), extra
+  keys without a badge (swipe's arrows) and a grid position (for the
+  numpad). Elements marked `data-key-target` are what the arrows move
+  between.
+- A `KeyMapping` (`keyboard/mappings.ts`, pure, unit-tested) decides which
+  key chooses which target: numbers (default), numpad (by position, up to
+  3 x 3), letters (home row first, up to 26) and type to filter (labels by
+  word start; only fields that show the filter: options as buttons). Where
+  a mapping can't map a group, numbers do. The coder's choice is a setting
+  (`CoderSettingsContext`: `keyMapping`, stored in the browser).
+- The base layer (`useBaseKeys`): arrows move focus by position on screen
+  (`keyboard/focus.ts`), Space/Enter on a focused button let the browser
+  click it, Shift + Left / Right go to the previous / next question,
+  Backspace goes back and focuses the answer (not cleared), Enter continues
+  an answered question. Space and Enter on a focused control reach the
+  scopes only marked `onControl` (a typed filter uses Enter then).
+
 ### Study entry
 
 The design's `session` item (at most one, always first) is never shown

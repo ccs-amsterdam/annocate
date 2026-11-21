@@ -275,3 +275,33 @@ test("special options: apart from the others, chosen with 0 and . in every quest
   expect(values("topic")).toEqual(["dk"]);
   expect(values("topics")).toEqual(["politics"]);
 });
+
+test("the coder chooses the keys for answers: letters, or typing to filter", async ({ page, request }) => {
+  const { link } = await study(request);
+  await page.goto(link);
+  await page.getByRole("button", { name: "I confirm", exact: true }).click();
+  await at(page, TEXTS[0], "Topic?");
+
+  // Letters: a, s for the first two options (their badges too)
+  await page.getByRole("button", { name: "Coder Settings" }).click();
+  await page.getByLabel("Keys for answers").selectOption("letters");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("[data-key-target] kbd").first()).toHaveText("a");
+  await page.keyboard.press("s");
+  await at(page, TEXTS[0], "Tone?");
+
+  // Type to filter: typed letters dim the others; Enter chooses the first match
+  await page.getByRole("button", { name: "Coder Settings" }).click();
+  await page.getByLabel("Keys for answers").selectOption("filter");
+  await page.keyboard.press("Escape");
+  await page.keyboard.type("neg");
+  await expect(page.getByRole("status").filter({ hasText: "neg" })).toBeVisible();
+  await page.keyboard.press("Enter");
+  await at(page, TEXTS[1], "Topic?");
+  // Kept for the next visit (the browser's storage)
+  await page.reload();
+  await at(page, TEXTS[1], "Topic?");
+  await page.keyboard.type("oth");
+  await page.keyboard.press("Enter");
+  await at(page, TEXTS[1], "Tone?");
+});

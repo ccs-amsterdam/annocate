@@ -95,10 +95,10 @@ Some answers aren't one of the categories or a point on the scale: the
 coder doesn't know, or the question doesn't apply to this unit. Mark such an
 option under **Special**:
 
-| Special            | Key   | For example                                          |
-| ------------------ | ----- | ---------------------------------------------------- |
+| Special            | Key   | For example                                             |
+| ------------------ | ----- | ------------------------------------------------------- |
 | **Not applicable** | **0** | "Not applicable", "Doesn't mention it", "None of these" |
-| **Don't know**     | **.** | "Don't know", "Can't tell", "Prefer not to say"      |
+| **Don't know**     | **.** | "Don't know", "Can't tell", "Prefer not to say"         |
 
 Special options are shown apart, under the other options and in a quieter
 style, and coders choose them with the same key in every question and every

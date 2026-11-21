@@ -1,5 +1,5 @@
 // Moving keyboard focus between a question's answer targets (docs/client.md
-// §5 "Keyboard"): every element marked `data-key-target` (option buttons,
+// §4 "Keyboard"): every element marked `data-key-target` (option buttons,
 // scale points), by where it is on screen, so it works for any layout: rows,
 // grids, wrapping buttons, a scale's table.
 

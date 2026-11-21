@@ -1,4 +1,4 @@
-// Keyboard input on the coding screen (docs/client.md §5 "Keyboard"): one
+// Keyboard input on the coding screen (docs/client.md §4 "Keyboard"): one
 // listener, and scopes that handle keys in turn. A scope is a field's
 // choices, a menu, a span editor. Higher priority goes first (menus over the
 // question behind them); among equals, the latest registered. A scope that
@@ -12,6 +12,8 @@ export interface KeyPress {
   altKey: boolean;
   ctrlKey: boolean;
   metaKey: boolean;
+  /** Space or Enter on a focused control (a button): the browser clicks it unless a scope uses the key. */
+  onControl?: boolean;
 }
 
 /** A scope's answer to a key press: true when it used the key. */

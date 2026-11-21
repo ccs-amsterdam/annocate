@@ -27,6 +27,7 @@ import { buildValues } from "./answerFields/answerValue";
 import { dropRepeatedClick } from "./inputGuards";
 import { KeyboardProvider } from "../keyboard/KeyboardProvider";
 import { useBaseKeys } from "../keyboard/hooks";
+import { MAPPINGS, mappingById } from "../keyboard/mappings";
 import { Button } from "@/components/ui/button";
 import { LogoSmoke } from "@/components/Logo";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -75,7 +76,7 @@ interface ContentProps extends StudyRunnerProps {
  * Dropdown popover menu for coder-level settings (Dark/Light mode, Shortcut badges).
  */
 function CoderSettingsMenu() {
-  const { theme, setTheme, showShortcuts, setShowShortcuts } = useCoderSettings();
+  const { theme, setTheme, showShortcuts, setShowShortcuts, keyMapping, setKeyMapping } = useCoderSettings();
 
   return (
     <Popover>
@@ -150,6 +151,25 @@ function CoderSettingsMenu() {
           </div>
           <p className="text-[11px] leading-tight text-muted-foreground">
             Show keyboard hotkey badges on answer options
+          </p>
+          <label htmlFor="key-mapping" className="block pt-1 text-xs font-medium text-foreground">
+            Keys for answers
+          </label>
+          <select
+            id="key-mapping"
+            className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+            value={keyMapping}
+            onChange={(e) => setKeyMapping(e.target.value)}
+          >
+            {MAPPINGS.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] leading-tight text-muted-foreground">
+            {mappingById(keyMapping).description}. Always: arrows and Space, Shift + ← → for previous and next,
+            Backspace to go back, 0 not applicable, . don&apos;t know.
           </p>
         </div>
       </PopoverContent>

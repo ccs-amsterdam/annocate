@@ -29,7 +29,15 @@ export function AnnotinderAnswerField({ variable, onAnswer }: AnswerFieldProps<A
     else onAnswer(buildValues([{ value: option.value }]));
   };
 
-  const targets = [options.map((o, i) => ({ label: optionLabel(o), keys: [ARROWS[SWIPE_DIRECTIONS[i]]] }))];
+  // Where each is for the numpad: left and right below, up above them (1, 3 and 5)
+  const POS = { left: { row: 1, col: 0 }, right: { row: 1, col: 2 }, up: { row: 0, col: 1 } };
+  const targets = [
+    options.map((o, i) => ({
+      label: optionLabel(o),
+      keys: [ARROWS[SWIPE_DIRECTIONS[i]]],
+      pos: POS[SWIPE_DIRECTIONS[i]],
+    })),
+  ];
   useKeyTargets(targets, (_, index) => choose(SWIPE_DIRECTIONS[index]));
 
   // Left on the left, right on the right, up in the middle.

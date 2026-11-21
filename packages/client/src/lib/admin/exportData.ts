@@ -498,7 +498,7 @@ export function variablesTable(
             text,
             String(o.value),
             optionLabel(o),
-            "special" in o && o.special ? o.special : "",
+            "special" in o && o.special ? String(o.special) : "",
           ]);
       }
     }
