@@ -3,7 +3,7 @@
 A **recipe** (contracts `recipe.ts`) is everything a new study starts
 with, in one document: units, set columns (by the units' ids), the first
 design version (a draft, or deployed with `publish`, with its declared unit
-fields), and the study's sign-in setting. `POST /study/from-recipe` makes a study from one in a
+fields). `POST /study/from-recipe` makes a study from one in a
 single transaction (`server/src/shared/recipes.ts`), with the same role,
 limits and ownership checks as creating a study. Afterwards it is an
 ordinary study: nothing records how it was made except `origin` for an
@@ -32,7 +32,7 @@ dismisses it.
 
 | Category | Example | Shows |
 | --- | --- | --- |
-| Simple annotation | Sentiment by swiping | a swipe question; 20 units divided over 3 coders (a link each) plus 5 overlap units; example answers that disagree on some overlap units |
+| Simple annotation | Sentiment by swiping | a swipe question; 20 units divided over 3 specific coders (a link each, `invite: { mode: "coders" }`) plus 5 overlap units; example answers that disagree on some overlap units |
 | Simple annotation | Labeling actors in texts | span annotation |
 | Surveys and experiments | A simple survey | survey question types, a Show if item, an end item that screens out |
 | Surveys and experiments | A simple experiment | a random condition (a computed item) choosing one of two versions of a text |

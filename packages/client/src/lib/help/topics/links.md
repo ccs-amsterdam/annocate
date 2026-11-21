@@ -25,14 +25,21 @@ and how they get in. Choose one of two:
 
 | Invitation          | Who codes                                                     | Links                                                         |
 | ------------------- | ------------------------------------------------------------- | ------------------------------------------------------------- |
-| **Specific coders** | Coders you know, each with their own units (a set column)     | **A link per coder**, or **one link** where coders sign in    |
+| **Specific coders** | Coders you know, each with their own units (a set column)     | **A link per coder**, or **one link** where coders pick their name or sign in |
 | **Crowd**           | Anyone with the link, e.g. from an online panel or newsletter | One link                                                      |
 
 **Specific coders**: choose the **Column with the coders**, a set column of
 the units whose values are the coders (or **Make the column…** to make one).
 Each coder gets their own units and `$session.coder` is their value. With
 **A link per coder**, deploying makes a link for every coder; send each coder
-theirs. With **One link: coders sign in with the email address in the
+theirs. With **One link: coders pick their name from the column**, coders
+choose their name when they open the link. By default **a name stays on the
+first device that picks it**: others see it as taken, and the coder continues
+on that device (or moves with "Continue on another device"). With **any
+device that picks a name continues its session**, a team can take turns on
+shared devices, or one coder can use several; anyone with the link can then
+pick any name. Everyone with the link sees the names: use names, not email
+addresses. With **One link: coders sign in with the email address in the
 column**, the column's values are email addresses and coders get the units of
 the address they sign in with. See
 [Giving each coder their own units](own-units.md).

@@ -44,7 +44,7 @@ To do on the server (the guide's steps):
      `OIDC_ACCOUNT_URL`) and an admin with one (`OIDC_MFA_CLAIM`);
    - a step-up for a sensitive action (an API key);
    - logging out;
-   - a coder signing in to a study whose sign-in is `required`.
+   - a coder signing in on a link whose invitation requires sign-in.
 6. **The smoke test with an API key**, and one full study (steps 8 and 9).
 7. **Backups:** add the VM to the nightly backup of `/opt`, and run the
    restore test once (step 10).

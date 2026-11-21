@@ -7,7 +7,7 @@ Coder sessions without login (§4), coder login (§5), researcher login
 ## 1. Principles
 
 - **A login provider proves who someone is; the server decides whether they
-  get in** (study roles, the study's sign-in setting). The server keeps no passwords:
+  get in** (study roles, the design's coder invitation). The server keeps no passwords:
   identity is a verified email address from the provider (§7).
 - **Only authentication unlocks earlier work from another device.** An id
   that comes from a link (a participant id in a survey URL, or one hidden in
@@ -23,7 +23,7 @@ Coder sessions without login (§4), coder login (§5), researcher login
 | **Coder** (`coderId`) | One annotation session in a study: a set of answers, unit assignments and progress. Everything (annotations, routing, distribution) is keyed by `coderId`. Shown to coders as "your session". | database |
 | **Device id** | Random secret the server gives a browser once, for all studies, in an httpOnly cookie (`annotinder_device`), so page scripts never see it. Never stored by the server. | the coder's browser (httpOnly cookie) |
 | **Device key** | A device's key for its session in one study: SHA-256 of device id, deployment and participant id. The database stores only this, so nothing links one device's sessions across studies. A session has one per device that joined it. | database (`coder_devices`) |
-| **Participant id** | External label from the researcher or a panel company, e.g. a Prolific/Qualtrics participant id. It is fixed on a personal link (`participantId`), or taken from a URL parameter the design's Study entry names (`participant: { param, pattern? }`, e.g. `PROLIFIC_PID`). Never a credential. | database (on the coder) |
+| **Participant id** | External label from the researcher or a panel company, e.g. a Prolific/Qualtrics participant id. It is fixed on a personal link (`participantId`), taken from a URL parameter a crowd invitation names (`invite.participant: { param, pattern? }`, e.g. `PROLIFIC_PID`), a crowd login's email, or the coder value of specific coders. Never a credential. | database (on the coder) |
 | **Linked email** | A verified email address from a login (§5), linked to the session once. Lets the coder continue on another device by logging in there. | database (`coders.email`) |
 | **Transfer link** | One-time, short-lived link that adds another device to the session. | database (`transfers`, token hash only; 15 min) |
 
@@ -35,21 +35,26 @@ sessions.
 
 ## 3. Links
 
-Links are made by deploying the design, one per combination of its coders,
-conditions assigned by link and link parameter values
-(`docs/architecture.md` §7). A link no longer part of the design is
-retired: new sessions get 403 `link_inactive` ("This link is no longer
-active"), sessions that started go on. Two independent settings decide how
-a session starts:
+Links are made by deploying the design: one, or for specific coders with
+a link each, one per coder (`docs/architecture.md` §7). A link no longer
+part of the design (e.g. its coder left the column) is retired: new
+sessions get 403 `link_inactive` ("This link is no longer active"),
+sessions that started go on. A revoked link (403 `link_revoked`) can be
+reopened. The design's coder invitation (`session.invite`,
+`architecture.md` §6.1) decides how a session starts:
 
-|  | sign-in `off` | sign-in `required` (or `optional`) |
+| Invitation | Sign-in | The participant id |
 | --- | --- | --- |
-| **no participant id** | anyone with the link starts a new session | login first; the same login resumes the same coder on any device |
-| **participant id** (`participantId` fixed on the link, or the Study entry's `participant: { param, pattern? }` + `?<param>=…`) | new session, labelled with the participant id | login first; the participant id is a label next to the identity |
+| specific coders, `link: "per_coder"` | optional | none (the link's coder is `$session.coder`) |
+| specific coders, `link: "pick_name"` | optional | none (the picked name is `$session.coder`; with `nameDevices: "first"` a name is the first device's, with `"any"` picking it continues its session) |
+| specific coders, `link: "login"` | required; only the column's addresses (403 `email_not_allowed`) | none (the login's address is `$session.coder`) |
+| crowd | optional | none, or `participantId` fixed on the link, or `invite.participant` + `?<param>=…` |
+| crowd with `login: true` | required (401 `auth_required`) | the login's email (unless the URL or link gives one) |
 
-`optional` lets the coder choose: log in to be able to resume elsewhere, or
-continue anonymously. Email coders (`session.coders`) allow only their
-addresses, and a link's `maxUses` caps its sessions.
+Coders can always log in, to resume elsewhere; where sign-in is optional
+they may also continue anonymously, and researchers don't see their
+email (contracts `loginRequired`). A link's `maxUses` (or a crowd's
+`maxCoders`) caps its sessions.
 
 **Duplicate participant ids** are allowed: a participant who can't reach
 their first session (§4) starts another, and so does anyone else holding a
@@ -68,33 +73,34 @@ confusion at a panel company over a leaked link.
 - **The session in a study.** The server derives the device's key for a study
   on every request: SHA-256 of device id, deployment and participant id (the
   server reads the participant id from the URL parameters the client sends,
-  `x-url-params`, using the participant parameter of the design's Session
-  item). Including the participant id keeps participants apart on
+  `x-url-params`, using the participant parameter of a crowd invitation,
+  `invite.participant`). Including the participant id keeps participants apart on
   a shared lab computer. The database stores only the key, in
   `coder_devices` (one row per device of a session), never the device id:
   sessions of one device in different studies can't be linked from stored
   data. The device id is long and random, so no secret is needed (rotating
   `ANNOTINDER_SECRET` logs no coder out). Each request finds the session
   by its key: one indexed query. Everything the study needs from the link and the URL
-  (the link's parameter values, the participant id, the design's URL
-  parameters and `source`) is stored when the coder starts, so the link and
-  URL details can be forgotten.
+  (the link's coder, the participant id, the design's URL parameters and
+  `source`) is stored when the coder starts, so the link and URL details
+  can be forgotten.
 - **Device details.** When a device joins a session, coarse details from
   its user agent are stored with it: device type (phone, tablet, desktop),
   browser and operating system (`shared/devices.ts`), not the user agent
   itself. Each answer records the device it was given on
   (`annotation_values.device_id`); researchers get them with
   `GET /study/:studyId/devices` and in the export (`devices.csv`).
-- **Session values.** The design's Study entry declares the link and
-  URL parameters (`architecture.md` §7): the participant id's (`participant:
-  { param, pattern? }`) and others (e.g. a panel's study and session ids).
-  A new session without a required one, or with a value that doesn't fit
-  (its list, a group's sets, or a pattern, a regular expression matched in
-  full; at most 256 characters), is refused (400 `url_param_missing` /
-  `url_param_invalid`), so a broken panel link shows at once. The values,
-  with the link's own parameter values and the optional `?source=`, are
-  stored on the coder (`coders.session`) and are the design's `$session`
-  values: `$session.participant`, `$session.source`, `$session.email` and
+- **Session values.** The design's Study entry declares the URL
+  parameters (`urlParams`, `architecture.md` §7; e.g. a panel's study and
+  session ids) and, for a crowd, the participant id's (`invite.participant:
+  { param, pattern? }`). A new session without a required one, or with a
+  value that doesn't fit (its list, or a pattern, a regular expression
+  matched in full; at most 256 characters), is refused (400
+  `url_param_missing` / `url_param_invalid`), so a broken panel link shows
+  at once (`runtime/sessionValues.ts`). The values, with the coder (by the
+  link or the login's email) and the optional `?source=`, are stored on the
+  coder (`coders.session`) and are the design's `$session` values:
+  `$session.participant`, `$session.source`, `$session.coder` and
   `$session.<name>`. The design declares them, so validation checks the
   names.
 - **Same device later.** The device cookie resumes the same coder, whatever
@@ -171,23 +177,22 @@ AnnoTinder doesn't affect coding. The email is used again only to continue
 on another device. Code: `coder.ts` (the session middleware),
 `DeploymentRuntime.resolveCoder`, `runtime/store.ts` (`findOrCreateCoder`).
 
-- **The study's setting.** Sign-in is a setting of the study
-  (`studies.sign_in`: `off`, `optional`, `required`), chosen at the first
-  deploy. A design whose coders are email addresses (`session.coders`)
-  forces `required`.
-- **When a login is read.** Only when it matters: in a study with sign-in
-  `optional` or `required` while the session has no email yet, and on a
-  device without a session in this study (to find the email's session). A
-  session with an email, or a study with sign-in `off`, never looks at the
-  login: no lookups while coding (a researcher trying their own link then
-  starts an anonymous session). Never in previews.
+- **The coder invitation decides.** Coders can always log in on a link.
+  Sign-in is required for specific coders who sign in (`invite.link:
+  "login"`) and a crowd with `invite.login` (contracts `loginRequired`);
+  only there do researchers see coders' emails (the Coders tab and the
+  export, `shared/progress.ts`).
+- **When a login is read.** Only when it matters: on a link while the
+  session has no email yet, and on a device without a session in this study
+  (to find the email's session). A session with an email never looks at
+  the login: no lookups while coding. Never in previews.
 - **Required.** Without a login: 401 `auth_required`; the client offers the
   login, which comes back to the same page, and the new session gets the
   email. With email coders, only the coders' addresses can start; others
   get 403 `email_not_allowed` ("This email address has no access to this
   study").
 - **Optional.** `GET /session` says `canLogIn` (the server offers a login,
-  sign-in is `optional`, the session has no email). Logging in links the
+  the session came from a link and has no email). Logging in links the
   email to the session on this device.
 - **Another device.** Logging in on a device without a session in this study
   finds the email's session and adds the device to it (as a transfer link

@@ -218,8 +218,13 @@ session:
   coder (`links.params.coder`) is the session's; a link whose coder is no
   longer in the column gets 403 `link_inactive`. `link: "login"`: one link,
   sign-in required, the coder is the login's address (all values email
-  addresses; others get 403 `email_not_allowed`). The coder is
-  `$session.coder` and the participant id.
+  addresses; others get 403 `email_not_allowed`). `link: "pick_name"`: one
+  link where coders pick their name from the column's values (`GET /names`,
+  then `x-coder-name`; 409 `name_required` until they do). `nameDevices:
+  "first"` (the default): a name is the first device's that picks it, others
+  get 409 `name_taken`; `"any"`: picking a name continues its session (a team
+  sharing devices). The names are shown to anyone with the link, so a deploy
+  refuses email addresses there. The coder is `$session.coder`.
 - **A crowd** (`mode: "crowd"`): one link. `participant`: the participant
   id from a URL parameter, required (400 `url_param_missing` /
   `url_param_invalid`). `login`: coders must sign in (401 `auth_required`

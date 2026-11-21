@@ -35,7 +35,7 @@ interface LinksPanelProps {
 
 /**
  * The study's links (docs/architecture.md §7): made from
- * the deployed design's coder invitation, one, or one per coder. Here their access settings (label, login, emails, max uses), and
+ * the deployed design's coder invitation, one, or one per coder. Here their access settings (label, participant id, max uses), and
  * revoking or renewing a link. Links the design no longer makes are
  * retired, never deleted: coders and their answers refer to the link they
  * came from.
@@ -185,7 +185,7 @@ const STATUS_STYLE: Record<LinkStatus, string> = {
   retired: "bg-muted text-muted-foreground",
 };
 
-/** Who may use a link, in a few words (sign-in is the study's setting). */
+/** Who may use a link, in a few words (sign-in is the invitation's). */
 function accessOf(link: LinkResponse): string {
   return link.participantId ? `participant ${link.participantId}` : "anyone";
 }
@@ -337,9 +337,9 @@ function AccessForm({ client, link, onDone }: { client: ResearcherApi; link: Lin
         />
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Whether coders sign in is a setting of the study. Without sign-in, work stays on the device it was started on;
-        coders can move it with &quot;Continue on another device&quot;. Signed in, coders continue on any device by
-        signing in there. A participant id is a label, never a way back into a session.{" "}
+        Whether coders must sign in is part of the coder invitation (in the editor). Coders who don&apos;t sign in
+        continue on the device they started on, or move with &quot;Continue on another device&quot;; signed in, they
+        continue on any device by signing in there. A participant id is a label, never a way back into a session.{" "}
         <HelpButton topic="online-panels" className="align-middle">
           Online panels
         </HelpButton>

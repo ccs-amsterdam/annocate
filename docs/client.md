@@ -439,7 +439,7 @@ instruction texts, conditions and redirect links
 | `$var.<q>.values` | all items' values, in item order | scale |
 | `$var.<q>.items.<item>.value`, `.label` | one item | scale |
 | `$var.<q>.answered` | answered and not skipped | any |
-| `$session.participant`, `.source`, `.email`, `$session.<name>` | the session's participant id, `?source=`, login email, and the link and URL parameters the design's Study entry declares (strings; empty when absent) | |
+| `$session.participant`, `.source`, `.coder`, `$session.<name>` | the session's participant id, `?source=`, the coder (specific coders), and the URL parameters the design's Study entry declares (strings; empty when absent) | |
 
 Using `.value` on a multiple-answer question or `.values` on a single one
 is a validation error, and so is the old `.code`. A numeric answer's label

@@ -45,21 +45,21 @@ Headers:
   already started go on. 401 only ever means a login is needed
   (`auth_required`, below);
 - `x-url-params`: the page's other query parameters. They hold the URL
-  parameters the design's Study entry declares, its participant id
-  parameter, and the optional `source` (stored on the coder as `$session`
-  values, with the link's own parameter values; at most 256 characters
-  each; a missing or invalid one is 400 `url_param_missing` /
+  parameters the design's Study entry declares (`urlParams`), a crowd
+  invitation's participant id parameter, and the optional `source` (stored
+  on the coder as `$session` values, with the link's coder; at most 256
+  characters each; a missing or invalid one is 400 `url_param_missing` /
   `url_param_invalid`). The participant id is also part of the device's key
   for the session (a device keeps a session per participant id);
 - `x-new-session: 1` (first request only): start another session for a
   participant that already has one;
 - the login cookie (`annotinder_session`, from `/auth/login`): read only to
   link the session to its email once, or to find the email's session on a
-  new device (`coder-identity.md` §5). Where the study's `signIn` is
-  `required`, or the coders are email addresses, a new session needs a
-  login: 401 `auth_required` without one, 403 `email_not_allowed` for an
-  email that isn't one of the coders. A link whose coder or condition value
-  no longer exists: 403 `link_inactive`;
+  new device (`coder-identity.md` §5). Where the coder invitation requires
+  sign-in (specific coders who sign in, or a crowd with `login`), a new
+  session needs a login: 401 `auth_required` without one, 403
+  `email_not_allowed` for an email that isn't one of the coders. A link
+  whose coder is no longer in the coders' column: 403 `link_inactive`;
 - `x-annotinder-version`: the `version` of the loaded session (below).
 
 **New design versions.** `GET /session` returns the deployment's
@@ -83,12 +83,12 @@ and its `version`, per-loop progress and the coder's
 variables (including computed values), and `ended` if the
 session ended at an `end` item. The coder codebook has only what coding
 needs: unit loops keep their layout, questions and order, without their
-`units` (the server works out the units: no filters, criteria or special
-units); no Study entry, no researcher notes, and computed variables only with
+`units` (the server works out the units: no filters, placements or
+checks); no Study entry, no researcher notes, and computed variables only with
 their options (an invisible step: the client asks `computeVariable`). Creates
-the coder and session on first use, with its `$session` values: the link's
-coder and conditions, conditions drawn at the start, link and URL
-parameters. `login`: the email of the login the session belongs to, or null;
+the coder and session on first use, with its `$session` values: the coder
+(by the link or the login's email), the URL parameters and `source`.
+`login`: the email of the login the session belongs to, or null;
 `canLogIn`: the link offers a login the coder hasn't used. `frozen`: the
 coder-level answers that can't change any more, because the coder coded
 units in a loop that depends on them (contracts `loopDependencies`).
@@ -144,9 +144,9 @@ feedback, and with `retry` asks again until right. Gold and overlap units
 look like any other; gold cells never leave the server.
 
 The server works out the units from the session's values: the session's
-units (its coder and linked conditions; a linked computed variable the coder
-doesn't have yet is drawn now), within the loop's filter (`architecture.md`
-§6.2). A session without a value it needs gets 409 `not_assigned`; a
+units (its coder and linked computed variables; a linked computed variable
+the coder doesn't have yet is drawn now), within the loop's filter and
+placements, and a crowd's shared queue (`architecture.md` §6.2). A session without a value it needs gets 409 `not_assigned`; a
 session whose values select no units gets none in the loop.
 
 ### getLoopUnit
@@ -236,6 +236,17 @@ be deleted (also after the session ended): `GET /session` then returns
 
 A one-time token to continue this session on another device ("Continue on
 another device").
+
+### getNames
+
+`GET /names` (with `x-link-secret`) → `PickNamesResponseSchema`
+
+No session needed, and none is started: on a link where coders pick their
+name (`link: "pick_name"`), the coders' names and whether each is `taken`
+(another device's, where a name stays on the first device). The coding
+screen shows them after `getSession` answered 409 `name_required` (or
+`name_taken`), and sends the picked name as `x-coder-name`
+(URL-encoded) from then on.
 
 ### redeemTransfer
 

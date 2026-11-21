@@ -212,9 +212,9 @@ development headers: all studies).
 
 `POST /study` → `StudyResponseSchema` (201). Needs the account role
 `researcher` (403 `researcher_required`), within their `studies` limit (403
-`limit_reached`). The creator owns it and becomes its `ADMIN`. Optional
-`signIn` (`off` by default, `optional`, `required`): whether coders sign in
-(`docs/coder-identity.md`), a setting of the study, not of links.
+`limit_reached`). The creator owns it and becomes its `ADMIN`. Whether coders must sign in
+is the design's coder invitation (`docs/coder-identity.md` §5), not a
+setting of the study.
 (With development headers the study has no study users, which lets any
 development role in.)
 
@@ -241,7 +241,6 @@ recipe (`contracts/src/recipe.ts`), as the setup wizard writes one, like
 - `units` (`{ id, data }`; the first unit's fields become the study's) and
   `sets`: set columns by the units' ids (`[{ group, sets: [{ name, units,
   ordered? }] }]`, `group` the column's name);
-- `signIn` (optional, as in `createStudy`);
 - `design` (`{ note?, public?, session?, units?, items }`): the first version, saved as a draft that
   may have issues (e.g. questions without an answer type yet). With
   `publish: true` it is deployed, and must then pass validation. `units`:
@@ -263,8 +262,7 @@ deploy's errors ([putDeployment](#putdeployment)); nothing is created then. Exam
 ### updateStudy
 
 `PUT /study/:id` → `StudyResponseSchema`. Rename, set `archived` (hidden from
-active lists), `signIn` (`off`, `optional`, `required`; the deploy dialog
-asks for it at the first deploy, and email coders need `required`), `keepSessionsOpen`: finished coder sessions stay open
+active lists), `keepSessionsOpen`: finished coder sessions stay open
 (off by default: `docs/coder-identity.md` §9), or `redirectUrls`: the
 deployment settings end items' `redirectSetting` names, e.g. a panel's
 return links (`docs/architecture.md` §5); coders get them at once, without
@@ -346,8 +344,8 @@ deploying and previewing require. Versions also have `updated`,
 
 A design version is `{ public, session, units, items }`: `public` what
 coders see about the study (`{ title }`, or null), `session` how a coder's
-session starts (link and URL parameters, participant id, combinations,
-sample size; `{ params: [] }` without), `units.fields` the declared unit
+session starts (the coder invitation `invite`, URL parameters `urlParams`,
+the normal end `end`; `{}` without), `units.fields` the declared unit
 fields, `items` the questions, loops, conditions and end items. On `PUT`,
 a left-out `session`, `public` or `units` is kept; `public: null` removes it.
 
@@ -466,8 +464,8 @@ otherwise).
 ### deleteSetGroup
 
 `DELETE /study/:studyId/sets/:group` → 204. 409 while the deployed or latest
-design uses the column (the session's coders, a condition linked to units,
-or a loop's filter).
+design uses the column (the invitation's coders, a computed item linked to
+units, or a loop's filter).
 
 Filling a column (values given or `s1..sN`, plus `_overlap`) is done by the client
 (`splitIntoSets` in `sets.ts`), which then writes the group with
@@ -479,27 +477,28 @@ Schemas: [`contracts/src/coder.ts`](../../packages/contracts/src/coder.ts).
 Implementation: [`researcher/links.ts`](../../packages/server/src/researcher/links.ts), [`shared/links.ts`](../../packages/server/src/shared/links.ts), [`coders.ts`](../../packages/server/src/researcher/coders.ts), [`shared/progress.ts`](../../packages/server/src/shared/progress.ts).
 See [`docs/coder-identity.md`](../coder-identity.md) for what links do.
 
-Links are not created by hand: deploying makes one per non-email coder ×
-value of each condition assigned by link × combination of the design's
-link parameter values (one if there are none), and deploying set column
+Links are not created by hand: deploying makes one, or for specific coders
+with a link each (`invite: { mode: "coders", link: "per_coder" }`) one per
+coder of the column (`params: { coder }`), and deploying set column
 changes syncs them ([putDeployment](#putdeployment)): links follow the
 deployed sets. A link no
 longer made is **retired** (`retiredAt`), never deleted: new coders get 403
 `link_inactive`, coders who started keep working. It comes back, with the
-same secret, if its combination returns.
+same secret, if it is made again (e.g. the coder is back in the column).
 
 ### listLinks
 
 `GET /study/:studyId/links` → `LinkResponseSchema[]`, active links
-first, with `params` (the link parameter values it carries), `uses`,
+first, with `params` (`{ coder }` for a coder's link, else `{}`), `uses`,
 `created`, `revokedAt` and `retiredAt`.
 
 ### updateLink
 
 `PUT /study/:studyId/links/:id` (`LinkWriteSchema`) →
 `LinkResponseSchema`. The link's `label`, `maxUses` and a fixed
-`participantId`. Full replace of these settings. Sign-in is the study's
-`signIn` ([updateStudy](#updatestudy)), not a link's.
+`participantId`. Full replace of these settings. Sign-in is the design's
+coder invitation, not a link's. A link's `maxUses` overrides a crowd
+invitation's `maxCoders`.
 
 ### revokeLink
 
@@ -526,8 +525,8 @@ loop of the live design version, `special`: the units of the deployed
 `_overlap`, `_gold` and `_practice` sets they finished, of how many (for
 the kinds the study has), `variables`: their coder-level values
 (answers outside unit loops, and computed variables), `session`: their
-`$session` values (link and URL parameters, `source`, the coder and
-assigned conditions), `ended`: how the
+`$session` values (URL parameters, `source`, the coder), `email` only where
+the coder invitation requires sign-in, `ended`: how the
 session ended (at an `end` item: item, outcome `screenout` or `complete`;
 or outcome `quit`; and the time), or null, and `deletionRequest`: the
 coder's request to delete their answers (`at`, `postponedAt` once the
@@ -582,9 +581,10 @@ or pause/resume with `active`. Units and sets are drafts until deployed
 1. check that the design version passes validation (400 with `issues` if not:
    drafts may be saved with issues, coders only get valid designs), and
    check it against the set columns (400 `assignment_invalid` with the
-   errors: a column the design names that isn't a set column, coders
-   mixing email addresses and names, fixed condition values missing from
-   their column; `shared/sets.ts` `assignmentChecks`);
+   errors: a column the design names that isn't a set column, coders who
+   sign in whose values aren't all email addresses, a linked computed
+   item's fixed values missing from its column; `shared/sets.ts`
+   `assignmentChecks`);
 2. with `units`: new versions of the units the draft changed (versions
    they replace that no answer points to are deleted), and the draft's
    sets become the deployed ones;
@@ -592,9 +592,9 @@ or pause/resume with `active`. Units and sets are drafts until deployed
    and resuming don't: coders don't reload), record the version with what
    it changed ([listDeploymentVersions](#listdeploymentversions)), and make
    the design version immutable;
-4. sync the study's links: one per non-email coder × link-assigned
-   condition value × combination of link parameter values; links no
-   longer made are retired. Above 500 links this
+4. sync the study's links (contracts `linkCombinations`): one, or one per
+   coder with a link each; links no longer made (a coder who is gone) are
+   retired. Above 500 links this
    needs `confirmLinks: true` (409 `confirm_links` otherwise), and more
    than 2000 is 400 `too_many_links`. The response's `links` is the number
    of active links;
@@ -607,9 +607,9 @@ study is paused) until it is resumed.
 
 Return `warnings` the researcher should see, e.g. a loop that gained
 questions, which makes units coders finished unfinished again, a column
-without values, units no session gets, column values a condition doesn't
-list, fewer overlap units than a loop expects, or an end item's redirect
-setting without a URL.
+without values, units no session gets, column values a linked computed item
+doesn't list, special units a loop places but the columns don't have, or an
+end item's redirect setting without a URL.
 
 ### getPendingChanges
 

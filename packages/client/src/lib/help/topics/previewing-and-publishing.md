@@ -86,9 +86,10 @@ then code the study as a coder would, with the study's real units:
   device under **Preset**, or type a width and height.
 - **Reset preview session** starts the preview over, as a new coder.
 - An end item's redirect is shown, but not followed.
-- Session values come from the preview page's URL (by parameter name), else
-  their default or first value: with specific coders, the preview gets the
-  first coder (or `?coder=<name>` in the preview's URL).
+- **Preview as** chooses who you are: with specific coders, the coder
+  whose units you get, and the value of each URL parameter with a list of
+  values. Changing it starts the preview over. Other URL parameters get
+  their default, if they have one.
 - Random conditions are drawn for you as for any coder.
 
 The preview needs a saved design with at least one item and uploaded
