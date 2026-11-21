@@ -1,110 +1,71 @@
 # Compositions: one set of parts, several products
 
-The server and client are built; local coding from R and Python, and the R
-and Python packages, are not.
+AnnoTinder has two parts:
 
-Annotinder has two parts:
-
-- **server** (`packages/server`): one Node program. The researcher API
-  (studies, designs, units, sets, links, deployments, results) and the
-  coder API for coders (`/d/<studyId>`): distribution, validation, sessions.
-  It owns the data, in Postgres: a Postgres server (`DATABASE_URL`), or
-  PGlite (Postgres compiled to WebAssembly, in process) for tests and
-  development.
-- **client** (`packages/client`): the web app, for coders and researchers.
-  Always served from the server's origin (session cookies).
+- **server** (`packages/server`): one Node program with the researcher API
+  and the coder API (distribution, validation, sessions). It owns the data,
+  in Postgres (`DATABASE_URL`) or PGlite (development, tests).
+- **client** (`packages/client`): the web app for coders and researchers,
+  always served from the server's origin.
 
 Other systems (AmCAT, R, Python) are **clients of the researcher API**: they
-push units, a design and study settings, and download annotations (maybe
-later: a webhook that posts batches of annotations).
-
-The products below are compositions of these parts, not separate code. New
-code goes into the parts; a product is configuration and packaging.
+push units and designs and download answers. Products are compositions of
+these parts, not separate code.
 
 ## The products
 
-**annotinder.com**: hosted by us. The server on Postgres, EU-hosted, plus
-the web client; researcher login through a self-hosted OpenID Connect
-provider (probably Authentik).
-
-**Self-hosted annotinder**: the same server and client, run by a university
-or project on its own infrastructure (Node and Postgres). For data that must
-stay in-house, and for teams.
-
-**Local coding from R and Python** (below): R or Python hosts the data, the
-browser runs the study. For developing a design with a live preview, and a
-researcher coding their own data. One coder.
-
-**R package and Python module**: both things in one package: a client of
-the researcher API of any annotinder server (studies, units, designs,
-downloading annotations; the API is the public contract,
-`docs/api/researcher.md`), and the host for local coding.
+| Product | Status | What |
+| --- | --- | --- |
+| **annotinder.com** | planned | hosted by us, EU, researcher login through a self-hosted OpenID Connect provider |
+| **Self-hosted** | built | the same server and client on a university's or project's own machines (`hosting.md`) |
+| **Local coding from R and Python** | not built | R or Python hosts the data, the browser runs the study: developing a design with a live preview, or coding one's own data |
+| **R package, Python module** | not built | a client of any server's researcher API (`docs/api/researcher.md`), plus the host for local coding |
 
 ## Local coding from R and Python (the plan)
 
 R (or Python) hosts a study on the researcher's machine, with the data in R
 objects, and coders use the normal client. It should behave exactly like a
-server, including several coders (a team on one network coding into the
-researcher's R session), so no feature needs a "not in R" note.
+server, including several coders on one network.
 
-**Proposed: R runs the server's runtime.** R's `V8` package (on CRAN)
-embeds a JavaScript engine. R loads a bundle of the runtime with a memory
-store that saves into R objects, and serves the coder API with `httpuv`
-(the same routes as the server). The client is unchanged: it talks HTTP to
-R as it would to a server. One R process holds the state, which for one
-machine is exactly right. Python: the same with an embedded engine
-(`mini-racer`) and its standard HTTP server.
+**Proposed: R runs the server's runtime.** R's `V8` package embeds a
+JavaScript engine: R loads a bundle of the runtime with a memory store that
+saves into R objects, and serves the coder API with `httpuv`. The client is
+unchanged. Python: the same with `mini-racer` and its standard HTTP server.
 
-**Tested (R 4.3.3, V8 package 4.4.1 on engine 10.2, Linux): feasible.** The contracts (zod) and `distribution.ts` run unchanged from an
-es2020 bundle (~500 KB minified, ~110 KB gzipped; zod's locales can go);
-loading takes under 0.1 s; promises (`await = TRUE`) and WebAssembly work;
-validating is about 2x slower than in Node; an httpuv round trip into V8
-works. What it needs:
+**Tested (R 4.3.3, V8 4.4.1, Linux): feasible.** The contracts and
+`distribution.ts` run unchanged from an es2020 bundle (~110 KB gzipped);
+loading takes under 0.1 s; promises and WebAssembly work; validation is about
+2x slower than in Node. What it needs:
 
-- The runtime in its own package, free of Node and database imports
-  (`node:crypto` in `shared/units.ts`, `shared/deployments.ts` and
-  `preview.ts`; the database store `runtime/store.ts` and `db.ts` stay in
-  the server), with a memory store (`preview.ts`'s `PreviewStore` is most
-  of one).
+- The runtime in its own package, free of Node and database imports, with a
+  memory store (`PreviewStore` is most of one).
 - Shims: R's V8 has no web APIs (`TextEncoder`, `crypto`, `btoa`, timers,
-  `URL`). Random bytes and SHA-256 through a synchronous callback into R
-  (`openssl`), ~0.3 ms per call, or a pure-JS SHA-256.
-- Routing in R (httpuv), calling coarse runtime functions with JSON text:
-  each R→JS call costs ~0.5 ms, and Hono needs `Request`, `URL` and
-  friends. Pass JSON text, not R lists (jsonlite's simplification breaks
-  nested data).
+  `URL`); random bytes and SHA-256 via a callback into R or pure JS.
+- Routing in R, calling coarse runtime functions with JSON text (~0.5 ms per
+  call; JSON text, not R lists).
 
-Not verified: CRAN's Windows and macOS builds (newer engines), Python's
-`mini-racer`.
+Not verified: CRAN's Windows and macOS builds, Python's `mini-racer`.
 
-**Rejected:** PGlite (it runs inside one browser, so every coder would have
-their own database, and the data lives in R); distribution rules written in
-R (a second copy of the runtime); R starting Postgres or Node (an install
-most R users don't have).
+**Rejected:** PGlite in the browser (each coder would have their own
+database); distribution rules rewritten in R; R starting Postgres or Node.
 
-**Fallback**, if V8 turns out not to work on some platform: the runtime in
-the browser, over three endpoints R serves (`GET /study`, `GET /annotations`,
-`POST /annotations`). Features then behave as on a server for one coder;
-several coders at once are not possible.
+**Fallback** if V8 fails on a platform: the runtime in the browser over three
+endpoints R serves (`GET /study`, `GET /annotations`, `POST /annotations`);
+one coder at a time.
 
-**Where the client comes from:** served by R from the package
-(`http://localhost:8403`: same origin, no CORS or browser permission
-prompts; the package ships the built client, a few MB: check CRAN's size
-limit). The link carries a random token that R checks, so other web pages
+**Serving the client:** from the package at `http://localhost:8403` (same
+origin, no CORS). The link carries a random token R checks, so other pages
 can't write to the port.
 
 ## Not planned
 
-- **A standalone local app** ("annotinder local": the server on PGlite with
-  the client, as `npx` or single binaries per platform). Local coding from
-  R and Python covers the local use cases without anything to install; a
-  team coding together uses a server (self-hosted or annotinder.com). Don't
-  build this unless a real case needs a team on a LAN without a server.
+**A standalone local app** (the server on PGlite as `npx` or a binary). Local
+coding from R and Python covers single users; teams use a server. Only if a
+real case needs a team on a LAN without a server.
 
-## Order of work (proposal)
+## Order of work
 
-1. Move the runtime into a package without Node or database imports, with
-   a memory store.
-2. The R package: researcher API client, and the local host (the runtime
-   in V8, the coder API over httpuv, serving the client).
-3. The Python module, the same.
+1. Move the runtime into a package without Node or database imports, with a
+   memory store.
+2. The R package: researcher API client and local host.
+3. The Python module.

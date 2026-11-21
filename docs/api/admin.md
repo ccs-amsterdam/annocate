@@ -1,21 +1,19 @@
 # Admin API
 
-The server admin's endpoints (account role `admin`, `docs/accounts.md`),
-under `/api/admin/...`, with the researcher API's authentication (session
-cookie or API key; a session needs a login with the second factor, and the sensitive actions
-below need a recent one in a web session, never an API key: `security.md` §1). Called by the
-client's server admin page (`ServerAdmin.tsx`, through `api/serverApi.ts`).
+The server admin's endpoints, under `/api/admin/...`, for users with the
+account role `admin` (`docs/accounts.md`). Called by the server admin page
+(`ServerAdmin.tsx`, through `api/serverApi.ts`).
 
+- Authentication as for the researcher API (session cookie or API key). A web
+  session needs a login with the second factor; the sensitive actions below
+  need a recent one, never an API key (`security.md` §1).
+- Non-admins get 403 `admin_required`. Admins get no study data here (no
+  designs, units or answers). Every change goes to the admin log.
 - Contracts: `adminEndpoints` in
   [`contracts/src/endpoints/admin.ts`](../../packages/contracts/src/endpoints/admin.ts),
   schemas in [`contracts/src/admin.ts`](../../packages/contracts/src/admin.ts).
-- Implementation: [`server/src/researcher/admin.ts`](../../packages/server/src/researcher/admin.ts),
-  with [`shared/accounts.ts`](../../packages/server/src/shared/accounts.ts) (registration, limits)
-  and [`shared/limits.ts`](../../packages/server/src/shared/limits.ts) (checks).
-
-Admins don't get study data here: no designs, units or answers. Every
-change is written to the admin log (`listAdminLog`). Non-admins get 403
-`admin_required`.
+  Implementation: [`server/src/researcher/admin.ts`](../../packages/server/src/researcher/admin.ts),
+  with `shared/accounts.ts` and `shared/limits.ts`.
 
 | Endpoint | | Request | Response |
 |---|---|---|---|

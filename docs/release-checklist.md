@@ -1,10 +1,8 @@
 # Release checklist
 
-What to check and decide before a pilot server and before a first release.
-**Decide** marks an item that needs the maintainer's choice; the rest is
-work. What exists is described in the other docs. This file lists what is
-open, what is ready for the pilot, and the checks to repeat for every
-release.
+What to do before the pilot server and before a release: what is ready,
+what is open, and the checks for every release. **Decide** marks a choice for
+the maintainer.
 
 ## 1. Pilot server
 
@@ -88,12 +86,10 @@ To do on the server (the guide's steps):
 - Relation questions: the dropdowns show values rather than labels, and
   validation doesn't check for cycles (A → B → A).
 - **The design viewer** (`plans/design-viewer.md`) needs real release
-  versioning: the packages are at `0.0.0`.
+  versioning (the packages are all `0.1.0`).
 
 Known limitations, documented rather than fixed:
 
-- A running session keeps its sign-in state: changing the study's sign-in
-  setting applies to new sessions.
 - A link's settings are cached by the server for up to 60 seconds.
 - A session that started from a link without a coder value, before the
   coder column had values, gets 409 `not_assigned`.

@@ -9,7 +9,7 @@ limits and ownership checks as creating a study. Afterwards it is an
 ordinary study: nothing records how it was made except `origin` for an
 example.
 
-Two things make recipes:
+Three things make recipes:
 
 - **Example studies** (`packages/server/examples/<id>.json`, loaded by
   `server/src/examples.ts`): recipes with a deployed design, a title, a

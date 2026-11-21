@@ -1,8 +1,8 @@
 # Researcher API
 
-Served by the **server** at `/api/study/...` (the paths below are relative to `/api`), called by the client's **researcher
-UI** (`ResearcherApi`), and by scripts (R, Python) and other systems (AmCAT):
-managing studies, design versions, units and sets, links, deploying and progress.
+Managing studies: designs, units and sets, links, deploying, results. Paths
+are relative to `/api`. Called by the researcher UI (`ResearcherApi`), scripts
+(R, Python) and other systems (AmCAT).
 
 - Contracts: `researcherEndpoints` in
   [`contracts/src/endpoints/researcher.ts`](../../packages/contracts/src/endpoints/researcher.ts).
@@ -10,64 +10,48 @@ managing studies, design versions, units and sets, links, deploying and progress
   path, with shared queries in [`shared/`](../../packages/server/src/shared/).
 - Caller: [`client/src/lib/api/httpResearcherApi.ts`](../../packages/client/src/lib/api/httpResearcherApi.ts).
 
-**Authentication.** A researcher is a user, identified by their verified
-email address. Requests carry one of:
+**From R or Python**: create a study, upload units ([createUnits](#createunits))
+and a design version, deploy it (which makes the links), send coders a link,
+then download the answers ([listAnnotations](#listannotations)) and the coders
+([listCoders](#listcoders)). `server/src/__tests__/researcherApi.test.ts` does
+exactly this.
 
-- the **session cookie** from logging in (the researcher UI): the browser
-  goes to `GET /auth/login?returnTo=<path>`, logs in at the server's OpenID
-  Connect provider and comes back with an httpOnly cookie. Same origin
-  only, and every request needs the `x-annotinder: 1` header (CSRF). See
-  `docs/coder-identity.md` §7.
+**Authentication.** A researcher is a user (a login at the provider). Requests
+carry one of:
+
+- the **session cookie** from logging in (the researcher UI): same origin
+  only, with the header `x-annotinder: 1` (CSRF). See `docs/coder-identity.md` §7.
 - a personal **API key**: `authorization: Bearer <key>` (keys start with
-  `atk_`), for scripts and other systems. Logged-in researchers make keys
-  in the UI ([createApiKey](#createapikey)); without login, the server's
-  `keys` command makes them (see the server's README).
+  `atk_`). Made in the UI ([createApiKey](#createapikey)) or, without login,
+  with the server's `keys` command (`packages/server/README.md`).
+- development only (`AUTH_DEV_MODE=1`, as `pnpm dev` sets; localhost only):
+  `x-dev-role` / `x-dev-email` (and `x-dev-account-role`, default `admin`).
 
-Implementation: [`researcher/auth.ts`](../../packages/server/src/researcher/auth.ts),
-[`researcher/login.ts`](../../packages/server/src/researcher/login.ts),
-[`shared/accounts.ts`](../../packages/server/src/shared/accounts.ts),
-[`shared/sessions.ts`](../../packages/server/src/shared/sessions.ts).
+**Roles.** A user has a role per study: `READ` < `WRITE` < `ADMIN` (the Role
+column below is the minimum). A study's creator is its `ADMIN` and owner.
+Each user also has an **account role** (`docs/accounts.md`): `user`,
+`researcher` (creates studies), `admin` (also the [admin API](admin.md)).
 
-Development only: a server started with `AUTH_DEV_MODE=1` (as `pnpm
-dev` does; localhost only) also accepts `x-dev-role` / `x-dev-email` (and
-`x-dev-account-role`, default `admin`) headers instead of a key, which the
-dev shell's researcher UI uses. Never on a reachable server.
+**Second factor and sensitive actions.** Researchers work without a second
+factor; server admin access needs one (else 403 `mfa_required`;
+`security.md` §1). API keys count as having one. **Sensitive actions**
+(creating or revoking API keys, resetting answers, deleting coders' data or a
+study, exporting a study, changing a study's ADMINs or the admin role) need a
+web session whose second factor is at most `AUTH_STEP_UP_MAX_AGE` seconds old
+(403 `step_up_required`: log in again with `/auth/login?stepUp=1`), and never
+work with an API key (403 `not_with_api_key`).
 
-**Roles.** A user has a role per study (study users): `READ` < `WRITE` <
-`ADMIN`. The role column below is the minimum. Whoever creates a study is its
-`ADMIN`, and its owner. Apart from that, each user has an **account role**
-on the server (`docs/accounts.md`): `user` (codes; works on studies they have
-a role in), `researcher` (also creates studies, within their limits), `admin`
-(also the [admin API](admin.md)).
+**Errors** are `{ error, code? }`:
 
-**Second factor.** Researchers work without the provider's second factor;
-server admin access needs a login with one (else the account role is
-`researcher`, and admin endpoints answer 403 `mfa_required`;
-`security.md` §1). API keys count as having one. **Sensitive actions** (creating or revoking
-API keys, resetting answers, deleting coders' data or a study, changing a
-study's ADMINs or the server admin role) need a web session whose second
-factor is at most `AUTH_STEP_UP_MAX_AGE` seconds old: 403
-`step_up_required` otherwise (log in again with `/auth/login?stepUp=1`),
-and API keys never do them: 403 `not_with_api_key`. Too many requests:
-429 `rate_limited` (`security.md` §3).
-
-**Limits.** Adding units, and creating a study, can be refused with 403
-`limit_reached` (the study owner's limits), and a unit larger than the server
-allows with 413 `unit_too_large`. A study a server admin suspended refuses
-changes with 403 `study_suspended` (reading, deleting coders' data and
-deleting the study still work).
-
-**Errors** are `{ error, code? }` with a 4xx/5xx status: 400 invalid body or
-parameter, 401 no valid API key, 403 no (sufficient) role in the study (or
-account role: `researcher_required`), 404 not found, 409 not allowed in
-this state (e.g. editing a deployed design version), 413 too large.
-
-**From R or Python**: everything a script needs is here: create a study,
-upload units ([createUnits](#createunits)) and a design version, deploy it
-(which makes its links), send coders a link, then download the annotations ([listAnnotations](#listannotations))
-and the coders with their coder-level answers ([listCoders](#listcoders)).
-`server/src/__tests__/researcherApi.test.ts` does exactly this, with every
-response checked against its contract schema.
+| Status | Meaning |
+|---|---|
+| 400 | invalid body or parameter |
+| 401 | not logged in, no valid API key |
+| 403 | no (sufficient) role (`researcher_required` for the account role); `limit_reached` (the owner's limits); `study_suspended` (only reading and deleting still work) |
+| 404 | not found |
+| 409 | not allowed in this state (e.g. editing a deployed design version) |
+| 413 | too large (`unit_too_large`) |
+| 429 | `rate_limited` (`security.md` §3) |
 
 | Endpoint | | Role | Request | Response |
 |---|---|---|---|---|
@@ -85,6 +69,8 @@ response checked against its contract schema.
 | [listExamples](#listexamples) | `GET /examples` | any | – | `ExampleSummarySchema[]` |
 | [createStudyFromExample](#createstudyfromexample) | `POST /study/from-example` | any | `StudyFromExampleSchema` | `StudyResponseSchema` |
 | [createStudyFromRecipe](#createstudyfromrecipe) | `POST /study/from-recipe` | any | `RecipeSchema` | `StudyResponseSchema` |
+| [exportStudy](#exportstudy) | `GET /study/:id/export` | ADMIN | – | gzip file |
+| [importStudy](#importstudy) | `POST /study/import` | any | the export's bytes | `StudyResponseSchema` |
 | [getStudy](#getstudy) | `GET /study/:id` | READ | – | `StudyResponseSchema` |
 | [updateStudy](#updatestudy) | `PUT /study/:id` | ADMIN | `StudyWriteSchema` | `StudyResponseSchema` |
 | [deleteStudy](#deletestudy) | `DELETE /study/:id` | ADMIN | – | – |
@@ -212,11 +198,9 @@ development headers: all studies).
 
 `POST /study` → `StudyResponseSchema` (201). Needs the account role
 `researcher` (403 `researcher_required`), within their `studies` limit (403
-`limit_reached`). The creator owns it and becomes its `ADMIN`. Whether coders must sign in
-is the design's coder invitation (`docs/coder-identity.md` §5), not a
-setting of the study.
-(With development headers the study has no study users, which lets any
-development role in.)
+`limit_reached`). The creator owns it and becomes its `ADMIN`. (With
+development headers the study has no study users, so any development role
+gets in.)
 
 ### listExamples
 
@@ -247,7 +231,6 @@ recipe (`contracts/src/recipe.ts`), as the setup wizard writes one, like
   the unit fields, declared (types, descriptions, in their order), as a
   design file has them; the units' values must fit them, and
   fields only the units have are added after them.
-
 
 A recipe has no links: deploying its design makes them. 400
 `recipe_invalid` for a unit id used twice, a set naming an unknown unit, a
@@ -313,7 +296,6 @@ page: units, set columns with their values' sizes (`groups: [{ name, sets:
 24 hours), live answers, finished codings for the live design's loops, and
 answers per day for the last 30 days. "Finished": every question of the
 loop has a live answer.
-Index answers by (study, created) to keep the per-day count cheap.
 
 ## Designs
 

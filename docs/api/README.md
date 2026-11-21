@@ -1,55 +1,33 @@
-# The APIs: how the parts talk
+# The APIs
 
-Annotinder has two parts: the **client** (browser) and the **server**
-(TypeScript, `packages/server`; stores everything and runs the studies). The
-server serves two APIs.
-
-```
- ┌─────────────────────────────────┐   ┌──────────────────────────────┐
- │ researcher UI (ResearcherApi)   │   │ coding screen (HttpCoderApi) │
- │ scripts (R, Python), AmCAT      │   │                              │
- └────────────────┬────────────────┘   └───────────────┬──────────────┘
-                  │ researcher API                      │ coder API
-                  │ /api/study/..., /api/me, /api/auth/...│ /api/d/<deploymentId>/...
-                  ▼                                     ▼
- ┌─────────────────────────────────────────────────────────────────────┐
- │ server                                                              │
- └─────────────────────────────────────────────────────────────────────┘
-```
+The server (`packages/server`) serves three APIs, all under `/api`: the paths
+in these documents are relative to it (`GET /study` is
+`https://annotinder.example.org/api/study`). Everything outside `/api` is the
+web app.
 
 | API | Called by | For | Contracts | Spec |
 |---|---|---|---|---|
-| **researcher API** | client: researcher UI (`ResearcherApi`); scripts (R, Python); other systems | managing studies: designs, units, links, deploying, progress | `researcherEndpoints` | [researcher.md](researcher.md) |
-| **coder API** | client: coding screen (`HttpCoderApi`, `StudyManager`) | coding: session, next unit, submitting answers | `coderEndpoints` | [coder.md](coder.md) |
-| **admin API** | client: server admin page (`ServerApi`) | accounts: roles, registration, plans and limits, blocking, suspending studies | `adminEndpoints` | [admin.md](admin.md) |
+| **researcher API** (`/study/...`, `/me`, `/auth/...`) | the researcher UI (`ResearcherApi`), scripts (R, Python), other systems (AmCAT) | studies, designs, units, links, deploying, results | `researcherEndpoints` | [researcher.md](researcher.md) |
+| **coder API** (`/d/<deploymentId>/...`) | the coding screen (`HttpCoderApi`, `StudyManager`) | the session, next units, saving answers | `coderEndpoints` | [coder.md](coder.md) |
+| **admin API** (`/admin/...`) | the server admin page (`ServerApi`) | roles, registration, plans and limits, blocking, suspending studies | `adminEndpoints` | [admin.md](admin.md) |
 
 The registries are in `packages/contracts/src/endpoints/`: one file per API,
-each entry `{ method, path, request, response }` with zod schemas.
-
-**All APIs are under `/api`.** The paths in the registries and in these
-documents are relative to it: `GET /study` is
-`https://annotinder.example.org/api/study`. Everything outside `/api` is the
-app (its pages, e.g. `/research/...` and `/code/...`).
-
-## Where they are implemented
-
-- **The server** (`packages/server`): the researcher API in
-  `src/researcher/` (one file per path), the coder API in `src/coder.ts`,
-  with the runtime in `src/runtime/` doing the work.
-- **The client** (`packages/client`) calls the researcher API
-  (`api/httpResearcherApi.ts`) and the coder API (`api/httpCoderApi.ts`).
+each entry `{ method, path, request, response }` with zod schemas. Server side:
+the researcher and admin APIs in `src/researcher/` (one file per path), the
+coder API in `src/coder.ts` with the runtime in `src/runtime/`. Client side:
+`api/httpResearcherApi.ts`, `api/httpCoderApi.ts`, `api/serverApi.ts`.
 
 ## Authentication
 
 | API | How |
 |---|---|
-| researcher API | The session cookie from logging in (same origin, with `x-annotinder: 1`), or a personal API key (`authorization: Bearer <key>`, also from other origins: CORS is allowed). The user's role per study is `READ`, `WRITE` or `ADMIN`. Development servers (`AUTH_DEV_MODE=1`, localhost only) also accept `x-dev-role` / `x-dev-email` headers. See [researcher.md](researcher.md). |
-| coder API | A session cookie the server sets (httpOnly, same origin as the client), created from a link secret. No CORS. [coder.md#sessions-and-headers](coder.md#sessions-and-headers) |
+| researcher and admin API | The session cookie from logging in (same origin, with `x-annotinder: 1`), or a personal API key (`authorization: Bearer <key>`, also cross-origin: CORS is allowed). Development servers (`AUTH_DEV_MODE=1`, localhost only) also accept `x-dev-role` / `x-dev-email`. See [researcher.md](researcher.md). |
+| coder API | A device cookie the server sets (httpOnly, same origin), a session started from a link secret. No CORS. See [coder.md](coder.md#sessions-and-headers). |
 
 ## Deployment ids
 
-A deployed study runs as a **deployment**, identified by the study id, e.g.
-`/d/42/session`. A researcher preview runs as `<studyId>.preview`.
+A deployed study runs as a deployment identified by the study id
+(`/d/42/session`); a researcher preview as `<studyId>.preview`.
 
 ## Machine-readable spec
 
@@ -57,6 +35,6 @@ A deployed study runs as a **deployment**, identified by the study id, e.g.
 pnpm --filter @annotinder/contracts generate:json-schema
 ```
 
-writes `packages/contracts/dist/json-schema/{researcher,coder}-api.json`:
-per endpoint the method, path, and a JSON Schema for the request and
-response body, for clients not written in TypeScript (R, Python).
+writes `packages/contracts/dist/json-schema/{researcher,coder}-api.json`: per
+endpoint the method, path and JSON Schemas for request and response, for
+clients not written in TypeScript.

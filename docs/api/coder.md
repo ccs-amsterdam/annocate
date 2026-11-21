@@ -1,7 +1,8 @@
 # Coder API
 
-Served by the **server** under `/api/d/<deploymentId>` (the paths below are relative to it), called by the client's **coding screen**
-(`HttpCoderApi`, driven by `StudyManager`).
+What the coding screen (`HttpCoderApi`, driven by `StudyManager`) calls. Paths
+are relative to `/api/d/<deploymentId>`, e.g. `/api/d/42/session`
+([deployment ids](README.md#deployment-ids)).
 
 - Contracts: `coderEndpoints` in
   [`contracts/src/endpoints/coder.ts`](../../packages/contracts/src/endpoints/coder.ts);
@@ -10,64 +11,51 @@ Served by the **server** under `/api/d/<deploymentId>` (the paths below are rela
   (routes), [`runtime/runtime.ts`](../../packages/server/src/runtime/runtime.ts) (the work).
 - Caller: [`client/src/lib/api/httpCoderApi.ts`](../../packages/client/src/lib/api/httpCoderApi.ts).
 
-All paths are under `/d/<deploymentId>`, e.g. `/d/42/session`
-([deployment ids](README.md#deployment-ids)).
-
 | Endpoint | | Request | Response |
 |---|---|---|---|
 | [getSession](#getsession) | `GET /session` | – | `SessionResponseSchema` |
+| [getSummary](#getsummary) | `GET /summary` | – | `CoderStudySchema` |
 | [getNextUnits](#getnextunits) | `GET /loop/:loop/next?count=` | – | `NextUnitsResponseSchema` |
 | [getLoopUnit](#getloopunit) | `GET /loop/:loop/units/:unitId` | – | `CoderUnitResponseSchema` |
 | [postUnitVariables](#postunitvariables) | `POST /variables/unit` | `PostUnitVariablesSchema` | `SubmitUnitResponseSchema` |
 | [postCoderVariables](#postcodervariables) | `POST /variables/coder` | `PostCoderVariablesSchema` | – |
 | [computeVariable](#computevariable) | `POST /variables/computed/:name` | – | `{ value }` |
-| [createTransfer](#createtransfer) | `POST /transfer` | – | `TransferResponseSchema` |
-| [redeemTransfer](#redeemtransfer) | `POST /transfer/redeem` | `RedeemTransferSchema` | `RedeemTransferResponseSchema` |
 | [endSession](#endsession) | `POST /end` | `EndSessionSchema` | `EndSessionResponseSchema` |
 | [reopenSession](#reopensession) | `POST /reopen` | – | – |
 | [quitSession](#quitsession) | `POST /quit` | `QuitSessionSchema` | – |
+| [createTransfer](#createtransfer) | `POST /transfer` | – | `TransferResponseSchema` |
+| [redeemTransfer](#redeemtransfer) | `POST /transfer/redeem` | `RedeemTransferSchema` | `RedeemTransferResponseSchema` |
+| [postDisplay](#postdisplay) | `POST /display` | `DisplayEntrySchema` | – |
+| [getNames](#getnames) | `GET /names` | – | `PickNamesResponseSchema` |
+| [listSessions](#listsessions-outside-deployments) | `GET /api/coder/sessions` (not under `/d/`) | – | `CoderStudySchema[]` |
 
 ## Sessions and headers
 
-The session comes from an httpOnly device cookie set by the server
-(`annotinder_device`, one for all studies; the session in a study is derived from
-it, `coder-identity.md` §4), so the client must be served from the server's
-origin (in development, Vite proxies to the server). The
-server sends no CORS headers for these paths.
-Headers:
+The session comes from an httpOnly device cookie (`annotinder_device`, one for
+all studies; the session in a study is derived from it, `coder-identity.md`
+§4), so the client must be served from the server's origin. No CORS headers.
+Request headers:
 
-- `x-annotinder: 1` on every request (CSRF: cross-site forms can't send it);
-- `x-link-secret` from the URL (the link, `/code/<deployment>?link=<secret>`): create the coder on first
-  use. A new session without a link, or with an unknown one, is 404
-  `link_not_found`; a revoked link is 403 `link_revoked`, one at its
-  maximum number of sessions 403 `link_used_up`, and a retired one (no
-  longer part of the deployed design) 403 `link_inactive`. Sessions that
-  already started go on. 401 only ever means a login is needed
-  (`auth_required`, below);
-- `x-url-params`: the page's other query parameters. They hold the URL
-  parameters the design's Study entry declares (`urlParams`), a crowd
-  invitation's coder id parameter (`coderParam`), and the optional `source` (stored
-  on the session as `$session` values, with the coder; at most 256
-  characters each; a missing or invalid one is 400 `url_param_missing` /
-  `url_param_invalid`). The crowd's coder id is also part of the device's key
-  for the session (a device keeps a session per coder id);
-- `x-new-session: 1` (first request only): start another session for a
-  coder id that already has one (after 409 `coder_has_session`);
-- the login cookie (`annotinder_session`, from `/auth/login`): read only to
-  link the session to its email once, or to find the email's session on a
-  new device (`coder-identity.md` §5). Where the coder invitation requires
-  sign-in (specific coders who sign in, or a crowd with `login`), a new
-  session needs a login: 401 `auth_required` without one, 403
-  `email_not_allowed` for an email that isn't one of the coders. A link
-  whose coder is no longer in the coders' column: 403 `link_inactive`;
-- `x-annotinder-version`: the `version` of the loaded session (below).
+| Header | When | What |
+|---|---|---|
+| `x-annotinder: 1` | always | CSRF: cross-site forms can't send it |
+| `x-link-secret` | from the URL (`/code/<deployment>?link=<secret>`) | starts a session on first use. Without a link or with an unknown one: 404 `link_not_found`; revoked: 403 `link_revoked`; at its maximum: 403 `link_used_up`; retired (its coder left the column): 403 `link_inactive`. Started sessions go on |
+| `x-url-params` | the page's other query parameters | the declared URL parameters (`urlParams`), a crowd's coder id parameter (`coderParam`) and `source`, stored as `$session` values (at most 256 characters; missing or invalid: 400 `url_param_missing` / `url_param_invalid`). The crowd's coder id is part of the device key, so a device keeps a session per coder id |
+| `x-new-session: 1` | first request only | start another session for a coder id that already has one (after 409 `coder_has_session`) |
+| `x-coder-name` | `pick_name` links | the picked name, URL-encoded ([getNames](#getnames)) |
+| `x-annotinder-version` | after `GET /session` | the loaded session's `version` (below) |
 
-**New design versions.** `GET /session` returns the deployment's
-`version`, bumped when another design version is deployed. The client sends it back with every
-request. After a deploy, requests with the old version (all but
-`/session` and `/transfer`) answer 409 `codebook_changed`, before anything
-is stored; the client then loads the session again and continues where it
-was (`docs/client.md` §2).
+The login cookie (`annotinder_session`) is read only to link the session to
+its email once, or to find the email's session on a new device
+(`coder-identity.md` §5). Where the invitation requires sign-in, a new session
+without a login gets 401 `auth_required` (401 means nothing else), and an email
+that isn't one of the coders 403 `email_not_allowed`.
+
+**New design versions.** `GET /session` returns the deployment's `version`,
+bumped on each deploy; the client sends it back on every request. Requests
+with an old version (all but `/session` and `/transfer`) get 409
+`codebook_changed` before anything is stored; the client reloads the session
+and continues (`docs/client.md` §2).
 
 Errors are `{ error, code? }`, with `code` from `CoderErrorCodeSchema`. See
 [`docs/coder-identity.md`](../coder-identity.md).

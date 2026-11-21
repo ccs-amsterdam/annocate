@@ -31,10 +31,10 @@ identifier in code differs, §2 says what it means.
 | **Deployment** | What coders get now (a design version with the deployed units and sets, active or paused) and its **settings**: panel return links, a link's own limit. | |
 | **Link** | What coders open to start a session; made when deploying: one, or one per coder (specific coders with a link each). | "invite" for a link |
 | **Coder** | Anyone coding or answering (also in surveys and experiments): a person with a **session** in a study. | annotator, participant, respondent |
-| **Coder id** | Who the coder is: `$session.coder`, the results' `coder` column. Specific coders' value in the coders' column, a crowd's id from a URL parameter (e.g. a panel's participant id, `PROLIFIC_PID`), or the login's email where a crowd requires sign-in; never a key. | participant id |
+| **Coder id** | Who the coder is: `$session.coder`, the results' `coder` column. Specific coders' value in the coders' column, a crowd's id from a URL parameter (e.g. a panel's `PROLIFIC_PID`), or the login's email where a crowd requires sign-in; never a key. | participant id |
 | **Coder session** | One coder's session in a study (`sessionId`, the results' `session_id`); a coder can have more than one (e.g. a new device). | "coder" for a session row |
 | **Public title** | What coders see as the study's name (the coder home, the coding screen): the design's `public.title`. The study's name is private. | the study's name |
-| **Session** | (1) A coder's run through a study. (2) The design's `session` (the Study entry): the coder invitation, the URL parameters (`$session.<name>`) and the normal end. | |
+| **Session** | (1) A coder's run through a study. (2) The design's `session` (the Study entry): the coder invitation, the URL parameters (`$session.<name>`), the normal end and the display. | |
 | **Preview** | Trying the drafts as a coder; nothing is stored. | test run |
 
 ## 2. In code

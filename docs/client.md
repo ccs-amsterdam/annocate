@@ -1,953 +1,566 @@
-# Client: design decisions
+# Client
 
-Server-side design lives in
-`architecture.md` and `coder-identity.md`; the APIs in `docs/api/`.
+How the web client (`packages/client`) works and why. Server side:
+`architecture.md` and `coder-identity.md`; the APIs: `docs/api/`.
 
 ## 1. Packaging
 
-- `packages/client` builds the app the server serves. `src/App.tsx` holds
-  its routes (TanStack Router, routes in code; plain query strings: values
-  stay strings):
+`src/App.tsx` holds the routes (TanStack Router; query values stay strings):
 
-  | URL | Page |
-  | --- | --- |
-  | `/` | Welcome: what AnnoTinder is, the researcher and coder sections (`pages/WelcomePage.tsx`) |
-  | `/research` | The researcher UI: the studies |
-  | `/research/studies/<id>/<tab>` | A study's page (`overview`, `editor`, `units`, `links`, `coders`, `results`, `settings`, `preview`); the editor's `?version=<n>` (v1, v2, ...) |
-  | `/research/admin` | The server admin's page |
-  | `/code` | The coder home: studies on this device (`pages/CodeHomePage.tsx`) |
-  | `/code/<deployment>?link=<secret>` | Coding (`pages/CodePage.tsx`, no app header): a coder link, with the URL parameters it takes; `?transfer=<token>` continues on another device; without either, this device's session |
+| URL | Page |
+| --- | --- |
+| `/` | Welcome page (`pages/WelcomePage.tsx`) |
+| `/research` | The researcher UI: the studies |
+| `/research/studies/<id>/<tab>` | A study (`overview`, `editor`, `units`, `links`, `coders`, `results`, `settings`, `preview`); the editor takes `?version=<n>` |
+| `/research/admin` | The server admin page |
+| `/code` | The coder home: studies on this device (`pages/CodeHomePage.tsx`) |
+| `/code/<deployment>?link=<secret>` | Coding (`pages/CodePage.tsx`), plus the link's URL parameters; `?transfer=<token>` continues on another device; without either, this device's session |
 
-  A reload stays where it was. The researcher section is one `AdminApp`
-  under a layout route: its place comes from the URL (`AdminLocation`)
-  and it navigates through `onNavigate`; leaving the editor with unsaved
-  edits asks first (the router's blocker, `useLeaveGuard`, with the
-  editor's dialog; also on reload or closing the tab).
-- **Components, not routes.** `StudyRunner` (coding) and `AdminApp`
-  (research management) are plain components without a router dependency
-  (`AdminApp` gets its place and navigation as props);
-  `AdminApp` brings its own TanStack `QueryClientProvider` unless it is
-  given a `queryClient`. So they could be embedded in another React app
-  (e.g. AmCAT) as a component library build, once it is clear how AmCAT
-  embeds AnnoTinder.
-- **Hosting.** The client and the server always share an origin: coder and
-  researcher sessions are httpOnly cookies (`coder-identity.md` §4, §7).
-  In production the server serves the client (`docs/hosting.md`); in
-  development, Vite proxies `/api` to the server (all its APIs are under
-  `/api`; everything else is the app). Only scripts with API keys call the server from elsewhere.
+- A reload stays where it was. The researcher section is one `AdminApp`
+  whose place comes from the URL (`AdminLocation`). Leaving the editor with
+  unsaved edits asks first (`useLeaveGuard`, also on reload or closing the
+  tab).
+- **Components, not routes.** `StudyRunner` (coding) and `AdminApp` have no
+  router dependency (`AdminApp` gets its place and navigation as props, and
+  brings its own `QueryClientProvider` unless given one), so another React
+  app (e.g. AmCAT) could embed them.
+- **One origin.** Coder and researcher sessions are httpOnly cookies, so the
+  client is always served from the server's origin (`docs/hosting.md`); in
+  development Vite proxies `/api`. Only scripts with API keys call the server
+  from elsewhere.
 
 ## 2. StudyManager (coding runtime)
 
 `src/lib/studyManager/StudyManager.ts` is a framework-agnostic state machine;
-`useStudyManager` binds it to React with `useSyncExternalStore`.
+`useStudyManager` binds it to React with `useSyncExternalStore`. It talks only
+to the `CoderApi` interface (`api/httpCoderApi.ts`); tests use stubs.
 
-- It talks only to the `CoderApi` interface (`api/httpCoderApi.ts`). Tests
-  use stubs.
-- It computes the visible steps from the codebook: top-level items, then
-  loop questions, with conditions evaluated in document order (§5,
-  "References and conditions"). Answers of questions a condition now hides
-  count as unanswered, in conditions and templates as well as when the unit
-  is posted (`skip`).
-- It renders the unit layout and the current question's texts
-  (`currentUnitTemplate`, `currentTexts` on the snapshot), because
-  evaluation is async and rendering is not.
-- A computed variable without a value is an invisible step: it saves the
-  answers so far and asks the server for the value (`computeVariable`).
-- **Units in batches.** It asks for a loop's units a few at a time
-  (`getNextUnits`, `UNIT_BATCH` 5) and keeps a queue per loop, refilled in
-  the background when 2 are left (`fetchNextUnit`, `fillQueue`).
-- **Saving in the background.** Answers go into an outbox (`save`,
-  `drain`): sent one post at a time, in order; a newer post for the same
-  answers replaces one still waiting. A failure for lack of a connection
-  (network, 5xx, 408, 429) is tried again, later and later (up to 30 s);
-  another failure stops saving and shows an error. The outbox is emptied
-  before `/end` and `/quit`. The snapshot has `unsaved` and `retrying`;
-  `StudyRunner` says "Not saved yet: no connection" and asks before the page
-  is closed with unsaved answers.
-- **Frozen answers.** Coder-level answers a loop depends on (contracts
-  `loopDependencies`) are frozen once a unit in that loop is saved
-  (`session.frozen`, `currentFrozen`): shown read-only with "Continue".
+- **Steps.** It computes the visible steps from the codebook: top-level
+  items, then loop questions, with conditions evaluated in document order
+  (§5). Answers of questions a condition now hides count as unanswered, and
+  are posted as `skip`.
+- **Rendering inputs.** It renders the unit layout and the current question's
+  texts ahead (`currentUnitTemplate`, `currentTexts`), because evaluation is
+  async and rendering isn't. `currentUnitVariables` gives the current unit's
+  answers so far (relation questions need sibling spans).
+- **Computed variables** without a value are invisible steps: save the
+  answers so far, then ask the server (`computeVariable`).
+- **Units in batches** of 5 (`UNIT_BATCH`), a queue per loop refilled in the
+  background when 2 are left.
+- **Saving in the background.** Answers go into an outbox, posted one at a
+  time in order; a newer post for the same answers replaces one still
+  waiting. Connection failures (network, 5xx, 408, 429) are retried, backing
+  off up to 30 s; other failures stop saving and show an error. The outbox is
+  emptied before `/end` and `/quit`. `StudyRunner` shows "Not saved yet: no
+  connection" and asks before the page closes with unsaved answers.
+- **Frozen answers.** Coder-level answers a loop depends on are read-only
+  once a unit in that loop is saved (`session.frozen`).
 - **Response times.** `QuestionTimer` (`studyManager/timing.ts`) times each
-  question; the timings go with the posts (`coder-identity.md` §10).
-- An `end` item that is reached is the last step: it tells the server and
-  deploys the ending (§4 "End items"). Reaching the end without one also
-  tells the server (`POST /end`).
-- Navigation: back and forward, jumping to a phase, unit or question. Unit
-  history is kept **per loop**. On resume it is rebuilt from the session's
-  finished unit ids, and units are loaded lazily (`architecture.md` §8.1).
-  The rules (tested in `studyManager/navigation.test.ts`, against an
-  in-memory server with the real one's rules, `fakeCoderServer.ts`):
-  - Back from a unit's first question goes to the previous unit's last
-    question; from the loop's first unit, to the step before the loop. Back
-    from the step after a loop goes to its last unit; a loop the coder got
-    no units in is passed. Back never lands on an `end` item.
-  - Moving forward into a loop (Next, or answering the question before it
-    again) opens the unit the coder started and didn't finish, if any (Next:
-    at its first question; answering: at its first unanswered one), else
-    the next unit from the server. A unit is never handed out twice: the
-    server lists unfinished units first, so the unit queue remembers every
-    unit it held.
-  - Jumping to a loop in the menu returns to the unit the coder was on.
-  - Going back after an `end` inside a loop (`reopen`) opens the unit it
-    was reached on, at its last question.
-  - Operations (answers, back, next, jumps) run **one at a time**, in
-    order; an answer to a question no longer on screen when its turn comes
-    is dropped. `StudyRunner` also drops the second click of a double click
-    in the answer area and auto-repeated answer keys outside text fields
-    (`components/inputGuards.ts`), so neither answers the next question.
-- `currentUnitVariables` on the snapshot exposes the current unit's answers
-  so far. Relation questions need it to find sibling span answers.
-- **A new design version while coding**: the server answers 409
-  `codebook_changed` to any request made under the old version (except
-  `/session` and `/transfer`; `api/coder.md`). `StudyManager` then loads the
-  session again, as after a reload, and returns to the unit the coder had
-  open. Answers to units not yet saved (the open one, and finished ones
-  still in the outbox) are kept as far as they fit the new version; a
-  question the new version added is asked. Coder-level answers not yet
-  saved are asked again.
-- `start()` is idempotent (React StrictMode runs effects twice).
-  `retry()` re-runs the last failed operation and resumes saving; this is
-  safe because writes are upserts.
+  question; timings go with the posts (`coder-identity.md` §10).
+- **Endings.** A reached `end` item is the last step: it tells the server and
+  shows the ending (§4 "End items"). Reaching the end without one also calls
+  `POST /end`.
+- **A new design version while coding.** The server answers 409
+  `codebook_changed` to requests under the old version. `StudyManager` then
+  reloads the session and returns to the unit the coder had open; unsaved unit
+  answers are kept as far as they fit, coder-level ones asked again.
+- `start()` is idempotent (React StrictMode); `retry()` re-runs the last
+  failed operation (safe: writes are upserts).
+
+**Navigation.** Back, forward, and jumps to a phase, unit or question. Unit
+history is kept per loop and rebuilt on resume from the finished unit ids
+(`architecture.md` §8.1). Rules (tested in `studyManager/navigation.test.ts`
+against `fakeCoderServer.ts`):
+
+- Back from a unit's first question goes to the previous unit's last
+  question; from the loop's first unit, to the step before the loop. Back
+  never lands on an `end` item; a loop without units is passed.
+- Moving forward into a loop opens the unit the coder started and didn't
+  finish, else the next unit from the server. A unit is never handed out
+  twice.
+- Jumping to a loop returns to the unit the coder was on. Going back after an
+  `end` inside a loop (`reopen`) opens that unit at its last question.
+- Operations run **one at a time**, in order; an answer to a question no
+  longer on screen is dropped. `StudyRunner` also drops double clicks in the
+  answer area and auto-repeated answer keys (`components/inputGuards.ts`).
 
 ## 3. Unit layout and texts
 
 A unit's layout is **one markdown template** (`UnitLayoutSchema`:
 `template`, `snippets?`, `style?`). Question and instruction texts are
-templates with the same syntax.
+templates with the same syntax. Rendering uses `react-markdown` +
+`remark-gfm` (`components/TemplateMarkdown.tsx`). Raw HTML is not supported,
+so templates are XSS-safe by construction.
 
-- Rendering: `react-markdown` + `remark-gfm` (`components/TemplateMarkdown.tsx`);
-  headings, quotes, lists, links and tables in a unit get modest styles
-  (`.template-markdown` in index.css).
-  Raw HTML is not supported (no `rehype-raw`), so templates are XSS-safe by
-  construction. Root styling uses `style`, a React style object.
 A template is read in two steps: first the **text is put together**
 (snippets pasted in, blocks chosen), then the **values are filled in**.
 
-- **Values**: `$unit.<field>`, `$var.<q>.label` (all references, see
-  "References and conditions") or `{{ js }}`. A suffix after the value
-  says how to show it; it goes after the slot, never inside `{{ }}`
-  (`{{ $unit.text.replaceAll("a", "**a**") }}::markdown`):
-  - `::text` (default): the value as literal text. It never goes through
-    the markdown parser, so `**x**` in unit data shows as `**x**`.
-  - `::markdown`: the value rendered as markdown (only markdown: no blocks
-    or values in it, so validation sees everything).
-  - `::image`: the value is an image URL.
-  - `::html`: the value as HTML, in a sandboxed iframe
-    (`components/SandboxedHtml.tsx`), for prepared material such as a
-    table, a formatted article or a score card, also from unit data the
-    researcher didn't write. The frame has `sandbox="allow-scripts"`
-    without `allow-same-origin` (an opaque origin: it can't read the app,
-    its storage or cookies; no forms, popups or top navigation) and a
-    Content Security Policy that allows no requests (images and fonts only
-    as `data:`, inline CSS) and no scripts but one of ours, by its hash,
-    which reports the content's (body's) height so the frame fits it. A
-    default style, read from the app where the frame is shown (text and
-    link colours, border colour, light or dark, font size; the app's font
-    by name, which the frame can't load), makes plain HTML look like the
-    app; the HTML's own CSS overrides it. HTML that loads images or styles
-    from the web shows without them.
+**Values**: `$unit.<field>`, `$var.<q>.label` (see "References and
+conditions", §5) or `{{ js }}`. A suffix says how to show the value; it goes
+after the slot, never inside `{{ }}`:
 
-  A suffix is the short form of a **typed block** around the value (below).
-- **Typed blocks**: `::: text|markdown|html|image [name]` … `:::`. The
-  content, with its values put in as they are (no suffixes inside), shown
-  as one thing of that kind: `::: markdown intro` with
-  `Hello **$var.name.label**, [[instructions]]` is markdown; `::: html`
-  with `<b>{{ $unit.likes * 2 }}</b>` is HTML in the sandbox. Typed blocks
-  can't be nested in each other (`if`/`from` inside them can).
-- **Names** (`templateNames` in contracts): a value of a unit field is
-  named `unit.<field>`, of an answer `var.<question>`, a typed block by its
-  own name (letters, digits and `_`, unique in the layout); scripts have
-  none (put one in a named block). These names are the layout's **ids**.
-  The element is marked with `data-field="<id>"` (an attribute, not an
-  `id`: a field may be shown twice, and ids could clash with the app's).
-- **Focus**: a question's optional `focus` (in the form: "Focus on") lists
-  ids it is about; a span question defaults to its fields. `UnitFields`
-  marks them (`data-focused`), scrolls the first into view and highlights
-  it briefly when the question comes up; with `focusDim` the layout's
-  top-level parts without a focused element fade (`.focus-dim`).
-  Validation checks the layout shows the ids. (Later, a question per span
-  could focus on a span id: see the question loops plan.)
-- **Selectable text**: a span question's `fields` (one or more) are unit
-  field names (`["headline", "text"]`) the layout shows as plain
-  `$unit.x` (or `{{$unit.x}}`). Only unit fields: their exact text is kept
-  in the unit versions, so span offsets always point into a known string
-  (provenance), never rendered markdown or a script's output. Validation
-  enforces it. Every such field (all span questions of the loop) is
-  rendered as `SelectableText` during every question of the unit, looking
-  the same whether or not the question on screen selects in it, so the
-  layout doesn't shift; only that question's span question can select.
-  Each span stores its unit field (`field: "text"`). Selecting in other
-  ids (e.g. an open answer, `var.x`) could be added later as
-  `fields: ["text", "var.x"]`.
-  Image fields may later work the same way for image questions.
-- `$unit.text` is the same as `{{$unit.text}}`, and `$unit.text::markdown`
-  as `{{$unit.text}}::markdown`. `\$` is a literal `$`; references inside
-  code spans and fences stay literal. Values become text predictably:
-  strings as is, numbers via `String`, arrays joined with `", "`,
-  `null`/`undefined` as nothing, objects as JSON.
-- How (`codebook/renderTemplate.ts`, `codebook/templateValues.ts`): a
-  pre-pass (`parseTemplate` in contracts) replaces every value with a
-  placeholder of private-use characters. One that stands alone on its line
-  becomes its own block, like a leaf directive. `StudyManager` evaluates the
-  values (cached, §6). A remark plugin turns the placeholders into
-  `<template-value>` elements, rendered by type: a React text node, nested
-  markdown, an `<img>`, or `SelectableText`. Placeholders in link and image
-  URLs are filled in with the value's text. (Not `remark-directive`: it
-  turns ordinary text like `10:30` or `note:this` into directives.)
-- **Blocks** (contracts `templateBlocks.ts`): lines starting with `:::`,
-  as Pandoc's fenced divs, show part of a template conditionally or
-  styled:
+| Suffix | Shows |
+| --- | --- |
+| `::text` (default) | literal text, never parsed as markdown (`**x**` stays `**x**`) |
+| `::markdown` | rendered markdown (no blocks or values inside) |
+| `::image` | an image from the URL |
+| `::html` | HTML in a sandboxed iframe (below) |
 
-  ```
-  ::: if $var.group.is('experiment')      :::: from topics
-  [[experiment_banner]]                  ::: style font-size: 90%
-  ::: else if [[other_condition]]         You rated it $var.sentiment.label
-  ...                                     :::
-  ::: else                                ::::
-  [[control_banner]]
-  :::
-  ```
+`$unit.text` equals `{{$unit.text}}`. `\$` is a literal `$`; references in
+code spans stay literal. Values become text predictably: strings as is,
+numbers via `String`, arrays joined with `", "`, `null` as nothing, objects
+as JSON.
 
-  - `if` / `else if` / `else`: the first branch whose condition holds (the
-    same scripts as Show if items) shows.
-  - `from <question>`: shows from that question of the loop on (also when
-    it is skipped); consecutive `from` fences form a chain of which the
-    last reached stage shows, so a layout can change as the coder goes
-    through the unit's questions. Only in a loop's layout. Inside a stage
-    the loop's questions before its question can be used (validation).
-  - `style <css>`: the content in a `<div>` with that inline CSS (a React
-    style object: per property, so it can't add selectors or run code;
-    `position: fixed/sticky` is refused so text stays in the unit area).
-    Researchers are trusted with how their study looks.
-  - A bare `:::` closes the innermost block and must have as many colons
-    as its opening fence, so nested blocks use more colons outside.
-    Fence lines are not text; fences in code stay literal.
+**`::html`** (`components/SandboxedHtml.tsx`): for prepared material (a
+table, a formatted article), also from unit data. The frame has
+`sandbox="allow-scripts"` without `allow-same-origin` (an opaque origin: no
+access to the app, storage or cookies; no forms, popups or navigation) and a
+CSP that allows no requests (images and fonts only as `data:`) and no script
+but ours, which reports the content height. A default style copied from the
+app (colours, font size, light or dark) makes plain HTML fit in; the HTML's
+own CSS overrides it.
 
-  - `text|markdown|html|image [name]`: typed blocks (above).
+**Typed blocks**: `::: text|markdown|html|image [name]` … `:::` show their
+content (values inserted as they are) as one thing of that kind. A suffix is
+the short form of a typed block. Typed blocks don't nest.
 
-  Rendering (`renderTemplate`): conditions are evaluated (cached, like
-  values), the chosen text is put together, a style block's content
-  sits between two marker paragraphs that `remarkTemplateValues` turns
-  into a `<template-style>` element, and a typed block becomes one value
-  (its content's values put in as they are) after the template's own.
-  `StudyManager` passes the question on screen and the loop's question
-  order for `from`.
-- **`colorScheme`** (optional, `light` or `dark`): the unit is always
-  shown in those colours (with its own background), whatever the coder
-  chose; for styled content that only looks right in one. The rest of the
-  app follows the coder. `UnitFields` gives the layout the `light` or
-  `dark` class: the theme variables are defined for `:root, .light` and
-  `.dark`, and Tailwind's `dark:` variant doesn't apply inside `.light`
-  (index.css).
-- **Snippets** (`layout.snippets`, contracts `snippets.ts`): named pieces
-  of a loop's template, written `[[name]]` and pasted in as text before
-  anything else is read, wherever they stand: a line, a block's fence
-  (`::: if [[condition]]`), inside `{{ }}`. Markdown, blocks and values in
-  them all work, and snippets can use snippets (one that includes itself
-  is an error). They work in the layout and in the loop's question texts.
-  A snippet takes no suffix: it is template text, not a value. Names (of
-  snippets and references) must be written out literally, not built from
-  pieces (as with Tailwind's class names).
-- `$unit` and snippets only exist inside a unit loop; outside, texts can
-  only use `$var`.
+**Names** (`templateNames`): a unit field's value is `unit.<field>`, an
+answer `var.<question>`, a typed block its own name. These are the layout's
+**ids**, marked as `data-field="<id>"`.
+
+**Focus**: a question's `focus` ("Focus on") lists ids it is about (a span
+question defaults to its fields). They are marked, the first scrolls into
+view and flashes; with `focusDim` the other top-level parts fade.
+
+**Selectable text**: a span question's `fields` are unit fields the layout
+shows as plain `$unit.x` (or in a named `::: text` block). Only unit fields,
+so span offsets always point into a stored string. Every such field is
+rendered as `SelectableText` during the whole unit, so the layout doesn't
+shift; only the span question on screen can select. Each span stores its
+field.
+
+**Blocks** (contracts `templateBlocks.ts`): lines starting with `:::`, like
+Pandoc's fenced divs.
+
+```
+::: if $var.group.is('experiment')      :::: from topics
+[[experiment_banner]]                  ::: style font-size: 90%
+::: else if [[other_condition]]         You rated it $var.sentiment.label
+...                                     :::
+::: else                                ::::
+[[control_banner]]
+:::
+```
+
+- `if` / `else if` / `else`: the first branch whose condition holds (the
+  same scripts as Show if items).
+- `from <question>`: shows from that question of the loop on; consecutive
+  `from` fences form a chain of which the last reached stage shows. Loops
+  only.
+- `style <css>`: the content in a `<div>` with inline CSS (per property;
+  `position: fixed/sticky` refused).
+- `text|markdown|html|image [name]`: typed blocks (above).
+- A bare `:::` closes the innermost block and needs as many colons as its
+  opening fence, so outer blocks use more colons.
+
+**Snippets** (`layout.snippets`, contracts `snippets.ts`): named pieces of a
+loop's template, written `[[name]]` and pasted in as text before anything
+else, anywhere: a line, a fence (`::: if [[condition]]`), inside `{{ }}`.
+Snippets can use snippets (not themselves). They work in the layout and the
+loop's question texts. Names must be literal.
+
+`$unit` and snippets exist only inside a unit loop.
+
+**How it renders** (`codebook/renderTemplate.ts`, `templateValues.ts`): a
+pre-pass (`parseTemplate`) replaces each value with a private-use
+placeholder (on its own line: its own block). `StudyManager` evaluates values
+and conditions (cached, §6). A remark plugin turns placeholders into
+`<template-value>` elements: a text node, nested markdown, an `<img>` or
+`SelectableText`. (Not `remark-directive`: it misreads text like `10:30`.)
 
 ## 4. Questions and answers
 
 ### Options: a value and a label
 
-Every option is `{ value, label?, color? }` (`contracts/src/design/options.ts`),
-as in SPSS or Stata value labels:
+Every option is `{ value, label?, color? }` (`design/options.ts`), as SPSS or
+Stata value labels:
 
-- **The value** is what is stored, compared in conditions and exported.
-  Values are unique within a question. Changing one in a deployed design
-  changes what earlier answers mean; the deploy dialog warns
-  (`design/diff.ts` `valueChanges`).
-- **The label** is what coders see (default: the value). It can change
-  without touching data.
-- **The measurement level decides the type of the values.** Nominal:
-  strings, standardized terms (`human_interest`), non-empty, trimmed,
-  unique; the editor derives the value from the label until it is edited
-  by hand. Ordinal (and scales): numbers rising in option order (default
-  1..n), so comparing values compares order. Switching a question between
-  nominal and ordinal converts the values: to ordinal 1..n (an old value
-  becomes the label if there was none), to nominal values derived from the
-  labels (`convertOptionsLevel`).
+- **The value** is stored, compared and exported, unique per question.
+  Changing one in a deployed design changes what earlier answers mean; the
+  deploy dialog warns.
+- **The label** is what coders see (default: the value); it can change freely.
+- **The measurement level decides the value type.** Nominal: trimmed,
+  non-empty strings (the editor derives them from the label until edited).
+  Ordinal and scales: numbers rising in option order (default 1..n).
+  Switching between them converts (`convertOptionsLevel`).
 
 ### Types
 
 | Type | What | Stored (`VariableValue`) |
 | --- | --- | --- |
-| `nominal` | pick from categories; `multiple` for several answers | `values: [{ value }]`, several with `multiple` |
+| `nominal` | pick from categories; `multiple` for several | `values: [{ value }]` |
 | `ordinal` | pick from ordered options | `values: [{ value }]` |
-| `numeric` | one number (interval/ratio); `min`, `max`, `step` (default 1), break-point `labels` | `values: [{ value }]` |
-| `scale` | `items` rated on the same ordinal `options` (a Likert battery) | `values: [{ item, value }]`, one per item |
-| `annotinder` | swipe a card: 2 or 3 options, in the order left, right, up | `values: [{ value }]` |
+| `numeric` | a number; `min`, `max`, `step` (default 1), break-point `labels` | `values: [{ value }]` |
+| `scale` | `items` rated on the same ordinal `options` (a Likert battery) | `values: [{ item, value }]` |
+| `annotinder` | swipe a card: 2 or 3 options (left, right, up) | `values: [{ value }]` |
 | `confirm` | a button | nothing besides `done` |
 | `span` | select text in the unit (loops only) | `spans: [{ id, field, value, slices }]` |
 | `relation` | link two spans (loops only) | `relations: [{ id, fromId, toId, value }]` |
 
-Answers hold values, never labels. `validateAnswer` (contracts) checks them
-against the current design: values of the options, one per item for a
-scale, at most one unless `multiple`, numbers within `min`/`max` and on the
-`step` grid (from `min`, or 0).
-
-The answer types follow the measurement levels researchers know: nominal,
-ordinal, numeric (interval and ratio look the same to a coder, so they are
-one type). Nominal and ordinal share their answer form
-(`CategoricalAnswerField`) and layouts.
+Answers hold values, never labels. `validateAnswer` checks them against the
+current design (option values, one per scale item, at most one unless
+`multiple`, numbers within range and on the `step` grid).
 
 ### Layout: fixed and compact
 
-`layout: "auto"` (the default) is fixed per question, not per device, so
-every coder sees the same form and devices don't become a mode effect.
-`resolveLayout` (`contracts/src/design/answerLayout.ts`) picks it for the
-smallest phones (about 360 px wide) within half such a screen's height; the
-editor shows what `auto` picks, and `layoutWarning` warns when a chosen
-layout doesn't fit. Buttons are about 40 px tall.
+`layout: "auto"` (default) is fixed per question, not per device, so every
+coder sees the same form. `resolveLayout` (`design/answerLayout.ts`) picks it
+for the smallest phones (~360 px) within half the screen height; the editor
+shows what it picks and warns when a chosen layout doesn't fit.
 
-- Nominal and ordinal: `row` (one row, equal buttons), `grid` with
-  `columns`, `flex` (wrapping; nominal only), `compact` (ordinal only:
-  buttons show the value, the selected one grows and shows its label),
-  `dropdown` (a combobox with a filter box).
-  Auto, nominal: a row for 2-3 short labels, else 2 columns, else 1 column,
-  else a dropdown. Auto, ordinal: a row for 2-3 options, else 1 column
-  (order reads top to bottom), else compact.
-- Numeric: `buttons` (auto when the range has at most 11 values), `slider`
-  (larger closed ranges), `input` (open ranges).
-- Scale: `compact` (a row per item, default) or `grid` (a table).
-- Single questions never need scrolling. A scale may: Continue then
-  scrolls to the first unanswered item and highlights it, so no item is
-  skipped unnoticed.
+- Nominal and ordinal: `row`, `grid` (`columns`), `flex` (nominal), `compact`
+  (ordinal: buttons show values, the selected one its label), `dropdown`.
+  Auto nominal: a row for 2-3 short labels, else 2 columns, 1 column, a
+  dropdown. Auto ordinal: a row for 2-3, else 1 column, else compact.
+- Numeric: `buttons` (auto up to 11 values), `slider`, `input` (open ranges).
+- Scale: `compact` (a row per item, default) or `grid`. Continue scrolls to
+  the first unanswered item.
 
 Number keys 1-9 pick an option; one answer is given on the first click,
 several are confirmed with Continue.
 
-**Swiping** (`annotinder`, `components/SwipeCard.tsx`): in a unit loop the
-unit itself is the card (framed as one only with `card: true`, so by
-default the layout doesn't change between questions); outside one, the
-question card. The coder drags anywhere on the coding area
-(`SwipeSurface`), and the card moves left, right or up (1st, 2nd, 3rd option); while dragging it tilts and
-shows the option for that direction. Released past 30% of its width (120
-px up), or flung, it flies off and that option is the answer; otherwise it
-springs back. The answer pane keeps the question with a compact row of
-direction buttons (left, up, right), and the arrow keys and 1, 2, 3 work too; both fly
-the card off the same way. Pointer events, no gesture library. Long units
-still scroll: vertical drags are the browser's (`touch-action: pan-y`),
-except an upward drag once the content is at its bottom (then `pan-up`, so
-the browser only scrolls back up). Without a card (the editor's preview)
-the buttons answer directly.
+**Swiping** (`annotinder`, `components/SwipeCard.tsx`): in a loop the unit is
+the card (framed only with `card: true`). The coder drags anywhere on the
+coding area; past 30% of the width (120 px up), or flung, the card flies off
+and that option is the answer. Direction buttons, arrow keys and 1, 2, 3 work
+too. Vertical drags still scroll long units (`touch-action: pan-y`).
 
 ### Span and relation answers
 
-- Span and relation questions are ordinary steps in the question flow, not
-  a separate "annotation mode". `StudyRunner` mounts a `SpanAnnotationProvider`
-  around every unit (keyed per unit). The fields span questions select in
-  are always `SelectableText` (§3, "Selectable text"); only the active
-  span question's fields can select.
-- Spans are stored as **character offsets** (`offset`, `length`) plus the
-  selected `text` (redundant, but saves analysis a re-slice), and the
-  `field` they are in: one span question can select in several fields
-  (e.g. the headline and the text). Each field shows its own spans; the
-  pending selection belongs to one field. No
-  tokenization library. In word mode a selection (and a click) snaps to
-  words; in character mode it is exactly what was selected, and a click
-  only opens an existing span.
-- Spans may overlap (an exact duplicate is ignored). Clicking a highlighted
-  span opens its labels, to change or delete them or add another label on
-  the same text; Backspace or Delete removes the last span. Earlier spans
-  of a resumed unit are passed in as `initialSpans`.
-- Relations link two existing spans of sibling span questions (`from`/`to`)
-  with one of the relation's options, picked from dropdowns labelled with
-  the span text.
+- Span and relation questions are ordinary steps. `StudyRunner` mounts a
+  `SpanAnnotationProvider` per unit; only the active span question's fields
+  can select (§3, "Selectable text").
+- Spans are stored as character offsets plus the selected text and the
+  field. Word mode snaps to words; character mode takes the exact selection.
+- Spans may overlap. Clicking a span opens its labels; Backspace or Delete
+  removes the last span.
+- Relations link two spans of sibling span questions, with one of the
+  relation's options, picked from dropdowns.
 
 ### End items
 
-An `end` item ends the coder's session when the coder reaches it, usually
-inside a Show if item: `outcome` `screenout` or `complete`, an optional
-`message` (a template) and an optional `redirectUrl`, e.g. a panel
-company's return link, whose `$var` references are filled in URL-encoded.
-`StudyManager` tells the server (`POST /end`; in a loop after saving the
-unit) and shows the ending (`SessionEnd.tsx`, redirecting after a few
-seconds). The server stores the outcome; the session then refuses units and
-answers (409 `session_ended`), and a reload shows the ending again (a
-closed session: 409 `session_closed`, `coder-identity.md` §9).
+An `end` item ends the session when reached, usually inside a Show if item:
+`outcome` `screenout` or `complete`, an optional `message` (a template) and
+`redirectUrl` (e.g. a panel's return link; `$var` values URL-encoded).
+`StudyManager` calls `POST /end` (in a loop after saving the unit) and shows
+the ending (`SessionEnd.tsx`, redirecting after a few seconds). Afterwards
+the session refuses units and answers (409 `session_ended`) and a reload
+shows the ending (`coder-identity.md` §9).
 
 ### Questions and instructions
 
-- A question's text (`variable.question`) is a markdown template. A short
-  one-paragraph question (no block markdown, at most 150 characters:
-  `components/questionHeading.ts`) is shown as a heading; anything else as
-  the markdown it is.
-- An instruction belongs to a question in a unit loop: `instruction` and
-  `instructionOpen` (`first` | `practice`) are on `InLoopQuestionItemSchema`,
-  not on the variable; a top-level question refuses them in its schema
-  (`z.never`: "put details in the question text"). It is not shown in the
-  answer area: a ? button by the question (and the ? key, outside every
-  mapping and the filter) opens it in a dialog
-  (`components/QuestionInstruction.tsx`), with a dot until the coder opened
-  it once (remembered in the browser per study page and question).
-  `StudyManager.opensInstruction` decides whether it opens by itself: on the
-  first unit the coder gets the question (also after a reload), or on
-  practice units.
+- **Question text** (`variable.question`) is a markdown template. A short
+  one-paragraph question (at most 150 characters, `components/questionHeading.ts`)
+  shows as a heading.
+- **Instructions**: `instruction` (a template: how to apply the question to
+  units) and `instructionOpen` (`first` | `practice`) belong to questions in
+  a unit loop; top-level questions refuse them (put details in the question
+  text). A ? button by the question, or the ? key, opens the instruction in
+  a dialog (`components/QuestionInstruction.tsx`), with a dot until opened
+  once. With `instructionOpen` it opens by itself on the first unit with the
+  question, or on practice units (`StudyManager.opensInstruction`).
 
 ### Display
 
 The Study entry's `display` (`{ layouts?: "fixed" | "responsive", theme?:
-"coder" | "light" | "dark" }`, the editor's **Display** part) reaches coders
-in the coder codebook. The coding screen provides it (`display/context.ts`)
-with the coding area's width class (`useWidthClass`: a ResizeObserver,
-narrow below 600 px; the area, not the window: a phone-sized preview on a
-desktop is narrow).
+"coder" | "light" | "dark" }`) reaches coders in the codebook. The coding
+screen provides it (`display/context.ts`) with the coding area's width class
+(narrow below 600 px; the area, not the window).
 
-- `layouts: fixed` (default): `resolveLayout(variable)`, the same for every
-  coder. `responsive`: fields ask `useAnswerLayout`, which passes a
-  `LayoutContext` (width class and the coder's keys): auto layouts use up to
-  5 buttons in a row or 3 columns when wide, 3-column grids with the
-  numpad, and buttons instead of a dropdown when typing to filter. Layouts a
-  researcher chose are kept.
-- The numpad mapping only applies in responsive designs (`useKeyMapping`
-  falls back to numbers; the settings menu greys it out and says why). It is
-  top-aligned (7 8 9, 4 5 6, 1 2 3 by row; none beyond the first 9), scales
-  use numbers, swipe 4 / 6 / 8.
-- `theme: light | dark` shows that theme instead of the coder's choice
-  (`CoderSettings.lockTheme`; the switch is hidden).
-- Each coder's display is recorded with their session (`useDisplayLog`,
-  `POST /display`): the keys, the width class in responsive studies, the
-  theme where coders choose it; when the session starts and when it
-  changes. A change of the width alone waits 3 seconds (a newer one
-  replaces it). The server appends an entry that differs from the last one,
-  at most 100 (`coder_sessions.display`); the results have a `display`
-  column in coders.csv and display_changes.csv.
+- `layouts: fixed` (default): the same layout for every coder.
+  `responsive`: auto layouts also follow width and keys (up to 5 buttons in a
+  row or 3 columns when wide, 3-column grids with the numpad, buttons instead
+  of a dropdown when typing to filter). Layouts a researcher chose are kept.
+- The numpad mapping is only available in responsive designs.
+- `theme: light | dark` overrides the coder's choice (the switch is hidden).
+- Each coder's display (keys, width class, theme) is recorded when it starts
+  and changes (`POST /display`, up to 100 entries in
+  `coder_sessions.display`), in the results as a `display` column and
+  `display_changes.csv`.
 
 ### Keyboard
 
-The coding screen has one key listener (`keyboard/KeyboardProvider.tsx`)
-and a `KeyController` with scopes that get key presses in turn: menus (the
-jump menu, exclusive: keys it doesn't use never reach the question behind
-it) over span editors over answer fields, over the base layer. Typing in
-text fields, modifiers and held-down keys are handled there once.
+One key listener (`keyboard/KeyboardProvider.tsx`) and a `KeyController`
+whose scopes get key presses in turn: menus (exclusive) over span editors
+over answer fields over the base layer. Text fields, modifiers and held keys
+are handled there once.
 
-- Answer fields declare their choices (`useKeyTargets`: groups of
-  targets, a scale a group per item, the active group the first item
-  without an answer) and get each target's key for its badge. A target may
-  have a fixed key outside the mapping (special options: 0 and .), extra
-  keys without a badge (swipe's arrows) and a grid position (for the
-  numpad). Elements marked `data-key-target` are what the arrows move
-  between.
-- A `KeyMapping` (`keyboard/mappings.ts`, pure, unit-tested) decides which
-  key chooses which target: numbers (default), numpad (by position, up to
-  3 x 3), letters (home row first, up to 26) and type to filter (labels by
-  word start; only fields that show the filter: options as buttons). Where
-  a mapping can't map a group, numbers do. The coder's choice is a setting
-  (`CoderSettingsContext`: `keyMapping`, stored in the browser).
-- The base layer (`useBaseKeys`): arrows move focus by position on screen
-  (`keyboard/focus.ts`), Space/Enter on a focused button let the browser
-  click it, Shift + Left / Right go to the previous / next question,
-  Backspace goes back and focuses the answer (not cleared), Enter continues
-  an answered question. Space and Enter on a focused control reach the
-  scopes only marked `onControl` (a typed filter uses Enter then).
+- Answer fields declare their choices (`useKeyTargets`: groups of targets; a
+  scale has a group per item) and get each target's key for its badge.
+- A `KeyMapping` (`keyboard/mappings.ts`) decides which key picks which
+  target: numbers (default), numpad (by position, up to 3 x 3), letters (home
+  row first) or type to filter. Where a mapping can't map a group, numbers do.
+  The coder's choice is stored in the browser.
+- The base layer: arrows move focus by screen position, Space/Enter click
+  the focused button, Shift + Left/Right go to the previous/next question,
+  Backspace goes back, Enter continues an answered question.
 
 ### Study entry
 
-The design's `session` item (at most one, always first) is never shown
-to coders: it holds the coder invitation (`invite`: specific coders by a
-set column, or a crowd with its distribution criteria, `architecture.md`
-§6.1), the URL parameters a link may carry (`urlParams`, §7) and the
-study's normal end. The server reads them when a session starts; the
-client only sees the values, as `$session.<name>`. The editor's form is
-`SessionItemForm.tsx`, in two parts: **Coder invitations**
-(`session/InvitationSettings.tsx`) and **URL parameters**. The editor
-doesn't show it as an item in the tree: above the tree,
-`SessionHeader.tsx` edits the public title in place and has a button for
-each part, with a short summary, which opens the form on it
-(`session/sessionTab.ts`). (The design stores `session` and `public` apart
-from `items`; the editor holds them as this first item,
-`designItems`/`splitDesignItems`.)
+The design's `session` item (always first, never shown to coders) holds the
+coder invitation (`architecture.md` §6.1), the URL parameters (§7), the
+normal end and the display. The server reads them when a session starts; the
+client sees only the values, as `$session.<name>`.
 
-The coders form picks the coders' column and how coders get in (a link per
-coder, one link where they pick their name, or one link where they sign in
-with the column's email addresses);
-"Make the column…" (`session/CoderSetDialog.tsx`) makes that column: a
-number of coders (`coder_1`, ...), names or email addresses, coders per
-unit, an overlap for every coder (% or units) and the column's name
-(`splitIntoSets` with `perUnit`, written with `PUT /sets/:column`). The
-crowd form has "Coder id from a URL parameter" (`coderParam`: the URL
-parameter, a pattern and "Required"), "Coders sign in", the most coders,
-and "Share the units among coders" (`share`: the criteria form,
-`SharedSettings` in `unitLoop/UnitsEditor.tsx`). Without a unit loop
-nothing is hidden: validation warns that the unit settings aren't used
-yet.
-
-The tree's last row is **At the end** (`STUDY_END_KEY`): the study's normal
-end (`session.end`), edited with an end item's fields without the outcome
-(`StudyEndPanel` in `ItemPanel.tsx`). End items in the tree are for ending
-early.
+In the editor it isn't a tree item: above the tree, `SessionHeader.tsx` edits
+the public title and has a button per part (**Coder invitations**, **URL
+parameters**) that opens `SessionItemForm.tsx` on it. The coders form picks
+the column and how coders get in; "Make the column…"
+(`session/CoderSetDialog.tsx`) creates it (number of coders, names or email
+addresses, coders per unit, overlap). The crowd form has the coder id URL
+parameter, "Coders sign in", the most coders, and "Share the units among
+coders" (`share`). The tree's last row, **At the end**, edits the normal end
+(`session.end`).
 
 ## 5. Scripting sandbox: QuickJS
 
-Script conditions and `{{...}}` template values are plain JavaScript
-expressions, run in **QuickJS** (`quickjs-emscripten-core` with the single
-`@jitl/quickjs-wasmfile-release-sync` variant, to keep the bundle small).
-The only names in scope are `$unit` and `$var`. Each evaluation
-has a 100 ms interrupt deadline (`EXPRESSION_DEADLINE_MS`) and a 1 MB
-memory limit. A script that is a single reference is looked up without
-QuickJS. A script that fails counts as false (conditions) or empty
-(templates).
+Script conditions and `{{ }}` values are JavaScript expressions run in
+**QuickJS** (`quickjs-emscripten-core`, single sync variant). In scope: only
+`$unit`, `$var` and `$session`. Each evaluation has a 100 ms deadline and a 1
+MB memory limit. A script that is a single reference skips QuickJS. A failing
+script counts as false (conditions) or empty (templates).
 
-Why not CEL: CEL is safe by design, but its bindings outside Go are thin;
-there is none for R. JavaScript is better known by design authors, R can
-run it via `V8` (Jeroen Ooms' package), and scripts stay plain JS that any
-engine can run later. That suits reproducibility. Simple conditions don't
-need a JS engine at all: they are evaluated in plain TypeScript (below).
+Why not CEL: thin bindings outside Go, none for R. JavaScript is widely
+known, R runs it via `V8`, and plain JS keeps designs reproducible. Simple
+conditions don't need an engine at all.
 
-All conditions are evaluated on the client; the server never needs the
-answers they depend on to hand out units (`architecture.md` §6.2).
+All conditions run in the client; the server never needs those answers to
+hand out units.
 
 ### References and conditions
 
-One reference syntax is used everywhere: scripts, templates, question and
-instruction texts, conditions and redirect links
-(`contracts/src/design/references.ts`). The name says the shape:
+One reference syntax everywhere: scripts, templates, texts, conditions,
+redirect links (`design/references.ts`).
 
 | Reference | Meaning | Questions |
 | --- | --- | --- |
-| `$unit.<field>` | unit data column (inside a unit loop) | |
-| `$var.<q>.value`, `.label` | the answer; `null` when unanswered | single nominal, ordinal, numeric, swipe, computed (random) |
-| `$var.<q>.values`, `.labels` | the answers; `[]` when unanswered | nominal with `multiple`, span, relation |
+| `$unit.<field>` | a unit field (inside a loop) | |
+| `$var.<q>.value`, `.label` | the answer; `null` when unanswered | single nominal, ordinal, numeric, swipe, computed |
+| `$var.<q>.values`, `.labels` | the answers; `[]` when unanswered | nominal `multiple`, span, relation |
 | `$var.<q>.texts` | the selected texts | span |
-| `$var.<q>.values` | all items' values, in item order | scale |
+| `$var.<q>.values` | all items' values, in order | scale |
 | `$var.<q>.items.<item>.value`, `.label` | one item | scale |
 | `$var.<q>.answered` | answered and not skipped | any |
-| `$session.coder`, `.source`, `$session.<name>` | who the coder is (specific coders' value in the column, a crowd's coder id from the URL, or the login's email where a crowd requires sign-in), `?source=`, and the URL parameters the design's Study entry declares (strings; empty when absent) | |
+| `$session.coder`, `.source`, `.<name>` | the coder id, `?source=`, the declared URL parameters (strings; empty when absent) | |
 
-Using `.value` on a multiple-answer question or `.values` on a single one
-is a validation error, and so is the old `.code`. A numeric answer's label
-is its break-point label, if it has one. Every question of the design is
-in `$var` (`buildScope`), so a script never throws on a question that isn't
-answered yet. Names must be literal: `$var[x]` or `Object.keys($var)` is an
-error, so validation can check every reference.
+`.value` on a multiple-answer question (or `.values` on a single one) is a
+validation error. Every question is in `$var`, so scripts never throw on an
+unanswered one. Names must be literal (`$var[x]` is an error), so validation
+can check every reference.
 
-**Helper methods** are called on the question (or a scale item), so
-validation knows the type and checks both the method and its arguments.
-Every method is false (`count()`: 0) while the question is unanswered.
+**Helper methods** are called on a question (or scale item); validation
+checks the method and its arguments. All are false (`count()`: 0) while
+unanswered.
 
 | Question | Methods |
 | --- | --- |
-| single (nominal, swipe, computed random) | `is(v)`, `isAny(v1, v2, ...)` |
-| ordinal, scale items (`$var.q.items.x`) | also `gt(v)`, `gte(v)`, `lt(v)`, `lte(v)` |
-| nominal with `multiple` | `has(v)`, `hasAny(...)`, `hasAll(...)`, `count()` |
-| numeric | `eq(n)`, `gt(n)`, `gte(n)`, `lt(n)`, `lte(n)`, `between(a, b)` |
+| single (nominal, swipe, computed) | `is(v)`, `isAny(v1, v2, ...)` |
+| ordinal, scale items | also `gt`, `gte`, `lt`, `lte` |
+| nominal `multiple` | `has(v)`, `hasAny(...)`, `hasAll(...)`, `count()` |
+| numeric | `eq`, `gt`, `gte`, `lt`, `lte`, `between(a, b)` |
 | span, relation | `has(v)`, `count()` |
 
-They compare values (never labels). A number and a string are the same
-value if the number written out is the string (`sameValue`, contracts):
-nominal values are strings, and researchers with numeric codes write
-`is(2)` for the value `"2"` (so `is("2")` also matches the ordinal value
-`2`). Order methods take numbers only. `applyHelper` (contracts) is the TypeScript
-implementation; `HELPER_PRELUDE` adds the same methods to `$var` inside
-QuickJS; a client test checks that both agree.
+They compare values, never labels; `is(2)` matches the value `"2"`
+(`sameValue`). `applyHelper` is the TypeScript implementation,
+`HELPER_PRELUDE` the same inside QuickJS (a test checks they agree).
 
-A **condition** (`contracts/src/design/condition.ts`) is a script, used by
-`show_if` items; truthy = holds:
+A **condition** (`design/condition.ts`) is a script; truthy = holds:
 
 ```yaml
 condition:
   script: $var.topics.has("sports") && ($var.edu.gte(3) || !$var.consent.answered)
 ```
 
-- A **simple** condition uses only helper calls, `.answered`, `true`,
-  `false`, `&&`, `||`, `!` and parentheses (`count()` with a comparison:
-  `$var.topics.count() >= 2`). It is parsed (`parseSimpleCondition`) and
-  evaluated in TypeScript (`evaluateSimpleCondition`), without QuickJS.
-- Anything else is an **advanced** script, run in QuickJS with the same
-  references and helpers, e.g. `$var.age.gte(18) && $unit.source !== "blog"`.
+- **Simple**: only helper calls, `.answered`, `true`, `false`, `&&`, `||`,
+  `!`, parentheses and `count()` comparisons. Parsed and evaluated in
+  TypeScript (`parseSimpleCondition`, `evaluateSimpleCondition`).
+- **Advanced**: anything else, run in QuickJS.
 
-**Validation** (`validateDesignItems`) walks the design in document
-order and checks every reference in scripts, templates and texts: the
-question exists and comes before this point (not the question itself, not
-inside the condition's own children, not in another loop); the property or
-method fits its type; `$unit` and snippets (`[[name]]`) only inside a loop (unknown
-snippets are an error; unknown `$unit` fields are a warning in the editor, once the
-study has units); end item redirect URLs
-only use coder-level `$var` refs from before the loop (and `$session`
-names the Study entry declares, or built-in ones); span fields shown
-as plain text, as described in §3. In simple conditions the helper arguments are checked too:
-their number, and that they are values of the question's options (numeric:
-numbers within its range). In advanced scripts references are checked,
-values not. Script syntax is checked in the admin editor (QuickJS), not in
-contracts.
+**Validation** (`validateDesignItems`) walks the design in order and checks
+every reference: the question exists and comes earlier (not inside the
+condition's own children, not in another loop); the property or method fits
+its type; `$unit` and snippets only inside a loop (unknown snippets are
+errors, unknown `$unit` fields warnings once the study has units); redirect
+URLs only use earlier coder-level `$var` and declared `$session` names; span
+fields are shown as plain text. In simple conditions helper arguments must be
+option values (numeric: within range). Script syntax is checked in the editor.
 
 ## 6. Recomputation and caching
 
-There is no hand-maintained trigger graph. Instead there is one recompute
-pass with per-slot memoization:
+No hand-maintained trigger graph: one recompute pass with per-slot
+memoization.
 
-- `codebook/dependencies.ts`: `extractDependencies` reads which references
-  a script uses (`extractReferences`, skipping strings and comments) and
-  their current values. Names are literal, so this is exact. Scripts with
-  computed references aren't cached.
+- `codebook/dependencies.ts`: `extractDependencies` reads which references a
+  script uses and their current values (exact, since names are literal).
 - `codebook/expressionCache.ts`: `ExpressionCache.evaluate(key, script,
   scope)` re-runs QuickJS only when the script or one of those values
   changed.
-- `StudyManager` owns one cache per session and passes it to step
-  computation and template rendering. Changing units needs
-  no explicit invalidation: dependency values change, so entries miss.
+- `StudyManager` owns one cache per session; changing units needs no
+  invalidation.
 
 ## 7. Admin UI
 
-`components/admin/AdminApp.tsx` is a tabbed shell, grouped: Overview,
-Design (Editor, Units), Deploy (Links, Coders), Results (Download),
-Settings; a group with several pages shows them as sub tabs. Preview opens
-from the Preview Study button. It uses a `ResearcherApi`
+`components/admin/AdminApp.tsx` is a tabbed shell: Overview, Design (Editor,
+Units), Deploy (Links, Coders), Results, Settings. It uses a `ResearcherApi`
 (`api/httpResearcherApi.ts`).
 
-- **Login**: `account/ResearcherGate.tsx` shows its children to a logged-in
-  researcher and a login screen otherwise (with the reason a login was
-  refused); `account/AccountMenu.tsx` has the researcher's email (with an
-  orange shield and a note linking to the provider's account page when the
-  login had no second factor), their API keys, the light/dark switch and logging out
-  (`docs/coder-identity.md` §7). The app (`App.tsx`) uses them when the
-  server has login, and development headers on a development server (no
-  login, development auth).
-- **Accounts**: `StudyList` lets only researchers create studies;
-  `account/ResearcherAccess.tsx` handles requests to become a researcher;
-  `account/ResearcherGate.tsx` the login screen (with the previous login
-  provider while the server moves to another) and the banner asking to
-  link a new login. `AdminApp`'s `server` prop (`ServerApi`) opens the
-  server admin page for admins (`server/ServerAdmin.tsx`: hardening
-  warnings, users with invitations and safeguards, plans, registration,
-  studies, admin log; `docs/accounts.md`).
-- **From a file** (`ImportStudyDialog.tsx`, `lib/admin/designImport.ts`):
-  a study export (gzip: its manifest is read in the browser to show what it
-  holds, then the file goes to `POST /study/import`, with or without coders)
-  or a design file (sent as a recipe, `docs/examples.md`); the new study
-  opens in the editor. The export itself is in the study's Settings
-  (`StudySettings.tsx`, `docs/hosting.md` "Moving a study").
-- **Guided setup** (`SetupWizard.tsx`, `lib/admin/setupRecipe.ts`): a
-  short way to the skeleton of a new study, next to "From an example" and
-  an empty study on the studies page. It writes only what the editor
-  writes, as a recipe (`docs/examples.md`), and then opens the study in
-  the editor; there is no wizard mode and no way back into it. Steps:
-  1. **What do you want to do?** The name, and Annotate units, Ask
-     questions (a survey), Experiment (alone, a survey with an experiment).
-  2. **The experiment**: a condition's name and values, drawn balanced or
-     at random (a computed item, first in the design: experiments are
-     only done with computed items).
-  3. **Units**: the CSV upload of the Units tab (or later), and the order.
-  4. **Who codes what**: everyone everything (a crowd with one link);
-     assign sets: units divided into sets (split or by a column,
-     optionally with overlap), the sets are coders (column `coders`,
-     values `coder_1`, ... or the column's), each with their own link
-     (specific coders, `per_coder`); crowd coding (the criteria form, put
-     on the crowd invitation's `share`, optional overlap); or experimental
-     groups (per condition the values of a column it gets: the computed
-     item linked to that column).
-  5. **How coders see a unit**: the layout sketch (`LayoutDesigner.tsx`,
-     `design/simpleLayout.ts`: title, byline and body fields, guessed from
-     field names), with a preview of the first unit. A loop's Layout tab
-     uses the same sketch while its template has that shape; otherwise the
-     template editor (**Advanced**).
-  6. **Questions**: names, one per line (a line that is a question becomes
-     the name and the question text); one list, or before, about each
-     unit, and after. Questions get the answer type `unspecified`, which
-     validation reports, so the design can't be previewed or deployed
-     until each is specified in the editor.
-  7. **Check and create**: a summary, and what still stops the study.
-     The design is created as a draft.
+- **Login**: `account/ResearcherGate.tsx` shows a login screen unless logged
+  in (with the previous provider while the server changes providers, and a
+  banner asking to link the new login). `account/AccountMenu.tsx`: email (an
+  orange shield when the login had no second factor), API keys, theme, log
+  out. On a development server, development headers replace the login.
+- **Accounts**: only researchers create studies; `account/ResearcherAccess.tsx`
+  handles requests to become one. Admins get the server admin page
+  (`server/ServerAdmin.tsx`: warnings, users, plans, registration, studies,
+  log; `docs/accounts.md`).
+- **From a file** (`ImportStudyDialog.tsx`): a study export (its manifest is
+  read in the browser, then `POST /study/import`, with or without coders) or a
+  design file (sent as a recipe, `docs/examples.md`). Export is in the study's
+  Settings (`docs/hosting.md` "Moving a study").
+- **Guided setup** (`SetupWizard.tsx`, `lib/admin/setupRecipe.ts`): a short
+  way to a new study's skeleton. It writes a recipe (`docs/examples.md`) and
+  opens the study in the editor; there is no way back into the wizard. Steps:
+  1. **What do you want to do?** Name; annotate units, ask questions, or
+     experiment.
+  2. **The experiment**: a condition's name and values, balanced or random (a
+     computed item, first in the design).
+  3. **Units**: the CSV upload (or later), and the order.
+  4. **Who codes what**: everyone everything (a crowd); sets per coder, each
+     with a link (`per_coder`); crowd coding (`share`); or experimental
+     groups (a computed item linked to a column).
+  5. **How coders see a unit**: the layout sketch (`LayoutDesigner.tsx`:
+     title, byline, body), with a preview.
+  6. **Questions**: names, one per line, before, per unit and after. They get
+     the answer type `unspecified`, which must be set in the editor before
+     previewing or deploying.
+  7. **Check and create**: a summary; the design is created as a draft.
+- **Blocks** (`DesignTreeView.tsx`, `designTree/`): the tree's top level is
+  blocks: each unit loop, and the items between loops as a **Questions**
+  block (only a view: the design stays one flat list). "Add block" adds a loop
+  or questions; a row's + adds items allowed there (`insertableTypesAt`).
+  Above the tree the Study entry (§4), below it **At the end**.
+- **Design editor**: edits the whole design in memory, validated with
+  `validateDesignItems`, saved as a whole.
+  - **Visual**: the tree, and the selected item as a form, as JSON
+    (`ItemJsonEditor.tsx`) or as a preview (`ItemPreview.tsx`: a loop with the
+    study's units, a picker for the question on screen, answer pickers for
+    `::: if`). On screens at least 1500 px wide the preview is a third column.
+    Show if items and loops have no name; loops show their label or "Unit
+    loop". Moving and deleting work on ticked items from the toolbar; where a
+    place is ambiguous (the end of a container) the menu asks where.
+  - **JSON**: the whole design (`DesignJsonEditor.tsx`), in Monaco (loaded
+    with the editor) with completion and checks from the design's JSON Schema
+    (`designJsonSchema`). JSON, not YAML: no indentation to get right.
+  - Both JSON views apply an edit once it parses to items the tree can show;
+    until then "Not applied" says why.
 
-  Possible next steps: specifying questions in the wizard with the
-  editor's own form; the wizard's steps offered in existing studies where
-  that part is empty; an overview checklist (units, a valid design,
-  previewed, deployed, someone started); more experiment designs
-  (conditions that change questions or layout rather than units).
-
-- **Blocks** (`DesignTreeView.tsx`, `designTree/TreeList.tsx`): the
-  tree's top level is blocks (`topBlocks` in `designTree/utils.ts`): each
-  unit loop, and the items between loops grouped as a **Questions** block.
-  A Questions block is only how the tree shows them: the design stays one
-  flat list, and items moved between blocks just move in it. "Add block"
-  above the tree offers a unit loop or questions (a block with a first
-  question), at the end or the start; a Questions block's row has a + for
-  a unit loop after it. Inside a Questions block the + offers questions,
-  computed items, Show if items and end items; inside a loop its items
-  (`insertableTypesAt`). Above the tree, `SessionHeader.tsx` has the public
-  title and the "Coder invitations" and "URL parameters" buttons (§4,
-  "Study entry"); below it, the **At the end** row.
-- **Design editor**: edits the whole document in memory, validated
-  client-side with the contract's `validateDesignItems`, and saved as a
-  whole with Save. Views:
-  - **Visual**: the item tree, and the selected item as a form, as JSON
-    (`designEditor/ItemJsonEditor.tsx`: the item without its children,
-    which are items of their own), or as a preview. On screens at least
-    1500px wide the preview is a third column next to the form
-    (`PreviewPanel`) instead of a pane. The preview (`ItemPreview.tsx`)
-    shows a loop with the study's units (one at a time), a picker for the
-    question on screen (for `::: from`), and answer pickers for the
-    questions with options the layout uses (for `::: if` and values). The tree shows
-    questions with the icon of their answer type, unit loops with their
-    filter and whether it is crowd coding, and Show if items by their condition, or by
-    their optional `label`. Show if items and unit loops have no name
-    (names of questions are variables, of end items the stored way a
-    session ended): a loop is identified by its position and shows its
-    label, or "Unit loop" (messages and
-    exports, which have no tree, say "Unit loop <n>", `architecture.md`
-    §6.2). New loops and Show if items start empty.
-    Adding: "Add block" (above) adds a block; a row's + (on hover) adds an
-    item below it: after an item, at the top of a loop or Show if item's
-    children. Only the end of a container
-    is ambiguous (after its last item, or inside an empty container, is
-    also after the container, and so on outwards): there the menu asks
-    where first, each place a level further out marked with one more
-    "outdent" icon (`addPositions` in `design/itemEdit.ts`).
-    Moving and deleting work on ticked items (a container brings its
-    children), from the toolbar above the tree: Delete asks once. Move
-    turns each row's + into "move below this item", at the same place (the
-    tree doesn't shift), on rows below which all ticked items may go (and
-    where it changes something); where that is ambiguous it asks, as
-    adding does. "Move to the top" is in the toolbar. The items keep
-    their order.
-  - **JSON**: the whole design (`DesignJsonEditor.tsx`). JSON rather
-    than YAML: the structure is explicit (no indentation to get right in a
-    browser), and the editor (Monaco, bundled and loaded only with the
-    editor: `jsonEditor/`) completes and checks it against the design's
-    JSON Schema (contracts `designJsonSchema`), with the schemas'
-    descriptions on hover. Formatting (`design/jsonFormat.ts`) keeps small
-    objects on one line (an option: `{ "value": "neg", "label": "Negative" }`)
-    and puts keys in reading order (`name`, `type`, `value`, `label` first,
-    `children` last).
-  - Both JSON views apply an edit as soon as it parses to items the tree
-    can show (`design/itemShape.ts`; items keep their identity by name,
-    Show if items by place);
-    until then "Not applied" says why. Validation shows the rest, as for
-    the forms.
-
-  The toolbar counts errors and warnings; each opens a list in which a
-  click opens the item concerned. Unsaved edits are the researcher's own;
-  the saved draft is shared with co-editors; deploying gives a version to
-  coders. So:
-  - **Save** works while the design has issues (work in progress);
-    deploying and previewing need a valid design.
-  - A save carries the `revision` it is based on. If someone else saved
-    meanwhile, a dialog says who and when, and offers "Save mine over
-    theirs" or "Discard mine, load theirs".
-  - **Undo/redo** buttons (`design/editHistory.ts`): the last 100 steps,
-    kept in memory as whole snapshots (cheap: unchanged items are shared).
-    Changes less than a second apart are one step, so typing a word is one
-    step, and occasionally two quick edits are too.
-  - Items with unsaved changes have a dot in the tree. **Revert** opens a
-    menu listing them ("Revert item": one back to the last save; a new item
-    is removed) and "Revert all changes".
-  - A draft is deleted only from the versions dialog ("Delete draft", with
-    a confirm), so it isn't mistaken for dropping unsaved changes.
-  - **Backup**: unsaved edits are copied to the browser's localStorage a
-    second after each change (`design/localBackup.ts`; one backup, the
-    design being edited; none if it doesn't fit), and cleared when they
-    are saved or discarded. After the browser was closed, a banner anywhere
-    in the researcher area offers to continue editing them (with the
-    revision they were based on, so the conflict check still applies) or
-    to discard them.
-
-  Unit loops have two tabs (`UnitLoopForm.tsx`), Layout first; a loop's
-  row in the tree has a button for each, which opens the loop on it
-  (`designEditor/loopTab.ts`). **Units** (`unitLoop/UnitsEditor.tsx`): a
-  line saying what a coder gets (from the invitation's coders and linked
-  computed items), the filter (all, or only/except values of a set column;
-  `architecture.md` §6.2), then rows: the coder's own units (include, or
-  leave out: only special units), and the overlap, practice and gold units
-  with their counts and a placement (Spread through them, Before them,
-  After them, Leave out; `unitLoop/SpecialUnits.tsx`), then the practice
-  and gold checks, and the loop's order. Distribution criteria are the
-  crowd invitation's, not the loop's. A new loop has no `units`: all the
-  coder's units, once, special units spread. **Layout**: the template,
-  in Monaco (lazy, as the JSON editors: `jsonEditor/MonacoTemplate.tsx`)
-  as its own language (markdown with references, suffixes, `{{ }}` and
-  `[[snippets]]` highlighted) with completions after `$` (unit fields,
-  questions), `[[` (the loop's snippets), `::` and `:::` (block keywords,
-  `from`'s questions); the snippets (name, text), and the optional colour
-  scheme. Above every `::: if` line a code lens shows the condition in
-  words, and "edit" opens the rules editor (`ConditionDialog`) for it. An
-  Insert menu (`TemplateInsertMenu.tsx`) writes the text for a unit field
-  (as headline, text or image), a snippet, "Show if…" (the rules
-  editor), "Show from…", a few styles and an HTML block; blocks wrap the
-  selected text. "Focus on" and a span question's fields are chosen from
-  the ids the layout shows.
-  The text stays the source of truth. The layout's `style` and `meta` are
-  only in the JSON views.
-  Forms show few tips: longer explanations are in the help (below).
-- **Help** (`lib/help/`): tutorials and explanations for researchers, one
-  markdown file per topic in `help/topics/` (front matter: `title`,
-  `section`, `order`, `summary`), loaded with `import.meta.glob`. One
-  `HelpDialog`, mounted by `AdminApp`, laid out after the Tailwind CSS docs:
-  a topic menu with search, the topics by section, the topic, and its
-  headings ("On this page"); its content loads with the first opening.
-  `openHelp("topic")` or `openHelp("topic#heading")` opens it, as do the
-  small `HelpButton`s next to form sections and the header's Help button
-  (a topic per tab). Topics link to each other with relative links
-  (`snippets.md#names`), so they also read on GitHub. A code block in the
-  language `example` is a live template example (`help/example.ts`: unit
-  data, answers the reader can switch, snippets, the loop's questions for
-  `::: from`), editable, rendered with the real `renderTemplate` and
-  `UnitFields`; `template` code blocks get template highlighting. A test
-  checks the front matter, links and anchors, the topics the UI opens, and
-  that every example is a valid template (as a layout) and renders.
-- **Versions and deploying** (as in Qualtrics or REDCap: edit a draft,
-  deploy it), derived from `GET /design` and `GET /deployment`
-  (`design/versions.ts`):
-  - *live*: the version coders get (the deployment's design), frozen,
-    since annotations refer to it (`designVersionId`);
-  - *draft*: the latest version, if it isn't frozen; what the editor and
-    Preview work on;
-  - *history*: every other version, read only; can be restored as the
-    draft.
-
-  Editing the live version saves a new draft; coders keep the live one
-  until it is deployed. A status banner says which you're looking at and
-  what to do next. **Deploy** (`PUT /deployment`) makes the draft live and
-  freezes it. Its dialog lists the changes against the live version
-  (`design/diff.ts`), prefills the version note (versions are numbered,
-  with an optional `note`) and shows the server's warnings (e.g. a loop
-  gained questions, which reopens finished units). Coders who are working
-  switch to the new version on their next request to the server (§2),
-  keeping their unsaved answers to units; saved answers stay linked to the version they
-  were given under.
-  The deploy dialog also warns when option values disappear or a
-  question's type changes, e.g. from nominal to ordinal (earlier answers
-  no longer fit).
-  The answer type select converts between nominal and ordinal, keeping
-  the options (`switchVariableType`); other switches start from the type's
-  defaults, keeping the question text.
-  Questions are edited per type (`VariableTypeForm.tsx`): the options
-  editor (`OptionsEditor.tsx`: label, value, colour, order; nominal values
-  follow the label until edited; ordinal values are 1..n in option order
-  and renumbered when options move, unless "Custom values" is on, which
-  isn't stored: options that aren't 1..n open with it on;
-  swipe options show their direction), `multiple`, a layout
-  select whose `auto` entry names what auto picks, and for numeric
-  questions the range, step presets and break-point labels.
-  Show if items use `ConditionEditor.tsx`: a
-  **Rules | Script** toggle over the same script. Rules mode reads and
-  writes simple conditions that are a flat list of rows, all joined by
-  "and" or all by "or" (`design/conditionRules.ts`): per row a question
-  (or scale item) available at that point (`availableQuestions`), an
-  operator that fits its type (is, is one of, ≥, has any of, count ≥, is
-  answered, ...) and its values as toggles or number inputs. A row that
-  doesn't fit its question (any more: the question is gone, changed type
-  or lost an option) stays a row and is written back unchanged; its
-  invalid parts are marked and it says why in words (`rowProblems`, with
-  the messages of validation: `"age" is a nominal question, which does
-  not support "lower than" comparisons; use "is" or "is one of"`). Other
-  scripts open in script mode, with a cheat sheet of references and helpers and a
-  QuickJS syntax check. Validation messages (errors red, warnings amber)
-  show under the condition, template and question fields; only errors
-  block saving.
-- **Units** (`units/`): units and their sets on one page. CSV upload
-  (`UploadUnits.tsx`, with a small built-in parser, `admin/csv.ts`): choose
-  or drop a file, pick the id column, then per column whether it is
-  uploaded and as which field, and its type (inferred from the values;
-  checked before uploading, with the values that don't fit), or the type
-  **set**: a set column (cells `anna`, `anna;bob`, `anna#3`, `_overlap`,
-  `_practice`, `_gold`), which replaces that column's values. A column named
-  like a field of the study is linked to it and keeps its type; "Use column
-  names" gives every other column its own name, made valid
-  (`toUnitFieldName`). Fields of the study that no column gives are empty, and
-  new names add fields. A preview shows the first units as stored; a paged table with a column per field and per set
-  column; pick a value of a column to see its units in order (`?group=&set=`);
-  "Fill a set column" divides the units over given values with an
-  `_overlap` (done client-side with `splitIntoSets`, `SplitIntoSets.tsx`).
-  Selected units can be put in a value or removed from the shown one, and
-  their answers reset; a column can be deleted while no deployed or latest
-  design uses it. Clicking a unit's id shows it
-  in full.
-  A coded unit can only be replaced by uploading it again, after a warning (its answers keep the version their coder saw). The design editor warns about `$unit.x`
-  references to fields that don't exist (`design/unitFieldRefs.ts`).
-- **Overview** (`overview/`): live/paused/unpublished, the live and draft
-  design versions (open them in the editor), unit/coder/link counts, set columns with their values' sizes,
-  answers per day (`GET /overview`), progress per loop
-  (`GET /deployment/status`). `LiveControls.tsx`: pause or resume.
-- **Settings** (`StudySettingsPage`): `TeamSettings.tsx`, who has access and
-  their role (the list keeps at least one admin), and the study settings
-  (rename, archive, keep sessions open, delete). Whether coders must sign
-  in is the design's coder invitation, not a setting. The deploy dialog
-  (`DeployDialog.tsx`) shows the deploy's errors and warnings.
-- **Links** (`LinksPanel.tsx`): the links deploying made, one, or one per
-  coder (specific coders with a link each), with their coder, uses and
-  status, and the URL parameters a link takes (copied with placeholders;
-  for a URL parameter with listed values, a link per value can be listed
-  and copied, built from the links, nothing stored). Per link: label, max
-  uses and a fixed coder id ("Fixed coder id"); revoke (no new coders), reopen a
-  revoked link, or a new secret. Links whose coder is gone are retired and
-  listed separately. There is no "create": the design's Study entry
-  (`SessionItemForm.tsx`) declares the coder invitation and URL
-  parameters.
-- **Coders**: per coder the link, started, last active, answers,
-  finished units per loop of the live design, and how the session ended
-  at an `end` item or by quitting (`ended`). Open deletion requests are
-  listed first (delete now or later), and deleted coders in a log. Per coder session, or by coder ids or
-  emails: reset their answers (kept as reset) or delete their data
+  Saving and safety:
+  - **Save** works with issues (work in progress); previewing and deploying
+    need a valid design. The toolbar counts errors and warnings.
+  - A save carries its base `revision`; if someone saved meanwhile, a dialog
+    offers "Save mine over theirs" or "Discard mine, load theirs".
+  - **Undo/redo**: the last 100 steps (edits less than a second apart are one
+    step).
+  - Items with unsaved changes have a dot; **Revert** reverts one item or all.
+  - A draft is deleted only from the versions dialog.
+  - **Backup**: unsaved edits are copied to localStorage a second after each
+    change, and offered back after the browser was closed.
+- **Unit loops** have two tabs (`UnitLoopForm.tsx`). **Units**
+  (`unitLoop/UnitsEditor.tsx`): what a coder gets, the filter, own units,
+  overlap/practice/gold with placement, the checks, and the order
+  (`architecture.md` §6.2). Distribution criteria belong to the crowd
+  invitation, not the loop. **Layout**: the template in Monaco
+  (`jsonEditor/MonacoTemplate.tsx`) with highlighting and completions after
+  `$`, `[[`, `::` and `:::`, and the snippets. A code lens above each
+  `::: if` shows the condition in words and opens the rules editor. An Insert
+  menu (`TemplateInsertMenu.tsx`) writes fields, snippets, "Show if…", "Show
+  from…", styles and an HTML block. The layout's `style` is only in the JSON
+  views.
+- **Help** (`lib/help/`): one markdown file per topic in `help/topics/`
+  (front matter `title`, `section`, `order`, `summary`), shown in one
+  `HelpDialog`; `openHelp("topic#heading")` opens it. Code blocks in the
+  language `example` are live, editable template examples. A test checks
+  front matter, links, the topics the UI opens, and every example.
+- **Versions and deploying** (`design/versions.ts`): *live* is the deployed
+  version (frozen), *draft* the latest if not frozen, *history* the rest
+  (read only, restorable as the draft). Editing the live version saves a new
+  draft. **Deploy** (`PUT /deployment`, `DeployDialog.tsx`) lists changes
+  against the live version (`design/diff.ts`), takes a version note, and shows
+  the server's errors and warnings (reopened units, removed option values,
+  changed types). Coders switch to the new version on their next request (§2).
+- **Question forms** (`VariableTypeForm.tsx`): the options editor
+  (`OptionsEditor.tsx`: label, value, colour, order; ordinal values renumber
+  unless "Custom values"), `multiple`, a layout select whose `auto` entry
+  names its choice, numeric range, step and labels. Switching nominal ↔
+  ordinal keeps the options. Show if items use `ConditionEditor.tsx`:
+  **Rules | Script** over the same script. Rules are a flat list joined by
+  all "and" or all "or" (`design/conditionRules.ts`); a row that no longer
+  fits its question stays and says why. Other scripts open in script mode with
+  a cheat sheet and a syntax check.
+- **Units** (`units/`): CSV upload (`UploadUnits.tsx`, own parser
+  `admin/csv.ts`): pick the id column, which columns to upload as which field,
+  and their types (inferred and checked), or type **set** for a set column.
+  A paged table of units; pick a column value to see its units in order;
+  "Fill a set column" (`SplitIntoSets.tsx`); put selected units in a value,
+  remove them, or reset their answers. A coded unit is replaced only by
+  uploading it again, after a warning.
+- **Overview** (`overview/`): live/paused/unpublished, live and draft
+  versions, counts, set columns, answers per day, progress per loop;
+  `LiveControls.tsx` pauses and resumes.
+- **Settings** (`StudySettingsPage`): the team (`TeamSettings.tsx`, at least
+  one ADMIN), rename, archive, keep sessions open, export, delete.
+- **Links** (`LinksPanel.tsx`): the links deploying made, with coder, uses,
+  status and the URL parameters they take (copied with placeholders). Per
+  link: label, max uses, a fixed coder id; revoke, reopen, new secret.
+  Retired links are listed apart. There is no "create": the Study entry
+  declares the invitation.
+- **Coders**: per coder session the link, started, last active, answers,
+  finished units per loop, and how it ended. Deletion requests come first.
+  Reset or delete data per session, or by coder ids or emails
   (`coder-identity.md` §8).
-- **Results** (`ResultsPanel.tsx`, `admin/exportData.ts`): one zip,
-  built in the browser from the researcher API (all pages of
-  `GET /annotations` and `GET /unit-versions`, `GET /coders`,
-  `GET /devices`, `GET /coders/deletions`, and the design versions
-  answers were given under), with `fflate`:
-  - `annotations.csv`: a row per unit and coder (with the unit version
-    they saw and the design version), a column per question (a scale a
-    column per item), in the live design's order;
-  - `coders.csv`: a row per coder with their coder-level answers, how
-    their session ended and units finished per loop;
-  - `units.csv`: the unit versions answers were given on (`architecture.md`
-    §8.4), with the fields as shown;
-  - `variables.csv`: per design version, question and option, its label;
-  - `devices.csv`, `timings.csv`, `deleted_coders.csv`: devices coders
-    used, response times, and coders whose data was deleted
-    (`coder-identity.md` §4, §10, §8);
-  - `README.txt`: what the columns mean;
-  - optionally `reset_answers.csv`: answers that were reset.
+- **Results** (`ResultsPanel.tsx`, `admin/exportData.ts`): one zip built in
+  the browser from the researcher API, with `fflate`:
+  - `annotations.csv`: a row per unit and coder session (unit version, design
+    version), a column per question (scales a column per item);
+  - `coders.csv`: coder-level answers, how the session ended, units finished;
+  - `units.csv`: the unit versions answered (`architecture.md` §8.4);
+  - `variables.csv`: labels per design version, question and option;
+  - `devices.csv`, `timings.csv`, `deleted_coders.csv` (`coder-identity.md`
+    §4, §10, §8), `display_changes.csv`, `README.txt`, optionally
+    `reset_answers.csv`.
 
-  Answers are stored values; "Add label columns" (on by default) puts a
-  `_label` column after each answer column with options: the label in the
-  design version the answer was given under (what the coder saw), else
-  the live one. Several answers are joined with "; ", spans written as
-  "value: text", relations as "value: from → to" (span texts), a confirm
-  question as `true`, skipped questions empty. Questions whose answers don't
-  fit a cell (span, relation, nominal `multiple`, by the live design or
-  the data) also get a `_json` column with the whole answer (spans with
-  field and slice offsets, relations with span ids, a list of values);
-  in it, the values of a question whose option values are all plain
-  numbers (`"1"`, `"99"`; not `"01"`, by the live design) are numbers.
-  UTF-8 with a byte order mark,
-  so spreadsheet programs read it. Large studies would be better served by a
-  streaming download from the server (later).
-- **Preview** runs the study's latest design (deployed or not) as
-  deployment `<studyId>.preview`, with a token from
-  `POST /study/:studyId/deployment/preview`. Coders and answers stay in the
-  server's memory; nothing is stored (`architecture.md` §5).
+  Cells hold values; "Add label columns" (default on) adds `_label` columns
+  (the label the coder saw). Several answers are joined with "; ", spans as
+  "value: text", relations as "value: from → to". Answers that don't fit a
+  cell also get a `_json` column. UTF-8 with a byte order mark. Large studies
+  would be better served by a streaming download from the server (later).
+- **Preview** runs the latest design as deployment `<studyId>.preview`
+  (`POST /study/:studyId/deployment/preview`); nothing is stored
+  (`architecture.md` §5).
 
 ## 8. Tooling notes
 
-- Node ≥ 22. The server (`packages/server`) stores its data in Postgres:
-  PGlite in tests and development (no Postgres install needed).
-- Vitest configs exclude `**/dist/**`. Otherwise built test files run
-  twice after `tsc -b`.
-- Tailwind 4 (CSS-first `@theme`); `tw-animate-css` is imported without
+- Node ≥ 22. The server uses PGlite in tests and development.
+- Vitest configs exclude `**/dist/**` (else built tests run twice).
+- Tailwind 4 (CSS-first `@theme`); `tw-animate-css` imported without
   `layer(base)`.
 - TypeScript 7 waits for typescript-eslint support.
 - Keep dependencies minimal (e.g. no CSV library).
 
 ## 9. Known gaps
 
-- Admin UI: no notice that someone else is editing the same design (a
-  conflict shows only when saving); design errors are shown as raw
-  messages, not per field.
-- Spans: no
-  "click a span to pick it" for relations; no per-field inline styling
-  directives; no image-region annotation.
-- Tests are render smoke tests plus logic tests. No jsdom interaction tests
-  or browser e2e suite in CI yet (browser checks so far are manual
-  Playwright runs).
-- No visual/UX parity pass against the old app was done.
-- Swipe could become `layout: "swipe"` of `nominal` instead of its own
-  type (`annotinder`).
-- Not built (no case yet): numeric batteries (a thermometer per party),
-  scale-level helpers (sum, mean; advanced scripts can compute them from
-  `$var.q.values`), translated labels.
+- No notice that someone else is editing the same design (a conflict shows
+  only on save).
+- Spans: no click-to-pick for relations, no image regions.
+- Swipe could become `layout: "swipe"` of `nominal`.
+- Not built: numeric batteries, scale helpers (sum, mean), translated labels.
