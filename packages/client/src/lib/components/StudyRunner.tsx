@@ -24,7 +24,8 @@ import { QuitMenu } from "./QuitMenu";
 import { CodingNav, CodingProgress } from "./CodingNav";
 import { SwipeCard, SwipeProvider, SwipeSurface } from "./SwipeCard";
 import { buildValues } from "./answerFields/answerValue";
-import { dropRepeatedClick, useNoKeyRepeat } from "./inputGuards";
+import { dropRepeatedClick } from "./inputGuards";
+import { KeyboardProvider } from "../keyboard/KeyboardProvider";
 import { Button } from "@/components/ui/button";
 import { LogoSmoke } from "@/components/Logo";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -196,8 +197,6 @@ function StudyRunnerContent({
     [baseUrl, linkSecret, urlParamsKey, newSession, coderName],
   );
   const { manager, snapshot } = useStudyManager(coderApi);
-  // A held-down key answers once
-  useNoKeyRepeat();
   const [navDirection, setNavDirection] = useState<"next" | "previous">("next");
 
   // Track global position to keep navDirection in sync with any navigation change
@@ -636,7 +635,9 @@ function StudyRunnerContent({
 export function StudyRunner(props: StudyRunnerProps) {
   return (
     <CoderSettingsProvider>
-      <CoderSessionGate {...props} />
+      <KeyboardProvider>
+        <CoderSessionGate {...props} />
+      </KeyboardProvider>
     </CoderSettingsProvider>
   );
 }

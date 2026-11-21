@@ -1,5 +1,7 @@
 import { optionLabel } from "@annotinder/contracts";
-import { useCallback, useEffect } from "react";
+import { PRIORITY } from "../../keyboard/controller";
+import { useKeyScope } from "../../keyboard/hooks";
+import { useCallback } from "react";
 import type { SpanAnswer } from "@annotinder/contracts";
 import type { SpanAnnotationState } from "../../context/spanAnnotation";
 import { useCoderSettings } from "../../context/coderSettings";
@@ -74,35 +76,25 @@ export function SpanEditLabel({ annotation, span, onBack, onCancel, onCodeChange
     }
   }, [annotation, span, onDelete]);
 
-  // Keyboard navigation
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea") return;
-
-      if (e.key === "Escape") {
-        e.preventDefault();
+  // Editing a span: number keys change its label, Delete/Backspace removes it, Escape cancels
+  useKeyScope(
+    (press) => {
+      if (press.key === "Escape") {
         handleCancel();
-        return;
+        return true;
       }
-
-      if (e.key === "Delete" || e.key === "Backspace") {
-        e.preventDefault();
+      if (press.key === "Delete" || press.key === "Backspace") {
         handleDelete();
-        return;
+        return true;
       }
-
-      const num = parseInt(e.key, 10);
-      if (!isNaN(num) && num >= 1 && num <= annotation.options.length) {
-        e.preventDefault();
-        const newCode = annotation.options[num - 1].value;
-        handleCodeChange(newCode);
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [annotation.options, handleCancel, handleCodeChange, handleDelete]);
+      const num = parseInt(press.key, 10);
+      if (isNaN(num) || num < 1 || num > annotation.options.length) return false;
+      handleCodeChange(annotation.options[num - 1].value);
+      return true;
+    },
+    true,
+    { priority: PRIORITY.menu },
+  );
 
   const badgeStyle = getCodeBadgeStyle(colorFor(span.value), isDark);
 

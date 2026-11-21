@@ -1,4 +1,6 @@
 import { optionLabel } from "@annotinder/contracts";
+import { PRIORITY } from "../keyboard/controller";
+import { useKeyScope } from "../keyboard/hooks";
 import React, { useRef, useCallback, useEffect, useMemo } from "react";
 import type { SpanAnswer } from "@annotinder/contracts";
 import { useSpanAnnotation, type PendingSpan } from "../context/spanAnnotation";
@@ -235,29 +237,20 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
     }
   }, [annotation?.focusedSpanId]);
 
-  // Backspace / Delete: remove last added span if nothing pending
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (!annotation) return;
-
-      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea") return;
-
-      if ((e.key === "Backspace" || e.key === "Delete") && !annotation.pendingSpan && annotation.spans.length > 0) {
-        if (
-          containerRef.current &&
-          (containerRef.current === document.activeElement || containerRef.current.contains(document.activeElement))
-        ) {
-          e.preventDefault();
-          const last = annotation.spans[annotation.spans.length - 1];
-          annotation.removeSpan(last.id);
-        }
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [annotation]);
+  // Backspace / Delete, with the text focused: remove the last added span if nothing is pending
+  useKeyScope(
+    (press) => {
+      if (press.key !== "Backspace" && press.key !== "Delete") return false;
+      if (!annotation || annotation.pendingSpan || annotation.spans.length === 0) return false;
+      const container = containerRef.current;
+      if (!container || (container !== document.activeElement && !container.contains(document.activeElement)))
+        return false;
+      annotation.removeSpan(annotation.spans[annotation.spans.length - 1].id);
+      return true;
+    },
+    !!annotation,
+    { priority: PRIORITY.field },
+  );
 
   // Compute text segments (unannotated, single-span, or overlapping multi-span)
   const cuts = new Set<number>([0, text.length]);

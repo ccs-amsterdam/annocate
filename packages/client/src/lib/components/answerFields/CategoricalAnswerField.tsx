@@ -6,7 +6,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { buildValues, initialValues } from "./answerValue";
 import { CompactRow, EndLabels, OptionButton } from "./OptionButtons";
-import { optionsContainerStyle, useNumberShortcuts } from "./optionLayout";
+import { optionsContainerStyle } from "./optionLayout";
+import { useKeyTargets } from "../../keyboard/hooks";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 
 type CategoricalVariable = Extract<QuestionVariable, { type: "nominal" | "ordinal" }>;
@@ -45,8 +46,9 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
     onAnswer(buildValues(values.map((value) => ({ value }))));
   };
 
-  const onShortcut = useCallback((index: number) => pick(variable.options[index]), [pick, variable.options]);
-  useNumberShortcuts(variable.options.length, layout === "dropdown" ? null : onShortcut);
+  // The options for the keyboard (a dropdown has its own filter box)
+  const targets = layout === "dropdown" ? null : [variable.options.map((o) => ({ label: optionLabel(o) }))];
+  const [keys = []] = useKeyTargets(targets, (_, index) => pick(variable.options[index]));
 
   let field;
   if (layout === "dropdown") {
@@ -67,7 +69,7 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
             key={String(option.value)}
             option={option}
             selected={selectedSet.has(option.value)}
-            shortcut={index}
+            shortcut={keys[index]}
             check={multiple}
             onClick={() => pick(option)}
           />

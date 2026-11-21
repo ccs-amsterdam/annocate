@@ -3,7 +3,7 @@ import { numericSteps, numericValueError, resolveLayout } from "@annotinder/cont
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { buildValues, initialValues } from "./answerValue";
-import { useNumberShortcuts } from "./optionLayout";
+import { useKeyTargets } from "../../keyboard/hooks";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 
 type NumericVariable = Extract<QuestionVariable, { type: "numeric" }>;
@@ -34,7 +34,9 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
           Number(((variable.min ?? 0) + i * step).toFixed(decimals(step))),
         )
       : [];
-  useNumberShortcuts(values.length, values.length && values.length <= 9 ? (i) => answer(values[i]) : null);
+  // Up to nine buttons: number keys choose them
+  const targets = values.length && values.length <= 9 ? [values.map((n) => ({ label: String(n) }))] : null;
+  useKeyTargets(targets, (_, i) => answer(values[i]));
 
   const labels = variable.labels ?? [];
 

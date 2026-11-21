@@ -12,7 +12,8 @@ import { ShortcutBadge } from "../ShortcutBadge";
 interface OptionButtonProps {
   option: Option;
   selected: boolean;
-  shortcut?: number;
+  /** The key that chooses it (its badge). */
+  shortcut?: string | null;
   /** Show a check when selected (questions with several answers). */
   check?: boolean;
   onClick: () => void;
@@ -32,7 +33,7 @@ export function OptionButton({ option, selected, shortcut, check, onClick }: Opt
       style={customStyle}
       onClick={onClick}
     >
-      {shortcut !== undefined && shortcut < 9 && <ShortcutBadge shortcut={String(shortcut + 1)} />}
+      {shortcut && <ShortcutBadge shortcut={shortcut} />}
       <span className="min-w-0 break-words">{optionLabel(option)}</span>
       {check && selected && <Check className="size-3.5 shrink-0" />}
     </Button>

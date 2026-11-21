@@ -1,4 +1,6 @@
 import { optionLabel } from "@annotinder/contracts";
+import { PRIORITY } from "../../keyboard/controller";
+import { useKeyScope } from "../../keyboard/hooks";
 import { useState, useEffect } from "react";
 import type { SpanAnswer, SpanSlice } from "@annotinder/contracts";
 import type { SpanAnnotationState } from "../../context/spanAnnotation";
@@ -49,30 +51,21 @@ export function SpanManageLabels({ annotation, spans, initialTargetSpanId, fallb
     if (activeId) annotation.setFocusedSpanId(activeId);
   }, [activeId, annotation]);
 
-  // Keyboard navigation when in list mode
-  useEffect(() => {
-    if (activeSpan) return;
-
-    function handleKeyDown(e: KeyboardEvent) {
-      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea") return;
-
-      if (e.key === "Escape") {
-        e.preventDefault();
+  // The list of spans: number keys open one, Escape leaves
+  useKeyScope(
+    (press) => {
+      if (press.key === "Escape") {
         annotation.setPendingSpan(null);
-        return;
+        return true;
       }
-
-      const num = parseInt(e.key, 10);
-      if (!isNaN(num) && num >= 1 && num <= spans.length) {
-        e.preventDefault();
-        setSelectedSpanId(spans[num - 1].id);
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [annotation, activeSpan, spans]);
+      const num = parseInt(press.key, 10);
+      if (isNaN(num) || num < 1 || num > spans.length) return false;
+      setSelectedSpanId(spans[num - 1].id);
+      return true;
+    },
+    !activeSpan,
+    { priority: PRIORITY.editor },
+  );
 
   // If a label is selected for editing, render SpanEditLabel with a Back action to return to this menu
   if (activeSpan) {

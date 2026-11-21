@@ -1,4 +1,6 @@
 import { optionLabel } from "@annotinder/contracts";
+import { PRIORITY } from "../../keyboard/controller";
+import { useKeyScope } from "../../keyboard/hooks";
 import { useState, useEffect } from "react";
 import type { SpanAnswer } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
@@ -83,32 +85,23 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
     }
   }, [pending, setIsViewingAllLabels, setFocusedSpanId]);
 
-  // Keyboard navigation for Creation mode (hotkeys 1-9 and Escape)
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (!annotation || !annotation.pendingSpan || isManageMode) return;
-
-      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea") return;
-
-      if (e.key === "Escape") {
-        e.preventDefault();
+  // Creating a span: number keys choose its label, Escape cancels
+  useKeyScope(
+    (press) => {
+      if (!annotation?.pendingSpan) return false;
+      if (press.key === "Escape") {
         annotation.setPendingSpan(null);
-        return;
+        return true;
       }
-
-      const num = parseInt(e.key, 10);
-      if (!isNaN(num) && num >= 1 && num <= annotation.options.length) {
-        e.preventDefault();
-        const code = annotation.options[num - 1].value;
-        annotation.addSpan(annotation.pendingSpan.slices, code);
-        annotation.setPendingSpan(null);
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [annotation, isManageMode]);
+      const num = parseInt(press.key, 10);
+      if (isNaN(num) || num < 1 || num > annotation.options.length) return false;
+      annotation.addSpan(annotation.pendingSpan.slices, annotation.options[num - 1].value);
+      annotation.setPendingSpan(null);
+      return true;
+    },
+    !!annotation?.pendingSpan && !isManageMode,
+    { priority: PRIORITY.editor },
+  );
 
   const pendingTextSummary = pending?.slices.map((s) => s.text).join(" ... ") ?? "";
 

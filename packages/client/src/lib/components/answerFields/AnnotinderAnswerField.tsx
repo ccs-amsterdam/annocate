@@ -1,23 +1,16 @@
-import { useEffect } from "react";
 import { optionLabel, SWIPE_DIRECTIONS, type NominalOption } from "@annotinder/contracts";
 import { ArrowLeft, ArrowRight, ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildValues } from "./answerValue";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 import { useSwipe, type SwipeDirection } from "../swipe";
+import { useKeyTargets } from "../../keyboard/hooks";
 
 type AnnotinderVariable = Extract<QuestionVariable, { type: "annotinder" }>;
 
 const ICONS = { left: ArrowLeft, right: ArrowRight, up: ArrowUp };
-/** Arrow keys, and 1, 2, 3 for the 1st, 2nd and 3rd option. */
-const KEYS: Record<string, SwipeDirection> = {
-  ArrowLeft: "left",
-  ArrowRight: "right",
-  ArrowUp: "up",
-  "1": "left",
-  "2": "right",
-  "3": "up",
-};
+/** The arrow key of each direction: it always answers (the mapping's keys too). */
+const ARROWS: Record<SwipeDirection, string> = { left: "ArrowLeft", right: "ArrowRight", up: "ArrowUp" };
 
 /**
  * A swipe question: the card (the unit, see `SwipeCard`) is swiped left,
@@ -36,17 +29,8 @@ export function AnnotinderAnswerField({ variable, onAnswer }: AnswerFieldProps<A
     else onAnswer(buildValues([{ value: option.value }]));
   };
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-      const direction = KEYS[event.key];
-      if (!direction || !options[SWIPE_DIRECTIONS.indexOf(direction)]) return;
-      event.preventDefault();
-      choose(direction);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  });
+  const targets = [options.map((o, i) => ({ label: optionLabel(o), keys: [ARROWS[SWIPE_DIRECTIONS[i]]] }))];
+  useKeyTargets(targets, (_, index) => choose(SWIPE_DIRECTIONS[index]));
 
   // Left on the left, right on the right, up in the middle.
   const [left, right, up] = options;

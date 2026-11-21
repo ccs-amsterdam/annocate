@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { PRIORITY } from "../keyboard/controller";
+import { useKeyScope } from "../keyboard/hooks";
 import {
   Check,
   ChevronLeft,
@@ -26,8 +28,8 @@ import type { NavigationPhase, StudyManagerNavigation } from "../studyManager/St
 // - back / forward.
 // Questions the coder hasn't got to are never listed: conditions may skip them.
 //
-// While a menu is open, number and arrow keys are the menu's (the number
-// pad), never the answer shortcuts of the question behind it.
+// While a menu is open, keys are the menu's (the number pad), never the
+// answer shortcuts of the question behind it (an exclusive keyboard scope).
 //
 // How far the coder is in the loop shows as a line along the bar's bottom
 // edge (`CodingProgress`), when the loop's number of units is known.
@@ -60,20 +62,9 @@ function loopUnits(
   return { current, reached, total: phase.totalUnits ? Math.max(reached, phase.totalUnits) : null };
 }
 
-/** While `active`, number and arrow keys never reach the question behind the menu. */
+/** While `active` (a menu is open), keys never reach the question behind the menu. */
 function useMenuKeys(active: boolean) {
-  useEffect(() => {
-    if (!active) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (
-        /^[0-9]$/.test(e.key) ||
-        ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Backspace", "Enter"].includes(e.key)
-      )
-        e.stopPropagation();
-    };
-    window.addEventListener("keydown", onKey, { capture: true });
-    return () => window.removeEventListener("keydown", onKey, { capture: true });
-  }, [active]);
+  useKeyScope(() => false, active, { priority: PRIORITY.menu, exclusive: true });
 }
 
 export interface CodingNavProps {
@@ -334,26 +325,19 @@ function LoopPanel({
   };
   const tooFar = typed !== null && Number(typed) > reached;
 
-  // While the menu is open, number and arrow keys are the menu's: never an answer to the question behind it
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const digit = /^[0-9]$/.test(e.key);
-      if (!digit && !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Backspace", "Enter"].includes(e.key)) return;
-      e.stopPropagation();
-      if (digit) {
-        e.preventDefault();
-        press(e.key);
-      } else if (typed !== null && e.key === "Backspace") {
-        e.preventDefault();
-        press("back");
-      } else if (typed !== null && e.key === "Enter") {
-        e.preventDefault();
-        press("go");
-      }
-    };
-    window.addEventListener("keydown", onKey, { capture: true });
-    return () => window.removeEventListener("keydown", onKey, { capture: true });
-  });
+  // While the menu is open, number keys type a unit's number, Backspace and Enter edit and go
+  // (above the menu's own exclusive scope, which keeps all other keys from the question)
+  useKeyScope(
+    ({ key }) => {
+      if (/^[0-9]$/.test(key)) press(key);
+      else if (typed !== null && key === "Backspace") press("back");
+      else if (typed !== null && key === "Enter") press("go");
+      else return false;
+      return true;
+    },
+    true,
+    { priority: PRIORITY.menu + 1 },
+  );
 
   const small = "h-7 w-7 cursor-pointer";
   const questions = phase.questions ?? [];

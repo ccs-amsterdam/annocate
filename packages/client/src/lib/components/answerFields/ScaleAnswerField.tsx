@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { optionLabel, resolveLayout, type Option } from "@annotinder/contracts";
 import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildValues } from "./answerValue";
 import { CompactRow, EndLabels } from "./OptionButtons";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
+import { useKeyTargets } from "../../keyboard/hooks";
 
 type ScaleVariable = Extract<QuestionVariable, { type: "scale" }>;
 
@@ -43,24 +44,12 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
     onAnswer(buildValues(items.map((item) => ({ item: item.name, value: selected[item.name] }))));
   }
 
-  // Number keys answer the first unanswered item; Enter continues.
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-      if (event.key === "Enter") {
-        event.preventDefault();
-        submit();
-        return;
-      }
-      const index = Number.parseInt(event.key, 10) - 1;
-      if (Number.isNaN(index) || index < 0 || index >= Math.min(variable.options.length, 9)) return;
-      const target = items.find((item) => selected[item.name] === undefined);
-      if (!target) return;
-      event.preventDefault();
-      select(target.name, variable.options[index]);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+  // The keyboard answers the first unanswered item; Enter continues.
+  const points = variable.options.map((o) => ({ label: optionLabel(o) }));
+  const targets = items.map(() => points);
+  useKeyTargets(targets, (item, index) => select(items[item].name, variable.options[index]), {
+    activeGroup: items.findIndex((item) => selected[item.name] === undefined),
+    onEnter: submit,
   });
 
   const highlight = (name: string) =>
