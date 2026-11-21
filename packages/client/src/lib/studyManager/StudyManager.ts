@@ -1051,18 +1051,18 @@ export class StudyManager {
     this.unitVisible = visible;
   }
 
-  /** The unit a loop question first showed its instruction on (`instructionWhen: "first"`), by loop and question. */
+  /** The unit a loop question first came up on (its instruction opens by itself there with `instructionOpen: "first"`). */
   private instructionShownOn = new Map<string, number>();
 
   /**
-   * Whether a question shows its instruction now (`instructionWhen`): always;
-   * in a loop, only on the first unit the coder answers it on (also after a
-   * reload: not once they finished units in the loop), or only on practice units.
+   * Whether a question's instruction opens by itself now (`instructionOpen`):
+   * `first`, on the first unit the coder answers it on (also after a reload:
+   * not once they finished units in the loop); `practice`, on practice units.
    */
-  private showsInstruction(item: DesignItem): boolean {
-    const when = "variable" in item && "instructionWhen" in item.variable ? item.variable.instructionWhen : undefined;
-    if (!when || when === "always" || !this.activeLoop || !this.currentUnit) return true;
-    if (when === "practice") return this.currentUnit.data?._practice === true;
+  private opensInstruction(item: DesignItem): boolean {
+    const open = "instructionOpen" in item ? item.instructionOpen : undefined;
+    if (!open || !this.activeLoop || !this.currentUnit) return false;
+    if (open === "practice") return this.currentUnit.data?._practice === true;
     const key = `${this.keyOf(this.activeLoop)}/${"name" in item ? item.name : ""}`;
     const unitId = this.currentUnit.id;
     const shownOn = this.instructionShownOn.get(key);
@@ -1073,7 +1073,7 @@ export class StudyManager {
     return true;
   }
 
-  /** A question's texts with their values filled in (in a loop, its snippets too). */
+  /** A question's texts with their values filled in (in a loop, its snippets too), and whether its instruction opens. */
   private async questionTexts(
     item: DesignItem | undefined,
     scope: ReferenceScope,
@@ -1081,7 +1081,7 @@ export class StudyManager {
   ): Promise<QuestionTexts | null> {
     if (!item || !("variable" in item) || !("question" in item.variable)) return null;
     const { question } = item.variable;
-    const instruction = this.showsInstruction(item) ? item.variable.instruction : undefined;
+    const instruction = "instruction" in item ? item.instruction : undefined;
     const [q, i] = await Promise.all([
       question
         ? renderTemplate(question, scope, this.expressionCache, `question:${item.name}`, { snippets })
@@ -1090,7 +1090,7 @@ export class StudyManager {
         ? renderTemplate(instruction, scope, this.expressionCache, `instruction:${item.name}`, { snippets })
         : undefined,
     ]);
-    return { question: q, instruction: i };
+    return { question: q, instruction: i, ...(i && this.opensInstruction(item) ? { openInstruction: true } : {}) };
   }
 
   /** Publishes the current step of the current unit, with the layout and texts rendered. */

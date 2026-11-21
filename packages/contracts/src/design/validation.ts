@@ -589,7 +589,6 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           | {
               type?: string;
               question?: unknown;
-              instruction?: unknown;
               from?: { variable?: string };
               to?: { variable?: string };
             }
@@ -611,11 +610,15 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           issue([...itemPath, "variable", "focus"], "Focus only works for questions in a unit loop");
         }
 
-        for (const field of ["question", "instruction"] as const) {
+        const texts = [
+          { text: variable?.question, path: [...itemPath, "variable", "question"] },
+          { text: (item as { instruction?: unknown }).instruction, path: [...itemPath, "instruction"] },
+        ];
+        for (const { text, path } of texts) {
           checkTemplate(
-            variable?.[field],
+            text,
             {
-              path: [...itemPath, "variable", field],
+              path,
               loop: loop?.name ?? null,
               available,
               snippets: loop?.snippets,

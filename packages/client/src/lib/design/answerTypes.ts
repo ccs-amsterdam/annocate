@@ -126,7 +126,7 @@ export function switchVariableType(current: AnyVariableType, type: AnyVariableTy
     return { ...rest, type, layout, options: convertOptionsLevel(current.options, type) } as AnyVariableType;
   }
   const next = defaultVariableForAnyType(type);
-  const { question, instruction } = current as { question?: string; instruction?: string };
-  if ("question" in next) Object.assign(next, { question: question ?? "", ...(instruction ? { instruction } : {}) });
+  const { question } = current as { question?: string };
+  if ("question" in next) Object.assign(next, { question: question ?? "" });
   return next;
 }

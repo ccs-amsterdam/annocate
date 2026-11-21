@@ -77,7 +77,7 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[], al
       }
       const variable = child.variable;
       check(child.name, text(variable.question));
-      check(child.name, text(variable.instruction));
+      check(child.name, text(child.instruction));
       if (variable.type === "span") {
         // Span fields are names: `unit.<field>` (checked here) or a ::: text block's
         for (const name of variable.fields.filter((f) => f.startsWith("unit.") && !known.has(f.slice(5)))) {

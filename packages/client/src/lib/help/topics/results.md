@@ -13,18 +13,18 @@ to that moment.
 The zip is named after the study and the date, such as
 `news_tone_2026-10-27.zip`, and contains:
 
-| File                 | A row per                           | What is in it                                                                                         |
-| -------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `annotations.csv`    | unit and coder                      | the answers to the questions in unit loops                                                            |
-| `coders.csv`         | coder session                       | who they are, how far they got, and their answers outside unit loops                                  |
-| `units.csv`          | unit version                        | the units as coders saw them                                                                          |
-| `variables.csv`      | design version, question and option | the questions, their values and labels                                                                |
-| `designs/v<n>.json`  | design version                      | the whole design, with the AnnoTinder release and commit it ran on: to archive or reproduce the study |
-| `devices.csv`        | device                              | the devices coders used (kind, browser, operating system)                                             |
-| `display_changes.csv` | change of a coder's display        | their keys for answers, screen width and theme, and when each changed                                 |
-| `timings.csv`        | answer                              | how long coders took per question                                                                     |
-| `deleted_coders.csv` | deleted coder session               | coders whose data was deleted, to delete them from earlier downloads too                              |
-| `README.txt`         |                                     | what the columns mean                                                                                 |
+| File                  | A row per                           | What is in it                                                                                         |
+| --------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `annotations.csv`     | unit and coder                      | the answers to the questions in unit loops                                                            |
+| `coders.csv`          | coder session                       | who they are, how far they got, and their answers outside unit loops                                  |
+| `units.csv`           | unit version                        | the units as coders saw them                                                                          |
+| `variables.csv`       | design version, question and option | the questions, their values and labels                                                                |
+| `designs/v<n>.json`   | design version                      | the whole design, with the AnnoTinder release and commit it ran on: to archive or reproduce the study |
+| `devices.csv`         | device                              | the devices coders used (kind, browser, operating system)                                             |
+| `display_changes.csv` | change of a coder's display         | their keys for answers, screen width and theme, and when each changed                                 |
+| `timings.csv`         | answer                              | how long coders took per question                                                                     |
+| `deleted_coders.csv`  | deleted coder session               | coders whose data was deleted, to delete them from earlier downloads too                              |
+| `README.txt`          |                                     | what the columns mean                                                                                 |
 
 The files are UTF-8, with a marker at the start so that spreadsheet programs
 read accents correctly. Times are in UTC, written like
@@ -89,17 +89,17 @@ label while coding runs, and the values stay comparable. See
 
 A row per coder session (`session_id`): a coder who started again on another device has two.
 
-| Column                                                   | Meaning                                                                                                                                                                           |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `session_id`, `coder`, `email`, `link`                   | Who the coder is (`email` where the invitation requires [sign-in](links.md#login))                                                                                                |
-| `started`, `last_active`                                 | When they started, and when they last answered                                                                                                                                    |
-| `ended`, `ended_at`                                      | `complete` or `screenout` if their session ended at an end item (see [Ending a session](end-items.md)), `quit` if the coder quit, and when                                        |
-| `deletion_requested`                                     | When the coder asked for their answers to be deleted, if they did and you haven't deleted them yet (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)) |
+| Column                                                   | Meaning                                                                                                                                                                                                            |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `session_id`, `coder`, `email`, `link`                   | Who the coder is (`email` where the invitation requires [sign-in](links.md#login))                                                                                                                                 |
+| `started`, `last_active`                                 | When they started, and when they last answered                                                                                                                                                                     |
+| `ended`, `ended_at`                                      | `complete` or `screenout` if their session ended at an end item (see [Ending a session](end-items.md)), `quit` if the coder quit, and when                                                                         |
+| `deletion_requested`                                     | When the coder asked for their answers to be deleted, if they did and you haven't deleted them yet (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data))                                  |
 | `display`                                                | How their screen looked: their keys for answers, in a [responsive](answer-layouts.md#fixed-or-responsive) study the width, where they choose it the theme; each distinct one, e.g. `numbers, narrow; numpad, wide` |
-| `session.<name>`                                         | The session's values: its URL parameters and `source` (its coder is the `coder` column)                                                                                           |
-| `finished_<loop>`                                        | How many units they finished in each unit loop, such as `finished_News items`                                                                                                     |
-| `overlap_finished`, `gold_finished`, `practice_finished` | How many units of the deployed `_overlap`, `_gold` and `_practice` sets they finished, if the study has them (see [Overlap, gold and practice units](special-units.md))           |
-| one column per question                                  | Their answers outside unit loops, and their [random conditions](random-condition.md)                                                                                              |
+| `session.<name>`                                         | The session's values: its URL parameters and `source` (its coder is the `coder` column)                                                                                                                            |
+| `finished_<loop>`                                        | How many units they finished in each unit loop, such as `finished_News items`                                                                                                                                      |
+| `overlap_finished`, `gold_finished`, `practice_finished` | How many units of the deployed `_overlap`, `_gold` and `_practice` sets they finished, if the study has them (see [Overlap, gold and practice units](special-units.md))                                            |
+| one column per question                                  | Their answers outside unit loops, and their [random conditions](random-condition.md)                                                                                                                               |
 
 Answers outside unit loops (consent, background questions, a survey's
 questions) are only here, not in `annotations.csv`.

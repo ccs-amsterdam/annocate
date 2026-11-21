@@ -112,7 +112,7 @@ Server-side design lives in
 ## 3. Unit layout and texts
 
 A unit's layout is **one markdown template** (`UnitLayoutSchema`:
-`template`, `snippets?`, `style?`, `colorScheme?`). Question and instruction texts are
+`template`, `snippets?`, `style?`). Question and instruction texts are
 templates with the same syntax.
 
 - Rendering: `react-markdown` + `remark-gfm` (`components/TemplateMarkdown.tsx`);
@@ -371,6 +371,24 @@ unit) and shows the ending (`SessionEnd.tsx`, redirecting after a few
 seconds). The server stores the outcome; the session then refuses units and
 answers (409 `session_ended`), and a reload shows the ending again (a
 closed session: 409 `session_closed`, `coder-identity.md` §9).
+
+### Questions and instructions
+
+- A question's text (`variable.question`) is a markdown template. A short
+  one-paragraph question (no block markdown, at most 150 characters:
+  `components/questionHeading.ts`) is shown as a heading; anything else as
+  the markdown it is.
+- An instruction belongs to a question in a unit loop: `instruction` and
+  `instructionOpen` (`first` | `practice`) are on `InLoopQuestionItemSchema`,
+  not on the variable; a top-level question refuses them in its schema
+  (`z.never`: "put details in the question text"). It is not shown in the
+  answer area: a ? button by the question (and the ? key, outside every
+  mapping and the filter) opens it in a dialog
+  (`components/QuestionInstruction.tsx`), with a dot until the coder opened
+  it once (remembered in the browser per study page and question).
+  `StudyManager.opensInstruction` decides whether it opens by itself: on the
+  first unit the coder gets the question (also after a reload), or on
+  practice units.
 
 ### Display
 

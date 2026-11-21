@@ -32,12 +32,11 @@ function loopReferences(loop: UnitLoopItem, spanFields?: (field: string) => void
       } else if ("variable" in item && item.variable) {
         const variable = item.variable as {
           question?: unknown;
-          instruction?: unknown;
           type?: string;
           fields?: unknown;
         };
         text(variable.question);
-        text(variable.instruction);
+        text((item as { instruction?: unknown }).instruction);
         if (spanFields && variable.type === "span" && Array.isArray(variable.fields)) {
           for (const f of variable.fields) if (typeof f === "string") spanFields(f);
         }

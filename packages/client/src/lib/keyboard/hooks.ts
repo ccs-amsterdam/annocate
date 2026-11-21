@@ -110,6 +110,7 @@ export function useKeyTargets(
         } else if (
           press.key.length === 1 &&
           press.key !== " " &&
+          press.key !== "?" &&
           (filter || targetForKey(mapping, group, press.key) < 0)
         )
           setFilter(filter + press.key);

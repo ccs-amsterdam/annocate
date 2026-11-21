@@ -16,10 +16,10 @@ describe("codebookMarkdown", () => {
           {
             type: "question",
             name: "topic",
+            instruction: "The main topic.",
             variable: {
               type: "nominal",
               question: "Topic?",
-              instruction: "The main topic.",
               options: [{ value: "pol", label: "Politics" }, { value: "other" }],
             },
           },

@@ -17,16 +17,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { HelpButton } from "../../help/HelpButton";
 
-/** Just the shared `question`/`instruction` fields -- kept as a plain (non-union-derived) shape so
+/** Just the shared `question` field -- kept as a plain (non-union-derived) shape so
  * patches don't get incorrectly widened back into a cross-product union of every variable type
  * (a `Partial<Extract<Union, ...>>` distributes member-wise and reintroduces every variant's fields). */
 interface QuestionFieldsValue {
   question: string;
-  instruction?: string;
-  instructionWhen?: "always" | "first" | "practice";
 }
 
-/** The shared `question`/`instruction` fields present on every non-`auto` variable type. */
+/** The `question` field present on every non-`auto` variable type (instructions are the loop question item's: ItemForm). */
 function QuestionFields({
   value,
   onChange,
@@ -43,31 +41,10 @@ function QuestionFields({
           onChange={(e) => onChange({ question: e.target.value })}
           placeholder="The question coders see (markdown; values like $var.name.label work)"
         />
-      </div>
-      <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium">Instruction (optional)</label>
-        <Textarea
-          value={value.instruction ?? ""}
-          onChange={(e) => onChange({ instruction: e.target.value || undefined })}
-        />
-        {value.instruction && (
-          <label className="flex items-center gap-2 text-xs text-muted-foreground">
-            Show it
-            <select
-              className="h-7 rounded-md border border-input bg-background px-2 text-xs"
-              value={value.instructionWhen ?? "always"}
-              onChange={(e) =>
-                onChange({
-                  instructionWhen: e.target.value === "always" ? undefined : (e.target.value as "first" | "practice"),
-                })
-              }
-            >
-              <option value="always">Always</option>
-              <option value="first">The first time a coder sees the question</option>
-              <option value="practice">Only on practice units</option>
-            </select>
-          </label>
-        )}
+        <span className="text-[11px] text-muted-foreground">
+          A short question of one paragraph is shown as a heading; with markdown (headings, lists, paragraphs) it is
+          shown as you write it.
+        </span>
       </div>
     </>
   );
@@ -76,8 +53,8 @@ function QuestionFields({
 /**
  * Dispatches on `variable.type` to render the right sub-form
  * (docs/client.md §7). Covers every `UserVariableType`/`UnitVariableType` variant
- * (variableTypes.ts). Less-common nested fields (`questionStyle`,
- * `instructionStyle`) are intentionally not exposed here yet.
+ * (variableTypes.ts). The less-common `questionStyle` is intentionally not
+ * exposed here yet.
  */
 export function VariableTypeForm({
   variable,

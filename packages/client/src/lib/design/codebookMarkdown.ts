@@ -54,14 +54,12 @@ function optionLines(variable: AnyVariableType): string[] {
   return lines;
 }
 
-function question(name: string, variable: AnyVariableType, depth: number): string[] {
+function question(name: string, variable: AnyVariableType, depth: number, instruction?: string): string[] {
   const text =
     "question" in variable && typeof variable.question === "string" && variable.question ? variable.question : "";
   const out = [`${"#".repeat(depth)} ${name}${text ? `: ${text.split("\n")[0]}` : ""}`, ""];
   if (text.includes("\n")) out.push(text, "");
-  if ("instruction" in variable && typeof variable.instruction === "string" && variable.instruction) {
-    out.push(...variable.instruction.split("\n").map((l) => `> ${l}`), "");
-  }
+  if (instruction) out.push(...instruction.split("\n").map((l) => `> ${l}`), "");
   out.push(`*${TYPE[variable.type] ?? variable.type}*`, "");
   const options = optionLines(variable);
   if (options.length > 0) out.push(...options, "");
@@ -91,7 +89,14 @@ function items(list: DesignItem[], depth: number, keys: LoopKeys): string[] {
     } else if (item.type === "unit_loop") {
       out.push(...loop(item as UnitLoopItem, depth, keys));
     } else if ("variable" in item) {
-      out.push(...question(item.name, item.variable as AnyVariableType, depth));
+      out.push(
+        ...question(
+          item.name,
+          item.variable as AnyVariableType,
+          depth,
+          "instruction" in item && typeof item.instruction === "string" ? item.instruction : undefined,
+        ),
+      );
     }
   }
   return out;

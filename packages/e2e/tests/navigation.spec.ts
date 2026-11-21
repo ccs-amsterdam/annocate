@@ -396,3 +396,65 @@ test("display: each coder's keys and screen are recorded when they change; quick
   await expect.poll(logged, { timeout: 8000 }).toHaveLength(3);
   expect((await logged())[2]).toMatch(/^letters wide/);
 });
+
+test("an instruction: behind the ? button or key, a dot until read; it can open by itself the first time", async ({
+  page,
+  request,
+}) => {
+  const created = await api<StudyResponse>(request, "POST", "/study", { name: "Instructions" });
+  await api<UnitResponse[]>(request, "POST", `/study/${created.id}/units`, {
+    units: TEXTS.map((text, i) => ({ externalId: `u${i + 1}`, data: { text } })),
+  });
+  const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, {
+    items: [
+      {
+        type: "question",
+        name: "intro",
+        variable: { type: "confirm", question: "## Welcome\n\nRead each text, then answer two questions." },
+      },
+      {
+        type: "unit_loop",
+        layout: { template: "$unit.text" },
+        children: [
+          { ...nominal("topic", "Topic?", ["politics", "other"]), instruction: "The topic with **most words**." },
+          {
+            ...nominal("tone", "Tone?", ["positive", "negative"]),
+            instruction: "The tone of the *whole* text.",
+            instructionOpen: "first",
+          },
+        ],
+      },
+    ],
+  });
+  await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
+  await page.goto(`/code/${created.id}?link=${link.secret}`);
+  // Markdown with a heading: shown as written (the question's own heading)
+  await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible();
+  await page.getByRole("button", { name: "I confirm", exact: true }).click();
+  await at(page, TEXTS[0], "Topic?");
+
+  // Not in the answer area: behind the ? button, with a dot until opened
+  await expect(page.getByText("The topic with")).toHaveCount(0);
+  const button = page.getByRole("button", { name: "Instruction" });
+  await expect(button.getByLabel("Not read yet")).toBeVisible();
+  await page.keyboard.press("?");
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("most words")).toBeVisible();
+  // While open, answer keys don't reach the question
+  await page.keyboard.press("1");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(button.getByLabel("Not read yet")).toHaveCount(0);
+  await page.keyboard.press("1");
+
+  // Opens by itself the first time the question comes up
+  await at(page, TEXTS[0], "Tone?");
+  await expect(page.getByRole("dialog").getByText("whole")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("1");
+  await at(page, TEXTS[1], "Topic?");
+  await page.keyboard.press("1");
+  await at(page, TEXTS[1], "Tone?");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});

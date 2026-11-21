@@ -180,7 +180,6 @@
             "variable": {
               "type": "annotinder",
               "question": "Is this headline good news or bad news?",
-              "instruction": "Swipe right for good news, left for bad news, up if it is neither. The arrow keys work too.",
               "options": [
                 {
                   "value": "negative",
@@ -198,7 +197,8 @@
                   "color": "#9ca3af"
                 }
               ]
-            }
+            },
+            "instruction": "Swipe right for good news, left for bad news, up if it is neither. The arrow keys work too."
           }
         ]
       }

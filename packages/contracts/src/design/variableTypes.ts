@@ -11,7 +11,7 @@ import {
   nominalValueErrors,
 } from "./options.js";
 
-// Shared question/instruction presentation fields.
+// Shared question presentation fields.
 export const VariableBaseSchema = z.object({
   question: z
     .string()
@@ -19,17 +19,6 @@ export const VariableBaseSchema = z.object({
       "The question shown to the coder: a markdown template with $var references and {{ }} (in a loop also $unit and [[snippets]]).",
     ),
   questionStyle: z.record(z.string(), z.string()).optional(),
-  instruction: z
-    .string()
-    .optional()
-    .describe("Extra instructions for this variable; a markdown template like `question`."),
-  instructionStyle: z.record(z.string(), z.string()).optional(),
-  /**
-   * When the instruction shows, in a unit loop: `always` (default), `first`
-   * (only for the first unit the coder answers this question on), or
-   * `practice` (only on practice units, docs/architecture.md §6.2).
-   */
-  instructionWhen: z.enum(["always", "first", "practice"]).optional(),
   focus: z
     .array(z.string().min(1))
     .optional()

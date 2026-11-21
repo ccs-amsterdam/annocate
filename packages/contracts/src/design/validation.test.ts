@@ -698,3 +698,31 @@ describe("practice and gold units", () => {
     );
   });
 });
+
+describe("instructions", () => {
+  it("are for questions in unit loops, on the question item; at the top level the schema refuses them", () => {
+    const loop = {
+      type: "unit_loop",
+      layout: { template: "$unit.text" },
+      children: [
+        {
+          type: "question",
+          name: "topic",
+          instruction: "Code the **headline**, $var.nope",
+          instructionOpen: "first",
+          variable: { type: "confirm", question: "?" },
+        },
+      ],
+    };
+    expect(validateDesignItems([loop] as never).map((i) => i.message)).toEqual([expect.stringContaining("nope")]);
+    const top = {
+      type: "question",
+      name: "age",
+      instruction: "Whole years",
+      variable: { type: "numeric", question: "Age?" },
+    };
+    expect(validateDesignItems([top] as never).map((i) => i.message)).toContainEqual(
+      "Instructions are for questions in unit loops: put details in the question text",
+    );
+  });
+});

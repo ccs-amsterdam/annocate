@@ -24,6 +24,11 @@ const ConditionLabelSchema = z.string().optional().describe("Shown in the editor
 export const TopLevelQuestionItemSchema = ItemBaseSchema.extend({
   type: z.literal("question"),
   variable: UserVariableTypeSchema,
+  /** Instructions are for questions coders answer for unit after unit (in a unit loop); details go in the question. */
+  instruction: z
+    .never({ error: "Instructions are for questions in unit loops: put details in the question text" })
+    .optional(),
+  instructionOpen: z.never({ error: "Instructions are for questions in unit loops" }).optional(),
 });
 export type TopLevelQuestionItem = z.infer<typeof TopLevelQuestionItemSchema>;
 
@@ -34,6 +39,19 @@ export type TopLevelQuestionItem = z.infer<typeof TopLevelQuestionItemSchema>;
 export const InLoopQuestionItemSchema = ItemBaseSchema.extend({
   type: z.literal("question"),
   variable: UnitVariableTypeSchema,
+  /**
+   * How to apply the question to units (docs/client.md §4 "Instructions"):
+   * a markdown template like the question, which coders open from the
+   * question (a ? button, or the ? key) to look up while coding.
+   */
+  instruction: z
+    .string()
+    .optional()
+    .describe(
+      "How to apply the question to units: a markdown template coders open from the question (? button or key).",
+    ),
+  /** The instruction also opens by itself: the first time the question comes up, or on practice units. */
+  instructionOpen: z.enum(["first", "practice"]).optional(),
 });
 export type InLoopQuestionItem = z.infer<typeof InLoopQuestionItemSchema>;
 

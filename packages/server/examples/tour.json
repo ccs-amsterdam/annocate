@@ -44,8 +44,7 @@
         "name": "consent",
         "variable": {
           "type": "confirm",
-          "question": "Welcome! This demo is a short tour of AnnoTinder. You'll answer a few questions about yourself, and then code three short news items about AnnoTinder itself. Ready to start?",
-          "instruction": "A codebook is a list of questions. Some are about you (like this one), others are asked for every unit in a unit loop. Each question in this demo shows a different question type or feature."
+          "question": "Welcome! This demo is a short tour of AnnoTinder. You'll answer a few questions about yourself, and then code three short news items about AnnoTinder itself. Ready to start?\n\nA codebook is a list of questions. Some are about you (like this one), others are asked for every unit in a unit loop. Each question in this demo shows a different question type or feature."
         }
       },
       {
@@ -69,8 +68,7 @@
         "name": "age",
         "variable": {
           "type": "numeric",
-          "question": "How old are you?",
-          "instruction": "A numeric question. With an open range it is a number input; with a small range, buttons; else a slider.",
+          "question": "How old are you?\n\nA numeric question. With an open range it is a number input; with a small range, buttons; else a slider.",
           "min": 0,
           "max": 120,
           "layout": "input"
@@ -95,8 +93,7 @@
         "name": "experience",
         "variable": {
           "type": "ordinal",
-          "question": "How much experience do you have with manual content analysis?",
-          "instruction": "An ordinal question: its options are ordered, and their values are numbers (1, 2, 3). Your answer changes what comes next: beginners get a tip above each unit, experts get an extra question.",
+          "question": "How much experience do you have with manual content analysis?\n\nAn ordinal question: its options are ordered, and their values are numbers (1, 2, 3). Your answer changes what comes next: beginners get a tip above each unit, experts get an extra question.",
           "options": [
             {
               "value": 1,
@@ -122,8 +119,7 @@
         "variable": {
           "type": "nominal",
           "layout": "dropdown",
-          "question": "What best describes your role?",
-          "instruction": "A long list as a dropdown: type to filter the options.",
+          "question": "What best describes your role?\n\nA long list as a dropdown: type to filter the options.",
           "options": [
             {
               "value": "student",
@@ -179,8 +175,7 @@
             "name": "experiment_check",
             "variable": {
               "type": "nominal",
-              "question": "You were randomly assigned to the experiment group, so only you (and others in this group) see this question. Did you know codebooks can contain experiments?",
-              "instruction": "A random condition assigned you to a group at random. A Show if item then shows this question only to the experiment group.",
+              "question": "You were randomly assigned to the experiment group, so only you (and others in this group) see this question. Did you know codebooks can contain experiments?\n\nA random condition assigned you to a group at random. A Show if item then shows this question only to the experiment group.",
               "options": [
                 {
                   "value": "yes",
@@ -200,8 +195,7 @@
         "name": "interest",
         "variable": {
           "type": "scale",
-          "question": "How interested are you in news about these topics?",
-          "instruction": "A scale: several items rated on the same options. If you rate technology 4 or higher, you'll get an extra question in the units.",
+          "question": "How interested are you in news about these topics?\n\nA scale: several items rated on the same options. If you rate technology 4 or higher, you'll get an extra question in the units.",
           "items": [
             {
               "name": "politics",
@@ -258,7 +252,6 @@
             "variable": {
               "type": "annotinder",
               "question": "Is this a news article?",
-              "instruction": "A swipe question: swipe the card left, right or up, or use the arrow keys. It's the fastest way to answer simple questions.",
               "options": [
                 {
                   "value": "no",
@@ -276,7 +269,8 @@
                   "color": "#9ca3af"
                 }
               ]
-            }
+            },
+            "instruction": "A swipe question: swipe the card left, right or up, or use the arrow keys. It's the fastest way to answer simple questions."
           },
           {
             "type": "question",
@@ -284,7 +278,6 @@
             "variable": {
               "type": "nominal",
               "question": "What is the overall tone of this article?",
-              "instruction": "A nominal question: pick one option. Options can have their own colours. Texts can use earlier answers: you said you are a **$var.role.label**. This question focuses on the text and dims the rest.",
               "focus": ["unit.text"],
               "focusDim": true,
               "options": [
@@ -304,7 +297,8 @@
                   "color": "#f44336"
                 }
               ]
-            }
+            },
+            "instruction": "A nominal question: pick one option. Options can have their own colours. Texts can use earlier answers: you said you are a **$var.role.label**. This question focuses on the text and dims the rest."
           },
           {
             "type": "question",
@@ -313,7 +307,6 @@
               "type": "nominal",
               "multiple": true,
               "question": "Which topics does this article discuss? Select all that apply.",
-              "instruction": "With multiple: true, a nominal question lets you pick several options.",
               "options": [
                 {
                   "value": "usability",
@@ -336,7 +329,8 @@
                   "label": "Journalism"
                 }
               ]
-            }
+            },
+            "instruction": "With multiple: true, a nominal question lets you pick several options."
           },
           {
             "type": "question",
@@ -344,7 +338,6 @@
             "variable": {
               "type": "span",
               "question": "Label the people, organisations, features and products in the headline and the text.",
-              "instruction": "A span question: select words in the headline or the text and give them a label. You can label as many spans as you like.",
               "fields": ["headline", "text"],
               "options": [
                 {
@@ -368,7 +361,8 @@
                   "color": "#059669"
                 }
               ]
-            }
+            },
+            "instruction": "A span question: select words in the headline or the text and give them a label. You can label as many spans as you like."
           },
           {
             "type": "show_if",
@@ -382,7 +376,6 @@
                 "variable": {
                   "type": "nominal",
                   "question": "Which frame best describes this article?",
-                  "instruction": "You see this question because you said you are an expert. A condition inside the unit loop can use your earlier answers.",
                   "options": [
                     {
                       "value": "innovation",
@@ -413,7 +406,8 @@
                       "label": "Economic consequences"
                     }
                   ]
-                }
+                },
+                "instruction": "You see this question because you said you are an expert. A condition inside the unit loop can use your earlier answers."
               }
             ]
           },
@@ -429,7 +423,6 @@
                 "variable": {
                   "type": "numeric",
                   "question": "How useful would the feature in this article be for your own work?",
-                  "instruction": "You see this because you are interested in technology. A numeric question with a small range shows a button per value.",
                   "min": 0,
                   "max": 10,
                   "labels": [
@@ -442,7 +435,8 @@
                       "label": "very useful"
                     }
                   ]
-                }
+                },
+                "instruction": "You see this because you are interested in technology. A numeric question with a small range shows a button per value."
               }
             ]
           }

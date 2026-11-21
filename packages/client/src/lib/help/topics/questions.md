@@ -72,26 +72,39 @@ this and says what is wrong, e.g. _'topic' is asked after this point_. More
 in [Layout templates](layout-templates.md) and
 [Referring to answers and unit data](references.md).
 
+A short question of one paragraph (up to about 150 characters, like the
+example above) is shown as a heading. Anything longer, or with headings,
+lists or several paragraphs, is shown as you write it: style it with
+markdown, for instance a heading for the question and a paragraph of
+explanation under it.
+
 Keep the first line short: coders' **Navigation** menu lists questions by
 the first line of their text (see
 [What coders see](coder-experience.md#the-top-bar)).
 
-## The instruction
+## Instructions
 
-**Instruction (optional)** is shown under the question text, in smaller
-grey text. It is a template like the question text. Use it for a short
-reminder that coders need while answering: what counts, what doesn't, what
-to do in doubt.
+A question in a unit loop can have an **Instruction (optional)**: how to
+apply the question to units, for coders to look up while coding. What
+counts, what doesn't, what to do in doubt. It is a template like the
+question text, and can be as long as you need (it is your codebook text for
+this question).
 
 ```text
 Question:     What is the main topic of this article?
 Instruction:  The topic the article spends most words on. Ignore topics
-              mentioned only in passing.
+              mentioned only in passing. With two equal topics, choose
+              the first one mentioned.
 ```
 
-The instruction is shown under the question every time it comes up.
-Long instructions are better placed before the coding starts, for example
-as a **Confirm** question (see [Confirm](confirm.md)).
+Coders open it with the **?** button by the question, or the **?** key; it
+opens in a window over the question. Until a coder opened it once, a dot on
+the button points it out. Under **Also opens by itself** it can open on its
+own: the first time a coder gets the question, or on
+[practice units](special-units.md).
+
+Questions outside unit loops have no instruction: they are asked once, so
+write everything coders need in the question text itself.
 
 ## Focus on
 

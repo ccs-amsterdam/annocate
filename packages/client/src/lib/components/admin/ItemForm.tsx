@@ -8,6 +8,7 @@ import {
   type SetGroupResponse,
   type DesignIssue,
   type EndItem,
+  type InLoopQuestionItem,
 } from "@annotinder/contracts";
 import { cn } from "cn";
 import { UnitLoopForm } from "./UnitLoopForm";
@@ -173,6 +174,9 @@ export function ItemForm({
             setColumns={groups.map((g) => g.name)}
             onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
           />
+          {isInsideLoop && "variable" in item && item.type === "question" && (
+            <InstructionFields item={item as InLoopQuestionItem} onChange={(next) => onChange(next as DesignItem)} />
+          )}
           {isInsideLoop && loopNames && (
             <FocusSelect
               variable={item.variable}
@@ -181,7 +185,9 @@ export function ItemForm({
             />
           )}
           {/* Reference problems in the question and instruction texts, and others about the answer type */}
-          <IssueList issues={issuesAt(validationIssues, "variable")} />
+          <IssueList
+            issues={[...issuesAt(validationIssues, "variable"), ...issuesAt(validationIssues, "instruction")]}
+          />
         </>
       )}
 
@@ -402,6 +408,62 @@ function FocusSelect({
         {spanDefault ? "By default the fields it selects in. " : ""}When this question comes up, the unit scrolls to the
         first and highlights it.
       </p>
+    </div>
+  );
+}
+
+/**
+ * A loop question's instruction (docs/client.md §4 "Questions and
+ * instructions"): how to apply the question to units, which coders open
+ * from the question (? button or key) while coding; optionally it opens by
+ * itself the first time, or on practice units.
+ */
+function InstructionFields({
+  item,
+  onChange,
+}: {
+  item: InLoopQuestionItem;
+  onChange: (item: InLoopQuestionItem) => void;
+}) {
+  const set = (patch: Partial<Pick<InLoopQuestionItem, "instruction" | "instructionOpen">>) => {
+    const next = { ...item, ...patch };
+    if (!next.instruction) {
+      delete next.instruction;
+      delete next.instructionOpen;
+    }
+    if (!next.instructionOpen) delete next.instructionOpen;
+    onChange(next);
+  };
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="flex items-center gap-1.5 text-sm font-medium">
+        Instruction (optional)
+        <HelpButton topic="questions#instructions" label="Help: instructions" />
+      </label>
+      <Textarea
+        value={item.instruction ?? ""}
+        placeholder="How to apply the question to units, to look up while coding (markdown)"
+        onChange={(e) => set({ instruction: e.target.value || undefined })}
+      />
+      <span className="text-[11px] text-muted-foreground">
+        Coders open it with the ? button by the question, or the ? key; a dot points it out until they did.
+      </span>
+      {item.instruction && (
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          Also opens by itself
+          <select
+            className="h-7 rounded-md border border-input bg-background px-2 text-xs"
+            value={item.instructionOpen ?? ""}
+            onChange={(e) =>
+              set({ instructionOpen: (e.target.value || undefined) as InLoopQuestionItem["instructionOpen"] })
+            }
+          >
+            <option value="">No</option>
+            <option value="first">The first time a coder gets the question</option>
+            <option value="practice">On practice units</option>
+          </select>
+        </label>
+      )}
     </div>
   );
 }
