@@ -5,30 +5,24 @@ order: 7
 summary: Units every coder codes (overlap), units with a known answer checked silently (gold) or with feedback (practice) - written in your CSV, or made in AnnoTinder.
 ---
 
-Three values of a [set column](sets.md) have a special meaning. Every unit
-loop mixes them in with each coder's own units, wherever the units come
-from (all units, a coder's own, or a condition's). On the loop's **Units**
-tab, each has a row with how many there are and where they go: **Spread
-through them** (the default), **Before them**, **After them** or **Leave
-out** (see [Overlap](overlap.md#placement)):
+Three values of a [set column](sets.md) are special. Every loop mixes them
+in with each coder's units; the loop's **Units** tab has a row for each
+with **Spread through them** (default), **Before them**, **After them** or
+**Leave out** (see [Overlap](overlap.md#placement)).
 
-| Set         | Its units                                                | Coders notice                       |
-| ----------- | -------------------------------------------------------- | ----------------------------------- |
-| `_overlap`  | coded by every coder: to compare coders (reliability)    | nothing                             |
-| `_gold`     | have a known answer: coders are checked silently         | nothing, unless they fail (below)   |
-| `_practice` | have a known answer: coders are told when they are wrong | feedback per question, answer again |
+| Set         | Its units                                          | Coders notice                    |
+| ----------- | -------------------------------------------------- | -------------------------------- |
+| `_overlap`  | coded by every coder, for reliability              | nothing                          |
+| `_gold`     | known answer, checked silently                     | nothing, unless they fail        |
+| `_practice` | known answer, coders told when wrong               | feedback, answer again           |
 
-Keep each unit in at most one of them: a gold unit that is also an overlap
-unit is checked twice, and a practice unit tells coders the answer.
+Keep each unit in one of them only.
 
 ## Write them in your units
 
-The most direct way: a **set column** in your CSV (see
-[Set columns](sets.md#a-sets-column-in-your-csv)), and a column
-with the right answer for each question you check. The right answer to the
-question `sentiment` goes in the column `sentiment_gold` (gold units) or
-`sentiment_practice` (practice units); a practice unit's own feedback in
-`sentiment_practice_message`:
+A set column in your CSV plus a column with the right answer per checked
+question: `sentiment_gold` or `sentiment_practice`, and optional feedback
+in `sentiment_practice_message`:
 
 ```text
 id,text,part,sentiment_gold,sentiment_practice,sentiment_practice_message
@@ -39,71 +33,51 @@ a4,The factory closed.,_gold,negative,,
 a5,A new park opens.,_practice,,positive,It is good news for the neighbourhood.
 ```
 
-Upload it and choose **set** as the type of the `part` column. Coders never
-get the answer columns: the Units page shows them as _server only_.
+Give `part` the type **set**. Coders never get the answer columns
+(_server only_).
 
-## Or let AnnoTinder make them
+## Or make them in AnnoTinder
 
-- **Overlap**: **Make the column…** in the Coder invitations, or **Fill a
-  set column** on the Units tab, with an overlap of, say, 10%, sets aside a
-  random `_overlap` part. See [Overlap](overlap.md).
-- **Gold and practice units**: give units the value `_gold` or `_practice`
-  in a set column (select them on the Units tab and **Put in**).
-- **Right answers**: in the unit loop's **Units** tab, under **Gold units**
-  or **Practice units**, tick the questions to check, and click **Create gold values…**
-  (or **Write practice answers…**). It goes through the units with the
-  loop's layout: choose the right answer, and for practice units, a message.
-  Like any change to units, the answers are a draft until you deploy them.
+- **Overlap**: **Make the column…** or **Fill a set column** with an
+  overlap.
+- **Gold and practice units**: select units on **Units** → **Put in**
+  `_gold` or `_practice`.
+- **Right answers**: on the loop's **Units** tab, under **Gold units** or
+  **Practice units**, tick the questions and click **Create gold values…**
+  or **Write practice answers…**: step through the units and pick the right
+  answer (and a message). Drafts until deployed.
 
 ## Right answers
 
-A cell holds the right answer to one question:
+| Cell                | Right when the answer is            |
+| ------------------- | ----------------------------------- |
+| `positive`          | this option                         |
+| `a;b`               | exactly these options (several answers) |
+| `positive\|neutral` | any of them                         |
+| `3..5`              | a number (or ordered value) from 3 to 5 |
 
-| Cell                | Right when the answer is                                         |
-| ------------------- | ---------------------------------------------------------------- |
-| `positive`          | exactly this option                                              |
-| `a;b`               | exactly these options together (a question with several answers) |
-| `positive\|neutral` | any of them                                                      |
-| `3..5`              | a number from 3 to 5                                             |
-
-An empty cell: the unit isn't checked for that question. Deploying warns
-about units without answers and answers that can never be right: a value
-that isn't an option (or, for a number question, not a number), or a range
-(`lo..hi`, for numbers and ordered options like a 1-5 scale) with no option
-in it or outside the question's min and max. Numbers compare as numbers
-(`3` matches 3.0).
+Empty: not checked. Deploying warns about units without answers and
+answers that can never be right.
 
 ## Practice units
 
-Place the **Practice units** in the loop **Before them** (a practice round,
-recommended; the setup wizard does this), spread through the coder's units,
-or after them. Under **Practice units: questions with feedback when a coder
-answers wrong**, tick the questions to check. For the questions ticked, each answer is checked as it is given: a wrong one shows the unit's
-own message, else the loop's **Message when wrong**, else the expected
-answer, right with the question, and the coder answers again until right.
-Untick **Answer again until right** to let them go on after the message
-instead. A right answer shows a short check. How many tries each question
-took is in the export (`timings.csv`, `practice_tries`).
+Best placed **Before them**, as a practice round. Tick the questions under
+**Practice units: questions with feedback when a coder answers wrong**. A
+wrong answer shows the unit's message, else the loop's **Message when
+wrong**, else the expected answer, and the coder answers again (untick
+**Answer again until right** to let them go on). Tries are in
+`timings.csv` (`practice_tries`).
 
-Practice units come with their answers, so a coder who looks behind the
-scenes can find them; that's fine for practice. Gold answers never leave
-the server.
-
-A layout or question can show something on practice units only:
-`$unit._practice` is true there (e.g. `::: if $unit._practice`). A
-question's instruction can be shown **only on practice units**, or only the
-first time a coder sees the question.
+`$unit._practice` is true on practice units (`::: if $unit._practice`). A
+question's [instructions](questions.md#instructions) can open by
+themselves on practice units. Practice answers reach the browser; gold
+answers never do.
 
 ## Gold units
 
-Gold units are spread through the coder's units by default. Under **Gold
-units: questions checked silently**, tick the questions to check. Coders see
-nothing: gold units look like any other. With **End the session when a coder
-answers too many wrong**, every coder starts with a _health_ (e.g. 5) that
-goes down per wrong answer (e.g. by 1), and up per right one if you like
-(never above the start). At 0 the session ends at an
-[end item](end-items.md) with the outcome _screen-out_: its message and
-redirect apply.
-
-The answers to gold units are in the results like any other, so you can
-also compute coders' accuracy afterwards.
+Tick the questions under **Gold units: questions checked silently**. With
+**End the session when a coder answers too many wrong**, coders start with
+a _health_ (e.g. 5) that drops per wrong answer (and optionally rises per
+right one); at 0 the session ends as screened out, at an
+[end item](end-items.md). Gold answers are in the results, for accuracy
+afterwards.

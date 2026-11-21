@@ -5,55 +5,37 @@ order: 2
 summary: What a question item is - its name, its text and instruction, where it goes in the design, and its answer type.
 ---
 
-A **question** is an item that coders answer. Every question has a
-**name**, a **question text**, an optional **instruction**, and an
-**answer type** that decides how coders answer and what is stored. You add
-one with the **+** in the design tree (see
-[The design editor](design-editor.md#adding-items)), and edit it in the
-form on the right.
+Add a question with the **+** in the tree (see
+[The design editor](design-editor.md#adding-items)). It has a **name**, a
+**question text**, an **answer type** and, in a unit loop, optional
+**instructions**.
 
 ## The name
 
-**Item Name** is how AnnoTinder knows the question. It is:
+**Item Name** is the question's column in the results and how other parts
+refer to it (`$var.topic`, see
+[Referring to answers and unit data](references.md)).
 
-- the **column name** in your results (`annotations.csv` or `coders.csv`);
-- how other parts of the design **refer** to the answer: `$var.topic`
-  in a text, a layout or a condition (see
-  [Referring to answers and unit data](references.md)).
+- letters, digits and `_` only (`topic`, `q3_actor`); at most 128
+  characters;
+- unique in the design, including end items.
 
-Rules:
-
-- letters, digits and `_` only: `topic`, `tone_headline`, `q3_actor`. No
-  spaces, dashes or accents;
-- at most 128 characters;
-- unique in the whole design, including end items. A second `topic`
-  gives the issue _Duplicate name 'topic'_.
-
-Choose short names that say what the question measures, as you would name
-variables in R or SPSS: `tone`, not `question_4`. Names that start with a
-letter are easiest to use in R and Python.
+Use short names that say what is measured: `tone`, not `question_4`.
 
 ### Renaming is a new question
 
-Answers are stored under the question's name. While you are still writing
-the design, rename freely. Once coders have answered, a new name is a new
-question: answers given under the old name stay in the data under the old
-name, coders are asked the "new" question again, and units they finished
-count as unfinished. Change the **question text** instead if you only
-want other wording. See
+Answers are stored under the name. Once coders answered, a new name is a
+new question: old answers stay under the old name, coders are asked again,
+and finished units count as unfinished. To change only the wording, edit
+the question text. See
 [Changing a design while coding runs](changing-a-live-design.md).
 
 ## The question text
 
-**Question** is what coders read above the answers. It is a template, like
-a unit's layout:
-
-- **markdown**: `**bold**`, `*italic*`, lists and links work;
-- **answers to earlier questions**: `$var.role.label` is filled in with the
-  coder's answer to `role`;
-- in a unit loop, also **the unit's data**: `$unit.headline`, and the
-  loop's [snippets](snippets.md);
-- `{{ ... }}` for a small [script](scripts.md), if you need one.
+**Question** is what coders read above the answers. It is a template:
+markdown, earlier answers (`$var.role.label`), in a loop the unit's data
+(`$unit.headline`) and [snippets](snippets.md), and `{{ }}`
+[scripts](scripts.md).
 
 ```example
 unit:
@@ -65,91 +47,59 @@ You said you are a **$var.role.label**.
 Is *$unit.headline* about politics?
 ```
 
-Try both answers to `role` above. A question can only refer to questions
-that come **before** it (it can't refer to itself, or to a question asked
-later), and only a question in a loop can use `$unit`. The editor checks
-this and says what is wrong, e.g. _'topic' is asked after this point_. More
-in [Layout templates](layout-templates.md) and
-[Referring to answers and unit data](references.md).
+A question can only use questions asked **before** it, and only questions
+in a loop can use `$unit`; the editor says when something is wrong.
 
-A short question of one paragraph (up to about 150 characters, like the
-example above) is shown as a heading. Anything longer, or with headings,
-lists or several paragraphs, is shown as you write it: style it with
-markdown, for instance a heading for the question and a paragraph of
-explanation under it.
-
-Keep the first line short: coders' **Navigation** menu lists questions by
-the first line of their text (see
-[What coders see](coder-experience.md#the-top-bar)).
+A short one-paragraph question (up to about 150 characters) is shown as a
+heading; longer texts are shown as written. Keep the first line short: the
+coder's menu lists questions by it.
 
 ## Instructions
 
 A question in a unit loop can have an **Instruction (optional)**: how to
-apply the question to units, for coders to look up while coding. What
-counts, what doesn't, what to do in doubt. It is a template like the
-question text, and can be as long as you need (it is your codebook text for
-this question).
+apply the question, for coders to look up while coding. It is your
+codebook text for this question, as long as needed.
 
 ```text
 Question:     What is the main topic of this article?
 Instruction:  The topic the article spends most words on. Ignore topics
-              mentioned only in passing. With two equal topics, choose
-              the first one mentioned.
+              mentioned in passing. With two equal topics, choose the
+              first one mentioned.
 ```
 
-Coders open it with the **?** button by the question, or the **?** key; it
-opens in a window over the question. Until a coder opened it once, a dot on
-the button points it out. Under **Also opens by itself** it can open on its
-own: the first time a coder gets the question, or on
+Coders open it with the **?** button by the question or the **?** key. A
+dot marks the button until it was opened once. **Also opens by itself**:
+the first time a coder gets the question, or on
 [practice units](special-units.md).
 
-Questions outside unit loops have no instruction: they are asked once, so
-write everything coders need in the question text itself.
+Questions outside loops have no instruction: write everything in the
+question text.
 
 ## Focus on
 
-For a question in a unit loop, **Focus on (optional)** picks the parts of
-the unit the question is about: when the question comes up, the unit
-scrolls to the first and highlights it briefly, and with **Dim the rest of
-the unit** everything else fades back. Use it when units are long and each
-question is about a different part, such as the headline for one question
-and a table for the next. The list offers what the loop's layout shows, by
-id: `unit.headline` for `$unit.headline`, or a named block (see
-[Typed blocks and names](typed-blocks.md#ids)). A span question focuses on
-the fields it selects in unless you choose otherwise.
+For a loop question, **Focus on (optional)** picks the part of the unit
+the question is about: the unit scrolls there and highlights it; **Dim the
+rest of the unit** fades the rest. The list offers what the layout shows
+(`unit.headline`, or a named block, see
+[Typed blocks and names](typed-blocks.md#ids)).
 
 ## Where a question goes
 
-Where you put a question in the tree decides how often it is asked:
+| Where              | Asked                         | Results                                    |
+| ------------------ | ----------------------------- | ------------------------------------------ |
+| A Questions block  | once per coder                | `coders.csv`: a row per coder              |
+| A unit loop        | once per unit                 | `annotations.csv`: a row per unit and coder |
+| Inside a Show if   | only when the condition holds | as above; empty when skipped               |
 
-| Where               | Asked                                                                           | Answers end up in                           |
-| ------------------- | ------------------------------------------------------------------------------- | ------------------------------------------- |
-| Outside a unit loop | once per coder                                                                  | `coders.csv`: a row per coder               |
-| Inside a unit loop  | once per unit, for every unit the coder gets                                    | `annotations.csv`: a row per unit and coder |
-| Inside a condition  | only when the condition holds; otherwise skipped, and left empty in the results | as above                                    |
-
-Questions outside a loop are for things about the coder:
-consent, background questions, a check of the instructions, an
-experimental manipulation. Questions in a loop are about the unit: its
-topic, tone, actors.
-
-Order matters too. Coders meet the items from top to bottom, and texts,
-layouts and conditions can only use answers to questions that come earlier.
-A question in one loop can't be used in another loop: each loop's answers
-belong to its units.
+Texts, layouts and conditions can only use earlier answers, and a loop's
+answers can't be used in another loop.
 
 ## The answer type
 
-**Answer Type** decides how coders answer and what is stored: categories,
-ordered categories, a number, a scale of items, a swipe, a confirm button,
-an assigned value, or selected text. The list only shows the types that
-fit where the question is: **Auto** only outside loops, **Span** and
-**Relation** only inside them. Below **Answer Type** the form shows the
-settings of that type, such as its options.
+A new question asks you to **choose an answer type**: categories, ordered
+options, a number, a scale, swipe, confirm, and in a loop also mark text
+and relations. Its settings appear below. See
+[Choosing a question type](question-types.md).
 
-See [Choosing a question type](question-types.md) for all types and when to
-use which.
-
-Changing the answer type keeps the question text and instruction. Between
-nominal and ordinal the options are kept too; to any other type, the other
-settings start from that type's defaults.
+Changing the type keeps the question text; between categories and ordered
+options the options are kept too.

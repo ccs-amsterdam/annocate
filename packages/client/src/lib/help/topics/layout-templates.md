@@ -5,23 +5,17 @@ order: 2
 summary: How a unit is shown to coders - one markdown text with the unit's data filled in.
 ---
 
-Every unit loop has a **layout**: the text coders see above the questions, for
-each unit. You find it on the loop's **Layout** tab in the design editor.
+A unit loop's **Layout** tab sets what coders see of each unit, above the
+questions.
 
-Most layouts are a title, a byline and a body: the Layout tab starts as an
-empty sketch of a document, with the unit fields beside it. Click a place
-(title, byline, body) to choose a field for it, drag a field onto a place,
-or click a field to add it to the body. The title and byline take one field
-each; the body any number, in order (move them up or down, or drag them). Behind the form is a
-template, and **Advanced** opens it: write it yourself for anything more
-(styles, blocks, conditions, snippets). A template that is more than a
-title, byline and body stays in the template editor.
+**The simple way**: a sketch with a **Title**, **Byline** and **Body**.
+Click a place to choose a field, drag a field onto it, or click a field to
+add it to the body.
 
-The template is written once, and AnnoTinder fills in each unit's data.
-
-The template is [markdown](https://commonmark.org/help/), the plain-text format
-for headings, bold text, lists and links, with **values** in it: places where
-something is filled in, such as a column of your units.
+**The template**: **Advanced** opens the template behind the sketch, for
+anything more (styles, conditions, snippets). It is
+[markdown](https://commonmark.org/help/) with **values** filled in per
+unit:
 
 ```example
 unit:
@@ -36,23 +30,19 @@ unit:
 $unit.text
 ```
 
-This and the other examples in the help are live: change the template and see
-what coders would see. Try adding `**Source:** $unit.source` on a new line.
+The examples in the help are live: edit the template and see the result.
 
 ## Values
 
-There are three kinds of values:
+| Write              | Filled in                                                       |
+| ------------------ | --------------------------------------------------------------- |
+| `$unit.headline`   | the unit's field `headline`                                     |
+| `$unit.id`         | the unit's id                                                   |
+| `$var.topic.label` | an earlier answer (see [Referring to answers and unit data](references.md)) |
+| `{{ ... }}`        | a small script (see [Scripts](scripts.md))                      |
 
-| Write              | What is filled in                                                                                    |
-| ------------------ | ---------------------------------------------------------------------------------------------------- |
-| `$unit.headline`   | The unit's `headline` field: a column of the units you uploaded                                      |
-| `$unit.id`         | The unit's id (the column whose type was **unit id** when you uploaded)                              |
-| `$var.topic.label` | The coder's answer to the question `topic` (see [Referring to answers and unit data](references.md)) |
-| `{{ ... }}`        | The result of a small script, for anything else (see [Scripts](scripts.md))                          |
-
-The editor helps you: type `$` and it lists the unit fields and questions you
-can use. Fields that don't exist in the study's units are marked with a warning,
-so a typo doesn't go unnoticed.
+Type `$` for a list of what you can use. Unknown fields get a warning.
+Empty values show nothing; `\$unit.headline` shows the text itself.
 
 ```example
 unit:
@@ -66,17 +56,11 @@ This article was liked $unit.likes times and shared $unit.shares times,
 {{ $unit.likes + $unit.shares }} reactions in total.
 ```
 
-A value that is empty (a missing field, or a question that isn't answered)
-shows nothing. To write a dollar sign followed by a name, write `\$`:
-`\$unit.headline` shows `$unit.headline`.
-
 ## Text is shown as text
 
-A value is shown **exactly as it is in the data**. If the text of a unit
-contains `**`, `#` or `<b>`, coders see those characters: they are not read as
-markdown or HTML. That is almost always what you want for research material:
-what coders see is what is in your data, character for character, and texts
-with odd characters (code, tweets with `*` and `#`) can't break the layout.
+A value is shown **exactly as in your data**: `**`, `#` or `<b>` in a
+unit's text are shown as characters, not as markdown or HTML. Coders see
+what is in your data, and odd characters can't break the layout.
 
 ```example
 unit:
@@ -87,14 +71,11 @@ $unit.text
 
 ## Suffixes: showing a value as something else
 
-When a field _does_ contain markdown, an image link or HTML, add a **suffix**
-after the value to say how to show it:
-
-| Suffix       | Shows the value as                                      |
-| ------------ | ------------------------------------------------------- |
-| `::text`     | Plain text. The default, so you never need to write it  |
-| `::markdown` | Markdown: `**bold**` becomes **bold**                   |
-| `::image`    | An image: the value is the image's URL                  |
+| Suffix       | Shows the value as                                     |
+| ------------ | ------------------------------------------------------ |
+| `::text`     | plain text (the default)                               |
+| `::markdown` | markdown                                               |
+| `::image`    | an image from the URL in the value                     |
 | `::html`     | HTML, in a safe frame (see [HTML in a layout](html.md)) |
 
 ```example
@@ -111,45 +92,24 @@ $unit.body::markdown
 $unit.photo::image
 ```
 
-> Images come from wherever their URL points to. Use URLs that stay
-> available for as long as the study runs.
+Use image URLs that stay available while the study runs. After a script,
+the suffix goes after the braces: `{{ ... }}::markdown`.
 
-A suffix also works after a script: `{{ $unit.text.toUpperCase() }}::markdown`.
-It goes _after_ the closing `}}`, never inside it.
+## Markdown in the template
 
-## Markdown in the template itself
-
-Everything around the values is ordinary markdown, so you can structure the
-unit as you like:
-
-- `# Heading`, `## Smaller heading`
-- `**bold**` and `*italic*`
-- lists with `-` or `1.`
-- `> quoted text`
-- links: `[the source]($unit.url)`. Values work inside link addresses too
-- tables, with `|` between the cells
-- `---` on its own line for a horizontal line
-
-A value that stands alone on its line becomes a paragraph of its own; a value
-inside a sentence stays part of that sentence.
+Around the values: `# Heading`, `**bold**`, `*italic*`, lists, `> quotes`,
+links (`[the source]($unit.url)`), tables, and `---` for a line. A value
+alone on its line is a paragraph; inside a sentence it stays in the
+sentence.
 
 ## Beyond values
 
-The template can do more than fill in values. Each has its own page:
-
-- [Show parts conditionally](template-blocks.md): `::: if` shows text only to
-  some coders or for some units, `::: from` changes the unit as the coder goes
-  through its questions.
-- [Colours and styles](colours-and-styles.md): `::: style` for font sizes,
-  colours and boxes, and a fixed light or dark look.
-- [Snippets](snippets.md): name a piece of the template and reuse it.
-- [Typed blocks and names](typed-blocks.md): show a larger piece as markdown
-  or HTML, and name it so span questions can select in it.
+- [Showing parts conditionally](template-blocks.md): `::: if` and
+  `::: from`.
+- [Colours and styles](colours-and-styles.md): `::: style`.
+- [Snippets](snippets.md): reusable pieces.
+- [Typed blocks and names](typed-blocks.md): larger pieces as markdown or
+  HTML, named for questions.
 
 The **Insert** menu above the template writes most of these for you.
-
-## Questions in a loop use the same syntax
-
-Question and instruction texts are templates too. In a loop they can use the
-unit's data, so a question can say *"Is **$unit.headline** about politics?"*.
-Outside a loop there is no unit, so texts can only use answers (`$var`).
+Question texts use the same syntax.

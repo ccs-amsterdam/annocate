@@ -5,21 +5,14 @@ order: 7
 summary: Show prepared HTML - tables, formatted articles, mock social media posts - in a safe frame.
 ---
 
-Markdown covers most layouts: headings, bold text, lists, quotes, simple
-tables. Some material needs more: a table with merged cells, an article
-scraped from a news site with its own formatting, or a mock social media post
-for a survey experiment. For that, a layout can show **HTML**, the language
-of web pages.
-
-AnnoTinder shows HTML only where you ask for it, and always in a sealed
-frame, a **sandbox**: whatever the HTML contains, it can't reach the coder's
-session, the rest of the page or the internet. That makes it safe to show
-HTML from data you didn't write yourself.
+For material markdown can't do (tables with merged cells, scraped
+articles, a mock social media post), a layout can show **HTML**. It is
+always shown in a sealed frame, a **sandbox**: it can't reach the coder's
+session, the page or the internet, so HTML from your data is safe.
 
 ## Two ways to show HTML
 
-**HTML from your data.** When a unit field contains HTML, add the suffix
-`::html` to its value:
+**HTML from your data**: add `::html` to the value:
 
 ```example
 unit:
@@ -30,12 +23,11 @@ unit:
 $unit.table::html
 ```
 
-Without the suffix, coders would see the HTML code itself (see
+Without it, coders see the code (see
 [Text is shown as text](layout-templates.md#text-is-shown-as-text)).
 
-**HTML you write.** A `::: html` block shows its content as HTML, with the
-unit's values put in. **Insert** › **HTML block** writes one for you. This
-mock post is the same for every unit, with each unit's data filled in:
+**HTML you write**: a `::: html` block (**Insert** › **HTML block**), with
+the unit's values put in:
 
 ```example
 unit:
@@ -53,67 +45,29 @@ unit:
 :::
 ```
 
-Inside a `::: html` block, values are put in as they are: a value that
-contains `<b>` makes bold text, and a `<` or `&` in ordinary text can be read
-as HTML. That is what you want for prepared HTML; for raw texts, show them
-outside the block, where they are always shown as text.
-
-Put `::html` values and `::: html` blocks on lines of their own: each is
-shown as a frame of its own, the full width of the unit. A block can have a
-name (`::: html scores`), so that a question can **Focus on** it
+Inside the block values are put in as they are (`<b>` makes bold; a `<` in
+plain text may be read as HTML). Each frame is on its own line, full
+width. A named block (`::: html scores`) can be a question's **Focus on**
 (see [Typed blocks and names](typed-blocks.md)).
 
 ## What the sandbox doesn't allow
 
-The frame is sealed off from everything else. That has consequences for what
-HTML can do:
-
-| In the HTML                                    | In the frame                                                                      |
-| ---------------------------------------------- | --------------------------------------------------------------------------------- |
-| `<script>` and `onclick="..."`                 | Don't run: only AnnoTinder's own script, which sizes the frame, runs              |
-| Images from the web: `<img src="https://...">` | Don't load: only images included in the HTML itself, as `data:` URLs              |
-| Stylesheets and fonts from the web             | Don't load: use `<style>` and `style="..."` in the HTML, and fonts the device has |
-| Forms and buttons                              | Can't send anything                                                               |
-| Links                                          | Can't open new windows or leave the coding screen                                 |
-
-The HTML also can't see the coder's answers, their session or anything else
-in AnnoTinder, and nothing is sent anywhere.
-
-For an image from the web, show it outside the HTML, with
-`$unit.photo::image` (see [Layout templates](layout-templates.md)).
+| In the HTML                         | In the frame                                      |
+| ----------------------------------- | ------------------------------------------------- |
+| `<script>`, `onclick="..."`         | don't run                                         |
+| images from the web                 | don't load (only `data:` URLs); use `$unit.photo::image` outside |
+| stylesheets and fonts from the web  | don't load; use `<style>` and `style="..."`       |
+| forms, buttons, links               | can't send anything or leave the coding screen    |
 
 ## How the frame looks
 
-The frame is as wide as the unit, and as tall as its content: it grows when
-the content does. (Very long content is cut off after 8000 pixels.)
+- As wide as the unit, as tall as its content (cut off after 8000 pixels).
+  Wider content is cut off: use `max-width: 100%`, and check **Mobile**.
+- A plain style close to AnnoTinder's, which your CSS overrides.
+- Text colours follow light or dark, on a transparent background. HTML
+  with its own colours should set its own background, or set **Display** →
+  **Light or dark** (see [Light or dark](colours-and-styles.md#light-or-dark)).
+- A `::: style` block around it doesn't reach inside.
 
-The frame is a page of its own. It starts with a plain style close to
-AnnoTinder's, which your HTML's own CSS overrides:
-
-- **Fonts**: AnnoTinder's font if the coder's device has it, else the
-  device's own sans-serif font.
-- **Light and dark**: the text colour, link colour and table borders follow
-  the coder's light or dark mode (or the loop's **Colours**, see
-  [Light or dark](colours-and-styles.md#light-or-dark)), and the background
-  is transparent. HTML that sets its own colours keeps them: give it its own
-  background too, or set **Colours** to **Always light**.
-- **Width**: content wider than the unit is cut off, not scrolled. Use
-  `max-width: 100%` on images and tables, and check the layout in the
-  **Mobile** preview.
-- **Styles from the template**: a `::: style` block around the HTML doesn't
-  reach inside the frame. Style the HTML itself.
-
-## When to use HTML
-
-HTML is useful for material that is prepared outside AnnoTinder and must look
-exactly so:
-
-- tables with merged cells, colours or alignment that markdown can't do;
-- articles scraped from websites, with their formatting;
-- stimuli that imitate a platform, such as a post, a search result or an
-  advertisement, in experiments;
-- score cards and other small designs built from a unit's numbers.
-
-Prefer markdown when it can do the study. Markdown follows the coder's light
-or dark mode and the app's fonts, fits phone screens by itself, and its text
-can be selected by [span questions](span.md): text in a frame can't.
+Prefer markdown when it can do the job: it follows the theme, fits phones,
+and [span questions](span.md) can select in it.

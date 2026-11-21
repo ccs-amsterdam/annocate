@@ -5,127 +5,75 @@ order: 7
 summary: What happens to finished units, units in progress and earlier answers when you deploy a new design version during a study, and how to change things safely.
 ---
 
-You can keep improving a design after coders started: edit the draft and
-deploy it (see [Preview, save and deploy](previewing-and-publishing.md)).
-Nothing coders answered is ever overwritten or deleted. But some changes
-affect the units coders already finished, or what earlier answers mean.
-This page says what each kind of change does, so you can decide before you
-deploy.
+You can deploy a new version while coders work. Nothing they answered is
+overwritten. Two rules explain the effects:
 
-Two rules explain most of it:
-
-- **Answers are stored per question name**, together with the design
-  version they were given under. A new version doesn't touch them.
-- **A unit counts as finished when every question of its loop has an
-  answer** in the _current_ version (a question a condition hid counts as
-  answered: it is stored as skipped). Add a question, and units finished
-  before lack its answer.
+- **Answers are stored per question name**, with the design version.
+- **A unit is finished when every question of its loop has an answer** in
+  the current version (skipped counts). Add a question and finished units
+  lack it.
 
 ## What each change does
 
-| Change                                              | Units coders already finished                                                                                                                         | The unit a coder has open, and units still to come |
-| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| **Question added** to a loop                        | Unfinished again: coders get them back, with their earlier answers, and only answer what is new                                                       | The new question is asked                          |
-| **Question added** outside a loop                   | (not about units) Coders are asked it once they switch to the new version, before they continue                                                       | Asked                                              |
-| **Question removed**                                | Their answers stay in the data (and in the download), but the question is no longer asked                                                             | Not asked                                          |
-| **Option value** removed or changed                 | Stay finished. Answers with the old value stay in the data, but no longer fit the question: a coder who goes back to such a unit must answer it again | Only the current options                           |
-| **Option label** changed                            | Nothing changes: answers hold values, not labels                                                                                                      | Coders see the new label                           |
-| **Answer type** changed                             | As a removed value: earlier answers no longer fit                                                                                                     | The new type                                       |
-| **Question renamed**                                | As removing the old question and adding a new one: units are unfinished again                                                                         | Asked under the new name                           |
-| **Question text, instruction or layout** changed    | Stay finished                                                                                                                                         | Coders see the new text                            |
-| **Conditions or order** changed                     | Stay finished                                                                                                                                         | Follow the new design                              |
-| **Distribution** changed (the loop's **Units** tab) | A coder's units follow the new settings; the units they already coded stay theirs (they can go back to them)                                          | The new rules apply                                |
+| Change                                   | Units already finished                                         | Units to come             |
+| ---------------------------------------- | -------------------------------------------------------------- | ------------------------- |
+| **Question added** to a loop             | unfinished again: coders get them back and answer only the new question | asked             |
+| **Question added** outside a loop        | asked once coders switch to the new version                     | asked                     |
+| **Question removed**                     | answers stay in the data                                        | not asked                 |
+| **Option value** removed or changed      | stay finished; old answers no longer fit (answer again on going back) | current options      |
+| **Option label** changed                 | nothing changes                                                 | new label                 |
+| **Answer type** changed                  | as a removed value                                              | new type                  |
+| **Question renamed**                     | as removing it and adding a new one                             | asked under the new name  |
+| **Text, instruction or layout** changed  | stay finished                                                   | new text                  |
+| **Conditions or order** changed          | stay finished                                                   | new design                |
+| **Units tab** of a loop changed          | coded units stay the coder's                                    | new rules                 |
 
-Units and sets are drafts too: units you upload and sets you make while
-coding runs reach coders once you deploy them, with a design draft or on
-their own (see [Set columns](sets.md)).
-
-The deploy dialog warns about removed option values and changed answer
-types, before you deploy. After deploying, it warns if a loop gained
-questions while coders had finished units in it, with the number of
-codings that are unfinished again.
+Units and sets you change are drafts until deployed (see
+[Set columns](sets.md)). The deploy dialog warns about removed values and
+changed types; afterwards it says how many codings became unfinished.
 
 ### Units that become unfinished again
 
-When a loop gains a question, every unit that coders finished in it lacks
-the new answer, so it counts as unfinished: in the **Overview** progress,
-on the **Coders** tab, and for handing out units.
-
-- In loops where each coder codes all their units, these units come
-  earlier in the
-  coder's order, so they come back first, before new units. The coder sees
-  their earlier answers and only answers the new question.
-- In a shared queue (crowd coding), they go back into the
-  queue, and count again for how many coders a unit still needs. See
-  [Shared queues](shared-queues.md).
-- This also happens when a condition hides the new question for some
-  units: the coder gets the unit back, finds everything answered, and
-  confirms the last answer once more.
-- Coders who already stopped don't come back by themselves. Their units
-  stay unfinished, and the new question stays empty for them in the
-  results.
+They count as unfinished in progress and for handing out units. Coders
+get them back first, see their earlier answers and answer only what is
+new (in a [shared queue](shared-queues.md) they return to the queue).
+Coders who stopped don't come back; the new question stays empty for
+them.
 
 ### Earlier answers in the results
 
-The download keeps every answer that counts (see
-[Downloading results](results.md)):
+Every row of `annotations.csv` has its `design_version` and unit version.
+Removed or renamed questions keep their column, after the current ones.
+Labels are those the coder saw. See [Downloading results](results.md).
 
-- Each row of `annotations.csv` says which design version the answers
-  were given under (`design_version`), and which version of the unit the coder
-  saw.
-- Answers to a question you removed or renamed still have their column,
-  after the columns of the current questions.
-- With **Add label columns**, an answer's label is the one in the version
-  it was given under: what the coder saw.
+## What working coders see
 
-## What coders who are working see
-
-Coders don't need to reload. When their browser next talks to the server,
-they switch to the new version and continue where they were, usually on
-the same unit, with their answers to it as far as they still fit. See
+They switch to the new version when their answers are next saved, and
+continue where they were. See
 [What coders experience when you deploy](previewing-and-publishing.md#what-coders-experience-when-you-deploy).
 
 ## Resetting answers
 
-To have units coded again, for instance after a question changed meaning or
-a coder turned out to misunderstand it, **reset** answers to some
-questions. Reset answers are kept for analysis, but no longer count: the
-units are unfinished again, and coders get them again (the same coders too,
-who see them unanswered).
+To have units coded again (a question changed meaning, a coder
+misunderstood), **reset** answers. They are kept for analysis but no
+longer count: the units are unfinished again, also for the same coders.
 
-Where to reset:
+- **Deploy › Coders** → **Reset answers…**: all coders;
+- the reset icon in a coder's row: that coder;
+- **Design › Units**: select units → **Reset answers…**.
 
-- **Coders** tab, **Reset answers…**: the answers of all coders.
-- **Coders** tab, the reset icon in a coder's row: that coder's answers.
-- **Units** tab: select units, then **Reset answers…**: the answers to
-  those units.
-
-Then choose the questions: all questions of a loop, or some. Only answers in
-unit loops can be reset. To keep the reset answers in your download, tick
-**Include answers that were reset** on the **Results** tab
-(`reset_answers.csv`, see [Downloading results](results.md)).
+Then choose the questions (a whole loop, or some). Only loop answers can
+be reset. To download them, tick **Include answers that were reset** on
+**Results**.
 
 ## Advice
 
-- **Pilot before you deploy to real coders.** Most changes are cheap
-  before anyone codes, and every change during a study is a change in your
-  measurement instrument. Use **Preview**, and a pilot with two or three
-  coders on the same units.
-- **Labels and texts can change; values can't.** Clarifying a label,
-  fixing a typo or adding an example to an instruction is safe. Don't give
-  an existing value a new meaning (turning `economy` into "Economy and
-  finance" changes what earlier `economy` answers mean); add a new option
-  instead. See [Values and labels](design-values-and-labels.md).
-- **Don't rename questions** once coding started. Change the question text
-  instead.
-- **Adding a question costs your coders time**: all their finished units
-  come back. If the new question only matters from now on, consider a new
-  loop or a new study instead.
-- **Write a version note** for every deploy that says what changed and
-  why. Report the changes, and the moment they were made, in your methods
-  section.
-- **Check the warnings** in the deploy dialog. If one surprises you,
-  click **Cancel** and look at the change again. The warning about
-  unfinished units only comes after deploying; to undo that change,
-  restore the previous version as the draft from **Versions** and deploy
-  it. The units then count as finished again, as before.
+- **Pilot first**: changes are cheap before anyone codes.
+- **Labels and texts can change; values can't.** Don't give a value a new
+  meaning; add an option instead. See
+  [Values and labels](design-values-and-labels.md).
+- **Don't rename questions** once coding started.
+- **Adding a question costs coders time**: finished units come back.
+- **Write a version note** and report changes in your methods section.
+- To undo a deploy, **Versions** → **Restore as draft** on the previous
+  version, and deploy it.

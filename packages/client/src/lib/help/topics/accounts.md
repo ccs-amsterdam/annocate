@@ -5,66 +5,46 @@ order: 6
 summary: Users, researchers and admins; how to become a researcher; the limits on what you can store.
 ---
 
-Everyone who logs in to an AnnoTinder server has an account with one of
-three roles. They are about the server as a whole; what someone may do in
-a particular study is their role there (see [Working together](working-together.md)).
+Your role on the server (below) is separate from your role in a study
+(see [Working together](working-together.md)).
 
-| Role           | Can                                                                                                                   |
-| -------------- | --------------------------------------------------------------------------------------------------------------------- |
-| **User**       | Code, and work on studies a researcher gave them a role in (for instance as a student assistant who edits the design) |
-| **Researcher** | Also create studies. The studies you create are yours: they count against your limits                                 |
-| **Admin**      | Also manage the server's users, limits and registration (see [Server admin](server-admin.md))                         |
+| Role           | Can                                                                        |
+| -------------- | -------------------------------------------------------------------------- |
+| **User**       | code, and work on studies where a researcher gave them a role              |
+| **Researcher** | also create studies; they count against your limits                        |
+| **Admin**      | also manage users, limits and registration ([Server admin](server-admin.md)) |
 
-Coders don't need an account at all, unless the study's invitation asks
-them to [sign in](links.md#login). Any coder may sign in to keep their
-session across devices.
+Coders need no account, unless the invitation asks them to
+[sign in](links.md#login).
 
 ## Becoming a researcher
 
 Depending on the server, you are a researcher as soon as you log in (a
-public server, or an email address at your university's domain), or you
-become one:
+public server, or your university's email domain), or when:
 
-- when the server's admins **invite** your email address: log in with it
-  (within 3 months);
-- by **asking**: on the studies page, write who you are and what you want to
-  code. An admin approves the request.
+- an admin **invites** your email address (log in within 3 months); or
+- you **ask** on the studies page and an admin approves.
 
 ## Limits
 
-A server can limit how much a researcher stores: the number of studies you
-own, the units per study and in all your studies, the coders per study, and the
-answers per study. Your limits come from your plan: the server's default,
-your university's (by email domain), or one an admin gave you. The studies page
-shows how many studies and units you use of your limits.
-
-Limits are checked when something is added. When a study reaches one, adding
-more is refused (a unit upload, or a new coder: coders who already started
-go on). Nothing is ever removed because of a limit. Ask the server's admins
-if you need more.
-
-Besides that, every server limits the size of one unit and one answer, so
-a single unit can't fill the server (for example an image pasted into a
-unit as text).
+Your plan can limit the studies you own, units per study and in total,
+coders per study and answers per study. The studies page shows your use.
+When a limit is reached, adding more is refused (coders who started go
+on); nothing is removed. Ask the server's admins for more. Every server
+also limits the size of one unit and one answer.
 
 ## Two-factor authentication
 
-A second factor (such as an authenticator app or a passkey) at your login
-provider protects your studies. You can manage studies without one, but
-some actions need it (below), and so does server admin access. Without
-one, an orange shield shows by your account menu: it links to your login
-provider's page to set one up. Then log in again (a login during which you
-set it up doesn't count yet, so log in once more).
+Set up a second factor (authenticator app, passkey) at your login
+provider. Without one, an orange shield by your account menu links to the
+setup page; log in twice afterwards.
 
-Some actions ask you to confirm it's you (step-up): making or revoking API
-keys, deleting answers, coders' data or a study, and giving or taking admin
-roles. You log in again (your provider may ask for your second factor),
-then do the action once more. API keys can't do these at all.
+Some actions ask you to log in again (step-up): API keys, deleting
+answers, coders' data or a study, and giving or taking admin roles. API
+keys can't do these.
 
 ## Your account is your login
 
-Your account is your login at the login provider, not your email address:
-if your address changes there, you keep your account and studies. When a
-server moves to another login provider, the login page offers the previous
-one for a while; log in with it once and **link** your new login when
-asked, so your account stays yours.
+Your account follows your login, not your email address. When a server
+moves to another login provider, log in once with the old one and
+**link** the new login when asked.

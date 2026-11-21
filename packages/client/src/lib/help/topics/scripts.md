@@ -5,14 +5,10 @@ order: 5
 summary: Small JavaScript expressions in {{ }} and in conditions, for when a plain value or the rules editor isn't enough.
 ---
 
-Most designs never need a script. Values such as `$unit.headline` and
-`$var.topic.label` fill in texts, and the rules editor makes most
-conditions. A **script** is for the rest: a calculation, a shortened text, a
-choice between two sentences, a condition that mixes _and_ and _or_.
-
-A script is one **JavaScript expression**: a formula, like one in a
-spreadsheet cell, that gives a value. In a template you write it between
-double braces, and its result is shown in its place:
+Most designs need no scripts. A **script** is for the rest: a
+calculation, a shortened text, a choice between two sentences, a condition
+that mixes _and_ and _or_. It is one **JavaScript expression**, like a
+spreadsheet formula. In a template, write it between double braces:
 
 ```example
 unit:
@@ -23,42 +19,28 @@ This post was liked $unit.likes times and shared $unit.shares times:
 {{ $unit.likes + $unit.shares }} reactions in total.
 ```
 
-If you know a little JavaScript (or R, or Excel formulas), you will
-recognise most of what follows. If not, the examples below cover the common
-cases; copy and adapt them.
-
 ## Where scripts work
 
-- In templates, as `{{ ... }}`: a loop's layout, question and instruction
-  texts, and end item messages.
-- As the condition of a Show if item, in **Script** mode
-  (see [Conditions](conditions.md#script-mode)).
-- As the condition of a `::: if` block in a template (see
-  [Showing parts conditionally](template-blocks.md)).
+- `{{ }}` in a loop's layout, question and instruction texts, and end item
+  messages;
+- a Show if condition in **Script** mode (see
+  [Conditions](conditions.md#script-mode));
+- a `::: if` block (see [Showing parts conditionally](template-blocks.md)).
 
-Scripts can't be used in redirect links: those take plain references
-only.
+Not in redirect links.
 
 ## What a script can use
 
-A script sees three names, and nothing else:
+- `$unit`: the unit's fields (in a loop);
+- `$var`: answers, as elsewhere (`$var.topic.value`, see
+  [Referring to answers and unit data](references.md)); unanswered is
+  `null` or `[]`;
+- `$session`: session values (see [URL parameters](session-parameters.md));
+- the [helper methods](conditions.md#helper-methods):
+  `$var.age.gte(18)`.
 
-- `$unit`: the current unit's fields (inside a unit loop). Numbers are
-  numbers, text is text.
-- `$var`: the answers, with the same properties as elsewhere:
-  `$var.topic.value`, `$var.topics.labels`, `$var.age.answered` (see
-  [Referring to answers and unit data](references.md)). An unanswered
-  question is `null` (lists: an empty list `[]`).
-- `$session`: the session's values, from its link or URL, such as
-  `$session.coder` (see [URL parameters](session-parameters.md)).
-
-The [helper methods](conditions.md#helper-methods) work in scripts too:
-`$var.age.gte(18)`, `$var.topics.has("sports")`.
-
-As everywhere, names are written out: `$var.topic.value`, not
-`$var["topic"]`. That way the editor can check that every question and
-property you use exists and is asked before the script runs. Any other
-name starting with `$` (`$vars`, `$sesion`) is reported as a mistake.
+Names are written out (`$var.topic.value`, not `$var["topic"]`) so the
+editor can check them.
 
 ## Examples
 
@@ -76,10 +58,8 @@ unit:
 *{{ $unit.text.split(" ").length }} words*
 ```
 
-Useful text methods: `.toUpperCase()`, `.toLowerCase()`, `.slice(0, 200)`
-(the first 200 characters), `.length` (the number of characters),
-`.split(" ")` (cut into a list of words), `.replace("old", "new")`,
-`.includes("word")` (true or false), `.trim()` (remove spaces around it).
+Useful: `.toUpperCase()`, `.toLowerCase()`, `.slice(0, 200)`, `.length`,
+`.split(" ")`, `.replace("old", "new")`, `.includes("word")`, `.trim()`.
 
 ### Numbers
 
@@ -94,13 +74,9 @@ Reactions per 100 followers: {{ (100 * ($unit.likes + $unit.shares) / $unit.foll
 Rounded: {{ Math.round($unit.likes / 10) * 10 }} likes
 ```
 
-`+ - * /` calculate, `Math.round()`, `Math.min()` and `Math.max()` round
-and compare, `.toFixed(1)` shows one decimal.
-
 ### Choosing between two texts
 
-`condition ? "this" : "that"` gives `"this"` if the condition holds and
-`"that"` if not. Chain them for more than two cases:
+`condition ? "this" : "that"`; chain for more cases:
 
 ```example
 unit:
@@ -113,15 +89,11 @@ This is {{ $unit.likes >= 100 ? "a popular" : "an ordinary" }} post.
 {{ !$var.age.answered ? "You didn't give your age." : $var.age.gte(18) ? "You are 18 or older." : "You are under 18." }}
 ```
 
-For larger pieces of text that depend on an answer, a `::: if` block is
-easier to read than a script (see
-[Showing parts conditionally](template-blocks.md)).
+For longer texts, a `::: if` block reads better.
 
 ### Lists
 
-A question with several answers gives a list (`$var.topics.labels`), and
-so does `.split()`. A list shown as it is gets commas between its items;
-`.join()` puts something else between them:
+Lists are shown with commas; `.join()` uses something else:
 
 ```example
 unit:
@@ -134,14 +106,9 @@ Hashtags: {{ $unit.tags.split(";").map((tag) => "#" + tag).join(" ") }}
 Number of tags: {{ $unit.tags.split(";").length }}
 ```
 
-With answers: `{{ $var.topics.labels.join(" and ") }}`, or
-`{{ $var.topics.values.includes("sports") }}` (though
-`$var.topics.has("sports")` says the same and is checked better).
+With answers: `{{ $var.topics.labels.join(" and ") }}`.
 
 ### Conditions
-
-A condition script gives true or false. Two that the rules editor can't
-make:
 
 ```text
 $var.consent.answered && ($var.age.lt(18) || $var.country.is("other"))
@@ -150,37 +117,20 @@ $unit.text.length > 2000 && !$var.skim.is("yes")
 
 ## How results are shown
 
-- Text is shown as text, exactly as it is (see
-  [Text is shown as text](layout-templates.md#text-is-shown-as-text)). To
-  show a result as markdown, an image or HTML, put a suffix _after_ the
-  closing braces: `{{ ... }}::markdown`.
-- Numbers are shown as numbers, `true` and `false` as those words.
-- Lists are joined with commas.
-- `null` (an unanswered question) shows nothing.
+Text as text (see
+[Text is shown as text](layout-templates.md#text-is-shown-as-text)); add a
+suffix such as `{{ ... }}::markdown` for markdown, images or HTML. Numbers
+and true/false as written, lists with commas, `null` as nothing.
 
 ## Limits
 
-Scripts run in a closed-off sandbox in the coder's browser:
+- Scripts run in a sandbox in the coder's browser: no internet, no page
+  access, no memory between runs; at most 100 ms and 1 MB.
+- A failing script shows nothing, or counts as _false_ in a condition.
+- One expression: no `let`, `if` or `for` (use `? :`, `.map()`,
+  `.filter()`). No `}}` inside.
+- Scripts only rerun when a value they use changes: don't use
+  `Math.random()`; use a [random condition](random-condition.md).
 
-- They only see `$unit`, `$var` and `$session`. They can't load anything from the
-  internet, read or change the page, or remember anything between runs.
-- A script may run for at most 100 milliseconds and use at most 1 MB of
-  memory. That is plenty for anything a design needs.
-- A script that fails (an error, a mistake in its writing, a timeout) shows
-  nothing in a template, and counts as _false_ as a condition. Coders don't
-  see an error.
-- A script is one expression: no `let`, `if` or `for` statements. Use
-  `? :` instead of `if`, and `.map()` or `.filter()` instead of `for`.
-- A script inside `{{ }}` can't contain `}}`.
-- A script is only run again when a value it uses changes. Don't use it for
-  randomness (`Math.random()`): to assign coders to groups at random, use an
-  [random condition](random-condition.md).
-
-## Checking a script
-
-In a condition's **Script** mode, a syntax error (such as a missing bracket)
-is shown as you type. Inside `{{ }}` in a template, the editor checks the
-references (every `$` name) but not the rest of the JavaScript, so check the result in the live preview
-or in **Preview** before you deploy. A script that shows nothing where you
-expected a value usually has a mistake in it, or uses a question that isn't
-answered yet.
+In **Script** mode syntax errors show as you type. In `{{ }}` only the `$`
+names are checked, so try the result in the preview.

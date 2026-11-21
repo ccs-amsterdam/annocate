@@ -5,14 +5,10 @@ order: 6
 summary: Name a piece of a loop's template and use it anywhere with [[name]] - for long instructions, banners and repeated conditions.
 ---
 
-A **snippet** is a named piece of template text. You write it once, below
-the loop's template, and use it with `[[name]]`. Before anything else is
-read, AnnoTinder pastes the snippet's text in its place, as if you had typed
-it there.
-
-Snippets keep a layout readable: a long instruction text, a banner for each
-experimental group or a condition you need in several places gets a name,
-and the template shows what goes where.
+A **snippet** is a named piece of template text. Write it once below the
+loop's template and use it with `[[name]]`: it is pasted in as if you had
+typed it there. Good for long instructions, a banner per group, or a
+condition used in several places.
 
 ```example
 unit:
@@ -32,61 +28,30 @@ snippets:
 $unit.text
 ```
 
-Open **Snippets** below the template to see the snippet's text.
-
 ## Making a snippet
 
-On the loop's **Layout** tab, below the template and the colours:
+On the loop's **Layout** tab, below the template:
 
-1. Click **+ Snippet**. A snippet called `snippet_1` is added.
-2. Give it a name between the `[[` and `]]`: letters, digits and `_`, such as
-   `instructions` or `experiment_banner`.
-3. Write its text in the box below the name: markdown, values, blocks,
-   anything a template can hold.
+1. Click **+ Snippet**.
+2. Name it between `[[` and `]]` (letters, digits, `_`), e.g.
+   `instructions`.
+3. Write its text: anything a template can hold.
 
-To use it, write `[[instructions]]` in the template. **Insert** › **Snippet**
-lists the loop's snippets, and typing `[[` in the template editor suggests
-their names. The trash button removes a snippet.
-
-> Renaming a snippet doesn't change the places that use it. The editor then
-> reports _[[old_name]]: there is no snippet 'old_name' in this loop's
-> layout_, so you can find them.
+Use it with `[[instructions]]`; **Insert** › **Snippet** and typing `[[`
+suggest names. Renaming a snippet doesn't update where it is used; the
+editor reports those places.
 
 ## Where snippets work
 
-A snippet can stand anywhere in the loop's template, because it is pasted in
-as text before the template is read:
+Anywhere in the loop's template (a line, inside a sentence, a fence line
+`::: if [[is_viral]]`, a script `{{ [[reactions]] * 2 }}`) and in the
+loop's question and instruction texts. Not outside loops, in Show if items
+or in end items.
 
-- on a line of its own, for a paragraph or a whole block;
-- inside a sentence: `Read [[what_to_read]] carefully.`;
-- in a block's fence line: `::: if [[is_viral]]`;
-- inside a script: `{{ [[reactions]] * 2 }}`.
-
-Snippets also work in the texts of the loop's questions and instructions, so
-a long instruction can be shared by several questions.
-
-They don't work outside a loop (_Snippets ([[name]]) can only be used in a
-unit loop's layout and its questions' texts_), and not in condition items or
-end items, also not inside a loop: the editor reports the same message. For a
-condition you need in several places, use it in the layout as
-`::: if [[name]]`.
-In code (between backticks) `[[name]]` stays as it is.
-
-## A snippet is text, not a value
-
-Because a snippet is pasted in as text, everything in it works as if it were
-written in the template: markdown, values (`$unit.headline`), scripts,
-blocks, and other snippets. And for the same reason it takes no suffix:
-`[[intro]]::markdown` is an error (_a snippet takes no suffix_). To show a
-snippet's text as markdown, it already is: the template is markdown.
-
-A snippet may use other snippets, but not itself, also not through another
-one (_the snippet includes itself (a → b → a)_).
+A snippet is text, not a value: it takes no suffix, may use other snippets
+but not itself.
 
 ## Banners per group
-
-In a survey experiment, each group sees its own version of a message. With
-a snippet per version, the template stays short:
 
 ```example
 unit:
@@ -114,9 +79,6 @@ $unit.text
 
 ## A condition used twice
 
-A snippet can hold part of a script or a condition. Here `reactions` is the
-number of likes and shares, used in a condition and in a value:
-
 ```example
 unit:
   text: Can't believe the storm flooded the whole town #storm
@@ -134,16 +96,8 @@ $unit.text
 *{{ [[reactions]] }} likes and shares*
 ```
 
-Note the brackets around the snippet's text. A snippet is pasted in as it
-is, so without them `[[reactions]] * 2` would become
-`$unit.likes + $unit.shares * 2`, which is something else.
+Mind the brackets: without them `[[reactions]] * 2` would become
+`$unit.likes + $unit.shares * 2`.
 
-## Tips
-
-- Give snippets names that say what they are for (`beginner_tip`,
-  `is_political`), not what they look like.
-- A snippet belongs to its loop. Another loop needs its own copy.
-- Snippets make a template shorter, but the reader has to look them up.
-  For a piece used once, a snippet only helps if it is long.
-- Snippets are part of the design: when you share a design, its
-  snippets come with it.
+Snippets belong to their loop (another loop needs its own copy) and come
+along when you share the design.

@@ -5,100 +5,59 @@ order: 7
 summary: A value drawn when the coder reaches it, without asking - for experiments that assign after a few questions, optionally with its own units.
 ---
 
-A **random condition** is a kind of **computed variable**: **+** on an item
-in a **Questions** block of the tree, then **Computed variable**, then
-**Random condition**. It is never shown to coders.
-Instead, AnnoTinder gives every coder a value when they reach it in the
-flow: drawn at random, or balanced over the values (optionally within
-groups). You then use that value like any other answer: to show different
-questions or texts, or to give each condition its own units.
+A **random condition** gives every coder a value when they reach it,
+without asking: drawn at random or balanced. Use the value like any
+answer, to show different questions or texts, or to give each condition
+its own units. It is how you run experiments (see
+[Experimental conditions](experimental-conditions.md)).
 
-Random conditions are how you run experiments in AnnoTinder (see
-[Experimental conditions](experimental-conditions.md)). Put one first to
-assign the condition when the coder starts, or after some questions to
-assign it later: after a pre-test or background questions, or to balance
-groups on earlier answers.
+## Adding one
 
-## Where it goes
+In a **Questions** block, click **+** → **Computed variable** → **Random
+condition**. Give it an **Item Name**, e.g. `group`, and **Options** (the
+values, with optional labels). It can't go inside a unit loop.
 
-A random condition can only be placed **outside unit loops**: it is a
-property of the coder, not of a unit. It is assigned where it is in the
-design, when the coder gets there (see below). It has
-no question text, because nobody sees it. Its **Item Name** is how you
-refer to it, e.g. `group`.
+Put it first to assign the condition at the start, or after screening or
+background questions to assign later.
 
 ## Drawn
 
-Under **Drawn**, choose how the value is assigned:
+| Drawn                                       | The coder gets                                                              |
+| ------------------------------------------- | --------------------------------------------------------------------------- |
+| **Random**                                  | an option at random; **weights** 2 and 1 give about two thirds and one third |
+| **Balanced (the value fewest coders have)** | the option fewest coders have so far; ties at random                        |
 
-| Drawn                                       | The coder gets                                                                                                                         |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| **Random**                                  | One of the options, at random. Give options a **weight** to make some more likely: weights 2 and 1 give about two thirds and one third |
-| **Balanced (the value fewest coders have)** | The option that the fewest coders have so far, so groups stay as equal as possible. A tie is broken at random                          |
-
-The **Options** list the values the question can take, each with a value
-and an optional label, as for a [nominal question](nominal-and-ordinal.md).
-Both need at least one option.
-
-### Random or balanced?
-
-**Random** is what most experiments assume: every coder has the
-same chance of every condition, independently of everyone else. Group sizes
-then vary by chance; with 40 coders a 25/15 split is quite possible.
-
-**Balanced** keeps groups as equal as possible: each new coder gets the
-option with the fewest coders so far. It counts everyone who reached the
-question, including coders who stopped later. Use it when equal group sizes matter
-more than strict independence, as when spreading a small team of coders
-over parts of the units.
-
-### URL parameter
-
-A value from the web address the coder opened (such as `?wave=2`) is a
-[URL parameter](session-parameters.md), declared under **URL parameters**
-above the tree: `$session.wave`. It is stored when the session starts, like
-the value of a random condition, and works in the same places: conditions,
-texts, end items' return links. It isn't random, so don't use it for
-experimental conditions.
+**Random** is what most experiments assume, but group sizes vary (with 40
+coders, 25/15 is quite possible). **Balanced** keeps groups equal; it
+counts everyone who reached it, also those who stopped later.
 
 ## Balanced within groups
 
-A balanced draw can be **stratified**: balanced within groups of coders
-who gave the same answers to earlier questions, or have the same
-[URL parameters](session-parameters.md). Choose them under **Balance within
-groups of**. With `gender`, the conditions are balanced among women, and
-among men, so both conditions get about as many women and as many men.
-With `session.wave`, each wave is balanced on its own.
-
-The questions must come before the random condition (outside unit loops), so
-coders have answered them when they reach it. A coder who skipped one is in
-the group of coders without an answer.
+Under **Balance within groups of**, choose earlier questions or
+[URL parameters](session-parameters.md): with `gender`, the conditions are
+balanced among women and among men; with `session.wave`, per wave. Those
+questions must come before it, outside loops.
 
 ## Assigned when reached, never changed
 
-A coder's value is assigned when they **reach** the random condition in the
-design, not when they start. Put it where the assignment should happen:
-after the screening questions, so coders who are screened out never
-get a condition and don't count in the balance; after the questions it is
-stratified on.
+The value is drawn when the coder **reaches** the item: after screening,
+screened-out coders never get one and don't count in the balance. Once
+drawn it never changes (going back, reloading, another device, a new
+design version). Changing options or weights only affects coders who
+reach it afterwards.
 
-Once assigned, it never changes: not when they go back, reload the page,
-come back the next day or continue on another device, and not when you
-deploy a new design version. Coders can't see or change it.
+### URL parameter
 
-This matters for experiments: a coder stays in their condition for
-the whole session. It also means that changing the options or weights
-later only affects coders who reach the question after the change.
+A value from the link (`?wave=2`) is a [URL parameter](session-parameters.md),
+not a random condition: `$session.wave`. It isn't random, so don't use it
+for experimental conditions.
 
 ## Using the value
 
-A random condition is referred to like a nominal question with one answer:
-`$var.group.value` is the value, `$var.group.label` its label.
+Like a single category: `$var.group.value`, `$var.group.label`.
 
-**In conditions**, to ask questions only of one group:
-`$var.group.is("experiment")`. See [Conditions](conditions.md).
-
-**In a layout**, to show units differently per group:
+- **Conditions**: `$var.group.is("experiment")` (see [Conditions](conditions.md)).
+- **A layout**:
 
 ```example
 unit:
@@ -116,15 +75,10 @@ answers:
 $unit.text
 ```
 
-Switch between _experiment_ and _control_ to see what each group sees.
-See [Showing parts conditionally](template-blocks.md).
+- **Units**: under **Linked to units**, choose a set column. Loops after it
+  give each coder the units with their value (and `_overlap` units). With
+  **All values in the column**, the column's values are the options (e.g.
+  100 sets, drawn balanced). See
+  [Experimental conditions](experimental-conditions.md).
 
-**For units**: under **Linked to units**, choose a set column of your
-units. The loops after the random condition then give each coder only the
-units whose cell holds their value (and the column's `_overlap` units).
-With **All values in the column**, the values are the column's own: for
-instance 100 sets for a multilevel design, drawn balanced over coders. See
-[Experimental conditions](experimental-conditions.md).
-
-In the results, the values of random conditions are in `coders.csv`, with the coders'
-other answers outside unit loops. See [Downloading results](results.md).
+The values are in `coders.csv` (see [Downloading results](results.md)).

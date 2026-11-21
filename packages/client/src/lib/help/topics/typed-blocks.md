@@ -6,10 +6,10 @@ summary: Show a larger piece of a layout as markdown, plain text, HTML or an ima
 ---
 
 A [suffix](layout-templates.md#suffixes-showing-a-value-as-something-else)
-says how to show one value: `$unit.body::markdown` shows the field `body` as
-markdown. A **typed block** does the same for a larger piece of the template,
-with text and several values in it. Everything between the fences is put
-together first, and the result is shown as one thing of that type.
+shows one value as markdown, an image or HTML. A **typed block** does this
+for a larger piece, with your own text and several values: the content is
+put together first, then shown as one thing. A block can also get a
+**name**, so questions can point at it.
 
 ```template
 ::: markdown
@@ -17,34 +17,20 @@ together first, and the result is shown as one thing of that type.
 :::
 ```
 
-A typed block can also have a **name**, so that a question can point at it,
-or a span question can select text in it. The second half of this page is
-about names.
-
 ## The four types
 
-| Block          | Shows its content as                                            |
-| -------------- | --------------------------------------------------------------- |
-| `::: text`     | Plain text, exactly as it is                                    |
-| `::: markdown` | Markdown: values that contain markdown are read as markdown too |
-| `::: html`     | HTML, in a safe frame (see [HTML in a layout](html.md))         |
-| `::: image`    | An image: the content is the image's address (URL)              |
+| Block          | Shows its content as                                    |
+| -------------- | ------------------------------------------------------- |
+| `::: text`     | plain text, line breaks kept                            |
+| `::: markdown` | markdown, also markdown inside the values               |
+| `::: html`     | HTML in a safe frame (see [HTML in a layout](html.md))  |
+| `::: image`    | an image; the content is its URL                        |
 
-A suffix is the short form of a block around one value: `$unit.body::markdown`
-is the same as
-
-```template
-::: markdown
-$unit.body
-:::
-```
+`$unit.body::markdown` is short for a markdown block around `$unit.body`.
 
 ### Values are put in as they are
 
-The difference with the template around it: inside a typed block, values are
-put into the content as they are, and the content as a whole is shown as its
-type. In the template, `$unit.lead` shows the stars in the data as stars;
-inside a `::: markdown` block they make bold text:
+Inside a markdown block, markdown in the values is read too:
 
 ```example
 unit:
@@ -63,17 +49,13 @@ $unit.towns
 :::
 ```
 
-Use a markdown block when your data contains markdown and you want to put
-text of your own around it, or combine several fields into one text. Keep in
-mind that _all_ markdown in the values is then read: a `*` or `_` in a tweet
-can turn text italic. For plain texts, values outside a block are safer.
+Careful: then every `*` or `_` in a tweet counts. For plain texts, values
+outside a block are safer.
 
 ### Text blocks
 
-A `::: text` block shows its content as plain text: no markdown, line breaks
-kept. That is rarely needed, since values are plain text already; it is
-useful for text put together from several values and scripts, shown
-literally, and with a name a question can [focus on](#focus-on) it.
+Combine values into one plain text, e.g. to give it a name for
+[Focus on](#focus-on):
 
 ```example
 unit:
@@ -87,13 +69,9 @@ $unit.text
 :::
 ```
 
-This shows the headline and the text as one plain text called `article`.
-
 ### Image blocks
 
-A `::: image` block shows an image; its content is the address. That way the
-address can be put together from parts, for instance when your units only
-have a file name:
+Build an image URL from parts:
 
 ```example
 unit:
@@ -104,71 +82,36 @@ https://upload.wikimedia.org/wikipedia/commons/thumb/$unit.file
 :::
 ```
 
-### HTML blocks
-
-A `::: html` block shows its content as HTML, in a sandbox: your own HTML
-with values from the unit in it, for example a mock social media post. See
-[HTML in a layout](html.md).
-
 ### Rules
 
-- **No suffixes inside.** Values in a typed block are put in as they are, so
-  `$unit.body::markdown` inside a `::: markdown` block is an error: _Inside a
-  ::: markdown block values are put in as they are: leave out ::markdown_.
-- **No typed blocks inside typed blocks.** _A ::: html block can't be inside
-  a ::: markdown block._ Typed blocks can be inside `::: if`, `::: from` and
-  `::: style` blocks, and `::: if` and `::: from` blocks can be inside them.
-- **`::: style` only inside markdown.** Inside a `::: text`, `::: html` or
-  `::: image` block, style the content in its own way (in HTML: with
-  `style="..."`).
-- **Close it.** A typed block is closed with `:::`, like other blocks.
-
-The fences of a typed block always go on lines of their own: the block is
-shown as a part of its own, not inside a sentence.
+- **No suffixes inside** a typed block (_leave out ::markdown_).
+- **No typed blocks inside typed blocks.** They can be inside `::: if`,
+  `::: from` and `::: style`, and the other way round.
+- **`::: style` only inside markdown.** In HTML, use `style="..."`.
+- Fences go on their own lines; close with `:::`.
 
 ## Ids
 
-AnnoTinder gives the parts of a layout **ids**, so questions can refer to
-them:
+Parts of a layout get **ids** that questions can refer to:
 
-| What the layout shows                               | Its id                                        |
-| --------------------------------------------------- | --------------------------------------------- |
-| A unit field: `$unit.headline` (also with a suffix) | `unit.headline`                               |
-| An answer: `$var.topic.label`                       | `var.topic`                                   |
-| A typed block with a name: `::: html scores`        | `scores`                                      |
-| A script: `{{ ... }}`                               | None (put it in a named block to give it one) |
+| The layout shows                       | Id              |
+| -------------------------------------- | --------------- |
+| `$unit.headline` (also with a suffix)  | `unit.headline` |
+| `$var.topic.label`                     | `var.topic`     |
+| a named block: `::: html scores`       | `scores`        |
+| a script `{{ ... }}`                   | none (put it in a named block) |
 
-Values inside a typed block are part of the block's content: they have no
-id of their own.
-
-A block's name comes after its type: `::: markdown intro`,
-`::: html scores`. A name is letters, digits and `_` (no dots), and must be
-different from the other names in the layout (_Two blocks are named
-'intro': names must be unique_).
+The name follows the type (`::: markdown intro`): letters, digits and
+`_`, unique in the layout. Values inside a block have no id of their own.
 
 ### Focus on
 
-Every question in a loop has **Focus on (optional)**: one or more of the ids
-the layout shows, the parts of the unit the question is about. When the
-question comes up, the unit scrolls to the first and highlights it briefly.
-With **Dim the rest of the unit**, everything else fades back while the
-question is on screen, so coders see at a glance what to look at: the
-headline for the first question, a table further down for the next.
-
-A [span question](span.md) focuses on the fields it selects in, unless you
-choose otherwise.
-
-If the layout no longer shows an id, the editor reports: _'unit.title' is
-not shown in the layout (as $unit.title)_.
+A loop question's **Focus on (optional)** picks ids the question is about:
+the unit scrolls there and highlights it; **Dim the rest of the unit**
+fades the rest. If the layout no longer shows an id, the editor says so.
 
 ### Fields span questions select in
 
-A [span question](span.md) lets coders select words in unit fields. It can
-only select in a field the layout shows as **plain text**: `$unit.text`,
-without a suffix and not inside a typed block. What coders select is then
-exactly what is in your data, and the positions of the spans point into
-the field as it was shown (kept in `units.csv`).
-
-A field shown with `::markdown` or inside a typed block can't be selected
-in. The editor then says _Span question 'actors' selects text in the unit
-field 'text', but the layout doesn't show it as plain text ($unit.text)_.
+A [span question](span.md) can only select in fields shown as **plain
+text** (`$unit.text`, no suffix, not in a typed block), so selections match
+your data exactly.

@@ -5,25 +5,18 @@ order: 6
 summary: A question with one button - for instructions, consent texts and "I have read the text".
 ---
 
-A **Confirm** question shows its text and a single button: **I confirm**.
-There is nothing to choose; clicking the button moves the coder on. Use it
-whenever you want coders to read something before they continue:
+A **Confirm** question shows its text and one button, **I confirm**. Use
+it when coders must read something before they go on:
 
-- **Instructions** at the start of a study, or before a new part of it.
-- **Information and consent** in a survey experiment.
-- **A check in a unit loop**: _I have read the whole article_ before the
-  questions about it.
-- **A closing message**, such as a thank-you before the session ends.
-
-A new question starts as a Confirm question, so the quickest way to add a
-page of text is to add a question and fill in its **Question**.
+- instructions at the start, or before a new part;
+- information about the study;
+- in a loop: _I have read the whole article_;
+- a closing message.
 
 ## Writing the text
 
-The **Question** is the main text, and **Instruction (optional)** a
-smaller text under it. Both are markdown, so you can use headings, bold
-text, lists and links, and both can use earlier answers (and in a unit
-loop the unit's data):
+The **Question** is the text: markdown (headings, lists, links) with
+references to earlier answers (and in a loop the unit's data):
 
 ```template
 **Welcome, and thank you for taking part.**
@@ -35,29 +28,21 @@ This takes about 15 minutes.
 - There are no right or wrong answers.
 ```
 
-For long instructions in a unit loop, a [snippet](snippets.md) saves you
-from repeating the same text in several places.
+For instructions coders look up while coding, use a loop question's
+[instructions](questions.md#instructions) or a [snippet](snippets.md).
 
 ## Consent that can be refused
 
-A Confirm question can't be refused: the only way on is to click
-**I confirm**. That is fine when consent was given elsewhere (on a panel's
-own page, say), but if coders must be able to say no inside
-AnnoTinder, use a [nominal question](nominal-and-ordinal.md) with two
-options instead:
+Confirm can't be refused. If coders must be able to say no:
 
-1. A nominal question `consent` with the options _I agree_ (`yes`) and
-   _I do not agree_ (`no`).
-2. A condition that holds when `$var.consent.is("no")`, with an
-   [end item](end-items.md) in it that ends the session as screened out.
+1. a [categories](nominal-and-ordinal.md) question `consent`: _I agree_
+   (`yes`), _I do not agree_ (`no`);
+2. a Show if `$var.consent.is("no")` with a screened-out
+   [end item](end-items.md).
 
-This also records the refusal in your data.
+This also records the refusal.
 
 ## What is stored
 
-Only that the question was answered. In references, a Confirm question has
-just `$var.<question>.answered`, which is true once the coder clicked the
-button. It has no value or label.
-
-In the results its column is `true` when the coder clicked the button, and
-empty when a condition skipped the question.
+Only that it was answered: `$var.<question>.answered`. The results column
+is `true`, or empty when skipped.

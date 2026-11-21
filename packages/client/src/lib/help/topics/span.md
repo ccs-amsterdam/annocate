@@ -5,130 +5,61 @@ order: 8
 summary: Span questions - coders select words in the unit's text and give each selection a label.
 ---
 
-A **Span (select text)** question lets coders mark pieces of the unit's text
-and give each piece a label: the people and organisations in a news
-article, the quotes in it, the sentences that contain an argument, the
-words that express an emotion. Each marked piece is a **span**.
+A **Mark text** (span) question lets coders select pieces of the unit's
+text and label them: people and organisations, quotes, arguments, emotion
+words. Each piece is a **span**. Only in unit loops.
 
-Span questions only work inside a unit loop, because they need a unit's
-text to select in.
+## Setting up
 
-## Setting up a span question
+| Setting                    | Does                                                     |
+| -------------------------- | -------------------------------------------------------- |
+| **Select in**              | the unit fields coders can select in                     |
+| **Default Selection Mode** | **Word level** (snap to whole words, the default) or **Character level** (exact characters, e.g. hashtags) |
+| **Options**                | the labels, e.g. _Person_, _Organisation_, with values and colours |
+| **Allow gaps**             | a span may have several pieces (a quote around _"she said"_) |
 
-| Setting                                                      | What it does                                                            |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| **Select in**                                                | The parts of the unit coders can select in (see below)                  |
-| **Default Selection Mode**                                   | Whether selections snap to whole words or not                           |
-| **Options**                                                  | The labels coders give to spans, e.g. _Person_, _Organisation_, _Place_ |
-| **Allow gaps (discontinuous spans with multiple fragments)** | Whether one span can consist of several separate pieces                 |
-
-The **Options** are like those of a [nominal question](nominal-and-ordinal.md):
-a label coders see, a value that is stored, and a colour. Give span options
-clearly different colours: the colour is how coders tell spans apart in the
-text.
+Give options clearly different colours: that is how coders tell spans
+apart.
 
 ### What coders can select in
 
-Coders select in **unit fields** that the loop's layout shows **as plain
-text**: `$unit.text` or `$unit.headline`, without a suffix such as
-`::markdown` and not inside a typed block (see
-[Layout templates](layout-templates.md#values)). What they select is then
-exactly what is in your data.
+Unit fields the layout shows **as plain text** (`$unit.text`, without a
+suffix such as `::markdown` and not in a typed block, see
+[Layout templates](layout-templates.md#values)), so what is selected is
+exactly your data. **Select in** lists them; click to switch on or off. A
+red field is no longer plain text in the layout. One question can select
+in several fields.
 
-**Select in** lists the unit fields the layout shows this way; click one to
-switch it on or off. A field in red is no longer shown as plain text in the
-layout: fix the layout, or switch it off. If the list is empty, the layout
-has nothing to select in yet.
+## How coders mark spans
 
-One question can select in several parts at once, for example in both the
-headline and the text: each span remembers where it is.
+1. **Select text**: drag, or click a word. A **Label as** menu appears
+   (on phones, in the answer area).
+2. Click a later word to extend the selection (with gaps: add or remove).
+3. **Pick a label**: click it or press its key. **Esc** cancels.
 
-### Words or characters
+Spans may overlap and the same text can have several labels. Clicking a
+span shows its labels, with **Edit**, **Delete** and **Create new label**.
+**View labeled spans** lists them all. **Done** counts the spans; **Done
+(0)** is a valid answer.
 
-**Default Selection Mode** has two settings:
-
-- **Word level (snap selections to whole words)**: a selection always
-  covers whole words, even if the coder starts or ends halfway through one.
-  Clicking a single word selects it. This is the default, and what you want
-  for most coding: it is quicker, and coders don't produce spans that differ
-  by a letter.
-- **Character level (select exact characters)**: coders select exactly
-  the characters they want, by dragging. Use it when parts of words matter,
-  as in morphology or hashtags.
-
-Coders can't change this setting themselves.
-
-### Gaps
-
-Normally a span is one continuous piece of text. With **Allow gaps**, a span
-can consist of several pieces (_fragments_), for example a quote that is
-interrupted by _"she said"_. Coders then click or select further words to
-add them to the span, and click them again to take them out.
-
-Coders can always change and delete their spans.
-
-## How coders select spans
-
-While a span question is on screen, the text it selects in reacts to the
-mouse or finger:
-
-1. **Select text**: drag over it, or click a word (in word mode). The
-   selection is highlighted, and a small **Label as** menu with a button
-   per option appears right below it. On a phone the buttons are in the
-   answer area at the bottom instead, within reach of the thumbs.
-2. **Adjust the selection** if needed: clicking a later word extends it to
-   there (with gaps, clicking a word adds or removes it).
-3. **Pick a label**: click an option, or press its number key (**1** to
-   **9**). **Esc** cancels the selection.
-
-The span now shows in the text in the option's colour. Coders can mark as
-many spans as they like, and the same text can have more than one label: a
-name can be both a _Person_ and a _Source_. Where spans overlap, they are
-shown with stacked underlines.
-
-**Clicking a marked span** highlights it and shows its labels, with **Edit** to change or
-**Delete** a label, and **Create new label** to give the same text another
-label. **View labeled spans** lists all spans of the unit, for a quick check
-before going on.
-
-When they are done, coders click **Done**; the button counts the spans.
-**Done (0)** is a valid answer: the coder found nothing to mark.
-
-> Tell coders in the instruction what counts as a span: whole names or
-> surnames only? With or without titles? Spans are where coders disagree
-> most, and clear rules help reliability more than anything else.
+> Say in the instructions what counts as a span (full names? titles?).
+> Spans are where coders disagree most.
 
 ## What is stored
 
-For every span, AnnoTinder stores:
-
-- the **value** of its label (e.g. `person`);
-- **where** it is: the unit field it is in (`text`) and, for each
-  fragment, the position of its first character and its length;
-- the **text** that was selected.
-
-Positions count characters in the field as it is in your data, so you can
-find the spans again in your own copy of the texts.
-
-In the downloaded `annotations.csv`, a span question's column lists the spans
-as `value: text`, separated by `; `, for example
-`person: Angela Merkel; organisation: European Commission`. Its `_json`
-column has everything, including the positions. See
-[Downloading results](results.md).
-
-> If you replace a unit after it was coded, its spans still point into the
-> version the coder saw. `units.csv` has a row for each version.
+Per span: its label's value, the field, each piece's start and length (in
+characters of your data), and the text. In `annotations.csv` the column
+reads `person: Angela Merkel; organisation: European Commission`; the
+`_json` column has the positions. A replaced unit's spans still point
+into the version the coder saw (`units.csv` has every version).
 
 ## Using the answers
 
-| Reference            | Gives                                                        |
-| -------------------- | ------------------------------------------------------------ |
-| `$var.actors.values` | the values of all spans, e.g. `person, person, organisation` |
-| `$var.actors.labels` | their labels                                                 |
-| `$var.actors.texts`  | the selected texts                                           |
+| Reference            | Gives                             |
+| -------------------- | --------------------------------- |
+| `$var.actors.values` | the spans' values                 |
+| `$var.actors.labels` | their labels                      |
+| `$var.actors.texts`  | the selected texts                |
 
-Conditions can ask whether a span with a label was marked
-(`$var.actors.has("person")`) or how many spans there are
-(`$var.actors.count()`). See [Conditions](conditions.md).
-
-A second question can link spans to each other: see [Relations](relation.md).
+Conditions: `$var.actors.has("person")`, `$var.actors.count()`. To link
+spans, see [Relations](relation.md).

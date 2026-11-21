@@ -5,249 +5,145 @@ order: 1
 summary: The item tree, the item form, the preview, errors and warnings, saving, undo, reverting, backups and co-editors.
 ---
 
-The **Editor** tab (under **Design**) is where you write the design: the questions,
-unit loops, conditions and end items, in the order coders meet them. This
-page explains the editor itself. What the items mean is on their own pages:
-[Questions](questions.md), [Unit loops](unit-loops.md),
-[Conditions](conditions.md) and [Ending a session](end-items.md).
+**Design › Editor** is where you write the design. From top to bottom:
 
-**Design** opens with two cards: **Editor** (the design: which version
-coders use, whether there is a draft, how many questions and loops) and
-**Units** (how many units, and their columns with their types). Click one
-to open it; the tabs below the menu then switch between the two.
+- the **toolbar**: issue counts, **Visual** or **JSON**, undo and redo,
+  **Revert**, **Export** (the design as a document, e.g. for an appendix),
+  **Versions**, **Save** and **Deploy…**;
+- a **banner** saying which version you edit (see
+  [Preview, save and deploy](previewing-and-publishing.md));
+- the **tree** on the left, the selected item's **form** on the right and,
+  on wide screens, a **preview** in a third column.
 
-From top to bottom, the tab has:
+## Above the tree
 
-- the **toolbar**: the number of issues and warnings, **Visual** or
-  **JSON**, undo and redo, **Revert**, **Export** (the design as a
-  document: questions, instructions, options and what coders see, e.g.
-  for a paper's appendix), **Versions**, **Save** and **Deploy…**;
-- a **banner** saying which design version you are editing and whether coders use
-  it (see [Preview, save and deploy](previewing-and-publishing.md));
-- the editor: the **tree** of items on the left, the selected **item** on
-  the right and, on wide screens, a **preview** of that item in a third
-  column.
+- **Title shown to coders**: edit it in place. The study's own name stays
+  private.
+- **Coder invitations**: who codes and how they get in (see
+  [Links](links.md#coder-invitations)).
+- **URL parameters**: values a link carries (see
+  [URL parameters](session-parameters.md)).
+- **Display**: fixed or responsive layouts, and light or dark (see
+  [How answers are laid out](answer-layouts.md#fixed-or-responsive)).
 
 ## Blocks
 
-The tree's top level is a list of **blocks**, in the order coders meet
-them:
+The tree is a list of **blocks**, in the order coders meet them:
 
-- a **Unit loop**: coders code units, one after the other, with the
-  loop's questions for each (see [Unit loops](unit-loops.md));
-- a **Questions** block: the questions, computed items (such as a
-  [random condition](random-condition.md)), Show if items and end items
-  between loops, or before or after them.
+- a **Unit loop**: questions asked for every unit (see
+  [Unit loops](unit-loops.md));
+- a **Questions** block: questions asked once, computed items (such as a
+  [random condition](random-condition.md)), Show if and end items.
 
-A study of only questions is one Questions block; an annotation study is
-often one unit loop, perhaps with a Questions block before or after it. A
-Questions block is only how the tree groups the items between loops: the
-design itself stays one list of items, and two Questions blocks next to
-each other are one.
-
-**Add block** above the tree adds a block **At the end** (or **At the
-start**): a **Unit loop** or **Questions** (a block with a first question).
-A Questions block's row has a **+** to add a unit loop after it.
+**Add block** above the tree adds one **At the end** or **At the start**.
 
 ## The tree
 
-Inside a block, the tree shows every item, indented under the loop or Show
-if item it is in.
-Its icon shows what it is: a question has the icon of its answer type
-(hover over an icon to see the type), a loop a circular arrow, a Show if item
-a branching arrow, an end item an exit arrow. A loop shows its label (or _Unit loop_)
-and which units it hands out; a Show if item shows
-its condition in words (_if age < 18_), or its label if you gave it one.
+Each item shows an icon for its type (a question: its answer type). A loop
+shows its label and which units it hands out; a Show if item its
+condition in words (_if age < 18_) or its label. Questions are numbered as
+coders see them in the top bar.
 
-Questions are numbered as coders see them in the coding screen's top
-bar: the questions outside loops 1, 2, 3, ..., and in each loop its own
-questions from 1. Questions inside Show if items count along; a condition
-that hides a question for a coder doesn't renumber the rest here.
+The last row, **At the end**, is what coders see after the whole study,
+and where they go next (see [Ending a session](end-items.md)).
 
-Above the tree are the **title shown to coders** (edit it in place) and two
-buttons, each with a short summary:
-
-- **Coder invitations**: who codes and how they get in: specific coders,
-  each with their own units and link, or a crowd with one link (see
-  [Links](links.md#coder-invitations));
-- **URL parameters**: values a link carries, such as a panel's ids (see
-  [URL parameters](session-parameters.md)).
-
-Click a button to open its form on the right.
-
-Click an item to open it on the right. A loop's row has two extra buttons
-that open the loop on its **Layout** or its **Units** tab.
-
-The tree's last row, **At the end**, is what coders see when they get
-through the whole study, and where they go next (for example back to a
-panel). See [Ending a session](end-items.md).
-
-Two marks can appear after an item:
-
-- an **amber dot**: the item has unsaved changes;
-- a **red icon**: the item has an issue (hover over it to read it).
+Marks after an item: an **amber dot** for unsaved changes, a **red icon**
+for an issue (hover to read it).
 
 ## Adding items
 
-Hover over a row and click the **+** at its right. A new item goes **below
-that row**: after the item, or for a loop or Show if item, at the top of what
-is inside it. Then choose the type: **Question**, **Show if**, **End** (an
-[end item](end-items.md)) or, in a Questions block, **Computed variable**.
-Loops can't be nested: after a loop, the **+** offers a new block (a unit
-loop or questions).
+1. Hover over a row and click **+** at its right.
+2. Where there is more than one place (e.g. below the last item of a
+   loop), choose **Where?**: **After tone**, **After News articles**, ...
+   A line in the tree shows the place.
+3. Choose the type: **Question**, **Show if**, **End** or, in a Questions
+   block, **Computed variable**.
 
-Below the last item of a loop or Show if item, "below" could mean two places:
-still inside, or after the loop. Then the menu first asks **Where?**, for
-example **After tone** or **After News articles**. Each place a level
-further out is marked with one more outdent icon, so you can see how far
-out it goes. An empty loop or Show if item offers **Inside** it and **After**
-it. While you point at a place, a line in the tree shows where the item
-will go.
-
-**Add block** above the tree adds a block at the end (or the start) of the
-design.
-
-New questions are called `question_1`, `question_2`, ... and start as
-**Confirm** questions; rename them and choose the answer type. New end
-items are called `end_1`, ... and start as **Screened out (not eligible)**.
-New loops and Show if items start empty: add their items with their own **+**.
-
-> To put an item at the very top of the design, add it below the first
-> item and then move it to the top (below).
+The new item goes below the row (for a loop or Show if: at the top inside
+it). New questions are `question_1`, ... and need an answer type; new end
+items start as **Screened out**. Loops can't be nested.
 
 ## Moving and deleting
 
-Tick the box in front of one or more items (it appears when you hover over
-a row). Ticking a loop or Show if item takes everything inside it along.
-In place of **Add block** you now see how many items are selected, with:
+Tick the box in front of items (it appears on hover); a loop or Show if
+takes its contents along. Then:
 
-- **Delete**: deletes the ticked items and everything inside them, after
-  asking once.
-- **Move**: each row's **+** turns into an arrow (**Move below this
-  item**). Click it on the row you want the items below; where that is
-  ambiguous, it asks where, as when adding. **Move to the top** puts them
-  at the top of the design. The arrow only shows where the items may go:
-  a span question, for example, can't leave its loop.
-- The **×** (or **Esc**) clears the selection; **Cancel** (or **Esc**)
-  stops moving.
+- **Delete**: after asking once.
+- **Move**: click the arrow on the row to move them below, or **Move to
+  the top**. Arrows only show where the items may go.
+- **×** or **Esc** clears the selection; **Cancel** stops moving.
 
-Moved items keep their order. Undo (below) takes back a move or delete.
+Undo takes back a move or delete.
 
 ## The item form
 
-The right column shows the selected item, with **Item Type** at the top and
-three views:
+Three views:
 
-- **Form**: the item's settings, with a **Help** button next to the main
-  fields. Problems show in red under the field they are about; warnings in
-  amber.
-- **JSON**: the same item as JSON, for copying settings or editing
-  quickly. Loops and Show if items are shown without their items (those are
-  items of their own). Your edit is applied as soon as it is valid JSON
-  that the editor can show; until then a red line says **Not applied:**
-  and why. **Format** tidies it up.
-- **Preview**: how the item looks to coders, with your unsaved changes.
-
-On screens at least 1500 pixels wide the preview is always shown, in a
-third column, and the **Preview** view is gone.
+- **Form**: the settings, with **Help** buttons. Problems in red under
+  their field, warnings in amber.
+- **JSON**: the item as JSON. Applied as soon as it is valid; until then
+  **Not applied:** says why. **Format** tidies it.
+- **Preview**: the item as coders see it, with unsaved changes (on screens
+  wider than 1500 pixels, always shown in a third column).
 
 ### The preview
 
-For a question outside a loop, the preview shows the question. For a loop,
-or a question in one, it shows a unit of the study with the loop's layout,
-and controls above it:
+For a loop or a question in one, the preview shows a unit with the loop's
+layout. Above it:
 
-- **Unit**, with arrows: step through the study's units, to check the layout
-  with short, long and odd ones.
-- **On screen**: the question coders are at. It matters for layouts that
-  change while coders go through a unit's questions (`::: from`, see
-  [Showing parts conditionally](template-blocks.md)).
-- A picker for each question that the layout uses, with its options and
-  _(no answer)_: try how the layout looks after each answer.
+- **Unit** with arrows: step through units (try short, long and odd ones);
+- **On screen**: which question coders are at (for layouts that change,
+  see [Showing parts conditionally](template-blocks.md));
+- a picker per question the layout uses, to try each answer.
 
-This preview shows a single item. To try the whole study as a coder, use
-**Preview Study** at the top right (see
-[Preview, save and deploy](previewing-and-publishing.md#previewing)).
+To try the whole study, use **Preview** at the top right.
 
 ## Errors and warnings
 
-The editor checks the design as you type. The toolbar counts the
-results:
+The toolbar counts:
 
-- **issues** (red): things that must be fixed before you can preview or
-  deploy, such as a duplicate name, an empty loop, a reference to a
-  question that doesn't exist (yet) at that point, or a unit field the
-  design doesn't declare (upload units with it, or declare it on the
-  **Units** page: **Details**).
-- **warnings** (amber): things to check, which don't block anything.
+- **issues** (red): must be fixed before preview or deploy, e.g. a
+  duplicate name, an empty loop, a reference to a question that isn't
+  asked yet, a unit field the design doesn't declare;
+- **warnings** (amber): worth checking, block nothing.
 
-Click a count to see the list; click a line to open the item it is about.
-Inside a loop's form, a red dot on the **Layout** or **Units** tab shows
-which tab has a problem.
-
-You can **save** with issues: a draft is work in progress.
+Click a count for the list, and a line to open its item. A red dot on a
+loop's **Layout** or **Units** tab shows where the problem is. You can
+save with issues.
 
 ## Saving, undo and revert
 
-- **Save** stores your changes as the design draft. You can save at any time; see
-  [Preview, save and deploy](previewing-and-publishing.md#saving).
-- **Undo** and **Redo** (the curved arrows) step through your last 100
-  changes since you opened the design. Changes less than a second apart
-  count as one step, so a typed word is undone at once.
-- **Revert** goes back to the last save. Its menu lists the items you
-  changed under **Revert item**: pick one to undo just that item (an item
-  you added is removed: _new: removes it_). **Revert all changes** undoes
-  everything since the last save. A revert is itself a step you can undo.
+- **Save** stores the draft (see
+  [Preview, save and deploy](previewing-and-publishing.md#saving)).
+- **Undo** / **Redo**: the last 100 changes.
+- **Revert**: back to the last save, for one item (**Revert item**) or
+  everything (**Revert all changes**).
 
-If you leave the **Editor** tab with unsaved changes, a dialog asks
-whether to **Save changes**, **Discard changes** or **Cancel**. Your
-browser also asks before you close or reload the page.
+Leaving the tab with unsaved changes asks to **Save changes**, **Discard
+changes** or **Cancel**.
 
 ## Backups in your browser
 
-A second after each change, the editor copies your unsaved changes to your
-browser's storage. If the browser closes or crashes, the next time you open
-AnnoTinder in that browser a banner says **You have unsaved design
-changes**, for which study and from when:
-
-- **Continue editing** opens the design with your changes, still unsaved:
-  look them over and save.
-- **Discard** throws them away.
-
-There is one backup at a time (the design you were last editing), in this
-browser only. The backup is removed when you save or discard your changes.
-It is a safety net, not a replacement for saving.
+Unsaved changes are copied to your browser's storage. After a crash, a
+banner **You have unsaved design changes** offers **Continue editing**
+(then save) or **Discard**. One backup, in this browser only: a safety
+net, not a replacement for saving.
 
 ## Working with co-editors
 
-Everyone with access to the study (see [Working together](working-together.md))
-edits the same draft. Your unsaved changes
-are yours alone; once you save, others see them when they open the
-design.
+Everyone with access (see [Working together](working-together.md)) edits
+the same draft; your unsaved changes are yours alone. If someone saved
+while you were editing, your save stops and asks:
 
-AnnoTinder doesn't show who else is editing right now. If someone saved the
-draft while you were editing, your save is stopped and a dialog says who
-saved it and when:
+- **Save mine over theirs**: their saved changes are lost;
+- **Discard mine, load theirs**.
 
-- **Save mine over theirs** saves your version in place of theirs: the
-  changes they saved are lost.
-- **Discard mine, load theirs** throws away your unsaved changes and opens
-  the saved draft.
-
-To avoid this, agree who edits when, and save often.
+Agree who edits when, and save often.
 
 ## The whole design as JSON
 
-**JSON** in the toolbar (next to **Visual**) shows the whole design as
-one JSON document: useful for an overview, for copying a design between
-studies, or for larger edits such as renaming many things at once. The editor
-completes property names, checks the structure, and explains a property
-when you hover over it. The document has three parts, as in an
-exported design: `public` (the title shown to coders), `session` (the
-coder invitations, URL parameters and the study's end) and `items` (the questions, loops and other items). **Fold details** collapses the details of
-questions and layouts so that only the structure remains; **Unfold all**
-opens everything again; **Format** tidies the layout.
-
-As in the item view, an edit is applied as soon as it is valid; until
-then **Not applied:** says why. The issues and warnings counts work as in
-the visual editor.
+**JSON** in the toolbar shows the whole design as one document, with
+completion and explanations on hover: for an overview, copying between
+studies, or renaming many things at once. Parts: `public` (title),
+`session` (invitations, URL parameters, display, the end) and `items`.
+**Fold details** shows only the structure; **Format** tidies it.

@@ -5,20 +5,15 @@ order: 5
 summary: Answer by swiping the unit left, right or up - fast judgements with two or three options.
 ---
 
-A **Swipe** question is answered by swiping a card, as in a dating app: left
-for one option, right for another, and up for an optional third. In a unit
-loop the card is the unit itself, so coders read the article or post and
-swipe it away with their answer. It is the fastest way to code many units,
-and the reason AnnoTinder has its name.
-
-Swipe questions are categorical, like a [nominal question](nominal-and-ordinal.md)
-without the option to choose several: each option has a value (stored) and
-a label (shown).
+A **Swipe** question is answered by swiping, as in a dating app. In a unit
+loop coders swipe the unit itself away with their answer: the fastest way
+to code many units, and where AnnoTinder got its name. Like
+[categories](nominal-and-ordinal.md) with one answer: each option has a
+value and a label.
 
 ## Options and directions
 
-A swipe question has **two or three options**. Their order in the
-**Options** list is their direction, shown by the arrow in front of each:
+Two or three options; their order is the direction:
 
 | Position       | Direction   |
 | -------------- | ----------- |
@@ -26,73 +21,33 @@ A swipe question has **two or three options**. Their order in the
 | 2nd            | swipe right |
 | 3rd (optional) | swipe up    |
 
-A new swipe question has _No_ on the left and _Yes_ on the right. **+ Add
-option** disappears once there are three. Use the arrows on each row to
-swap directions.
-
-Give options a **Color** to make the directions easy to tell apart, such as
-red for _No_ and green for _Yes_: the colour shows on the buttons and on
-the label that appears in the middle of the screen while the card is dragged.
-
-> Put the options where coders expect them: _No_ or _Not relevant_ on the
-> left, _Yes_ or _Relevant_ on the right. Swapping them halfway through a
-> study confuses coders.
+A new question has _No_ left and _Yes_ right. A **Color** per option (red
+_No_, green _Yes_) shows on the buttons and while dragging. Keep _No_ left
+and _Yes_ right, and don't swap them during a study.
 
 ## How coders answer
 
-- **Swipe**: drag anywhere on the screen to the side (or up): the unit
-  moves with it. While dragging, the option for that direction appears on
-  it. Let go far enough (about a
-  third of the card's width) or with a quick flick, and the card flies off
-  and the answer is given. Let go earlier and it springs back.
-- **Tap a button**: under the question there is a button per option, with
-  its arrow: left on the left, right on the right, up in the middle.
-- **Press a key**: **←**, **→** and **↑**, or **1**, **2** and **3** for
-  the 1st, 2nd and 3rd option.
+- **Swipe**: drag the unit sideways (or up) and let go past about a third,
+  or flick. Earlier, it springs back.
+- **Tap** a button under the question.
+- **Keys**: **←**, **→**, **↑**, or **1**, **2**, **3**.
 
-Long units still scroll as usual: dragging up and down scrolls the text.
-Swiping up only answers once the unit is scrolled to the end, so a coder
-can't skip the rest of a long text by accident.
+Long units still scroll; swiping up only answers at the end of the text.
+Outside a loop the question itself is the card. Tick **Show the unit on a
+card while this question is asked** to frame the unit as a card.
 
-Outside a unit loop there is no unit, so the question itself is the card.
+## When to use it
 
-By default the unit looks the same as during the loop's other questions,
-so nothing jumps when a swipe question comes up. Tick **show the unit on a
-card** in the question's form to frame it as a card while it is asked.
+Good for **quick, simple judgements on many units**: relevance filtering,
+crowd coding on phones, training data for a classifier, _Would you share
+this post?_ experiments.
 
-## When swiping is a good idea
-
-Swiping works best for **quick, simple judgements on many units**:
-
-- **Relevance filtering**: is this article about the election, yes or no?
-  Code thousands of search results before the real coding starts.
-- **Crowd coding and citizen science**: coders code on their phone,
-  in a few spare minutes, with a gesture they already know.
-- **Training and validation data** for a classifier, where you need many
-  labels on simple categories.
-- **Survey experiments** where coders judge a series of messages
-  (_Would you share this post?_).
-
-It is less suitable when:
-
-- **there are more than three answers**: use a nominal question;
-- **the judgement needs thought**, such as a frame or an argument: the
-  speed of swiping invites quick, intuitive answers. That is the point for
-  first impressions, but not for careful coding;
-- **coders need to read a long text** before they can judge: they can, but
-  the card then fills the screen and the swipe gesture is far away from
-  where they started reading;
-- **mistakes are costly**: a swipe answers at once. Coders can go back to
-  the previous question and change their answer, but they need to notice
-  first.
+Less suitable for more than three answers, judgements that need thought,
+long texts, or when mistakes are costly (coders can go back, but must
+notice first).
 
 ## Using the answers
 
-A swipe answer works like a single nominal answer: `$var.relevant.value`
-is the value (`yes`), `$var.relevant.label` the label (_Yes_), and
-conditions can use _is_ and _is one of_, for example to ask follow-up
-questions only for relevant units. See [Conditions](conditions.md).
-
-A swipe question can also decide when a shared unit has been coded enough
-(see [Shared queues](shared-queues.md)), just like a nominal question with
-one answer.
+As a single category: `$var.relevant.value`, `$var.relevant.label`, and
+_is_ / _is one of_ in [conditions](conditions.md). It can also decide when
+a shared unit is done (see [Shared queues](shared-queues.md)).

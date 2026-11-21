@@ -2,16 +2,14 @@
 title: Your first study
 section: Getting started
 order: 2
-summary: Step by step from an empty study to coders at work - units, a small design, a layout, preview, deploy, links, results.
+summary: Step by step from an empty study to coders at work - units, questions, coders, preview, deploy, link, results.
 ---
 
-This page walks you through a complete, small study: coders read news
-articles and say what each one is about and how negative or positive it is.
-It takes about fifteen minutes. Every step links to a page with more detail,
-but you don't need those to get through it.
+A small study in about fifteen minutes: coders read news articles and say
+what each is about and how positive it is. Each step links to more detail,
+but you don't need it to get through.
 
-You need a small CSV file with a few articles. Save this as `articles.csv`
-(any spreadsheet program can save a CSV, or copy it into a text editor):
+To follow along, save this as `articles.csv`:
 
 ```text
 id,headline,text
@@ -22,111 +20,56 @@ a003,Local team wins cup,"Thousands celebrated in the city centre after the fina
 
 ## 1. Create a study
 
-> To look around first, choose **Create new study** → **From an example** on
-> the **Studies** page: it makes a ready study (units, a deployed design, a
-> link, and often example answers) to try and change. Its overview
-> says what to try.
->
-> To start from a design you have (a design file from a study's download or
-> the editor's Export menu), choose **Create new study** → **From a file**.
->
-> **Create new study** → **Guided setup** does steps 1 to 3 below in one go: say
-> whether you annotate units, ask questions or run an experiment, upload
-> the units, choose who codes what, and name your questions. The study then
-> opens in the design editor, with each question marked _to specify_:
-> choose its answer type there (step 3), then continue with step 4. See
-> [Guided setup](setup-wizard.md) for what it does and what only the editor
-> does.
+On the **Studies** page, click **Create new study** and choose:
 
-1. On the **Studies** page, click **Create new study**, then **Empty study**.
-2. Give it a name under **Study Name**, for example _News pilot_, and click
-   **Create Study**.
+- **Guided setup**: answers a few questions (units, who codes what, the
+  names of your questions) and makes steps 2 to 4 for you. You then only
+  choose each question's answer type (step 3). See
+  [Guided setup](setup-wizard.md).
+- **Empty study**: type a name and click **Create Study**. Follow the
+  steps below.
+- **From an example**: a ready study to look around in.
 
-The study opens on its **Overview** tab. The tabs along the top group the
-steps below: **Design** (the **Editor** and **Units**), **Deploy**
-(**Links** and **Coders**), **Results**, and the study's **Settings**.
-**Preview Study** at the top right tries the study as a coder.
+The study opens on **Overview**. The tabs: **Design** (**Editor**,
+**Units**), **Deploy** (**Links**, **Coders**), **Results** and
+**Settings**; **Preview** is at the top right.
 
 ## 2. Upload the units
 
-1. Open the **Units** tab and click **Upload CSV**.
-2. Click **Choose a CSV file** and pick `articles.csv`.
-3. The `id` column's type should be **unit id**.
-4. Click **Use column names**: the `headline` and `text` columns become the
-   fields `headline` and `text`.
-5. Check the preview, then click **Upload 3 units**.
+1. **Design › Units** → **Upload CSV** → **Choose a CSV file**.
+2. Check that `id` has the type **unit id**, and click **Use column
+   names** (`headline` and `text` become fields).
+3. Click **Upload 3 units**.
 
-More in [Uploading units](uploading-units.md).
+More: [Uploading units](uploading-units.md).
 
-## 3. Write the design
+## 3. Write the questions
 
-Open the **Editor** tab. On the left is the design as a tree of items;
-on the right the form of the item you select.
+Open **Design › Editor**. Left: the design as a tree of blocks. Right: the
+form of what you select.
 
-**A unit loop.** Questions about units go inside a _unit loop_: the loop
-asks its questions for every unit a coder gets.
-
-1. Click **Add block** above the tree, then **Unit loop**.
-2. In the loop's form, type a **Label (optional)** such as _News articles_.
-   Coders see it in their menu.
-
-**The first question.**
-
-1. Hover over the loop's row in the tree and click the **+** at the right.
-   The menu asks _where_: choose **Inside News articles**, then
+1. Click **Add block** → **Unit loop**. A unit loop asks its questions for
+   every unit. Give it a **Label**, e.g. _News articles_.
+2. Hover over the loop, click **+** → **Inside News articles** →
    **Question**.
-2. Change **Item Name** to `topic`. The name is the question's column in
-   your results.
-3. A new question has no answer type yet (it is marked _to specify_): set
-   **Answer Type** to **Nominal (categories)**.
-4. Under **Question**, type _What is this article mainly about?_
-5. Under **Options**, change the labels to _Politics_ and _Disasters_, and
-   click **+ Add option** for a third, _Sports_. The values (what is stored)
-   follow the labels: `politics`, `disasters`, `sports`.
+3. **Item Name**: `topic` (its column in the results). Choose the answer
+   type **Categories**. **Question**: _What is this article mainly
+   about?_ **Options**: _Politics_, _Disasters_, _Sports_.
+4. Hover over `topic`, click **+** → **After topic** → **Question**. Name
+   it `tone`, choose **Ordered options**, ask _How positive is the
+   article?_ with _Negative_, _Neutral_, _Positive_ (stored as 1, 2, 3).
 
-**The second question.**
+Questions asked once per coder, such as consent or background questions,
+go in a **Questions** block (**Add block** → **Questions**) before or
+after the loop.
 
-1. Hover over `topic` in the tree, click its **+** and choose
-   **After topic**, then **Question**.
-2. Name it `tone`, set **Answer Type** to **Ordinal (ordered options)**,
-   and type the question _How negative or positive is the article?_
-3. Give the three options the labels _Negative_, _Neutral_ and _Positive_.
-   Their values are 1, 2 and 3.
+More: [The design editor](design-editor.md), [Questions](questions.md),
+[Choosing a question type](question-types.md).
 
-The tree now looks like this:
+## 4. Show the units
 
-```text
-News articles      the unit loop
-  ├ topic          nominal: politics, disasters, sports
-  └ tone           ordinal: negative (1), neutral (2), positive (3)
-```
-
-See [The design editor](design-editor.md) and
-[Questions](questions.md) for everything the editor can do.
-
-## 4. Say how a unit is shown
-
-Select the loop in the tree. Its form has two tabs:
-
-- **Layout**: how a unit is shown to coders. In the sketch, click the
-  title and choose `headline`, then the body and choose `text`. This makes
-  the template:
-
-  ```template
-  # $unit.headline
-
-  $unit.text
-  ```
-
-  `$unit.headline` is filled in with each unit's headline. For more than a
-  title, byline and body (styles, blocks, conditions), click **Advanced**
-  and write the template yourself. See [Layout templates](layout-templates.md).
-
-- **Units**: which units coders get. By default a loop codes all the
-  coder's units, and without specific coders or conditions in the design,
-  every coder gets every unit. That is what we want here. See [Handing out units](unit-distribution.md).
-
-Try the layout right here, with your own text:
+Select the loop. On its **Layout** tab, click **Title** and choose
+`headline`, then **Body** and choose `text`:
 
 ```example
 unit:
@@ -138,59 +81,55 @@ unit:
 $unit.text
 ```
 
-## 5. Save and preview
+The loop's **Units** tab says which units it codes: by default all the
+coder's units. More: [Layout templates](layout-templates.md).
 
-Click **Save** above the tree. Your design is now saved as a **draft**
-(design version 1, _v1_): you and your co-editors see it, coders don't. If the
-toolbar shows a red count of issues, click it to see what to fix; you can
-save with issues, but not preview or deploy.
+## 5. Choose who codes
 
-Click **Preview Study** at the top right. You
-now code the study as a coder would, with your real units, on a phone-sized
-screen (switch to **Desktop** for a larger one). Nothing you answer in a
-preview is stored. Check that the questions read well and the units look
-right; go back to the **Editor** tab to change things, save, and preview
-again.
+Click **Coder invitations** above the tree:
 
-## 6. Deploy
+- **Crowd** (the default): one link for anyone. Without more settings,
+  every coder codes all units. Optionally take a coder id from the URL
+  (for a panel), ask coders to sign in, share the units among coders, or
+  set a maximum number of coders.
+- **Specific coders**: coders you know, each with their own units, named
+  in a set column of the units. They get a link each, pick their name from
+  one link, or sign in.
 
-On the **Editor** tab, click **Deploy…**. The dialog says what deploying
-does; click **Deploy**. Coders can now start, with the codebook and your
-units. You can keep improving both: changes to the design, the units and
-the sets are drafts until you deploy them again. See
-[Preview, save and deploy](previewing-and-publishing.md).
+For this study, keep **Crowd**. More: [Links](links.md#coder-invitations),
+[Giving each coder their own units](own-units.md).
 
-## 7. Send coders a link
+## 6. Save and preview
 
-Deploying made a link for the study: you don't create links by hand.
+1. Click **Save** above the tree. This is a draft (v1): coders don't see
+   it. A red issue count in the toolbar says what to fix first.
+2. Click **Preview** at the top right and code the study as a coder
+   would. Nothing is stored.
+3. Change what reads badly in the **Editor**, save, and preview again.
 
-1. Open the **Links** tab.
-2. Optionally, click the pencil icon to give the link a label (e.g. _Pilot
-   coders_).
-3. Click **Copy link** in the table and send the link to your coders.
+More: [Preview, save and deploy](previewing-and-publishing.md).
 
-Anyone who opens the link starts their own session. See
-[Links](links.md) for who may use a link, limits and coder
-ids, and [What coders see](coder-experience.md) for the coder's side.
+## 7. Deploy and share the link
 
-> Test the study with **Preview**, not with the link. Opening the
-> link yourself makes you a coder of the study, and your answers end up in
-> the results.
+1. In the **Editor**, click **Deploy…** → **Deploy**.
+2. Open **Deploy › Links** and click **Copy link**.
+3. Send the link to your coders.
+
+> Test with **Preview**, not the link: opening the link makes you a coder,
+> and your answers end up in the results.
+
+More: [Links](links.md), [What coders see](coder-experience.md).
 
 ## 8. Follow progress and download results
 
-- The **Overview** tab shows how many coders started, answers per day, and
-  progress per loop. The **Coders** tab has a row per coder. See
+- **Overview** shows coders started, answers per day and progress per
+  loop; **Deploy › Coders** has a row per coder. See
   [Following progress](coders-and-progress.md).
-- On the **Results** tab, click **Download zip** for all answers as CSV
-  files, with a row per unit and coder in `annotations.csv`. See
-  [Downloading results](results.md).
+- **Results** → **Download zip**: CSV files, with a row per unit and coder
+  in `annotations.csv`. See [Downloading results](results.md).
 
-## Next steps
+## Next
 
-Before a real study, pilot the codebook with two or three coders on the
-same units, compare their answers, and sharpen the questions and options
-where they disagree. [Designing an annotation task](design-annotation-tasks.md)
-has more advice. From here you can add conditions (questions only asked
-when an earlier answer says so), text selection (span questions), or divide
-units over coders.
+Pilot the questions with two or three coders on the same units and sharpen
+them where they disagree. See
+[Designing an annotation task](design-annotation-tasks.md).

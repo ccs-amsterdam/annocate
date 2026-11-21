@@ -5,95 +5,60 @@ order: 1
 summary: Practical advice for content analysis and crowd coding - units, questions, categories, pilots, reliability, fatigue and phones.
 ---
 
-A good annotation study is mostly decided before the first coder starts:
-what a unit is, which judgements coders make, how categories are worded, and
-how you check that coders agree. This page collects established practice from
-content analysis (Krippendorff, Neuendorf) and crowd coding, and shows where
-AnnoTinder helps.
-
-It is opinionated. Every study has its own constraints, so read it as a list
-of defaults to depart from on purpose, not as rules.
+A good annotation study is mostly decided before the first coder starts.
+These are defaults from content analysis (Krippendorff, Neuendorf) and
+crowd coding: depart from them on purpose.
 
 ## Start from the unit of analysis
 
-Decide first what one judgement is _about_: a whole news article, a
-paragraph, a sentence, a tweet, an image. In AnnoTinder that is a **unit**:
-one row of the CSV file you upload. Everything a unit loop asks, it asks once
-per unit.
+Decide what one judgement is _about_ (an article, a sentence, a tweet): one
+row of your CSV.
 
-- **Split before you upload.** If you want judgements per paragraph or per
-  sentence, make each paragraph a row of its own (with the article's id as an
-  extra column, so you can join them later). Don't ask coders to "rate each
-  paragraph" of a long text in one question.
-- **Give context on purpose.** A sentence often can't be judged without its
-  headline or the previous sentence. Show context as extra fields in the
-  [layout](layout-templates.md), visibly separate from the part coders judge
-  (for example in a grey box, see [Colours and styles](colours-and-styles.md)).
-  More context costs reading time, so add only what changes judgements.
-- **Things inside a unit** (the actors in an article, the claims in a speech)
-  are [spans](span.md): coders select them in the text, and each selection is
-  stored with its position.
-- **Things about the coder** (consent, background, experimental group) are
-  asked once, outside the loop. See [Questions](questions.md).
+- **Split before you upload**: a row per paragraph or sentence, with the
+  article's id as a column.
+- **Give context on purpose**: extra fields in the
+  [layout](layout-templates.md), visibly apart from what is judged (e.g. a
+  grey box, see [Colours and styles](colours-and-styles.md)). Only what
+  changes judgements.
+- **Things inside a unit** (actors, claims) are [spans](span.md).
+- **Things about the coder** go in a Questions block, outside the loop.
 
 ## One judgement per question
 
-Each question should ask for one judgement, with one answer coders can give
-without weighing two things against each other.
+- **Split compound questions**: _"Is the government mentioned?"_, then
+  _"What is the tone towards it?"_.
+- **Filter first**: show follow-ups with a [condition](conditions.md), so
+  coders don't pick "not applicable" over and over.
+- **General to specific**: politics? → which actor → which tone.
 
-- **Split compound questions.** _"Is the article negative about the
-  government?"_ mixes a target and a tone. Ask _"Is the government
-  mentioned?"_, then _"What is the tone towards the government?"_.
-- **Filter first.** If a question only makes sense for some units, ask a
-  filter question first and show the follow-ups only when they apply, with a
-  [condition](conditions.md). Coders then don't have to pick "not applicable"
-  over and over, and your data says _why_ a question is empty: it was skipped.
-- **Keep each question's frame small.** Coders read the unit once, then answer
-  several questions about it. Put the questions in the order a careful reader
-  would think about them: from general (is this about politics?) to specific
-  (which actor, which tone).
-
-A loop with many questions per unit is fine for trained coders. For crowd
-coders, fewer and simpler questions per unit work better: give the same unit
-to more coders instead.
+For crowd coders, fewer and simpler questions per unit, and more coders
+per unit.
 
 ## Writing categories
 
-The categories of a question are its **options**. Each has a label coders see
-and a value that is stored (see [Values and labels](design-values-and-labels.md)).
-
-- **Mutually exclusive and exhaustive.** Each unit fits exactly one option,
-  unless you allow several (**Allow several answers**). If coders often hesitate
-  between two options, the definitions overlap.
-- **Decide about "Other", "Unclear" and "Not applicable".** They are useful,
-  but coders use them as an escape when a judgement is hard. Add them on
-  purpose, define when to use them, and watch how often they are used in the
-  pilot.
-- **Short labels.** A label is a button, not a definition. "Human interest"
-  rather than "The article focuses on a personal story". Put definitions in
-  the question's **Instruction** or the coder instructions. Short labels also
-  let AnnoTinder show options side by side on a phone (see
-  [How answers are laid out](answer-layouts.md)).
-- **Ordered or not.** If the options have an order (negative, neutral,
-  positive), use an [ordinal question](nominal-and-ordinal.md): the stored
-  values are numbers in that order, which is what your analysis needs.
-- **Many categories.** A list of 30 topics is hard to use and invites
-  primacy effects (options at the top are picked more). Consider two steps: a
-  broad topic first, then a subtopic shown with a condition.
+- **Mutually exclusive and exhaustive**, unless you allow several
+  answers. Frequent hesitation means overlapping definitions.
+- **"Other", "Unclear", "Not applicable"** on purpose, defined, and
+  watched in the pilot. Use the [special options](nominal-and-ordinal.md#special-options)
+  for not applicable and don't know.
+- **Short labels**: a label is a button, not a definition. Put
+  definitions in the question's [instructions](questions.md#instructions).
+  Short labels also fit side by side on phones.
+- **Ordered?** Use [ordered options](nominal-and-ordinal.md).
+- **Many categories** invite primacy effects: ask a broad topic first,
+  then a subtopic.
 
 ## Instructions and training
 
-Coders need a codebook document with definitions and examples, and training
-before they code the real material.
+Keep a full codebook document (you publish it with the study), and in the
+tool:
 
-- **Short reminders in the tool.** Use the question's **Instruction** for a
-  one-line definition. Longer texts that should appear with every unit can go
-  in a [snippet](snippets.md). Keep the full codebook document as well: it is
-  what you publish with the study.
-- **A training round with feedback.** Make a separate loop with training
-  units before the real one, and give the training units a column with the
-  expert answer. With [`::: from`](template-blocks.md) the layout can show
-  that answer after the coder has given their own:
+- **Instructions** on each loop question, behind its **?** button,
+  optionally opening by themselves the first time (see
+  [Questions](questions.md#instructions)).
+- **A practice round**: [practice units](special-units.md) with known
+  answers give feedback when a coder is wrong. Or build your own feedback
+  with [`::: from`](template-blocks.md):
 
 ```example
 unit:
@@ -114,104 +79,61 @@ The expert answer is **$unit.expert**. Check the definitions before you go on.
 ::::
 ```
 
-Switch between the answers and pick the question on screen to see what the
-coder sees before and after answering. Here `feedback` is a
-[confirm question](confirm.md) after `topic`: it shows the feedback and a
-button to go on.
+Here `feedback` is a [confirm question](confirm.md) after `topic`.
 
-> A field the design uses is sent to the coder's browser, also when it is
-> only shown later. That is fine for training, but don't put the expert answer
-> of your _test_ units in their data.
+> Fields the design uses reach the coder's browser, also those shown
+> later: don't put test units' expert answers in their data (use
+> [gold units](special-units.md), whose answers stay on the server).
 
 ## Pilot, then test reliability
 
-1. **Preview** the design yourself, on your real units, at phone and desktop
-   size. Nothing is stored. See [Preview, save and deploy](previewing-and-publishing.md).
-2. **Pilot** with two or three coders on the same 30 to 50 units: a pilot
-   set that every coder codes in full (a loop with only the `pilot` units, see
+1. **Preview** the design on your real units, phone and desktop size.
+2. **Pilot** with two or three coders on the same 30-50 units (see
    [Intercoder reliability designs](overlap.md#intercoder-reliability-designs)).
-   Talk through the
-   disagreements and revise the definitions, not just the answers.
-3. **Test reliability on new units**, not the pilot units: coders have
-   discussed those. Content analysis textbooks recommend a reliability sample
-   of at least 50 units, and more for rare categories; Krippendorff (2018)
-   gives a way to compute the size you need.
-4. **Keep checking during coding.** An overlap set spread through the units
-   (placement **Spread through them**) shows whether coders drift apart over
-   time. Placement **Before them** measures agreement at the start, when
-   coders are fresh but still learning.
+   Revise the definitions, not just the answers.
+3. **Test reliability on new units**: at least 50, more for rare
+   categories (Krippendorff 2018).
+4. **Keep checking**: an overlap **spread through** the units shows drift.
 
-AnnoTinder doesn't compute reliability. Download the results and compute
-Krippendorff's alpha (or another coefficient that fits your measurement
-level) per question, for example with the `irr` or `tidycomm` package in R.
-Report it per question, not one number for the whole codebook. For ways to
-set up the overlap, see
-[Intercoder reliability designs](overlap.md#intercoder-reliability-designs).
-
-You can keep improving the codebook while coding runs, but each change makes
-the data harder to interpret. See
+AnnoTinder doesn't compute reliability: download the results and compute
+Krippendorff's alpha per question (e.g. `irr` or `tidycomm` in R).
+Changing the codebook during coding: see
 [Changing a design while coding runs](changing-a-live-design.md).
 
 ## Order and fatigue
 
-- **Random order.** In the loop's **Order**, **Random (each coder their own
-  order)** spreads order effects (learning, fatigue, anchoring on the first
-  units) over all units, instead of piling them up on the units that come
-  first. Keep **In set order** when the order matters, for example
-  sentences of one text. See [Order](unit-distribution.md#order).
-- **Limit the work per coder.** Coding quality drops after an hour or so of
-  concentrated work. Coders can stop and resume later, on the same device or
-  another one, so long studies can be spread over days. For crowd coding, cap
-  the units per coder: **Units per coder, at most** in a
-  [shared queue](shared-queues.md), or split the units into smaller
-  [sets](sets.md).
-- **Look at timing.** The download has the time each unit was first answered
-  and last changed. Implausibly fast coders show up as tiny gaps between
-  units.
+- **Random order** spreads learning and fatigue over units (see
+  [Order](unit-distribution.md#order)); keep set order when order matters.
+- **Limit work per coder**: quality drops after about an hour. Coders can
+  stop and resume. In crowd coding, cap **Units per coder** (see
+  [Shared queues](shared-queues.md)).
+- **Look at timing**: `timings.csv` shows implausibly fast coders.
 
 ## Crowd coding
 
-Crowd coding (Benoit et al. 2016; Lind, Gruber and Boomgaarden 2017) trades
-trained experts for many untrained coders, whose judgements are combined.
+Crowd coding (Benoit et al. 2016; Lind, Gruber and Boomgaarden 2017)
+combines many untrained coders.
 
-- **Simple tasks.** One or two questions per unit, with options anyone can
-  understand. Hard distinctions don't become easier with more coders.
-- **Several coders per unit.** Let each unit be coded until three or five
-  coders did, or until enough of them agree, with a
-  [shared queue](shared-queues.md). Combine them afterwards, for example by
-  majority. Keep the individual answers: they let you estimate uncertainty
-  per unit.
-- **Gold units.** Units with a known answer, coded by everyone (an
-  overlap set, see [Gold units](overlap.md#gold-units)), let you compare
-  coders with experts. AnnoTinder
-  doesn't score them for you: compare them in your analysis.
-- **Attention checks and screening.** A question with an obvious answer plus
-  a condition and an [end item](end-items.md) screens out coders who don't
-  read. See [Online panels and crowd coding](online-panels.md).
+- **Simple tasks**: one or two questions, options anyone understands.
+- **Several coders per unit** with a [shared queue](shared-queues.md);
+  combine afterwards (e.g. majority), keep the individual answers.
+- **Gold units** with known answers, checked silently; coders who fail
+  too many can be screened out (see [Gold units](overlap.md#gold-units)).
+- **Attention checks and screening** with [end items](end-items.md) (see
+  [Online panels and crowd coding](online-panels.md)).
 
 ## Coders on phones
 
-Many crowd coders and survey respondents use a phone. AnnoTinder lays out
-every question for the smallest phones (see
-[The same form on every device](design-fixed-layouts.md)), but the task must
-fit too:
-
-- Long texts are tiring to read on a phone. Shorten units where you can, or
-  recruit for desktop if the material needs it.
-- Fast yes/no judgements work well as a [swipe](swipe.md).
-- Span selection on a touch screen is fiddly. Test it on a real phone first.
-- Use the phone sizes in **Preview** to check every question.
+Questions are laid out for small phones (see
+[The same form on every device](design-fixed-layouts.md)), but the task
+must fit too: shorten long texts or recruit for desktop, use [swipe](swipe.md)
+for fast yes/no, and test span selection on a real phone.
 
 ## What AnnoTinder doesn't do
 
-- It doesn't compute agreement or combine coders' answers: that is part of
-  your analysis.
-- It has no adjudication step in which a supervisor resolves disagreements.
-  You can make one: a second study (or loop) in which an expert codes the units
-  coders disagreed on.
-- It doesn't score coders against gold units, or exclude them automatically
-  for low agreement.
-- It doesn't set time limits per unit or per session.
+- compute agreement or combine coders' answers;
+- adjudicate disagreements (make a second loop or study for an expert);
+- set time limits per unit or session.
 
 ## Further reading
 

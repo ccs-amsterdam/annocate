@@ -5,248 +5,152 @@ order: 4
 summary: The coding screen, moving back and forward, saving and resuming, continuing on another device, keyboard shortcuts, phones, and light or dark mode.
 ---
 
-Coders (also the people answering a survey or experiment) open a link and start right
-away, without an account (unless the link asks them to
-[log in](links.md#login)). This page describes what they see
-and can do, so you can write instructions for them and know what to expect.
-The quickest way to see it for yourself is **Preview Study** at the top right (see
+Coders open a link and start right away, without an account (unless the
+invitation asks them to [sign in](links.md#login)). To see it yourself,
+use **Preview** (see
 [Preview, save and deploy](previewing-and-publishing.md#previewing)).
 
 ## The coding screen
 
-The screen has a bar at the top and the task below it.
+**A question in a unit loop** splits the screen:
 
-**For a question in a unit loop**, the screen is split in two:
+- the **unit** at the top, shown with the loop's layout, scrolling on its
+  own. With **Focus on**, it scrolls to and highlights that part;
+- the **question** docked at the bottom, up to half the screen. Coders
+  can drag its edge; **Auto** (or a double click) fits it again. A
+  **?** button opens the question's [instructions](questions.md#instructions).
 
-- The **unit** at the top, shown with the loop's layout (see
-  [Layout templates](layout-templates.md)). It scrolls on its own, so a
-  long article doesn't push the question off the screen. If the question
-  has a **Focus on**, the unit scrolls to that part and highlights it
-  briefly when the question comes up, and may dim the rest.
-- The **question** docked at the bottom: the question text, the
-  instruction under it in smaller grey text, and the answer buttons. It
-  takes as much room as it needs, up to half the screen. Coders can drag
-  its top edge to make it larger or smaller; **Auto** (or a double click
-  on the edge) fits it to the question again.
+On a large screen this is a card in the middle; on phones it fills the
+screen, with the question within thumb reach.
 
-On a large screen, the unit and the question are a card in the middle,
-at most about 900 pixels high, so the answers stay close to the text on
-a tall monitor. On phones and tablets they fill the screen, with the
-question at the bottom, within reach of the thumbs.
+**A question outside a loop** is a card in the middle of the screen.
 
-**A question outside a loop** (consent, background questions, an
-instruction screen) is shown on its own, as a card in the middle of the
-screen.
-
-How the answers look depends on the answer type and its layout; see
+A question with one answer moves on when the coder clicks an option;
+several answers, sliders, numbers and scales have **Continue**. See
 [Choosing a question type](question-types.md) and
-[How answers are laid out](answer-layouts.md). A question with one answer
-moves on as soon as the coder clicks an option. Questions with several
-answers, sliders, number inputs and scales have a **Continue** button.
+[How answers are laid out](answer-layouts.md).
 
 ## The top bar
 
-From left to right:
+| Element                       | Does                                                         |
+| ----------------------------- | ------------------------------------------------------------ |
+| Menu (three lines)            | the questions and loops reached; click one to go there       |
+| `3`                           | the 3rd question                                             |
+| Stack icon and `4 · 2`        | unit 4, its 2nd question; opens the loop's menu              |
+| **<** and **>**               | back and forward                                             |
+| Monitor-and-phone icon        | **Continue on another device**                               |
+| Gear                          | **Settings**: light or dark, keys for answers, key badges    |
 
-| Element                                  | What it does                                                                                  |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Menu (three lines)                       | Opens the menu (below). Not there if the study is just one unit loop                          |
-| Where the coder is: `3`                  | The 3rd question                                                                              |
-| In a unit loop, a stack icon and `4 · 2` | Unit 4, its 2nd question (just `4` if a unit has one question). Opens the loop's menu (below) |
-| **<** and **>**                          | Go back and forward                                                                           |
-| Monitor-and-phone icon                   | **Continue on another device** (below)                                                        |
-| Gear                                     | **Settings**: light or dark, and keyboard shortcut badges                                     |
+The loop's menu shows **Unit 12 of 40**, with buttons for the first,
+previous, next and furthest unit, and a number pad to go to a unit.
+Coders can go to any unit up to the furthest they reached.
 
-In a unit loop whose number of units is known, a thin line along the
-bottom of the bar shows how many of them the coder has done.
-
-**The menu** lists the study's questions the coder got to, by the first
-line of their text, and its unit loops, by their label (or _Units_), with
-the unit the coder is at. Questions they haven't got to are not listed:
-conditions may skip them. A tick marks what is done. Click a question to
-go to it; click a loop to go to the coder's unit in it.
-
-**The loop's menu** shows **Unit 12 of 40** between buttons for the
-first, previous, next and furthest unit, and the questions of the unit
-that the coder got to, to go to one. Click the unit number for a number
-pad to go to a unit by its number (typing numbers works too). Coders can
-go to any unit up to the furthest one they reached, not beyond. While a
-menu is open, number and arrow keys belong to the menu, not to the
-question behind it.
-
-Give your loops a clear label and start each question with a short first
-line: that is what coders see in the menu.
+Give loops a clear label and start each question with a short first line:
+that is what the menu shows.
 
 ## Going back and forward
 
-Coders can go back to any earlier question and unit, see their answers, and
-change them. Going forward is possible up to where they have been: they
-can't skip ahead to units or questions they haven't reached.
+Coders can go back to any earlier question or unit and change their
+answers, and forward up to where they have been. A change in an earlier
+unit is saved when they go through that unit's last question. If a
+[condition](conditions.md) now hides a question, it is stored as skipped.
 
-When a coder changes an answer in an earlier unit, the change is saved when
-they go on through that unit's last question. Changing an answer can also
-change which questions come next, if a [condition](conditions.md) depends
-on it; a question that a condition now hides is stored as skipped.
-
-One exception: an answer outside the unit loops that a loop depends on
-(the loop's layout, questions, conditions or units refer to it, e.g. a
-role shown with every unit) can't be changed once the coder coded a unit
-in that loop. Changing it would change what those units were coded with.
-Coders see such an answer, with a note, but can't change it.
+An answer outside the loops that a loop depends on (e.g. a role shown with
+every unit) can't be changed once the coder coded a unit in that loop.
 
 ## Saving and resuming
 
-Answers are saved on the server as the coder goes:
+- An answer **outside a loop** is saved as soon as it is given.
+- A **unit**'s answers are saved together, after its last question.
 
-- an answer to a question **outside a loop** as soon as it is given;
-- the answers to a **unit** together, when the coder answers its last
-  question.
+Saving runs in the background, and without a connection answers wait in
+the page until it is back.
 
-Saving happens in the background: coders go on to the next question or
-unit at once, and units are fetched a few at a time, so nobody waits for
-the server. Without a connection, answers are kept in the page and saved
-when it is back; the top bar says so. Closing the page while answers
-aren't saved yet asks first, and the session only ends once everything is
-saved.
+Coders can close the page any time. Opening the link again **in the same
+browser** continues where they left off. A unit left halfway is asked
+again from the start. (In a [shared queue](shared-queues.md), loaded units
+are held for a coder for 15 minutes.)
 
-Coders can close the page whenever they like. When they open the link
-again, in the same browser, they continue where they left off, also the
-next day or weeks later: questions they answered are skipped, and in a loop
-they get the next unit. Earlier units stay reachable with **<**, and the
-position shows how far they are (_Unit 31 / 100_).
-
-If they close the page halfway through a unit, the answers to that unit
-were not saved yet. They get the same unit again and answer it from the
-start. (In a shared queue the units a coder has loaded, up to five, are held
-for them for 15 minutes; after that they may go to someone else. See
-[Shared queues](shared-queues.md).)
-
-A session belongs to the browser it was started in. Another browser, a
-private window, or cleared browser data means a new session, unless the
-coder moves it (below). When AnnoTinder knows who the coder is (a link of
-their own, a coder id in the link, or a name they picked), it
-notices and says **You already started on another device**, with the
-choice to continue on the original device or **Start a new session**. A
-new session starts empty: it doesn't include the earlier answers.
+Another browser, a private window or cleared data means a new session,
+unless the coder moves it (below). When AnnoTinder knows who the coder is
+(a link of their own, a coder id, a picked name), it says **You already
+started on another device** and offers to continue there or **Start a new
+session** (empty).
 
 ## Continuing on another device
 
-Coders find the studies they started in this browser at **Annotate**
-(`/code`), with the study's public title (set at the top of the
-editor's item tree; the study's own name stays private) and how far they got, and continue them
-from there without the link. Logged-in coders also see their studies on
-other devices.
-
-On the device where they started, coders click the monitor-and-phone icon
-in the top bar (**Continue on another device**). It shows a QR code and a link.
-Scanning or opening it on the other device continues the same session
-there. The link works once, for 15 minutes; after that, coders make a new
-one. Both devices can then continue the session.
-
-The link gives access to the session, so coders shouldn't share it.
-Coders who [logged in](links.md#login) need no link: they log in on
-the other device.
+- **Annotate** (`/code`) lists the studies started in this browser (by
+  their public title), to continue without the link.
+- **Continue on another device** (top bar) shows a QR code and a link that
+  moves the session; it works once, for 15 minutes. Coders shouldn't share
+  it.
+- Coders who [signed in](links.md#login) just sign in on the other
+  device.
 
 ## Keyboard shortcuts
 
-On a computer, coders can answer without the mouse. Some keys always work:
+| Keys                    | Do                                                       |
+| ----------------------- | -------------------------------------------------------- |
+| **←** **→** **↑** **↓** | move between answer buttons                              |
+| **Space** / **Enter**   | choose the focused button                                |
+| **Enter**               | continue, once answered                                  |
+| **Shift + ←** / **→**   | previous or next question                                |
+| **Backspace**           | back to the previous question, to change its answer      |
+| **0** / **.**           | the special options: not applicable, don't know          |
+| **?**                   | open the question's instructions                         |
 
-| Keys                    | What they do                                                                   |
-| ----------------------- | ------------------------------------------------------------------------------ |
-| **←** **→** **↑** **↓** | move between the answer buttons (the focused one has a ring)                   |
-| **Space** / **Enter**   | choose the focused button                                                      |
-| **Enter**               | continue, once the question was answered (with several answers: like Continue) |
-| **Shift + ←** / **→**   | the previous or next question (the badges on those buttons say so)             |
-| **Backspace**           | back to the previous question, its answer focused to change it at once         |
-| **0** / **.**           | the special options: not applicable, don't know (in every question and study)  |
+Swipe questions use the arrows to swipe. In span questions, keys label a
+selection, **Esc** cancels and **Backspace** removes the last span.
 
-Swipe questions keep their arrows as answers: **←** **→** **↑** swipe left,
-right or up. In span questions, after selecting text, the keys give the
-selection a label (**Esc** cancels), and **Backspace** removes the last span.
+Coders choose the **Keys for answers** in their settings (remembered in
+their browser):
 
-Which keys choose the other answers is the coder's choice, under **Keys for
-answers** in their settings menu (it is remembered in their browser):
+| Keys for answers   | Choose an option with                                                  |
+| ------------------ | ---------------------------------------------------------------------- |
+| **Numbers**        | **1** to **9**, in order (the default)                                 |
+| **Numpad**         | the numpad key where the button is; only in responsive studies         |
+| **Letters**        | home-row letters **a s d f j k l …**                                   |
+| **Type to filter** | typing part of a label; **Enter** picks the first match, **Esc** clears |
 
-| Keys for answers   | Choose an option with                                                                                   |
-| ------------------ | ------------------------------------------------------------------------------------------------------- |
-| **Numbers**        | **1** to **9**, in the order of the options (the default)                                               |
-| **Numpad**         | the numpad key where the button is: the bottom row **1 2 3**, then **4 5 6** and **7 8 9**              |
-| **Letters**        | home-row letters **a s d f j k l …**, for touch typists                                                 |
-| **Type to filter** | typing part of a label: the others fade, **Enter** chooses the first match, **Esc** clears (long lists) |
-
-Where a choice can't work, a question uses numbers instead: the numpad
-needs buttons in at most three rows and columns, letters at most 26
-options, and typing to filter is for questions with option buttons. On a
-scale, the keys answer the first item without an answer, and **Enter**
-continues.
-
-The badges on the buttons show the keys. **Shortcuts** in the settings menu
-hides them for coders who find them distracting (the keys keep working);
-on phones and tablets without a keyboard they are hidden from the start.
+Where a choice can't work, numbers are used (letters: at most 26 options;
+numpad: at most three rows and columns, and only with responsive layouts,
+see [Display](answer-layouts.md#fixed-or-responsive)). Badges on the
+buttons show the keys; **Shortcuts** in the settings hides them. On touch
+devices they are hidden from the start.
 
 ## Phones
 
-AnnoTinder is made for small phone screens: the question stays docked at
-the bottom within thumb reach, buttons are large enough to tap, and the
-unit scrolls above it. Swipe questions can be answered by swiping the unit
-itself. A question's layout is the same on every device, so coders on
-phones and on computers answer the same form (see
-[The same form on every device](design-fixed-layouts.md)).
-
-Check long units and many options on a phone-sized screen before you
-deploy: the **Mobile** preview has the sizes of common phones.
+AnnoTinder is made for small phones: the question stays at the bottom,
+buttons are large, and swipe questions can be swiped. Check long units and
+many options with the **Mobile** preview before you deploy. See
+[The same form on every device](design-fixed-layouts.md).
 
 ## Light or dark
 
-Under **Settings**, **Appearance**, coders choose **Light** or **Dark**.
-Until they choose, AnnoTinder follows their device's setting. The choice is
-kept in their browser. If your units only look right in one of the two
-(e.g. styled material), set the loop's **Colours**; see
-[Light or dark](colours-and-styles.md#light-or-dark).
-
-## Instructions
-
-Each question can have an **instruction**: shown under the question text,
-in smaller grey text, every time the question comes up. Use it for the
-short reminder that coders need while answering ("Code the main topic
-only, not topics mentioned in passing").
-
-For longer instructions, put a **Confirm** question before the loop, with
-the instructions as its text: coders read them and click **I confirm**.
-The text can be as long as you need, with headings and lists. See
-[Confirm](confirm.md). Coders can always go back to it from the
-**Navigation** menu.
+Coders choose under **Settings** → **Appearance**; until then their
+device's setting is used. If your units only look right in one (images,
+coloured material), set **Display** → **Light or dark** to always light or
+dark. See [Light or dark](colours-and-styles.md#light-or-dark).
 
 ## Stopping
 
-The door icon at the top right offers three ways out:
+The door icon at the top right:
 
-- **Stop for now** explains how to continue later: open the same link on the
-  same device and browser, or first use **Continue on another device**.
-  Nothing is lost: answers are saved as the coder goes.
-- **Quit this study** ends the session for good, after a confirmation. The
-  answers so far are kept.
-- **Quit and ask to delete my answers** ends the session and asks you, the
-  researcher, to delete the coder's answers. The coder confirms by typing a
-  word. You decide on the request on the **Coders** tab (see
-  [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)).
+- **Stop for now** explains how to continue later. Nothing is lost.
+- **Quit this study** ends the session; answers are kept.
+- **Quit and ask to delete my answers** ends it and asks you to delete
+  them (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)).
 
 ## The end
 
-When coders finish the last item, they see **Study Complete!** with a thank
-you. The last screen also has **Ask to delete my answers**, for coders who
-want to withdraw after finishing. An [end item](end-items.md) can end the session earlier, with your own
-message and, for online panels, a redirect back to the panel after a few
-seconds. A coder who opens the link again later sees the same ending.
+After the last item coders see **Study Complete!**, with **Ask to delete
+my answers**. An [end item](end-items.md) can end earlier, with your
+message and an optional redirect to a panel.
 
 ### Finished sessions are closed
 
-Once a session ended, coders can't look at or change their answers any
-more: opening the link again shows only the end screen. That way your data
-doesn't change after the fact, and someone who later gets into a coder's
-device or login doesn't see their answers. For 15 minutes after finishing
-(not after being screened out or quitting), the end screen has **Go back to
-my answers**, for a coder who notices a mistake.
-
-To let coders always return to their answers, tick **Keep finished
-sessions open** on the study's **Settings** tab.
+Opening the link after the end shows only the end screen: answers can't be
+seen or changed, so data doesn't change afterwards. For 15 minutes after
+finishing, **Go back to my answers** lets a coder fix a mistake. To keep
+sessions open, tick **Keep finished sessions open** in the study's
+**Settings**.

@@ -5,34 +5,21 @@ order: 1
 summary: Upload the material to code from a CSV file - ids, fields and their types, and replacing units.
 ---
 
-**Units** are the material coders code: news articles, tweets, survey
-answers, image links. You upload them as a CSV file on the **Units** tab of a
-study. Each row becomes a unit, and the columns you choose become its
-**fields**, which a design shows with `$unit.<field>`, for example
-`$unit.headline`.
-
-A small file is enough to start: you can upload more units at any time, and
-add new columns later. Uploaded units are a draft until you deploy them
-(**Deploy…** in the bar at the top of the study). Then loops over all units of
-the study hand out the new units, also while coding runs, without changing the
-design.
+**Units** are what coders code: articles, posts, survey answers, image
+links. Upload them as a CSV file on **Design › Units**. Each row is a
+unit; the columns you choose become **fields**, shown in a design as
+`$unit.headline`. Uploaded units are drafts until you deploy.
 
 ## Preparing the file
 
-AnnoTinder reads a CSV file:
+- first row: column names;
+- separated by commas (not semicolons);
+- values with commas, quotes or line breaks between double quotes
+  (spreadsheets, R and Python do this);
+- saved as UTF-8.
 
-- the first row holds the column names;
-- the values are separated by commas (not semicolons, as some spreadsheet
-  programs in Europe use);
-- a value that contains commas, quotes or line breaks is put between double
-  quotes, with quotes inside it doubled (`"He said ""no"""`). Spreadsheet
-  programs and R or Python do this for you when they save a CSV;
-- the file is saved as UTF-8, so accents, emoji and other scripts come out
-  right.
-
-One column must hold a **unique id** for every unit: your own id, such as an
-article number or a tweet id. It is how you recognize units in the results,
-and how AnnoTinder knows that a unit you upload again is the same unit.
+One column holds a **unique id** per unit (an article number, a tweet id):
+it identifies units in the results and on re-upload.
 
 ```text
 id,headline,source,text
@@ -40,143 +27,76 @@ a001,Storm hits the coast,Daily Planet,"Heavy rain and wind caused flooding in s
 a002,Minister resigns,Morning Post,"The minister of finance stepped down after weeks of criticism."
 ```
 
-> Only upload what coders may see, plus what you need to recognize the
-> units. Coders only ever receive the fields the design shows (see
-> [What coders get](#what-coders-get)), but keeping personal data out of the
-> study altogether is safest.
+> Upload only what coders may see plus what you need to recognize units.
+> Coders only receive fields the design uses (see
+> [What coders get](#what-coders-get)).
 
 ## Uploading step by step
 
-1. Open the **Units** tab and click **Upload CSV**.
-2. Click **Choose a CSV file**, or drop the file on the box.
-3. Check which column has each unit's id: its **Type** is **unit id**
-   (highlighted). AnnoTinder picks a column named `id`, `externalid` or
-   `external_id` if there is one, and otherwise the first column; set
-   another column's type to **unit id** to change it. The id isn't uploaded
-   as a field: a layout shows it as `$unit.id`.
-4. Under **Columns to upload**, choose which columns to upload, and as which
-   field (see below).
-5. Check the preview of the first rows, then click **Upload … units**.
+1. **Upload CSV** → **Choose a CSV file** (or drop it).
+2. Check the id column: its **Type** is **unit id** (AnnoTinder picks
+   `id`, `externalid`, `external_id` or the first column). Shown as
+   `$unit.id`.
+3. Under **Columns to upload**, give each column you want a name under
+   **Upload as field**, or click **Use column names** (`Publication date`
+   becomes `publication_date`).
+4. Check the preview and click **Upload … units**.
 
-Large files are uploaded in batches; the button shows how far it is.
-
-## Columns and fields
-
-The table under **Columns to upload** has a row per column of your file,
-with a few example values. A column is uploaded when it has a name under
-**Upload as field**; columns left empty (_not uploaded_) are ignored.
-
-- Click **Use column names** to upload every column (except the id column)
-  under its own name. Names are made valid: lower case, other characters
-  become `_`, so `Publication date` becomes `publication_date`.
-- Click **Clear** to start over and choose columns one by one.
-- You can type another name for any column, for example `text` for a column
-  called `body_text_clean`.
-
-Field names may contain letters, digits and `_`, and may not start with a
-digit (at most 64 characters). That way a design can use them as
-`$unit.name`. A check mark shows that a column is fine; otherwise the
-problem is shown next to it.
+Field names: letters, digits and `_`, not starting with a digit, at most
+64 characters.
 
 ### Types
 
-Every field has a **Type**:
+| Type      | Values            | Example                       |
+| --------- | ----------------- | ----------------------------- |
+| `text`    | anything          | headlines, texts, image links |
+| `number`  | numbers (`.` decimal) | `128`, `-3.5`             |
+| `boolean` | `true` or `false` | whether a post was deleted    |
 
-| Type      | Values                        | Example                       |
-| --------- | ----------------------------- | ----------------------------- |
-| `text`    | anything                      | headlines, texts, image links |
-| `number`  | numbers, with a decimal point | `128`, `-3.5`, `1e6`          |
-| `boolean` | `true` or `false`             | whether a post was deleted    |
-
-AnnoTinder suggests the type from the values: `number` if every filled-in
-value is a number, `boolean` if every one is `true` or `false`, else `text`.
-You can change it. Values that don't fit the type are listed (for example
-_3 values aren't numbers ('n/a', '3,5')_) and block the upload until you fix
-the file or choose `text`.
-
-Numbers matter when a design calculates with a field or compares it (for
-example _show this question only when `likes` is over 100_). Ids or codes
-with leading zeros, such as `007`, should be `text`: as a number they would
-become `7`.
-
-An empty cell is an empty value. In a design, an empty field shows
-nothing.
+The type is suggested from the values. Values that don't fit block the
+upload (_3 values aren't numbers ('n/a', '3,5')_). Use `number` to
+calculate or compare; ids with leading zeros (`007`) should be `text`.
 
 ### Set columns
 
-A column can also say who or which group each unit is for: give it the
-type **set**. It isn't uploaded as a field, but becomes a
-[set column](sets.md) named after the column. Each cell lists the unit's
-values, such as `anna`, `anna;bob` or `anna#3` (third in her order), and
-`_overlap`, `_practice` or `_gold` for the special units. Uploading such a
-column replaces its values. See
+Give a column the type **set** to make it a [set column](sets.md): who or
+which group each unit is for (`anna`, `anna;bob`, `anna#3`, `_overlap`,
+`_practice`, `_gold`). See
 [A sets column in your CSV](sets.md#a-sets-column-in-your-csv).
 
 ## Uploading more units later
 
-All units of a study have the same fields. The first upload sets them; later
-uploads add to them:
+All units share the study's fields. A column named like an existing field
+keeps its type; new columns become new fields (empty for earlier units).
 
-- A column named like an existing field is uploaded as that field and keeps
-  its type (_existing field_).
-- New columns become new fields. Units uploaded before have no value for
-  them.
-- If no column is uploaded as an existing field, AnnoTinder warns you: the
-  new units get empty values there.
-
-You can see the study's fields, with an icon for their type, at the top of the
-**Units** tab. They are part of the design: **Details**
-shows per field how the design uses it (_shown_ to coders, _sent, not
-shown_ when only conditions use it, _server only_ for gold and practice
-answer columns, or _not used_), a description, and its type. A field the
-design doesn't use can be removed (with its values in the units). A field
-the design uses but no upload brought can be declared there; the
-design can't be deployed until its fields are declared.
+The fields are listed at the top of **Units**; **Details** shows how the
+design uses each (_shown_, _sent, not shown_, _server only_, _not used_).
+Unused fields can be removed; a field the design uses but no upload
+brought can be declared there.
 
 ## Replacing units
 
-If the file has ids that the study already has, AnnoTinder asks before it
-replaces them: tick **Replace the … units that already exist (same id)**.
-Use this to fix a typo or a broken text.
+Uploading ids that exist asks you to tick **Replace the … units that
+already exist**: for fixing a typo. **Coded** units need a second tick,
+**Also replace the … coded units**:
 
-Replacing a unit that coders already answered about (a **coded** unit) needs
-a second tick, **Also replace the … coded units**, because it changes what
-later coders see:
+- after deploying, coders get the new content;
+- earlier answers stay linked to the version their coder saw (both are in
+  the [results](results.md));
+- spans made on the old text may no longer fit.
 
-- Once you deploy the change, coders get the new content.
-- Earlier answers stay linked to the version their coder saw. Both versions
-  are in the [results](results.md), so you can tell which answers are about
-  which text.
-- Span annotations (selected text) were made on the old text, and may no
-  longer fit the new one.
+Avoid this in a running study, and report it if you do.
 
-Avoid replacing coded units in a running study unless you must, and note it
-in your report.
+## Looking at and deleting units
 
-## Looking at a unit
-
-Click a unit's id in the table to see all its fields in full, and whether
-it was coded.
-
-## Deleting units
-
-Click the bin icon in a unit's row to delete it. Coded units can't be deleted
-(they show a lock instead), because their answers would lose the unit they
-are about. Replace them instead, if needed.
+Click a unit's id to see all its fields. The bin icon deletes a unit;
+coded units can't be deleted (a lock shows).
 
 ## What coders get
 
-Coders only receive the fields the design uses: the fields named in the
-loop's layout, in question texts, in conditions and so on. Other columns,
-such as metadata you need for analysis (a source, a date, a sample weight),
-stay on the server. If you later change the design to show another field,
-coders get that field too once you deploy the change.
+Only the fields the design uses (layout, texts, conditions). Metadata such
+as dates or weights stays on the server.
 
-## Next steps
-
-- Make [sets](sets.md) if different coders should get different
-  units.
-- Decide how units are [handed out](unit-distribution.md).
-- Show the fields in a [layout template](layout-templates.md).
-- Scripts can upload units too: see
-  [Scripts and the researcher API](researcher-api.md).
+Next: [set columns](sets.md), [handing out units](unit-distribution.md),
+[layout templates](layout-templates.md). Scripts can upload too: see
+[Scripts and the researcher API](researcher-api.md).

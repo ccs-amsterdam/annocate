@@ -5,109 +5,49 @@ order: 3
 summary: Numeric questions - a range, steps, labels at break points, and buttons, a slider or a box.
 ---
 
-A **Numeric (interval/ratio)** question asks for one number: how many
-sources an article quotes, a coder's age, a 0-100 feeling thermometer, a
-0-10 rating of how credible a message is. Use it when the number itself
-means something and distances between numbers are meaningful.
-
-For a handful of ordered categories that each need a label ("not at all",
-"somewhat", "very"), an [ordinal question](nominal-and-ordinal.md) is
-usually the better choice.
+A **Number** question asks for one number: sources quoted, age, a 0-100
+thermometer, a 0-10 credibility rating. For a few labelled ordered
+categories, use [ordered options](nominal-and-ordinal.md).
 
 ## Range and steps
 
-| Setting     | What it does                                                         |
-| ----------- | -------------------------------------------------------------------- |
-| **Minimum** | The lowest number coders can give. Leave it empty for no lower limit |
-| **Maximum** | The highest number. Leave it empty for no upper limit                |
-| **Steps**   | Which numbers are allowed in between                                 |
+| Setting     | Does                                     |
+| ----------- | ---------------------------------------- |
+| **Minimum** | lowest number (empty: no limit)          |
+| **Maximum** | highest number (empty: no limit)         |
+| **Steps**   | **Whole numbers** (default), **One decimal**, **Two decimals**, or **Custom** (e.g. 5, or 0.5) |
 
-**Steps** has three presets and a custom setting:
-
-| Steps             | Allowed numbers (from a minimum of 0)                         |
-| ----------------- | ------------------------------------------------------------- |
-| **Whole numbers** | 0, 1, 2, 3, ... (the default)                                 |
-| **One decimal**   | 0, 0.1, 0.2, ...                                              |
-| **Two decimals**  | 0, 0.01, 0.02, ...                                            |
-| **Custom**        | Any step you type, e.g. 5 for 0, 5, 10, ... or 0.5 for halves |
-
-Steps count from the minimum (or from 0 without one): with a minimum of 1
-and steps of 2, coders can give 1, 3, 5, and so on. The minimum must be below the maximum.
-
-A new numeric question starts with a range of 0 to 10.
+Steps count from the minimum: minimum 1, steps 2 allows 1, 3, 5, ... A new
+question starts at 0 to 10.
 
 ## Labels at break points
 
-Under **Labels (optional)**, click **+ Add label** to put a word at a
-number, for example:
-
-| Number | Label     |
-| ------ | --------- |
-| 0      | Very cold |
-| 50     | Neutral   |
-| 100    | Very warm |
-
-Coders see the labels under the buttons or the slider, each at its place
-on the range. With a number box, they are shown as a hint under it
-(_0: Very cold · 50: Neutral · 100: Very warm_). A label must lie within
-the range.
-
-Labels also show up in references: if a coder answers exactly 50,
-`$var.thermo.label` is _Neutral_; for any other number it is the number
-itself.
+Under **Labels (optional)**, **+ Add label** puts a word at a number
+(0 _Very cold_, 50 _Neutral_, 100 _Very warm_). Coders see them along the
+buttons or slider, or as a hint under a box. `$var.thermo.label` gives the
+label for an exact match, else the number.
 
 ## Layouts
 
-Under **Layout**, choose how coders give the number:
+| Layout                      | Coders see                               | Needs              |
+| --------------------------- | ---------------------------------------- | ------------------ |
+| **Buttons (one per value)** | a button per number; one click answers   | minimum and maximum |
+| **Slider**                  | a slider and **Continue**                | minimum and maximum |
+| **Number input**            | a box and **Continue**                   | nothing            |
 
-| Layout                      | Coders see                                           | Needs                             |
-| --------------------------- | ---------------------------------------------------- | --------------------------------- |
-| **Buttons (one per value)** | a button for every allowed number; one click answers | a minimum and a maximum           |
-| **Slider**                  | a slider, and **Continue**                           | a minimum and a maximum           |
-| **Number input**            | a box to type in, and **Continue**                   | nothing: works with an open range |
+**Auto**: a number input without a minimum or maximum, buttons for up to
+11 numbers, else a slider.
 
-**Auto** chooses from the range:
-
-- no minimum or no maximum: a **number input**;
-- up to 11 allowed numbers (such as 0 to 10): **buttons**;
-- more: a **slider**.
-
-The **Layout** list shows what auto chose, e.g. _Auto (Buttons (one per
-value))_.
-
-### Buttons
-
-One button per number, wrapping to the next line when they don't fit. A
-click answers right away. With up to nine buttons, coders can also press
-the number keys **1** to **9** (1 for the first button, and so on).
-
-Buttons are the fastest layout and make every number equally easy to
-pick, which is good for 0-10 ratings. For long ranges they become a wall of
-buttons: use a slider or a box instead.
-
-### Slider
-
-The slider starts in the middle without a value: the number next to it
-shows a dash until the coder moves it, and **Continue** stays disabled.
-This way an untouched slider is never recorded as an answer.
-
-Sliders suit long ranges where precision isn't the point, such as a
-feeling thermometer. Be aware that coders tend to stay near where the
-handle starts, and that fine positions are hard to hit on a phone.
-
-### Number input
-
-A box to type a number in, with **Continue** (or Enter). Numbers outside
-the range or between steps are refused with a message such as _This is
-above the maximum 120_. Use it for counts and other numbers with no
-natural maximum, such as _How many sources are quoted?_, and for age.
+- **Buttons** are fastest and make every number equally easy: good for
+  0-10. Keys **1** to **9** work with up to nine buttons.
+- **Slider** starts without a value (**Continue** stays disabled until
+  moved). Coders tend to stay near the start, and fine positions are hard
+  on phones.
+- **Number input** refuses numbers outside the range or between steps.
+  Use it for counts and age.
 
 ## Using the answers
 
-`$var.<question>.value` is the number. Conditions can compare it with
-_equals_, _greater than_, _lower than_, _between_ and so on, for example
-`$var.age.lt(18)` to [end the session](end-items.md) for minors. See
-[Conditions](conditions.md).
-
-In the results the number is stored as is, in one column. Numeric
-questions get no `_label` column, also when they have break-point labels.
+`$var.age.value` is the number; conditions compare it
+(`$var.age.lt(18)`, see [Conditions](conditions.md)). The results have one
+column, without a `_label` column.

@@ -5,30 +5,19 @@ order: 3
 summary: Show part of a layout only to some coders or for some units, or from a question of the loop on.
 ---
 
-A layout doesn't have to look the same for every coder and every unit. With
-**blocks** you can show a part of it only when a condition holds (a warning
-label for the experiment group, a tip for beginners, a badge for viral
-posts), or only from a question of the loop on (the full article after a
-first impression of the headline).
+With **blocks** a part of the layout shows only when a condition holds (a
+warning for the experiment group, a badge for viral posts), or only from a
+question of the loop on (the full article after a first impression). A
+block sits between **fence lines** starting with `:::`; a bare `:::`
+closes it. Fence lines are never shown.
 
-A block is a few lines of the template between two **fence lines** that
-start with `:::`. The first fence says what kind of block it is, a bare
-`:::` closes it:
-
-```template
-::: if $var.group.is('experiment')
-> **Note:** fact-checkers flagged this article as possibly misleading.
-:::
-```
-
-The fence lines themselves are never shown.
+You don't have to type them: **Insert** › **Show if…** or **Show from…**
+above the template writes the block around the selected text.
 
 ## Show if a condition holds
 
-`::: if <condition>` shows its lines only if the condition holds. The
-condition is the same kind of condition as in a
-[Show if item](conditions.md): `$var.group.is('experiment')` holds if the
-coder's answer to `group` is `experiment`.
+`::: if <condition>` shows its lines only when the condition holds (the
+same conditions as a [Show if item](conditions.md)):
 
 ```example
 unit:
@@ -46,16 +35,12 @@ answers:
 $unit.text
 ```
 
-Switch the answer to `group` above the result to see what each group sees.
-This is how a survey experiment shows two versions of the same stimulus: an
-[random condition](random-condition.md) puts coders in a group at
-random, and the layout shows each group its version.
+Switch `group` above the result to see each group's version: with a
+[random condition](random-condition.md), this is a survey experiment.
 
 ### Else if and else
 
-After an `::: if`, `::: else if <condition>` gives a second condition, and
-`::: else` the lines to show when none holds. Only the first part whose
-condition holds is shown. One `:::` closes them all.
+Only the first part that holds is shown; one `:::` closes them all.
 
 ```example
 unit:
@@ -74,18 +59,12 @@ Code as you normally would.
 # $unit.headline
 ```
 
-The `-` answer is "not answered": then `.is(...)` doesn't hold, so the
-`else` part shows.
-
 ### What a condition can use
 
-A condition in a layout can use:
-
 - the unit's data: `::: if $unit.likes > 1000`;
-- the answers to coder-level questions before the loop:
-  `::: if $var.group.is('experiment')`;
-- inside a `::: from` block (below), the answers to the loop's questions
-  before that block's question.
+- answers to questions before the loop;
+- inside a `::: from` block, the loop's questions before that block's
+  question.
 
 ```example
 unit:
@@ -99,27 +78,13 @@ unit:
 $unit.text
 ```
 
-Conditions can be written as rules, or as a short script for anything else.
-The helpers (`is`, `isAny`, `gt`, `between`, ...) are listed in
-[Helper methods](conditions.md#helper-methods), and what you can refer to in
-[Referring to answers and unit data](references.md). A condition that can't
-be evaluated (for instance a script with an error) counts as not holding.
-
-### Editing a condition as rules
-
-You don't need to write conditions by hand. In the template editor:
-
-- **Insert** › **Show if…** opens the rules editor. Choose the question, how
-  to compare and the value, and click **Insert**: the block is written for
-  you, around the text you had selected.
-- Above every `::: if` and `::: else if` line, the editor shows the
-  condition in words, followed by **edit**. Click it to change the condition
-  in the rules editor and **Apply** it.
+See [Helper methods](conditions.md#helper-methods). A condition that
+fails counts as not holding. Above each `::: if` line the editor shows the
+condition in words with **edit**, to change it in the rules editor.
 
 ### Inside a sentence
 
-Fence lines are left out, and the lines around them join up as if the fence
-lines weren't there. So a block can also change a few words in a paragraph:
+Lines around a block join up, so a block can change a few words:
 
 ```example
 unit:
@@ -138,13 +103,9 @@ $unit.text
 
 ## Show from a question on
 
-`::: from <question>` shows its lines from the moment that question of the
-loop is on screen, and for the rest of the unit. Before it, the lines are not
-there. This lets the unit change as the coder works through its questions:
-
-- show the headline first and the full article from the second question on;
-- reveal the source of a message only after a first credibility rating;
-- remind coders of an earlier answer.
+`::: from <question>` shows its lines once that loop question is on
+screen, for the rest of the unit: the headline first and the article
+later, the source after a first rating.
 
 ```example
 unit:
@@ -159,23 +120,14 @@ $unit.text
 :::
 ```
 
-Use **Question on screen** above the result to step through the loop's
-questions. A few things to know:
-
-- "From" follows the order of the questions in the loop. When a coder goes
-  back to an earlier question, the block is hidden again.
-- A question that is skipped (its condition doesn't hold) still counts as
-  reached once the coder is past it.
-- `::: from` only works in a loop's layout, and only with questions of that
-  loop (_"'x' is not a question of this loop"_).
-- **Insert** › **Show from…** lists the loop's questions and writes the block
-  for you.
+Use **Question on screen** above the result to step through. Going back
+hides the block again; a skipped question counts as reached once passed.
+Only in a loop's layout, with that loop's questions.
 
 ### Stages
 
-Several `::: from` fences in a row form one block of **stages**: the last
-stage whose question is reached is shown, and only that one. One `:::` closes
-them all.
+Several `::: from` fences in a row are **stages**: only the last reached
+one shows.
 
 ```example
 unit:
@@ -195,17 +147,11 @@ $unit.text
 :::
 ```
 
-Because only one stage shows, the text is repeated in the last stage.
-Anything that should show in every stage goes outside the block.
-
 ### Earlier answers in a stage
 
-Outside a `::: from` block, the layout can't use the answers to the loop's
-own questions: the layout is shown before any of them is answered.
-AnnoTinder reports this as _"'sentiment' is answered in this loop; use it
-inside ::: from topics"_ (naming the question after it). Inside
-a `::: from` block, the questions _before_ its question can be used, in
-values and in conditions:
+Outside `::: from`, the layout can't use the loop's own answers (it is
+shown before they are given). Inside, it can use the questions before the
+block's question:
 
 ```example
 unit:
@@ -223,20 +169,10 @@ You rated the tone of this article as **$var.sentiment.label**.
 ::::
 ```
 
-The block's own question can't be used in it (`topics` here): it is being
-answered while the block is shown.
-
 ## Blocks inside blocks
 
-Blocks can be put inside each other: an `::: if` inside a `::: from`, a
-`::: style` inside an `::: if`, and so on. A bare `:::` closes the block
-that was opened last.
-
-A closing fence must have **as many colons** as the fence that opened its
-block. Give outer blocks more colons, as in the example above
-(`:::: from` ... `::::` around `::: if` ... `:::`). That makes the template
-easier to read, and when a closing fence is missing, AnnoTinder can tell
-which one:
+A closing fence needs **as many colons** as its opening fence. Give outer
+blocks more colons:
 
 ```template
 :::: if $var.group.is('experiment')
@@ -247,38 +183,26 @@ which one:
 ::::
 ```
 
-An `::: else` (or `::: else if`) continues the `::: if` block that is open,
-and needs the same number of colons; close any blocks inside it first. A
-`::: from` right after another `::: from` with the same colons is a next
-stage, not a block inside it: to put a `::: from` block inside a stage, give
-the outer one more colons.
+`::: else` needs the colons of its `::: if`. A `::: from` right after
+another with the same colons is a next stage; to nest one, give the outer
+more colons.
 
 ## When something is wrong
 
-The template editor lists problems below the template. The most common:
-
-| Message                                                  | What to do                                                                               |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| _::: if is not closed (end it with :::)_                 | Add a closing fence with the same number of colons                                       |
-| _This ::: closes a block opened with 4 colons: use ::::_ | Match the colons of the closing fence to its opening fence                               |
-| _::: closes nothing: no block is open_                   | Remove the extra `:::`, or add the block's opening fence                                 |
-| _::: else must follow a ::: if (with as many colons)_    | Put the `::: else` inside an `::: if` block, with the same colons                        |
-| _Unknown block "when"_                                   | Use one of `if`, `else if`, `else`, `from`, `style`, `text`, `markdown`, `html`, `image` |
-| _::: if needs a condition_                               | Write the condition after `::: if`                                                       |
+| Message                                                  | Fix                                                |
+| -------------------------------------------------------- | -------------------------------------------------- |
+| _::: if is not closed (end it with :::)_                 | add a closing fence with the same colons           |
+| _This ::: closes a block opened with 4 colons: use ::::_ | match the colons                                   |
+| _::: closes nothing: no block is open_                   | remove it, or add the opening fence                |
+| _::: else must follow a ::: if (with as many colons)_    | put it in an `::: if` block                        |
+| _Unknown block "when"_                                   | use `if`, `else if`, `else`, `from`, `style`, `text`, `markdown`, `html`, `image` |
+| _::: if needs a condition_                               | write the condition                                |
 
 ## In question texts
 
-`::: if`, `::: else if` and `::: else` also work in the texts of questions
-and instructions, for instance to word a question differently for the
-experiment group. `::: from` doesn't: a question is always on screen when
-its own text is.
+`::: if`, `::: else if` and `::: else` also work in question and
+instruction texts; `::: from` doesn't.
 
-## Other blocks
-
-The same fence lines make other blocks, each with its own page:
-
-- `::: style` for font sizes, colours and boxes: see
-  [Colours and styles](colours-and-styles.md).
-- `::: markdown`, `::: text`, `::: html` and `::: image` to show a larger
-  piece as one thing: see [Typed blocks and names](typed-blocks.md).
-- A condition or a whole block can be a [snippet](snippets.md), to reuse it.
+Other blocks: `::: style` ([Colours and styles](colours-and-styles.md)),
+`::: markdown`, `::: text`, `::: html`, `::: image`
+([Typed blocks and names](typed-blocks.md)), and [snippets](snippets.md).

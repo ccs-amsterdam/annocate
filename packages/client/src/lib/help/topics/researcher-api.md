@@ -5,89 +5,60 @@ order: 2
 summary: Use AnnoTinder from R, Python or other scripts with an API key - upload units, make sets, list links, download answers.
 ---
 
-Everything you do on the researcher pages can also be done by a script,
-through AnnoTinder's **researcher API**. That is useful when you want to:
-
-- upload thousands of units straight from R or Python, or upload new units
-  every day;
-- make sets from your own data, such as one set per newspaper;
-- list the links deploying made, and set who may use them;
-- download the answers into your analysis without clicking **Download zip**,
-  or fetch only what is new since your last download.
-
-You don't need this for an ordinary study: the pages do the same. This topic
-assumes you have written a script that calls a web API before.
+Scripts can do what the researcher pages do, through the **researcher
+API**: upload many units from R or Python (or every day), make sets from
+your own data, list links, and download answers (or only what is new).
+For an ordinary study you don't need it. This page assumes you have called
+a web API before.
 
 ## API keys
 
-A script logs in with a personal **API key**:
+1. Click your account (top right) → **API keys**.
+2. Describe the key (_laptop R scripts_) and click **Create**.
+3. Copy the key (`atk_...`); it is shown only once.
 
-1. Click your account (top right) and choose **API keys**.
-2. Type what the key is for, such as _laptop R scripts_, and click
-   **Create**.
-3. Copy the key (it starts with `atk_`). It is shown only once.
-
-A key acts as you, in every study you have a role in. Treat it like a
-password: don't put it in a script you share or in a public repository.
-Store it in an environment variable instead (in R, in your `.Renviron`
-file), and click **Revoke** next to a key you no longer need, or that may
-have leaked. The list shows when each key was last used.
+A key acts as you in every study you have a role in. Keep it out of shared
+scripts (use an environment variable, e.g. in `.Renviron`) and **Revoke**
+keys you no longer need.
 
 ## How requests work
 
-The API lives at the same address as AnnoTinder itself: if you open
-AnnoTinder at `https://annotinder.example.org`, a script asks for
-`https://annotinder.example.org/api/study` to list your studies. Every request sends
-the key in a header:
+The API is at your AnnoTinder address plus `/api`
+(`https://annotinder.example.org/api/study`). Send the key in a header:
 
 ```text
 Authorization: Bearer atk_...
 ```
 
-Requests and responses are JSON. Errors come back with a status code and
-an `error` message: `401` (no valid key), `403` (you have no, or not enough,
-role in this study), `404` (not found), `409` (not allowed now, such as a unit
-id that already exists).
-
-Most paths start with the study's number, `/study/<id>/...`. A script finds it
-by listing the studies:
+JSON in and out. Errors: `401` (no valid key), `403` (role too low), `404`
+(not found), `409` (not allowed now, e.g. an existing unit id). Most paths
+start with the study's number; list studies to find it:
 
 ```text
 curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/api/study
 ```
 
-```json
-[{ "id": 12, "name": "News tone", "archived": false, "created": "2026-10-01T09:12:44.000Z" }]
-```
-
 ## What scripts can do
 
-| Task                                                                         | Request                                                                                                                  |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| List your studies, create a study                                            | `GET /study`, `POST /study` with `{ "name": ... }`                                                                       |
-| Upload units (at most 200 per request)                                       | `POST /study/<id>/units`                                                                                                 |
-| List the study's fields                                                      | `GET /study/<id>/units/fields`                                                                                           |
-| List set columns, replace or delete one                                      | `GET /study/<id>/sets`; `PUT`, `DELETE /study/<id>/sets/<column>`                                                        |
-| Save a design version                                                        | `POST /study/<id>/design` with `{ "items": [...], "note": ... }`                                                         |
-| Deploy: a design version and the draft units and sets (this makes its links) | `PUT /study/<id>/deployment` with `{ "designVersionId": ..., "units": true }` (without `units`, the deployed units stay) |
-| What deploying would change; the deployed versions                           | `GET /study/<id>/deployment/pending`, `GET /study/<id>/deployment/versions`                                              |
-| List links, or change who may use one                                        | `GET /study/<id>/links`; `PUT /study/<id>/links/<link id>`                                                               |
-| Coders, with their answers outside unit loops                                | `GET /study/<id>/coders`                                                                                                 |
-| Answers in unit loops, a page at a time                                      | `GET /study/<id>/annotations`                                                                                            |
-| Units as coders saw them, a page at a time                                   | `GET /study/<id>/unit-versions`                                                                                          |
+| Task                                         | Request                                                         |
+| -------------------------------------------- | --------------------------------------------------------------- |
+| List or create studies                       | `GET /study`, `POST /study` with `{ "name": ... }`              |
+| Upload units (max 200 per request)           | `POST /study/<id>/units`                                        |
+| List fields                                  | `GET /study/<id>/units/fields`                                  |
+| List, replace or delete set columns          | `GET /study/<id>/sets`; `PUT`, `DELETE /study/<id>/sets/<column>` |
+| Save a design version                        | `POST /study/<id>/design` with `{ "items": [...], "note": ... }` |
+| Deploy (makes the links)                     | `PUT /study/<id>/deployment` with `{ "designVersionId": ..., "units": true }` |
+| What deploying would change; versions        | `GET /study/<id>/deployment/pending`, `.../deployment/versions` |
+| List links, change one                       | `GET /study/<id>/links`; `PUT /study/<id>/links/<link id>`      |
+| Coders, with answers outside loops           | `GET /study/<id>/coders`                                        |
+| Answers, a page at a time                    | `GET /study/<id>/annotations`                                   |
+| Units as coders saw them                     | `GET /study/<id>/unit-versions`                                 |
 
-What you may do depends on your role in the study, as on the pages: reading
-units, design versions and answers needs any role; changing them, and seeing
-links and coders, needs a role that may edit; deploying needs the
-study's admin role.
-
-A design version is the same JSON as in the design editor's JSON view: write it
-in the editor, copy it, and a script can save it to another study
-(`/study/<id>/design`).
+Rights follow your study role: reading needs any role, changing (and
+links, coders) a role that may edit, deploying admin. A design version is
+the same JSON as the editor's JSON view.
 
 ## Uploading units
-
-`POST /study/<id>/units` takes up to 200 units per request:
 
 ```json
 {
@@ -98,18 +69,12 @@ in the editor, copy it, and a script can save it to another study
 }
 ```
 
-The rules are those of [uploading a CSV](uploading-units.md): the first
-upload sets the study's fields and their types (text, number or true/false,
-from the JSON values), later uploads must give every existing field a value
-of its type (`null` for empty) and may add fields. An id that already exists
-is refused, unless you add `"overwrite": true`; replacing a unit that was
-coded also needs `"overwriteCoded": true` (see
-[Replacing units](uploading-units.md#replacing-units)).
+The rules of [uploading a CSV](uploading-units.md) apply: the first upload
+sets the fields and types; later uploads give every field a value (`null`
+for empty). Existing ids need `"overwrite": true`, coded ones also
+`"overwriteCoded": true`. Units and sets are drafts until deployed.
 
-Uploaded units, and the sets you write (below), are drafts: coders get
-them once you deploy them (`"units": true` above).
-
-In R, with the httr2 package:
+In R, with httr2:
 
 ```r
 library(httr2)
@@ -136,12 +101,9 @@ for (batch in split(units, ceiling(seq_along(units) / 200))) {
 }
 ```
 
-A [set column](sets.md) is written as a whole: `PUT /study/<id>/sets/<column>`
-replaces the column's values (and declares it as a set column in the draft
-design). Each value is a name with a list of AnnoTinder's
-own unit ids (`id` in the response to the upload, or from
-`GET /study/<id>/units`); with `"ordered": true` coders get them in that
-order:
+`PUT /study/<id>/sets/<column>` replaces a whole [set column](sets.md):
+each value is a name with AnnoTinder's unit ids (`id` from
+`GET /study/<id>/units`); `"ordered": true` keeps that order.
 
 ```r
 uploaded <- api(sprintf("study/%d/units", study)) |> req_perform() |> resp_body_json()
@@ -152,41 +114,12 @@ api(sprintf("study/%d/sets/pilot", study)) |>
   req_perform()
 ```
 
-A set column can't be deleted while the deployed or latest design version uses it.
-
 ## Downloading answers
 
-`GET /study/<id>/annotations` gives every answer, one row per coder,
-question and unit (`unitId` is `null` for questions outside unit loops;
-`assigned: true` marks [random conditions](random-condition.md)), in the order they were written, a page at a time
-(up to `limit` rows, at most 10000). Pass the page's `next` as `after` to get
-the next page, until `next` is `null`:
-
-```r
-annotations <- list()
-after <- NULL
-repeat {
-  page <- api(sprintf("study/%d/annotations", study)) |>
-    req_url_query(after = after, limit = 10000) |>
-    req_perform() |>
-    resp_body_json()
-  # Answers in unit loops (those outside have no unit)
-  annotations <- c(annotations, Filter(\(a) !is.null(a$unitId), page$annotations))
-  if (is.null(page$`next`)) break
-  after <- page$`next`
-}
-
-# One value per row: the answer's values joined with "; "
-d <- data.frame(
-  unit = sapply(annotations, \(a) a$externalId),
-  session = sapply(annotations, \(a) a$sessionId),
-  coder = sapply(annotations, \(a) if (is.null(a$coder)) NA else a$coder),
-  question = sapply(annotations, \(a) a$variable),
-  value = sapply(annotations, \(a) paste(sapply(a$value$values, \(v) v$value), collapse = "; "))
-)
-```
-
-The same in Python, with requests:
+`GET /study/<id>/annotations` gives a row per coder, question and unit
+(`unitId` `null` outside loops; `assigned: true` for random conditions),
+up to `limit` (max 10000) per page. Pass `next` as `after` until it is
+`null`:
 
 ```python
 import os, requests
@@ -204,28 +137,14 @@ while True:
     after = page["next"]
 ```
 
-Each row has the unit (`unitId`, and your `externalId`), the coder
-session (`sessionId`) and coder id (`coder`), the question (`variable`), the answer
-(`value`), the design version (`designVersionId`), the unit version the coder
-saw (`unitVersionId`), and when it was first written and last changed
-(`created`, `updated`). An answer `value` has a list of `values` (each with
-`value`, and `item` for a scale), or `spans` for selected text, and
-`"skip": true` for a question a condition hid.
+A row has `unitId`, `externalId`, `sessionId`, `coder`, `variable`,
+`value` (a list of `values`, or `spans`, or `"skip": true`),
+`designVersionId`, `unitVersionId`, `created` and `updated`.
 
-Two things the download on the **Results** tab doesn't have:
+- **Only what is new**: keep the last row's `id` and pass it as `after`
+  next time. Changed answers keep their row (later `updated`): download
+  everything to be sure of every change.
+- **Reset answers**: `retired=true` includes them, with `retiredAt`.
 
-- **Only what is new.** Rows come in the order they were first written, and
-  new rows always get a higher `id`. Keep the `id` of the last row you got,
-  and pass it as `after` next time to get only the rows written since. An
-  answer a coder changes later (by going back) keeps its row, with a later
-  `updated`: to be sure you have every change, download everything again.
-- **Answers that were reset.** With `retired=true`, the rows also include
-  answers that no longer count because they were reset, with `retiredAt`:
-  when that happened.
-
-Answers outside unit loops are rows too (`unitId` `null`), and also come
-with the coders, from `GET /study/<id>/coders`: each coder's `variables`, in
-the same form.
-
-> For most analyses, the [results download](results.md) is easier: it turns
-> these rows into tables with a column per question, and adds the labels.
+> For most analyses the [results download](results.md) is easier: a column
+> per question, with labels.

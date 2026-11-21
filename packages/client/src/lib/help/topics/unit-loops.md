@@ -5,77 +5,44 @@ order: 1
 summary: Questions that are asked once for every unit - how a loop works, and where you set its layout and units.
 ---
 
-A **unit loop** repeats its questions for every unit a coder gets. The coder
-sees the first unit with its first question, answers the loop's questions
-about it, and then gets the next unit, until their units are done. Every
-design that codes material has at least one loop: the questions about
-news articles, tweets or images go inside it.
-
-Questions _outside_ a loop are asked once per coder: a consent question, a
-few survey questions, an experimental group. The editor's tree shows them as
-**Questions** blocks between the loops. Together the two make up most
-studies: some questions about the coder, then a loop over the units.
+A **unit loop** asks its questions for every unit a coder gets: the first
+unit with its questions, then the next, until the coder's units are done.
+Questions asked once per coder go in **Questions** blocks before or after
+the loop.
 
 ## Adding a loop
 
-In the design editor, click **Add block** above the tree (or the **+** on a
-Questions block or a loop) and choose **Unit loop**. A new loop is empty: add its questions with **+**, choosing a place inside the
-loop, or move existing questions into it. A loop needs at least one item.
-
-A loop has no name, but you can give it a **Label (optional)**, such as
-_News items_ or _Training_. The label is shown in the tree, in the coders'
-navigation menu and in the `loop` column of the downloaded `variables.csv`.
-Without a label, the loop is called _Unit loop_ (in messages and downloads
-_Unit loop 1_, _Unit loop 2_, by position).
+1. Click **Add block** above the tree → **Unit loop**.
+2. Optionally give it a **Label**, e.g. _News items_ (shown in the tree,
+   the coders' menu and the `loop` column of `variables.csv`).
+3. Add questions with **+** → **Inside** the loop.
 
 ## The Layout and Units tabs
 
-A selected loop has two tabs. The two small buttons at the end of the loop's
-row in the tree open the loop on one of them.
+| Tab        | Set                                                                  |
+| ---------- | -------------------------------------------------------------------- |
+| **Layout** | how a unit is shown: the layout or template, and **Snippets**        |
+| **Units**  | which units the loop codes, their **Order**, and special units       |
 
-| Tab        | What you set there                                                                                                                                 |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Layout** | How a unit is shown: the **Template**, the **Colours** and the **Snippets**                                                                        |
-| **Units**  | Which of the coder's units the loop codes (all, or a filter; their own units or not), the **Order**, and where overlap, practice and gold units go |
-
-The template is where you write what coders see of each unit: see
-[Layout templates](layout-templates.md). The Units tab is explained in
+The two buttons on the loop's row open these tabs. See
+[Layout templates](layout-templates.md) and
 [Handing out units](unit-distribution.md).
 
 ## Questions inside a loop
 
-A question inside the loop is answered once for every unit. In the download
-(`annotations.csv`) there is a row per unit and coder, with a column per
-question. Inside a loop, texts and conditions can use more than outside:
+Each is answered per unit: a row per unit and coder in
+`annotations.csv`. Inside a loop, texts and conditions can also use the
+unit's data (`$unit.headline`) and earlier answers for the same unit.
+[Mark text](span.md) and [relations](relation.md) only work in loops;
+[random conditions](random-condition.md) only outside.
 
-- the unit's data: a question can say *"Is **$unit.headline** about
-  politics?"*, and a condition can show a question only for some units
-  (`$unit.source == "Twitter"`);
-- the answers to the loop's earlier questions for the same unit, for
-  follow-up questions (_"Which party?"_ only if the coder said a party is
-  mentioned);
-- the answers to coder-level questions asked before the loop.
-
-Some answer types only make sense per unit, and only work inside a loop:
-[selecting text](span.md) and [relations](relation.md). The
-[random conditions](random-condition.md) work the other way round: only
-outside a loop.
-
-The loop's answers belong to the loop. After the loop, or in another loop,
-you can't refer to them: AnnoTinder says _"'topic' is a question of another
-unit loop"_. A loop can't be inside another loop, but it can be inside a
-condition, for a loop that only some coders get.
+A loop's answers stay in the loop: another loop can't use them. Loops
+can't be nested.
 
 ## Questions before the loop
 
-Coder-level questions before the loop are answered once, and the loop can use
-their answers everywhere: in the layout, in its questions' texts and in its
-conditions. Typical uses:
-
-- an experimental group (a [random condition](random-condition.md)) that decides which
-  version of a unit coders see, with `::: if` in the layout (see
-  [Showing parts conditionally](template-blocks.md));
-- the coder's experience, to show extra instructions to beginners.
+Answers given before the loop can be used everywhere in it, e.g. an
+experimental group that changes how units are shown:
 
 ```example
 unit:
@@ -93,43 +60,17 @@ answers:
 $unit.text
 ```
 
-Here `role` is a question before the loop: switch the answer to see what
-coders with another answer see.
-
 ## Several loops
 
-A design can have more than one loop, each with its own layout, units and
-questions. Use this when a study has parts that work differently:
-
-- a **training** loop with a few practice units, followed by the **main**
-  loop;
-- two tasks on different material, such as first headlines and then full
-  articles;
-- a loop over units, then survey questions, then a second loop.
-
-Coders go through the loops in the order of the design. Each loop's
-answers are kept apart; coder-level answers can be used in every loop after
-them.
-
-## What coders see
-
-On the coding screen, the unit is shown at the top and the question on
-screen at the bottom. On a phone, coders scroll the unit and answer with
-their thumb. With a [swipe question](swipe.md), the unit itself is the card
-that coders swipe.
-
-Coders can go back to earlier questions and units with the arrows at the
-top. The menu button next to them opens the navigation: the questions before
-the loop, the loop (by its label) with _Unit 3 / 20_, and the loop's
-questions. The number next to the arrows shows where they are: _2.1_ is the
-first question of the second part of the design. See
-[What coders see](coder-experience.md).
+Use several loops for parts that work differently: a **training** loop
+then the **main** loop, headlines then full articles, or units, survey
+questions, and units again. Coders go through them in order.
 
 ## Order of units
 
-By default coders get the units in the order of the set (for all units: the order they were uploaded). On the Units tab, **Order** can be set to
-**Random (each coder their own order)**, so that order effects average out
-over coders. See [Order](unit-distribution.md#order).
+By default the set's order (all units: upload order). **Order** →
+**Random (each coder their own order)** averages out order effects. See
+[Order](unit-distribution.md#order).
 
-> Pilot a new loop with a few units in **Preview** before you send coders a link:
-> you see the layout and the questions exactly as coders do.
+Try a new loop in **Preview** before sending the link. See
+[What coders see](coder-experience.md).
