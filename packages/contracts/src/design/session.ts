@@ -122,15 +122,20 @@ export type ParticipantParam = z.infer<typeof ParticipantParamSchema>;
 
 /**
  * Specific coders (docs/architecture.md §6.1): the units are divided over
- * coders by a set column; each of its values is a coder (`$session.coder`,
- * also the participant id). `link`: `per_coder`, a link each; `login`, one
- * link where coders sign in and get the units of their address (the
- * column's values are all email addresses).
+ * coders by a set column; each of its values is a coder (`$session.coder`).
+ * `link`: `per_coder`, a link each; `login`, one link where coders sign in
+ * and get the units of their address (the column's values are all email
+ * addresses); `pick_name`, one link where coders pick their name from the
+ * column's values (shown to anyone with the link: names, not addresses).
+ * `nameDevices` (with `pick_name`): `first`, a name is the first device's
+ * that picks it (others can't pick it again; the default); `any`, any device
+ * that picks a name continues its session (e.g. a team sharing devices).
  */
 export const CodersInviteSchema = z.object({
   mode: z.literal("coders"),
   column: SetGroupNameSchema,
-  link: z.enum(["per_coder", "login"]),
+  link: z.enum(["per_coder", "login", "pick_name"]),
+  nameDevices: z.enum(["first", "any"]).optional(),
 });
 export type CodersInvite = z.infer<typeof CodersInviteSchema>;
 

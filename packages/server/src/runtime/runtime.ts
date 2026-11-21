@@ -36,6 +36,7 @@ import {
   type TransferResponse,
   type TopLevelItem,
   type VariableValue,
+  type PickNamesResponse,
 } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 import { Codings, UnitPool, pickNext, type AgreementKeys, type OverlapPlacement } from "./distribution.js";
@@ -280,6 +281,20 @@ export class DeploymentRuntime {
   private get sessionRules(): SessionRules {
     const items = this.spec.design.items as TopLevelItem[];
     return { item: sessionItem(items), setsOf: (group) => this.groups.get(group) ?? [] };
+  }
+
+  /**
+   * A pick-your-name link's names: the coders' column's values, and which
+   * are taken (where a name is the first device's that picks it).
+   */
+  async pickNames(): Promise<PickNamesResponse> {
+    const invite = inviteOf(this.sessionRules.item);
+    if (invite.mode !== "coders" || invite.link !== "pick_name")
+      throw new HttpError(404, "This link has no names to pick", "link_not_found");
+    const taken = new Set<string>();
+    if ((invite.nameDevices ?? "first") === "first")
+      for (const coder of await this.store.listCoders()) if (coder.session.coder) taken.add(coder.session.coder);
+    return { names: (this.groups.get(invite.column) ?? []).map((name) => ({ name, taken: taken.has(name) })) };
   }
 
   /** The URL parameter with a crowd's participant id, if any: part of a device's session key. */

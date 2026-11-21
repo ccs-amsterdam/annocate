@@ -39,6 +39,12 @@ export const SubmitUnitResponseSchema = z.object({
 });
 export type SubmitUnitResponse = z.infer<typeof SubmitUnitResponseSchema>;
 
+/** The names coders pick from on a `pick_name` link (`GET /names`): a coder's name, and whether it is taken. */
+export const PickNamesResponseSchema = z.object({
+  names: z.array(z.object({ name: z.string(), taken: z.boolean() })),
+});
+export type PickNamesResponse = z.infer<typeof PickNamesResponseSchema>;
+
 export const coderEndpoints = {
   getSession: { method: "GET", path: "/session", request: z.void(), response: SessionResponseSchema },
   /**
@@ -100,6 +106,12 @@ export const coderEndpoints = {
    */
   quitSession: { method: "POST", path: "/quit", request: QuitSessionSchema, response: z.void() },
   createTransfer: { method: "POST", path: "/transfer", request: z.void(), response: TransferResponseSchema },
+  /**
+   * A `pick_name` link's names (with `x-link-secret`): the coders' column's
+   * values, and which are taken (another device's, where a name is the first
+   * device's that picks it). Starts no session.
+   */
+  getNames: { method: "GET", path: "/names", request: z.void(), response: PickNamesResponseSchema },
   redeemTransfer: {
     method: "POST",
     path: "/transfer/redeem",

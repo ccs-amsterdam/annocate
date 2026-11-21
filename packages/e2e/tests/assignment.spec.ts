@@ -164,3 +164,33 @@ test("uploading units with a set column makes the column, shown with its values"
   await expect(page.getByRole("button", { name: /^bob 2$/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /^_overlap 1$/ })).toBeVisible();
 });
+
+test("a link where coders pick their name: a name stays on the first device that picks it", async ({
+  request,
+  browser,
+}) => {
+  const study = await studyWithColumn(request, "Pick a name", "coder", {
+    "Anna's text": "anna",
+    "Bob's text": "bob",
+  });
+  const design = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
+    session: { invite: { mode: "coders", column: "coder", link: "pick_name" } },
+    items: [loop()],
+  });
+  await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+
+  const first = await (await browser.newContext()).newPage();
+  await first.goto(`/code/${study.id}?link=${link.secret}`);
+  await expect(first.getByText("Who are you?")).toBeVisible();
+  await first.getByRole("button", { name: "anna", exact: true }).click();
+  await question(first, "Topic?");
+  await expect(first.getByText("Anna's text")).toBeVisible();
+
+  // Another device: anna is taken
+  const second = await (await browser.newContext()).newPage();
+  await second.goto(`/code/${study.id}?link=${link.secret}`);
+  await expect(second.getByRole("button", { name: /anna/ })).toBeDisabled();
+  await second.getByRole("button", { name: "bob", exact: true }).click();
+  await expect(second.getByText("Bob's text")).toBeVisible();
+});

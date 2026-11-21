@@ -77,9 +77,9 @@ export function LinksPanel({ client }: LinksPanelProps) {
         <h2 className="flex items-center gap-1.5 text-lg font-medium">
           Links
           <InfoTip label="About links">
-            Deploying the design makes its links: one, or with specific coders who get a link each, one per coder in
-            the coders&apos; column. Links of coders who are gone are retired. Here you set who may use a link. Revoking stops new coders from joining with it; coders who already
-            started keep working.
+            Deploying the design makes its links: one, or with specific coders who get a link each, one per coder in the
+            coders&apos; column. Links of coders who are gone are retired. Here you set who may use a link. Revoking
+            stops new coders from joining with it; coders who already started keep working.
           </InfoTip>
           <HelpButton topic="links" label="Help: links" />
         </h2>

@@ -86,6 +86,18 @@ export function coderApi(server: Server): Hono {
     return c.json(study);
   });
 
+  // A pick-your-name link's names (docs/api/coder.md): never starts a session.
+  app.get("/names", async (c) => {
+    requireClientHeader(c);
+    const deploymentId = c.req.param("deployment")!;
+    const secret = c.req.header("x-link-secret");
+    const link = secret && /^\d+$/.test(deploymentId) ? await linkInfo(server.db, secret) : null;
+    if (!link || String(link.studyId) !== deploymentId)
+      throw new HttpError(404, "This link doesn't exist", "link_not_found");
+    const runtime = await server.deployments.get(deploymentId);
+    return c.json(await runtime.pickNames());
+  });
+
   const session = new Hono<Env>();
   session.use("*", async (c, next) => {
     requireClientHeader(c);
@@ -141,6 +153,7 @@ export function coderApi(server: Server): Hono {
       device: deviceDetails(c.req.header("user-agent")),
       login,
       linkable: takesLogin,
+      pickedName: pickedName(c.req.header("x-coder-name")),
     });
     // Only once the coder was accepted (a link may be invalid or used up).
     if (device !== existingDevice) writeDevice(c, device);
@@ -218,4 +231,14 @@ async function parseBody<T>(
   const parsed = schema.safeParse(raw);
   if (!parsed.success) throw new HttpError(400, "Invalid request body");
   return parsed.data;
+}
+
+/** The name a coder picked on a pick-your-name link (`x-coder-name`, URL-encoded), if any. */
+function pickedName(header: string | undefined): string | undefined {
+  if (!header) return undefined;
+  try {
+    return decodeURIComponent(header).trim().slice(0, 200) || undefined;
+  } catch {
+    return undefined;
+  }
 }

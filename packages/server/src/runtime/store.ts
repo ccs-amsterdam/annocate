@@ -652,11 +652,33 @@ async function findOrCreateCoder(
   // Revoked or retired: no new sessions, also not for a known participant (existing sessions go on).
   if (link.revokedAt !== null) throw new HttpError(403, "This link has been revoked", "link_revoked");
   if (link.retiredAt !== null) throw new HttpError(403, "This link is no longer active", "link_inactive");
+  // A link where coders pick their name (docs/architecture.md §6.1): the name is the link's coder.
+  // Taken by another device's session: refused, or (`nameDevices: any`) this device joins it.
+  const invite = inviteOf(request.sessionRules?.item);
+  let params = link.params;
+  if (invite.mode === "coders" && invite.link === "pick_name") {
+    const name = request.pickedName;
+    if (!name || !request.sessionRules!.setsOf(invite.column).includes(name))
+      throw new HttpError(409, "Pick your name to start", "name_required");
+    await advisoryLock(db, `pick_name:${studyId}:${name}`);
+    const [taken] = await db
+      .select()
+      .from(coders)
+      .where(and(eq(coders.studyId, studyId), sql`${coders.session}->>'coder' = ${name}`))
+      .orderBy(asc(coders.id))
+      .limit(1);
+    if (taken) {
+      if ((invite.nameDevices ?? "first") === "first")
+        throw new HttpError(409, "This name was picked on another device", "name_taken");
+      return { row: taken, deviceId: await addDevice(db, studyId, taken.id, coderKey, device) };
+    }
+    params = { ...params, coder: name };
+  }
   // A participant id is a label, never a credential: a new device for a
   // known participant gets a *new* session, and only when asked for.
   const { participantId, session } = sessionValues(
     request.sessionRules ?? { item: null, setsOf: () => [] },
-    { params: link.params, participantId: link.participantId },
+    { params, participantId: link.participantId },
     request.urlParams ?? {},
     login?.email ?? null,
   );
@@ -672,7 +694,6 @@ async function findOrCreateCoder(
   if (!knownParticipant) {
     // Checked and counted in one statement, so concurrent coders can't overrun `max_uses`.
     // The link's own limit, else a crowd's most coders (docs/architecture.md §5)
-    const invite = inviteOf(request.sessionRules?.item);
     const maxCoders = invite.mode === "crowd" ? (invite.maxCoders ?? null) : null;
     const maxUses = sql`COALESCE(${links.maxUses}, ${maxCoders}::int)`;
     const used = await db

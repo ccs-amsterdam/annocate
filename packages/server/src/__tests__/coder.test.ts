@@ -5,6 +5,7 @@ import type {
   DeploymentResponse,
   DeploymentStatus,
   SessionResponse,
+  PickNamesResponse,
   UnitData,
   VariableValue,
 } from "@annotinder/contracts";
@@ -591,6 +592,67 @@ describe("coders", () => {
     const b = coder("b", secret);
     expect((await b.session()).session).toEqual({ coder: "b@example.org" });
     expect(await order(b)).toEqual(["unit-2"]);
+  });
+
+  it("by name: one link, coders pick their name; a name is the first device's, or (any) shared by devices", async () => {
+    await createSet("anna", ["unit-1"], "coder");
+    await createSet("bob", ["unit-2"], "coder");
+    await redeploy({}, [sessionItem({ invite: { mode: "coders", column: "coder", link: "pick_name" } })]);
+    const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
+    const names = async () =>
+      (await (
+        await server.request("/api/d/1/names", { headers: { "x-annotinder": "1", "x-link-secret": secret } })
+      ).json()) as PickNamesResponse;
+    expect(await names()).toEqual({
+      names: [
+        { name: "anna", taken: false },
+        { name: "bob", taken: false },
+      ],
+    });
+    const start = (device: string, name?: string) =>
+      send(device, "/session", {}, { "x-link-secret": secret, ...(name ? { "x-coder-name": name } : {}) });
+    expect(await (await start("p1")).json()).toMatchObject({ code: "name_required" });
+    expect(await (await start("p1", "carol")).json()).toMatchObject({ code: "name_required" });
+    const anna = (await (await start("p1", "anna")).json()) as SessionResponse;
+    expect(anna.session).toEqual({ coder: "anna" });
+    expect(await order(coder("p1", secret))).toEqual(["unit-1"]);
+    expect((await names()).names).toContainEqual({ name: "anna", taken: true });
+    // Another device can't pick anna; the first device keeps its session
+    const refused = await start("p2", "anna");
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toMatchObject({ code: "name_taken" });
+    expect(((await (await start("p1")).json()) as SessionResponse).coderId).toBe(anna.coderId);
+
+    // Shared by devices: picking a name continues its session
+    await redeploy({}, [
+      sessionItem({ invite: { mode: "coders", column: "coder", link: "pick_name", nameDevices: "any" } }),
+    ]);
+    const shared = (await (await start("p3", "anna")).json()) as SessionResponse;
+    expect(shared.coderId).toBe(anna.coderId);
+    expect((await names()).names.every((n) => !n.taken)).toBe(true);
+
+    // Names are shown to anyone with the link: no email addresses
+    await createSet("c@example.org", ["unit-3"], "coder");
+    const design = await server.request("/api/study/1/design", {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify(
+        splitDesignItems([
+          sessionItem({ invite: { mode: "coders", column: "coder", link: "pick_name" } }),
+          { type: "unit_loop", units: {}, layout: { template: "" }, children: [sentimentQuestion] },
+        ]),
+      ),
+    });
+    const { id } = (await design.json()) as { id: number };
+    const deploy = await server.request("/api/study/1/deployment", {
+      method: "PUT",
+      headers: adminHeaders,
+      body: JSON.stringify({ designVersionId: id, units: true }),
+    });
+    expect(await deploy.json()).toMatchObject({
+      code: "assignment_invalid",
+      error: expect.stringContaining("not email addresses"),
+    });
   });
 
   it("signing in needs email addresses, and the column must be a set column", async () => {

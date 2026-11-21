@@ -8,6 +8,7 @@ import {
   type SessionResponse,
   type CoderUnitResponse,
   type NextUnitsResponse,
+  type PickNamesResponse,
   type TransferResponse,
   type VariableValue,
 } from "@annotinder/contracts";
@@ -84,6 +85,8 @@ export interface HttpCoderApiConfig {
    * Sent with the first request only: the server moves this device to a new session.
    */
   newSession?: boolean;
+  /** On a link where coders pick their name: the name picked (sent as `x-coder-name`; read when a session starts). */
+  coderName?: string;
 }
 
 /** Required on every coder API request: cross-site forms can't send it (CSRF). */
@@ -113,6 +116,7 @@ export class HttpCoderApi implements CoderApi {
       ...scopeHeaders(this.config),
     };
     if (this.newSession) headers["x-new-session"] = "1";
+    if (this.config.coderName) headers["x-coder-name"] = encodeURIComponent(this.config.coderName);
     if (this.version !== null) headers["x-annotinder-version"] = String(this.version);
     const query = new URLSearchParams(this.config.urlParams ?? {}).toString();
     if (query) headers["x-url-params"] = query.slice(0, 2000);
@@ -129,6 +133,17 @@ export class HttpCoderApi implements CoderApi {
       body: JSON.stringify({ token }),
     });
     if (!res.ok) throw await toError(res, path);
+  }
+
+  /** A pick-your-name link's names, and which are taken (`GET /names`); starts no session. */
+  static async getNames(scope: CoderSessionScope): Promise<PickNamesResponse> {
+    const path = coderEndpoints.getNames.path;
+    const res = await fetch(`${scope.baseUrl}${path}`, {
+      credentials: "same-origin",
+      headers: { ...CLIENT_HEADERS, ...scopeHeaders(scope) },
+    });
+    if (!res.ok) throw await toError(res, path);
+    return (await res.json()) as PickNamesResponse;
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {

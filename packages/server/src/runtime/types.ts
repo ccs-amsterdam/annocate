@@ -106,6 +106,8 @@ export interface ResolveCoderRequest {
   linkable?: boolean;
   /** The study is paused: sessions that exist go on, no new ones start (409 `study_paused`). */
   paused?: boolean;
+  /** On a `pick_name` link: the name the coder picked (`x-coder-name`). */
+  pickedName?: string;
 }
 
 /** A coder, and the device the request came from (`coder_devices`; null in previews). */

@@ -186,15 +186,46 @@ function CodersForm({
           <input
             type="radio"
             checked={invite.link === "per_coder"}
-            onChange={() => onChange({ ...invite, link: "per_coder" })}
+            onChange={() => onChange({ mode: "coders", column: invite.column, link: "per_coder" })}
           />
           A link per coder (deploying makes them; send each coder theirs)
         </label>
         <label className="flex items-center gap-2 text-xs">
           <input
             type="radio"
+            checked={invite.link === "pick_name"}
+            onChange={() => onChange({ mode: "coders", column: invite.column, link: "pick_name" })}
+          />
+          One link: coders pick their name from the column
+        </label>
+        {invite.link === "pick_name" && (
+          <div className="flex flex-col gap-1 pl-6">
+            <select
+              aria-label="A picked name"
+              className={cn(selectClass, "w-fit")}
+              value={invite.nameDevices ?? "first"}
+              onChange={(e) => onChange({ ...invite, nameDevices: e.target.value === "any" ? "any" : undefined })}
+            >
+              <option value="first">A name stays on the first device that picks it</option>
+              <option value="any">Any device that picks a name continues its session</option>
+            </select>
+            <span className="text-[11px] text-muted-foreground">
+              {invite.nameDevices === "any"
+                ? "Shared: e.g. a team taking turns on devices, or one coder on several. Anyone with the link can pick any name."
+                : "Pinned: once a name is picked, nobody else can pick it; its coder continues on that device (or moves with a transfer link)."}
+            </span>
+            {known && (coders.kind === "emails" || coders.kind === "mixed") && (
+              <span className="text-[11px] text-destructive">
+                Anyone with the link sees these names: use names, not email addresses.
+              </span>
+            )}
+          </div>
+        )}
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="radio"
             checked={invite.link === "login"}
-            onChange={() => onChange({ ...invite, link: "login" })}
+            onChange={() => onChange({ mode: "coders", column: invite.column, link: "login" })}
           />
           One link: coders sign in with the email address in the column
         </label>

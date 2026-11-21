@@ -76,7 +76,7 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
 /** The invitation in a few words. */
 function inviteSummary(invite: Invite): string {
   if (invite.mode === "coders")
-    return `coders in ${invite.column}, ${invite.link === "login" ? "signing in" : "a link each"}`;
+    return `coders in ${invite.column}, ${invite.link === "login" ? "signing in" : invite.link === "pick_name" ? "picking their name" : "a link each"}`;
   const parts = ["crowd"];
   if (invite.participant) parts.push(`id from ?${invite.participant.param}`);
   if (invite.login) parts.push("signing in");
