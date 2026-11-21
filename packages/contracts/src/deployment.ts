@@ -75,7 +75,7 @@ export const DeploymentResponseSchema = DeploymentWriteSchema.omit({ units: true
    * gained questions, which reopens units coders already finished.
    */
   warnings: z.array(z.string()).optional(),
-  /** How many active links the design's link parameters make. */
+  /** How many active links the design's coder invitation makes. */
   links: z.number().int().nonnegative().optional(),
 });
 export type DeploymentResponse = z.infer<typeof DeploymentResponseSchema>;

@@ -183,7 +183,7 @@ export const researcherEndpoints = {
     request: z.void(),
     response: z.array(SetGroupResponseSchema),
   },
-  /** Makes or replaces a group (its sets). Republished links follow (link parameters with the group's sets). */
+  /** Makes or replaces a group (its sets). Deployed, links follow (a link per coder of the coders' column). */
   putSetGroup: {
     method: "PUT",
     path: "/study/:studyId/sets/:group",

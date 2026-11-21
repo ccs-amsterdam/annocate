@@ -644,8 +644,8 @@ coders.csv       A row per coder: participant id, email (coders who logged
                  active, how their session ended (complete, screenout or
                  quit), when they asked for their answers to be deleted
                  (deletion_requested; not done yet), their session values
-                 (session.<name>: from the link, the coder for studies
-                 that divide units over coders, and assigned conditions),
+                 (session.<name>: URL parameters, and the coder for
+                 studies with specific coders),
                  units finished per loop, and their answers outside unit
                  loops (random conditions included).
 units.csv        The units as deployed, a row per version: a unit replaced

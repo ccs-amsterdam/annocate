@@ -115,7 +115,7 @@ CREATE TABLE "design_versions" (
 	"study_id" integer NOT NULL,
 	"note" text,
 	"items" jsonb NOT NULL,
-	"session" jsonb DEFAULT '{"params":[]}'::jsonb NOT NULL,
+	"session" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"units" jsonb DEFAULT '{"fields":[]}'::jsonb NOT NULL,
 	"immutable" boolean DEFAULT false NOT NULL,
 	"revision" integer DEFAULT 1 NOT NULL,

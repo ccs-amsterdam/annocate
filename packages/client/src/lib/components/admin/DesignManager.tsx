@@ -279,7 +279,7 @@ export function DesignManager({
           try {
             deployment = await publish.mutateAsync({ designVersionId, units });
           } catch (err) {
-            // Many links (one per combination of link parameter values): deployed only when confirmed
+            // Many links (one per coder): deployed only when confirmed
             if (!(err instanceof ResearcherApiError && err.code === "confirm_links") || !confirm(err.reason)) throw err;
             deployment = await publish.mutateAsync({ designVersionId, units, confirmLinks: true });
           }

@@ -148,8 +148,8 @@ export const ConfirmTypeSchema = VariableBaseSchema.extend({
 
 /**
  * A random condition (a `computed` item's variable, item.ts): drawn rather
- * than asked, on the server, once, and never changed afterwards. Values a
- * link brings are assigned conditions instead (`session.conditions`).
+ * than asked, on the server, once, and never changed afterwards: the
+ * design's experimental conditions.
  *
  * - `random`:    a (weighted) random draw from `options`
  * - `balanced`:  the option fewest coders have so far

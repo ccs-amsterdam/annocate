@@ -61,7 +61,7 @@ export function deployment(server: Server): Hono<Env> {
       live,
     );
     if (checks.errors.length > 0) return c.json({ error: checks.errors.join(" "), code: "assignment_invalid" }, 400);
-    // Links follow the design's coders, conditions and link parameters (§4).
+    // Links follow the design's coder invitation (§4).
     await checkLinkCount(db, studyId, designVersionItems(version), parsed.data.confirmLinks ?? false, live);
     const result = await db.transaction(async (tx) => {
       const deployment = await putDeployment(tx, studyId, parsed.data);

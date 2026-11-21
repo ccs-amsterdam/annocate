@@ -12,7 +12,7 @@ import {
 // for a paper's appendix or a colleague: questions with their instructions
 // and options, conditions, the unit fields coders are shown, end messages.
 // Not the design's internals: who codes which units, sets, gold and
-// practice settings, link parameters.
+// practice settings, the coder invitation.
 
 const TYPE: Record<string, string> = {
   nominal: "Choose an option",

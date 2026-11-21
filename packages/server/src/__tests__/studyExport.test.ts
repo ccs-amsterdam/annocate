@@ -84,7 +84,7 @@ async function contents(studyId: number) {
     .annotations;
   const study = await json<Record<string, unknown>>(`/api/study/${studyId}`);
   return {
-    study: { name: study.name, signIn: study.signIn, keepSessionsOpen: study.keepSessionsOpen, origin: study.origin },
+    study: { name: study.name, keepSessionsOpen: study.keepSessionsOpen, origin: study.origin },
     units: units.map((u) => [u.externalId, u.data]),
     sets: sets.map((g) => [g.name, g.sets.map((s) => [s.name, s.unitIds.map((id) => unitIds.get(id))])]),
     designs: designs.map((d) => ({

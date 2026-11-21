@@ -35,8 +35,7 @@ interface LinksPanelProps {
 
 /**
  * The study's links (docs/architecture.md §7): made from
- * the deployed design, one per combination of its link parameters'
- * values. Here their access settings (label, login, emails, max uses), and
+ * the deployed design's coder invitation, one, or one per coder. Here their access settings (label, login, emails, max uses), and
  * revoking or renewing a link. Links the design no longer makes are
  * retired, never deleted: coders and their answers refer to the link they
  * came from.
@@ -78,9 +77,8 @@ export function LinksPanel({ client }: LinksPanelProps) {
         <h2 className="flex items-center gap-1.5 text-lg font-medium">
           Links
           <InfoTip label="About links">
-            Deploying the design makes its links: one, or one per value of each link parameter (and per combination) in
-            its Study entry, e.g. a link per set of a group. Deployed sets get links; links whose value is gone are
-            retired. Here you set who may use a link. Revoking stops new coders from joining with it; coders who already
+            Deploying the design makes its links: one, or with specific coders who get a link each, one per coder in
+            the coders&apos; column. Links of coders who are gone are retired. Here you set who may use a link. Revoking stops new coders from joining with it; coders who already
             started keep working.
           </InfoTip>
           <HelpButton topic="links" label="Help: links" />
@@ -108,7 +106,7 @@ export function LinksPanel({ client }: LinksPanelProps) {
         ) : active.length === 0 ? (
           <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
             {deployment
-              ? "The deployed design makes no links right now (a link parameter without values?)."
+              ? "The deployed design makes no links right now (a coders' column without coders?)."
               : "Deploy the design to get its links."}
           </p>
         ) : (

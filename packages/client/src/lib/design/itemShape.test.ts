@@ -65,14 +65,14 @@ describe("item shape", () => {
 describe("designShapeError", () => {
   const question = { name: "q", type: "question", variable: { type: "confirm" } };
   it("takes a design with its session and public info apart from the items", () => {
-    expect(designShapeError({ public: { title: "T" }, session: { params: [] }, items: [question] })).toBeNull();
+    expect(designShapeError({ public: { title: "T" }, session: {}, items: [question] })).toBeNull();
     expect(designShapeError({ items: [] })).toBeNull();
     expect(designShapeError({ public: null, items: [question] })).toBeNull();
   });
   it("says what is wrong", () => {
     expect(designShapeError([question])).toMatch(/is an object/);
     expect(designShapeError({ items: [question], extra: 1 })).toMatch(/Unknown key "extra"/);
-    expect(designShapeError({ items: [{ type: "session", params: [] }] })).toMatch(/goes in "session"/);
+    expect(designShapeError({ items: [{ type: "session" }] })).toMatch(/goes in "session"/);
     expect(designShapeError({ session: [], items: [] })).toMatch(/"session" must be an object/);
   });
 });

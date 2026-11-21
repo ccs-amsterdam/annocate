@@ -40,7 +40,7 @@ export const designVersions = pgTable(
     note: text(),
     // As stored; read through shared/designVersions.ts
     items: jsonb().$type<unknown>().notNull(),
-    session: jsonb().$type<unknown>().notNull().default({ params: [] }),
+    session: jsonb().$type<unknown>().notNull().default({}),
     units: jsonb().$type<unknown>().notNull().default({ fields: [] }),
     immutable: boolean().notNull().default(false),
     revision: integer().notNull().default(1),
@@ -95,7 +95,7 @@ export const deploymentVersions = pgTable(
 
 /**
  * Links: how coders join a study (docs/coder-identity.md). Made from the
- * design's link parameters (params; link_key: which combination, as JSON),
+ * design's coder invitation (params: the coder of a link per coder; link_key: which link, as JSON),
  * so a deploy keeps, adds and retires them. participant_id: a fixed
  * participant; max_uses / uses: a sample size per link.
  */

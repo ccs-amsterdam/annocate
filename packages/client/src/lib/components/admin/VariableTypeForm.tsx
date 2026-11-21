@@ -181,8 +181,8 @@ export function VariableTypeForm({
               Drawn
               <InfoTip label="About random conditions">
                 Assigned when a coder reaches this item, so earlier questions can come first (coders screened out before
-                don&apos;t count). Use it as <span className="font-mono">$var.name</span>. For a condition from the
-                link, or drawn when the session starts, use an assigned condition in the session settings instead.
+                don&apos;t count). Use it as <span className="font-mono">$var.name</span>. Linked to a set column of the units, it also
+                selects the coder&apos;s units.
               </InfoTip>
             </label>
             <select

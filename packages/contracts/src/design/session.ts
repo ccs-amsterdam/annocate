@@ -170,9 +170,8 @@ export const PublicInfoSchema = z.object({
 export type PublicInfo = z.infer<typeof PublicInfoSchema>;
 
 /**
- * The Study entry: the design's `session` (its parameters, the participant
- * id's URL parameter, and, if not every combination of the link parameters
- * is wanted, the combinations to make links for) and its `public` info, as
+ * The Study entry: the design's `session` (the coder invitation, the URL
+ * parameters and the normal end) and its `public` info, as
  * the first item of the design's items (`designItems`). Validation, the
  * runtime and the editor work on it there; it is stored as the design's
  * `session` and `public` (`splitDesignItems`).

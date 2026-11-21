@@ -42,8 +42,8 @@ export const DesignWriteSchema = z.object({
    */
   public: PublicInfoSchema.nullable().optional(),
   /**
-   * The session (docs/architecture.md §6): URL and link parameters, the
-   * participant id, link combinations. `POST`: absent, no parameters.
+   * The session (docs/architecture.md §6): the coder invitation and the
+   * URL parameters. `POST`: absent, the defaults (a crowd, no parameters).
    * `PUT`: absent keeps it. Not an item: `items` can't hold it.
    */
   session: SessionSpecSchema.optional(),

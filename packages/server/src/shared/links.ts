@@ -75,8 +75,8 @@ export async function checkLinkCount(
 const linkLabel = (values: Record<string, string>) => Object.values(values).join(" · ") || "Open link";
 
 /**
- * Makes the study's links match its deployed design version (§4): a link per
- * combination of the link parameters' values. Missing links are made (with
+ * Makes the study's links match its deployed design version (§4): one link,
+ * or with specific coders who get a link each, a link per coder. Missing links are made (with
  * `secrets` in order, else random ones); links the design no longer makes
  * are retired, never deleted (coders came from them); retired links that
  * are part of the design again come back. Without a deployment: nothing.

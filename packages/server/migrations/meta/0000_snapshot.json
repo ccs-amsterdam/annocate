@@ -1107,7 +1107,7 @@
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true,
-          "default": "'{\"params\":[]}'::jsonb"
+          "default": "'{}'::jsonb"
         },
         "units": {
           "name": "units",

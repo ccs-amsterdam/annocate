@@ -5,7 +5,7 @@ import { toCoderItems } from "./coderCodebook.js";
 describe("the coder codebook", () => {
   it("leaves out how units are handed out, the Session item, and how computed values are drawn", () => {
     const items = [
-      { type: "session", params: [], coders: { column: "coder" } },
+      { type: "session", invite: { mode: "coders", column: "coder", link: "per_coder" } },
       {
         type: "computed",
         name: "condition",

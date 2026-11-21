@@ -143,7 +143,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   let loopAvailable = new Set<string>();
   /** `$session` names (declared parameters, conditions and the built-in ones). */
   const sessionNamed = new Set(sessionNames(items));
-  /** Set columns that select a session's units (the coder column, assigned conditions'): column -> what. */
+  /** Set columns that select a session's units (the coders' column, random conditions'): column -> what. */
   const linkedColumns = new Map(
     sessionColumns(sessionItem(items)).map((c) => [
       c.column,

@@ -124,7 +124,7 @@ export const LinkResponseSchema = LinkWriteSchema.extend({
    * already started keep working. A link can only be deleted while unused.
    */
   revokedAt: z.coerce.date().nullable(),
-  /** The link parameter values this link carries (`$session.<name>`). */
+  /** The values this link carries: a link per coder, its coder (`$session.coder`). */
   params: z.record(z.string(), z.string()),
   /**
    * Set when the deployed design version no longer makes this link (e.g. its set
