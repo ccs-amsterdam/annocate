@@ -148,7 +148,7 @@ export interface ResearcherApi {
   deleteSetGroup(group: string): Promise<void>;
 
   listCoders(): Promise<CoderProgress[]>;
-  /** Deletes coders and all their answers for good, by id, participant id or email (ADMIN). */
+  /** Deletes coders and all their answers for good, by id, coder id or email (ADMIN). */
   deleteCoders(select: DeleteCoders): Promise<DeleteCodersResponse>;
   /** Deletes later: the coder's deletion request stays, but is no longer brought up (ADMIN). */
   postponeDeletion(sessionId: number): Promise<void>;
@@ -156,7 +156,7 @@ export interface ResearcherApi {
   listCoderDeletions(): Promise<CoderDeletion[]>;
   /** The links (made from the deployed design version), active ones first. */
   listLinks(): Promise<LinkResponse[]>;
-  /** A link's access settings: label, login, emails, max uses, participant id. */
+  /** A link's access settings: label, login, emails, max uses, coder id. */
   updateLink(id: number, body: LinkWrite): Promise<LinkResponse>;
   /** No new coders from this link; coders who started keep working. */
   revokeLink(id: number): Promise<LinkResponse>;

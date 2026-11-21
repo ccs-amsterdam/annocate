@@ -379,8 +379,8 @@ async function reach(c: ReturnType<typeof coder>, name: string) {
 /** A Session item (contracts SessionItemSchema). */
 const sessionItem = (extra: object) => ({ type: "session", ...extra });
 /** A crowd invitation, its units a shared queue with these criteria if given (contracts CrowdInviteSchema). */
-const crowd = (units?: object, extra: object = {}) =>
-  sessionItem({ invite: { mode: "crowd", ...(units ? { units } : {}), ...extra } });
+const crowd = (share?: object, extra: object = {}) =>
+  sessionItem({ invite: { mode: "crowd", ...(share ? { share } : {}), ...extra } });
 /** Specific coders: the values of a set column, each with their own link (or signing in, `login`). */
 const codersInvite = (column = "coder", link: "per_coder" | "login" = "per_coder") =>
   sessionItem({ invite: { mode: "coders", column, link } });
@@ -540,7 +540,10 @@ describe("coders", () => {
     expect((await anna.session()).session).toEqual({ coder: "anna" });
     expect(await order(anna)).toEqual(["unit-3", "unit-1"]);
     expect(await order(coder("bob", byCoder.bob))).toEqual(["unit-3", "unit-1", "unit-2"]);
-    // A link carries the coder: another session of anna gets anna's units
+    // The link's coder is the session's coder: anna's link on another device asks first, then anna's units again
+    const elsewhere = await send("anna-2", "/session", {}, { "x-link-secret": byCoder.anna });
+    expect(await elsewhere.json()).toMatchObject({ code: "coder_has_session" });
+    await send("anna-2", "/session", {}, { "x-link-secret": byCoder.anna, "x-new-session": "1" });
     expect(await order(coder("anna-2", byCoder.anna))).toEqual(["unit-3", "unit-1"]);
 
     // A new coder: a new link once deployed. Removing bob retires his link; his session goes on.
@@ -631,28 +634,10 @@ describe("coders", () => {
     expect(shared.sessionId).toBe(anna.sessionId);
     expect((await names()).names.every((n) => !n.taken)).toBe(true);
 
-    // Names are shown to anyone with the link: no email addresses
+    // A trusted team's feature: email addresses can be names too
     await createSet("c@example.org", ["unit-3"], "coder");
-    const design = await server.request("/api/study/1/design", {
-      method: "POST",
-      headers: adminHeaders,
-      body: JSON.stringify(
-        splitDesignItems([
-          sessionItem({ invite: { mode: "coders", column: "coder", link: "pick_name" } }),
-          { type: "unit_loop", units: {}, layout: { template: "" }, children: [sentimentQuestion] },
-        ]),
-      ),
-    });
-    const { id } = (await design.json()) as { id: number };
-    const deploy = await server.request("/api/study/1/deployment", {
-      method: "PUT",
-      headers: adminHeaders,
-      body: JSON.stringify({ designVersionId: id, units: true }),
-    });
-    expect(await deploy.json()).toMatchObject({
-      code: "assignment_invalid",
-      error: expect.stringContaining("not email addresses"),
-    });
+    await deployDrafts();
+    expect((await names()).names.map((n) => n.name)).toContain("c@example.org");
   });
 
   it("signing in needs email addresses, and the column must be a set column", async () => {
@@ -953,6 +938,8 @@ describe("loop filters and the overlap", () => {
   const coders = codersInvite("g");
   const order = async (name: string) => {
     const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
+    // The link's coder (s1) on another device each time: a new session
+    await send(name, "/session", {}, { "x-link-secret": secret, "x-new-session": "1" });
     const c = coder(name, secret);
     const seen: string[] = [];
     for (let u = await c.next(); u; u = await c.next()) {
@@ -1125,7 +1112,7 @@ describe("sessions", () => {
     expect(b.sessionId).toBe(a.sessionId);
     expect(bare.sessionId).toBe(a.sessionId);
 
-    await redeploy({}, [crowd(undefined, { participant: { param: "participant" } })]);
+    await redeploy({}, [crowd(undefined, { coderParam: { param: "participant" } })]);
     const panel = "demo-secret";
     const p1 = (await (
       await send("shared", "/session", {}, { "x-link-secret": panel, "x-url-params": "participant=P1" })
@@ -1158,7 +1145,7 @@ describe("URL parameters", () => {
   it("start only with them (fitting their values), and keep them as $session values", async () => {
     await redeploy({}, [
       sessionItem({
-        invite: { mode: "crowd", participant: { param: "PROLIFIC_PID", pattern: "[0-9a-f]{4}" } },
+        invite: { mode: "crowd", coderParam: { param: "PROLIFIC_PID", pattern: "[0-9a-f]{4}" } },
         urlParams: [
           { name: "study", param: "STUDY_ID" },
           { name: "src", values: [{ value: "panel" }, { value: "mail" }] },
@@ -1188,11 +1175,11 @@ describe("URL parameters", () => {
     const okRes = await start("u4", "PROLIFIC_PID=ab12&STUDY_ID=s1&src=mail&source=newsletter&other=x");
     const ok = (await okRes.json()) as SessionResponse;
     expect(okRes.status, JSON.stringify(ok)).toBe(200);
-    expect(ok.session).toEqual({ participant: "ab12", study: "s1", src: "mail", wave: "1", source: "newsletter" });
+    expect(ok.session).toEqual({ coder: "ab12", study: "s1", src: "mail", wave: "1", source: "newsletter" });
     // The same link again (the client sends the page's parameters with every request): the same session
     const again = (await (await start("u4", "PROLIFIC_PID=ab12&STUDY_ID=s1&src=mail")).json()) as SessionResponse;
     expect(again.sessionId).toBe(ok.sessionId);
-    // Kept without the other parameters, also after a restart (the participant id is part of the device's session key)
+    // Kept without the other parameters, also after a restart (the coder id is part of the device's session key)
     server = restart();
     expect(
       ((await (await send("u4", "/session", {}, { "x-url-params": "PROLIFIC_PID=ab12" })).json()) as SessionResponse)
@@ -1202,6 +1189,7 @@ describe("URL parameters", () => {
       await server.request("/api/study/1/coders", { headers: adminHeaders })
     ).json()) as CoderProgress[];
     expect(coders.find((c) => c.coder === "ab12")?.session, JSON.stringify(coders)).toEqual({
+      coder: "ab12",
       study: "s1",
       src: "mail",
       wave: "1",
@@ -1210,9 +1198,24 @@ describe("URL parameters", () => {
   });
 });
 
+describe("the coder's id from the URL", () => {
+  it("is $session.coder; optional: a link without it starts without one", async () => {
+    await redeploy({}, [crowd(undefined, { coderParam: { param: "PID", optional: true } })]);
+    const start = (device: string, params: string) =>
+      send(device, "/session", {}, { "x-link-secret": "demo-secret", "x-url-params": params });
+    expect(((await (await start("o1", "PID=abc")).json()) as SessionResponse).session).toEqual({ coder: "abc" });
+    const without = await start("o2", "");
+    expect(without.status).toBe(200);
+    expect(((await without.json()) as SessionResponse).session).toEqual({});
+    // Required (the default): refused without it
+    await redeploy({}, [crowd(undefined, { coderParam: { param: "PID" } })]);
+    expect(await (await start("o3", "")).json()).toMatchObject({ code: "url_param_missing" });
+  });
+});
+
 describe("quitting and deleting a coder's data", () => {
   it("lets a coder quit and ask for deletion; the researcher deletes later, then now, and the deletion is logged", async () => {
-    await redeploy({}, [crowd(undefined, { participant: { param: "participant" } })]);
+    await redeploy({}, [crowd(undefined, { coderParam: { param: "participant" } })]);
     const link = { "x-link-secret": "demo-secret", "x-url-params": "participant=P77" };
     const unit = ((await (await send("quitter", "/loop/1/next", {}, link)).json()) as { units: CoderUnitResponse[] })
       .units[0];
@@ -1726,7 +1729,7 @@ describe("sessions across devices", () => {
   });
 
   it("never resumes a participant's session from a link alone", async () => {
-    await redeploy({}, [crowd(undefined, { participant: { param: "participant" } })]);
+    await redeploy({}, [crowd(undefined, { coderParam: { param: "participant" } })]);
     const secret = "demo-secret";
     const link = { "x-link-secret": secret, "x-url-params": "participant=P123" };
 
@@ -2193,15 +2196,15 @@ describe("deployment settings", () => {
       headers: adminHeaders,
       body: JSON.stringify({
         name: "Demo study",
-        redirectUrls: { panel_done: "https://panel.example/done?id=$session.participant" },
+        redirectUrls: { panel_done: "https://panel.example/done?id=$session.coder" },
       }),
     });
     expect(put.status).toBe(200);
     expect(((await put.json()) as { redirectUrls: unknown }).redirectUrls).toEqual({
-      panel_done: "https://panel.example/done?id=$session.participant",
+      panel_done: "https://panel.example/done?id=$session.coder",
     });
     const items = (await coder("first").session()).codebook.items as { type: string; redirectUrl?: string }[];
-    expect(items.find((i) => i.type === "end")?.redirectUrl).toBe("https://panel.example/done?id=$session.participant");
+    expect(items.find((i) => i.type === "end")?.redirectUrl).toBe("https://panel.example/done?id=$session.coder");
     // maxUses 1: the demo link took "first"; a second new coder is refused
     const second = await send("second", "/session", {}, { "x-link-secret": "demo-secret" });
     expect(second.status).toBe(403);
@@ -2607,7 +2610,7 @@ describe("special units per coder", () => {
     }
     expect(seen).toEqual(["unit-1", "unit-2", "g1", "g2"]);
     // A coder who never asked for units: not routed, so no special units yet
-    await coder("idle", secret).session();
+    await send("idle", "/session", {}, { "x-link-secret": secret, "x-new-session": "1" });
     const coders = (await (
       await server.request("/api/study/1/coders", { headers: adminHeaders })
     ).json()) as CoderProgress[];

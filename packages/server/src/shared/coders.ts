@@ -14,7 +14,7 @@ export function toCoder(row: CoderRow): Coder {
     assignments: row.assignments ?? {},
     ended: row.ended,
     deletionRequest: row.deletionRequest,
-    session: { ...row.session, ...(row.coder ? { participant: row.coder } : {}) },
+    session: row.session,
     linkId: row.linkId,
     email: row.email,
   };

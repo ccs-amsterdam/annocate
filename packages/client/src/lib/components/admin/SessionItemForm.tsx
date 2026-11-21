@@ -102,7 +102,8 @@ function UrlParamsSettings({
         <InfoTip label="About URL parameters">
           A parameter without a default is required: a link without it doesn&apos;t start. Built in:{" "}
           <span className="font-mono">$session.source</span> (the optional <span className="font-mono">?source=</span>{" "}
-          of any link), and <span className="font-mono">$session.participant</span> with a crowd&apos;s participant id.
+          of any link), and <span className="font-mono">$session.coder</span> (who the coder is: their name, or a
+          crowd&apos;s id).
         </InfoTip>
         <HelpButton topic="session-parameters" label="Help: URL parameters" />
       </p>

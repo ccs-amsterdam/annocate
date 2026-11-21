@@ -5,8 +5,8 @@ import { HttpError } from "../shared/http.js";
 // Coder sessions (docs/coder-identity.md §4): a browser keeps one random
 // device id in an httpOnly cookie, for every study, so page scripts (and XSS)
 // never see it. Its key for a session in a study is the hash of the device id,
-// the deployment and the participant id (a shared lab computer keeps
-// participants apart). The database stores only that hash, never the device
+// the deployment and the coder id (a shared lab computer keeps
+// coders apart). The database stores only that hash, never the device
 // id: so nothing links one device's sessions across studies.
 
 /** Every coder API request must carry this header: a cross-site form or image can't, so it blocks CSRF. */
@@ -46,7 +46,7 @@ export function writeDevice(c: Context, deviceId: string): void {
   });
 }
 
-/** A device's key for its session in a deployment (with this participant id, if the link carries one). */
+/** A device's key for its session in a deployment (with this coder id, if the link carries one). */
 export function coderKey(deviceId: string, deploymentId: string, coder?: string | null): Promise<string> {
   return sha256(`${deviceId}\n${deploymentId}\n${coder ?? ""}`);
 }

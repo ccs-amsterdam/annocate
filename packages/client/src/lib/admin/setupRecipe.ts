@@ -29,7 +29,7 @@ interface SetupExperiment {
   name: string;
   /** The conditions' values. */
   conditions: string[];
-  /** `random`: a random draw per participant; `balanced`: the condition with the fewest participants so far. */
+  /** `random`: a random draw per coder; `balanced`: the condition with the fewest coders so far. */
   assign: "random" | "balanced";
 }
 
@@ -389,7 +389,7 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
         // The overlap: everyone's (a column's _overlap, without a column dividing the units)
         if (overlap.length > 0) groups.push({ group: WIZARD_GROUP, sets: overlapSet });
         // A shared queue: the crowd invitation's (overlap spread, about one in ten without a maximum per coder)
-        session = { invite: { mode: "crowd", units: d.shared } };
+        session = { invite: { mode: "crowd", share: d.shared } };
         break;
       case "groups":
         // A set column named after the condition, a value per condition: the condition (drawn before the loop) selects its units

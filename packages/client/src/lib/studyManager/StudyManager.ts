@@ -278,7 +278,7 @@ export class StudyManager {
   private topSteps: DesignItem[] = [];
   /** Answers of coder-level questions that are currently shown (hidden ones count as unanswered). */
   private coderVisible: Record<string, VariableValue> = {};
-  /** The session's `$session` values (participant id, URL parameters its link required). */
+  /** The session's `$session` values (coder id, URL parameters its link required). */
   private session: Record<string, string> = {};
   /** `coderVisible` plus the current unit's answers to questions that are currently shown. */
   private unitVisible: Record<string, VariableValue> = {};

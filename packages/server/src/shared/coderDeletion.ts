@@ -5,10 +5,10 @@ import { anyOf } from "../db/sql.js";
 import { annotationValues as a, sessionDeletions, coderSessions, units } from "../db/schema/index.js";
 
 /**
- * Deletes coders and everything they answered, for good (a participant
+ * Deletes coders and everything they answered, for good (a coder
  * withdrew, docs/coder-identity.md): the coders (with their coder-level
  * answers, routing and deletion request) and all their answer rows, also
- * retired ones. Selected by id, participant id or email, within the study.
+ * retired ones. Selected by id, coder id or email, within the study.
  * Units nobody has answers for any more can be deleted again. Unit
  * versions stay: they hold unit content, not the coder's. Each deleted coder
  * is logged (`session_deletions`), with the ids downloaded results use (not

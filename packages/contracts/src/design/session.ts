@@ -10,10 +10,10 @@ import { CriteriaSchema } from "./unitLoop.js";
 // return link). All are `$session.<name>` values, stored on the session
 // when it starts.
 
-/** Session values that can't be declared: the participant id, the `source` URL parameter, the login's email, the coder (`session.coders`). */
-export const RESERVED_SESSION_NAMES = ["participant", "source", "email", "coder"] as const;
+/** Session values that can't be declared: the coder (who the coder is) and the `source` URL parameter. */
+export const RESERVED_SESSION_NAMES = ["coder", "source"] as const;
 
-/** The longest value a session parameter takes (participant ids are short; it also bounds a pattern match). */
+/** The longest value a session parameter takes (coder ids are short; it also bounds a pattern match). */
 export const MAX_SESSION_VALUE = 256;
 
 /** A URL parameter name, as it appears in links (e.g. `PROLIFIC_PID`). */
@@ -107,22 +107,27 @@ export const UrlParamSchema = z
     description: z.string().max(500).optional(),
   })
   .refine((p) => !(RESERVED_SESSION_NAMES as readonly string[]).includes(p.name), {
-    message: "participant, source, email and coder are built in: choose another name",
+    message: "coder and source are built in: choose another name",
     path: ["name"],
   })
   .refine((p) => !(p.values && p.pattern), { message: "Give values or a pattern, not both", path: ["pattern"] });
 export type UrlParam = z.infer<typeof UrlParamSchema>;
 
-/** The participant id from a URL parameter of the link (e.g. a panel's `PROLIFIC_PID`), required to start. */
-export const ParticipantParamSchema = z.object({
+/**
+ * The coder's id from a URL parameter of the link (e.g. a panel's
+ * `PROLIFIC_PID`): `$session.coder`. Required to start, unless `optional`.
+ */
+export const CoderParamSchema = z.object({
   param: UrlParamNameSchema,
   pattern: UrlParamPatternSchema.optional(),
+  optional: z.boolean().optional(),
 });
-export type ParticipantParam = z.infer<typeof ParticipantParamSchema>;
+export type CoderParam = z.infer<typeof CoderParamSchema>;
 
 /**
  * Specific coders (docs/architecture.md §6.1): the units are divided over
- * coders by a set column; each of its values is a coder (`$session.coder`).
+ * coders by a set column; each of its values is a coder (`$session.coder`,
+ * also when the design has no unit loop: e.g. a survey of known experts).
  * `link`: `per_coder`, a link each; `login`, one link where coders sign in
  * and get the units of their address (the column's values are all email
  * addresses); `pick_name`, one link where coders pick their name from the
@@ -140,17 +145,18 @@ export const CodersInviteSchema = z.object({
 export type CodersInvite = z.infer<typeof CodersInviteSchema>;
 
 /**
- * A crowd (docs/architecture.md §6.1): one link for everyone. The
- * participant id from a URL parameter (`participant`), or coders sign in
- * (`login`: their email is the participant id). `units`: a shared queue of
- * the units, handed out until done (without it, every coder gets all units).
- * `maxCoders`: the link takes at most this many sessions.
+ * A crowd (docs/architecture.md §6.1): one link for everyone. Who the
+ * coder is (`$session.coder`): from a URL parameter (`coderParam`), or with
+ * `login` (coders must sign in) their email. `share`: the units are a shared
+ * queue, handed out until done (without it, every coder gets all units; with
+ * no unit loop it isn't used). `maxCoders`: the link takes at most this many
+ * sessions.
  */
 export const CrowdInviteSchema = z.object({
   mode: z.literal("crowd"),
-  participant: ParticipantParamSchema.optional(),
+  coderParam: CoderParamSchema.optional(),
   login: z.boolean().optional(),
-  units: CriteriaSchema.optional(),
+  share: CriteriaSchema.optional(),
   maxCoders: z.number().int().positive().optional(),
 });
 export type CrowdInvite = z.infer<typeof CrowdInviteSchema>;

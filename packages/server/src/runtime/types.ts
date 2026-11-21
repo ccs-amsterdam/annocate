@@ -65,7 +65,7 @@ export interface Coder {
   ended: SessionEnd | null;
   /** Set once the coder asked for their answers to be deleted (`Store.requestDeletion`; not part of `CoderWrite`). */
   deletionRequest: DeletionRequest | null;
-  /** `$session` values: `participant` (if any) and the URL parameters the link required. Fixed when the coder starts. */
+  /** `$session` values: `coder` (if any) and the URL parameters the link required. Fixed when the coder starts. */
   session: Record<string, string>;
   /** The link (link) the coder joined with. */
   linkId: number | null;
@@ -81,14 +81,14 @@ export interface ResolveCoderRequest {
   device?: DeviceDetails;
   /** Required the first time a coder key is seen, to create the coder from a link. */
   linkSecret?: string;
-  /** The page's URL parameters: the participant id and the codebook's URL parameters (`sessionValues`). */
+  /** The page's URL parameters: the coder id and the codebook's URL parameters (`sessionValues`). */
   urlParams?: Record<string, string>;
   /** What the deployed codebook asks of a new session (its Session item; set by the runtime). */
   sessionRules?: SessionRules;
   /** Draws conditions at the start (set by the runtime; default `Math.random`). */
   random?: () => number;
   /**
-   * The coder confirmed starting a new session although their participant
+   * The coder confirmed starting a new session although their coder id
    * id already has one (on another device). Without it: 409
    * `coder_has_session`. Also: a device that has a session starts
    * a fresh one (previews' "start over").

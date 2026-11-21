@@ -35,7 +35,7 @@ interface LinksPanelProps {
 
 /**
  * The study's links (docs/architecture.md §7): made from
- * the deployed design's coder invitation, one, or one per coder. Here their access settings (label, participant id, max uses), and
+ * the deployed design's coder invitation, one, or one per coder. Here their access settings (label, coder id, max uses), and
  * revoking or renewing a link. Links the design no longer makes are
  * retired, never deleted: coders and their answers refer to the link they
  * came from.
@@ -53,7 +53,9 @@ export function LinksPanel({ client }: LinksPanelProps) {
 
   // The URL parameters a link takes, with placeholders the panel (or the researcher) fills in.
   const urlParams = [
-    ...(invite.mode === "crowd" && invite.participant ? [`${invite.participant.param}=<participant id>`] : []),
+    ...(invite.mode === "crowd" && invite.coderParam && !invite.coderParam.optional
+      ? [`${invite.coderParam.param}=<coder id>`]
+      : []),
     ...(session?.urlParams ?? []).filter((p) => p.default === undefined).map((p) => `${urlParamKey(p)}=<${p.name}>`),
   ];
   const linkOf = (link: LinkResponse) => {
@@ -290,7 +292,7 @@ function LinkRow({ client, link, url }: { client: ResearcherApi; link: LinkRespo
   );
 }
 
-/** A link's settings: label, max uses, a fixed participant id. */
+/** A link's settings: label, max uses, a fixed coder id. */
 function AccessForm({ client, link, onDone }: { client: ResearcherApi; link: LinkResponse; onDone: () => void }) {
   const update = useUpdateLinkMutation(client);
   const [label, setLabel] = useState(link.label);
@@ -329,9 +331,9 @@ function AccessForm({ client, link, onDone }: { client: ResearcherApi; link: Lin
           onChange={(e) => setMaxUses(e.target.value)}
         />
         <Input
-          aria-label="Fixed participant id"
+          aria-label="Fixed coder id"
           className="w-48"
-          placeholder="Fixed participant id"
+          placeholder="Fixed coder id"
           value={coderId}
           onChange={(e) => setCoderId(e.target.value)}
         />
@@ -339,7 +341,7 @@ function AccessForm({ client, link, onDone }: { client: ResearcherApi; link: Lin
       <p className="text-[11px] text-muted-foreground">
         Whether coders must sign in is part of the coder invitation (in the editor). Coders who don&apos;t sign in
         continue on the device they started on, or move with &quot;Continue on another device&quot;; signed in, they
-        continue on any device by signing in there. A participant id is a label, never a way back into a session.{" "}
+        continue on any device by signing in there. A coder id is a label, never a way back into a session.{" "}
         <HelpButton topic="online-panels" className="align-middle">
           Online panels
         </HelpButton>

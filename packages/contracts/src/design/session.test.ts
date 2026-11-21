@@ -13,7 +13,7 @@ import {
 
 describe("the design's Study entry (session and public info)", () => {
   const session: SessionSpec = {
-    invite: { mode: "crowd", participant: { param: "PROLIFIC_PID" } },
+    invite: { mode: "crowd", coderParam: { param: "PROLIFIC_PID" } },
     urlParams: [{ name: "wave", values: [{ value: "1" }, { value: "2" }] }],
   };
   const question = { type: "question", name: "q" };

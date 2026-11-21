@@ -116,7 +116,7 @@ export const SessionResponseSchema = z.object({
   ended: SessionEndSchema.nullable().optional(),
   /** Set once the coder asked for their answers to be deleted. */
   deletionRequest: DeletionRequestSchema.nullable().optional(),
-  /** `$session` values: the link and URL parameters, `participant`, `source` and `email` when the session has them. */
+  /** `$session` values: the URL parameters, `coder` and `source` when the session has them. */
   session: z.record(z.string(), z.string()).default({}),
   /** The email of the login this session belongs to (docs/coder-identity.md §5); null without. Logged-in coders continue on any device by logging in there. */
   login: z.string().nullable().optional(),

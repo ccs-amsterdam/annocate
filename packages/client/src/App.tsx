@@ -250,7 +250,7 @@ function ResearchLayout() {
   return <ResearchPage location={location} />;
 }
 
-/** Search parameters as plain strings (a participant id "007" stays "007"). */
+/** Search parameters as plain strings (a coder id "007" stays "007"). */
 type StringSearch = Record<string, string>;
 const stringSearch = (search: Record<string, unknown>): StringSearch =>
   Object.fromEntries(Object.entries(search).flatMap(([k, v]) => (typeof v === "string" ? [[k, v]] : [])));

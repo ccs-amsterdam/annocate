@@ -211,15 +211,6 @@ export async function assignmentChecks(
 
   const session = sessionItem(items);
   const invite = inviteOf(session);
-  if (
-    invite.mode === "coders" &&
-    invite.link === "pick_name" &&
-    ["email", "mixed"].includes(coderAccess(valuesOf(invite.column)))
-  ) {
-    errors.push(
-      `Coders pick their name from column '${invite.column}', which anyone with the link sees: use names, not email addresses (or let coders sign in with them).`,
-    );
-  }
   if (invite.mode === "coders" && invite.link === "login") {
     const access = coderAccess(valuesOf(invite.column));
     if (access === "mixed" || access === "link")

@@ -141,7 +141,7 @@ monaco.languages.registerCompletionItemProvider(LANGUAGE, {
         ref[1] === "unit"
           ? current.fields.map((n) => item(n, "unit field"))
           : ref[1] === "session"
-            ? [item("participant", "the participant id, if the link has one")]
+            ? [item("coder", "who the coder is (their name or id), if known")]
             : current.questions.map((n) => item(`${n}.value`, "answer", monaco.languages.CompletionItemKind.Variable));
       return { suggestions: names };
     }
@@ -153,7 +153,7 @@ monaco.languages.registerCompletionItemProvider(LANGUAGE, {
         suggestions: [
           item("unit.", "a field of the unit", monaco.languages.CompletionItemKind.Module),
           item("var.", "an earlier answer", monaco.languages.CompletionItemKind.Module),
-          item("session.", "the session: participant id, URL parameters", monaco.languages.CompletionItemKind.Module),
+          item("session.", "the session: coder id, URL parameters", monaco.languages.CompletionItemKind.Module),
         ].map((s) => ({ ...s, command: { id: "editor.action.triggerSuggest", title: "names" } })),
       };
     }

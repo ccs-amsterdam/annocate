@@ -182,7 +182,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
                   item)
                 </li>
                 <li>
-                  <strong>coders.csv</strong>: a row per coder: link, participant id, how their session ended, and their
+                  <strong>coders.csv</strong>: a row per coder: link, coder id, how their session ended, and their
                   answers outside unit loops
                 </li>
                 <li>

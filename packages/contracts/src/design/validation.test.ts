@@ -115,9 +115,9 @@ describe("validateDesignItems", () => {
       expect.objectContaining({ warning: true, message: expect.stringContaining("comes before computed item 'set'") }),
     ]);
     const session = { type: "session", invite: { mode: "coders", column: "set", link: "per_coder" } };
-    expect(messages([session, random({ units: "set" })])).toEqual([
+    expect(messages([session, random({ units: "set" })])).toContain(
       "Column 'set' already selects units for the coders: use a column each",
-    ]);
+    );
     const param = { type: "session", urlParams: [{ name: "set" }] };
     expect(messages([param, random({ units: "other" })])).toEqual([
       "Computed item 'set' selects units: its name can't also be a session value",
@@ -138,7 +138,7 @@ describe("the Session item", () => {
       name: "q",
       variable: {
         type: "confirm",
-        question: "Hi $session.group, $session.participant, $session.source, $session.email, $session.coder",
+        question: "Hi $session.group, $session.source, $session.coder",
       },
     };
     expect(messages([session({ urlParams: [{ name: "group" }] }), text])).toEqual([]);
@@ -156,11 +156,11 @@ describe("the Session item", () => {
     ]);
     expect(
       messages([
-        session({ urlParams: [{ name: "a", param: "PID" }], invite: { mode: "crowd", participant: { param: "PID" } } }),
+        session({ urlParams: [{ name: "a", param: "PID" }], invite: { mode: "crowd", coderParam: { param: "PID" } } }),
       ]),
     ).toEqual(["Two URL parameters use the key 'PID'"]);
     expect(messages([session({ urlParams: [{ name: "source" }] })])).toContain(
-      "participant, source, email and coder are built in: choose another name",
+      "coder and source are built in: choose another name",
     );
     expect(messages([session({ urlParams: [{ name: "x", values: [{ value: "a" }], default: "b" }] })])).toEqual([
       "The default 'b' is not one of the values",
@@ -172,11 +172,11 @@ describe("the Session item", () => {
 
   it("checks the invitation: specific coders by a set column, or a crowd with a shared queue", () => {
     const loop = unitLoop("loop", [questionVar("q1", select(["a", "b"])), questionVar("c1")]);
-    const crowd = (units: object) => session({ invite: { mode: "crowd", units } });
+    const crowd = (share: object) => session({ invite: { mode: "crowd", share } });
     expect(messages([session({ invite: { mode: "coders", column: "coders", link: "per_coder" } }), loop])).toEqual([]);
-    expect(messages([session({ invite: { mode: "coders", link: "per_coder" } })])).toEqual([
+    expect(messages([session({ invite: { mode: "coders", link: "per_coder" } })])).toContainEqual(
       expect.stringContaining("Invalid input"),
-    ]);
+    );
     expect(messages([crowd({ until: { agree: 2, on: "q1" }, codersPerUnit: { max: 4 } }), loop])).toEqual([]);
     expect(messages([crowd({ until: { agree: 2, on: "nope" }, codersPerUnit: { max: 3 } }), loop])).toEqual([
       "Agreement question 'nope' is not a question in a unit loop",
@@ -187,12 +187,26 @@ describe("the Session item", () => {
     expect(messages([crowd({ until: { agree: 2, on: "q1" } }), loop])).toEqual([
       expect.stringContaining("most coders per unit when coding until coders agree"),
     ]);
-    expect(messages([crowd({ codersPerUnit: { min: 3, max: 2 } })])).toEqual([
+    expect(messages([crowd({ codersPerUnit: { min: 3, max: 2 } }), loop])).toEqual([
       "The most coders per unit must be at least the coders (or agreeing coders) a unit needs",
     ]);
-    expect(messages([crowd({ unitsPerCoder: { min: 5, max: 2 } })])).toEqual([
+    expect(messages([crowd({ unitsPerCoder: { min: 5, max: 2 } }), loop])).toEqual([
       "The minimum units per coder can't be more than the maximum",
     ]);
+    // Without a unit loop the unit settings are kept, with a warning (an agreement question isn't checked)
+    const warnings = (list: object[]) =>
+      validateDesignItems(list as never)
+        .filter((i) => i.warning)
+        .map((i) => i.message);
+    expect(warnings([session({ invite: { mode: "coders", column: "coders", link: "per_coder" } }), q])).toEqual([
+      expect.stringContaining("no unit loop yet"),
+    ]);
+    expect(messages([crowd({ until: { agree: 2, on: "nope" }, codersPerUnit: { max: 3 } }), q])).toEqual([
+      expect.stringContaining("no unit loop yet"),
+    ]);
+    expect(messages([session({ invite: { mode: "crowd", coderParam: { param: "PID", optional: true } } }), q])).toEqual(
+      [],
+    );
   });
 });
 
@@ -629,8 +643,8 @@ describe("end items", () => {
       "Redirect URLs can only use $var and $session references, not {{ }}",
     ]);
     expect(() => DesignItemsSchema.parse([end({ outcome: "done" })])).toThrow();
-    // The session's values (participant id, required URL parameters) fit a panel's return link
-    expect(messages([end({ redirectUrl: "https://panel.example/end?id=$session.participant" })])).toEqual([]);
+    // The session's values (the coder, required URL parameters) fit a panel's return link
+    expect(messages([end({ redirectUrl: "https://panel.example/end?id=$session.coder" })])).toEqual([]);
   });
 });
 

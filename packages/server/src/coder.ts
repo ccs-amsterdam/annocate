@@ -40,8 +40,8 @@ export function coderApi(server: Server): Hono {
   const app = new Hono();
 
   // Redeeming a transfer link: this device joins the session. Its keys: for
-  // coming back without a link, and (with a participant id) with the
-  // participant's link.
+  // coming back without a link, and (with a coder id) with the
+  // coder's link.
   app.post("/transfer/redeem", async (c) => {
     requireClientHeader(c);
     const body = await parseBody(c, RedeemTransferSchema);
@@ -52,8 +52,8 @@ export function coderApi(server: Server): Hono {
     const device = readDevice(c) ?? newDeviceId();
     await runtime.redeemTransfer(
       body.token,
-      async (participant) => [
-        ...new Set([await coderKey(device, deploymentId), await coderKey(device, deploymentId, participant)]),
+      async (coder) => [
+        ...new Set([await coderKey(device, deploymentId), await coderKey(device, deploymentId, coder)]),
       ],
       deviceDetails(c.req.header("user-agent")),
     );
@@ -68,10 +68,10 @@ export function coderApi(server: Server): Hono {
     const device = readDevice(c);
     if (!device || !/^\d+$/.test(deploymentId)) throw new HttpError(404, "No session here");
     const runtime = await server.deployments.get(deploymentId);
-    const participantParam = runtime.participantParam;
+    const coderParam = runtime.coderParam;
     const urlParams = Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));
-    const participant = participantParam ? urlParams[participantParam]?.trim() || undefined : undefined;
-    const key = await coderKey(device, deploymentId, participant);
+    const coder = coderParam ? urlParams[coderParam]?.trim() || undefined : undefined;
+    const key = await coderKey(device, deploymentId, coder);
     const [study] = await coderStudies(
       server.db,
       and(
@@ -98,6 +98,7 @@ export function coderApi(server: Server): Hono {
     if (!link || String(link.studyId) !== deploymentId)
       throw new HttpError(404, "This link doesn't exist", "link_not_found");
     const runtime = await server.deployments.get(deploymentId);
+    await runtime.refresh();
     return c.json(await runtime.pickNames());
   });
 
@@ -119,21 +120,21 @@ export function coderApi(server: Server): Hono {
 
     // The device's session in this deployment (docs/coder-identity.md §4):
     // its key is the hash of the device id, the deployment and the
-    // participant id the link carries (a device keeps a session per
-    // participant id). `x-new-session`: the coder asked for a new one (a
-    // participant id that already has a session elsewhere).
+    // coder id the link carries (a device keeps a session per
+    // coder id). `x-new-session`: the coder asked for a new one (a
+    // coder id that already has a session elsewhere).
     const linkSecret = c.req.header("x-link-secret");
-    // The page's query parameters: the participant id and the design's URL parameters.
+    // The page's query parameters: the coder id and the design's URL parameters.
     const urlParams = Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));
     const newSession = c.req.header("x-new-session") === "1";
     const link = linkSecret ? await linkInfo(server.db, linkSecret) : null;
     const existingDevice = readDevice(c);
     const device = existingDevice ?? newDeviceId();
-    const participantParam = runtime.participantParam;
+    const coderParam = runtime.coderParam;
     const key = await coderKey(
       device,
       deploymentId,
-      participantParam ? urlParams[participantParam]?.trim() || undefined : undefined,
+      coderParam ? urlParams[coderParam]?.trim() || undefined : undefined,
     );
     // Coders can always sign in on a link (to continue on other devices); where the study requires it, they must.
     const takesLogin = !!link;

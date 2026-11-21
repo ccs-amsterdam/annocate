@@ -472,7 +472,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     });
     const invite = session.invite;
     const keys = params.map((p) => p?.param ?? p?.name);
-    if (invite?.mode === "crowd" && invite.participant) keys.push(invite.participant.param);
+    if (invite?.mode === "crowd" && invite.coderParam) keys.push(invite.coderParam.param);
     keys.forEach((key, i) => {
       if (keys.indexOf(key) !== i) issue([...itemPath, "urlParams"], `Two URL parameters use the key '${key}'`);
       if (key === "source")
@@ -482,10 +482,20 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       if (p?.default !== undefined && p.values && !p.values.some((v) => v.value === p.default))
         issue([...itemPath, "urlParams", i, "default"], `The default '${p.default}' is not one of the values`);
     });
+    // Unit settings without a unit loop: kept, but not used (yet)
+    const hasLoop = items.some((i) => (i as { type?: unknown } | null)?.type === "unit_loop");
+    if (!hasLoop && (invite?.mode === "coders" || (invite?.mode === "crowd" && invite.share)))
+      issue(
+        [...itemPath, "invite"],
+        invite.mode === "coders"
+          ? "Specific coders each get their own units, but the design has no unit loop yet: until it has, coders get no units (their links work)"
+          : "The crowd shares the units, but the design has no unit loop yet: until it has, sharing isn't used",
+        true,
+      );
     // A crowd's agreement rule: a question with one categorical answer, in a unit loop
-    const agreement = invite?.mode === "crowd" ? invite.units?.until?.on : undefined;
+    const agreement = invite?.mode === "crowd" && hasLoop ? invite.share?.until?.on : undefined;
     if (typeof agreement === "string") {
-      const at = [...itemPath, "invite", "units", "until", "on"];
+      const at = [...itemPath, "invite", "share", "until", "on"];
       const variable = questions.get(agreement);
       if (!variable || loopOf.get(agreement) === null)
         issue(at, `Agreement question '${agreement}' is not a question in a unit loop`);

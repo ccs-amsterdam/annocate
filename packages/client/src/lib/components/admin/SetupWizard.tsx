@@ -184,13 +184,13 @@ const PARTS: { key: keyof SetupParts; title: string; text: string; icon: typeof 
   {
     key: "survey",
     title: "Ask questions",
-    text: "Participants answer questions once: about themselves, or their opinion (a survey).",
+    text: "Coders answer questions once: about themselves, or their opinion (a survey).",
     icon: MessageSquareText,
   },
   {
     key: "experiment",
     title: "Experiment",
-    text: "Participants are assigned to conditions (e.g. control and treatment), to show them different texts or units.",
+    text: "Coders are assigned to conditions (e.g. control and treatment), to show them different texts or units.",
     icon: FlaskConical,
   },
 ];
@@ -263,8 +263,8 @@ function ExperimentStep({ a, set }: StepProps) {
   return (
     <>
       <Intro>
-        Each participant is assigned one condition when they start. It is stored with their answers, and the editor can
-        use it to show different texts, questions or units per condition.
+        Each coder is assigned one condition when they start. It is stored with their answers, and the editor can use it
+        to show different texts, questions or units per condition.
       </Intro>
       <label className="block text-xs font-medium text-muted-foreground">
         Name of the condition variable
@@ -291,7 +291,7 @@ function ExperimentStep({ a, set }: StepProps) {
             checked={e.assign === "balanced"}
             onChange={() => set({ experiment: { ...e, assign: "balanced" } })}
           />
-          Balanced: the condition with the fewest participants so far
+          Balanced: the condition with the fewest coders so far
         </label>
         <label className="flex items-center gap-2">
           <input
@@ -299,7 +299,7 @@ function ExperimentStep({ a, set }: StepProps) {
             checked={e.assign === "random"}
             onChange={() => set({ experiment: { ...e, assign: "random" } })}
           />
-          Random: a random draw per participant
+          Random: a random draw per coder
         </label>
       </fieldset>
     </>
@@ -605,7 +605,7 @@ function QuestionsStep({ a, set }: StepProps) {
           lists.length === 1
             ? {
                 title: list === "unit" ? LIST_TEXT.unit.title : "Questions",
-                text: list === "unit" ? LIST_TEXT.unit.text : "Asked once per participant.",
+                text: list === "unit" ? LIST_TEXT.unit.text : "Asked once per coder.",
               }
             : LIST_TEXT[list];
         return (
@@ -737,7 +737,7 @@ function CreateStep({ a, problems }: { a: SetupAnswers; problems: string[] }) {
   const lines: string[] = [`A study named "${a.name.trim()}".`];
   if (a.parts.experiment) {
     lines.push(
-      `Participants get a condition (${a.experiment.name}): ${a.experiment.conditions.filter(Boolean).join(", ")}, ${a.experiment.assign === "balanced" ? "balanced" : "at random"}.`,
+      `Coders get a condition (${a.experiment.name}): ${a.experiment.conditions.filter(Boolean).join(", ")}, ${a.experiment.assign === "balanced" ? "balanced" : "at random"}.`,
     );
   }
   if (lists.includes("before") && count("before") > 0) {

@@ -297,10 +297,10 @@ export class DeploymentRuntime {
     return { names: (this.groups.get(invite.column) ?? []).map((name) => ({ name, taken: taken.has(name) })) };
   }
 
-  /** The URL parameter with a crowd's participant id, if any: part of a device's session key. */
-  get participantParam(): string | null {
+  /** The URL parameter with a crowd's coder id, if any: part of a device's session key. */
+  get coderParam(): string | null {
     const invite = inviteOf(sessionItem(this.spec.design.items as TopLevelItem[]));
-    return invite.mode === "crowd" ? (invite.participant?.param ?? null) : null;
+    return invite.mode === "crowd" ? (invite.coderParam?.param ?? null) : null;
   }
 
   /** Coders log in to start (contracts `loginRequired`). */
@@ -360,7 +360,7 @@ export class DeploymentRuntime {
 
   /**
    * The coder for a coder key, created on first use (from the link, with
-   * participant id / new-session confirmation, see docs/coder-identity.md).
+   * coder id / new-session confirmation, see docs/coder-identity.md).
    * Read from the database on every request: one indexed query.
    */
   resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder> {
@@ -474,7 +474,7 @@ export class DeploymentRuntime {
     const expires = new Date(this.options.now() + this.options.transferTtlMs);
     await this.store.createTransfer(await sha256(token), {
       sessionId: coder.sessionId,
-      coder: coder.session.participant ?? null,
+      coder: coder.session.coder ?? null,
       expires,
     });
     return { token, expiresAt: expires };
@@ -482,11 +482,11 @@ export class DeploymentRuntime {
 
   /**
    * Redeems a transfer token (once): the new device joins the session, with
-   * its keys for it (`keys`, from the session's participant id: coder.ts).
+   * its keys for it (`keys`, from the session's coder id: coder.ts).
    */
   async redeemTransfer(
     token: string,
-    keys: (participantId: string | null) => Promise<string[]>,
+    keys: (coderId: string | null) => Promise<string[]>,
     device: DeviceDetails,
   ): Promise<void> {
     const transfer = await this.store.redeemTransfer(await sha256(token), new Date(this.options.now()));

@@ -45,7 +45,7 @@ export interface StudyRunnerProps {
   /** Server URL including the deployment, e.g. `/api/d/42` (same origin as the client). */
   baseUrl: string;
   linkSecret?: string;
-  /** The page's other query parameters: the participant id and other parameters the link requires, and `url_param` auto variables (stored by the server when the coder starts). */
+  /** The page's other query parameters: the coder id and other parameters the link requires, and `url_param` auto variables (stored by the server when the coder starts). */
   urlParams?: Record<string, string>;
   /** Token from a "Continue on another device" link: redeemed for the session's coder key. */
   transferToken?: string;
@@ -285,7 +285,7 @@ function StudyRunnerContent({
   }
 
   if (snapshot.phase === "error" && snapshot.errorCode === "coder_has_session") {
-    return <ParticipantElsewhere onStartNewSession={onStartNewSession} />;
+    return <CoderElsewhere onStartNewSession={onStartNewSession} />;
   }
 
   if (snapshot.phase === "error" && (snapshot.errorCode === "name_required" || snapshot.errorCode === "name_taken")) {
@@ -717,7 +717,7 @@ const LINK_NOTICES: Partial<Record<string, { title: string; text: string }>> = {
   },
   link_revoked: {
     title: "This link has been withdrawn",
-    text: "The researchers no longer accept new participants through this link. If you were sent a new link, use that one.",
+    text: "The researchers no longer accept new coders through this link. If you were sent a new link, use that one.",
   },
   link_used_up: {
     title: "This link is full",
@@ -725,7 +725,7 @@ const LINK_NOTICES: Partial<Record<string, { title: string; text: string }>> = {
   },
   link_inactive: {
     title: "This link is no longer active",
-    text: "The researchers no longer use this link for new participants. If you were sent a new link, use that one.",
+    text: "The researchers no longer use this link for new coders. If you were sent a new link, use that one.",
   },
 };
 
@@ -936,12 +936,12 @@ function PickName({
 }
 
 /**
- * A participant id that already has a session on another device or browser
+ * A coder id that already has a session on another device or browser
  * (docs/coder-identity.md §4). Normally the coder continues there; a new
  * session is only for a coder who can't get back to the earlier one (a lost
  * device, cleared browser data), after confirming that.
  */
-function ParticipantElsewhere({ onStartNewSession }: { onStartNewSession: () => void }) {
+function CoderElsewhere({ onStartNewSession }: { onStartNewSession: () => void }) {
   const [cantReturn, setCantReturn] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   return (

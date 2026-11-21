@@ -30,7 +30,7 @@ export interface LoopInfo {
 
 export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
   const invite = inviteOf(sessionItem(items));
-  const criteria = invite.mode === "crowd" ? invite.units : undefined;
+  const criteria = invite.mode === "crowd" ? invite.share : undefined;
   return unitLoops(items).map(({ key, loop }) => {
     const variables = new Map<string, VariableType>();
     collectQuestions(loop.children as DesignItem[], variables);

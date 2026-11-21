@@ -413,7 +413,6 @@ export class DbStore implements Store {
         variable: a.variable,
         value: a.value,
         session: coderSessions.session,
-        participant: coderSessions.coder,
       })
       .from(a)
       .innerJoin(coderSessions, eq(coderSessions.id, a.sessionId))
@@ -423,7 +422,7 @@ export class DbStore implements Store {
       if (!byCoder.has(r.sessionId))
         byCoder.set(r.sessionId, {
           values: {},
-          session: { ...r.session, ...(r.participant ? { participant: r.participant } : {}) },
+          session: r.session,
         });
       byCoder.get(r.sessionId)!.values[r.variable] = r.value;
     }
@@ -657,7 +656,7 @@ async function findOrCreateCoder(
   if (!request.linkSecret) throw new HttpError(404, "No session here: open the link you were given", "link_not_found");
   const [link] = await db.select().from(links).where(eq(links.secret, request.linkSecret));
   if (!link || link.studyId !== studyId) throw new HttpError(404, "This link doesn't exist", "link_not_found");
-  // Revoked or retired: no new sessions, also not for a known participant (existing sessions go on).
+  // Revoked or retired: no new sessions, also not for a known coder (existing sessions go on).
   if (link.revokedAt !== null) throw new HttpError(403, "This link has been revoked", "link_revoked");
   if (link.retiredAt !== null) throw new HttpError(403, "This link is no longer active", "link_inactive");
   // A link where coders pick their name (docs/architecture.md §6.1): the name is the link's coder.
@@ -682,8 +681,8 @@ async function findOrCreateCoder(
     }
     params = { ...params, coder: name };
   }
-  // A participant id is a label, never a credential: a new device for a
-  // known participant gets a *new* session, and only when asked for.
+  // A coder id is a label, never a credential: a new device for a
+  // known coder gets a *new* session, and only when asked for.
   const { coder, session } = sessionValues(
     request.sessionRules ?? { item: null, setsOf: () => [] },
     { params, coder: link.coder },
@@ -694,11 +693,11 @@ async function findOrCreateCoder(
     coder !== null &&
     (await db.$count(coderSessions, and(eq(coderSessions.studyId, studyId), eq(coderSessions.coder, coder)))) > 0;
   if (knownParticipant && !request.newSession) {
-    throw new HttpError(409, "This participant already has a session on another device", "coder_has_session");
+    throw new HttpError(409, "This coder already has a session on another device", "coder_has_session");
   }
   if (request.paused) throw new HttpError(409, "This study is paused", "study_paused");
   await checkNewCoder(db, studyId);
-  // A new session of a known participant is the same person: it doesn't use up the link.
+  // A new session of a known coder is the same person: it doesn't use up the link.
   if (!knownParticipant) {
     // Checked and counted in one statement, so concurrent coders can't overrun `max_uses`.
     // The link's own limit, else a crowd's most coders (docs/architecture.md §5)

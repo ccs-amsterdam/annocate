@@ -7,11 +7,11 @@ import {
 } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 
-// A new session's `$session` values and participant id (docs/architecture.md
-// §6-7): the URL parameters the design declares, `source`, and per the coder
-// invitation the coder (by their link or their login's email) or a crowd's
-// participant id (a URL parameter, or the login's email). Fixed when the
-// session starts.
+// A new session's `$session` values (docs/architecture.md §6-7): the URL
+// parameters the design declares, `source`, and who the coder is (`coder`):
+// per the coder invitation, their value in the coders' column (by their link,
+// the name they picked, or their login's email), or a crowd's id from a URL
+// parameter (or the login's email). Fixed when the session starts.
 
 /** What the codebook asks of a new session, and the set columns' values. */
 export interface SessionRules {
@@ -33,14 +33,14 @@ export const loginRequired = (rules: SessionRules) => designLoginRequired(rules.
 const fits = (value: string, pattern?: string) => !pattern || new RegExp(`^(?:${pattern})$`).test(value);
 
 /**
- * The participant id and `$session` values of a new session. A missing
+ * The coder and `$session` values of a new session. A missing
  * required URL parameter or one with a value the design doesn't accept is
  * refused (400 `url_param_missing` / `url_param_invalid`), so such a link
  * doesn't start. Where sign-in is required only logins (401
  * `auth_required`), and with email coders only their addresses (403
  * `email_not_allowed`). A link's coder that is no longer one: 403
- * `link_inactive`. Specific coders' participant id is their coder value;
- * a crowd's is its URL parameter, or with a login the email.
+ * `link_inactive`. The coder (also `$session.coder`): specific coders' value
+ * in the column; a crowd's URL parameter, or with a required login the email.
  */
 export function sessionValues(
   rules: SessionRules,
@@ -71,6 +71,7 @@ export function sessionValues(
   if (source !== undefined) session.source = source;
 
   if (loginRequired(rules) && !email) throw new HttpError(401, "This study requires login", "auth_required");
+  // Who the coder is ($session.coder): a coder fixed on the link, else per the invitation
   let id = link.coder;
   const invite = inviteOf(rules.item);
   if (invite.mode === "coders") {
@@ -87,16 +88,19 @@ export function sessionValues(
         throw new HttpError(403, "This link is no longer active", "link_inactive");
       coder = link.params.coder;
     }
-    if (coder !== undefined) session.coder = coder;
-  } else if (invite.participant) {
-    const value = read(invite.participant.param);
-    if (value === undefined)
-      throw new HttpError(400, `This link needs the URL parameter "${invite.participant.param}"`, "url_param_missing");
-    if (!fits(value, invite.participant.pattern)) throw invalid(invite.participant.param);
-    id = value;
-  } else if (invite.login && email) {
-    id ??= email.toLowerCase();
+    if (coder !== undefined) id = coder;
+  } else {
+    // A crowd: the coder's id from a URL parameter, else the login's email (where sign-in is required)
+    const param = invite.coderParam;
+    const value = param ? read(param.param) : undefined;
+    if (param && value === undefined && !param.optional)
+      throw new HttpError(400, `This link needs the URL parameter "${param.param}"`, "url_param_missing");
+    if (param && value !== undefined) {
+      if (!fits(value, param.pattern)) throw invalid(param.param);
+      id = value;
+    } else if (invite.login && email) id ??= email.toLowerCase();
   }
+  if (id) session.coder = id;
   return { coder: id, session };
 }
 
@@ -116,9 +120,9 @@ export function previewSessionValues(rules: SessionRules, urlParams: Record<stri
   if (invite.mode === "coders") {
     const coder = given("coder") ?? rules.setsOf(invite.column)[0];
     if (coder !== undefined) session.coder = coder;
-  } else if (invite.participant) {
-    const participant = given(invite.participant.param);
-    if (participant) session.participant = participant;
+  } else if (invite.coderParam) {
+    const coder = given(invite.coderParam.param);
+    if (coder) session.coder = coder;
   }
   return session;
 }

@@ -3,9 +3,9 @@ import { HttpCoderApi } from "../api/httpCoderApi";
 // Device-side half of docs/coder-identity.md §4. The device id lives in one
 // httpOnly cookie for all studies (`annotinder_device`), so this code never
 // sees it: page scripts can't leak it. The server derives this study's
-// session key from it, the deployment and the participant id. A session
+// session key from it, the deployment and the coder id. A session
 // only moves to another device through a one-time transfer link (or a
-// login). A participant id or link alone never resumes an earlier
+// login). A coder id or link alone never resumes an earlier
 // session.
 
 /** Which study and link a page belongs to. */
@@ -35,7 +35,7 @@ const redemptions = new Map<string, Promise<void>>();
 
 /**
  * Default transfer link: this page with only the deployment and
- * `transfer=<token>` (the session has the rest; a participant id stays out
+ * `transfer=<token>` (the session has the rest; a coder id stays out
  * of the link).
  */
 export function defaultTransferUrl(token: string): string {

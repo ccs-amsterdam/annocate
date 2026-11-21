@@ -5,7 +5,7 @@ import { z } from "zod";
 // the server keeps a device's sessions apart per study (docs/coder-identity.md
 // §4: it can't list them), so the browser remembers which studies it opened,
 // and asks each for its session's summary. Only the deployment and the URL
-// parameters (e.g. a participant id: it is part of the session's key), never
+// parameters (e.g. a coder id: it is part of the session's key), never
 // a link's secret: the device's cookie continues the session.
 
 const STORAGE_KEY = "annotinder:studies";

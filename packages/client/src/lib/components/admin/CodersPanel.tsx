@@ -18,7 +18,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../help/HelpButton";
 import { ResetAnswersDialog, type ResetScope } from "./ResetAnswersDialog";
 
-/** How a coder is named in the UI: participant id, email or number. */
+/** How a coder is named in the UI: coder id, email or number. */
 const coderName = (c: CoderProgress) => c.coder ?? c.email ?? `#${c.id}`;
 
 /** How a session ended, in words. */
@@ -33,7 +33,7 @@ function endedText(ended: CoderProgress["ended"]): string {
  * many units they finished per loop of the live design version. Coders' requests
  * to delete their answers come first, to delete now or later (they are
  * then no longer brought up, but stay marked); any coder's data can be
- * deleted (also by participant id or email). Deleted coders stay listed in
+ * deleted (also by coder id or email). Deleted coders stay listed in
  * the deletion log, for deleting them from earlier downloads. Links
  * are on their own tab.
  */
@@ -258,7 +258,7 @@ function DeletionLog({ deletions }: { deletions: CoderDeletion[] }) {
         <thead>
           <tr className="border-b text-left text-xs text-muted-foreground">
             <th className="p-1.5 font-medium">Coder</th>
-            <th className="p-1.5 font-medium">Participant id</th>
+            <th className="p-1.5 font-medium">Coder id</th>
             <th className="p-1.5 font-medium">Asked</th>
             <th className="p-1.5 font-medium">Deleted</th>
             <th className="p-1.5 font-medium">By</th>
@@ -284,7 +284,7 @@ function DeletionLog({ deletions }: { deletions: CoderDeletion[] }) {
   );
 }
 
-/** Finds coders by participant id or email (one per line), for deleting their data. */
+/** Finds coders by coder id or email (one per line), for deleting their data. */
 function DeleteByIdDialog({
   open,
   coders,
@@ -308,7 +308,7 @@ function DeleteByIdDialog({
         <DialogHeader>
           <DialogTitle>Delete a coder&apos;s data</DialogTitle>
           <DialogDescription>
-            For instance when a participant withdraws. Give their participant id or email, one per line.
+            For instance when a coder withdraws. Give their coder id or email, one per line.
           </DialogDescription>
         </DialogHeader>
         <Textarea
@@ -320,7 +320,7 @@ function DeleteByIdDialog({
         />
         <p className="text-xs text-muted-foreground">
           {wanted.length === 0
-            ? "A participant id can belong to several sessions (e.g. on two devices): all are found."
+            ? "A coder id can belong to several sessions (e.g. on two devices): all are found."
             : matches.length === 0
               ? "No coder of this study has these ids."
               : `Found: ${matches.map(coderName).join(", ")} (${matches.length} session${matches.length === 1 ? "" : "s"})`}
@@ -373,7 +373,7 @@ function ConfirmDeleteDialog({
           <p>
             Deletes the coder and all their answers from AnnoTinder, also answers that were reset. Copies you downloaded
             before are not affected: delete those yourself. The deletion is logged (Deleted coders, below, and
-            deleted_coders.csv in the download) with the coder id and participant id, so you can.
+            deleted_coders.csv in the download) with the coder id and coder id, so you can.
           </p>
           <p className="text-muted-foreground">
             Units they coded can be handed out again where the distribution needs more codings.

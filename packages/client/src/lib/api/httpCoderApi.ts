@@ -72,16 +72,16 @@ export interface CoderApi {
 export interface HttpCoderApiConfig {
   /** Base URL of the coder API including the deployment, e.g. "/d/42" (same origin as the client). */
   baseUrl: string;
-  /** The link: creates the coder on first use (and says which URL parameter is the participant id). */
+  /** The link: creates the coder on first use (and says which URL parameter is the coder id). */
   linkSecret?: string;
   /**
-   * The page's other query parameters: the participant id, the link's
+   * The page's other query parameters: the coder id, the link's
    * required URL parameters and the design's other URL parameters.
    * The server stores the ones it needs when the coder starts.
    */
   urlParams?: Record<string, string>;
   /**
-   * Start a new session although this participant already has one elsewhere.
+   * Start a new session although this coder already has one elsewhere.
    * Sent with the first request only: the server moves this device to a new session.
    */
   newSession?: boolean;

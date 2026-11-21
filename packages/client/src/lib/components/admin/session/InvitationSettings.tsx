@@ -28,7 +28,7 @@ const labelClass = "flex flex-col gap-1 text-xs font-semibold";
  * docs/architecture.md §6): specific coders (the values of a set column of
  * the units, each with their own units; a link each, or one link where they
  * sign in with their email address), or a crowd (one link for anyone: an
- * optional participant id from the URL, optional sign-in, and a shared
+ * optional coder id from the URL, optional sign-in, and a shared
  * queue of units with distribution rules).
  */
 export function InvitationSettings({
@@ -214,11 +214,6 @@ function CodersForm({
                 ? "Shared: e.g. a team taking turns on devices, or one coder on several. Anyone with the link can pick any name."
                 : "Pinned: once a name is picked, nobody else can pick it; its coder continues on that device (or moves with a transfer link)."}
             </span>
-            {known && (coders.kind === "emails" || coders.kind === "mixed") && (
-              <span className="text-[11px] text-destructive">
-                Anyone with the link sees these names: use names, not email addresses.
-              </span>
-            )}
           </div>
         )}
         <label className="flex items-center gap-2 text-xs">
@@ -276,20 +271,20 @@ function CrowdForm({
         <label className="flex items-center gap-2 text-xs font-semibold">
           <input
             type="checkbox"
-            checked={invite.participant !== undefined}
-            onChange={(e) => set("participant", e.target.checked ? { param: "PROLIFIC_PID" } : undefined)}
+            checked={invite.coderParam !== undefined}
+            onChange={(e) => set("coderParam", e.target.checked ? { param: "PROLIFIC_PID" } : undefined)}
           />
-          Participant id from a URL parameter
+          Coder id from a URL parameter
           <HelpButton topic="online-panels" label="Help: online panels" />
         </label>
-        {invite.participant && (
+        {invite.coderParam && (
           <div className="flex flex-wrap items-end gap-3 pl-6">
             <label className={labelClass}>
               URL parameter
               <Input
                 className="h-8 w-44 font-mono text-xs font-normal"
-                value={invite.participant.param}
-                onChange={(e) => set("participant", { ...invite.participant!, param: e.target.value })}
+                value={invite.coderParam.param}
+                onChange={(e) => set("coderParam", { ...invite.coderParam!, param: e.target.value })}
               />
             </label>
             <label className={labelClass}>
@@ -297,13 +292,25 @@ function CrowdForm({
               <Input
                 className="h-8 w-44 font-mono text-xs font-normal"
                 placeholder="e.g. [0-9a-f]{24}"
-                value={invite.participant.pattern ?? ""}
-                onChange={(e) => set("participant", { ...invite.participant!, pattern: e.target.value || undefined })}
+                value={invite.coderParam.pattern ?? ""}
+                onChange={(e) => set("coderParam", { ...invite.coderParam!, pattern: e.target.value || undefined })}
               />
             </label>
-            <InfoTip label="About participant ids">
-              Required to start: a link without it, or with a value not matching the pattern, is refused. Use it as{" "}
-              <span className="font-mono">$session.participant</span>, e.g. in a panel&apos;s return link.
+            <label className="flex items-center gap-2 pb-2 text-xs">
+              <input
+                type="checkbox"
+                checked={invite.coderParam.optional !== true}
+                onChange={(e) =>
+                  set("coderParam", { ...invite.coderParam!, optional: e.target.checked ? undefined : true })
+                }
+              />
+              Required
+            </label>
+            <InfoTip label="About coder ids">
+              The coder&apos;s id, e.g. from a panel: <span className="font-mono">$session.coder</span> (use it in a
+              panel&apos;s return link) and the <span className="font-mono">coder</span> column of the results.
+              Required: a link without it, or with a value not matching the pattern, doesn&apos;t start. Not required: a
+              link without it starts a session without an id.
             </InfoTip>
           </div>
         )}
@@ -315,8 +322,8 @@ function CrowdForm({
           />
           Coders sign in
           <InfoTip label="About signing in">
-            Opening the link asks coders to sign in. You see their email address, and it identifies them: no participant
-            ids needed. Without this, coders may still sign in to keep their work across devices, but you don&apos;t see
+            Opening the link asks coders to sign in. You see their email address, and it identifies them: no coder ids
+            needed. Without this, coders may still sign in to keep their work across devices, but you don&apos;t see
             their address.
           </InfoTip>
         </label>
@@ -337,9 +344,9 @@ function CrowdForm({
         </label>
       </div>
       <Distribution
-        criteria={invite.units}
+        criteria={invite.share}
         agreementQuestions={agreementQuestions}
-        onChange={(units) => set("units", units)}
+        onChange={(share) => set("share", share)}
       />
     </section>
   );

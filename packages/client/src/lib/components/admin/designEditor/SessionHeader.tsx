@@ -78,9 +78,9 @@ function inviteSummary(invite: Invite): string {
   if (invite.mode === "coders")
     return `coders in ${invite.column}, ${invite.link === "login" ? "signing in" : invite.link === "pick_name" ? "picking their name" : "a link each"}`;
   const parts = ["crowd"];
-  if (invite.participant) parts.push(`id from ?${invite.participant.param}`);
+  if (invite.coderParam) parts.push(`coder id from ?${invite.coderParam.param}`);
   if (invite.login) parts.push("signing in");
-  if (invite.units) parts.push("sharing units");
+  if (invite.share) parts.push("sharing units");
   return parts.join(", ");
 }
 

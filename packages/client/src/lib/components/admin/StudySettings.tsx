@@ -154,7 +154,7 @@ function StudyEditForm({
                 <Input
                   aria-label={`URL for ${setting}`}
                   className="font-mono text-xs"
-                  placeholder="https://panel.example/return?id=$session.participant"
+                  placeholder="https://panel.example/return?id=$session.coder"
                   value={redirects[setting] ?? ""}
                   onChange={(e) => setRedirects({ ...redirects, [setting]: e.target.value })}
                 />
