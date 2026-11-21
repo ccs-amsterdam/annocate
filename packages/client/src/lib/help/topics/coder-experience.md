@@ -5,7 +5,7 @@ order: 4
 summary: The coding screen, moving back and forward, saving and resuming, continuing on another device, keyboard shortcuts, phones, and light or dark mode.
 ---
 
-Coders (or participants) open a link and start right
+Coders (also the people answering a survey or experiment) open a link and start right
 away, without an account (unless the link asks them to
 [log in](links.md#login)). This page describes what they see
 and can do, so you can write instructions for them and know what to expect.
@@ -123,8 +123,9 @@ for them for 15 minutes; after that they may go to someone else. See
 
 A session belongs to the browser it was started in. Another browser, a
 private window, or cleared browser data means a new session, unless the
-coder moves it (below). With a participant id in the link, AnnoTinder
-notices and says **This link was already used on another device**, with the
+coder moves it (below). When AnnoTinder knows who the coder is (a link of
+their own, a coder id in the link, or a name they picked), it
+notices and says **You already started on another device**, with the
 choice to continue on the original device or **Start a new session**. A
 new session starts empty: it doesn't include the earlier answers.
 

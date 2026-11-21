@@ -8,7 +8,7 @@ summary: Show questions, loops or end items only when earlier answers (or the un
 A **Show if** item holds other items, and shows them only when its
 condition holds. _"Ask about the actors only if the article is
 about politics"_, _"show the follow-up questions only to coders in the
-experiment group"_, _"end the session if the participant doesn't consent"_:
+experiment group"_, _"end the session if the coder doesn't consent"_:
 each is a Show if item with the items it governs inside it.
 
 ```text

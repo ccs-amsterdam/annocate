@@ -11,10 +11,10 @@ at **At the end**, the last row of the editor's tree. An **end item** ends
 the session early, at a point you choose, says how it ended, and can send
 the coder on to another website. You need one when:
 
-- a participant **doesn't consent**, or **doesn't fit** the study (too
+- a coder **doesn't consent**, or **doesn't fit** the study (too
   young, wrong country);
-- a participant **fails an attention check**;
-- participants come from an **online panel** that needs them sent back with a
+- a coder **fails an attention check**;
+- coders come from an **online panel** that needs them sent back with a
   return link, both when they complete and when they are screened out (see
   [Online panels and crowd coding](online-panels.md)).
 
@@ -50,7 +50,7 @@ these fields:
 
 The outcome says _why_ the session ended. It is stored with the coder and
 is in the `ended` column of `coders.csv` in the results (with the time in
-`ended_at`), so you can tell screened-out participants from those who
+`ended_at`), so you can tell screened-out coders from those who
 completed, and both from those who simply stopped.
 
 | Outcome                         | Use for                                                     | Heading the coder sees |
@@ -92,14 +92,14 @@ answers, random conditions and session values, **URL-encoded**: spaces,
 `&` and other special characters in a value can't break the link.
 
 ```text
-https://panel.example/return?status=screenout&id=$session.participant
-https://panel.example/return?status=complete&id=$session.participant&group=$var.group.value
+https://panel.example/return?status=screenout&id=$session.coder
+https://panel.example/return?status=complete&id=$session.coder&group=$var.group.value
 ```
 
-Here `$session.participant` is the participant id the link came with (a
-crowd invitation's participant id, see [Links](links.md#participant-ids)),
+Here `$session.coder` is the coder id the link came with (a
+crowd invitation's coder id from a URL parameter, see [Links](links.md#coder-ids)),
 and `group` is a [random condition](random-condition.md) of the design,
-drawn at random. How to get a panel's participant id into the design is
+drawn at random. How to get a panel's participant id into the design as the coder id is
 explained in [Online panels and crowd coding](online-panels.md).
 
 Only `$var` and `$session` references work in a redirect link: no `$unit` and no
@@ -120,7 +120,7 @@ the condition, so only those who agreed continue.
 Background questions first (age, country, language), then one condition per
 reason, or one condition with **Any rule may hold**, around a screenout end
 item. Ask the screening questions as early as possible, so ineligible
-participants don't spend time on the rest.
+coders don't spend time on the rest.
 
 ### Failed attention check
 
@@ -132,7 +132,7 @@ ends the session after saving the current unit's answers.
 
 > Online panels have rules about screening out participants and about
 > attention checks, for example whether participants must still be paid.
-> Check them before you use an end item to remove participants.
+> Check them before you use an end item to remove coders.
 
 ### Back to the panel
 

@@ -373,7 +373,7 @@ function ConfirmDeleteDialog({
           <p>
             Deletes the coder and all their answers from AnnoTinder, also answers that were reset. Copies you downloaded
             before are not affected: delete those yourself. The deletion is logged (Deleted coders, below, and
-            deleted_coders.csv in the download) with the coder id and coder id, so you can.
+            deleted_coders.csv in the download) with the session id and coder id, so you can.
           </p>
           <p className="text-muted-foreground">
             Units they coded can be handed out again where the distribution needs more codings.

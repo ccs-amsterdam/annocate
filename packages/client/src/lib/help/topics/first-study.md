@@ -170,7 +170,7 @@ Deploying made a link for the study: you don't create links by hand.
 3. Click **Copy link** in the table and send the link to your coders.
 
 Anyone who opens the link starts their own session. See
-[Links](links.md) for who may use a link, limits and participant
+[Links](links.md) for who may use a link, limits and coder
 ids, and [What coders see](coder-experience.md) for the coder's side.
 
 > Test the study with **Preview**, not with the link. Opening the

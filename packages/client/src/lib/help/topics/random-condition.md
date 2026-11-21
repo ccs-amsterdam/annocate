@@ -42,9 +42,9 @@ Both need at least one option.
 
 ### Random or balanced?
 
-**Random** is what most experiments assume: every participant has the
+**Random** is what most experiments assume: every coder has the
 same chance of every condition, independently of everyone else. Group sizes
-then vary by chance; with 40 participants a 25/15 split is quite possible.
+then vary by chance; with 40 coders a 25/15 split is quite possible.
 
 **Balanced** keeps groups as equal as possible: each new coder gets the
 option with the fewest coders so far. It counts everyone who reached the
@@ -78,7 +78,7 @@ the group of coders without an answer.
 
 A coder's value is assigned when they **reach** the random condition in the
 design, not when they start. Put it where the assignment should happen:
-after the screening questions, so participants who are screened out never
+after the screening questions, so coders who are screened out never
 get a condition and don't count in the balance; after the questions it is
 stratified on.
 
@@ -86,7 +86,7 @@ Once assigned, it never changes: not when they go back, reload the page,
 come back the next day or continue on another device, and not when you
 deploy a new design version. Coders can't see or change it.
 
-This matters for experiments: a participant stays in their condition for
+This matters for experiments: a coder stays in their condition for
 the whole session. It also means that changing the options or weights
 later only affects coders who reach the question after the change.
 

@@ -50,7 +50,7 @@ A script sees three names, and nothing else:
   [Referring to answers and unit data](references.md)). An unanswered
   question is `null` (lists: an empty list `[]`).
 - `$session`: the session's values, from its link or URL, such as
-  `$session.participant` (see [URL parameters](session-parameters.md)).
+  `$session.coder` (see [URL parameters](session-parameters.md)).
 
 The [helper methods](conditions.md#helper-methods) work in scripts too:
 `$var.age.gte(18)`, `$var.topics.has("sports")`.

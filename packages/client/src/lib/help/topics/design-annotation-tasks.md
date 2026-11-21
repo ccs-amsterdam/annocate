@@ -191,7 +191,7 @@ trained experts for many untrained coders, whose judgements are combined.
 
 ## Coders on phones
 
-Many crowd coders and survey participants use a phone. AnnoTinder lays out
+Many crowd coders and survey respondents use a phone. AnnoTinder lays out
 every question for the smallest phones (see
 [The same form on every device](design-fixed-layouts.md)), but the task must
 fit too:

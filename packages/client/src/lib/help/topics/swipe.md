@@ -66,11 +66,11 @@ Swiping works best for **quick, simple judgements on many units**:
 
 - **Relevance filtering**: is this article about the election, yes or no?
   Code thousands of search results before the real coding starts.
-- **Crowd coding and citizen science**: participants code on their phone,
+- **Crowd coding and citizen science**: coders code on their phone,
   in a few spare minutes, with a gesture they already know.
 - **Training and validation data** for a classifier, where you need many
   labels on simple categories.
-- **Survey experiments** where participants judge a series of messages
+- **Survey experiments** where coders judge a series of messages
   (_Would you share this post?_).
 
 It is less suitable when:

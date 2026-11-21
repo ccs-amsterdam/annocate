@@ -179,7 +179,8 @@ repeat {
 # One value per row: the answer's values joined with "; "
 d <- data.frame(
   unit = sapply(annotations, \(a) a$externalId),
-  coder = sapply(annotations, \(a) a$coderId),
+  session = sapply(annotations, \(a) a$sessionId),
+  coder = sapply(annotations, \(a) if (is.null(a$coder)) NA else a$coder),
   question = sapply(annotations, \(a) a$variable),
   value = sapply(annotations, \(a) paste(sapply(a$value$values, \(v) v$value), collapse = "; "))
 )
@@ -204,7 +205,7 @@ while True:
 ```
 
 Each row has the unit (`unitId`, and your `externalId`), the coder
-(`coderId`, `participantId`), the question (`variable`), the answer
+session (`sessionId`) and coder id (`coder`), the question (`variable`), the answer
 (`value`), the design version (`designVersionId`), the unit version the coder
 saw (`unitVersionId`), and when it was first written and last changed
 (`created`, `updated`). An answer `value` has a list of `values` (each with

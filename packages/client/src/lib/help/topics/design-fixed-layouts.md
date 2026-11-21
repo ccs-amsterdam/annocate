@@ -20,7 +20,7 @@ long vertical list differs from a grid, and a slider differs from buttons.
 
 If the layout changed with the screen, phone coders and laptop coders would
 answer subtly different questions. In crowd coding and online experiments,
-device use differs between groups of participants (age, country, panel), so
+device use differs between groups of coders (age, country, panel), so
 the difference would end up confounded with the very groups you compare.
 
 So the layout is a property of the **question**, not of the device:
@@ -91,7 +91,7 @@ background, fix it in the loop's **Layout** tab under **Colours**:
 coder's light or dark mode**.
 
 In experiments with stimulus material, fix the colours: then every
-participant sees the stimulus the same way. The rest of the app (questions,
+coder sees the stimulus the same way. The rest of the app (questions,
 buttons) keeps following the coder. See
 [Light or dark](colours-and-styles.md#light-or-dark).
 

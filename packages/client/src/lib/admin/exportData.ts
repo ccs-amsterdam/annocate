@@ -388,7 +388,10 @@ export function codersTable(
   // Units of the special sets each coder finished (overlap, gold, practice)
   const specials = (["overlap", "gold", "practice"] as const).filter((kind) => coders.some((c) => c.special?.[kind]));
   // Session values (link and URL parameters, source), by their $session name
-  const sessionNames = [...new Set(coders.flatMap((c) => Object.keys(c.session ?? {})))].sort();
+  // The session's values; its coder is the coder column already
+  const sessionNames = [...new Set(coders.flatMap((c) => Object.keys(c.session ?? {})))]
+    .filter((n) => n !== "coder")
+    .sort();
   const columns = answerColumns(
     coders.flatMap((c) => Object.entries(c.variables)),
     order,
@@ -646,8 +649,7 @@ coders.csv       A row per coder session (session_id): the coder (their name
                  active, how their session ended (complete, screenout or
                  quit), when they asked for their answers to be deleted
                  (deletion_requested; not done yet), their session values
-                 (session.<name>: URL parameters, and the coder for
-                 studies with specific coders),
+                 (session.<name>: URL parameters and source),
                  units finished per loop, and their answers outside unit
                  loops (random conditions included).
 units.csv        The units as deployed, a row per version: a unit replaced

@@ -145,7 +145,7 @@ gets one of them anyway, or a unit that isn't full yet (see [Near the end
 of the queue](#near-the-end-of-the-queue)), rather than nothing.
 
 The 15 minutes can be changed in the design editor's JSON view, as
-`leaseSeconds` in the invitation's `units` (`session.invite.units`; default `900`), for instance
+`leaseSeconds` in the invitation's `share` (`session.invite.share`; default `900`), for instance
 for units that take long to code.
 
 ## What this means for analysis
@@ -169,7 +169,7 @@ which every coder codes every unit:
   is the most frequent answer. With _until 2 agree_, that is the answer the
   agreeing coders gave.
 - **Coders differ in how much they coded.** A few coders may do many units.
-  Check per coder (the `coder_id` column of the [results](results.md)) that
+  Check per coder (the `session_id` or `coder` column of the [results](results.md)) that
   no coder is systematically off, and consider coder effects in your
   analysis.
 

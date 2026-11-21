@@ -44,7 +44,7 @@ Click a tile to go to the tab with the details.
 
 A bar per day for the last 30 days: how many answers coders gave that day
 (in UTC). Point at a bar to see the number of answers and of coders. Use it
-to see whether coding keeps pace, and when a batch of panel participants
+to see whether coding keeps pace, and when a batch of panel coders
 came in.
 
 ### Progress
@@ -72,7 +72,7 @@ Every coder who opened a link, most recently active first:
 
 | Column              | Shows                                                                                                                              |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Coder**           | The participant id, or a number if they have none                                                                                  |
+| **Coder**           | The coder id (their name in the coders' column, a panel's id, or a sign-in email), or a number if they have none                   |
 | **Link**            | The label of the link they came in with                                                                                            |
 | **Started**         | When they first opened the link                                                                                                    |
 | **Last active**     | When they last gave an answer                                                                                                      |
@@ -111,30 +111,30 @@ The request appears at the top of the **Coders** tab:
 It is a request, not an automatic deletion, on purpose. You may already have
 downloaded the answers, so deleting them in AnnoTinder alone wouldn't honour
 the request; you are the one who knows where the data went. And with paid
-participants (an online panel), an automatic deletion would let someone
+coders (an online panel), an automatic deletion would let someone
 finish a task, get paid, and take their work back. Check your study's
 consent text and your institution's rules: research data can be exempt from
 deletion in some cases.
 
 Anonymous coders can't prove who they are. A request comes from the
 session itself, so it needs no proof. A coder who writes to you instead
-can only be found if they give their participant id, or the email they
+can only be found if they give their coder id, or the email they
 signed in with (where the invitation requires sign-in).
 
 ### Deleting a coder yourself
 
 Click the bin icon in a coder's row, or **Delete a coder's data…** to find
-coders by participant id or email (one per line; a participant id that
+coders by coder id or email (one per line; a coder id that
 started on two devices has two sessions, and both are found). After
 confirming, AnnoTinder deletes for good:
 
-- the coder (their session, participant id, answers outside loops and
+- the coder's session (its coder id, answers outside loops and
   random conditions);
 - all their answers in unit loops, also answers a researcher reset earlier.
 
 Copies you downloaded before are not affected: delete those yourself. To
 make that possible, each deletion is logged: **Deleted coders**, under the
-table, lists the coder id, participant id or email, when they asked, when
+table, lists the session number, the coder id, when they asked, when
 and by whom it was deleted, and how many answers. The download has the same
 list, `deleted_coders.csv`. Units
 the coder coded are handed out again where the distribution needs more
@@ -159,7 +159,7 @@ link, and leave those test sessions out of your analysis.
 ## More detail
 
 For anything these tabs don't show, download the results (see
-[Downloading results](results.md)): `coders.csv` has a row per coder with
-their link, participant id, start and last activity, how their
+[Downloading results](results.md)): `coders.csv` has a row per coder
+session (`session_id`) with their coder id (`coder`), link, start and last activity, how their
 session ended, units finished per loop, and their answers outside loops;
 `annotations.csv` has every answer.

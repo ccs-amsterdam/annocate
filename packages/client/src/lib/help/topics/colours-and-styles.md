@@ -171,7 +171,7 @@ it is shown on its own background, with a little space around it. The
 questions and the rest of the screen still follow the coder's choice.
 
 Fix the colours when the material only works one way, and in experiments
-where every participant should see the stimulus the same. In the JSON view
+where every coder should see the stimulus the same. In the JSON view
 the setting is the layout's `colorScheme`: `"light"` or `"dark"`.
 
 ## The whole unit

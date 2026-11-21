@@ -2,7 +2,7 @@
 title: Links
 section: Coders
 order: 1
-summary: The links coders open to start - made from the design's coder invitations, with who may use them, participant ids, sign-in and a maximum number of uses.
+summary: The links coders open to start - made from the design's coder invitations, with who may use them, coder ids, sign-in and a maximum number of uses.
 ---
 
 Coders start a study by opening a **link**. You find the links under
@@ -38,22 +38,28 @@ first device that picks it**: others see it as taken, and the coder continues
 on that device (or moves with "Continue on another device"). With **any
 device that picks a name continues its session**, a team can take turns on
 shared devices, or one coder can use several; anyone with the link can then
-pick any name. Everyone with the link sees the names: use names, not email
-addresses. With **One link: coders sign in with the email address in the
+pick any name. Everyone with the link sees the names, so this is for a
+team you trust. With **One link: coders sign in with the email address in the
 column**, the column's values are email addresses and coders get the units of
 the address they sign in with. See
 [Giving each coder their own units](own-units.md).
 
 **Crowd** (the default): one link for anyone, with optionally
 
-- **Participant id from a URL parameter**, such as a panel's `PROLIFIC_PID`
-  (see [Participant ids](#participant-ids));
+- **Coder id from a URL parameter**, such as a panel's `PROLIFIC_PID`
+  (see [Coder ids](#coder-ids));
 - **Coders sign in**: opening the link asks coders to sign in, and you see
   their email address (see [Login](#login));
 - **Coders at most**: the link starts at most this many sessions, your
   sample size;
 - **Share the units among coders**: a shared queue instead of every coder
   coding all units (see [Shared queues](shared-queues.md)).
+
+The coders' own units and the shared queue are about units, so they only
+matter once the design has a unit loop. Without one, the editor keeps the
+settings but warns that they aren't used yet, and the links still follow
+the invitation: specific coders without units is fine, for instance a
+survey of experts you know, each with their own link.
 
 ## When links change
 
@@ -77,11 +83,11 @@ at most 2000 links are possible.
 
 The pencil icon in a link's row (**Who may use this link**) sets:
 
-| Setting                  | What it does                                                           |
-| ------------------------ | ---------------------------------------------------------------------- |
-| **Label**                | For you: it appears in the Coders tab and the results                  |
-| **Max uses**             | Stop accepting new coders after this many                              |
-| **Fixed participant id** | Everyone who uses this link gets this participant id (a personal link) |
+| Setting            | What it does                                                     |
+| ------------------ | ---------------------------------------------------------------- |
+| **Label**          | For you: it appears in the Coders tab and the results            |
+| **Max uses**       | Stop accepting new coders after this many                        |
+| **Fixed coder id** | Everyone who uses this link gets this coder id (a personal link) |
 
 Whether coders must sign in is part of the coder invitation (see
 [Login](#login)).
@@ -90,49 +96,53 @@ Whether coders must sign in is part of the coder invitation (see
 working, for instance when it was shared too widely. Coders who started
 keep working.
 
-## Participant ids
+## Coder ids
 
-A **participant id** is a label for a coder: a student number, an id from
-your participant pool, or the id an online panel gives each participant. It
-is shown in the **Coder** column of the Coders tab and in the
-`participant_id` column of the results, so you can link AnnoTinder's data to
+A **coder id** says who the coder is: a name, a student number, an id from
+your own pool of people, or the id an online panel gives each of its
+participants. It is shown in the **Coder** column of the Coders tab and in
+the `coder` column of the results, so you can link AnnoTinder's data to
 other data you have on the same people.
 
-- **No participant id**: coders are anonymous; the Coders tab shows a number.
-- **Fixed participant id**: everyone who uses the link gets the id you set
+- **Specific coders**: the coder id is the coder's value in the coders'
+  column (by their own link, the name they picked, or the email address
+  they signed in with).
+- **No coder id**: in a crowd, coders are anonymous; the Coders tab shows a
+  number.
+- **Fixed coder id**: everyone who uses the link gets the id you set
   on it. Use it for personal links.
-- **Participant id from a URL parameter**: set in a crowd invitation (see
-  [Coder invitations](#coder-invitations)). The id is taken from the
-  link itself, from the parameter you name (`participant`, or a panel's own
-  such as `PROLIFIC_PID`). The copied links end in
-  `PROLIFIC_PID=<participant id>`: replace the placeholder with each coder's
-  id, or let a panel fill it in (see
-  [Online panels and crowd coding](online-panels.md)). The id is required: a
-  link without it doesn't start. A **pattern** (a regular expression, e.g.
-  `[0-9]{6}`) makes the id fit a format.
-- **Specific coders**: the participant id is the coder's value in the
-  coders' column.
-- **Crowd with sign-in**: the participant id is the coder's email address;
-  no participant ids needed.
+- **Coder id from a URL parameter**: set in a crowd invitation (see
+  [Coder invitations](#coder-invitations)): the **URL parameter**, an
+  optional **Pattern** and **Required**. The id is taken from the link
+  itself, from the parameter you name (such as a panel's `PROLIFIC_PID`).
+  The copied links end in `PROLIFIC_PID=<coder id>`: replace the
+  placeholder with each coder's id, or let a panel fill it in (see
+  [Online panels and crowd coding](online-panels.md)). When it is
+  required (the default), a link without it doesn't start; when it isn't, a
+  link without it starts a session without a coder id. A **pattern** (a
+  regular expression, e.g. `[0-9]{6}`) makes the id fit a format.
+- **Crowd with sign-in**: without an id from the URL, the coder id is the
+  coder's email address; no other ids needed.
 
-In the design the participant id is `$session.participant`, for instance
-in an end item's return link.
+In the design the coder id is `$session.coder`, for instance in an end
+item's return link.
 
-A participant id is only a label, **never a key**: anyone who has the link
-could type it in. So a participant id never gives access to earlier work.
-If someone opens a link with a participant id that already has a session on
-another device (or browser), they see _"You already started on another
+A coder id is only a label, **never a key**: anyone who has the link
+could type it in. So a coder id never gives access to earlier work.
+If someone opens a link with a coder id that already has a session on
+another device (or browser), which includes a coder's own link per coder,
+they see _"You already started on another
 device"_, and how to continue there, or move the session here with
 **Continue on another device** (or by signing in). Only if they confirm that they can't get back to the earlier session
 (a lost device, cleared browser data) can they start a new session here,
 without the earlier answers. That should be rare; when it happens often,
 check whether a personal link was shared with several people.
 
-Two sessions with the same participant id are allowed, and kept apart: in
-the results they are two coders (two `coder_id`s) with the same
-`participant_id`. The participant id stays the same in both, so an end
+Two sessions with the same coder id are allowed, and kept apart: in
+the results they are two sessions (two `session_id`s) with the same
+`coder`. The coder id stays the same in both, so an end
 item's return link to a panel carries it either way. Deal with duplicates
-in your analysis, for instance by keeping each participant's first or most
+in your analysis, for instance by keeping each coder's first or most
 complete session.
 
 ## Coming back to a session
@@ -146,16 +156,16 @@ link or QR code it shows on the second (see
 [What coders see](coder-experience.md)).
 
 > On a **shared computer**, such as in a lab, a second person who opens the
-> same link without a participant id continues the first person's session.
-> Give each person their own participant id (their sessions are then kept
-> apart), or have them use a private browser window.
+> same link without a coder id continues the first person's session.
+> Give each person their own coder id in the link (their sessions are then
+> kept apart), or have them use a private browser window.
 
 ## Max uses
 
 **Max uses** limits how many coders can start with a link. Once that many
 have started, the status becomes _used up_ and new coders get the message
 that the link has been used up. Coders who already started can still
-continue. A participant who starts a new session on another device (see
+continue. A coder who starts a new session on another device (see
 above) doesn't count as a new use.
 
 Use it to cap a crowd-coding batch, or to make sure a personal link is used
@@ -169,13 +179,13 @@ same limit for its link in the design; a link's own max uses overrides it.
 | **Label**   | The label (the coder, or "Open link"; you can change it)                     |
 | **For**     | The coder the link is for, with a link per coder                             |
 | **Link**    | **Copy link** copies the link, with placeholders for URL parameters it needs |
-| **Access**  | Who may use it: anyone, or a fixed participant id                            |
+| **Access**  | Who may use it: anyone, or a fixed coder id                                  |
 | **Uses**    | How many coders started with it (and the maximum)                            |
 | **Status**  | _open_, _used up_, _revoked_ or _retired_                                    |
 | **Created** | When it was made                                                             |
 
 **Revoke** stops new sessions with the link, also new sessions of a
-participant id that already has one. Coders who already started keep
+coder id that already has one. Coders who already started keep
 working. It stays revoked when you deploy again; **Reopen** (the arrow on a
 revoked link) lets new coders in again. Retired links are listed
 separately, below the active ones.

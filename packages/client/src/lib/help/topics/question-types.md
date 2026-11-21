@@ -95,7 +95,7 @@ with the same options. Use it when coders rate several aspects at once; use
 separate questions when each aspect deserves the coder's full attention.
 
 **Confirm or nominal?** A confirm question has one button, so it can't be
-refused. For consent that a participant can refuse, use a nominal question
+refused. For consent that a coder can refuse, use a nominal question
 ("I agree" / "I do not agree") followed by a condition with an
 [end item](end-items.md).
 

@@ -16,13 +16,13 @@ The zip is named after the study and the date, such as
 | File                 | A row per                           | What is in it                                                                                         |
 | -------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `annotations.csv`    | unit and coder                      | the answers to the questions in unit loops                                                            |
-| `coders.csv`         | coder                               | who they are, how far they got, and their answers outside unit loops                                  |
+| `coders.csv`         | coder session                       | who they are, how far they got, and their answers outside unit loops                                  |
 | `units.csv`          | unit version                        | the units as coders saw them                                                                          |
 | `variables.csv`      | design version, question and option | the questions, their values and labels                                                                |
 | `designs/v<n>.json`  | design version                      | the whole design, with the AnnoTinder release and commit it ran on: to archive or reproduce the study |
 | `devices.csv`        | device                              | the devices coders used (kind, browser, operating system)                                             |
 | `timings.csv`        | answer                              | how long coders took per question                                                                     |
-| `deleted_coders.csv` | deleted coder                       | coders whose data was deleted, to delete them from earlier downloads too                              |
+| `deleted_coders.csv` | deleted coder session               | coders whose data was deleted, to delete them from earlier downloads too                              |
 | `README.txt`         |                                     | what the columns mean                                                                                 |
 
 The files are UTF-8, with a marker at the start so that spreadsheet programs
@@ -37,8 +37,8 @@ A row for every unit a coder coded, in the order they coded them.
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `unit_id`                     | Your id of the unit (the id column of your upload)                                                                                                                            |
 | `unit_version_id`             | The version of the unit the coder saw: see `units.csv`                                                                                                                        |
-| `coder_id`                    | The coder: see `coders.csv`                                                                                                                                                   |
-| `participant_id`              | The coder's participant id, if they have one (e.g. from a panel)                                                                                                              |
+| `session_id`                  | The coder's session: see `coders.csv`                                                                                                                                         |
+| `coder`                       | Who the coder is, if known: their name in the coders' column, an id from the link (e.g. a panel's), or the email they signed in with                                          |
 | `link`                        | The label of the link the coder came in with                                                                                                                                  |
 | `first_answer`, `last_change` | When the coder first answered about this unit, and last changed an answer                                                                                                     |
 | `design_version`              | The design version (its number, v1, v2, ...; `designs/v<n>.json`) the unit was first answered under (the `_label` columns use each answer's own version): see `variables.csv` |
@@ -86,15 +86,15 @@ label while coding runs, and the values stay comparable. See
 
 ## coders.csv
 
-A row per coder who started.
+A row per coder session (`session_id`): a coder who started again on another device has two.
 
 | Column                                                   | Meaning                                                                                                                                                                           |
 | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `coder_id`, `participant_id`, `email`, `link`            | Who the coder is (`email` where the invitation requires [sign-in](links.md#login))                                                                                                 |
+| `session_id`, `coder`, `email`, `link`                   | Who the coder is (`email` where the invitation requires [sign-in](links.md#login))                                                                                                 |
 | `started`, `last_active`                                 | When they started, and when they last answered                                                                                                                                    |
 | `ended`, `ended_at`                                      | `complete` or `screenout` if their session ended at an end item (see [Ending a session](end-items.md)), `quit` if the coder quit, and when                                        |
 | `deletion_requested`                                     | When the coder asked for their answers to be deleted, if they did and you haven't deleted them yet (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)) |
-| `session.<name>`                                         | The session's values: its coder (`session.coder`, with specific coders) and its URL parameters (the participant id is `participant_id`)                                           |
+| `session.<name>`                                         | The session's values: its URL parameters and `source` (its coder is the `coder` column)                                                                                          |
 | `finished_<loop>`                                        | How many units they finished in each unit loop, such as `finished_News items`                                                                                                     |
 | `overlap_finished`, `gold_finished`, `practice_finished` | How many units of the deployed `_overlap`, `_gold` and `_practice` sets they finished, if the study has them (see [Overlap, gold and practice units](special-units.md))           |
 | one column per question                                  | Their answers outside unit loops, and their [random conditions](random-condition.md)                                                                                              |
@@ -124,7 +124,7 @@ they were made on.
 
 ## devices.csv
 
-The devices coders used, a row per device: `device_id`, `coder_id`,
+The devices coders used, a row per device: `device_id`, `session_id`,
 `device_type` (phone, tablet or desktop), `browser`, `os` and `first_used`.
 A coder who continued on another device has a row for each. These are
 coarse categories, as survey tools report them, not a fingerprint of the
@@ -138,7 +138,7 @@ browser measured it:
 | Column                                   | Meaning                                                                                                                                                                  |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `unit_id`                                | The unit (empty for questions outside unit loops)                                                                                                                        |
-| `coder_id`, `participant_id`, `variable` | The coder and the question                                                                                                                                               |
+| `session_id`, `coder`, `variable`        | The coder and the question                                                                                                                                               |
 | `first_ms`                               | Time on screen until the first answer                                                                                                                                    |
 | `total_ms`                               | Time on screen over all visits (going back adds to it)                                                                                                                   |
 | `hidden_ms`                              | Time the page was hidden meanwhile: another tab, a minimized window (not in `total_ms`)                                                                                  |
@@ -179,11 +179,11 @@ units       <- read_csv("results/units.csv", col_types = cols(unit_id = "c"))
 
 # Answers with the coder's background and the text they coded
 d <- annotations |>
-  left_join(select(coders, -participant_id, -link), by = "coder_id") |>
+  left_join(select(coders, -coder, -link), by = "session_id") |>
   left_join(select(units, -unit_id), by = "unit_version_id")
 
 # Answers per coder
-count(annotations, coder_id)
+count(annotations, session_id)
 ```
 
 Reading `unit_id` as text (`"c"`) keeps ids such as `007` intact. The
@@ -206,7 +206,7 @@ coders = read("coders")
 units = read("units", dtype={"unit_id": str})
 
 d = (annotations
-     .merge(coders.drop(columns=["participant_id", "link"]), on="coder_id", how="left")
+     .merge(coders.drop(columns=["coder", "link"]), on="session_id", how="left")
      .merge(units.drop(columns=["unit_id"]), on="unit_version_id", how="left"))
 ```
 
@@ -216,10 +216,10 @@ d = (annotations
 
 | To add                                                        | Join on                                                          |
 | ------------------------------------------------------------- | ---------------------------------------------------------------- |
-| a coder's details and background answers to their annotations | `coder_id`                                                       |
+| a coder's details and background answers to their annotations | `session_id`                                                     |
 | the unit as the coder saw it                                  | `unit_version_id`                                                |
 | the device an answer was given on                             | `device_id` in `devices.csv`                                     |
-| response times to the answers                                 | `unit_id`, `coder_id` and `variable` in `timings.csv`            |
+| response times to the answers                                 | `unit_id`, `session_id` and `variable` in `timings.csv`          |
 | the labels of a design version                                | `design_version` and `variable` (and `value`) in `variables.csv` |
 | your own data (metadata not shown to coders)                  | `unit_id`, with the id column of your own file                   |
 
@@ -240,6 +240,6 @@ move it to another AnnoTinder server), use **Settings** → **Export study**
 (for the study's admins): one file with the units, design versions, links,
 coders and their answers. **Create new study** → **From a file** makes a
 copy of the study from it, with or without the coders and answers. The
-copy gets new links (send coders the new ones), and new coder ids: match
-coders by participant id with earlier downloads. The file holds coders'
+copy gets new links (send coders the new ones), and new session ids: match
+coders by coder id (`coder`) with earlier downloads. The file holds coders'
 data: keep it as safe as the study.

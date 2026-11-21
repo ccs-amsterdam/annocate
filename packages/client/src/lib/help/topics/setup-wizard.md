@@ -15,13 +15,13 @@ much more (below).
 
 1. **What do you want to do?** The study's name, and one or more of:
    **Annotate units** (coders get units one by one), **Ask questions** (a
-   survey: questions asked once), **Experiment** (participants get a
+   survey: questions asked once), **Experiment** (coders get a
    condition). An experiment alone is set up as questions with an
    experiment.
 2. **The experiment**: the name of the condition, the conditions, and
    whether they are assigned balanced or at random. The condition is a
    [random condition](random-condition.md), placed first in the design, so
-   every participant gets one when they start.
+   every coder gets one when they start.
 3. **Units**: the CSV file, as in [Uploading units](uploading-units.md), or
    none yet.
 4. **Who codes what**:
@@ -71,13 +71,13 @@ afterwards:
 | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Answer types, options, scales, text selection                             | [Choosing a question type](question-types.md)                                                                           |
 | Questions asked only in some cases                                        | [Conditions](conditions.md)                                                                                             |
-| Screening participants out, ending early, sending them back to a panel    | [Ending a session](end-items.md)                                                                                        |
+| Screening coders out, ending early, sending them back to a panel          | [Ending a session](end-items.md)                                                                                        |
 | Crowd coding until coders agree on a question; units per coder; priority  | [Shared queues](shared-queues.md#when-a-unit-is-done)                                                                   |
 | Different units for coders by an earlier answer                           | A [random condition](random-condition.md) linked to a unit column                                                       |
 | Where the overlap comes (before, after, spread)                           | [Overlap](overlap.md#placement)                                                                                         |
 | Coders' names or email addresses instead of `coder_1`, ...                | [Giving each coder their own units](own-units.md)                                                                       |
 | Values from the link's URL, such as a wave or a panel's ids               | [URL parameters](session-parameters.md)                                                                                 |
-| Sign-in, participant ids, max uses                                        | [Links](links.md)                                                                                                       |
+| Sign-in, coder ids, max uses                                              | [Links](links.md)                                                                                                       |
 | Prolific and other online panels                                          | [Online panels and crowd coding](online-panels.md)                                                                      |
 | Layouts beyond a title, byline and body: styles, blocks, conditions, HTML | [Layout templates](layout-templates.md), [Showing parts conditionally](template-blocks.md), [HTML in a layout](html.md) |
 | Reusable pieces of a layout                                               | [Snippets](snippets.md)                                                                                                 |

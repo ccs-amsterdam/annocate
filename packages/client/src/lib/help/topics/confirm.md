@@ -42,7 +42,7 @@ from repeating the same text in several places.
 
 A Confirm question can't be refused: the only way on is to click
 **I confirm**. That is fine when consent was given elsewhere (on a panel's
-own page, say), but if participants must be able to say no inside
+own page, say), but if coders must be able to say no inside
 AnnoTinder, use a [nominal question](nominal-and-ordinal.md) with two
 options instead:
 

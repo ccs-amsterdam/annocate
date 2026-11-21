@@ -54,10 +54,9 @@ with the value filled in.
 | Value                  | What it is                                                                                                      |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `$session.source`      | The `?source=` of any link, if given: where a coder came from (a newsletter, a QR code). Never required         |
-| `$session.participant` | With a crowd invitation, the participant id: from its URL parameter, or the email address of coders who sign in (see [Links](links.md#participant-ids)) |
-| `$session.coder`       | With specific coders, the coder (see [Giving each coder their own units](own-units.md))                         |
+| `$session.coder`       | Who the coder is: with specific coders their value in the coders' column (see [Giving each coder their own units](own-units.md)); with a crowd the coder id from its URL parameter, or the email address of coders who must sign in (see [Links](links.md#coder-ids)) |
 
-These names, and `email`, can't be used for your own parameters.
+These names can't be used for your own parameters.
 
 ## Public title
 

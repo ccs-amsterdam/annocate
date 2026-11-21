@@ -20,7 +20,7 @@ units and with their own coders.
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
 | **Design**      | Questions, conditions, layouts, per loop the rules for handing out units, the coder invitations and the URL parameters links carry. It refers to sets and groups by name, and to coders only through their answers and session values | Yes: this is the instrument         |
 | **Set columns** | Which coder or condition each unit is for, such as `anna`, `anna;bob`, `_overlap` in a column `coder`                                                                                                               | As data, if you may share the units |
-| **Links**       | Made from the design's coder invitations (one link, or one per coder), with labels, participant ids and max uses                                                                                                    | No: they are about your coders      |
+| **Links**       | Made from the design's coder invitations (one link, or one per coder), with labels, fixed coder ids and max uses                                                                                                    | No: they are about your coders      |
 
 ## The design names, but never binds
 
@@ -34,7 +34,7 @@ The design may _name_ things that only get a meaning in the study:
 - **A group of coders**: _coders in the experimental group get this layout_,
   where the group is a [random condition](experimental-conditions.md).
 
-What the design never contains is a unit id, a participant id, an email
+What the design never contains is a unit id, a coder id, an email
 address or a link's address. So:
 
 - the same design runs on another set of units with the same fields (the
@@ -69,7 +69,7 @@ the links themselves:
 
 - who the coders are: the values of the coders' column (names or email
   addresses);
-- a fixed participant id, for a personal link;
+- a fixed coder id, for a personal link;
 - how many coders may start with it.
 
 These settings stay on the server and are not part of the design. Two

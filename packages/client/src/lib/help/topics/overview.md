@@ -8,7 +8,7 @@ summary: The main ideas - studies, designs, units, coders - and how they fit tog
 AnnoTinder is a tool for **annotation**: people (coders) read or look at
 units, such as news articles, social media posts or images, and answer
 questions about them. Researchers use it for content analysis, for training
-and evaluating classifiers, and for survey experiments in which participants
+and evaluating classifiers, and for survey experiments in which coders
 judge material.
 
 It is built for research: the same design gives every coder the same task on
@@ -40,7 +40,7 @@ A design is mainly a list of **items**, shown to coders one at a time:
   [Unit loops](unit-loops.md).
 - **Conditions**: items that are only shown when an earlier answer says so.
   See [Conditions](conditions.md).
-- **End items**: end the session early, e.g. when a participant doesn't fit
+- **End items**: end the session early, e.g. when a coder doesn't fit
   the study. See [Ending a session](end-items.md).
 
 Questions outside a loop are asked once per coder (for example consent, or

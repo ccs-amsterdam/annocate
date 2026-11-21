@@ -5,11 +5,11 @@ order: 7
 summary: What AnnoTinder stores about coders, where it runs, how sessions work without accounts, and what coders' browsers receive.
 ---
 
-Annotation studies often involve personal data: participants' answers in a
+Annotation studies often involve personal data: coders' answers in a
 survey experiment, panel ids, sometimes sensitive material in the units
 themselves. This page describes what AnnoTinder stores and sends where, so
-you can write your data management plan, your ethics application and your
-participant information accurately.
+you can write your data management plan, your ethics application and the
+information you give coders accurately.
 
 In short: AnnoTinder stores what the study needs and little more. Coders
 don't need an account, and nothing is shared outside the study.
@@ -22,16 +22,16 @@ Everything of a study is stored on the AnnoTinder server you use:
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Units**           | The data you uploaded, and each unit as coders saw it (see [Keeping track of what coders saw](design-what-coders-saw.md))                                                                                                                                                                                                  |
 | **Design versions** | Every saved and deployed version                                                                                                                                                                                                                                                                                           |
-| **Links**           | Their settings: label, the coder (with a link per coder), participant id, max uses, uses                                                                                                                                                                                                                                    |
-| **Coders**          | Per session: the link used, the participant id (if any), the answers to questions outside unit loops (random conditions included), the URL parameters the design reads, which units they were given, when they started, and how the session ended                                                                                                                           |
+| **Links**           | Their settings: label, the coder (with a link per coder), fixed coder id, max uses, uses                                                                                                                                                                                                                                     |
+| **Coders**          | Per session: the link used, the coder id (if any), the answers to questions outside unit loops (random conditions included), the URL parameters the design reads, which units they were given, when they started, and how the session ended                                                                                                                           |
 | **Devices**         | Per device a coder used: the kind of device (phone, tablet, desktop), browser and operating system, and on which device each answer was given                                                                                                                                                                              |
 | **Answers**         | Per unit and question: the answer, when it was first given and last changed, and the design version and unit version                                                                                                                                                                                                       |
-| **Response times**  | Per question: how long it was on screen until the first answer and in total, how long the page was hidden meanwhile, and how often the answer changed (measured in the coder's browser); per unit, when the server handed it out. Always recorded: mention it in your participant information if it matters for your study |
+| **Response times**  | Per question: how long it was on screen until the first answer and in total, how long the page was hidden meanwhile, and how often the answer changed (measured in the coder's browser); per unit, when the server handed it out. Always recorded: mention it in the information you give coders if it matters for your study |
 
 What AnnoTinder itself does **not** store about coders: their name, their
 email address (unless they [sign in](links.md#login)), their IP address, details of their device beyond its kind, browser and operating system, or
 URL parameters other than the ones the design asks for (its
-[URL parameters](session-parameters.md), and the participant id if the link
+[URL parameters](session-parameters.md), and the coder id if the link
 takes it from the URL). The web server in front of
 AnnoTinder may keep ordinary access logs; ask whoever runs it.
 
@@ -39,7 +39,7 @@ A browser keeps one random device id (a cookie) for all studies, but
 AnnoTinder stores only a code derived from it per study. So the stored data
 can't tell that one device took part in two studies: an anonymous study stays
 anonymous, also next to a study where the same person gave their name or
-participant id.
+coder id.
 
 The server sees units and answers as they are, like any web application that
 stores them: they are not encrypted in the browser.
@@ -55,15 +55,16 @@ on your own or your institution's server. Both are the same software.
   material, for data you may not transfer, or when your institution requires
   it. It needs someone who can run a web application with a database.
 
-## Participant ids are labels
+## Coder ids are labels
 
-A **participant id** links a coder's answers to another record: a panel's
-participant id, a code from a lab schedule. It is stored with the coder, and
-shown on the **Coders** tab and in the download.
+A **coder id** says who the coder is, and links their answers to another
+record: a name in your coders' column, a panel's participant id, a code from
+a lab schedule. It is stored with the coder's session, and shown on the
+**Coders** tab and in the download.
 
-A participant id is a _label_, not a password. Anyone who has a link with
-that id in it could open it. So AnnoTinder never lets a participant id unlock
-earlier answers: opening a participant's link on a new device does not show
+A coder id is a _label_, not a password. Anyone who has a link with
+that id in it could open it. So AnnoTinder never lets a coder id unlock
+earlier answers: opening a coder's link on a new device does not show
 the answers given on the first device. Instead, the coder is told they already
 started elsewhere, and can either continue there or start a new session. (A
 person holding the link only learns that the id was used before.)
@@ -89,10 +90,10 @@ What this means for your study:
 - **Clearing cookies or a private window loses the session.** The answers
   given so far are stored on the server, but the coder can't continue them;
   opening the link again starts a new session.
-- **Shared computers.** Without a participant id, the next person who opens
+- **Shared computers.** Without a coder id in the link, the next person who opens
   the same link on the same browser continues the previous person's session.
-  In a lab, give every participant their own participant id (sessions are
-  kept apart per participant id), or use a private window per participant.
+  In a lab, give every coder their own coder id in the link (sessions are
+  kept apart per coder id), or use a private window per coder.
 
 Coders who sign in (to continue on other devices) have their email address
 stored with their session. You see it, in the Coders tab and the download,
@@ -106,7 +107,7 @@ To run the study, a coder's browser gets:
 
 - **The whole codebook**, including all questions, conditions and option
   values, also those meant for other groups. Anyone who knows where to look
-  could read it. Don't put anything in the codebook that participants must
+  could read it. Don't put anything in the codebook that coders must
   not see, such as the hypothesis in a condition's label.
 - **The unit fields the design uses**, also fields used only in a condition
   or shown only later in the unit. Fields the design doesn't use are never
@@ -127,7 +128,7 @@ can't change their own group or ask for another group's units.
 ## What researchers see
 
 Everyone with access to the study sees its units, design, coders and answers.
-The **Coders** tab lists each session with its participant id (or a
+The **Coders** tab lists each session with its coder id (or a
 number), link, start time and progress. The download contains the same
 information as the tables above. See [Downloading results](results.md).
 
@@ -140,7 +141,7 @@ preview ends.
   study with everything in it: units, design versions, links, coders and
   answers.
 - **Deleting a coder's data** (on the **Coders** tab) deletes one coder,
-  found by participant id or email, with all their answers. Coders can ask
+  found by coder id or email, with all their answers. Coders can ask
   for it themselves, from the coding screen; you decide on such requests
   (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)).
 

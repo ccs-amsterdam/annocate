@@ -115,7 +115,7 @@ Where you put a question in the tree decides how often it is asked:
 | Inside a unit loop  | once per unit, for every unit the coder gets                                    | `annotations.csv`: a row per unit and coder |
 | Inside a condition  | only when the condition holds; otherwise skipped, and left empty in the results | as above                                    |
 
-Questions outside a loop are for things about the coder or participant:
+Questions outside a loop are for things about the coder:
 consent, background questions, a check of the instructions, an
 experimental manipulation. Questions in a loop are about the unit: its
 topic, tone, actors.
