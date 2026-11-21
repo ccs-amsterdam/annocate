@@ -21,12 +21,13 @@ export function designVersion(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  const version = (studyId: number, id: number) => and(eq(designVersions.studyId, studyId), eq(designVersions.id, id));
-  const get = async (studyId: number, id: number) =>
-    (await db.select().from(designVersions).where(version(studyId, id)))[0];
+  const versionWhere = (studyId: number, id: number) =>
+    and(eq(designVersions.studyId, studyId), eq(designVersions.id, id));
+  const findVersion = async (studyId: number, id: number) =>
+    (await db.select().from(designVersions).where(versionWhere(studyId, id)))[0];
 
   app.get("/study/:studyId/design/:id", requireStudyUser(server, "READ"), async (c) => {
-    const row = await get(c.get("studyId"), Number(c.req.param("id")));
+    const row = await findVersion(c.get("studyId"), Number(c.req.param("id")));
     if (!row) return c.json({ error: "Design version not found" }, 404);
     return c.json(toDesignVersion(row));
   });
@@ -34,7 +35,7 @@ export function designVersion(server: Server): Hono<Env> {
   app.put("/study/:studyId/design/:id", requireStudyUser(server, "WRITE"), async (c) => {
     const studyId = c.get("studyId");
     const id = Number(c.req.param("id"));
-    const existing = await get(studyId, id);
+    const existing = await findVersion(studyId, id);
     if (!existing) return c.json({ error: "Design version not found" }, 404);
     if (existing.immutable) return c.json({ error: "Design version is deployed and cannot be edited" }, 409);
 
@@ -63,7 +64,7 @@ export function designVersion(server: Server): Hono<Env> {
       })
       .where(
         and(
-          version(studyId, id),
+          versionWhere(studyId, id),
           eq(designVersions.immutable, false),
           revision === undefined ? undefined : eq(designVersions.revision, revision),
         ),
@@ -71,7 +72,7 @@ export function designVersion(server: Server): Hono<Env> {
       .returning();
     if (!row) {
       // Deployed or saved by someone else meanwhile.
-      const now = await get(studyId, id);
+      const now = await findVersion(studyId, id);
       if (now && !now.immutable) return c.json(conflict(now), 409);
       return c.json({ error: "Design version is deployed and cannot be edited" }, 409);
     }
@@ -81,11 +82,11 @@ export function designVersion(server: Server): Hono<Env> {
   app.delete("/study/:studyId/design/:id", requireStudyUser(server, "WRITE"), async (c) => {
     const studyId = c.get("studyId");
     const id = Number(c.req.param("id"));
-    const existing = await get(studyId, id);
+    const existing = await findVersion(studyId, id);
     if (!existing) return c.json({ error: "Design version not found" }, 404);
     if (existing.immutable) return c.json({ error: "Design version is deployed and cannot be deleted" }, 409);
 
-    await db.delete(designVersions).where(and(version(studyId, id), eq(designVersions.immutable, false)));
+    await db.delete(designVersions).where(and(versionWhere(studyId, id), eq(designVersions.immutable, false)));
     return c.body(null, 204);
   });
 

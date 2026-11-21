@@ -139,9 +139,7 @@ export function fillRedirectUrl(url: string, scope: ReferenceScope): string {
     .join("");
 }
 
-/**
- * General Question item schema anywhere in the tree.
- */
+/** A question item anywhere in the tree (any answer type a unit loop allows). */
 export const QuestionItemSchema = ItemBaseSchema.extend({
   type: z.literal("question"),
   variable: UnitVariableTypeSchema,
@@ -178,9 +176,9 @@ export const InLoopItemSchema: z.ZodType<InLoopItem> = z.lazy(() =>
 );
 
 /**
- * A `for unit in ...` loop. Which units a coder gets is described by `units`
- * (branches, see unitLoop.ts) and `order`. Children can ONLY be in-loop items (question or in-loop
- * condition). Nested unit loops are strictly disallowed.
+ * A `for unit in ...` loop. Which of the coder's units it includes is
+ * described by `units` (unitLoop.ts) and `order`. Children can only be
+ * in-loop items (questions, end items, in-loop conditions): no nested loops.
  */
 export const UnitLoopItemSchema = z.object({
   type: z.literal("unit_loop"),
@@ -196,8 +194,9 @@ export type UnitLoopItem = z.infer<typeof UnitLoopItemSchema>;
  * Items that can appear at the top level:
  * - Question items (coder-level)
  * - Unit loops
+ * - Computed items and end items
  * - Top-level condition items (whose children can be any top-level items)
- * - The Session item (at most one, first: `session.ts`)
+ * - The Study entry (at most one, first: `session.ts`)
  */
 export type TopLevelItem =
   | TopLevelQuestionItem
@@ -242,7 +241,7 @@ export type ConditionItem = Extract<TopLevelItem | InLoopItem, { type: "show_if"
  */
 export type DesignItem = TopLevelItem | InLoopItem;
 
-/** An item's name; conditions have none. */
+/** An item's name; conditions, unit loops and the Study entry have none. */
 export function itemName(item: DesignItem): string | undefined {
   return item.type === "show_if" || item.type === "unit_loop" || item.type === "session" ? undefined : item.name;
 }

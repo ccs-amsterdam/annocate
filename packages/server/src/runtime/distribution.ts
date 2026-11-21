@@ -62,10 +62,10 @@ export class Codings {
 }
 
 /**
- * One set of one unit_loop branch, handed out either `fixed` (every
- * routed coder gets every unit: `all`, `sets` and `link` mode, and
- * overlaps) or `dynamic` (a shared queue with saturation rules: `shared`
- * mode, see contracts unitLoop.ts).
+ * One set of one unit loop, handed out either `fixed` (every routed coder
+ * gets every unit: their own units, the overlap) or `dynamic` (a shared
+ * queue with saturation rules: a crowd's `share` criteria, see contracts
+ * unitLoop.ts).
  */
 export class UnitPool {
   private units: number[];
@@ -217,7 +217,7 @@ export class UnitPool {
 
   /**
    * Whether no coder can get the unit any more, apart from a coder below
-   * `minUnits` (`Reach`): finished codings reached `maxCoders`, coders agree (`agree`),
+   * `minUnits` (`Reach`): finished codings reached `maxCoders`, coders agree (`until`),
    * or, without `maxCoders`, enough coders coded it. Leases don't count.
    */
   isFull(unitId: number): boolean {
@@ -299,12 +299,12 @@ export class UnitPool {
  * once there are none, any unit that isn't full (`isFull`), past other
  * coders' leases and up to `maxCoders`, so a coder only gets nothing when
  * every unit is full. `pastMax`: a coder below `minUnits` also goes past
- * `maxCoders`: any unit coders don't agree on yet (`agree`), or any unit
- * at all (`coders`).
+ * `maxCoders`: any unit coders don't agree on yet (`until`), or any unit
+ * at all (without `until`).
  */
 export type Reach = "slots" | "full" | "pastMax";
 
-/** Where a branch's overlap units go among the coder's own units (contracts OverlapSchema). */
+/** Where a loop's special units (overlap, practice, gold) go among the coder's own units (contracts `ResolvedPlacement`). */
 export interface OverlapPlacement {
   pool: UnitPool;
   placement: "before" | "after" | "spread" | "rate";

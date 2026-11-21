@@ -181,13 +181,6 @@ export const PublicInfoSchema = z.object({
 export type PublicInfo = z.infer<typeof PublicInfoSchema>;
 
 /**
- * The Study entry: the design's `session` (the coder invitation, the URL
- * parameters and the normal end) and its `public` info, as
- * the first item of the design's items (`designItems`). Validation, the
- * runtime and the editor work on it there; it is stored as the design's
- * `session` and `public` (`splitDesignItems`).
- */
-/**
  * The study's normal end (the Study entry's `end`): what coders see when
  * they get through the whole design, and where they are sent, e.g. a
  * panel's return link. End items in the design are for ending early. Coders
@@ -223,6 +216,13 @@ export const DisplaySchema = z.object({
 });
 export type Display = z.infer<typeof DisplaySchema>;
 
+/**
+ * The Study entry: the design's `session` (the coder invitation, the URL
+ * parameters and the normal end) and its `public` info, as
+ * the first item of the design's items (`designItems`). Validation, the
+ * runtime and the editor work on it there; it is stored as the design's
+ * `session` and `public` (`splitDesignItems`).
+ */
 export const SessionItemSchema = z.object({
   type: z.literal("session"),
   label: z.string().optional(),

@@ -2,6 +2,7 @@ import type { DeviceDetails } from "../shared/devices.js";
 import {
   MAX_DISPLAY_CHANGES,
   inviteOf,
+  type CodersInvite,
   type DeletionRequest,
   type DisplayEntry,
   type SessionEnd,
@@ -63,8 +64,7 @@ export interface Store {
    * the deployment itself.
    */
   deploymentStamp(): Promise<string | null>;
-  /** Unit content by id; unknown ids are left out. */
-  /** Units as deployed: their current versions (`live`; else the drafts, for previews). */
+  /** Units by id, as deployed: their current versions (`live`; else the drafts, for previews). Unknown ids are left out. */
   getUnits(ids: number[], live: boolean): Promise<Unit[]>;
   /** All coders (for researcher status). */
   listCoders(): Promise<Coder[]>;
@@ -112,7 +112,7 @@ export interface Store {
   /** Stores leases (a coder holds up to a batch per queue), or renews them. */
   putLeases(leases: Lease[]): Promise<void>;
   /**
-   * Per coder who has a value for `variables[0]` (an `auto` question): their
+   * Per coder who has a value for `variables[0]` (a random condition): their
    * values of `variables`, and their session values (for a stratified
    * `balanced` assignment).
    */
@@ -122,7 +122,7 @@ export interface Store {
   /**
    * Runs `fn` in one transaction holding a lock on `key` (in this study), with
    * a store that works in that transaction. For decisions that count other
-   * coders: picking from a shared queue, giving out sets and groups. The
+   * coders: picking from a shared queue, a balanced draw. The
    * lock is a database lock, so it holds across server processes.
    */
   locked<T>(key: string, fn: (store: Store) => Promise<T>): Promise<T>;
@@ -147,8 +147,8 @@ export class DbStore implements Store {
     private preview = false,
   ) {}
 
-  /** This study's coder (by id). */
-  private coder(sessionId: number) {
+  /** This study's session (by id). */
+  private sessionWhere(sessionId: number) {
     return and(eq(coderSessions.studyId, this.studyId), eq(coderSessions.id, sessionId));
   }
 
@@ -265,7 +265,7 @@ export class DbStore implements Store {
       .set({
         assignments: sql`coalesce(${coderSessions.assignments}, '{}'::jsonb) || jsonb_build_object(${loop}::text, ${JSON.stringify(assignment)}::jsonb)`,
       })
-      .where(this.coder(sessionId))
+      .where(this.sessionWhere(sessionId))
       .returning({ id: coderSessions.id });
     if (updated.length === 0) throw new HttpError(404, "Coder not found");
   }
@@ -277,7 +277,7 @@ export class DbStore implements Store {
       .set({
         session: sql`CASE WHEN ${coderSessions.session} ? ${name}::text THEN ${coderSessions.session} ELSE ${coderSessions.session} || jsonb_build_object(${name}::text, ${value}::text) END`,
       })
-      .where(this.coder(sessionId))
+      .where(this.sessionWhere(sessionId))
       .returning({ value: sql<string>`${coderSessions.session}->>${name}::text` });
     return updated?.value ?? value;
   }
@@ -286,7 +286,7 @@ export class DbStore implements Store {
     const updated = await this.db
       .update(coderSessions)
       .set({ ended })
-      .where(this.coder(sessionId))
+      .where(this.sessionWhere(sessionId))
       .returning({ id: coderSessions.id });
     if (updated.length === 0) throw new HttpError(404, "Coder not found");
   }
@@ -306,7 +306,7 @@ export class DbStore implements Store {
   }
 
   async requestDeletion(sessionId: number, request: DeletionRequest): Promise<void> {
-    await this.db.update(coderSessions).set({ deletionRequest: request }).where(this.coder(sessionId));
+    await this.db.update(coderSessions).set({ deletionRequest: request }).where(this.sessionWhere(sessionId));
   }
 
   async recordDisplay(sessionId: number, entry: DisplayEntry): Promise<void> {
@@ -317,7 +317,7 @@ export class DbStore implements Store {
       .set({ display: sql`${coderSessions.display} || jsonb_build_array(${change}::jsonb)` })
       .where(
         and(
-          this.coder(sessionId),
+          this.sessionWhere(sessionId),
           sql`jsonb_array_length(${coderSessions.display}) < ${MAX_DISPLAY_CHANGES}`,
           sql`(jsonb_array_length(${coderSessions.display}) = 0 OR (${coderSessions.display} -> -1) - 'at' <> ${JSON.stringify(entry)}::jsonb)`,
         ),
@@ -683,27 +683,13 @@ async function findOrCreateCoder(
   // Revoked or retired: no new sessions, also not for a known coder (existing sessions go on).
   if (link.revokedAt !== null) throw new HttpError(403, "This link has been revoked", "link_revoked");
   if (link.retiredAt !== null) throw new HttpError(403, "This link is no longer active", "link_inactive");
-  // A link where coders pick their name (docs/architecture.md §6.1): the name is the link's coder.
-  // Taken by another device's session: refused, or (`nameDevices: any`) this device joins it.
   const invite = inviteOf(request.sessionRules?.item);
   let params = link.params;
   if (invite.mode === "coders" && invite.link === "pick_name") {
-    const name = request.pickedName;
-    if (!name || !request.sessionRules!.setsOf(invite.column).includes(name))
-      throw new HttpError(409, "Pick your name to start", "name_required");
-    await advisoryLock(db, `pick_name:${studyId}:${name}`);
-    const [taken] = await db
-      .select()
-      .from(coderSessions)
-      .where(and(eq(coderSessions.studyId, studyId), sql`${coderSessions.session}->>'coder' = ${name}`))
-      .orderBy(asc(coderSessions.id))
-      .limit(1);
-    if (taken) {
-      if ((invite.nameDevices ?? "first") === "first")
-        throw new HttpError(409, "This name was picked on another device", "name_taken");
-      return { row: taken, deviceId: await addDevice(db, studyId, taken.id, coderKey, device) };
-    }
-    params = { ...params, coder: name };
+    const picked = await pickName(db, studyId, request, invite);
+    if ("taken" in picked)
+      return { row: picked.taken, deviceId: await addDevice(db, studyId, picked.taken.id, coderKey, device) };
+    params = { ...params, coder: picked.name };
   }
   // A coder id is a label, never a credential: a new device for a
   // known coder gets a *new* session, and only when asked for.
@@ -713,16 +699,16 @@ async function findOrCreateCoder(
     request.urlParams ?? {},
     login?.email ?? null,
   );
-  const knownParticipant =
+  const coderHasSession =
     coder !== null &&
     (await db.$count(coderSessions, and(eq(coderSessions.studyId, studyId), eq(coderSessions.coder, coder)))) > 0;
-  if (knownParticipant && !request.newSession) {
+  if (coderHasSession && !request.newSession) {
     throw new HttpError(409, "This coder already has a session on another device", "coder_has_session");
   }
   if (request.paused) throw new HttpError(409, "This study is paused", "study_paused");
   await checkNewCoder(db, studyId);
   // A new session of a known coder is the same person: it doesn't use up the link.
-  if (!knownParticipant) {
+  if (!coderHasSession) {
     // Checked and counted in one statement, so concurrent coders can't overrun `max_uses`.
     // The link's own limit, else a crowd's most coders (docs/architecture.md §5)
     const maxCoders = invite.mode === "crowd" ? (invite.maxCoders ?? null) : null;
@@ -740,6 +726,34 @@ async function findOrCreateCoder(
     .returning();
   // A new session on a device that had one (`newSession`): the device moves to the new one.
   return { row: created!, deviceId: await addDevice(db, studyId, created!.id, coderKey, device) };
+}
+
+/**
+ * On a link where coders pick their name (docs/architecture.md §6.1): the
+ * picked name, which becomes the link's coder. Taken by another device's
+ * session: refused, or (`nameDevices: any`) that session (`taken`), which
+ * this device joins.
+ */
+async function pickName(
+  db: Db,
+  studyId: number,
+  request: ResolveCoderRequest,
+  invite: CodersInvite,
+): Promise<{ name: string } | { taken: CoderRow }> {
+  const name = request.pickedName;
+  if (!name || !request.sessionRules!.setsOf(invite.column).includes(name))
+    throw new HttpError(409, "Pick your name to start", "name_required");
+  await advisoryLock(db, `pick_name:${studyId}:${name}`);
+  const [taken] = await db
+    .select()
+    .from(coderSessions)
+    .where(and(eq(coderSessions.studyId, studyId), sql`${coderSessions.session}->>'coder' = ${name}`))
+    .orderBy(asc(coderSessions.id))
+    .limit(1);
+  if (!taken) return { name };
+  if ((invite.nameDevices ?? "first") === "first")
+    throw new HttpError(409, "This name was picked on another device", "name_taken");
+  return { taken };
 }
 
 /** Per database and key, the last call in line (`inTurn`). */

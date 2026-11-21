@@ -27,12 +27,6 @@ export const NextUnitsResponseSchema = z.object({ units: z.array(CoderUnitRespon
 export type NextUnitsResponse = z.infer<typeof NextUnitsResponseSchema>;
 export type NextUnitQuery = z.infer<typeof NextUnitQuerySchema>;
 
-/**
- * The coder API (docs/api/coder.md): served by the server under
- * `/d/<deploymentId>`, called by the client's coding screen (`HttpCoderApi`).
- * Paths are relative to that base: a coder is tied to one deployment by the
- * URL, and to one coder by their session cookie.
- */
 /** The answer to a submitted unit (`postUnitVariables`). */
 export const SubmitUnitResponseSchema = z.object({
   /** Gold checks ended the session (health ran out) at this end item. */
@@ -46,12 +40,18 @@ export const PickNamesResponseSchema = z.object({
 });
 export type PickNamesResponse = z.infer<typeof PickNamesResponseSchema>;
 
+/**
+ * The coder API (docs/api/coder.md): served by the server under
+ * `/d/<deploymentId>`, called by the client's coding screen (`HttpCoderApi`).
+ * Paths are relative to that base: a coder is tied to one deployment by the
+ * URL, and to one session by their session cookie.
+ */
 export const coderEndpoints = {
   getSession: { method: "GET", path: "/session", request: z.void(), response: SessionResponseSchema },
   /**
    * This device's session in the deployment, summarized for the coder's
    * home (404 without one). Never starts a session. `x-url-params` with the
-   * participant id finds the session of a link that carries one.
+   * coder id finds the session of a link that carries one.
    */
   getSummary: { method: "GET", path: "/summary", request: z.void(), response: CoderStudySchema },
   getNextUnits: {
@@ -98,7 +98,7 @@ export const coderEndpoints = {
   },
   /** The coder reached an `end` item: the session is over (screened out or complete). */
   endSession: { method: "POST", path: "/end", request: EndSessionSchema, response: EndSessionResponseSchema },
-  /** Goes back after finishing (within `reopenUntil`): the session is open again. */
+  /** Goes back after finishing (while the session's `reopen` allows it): the session is open again. */
   reopenSession: { method: "POST", path: "/reopen", request: z.void(), response: z.void() },
   /**
    * The coder quits: the session ends (if it hadn't), and with

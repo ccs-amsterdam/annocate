@@ -138,7 +138,7 @@ function selectStudies(db: Db) {
     .$dynamic();
 }
 
-async function body<T>(
+async function parseBody<T>(
   c: Context,
   schema: { safeParse(v: unknown): { success: true; data: T } | { success: false; error: unknown } },
 ): Promise<T> {
@@ -170,7 +170,7 @@ export function admin(server: Server): Hono<Env> {
   app.get("/admin/settings", async (c) => c.json(await getSettings(db)));
 
   app.put("/admin/settings", async (c) => {
-    const settings = await body(c, ServerSettingsSchema);
+    const settings = await parseBody(c, ServerSettingsSchema);
     await getSettings(db); // the row exists
     // Open registration is a role: researcher, for every user with an email address
     await db.delete(roles).where(everyoneResearcher);
@@ -191,14 +191,14 @@ export function admin(server: Server): Hono<Env> {
   app.get("/admin/plans", async (c) => c.json(await db.select().from(plans).orderBy(asc(plans.name))));
 
   app.post("/admin/plans", async (c) => {
-    const plan = await body(c, PlanWriteSchema);
+    const plan = await parseBody(c, PlanWriteSchema);
     const [row] = await db.insert(plans).values({ name: plan.name, limits: plan.limits }).returning();
     await log(c, "create plan", plan.name, plan.limits);
     return c.json(row, 201);
   });
 
   app.put("/admin/plans/:id", async (c) => {
-    const plan = await body(c, PlanWriteSchema);
+    const plan = await parseBody(c, PlanWriteSchema);
     const [row] = await db
       .update(plans)
       .set({ name: plan.name, limits: plan.limits })
@@ -236,7 +236,7 @@ export function admin(server: Server): Hono<Env> {
   app.put("/admin/domains/:domain", async (c) => {
     const domain = DomainSchema.safeParse(c.req.param("domain"));
     if (!domain.success) throw new HttpError(400, "A domain like uni.nl or *.uni.nl");
-    const rule = await body(c, DomainRuleWriteSchema);
+    const rule = await parseBody(c, DomainRuleWriteSchema);
     await db.transaction(async (tx) => {
       await tx.delete(roles).where(and(domainRoles, eq(roles.emailDomain, domain.data)));
       if (rule.researcher)
@@ -276,14 +276,14 @@ export function admin(server: Server): Hono<Env> {
     return c.json(await Promise.all(rows.map((r) => toAdminUser(db, r))));
   });
 
-  const userById = async (id: number) => {
+  const adminUser = async (id: number) => {
     const [row] = await selectUsers(db, issuer()).where(eq(users.id, id));
     if (!row) throw new HttpError(404, "User not found");
     return toAdminUser(db, row);
   };
 
   app.post("/admin/users", async (c) => {
-    const user = await body(c, AdminUserCreateSchema);
+    const user = await parseBody(c, AdminUserCreateSchema);
     if (user.role === "admin") checkSensitive(server, c.get("researcher"));
     const email = user.email.trim().toLowerCase();
     // A user with this email, else an invitation: a shadow user, claimed at their first login
@@ -294,13 +294,13 @@ export function admin(server: Server): Hono<Env> {
       return id;
     });
     await log(c, "add user", email, { role: user.role, planId: user.planId ?? null });
-    return c.json(await userById(id), 201);
+    return c.json(await adminUser(id), 201);
   });
 
   // Withdraws an invitation (a shadow user, with its roles)
   app.delete("/admin/users/:id", async (c) => {
     const id = Number(c.req.param("id"));
-    const user = await userById(id);
+    const user = await adminUser(id);
     if (user.registered) throw new HttpError(409, "This user has logged in: block them instead");
     await db.delete(users).where(and(eq(users.id, id), isNull(users.registeredAt)));
     await log(c, "withdraw invitation", user.email);
@@ -309,8 +309,8 @@ export function admin(server: Server): Hono<Env> {
 
   app.put("/admin/users/:id", async (c) => {
     const id = Number(c.req.param("id"));
-    const update = await body(c, AdminUserUpdateSchema);
-    const before = await userById(id);
+    const update = await parseBody(c, AdminUserUpdateSchema);
+    const before = await adminUser(id);
     if (id === c.get("researcher").userId && (update.blocked || (update.role && update.role !== "admin"))) {
       throw new HttpError(409, "You can't block yourself or take away your own admin role");
     }
@@ -350,7 +350,7 @@ export function admin(server: Server): Hono<Env> {
       before.email,
       update,
     );
-    return c.json(await userById(id));
+    return c.json(await adminUser(id));
   });
 
   // ---- becoming a researcher ---------------------------------------------------
@@ -373,7 +373,7 @@ export function admin(server: Server): Hono<Env> {
 
   app.post("/admin/requests/:userId", async (c) => {
     const userId = Number(c.req.param("userId"));
-    const { approve } = await body(c, ResearcherRequestDecisionSchema);
+    const { approve } = await parseBody(c, ResearcherRequestDecisionSchema);
     const [row] = await db
       .update(researcherRequests)
       .set({ decidedAt: sql`now()`, decidedBy: c.get("researcher").email, approved: approve })
@@ -400,7 +400,7 @@ export function admin(server: Server): Hono<Env> {
 
   app.put("/admin/studies/:id", async (c) => {
     const id = Number(c.req.param("id"));
-    const update = await body(c, AdminStudyUpdateSchema);
+    const update = await parseBody(c, AdminStudyUpdateSchema);
     const [study] = await db.select({ name: studies.name }).from(studies).where(eq(studies.id, id));
     if (!study) throw new HttpError(404, "Study not found");
     if (update.owner !== undefined) {

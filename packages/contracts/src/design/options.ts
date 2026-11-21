@@ -114,15 +114,11 @@ export function ordinalValueErrors(options: { value: unknown; special?: unknown 
   const twice = values.filter((v, i) => typeof v === "number" && values.indexOf(v) !== i);
   if (twice.length > 0) errors.push(`Ordinal values are each used once (${twice[0]} is used twice)`);
   for (const { value, special } of options) {
-    if (special) {
-      if (typeof value !== "number" || !Number.isFinite(value))
-        errors.push(`Ordinal values are numbers, not ${JSON.stringify(value)}`);
-      continue;
-    }
     if (typeof value !== "number" || !Number.isFinite(value)) {
       errors.push(`Ordinal values are numbers, not ${JSON.stringify(value)}`);
       continue;
     }
+    if (special) continue;
     if (previous !== null && value <= previous)
       errors.push(`Ordinal values must rise in the order of the options (${value} after ${previous})`);
     previous = value;

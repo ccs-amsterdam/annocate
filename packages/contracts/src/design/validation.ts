@@ -50,6 +50,8 @@ export interface DesignIssue {
 type Path = (string | number)[];
 /** An item as stored: any field may be missing; conditions have no name. */
 type RawItem = Partial<DesignItem> & { name?: string };
+/** The texts of an end (an end item, or the Study entry's `end`), as stored. */
+type EndTexts = { message?: unknown; redirectUrl?: unknown; redirectSetting?: unknown };
 
 /** Where references are checked, and what they may refer to there. */
 interface RefContext {
@@ -141,9 +143,9 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   const coderAvailable = new Set<string>();
   /** Questions of the current loop seen so far. */
   let loopAvailable = new Set<string>();
-  /** `$session` names (declared parameters, conditions and the built-in ones). */
+  /** `$session` names (declared URL parameters and the built-in ones). */
   const sessionNamed = new Set(sessionNames(items));
-  /** Set columns that select a session's units (the coders' column, random conditions'): column -> what. */
+  /** Set columns that select a session's units (the coders' column, then random conditions' as they are checked): column -> what. */
   const linkedColumns = new Map(
     sessionColumns(sessionItem(items)).map((c) => [
       c.column,
@@ -162,7 +164,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
 
   function checkRef(ref: Reference, ctx: RefContext): ReferenceShape | null {
     const text = referenceText(ref);
-    // Session values exist everywhere: the Session item's parameters and the built-in ones.
+    // Session values exist everywhere: the Study entry's URL parameters and the built-in ones.
     if (ref.ns === "session") {
       const name = ref.path[0];
       if (!sessionNamed.has(name))
@@ -354,6 +356,20 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     return { shown: new Set(names.shown), selectable: new Set(names.selectable) };
   }
 
+  /**
+   * An end's message and redirect (an end item's, or the study's normal
+   * end). They are shown outside the loop's layout: no snippets.
+   */
+  function checkEndTexts(end: EndTexts, path: Path, loop: string | null, available: ReadonlySet<string>) {
+    const ctx = { loop, available, snippets: undefined };
+    checkTemplate(end.message, { ...ctx, path: [...path, "message"] }, "text");
+    checkTemplate(end.redirectUrl, { ...ctx, path: [...path, "redirectUrl"] }, "url");
+    if (typeof end.redirectUrl === "string" && !/^https?:\/\//.test(end.redirectUrl))
+      issue([...path, "redirectUrl"], "The redirect URL must start with https:// (or http://)");
+    if (typeof end.redirectUrl === "string" && typeof end.redirectSetting === "string")
+      issue([...path, "redirectSetting"], "Give a redirect URL or a deployment setting, not both");
+  }
+
   /** End items anywhere in the design: name -> outcome. */
   const endItems = new Map<string, unknown>();
   const collectEnds = (list: unknown) => {
@@ -365,6 +381,69 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   };
   collectEnds(items);
 
+  /**
+   * A loop's practice and gold checks: questions of this loop with answers
+   * compared by value, whose answer columns coders never see; a gold
+   * screen-out at an end item.
+   */
+  function checkUnitChecks(
+    loop: { units?: Partial<LoopUnits> | null; children?: unknown; layout?: unknown },
+    itemPath: Path,
+    loopQuestions: ReadonlySet<string>,
+  ) {
+    const units = loop.units && typeof loop.units === "object" ? loop.units : null;
+    const path = [...itemPath, "units"];
+    const checks = { practice: units?.practiceCheck, gold: units?.goldCheck };
+    for (const [kind, settings] of Object.entries(checks) as [
+      "practice" | "gold",
+      { questions?: unknown; health?: { end?: unknown } } | undefined,
+    ][]) {
+      if (!settings) continue;
+      (Array.isArray(settings.questions) ? settings.questions : []).forEach((name: unknown, q) => {
+        const at = [...path, `${kind}Check`, "questions", q];
+        if (typeof name !== "string" || !loopQuestions.has(name))
+          return issue(
+            at,
+            `${kind === "gold" ? "Gold" : "Practice"} question '${String(name)}' is not a question in this loop`,
+          );
+        const type = questions.get(name)?.type;
+        if (!(CHECKABLE_TYPES as readonly string[]).includes(type ?? "")) {
+          issue(
+            at,
+            `'${name}' can't be checked against a right answer: ${describeQuestion(questions.get(name)!)} (use nominal, ordinal, swipe, numeric or confirm)`,
+          );
+        }
+      });
+      // The right answers must never reach coders: no layout or question may show their columns
+      const shown = JSON.stringify([loop.layout, loop.children]);
+      for (const name of Array.isArray(settings.questions) ? (settings.questions as unknown[]) : []) {
+        if (typeof name !== "string") continue;
+        const columns = kind === "gold" ? [goldColumn(name)] : [practiceColumn(name), practiceMessageColumn(name)];
+        for (const column of columns) {
+          if (new RegExp(`\\$unit\\.${column}\\b`).test(shown))
+            issue(
+              [...path, `${kind}Check`],
+              `The answer column ${column} is shown to coders (in the layout or a question): it must stay hidden`,
+            );
+        }
+      }
+      const end = settings.health?.end;
+      if (typeof end === "string") {
+        const found = endItems.get(end);
+        if (!found)
+          issue(
+            [...path, `${kind}Check`, "health", "end"],
+            `No end item '${end}': the session ends there when health runs out`,
+          );
+        else if (found !== "screenout")
+          issue(
+            [...path, `${kind}Check`, "health", "end"],
+            `End item '${end}' should be a screen-out (coders who fail the gold checks)`,
+          );
+      }
+    }
+  }
+
   function checkLoop(item: RawItem, itemPath: Path, loopName: string) {
     const loop = item as {
       units?: Partial<LoopUnits> | null;
@@ -372,60 +451,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       layout?: { template?: unknown; snippets?: Record<string, string> };
     };
     const loopQuestions = questionNames(loop.children);
-    {
-      const branch = loop.units && typeof loop.units === "object" ? loop.units : null;
-      const path = [...itemPath, "units"];
-      // Practice and gold: questions of this loop with answers compared by value; a gold screen-out at an end item
-      const checks = { practice: branch?.practiceCheck, gold: branch?.goldCheck };
-      for (const [kind, settings] of Object.entries(checks) as [
-        "practice" | "gold",
-        { questions?: unknown; health?: { end?: unknown } } | undefined,
-      ][]) {
-        if (!settings) continue;
-        (Array.isArray(settings.questions) ? settings.questions : []).forEach((name: unknown, q) => {
-          const at = [...path, `${kind}Check`, "questions", q];
-          if (typeof name !== "string" || !loopQuestions.has(name))
-            return issue(
-              at,
-              `${kind === "gold" ? "Gold" : "Practice"} question '${String(name)}' is not a question in this loop`,
-            );
-          const type = questions.get(name)?.type;
-          if (!(CHECKABLE_TYPES as readonly string[]).includes(type ?? "")) {
-            issue(
-              at,
-              `'${name}' can't be checked against a right answer: ${describeQuestion(questions.get(name)!)} (use nominal, ordinal, swipe, numeric or confirm)`,
-            );
-          }
-        });
-        // The right answers must never reach coders: no layout or question may show their columns
-        const shown = JSON.stringify([loop.layout, loop.children]);
-        for (const name of Array.isArray(settings.questions) ? (settings.questions as unknown[]) : []) {
-          if (typeof name !== "string") continue;
-          const columns = kind === "gold" ? [goldColumn(name)] : [practiceColumn(name), practiceMessageColumn(name)];
-          for (const column of columns) {
-            if (new RegExp(`\\$unit\\.${column}\\b`).test(shown))
-              issue(
-                [...path, `${kind}Check`],
-                `The answer column ${column} is shown to coders (in the layout or a question): it must stay hidden`,
-              );
-          }
-        }
-        const end = settings.health?.end;
-        if (typeof end === "string") {
-          const found = endItems.get(end);
-          if (!found)
-            issue(
-              [...path, `${kind}Check`, "health", "end"],
-              `No end item '${end}': the session ends there when health runs out`,
-            );
-          else if (found !== "screenout")
-            issue(
-              [...path, `${kind}Check`, "health", "end"],
-              `End item '${end}' should be a screen-out (coders who fail the gold checks)`,
-            );
-        }
-      }
-    }
+    checkUnitChecks(loop, itemPath, loopQuestions);
 
     const snippets = loop.layout?.snippets ?? {};
     const names = checkTemplate(
@@ -656,20 +682,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           walk(item.children, [...itemPath, "children"], loop);
         }
       } else if (item.type === "end") {
-        const end = item as { message?: unknown; redirectUrl?: unknown };
-        const ctx = { loop: loop?.name ?? null, available, snippets: loop?.snippets };
-        // An end item's texts are shown outside the loop's layout: no snippets.
-        checkTemplate(end.message, { ...ctx, snippets: undefined, path: [...itemPath, "message"] }, "text");
-        checkTemplate(end.redirectUrl, { ...ctx, snippets: undefined, path: [...itemPath, "redirectUrl"] }, "url");
-        if (typeof end.redirectUrl === "string" && !/^https?:\/\//.test(end.redirectUrl)) {
-          issue([...itemPath, "redirectUrl"], "The redirect URL must start with https:// (or http://)");
-        }
-        if (
-          typeof end.redirectUrl === "string" &&
-          typeof (item as { redirectSetting?: unknown }).redirectSetting === "string"
-        ) {
-          issue([...itemPath, "redirectSetting"], "Give a redirect URL or a deployment setting, not both");
-        }
+        checkEndTexts(item as EndTexts, itemPath, loop?.name ?? null, available);
       } else if (item.type === "question") {
         if (!loop && (item.variable?.type === "span" || item.variable?.type === "relation")) {
           issue(
@@ -687,20 +700,8 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
 
   // The study's normal end: its texts may use the coder-level answers
   const studyIndex = items.findIndex((i) => (i as RawItem | null)?.type === "session");
-  const studyEnd =
-    studyIndex >= 0
-      ? (items[studyIndex] as { end?: { message?: unknown; redirectUrl?: unknown; redirectSetting?: unknown } }).end
-      : undefined;
-  if (studyEnd) {
-    const path = [studyIndex, "end"];
-    const ctx = { loop: null, available: coderAvailable, snippets: undefined };
-    checkTemplate(studyEnd.message, { ...ctx, path: [...path, "message"] }, "text");
-    checkTemplate(studyEnd.redirectUrl, { ...ctx, path: [...path, "redirectUrl"] }, "url");
-    if (typeof studyEnd.redirectUrl === "string" && !/^https?:\/\//.test(studyEnd.redirectUrl))
-      issue([...path, "redirectUrl"], "The redirect URL must start with https:// (or http://)");
-    if (typeof studyEnd.redirectUrl === "string" && typeof studyEnd.redirectSetting === "string")
-      issue([...path, "redirectSetting"], "Give a redirect URL or a deployment setting, not both");
-  }
+  const studyEnd = studyIndex >= 0 ? (items[studyIndex] as { end?: EndTexts }).end : undefined;
+  if (studyEnd) checkEndTexts(studyEnd, [studyIndex, "end"], null, coderAvailable);
 
   // A computed value linked to a column selects units in the loops after it only
   const shares = loopShareColumns(items);
@@ -814,8 +815,8 @@ export function collectQuestions(items: unknown): {
  * The questions a reference may use at an item, by the same rules as
  * validation: coder-level questions before it, and in a loop the loop's
  * earlier questions. `at` is the item's path (as in validation issues); for
- * a condition this excludes its own children, for a unit loop (its branches
- * and layout) its questions. Used by the admin editor's reference picker.
+ * a condition this excludes its own children, for a unit loop (its units
+ * settings and layout) its questions. Used by the admin editor's reference picker.
  */
 export function availableQuestions(items: unknown[], at: Path): { name: string; variable: AnyVariableType }[] {
   const result: { name: string; variable: AnyVariableType }[] = [];
@@ -852,6 +853,7 @@ function questionNames(list: unknown, into = new Set<string>()): Set<string> {
   return into;
 }
 
+/** Visits every item of a list, also inside conditions but not inside unit loops (questions, and computed and end items). */
 function forEachQuestion(
   list: unknown,
   path: Path,

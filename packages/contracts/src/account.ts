@@ -17,7 +17,7 @@ import { IdSchema } from "./common.js";
 export const AccountRoleSchema = z.enum(["user", "researcher", "admin"]);
 export type AccountRole = z.infer<typeof AccountRoleSchema>;
 
-/** Ranks account roles: `atLeast(role, "researcher")`. */
+/** Whether `role` includes `min`, e.g. `accountRoleAtLeast(role, "researcher")`. */
 export function accountRoleAtLeast(role: AccountRole, min: AccountRole): boolean {
   const rank = { user: 0, researcher: 1, admin: 2 };
   return rank[role] >= rank[min];

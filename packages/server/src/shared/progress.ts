@@ -12,7 +12,7 @@ import type { Db } from "../db/index.js";
 import { anyOf } from "../db/sql.js";
 import {
   annotationValues as a,
-  coderSessions as codersTable,
+  coderSessions,
   designVersions,
   links,
   unitCodings,
@@ -30,7 +30,7 @@ const given = (studyId: number) => and(eq(a.studyId, studyId), isNull(a.retiredA
 const ACTIVITY_DAYS = 30;
 
 /**
- * Coder id -> units finished, per loop of the live design version: every question
+ * Session id -> units finished, per loop of the live design version: every question
  * of the loop has a live answer (the rule of `listFinished`).
  */
 async function finishedPerLoop(db: Db, studyId: number): Promise<Map<string, Map<number, number>>> {
@@ -57,35 +57,24 @@ async function finishedPerLoop(db: Db, studyId: number): Promise<Map<string, Map
   return result;
 }
 
-/** `GET /coders`: every coder of the study with their link, activity and finished units. */
-export async function listCoderProgress(db: Db, studyId: number): Promise<CoderProgress[]> {
-  const coders = await db
-    .select({ coder: codersTable, linkLabel: links.label })
-    .from(codersTable)
-    .leftJoin(links, eq(links.id, codersTable.linkId))
-    .where(eq(codersTable.studyId, studyId))
-    .orderBy(asc(codersTable.id));
-  const activity = new Map(
-    (
-      await db
-        .select({ sessionId: a.sessionId, answers: count(), lastActive: max(a.updated) })
-        .from(a)
-        .where(given(studyId))
-        .groupBy(a.sessionId)
-    ).map((r) => [r.sessionId, r]),
-  );
-  const finished = await finishedPerLoop(db, studyId);
-  const values = await coderValues(db, studyId);
-  // Special units as deployed (docs/architecture.md §6): practice and gold units of any set
-  // column are everyone's; the overlap is that of the coder column, or (no coders) of the columns
-  // the coder's session values select units by. Counted for coders who were routed in a loop.
-  const kinds = { _overlap: "overlap", _gold: "gold", _practice: "practice" } as const;
-  type Kind = keyof typeof kinds;
+const SPECIAL_KINDS = { _overlap: "overlap", _gold: "gold", _practice: "practice" } as const;
+type SpecialSet = keyof typeof SPECIAL_KINDS;
+
+/**
+ * Per session, the deployed special units it finished, of how many (contracts
+ * `CoderProgress.special`; docs/architecture.md §6): practice and gold units
+ * of any set column are everyone's; the overlap is that of the coder column,
+ * or (no coders) of the columns the session's values select units by.
+ * Counted for sessions that were routed in a loop.
+ */
+async function specialProgress(db: Db, studyId: number, deployedItems: unknown[] | null) {
   const members = await db
-    .select({ grp: unitSets.grp, name: sql<Kind>`${unitSets.name}`, unitId: unitSetMembers.unitId })
+    .select({ grp: unitSets.grp, name: sql<SpecialSet>`${unitSets.name}`, unitId: unitSetMembers.unitId })
     .from(unitSets)
     .innerJoin(unitSetMembers, eq(unitSetMembers.setId, unitSets.id))
-    .where(and(eq(unitSets.studyId, studyId), eq(unitSets.live, true), inArray(unitSets.name, Object.keys(kinds))));
+    .where(
+      and(eq(unitSets.studyId, studyId), eq(unitSets.live, true), inArray(unitSets.name, Object.keys(SPECIAL_KINDS))),
+    );
   const doneRows = await db
     .selectDistinct({ sessionId: unitCodings.sessionId, unitId: unitCodings.unitId })
     .from(unitCodings)
@@ -94,19 +83,10 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
     );
   const done = new Map<number, Set<number>>();
   for (const r of doneRows) done.set(r.sessionId, (done.get(r.sessionId) ?? new Set()).add(r.unitId));
-  const deployment = await getDeployment(db, studyId);
-  const [deployed] = deployment
-    ? await db
-        .select({ items: designVersions.items, session: designVersions.session })
-        .from(designVersions)
-        .where(eq(designVersions.id, deployment.designVersionId))
+  const shareColumns = deployedItems
+    ? [...new Map([...loopShareColumns(deployedItems).values()].flat().map((c) => [c.name, c.column]))]
     : [];
-  // Coders' emails only where the study requires sign-in: elsewhere coders sign in for themselves (other devices)
-  const showEmails = deployed ? loginRequired(sessionItem(designVersionItems(deployed))) : false;
-  const shareColumns = deployed
-    ? [...new Map([...loopShareColumns(designVersionItems(deployed)).values()].flat().map((c) => [c.name, c.column]))]
-    : [];
-  const special = (sessionId: number, session: Record<string, string>, assignments: Record<string, unknown>) => {
+  return (sessionId: number, session: Record<string, string>, assignments: Record<string, unknown>) => {
     const out: CoderProgress["special"] = {};
     if (Object.keys(assignments ?? {}).length === 0) return out;
     const selected = shareColumns.filter(([name]) => session?.[name] !== undefined);
@@ -120,17 +100,49 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
           ? selected.map(([, column]) => column)
           : members.map((m) => m.grp),
     );
-    for (const [name, kind] of Object.entries(kinds) as [Kind, (typeof kinds)[Kind]][]) {
-      const units = new Set(
+    for (const [name, kind] of Object.entries(SPECIAL_KINDS) as [SpecialSet, (typeof SPECIAL_KINDS)[SpecialSet]][]) {
+      const unitIds = new Set(
         members
           .filter((m) => m.name === name && (name !== "_overlap" || overlapColumns.has(m.grp)))
           .map((m) => m.unitId),
       );
-      if (units.size === 0) continue;
-      out[kind] = { done: [...units].filter((id) => done.get(sessionId)?.has(id)).length, total: units.size };
+      if (unitIds.size === 0) continue;
+      out[kind] = { done: [...unitIds].filter((id) => done.get(sessionId)?.has(id)).length, total: unitIds.size };
     }
     return out;
   };
+}
+
+/** `GET /coders`: every coder of the study with their link, activity and finished units. */
+export async function listCoderProgress(db: Db, studyId: number): Promise<CoderProgress[]> {
+  const coders = await db
+    .select({ coder: coderSessions, linkLabel: links.label })
+    .from(coderSessions)
+    .leftJoin(links, eq(links.id, coderSessions.linkId))
+    .where(eq(coderSessions.studyId, studyId))
+    .orderBy(asc(coderSessions.id));
+  const activity = new Map(
+    (
+      await db
+        .select({ sessionId: a.sessionId, answers: count(), lastActive: max(a.updated) })
+        .from(a)
+        .where(given(studyId))
+        .groupBy(a.sessionId)
+    ).map((r) => [r.sessionId, r]),
+  );
+  const finished = await finishedPerLoop(db, studyId);
+  const values = await coderValues(db, studyId);
+  const deployment = await getDeployment(db, studyId);
+  const [deployed] = deployment
+    ? await db
+        .select({ items: designVersions.items, session: designVersions.session })
+        .from(designVersions)
+        .where(eq(designVersions.id, deployment.designVersionId))
+    : [];
+  const deployedItems = deployed ? designVersionItems(deployed) : null;
+  // Coders' emails only where the study requires sign-in: elsewhere coders sign in for themselves (other devices)
+  const showEmails = deployedItems ? loginRequired(sessionItem(deployedItems)) : false;
+  const special = await specialProgress(db, studyId, deployedItems);
 
   return coders.map(({ coder: c, linkLabel }) => ({
     id: c.id,
@@ -177,7 +189,7 @@ export async function studyOverview(db: Db, studyId: number, now = new Date()): 
     units: await db.$count(units, and(eq(units.studyId, studyId), eq(units.inDraft, true))),
     groups,
     coders: {
-      total: await db.$count(codersTable, eq(codersTable.studyId, studyId)),
+      total: await db.$count(coderSessions, eq(coderSessions.studyId, studyId)),
       started: answers!.coders,
       activeLastDay: answers!.activeLastDay,
     },

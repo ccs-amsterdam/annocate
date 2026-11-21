@@ -150,7 +150,7 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
       .where(and(eq(linksTable.studyId, study.id), isNull(linksTable.retiredAt)))
       .orderBy(asc(linksTable.id));
     for (const [i, coder] of example.answers.entries()) {
-      // The link whose values the coder's session has (their coder, a condition by link)
+      // The link whose values the coder's session has (a link per coder: their coder id)
       const link = links.find((l) => Object.entries(l.params).every(([name, value]) => coder.session[name] === value));
       if (Object.keys(coder.session).length > 0 && !link)
         throw new Error(`examples/${id}.json: no link for example coder ${i + 1}'s session`);
@@ -170,9 +170,10 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
       );
       for (const [name, value] of Object.entries(values))
         check(name, coderTypes.get(name) as AnyVariableType | undefined, value);
-      const isAuto = (name: string) => coderTypes.get(name)?.type === "random";
-      const assigned = Object.fromEntries(Object.entries(values).filter(([name]) => isAuto(name)));
-      const answered = Object.fromEntries(Object.entries(values).filter(([name]) => !isAuto(name)));
+      // Random conditions are drawn by the server: stored as assigned values
+      const isRandom = (name: string) => coderTypes.get(name)?.type === "random";
+      const assigned = Object.fromEntries(Object.entries(values).filter(([name]) => isRandom(name)));
+      const answered = Object.fromEntries(Object.entries(values).filter(([name]) => !isRandom(name)));
       await putCoderValues(tx, study.id, { sessionId, values: assigned, assigned: true, designVersionId });
       await putCoderValues(tx, study.id, { sessionId, values: answered, designVersionId });
 

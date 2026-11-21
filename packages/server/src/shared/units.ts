@@ -86,6 +86,9 @@ export async function draftUnits(db: Db, studyId: number, query: DraftUnitsQuery
     .orderBy(asc(t.id));
 }
 
+/** The advisory lock key of a study's units (`lockUnits`). */
+const UNITS_LOCK = 24026;
+
 /**
  * Serializes a study's unit writes with its deploys (`write`), and answer
  * writes against them (`read`, shared): a deploy deletes versions nobody
@@ -100,7 +103,6 @@ export async function lockUnits(db: Db, studyId: number, mode: "write" | "read")
       : sql`SELECT pg_advisory_xact_lock_shared(${UNITS_LOCK}, ${studyId})`,
   );
 }
-const UNITS_LOCK = 24026;
 
 /** The study's latest design version (the draft, or the deployed one if there is no draft). */
 export async function latestDesignVersion(db: Db, studyId: number): Promise<DesignVersionRow | undefined> {

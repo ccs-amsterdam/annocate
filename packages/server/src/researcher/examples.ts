@@ -7,9 +7,9 @@ import { createStudyFromExample, listExamples } from "../examples.js";
 import { toStudyResponse } from "../shared/studies.js";
 import { createStudyFromRecipe } from "../shared/recipes.js";
 
-// New studies made for the researcher, owned by them like any study they create:
-// from an example (docs/examples.md), and from a recipe, as the setup
-// wizard writes one (docs/examples.md).
+// New studies made for the researcher, owned by them like any study they
+// create: from an example, and from a recipe, as the setup wizard writes one
+// (docs/examples.md).
 export function examples(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
@@ -21,7 +21,6 @@ export function examples(server: Server): Hono<Env> {
     const researcher = c.get("researcher");
     const ownerId = researcher.userId;
     await checkStudyLimit(db, ownerId);
-    // Development headers keep the bootstrap rule (a study without user roles is open)
     return { ownerId, ownerIsAdmin: !researcher.devRole };
   }
 

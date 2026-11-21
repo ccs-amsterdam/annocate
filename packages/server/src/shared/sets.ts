@@ -178,8 +178,8 @@ export async function runtimeSets(
  * Checks of a design about to be deployed against the study's set columns
  * (docs/architecture.md §6.3). Errors: a column the design selects
  * units by isn't a set column; coder values mix email addresses and other
- * names; a condition's fixed values aren't all in its column. Warnings: a
- * column without values, units no session gets, values of a column a
+ * names; a random condition's fixed values aren't all in its column. Warnings: a
+ * column without values, units no session gets, values of a column a random
  * condition doesn't list, special units a loop places but the columns
  * don't have, and right answers missing or not fitting their question.
  */
@@ -193,8 +193,6 @@ export async function assignmentChecks(
   const groups = new Map((await listSetGroups(db, studyId, live)).map((g) => [g.name, g.sets]));
   const valuesOf = (column: string) =>
     (groups.get(column) ?? []).filter((s) => !s.name.startsWith("_")).map((s) => s.name);
-  const unitsIn = (column: string, set: string) =>
-    (groups.get(column) ?? []).find((s) => s.name === set)?.unitIds ?? [];
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -218,21 +216,13 @@ export async function assignmentChecks(
         `Coders sign in with their email address, but the coders (column '${invite.column}') aren't all email addresses: make them email addresses, or give each coder a link.`,
       );
   }
-  // Computed items' fixed values, and the column's other values
-  const random = collectQuestions(items).questions;
-  const linked = [
-    ...[...random].flatMap(([name, v]) =>
-      v.type === "random" && v.units
-        ? [
-            {
-              name: `Computed item '${name}'`,
-              column: v.units,
-              values: v.options ? v.options.map((o) => o.value) : null,
-            },
-          ]
-        : [],
-    ),
-  ];
+  // Random conditions linked to a column: their fixed values, and the column's other values
+  const { questions } = collectQuestions(items);
+  const linked = [...questions].flatMap(([name, v]) =>
+    v.type === "random" && v.units
+      ? [{ name: `Computed item '${name}'`, column: v.units, values: v.options ? v.options.map((o) => o.value) : null }]
+      : [],
+  );
   for (const { name, column, values } of linked) {
     if (values === null || valuesOf(column).length === 0) continue;
     const missing = values.filter((v) => !valuesOf(column).includes(v));
@@ -255,8 +245,24 @@ export async function assignmentChecks(
         `${none} unit${none === 1 ? " has" : "s have"} no value in column '${column}': no session gets ${none === 1 ? "it" : "them"}.`,
       );
   }
+  warnings.push(...(await answerKeyWarnings(db, studyId, items, groups, live)));
+  return { errors, warnings };
+}
 
-  // The checks on practice and gold units the loops configure
+/**
+ * Warnings about the checks on practice and gold units the loops configure:
+ * no such units, or right answers missing or not fitting their question.
+ */
+async function answerKeyWarnings(
+  db: Db,
+  studyId: number,
+  items: DesignItem[],
+  groups: Map<string, UnitSet[]>,
+  live: boolean,
+): Promise<string[]> {
+  const warnings: string[] = [];
+  const unitsIn = (column: string, set: string) =>
+    (groups.get(column) ?? []).find((s) => s.name === set)?.unitIds ?? [];
   const special = (set: string) => [...new Set([...groups.keys()].flatMap((g) => unitsIn(g, set)))];
   const { questions } = collectQuestions(items);
   for (const { key, loop } of unitLoops(items)) {
@@ -300,5 +306,5 @@ export async function assignmentChecks(
       }
     }
   }
-  return { errors, warnings };
+  return warnings;
 }

@@ -53,7 +53,7 @@ import type {
   ResolvedCoder,
   Unit,
 } from "./types.js";
-import { loginRequired, type SessionRules } from "./sessionValues.js";
+import type { SessionRules } from "./sessionValues.js";
 import {
   agreementKey,
   singleValue,
@@ -126,13 +126,13 @@ interface Routed {
 
 /** The special units a loop can mix in, in order of precedence when several are due. */
 const SPECIAL = [
-  { set: PRACTICE_SET, units: (s: Share) => s.practice, settings: (b: ResolvedLoopUnits) => b.practice },
+  { set: PRACTICE_SET, units: (s: Share) => s.practice, settings: (u: ResolvedLoopUnits) => u.practice },
   {
     set: OVERLAP_SET,
     units: (s: Share) => s.overlap,
-    settings: (b: ResolvedLoopUnits) => (b.overlap?.placement === "disabled" ? undefined : b.overlap),
+    settings: (u: ResolvedLoopUnits) => (u.overlap?.placement === "disabled" ? undefined : u.overlap),
   },
-  { set: GOLD_SET, units: (s: Share) => s.gold, settings: (b: ResolvedLoopUnits) => b.gold },
+  { set: GOLD_SET, units: (s: Share) => s.gold, settings: (u: ResolvedLoopUnits) => u.gold },
 ] as const;
 
 type RandomVariable = Extract<VariableType, { type: "random" }>;
@@ -145,7 +145,7 @@ const REOPEN_MS = 15 * 60 * 1000;
  * Everything it works with is in the database and read per request: the
  * coder, their answers, units, finished codings (`unit_codings`) and the
  * leases of shared queues (`unit_leases`). Decisions that count other
- * coders (a shared queue's next unit, a set, a balanced group) run under a
+ * coders (a shared queue's next unit, a balanced draw) run under a
  * database lock (`Store.locked`), so any number of server processes can
  * serve the same study. In memory only the deployment spec, re-read when its
  * stamp changes.
@@ -279,7 +279,7 @@ export class DeploymentRuntime {
     this.columns = [...columns];
   }
 
-  /** What the codebook asks of a new session (its Session item), and the set columns' values. */
+  /** What the codebook asks of a new session (its Study entry), and the set columns' values. */
   private get sessionRules(): SessionRules {
     const items = this.spec.design.items as TopLevelItem[];
     return { item: sessionItem(items), setsOf: (group) => this.groups.get(group) ?? [] };
@@ -303,11 +303,6 @@ export class DeploymentRuntime {
   get coderParam(): string | null {
     const invite = inviteOf(sessionItem(this.spec.design.items as TopLevelItem[]));
     return invite.mode === "crowd" ? (invite.coderParam?.param ?? null) : null;
-  }
-
-  /** Coders log in to start (contracts `loginRequired`). */
-  get needsLogin(): boolean {
-    return loginRequired(this.sessionRules);
   }
 
   /** What finishes a loop under this codebook (its questions and agreement questions), and the annotation epoch. */
@@ -370,7 +365,6 @@ export class DeploymentRuntime {
       ...request,
       paused: !this.spec.active,
       sessionRules: this.sessionRules,
-      random: this.options.random,
     });
   }
 
@@ -422,38 +416,51 @@ export class DeploymentRuntime {
       });
       return linked(value);
     }
-    const stratify = variable.stratify ?? [];
     const value = await this.store.locked(`balanced/${name}`, async (store) => {
       // Another request of this coder may have assigned it meanwhile
-      const again = (await store.coderValues(coder.sessionId))[name];
-      if (again) return again.value;
       const own = await store.coderValues(coder.sessionId);
-      const stratum = (values: Record<string, VariableValue | undefined>, session: Record<string, string>) =>
-        JSON.stringify(
-          stratify.map((s) =>
-            s.startsWith("session.") ? (session[s.slice("session.".length)] ?? null) : (valueOf(values[s]) ?? null),
-          ),
-        );
-      const mine = stratum(Object.fromEntries(Object.entries(own).map(([k, v]) => [k, v.value])), coder.session);
-      const others = (await store.coderValuesOf([name, ...stratify.filter((s) => !s.startsWith("session."))]))
-        .filter((c) => stratum(c.values, c.session) === mine)
-        .map((c) => c.values[name]);
-      const counts = new Map<string, number>();
-      for (const taken of others) {
-        const v = valueOf(taken);
-        if (v !== undefined) counts.set(v, (counts.get(v) ?? 0) + 1);
-      }
-      const value = singleValue(
-        leastUsed(
-          options.map((o) => o.value),
-          (v) => counts.get(v) ?? 0,
-          this.options.random,
-        ),
-      );
+      if (own[name]) return own[name].value;
+      const drawn = await this.drawBalanced(store, coder, plainValues(own), name, variable.stratify ?? [], options);
+      const value = singleValue(drawn);
       await put(store, value);
       return value;
     });
     return linked(value);
+  }
+
+  /**
+   * A balanced draw (under the item's lock): the option the fewest coders
+   * who reached the item have; with `stratify`, counting only coders with
+   * the same answers to those questions (or `session.<name>` values).
+   */
+  private async drawBalanced(
+    store: Store,
+    coder: Coder,
+    ownValues: Record<string, VariableValue>,
+    name: string,
+    stratify: string[],
+    options: { value: string }[],
+  ): Promise<string> {
+    const stratum = (values: Record<string, VariableValue | undefined>, session: Record<string, string>) =>
+      JSON.stringify(
+        stratify.map((s) =>
+          s.startsWith("session.") ? (session[s.slice("session.".length)] ?? null) : (valueOf(values[s]) ?? null),
+        ),
+      );
+    const mine = stratum(ownValues, coder.session);
+    const others = (await store.coderValuesOf([name, ...stratify.filter((s) => !s.startsWith("session."))]))
+      .filter((c) => stratum(c.values, c.session) === mine)
+      .map((c) => c.values[name]);
+    const counts = new Map<string, number>();
+    for (const taken of others) {
+      const v = valueOf(taken);
+      if (v !== undefined) counts.set(v, (counts.get(v) ?? 0) + 1);
+    }
+    return leastUsed(
+      options.map((o) => o.value),
+      (v) => counts.get(v) ?? 0,
+      this.options.random,
+    );
   }
 
   private drawWeighted(options: { value: string; weight?: number }[]): string {
@@ -610,16 +617,16 @@ export class DeploymentRuntime {
     return { variables: pick(plainValues(values), vars), unit };
   }
 
-  /**
-   * The coder quits: the session ends (if it hadn't: an ending at an `end`
-   * item stays). With `requestDeletion` they ask for their answers to be
-   * deleted, also after the session ended; the researcher decides.
-   */
   /** How the coder's screen looks now (docs/client.md §4 "Display"): recorded when it changed. */
   async recordDisplay(coder: Coder, entry: DisplayEntry): Promise<void> {
     await this.store.recordDisplay(coder.sessionId, entry);
   }
 
+  /**
+   * The coder quits: the session ends (if it hadn't: an ending at an `end`
+   * item stays). With `requestDeletion` they ask for their answers to be
+   * deleted, also after the session ended; the researcher decides.
+   */
   async quitSession(coder: Coder, requestDeletion: boolean): Promise<void> {
     const at = new Date(this.options.now());
     if (!coder.ended) {
@@ -638,7 +645,7 @@ export class DeploymentRuntime {
 
   /**
    * Coder-level answers: a row each (only those that changed), like unit
-   * answers. Values for `auto` questions, and for frozen answers, are
+   * answers. Values for random conditions, and for frozen answers, are
    * ignored: those don't change.
    */
   async submitCoderVariables(
@@ -650,9 +657,9 @@ export class DeploymentRuntime {
     this.assertOpen(coder);
     const errors = validateVariables(this.coderVariableTypes, variables);
     if (errors.length > 0) throw new HttpError(400, errors.join("; "));
-    const auto = new Set(this.randomVariables.map(([name]) => name));
+    const randomNames = new Set(this.randomVariables.map(([name]) => name));
     const stored = await this.store.coderValues(coder.sessionId);
-    const open = (name: string) => !auto.has(name) && !stored[name]?.assigned && !stored[name]?.frozen;
+    const open = (name: string) => !randomNames.has(name) && !stored[name]?.assigned && !stored[name]?.frozen;
     const changed = Object.fromEntries(
       Object.entries(variables).filter(
         ([name, value]) => open(name) && JSON.stringify(stored[name]?.value) !== JSON.stringify(value),
@@ -823,7 +830,7 @@ export class DeploymentRuntime {
    * A coder enters a loop: the computed items linked to a set column that
    * select its units and that the coder hasn't reached (e.g. they were
    * hidden) are drawn now. Marks the coder as having reached the loop
-   * (`coders.assignments`, for the progress counts). A session without a
+   * (`coder_sessions.assignments`, for the progress counts). A session without a
    * value it needs (a coder from a link made before the coder column had
    * values) gets 409 `not_assigned`.
    */
@@ -973,29 +980,7 @@ export class DeploymentRuntime {
     timings: Record<string, AnswerTiming> = {},
   ): Promise<SubmitUnitResponse> {
     this.assertOpen(coder);
-    // Leases first (as in `pick`): a submit of this unit finishing in between shows up as a coding.
-    const leases = await this.store.listLeases({ sessionId: coder.sessionId });
-    const own = await this.store.listCodings({ sessionId: coder.sessionId });
-    // Units in the coder's route; in a shared queue only their own earlier
-    // codings (editing after going back) or the unit leased to them (an
-    // expired lease still counts: at worst one coding too many).
-    const routes = new Map<string, Route | null>();
-    for (const info of this.loops.values()) {
-      if (loopName === undefined || info.key === loopName) routes.set(info.key, this.routeOf(coder, info));
-    }
-    const canSubmit = (info: LoopInfo) => {
-      // A unit the coder coded here stays theirs (editing after going back), also if the units were divided differently since
-      if (own.some((c) => c.loop === info.key && c.unitId === unitId)) return true;
-      const route = routes.get(info.key) ?? null;
-      if (!route) return false;
-      if (this.specialUnits(route).some((s) => s.units.includes(unitId))) return true;
-      if (!this.ownUnits(route).includes(unitId)) return false;
-      if (!route.units.criteria) return true;
-      return leases.some((l) => l.loop === info.key && l.unitId === unitId);
-    };
-    const loops = [...this.loops.values()].filter(
-      (info) => (loopName === undefined || info.key === loopName) && canSubmit(info),
-    );
+    const loops = await this.submittableLoops(coder, unitId, loopName);
     if (loops.length === 0) throw new HttpError(409, "Unit is not assigned to this coder");
 
     const info = loops.find((l) => [...l.variables.keys()].every((name) => name in variables));
@@ -1047,6 +1032,31 @@ export class DeploymentRuntime {
       }
     }
     return response;
+  }
+
+  /**
+   * The loops (`loopName`: only that one) the coder may submit this unit in:
+   * units in their route; in a shared queue only their own earlier codings
+   * (editing after going back) or the unit leased to them (an expired lease
+   * still counts: at worst one coding too many).
+   */
+  private async submittableLoops(coder: Coder, unitId: number, loopName?: string): Promise<LoopInfo[]> {
+    // Leases first (as in `pick`): a submit of this unit finishing in between shows up as a coding.
+    const leases = await this.store.listLeases({ sessionId: coder.sessionId });
+    const own = await this.store.listCodings({ sessionId: coder.sessionId });
+    const canSubmit = (info: LoopInfo) => {
+      // A unit the coder coded here stays theirs (editing after going back), also if the units were divided differently since
+      if (own.some((c) => c.loop === info.key && c.unitId === unitId)) return true;
+      const route = this.routeOf(coder, info);
+      if (!route) return false;
+      if (this.specialUnits(route).some((s) => s.units.includes(unitId))) return true;
+      if (!this.ownUnits(route).includes(unitId)) return false;
+      if (!route.units.criteria) return true;
+      return leases.some((l) => l.loop === info.key && l.unitId === unitId);
+    };
+    return [...this.loops.values()].filter(
+      (info) => (loopName === undefined || info.key === loopName) && canSubmit(info),
+    );
   }
 
   /**

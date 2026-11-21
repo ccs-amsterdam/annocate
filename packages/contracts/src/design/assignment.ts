@@ -2,15 +2,15 @@ import { sessionColumns, sessionItem } from "./session.js";
 
 // Who gets which units (docs/architecture.md §6): a session's units
 // are those whose cells hold its values, in every set column a value is
-// linked to (its share). The coder (`session.coders`) and assigned
-// conditions with `units` hold for every loop; a random condition with
-// `units` for the loops after it in the flow.
+// linked to (its share). The coder (specific coders' column) holds for
+// every loop; a random condition with `units` for the loops after it in
+// the flow.
 
-/** A session value that selects units: `name` (in `$session`, or a random condition) and its set column. */
+/** A value that selects units: `name` (`$session.coder`, or a random condition) and its set column. */
 export interface ShareColumn {
   name: string;
   column: string;
-  /** A computed item (a random value), drawn when reached: else a session value. */
+  /** A random condition, drawn when reached; else a session value. */
   random?: boolean;
 }
 
@@ -20,8 +20,8 @@ export interface ShareColumn {
  * column that come before the loop (in the order of the flow).
  */
 export function loopShareColumns(items: readonly unknown[]): Map<string, ShareColumn[]> {
-  const base: ShareColumn[] = sessionColumns(sessionItem(items));
-  const random: ShareColumn[] = [];
+  const sessionShares: ShareColumn[] = sessionColumns(sessionItem(items));
+  const randomShares: ShareColumn[] = [];
   const out = new Map<string, ShareColumn[]>();
   let loops = 0;
   const walk = (list: unknown) => {
@@ -35,7 +35,7 @@ export function loopShareColumns(items: readonly unknown[]): Map<string, ShareCo
       if (!it || typeof it !== "object") continue;
       if (it.type === "unit_loop") {
         loops++;
-        out.set(String(loops), [...base, ...random]);
+        out.set(String(loops), [...sessionShares, ...randomShares]);
         continue;
       }
       if (
@@ -44,8 +44,8 @@ export function loopShareColumns(items: readonly unknown[]): Map<string, ShareCo
         typeof it.variable.units === "string" &&
         typeof it.name === "string"
       ) {
-        if (!random.some((r) => r.name === it.name))
-          random.push({ name: it.name, column: it.variable.units, random: true });
+        if (!randomShares.some((r) => r.name === it.name))
+          randomShares.push({ name: it.name, column: it.variable.units, random: true });
       }
       if (it.type === "show_if") walk(it.children);
     }

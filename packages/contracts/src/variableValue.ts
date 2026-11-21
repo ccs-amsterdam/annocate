@@ -2,12 +2,11 @@ import { z } from "zod";
 import { ClientIdSchema } from "./common.js";
 
 // The coder-submitted "answer" for a single question: one
-// JSON-serializable value (replacing the old app's `Annotation` /
-// `VariableAnnotations` rows).
+// JSON-serializable value.
 //
 // Answers hold option values, never labels (docs/client.md §4): what a
-// variable's `type` stores is one of `values` (categorical, numeric, scale,
-// annotinder, auto), `spans` or `relations`; confirm stores none.
+// variable's `type` stores is one of `values` (nominal, ordinal, numeric,
+// scale, annotinder, random), `spans` or `relations`; confirm stores none.
 
 /** One answer: an option value (or a number), for a scale per item. */
 export const ValueAnswerSchema = z.object({
@@ -59,10 +58,6 @@ export const VariableValueSchema = z.object({
 });
 export type VariableValue = z.infer<typeof VariableValueSchema>;
 
-/**
- * Body for `POST /variables/unit`: a finished unit, i.e. a value for every
- * question of the loop (`skip` for questions a condition hid).
- */
 /** Milliseconds, as the browser measured them: at most a day per question (longer is noise). */
 const ms = z
   .number()
@@ -89,6 +84,10 @@ export const AnswerTimingSchema = z.object({
 });
 export type AnswerTiming = z.infer<typeof AnswerTimingSchema>;
 
+/**
+ * Body for `POST /variables/unit`: a finished unit, i.e. a value for every
+ * question of the loop (`skip` for questions a condition hid).
+ */
 export const PostUnitVariablesSchema = z.object({
   unitId: z.number().int().positive(),
   /** The unit_loop the unit was coded in (needed when a unit is in more than one loop). */

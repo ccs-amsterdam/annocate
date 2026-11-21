@@ -21,11 +21,11 @@ import { isFresh, SESSION_COOKIE } from "./login.js";
 //
 // Both identify a user (an identity at the login provider, docs/accounts.md);
 // their role in a study and their account role (user, researcher, admin)
-// come from `roles` (`studyRole()`, `accountRole()` in db/sql.ts). Researcher access needs a login with a second factor
-// (the provider's, `OIDC_MFA_CLAIM`): a login without one only gets
-// `GET /me` and logging out. API keys count as with one (making one needs
-// it), but never do sensitive actions (`requireSensitive`): those need a
-// web session whose second factor is recent (step-up).
+// come from `roles` (`studyRole()`, `accountRole()` in db/sql.ts).
+// Researchers work without a second factor (the provider's,
+// `OIDC_MFA_CLAIM`); server admin access needs one. API keys count as with
+// one, but never do sensitive actions (`requireSensitive`): those need a web
+// session with a recent login (step-up).
 // - Development only (`devMode`, AUTH_DEV_MODE=1): plain
 //   `x-dev-role` / `x-dev-email` headers (a registered user with that email),
 //   checked against nothing but the study's roles, and `x-dev-account-role`

@@ -4,7 +4,7 @@ import type { Coder, CoderValue, CoderValuesWrite } from "../runtime/types.js";
 import type { Db } from "../db/index.js";
 import { annotationValues as a, coderSessions } from "../db/schema/index.js";
 
-/** A row of `coders`. */
+/** A row of `coder_sessions`: one coder's session in a study. */
 export type CoderRow = typeof coderSessions.$inferSelect;
 
 /** A coder as the runtime sees it: no identifying data, except the email the coder linked themselves. */

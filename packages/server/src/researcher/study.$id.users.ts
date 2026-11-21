@@ -80,9 +80,9 @@ export function studyUsers(server: Server): Hono<Env> {
         if (user.restore) restore.add(id);
       }
       // Giving or taking the study's ADMIN role is sensitive: not with an API key, and with a recent second factor
-      const admins = (ids: number[]) => ids.sort((a, b) => a - b).join(",");
-      const adminsBefore = admins(before.filter((r) => r.role === "ADMIN").map((r) => r.userId));
-      const adminsAfter = admins([...wanted].filter(([, role]) => role === "ADMIN").map(([id]) => id));
+      const adminSet = (ids: number[]) => ids.sort((a, b) => a - b).join(",");
+      const adminsBefore = adminSet(before.filter((r) => r.role === "ADMIN").map((r) => r.userId));
+      const adminsAfter = adminSet([...wanted].filter(([, role]) => role === "ADMIN").map(([id]) => id));
       if (adminsBefore !== adminsAfter) checkSensitive(server, researcher);
 
       await tx.delete(roles).where(and(userRolesOf(studyId), notInArray(roles.userId, [...wanted.keys()])));

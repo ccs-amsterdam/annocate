@@ -12,8 +12,8 @@ import type { AnyVariableType } from "./variableTypes.js";
 //   $var.<q>.items.<item>.value/.label  one item of a scale
 //   $var.<q>.answered                   true if answered and not skipped
 //   $var.<q>.is("x"), .gte(3), ...      helper methods (HELPER_METHODS)
-//   $session.<name>                     the session's participant id (`participant`) and
-//                                       the URL parameters its link requires
+//   $session.<name>                     the coder id (`coder`), `source` and the
+//                                       URL parameters the design declares
 //
 // Names are always literal, so what a design refers to (and where) can be
 // checked without running anything. All functions here are pure, shared by
@@ -267,7 +267,7 @@ export interface ParsedTemplate {
   errors: ReferenceError[];
 }
 
-/** The kinds of block fence lines: `::: if <script>`, `::: else if <script>`, `::: else`, `::: from <question>`, `::: style <css>`, `:::` (closes). */
+/** The kinds of block fence lines: `::: if <script>`, `::: else if <script>`, `::: else`, `::: from <question>`, `::: style <css>`, `::: text|markdown|html|image [name]`, `:::` (closes). */
 export type FenceKeyword =
   "if" | "else if" | "else" | "from" | "style" | "text" | "markdown" | "html" | "image" | "close";
 
@@ -722,12 +722,12 @@ export interface VarScopeEntry {
 export interface ReferenceScope {
   $unit: Record<string, unknown>;
   $var: Record<string, VarScopeEntry>;
-  /** The session's values: its participant id and the URL parameters its link requires (`$session.<name>`). */
+  /** The session's values (`$session.<name>`): the coder id, `source` and the URL parameters. */
   $session?: Record<string, string>;
 }
 
 /**
- * The `{ $unit, $var }` object scripts and conditions are evaluated
+ * The `{ $unit, $var, $session }` object scripts and conditions are evaluated
  * against. Every question in `questions` is present (null, or `[]` for
  * lists, when unanswered), so scripts don't throw on later questions. Helper
  * methods are not in here (the scope is plain data): simple conditions apply

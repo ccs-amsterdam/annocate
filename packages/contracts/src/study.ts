@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { IdSchema, RoleSchema } from "./common.js";
 
-/** A "study", the sole top-level entity in the new data model (CONTRACTS.md). */
+/** A study: the top-level entity, owning its designs, units, coders and answers (CONTRACTS.md). */
 export const StudyWriteSchema = z.object({
   name: z.string().min(1).max(256),
   archived: z.boolean().optional().default(false),

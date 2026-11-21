@@ -78,20 +78,14 @@ export function codingsSignature(loops: Iterable<LoopInfo>): string {
   );
 }
 
-/** Coder-level (non-unit) variables: questions outside any unit_loop. */
+/** Coder-level (non-unit) variables: questions and computed items outside any unit_loop. */
 export function collectCoderVariables(items: TopLevelItem[]): Map<string, VariableType> {
   const variables = new Map<string, VariableType>();
-  const walk = (list: TopLevelItem[]) => {
-    for (const item of list) {
-      if (item.type === "show_if") walk(item.children);
-      else if (item.type !== "unit_loop" && item.type !== "end" && item.type !== "session")
-        variables.set(item.name, item.variable);
-    }
-  };
-  walk(items);
+  collectQuestions(items, variables);
   return variables;
 }
 
+/** The variables of these items (also inside conditions, not inside unit loops), by name. */
 function collectQuestions(items: DesignItem[], into: Map<string, VariableType>) {
   for (const item of items) {
     if (item.type === "show_if") collectQuestions(item.children as DesignItem[], into);
@@ -100,14 +94,14 @@ function collectQuestions(items: DesignItem[], into: Map<string, VariableType>) 
   }
 }
 
-/** The value of a single-valued answer (e.g. an assigned `auto` variable), as text. */
+/** The value of a single-valued answer (e.g. a drawn random condition), as text. */
 export function valueOf(answer: VariableValue | undefined): string | undefined {
   if (!answer || answer.skip) return undefined;
   const value = answer.values?.[0]?.value;
   return value === undefined ? undefined : String(value);
 }
 
-/** A coder variable holding one value, as stored for assigned `auto` variables. */
+/** A coder variable holding one value, as stored for drawn random conditions. */
 export function singleValue(value: string): VariableValue {
   return { done: true, skip: false, values: [{ value }] };
 }

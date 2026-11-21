@@ -48,7 +48,7 @@ function clientIp(c: Context, trustProxy: boolean): string {
   }
 }
 
-/** Counts in the database, shared by every process. */
+/** Counts requests: in the database, shared by every process (`hit`), or in this process's memory (`hitInMemory`). */
 export class RateLimiter {
   private lastCleanup = 0;
   /** In-memory counts for `coder` (key -> [minute, count]). */

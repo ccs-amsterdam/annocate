@@ -65,9 +65,9 @@ export interface Coder {
   ended: SessionEnd | null;
   /** Set once the coder asked for their answers to be deleted (`Store.requestDeletion`; not part of `CoderWrite`). */
   deletionRequest: DeletionRequest | null;
-  /** `$session` values: `coder` (if any) and the URL parameters the link required. Fixed when the coder starts. */
+  /** `$session` values: `coder` (if any), `source`, the URL parameters and linked random conditions. Fixed once set. */
   session: Record<string, string>;
-  /** The link (link) the coder joined with. */
+  /** The link the coder joined with. */
   linkId: number | null;
   /** The email the session is linked to (the coder logged in once, docs/coder-identity.md §5); null without. */
   email: string | null;
@@ -83,13 +83,11 @@ export interface ResolveCoderRequest {
   linkSecret?: string;
   /** The page's URL parameters: the coder id and the codebook's URL parameters (`sessionValues`). */
   urlParams?: Record<string, string>;
-  /** What the deployed codebook asks of a new session (its Session item; set by the runtime). */
+  /** What the deployed codebook asks of a new session (its Study entry; set by the runtime). */
   sessionRules?: SessionRules;
-  /** Draws conditions at the start (set by the runtime; default `Math.random`). */
-  random?: () => number;
   /**
    * The coder confirmed starting a new session although their coder id
-   * id already has one (on another device). Without it: 409
+   * already has one (on another device). Without it: 409
    * `coder_has_session`. Also: a device that has a session starts
    * a fresh one (previews' "start over").
    */
@@ -127,7 +125,7 @@ export interface Transfer {
 /** A live coder-level answer (a row without a unit). */
 export interface CoderValue {
   value: VariableValue;
-  /** Set by the server (`auto` questions): never changed. */
+  /** Set by the server (a drawn random condition): never changed. */
   assigned: boolean;
   /** A unit loop the coder coded in depends on it: never changed (`loopDependencies`). */
   frozen: boolean;
@@ -177,7 +175,7 @@ export interface Lease {
  * - `level: "unit"` (default): per (unit, coder). A group is a unit loop's
  *   questions: which units coders finished, plus agreement values.
  * - `level: "coder"`: per coder, over coder-level values (survey questions,
- *   `auto` variables; `unitId: null`).
+ *   random conditions; `unitId: null`).
  */
 export interface FinishedRequest {
   loops: {

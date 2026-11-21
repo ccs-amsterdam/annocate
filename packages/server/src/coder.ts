@@ -69,10 +69,7 @@ export function coderApi(server: Server): Hono {
     const device = readDevice(c);
     if (!device || !/^\d+$/.test(deploymentId)) throw new HttpError(404, "No session here");
     const runtime = await server.deployments.get(deploymentId);
-    const coderParam = runtime.coderParam;
-    const urlParams = Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));
-    const coder = coderParam ? urlParams[coderParam]?.trim() || undefined : undefined;
-    const key = await coderKey(device, deploymentId, coder);
+    const key = await coderKey(device, deploymentId, coderFromUrl(runtime, urlParamsOf(c)));
     const [study] = await coderStudies(
       server.db,
       and(
@@ -125,26 +122,18 @@ export function coderApi(server: Server): Hono {
     // coder id). `x-new-session`: the coder asked for a new one (a
     // coder id that already has a session elsewhere).
     const linkSecret = c.req.header("x-link-secret");
-    // The page's query parameters: the coder id and the design's URL parameters.
-    const urlParams = Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));
+    const urlParams = urlParamsOf(c);
     const newSession = c.req.header("x-new-session") === "1";
     const link = linkSecret ? await linkInfo(server.db, linkSecret) : null;
     const existingDevice = readDevice(c);
     const device = existingDevice ?? newDeviceId();
-    const coderParam = runtime.coderParam;
-    const key = await coderKey(
-      device,
-      deploymentId,
-      coderParam ? urlParams[coderParam]?.trim() || undefined : undefined,
-    );
-    // Coders can always sign in on a link (to continue on other devices); where the study requires it, they must.
-    const takesLogin = !!link;
+    const key = await coderKey(device, deploymentId, coderFromUrl(runtime, urlParams));
     // A login (the same as researchers', §5) is read only when it matters:
     // to link a session to its email once, or to find the email's session on
     // a new device. Never in previews.
     const loginCookie = getCookie(c, SESSION_COOKIE);
     const login =
-      loginCookie && /^\d+$/.test(deploymentId) && (!link || takesLogin)
+      loginCookie && /^\d+$/.test(deploymentId)
         ? async () => {
             const user = await userForSession(server.db, loginCookie);
             return user ? { email: user.email } : null;
@@ -157,7 +146,8 @@ export function coderApi(server: Server): Hono {
       newSession,
       device: deviceDetails(c.req.header("user-agent")),
       login,
-      linkable: takesLogin,
+      // Coders can always sign in on a link (to continue on other devices); where the study requires it, they must.
+      linkable: !!link,
       pickedName: pickedName(c.req.header("x-coder-name")),
     });
     // Only once the coder was accepted (a link may be invalid or used up).
@@ -242,6 +232,17 @@ async function parseBody<T>(
   const parsed = schema.safeParse(raw);
   if (!parsed.success) throw new HttpError(400, "Invalid request body");
   return parsed.data;
+}
+
+/** The page's query parameters (`x-url-params`): the coder id and the design's URL parameters. */
+function urlParamsOf(c: Context): Record<string, string> {
+  return Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));
+}
+
+/** The coder id a crowd's URL parameter carries (`coderParam`), if any. */
+function coderFromUrl(runtime: DeploymentRuntime, urlParams: Record<string, string>): string | undefined {
+  const param = runtime.coderParam;
+  return param ? urlParams[param]?.trim() || undefined : undefined;
 }
 
 /** The name a coder picked on a pick-your-name link (`x-coder-name`, URL-encoded), if any. */

@@ -9,7 +9,7 @@ import { DisplaySchema, STUDY_END_NAME, type SessionItem } from "./session.js";
 // get of a codebook, only what the coding client needs. Unit loops keep
 // their layout, questions and order (the server works out the units).
 // Left out: how units are handed out (the loop's `units`: filters,
-// criteria, overlap, practice and gold settings), the Session item (its
+// criteria, overlap, practice and gold settings), the Study entry (its
 // values come with the session), and how computed values are made (draw,
 // weights, groups to balance within, linked columns).
 

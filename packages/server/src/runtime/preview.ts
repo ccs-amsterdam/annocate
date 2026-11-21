@@ -44,7 +44,7 @@ interface Coder extends StoredCoder {
 
 export class PreviewStore implements Store {
   private coders = new Map<number, Coder>();
-  /** Device keys -> coder id: a device's preview session (a new one on "start over"). */
+  /** Device keys -> session id: a device's preview session (a new one on "start over"). */
   private devices = new Map<string, number>();
   /** `<unitId>/<sessionId>` -> the coder's answers and when they were first written. */
   private annotations = new Map<

@@ -20,10 +20,10 @@ import { checkLinkCount, syncLinks } from "./links.js";
 import { assignmentChecks, putSetGroup } from "./sets.js";
 import { saveUnits } from "./units.js";
 
-// Recipes (contracts recipe.ts, docs/examples.md): a new study's
-// units, set groups and first design version in one document; deploying it makes
-// its links (shared/links.ts `syncLinks`). Example
-// studies and the setup wizard both make studies through here.
+// Recipes (contracts recipe.ts, docs/examples.md): a new study's units, set
+// groups and first design version in one document; deploying it makes its
+// links (shared/links.ts `syncLinks`). Example studies and the setup wizard
+// both make studies through here.
 
 export interface RecipeOptions {
   /** The researcher who owns the study (null: none, e.g. the development demo). */
@@ -46,6 +46,79 @@ export interface MadeStudy {
 }
 
 const invalid = (message: string) => new HttpError(400, message, "recipe_invalid");
+
+/**
+ * Saves a recipe's units, checked against the declared fields (a design
+ * file's) and those the units add. Returns the data fields (not set
+ * columns) and the units' database ids by their ids in the recipe.
+ */
+async function saveRecipeUnits(
+  tx: Db,
+  studyId: number,
+  recipe: Recipe,
+  declared: UnitField[],
+): Promise<{ dataFields: UnitField[]; unitIds: Map<string, number> }> {
+  const unitIds = new Map<string, number>();
+  const dataFields = declared.filter((f) => f.type !== "set");
+  if (recipe.units.length === 0) return { dataFields, unitIds };
+  const ids = recipe.units.map((u) => u.id);
+  const twice = ids.find((id, i) => ids.indexOf(id) !== i);
+  if (twice !== undefined) throw invalid(`Unit id '${twice}' is used twice`);
+  const added = addedFields(
+    recipe.units.map((u) => u.data as UnitData),
+    declared,
+  );
+  if ("error" in added) throw invalid(added.error);
+  const all = [...declared, ...added.fields];
+  for (const unit of recipe.units) {
+    const problem = checkUnitData(unit.data as UnitData, all);
+    if (problem) throw invalid(`Unit '${unit.id}': ${problem}`);
+  }
+  const units = recipe.units.map((u) => ({ externalId: u.id, data: u.data }));
+  await checkUnitUpload(tx, studyId, units, recipe.units.length);
+  for (const [id, unitId] of await saveUnits(tx, studyId, units)) unitIds.set(id, unitId);
+  return { dataFields: [...dataFields, ...added.fields], unitIds };
+}
+
+/**
+ * Saves a recipe's set groups. Returns the set columns as fields of type
+ * set: the declared ones (with their descriptions), then the others.
+ */
+async function saveRecipeSets(
+  tx: Db,
+  studyId: number,
+  recipe: Recipe,
+  declared: UnitField[],
+  dataFields: UnitField[],
+  unitIds: Map<string, number>,
+): Promise<UnitField[]> {
+  const unitId = (id: string) => {
+    const found = unitIds.get(id);
+    if (found === undefined) throw invalid(`No unit '${id}'`);
+    return found;
+  };
+  const groups = recipe.sets.map((g) => g.group);
+  const twice = groups.find((g, i) => groups.indexOf(g) !== i);
+  if (twice !== undefined) throw invalid(`Group '${twice}' is defined twice`);
+  for (const group of recipe.sets) {
+    if (dataFields.some((f) => f.name === group.group))
+      throw invalid(`'${group.group}' is a field of the units and a set column`);
+    await putSetGroup(
+      tx,
+      studyId,
+      group.group,
+      group.sets.map((set) => ({ name: set.name, unitIds: set.units.map(unitId), ordered: set.ordered })),
+      { declare: false },
+    );
+  }
+  const declaredSets = declared.filter((f) => f.type === "set");
+  return [
+    ...declaredSets,
+    ...groups
+      .filter((name) => !declaredSets.some((f) => f.name === name))
+      .map((name) => ({ name, type: "set" as const })),
+  ];
+}
 
 /**
  * Makes a study from a recipe, within the transaction `tx` (the caller's, so
@@ -72,77 +145,17 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
   if (options.ownerId !== null && options.ownerIsAdmin)
     await tx.insert(roles).values({ role: "ADMIN", studyId: study.id, userId: options.ownerId });
 
-  // Units, with the declared fields (a design file's) and those the units add
-  const unitIds = new Map<string, number>();
   const declared = recipe.design.units?.fields ?? [];
   const names = declared.map((f) => f.name);
   const declaredTwice = names.find((n, i) => names.indexOf(n) !== i);
   if (declaredTwice !== undefined) throw invalid(`Unit field '${declaredTwice}' is declared twice`);
-  let fields: UnitField[] = declared.filter((f) => f.type !== "set");
-  if (recipe.units.length > 0) {
-    const ids = recipe.units.map((u) => u.id);
-    const twice = ids.find((id, i) => ids.indexOf(id) !== i);
-    if (twice !== undefined) throw invalid(`Unit id '${twice}' is used twice`);
-    const added = addedFields(
-      recipe.units.map((u) => u.data as UnitData),
-      declared,
-    );
-    if ("error" in added) throw invalid(added.error);
-    const all = [...declared, ...added.fields];
-    for (const unit of recipe.units) {
-      const problem = checkUnitData(unit.data as UnitData, all);
-      if (problem) throw invalid(`Unit '${unit.id}': ${problem}`);
-    }
-    await checkUnitUpload(
-      tx,
-      study.id,
-      recipe.units.map((u) => ({ externalId: u.id, data: u.data })),
-      recipe.units.length,
-    );
-    fields = [...fields, ...added.fields];
-    for (const [id, unitId] of await saveUnits(
-      tx,
-      study.id,
-      recipe.units.map((u) => ({ externalId: u.id, data: u.data })),
-    ))
-      unitIds.set(id, unitId);
-  }
-  const unitId = (id: string) => {
-    const found = unitIds.get(id);
-    if (found === undefined) throw invalid(`No unit '${id}'`);
-    return found;
-  };
-
-  // Set groups
-  const groups = recipe.sets.map((g) => g.group);
-  const twice = groups.find((g, i) => groups.indexOf(g) !== i);
-  if (twice !== undefined) throw invalid(`Group '${twice}' is defined twice`);
-  for (const group of recipe.sets) {
-    if (fields.some((f) => f.name === group.group))
-      throw invalid(`'${group.group}' is a field of the units and a set column`);
-    await putSetGroup(
-      tx,
-      study.id,
-      group.group,
-      group.sets.map((set) => ({ name: set.name, unitIds: set.units.map(unitId), ordered: set.ordered })),
-      { declare: false },
-    );
-  }
-  // Set columns are fields of type set: the declared ones (with their descriptions), then the others
-  const declaredSets = declared.filter((f) => f.type === "set");
-  fields = [
-    ...fields,
-    ...declaredSets,
-    ...groups
-      .filter((name) => !declaredSets.some((f) => f.name === name))
-      .map((name) => ({ name, type: "set" as const })),
-  ];
+  const { dataFields, unitIds } = await saveRecipeUnits(tx, study.id, recipe, declared);
+  const setFields = await saveRecipeSets(tx, study.id, recipe, declared, dataFields, unitIds);
   // Declared fields in their order, the others after them (a stable sort)
   const place = (name: string) => (names.includes(name) ? names.indexOf(name) : names.length);
-  fields.sort((a, b) => place(a.name) - place(b.name));
+  const fields = [...dataFields, ...setFields].sort((a, b) => place(a.name) - place(b.name));
 
-  // The design: deployed, or the first draft
-  // With the units' fields (docs/architecture.md §8.4)
+  // The design, with the units' fields (docs/architecture.md §8.4): deployed, or the first draft
   const [designVersion] = await tx
     .insert(designVersions)
     .values({

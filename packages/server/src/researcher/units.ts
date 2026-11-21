@@ -1,5 +1,13 @@
 import { Hono } from "hono";
-import { UnitsCreateBodySchema, addedFields, checkUnitData, fieldUsage, type UnitField } from "@annotinder/contracts";
+import {
+  UnitsCreateBodySchema,
+  addedFields,
+  checkUnitData,
+  fieldUsage,
+  type UnitData,
+  type UnitField,
+} from "@annotinder/contracts";
+import type { Db } from "../db/index.js";
 import { designVersionItems } from "../shared/designVersions.js";
 import type { Server, Env } from "../context.js";
 import { requireStudyUser } from "./auth.js";
@@ -14,6 +22,37 @@ import {
   toUnitResponse,
   unitCount,
 } from "../shared/units.js";
+
+/**
+ * The unit fields after an upload: the declared ones and the columns it
+ * adds. The first upload (no units yet) takes its types from the values: of
+ * the declared fields it keeps only those it lacks that the design uses,
+ * and declared descriptions stay.
+ */
+async function uploadFields(
+  db: Db,
+  studyId: number,
+  declared: UnitField[],
+  units: { data: UnitData }[],
+): Promise<{ fields: UnitField[] } | { error: string }> {
+  let known = declared;
+  if ((await unitCount(db, studyId)) === 0) {
+    const latest = await latestDesignVersion(db, studyId);
+    const used = latest ? fieldUsage(designVersionItems(latest)) : new Map();
+    const given = new Set(units.flatMap((u) => Object.keys(u.data)));
+    known = declared.filter((f) => used.has(f.name) && !given.has(f.name));
+  }
+  const added = addedFields(
+    units.map((u) => u.data),
+    known,
+  );
+  if ("error" in added) return added;
+  const withDeclaredDescription = (f: UnitField) => {
+    const description = declared.find((d) => d.name === f.name)?.description;
+    return description ? { ...f, description } : f;
+  };
+  return { fields: [...known, ...added.fields.map(withDeclaredDescription)] };
+}
 
 export function units(server: Server): Hono<Env> {
   const { db } = server;
@@ -37,26 +76,10 @@ export function units(server: Server): Hono<Env> {
     const studyId = c.get("studyId");
     const { overwrite, overwriteCoded } = parsed.data;
 
-    const firstUpload = (await unitCount(db, studyId)) === 0;
     const declared = await getUnitFields(db, studyId);
-    let known: UnitField[] = declared;
-    if (firstUpload) {
-      const latest = await latestDesignVersion(db, studyId);
-      const used = latest ? fieldUsage(designVersionItems(latest)) : new Map();
-      const given = new Set(parsed.data.units.flatMap((u) => Object.keys(u.data)));
-      known = declared.filter((f) => used.has(f.name) && !given.has(f.name));
-    }
-    const added = addedFields(
-      parsed.data.units.map((u) => u.data),
-      known,
-    );
-    if ("error" in added) return c.json({ error: added.error }, 400);
-    // The declared fields' descriptions stay when the first upload retypes them
-    const describe = (f: UnitField) => {
-      const d = declared.find((x) => x.name === f.name)?.description;
-      return d ? { ...f, description: d } : f;
-    };
-    const fields = [...known, ...added.fields.map(describe)];
+    const upload = await uploadFields(db, studyId, declared, parsed.data.units);
+    if ("error" in upload) return c.json({ error: upload.error }, 400);
+    const { fields } = upload;
     // Set columns aren't data (their cells are sets): an empty one given is left out
     const setFields = new Set(fields.filter((f) => f.type === "set").map((f) => f.name));
     const units = parsed.data.units.map((u) => ({

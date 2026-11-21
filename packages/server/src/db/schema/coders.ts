@@ -9,10 +9,12 @@ import { units, unitVersions } from "./units.js";
 // Coders and their answers.
 
 /**
- * Coders: one per session of a study (docs/coder-identity.md). link_id: the
- * link they came with; session: its values (parameters, conditions);
- * assignments: the loops they reached; ended: how the session ended;
- * deletion_request: they asked for their answers to be deleted.
+ * Coder sessions: one coder's run through a study (docs/coder-identity.md).
+ * link_id: the link they came with; coder: the coder id
+ * (`$session.coder`); session: its `$session` values (URL parameters,
+ * linked random conditions); assignments: the loops they reached; ended:
+ * how the session ended; deletion_request: they asked for their answers to
+ * be deleted.
  */
 export const coderSessions = pgTable(
   "coder_sessions",
@@ -38,7 +40,7 @@ export const coderSessions = pgTable(
   ],
 );
 
-/** A coder's devices (a cookie; key_hash: its hash), with coarse details. */
+/** A session's devices (a cookie; key_hash: its hash), with coarse details. */
 export const sessionDevices = pgTable(
   "session_devices",
   {
@@ -59,8 +61,8 @@ export const sessionDevices = pgTable(
 );
 
 /**
- * Coders whose data was deleted: the ids downloaded results use, and when
- * (no foreign key to the coder: it is gone). Not their email address: a
+ * Sessions whose data was deleted: the ids downloaded results use, and when
+ * (no foreign key to the session: it is gone). Not their email address: a
  * deletion leaves nothing that identifies the person.
  */
 export const sessionDeletions = pgTable(

@@ -61,11 +61,7 @@ export async function checkLinkCount(
 ): Promise<number> {
   const n = (await linksOf(db, studyId, items, live)).length;
   if (n > MAX_LINKS)
-    throw new HttpError(
-      400,
-      `This design makes ${n} links; at most ${MAX_LINKS} are possible. List the combinations you need.`,
-      "too_many_links",
-    );
+    throw new HttpError(400, `This design makes ${n} links; at most ${MAX_LINKS} are possible.`, "too_many_links");
   if (n > CONFIRM_LINKS && !confirmed)
     throw new HttpError(409, `This design makes ${n} links. Deploy anyway?`, "confirm_links");
   return n;
@@ -75,9 +71,10 @@ export async function checkLinkCount(
 const linkLabel = (values: Record<string, string>) => Object.values(values).join(" · ") || "Open link";
 
 /**
- * Makes the study's links match its deployed design version (§4): one link,
- * or with specific coders who get a link each, a link per coder. Missing links are made (with
- * `secrets` in order, else random ones); links the design no longer makes
+ * Makes the study's links match its deployed design version
+ * (docs/architecture.md §7): one link, or with specific coders who get a
+ * link each, a link per coder. Missing links are made (with `secrets` in
+ * order, else random ones); links the design no longer makes
  * are retired, never deleted (coders came from them); retired links that
  * are part of the design again come back. Without a deployment: nothing.
  * Returns the number of active links.
@@ -139,11 +136,11 @@ export interface LinkInfo {
 }
 
 /** Known links, by secret, for a minute (read on every coder request). */
-const links = new Map<string, { info: LinkInfo; until: number }>();
+const linkCache = new Map<string, { info: LinkInfo; until: number }>();
 
-/** The link of a link, as far as `LinkInfo` goes; null for an unknown secret. */
+/** What the coder API needs of a link (`LinkInfo`), by its secret; null for an unknown secret. */
 export async function linkInfo(db: Db, secret: string): Promise<LinkInfo | null> {
-  let cached = links.get(secret);
+  let cached = linkCache.get(secret);
   if (!cached || cached.until < Date.now()) {
     const [row] = await db
       .select({ studyId: linksTable.studyId })
@@ -151,13 +148,13 @@ export async function linkInfo(db: Db, secret: string): Promise<LinkInfo | null>
       .where(eq(linksTable.secret, secret));
     if (!row) return null; // not cached: anyone can send any secret
     cached = { info: { studyId: row.studyId }, until: Date.now() + 60_000 };
-    if (links.size > 10_000) links.clear();
-    links.set(secret, cached);
+    if (linkCache.size > 10_000) linkCache.clear();
+    linkCache.set(secret, cached);
   }
   return cached.info;
 }
 
-/** Forgets cached link info (after a link's access settings changed). */
+/** Forgets cached link info (after a link's settings or secret changed). */
 export function forgetLink(secret: string): void {
-  links.delete(secret);
+  linkCache.delete(secret);
 }

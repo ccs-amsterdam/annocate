@@ -248,8 +248,8 @@ export type UserVariableType = z.infer<typeof UserVariableTypeSchema>;
 
 /**
  * The answer types allowed on a question in a unit loop: everything a
- * coder-level question supports except `auto`, plus span/relation
- * annotation types that only make sense in the context of a unit.
+ * coder-level question supports, plus span/relation annotation types that
+ * only make sense in the context of a unit.
  */
 export const UnitVariableTypeSchema = z.discriminatedUnion("type", [
   NominalTypeSchema,

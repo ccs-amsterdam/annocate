@@ -7,10 +7,10 @@ export function unit(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  const get = async (studyId: number, id: number) => (await draftUnits(db, studyId, { ids: [id] }))[0];
+  const findDraftUnit = async (studyId: number, id: number) => (await draftUnits(db, studyId, { ids: [id] }))[0];
 
   app.get("/study/:studyId/units/:id", requireStudyUser(server, "READ"), async (c) => {
-    const row = await get(c.get("studyId"), Number(c.req.param("id")));
+    const row = await findDraftUnit(c.get("studyId"), Number(c.req.param("id")));
     if (!row) return c.json({ error: "Unit not found" }, 404);
     return c.json(toUnitResponse(row));
   });
@@ -18,7 +18,7 @@ export function unit(server: Server): Hono<Env> {
   app.delete("/study/:studyId/units/:id", requireStudyUser(server, "WRITE"), async (c) => {
     const studyId = c.get("studyId");
     const id = Number(c.req.param("id"));
-    const existing = await get(studyId, id);
+    const existing = await findDraftUnit(studyId, id);
     if (!existing) return c.json({ error: "Unit not found" }, 404);
     // Out of the draft: deployed versions and answers keep it (docs/architecture.md §8.4).
     await db.transaction((tx) => removeUnit(tx, studyId, id));

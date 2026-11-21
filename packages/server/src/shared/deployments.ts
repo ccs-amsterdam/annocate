@@ -145,6 +145,7 @@ export async function loopVariables(db: Db, studyId: number, designVersionId: nu
   return loops;
 }
 
+/** For each loop that gained questions while coders had finished units in it: a warning (those units reopen). */
 async function reopenWarnings(
   db: Db,
   studyId: number,
@@ -214,6 +215,7 @@ export async function getPreviewSpec(db: Db, studyId: number): Promise<Deploymen
   return { ...spec, version: (parseInt(digest.slice(0, 7), 16) % 2 ** 30) + 1 };
 }
 
+/** A deployment spec for a design version, with the study's settings and the deployed (`liveUnits`) or draft sets. */
 async function buildSpec(
   db: Db,
   studyId: number,

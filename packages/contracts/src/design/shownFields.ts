@@ -14,29 +14,30 @@ import { allTemplateReferences } from "./templateBlocks.js";
 function loopReferences(loop: UnitLoopItem, spanFields?: (field: string) => void): Reference[] {
   const refs: Reference[] = [];
   const snippets = loop.layout?.snippets;
-  const text = (source: unknown) =>
+  const addTemplate = (source: unknown) =>
     typeof source === "string" && refs.push(...allTemplateReferences(expandSnippets(source, snippets).source));
-  const script = (source: unknown) => typeof source === "string" && refs.push(...extractReferences(source).references);
+  const addScript = (source: unknown) =>
+    typeof source === "string" && refs.push(...extractReferences(source).references);
 
-  text(loop.layout?.template);
+  addTemplate(loop.layout?.template);
   const walk = (list: unknown) => {
     if (!Array.isArray(list)) return;
     for (const raw of list) {
       const item = raw as Partial<DesignItem> | null;
       if (!item || typeof item !== "object") continue;
       if (item.type === "show_if") {
-        script(item.condition?.script);
+        addScript(item.condition?.script);
         walk(item.children);
       } else if (item.type === "end") {
-        text(item.message);
+        addTemplate(item.message);
       } else if ("variable" in item && item.variable) {
         const variable = item.variable as {
           question?: unknown;
           type?: string;
           fields?: unknown;
         };
-        text(variable.question);
-        text((item as { instruction?: unknown }).instruction);
+        addTemplate(variable.question);
+        addTemplate((item as { instruction?: unknown }).instruction);
         if (spanFields && variable.type === "span" && Array.isArray(variable.fields)) {
           for (const f of variable.fields) if (typeof f === "string") spanFields(f);
         }

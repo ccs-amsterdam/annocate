@@ -7,11 +7,12 @@ import type { Server, Env } from "../context.js";
 import { requireStudyUser } from "./auth.js";
 import { forgetLink, toLinkResponse } from "../shared/links.js";
 
-// Links (docs/architecture.md §7): made from the
-// deployed design version (shared/links.ts `syncLinks`); here only their access
-// settings, revoking, and a new secret.
+// Links (docs/architecture.md §7): made from the deployed design version
+// (shared/links.ts `syncLinks`); here only their settings, revoking and
+// reopening, and a new secret.
+
 /** A study's link, by id (from the path). */
-const link = (studyId: number, id: string | undefined) =>
+const linkWhere = (studyId: number, id: string | undefined) =>
   and(eq(linksTable.studyId, studyId), eq(linksTable.id, Number(id)));
 
 export function links(server: Server): Hono<Env> {
@@ -34,7 +35,7 @@ export function links(server: Server): Hono<Env> {
     const [row] = await db
       .update(linksTable)
       .set({ label, maxUses: maxUses ?? null, coder: coder ?? null })
-      .where(link(c.get("studyId"), c.req.param("id")))
+      .where(linkWhere(c.get("studyId"), c.req.param("id")))
       .returning();
     if (!row) return c.json({ error: "Link not found" }, 404);
     forgetLink(row.secret);
@@ -46,7 +47,7 @@ export function links(server: Server): Hono<Env> {
     const [row] = await db
       .update(linksTable)
       .set({ revokedAt: sql`COALESCE(${linksTable.revokedAt}, now())` })
-      .where(link(c.get("studyId"), c.req.param("id")))
+      .where(linkWhere(c.get("studyId"), c.req.param("id")))
       .returning();
     if (!row) return c.json({ error: "Link not found" }, 404);
     return c.json(toLinkResponse(row));
@@ -57,7 +58,7 @@ export function links(server: Server): Hono<Env> {
     const [row] = await db
       .update(linksTable)
       .set({ revokedAt: null })
-      .where(link(c.get("studyId"), c.req.param("id")))
+      .where(linkWhere(c.get("studyId"), c.req.param("id")))
       .returning();
     if (!row) return c.json({ error: "Link not found" }, 404);
     return c.json(toLinkResponse(row));
@@ -68,7 +69,7 @@ export function links(server: Server): Hono<Env> {
     const [old] = await db
       .select()
       .from(linksTable)
-      .where(link(c.get("studyId"), c.req.param("id")));
+      .where(linkWhere(c.get("studyId"), c.req.param("id")));
     if (!old) return c.json({ error: "Link not found" }, 404);
     const [row] = await db
       .update(linksTable)

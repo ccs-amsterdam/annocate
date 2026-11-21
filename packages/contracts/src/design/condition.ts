@@ -2,8 +2,8 @@ import { z } from "zod";
 import { sameValue, type OptionValue } from "./options.js";
 import { HELPER_METHODS, type HelperMethod, type ReferenceScope } from "./references.js";
 
-// One condition notation, used by `condition` items and unit-loop branch
-// `when` (docs/client.md "References and conditions"): a script. A *simple*
+// The condition notation of `show_if` items (docs/client.md "References
+// and conditions"): a script. A *simple*
 // condition uses only helper calls (`$var.topics.has("sports")`),
 // `$var.q.answered`, `&&`, `||`, `!` and parentheses; it is parsed and
 // evaluated here, without a JS engine, and validation checks its arguments.
@@ -289,7 +289,7 @@ export function printSimpleCondition(condition: SimpleCondition, parent: "and" |
   }
 }
 
-function compare(a: number, op: CountComparison, b: number): boolean {
+function compareCount(a: number, op: CountComparison, b: number): boolean {
   switch (op) {
     case ">":
       return a > b;
@@ -324,7 +324,7 @@ export function evaluateSimpleCondition(condition: SimpleCondition, scope: Refer
       const target = condition.item ? entry?.items?.[condition.item] : entry;
       const result = applyHelper(target, condition.method, condition.args);
       if (condition.compare)
-        return typeof result === "number" && compare(result, condition.compare.op, condition.compare.value);
+        return typeof result === "number" && compareCount(result, condition.compare.op, condition.compare.value);
       return result === true;
     }
   }

@@ -14,9 +14,9 @@ export const SetProgressSchema = z.object({
   doneUnitIds: z.array(IdSchema),
   /**
    * How many units this coder will get in the loop, if known: the size of
-   * their set plus the overlap, or in `shared` mode `maxUnits` plus the
-   * overlap. Null when it depends on other coders (`shared` without
-   * `maxUnits`) or the coder isn't routed yet.
+   * their set plus the overlap, or in a shared queue `unitsPerCoder.max`
+   * plus the overlap. Null when it depends on other coders (a shared queue
+   * without `unitsPerCoder.max`) or the coder isn't routed yet.
    */
   totalUnits: z.number().int().nonnegative().nullable().optional(),
 });
@@ -120,9 +120,8 @@ export const SessionResponseSchema = z.object({
   version: z.number().int().positive(),
   progress: z.array(SetProgressSchema),
   /**
-   * The coder's coder-level variables so far, including server-assigned
-   * `auto` variables (experimental condition, slot, ...), so conditions in
-   * the client can use them.
+   * The coder's coder-level variables so far, including drawn random
+   * conditions (`computed` items), so conditions in the client can use them.
    */
   variables: z.record(z.string(), VariableValueSchema).default({}),
   /**
@@ -152,7 +151,7 @@ export type SessionResponse = z.infer<typeof SessionResponseSchema>;
  * client handles specially (docs/coder-identity.md).
  */
 export const CoderErrorCodeSchema = z.enum([
-  /** Participant id already has a session; retry with `x-new-session: 1` to start another. */
+  /** The coder id already has a session; retry with `x-new-session: 1` to start another. */
   "coder_has_session",
   /** A link where coders pick their name: pick one (`GET /names`), and send it as `x-coder-name` (409). */
   "name_required",

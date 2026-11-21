@@ -118,7 +118,7 @@ export function parseTemplateBlocks(source: string): ParsedBlocks {
     if (stack.length) currentBody(stack[stack.length - 1]).set(end);
   };
   const error = (fence: TemplateFence, message: string) => errors.push({ message, start: fence.start, end: fence.end });
-  const script = (fence: TemplateFence) => {
+  const fenceReferences = (fence: TemplateFence) => {
     const extracted = extractReferences(fence.arg, fence.argStart);
     errors.push(...extracted.errors);
     return extracted.references;
@@ -143,7 +143,7 @@ export function parseTemplateBlocks(source: string): ParsedBlocks {
         const node: Extract<TemplateNode, { type: "if" }> = { type: "if", start: fence.start, branches: [] };
         node.branches.push({
           script: fence.arg,
-          references: script(fence),
+          references: fenceReferences(fence),
           start: fence.start,
           body: [],
           bodyStart: pos,
@@ -169,7 +169,7 @@ export function parseTemplateBlocks(source: string): ParsedBlocks {
         const isElse = fence.keyword === "else";
         branches.push({
           script: isElse ? null : fence.arg,
-          references: isElse ? [] : script(fence),
+          references: isElse ? [] : fenceReferences(fence),
           start: fence.start,
           body: [],
           bodyStart: pos,
@@ -259,7 +259,7 @@ export function parseTemplateBlocks(source: string): ParsedBlocks {
   return { nodes: root, errors, hasBlocks: fences.length > 0 };
 }
 
-/** CSS properties a block may not use: they would take the text out of the unit area, over the app's controls. */
+/** `position` values a block may not use: they would take the text out of the unit area, over the app's controls. */
 const POSITION_NOT_ALLOWED = /^(fixed|sticky)$/i;
 
 /**

@@ -28,17 +28,13 @@ export function supportsAgreement(variable: AnyVariableType): boolean {
 /** The key for "every unit in the study" (the server's sets are keyed `group/set`, `setKey`). */
 export const ALL_UNITS_SET = "__all__";
 
-/** How long a session that hasn't finished counts for balancing (it is active, or started this long ago at most) (ms). */
-export const SET_ACTIVITY_MS = 24 * 60 * 60 * 1000;
-
 /**
- * At a rate (docs/architecture.md §6.2): about one special unit per
- * `every` own units, at random (seeded per coder: a reload gives the same
- * order) but never more than 2 x `every` apart, so it works without
- * knowing how many units a coder gets (a shared queue). Special units left
- * when the coder's own units run out come at the end.
+ * The default rate of special units (placement `rate`, docs/architecture.md
+ * §6.2): about one per `every` own units, at random (seeded per coder: a
+ * reload gives the same order) but never more than 2 x `every` apart, so it
+ * works without knowing how many units a coder gets (a shared queue).
+ * Special units left when the coder's own units run out come at the end.
  */
-/** The default rate: about one in ten. */
 export const DEFAULT_RATE = 10;
 
 /**

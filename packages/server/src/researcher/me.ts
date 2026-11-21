@@ -11,11 +11,10 @@ import { createApiKey, effectiveLimits, getSettings, listApiKeys, revokeApiKey, 
 export function me(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
-  // `GET /me` also answers a login without a required second factor, so the UI can say so.
   const signedIn = requireResearcher(server);
 
   /** The user behind the request. */
-  const userId = async (c: Context<Env>) => c.get("researcher").userId;
+  const userId = (c: Context<Env>) => c.get("researcher").userId;
 
   /** While moving to another provider: the user has no identity at the current one yet. */
   async function linkNeeded(id: number): Promise<boolean> {
@@ -30,7 +29,7 @@ export function me(server: Server): Hono<Env> {
 
   async function meResponse(c: Context<Env>): Promise<MeResponse> {
     const researcher = c.get("researcher");
-    const id = await userId(c);
+    const id = userId(c);
     const [request] = await db
       .select({ at: researcherRequests.at })
       .from(researcherRequests)
@@ -53,7 +52,7 @@ export function me(server: Server): Hono<Env> {
     };
   }
 
-  app.get("/me", requireResearcher(server), async (c) => c.json(await meResponse(c)));
+  app.get("/me", signedIn, async (c) => c.json(await meResponse(c)));
 
   app.post("/me/researcher-request", signedIn, async (c) => {
     const parsed = ResearcherRequestWriteSchema.safeParse(await c.req.json().catch(() => undefined));
@@ -63,7 +62,7 @@ export function me(server: Server): Hono<Env> {
       throw new HttpError(403, "This server doesn't take requests: ask its admins to invite your email address");
     await db
       .insert(researcherRequests)
-      .values({ userId: await userId(c), message: parsed.data.message })
+      .values({ userId: userId(c), message: parsed.data.message })
       .onConflictDoUpdate({
         target: researcherRequests.userId,
         set: { message: sql`excluded.message`, at: sql`now()`, decidedAt: null, decidedBy: null, approved: null },
@@ -71,17 +70,17 @@ export function me(server: Server): Hono<Env> {
     return c.json(await meResponse(c));
   });
 
-  app.get("/me/keys", signedIn, async (c) => c.json(await listApiKeys(db, await userId(c))));
+  app.get("/me/keys", signedIn, async (c) => c.json(await listApiKeys(db, userId(c))));
 
   // Sensitive: only in a web session with a recent second factor (step-up), never with an API key
   app.post("/me/keys", signedIn, requireSensitive(server), async (c) => {
     const parsed = ApiKeyWriteSchema.safeParse(await c.req.json().catch(() => undefined));
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
-    return c.json(await createApiKey(db, await userId(c), parsed.data.label), 201);
+    return c.json(await createApiKey(db, userId(c), parsed.data.label), 201);
   });
 
   app.post("/me/keys/:id/revoke", signedIn, requireSensitive(server), async (c) => {
-    const key = await revokeApiKey(db, await userId(c), Number(c.req.param("id")));
+    const key = await revokeApiKey(db, userId(c), Number(c.req.param("id")));
     if (!key) return c.json({ error: "API key not found" }, 404);
     return c.json(key);
   });

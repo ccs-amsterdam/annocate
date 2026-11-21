@@ -33,13 +33,15 @@ export function deployment(server: Server): Hono<Env> {
       .from(designVersions)
       .where(and(eq(designVersions.studyId, studyId), eq(designVersions.id, parsed.data.designVersionId)));
     if (!version) return c.json({ error: "Design version not found" }, 404);
+    const items = designVersionItems(version);
+    const fields = designVersionUnits(version).fields;
     // Drafts may be saved with issues; coders only ever get a valid design version.
-    const errors = designErrors(designVersionItems(version));
-    if (errors.length > 0 || !itemsValid(designVersionItems(version))) {
+    const errors = designErrors(items);
+    if (errors.length > 0 || !itemsValid(items)) {
       return c.json({ error: "Fix the design's issues before deploying it", issues: errors }, 400);
     }
     // The unit fields it uses must be declared (docs/architecture.md §8.4)
-    const undeclared = undeclaredFields(designVersionItems(version), designVersionUnits(version).fields);
+    const undeclared = undeclaredFields(items, fields);
     if (undeclared.length > 0) {
       return c.json(
         {
@@ -52,17 +54,11 @@ export function deployment(server: Server): Hono<Env> {
     // The units it runs: the drafts (`units`, and always the first time), or the deployed ones.
     const deployed = (await db.$count(deployments, eq(deployments.studyId, studyId))) > 0;
     const live = !parsed.data.units && deployed;
-    // Who gets which units: the set columns it names, the coders and conditions' values (docs/architecture.md §6.3)
-    const checks = await assignmentChecks(
-      db,
-      studyId,
-      designVersionItems(version),
-      designVersionUnits(version).fields,
-      live,
-    );
+    // Who gets which units: the set columns it names, the coders' and random conditions' values (docs/architecture.md §6.3)
+    const checks = await assignmentChecks(db, studyId, items, fields, live);
     if (checks.errors.length > 0) return c.json({ error: checks.errors.join(" "), code: "assignment_invalid" }, 400);
-    // Links follow the design's coder invitation (§4).
-    await checkLinkCount(db, studyId, designVersionItems(version), parsed.data.confirmLinks ?? false, live);
+    // Links follow the design's coder invitation (docs/architecture.md §7).
+    await checkLinkCount(db, studyId, items, parsed.data.confirmLinks ?? false, live);
     const result = await db.transaction(async (tx) => {
       const deployment = await putDeployment(tx, studyId, parsed.data);
       const [study] = await tx
@@ -70,7 +66,7 @@ export function deployment(server: Server): Hono<Env> {
         .from(studies)
         .where(eq(studies.id, studyId));
       // Panel return links are deployment settings: say which ones are missing
-      const unset = redirectSettings(designVersionItems(version)).filter((name) => !study?.redirectUrls?.[name]);
+      const unset = redirectSettings(items).filter((name) => !study?.redirectUrls?.[name]);
       const warnings = [
         ...(deployment.warnings ?? []),
         ...checks.warnings,

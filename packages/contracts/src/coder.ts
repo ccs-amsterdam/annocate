@@ -4,23 +4,13 @@ import { DeletionRequestSchema, DisplayChangeSchema, SessionEndSchema } from "./
 import { VariableValueSchema } from "./variableValue.js";
 
 /**
- * A coder: someone annotating a study via a link/access link. Distinct from
- * a "study user" (see study.ts). Study-scoped identity (CONTRACTS.md).
+ * A coder's session with a progress summary, for `GET /coders`. A coder
+ * annotates through a link; distinct from a "study user" (see study.ts).
  */
-export const CoderResponseSchema = z.object({
-  id: IdSchema,
-  studyId: IdSchema,
-  /** Present if the coder authenticated (e.g. via a link that requires a login); absent for fully anonymous coders. */
-  email: z.string().email().optional(),
-  variables: z.record(z.string(), VariableValueSchema),
-});
-export type CoderResponse = z.infer<typeof CoderResponseSchema>;
-
-/** Manager-facing listing entry: coder + progress summary, for `GET /coders`. */
 export const CoderProgressSchema = z.object({
   id: IdSchema,
   email: z.string().email().optional(),
-  /** External label (e.g. a panel company's participant id); see docs/coder-identity.md. */
+  /** The coder id (`$session.coder`), e.g. a panel's participant id; a label, never a key (docs/coder-identity.md). */
   coder: z.string().optional(),
   /** The link the coder came in through; null for coders from before this was recorded. */
   linkId: IdSchema.nullable(),
@@ -43,11 +33,11 @@ export const CoderProgressSchema = z.object({
     z.enum(["overlap", "gold", "practice"]),
     z.object({ done: z.number().int().nonnegative(), total: z.number().int().nonnegative() }),
   ),
-  /** Coder-level values: answers outside unit loops, and `auto` variables (link presets, random, URL). */
+  /** Coder-level values: answers outside unit loops, and drawn random conditions (`computed` items). */
   variables: z.record(z.string(), VariableValueSchema),
   /** Set if the coder's session ended at an `end` item (screened out or complete), or they quit. */
   ended: SessionEndSchema.nullable(),
-  /** The session's values: the URL parameters its link required, by their `$session` name. */
+  /** The session's values (`$session.<name>`): its coder id, URL parameters and linked random conditions. */
   session: z.record(z.string(), z.string()),
   /** Set if the coder asked for their answers to be deleted (until the researcher deletes their data). */
   deletionRequest: DeletionRequestSchema.nullable(),
@@ -58,7 +48,7 @@ export type CoderProgress = z.infer<typeof CoderProgressSchema>;
 
 /**
  * Body for `POST /study/:studyId/coders/delete`: which coders' data to delete,
- * by id, participant id or email (any combination; at least one). Deletes
+ * by session id, coder id or email (any combination; at least one). Deletes
  * the coders and all their answers, also reset ones, for good.
  */
 export const DeleteCodersSchema = z
@@ -68,7 +58,7 @@ export const DeleteCodersSchema = z
     emails: z.array(z.string().min(1)).optional(),
   })
   .refine((d) => (d.sessionIds?.length ?? 0) + (d.coders?.length ?? 0) + (d.emails?.length ?? 0) > 0, {
-    message: "Name at least one coder id, participant id or email",
+    message: "Name at least one session id, coder id or email",
   });
 export type DeleteCoders = z.infer<typeof DeleteCodersSchema>;
 
@@ -105,7 +95,7 @@ export type CoderDeletion = z.infer<typeof CoderDeletionSchema>;
  */
 export const LinkWriteSchema = z.object({
   label: z.string().min(1).max(128),
-  /** A participant id fixed on this link (e.g. a personal link). A label, never a credential. */
+  /** A coder id fixed on this link (e.g. a personal link). A label, never a credential. */
   coder: z.string().min(1).max(256).optional(),
   /** Stop accepting new coders after this many. */
   maxUses: z.number().int().positive().optional(),

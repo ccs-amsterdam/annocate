@@ -171,7 +171,7 @@ export async function exportStudy(db: Db, studyId: number): Promise<{ name: stri
 const invalid = (message: string) => new HttpError(400, message, "export_invalid");
 
 /** Reads an export file: its manifest, and its rows per table. */
-export function readExport(bytes: Buffer): {
+function readExport(bytes: Buffer): {
   manifest: StudyExportManifest;
   rows: Map<string, Record<string, unknown>[]>;
 } {

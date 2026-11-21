@@ -175,8 +175,7 @@ export const researcherEndpoints = {
   },
   deleteUnit: { method: "DELETE", path: "/study/:studyId/units/:id", request: z.void(), response: z.void() },
 
-  /** The set groups (docs/architecture.md §6.3), each with its sets in order. */
-  /** The draft's set groups; `?live=true`: the deployed ones. */
+  /** The draft's set groups (docs/architecture.md §6.3), each with its sets in order; `?live=true`: the deployed ones. */
   listSetGroups: {
     method: "GET",
     path: "/study/:studyId/sets",
@@ -198,7 +197,7 @@ export const researcherEndpoints = {
     request: z.void(),
     response: z.array(CoderProgressSchema),
   },
-  /** Deletes coders and all their answers for good (e.g. a participant withdrew), by id, participant id or email (ADMIN). */
+  /** Deletes coders and all their answers for good (e.g. a coder withdrew), by session id, coder id or email (ADMIN). */
   deleteCoders: {
     method: "POST",
     path: "/study/:studyId/coders/delete",
@@ -225,7 +224,7 @@ export const researcherEndpoints = {
     request: z.void(),
     response: z.array(LinkResponseSchema),
   },
-  /** A link's access settings (label, login, emails, max uses, participant id). Links themselves come from the deployed design version. */
+  /** A link's settings (label, max uses, coder id). Links themselves come from the deployed design version. */
   updateLink: {
     method: "PUT",
     path: "/study/:studyId/links/:id",

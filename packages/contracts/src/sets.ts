@@ -5,7 +5,8 @@ import { IdSchema } from "./common.js";
 // column of the units; each unit's cell names the set(s) it is in, e.g.
 // `s1`, `s1;s2`, or `s1#3;s2#1` (positions). The design refers to a group
 // by name, and to a set as `{ group, set }`. Names starting with `_` are
-// reserved: `_overlap`, the units every coder of the group codes too.
+// reserved for the special units (`_overlap`, `_practice`, `_gold`;
+// docs/architecture.md §6.2).
 
 /** The set of a group whose units every coder of the group codes besides their own set. */
 export const OVERLAP_SET = "_overlap";
@@ -152,13 +153,13 @@ export function splitIntoSets<T>(
     perUnit?: number;
   },
 ): { name: string; units: T[] }[] {
-  const ids = options.shuffle === false ? [...units] : seededShuffle(units, options.seed ?? 0);
-  const overlapN = Math.min(
-    ids.length,
-    options.overlapUnits ?? Math.round((options.overlapFraction ?? 0) * ids.length),
+  const shuffled = options.shuffle === false ? [...units] : seededShuffle(units, options.seed ?? 0);
+  const overlapCount = Math.min(
+    shuffled.length,
+    options.overlapUnits ?? Math.round((options.overlapFraction ?? 0) * shuffled.length),
   );
-  const overlap = ids.slice(0, overlapN);
-  const rest = ids.slice(overlapN);
+  const overlap = shuffled.slice(0, overlapCount);
+  const rest = shuffled.slice(overlapCount);
   const n = Math.max(1, options.sets);
   const perUnit = Math.min(n, Math.max(1, Math.floor(options.perUnit ?? 1)));
   if (perUnit > 1) {

@@ -1,10 +1,4 @@
-import {
-  MAX_SESSION_VALUE,
-  inviteOf,
-  loginRequired as designLoginRequired,
-  urlParamKey,
-  type SessionItem,
-} from "@annotinder/contracts";
+import { MAX_SESSION_VALUE, inviteOf, loginRequired, urlParamKey, type SessionItem } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 
 // A new session's `$session` values (docs/architecture.md §6-7): the URL
@@ -25,9 +19,6 @@ export const emailCoders = (rules: SessionRules) => {
   const invite = inviteOf(rules.item);
   return invite.mode === "coders" && invite.link === "login";
 };
-
-/** Whether a new session needs a login (contracts `loginRequired`). */
-export const loginRequired = (rules: SessionRules) => designLoginRequired(rules.item);
 
 /** Whether a value fits a pattern (in full). */
 const fits = (value: string, pattern?: string) => !pattern || new RegExp(`^(?:${pattern})$`).test(value);
@@ -70,9 +61,9 @@ export function sessionValues(
   const source = read("source");
   if (source !== undefined) session.source = source;
 
-  if (loginRequired(rules) && !email) throw new HttpError(401, "This study requires login", "auth_required");
+  if (loginRequired(rules.item) && !email) throw new HttpError(401, "This study requires login", "auth_required");
   // Who the coder is ($session.coder): a coder fixed on the link, else per the invitation
-  let id = link.coder;
+  let coderId = link.coder;
   const invite = inviteOf(rules.item);
   if (invite.mode === "coders") {
     // The coder: the login's email, or the link's
@@ -88,7 +79,7 @@ export function sessionValues(
         throw new HttpError(403, "This link is no longer active", "link_inactive");
       coder = link.params.coder;
     }
-    if (coder !== undefined) id = coder;
+    if (coder !== undefined) coderId = coder;
   } else {
     // A crowd: the coder's id from a URL parameter, else the login's email (where sign-in is required)
     const param = invite.coderParam;
@@ -97,11 +88,11 @@ export function sessionValues(
       throw new HttpError(400, `This link needs the URL parameter "${param.param}"`, "url_param_missing");
     if (param && value !== undefined) {
       if (!fits(value, param.pattern)) throw invalid(param.param);
-      id = value;
-    } else if (invite.login && email) id ??= email.toLowerCase();
+      coderId = value;
+    } else if (invite.login && email) coderId ??= email.toLowerCase();
   }
-  if (id) session.coder = id;
-  return { coder: id, session };
+  if (coderId) session.coder = coderId;
+  return { coder: coderId, session };
 }
 
 /**

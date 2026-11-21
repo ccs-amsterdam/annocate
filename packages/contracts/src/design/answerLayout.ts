@@ -61,7 +61,7 @@ function fitsGrid(labels: string[], columns: number, width = DESIGN_WIDTH): bool
   return rows * ROW <= HEIGHT_BUDGET && labelWidth(labels) <= (width - (columns - 1) * GAP) / columns;
 }
 
-function categorical(variable: CategoricalType, context?: LayoutContext): ResolvedLayout {
+function categoricalLayout(variable: CategoricalType, context?: LayoutContext): ResolvedLayout {
   // Special options are laid out apart, under the others
   const labels = ordinaryOptions(variable.options).map(optionLabel);
   if (variable.layout && variable.layout !== "auto") {
@@ -90,7 +90,7 @@ export function numericSteps(variable: Pick<NumericType, "min" | "max" | "step">
   return Math.floor((variable.max - variable.min) / (variable.step ?? 1) + 1e-9) + 1;
 }
 
-function numeric(variable: NumericType): ResolvedLayout {
+function numericLayout(variable: NumericType): ResolvedLayout {
   if (variable.layout && variable.layout !== "auto") return { layout: variable.layout };
   const steps = numericSteps(variable);
   if (steps === null) return { layout: "input" };
@@ -102,9 +102,9 @@ export function resolveLayout(variable: AnyVariableType, context?: LayoutContext
   switch (variable.type) {
     case "nominal":
     case "ordinal":
-      return categorical(variable, context);
+      return categoricalLayout(variable, context);
     case "numeric":
-      return numeric(variable);
+      return numericLayout(variable);
     case "scale":
       return { layout: variable.layout && variable.layout !== "auto" ? variable.layout : "compact" };
     case "annotinder":

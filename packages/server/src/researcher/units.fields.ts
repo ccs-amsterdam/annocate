@@ -57,9 +57,10 @@ export function unitsFields(server: Server): Hono<Env> {
         .innerJoin(unitFieldNames, eq(unitFieldNames.id, unitDraft.fieldId))
         .innerJoin(unitValues, eq(unitValues.id, unitDraft.valueId))
         .where(and(eq(units.studyId, studyId), eq(unitFieldNames.name, f.name)));
-      const misfit = rows.find(
-        (r) => typeOfValue(r.value as UnitDataValue) !== null && typeOfValue(r.value as UnitDataValue) !== f.type,
-      );
+      const misfit = rows.find((r) => {
+        const type = typeOfValue(r.value as UnitDataValue);
+        return type !== null && type !== f.type;
+      });
       if (misfit)
         return c.json(
           { error: `Unit '${misfit.externalId}': its ${f.name} (${JSON.stringify(misfit.value)}) isn't ${f.type}` },
