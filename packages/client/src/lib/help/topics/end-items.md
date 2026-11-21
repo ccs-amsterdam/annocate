@@ -87,20 +87,20 @@ In **Preview**, the redirect is shown as a button but not followed.
 ## Redirect links
 
 The redirect link must start with `https://` (or `http://`). It can contain
-`$var` references, which are filled in with the coder's answers or
-random conditions, **URL-encoded**: spaces, `&` and other special
-characters in a value can't break the link.
+`$var` and `$session` references, which are filled in with the coder's
+answers, random conditions and session values, **URL-encoded**: spaces,
+`&` and other special characters in a value can't break the link.
 
 ```text
-https://panel.example/return?status=screenout&id=$var.pid.value
-https://panel.example/return?status=complete&id=$var.pid.value&group=$var.group.value
+https://panel.example/return?status=screenout&id=$session.participant
+https://panel.example/return?status=complete&id=$session.participant&group=$var.group.value
 ```
 
-Here `pid` and `group` are questions of the design, typically
-[random conditions](random-condition.md): `pid` taken from the link the participant
-came in with, `group` drawn at random. How to get a panel's participant id
-into the design is explained in
-[Online panels and crowd coding](online-panels.md).
+Here `$session.participant` is the participant id the link came with (a
+crowd invitation's participant id, see [Links](links.md#participant-ids)),
+and `group` is a [random condition](random-condition.md) of the design,
+drawn at random. How to get a panel's participant id into the design is
+explained in [Online panels and crowd coding](online-panels.md).
 
 Only `$var` and `$session` references work in a redirect link: no `$unit` and no
 `{{ }}`. Use `.value`, not `.label`, so that the panel gets the stored value.

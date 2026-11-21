@@ -5,19 +5,19 @@ order: 7
 summary: A value drawn when the coder reaches it, without asking - for experiments that assign after a few questions, optionally with its own units.
 ---
 
-A **random condition** is a kind of **computed variable**: **+** in the tree,
-then **Computed variable**, then **Random condition**. It is never shown to
-coders.
+A **random condition** is a kind of **computed variable**: **+** on an item
+in a **Questions** block of the tree, then **Computed variable**, then
+**Random condition**. It is never shown to coders.
 Instead, AnnoTinder gives every coder a value when they reach it in the
 flow: drawn at random, or balanced over the values (optionally within
 groups). You then use that value like any other answer: to show different
 questions or texts, or to give each condition its own units.
 
-Use it when the condition should be assigned _after_ some questions: a
-pre-test, background questions, or to balance groups on earlier answers.
-A condition that should be set when the session starts (by the link, or
-drawn at the start) is an **assigned condition** in **Session**: see
-[Experimental conditions](experimental-conditions.md).
+Random conditions are how you run experiments in AnnoTinder (see
+[Experimental conditions](experimental-conditions.md)). Put one first to
+assign the condition when the coder starts, or after some questions to
+assign it later: after a pre-test or background questions, or to balance
+groups on earlier answers.
 
 ## Where it goes
 
@@ -54,18 +54,18 @@ over parts of the units.
 
 ### URL parameter
 
-A value from the web address the coder opened (such as a panel's
-`PROLIFIC_PID`), or one fixed per link, is a
-[session parameter](session-parameters.md), declared in the design's
-session parameters: `$session.PROLIFIC_PID`, `$session.condition`. It is stored
-when the session starts, like the value of a random condition, and works in the same
-places: conditions, texts, end items' return links.
+A value from the web address the coder opened (such as `?wave=2`) is a
+[URL parameter](session-parameters.md), declared under **URL parameters**
+above the tree: `$session.wave`. It is stored when the session starts, like
+the value of a random condition, and works in the same places: conditions,
+texts, end items' return links. It isn't random, so don't use it for
+experimental conditions.
 
 ## Balanced within groups
 
 A balanced draw can be **stratified**: balanced within groups of coders
 who gave the same answers to earlier questions, or have the same
-[session values](session-parameters.md). Choose them under **Balance within
+[URL parameters](session-parameters.md). Choose them under **Balance within
 groups of**. With `gender`, the conditions are balanced among women, and
 among men, so both conditions get about as many women and as many men.
 With `session.wave`, each wave is balanced on its own.

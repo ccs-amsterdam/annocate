@@ -26,7 +26,7 @@ that works with answers uses the value:
   to them (on by default) add the label the coder saw.
 - **Conditions**: a rule such as _topic is Politics_ is stored as a
   comparison with the value, `$var.topic.is("politics")`.
-- **Assigned groups and coder routing**: a coder group's condition, such as
+- **Random conditions and coder routing**: a coder group's condition, such as
   `$var.group.is("treatment")`, compares the value.
 
 Labels are only what coders see, and what templates show when you write

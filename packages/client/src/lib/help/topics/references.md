@@ -114,14 +114,15 @@ order.
 
 | Reference              | Gives                                                                                                                             |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `$session.participant` | The participant id, if the link gives one                                                                                         |
+| `$session.participant` | The participant id, if the invitation gives one                                                                                   |
 | `$session.source`      | The `?source=` of the link, if given                                                                                              |
 | `$session.email`       | The email the coder logged in with, if any                                                                                        |
-| `$session.<name>`      | A link or URL parameter of the design's session parameters (above the item tree), e.g. a condition per link or a panel's study id |
+| `$session.coder`       | The coder, with specific coders                                                                                                   |
+| `$session.<name>`      | A URL parameter of the design (**URL parameters**, above the item tree), e.g. a wave or a panel's study id                        |
 
-The design's **Session** item declares the parameters, so the editor
-checks the names. A session without a value (such as `source`) gives an
-empty text. See [Session parameters](session-parameters.md).
+The design's **URL parameters** declare the names, so the editor checks
+them. A session without a value (such as `source`) gives an empty text. See
+[URL parameters](session-parameters.md).
 
 ## Where references work
 

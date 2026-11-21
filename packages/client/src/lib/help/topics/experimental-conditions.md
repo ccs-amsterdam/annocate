@@ -2,72 +2,63 @@
 title: Experimental conditions
 section: Units and distribution
 order: 4.5
-summary: Assigned and random conditions - how coders get a condition, using it in the design, and giving each condition its own units.
+summary: Experiments with random conditions - how coders get a condition, using it in the design, and giving each condition its own units.
 ---
 
 A **condition** is a value a coder's session gets, such as `control` or
 `experiment`, which the design uses to show different questions, texts or
-units. There are two kinds, which differ in _when_ the value is set:
+units. In AnnoTinder a condition is a **random condition**: a computed item
+in the tree, drawn when the coder reaches it (see
+[Random conditions](random-condition.md)). Everyone uses the same link; the
+draw decides who gets which condition.
 
-|                        | Set                                            | Defined in                                                     | Use it as         |
-| ---------------------- | ---------------------------------------------- | -------------------------------------------------------------- | ----------------- |
-| **Assigned condition** | When the session starts: by the link, or drawn | **Session**, above the item tree                               | `$session.<name>` |
-| **Random condition**   | When the coder reaches it in the flow: drawn   | an item in the tree ([Random conditions](random-condition.md)) | `$var.<name>`     |
+## Adding a condition
 
-## Assigned conditions
+In a **Questions** block of the tree, add an item with **+**, choose
+**Computed variable** and then **Random condition**:
 
-In the editor, open **Session** and add a condition under **Assigned
-conditions**:
+- **Item Name**, such as `framing`: the design uses it as `$var.framing`.
+- **Options**: the values (`control`, `experiment`), or, when it is linked
+  to units, **All values in the column** (below).
+- **Drawn**:
 
-- **Name**, such as `framing`: the design uses it as `$session.framing`.
-- **Values**: a list (`control`, `experiment`), or **All values in the
-  column** when it is linked to units (below).
-- **How it is assigned**:
+| Choice                                      | Who gets which value                      |
+| ------------------------------------------- | ----------------------------------------- |
+| **Balanced (the value fewest coders have)** | the value with the fewest coders so far   |
+| **Random**                                  | a random value (optionally weighted)      |
 
-| Choice                               | Links         | Who gets which value                      |
-| ------------------------------------ | ------------- | ----------------------------------------- |
-| **By link: a link per value**        | one per value | you, by who you send which link           |
-| **At the start: one link, balanced** | one           | the value with the fewest sessions so far |
-| **At the start: one link, random**   | one           | a random condition                        |
+**Balanced** keeps groups equal. **Random** gives every coder the same
+chance, as most experiments assume.
 
-**Balanced** keeps groups equal: it counts finished sessions and sessions
-active in the last 24 hours, so someone who drops out doesn't hold a place.
-**Random** gives every session the same chance, as most experiments assume.
-
-## Random conditions
-
-A random condition is drawn when the coder reaches it, so you can ask
-questions first: background questions, a pre-test, or to balance groups on
-earlier answers (stratified). See [Random conditions](random-condition.md).
+Put the condition first in the design to assign it when the coder starts
+(the [setup wizard](setup-wizard.md) does this), or after some questions to
+assign it later: after a screening, or to balance groups on earlier answers
+(stratified).
 
 ## Using a condition
 
-In any condition or script: `$session.framing.is("experiment")` (or
-`$var.framing` for a random condition). Use it in a
+In any condition or script: `$var.framing.is("experiment")`. Use it in a
 [Show if](conditions.md) to show other questions or texts, or in an end
 item's return link.
 
 ## Giving each condition its own units
 
 Link the condition to a set column of your units, under **Linked to
-units**. A session then only gets the units whose cell holds its value: the
-`experiment` sessions the units marked `experiment`. Units in `_overlap`
-are for every condition.
+units**. The loops after it then only give a coder the units whose cell
+holds their value: the `experiment` coders the units marked `experiment`.
+Units in `_overlap` are for every condition.
 
 1. Add a set column to your units, say `framing`, with each unit's
    condition (see [Set columns](sets.md)).
-2. Link the condition to it. With fixed values, deploying checks that
-   every value occurs in the column. With **All values in the column**,
-   the values are whatever the column holds: for instance 100 sets for a
-   multilevel design, drawn balanced over coders.
-
-A random condition can be linked the same way; the loops after it in the
-flow then get its units.
+2. Link the condition to it. With fixed options, deploying checks that
+   every option occurs in the column. With **All values in the column**, the values are
+   whatever the column holds: for instance 100 sets for a multilevel
+   design, drawn balanced over coders.
 
 ## Two factors (cross-nested)
 
 Use a condition per factor, each with its own column: `framing` (control,
-experiment) and `valence` (positive, neutral, negative). A session's units
-are those matching all its linked conditions, and its coder, if units are
-[divided over coders](own-units.md). Separate conditions are also easier to
-analyse: two clean columns in the results.
+experiment) and `valence` (positive, neutral, negative). A coder's units
+are those matching all their linked conditions, and their own units, if the
+study invites [specific coders](own-units.md). Separate conditions are also
+easier to analyse: two clean columns in the results.

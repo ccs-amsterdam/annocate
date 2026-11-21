@@ -138,7 +138,7 @@ button to go on.
    gives a way to compute the size you need.
 4. **Keep checking during coding.** An overlap set spread through the units
    (placement **Spread through them**) shows whether coders drift apart over
-   time. Placement **First** measures agreement at the start, when
+   time. Placement **Before them** measures agreement at the start, when
    coders are fresh but still learning.
 
 AnnoTinder doesn't compute reliability. Download the results and compute

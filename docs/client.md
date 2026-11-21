@@ -375,41 +375,29 @@ closed session: 409 `session_closed`, `coder-identity.md` §9).
 ### Study entry
 
 The design's `session` item (at most one, always first) is never shown
-to coders: it declares the session's coders and assigned conditions
-(`architecture.md` §6.1), its link and URL parameters and the participant
-id's URL parameter (§7). The server reads
-them when a session starts; the client only sees the values, as
-`$session.<name>`. The editor's form is `SessionItemForm.tsx`. The editor
-doesn't show it as an item in the tree: above the tree, `SessionHeader.tsx`
-edits the public title in place and lists the parameters, which open the
-form. (The design stores `session` and `public` apart from `items`; the
-editor holds them as this first item, `designItems`/`splitDesignItems`.)
+to coders: it holds the coder invitation (`invite`: specific coders by a
+set column, or a crowd with its distribution criteria, `architecture.md`
+§6.1), the URL parameters a link may carry (`urlParams`, §7) and the
+study's normal end. The server reads them when a session starts; the
+client only sees the values, as `$session.<name>`. The editor's form is
+`SessionItemForm.tsx`, in two parts: **Coder invitations**
+(`session/InvitationSettings.tsx`) and **URL parameters**. The editor
+doesn't show it as an item in the tree: above the tree,
+`SessionHeader.tsx` edits the public title in place and has a button for
+each part, with a short summary, which opens the form on it
+(`session/sessionTab.ts`). (The design stores `session` and `public` apart
+from `items`; the editor holds them as this first item,
+`designItems`/`splitDesignItems`.)
 
-### Editor modes
-
-The Study entry's `uses` (`architecture.md` §6, "The session") says what
-the design is made of, and the editor shows only that. The bar at the top
-of the tree (`designEditor/DesignUsesBar.tsx`) has **Annotate units**,
-**Questions** or **Both**, and **Experiment**. A choice that would hide
-something the design has is disabled; its tooltip names what is in the way
-(contracts `usesConflicts`).
-
-- **Annotate units**: one unit loop and nothing outside it. The tree shows
-  the loop's items as the top level, under a fixed **Units** row (the loop's
-  settings: not ticked, moved or deleted; `singleLoop`). Choosing it adds
-  the loop if there is none (`draft.setUses`). Nothing can be added outside
-  the loop.
-- **Questions**: no unit loops in the add menu; no Units page or Units card
-  on the Design page (`useDesignUses`); the session form has no coder
-  column and conditions can't be linked to units.
-- **Both**: everything, any number of loops.
-- Without **Experiment**: no computed items in the add menu, and in the
-  session form conditions only to hand out units. Computed items also need
-  questions outside the units (`insertableTypesAt`).
-
-A design without `uses` gets the one worked out from it when the editor
-opens it (`withUses` in `useDesignDraft`), so the mode changes only when the
-researcher changes it: a new design starts as Both, without an experiment.
+The coders form picks the coders' column and how coders get in (a link per
+coder, or one link where they sign in with the column's email addresses);
+"Make the column…" (`session/CoderSetDialog.tsx`) makes that column: a
+number of coders (`coder_1`, ...), names or email addresses, coders per
+unit, an overlap for every coder (% or units) and the column's name
+(`splitIntoSets` with `perUnit`, written with `PUT /sets/:column`). The
+crowd form has the participant id's URL parameter, "Coders sign in", the
+most coders, and "Share the units among coders" (the criteria form,
+`SharedSettings` in `unitLoop/UnitsEditor.tsx`).
 
 The tree's last row is **At the end** (`STUDY_END_KEY`): the study's normal
 end (`session.end`), edited with an end item's fields without the outcome
@@ -564,14 +552,17 @@ from the Preview Study button. It uses a `ResearcherApi`
   1. **What do you want to do?** The name, and Annotate units, Ask
      questions (a survey), Experiment (alone, a survey with an experiment).
   2. **The experiment**: a condition's name and values, drawn balanced or
-     at random (a computed item, first in the design).
+     at random (a computed item, first in the design: experiments are
+     only done with computed items).
   3. **Units**: the CSV upload of the Units tab (or later), and the order.
-  4. **Who codes what**: everyone everything; units divided into sets
-     (split or by a column, optionally with overlap), handed out by a link
-     per set (a coder column) or balanced per session (a random assigned
-     condition); crowd coding (the loop's criteria form, optional overlap);
-     or experimental groups (per condition the values of a column it
-     gets: the computed item linked to that column).
+  4. **Who codes what**: everyone everything (a crowd with one link);
+     assign sets: units divided into sets (split or by a column,
+     optionally with overlap), the sets are coders (column `coders`,
+     values `coder_1`, ... or the column's), each with their own link
+     (specific coders, `per_coder`); crowd coding (the criteria form, put
+     on the crowd invitation's `units`, optional overlap); or experimental
+     groups (per condition the values of a column it gets: the computed
+     item linked to that column).
   5. **How coders see a unit**: the layout sketch (`LayoutDesigner.tsx`,
      `design/simpleLayout.ts`: title, byline and body fields, guessed from
      field names), with a preview of the first unit. A loop's Layout tab
@@ -591,6 +582,18 @@ from the Preview Study button. It uses a `ResearcherApi`
   previewed, deployed, someone started); more experiment designs
   (conditions that change questions or layout rather than units).
 
+- **Blocks** (`DesignTreeView.tsx`, `designTree/TreeList.tsx`): the
+  tree's top level is blocks (`topBlocks` in `designTree/utils.ts`): each
+  unit loop, and the items between loops grouped as a **Questions** block.
+  A Questions block is only how the tree shows them: the design stays one
+  flat list, and items moved between blocks just move in it. "Add block"
+  above the tree offers a unit loop or questions (a block with a first
+  question), at the end or the start; a Questions block's row has a + for
+  a unit loop after it. Inside a Questions block the + offers questions,
+  computed items, Show if items and end items; inside a loop its items
+  (`insertableTypesAt`). Above the tree, `SessionHeader.tsx` has the public
+  title and the "Coder invitations" and "URL parameters" buttons (§4,
+  "Study entry"); below it, the **At the end** row.
 - **Design editor**: edits the whole document in memory, validated
   client-side with the contract's `validateDesignItems`, and saved as a
   whole with Save. Views:
@@ -610,8 +613,9 @@ from the Preview Study button. It uses a `ResearcherApi`
     label, or "Unit loop" (messages and
     exports, which have no tree, say "Unit loop <n>", `architecture.md`
     §6.2). New loops and Show if items start empty.
-    Adding: a row's + (on hover) adds an item below it: after an item, at
-    the top of a loop or Show if item's children. Only the end of a container
+    Adding: "Add block" (above) adds a block; a row's + (on hover) adds an
+    item below it: after an item, at the top of a loop or Show if item's
+    children. Only the end of a container
     is ambiguous (after its last item, or inside an empty container, is
     also after the container, and so on outwards): there the menu asks
     where first, each place a level further out marked with one more
@@ -666,13 +670,16 @@ from the Preview Study button. It uses a `ResearcherApi`
 
   Unit loops have two tabs (`UnitLoopForm.tsx`), Layout first; a loop's
   row in the tree has a button for each, which opens the loop on it
-  (`designEditor/loopTab.ts`). **Units**: a line saying what a session
-  gets (from the Session's coders and linked conditions), then
-  which of those units (all, or only/except values of a set column;
-  `architecture.md` §6.2), "Share the units among coders" (crowd coding,
-  with its criteria), the special units (overlap, practice, gold: first,
-  last, spread, rate or disabled), and the loop's order. A new loop
-  has no `units`: all the session's units, once. **Layout**: the template,
+  (`designEditor/loopTab.ts`). **Units** (`unitLoop/UnitsEditor.tsx`): a
+  line saying what a coder gets (from the invitation's coders and linked
+  computed items), the filter (all, or only/except values of a set column;
+  `architecture.md` §6.2), then rows: the coder's own units (include, or
+  leave out: only special units), and the overlap, practice and gold units
+  with their counts and a placement (Spread through them, Before them,
+  After them, Leave out; `unitLoop/SpecialUnits.tsx`), then the practice
+  and gold checks, and the loop's order. Distribution criteria are the
+  crowd invitation's, not the loop's. A new loop has no `units`: all the
+  coder's units, once, special units spread. **Layout**: the template,
   in Monaco (lazy, as the JSON editors: `jsonEditor/MonacoTemplate.tsx`)
   as its own language (markdown with references, suffixes, `{{ }}` and
   `[[snippets]]` highlighted) with completions after `$` (unit fields,
@@ -780,18 +787,19 @@ from the Preview Study button. It uses a `ResearcherApi`
   (`GET /deployment/status`). `LiveControls.tsx`: pause or resume.
 - **Settings** (`StudySettingsPage`): `TeamSettings.tsx`, who has access and
   their role (the list keeps at least one admin), and the study settings
-  (rename, archive, keep sessions open, sign-in: off, optional or
-  required, delete). The first deploy asks for sign-in
-  (`DeployDialog.tsx`; required when the coders are email addresses) and
-  shows the deploy's errors and warnings.
-- **Links** (`LinksPanel.tsx`): the links deploying made, one per
-  non-email coder × value of each condition assigned by link × combination
-  of link parameter values, with their values, uses and status, and the
-  URL parameters a link takes (copied with placeholders). Per link: label,
-  max uses and a fixed participant id; revoke (no new coders) or a new
-  secret. Retired links are listed separately. There is no "create": the
-  design's Study entry (`SessionItemForm.tsx`) declares the link and URL
-  parameters and the participant id's URL parameter.
+  (rename, archive, keep sessions open, delete). Whether coders must sign
+  in is the design's coder invitation, not a setting. The deploy dialog
+  (`DeployDialog.tsx`) shows the deploy's errors and warnings.
+- **Links** (`LinksPanel.tsx`): the links deploying made, one, or one per
+  coder (specific coders with a link each), with their coder, uses and
+  status, and the URL parameters a link takes (copied with placeholders;
+  for a URL parameter with listed values, a link per value can be listed
+  and copied, built from the links, nothing stored). Per link: label, max
+  uses and a fixed participant id; revoke (no new coders), reopen a
+  revoked link, or a new secret. Links whose coder is gone are retired and
+  listed separately. There is no "create": the design's Study entry
+  (`SessionItemForm.tsx`) declares the coder invitation and URL
+  parameters.
 - **Coders**: per coder the link, started, last active, answers,
   finished units per loop of the live design, and how the session ended
   at an `end` item or by quitting (`ended`). Open deletion requests are

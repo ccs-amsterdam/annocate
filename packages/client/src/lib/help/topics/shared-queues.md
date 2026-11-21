@@ -15,11 +15,16 @@ know in advance how many coders will come, or how many units each will do.
 Coders who do more simply code more units, and the queue makes sure the
 codings are spread over the units.
 
-You set it on the loop's **Units** tab: tick **Share the units among
-coders**. The queue holds the loop's units within the session's: all units,
-or, when the design divides units (see
+You set it on the crowd invitation: open **Coder invitations** (above the
+item tree), choose **Crowd** and tick **Share the units among coders**. The
+rules apply in **every unit loop** of the design. Each loop's queue holds the
+loop's units: all units, or, when the design divides units (see
 [Handing out units](unit-distribution.md)), the units of the coder's
 condition, shared with the others in that condition.
+
+An agreement rule applies only in the loops that ask its question. In
+other loops a unit is done once as many coders coded it as the rule needs
+to agree.
 
 ## The settings
 
@@ -140,7 +145,7 @@ gets one of them anyway, or a unit that isn't full yet (see [Near the end
 of the queue](#near-the-end-of-the-queue)), rather than nothing.
 
 The 15 minutes can be changed in the design editor's JSON view, as
-`leaseSeconds` in the loop's `criteria` (per coder group; default `900`), for instance
+`leaseSeconds` in the invitation's `units` (`session.invite.units`; default `900`), for instance
 for units that take long to code.
 
 ## What this means for analysis

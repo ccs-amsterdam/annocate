@@ -15,8 +15,9 @@ a particular study is their role there (see [Working together](working-together.
 | **Researcher** | Also create studies. The studies you create are yours: they count against your limits                                 |
 | **Admin**      | Also manage the server's users, limits and registration (see [Server admin](server-admin.md))                         |
 
-Coders don't need an account at all, unless their link asks them to
-[log in](links.md#login).
+Coders don't need an account at all, unless the study's invitation asks
+them to [sign in](links.md#login). Any coder may sign in to keep their
+session across devices.
 
 ## Becoming a researcher
 

@@ -16,7 +16,7 @@ survey experiments (participants judge a few messages) and for crowd coding
 1. The panel sends a participant to your **link**, with the
    participant's id added to it.
 2. AnnoTinder stores the id with the coder, and if you like other values
-   from the link (a study id, a condition the panel assigned).
+   from the link (a study id, a session id).
 3. The participant answers your questions and codes their units.
 4. At the end, or when they are screened out, an **end item** sends them to
    the panel's return link, with their id or a completion code in it.
@@ -26,9 +26,9 @@ survey experiments (participants judge a few messages) and for crowd coding
 ## The link for the panel
 
 Panels send participants to a link with their id in it. Tell the design
-which URL parameter has the id: in the design's **Session** item (see
-[Session parameters](session-parameters.md)) and tick **Participant id from
-a URL parameter**, with the name the panel uses, such as `PROLIFIC_PID`.
+which URL parameter has the id: open **Coder invitations** above the item
+tree, choose **Crowd** and tick **Participant id from a URL parameter**, with
+the name the panel uses, such as `PROLIFIC_PID`.
 Optionally give a **pattern** the id must fit, e.g. `[0-9a-f]{24}` for
 Prolific's ids, so a link with a typo or a placeholder that wasn't filled in
 doesn't start.
@@ -40,7 +40,7 @@ for each participant. On Prolific that is `{{%PROLIFIC_PID%}}`; other panels
 have their own (check their documentation). On the link itself (the pencil
 icon) you can set a **Label**, e.g. _Prolific pilot_, and **Max uses**: a
 little above the number of places in the study, as a safety net if the link
-leaks.
+leaks. (The invitation's **Coders at most** does the same in the design.)
 
 The participant id then appears in the Coders tab and as `participant_id` in
 the results. It also keeps sessions apart: a participant who opens the link
@@ -51,10 +51,11 @@ another device is told they already started (see
 ## Values from the link
 
 Panels often send more than the participant id, for instance a study id and
-a session id, and want some of them back in the return link. Add them to the
-session parameters as **URL parameters**: a name for the design (`study`), the
-**URL key** as the panel sends it (`STUDY_ID`), and its values (any value,
-optionally with a pattern; or a list). Without a default a URL parameter is
+a session id, and want some of them back in the return link. Add them under
+**URL parameters** above the item tree (see
+[URL parameters](session-parameters.md)): a name for the design (`study`),
+**In the URL as** the panel sends it (`STUDY_ID`), and its values (any value,
+from a list, or matching a pattern). Without a default a URL parameter is
 required.
 
 The design can then use them as **session values**:
@@ -107,7 +108,7 @@ link, the same for every run, can go in the end item itself: _This URL_.)
 Use `$session` (or `$var`) references where the panel wants values:
 
 ```text
-https://panel.example/complete?id=$session.participant&study=$session.STUDY_ID
+https://panel.example/complete?id=$session.participant&study=$session.study
 https://app.prolific.com/submissions/complete?cc=C1A2B3C4
 ```
 
@@ -136,19 +137,16 @@ column of `coders.csv`, so you can check the panel's list against yours.
 
 ## Experimental conditions
 
-For a survey experiment, give each participant a condition: an **assigned
-condition** drawn at the start (balanced or at random), or a
-[random condition](random-condition.md) drawn after some questions. Show
-different material with [Show if](conditions.md) or `::: if` blocks. If the
-panel assigns the condition (for example two panel studies, one per
-condition), assign it **by link**: deploying makes a link per condition, to
-give each panel study its own. See
+For a survey experiment, give each participant a condition with a
+[random condition](random-condition.md): first in the design to draw it at
+the start (balanced or at random), or after some questions. Show different
+material with [Show if](conditions.md) or `::: if` blocks. See
 [Experimental conditions](experimental-conditions.md).
 
 ## How many participants?
 
-For crowd coding, units are usually **shared among coders**: each unit goes
-to coders until enough of them coded it (see
+For crowd coding, units are usually **shared among coders** (in the crowd
+invitation): each unit goes to coders until enough of them coded it (see
 [Shared queues](shared-queues.md)). With **Units per coder, at most**, you can
 work out how many participants you need:
 

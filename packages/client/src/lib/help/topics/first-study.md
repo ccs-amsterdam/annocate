@@ -66,7 +66,7 @@ on the right the form of the item you select.
 **A unit loop.** Questions about units go inside a _unit loop_: the loop
 asks its questions for every unit a coder gets.
 
-1. Click **Add item**, then **Unit loop**.
+1. Click **Add block** above the tree, then **Unit loop**.
 2. In the loop's form, type a **Label (optional)** such as _News articles_.
    Coders see it in their menu.
 
@@ -122,10 +122,9 @@ Select the loop in the tree. Its form has two tabs:
   title, byline and body (styles, blocks, conditions), click **Advanced**
   and write the template yourself. See [Layout templates](layout-templates.md).
 
-- **Units**: which units coders get. A new loop has none chosen yet (it is
-  marked _to specify_): click **Code the session's units**. Without
-  coders or conditions in the design, every coder gets every unit. That
-  is what we want here. See [Handing out units](unit-distribution.md).
+- **Units**: which units coders get. By default a loop codes all the
+  coder's units, and without specific coders or conditions in the design,
+  every coder gets every unit. That is what we want here. See [Handing out units](unit-distribution.md).
 
 Try the layout right here, with your own text:
 

@@ -34,7 +34,7 @@ as they were).
 | Tile                 | Big number                                                                 | Below it                                                                    |
 | -------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | **Units**            | Units in the study                                                         | The number of set columns                                                   |
-| **Coders started**   | Coders who answered at least one question (assigned values don't count)    | All coders who opened a link, and how many were active in the last 24 hours |
+| **Coders started**   | Coders who answered at least one question (random conditions don't count)   | All coders who opened a link, and how many were active in the last 24 hours |
 | **Finished codings** | Units finished, counted per coder: a unit two coders finished counts twice | All answers given, and when the last one was                                |
 | **Active links**     | Links that are not revoked, retired or used up                             | All links                                                                   |
 
@@ -119,7 +119,7 @@ deletion in some cases.
 Anonymous coders can't prove who they are. A request comes from the
 session itself, so it needs no proof. A coder who writes to you instead
 can only be found if they give their participant id, or the email they
-logged in with.
+signed in with (where the invitation requires sign-in).
 
 ### Deleting a coder yourself
 
@@ -128,8 +128,8 @@ coders by participant id or email (one per line; a participant id that
 started on two devices has two sessions, and both are found). After
 confirming, AnnoTinder deletes for good:
 
-- the coder (their session, participant id, answers outside loops and group
-  assignments);
+- the coder (their session, participant id, answers outside loops and
+  random conditions);
 - all their answers in unit loops, also answers a researcher reset earlier.
 
 Copies you downloaded before are not affected: delete those yourself. To

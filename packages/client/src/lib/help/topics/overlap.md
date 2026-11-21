@@ -12,52 +12,45 @@ can compare them: for intercoder reliability, or to check coders against
 units with a known answer.
 
 The overlap is the value `_overlap` in a [set column](sets.md): the
-column the design divides units over (its coders, or a condition linked to
-units). To have only _some_ coders code a unit, write their values
+column the design divides units over (its coders, or a random condition
+linked to units). To have only _some_ coders code a unit, write their values
 together instead: `anna;bob`.
 
 ## Setting it up
 
-1. Mark the overlap units. The easiest way is **Fill a set column** on the
-   **Units** tab with an **overlap** of, say, 10%: it sets aside a random
-   `_overlap` part and divides the rest. Or write `_overlap` in the column
-   of your CSV.
-2. In the unit loop, under **Overlap**, choose where the overlap units go:
-   **Spread through them** by default (see below), or **Disabled** for no
-   overlap in this loop.
-3. Optionally, **Recommended**: how many overlap units you want. Deploying
-   warns when there are fewer. **At most** limits how many a coder gets:
-   **the first ones**, or **a random draw** (the same units for every coder,
-   so they can be compared).
+1. Mark the overlap units. The easiest way is **Make the column…** in the
+   **Coder invitations** (or **Fill a set column** on the **Units** tab)
+   with an **overlap** of, say, 10%: it sets aside a random `_overlap` part
+   and divides the rest. Or write `_overlap` in the column of your CSV.
+2. In the unit loop's **Units** tab, the **Overlap units** row shows how
+   many there are. Choose where they go: **Spread through them** (the
+   default, see below), **Before them**, **After them**, or **Leave out**
+   for no overlap in this loop.
 
-An overlap unit comes once per coder, as overlap. With the overlap
-**Disabled**, the `_overlap` units play no part in the loop.
+An overlap unit comes once per coder, as overlap. Left out, the `_overlap`
+units play no part in the loop.
 
 ## Placement
 
-| Placed                                | What coders get                                                                    |
-| ------------------------------------- | ---------------------------------------------------------------------------------- |
-| **Spread through them** (the default) | The overlap units evenly spread among their own units                              |
-| **At a rate**                         | About one overlap unit in every 10 of their own (you choose the number), at random |
-| **First**                             | First all overlap units, then their own                                            |
-| **Last**                              | First their own units, then the overlap units                                      |
+| Placed                                | What coders get                                       |
+| ------------------------------------- | ----------------------------------------------------- |
+| **Spread through them** (the default) | The overlap units evenly spread among their own units |
+| **Before them**                       | First all overlap units, then their own               |
+| **After them**                        | First their own units, then the overlap units         |
+| **Leave out**                         | No overlap units in this loop                         |
 
 With **Spread through them**, a coder with 100 own units and 4 overlap units
 gets an overlap unit after every 20 of their own units. If a coder runs out
 of own units sooner, the overlap units that are left come at the end.
 
-Spreading needs to know how many units a coder will get. In a shared queue
-that is **Units per coder, at most**, so the option needs it (the menu says
-_needs max units per coder_ until it is set).
-
-**At a rate** doesn't need to know: after each of their own units, a coder
-gets an overlap unit with a chance of one in 10 (or the number you set),
-never more than twice that apart. The order is random per coder, so coders
-can't tell which units are compared, and a reload gives the same order.
-Overlap units left when a coder's own units run out come **at the end**
-(every coder codes them all), or are **dropped** (each coder codes the ones
-they happened to get). It is the default for crowd coding made by the setup
-wizard. Gold and practice units can come at a rate too
+Spreading evenly needs to know how many units a coder will get. In a
+[shared queue](shared-queues.md) without **Units per coder, at most**,
+AnnoTinder doesn't know, so overlap units come at random instead: after
+each of their own units, a coder gets an overlap unit with a chance of
+about one in ten, never more than twenty apart. The order is random per
+coder, so coders can't tell which units are compared, and a reload gives
+the same order. Overlap units left when a coder's own units run out come at
+the end. Gold and practice units are placed the same way
 ([Overlap, gold and practice units](special-units.md)).
 
 Coders don't see which units are overlap units. With a random
@@ -70,12 +63,12 @@ coder too.
   overlap units are coded throughout the session, when coders are fresh and
   when they are tired, so they represent the whole coding. Coders can't tell
   which units are being compared, so they can't take extra care with them.
-- **First** makes the overlap a calibration round: you can check the first
+- **Before them** makes the overlap a calibration round: you can check the first
   codings of every coder early, and retrain coders before they do the bulk
   of the work. But it biases the reliability you report: at the start coders
   are fresh and careful, which tends to inflate it compared with the rest of
   the coding. Use it for training, not as the reliability estimate.
-- **Last** measures coders when they are most
+- **After them** measures coders when they are most
   experienced, but also most tired, and coders who stop early never reach
   the overlap.
 
@@ -84,7 +77,7 @@ coder too.
 A common design for a content analysis with student coders:
 
 1. **Pilot**: two or three coders code the same 50 units (a loop with only
-   the `pilot` value of a `phase` column, without dividing units). Compute reliability, discuss the disagreements, improve the
+   the `pilot` value of a `phase` column, everyone coding all units). Compute reliability, discuss the disagreements, improve the
    codebook and the coder instructions. Repeat if needed.
 2. **Main coding**: divide the sample over the coders, plus an overlap of
    about 10% (and at least 50 to 100 units), with the overlap spread through

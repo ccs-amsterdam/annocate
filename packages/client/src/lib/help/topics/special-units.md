@@ -7,7 +7,10 @@ summary: Units every coder codes (overlap), units with a known answer checked si
 
 Three values of a [set column](sets.md) have a special meaning. Every unit
 loop mixes them in with each coder's own units, wherever the units come
-from (all units, divided over coders, or a condition's):
+from (all units, a coder's own, or a condition's). On the loop's **Units**
+tab, each has a row with how many there are and where they go: **Spread
+through them** (the default), **Before them**, **After them** or **Leave
+out** (see [Overlap](overlap.md#placement)):
 
 | Set         | Its units                                                | Coders notice                       |
 | ----------- | -------------------------------------------------------- | ----------------------------------- |
@@ -41,12 +44,13 @@ get the answer columns: the Units page shows them as _server only_.
 
 ## Or let AnnoTinder make them
 
-- **Overlap**: **Fill a set column** on the Units tab, with an overlap of,
-  say, 10%, sets aside a random `_overlap` part. See [Overlap](overlap.md).
+- **Overlap**: **Make the column…** in the Coder invitations, or **Fill a
+  set column** on the Units tab, with an overlap of, say, 10%, sets aside a
+  random `_overlap` part. See [Overlap](overlap.md).
 - **Gold and practice units**: give units the value `_gold` or `_practice`
   in a set column (select them on the Units tab and **Put in**).
-- **Right answers**: in the unit loop's **Units** tab, turn on **Gold** or
-  **Practice**, tick the questions to check, and click **Create gold values…**
+- **Right answers**: in the unit loop's **Units** tab, under **Gold units**
+  or **Practice units**, tick the questions to check, and click **Create gold values…**
   (or **Write practice answers…**). It goes through the units with the
   loop's layout: choose the right answer, and for practice units, a message.
   Like any change to units, the answers are a draft until you deploy them.
@@ -71,9 +75,10 @@ in it or outside the question's min and max. Numbers compare as numbers
 
 ## Practice units
 
-Turn on **Practice** in the loop: placed **first** (a practice round,
-recommended), spread through the coder's units, or last. For the questions
-ticked, each answer is checked as it is given: a wrong one shows the unit's
+Place the **Practice units** in the loop **Before them** (a practice round,
+recommended; the setup wizard does this), spread through the coder's units,
+or after them. Under **Practice units: questions with feedback when a coder
+answers wrong**, tick the questions to check. For the questions ticked, each answer is checked as it is given: a wrong one shows the unit's
 own message, else the loop's **Message when wrong**, else the expected
 answer, right with the question, and the coder answers again until right.
 Untick **Answer again until right** to let them go on after the message
@@ -91,7 +96,8 @@ first time a coder sees the question.
 
 ## Gold units
 
-Turn on **Gold** in the loop and tick the questions to check. Coders see
+Gold units are spread through the coder's units by default. Under **Gold
+units: questions checked silently**, tick the questions to check. Coders see
 nothing: gold units look like any other. With **End the session when a coder
 answers too many wrong**, every coder starts with a _health_ (e.g. 5) that
 goes down per wrong answer (e.g. by 1), and up per right one if you like

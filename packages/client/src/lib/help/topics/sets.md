@@ -12,15 +12,16 @@ value of the column is a **set**: the units whose cell holds it.
 
 The design uses set columns by name:
 
-- **Units divided over coders** (in **Session**): each coder gets the units
-  of their value (see [Giving each coder their own units](own-units.md)).
-- **A condition linked to units**: each session gets the units of its
-  condition (see [Experimental conditions](experimental-conditions.md)).
+- **Specific coders** (in **Coder invitations**): the column's values are
+  the coders, and each coder gets the units of their value (see
+  [Giving each coder their own units](own-units.md)).
+- **A random condition linked to units**: each coder gets the units of
+  their condition (see [Experimental conditions](experimental-conditions.md)).
 - **A loop's filter**: only (or all except) units with certain values,
   such as a pre-test loop and a post-test loop (see
   [Handing out units](unit-distribution.md)).
 
-You don't need a set column for a simple study: without one, every session
+You don't need a set column for a simple study: without one, every coder
 gets all units.
 
 ## A sets column in your CSV

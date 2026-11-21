@@ -12,13 +12,14 @@ design that codes material has at least one loop: the questions about
 news articles, tweets or images go inside it.
 
 Questions _outside_ a loop are asked once per coder: a consent question, a
-few survey questions, an experimental group. Together the two make up most
+few survey questions, an experimental group. The editor's tree shows them as
+**Questions** blocks between the loops. Together the two make up most
 studies: some questions about the coder, then a loop over the units.
 
 ## Adding a loop
 
-In the design editor, click **+** in the tree and choose **Unit loop**. A
-new loop is empty: add its questions with **+**, choosing a place inside the
+In the design editor, click **Add block** above the tree (or the **+** on a
+Questions block or a loop) and choose **Unit loop**. A new loop is empty: add its questions with **+**, choosing a place inside the
 loop, or move existing questions into it. A loop needs at least one item.
 
 A loop has no name, but you can give it a **Label (optional)**, such as
@@ -35,7 +36,7 @@ row in the tree open the loop on one of them.
 | Tab        | What you set there                                                                                                                        |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | **Layout** | How a unit is shown: the **Template**, the **Colours** and the **Snippets**                                                               |
-| **Units**  | Which of the session's units the loop codes (all, or a filter), crowd coding, the **Order**, the **Overlap**, and practice and gold units |
+| **Units**  | Which of the coder's units the loop codes (all, or a filter; their own units or not), the **Order**, and where overlap, practice and gold units go |
 
 The template is where you write what coders see of each unit: see
 [Layout templates](layout-templates.md). The Units tab is explained in

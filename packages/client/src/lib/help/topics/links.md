@@ -2,44 +2,69 @@
 title: Links
 section: Coders
 order: 1
-summary: The links coders open to start - made from the design, with who may use them, participant ids and a maximum number of uses.
+summary: The links coders open to start - made from the design's coder invitations, with who may use them, participant ids, sign-in and a maximum number of uses.
 ---
 
 Coders start a study by opening a **link**. You find the links under
 **Deploy** › **Links**. One link can be shared with many coders (in an email
 to your student assistants, or on a crowd-coding platform), or each coder
-or group can get their own.
+can get their own.
 
 Links are made by **deploying the design**: you don't create them by
-hand. A design without coders, conditions assigned by link or link parameters
-makes one link. Otherwise deploying makes a link per value, or per
-combination of values: a link per coder, per experimental condition, per
-class. See [The session](session-parameters.md).
-That way the design describes which links exist and what each one means,
-and the values a link carries are `$session` values in the design.
+hand. The design's **Coder invitations** say which links there are: one
+link, or a link per coder. That way the design describes which links exist
+and what each one means.
 
 Coders can only start once a design version is deployed (see
 [Preview, save and deploy](previewing-and-publishing.md)).
+
+## Coder invitations
+
+In the editor, **Coder invitations** (above the item tree) says who codes
+and how they get in. Choose one of two:
+
+| Invitation          | Who codes                                                     | Links                                                         |
+| ------------------- | ------------------------------------------------------------- | ------------------------------------------------------------- |
+| **Specific coders** | Coders you know, each with their own units (a set column)     | **A link per coder**, or **one link** where coders sign in    |
+| **Crowd**           | Anyone with the link, e.g. from an online panel or newsletter | One link                                                      |
+
+**Specific coders**: choose the **Column with the coders**, a set column of
+the units whose values are the coders (or **Make the column…** to make one).
+Each coder gets their own units and `$session.coder` is their value. With
+**A link per coder**, deploying makes a link for every coder; send each coder
+theirs. With **One link: coders sign in with the email address in the
+column**, the column's values are email addresses and coders get the units of
+the address they sign in with. See
+[Giving each coder their own units](own-units.md).
+
+**Crowd** (the default): one link for anyone, with optionally
+
+- **Participant id from a URL parameter**, such as a panel's `PROLIFIC_PID`
+  (see [Participant ids](#participant-ids));
+- **Coders sign in**: opening the link asks coders to sign in, and you see
+  their email address (see [Login](#login));
+- **Coders at most**: the link starts at most this many sessions, your
+  sample size;
+- **Share the units among coders**: a shared queue instead of every coder
+  coding all units (see [Shared queues](shared-queues.md)).
 
 ## When links change
 
 Links follow the deployed design and the study's deployed sets:
 
-- deploying a design with other coders, conditions or link parameters
-  makes the links it needs, and **retires** links it no longer makes;
-- a new coder (or a new value of a condition with **All values in the
-  column**) gets a link when it is deployed, and the link of a removed one
-  is retired;
-- a link that comes back into the design (the same values) is the same link
-  again, with the same address.
+- deploying a design with another invitation makes the links it needs, and
+  **retires** links it no longer makes;
+- with a link per coder, a new coder in the column gets a link when the
+  sets are deployed, and the link of a coder who is gone is retired;
+- a link that comes back (the same coder) is the same link again, with the
+  same address.
 
 A retired link is never deleted: coders and their answers keep referring to
 the link they came in with. Opening it shows _"This link is no longer
 active"_; coders who already started with it keep working.
 
 Deploying a design that makes more than 500 links asks you to confirm;
-at most 2000 links are possible. List the combinations you need in the
-session parameters instead of every combination.
+at most 2000 links are possible.
 
 ## Who may use a link
 
@@ -51,7 +76,8 @@ The pencil icon in a link's row (**Who may use this link**) sets:
 | **Max uses**             | Stop accepting new coders after this many                              |
 | **Fixed participant id** | Everyone who uses this link gets this participant id (a personal link) |
 
-Whether coders sign in is set for the whole study (see [Login](#login)).
+Whether coders must sign in is part of the coder invitation (see
+[Login](#login)).
 
 **New link** (the key icon) gives the link a new address: the old one stops
 working, for instance when it was shared too widely. Coders who started
@@ -68,8 +94,8 @@ other data you have on the same people.
 - **No participant id**: coders are anonymous; the Coders tab shows a number.
 - **Fixed participant id**: everyone who uses the link gets the id you set
   on it. Use it for personal links.
-- **Participant id from a URL parameter**: set in the design's session parameters (above the item tree)
-  (see [Session parameters](session-parameters.md)). The id is taken from the
+- **Participant id from a URL parameter**: set in a crowd invitation (see
+  [Coder invitations](#coder-invitations)). The id is taken from the
   link itself, from the parameter you name (`participant`, or a panel's own
   such as `PROLIFIC_PID`). The copied links end in
   `PROLIFIC_PID=<participant id>`: replace the placeholder with each coder's
@@ -77,6 +103,10 @@ other data you have on the same people.
   [Online panels and crowd coding](online-panels.md)). The id is required: a
   link without it doesn't start. A **pattern** (a regular expression, e.g.
   `[0-9]{6}`) makes the id fit a format.
+- **Specific coders**: the participant id is the coder's value in the
+  coders' column.
+- **Crowd with sign-in**: the participant id is the coder's email address;
+  no participant ids needed.
 
 In the design the participant id is `$session.participant`, for instance
 in an end item's return link.
@@ -86,8 +116,7 @@ could type it in. So a participant id never gives access to earlier work.
 If someone opens a link with a participant id that already has a session on
 another device (or browser), they see _"You already started on another
 device"_, and how to continue there, or move the session here with
-**Continue on another device** (or by logging in, where the link allows
-it). Only if they confirm that they can't get back to the earlier session
+**Continue on another device** (or by signing in). Only if they confirm that they can't get back to the earlier session
 (a lost device, cleared browser data) can they start a new session here,
 without the earlier answers. That should be rare; when it happens often,
 check whether a personal link was shared with several people.
@@ -101,8 +130,8 @@ complete session.
 
 ## Coming back to a session
 
-With login, coders continue on any device by logging in there. Without
-login, a coder's work stays in the browser where they started (in a
+Coders who signed in continue on any device by signing in there. Otherwise
+a coder's work stays in the browser where they started (in a
 cookie). Opening the link again on the same device and browser continues
 where they left off, whatever link they use. To continue on another device,
 coders open **Continue on another device** on the first device and open the
@@ -123,16 +152,17 @@ continue. A participant who starts a new session on another device (see
 above) doesn't count as a new use.
 
 Use it to cap a crowd-coding batch, or to make sure a personal link is used
-only once (max uses 1).
+only once (max uses 1). A crowd invitation's **Coders at most** sets the
+same limit for its link in the design; a link's own max uses overrides it.
 
 ## The list of links
 
 | Column      | Shows                                                                        |
 | ----------- | ---------------------------------------------------------------------------- |
-| **Label**   | The label (made from the link's values; you can change it)                   |
-| **Values**  | The link parameter values the link carries                                   |
+| **Label**   | The label (the coder, or "Open link"; you can change it)                     |
+| **For**     | The coder the link is for, with a link per coder                             |
 | **Link**    | **Copy link** copies the link, with placeholders for URL parameters it needs |
-| **Access**  | Who may use it: anyone, a login, email addresses, a fixed participant id     |
+| **Access**  | Who may use it: anyone, or a fixed participant id                            |
 | **Uses**    | How many coders started with it (and the maximum)                            |
 | **Status**  | _open_, _used up_, _revoked_ or _retired_                                    |
 | **Created** | When it was made                                                             |
@@ -148,27 +178,24 @@ separately, below the active ones.
 Coders sign in the same way as researchers (the login your server offers;
 it isn't available on servers without one). Signing in links their email
 address to their session, once. They code as anyone does; the email is used
-again only when they continue on another device: signing in there
-continues the same session.
+again when they continue on another device: signing in there continues the
+same session.
 
-Whether coders sign in is a setting of the study: you choose it when you
-first deploy, and can change it in the study's **Settings**.
+Coders can **always** sign in, from **Continue on another device** (the
+screen icon), to keep their session across devices. Whether they **must**
+sign in, and whether you see their address, is part of the coder
+invitation:
 
-- **Off**: anonymous links; nobody signs in.
-- **Optional**: coders start right away, and can sign in any time from
-  **Continue on another device** (the screen icon), which links their
-  session so far.
-- **Required**: coders sign in before they start.
-- **Coders who are email addresses** (units divided over coders by
-  email): there is one link, and sign-in is always required. Each coder
-  gets the units of the address they signed in with; other addresses see
-  _"This email address has no access to this study"_. See
+- **Specific coders, one link**: coders sign in with the email address in
+  the coders' column and get its units; other addresses see _"This email
+  address has no access to this study"_. See
   [Giving each coder their own units](own-units.md).
+- **Crowd with Coders sign in**: coders sign in before they start, and
+  their email address identifies them.
+- **Otherwise**: signing in is up to the coder, for their own convenience.
+  You don't see their address.
 
-The coder's email address is stored with their session: it appears in the
-Coders tab and the results (`email`), and you can delete a coder's data by
-email. A participant id can come with a login too; it is then only a label
-next to the account.
-
-With sign-in **Off**, a login is ignored: someone who happens to be
-logged in (such as you, trying your own link) starts an anonymous session.
+Where sign-in is required, the coder's email address is stored with their
+session: it appears in the Coders tab and the results (`email`), and you can
+delete a coder's data by email. Elsewhere coders who sign in stay as
+anonymous to you as those who don't.

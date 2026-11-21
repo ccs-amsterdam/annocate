@@ -1,93 +1,75 @@
 ---
-title: The session: coders, conditions and parameters
+title: URL parameters
 section: Coders
 order: 2
-summary: What a session starts with - its coder, its assigned conditions and link or URL parameters - and the links deploying makes for them.
+summary: Values a link carries in its URL - a distribution channel, a wave, a panel's ids - available in the design as $session values.
 ---
 
-In the editor, **Session** (above the item tree) holds what a coder's
-session starts with. The design uses each of them as `$session.<name>`.
-You don't make links yourself: deploying makes them from these settings,
-listed under **Deploy › Links**.
+A **URL parameter** is a value added to a study's link by whoever shares
+it: `?wave=2`, `?school=north`, or the ids an online panel fills in. The
+design uses it as `$session.<name>`, in conditions, texts and an end item's
+return link.
 
-| Setting                 | What it is                                   | Links                                                     |
-| ----------------------- | -------------------------------------------- | --------------------------------------------------------- |
-| **Coders**              | Units divided over coders, by a set column   | a link per coder, or one sign-in link for email addresses |
-| **Assigned conditions** | Values such as `control` and `experiment`    | a link per value, or one link that draws                  |
-| **Link parameters**     | Other values fixed per link, such as a class | a link per value                                          |
-| **URL parameters**      | Values added to a link by whoever shares it  | none                                                      |
+In the editor, **URL parameters** (above the item tree) lists them. Next to
+it, **Coder invitations** says who codes and how they get in (see
+[Links](links.md#coder-invitations)). Both are part of the study's entry,
+not items in the tree.
 
-The values are stored with the session when it starts, so coders can come
-back without them, and they appear in the results (`coders.csv`).
+The values are read when the session starts and stored with it, so coders
+can come back without them, and they appear in the results (`coders.csv`,
+as `session.<name>`).
 
-## Coders
+## Adding a parameter
 
-Tick **Units are divided over coders** and choose the set column with the
-coders. Each session then gets the units of its coder, and
-`$session.coder` is the coder's value. Names give a link per coder; email
-addresses give one link at which coders sign in. See
-[Giving each coder their own units](own-units.md).
+Click **+ URL parameter** and set:
 
-## Assigned conditions
+| Setting           | What it is                                                                  |
+| ----------------- | --------------------------------------------------------------------------- |
+| **Name**          | The name in the design: `$session.<name>`                                   |
+| **In the URL as** | The key in the link, e.g. `STUDY_ID` (default: the name)                    |
+| **Values**        | **Any value**, **From a list** (one per line) or **Matching a pattern**     |
+| **Default**       | Used when the link has none. Without a default the parameter is required    |
+| **Description**   | For you and your colleagues: what the parameter is for                      |
 
-A condition with values such as `control` and `experiment`, assigned by
-link or drawn when the session starts (balanced or at random), and
-optionally linked to units. See
-[Experimental conditions](experimental-conditions.md).
+Any value is up to 256 characters. A **pattern** is a regular expression
+the whole value must match, such as `[0-9]{6}` or `a|b|c`.
 
-## Public title
+## Required parameters
 
-At the top of the item tree, in place: the **title shown to coders**, what coders see as
-the study's name, on their list of studies and in the coding screen's
-menu and browser tab. The study's own name stays private, so it can say what
-the study is about. Without one, coders see "Untitled study".
-
-## Values
-
-A parameter's values are one of:
-
-- **From a list**: the values you type, one per line;
-- **Any value** (URL parameters only): any value up to 256 characters,
-  optionally matching a **pattern** (a regular expression).
-
-A URL parameter has a **URL key** (the name in the link, e.g. `STUDY_ID`;
-by default the parameter's name) and a **Default**. Without a default it is
-required: a link without it, or with a value that doesn't fit, doesn't
-start.
+A parameter without a default is **required**: a link without it, or with
+a value that isn't in the list or doesn't match the pattern, doesn't start.
+The coder sees an error instead of the study. Under **Deploy › Links**, the
+copied links end in placeholders for the required parameters
+(`?wave=<wave>`): replace them with a value, or let a panel fill them in.
 
 ## A link per value
 
-Every value of a link parameter gets its own link under Deploy › Links,
-labelled with the value. With two link parameters, every combination gets a
-link: `condition` (a, b) and `class` (1, 2, 3) make six links. Tick **Only
-some combinations** to list the combinations you need. See
-[Links](links.md).
-
-Every coder and every value of a condition assigned by link multiply the
-links in the same way. For conditions, use **Assigned conditions** rather
-than a link parameter: they can be drawn and linked to units.
+For a parameter with a list of values, **Deploy › Links** can list a link
+per value (**A link per value of a URL parameter**), for instance one per
+school to send around. Nothing new is made: these are the study's links
+with the value filled in.
 
 ## Built-in values
 
-| Value                  | What it is                                                                                              |
-| ---------------------- | ------------------------------------------------------------------------------------------------------- |
-| `$session.participant` | The participant id (see below, and [Links](links.md#participant-ids))                                   |
-| `$session.source`      | The `?source=` of any link, if given: where a coder came from (a newsletter, a QR code). Never required |
-| `$session.email`       | The email the coder signed in with, if any                                                              |
-| `$session.coder`       | The coder, when units are divided over coders                                                           |
+| Value                  | What it is                                                                                                      |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `$session.source`      | The `?source=` of any link, if given: where a coder came from (a newsletter, a QR code). Never required         |
+| `$session.participant` | With a crowd invitation, the participant id: from its URL parameter, or the email address of coders who sign in (see [Links](links.md#participant-ids)) |
+| `$session.coder`       | With specific coders, the coder (see [Giving each coder their own units](own-units.md))                         |
 
-These names can't be used for your own parameters.
+These names, and `email`, can't be used for your own parameters.
 
-## Participant id from the URL
+## Public title
 
-Tick **Participant id from a URL parameter** and name the parameter, such as
-`PROLIFIC_PID`. Every link then needs it, and the id is
-`$session.participant`. An optional pattern checks its format. See
-[Online panels and crowd coding](online-panels.md).
+At the top of the item tree, in place: the **title shown to coders**, what
+coders see as the study's name, on their list of studies and in the coding
+screen's menu and browser tab. The study's own name stays private, so it can
+say what the study is about. Without one, coders see "Untitled study".
 
-## Signing in
+## Experiments
 
-Whether coders sign in is a setting of the study, not of the design: off,
-optional or required, chosen when you first deploy and changeable in the
-study's settings. Coders who are email addresses always sign in. See
-[Links](links.md#login).
+URL parameters aren't for experimental conditions: a value someone types
+into a link isn't random. Draw conditions with a computed item instead
+(see [Experimental conditions](experimental-conditions.md)). A URL
+parameter can still steer the design, for instance a `language` parameter
+in show-if rules.

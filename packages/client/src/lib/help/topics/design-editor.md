@@ -28,41 +28,52 @@ From top to bottom, the tab has:
   the right and, on wide screens, a **preview** of that item in a third
   column.
 
-## What the design uses
+## Blocks
 
-The bar at the top of the tree says what the design is made of, so the
-editor shows only what you need:
+The tree's top level is a list of **blocks**, in the order coders meet
+them:
 
-- **Annotate units**: coders code units. The design is one unit loop: the
-  tree shows its items directly, under a **Units** row that opens the
-  loop's layout and which units coders get.
-- **Questions**: coders answer questions, without units. There is no Units
-  page.
-- **Both**: questions and unit loops, in any order and number.
-- **Experiment**: conditions that vary what coders get (in the Session
-  form), and with questions, computed items such as a random condition.
+- a **Unit loop**: coders code units, one after the other, with the
+  loop's questions for each (see [Unit loops](unit-loops.md));
+- a **Questions** block: the questions, computed items (such as a
+  [random condition](random-condition.md)), Show if items and end items
+  between loops, or before or after them.
 
-A choice that would hide something your design has is greyed out: hover it
-to see what is in the way. A condition that only hands out units (linked to
-a set column) belongs to annotating, not to the experiment.
+A study of only questions is one Questions block; an annotation study is
+often one unit loop, perhaps with a Questions block before or after it. A
+Questions block is only how the tree groups the items between loops: the
+design itself stays one list of items, and two Questions blocks next to
+each other are one.
+
+**Add block** above the tree adds a block **At the end** (or **At the
+start**): a **Unit loop** or **Questions** (a block with a first question).
+A Questions block's row has a **+** to add a unit loop after it.
 
 ## The tree
 
-The tree shows every item, indented under the loop or condition it is in.
+Inside a block, the tree shows every item, indented under the loop or Show
+if item it is in.
 Its icon shows what it is: a question has the icon of its answer type
 (hover over an icon to see the type), a loop a circular arrow, a Show if item
 a branching arrow, an end item an exit arrow. A loop shows its label (or _Unit loop_)
-and which units it hands out (_the session's units_, _part_1, shared_, ...); a Show if item shows
+and which units it hands out; a Show if item shows
 its condition in words (_if age < 18_), or its label if you gave it one.
 
 Questions are numbered as coders see them in the coding screen's top
 bar: the questions outside loops 1, 2, 3, ..., and in each loop its own
-questions from 1. Questions inside conditions count along; a condition
+questions from 1. Questions inside Show if items count along; a condition
 that hides a question for a coder doesn't renumber the rest here.
 
-Above the tree are the **title shown to coders** (edit it in place) and
-the **Session parameters**: click them to open their form (see
-[Session parameters](session-parameters.md)).
+Above the tree are the **title shown to coders** (edit it in place) and two
+buttons, each with a short summary:
+
+- **Coder invitations**: who codes and how they get in: specific coders,
+  each with their own units and link, or a crowd with one link (see
+  [Links](links.md#coder-invitations));
+- **URL parameters**: values a link carries, such as a panel's ids (see
+  [URL parameters](session-parameters.md)).
+
+Click a button to open its form on the right.
 
 Click an item to open it on the right. A loop's row has two extra buttons
 that open the loop on its **Layout** or its **Units** tab.
@@ -79,25 +90,27 @@ Two marks can appear after an item:
 ## Adding items
 
 Hover over a row and click the **+** at its right. A new item goes **below
-that row**: after the item, or for a loop or condition, at the top of what
-is inside it. Then choose the type: **Question**, **Unit loop** (only
-outside loops: loops can't be nested), **Condition** or **End** (an
-[end item](end-items.md)).
+that row**: after the item, or for a loop or Show if item, at the top of what
+is inside it. Then choose the type: **Question**, **Show if**, **End** (an
+[end item](end-items.md)) or, in a Questions block, **Computed variable**.
+Loops can't be nested: after a loop, the **+** offers a new block (a unit
+loop or questions).
 
-Below the last item of a loop or condition, "below" could mean two places:
+Below the last item of a loop or Show if item, "below" could mean two places:
 still inside, or after the loop. Then the menu first asks **Where?**, for
 example **After tone** or **After News articles**. Each place a level
 further out is marked with one more outdent icon, so you can see how far
-out it goes. An empty loop or condition offers **Inside** it and **After**
+out it goes. An empty loop or Show if item offers **Inside** it and **After**
 it. While you point at a place, a line in the tree shows where the item
 will go.
 
-**Add item** above the tree adds an item at the end of the design.
+**Add block** above the tree adds a block at the end (or the start) of the
+design.
 
 New questions are called `question_1`, `question_2`, ... and start as
 **Confirm** questions; rename them and choose the answer type. New end
 items are called `end_1`, ... and start as **Screened out (not eligible)**.
-New loops and conditions start empty: add their items with their own **+**.
+New loops and Show if items start empty: add their items with their own **+**.
 
 > To put an item at the very top of the design, add it below the first
 > item and then move it to the top (below).
@@ -105,8 +118,8 @@ New loops and conditions start empty: add their items with their own **+**.
 ## Moving and deleting
 
 Tick the box in front of one or more items (it appears when you hover over
-a row). Ticking a loop or condition takes everything inside it along.
-In place of **Add item** you now see how many items are selected, with:
+a row). Ticking a loop or Show if item takes everything inside it along.
+In place of **Add block** you now see how many items are selected, with:
 
 - **Delete**: deletes the ticked items and everything inside them, after
   asking once.
@@ -129,7 +142,7 @@ three views:
   fields. Problems show in red under the field they are about; warnings in
   amber.
 - **JSON**: the same item as JSON, for copying settings or editing
-  quickly. Loops and conditions are shown without their items (those are
+  quickly. Loops and Show if items are shown without their items (those are
   items of their own). Your edit is applied as soon as it is valid JSON
   that the editor can show; until then a red line says **Not applied:**
   and why. **Format** tidies it up.
@@ -231,7 +244,7 @@ studies, or for larger edits such as renaming many things at once. The editor
 completes property names, checks the structure, and explains a property
 when you hover over it. The document has three parts, as in an
 exported design: `public` (the title shown to coders), `session` (the
-session parameters) and `items` (the questions, loops and other items). **Fold details** collapses the details of
+coder invitations, URL parameters and the study's end) and `items` (the questions, loops and other items). **Fold details** collapses the details of
 questions and layouts so that only the structure remains; **Unfold all**
 opens everything again; **Format** tidies the layout.
 

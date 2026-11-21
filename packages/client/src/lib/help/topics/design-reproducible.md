@@ -18,9 +18,9 @@ units and with their own coders.
 
 | Layer           | Holds                                                                                                                                                                                                               | Shared with the study?              |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| **Design**      | Questions, conditions, layouts, per loop the rules for handing out units, and the session parameters links carry. It refers to sets and groups by name, and to coders only through their answers and session values | Yes: this is the instrument         |
+| **Design**      | Questions, conditions, layouts, per loop the rules for handing out units, the coder invitations and the URL parameters links carry. It refers to sets and groups by name, and to coders only through their answers and session values | Yes: this is the instrument         |
 | **Set columns** | Which coder or condition each unit is for, such as `anna`, `anna;bob`, `_overlap` in a column `coder`                                                                                                               | As data, if you may share the units |
-| **Links**       | Made from the design's coders, conditions and link parameters, with labels, participant ids and max uses                                                                                                            | No: they are about your coders      |
+| **Links**       | Made from the design's coder invitations (one link, or one per coder), with labels, participant ids and max uses                                                                                                    | No: they are about your coders      |
 
 ## The design names, but never binds
 
@@ -28,12 +28,11 @@ The design may _name_ things that only get a meaning in the study:
 
 - **A set**: _every coder codes the units of set `gold`_. Which units are
   in `gold` is decided by the set, not the design.
-- **Units that depend on the coder or condition**: _units are divided over
-  coders by the column `coder`_, or _the condition `framing` is linked to the
-  column `framing`_. See [Handing out units](unit-distribution.md).
+- **Units that depend on the coder or condition**: _the coders are the
+  values of the column `coders`_, or _the random condition `framing` is
+  linked to the column `framing`_. See [Handing out units](unit-distribution.md).
 - **A group of coders**: _coders in the experimental group get this layout_,
-  where the group is a [condition](experimental-conditions.md), drawn or
-  set by the link.
+  where the group is a [random condition](experimental-conditions.md).
 
 What the design never contains is a unit id, a participant id, an email
 address or a link's address. So:
@@ -63,11 +62,13 @@ coded, make a new set or use all units.
 
 ## Links hold who may take part
 
-Which links exist follows from the design: deploying makes a link per
-value of its link parameters (see [Links](links.md)). Everything
-about specific people is set on the links themselves:
+Which links exist follows from the design: deploying makes one link, or
+with specific coders a link per coder (see [Links](links.md)). Everything
+about specific people is outside the design, in the coders' column and on
+the links themselves:
 
-- who may use a link: a login, a list of email addresses;
+- who the coders are: the values of the coders' column (names or email
+  addresses);
 - a fixed participant id, for a personal link;
 - how many coders may start with it.
 
@@ -87,8 +88,8 @@ For the design to run in another study, that study needs:
 - **units with the fields the design uses**, with the same names
   (`$unit.headline` needs a `headline` field). The design declares them, so
   the Units page says what an upload must have;
-- **set columns with the names the design uses**, if it names any, with
-  the condition values it lists. Deploying checks this, and makes the
+- **set columns with the names the design uses**, if it names any: the
+  coders' column with their own coders, and the condition values it lists. Deploying checks this, and makes the
   links.
 
 [Scripts](scripts.md) in conditions and templates are plain JavaScript
@@ -115,9 +116,10 @@ For your replication materials:
   and a random unit order, give a different draw in a new run. The
   procedure is the same; the outcome per coder is not. The data records what
   each coder got.
-- **Assigning sets by link or login moves a decision out of the design.**
-  The design then says only that each link (or email address) has its own
-  set; who got which link is up to you. Document how you divided them.
+- **Specific coders move a decision out of the design.** The design then
+  says only that each coder has their own units; who the coders are, and
+  which units each got, is in the coders' column. Document how you divided
+  them.
 - **Routing by an answer is a convenience, not a lock.** It decides which
   units an honest coder gets; it doesn't keep a determined coder from other
   groups' units. See [Privacy and where data lives](design-privacy.md).

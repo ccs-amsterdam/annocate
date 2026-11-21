@@ -22,17 +22,17 @@ Everything of a study is stored on the AnnoTinder server you use:
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Units**           | The data you uploaded, and each unit as coders saw it (see [Keeping track of what coders saw](design-what-coders-saw.md))                                                                                                                                                                                                  |
 | **Design versions** | Every saved and deployed version                                                                                                                                                                                                                                                                                           |
-| **Links**           | Their settings: label, link parameter values, login, emails, participant id, uses                                                                                                                                                                                                                                          |
-| **Coders**          | Per session: the link used, the participant id (if any), the answers to questions outside unit loops, assigned groups, which units they were given, when they started, and how the session ended                                                                                                                           |
+| **Links**           | Their settings: label, the coder (with a link per coder), participant id, max uses, uses                                                                                                                                                                                                                                    |
+| **Coders**          | Per session: the link used, the participant id (if any), the answers to questions outside unit loops (random conditions included), the URL parameters the design reads, which units they were given, when they started, and how the session ended                                                                                                                           |
 | **Devices**         | Per device a coder used: the kind of device (phone, tablet, desktop), browser and operating system, and on which device each answer was given                                                                                                                                                                              |
 | **Answers**         | Per unit and question: the answer, when it was first given and last changed, and the design version and unit version                                                                                                                                                                                                       |
 | **Response times**  | Per question: how long it was on screen until the first answer and in total, how long the page was hidden meanwhile, and how often the answer changed (measured in the coder's browser); per unit, when the server handed it out. Always recorded: mention it in your participant information if it matters for your study |
 
 What AnnoTinder itself does **not** store about coders: their name, their
-email address (unless the link has them [log in](links.md#login)), their IP address, details of their device beyond its kind, browser and operating system, or
-URL parameters other than the ones the design asks for (an
-[random condition](random-condition.md) that reads a URL parameter, and the participant
-id if the link takes it from the URL). The web server in front of
+email address (unless they [sign in](links.md#login)), their IP address, details of their device beyond its kind, browser and operating system, or
+URL parameters other than the ones the design asks for (its
+[URL parameters](session-parameters.md), and the participant id if the link
+takes it from the URL). The web server in front of
 AnnoTinder may keep ordinary access logs; ask whoever runs it.
 
 A browser keeps one random device id (a cookie) for all studies, but
@@ -94,9 +94,11 @@ What this means for your study:
   In a lab, give every participant their own participant id (sessions are
   kept apart per participant id), or use a private window per participant.
 
-With a link that has coders log in, their email address is stored
-with their session, so their answers can be linked to them: say so in your
-consent text.
+Coders who sign in (to continue on other devices) have their email address
+stored with their session. You see it, in the Coders tab and the download,
+only where the coder invitation requires sign-in (specific coders who sign
+in, or a crowd with **Coders sign in**). Then their answers can be linked to
+them: say so in your consent text.
 
 ## What coders' browsers receive
 
@@ -116,7 +118,7 @@ To run the study, a coder's browser gets:
 Show if conditions are worked out in the coder's browser, so a technically
 skilled coder could read questions or texts meant for another group. Which
 units a coder gets is decided on the server, from the session's values (the
-coder, the conditions and the computed variables linked to units): coders
+coder, and the random conditions linked to units): coders
 can't change their own group or ask for another group's units.
 
 > If some coders must never see some material, put it in a separate study
