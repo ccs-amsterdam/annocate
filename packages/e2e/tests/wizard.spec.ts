@@ -105,7 +105,10 @@ test("a survey alone: questions by name, no units", async ({ page, request }) =>
   expect((await api<unknown[]>(request, "GET", `/study/${study.id}/links`)).length).toBe(0);
 });
 
-test("crowd coding with an overlap; the loop's units are set by the wizard", async ({ page, request }) => {
+test("crowd coding with an overlap; the invitation and the loop's checks are set by the wizard", async ({
+  page,
+  request,
+}) => {
   await page.goto("/research");
   await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /Guided setup/ }).click();
@@ -147,15 +150,11 @@ test("crowd coding with an overlap; the loop's units are set by the wizard", asy
 
   const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "Crowd pilot")!;
   const [draft] = await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`);
-  const [loop] = (await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${draft.id}`)).items as {
-    units: unknown;
-    layout: { template: string };
-  }[];
-  expect(loop.units).toEqual({
-    criteria: { codersPerUnit: { min: 2, max: 2 } },
-    overlap: { placement: "rate", every: 10, rest: "end" },
-    gold: { placement: "rate", every: 10, questions: ["sentiment"] },
-  });
+  const version = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${draft.id}`);
+  const [loop] = version.items as { units: unknown; layout: { template: string } }[];
+  // The shared queue is the crowd invitation's; the overlap and gold units are spread (the default)
+  expect(version.session).toEqual({ invite: { mode: "crowd", units: { codersPerUnit: { min: 2, max: 2 } } } });
+  expect(loop.units).toEqual({ goldCheck: { questions: ["sentiment"] } });
   expect(loop.layout.template).toBe("# $unit.headline\n\n$unit.text");
   const [group] = await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`);
   // The overlap: everyone's, in a set column of its own (the queue is all units)

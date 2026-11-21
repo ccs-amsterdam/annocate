@@ -27,14 +27,11 @@ test("a study's tabs are URLs: a reload stays; leaving unsaved edits asks first"
   await page.getByRole("button", { name: /Open the editor/ }).click();
   await expect(page).toHaveURL(new RegExp(`/research/studies/${study.id}/editor$`));
   await page.reload();
-  await expect(page.getByRole("button", { name: /Add item/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Add block/ })).toBeVisible();
 
   // An unsaved edit: going elsewhere (a tab, the browser's back button) asks first
-  await page.getByRole("button", { name: /Add item/ }).click();
-  await page
-    .getByRole("button", { name: /^Question/ })
-    .first()
-    .click();
+  await page.getByRole("button", { name: /Add block/ }).click();
+  await page.getByRole("button", { name: /^Questions/ }).click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Unsaved Changes" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
@@ -85,8 +82,8 @@ test("on a phone the editor shows one pane at a time: the tree, then an item wit
   await expect(tree).toBeVisible();
   // The title above the tree; the session settings open their form, full width, without the tree
   await expect(page.getByLabel("Title shown to coders", { exact: true })).toHaveValue("A short survey");
-  await page.getByRole("button", { name: "Session", exact: true }).click();
-  await expect(page.getByRole("button", { name: /Parameter/ })).toBeVisible();
+  await page.getByRole("button", { name: /^URL parameters/ }).click();
+  await expect(page.getByRole("button", { name: /URL parameter$/ })).toBeVisible();
   await expect(tree).toBeHidden();
   await page.getByRole("button", { name: "Back to the items" }).click();
   await expect(tree).toBeVisible();

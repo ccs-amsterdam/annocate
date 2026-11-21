@@ -175,7 +175,7 @@ test("panel return links are settings of the run, filled in for coders", async (
 test("a link per value of a URL parameter, built in the browser", async ({ page, request }) => {
   const study = await api<StudyResponse>(request, "POST", "/study", { name: "Schools" });
   const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
-    session: { params: [{ name: "school", kind: "url", values: { list: [{ value: "north" }, { value: "south" }] } }] },
+    session: { urlParams: [{ name: "school", values: [{ value: "north" }, { value: "south" }] }] },
     items: [{ type: "question", name: "ok", variable: { type: "confirm", question: "Ready?" } }],
   });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: codebook.id });

@@ -40,13 +40,15 @@ test("a practice question gives feedback when wrong, answered again until right;
   await expect(page.getByRole("button", { name: /^s1 1$/ })).toBeVisible();
 
   const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
-    session: { params: [], coders: { column: "part" } },
+    session: { invite: { mode: "coders", column: "part", link: "per_coder" } },
     items: [
       {
         type: "unit_loop",
         units: {
-          practice: { placement: "first", questions: ["topic"] },
-          gold: { placement: "last", questions: ["topic"], health: { start: 1, wrong: -1, end: "low_quality" } },
+          practice: "before",
+          practiceCheck: { questions: ["topic"] },
+          gold: "after",
+          goldCheck: { questions: ["topic"], health: { start: 1, wrong: -1, end: "low_quality" } },
         },
         layout: { template: "$unit.text" },
         children: [
@@ -116,7 +118,7 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
       {
         type: "unit_loop",
         name: "articles",
-        units: { gold: { placement: "last", questions: ["topic"] } },
+        units: { gold: "after", goldCheck: { questions: ["topic"] } },
         layout: { template: "$unit.text" },
         children: [
           {
@@ -133,7 +135,7 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
   await page.getByText("Gold answers").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
   await page.getByRole("button", { name: /Open the editor/ }).click();
-  // One loop and nothing else: annotating only, the loop's row is "Units"; its Units tab
+  // The loop's Units tab
   await page.getByTitle("Units: which units coders get").click();
   await page.getByRole("button", { name: "Create gold values…" }).click();
 

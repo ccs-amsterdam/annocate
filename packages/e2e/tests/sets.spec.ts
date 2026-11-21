@@ -42,11 +42,11 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
 
   // A design whose coders are the column's values: a link each, with the overlap first
   const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
-    session: { params: [], coders: { column: "part" } },
+    session: { invite: { mode: "coders", column: "part", link: "per_coder" } },
     items: [
       {
         type: "unit_loop",
-        units: { overlap: { placement: "first" } },
+        units: { overlap: "before" },
         layout: { template: "$unit.text" },
         children: [
           {

@@ -2,10 +2,9 @@ import { expect, test } from "./fixtures";
 import type { StudyResponse, UnitResponse } from "@annotinder/contracts";
 import { api, question } from "./helpers";
 
-// Who gets which units (docs/architecture.md §6): the session settings
-// show the coders and conditions against the units; the first deploy asks
-// whether coders sign in; a condition drawn at the start, linked to a set
-// column, gives each session the units of its value.
+// Who gets which units (docs/architecture.md §6): the coder invitations
+// show the coders against the units, and make the coders' column; a random
+// condition linked to a set column gives each session the units of its value.
 
 const loop = (overlap?: unknown) => ({
   type: "unit_loop",
@@ -41,7 +40,7 @@ async function studyWithColumn(
   return study;
 }
 
-test("the session settings show the coders and conditions; the first deploy asks whether coders sign in", async ({
+test("the coder invitations show the coders; a dialog makes the coders' column; a link per coder", async ({
   page,
   request,
 }) => {
@@ -51,41 +50,40 @@ test("the session settings show the coders and conditions; the first deploy asks
     "Shared text": "_overlap",
   });
   await api(request, "POST", `/study/${study.id}/design`, {
-    session: { params: [], coders: { column: "coder" } },
+    session: { invite: { mode: "coders", column: "coder", link: "per_coder" } },
     items: [loop()],
   });
 
   await page.goto(`/research/studies/${study.id}/editor`);
-  await page.getByRole("button", { name: "Session", exact: true }).click();
-  await expect(page.getByText("2 coders: names, so a link per coder.")).toBeVisible();
+  await page.getByRole("button", { name: /^Coder invitations/ }).click();
+  await expect(page.getByText("2 coders.", { exact: true })).toBeVisible();
 
-  // An assigned condition by link doubles the links
-  await page.getByRole("button", { name: "Condition", exact: true }).click();
-  await page.getByLabel("How the condition is assigned").selectOption("link");
-  await expect(page.getByText("Deploying makes 4 links for these.")).toBeVisible();
+  // Signing in needs email addresses
+  await page.getByLabel("One link: coders sign in with the email address in the column").check();
+  await expect(page.getByText(/Signing in needs email addresses/)).toBeVisible();
+  await page.getByLabel(/A link per coder/).check();
 
-  // Linked to a column that doesn't have its values: shown right away
-  await page.getByLabel("Linked to units", { exact: true }).selectOption("coder");
-  await expect(page.getByText('No units for "control", "experiment" in column "coder"')).toBeVisible();
-  await page.getByRole("button", { name: /^Remove condition_1$/ }).click();
-
-  // The first deploy: whether coders sign in
-  await page.getByRole("button", { name: "Deploy…", exact: true }).click();
+  // Made again in the dialog: three named coders, two per unit
+  await page.getByRole("button", { name: "Make it again…" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Coders sign in").selectOption("optional");
-  await dialog.getByRole("button", { name: "Deploy", exact: true }).click();
-  await expect
-    .poll(async () => (await api<StudyResponse>(request, "GET", `/study/${study.id}`)).signIn)
-    .toBe("optional");
+  await dialog.getByLabel("Names, each with their own link").check();
+  await dialog.getByLabel(/Names \(one per line\)/).fill("carla\ndave\nemma");
+  await dialog.getByLabel("Coders per unit").fill("2");
+  await dialog.getByRole("button", { name: "Make the column" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText("3 coders.", { exact: true })).toBeVisible();
 
-  // A link per coder on the Links page
+  // Deployed: a link per coder on the Links page
+  await page.getByRole("button", { name: "Deploy…", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Deploy", exact: true }).click();
+  await expect(page.getByRole("dialog")).toBeHidden();
   await page.getByRole("button", { name: "Deploy", exact: true }).click();
   await page.getByRole("button", { name: "Links", exact: true }).click();
-  await expect(page.getByRole("cell", { name: "coder anna" })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "coder bob" })).toBeVisible();
+  for (const name of ["carla", "dave", "emma"])
+    await expect(page.getByRole("cell", { name: `coder ${name}` })).toBeVisible();
 });
 
-test("a condition drawn at the start, linked to units: balanced, each session codes its value's units", async ({
+test("a random condition linked to units: balanced, each session codes its value's units", async ({
   request,
   browser,
 }) => {
@@ -94,13 +92,10 @@ test("a condition drawn at the start, linked to units: balanced, each session co
     "Alarming report": "experiment",
   });
   const design = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
-    session: {
-      params: [],
-      conditions: [
-        { name: "framing", values: ["control", "experiment"], assign: "random", draw: "balanced", units: "framing" },
-      ],
-    },
-    items: [loop()],
+    items: [
+      { type: "computed", name: "framing", variable: { type: "random", draw: "balanced", units: "framing" } },
+      loop(),
+    ],
   });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
   const links = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);

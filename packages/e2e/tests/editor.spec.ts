@@ -16,7 +16,7 @@ test("writing a design in the editor, as the help describes it, and saving it", 
 
   // A unit loop
   // (Form labels aren't tied to their fields yet: placeholders find them.)
-  await page.getByRole("button", { name: /Add item/ }).click();
+  await page.getByRole("button", { name: /Add block/ }).click();
   await page.getByRole("button", { name: /^Unit loop/ }).click();
   await page.getByPlaceholder("e.g. News items").fill("News articles");
   // A new loop hands out all the session's units, once: nothing to specify
@@ -73,12 +73,10 @@ test("a computed variable: a random condition linked to a set column", async ({ 
   await page.getByRole("button", { name: "Design", exact: true }).click();
   await page.getByRole("button", { name: /Open the editor/ }).click();
 
-  // Computed items are part of an experiment: offered once it is on
-  await page.getByRole("button", { name: /Add item/ }).click();
-  await expect(page.getByRole("button", { name: /^Computed variable/ })).toHaveCount(0);
-  await page.getByRole("button", { name: /Add item/ }).click();
-  await page.getByLabel("What the design uses").getByRole("checkbox", { name: "Experiment" }).check();
-  await page.getByRole("button", { name: /Add item/ }).click();
+  // A Questions block (its first question), then a computed item in it
+  await page.getByRole("button", { name: /Add block/ }).click();
+  await page.getByRole("button", { name: /^Questions/ }).click();
+  await page.getByRole("button", { name: "Add an item below" }).first().click();
   await page.getByRole("button", { name: /^Computed variable/ }).click();
   await page.getByPlaceholder("e.g. sentiment, age").fill("framing");
   await expect(page.getByText("Random condition", { exact: true })).toBeVisible();
@@ -93,35 +91,26 @@ test("a computed variable: a random condition linked to a set column", async ({ 
     .toBe(1);
   const [saved] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
   const { items } = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${saved.id}`);
-  expect(items).toMatchObject([{ type: "computed", name: "framing", variable: { type: "random", units: "framing" } }]);
+  expect(items).toMatchObject([
+    { type: "question" },
+    { type: "computed", name: "framing", variable: { type: "random", units: "framing" } },
+  ]);
 });
 
-test("editor modes: annotating only shows one loop's items; a choice the design blocks says why; the study's end", async ({
-  page,
-  request,
-}) => {
-  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Modes test" });
+test("blocks: questions and unit loops at the top level, in any order; the study's end", async ({ page, request }) => {
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Blocks test" });
   await page.goto(`/research/studies/${study.id}/editor`);
-  const bar = page.getByLabel("What the design uses");
-  // A new design: everything shown
-  await expect(bar.getByRole("radio", { name: "Both" })).toHaveAttribute("aria-checked", "true");
 
-  // Annotating only: the editor adds the loop, shown as "Units", its items as the top level
-  await bar.getByRole("radio", { name: "Annotate units" }).click();
-  await expect(page.getByRole("button", { name: /Units/ }).first()).toBeVisible();
-  await page.getByRole("button", { name: /Add item/ }).click();
-  await expect(page.getByRole("button", { name: /^Unit loop/ })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /^Computed variable/ })).toHaveCount(0);
-  await page
-    .getByRole("button", { name: /^Question/ })
-    .first()
-    .click();
-  await page.getByPlaceholder("e.g. sentiment, age").fill("topic");
-
-  // Questions only would hide the loop: blocked, saying why
-  const questions = bar.getByRole("radio", { name: "Questions" });
-  await expect(questions).toBeDisabled();
-  await expect(questions).toHaveAttribute("title", /unit loop/);
+  // The top level holds blocks: a unit loop, or questions
+  await page.getByRole("button", { name: /Add block/ }).click();
+  await expect(page.getByRole("button", { name: /^Question\b/ })).toHaveCount(0);
+  await page.getByRole("button", { name: /^Unit loop/ }).click();
+  await page.getByRole("button", { name: /Add block/ }).click();
+  await page.getByRole("button", { name: "At the start" }).click();
+  await page.getByRole("button", { name: /^Questions/ }).click();
+  await page.getByPlaceholder("e.g. sentiment, age").fill("age");
+  // The questions show as a block, before the loop
+  await expect(page.getByText("Questions", { exact: true }).first()).toBeVisible();
 
   // The study's normal end: its own row, with a message
   await page.getByRole("button", { name: /At the end/ }).click();
@@ -135,24 +124,6 @@ test("editor modes: annotating only shows one loop's items; a choice the design 
     .toBe(1);
   const [saved] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
   const version = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${saved.id}`);
-  expect(version.session).toMatchObject({
-    uses: { content: "annotate", experiment: false },
-    end: { message: "Thanks for coding!" },
-  });
-  expect(version.items).toMatchObject([{ type: "unit_loop", children: [{ name: "topic" }] }]);
-});
-
-test("a design with questions only has no Units page", async ({ page, request }) => {
-  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Survey only" });
-  await api(request, "POST", `/study/${study.id}/design`, {
-    session: { params: [], uses: { content: "questions", experiment: false } },
-    items: [{ type: "question", name: "age", variable: { type: "numeric", question: "Age?" } }],
-  });
-  await page.goto(`/research/studies/${study.id}/editor`);
-  await expect(page.getByLabel("What the design uses").getByRole("radio", { name: "Questions" })).toHaveAttribute(
-    "aria-checked",
-    "true",
-  );
-  await expect(page.getByRole("button", { name: "Editor", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Units", exact: true })).toHaveCount(0);
+  expect(version.session).toMatchObject({ end: { message: "Thanks for coding!" } });
+  expect(version.items.map((i) => i.type)).toEqual(["question", "unit_loop"]);
 });
