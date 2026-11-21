@@ -1,7 +1,11 @@
-# AnnoTinder: the server, serving the built client (docs/hosting.md).
-#   docker build -t annotinder --build-arg ANNOTINDER_COMMIT=$(git rev-parse --short HEAD) .
+# AnnoTinder: the server, serving the built client (docs/hosting.md). CI
+# publishes it as ghcr.io/ccs-amsterdam/annotinder (.github/workflows/image.yml).
+#   docker build -t annotinder --build-arg ANNOTINDER_COMMIT=$(git rev-parse --short=8 HEAD) .
 
-FROM node:22-slim AS build
+# The build runs on the builder's own platform, also for an image of another
+# one (arm64 on an amd64 runner): its output is JavaScript, and the server's
+# production dependencies have no native code, so the final stage only copies.
+FROM --platform=$BUILDPLATFORM node:22-slim AS build
 RUN corepack enable
 WORKDIR /src
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./

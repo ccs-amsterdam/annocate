@@ -2,8 +2,11 @@
 
 AnnoTinder is one Node server that also serves the built client (one origin,
 so session cookies work), plus a Postgres database. The `Dockerfile` builds
-the server and the client into one image. `compose.yml` runs that image with
-Postgres and a service that dumps the database every day.
+the server and the client into one image, which CI publishes as
+`ghcr.io/ccs-amsterdam/annotinder` ([Versions](#versions)). `compose.yml`
+runs that image with Postgres, a service that dumps the database every day
+and, optionally, Caddy for HTTPS. A server needs only `compose.yml` and its
+`.env`: no checkout of the code, and no build.
 
 The first part of this file is a step-by-step guide for a pilot server on
 the lab's infrastructure. The rest is reference: settings, the login
@@ -91,7 +94,8 @@ Check the result:
 sudo docker compose version && caddy version && id sal
 ```
 
-`caddy version` must say 2.9 or newer.
+`docker compose version` must say 2.23 or newer (`compose.yml` holds the
+files its services read), and `caddy version` 2.9 or newer.
 
 ### 3. The app folder
 
@@ -110,23 +114,20 @@ sudo chown sal:sal /opt/annotinder
 sudo chmod 750 /opt/annotinder
 ```
 
-Clone the code into it, as `sal`. The repository itself is the app's folder:
-
-- `compose.yml` is at the top;
-- `.env` and `backups/` sit next to it, and git ignores both.
+Download `compose.yml` and `.env.example` into it, as `sal`. They are the
+whole app folder; `.env` (step 5) and `backups/` (made at the first start)
+come next to them.
 
 ```bash
-sudo -u sal git clone https://github.com/ccs-amsterdam/annocate.git /opt/annotinder
+cd /opt/annotinder && sudo -u sal curl -fsSL -O https://raw.githubusercontent.com/ccs-amsterdam/annocate/main/compose.yml -O https://raw.githubusercontent.com/ccs-amsterdam/annocate/main/.env.example
 ```
 
-Until the server work is merged into the default branch, add
-`--branch claude/annotinder-server-architecture-psxrk6`. If the repository
-is private, clone it with a read-only deploy key, or copy a checkout in and
-then run `sudo chown -R sal:sal /opt/annotinder`.
+For a release, replace `main` in both addresses with its tag (e.g.
+`v0.1.0`), so the files match the image of that release.
 
 The rules for working in the folder:
 
-- Run commands as `sal` (`sudo -u sal git ...`).
+- Run commands as `sal` (`sudo -u sal curl ...`).
 - Run Docker with `sudo` (`sudo docker compose ...`), from `/opt/annotinder`.
 - Edit files with `sudoedit -u sal <file>`, which opens your own editor and
   saves as `sal`. Never use plain `sudo` for other commands in the folder,
@@ -220,19 +221,23 @@ needs no quoting or escaping.
   same machine, so it takes the client address for rate limits from
   `X-Forwarded-For`.
 
-The image sets `PORT` and `ANNOTINDER_CLIENT_DIR`. The commit comes in as a
-build argument (step 6). Never set `AUTH_DEV_MODE` or `ANNOTINDER_DEMO` on a
+Which image the server runs is `ANNOTINDER_VERSION`: a release (e.g.
+`0.1.0`), a commit, or `main` (the default). For the pilot, pin the release
+or commit you tested ([Versions](#versions)).
+
+The image sets `PORT`, `ANNOTINDER_CLIENT_DIR` and the commit it was built
+from. Never set `AUTH_DEV_MODE` or `ANNOTINDER_DEMO` on a
 server. The full list is under [Settings](#settings).
 
-### 6. Build and start
+### 6. Start
 
 ```bash
-cd /opt/annotinder && sudo ANNOTINDER_COMMIT=$(sudo -u sal git rev-parse --short HEAD) docker compose up -d --build
+cd /opt/annotinder && sudo docker compose pull && sudo docker compose up -d
 ```
 
-`ANNOTINDER_COMMIT` is the commit the image is built from. Each deployment
-records it, so a study says exactly which version coders saw. The first
-build takes a few minutes. Then check:
+The first command downloads the images, the second starts them. Each
+deployment records the image's release and commit, so a study says exactly
+which version coders saw. Then check:
 
 - `sudo docker compose ps`: `app` is `healthy`, `db` is `healthy`, and
   `db-backup` is up.
@@ -280,10 +285,14 @@ ports 80 and 443 are closed.
 From your own machine, or on the VM:
 
 ```bash
-/opt/annotinder/scripts/smoke-test.sh https://annotinder.example.org
+curl -fsSL -o smoke-test.sh https://raw.githubusercontent.com/ccs-amsterdam/annocate/main/scripts/smoke-test.sh
 ```
 
-It needs only bash and curl, and exits with 1 if any check fails. It checks:
+```bash
+bash smoke-test.sh https://annotinder.example.org
+```
+
+(In a checkout of the code it is `scripts/smoke-test.sh`.) It needs only bash and curl, and exits with 1 if any check fails. It checks:
 
 - `/api/health`, and prints the release and commit;
 - the app (`/`), with its Content-Security-Policy, and HSTS over HTTPS;
@@ -299,7 +308,7 @@ With an API key (step 9) it also checks `GET /api/me`. Pass the key in
 `ANNOTINDER_API_KEY` to keep it out of the shell history:
 
 ```bash
-ANNOTINDER_API_KEY=atk_... /opt/annotinder/scripts/smoke-test.sh https://annotinder.example.org
+ANNOTINDER_API_KEY=atk_... bash smoke-test.sh https://annotinder.example.org
 ```
 
 The output of a working pilot looks like this:
@@ -413,22 +422,28 @@ database volume.
 
 ### 11. Updating
 
-```bash
-cd /opt/annotinder && sudo docker compose restart db-backup
-```
+1. A fresh dump first:
 
-```bash
-sudo -u sal git pull
-```
+   ```bash
+   cd /opt/annotinder && sudo docker compose restart db-backup
+   ```
 
-```bash
-sudo ANNOTINDER_COMMIT=$(sudo -u sal git rev-parse --short HEAD) docker compose up -d --build
-```
+2. Set the new `ANNOTINDER_VERSION` in `.env` (`sudoedit -u sal
+   /opt/annotinder/.env`). With `main`, skip this: the next step gets the
+   latest commit on main.
+3. If the release notes say `compose.yml` changed, download it again (step
+   3, `compose.yml` only).
+4. Get the new image and start it:
 
-The first command makes a fresh dump. The server applies new migrations
-when it starts. Run the smoke test afterwards: it prints the new commit.
-Old images pile up, so clear them now and then with
-`sudo docker image prune`.
+   ```bash
+   sudo docker compose pull && sudo docker compose up -d
+   ```
+
+The server applies new migrations when it starts. Run the smoke test
+afterwards: it prints the new release and commit. To go back, set the
+previous version and run step 4 again, as long as the newer version made no
+migrations (else restore the dump of step 1, [Backups](#10-backups)). Old
+images pile up, so clear them now and then with `sudo docker image prune`.
 
 Postgres is pinned to a version in `compose.yml`. A minor update (18.x) is
 a change of the tag. A major update (18 to 19) needs a dump, a new volume
@@ -468,11 +483,13 @@ log.
 
 ## With Docker Compose elsewhere
 
-Outside the lab, the same `compose.yml` works on any machine with Docker:
+Outside the lab, the same `compose.yml` works on any machine with Docker
+(Compose 2.23 or newer, for the files it holds), amd64 or arm64:
 
-1. Copy `.env.example` to `.env` and fill it in ([Settings](#settings)).
-2. Register AnnoTinder with your login provider ([Login provider](#login-provider)).
-3. Run `ANNOTINDER_COMMIT=$(git rev-parse --short HEAD) docker compose up -d --build`.
+1. Download `compose.yml` and `.env.example` into an empty folder (step 3).
+2. Copy `.env.example` to `.env` and fill it in ([Settings](#settings)).
+3. Register AnnoTinder with your login provider ([Login provider](#login-provider)).
+4. Run `docker compose pull && docker compose up -d`.
 
 The app then listens on `127.0.0.1:8787`. Put a proxy in front of it that
 does TLS and forwards to it, keeping the `Host` header and setting
@@ -494,10 +511,10 @@ and start as usual (or pass `--profile caddy` to each `docker compose`
 command instead):
 
 ```bash
-ANNOTINDER_COMMIT=$(git rev-parse --short HEAD) docker compose up -d --build
+docker compose pull && docker compose up -d
 ```
 
-Caddy serves `ANNOTINDER_PUBLIC_URL` (`caddy/Caddyfile`), gets a Let's
+Caddy serves `ANNOTINDER_PUBLIC_URL` (the `caddyfile` in `compose.yml`), gets a Let's
 Encrypt certificate for its host by itself, and forwards to the app on
 `127.0.0.1:8787`. Before the first start:
 
@@ -511,7 +528,22 @@ address, also over IPv6, for its rate limits, and the firewall applies to
 Caddy as to any program on the host. The certificates are kept in the
 `caddy-data` volume; don't delete it, or Let's Encrypt may refuse new
 certificates for a while. Caddy's log: `docker compose logs caddy`. After a
-change to `caddy/Caddyfile`, `docker compose restart caddy`.
+change to the `caddyfile` in `compose.yml`, `docker compose up -d caddy`.
+
+### Building the image yourself
+
+To run your own changes, or without the published image, build it from a
+checkout of the code with `compose.build.yml` next to `compose.yml`:
+
+```bash
+ANNOTINDER_COMMIT=$(git rev-parse --short=8 HEAD) docker compose -f compose.yml -f compose.build.yml up -d --build
+```
+
+With `COMPOSE_FILE=compose.yml:compose.build.yml` in `.env`, plain
+`docker compose` commands use both files. `ANNOTINDER_COMMIT` is the commit
+the image records. A checkout with uncommitted changes still records the
+commit alone, so build the published version from CI instead when a study's
+record matters.
 
 ## Settings
 
@@ -653,9 +685,24 @@ in.
 Each deployment records the release and commit it ran on, in the deploy
 history and in `design.json` in the results export, so a study says
 exactly what coders saw. The release is in the code. The commit comes from
-`ANNOTINDER_COMMIT`, which the image takes as a build argument (steps 6 and
-11). Without it, the commit is recorded as "unknown", and the smoke test
-says so. A server run from a git checkout finds the commit itself.
+`ANNOTINDER_COMMIT`, which the image takes as a build argument. Without it,
+the commit is recorded as "unknown", and the smoke test says so.
+
+CI (`.github/workflows/image.yml`) builds the image and publishes it as
+`ghcr.io/ccs-amsterdam/annotinder`, for amd64 and arm64, with the commit:
+
+- every push to a branch tags the branch (`main`, or e.g. `docker-image`; a
+  `/` in its name becomes `-`) and the commit (8 characters, e.g.
+  `1a2b3c4d`), so a branch can be tried on a server before it is merged;
+- a tag `v<release>` (e.g. `git tag v0.1.0 && git push origin v0.1.0`) also
+  tags `0.1.0`, `0.1` and `latest`. The release is `RELEASE` in
+  `packages/contracts/src/version.ts`; CI refuses a tag that doesn't match
+  it, so set it first.
+
+A server picks one with `ANNOTINDER_VERSION` in `.env` (step 11). The first
+time CI publishes the image, GitHub makes the package private: make it
+public once, under the package's **Package settings**, so servers can pull
+it without logging in. A server run from a git checkout finds the commit itself.
 `GET /api/health` answers `{ ok: true, service, release, commit }`; the
 image's health check uses it.
 

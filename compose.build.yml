@@ -1,0 +1,13 @@
+# Build the app image from this checkout instead of pulling the published one
+# (docs/hosting.md, "Building the image yourself"), with the commit recorded:
+#   ANNOTINDER_COMMIT=$(git rev-parse --short=8 HEAD) docker compose -f compose.yml -f compose.build.yml up -d --build
+# Or set COMPOSE_FILE=compose.yml:compose.build.yml in .env, and leave out the -f options.
+services:
+  app:
+    image: annotinder:local
+    pull_policy: build
+    build:
+      context: .
+      args:
+        # The commit, recorded with each deployment ("unknown" without it)
+        ANNOTINDER_COMMIT: ${ANNOTINDER_COMMIT:-unknown}
