@@ -48,7 +48,10 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
 
   // The options for the keyboard (a dropdown has its own filter box)
   const targets = layout === "dropdown" ? null : [variable.options.map((o) => ({ label: optionLabel(o) }))];
-  const [keys = []] = useKeyTargets(targets, (_, index) => pick(variable.options[index]));
+  const [keys = []] = useKeyTargets(targets, (_, index) => pick(variable.options[index]), {
+    // Several answers: Enter continues (as the Continue button)
+    onEnter: multiple ? submit : undefined,
+  });
 
   let field;
   if (layout === "dropdown") {

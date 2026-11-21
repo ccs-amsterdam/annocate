@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PRIORITY } from "../keyboard/controller";
 import { useKeyScope } from "../keyboard/hooks";
+import { ShortcutBadge } from "./ShortcutBadge";
 import {
   Check,
   ChevronLeft,
@@ -182,24 +183,26 @@ export function CodingNav({
           type="button"
           variant="ghost"
           size="icon"
-          className="h-7 w-7 cursor-pointer text-bar-foreground hover:bg-bar-foreground/15 disabled:opacity-30"
+          className="relative h-7 w-7 cursor-pointer text-bar-foreground hover:bg-bar-foreground/15 disabled:opacity-30"
           disabled={!navigation.canGoBack}
           onClick={onBack}
-          title="Previous"
+          title="Previous (Shift + ←)"
           aria-label="Previous"
         >
+          <ShortcutBadge shortcut="⇧←" position="top-right" />
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="h-7 w-7 cursor-pointer text-bar-foreground hover:bg-bar-foreground/15 disabled:opacity-30"
+          className="relative h-7 w-7 cursor-pointer text-bar-foreground hover:bg-bar-foreground/15 disabled:opacity-30"
           disabled={!navigation.canGoForward}
           onClick={onForward}
-          title="Next"
+          title="Next (Shift + →)"
           aria-label="Next"
         >
+          <ShortcutBadge shortcut="⇧→" position="top-right" />
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>

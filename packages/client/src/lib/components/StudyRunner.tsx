@@ -26,6 +26,7 @@ import { SwipeCard, SwipeProvider, SwipeSurface } from "./SwipeCard";
 import { buildValues } from "./answerFields/answerValue";
 import { dropRepeatedClick } from "./inputGuards";
 import { KeyboardProvider } from "../keyboard/KeyboardProvider";
+import { useBaseKeys } from "../keyboard/hooks";
 import { Button } from "@/components/ui/button";
 import { LogoSmoke } from "@/components/Logo";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -198,6 +199,19 @@ function StudyRunnerContent({
   );
   const { manager, snapshot } = useStudyManager(coderApi);
   const [navDirection, setNavDirection] = useState<"next" | "previous">("next");
+  // The keys that work whatever the mapping: arrows, Shift + arrows, Backspace, Enter
+  useBaseKeys({
+    canGoBack: snapshot.navigation.canGoBack,
+    canGoForward: snapshot.navigation.canGoForward,
+    onBack: () => {
+      setNavDirection("previous");
+      void manager.goBack();
+    },
+    onForward: () => {
+      setNavDirection("next");
+      void manager.goForward();
+    },
+  });
 
   // Track global position to keep navDirection in sync with any navigation change
   const currentPos = useMemo(() => computeGlobalPosition(snapshot.navigation), [snapshot.navigation]);

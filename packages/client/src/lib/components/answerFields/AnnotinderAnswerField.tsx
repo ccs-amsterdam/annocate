@@ -54,6 +54,7 @@ export function AnnotinderAnswerField({ variable, onAnswer }: AnswerFieldProps<A
               aria-label={`${optionLabel(option)} (swipe ${direction})`}
               className={`h-10 min-w-0 flex-1 gap-1.5 px-2 ${direction === "right" ? "flex-row-reverse" : ""}`}
               style={option.color ? { borderColor: option.color, color: option.color } : undefined}
+              data-key-target=""
               onClick={() => choose(direction)}
             >
               <Icon className="size-4 shrink-0" />

@@ -58,3 +58,19 @@ describe("the numbers mapping", () => {
     expect(targetForKey(numbersMapping, group, "x")).toBe(-1);
   });
 });
+
+describe("moving focus with the arrow keys", () => {
+  const rect = (left: number, top: number, width = 40, height = 20) =>
+    ({ left, top, width, height, right: left + width, bottom: top + height }) as DOMRect;
+
+  it("goes to the nearest target ahead, preferring the same row or column", async () => {
+    const { nearest } = await import("./focus");
+    // A 3 x 2 grid: (0,0) (50,0) (100,0) / (0,30) (50,30) (100,30)
+    const grid = [rect(50, 0), rect(100, 0), rect(0, 30), rect(50, 30), rect(100, 30)].map((r) => ({ rect: r }));
+    const from = rect(0, 0);
+    expect(nearest(from, grid, "right")).toBe(0);
+    expect(nearest(from, grid, "down")).toBe(2);
+    expect(nearest(from, grid, "left")).toBe(-1);
+    expect(nearest(from, grid, "up")).toBe(-1);
+  });
+});

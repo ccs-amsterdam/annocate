@@ -30,7 +30,7 @@ interface Scope extends Required<ScopeOptions> {
 }
 
 /** Priorities of the kinds of scopes. */
-export const PRIORITY = { field: 0, editor: 5, menu: 10 } as const;
+export const PRIORITY = { base: -10, field: 0, editor: 5, menu: 10 } as const;
 
 export class KeyController {
   private scopes: Scope[] = [];
@@ -43,6 +43,20 @@ export class KeyController {
     return () => {
       this.scopes = this.scopes.filter((s) => s !== scope);
     };
+  }
+
+  private focusRequested = false;
+
+  /** The next question's field focuses its chosen target when it appears (after going back with the keyboard). */
+  requestFocus(): void {
+    this.focusRequested = true;
+  }
+
+  /** Whether a field should focus its chosen target now (once). */
+  takeFocusRequest(): boolean {
+    const requested = this.focusRequested;
+    this.focusRequested = false;
+    return requested;
   }
 
   /** Offers a key press to the scopes in turn; true when one used it. */

@@ -31,6 +31,7 @@ export function OptionButton({ option, selected, shortcut, check, onClick }: Opt
         customStyle ? "" : selected ? "border-primary" : "border-border hover:bg-muted/50"
       }`}
       style={customStyle}
+      data-key-target=""
       onClick={onClick}
     >
       {shortcut && <ShortcutBadge shortcut={shortcut} />}
@@ -73,6 +74,7 @@ export function CompactRow({ options, selected, onSelect, label }: CompactRowPro
             title={optionLabel(option)}
             aria-label={optionLabel(option)}
             aria-checked={isCurrent}
+            data-key-target=""
             onClick={() => onSelect(option)}
             style={style}
             className={`h-9 min-w-0 cursor-pointer overflow-hidden rounded-md border border-transparent px-1 text-sm font-bold text-ellipsis whitespace-nowrap text-foreground transition-all duration-200 ${

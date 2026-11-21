@@ -388,6 +388,7 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
       <Container
         ref={containerRef as React.Ref<HTMLDivElement & HTMLSpanElement>}
         tabIndex={annotation ? 0 : undefined}
+        data-keys-own=""
         onKeyUp={annotation ? handleKeyUp : undefined}
         // The text being selected, the selection waiting for a label and the span being edited share one tint (wood)
         className="rounded p-1 leading-[1.8] whitespace-pre-wrap transition-all select-text selection:bg-wood/30 selection:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"

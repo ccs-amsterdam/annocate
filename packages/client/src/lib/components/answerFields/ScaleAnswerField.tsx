@@ -86,6 +86,7 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
                           name={`${item.name}`}
                           aria-label={`${itemLabel(item)}: ${optionLabel(option)}`}
                           checked={checked}
+                          data-key-target=""
                           onChange={() => select(item.name, option)}
                         />
                       </td>

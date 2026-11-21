@@ -50,6 +50,8 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
               type="button"
               variant={value === n ? "default" : "outline"}
               className="h-10 min-w-0 px-1"
+              aria-pressed={value === n}
+              data-key-target=""
               onClick={() => answer(n)}
             >
               {n}

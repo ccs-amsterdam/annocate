@@ -182,3 +182,38 @@ test("a double click, or a key held down, answers one question; the next isn't s
   await page.waitForTimeout(300);
   await at(page, TEXTS[1], "Tone?");
 });
+
+test("the keyboard: arrows move between answers and Space chooses; Shift + arrows and Backspace go back and forth", async ({
+  page,
+  request,
+}) => {
+  const { link } = await study(request);
+  await page.goto(link);
+  await page.keyboard.press("Enter"); // the confirm question: Enter on nothing focused does nothing yet
+  await page.getByRole("button", { name: "I confirm", exact: true }).click();
+  await at(page, TEXTS[0], "Topic?");
+
+  // Arrows focus an answer, then the next one; Space chooses the focused one
+  await page.keyboard.press("ArrowRight");
+  await expect(option(page, "politics")).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(option(page, "other")).toBeFocused();
+  await page.keyboard.press(" ");
+  await at(page, TEXTS[0], "Tone?");
+
+  // Backspace: back to the previous question, its answer focused to change it at once (kept, not cleared)
+  await page.keyboard.press("Backspace");
+  await at(page, TEXTS[0], "Topic?");
+  await expect(option(page, "other")).toHaveAttribute("aria-pressed", "true");
+  await expect(option(page, "other")).toBeFocused();
+
+  // Shift + Right: next (the question was answered); Shift + Left: previous
+  await page.keyboard.press("Shift+ArrowRight");
+  await at(page, TEXTS[0], "Tone?");
+  await page.keyboard.press("Shift+ArrowLeft");
+  await at(page, TEXTS[0], "Topic?");
+  // Enter continues an answered question
+  await page.locator("body").click({ position: { x: 1, y: 1 } });
+  await page.keyboard.press("Enter");
+  await at(page, TEXTS[0], "Tone?");
+});
