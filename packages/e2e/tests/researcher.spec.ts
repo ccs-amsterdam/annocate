@@ -64,6 +64,20 @@ test("results so far: answers per question, and agreement with each coder's", as
   await expect(page.getByRole("cell", { name: "Example coder 2", exact: true })).toBeVisible();
   if (process.env.E2E_SHOTS)
     await page.screenshot({ path: `${process.env.E2E_SHOTS}/results-agreement.png`, fullPage: true });
+
+  // Units several coders answered, most disagreement first; one with each coder's answer
+  await page.getByRole("tab", { name: "Units" }).click();
+  await page.locator("tbody button").first().click();
+  await expect(page.getByRole("button", { name: "Back to the units" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Example coder 3", exact: true })).toBeVisible();
+  if (process.env.E2E_SHOTS)
+    await page.screenshot({ path: `${process.env.E2E_SHOTS}/results-unit.png`, fullPage: true });
+
+  await page.getByRole("tab", { name: "Coders" }).click();
+  await expect(page.getByRole("columnheader", { name: "Seconds per unit" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Example coder 1", exact: true })).toBeVisible();
+  if (process.env.E2E_SHOTS)
+    await page.screenshot({ path: `${process.env.E2E_SHOTS}/results-coders.png`, fullPage: true });
 });
 
 test("your first study, as the help describes it: units, a design, deploy, a link, code", async ({

@@ -6,6 +6,7 @@ import {
   unitLoops,
   type AnyVariableType,
   type TopLevelItem,
+  type UnitLayout,
 } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useDeploymentQuery, useDesignVersionQuery } from "../../../admin/queries";
@@ -19,6 +20,10 @@ export interface DesignLabels {
   itemLabel: (question: string, item: string) => string;
   /** The question's options in design order (values), if it has options. */
   options: (question: string) => (string | number)[];
+  /** The deployed design's questions. */
+  questions: ReadonlyMap<string, AnyVariableType>;
+  /** A loop's unit layout and its questions in design order. */
+  loop: (key: string) => { layout: UnitLayout; questions: string[] } | undefined;
 }
 
 /** Labels from the deployed design version (none while loading: names and values as they are). */
@@ -27,8 +32,10 @@ export function useDesignLabels(client: ResearcherApi): DesignLabels {
   const design = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data;
   return useMemo(() => {
     const items = (design?.items ?? []) as TopLevelItem[];
-    const { questions } = collectQuestions(items);
-    const loops = new Map(unitLoops(items).map(({ key, loop }) => [key, loopTitle(loop, key)]));
+    const { questions, loopOf } = collectQuestions(items);
+    const designLoops = unitLoops(items);
+    const loops = new Map(designLoops.map(({ key, loop }) => [key, loopTitle(loop, key)]));
+    const layouts = new Map(designLoops.map(({ key, loop }) => [key, loop.layout]));
     const optionsOf = (name: string): { value: string | number; label?: string }[] => {
       const type: AnyVariableType | undefined = questions.get(name);
       return type && "options" in type && Array.isArray(type.options) ? type.options : [];
@@ -49,6 +56,11 @@ export function useDesignLabels(client: ResearcherApi): DesignLabels {
         return found?.label || item;
       },
       options: (question) => optionsOf(question).map((o) => o.value),
+      questions,
+      loop: (key) => {
+        const layout = layouts.get(key);
+        return layout && { layout, questions: [...loopOf].filter(([, l]) => l === key).map(([name]) => name) };
+      },
     };
   }, [design]);
 }

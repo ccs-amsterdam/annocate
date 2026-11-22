@@ -26,7 +26,7 @@ Files are UTF-8 (with a marker for spreadsheets); times are UTC
 
 ## Looking at the answers in the app
 
-Next to **Download**, two views of the answers so far (click **Refresh**
+Next to **Download**, four views of the answers so far (click **Refresh**
 for the latest):
 
 - **Questions**: per question, how often each option was chosen; for
@@ -37,6 +37,11 @@ for the latest):
   Click a question to see each coder's agreement with the others, with
   Cohen's kappa, lowest first: who to look at. Several answers: a row per
   option. Spans: a row per label, each word labelled or not.
+- **Units**: the units two or more coders answered, the ones they disagree
+  on most first. Open one to see it as coders did, with each coder's answers.
+- **Coders**: per coder their units, the median seconds per unit (marked
+  **fast** when far under the others), practice tries, and their kappa with
+  the other coders, lowest first.
 
 ## annotations.csv
 

@@ -539,9 +539,12 @@ Units), Deploy (Links, Coders), Results, Settings. It uses a `ResearcherApi`
   finished units per loop, and how it ended. Deletion requests come first.
   Reset or delete data per session, or by coder ids or emails
   (`coder-identity.md` §8).
-- **Results** (`results/`): **Questions** and **Agreement** show the answers
-  so far from the server's summaries (`getResultsAnswers`,
-  `getResultsAgreement`), loaded once and on Refresh. **Download**
+- **Results** (`results/`): **Questions**, **Agreement**, **Units** (by
+  disagreement; one unit through the loop's layout with every coder's
+  answers) and **Coders** (time per unit, practice tries, kappa) show the
+  answers so far from the server's summaries (`getResultsAnswers`,
+  `getResultsAgreement`, `listResultUnits`, `getResultUnit`,
+  `listResultCoders`), loaded once and on Refresh. **Download**
   (`results/DownloadView.tsx`; `admin/exportData.ts` with the tables,
   `exportAnswers.ts` for answer cells, `exportReadme.ts`): one zip built in
   the browser from the researcher API, with `fflate`:

@@ -8,6 +8,9 @@ import {
 import type {
   ResultsAgreement,
   ResultsAnswers,
+  ResultsCoders,
+  ResultsUnit,
+  ResultsUnits,
   DesignVersionMeta,
   DeploymentVersion,
   PendingChanges,
@@ -505,6 +508,34 @@ export function useResultsAgreementQuery(client: ResearcherApi): UseQueryResult<
   return useQuery({
     queryKey: keys.results(client.studyId, "agreement"),
     queryFn: () => client.getResultsAgreement(),
+    staleTime: Infinity,
+  });
+}
+
+/** Units two or more coders answered, most disagreement first. Loaded once; Refresh asks again. */
+export function useResultUnitsQuery(client: ResearcherApi): UseQueryResult<ResultsUnits> {
+  return useQuery({
+    queryKey: keys.results(client.studyId, "units"),
+    queryFn: () => client.listResultUnits(),
+    staleTime: Infinity,
+  });
+}
+
+/** One unit's answers (under the results key: Refresh asks again). */
+export function useResultUnitQuery(client: ResearcherApi, unitId: number | null): UseQueryResult<ResultsUnit> {
+  return useQuery({
+    queryKey: [...keys.results(client.studyId, "unit"), unitId],
+    queryFn: () => client.getResultUnit(unitId!),
+    enabled: unitId !== null,
+    staleTime: Infinity,
+  });
+}
+
+/** Per coder session: units, time per unit, practice tries. Loaded once; Refresh asks again. */
+export function useResultCodersQuery(client: ResearcherApi): UseQueryResult<ResultsCoders> {
+  return useQuery({
+    queryKey: keys.results(client.studyId, "coders"),
+    queryFn: () => client.listResultCoders(),
     staleTime: Infinity,
   });
 }

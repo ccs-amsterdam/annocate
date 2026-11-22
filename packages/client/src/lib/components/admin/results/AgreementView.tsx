@@ -40,10 +40,18 @@ export function AgreementView({ questions, labels }: { questions: QuestionAgreem
             <table className="w-full text-sm">
               <thead className="text-left text-xs text-muted-foreground">
                 <tr className="border-b border-border">
-                  <th className="px-3 py-2 font-medium">Question</th>
-                  <th className="px-3 py-2 text-right font-medium">Alpha</th>
-                  <th className="px-3 py-2 text-right font-medium">Agree</th>
-                  <th className="px-3 py-2 text-right font-medium">Units</th>
+                  <th scope="col" className="px-3 py-2 font-medium">
+                    Question
+                  </th>
+                  <th scope="col" className="px-3 py-2 text-right font-medium">
+                    Alpha
+                  </th>
+                  <th scope="col" className="px-3 py-2 text-right font-medium">
+                    Agree
+                  </th>
+                  <th scope="col" className="px-3 py-2 text-right font-medium">
+                    Units
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -104,10 +112,16 @@ function CoderTable({ question }: { question: QuestionAgreement }) {
     <table className="w-full text-xs">
       <thead className="text-left text-muted-foreground">
         <tr>
-          <th className="py-1 font-medium">Coder</th>
-          <th className="py-1 text-right font-medium">Shared units</th>
-          <th className="py-1 text-right font-medium">Agree</th>
-          <th className="py-1 text-right font-medium" title="Cohen's kappa with each other coder, averaged">
+          <th scope="col" className="py-1 font-medium">
+            Coder
+          </th>
+          <th scope="col" className="py-1 text-right font-medium">
+            Shared units
+          </th>
+          <th scope="col" className="py-1 text-right font-medium">
+            Agree
+          </th>
+          <th scope="col" className="py-1 text-right font-medium" title="Cohen's kappa with each other coder, averaged">
             Kappa
           </th>
         </tr>

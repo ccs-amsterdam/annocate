@@ -24,6 +24,9 @@ import {
   type Device,
   type ResultsAgreement,
   type ResultsAnswers,
+  type ResultsCoders,
+  type ResultsUnit,
+  type ResultsUnits,
   type CoderProgress,
   type LinkWrite,
   type LinkResponse,
@@ -194,6 +197,9 @@ export interface ResearcherApi {
   listDevices(): Promise<Device[]>;
   getResultsAnswers(): Promise<ResultsAnswers>;
   getResultsAgreement(): Promise<ResultsAgreement>;
+  listResultUnits(): Promise<ResultsUnits>;
+  getResultUnit(unitId: number): Promise<ResultsUnit>;
+  listResultCoders(): Promise<ResultsCoders>;
 }
 
 export interface HttpResearcherApiConfig {
@@ -333,6 +339,18 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async getResultsAgreement(): Promise<ResultsAgreement> {
     return this.request(this.studyPath(researcherEndpoints.getResultsAgreement.path));
+  }
+
+  async listResultUnits(): Promise<ResultsUnits> {
+    return this.request(this.studyPath(researcherEndpoints.listResultUnits.path));
+  }
+
+  async getResultUnit(unitId: number): Promise<ResultsUnit> {
+    return this.request(this.studyPath(researcherEndpoints.getResultUnit.path).replace(":unitId", String(unitId)));
+  }
+
+  async listResultCoders(): Promise<ResultsCoders> {
+    return this.request(this.studyPath(researcherEndpoints.listResultCoders.path));
   }
 
   async listUnitVersions(query: UnitVersionsQuery = {}): Promise<UnitVersionPage> {
