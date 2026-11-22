@@ -140,6 +140,43 @@ type RandomVariable = Extract<VariableType, { type: "random" }>;
 /** How long a coder can go back after completing a session (docs/coder-identity.md §9). */
 const REOPEN_MS = 15 * 60 * 1000;
 
+/** One coder's request for units from a loop (`DeploymentRuntime.pick`). */
+interface PickRequest {
+  coder: Coder;
+  info: LoopInfo;
+  route: Route;
+  count: number;
+}
+
+interface PickWaiter {
+  request: PickRequest;
+  resolve: (units: Unit[]) => void;
+  reject: (error: unknown) => void;
+}
+
+/** At most this many requests picked in one turn of a shared queue's lock (a turn is one transaction). */
+const MAX_PICKS_PER_TURN = 50;
+
+/**
+ * The waiting requests for the next turn, in order, taken off `queue`. A
+ * coder's second request waits for a later turn: asked again, a coder gets
+ * the units they hold, which a turn knows only once it's over.
+ */
+function takeTurn(queue: PickWaiter[]): PickWaiter[] {
+  const turn: PickWaiter[] = [];
+  const coders = new Set<number>();
+  for (let i = 0; i < queue.length && turn.length < MAX_PICKS_PER_TURN;) {
+    const sessionId = queue[i]!.request.coder.sessionId;
+    if (coders.has(sessionId)) {
+      i++;
+      continue;
+    }
+    coders.add(sessionId);
+    turn.push(...queue.splice(i, 1));
+  }
+  return turn;
+}
+
 /**
  * The coder runtime of one deployed study (docs/architecture.md §3).
  * Everything it works with is in the database and read per request: the
@@ -865,10 +902,9 @@ export class DeploymentRuntime {
     const info = this.loops.get(loopName);
     if (!info) throw new HttpError(404, `No unit loop '${loopName}'`);
     const route = await this.route(coder, info);
-    // A shared queue: one lock for the whole loop, since shares overlap (`_overlap`, `a;b`)
     const units = route.units.criteria
-      ? await this.store.locked(`queue/${info.key}`, (store) => this.pick(store, coder, info, route, count))
-      : await this.pick(this.store, coder, info, route, count);
+      ? await this.pickShared({ coder, info, route, count })
+      : (await this.pick(this.store, info, [{ coder, info, route, count }]))[0]!;
     return Promise.all(
       units.map(async (unit) => {
         const [shown, answers] = await Promise.all([
@@ -880,64 +916,115 @@ export class DeploymentRuntime {
     );
   }
 
-  /** Picks the coder's next units (and leases them, in a shared queue); skips units that no longer exist. */
-  private async pick(store: Store, coder: Coder, info: LoopInfo, route: Route, count: number): Promise<Unit[]> {
-    const shared = !!route.units.criteria;
+  /** Per shared queue: the requests waiting for its lock in this process. */
+  private queueWaiting = new Map<string, PickWaiter[]>();
+
+  /**
+   * Picks from a shared queue under its lock (one lock for the whole loop,
+   * since shares overlap: `_overlap`, `a;b`). Requests that arrive while the
+   * lock is busy are picked together in its next turn: one read of the
+   * codings serves them all, which is what limits a busy queue.
+   */
+  private pickShared(request: PickRequest): Promise<Unit[]> {
+    const key = request.info.key;
+    return new Promise((resolve, reject) => {
+      const waiting = this.queueWaiting.get(key);
+      if (waiting) {
+        waiting.push({ request, resolve, reject });
+        return;
+      }
+      const queue: PickWaiter[] = [{ request, resolve, reject }];
+      this.queueWaiting.set(key, queue);
+      void (async () => {
+        while (queue.length > 0) {
+          const turn = takeTurn(queue);
+          try {
+            const picked = await this.store.locked(`queue/${key}`, (store) =>
+              this.pick(
+                store,
+                request.info,
+                turn.map((w) => w.request),
+              ),
+            );
+            turn.forEach((w, i) => w.resolve(picked[i]!));
+          } catch (e) {
+            for (const w of turn) w.reject(e);
+          }
+        }
+        this.queueWaiting.delete(key);
+      })();
+    });
+  }
+
+  /**
+   * Picks each request's next units, in turn (and leases them, in a shared
+   * queue); skips units that no longer exist. In a shared queue, a request
+   * sees the units picked for the requests before it.
+   */
+  private async pick(store: Store, info: LoopInfo, requests: PickRequest[]): Promise<Unit[][]> {
+    const shared = !!requests[0]!.route.units.criteria;
     // A shared queue counts every coder; otherwise only the coder's own codings matter.
     // Leases first: finishing a unit (not under this lock) adds the coding and
     // drops the lease, so a coding finished in between is still seen, as a coding.
     const leases = shared ? await store.listLeases({ loop: info.key }) : [];
-    const rows = await store.listCodings(shared ? { loop: info.key } : { loop: info.key, sessionId: coder.sessionId });
+    const rows = await store.listCodings(
+      shared ? { loop: info.key } : { loop: info.key, sessionId: requests[0]!.coder.sessionId },
+    );
     const codings = DeploymentRuntime.codingsOf(rows);
-    const { main, extras } = this.pools(route, codings, leases);
-    // Picks ids first, then reads them in one query: a unit deleted since the
-    // spec was read is dropped from the pools and another one picked.
-    const picked: { unitId: number; pool: UnitPool }[] = [];
     const units = new Map<number, Unit>();
-    for (;;) {
-      const wanted: typeof picked = [];
-      while (picked.length + wanted.length < count) {
-        const now = this.options.now();
-        const next = pickNext(main, extras, coder.sessionId, codings, {
-          order: info.loop.order ?? "sequential",
-          maxUnits: route.units.criteria?.unitsPerCoder?.max,
-          minUnits: route.units.criteria?.unitsPerCoder?.min,
-          seed: this.spec.studyId * 1000,
-          now,
-        });
-        if (!next) break;
-        if (next.pool.rule) next.pool.take(coder.sessionId, next.unitId, now);
-        // As if finished, for the rest of this batch: the next pick moves on (and counts it for `maxUnits` and the overlap's place).
-        codings.record(coder.sessionId, next.unitId, {}, now);
-        wanted.push(next);
+    const newLeases: Lease[] = [];
+    const result: Unit[][] = [];
+    for (const { coder, route, count } of requests) {
+      const { main, extras } = this.pools(route, codings, leases);
+      // Picks ids first, then reads them in one query: a unit deleted since the
+      // spec was read is dropped from the pools and another one picked.
+      const picked: { unitId: number; pool: UnitPool }[] = [];
+      for (;;) {
+        const wanted: typeof picked = [];
+        while (picked.length + wanted.length < count) {
+          const now = this.options.now();
+          const next = pickNext(main, extras, coder.sessionId, codings, {
+            order: info.loop.order ?? "sequential",
+            maxUnits: route.units.criteria?.unitsPerCoder?.max,
+            minUnits: route.units.criteria?.unitsPerCoder?.min,
+            seed: this.spec.studyId * 1000,
+            now,
+          });
+          if (!next) break;
+          if (next.pool.rule) next.pool.take(coder.sessionId, next.unitId, now);
+          // As if finished, for the rest of this turn: the next pick moves on (and counts it for
+          // `maxUnits` and the overlap's place), and so do the next requests' picks.
+          codings.record(coder.sessionId, next.unitId, {}, now);
+          wanted.push(next);
+        }
+        if (wanted.length === 0) break;
+        const unknown = wanted.map((w) => w.unitId).filter((id) => !units.has(id));
+        if (unknown.length > 0) for (const [id, unit] of await this.getUnits(unknown, store)) units.set(id, unit);
+        const missing = wanted.filter((w) => !units.has(w.unitId));
+        for (const { unitId } of missing) {
+          main.removeUnit(unitId);
+          for (const extra of extras) extra.pool.removeUnit(unitId);
+        }
+        picked.push(...wanted.filter((w) => units.has(w.unitId)));
+        if (missing.length === 0) break;
       }
-      if (wanted.length === 0) break;
-      for (const [id, unit] of await this.getUnits(
-        wanted.map((w) => w.unitId),
-        store,
-      ))
-        units.set(id, unit);
-      const missing = wanted.filter((w) => !units.has(w.unitId));
-      for (const { unitId } of missing) {
-        main.removeUnit(unitId);
-        for (const extra of extras) extra.pool.removeUnit(unitId);
-      }
-      picked.push(...wanted.filter((w) => units.has(w.unitId)));
-      if (missing.length === 0) break;
-    }
-    const now = this.options.now();
-    await store.putLeases(
-      picked
-        .filter((p) => p.pool.rule)
-        .map((p) => ({
+      const now = this.options.now();
+      for (const p of picked) {
+        if (!p.pool.rule) continue;
+        const lease = {
           loop: info.key,
           set: p.pool.set,
           sessionId: coder.sessionId,
           unitId: p.unitId,
-          expires: new Date(now + p.pool.rule!.leaseSeconds * 1000),
-        })),
-    );
-    return picked.map((p) => units.get(p.unitId)!);
+          expires: new Date(now + p.pool.rule.leaseSeconds * 1000),
+        };
+        newLeases.push(lease);
+        leases.push(lease);
+      }
+      result.push(picked.map((p) => units.get(p.unitId)!));
+    }
+    await store.putLeases(newLeases);
+    return result;
   }
 
   /**

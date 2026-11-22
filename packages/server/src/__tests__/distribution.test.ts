@@ -181,6 +181,19 @@ describe("shared queues", () => {
     expect(next(4, 0)).toBeNull();
   });
 
+  it("past others' leases, a unit takes at most one coder more than maxCoders", () => {
+    const { codings, pool } = setup();
+    const p = pool([1], shared({ minCoders: 2, maxCoders: 2 }));
+    const next = (coder: number) => {
+      const n = pickNext(p, [], coder, codings, { order: "sequential", seed: 0, now: 0 });
+      if (n) p.take(coder, n.unitId, 0);
+      return n?.unitId ?? null;
+    };
+    expect([next(1), next(2), next(3)]).toEqual([1, 1, 1]);
+    // The queue ran out: the next coders don't all lease the last unit
+    expect(next(4)).toBeNull();
+  });
+
   it("resume a coder's own lease", () => {
     const { codings, pool } = setup();
     const p = pool([1, 2], shared());

@@ -139,8 +139,14 @@ export class UnitPool {
         if (this.openSlots(id, now) <= 0) continue;
         score = sign * this.codings.forUnit(id).size;
       } else {
-        if (reach === "full" ? this.isFull(id) : agreement && this.topAgreement(id) >= agreement.minAgree) continue;
-        score = this.codings.forUnit(id).size + this.activeLeases(id, now);
+        const leased = this.activeLeases(id, now);
+        if (
+          reach === "full"
+            ? this.isFull(id) || this.overLeased(id, leased)
+            : agreement && this.topAgreement(id) >= agreement.minAgree
+        )
+          continue;
+        score = this.codings.forUnit(id).size + leased;
       }
       if (score < lowest) {
         found = id;
@@ -255,6 +261,16 @@ export class UnitPool {
     return { mode: this.mode, totalUnits: this.units.length, completeUnits, startedUnits, leasedUnits, codings };
   }
 
+  /**
+   * Past others' leases, a unit takes one coder more than `maxCoders` at
+   * most (finished and leased): when the queue runs out, every coder still
+   * asking would otherwise lease the same last units.
+   */
+  private overLeased(unitId: number, leased: number): boolean {
+    const maxCoders = this.rule?.maxCoders;
+    return maxCoders !== undefined && this.codings.forUnit(unitId).size + leased > maxCoders;
+  }
+
   private activeLeases(unitId: number, now: number): number {
     const unitLeases = this.leases.get(unitId);
     if (!unitLeases) return 0;
@@ -297,8 +313,8 @@ export class UnitPool {
  * How far a coder may reach in a shared queue. `slots`: units that need
  * more coders than they have or are reserved for (the normal case). `full`:
  * once there are none, any unit that isn't full (`isFull`), past other
- * coders' leases and up to `maxCoders`, so a coder only gets nothing when
- * every unit is full. `pastMax`: a coder below `minUnits` also goes past
+ * coders' leases up to one coder more than `maxCoders`, so a coder only gets
+ * nothing when every unit is full or taken. `pastMax`: a coder below `minUnits` also goes past
  * `maxCoders`: any unit coders don't agree on yet (`until`), or any unit
  * at all (without `until`).
  */

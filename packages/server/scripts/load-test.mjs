@@ -1,11 +1,11 @@
-// Load test (docs/hosting.md "Capacity"): one study with UNITS units in a
-// shared queue (until 2 coders, at most 2), CODERS simulated coders at once.
+// Load test (docs/hosting.md "Capacity"): one study with UNITS units shared
+// by a crowd (two coders per unit), CODERS simulated coders at once.
 // Each starts a session, answers a coder-level question, then fetches
 // batches of BATCH units and submits them, with THINK_MS (+-50%) per unit,
 // for DURATION seconds. Prints latencies per request and the errors.
 //
 // Against a server with development auth (never a reachable one), e.g.
-//   DATABASE_URL=postgres://... ANNOTINDER_DEV_AUTH=1 ANNOTINDER_RATE_LIMITS=off PORT=8797 pnpm --filter @annotinder/server exec tsx src/index.ts
+//   DATABASE_URL=postgres://... AUTH_DEV_MODE=1 ANNOTINDER_RATE_LIMITS=off PORT=8797 pnpm --filter @annotinder/server exec tsx src/index.ts
 //   BASE=http://localhost:8797 CODERS=300 THINK_MS=10000 node packages/server/scripts/load-test.mjs
 // STUDY and SECRET reuse a study (and its invite) from an earlier run.
 
@@ -52,7 +52,6 @@ async function setUp() {
     {
       type: "unit_loop",
       label: "Headlines",
-      units: [{ mode: "shared", set: "__all__", until: { coders: 2 }, maxCoders: 2 }],
       layout: { template: "# $unit.headline\n\n$unit.text" },
       children: [
         {
@@ -68,9 +67,11 @@ async function setUp() {
       ],
     },
   ];
-  const codebook = await api("POST", `/study/${study.id}/design`, { items });
-  await api("PUT", `/study/${study.id}/deployment`, { designVersionId: codebook.id, active: true });
-  const invite = await api("POST", `/study/${study.id}/links`, { label: "load", auth: "none" });
+  // A crowd sharing the units: two coders per unit
+  const session = { invite: { mode: "crowd", share: { codersPerUnit: { min: 2, max: 2 } } } };
+  const design = await api("POST", `/study/${study.id}/design`, { session, items });
+  await api("PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
+  const [invite] = await api("GET", `/study/${study.id}/links`);
   console.log(`setup: study ${study.id}, ${UNITS} units in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
   return { studyId: study.id, secret: invite.secret };
 }

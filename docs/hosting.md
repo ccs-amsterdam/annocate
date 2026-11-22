@@ -434,15 +434,17 @@ and the count for a study's answer limit. A pilot runs one process.
 ## Capacity
 
 `packages/server/scripts/load-test.mjs` simulates coders on one study. Setup:
-a 4-core machine, Postgres 17 in Docker, one server process, 10,000 units in a
-shared queue (until 2 coders, at most 2), batches of 5.
+a 4-core machine, Postgres 16, one server process, 10,000 units shared by a
+crowd (two coders per unit), batches of 5.
 
 | Coders | Time per unit | Next batch p50 / p99 | Submit p50 / p99 |
 | --- | --- | --- | --- |
-| 300 | ~10 s (realistic) | 26 / 79 ms | 10 / 31 ms |
-| 300 | ~1 s (stress) | 8.9 s / 16.8 s | 32 / 87 ms |
+| 300 | ~10 s (realistic) | 25 / 85 ms | 12 / 38 ms |
+| 300 | ~1 s (stress) | 0.6 / 1.1 s | 0.6 / 1.2 s |
 
-No unit was coded by more coders than its maximum. A shared queue picks one
-unit at a time under a lock, about 25 picks per second at 10k units and ~12k
-codings (`architecture.md` §11, item 11); 300 coders at 10 s per unit in
-batches of 5 need 6. Studies without a shared queue don't take that lock.
+Requests waiting for a shared queue's lock are picked together, one read for
+all (`architecture.md` §11, item 11). Under stress the one server process is
+busy (about 160 submitted units per second); 300 coders at 10 s per unit need
+30. When the queue runs out, a unit gets at most one coder more than its
+maximum (coders past others' leases); units leased by coders who left come
+back when the lease expires (15 minutes). Studies without a shared queue don't take that lock.

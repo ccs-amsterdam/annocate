@@ -512,6 +512,17 @@ describe("shared queues under concurrency", () => {
     expect(between).toBeNull();
     expect(unitB?.id).not.toBe(unitA.id);
   });
+
+  it("requests at once are picked together, as if one after the other; a coder asking twice gets the same unit", async () => {
+    await redeploy({}, [crowd({ codersPerUnit: { min: 1, max: 1 } })]);
+    const names = ["a", "b", "c"];
+    for (const name of names) await coder(name).session();
+    const units = await Promise.all([...names, "a"].map((name) => coder(name).next()));
+    const [a, b, c, aAgain] = units.map((u) => u?.id);
+    // One coder per unit: every coder a unit of their own
+    expect(new Set([a, b, c]).size).toBe(3);
+    expect(aAgain).toBe(a);
+  });
 });
 
 describe("coders", () => {

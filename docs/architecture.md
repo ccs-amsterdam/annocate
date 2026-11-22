@@ -547,11 +547,12 @@ against a mock provider.
 10. **Semantic validation.** Running Show if conditions on the server to
     reject answers to questions the coder never saw. Conditions now run in the
     client, which keeps client-side encryption possible.
-11. **Scale.** A pick from a shared queue reads the loop's codings and leases
-    under the queue's lock. With 10k units and ~12k codings a pick takes
-    ~40 ms (`hosting.md` "Capacity"), so one queue serves ~25 picks per
-    second. For very large queues: a per-unit summary kept up to date on
-    submit. Researcher status is computed on demand.
+11. **Scale.** A turn of a shared queue's lock reads the loop's codings and
+    leases once and picks for every request waiting in that server process
+    (up to 50, one per coder). Reading ~15k codings takes tens of ms, so a
+    busy queue is limited by submits, not picks (`hosting.md` "Capacity").
+    For very large queues: a per-unit summary kept up to date on submit.
+    Researcher status is computed on demand.
 12. **Unit cache** for the researcher UI (IndexedDB).
 13. **Sample size targets**: coders per set column value or per condition,
     shown on the Links page.
