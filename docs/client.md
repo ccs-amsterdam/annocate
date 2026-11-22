@@ -485,8 +485,8 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   A block has an optional `label`, `condition`, `children` and
   `elseChildren` (only with a condition). The coder-level items before,
   between and after loops are grouped in a lightly tinted card (only in the
-  tree); each loop is its own card; a block has a coloured bar on its left
-  and lines up with the items around it. A block's row shows its label
+  tree); each loop is its own card; a block lines up with the items around
+  it, its items (else items too, under "Else") one step in. A block's row shows its label
   and/or "if <condition>", else "Block"; questions aren't numbered. With a
   condition it has an "Add else items" button, which adds an "Else" part
   with a first question; the Else part shows under the block's items only

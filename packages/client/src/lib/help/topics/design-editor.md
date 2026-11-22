@@ -48,8 +48,8 @@ new block starts empty.
 ## The tree
 
 The items before, between and after unit loops are grouped in a lightly
-tinted card; each unit loop is its own card. A block has a coloured bar on
-its left and lines up with the items around it.
+tinted card; each unit loop is its own card. A block lines up with the
+items around it, its items one step in (its else items too, under **Else**).
 
 Each item shows an icon for its type (a question: its answer type). A loop
 shows its label and which units it hands out. A block shows its label

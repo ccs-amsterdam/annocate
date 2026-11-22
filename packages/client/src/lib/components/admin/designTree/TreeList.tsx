@@ -13,9 +13,10 @@ const CARD = "my-1 rounded-lg border border-border py-0.5";
 /** The coder-level items' cards: a faint tint of the questions' colour, set apart from the loops. */
 const CODER_SECTION = "bg-secondary/5";
 const LOOP_CARD = "bg-muted/30";
-/** A block, at any level: a bar on its left in the blocks' colour; its items one step in. */
-const BLOCK = "my-0.5 border-l-2 border-secondary-dark/40";
-const INDENT = "pl-4";
+/** A block, at any level: its items one step in. */
+const BLOCK = "my-0.5";
+/** One step in: a child's checkbox under its parent's icon, its icon where the parent's name starts. */
+const INDENT = "pl-6";
 
 /**
  * The design's top level: each unit loop a card, and the coder-level items
@@ -68,9 +69,9 @@ export function TreeList({ nodes, parent }: TreeListProps) {
 }
 
 /**
- * An item. A unit loop is a card holding its row and its items; a block a
- * bar on the left, its row aligned with the rows around it; a block's else
- * items an "Else" group at the end of the block (only once it has items).
+ * An item. A unit loop is a card holding its row and its items; a block its
+ * row with its items one step in; a block's else items an "Else" group at
+ * the end of the block (only once it has items), as far in as the others.
  */
 function TreeNodeView({ item, card = false }: { item: TreeNode; card?: boolean }) {
   const children = getChildren(item);
@@ -81,9 +82,8 @@ function TreeNodeView({ item, card = false }: { item: TreeNode; card?: boolean }
     return (
       <div data-flip-key={getItemKey(item)} className="mt-0.5">
         <TreeItemRow item={item} />
-        <div className={INDENT}>
-          <TreeList nodes={children} parent={item} />
-        </div>
+        {/* As far in as the block's other items: the Else row above them says enough */}
+        <TreeList nodes={children} parent={item} />
       </div>
     );
   }
