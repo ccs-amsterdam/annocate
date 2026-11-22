@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   ResultsAgreementSchema,
   ResultsAnswersSchema,
+  ResultsCodersSchema,
+  ResultsUnitSchema,
+  ResultsUnitsSchema,
   StudyResponseSchema,
   type ResultsAgreement,
   type ResultsAnswers,
@@ -79,6 +82,31 @@ describe("results", () => {
     expect(rows[1].alpha).toBeGreaterThan(0.5);
     expect(rows[1].alpha).toBeLessThan(1);
     expect(rows[1].units).toBe(rows[0].units);
+  });
+
+  it("list units several coders answered, most disagreement first, and show one with every coder's answers", async () => {
+    const study = await example("swipe-sentiment");
+    const { units } = await get(`/study/${study}/results/units`, ResultsUnitsSchema);
+    expect(units).toHaveLength(5);
+    expect(units.every((u) => u.coders === 3 && u.loop === "1")).toBe(true);
+    const sorted = [...units].sort((a, b) => b.disagreement - a.disagreement);
+    expect(units.map((u) => u.disagreement)).toEqual(sorted.map((u) => u.disagreement));
+    // Three coders: all the same (0), two of three alike (2/3 of pairs differ), or all different (1)
+    for (const u of units) expect([0, 2 / 3, 1].some((d) => Math.abs(d - u.disagreement) < 1e-9)).toBe(true);
+
+    const unit = await get(`/study/${study}/results/units/${units[0].unitId}`, ResultsUnitSchema);
+    expect(unit.externalId).toBe(units[0].externalId);
+    expect(unit.answers.map((a) => a.coder).sort()).toEqual(["Example coder 1", "Example coder 2", "Example coder 3"]);
+    expect(unit.versions).toHaveLength(1);
+    expect(unit.versions[0].data).toHaveProperty("headline");
+    const other = await example("actor-spans");
+    expect((await app.request(`/api/study/${other}/results/units/${units[0].unitId}`, { headers })).status).toBe(404);
+  });
+
+  it("per coder: units, median time per unit, practice tries", async () => {
+    const { coders } = await get(`/study/${await example("swipe-sentiment")}/results/coders`, ResultsCodersSchema);
+    expect(coders.map((c) => c.units)).toEqual([10, 10, 10]);
+    for (const c of coders) expect(c.medianUnitSeconds === null || c.medianUnitSeconds > 0).toBe(true);
   });
 
   it("leave out answers a researcher reset", async () => {

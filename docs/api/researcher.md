@@ -118,6 +118,9 @@ work with an API key (403 `not_with_api_key`).
 | [listDevices](#listdevices) | `GET /study/:studyId/devices` | READ | – | `DeviceSchema[]` |
 | [getResultsAnswers](#getresultsanswers) | `GET /study/:studyId/results/answers` | READ | – | `ResultsAnswersSchema` |
 | [getResultsAgreement](#getresultsagreement) | `GET /study/:studyId/results/agreement` | READ | – | `ResultsAgreementSchema` |
+| [listResultUnits](#listresultunits) | `GET /study/:studyId/results/units` | READ | – | `ResultsUnitsSchema` |
+| [getResultUnit](#getresultunit) | `GET /study/:studyId/results/units/:unitId` | READ | – | `ResultsUnitSchema` |
+| [listResultCoders](#listresultcoders) | `GET /study/:studyId/results/coders` | READ | – | `ResultsCodersSchema` |
 
 ## Account
 
@@ -701,4 +704,24 @@ several answers has a row per option (given or not); a span question a row
 per label, over the words of each text (labelled or not). Special options
 ("don't know") are left out of ordinal and interval alpha. Measures:
 [`contracts/src/agreement.ts`](../../packages/contracts/src/agreement.ts).
+
+### listResultUnits
+
+`GET /study/:studyId/results/units` → `ResultsUnitsSchema`: per loop, the
+units two or more coders answered, with `disagreement`: per question the
+share of pairs of coders whose answers aren't identical, averaged over the
+loop's questions. Most disagreement first.
+
+### getResultUnit
+
+`GET /study/:studyId/results/units/:unitId` → `ResultsUnitSchema`: the unit
+versions its coders saw (the `data` shown), and every live answer to it,
+with the coder session and coder id.
+
+### listResultCoders
+
+`GET /study/:studyId/results/coders` → `ResultsCodersSchema`: per coder
+session with unit answers: units answered, the median time per unit (the
+browser's on-screen times of its questions added up), and the answers
+practice questions needed on average until right.
 

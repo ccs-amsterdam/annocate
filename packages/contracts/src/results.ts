@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { IdSchema } from "./common.js";
+import { VariableValueSchema } from "./variableValue.js";
 
 // The researcher's look at the answers so far (docs/plans/results-viewer.md):
 // counts per question and agreement per question, computed by the server
@@ -66,3 +67,53 @@ export type QuestionAgreement = z.infer<typeof QuestionAgreementSchema>;
 /** `GET /study/:studyId/results/agreement`. */
 export const ResultsAgreementSchema = z.object({ questions: z.array(QuestionAgreementSchema) });
 export type ResultsAgreement = z.infer<typeof ResultsAgreementSchema>;
+
+/** A unit two or more coders answered, and how much their answers differ (0: all the same). */
+export const ResultUnitSchema = z.object({
+  unitId: IdSchema,
+  externalId: z.string(),
+  loop: z.string(),
+  coders: z.number().int().positive(),
+  /** Averaged over the loop's questions: the share of pairs of coders who answered differently. */
+  disagreement: z.number().min(0).max(1),
+});
+export type ResultUnit = z.infer<typeof ResultUnitSchema>;
+
+/** `GET /study/:studyId/results/units`: most disagreement first. */
+export const ResultsUnitsSchema = z.object({ units: z.array(ResultUnitSchema) });
+export type ResultsUnits = z.infer<typeof ResultsUnitsSchema>;
+
+/** `GET /study/:studyId/results/units/:unitId`: the unit as its coders saw it, and their answers. */
+export const ResultsUnitSchema = z.object({
+  unitId: IdSchema,
+  externalId: z.string(),
+  /** The unit versions its coders saw (usually one). */
+  versions: z.array(z.object({ id: IdSchema, data: z.record(z.string(), z.unknown()) })),
+  answers: z.array(
+    z.object({
+      sessionId: IdSchema,
+      coder: z.string().nullable(),
+      variable: z.string(),
+      value: VariableValueSchema,
+      unitVersionId: IdSchema.nullable(),
+    }),
+  ),
+});
+export type ResultsUnit = z.infer<typeof ResultsUnitSchema>;
+
+/** One coder session's work: units, time per unit, practice tries. */
+export const ResultCoderSchema = z.object({
+  sessionId: IdSchema,
+  coder: z.string().nullable(),
+  /** Units they answered in loops. */
+  units: z.number().int().nonnegative(),
+  /** The median of their time per unit (the questions' on-screen times added up); null without timings. */
+  medianUnitSeconds: z.number().nullable(),
+  /** Practice questions: the answers they needed on average until right (1: right the first time); null without practice. */
+  practiceTries: z.number().nullable(),
+});
+export type ResultCoder = z.infer<typeof ResultCoderSchema>;
+
+/** `GET /study/:studyId/results/coders`. */
+export const ResultsCodersSchema = z.object({ coders: z.array(ResultCoderSchema) });
+export type ResultsCoders = z.infer<typeof ResultsCodersSchema>;

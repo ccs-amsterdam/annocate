@@ -21,7 +21,13 @@ import {
   DeleteCodersResponseSchema,
 } from "../coder.js";
 import { StudyOverviewSchema } from "../overview.js";
-import { ResultsAgreementSchema, ResultsAnswersSchema } from "../results.js";
+import {
+  ResultsAgreementSchema,
+  ResultsAnswersSchema,
+  ResultsCodersSchema,
+  ResultsUnitSchema,
+  ResultsUnitsSchema,
+} from "../results.js";
 import {
   ApiKeyCreatedSchema,
   ApiKeyResponseSchema,
@@ -323,6 +329,27 @@ export const researcherEndpoints = {
     path: "/study/:studyId/results/agreement",
     request: z.void(),
     response: ResultsAgreementSchema,
+  },
+  /** Units two or more coders answered, most disagreement first (results.ts). */
+  listResultUnits: {
+    method: "GET",
+    path: "/study/:studyId/results/units",
+    request: z.void(),
+    response: ResultsUnitsSchema,
+  },
+  /** One unit as its coders saw it, with their answers (results.ts). */
+  getResultUnit: {
+    method: "GET",
+    path: "/study/:studyId/results/units/:unitId",
+    request: z.void(),
+    response: ResultsUnitSchema,
+  },
+  /** Per coder session: units, time per unit, practice tries (results.ts). */
+  listResultCoders: {
+    method: "GET",
+    path: "/study/:studyId/results/coders",
+    request: z.void(),
+    response: ResultsCodersSchema,
   },
   /** The devices coders used, for the export (`deviceId` on annotations). */
   listDevices: { method: "GET", path: "/study/:studyId/devices", request: z.void(), response: z.array(DeviceSchema) },
