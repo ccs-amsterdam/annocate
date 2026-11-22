@@ -2,11 +2,11 @@
 title: Snippets
 section: Unit layouts
 order: 6
-summary: Name a piece of a loop's template and use it anywhere with [[name]] - for long instructions, banners and repeated conditions.
+summary: Name a piece of a layout's template and use it anywhere with [[name]] - for long instructions, banners and repeated conditions.
 ---
 
-A **snippet** is a named piece of template text. Write it once below the
-loop's template and use it with `[[name]]`: it is pasted in as if you had
+A **snippet** is a named piece of template text. Write it once below a
+layout's template and use it with `[[name]]`: it is pasted in as if you had
 typed it there. Good for long instructions, a banner per group, or a
 condition used in several places.
 
@@ -30,7 +30,8 @@ $unit.text
 
 ## Making a snippet
 
-On the loop's **Layout** tab, below the template:
+Select the loop's **Unit layout** item; below the template (in
+**Advanced**):
 
 1. Click **+ Snippet**.
 2. Name it between `[[` and `]]` (letters, digits, `_`), e.g.
@@ -43,10 +44,10 @@ editor reports those places.
 
 ## Where snippets work
 
-Anywhere in the loop's template (a line, inside a sentence, a fence line
-`::: if [[is_viral]]`, a script `{{ [[reactions]] * 2 }}`) and in the
-loop's question and instruction texts. Not outside loops, in conditions
-or in end items.
+Anywhere in the layout's template (a line, inside a sentence, a fence
+line `::: if [[is_viral]]`, a script `{{ [[reactions]] * 2 }}`). Question
+and instruction texts and end messages in the loop can use the snippets of
+all the loop's layouts. Not outside loops or in conditions.
 
 A snippet is text, not a value: it takes no suffix, may use other snippets
 but not itself.

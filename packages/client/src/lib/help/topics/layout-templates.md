@@ -2,11 +2,12 @@
 title: Layout templates
 section: Unit layouts
 order: 2
-summary: How a unit is shown to coders - one markdown text with the unit's data filled in.
+summary: How a unit is shown to coders - a layout item in the loop, one markdown text with the unit's data filled in.
 ---
 
-A unit loop's **Layout** tab sets what coders see of each unit, above the
-questions.
+A **Unit layout** item in a unit loop sets what coders see of each unit,
+above the questions after it. A new loop starts with one; select it in the
+tree to edit it.
 
 **The simple way**: a sketch with a **Title**, **Byline** and **Body**.
 Click a place to choose a field, drag a field onto it, or click a field to
@@ -31,6 +32,30 @@ $unit.text
 ```
 
 The examples in the help are live: edit the template and see the result.
+
+## Layout items
+
+A layout is an item in the loop, shown in the tree as **Unit layout** (or
+its **Label**). It shows the unit for the questions after it, until the
+next layout item.
+
+- **Several layouts**: add one with **+** → **Unit layout** in the loop,
+  e.g. only the headline for the first question, then the whole article.
+- **No layout**: questions before the first layout item, or in a loop
+  without one, are asked without the unit. This is on purpose, e.g. for a
+  short question at the start of every unit (its text can still use
+  `$unit.headline`), or for units that are only a series of questions.
+- **In a block**: a layout in a block with a condition applies only when
+  the block is shown; otherwise what applied before. After the block,
+  either may apply. E.g. a layout experiment: a default layout first, then
+  a block _if condition is B_ with layout B, then the questions for both.
+- **Snippets** belong to a layout (see [Snippets](snippets.md)). Question
+  texts, instructions and end messages in the loop can use the snippets of
+  all its layouts.
+
+[Mark text](span.md) fields and a question's **Focus on** must be shown by
+every layout that may apply to that question. A mark text question with no
+layout before it is an error.
 
 ## Values
 

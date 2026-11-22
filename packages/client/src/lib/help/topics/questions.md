@@ -79,8 +79,8 @@ question text.
 
 For a loop question, **Focus on (optional)** picks the part of the unit
 the question is about: the unit scrolls there and highlights it; **Dim the
-rest of the unit** fades the rest. The list offers what the layout shows
-(`unit.headline`, or a named block, see
+rest of the unit** fades the rest. The list offers what the layouts before
+the question show (`unit.headline`, or a named block, see
 [Typed blocks and names](typed-blocks.md#ids)).
 
 ## Where a question goes

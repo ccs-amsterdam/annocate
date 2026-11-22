@@ -25,12 +25,12 @@ Two things decide which units a coder gets:
 | both                                                  | units matching both                                                    |
 
 The special units (`_overlap`, `_practice`, `_gold`) of the coder unit
-assignment's column are for everyone. The loop's **Units** tab sums up what
-a coder gets.
+assignment's column are for everyone. The loop's form sums up what a
+coder gets.
 
 ## A loop's units
 
-On the loop's **Units** tab:
+Select the loop:
 
 - **Select unit subset(s)**: **All the coder's units** (default), or a
   set column and the **Sets to include**: e.g. a `phase` column, a loop
@@ -45,14 +45,14 @@ On the loop's **Units** tab:
 
 ## Crowd coding
 
-With a **Crowd**, choose **Divide units among coders** on a loop's
-**Units** tab: the loop becomes a shared queue, and a unit is handed out
+With a **Crowd**, select a loop and choose **Divide units among
+coders**: the loop becomes a shared queue, and a unit is handed out
 until enough coders coded it (or agree). See [Shared queues](shared-queues.md).
 
 ## Overlap, practice and gold units
 
 Special units come only from the coder unit assignment's column; without
-one there are none. Each special kind has a row on the **Units** tab:
+one there are none. Each special kind has a row in the loop's form:
 **Spread throughout** (default), **Before coding units**, **After coding
 units** or **Leave out** (not available when the column has none). See
 [Overlap](overlap.md) and [Overlap, gold and practice units](special-units.md).

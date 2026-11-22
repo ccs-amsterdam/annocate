@@ -49,7 +49,8 @@ settings and transfer menus, and the loading, error and pick-a-name screens
   condition fails is left out) evaluated in document
   order (§5). Answers of questions a condition now hides count as unanswered, and
   are posted as `skip`.
-- **Rendering inputs.** It renders the unit layout and the current question's
+- **Rendering inputs.** It renders the step's unit layout (none before the
+  loop's first layout item, §3) and the current question's
   texts ahead (`currentUnitTemplate`, `currentTexts`), because evaluation is
   async and rendering isn't. `currentUnitVariables` gives the current unit's
   answers so far (relation questions need sibling spans).
@@ -97,10 +98,55 @@ against `fakeCoderServer.ts`):
 ## 3. Unit layout and texts
 
 A unit's layout is **one markdown template** (`UnitLayoutSchema`:
-`template`, `snippets?`, `style?`). Question and instruction texts are
+`template`, `snippets?`, `style?`), held by a layout item in the loop (below).
+Question and instruction texts are
 templates with the same syntax. Rendering uses `react-markdown` +
 `remark-gfm` (`components/TemplateMarkdown.tsx`). Raw HTML is not supported,
 so templates are XSS-safe by construction.
+
+### Layout items
+
+A layout is an item in the loop's children, not a field of the loop:
+`{ "type": "layout", "label"?, "template", "snippets"?, "style"? }`. It shows
+the unit for the questions after it, following the flow, until the next
+layout item (contracts `layoutItems.ts`):
+
+- **Before any layout item** (or with none) questions show no unit. On
+  purpose: a short question at the start of every unit (its text may still
+  use `$unit.x`), or units that are only a series of questions.
+- **In a block with a condition** a layout item applies only when the block
+  is shown; else items get what applied before the block. After the block
+  either may apply (`followLayouts` gives the candidates, `null` for none).
+  E.g. a layout experiment: a default layout, then a block "if condition = B"
+  with layout B, then the shared questions.
+- **Snippets** are per layout; question texts, instructions and end messages
+  in the loop may use those of all the loop's layouts (`loopSnippets`).
+- **Validation** (`layoutsByItem`): a span question's `fields` and a
+  question's `focus` must be shown by every layout that may apply; a span
+  question with none before it is an error ("no layout comes before it to
+  show the unit"). A layout item outside a loop is an error.
+- **Runtime**: `computeLoopSteps` (`codebook/tree.ts`) records the layout per
+  step; `StudyManager.publishLoopStep` renders that layout, or none.
+- **Editor**: a new loop starts with one layout item ("Unit layout"). The
+  preview of a question uses the last layout before it (`previewLayout`), of
+  a loop its first; so do "Right answers…" and the Results' unit view.
+
+```json
+{
+  "type": "unit_loop",
+  "label": "News items",
+  "children": [
+    { "type": "layout", "template": "# $unit.headline\n\n$unit.text" },
+    {
+      "type": "question",
+      "name": "read",
+      "variable": { "type": "confirm", "question": "Read the article" }
+    }
+  ]
+}
+```
+
+### Reading a template
 
 A template is read in two steps: first the **text is put together**
 (snippets pasted in, blocks chosen), then the **values are filled in**.
@@ -173,11 +219,12 @@ Pandoc's fenced divs.
 - A bare `:::` closes the innermost block and needs as many colons as its
   opening fence, so outer blocks use more colons.
 
-**Snippets** (`layout.snippets`, contracts `snippets.ts`): named pieces of a
-loop's template, written `[[name]]` and pasted in as text before anything
-else, anywhere: a line, a fence (`::: if [[condition]]`), inside `{{ }}`.
-Snippets can use snippets (not themselves). They work in the layout and the
-loop's question texts. Names must be literal.
+**Snippets** (a layout item's `snippets`, contracts `snippets.ts`): named
+pieces of a layout's template, written `[[name]]` and pasted in as text
+before anything else, anywhere: a line, a fence (`::: if [[condition]]`),
+inside `{{ }}`. Snippets can use snippets (not themselves). They work in their
+layout, and every layout's snippets in the loop's question texts,
+instructions and end messages. Names must be literal.
 
 `$unit` and snippets exist only inside a unit loop.
 
@@ -493,7 +540,8 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   when it has items. "Add item" adds a question, computed variable, block
   ("Block (if/else)", starting empty) or unit loop; a row's + adds items
   allowed there (`insertableTypesAt`): in a block question, computed
-  variable, block, end; in a loop question, block, end. Above the tree the
+  variable, block, end; in a loop question, layout ("Unit layout"), block,
+  end. A layout item's row shows its label or "Unit layout". Above the tree the
   Study entry (§4), below it the **At the end** button, styled like the
   Study entry's buttons.
 - **Design editor**: edits the whole design in memory, validated with
@@ -502,8 +550,8 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
     (`ItemJsonEditor.tsx`) or as a preview (`ItemPreview.tsx`: a loop with the
     study's units, a picker for the question on screen, answer pickers for
     `::: if`). On screens at least 1500 px wide the preview is a third column.
-    Blocks and loops have no name; loops show their label or
-    "Unit loop". Moving and deleting work on ticked items from the toolbar; where a
+    Blocks, loops and layout items have no name; loops show their label or
+    "Unit loop", layout items theirs or "Unit layout". Moving and deleting work on ticked items from the toolbar; where a
     place is ambiguous (the end of a container) the menu asks where.
   - **JSON**: the whole design (`DesignJsonEditor.tsx`), in Monaco (loaded
     with the editor) with completion and checks from the design's JSON Schema
@@ -523,12 +571,14 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   - **Backup**: unsaved edits are copied to localStorage a second after each
     change, and offered back after the browser was closed.
 
-- **Unit loops** have two tabs (`UnitLoopForm.tsx`). **Units**
-  (`unitLoop/UnitsEditor.tsx`): what a coder gets, the previous loop's units
+- **Unit loops** (`UnitLoopForm.tsx`): the loop's form holds only its units
+  settings (`unitLoop/UnitsEditor.tsx`): what a coder gets, the previous loop's units
   (`sameAsPrevious`), the subset, for a crowd "Units and coders" (everyone codes
   everything, or divide the units: the distribution criteria), the coding
   units and the assignment column's overlap/practice/gold with placement,
-  the checks, and the order (`architecture.md` §6.2). **Layout**: the template in Monaco
+  the checks, and the order (`architecture.md` §6.2).
+- **Layout items** (`unitLoop/LayoutForm.tsx`, opened by selecting the
+  item): a simple form (title, byline, body) or **Advanced**: the template in Monaco
   (`jsonEditor/MonacoTemplate.tsx`) with highlighting and completions after
   `$`, `[[`, `::` and `:::`, and the snippets. A code lens above each
   `::: if` shows the condition in words and opens the rules editor. An Insert
@@ -587,7 +637,7 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   (`coder-identity.md` §8).
 - **Results** (`results/`, opens on Questions; the open view in
   `results/resultsView.ts`): **Questions**, **Agreement**, **Units** (by
-  disagreement; one unit through the loop's layout with every coder's
+  disagreement; one unit through the loop's first layout with every coder's
   answers) and **Coders** (the sessions above, then time per unit, practice
   tries, kappa) show the
   answers so far from the server's summaries (`getResultsAnswers`,

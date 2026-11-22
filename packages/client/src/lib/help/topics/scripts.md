@@ -21,7 +21,7 @@ This post was liked $unit.likes times and shared $unit.shares times:
 
 ## Where scripts work
 
-- `{{ }}` in a loop's layout, question and instruction texts, and end item
+- `{{ }}` in a loop's layout items, question and instruction texts, and end item
   messages;
 - a block's or loop's condition in **Script** mode (see
   [Conditions](conditions.md#script-mode));

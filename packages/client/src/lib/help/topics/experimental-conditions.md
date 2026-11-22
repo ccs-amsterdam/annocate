@@ -26,7 +26,8 @@ does this), or later, after screening or to balance on earlier answers.
 
 `$var.framing.is("experiment")` as the condition of a
 [block or unit loop](conditions.md), a `::: if` in a layout, or
-an end item's return link.
+an end item's return link. For a whole other layout per condition, put a
+layout item in a block (see [Layout items](layout-templates.md#layout-items)).
 
 ## Giving each condition its own units
 

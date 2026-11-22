@@ -2,7 +2,7 @@
 title: Unit loops
 section: Unit layouts
 order: 1
-summary: Questions that are asked once for every unit - how a loop works, and where you set its layout and units.
+summary: Questions that are asked once for every unit - how a loop works, how it shows units, and where you set its units.
 ---
 
 A **unit loop** asks its questions for every unit a coder gets: the first
@@ -14,18 +14,21 @@ Questions asked once per coder go before or after the loop.
 1. Click **Add item** above the tree → **Unit loop**.
 2. Optionally give it a **Label**, e.g. _News items_ (shown in the tree,
    the coders' menu and the `loop` column of `variables.csv`).
-3. Add questions with **+** → **Inside** the loop.
+3. A new loop starts with a **Unit layout** item: select it to set how
+   units are shown.
+4. Add questions with **+** → **Inside** the loop.
 
-## The Layout and Units tabs
+## How units are shown
 
-| Tab        | Set                                                                  |
-| ---------- | -------------------------------------------------------------------- |
-| **Layout** | how a unit is shown: the layout or template, and **Snippets**        |
-| **Units**  | which units the loop codes, their **Order**, and special units       |
+A **Unit layout** item shows the unit for the questions after it, until
+the next layout item. A loop can have several, or none: questions before
+any layout are asked without the unit. See
+[Layout templates](layout-templates.md#layout-items).
 
-The two buttons on the loop's row open these tabs. See
-[Layout templates](layout-templates.md) and
-[Handing out units](unit-distribution.md).
+## The loop's units
+
+Select the loop to set which units it codes, their **Order**, and special
+units. See [Handing out units](unit-distribution.md).
 
 ## Questions inside a loop
 

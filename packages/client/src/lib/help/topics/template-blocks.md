@@ -122,7 +122,7 @@ $unit.text
 
 Use **Question on screen** above the result to step through. Going back
 hides the block again; a skipped question counts as reached once passed.
-Only in a loop's layout, with that loop's questions.
+Only in a layout item, with its loop's questions.
 
 ### Stages
 

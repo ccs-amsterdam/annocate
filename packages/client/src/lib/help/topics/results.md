@@ -46,7 +46,8 @@ for the latest); Results opens on **Questions**:
   Cohen's kappa, lowest first: who to look at. Several answers: a row per
   option. Spans: a row per label, each word labelled or not.
 - **Units**: the units two or more coders answered, the ones they disagree
-  on most first. Open one to see it as coders did, with each coder's answers.
+  on most first. Open one to see it with the loop's first layout, with
+  each coder's answers.
 - **Coders**: every coder session, with progress, deletion requests,
   resetting and deleting (see [Coders and progress](coders-and-progress.md));
   then per coder their median seconds per unit (marked **fast** when far

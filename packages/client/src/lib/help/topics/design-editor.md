@@ -103,8 +103,9 @@ Three views:
 
 ### The preview
 
-For a loop or a question in one, the preview shows a unit with the loop's
-layout. Above it:
+For a loop, a layout item or a question in a loop, the preview shows a
+unit: a layout item with itself, a question with the last layout before it
+(none: without the unit), a loop with its first layout. Above it:
 
 - **Unit** with arrows: step through units (try short, long and odd ones);
 - **On screen**: which question coders are at (for layouts that change,
@@ -122,9 +123,9 @@ The toolbar counts:
   asked yet, a unit field the design doesn't declare;
 - **warnings** (amber): worth checking, block nothing.
 
-Click a count for the list, and a line to open its item. A red dot on a
-loop's **Layout** or **Units** tab shows where the problem is. You can
-save with issues.
+Click a count for the list, and a line to open its item. A red mark on
+an item's row in the tree shows where the problem is. You can save with
+issues.
 
 ## Saving, undo and revert
 

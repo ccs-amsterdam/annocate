@@ -88,7 +88,7 @@ See [URL parameters](session-parameters.md).
 
 | Where                           | `$unit`   | `$var` | `$session` | `{{ }}` |
 | ------------------------------- | --------- | ------ | ---------- | ------- |
-| A loop's layout                 | yes       | yes    | yes        | yes     |
+| A loop's layout items           | yes       | yes    | yes        | yes     |
 | Question and instruction texts  | in a loop | yes    | yes        | yes     |
 | Conditions (blocks, `::: if`)   | in a loop | yes    | yes        | yes     |
 | A unit loop's condition         | no        | yes    | yes        | yes     |
@@ -106,7 +106,7 @@ Only answers given by then:
   inside the condition);
 - questions **outside loops**: everywhere after them, also in loops;
 - questions **in a loop**: only in that loop, for the same unit;
-- in a **loop's layout**, its own questions only inside a `::: from`
+- in a **layout item**, its loop's questions only inside a `::: from`
   block (see [Showing parts conditionally](template-blocks.md)).
 
 ## Names are written out

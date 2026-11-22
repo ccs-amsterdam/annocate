@@ -26,7 +26,8 @@ apart.
 Unit fields the layout shows **as plain text** (`$unit.text`, without a
 suffix such as `::markdown` and not in a typed block, see
 [Layout templates](layout-templates.md#values)), so what is selected is
-exactly your data. **Select in** lists them; click to switch on or off. A
+exactly your data. Every layout that may apply to the question must show
+them (see [Layout items](layout-templates.md#layout-items)). **Select in** lists them; click to switch on or off. A
 red field is no longer plain text in the layout. One question can select
 in several fields.
 

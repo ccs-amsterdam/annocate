@@ -9,7 +9,7 @@ Three values of the coder unit assignment's [set column](sets.md) are
 special: the coders' column (specific coders), or a crowd's optional
 **Set column**. In other columns they are ordinary values, and without an
 assignment column there are no special units. Every loop mixes them in
-with each coder's units; the loop's **Units** tab has a row for each with
+with each coder's units; the loop's form has a row for each with
 **Spread throughout** (default), **Before coding units**, **After coding
 units** or **Leave out** (see [Overlap](overlap.md#placement)). A row is
 disabled when the column has none of that kind.
@@ -49,10 +49,11 @@ Coders never get the answer columns (_server only_).
   number or %). Or **Fill a set column** with an overlap.
 - **Single units**: select units on **Units** → **Put in** `_gold` or
   `_practice` (in the assignment's column).
-- **Right answers**: on the loop's **Units** tab, under **Gold units** or
+- **Right answers**: in the loop's form, under **Gold units** or
   **Practice units**, tick the questions and click **Create gold values…**
-  or **Write practice answers…**: step through the units and pick the right
-  answer (and a message). Drafts until deployed.
+  or **Write practice answers…**: step through the units (shown with the
+  loop's first layout) and pick the right answer (and a message). Drafts
+  until deployed.
 
 ## Right answers
 

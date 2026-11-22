@@ -17,7 +17,7 @@ column; see [Sets](sets.md)). For only some coders, write `anna;bob`.
    or **Create special units…** (a crowd) in **Coder unit assignments**
    (or **Fill a set column** on **Units**) with an overlap of e.g. 10%,
    or write `_overlap` in your CSV.
-2. On the loop's **Units** tab, the **Overlap units** row shows the count;
+2. Select the loop: the **Overlap units** row shows the count;
    choose where they go.
 
 ## Placement

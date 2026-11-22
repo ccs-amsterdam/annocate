@@ -70,7 +70,7 @@ The **coder codebook** (`CoderCodebookSchema`, contracts `toCoderItems`)
 and its `version`, per-loop progress and the coder's
 variables (including computed values), and `ended` if the
 session ended at an `end` item. The coder codebook has only what coding
-needs: unit loops keep their layout, questions and order, without their
+needs: unit loops keep their layout items, questions and order, without their
 `units` (the server works out the units: no subsets, placements or
 checks); no Study entry, no researcher notes, and computed variables only with
 their options (an invisible step: the client asks `computeVariable`). Creates

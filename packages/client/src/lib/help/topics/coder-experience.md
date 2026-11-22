@@ -14,11 +14,14 @@ use **Preview** (see
 
 **A question in a unit loop** splits the screen:
 
-- the **unit** at the top, shown with the loop's layout, scrolling on its
+- the **unit** at the top, shown with the layout before the question (see
+  [Layout items](layout-templates.md#layout-items)), scrolling on its
   own. With **Focus on**, it scrolls to and highlights that part;
 - the **question** docked at the bottom, up to half the screen. Coders
   can drag its edge; **Auto** (or a double click) fits it again. A
   **?** button opens the question's [instructions](questions.md#instructions).
+
+A loop question with no layout before it shows only the question.
 
 On a large screen this is a card in the middle; on phones it fills the
 screen, with the question within thumb reach.

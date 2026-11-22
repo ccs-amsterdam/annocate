@@ -26,7 +26,7 @@ overwritten. Two rules explain the effects:
 | **Question renamed**                     | as removing it and adding a new one                             | asked under the new name  |
 | **Text, instruction or layout** changed  | stay finished                                                   | new text                  |
 | **Conditions or order** changed          | stay finished                                                   | new design                |
-| **Units tab** of a loop changed          | coded units stay the coder's                                    | new rules                 |
+| **Units settings** of a loop changed     | coded units stay the coder's                                    | new rules                 |
 
 Units and sets you change are drafts until deployed (see
 [Set columns](sets.md)). The deploy dialog warns about removed values and

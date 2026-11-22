@@ -67,8 +67,8 @@ More: [The design editor](design-editor.md), [Questions](questions.md),
 
 ## 4. Show the units
 
-Select the loop. On its **Layout** tab, click **Title** and choose
-`headline`, then **Body** and choose `text`:
+Select the loop's **Unit layout** item (the first item in the loop).
+Click **Title** and choose `headline`, then **Body** and choose `text`:
 
 ```example
 unit:
@@ -80,7 +80,7 @@ unit:
 $unit.text
 ```
 
-The loop's **Units** tab says which units it codes: by default all the
+Select the loop itself to see which units it codes: by default all the
 coder's units. More: [Layout templates](layout-templates.md).
 
 ## 5. Choose who codes
