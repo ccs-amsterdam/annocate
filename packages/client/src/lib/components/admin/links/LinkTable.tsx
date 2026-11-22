@@ -220,7 +220,7 @@ function AccessForm({ client, link, onDone }: { client: ResearcherApi; link: Lin
         />
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Whether coders must sign in is part of the coder invitation (in the editor). Coders who don&apos;t sign in
+        Whether coders must sign in is part of the coder unit assignment (in the editor). Coders who don&apos;t sign in
         continue on the device they started on, or move with &quot;Continue on another device&quot;; signed in, they
         continue on any device by signing in there. A coder id is a label, never a way back into a session.{" "}
         <HelpButton topic="online-panels" className="align-middle">

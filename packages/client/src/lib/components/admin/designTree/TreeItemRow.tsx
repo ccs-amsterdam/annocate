@@ -169,13 +169,15 @@ function ItemLabel({
 }) {
   return (
     <>
-      {/* Every row has the number's place, so the icons line up */}
-      <span
-        className="w-4 shrink-0 text-right font-mono text-[11px] text-muted-foreground"
-        title={number === null ? undefined : `Question ${number}, as coders see it`}
-      >
-        {number}
-      </span>
+      {/* Every row has the number's place, so the icons line up; a loop heads its card, flush left */}
+      {item.type !== "unit_loop" && (
+        <span
+          className="w-4 shrink-0 text-right font-mono text-[11px] text-muted-foreground"
+          title={number === null ? undefined : `Question ${number}, as coders see it`}
+        >
+          {number}
+        </span>
+      )}
       <ItemIcon item={item} />
       {item.type === "show_if" ? (
         // Conditions have no name: shown by their condition, unless they have a label.

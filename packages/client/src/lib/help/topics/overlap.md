@@ -12,7 +12,7 @@ intercoder reliability. It is the value `_overlap` in a
 
 ## Setting it up
 
-1. Mark the overlap: **Create new coder distribution…** in **Coder invitations** (or
+1. Mark the overlap: **Create new coder distribution…** in **Coder unit assignments** (or
    **Fill a set column** on **Units**) with an overlap of e.g. 10%, or
    write `_overlap` in your CSV.
 2. On the loop's **Units** tab, the **Overlap units** row shows the count;

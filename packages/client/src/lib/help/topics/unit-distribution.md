@@ -17,7 +17,7 @@ Two things decide which units a coder gets:
 | The design says                                       | A coder gets                                                           |
 | ----------------------------------------------------- | ---------------------------------------------------------------------- |
 | nothing (a crowd)                                     | all units                                                              |
-| **Specific coders** in Coder invitations              | their own units (see [Giving each coder their own units](own-units.md)) |
+| **Specific coders** in Coder unit assignments              | their own units (see [Giving each coder their own units](own-units.md)) |
 | a random condition **linked to units**                | their condition's units (see [Experimental conditions](experimental-conditions.md)) |
 | both                                                  | units matching both                                                    |
 

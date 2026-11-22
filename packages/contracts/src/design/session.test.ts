@@ -50,7 +50,7 @@ describe("URL parameter patterns", () => {
   });
 });
 
-describe("coder invitations and links", () => {
+describe("coder unit assignments and links", () => {
   const setsOf = (group: string) =>
     ({ coder: ["anna", "bob"], emails: ["a@x.org", "b@x.org"], mixed: ["anna", "b@x.org"] })[group] ?? [];
   const item = (extra: Partial<SessionItem>): SessionItem => ({ type: "session", ...extra });

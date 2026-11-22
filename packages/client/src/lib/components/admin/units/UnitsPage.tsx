@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { formatSetCell, type SetGroupResponse, type UnitField, type UnitResponse } from "@annotinder/contracts";
-import { ChevronLeft, ChevronRight, Lock, RotateCcw, Trash2, Upload, Scissors } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lock, Mail, RotateCcw, Sparkles, Trash2, Upload, Scissors } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import {
   useDeleteSetGroupMutation,
@@ -17,6 +17,7 @@ import { ResetAnswersDialog, type ResetScope } from "../ResetAnswersDialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "cn";
 import { FieldsPanel } from "./FieldsPanel";
+import { EMAIL_COLUMN_INFO, SPECIAL_SET_INFO, isEmailColumn, isSpecialSet } from "../../../admin/setKinds";
 import { UploadUnits } from "./UploadUnits";
 import { SplitIntoSets } from "./SplitIntoSets";
 import { HelpButton } from "../../../help/HelpButton";
@@ -198,16 +199,25 @@ function SetsBar({
       </div>
       {groups.map((g) => (
         <div key={g.name} className="flex flex-wrap items-center gap-1.5">
-          <span className="w-28 truncate font-mono text-xs font-semibold" title={`Set column ${g.name}`}>
-            {g.name}
+          <span
+            className="flex w-28 items-center gap-1 truncate font-mono text-xs font-semibold"
+            title={isEmailColumn(g) ? `${g.name}: ${EMAIL_COLUMN_INFO}` : `Set column ${g.name}`}
+          >
+            {isEmailColumn(g) && <Mail className="h-3.5 w-3.5 shrink-0 text-primary" aria-label="Email addresses" />}
+            <span className="truncate">{g.name}</span>
           </span>
           {g.sets.map((set) => (
             <button
               key={set.name}
               type="button"
-              className={chip(current?.group === g.name && current.set === set.name)}
+              title={SPECIAL_SET_INFO[set.name]}
+              className={cn(
+                chip(current?.group === g.name && current.set === set.name),
+                isSpecialSet(set.name) && "border-dashed italic",
+              )}
               onClick={() => onSelect({ group: g.name, set: set.name })}
             >
+              {isSpecialSet(set.name) && <Sparkles className="mr-0.5 inline h-3 w-3 text-ember" aria-hidden="true" />}
               <span className="font-mono">{set.name}</span>{" "}
               <span className="text-muted-foreground">{set.unitIds.length}</span>
             </button>

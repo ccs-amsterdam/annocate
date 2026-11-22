@@ -95,7 +95,7 @@ export const deploymentVersions = pgTable(
 
 /**
  * Links: how coders join a study (docs/coder-identity.md). Made from the
- * design's coder invitation (params: the coder of a link per coder;
+ * design's coder unit assignment (params: the coder of a link per coder;
  * link_key: which link, as JSON), so a deploy keeps, adds and retires them.
  * coder: a fixed coder id; max_uses / uses: a sample size per link.
  */

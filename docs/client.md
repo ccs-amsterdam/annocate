@@ -323,12 +323,12 @@ are handled there once.
 ### Study entry
 
 The design's `session` item (always first, never shown to coders) holds the
-coder invitation (`architecture.md` §6.1), the URL parameters (§7), the
+coder unit assignment (`architecture.md` §6.1), the URL parameters (§7), the
 normal end and the display. The server reads them when a session starts; the
 client sees only the values, as `$session.<name>`.
 
 In the editor it isn't a tree item: above the tree, `SessionHeader.tsx` edits
-the public title and has a button per part (**Coder invitations**, **URL
+the public title and has a button per part (**Coder unit assignments**, **URL
 parameters**, **Display**) that opens that part alone (`SessionItemForm.tsx`,
 the open part in `session/sessionTab.ts`); its JSON is that part only
 (`SessionPartJson.tsx`) and its preview shows what it means for coders

@@ -37,7 +37,7 @@ A design is a list of **blocks**:
 Inside a block you add **questions** (see
 [Question types](question-types.md)), **Show if** conditions (see
 [Conditions](conditions.md)) and **end items** (see
-[Ending a session](end-items.md)). Above the blocks, **Coder invitations**
+[Ending a session](end-items.md)). Above the blocks, **Coder unit assignments**
 say who codes and how they get in, **URL parameters** what a link carries,
 and **Display** how the screen looks.
 

@@ -9,6 +9,10 @@ import { AddItemMenu } from "./AddItemMenu";
 import { samePosition, useDesignTree } from "./context";
 import { getChildren, getItemKey, topBlocks, type TreeNode } from "./utils";
 
+/** A block (a unit loop, a Questions block) as a light card: the header row, its items one step in. */
+const BLOCK_CARD = "my-1 rounded-lg border border-border bg-muted/30 py-0.5";
+const BLOCK_INDENT = "pl-4";
+
 /**
  * The design's top level as blocks (`topBlocks`): unit loops, and the items
  * between them as Questions blocks. The blocks are only how the tree shows
@@ -24,7 +28,7 @@ export function BlockList({ items }: { items: TopLevelItem[] }) {
         const after: TreePosition = { after: getItemKey(last) };
         const count = block.items.length;
         return (
-          <div key={block.key} className={cn("my-0.5 rounded-md pb-1", ITEM_TYPES.questions.blockClass)}>
+          <div key={block.key} className={cn(BLOCK_CARD, ITEM_TYPES.questions.blockClass)}>
             <TreeRow
               dimActions
               actions={
@@ -39,14 +43,13 @@ export function BlockList({ items }: { items: TopLevelItem[] }) {
               }
             >
               {!tree.readOnly && <span className="mr-px h-3.5 w-3.5 shrink-0" aria-hidden />}
-              <span className="w-4 shrink-0" />
-              <ListChecks className={cn("h-4 w-4 shrink-0", ITEM_TYPES.questions.color)} />
+              <ListChecks className={cn("ml-1 h-4 w-4 shrink-0", ITEM_TYPES.questions.color)} />
               <span className="truncate px-1.5 py-0.5 font-medium">Questions</span>
               <span className="truncate text-xs text-muted-foreground">
                 {count === 1 ? "1 item" : `${count} items`}
               </span>
             </TreeRow>
-            <div className="pl-6">
+            <div className={BLOCK_INDENT}>
               {block.items.map((item) => (
                 <TreeNodeView key={getItemKey(item)} item={item as TreeNode} />
               ))}
@@ -101,9 +104,12 @@ function TreeNodeView({ item }: { item: TreeNode }) {
   return (
     <>
       <PreviewLine position={before} />
-      <div data-flip-key={getItemKey(item)} className={cn("my-0.5 rounded-md pb-1", ITEM_TYPES[item.type].blockClass)}>
+      <div
+        data-flip-key={getItemKey(item)}
+        className={cn(item.type === "unit_loop" ? BLOCK_CARD : "my-0.5 pb-1", ITEM_TYPES[item.type].blockClass)}
+      >
         <TreeItemRow item={item} />
-        <div className="pl-6">
+        <div className={item.type === "unit_loop" ? BLOCK_INDENT : "pl-6"}>
           <TreeList nodes={children} parent={item} />
         </div>
       </div>

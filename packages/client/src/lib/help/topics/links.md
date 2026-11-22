@@ -2,16 +2,16 @@
 title: Links
 section: Coders
 order: 1
-summary: The links coders open to start - made from the design's coder invitations, with who may use them, coder ids, sign-in and a maximum number of uses.
+summary: The links coders open to start - made from the design's coder unit assignments, with who may use them, coder ids, sign-in and a maximum number of uses.
 ---
 
 Coders start by opening a **link**, listed under **Deploy › Links**.
 Deploying makes the links: you don't create them by hand. The design's
-**Coder invitations** decide which links there are.
+**Coder unit assignments** decide which links there are.
 
-## Coder invitations
+## Coder unit assignments
 
-Open **Coder invitations** above the item tree and choose:
+Open **Coder unit assignments** above the item tree and choose:
 
 | Invitation          | Who codes                                         | Links                                                     |
 | ------------------- | ------------------------------------------------- | --------------------------------------------------------- |

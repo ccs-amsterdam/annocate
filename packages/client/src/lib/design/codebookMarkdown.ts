@@ -12,7 +12,7 @@ import {
 // for a paper's appendix or a colleague: questions with their instructions
 // and options, conditions, the unit fields coders are shown, end messages.
 // Not the design's internals: who codes which units, sets, gold and
-// practice settings, the coder invitation.
+// practice settings, the coder unit assignment.
 
 /** How each answer type is described in the codebook. */
 const TYPE: Record<AnyVariableType["type"], string> = {

@@ -4,7 +4,7 @@ import { SetGroupNameSchema } from "../sets.js";
 import { CriteriaSchema } from "./unitLoop.js";
 
 // How coders come to a study (the Study entry, docs/architecture.md §6-7):
-// the coder invitation (`invite`: specific coders with a link each or a
+// the coder unit assignment (`invite`: specific coders with a link each or a
 // login, or a crowd with one link), and the URL parameters a link may
 // carry (context such as a distribution channel, or a panel's ids for its
 // return link). All are `$session.<name>` values, stored on the session
@@ -217,7 +217,7 @@ export const DisplaySchema = z.object({
 export type Display = z.infer<typeof DisplaySchema>;
 
 /**
- * The Study entry: the design's `session` (the coder invitation, the URL
+ * The Study entry: the design's `session` (the coder unit assignment, the URL
  * parameters and the normal end) and its `public` info, as
  * the first item of the design's items (`designItems`). Validation, the
  * runtime and the editor work on it there; it is stored as the design's
@@ -289,7 +289,7 @@ export function sessionItem(items: readonly unknown[]): SessionItem | null {
   return (found as SessionItem | undefined) ?? null;
 }
 
-/** A design's coder invitation (`DEFAULT_INVITE` without one). */
+/** A design's coder unit assignment (`DEFAULT_INVITE` without one). */
 export const inviteOf = (item: SessionItem | null | undefined): Invite => item?.invite ?? DEFAULT_INVITE;
 
 /** Whether coders must sign in to start: specific coders with a login, or a crowd that requires it. */

@@ -14,7 +14,7 @@ and coders.
 
 | Layer           | Holds                                                                                 | Shared?                          |
 | --------------- | ------------------------------------------------------------------------------------- | -------------------------------- |
-| **Design**      | questions, conditions, layouts, distribution rules, coder invitations, URL parameters | yes: the instrument              |
+| **Design**      | questions, conditions, layouts, distribution rules, coder unit assignments, URL parameters | yes: the instrument              |
 | **Set columns** | which coder or condition each unit is for                                             | as data, if you may share units  |
 | **Links**       | made from the invitations, with labels, fixed coder ids, max uses                     | no: about your coders            |
 

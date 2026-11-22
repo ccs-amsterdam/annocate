@@ -86,7 +86,7 @@ coder's units. More: [Layout templates](layout-templates.md).
 
 ## 5. Choose who codes
 
-Click **Coder invitations** above the tree:
+Click **Coder unit assignments** above the tree:
 
 - **Crowd** (the default): one link for anyone. Without more settings,
   every coder codes all units. Optionally take a coder id from the URL
@@ -96,7 +96,7 @@ Click **Coder invitations** above the tree:
   in a set column of the units. They get a link each, pick their name from
   one link, or sign in.
 
-For this study, keep **Crowd**. More: [Links](links.md#coder-invitations),
+For this study, keep **Crowd**. More: [Links](links.md#coder-unit-assignments),
 [Giving each coder their own units](own-units.md).
 
 ## 6. Save and preview

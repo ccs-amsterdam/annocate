@@ -20,7 +20,7 @@ expect them back when done.
 
 ## The link for the panel
 
-1. **Coder invitations** → **Crowd** → tick **Coder id from a URL
+1. **Coder unit assignments** → **Crowd** → tick **Coder id from a URL
    parameter**, with the panel's name for it (`PROLIFIC_PID`). Keep
    **Required** on; optionally a **pattern** such as `[0-9a-f]{24}`.
 2. Deploy. The link under **Deploy › Links** ends in

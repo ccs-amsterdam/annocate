@@ -141,9 +141,9 @@ never which unit ids or which people.
 
 | Layer | Contains | Reproducible? |
 | --- | --- | --- |
-| Design | questions, computed items, Show if items, unit loops (filters, placements), the session (coder invitation with a crowd's distribution criteria, URL parameters, the normal end). Refers to set columns and values by name, to coders only via `$session` values | yes |
+| Design | questions, computed items, Show if items, unit loops (filters, placements), the session (coder unit assignment with a crowd's distribution criteria, URL parameters, the normal end). Refers to set columns and values by name, to coders only via `$session` values | yes |
 | Set columns | per column, named sets of units in order (e.g. column `coders`: `anna`, `bob`, `_overlap`) | data |
-| Links | made from the coder invitation (one, or one per coder), with label, max uses, fixed coder id | no (server only) |
+| Links | made from the coder unit assignment (one, or one per coder), with label, max uses, fixed coder id | no (server only) |
 
 One idea, *who is this session for*, decides a session's units: the coder
 column and the random conditions linked to a column. Loops only filter and
@@ -153,7 +153,7 @@ overlap" is then one setting and one column.
 ### 6.1 A session's units
 
 Decided per session, for the whole study (contracts `design/session.ts`,
-`shareOf` in the runtime). The coder invitation (`session.invite`) says who
+`shareOf` in the runtime). The coder unit assignment (`session.invite`) says who
 codes:
 
 ```yaml
@@ -340,7 +340,7 @@ frozen once the coder coded a unit in that loop
 (`annotation_values.frozen`); the coding screen shows it read-only.
 
 **The session.** The design's `session` (the Study entry, edited above the
-item tree) holds the coder invitation (§6.1), the URL parameters, the normal
+item tree) holds the coder unit assignment (§6.1), the URL parameters, the normal
 end and the display settings:
 
 ```yaml
@@ -498,7 +498,7 @@ transaction.
 | Where | What |
 | --- | --- |
 | `contracts/src/design/unitLoop.ts` | a loop's `units`: filter, placements, practice and gold checks; distribution criteria |
-| `contracts/src/design/session.ts` | the Study entry: coder invitation, URL parameters, normal end, display |
+| `contracts/src/design/session.ts` | the Study entry: coder unit assignment, URL parameters, normal end, display |
 | `contracts/src/design/references.ts`, `condition.ts` | `$unit`/`$var`/`$session` references, templates, conditions, helpers |
 | `contracts/src/sets.ts` | set columns, `splitIntoSets` |
 | `contracts/src/deployment.ts` | deployment, reset, status and preview schemas |

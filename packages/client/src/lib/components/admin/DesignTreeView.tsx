@@ -137,7 +137,7 @@ export function DesignTreeView({
     <DesignTreeProvider value={state}>
       {/* One bar, always there, so the tree doesn't move: Add item; with items ticked, Move and Delete; while moving, where to */}
       {!readOnly && (
-        <div className="sticky top-0 z-10 flex min-h-9 flex-wrap items-center gap-2 bg-card px-1 pb-1 text-xs text-muted-foreground">
+        <div className="sticky top-0 z-30 flex min-h-9 flex-wrap items-center gap-2 bg-card px-1 pb-1 text-xs text-muted-foreground">
           {moving ? (
             <>
               <span className="font-medium text-primary">

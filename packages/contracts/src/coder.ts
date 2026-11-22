@@ -89,7 +89,7 @@ export type CoderDeletion = z.infer<typeof CoderDeletionSchema>;
 
 /**
  * A link (docs/coder-identity.md §3). Links are generated from the
- * deployed design version's coder invitation: a link per coder, or one link
+ * deployed design version's coder unit assignment: a link per coder, or one link
  * (docs/architecture.md §7). The researcher manages who may use a link, not
  * which links exist.
  */

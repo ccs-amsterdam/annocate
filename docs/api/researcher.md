@@ -332,7 +332,7 @@ deploying and previewing require. Versions also have `updated`,
 
 A design version is `{ public, session, units, items }`: `public` what
 coders see about the study (`{ title }`, or null), `session` how a coder's
-session starts (the coder invitation `invite`, URL parameters `urlParams`,
+session starts (the coder unit assignment `invite`, URL parameters `urlParams`,
 the normal end `end`; `{}` without), `units.fields` the declared unit
 fields, `items` the questions, loops, conditions and end items. On `PUT`,
 a left-out `session`, `public` or `units` is kept; `public: null` removes it.
@@ -485,7 +485,7 @@ first, with `params` (`{ coder }` for a coder's link, else `{}`), `uses`,
 `PUT /study/:studyId/links/:id` (`LinkWriteSchema`) →
 `LinkResponseSchema`. The link's `label`, `maxUses` and a fixed coder
 id (`coder`, the session's `$session.coder`). Full replace of these settings. Sign-in is the design's
-coder invitation, not a link's. A link's `maxUses` overrides a crowd
+coder unit assignment, not a link's. A link's `maxUses` overrides a crowd
 invitation's `maxCoders`.
 
 ### revokeLink
@@ -514,7 +514,7 @@ loop of the live design version, `special`: the units of the deployed
 the kinds the study has), `variables`: their coder-level values
 (answers outside unit loops, and computed variables), `session`: their
 `$session` values (URL parameters, `source`, the coder), `email` only where
-the coder invitation requires sign-in, `ended`: how the
+the coder unit assignment requires sign-in, `ended`: how the
 session ended (at an `end` item: item, outcome `screenout` or `complete`;
 or outcome `quit`; and the time), or null, and `deletionRequest`: the
 coder's request to delete their answers (`at`, `postponedAt` once the

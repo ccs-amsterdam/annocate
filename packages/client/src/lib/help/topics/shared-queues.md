@@ -9,7 +9,7 @@ With **crowd coding**, coders draw from one queue. Each unit is handed out
 until it is **done**: a number of coders coded it, or agreed on it. You
 don't need to know how many coders will come; those who do more code more.
 
-**Coder invitations** → **Crowd** → tick **Share the units among coders**.
+**Coder unit assignments** → **Crowd** → tick **Share the units among coders**.
 The rules apply in every unit loop. Each loop's queue holds its units (per
 condition, if conditions are linked to units, see
 [Handing out units](unit-distribution.md)).

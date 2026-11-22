@@ -8,7 +8,7 @@ identifier in code differs, §2 says what it means.
 | Term | Meaning | Not |
 | --- | --- | --- |
 | **Study** | What a researcher runs in AnnoTinder: its design, units, deployments, links and results. Coders take part in it. | job, project |
-| **Design** | Everything someone repeating the study needs: the **unit fields**, the **session** (the coder invitation, URL parameters, the normal end) and the **items** (questions, computed variables, unit loops, Show if items, end items). Versioned. | "codebook" for the whole |
+| **Design** | Everything someone repeating the study needs: the **unit fields**, the **session** (the coder unit assignment, URL parameters, the normal end) and the **items** (questions, computed variables, unit loops, Show if items, end items). Versioned. | "codebook" for the whole |
 | **Design version** (v1, v2, ...) | A saved state of the design. The latest one is the **draft** until it is deployed; deployed versions are frozen. | "codebook version" |
 | **Codebook** | The part of the design coders see: questions with their instructions and options, layouts, Show if conditions, end messages. What the coding client gets (the *coder codebook*) and what **Export** writes (`codebook.md`), e.g. for a paper. The **Design** tab edits the design's items and session. | the whole design; a version |
 | **Item** | An entry of the design: a question, computed variable, unit loop, Show if item, end item, or the session (the Study entry: the first item, edited above the editor's tree). | |
@@ -17,7 +17,7 @@ identifier in code differs, §2 says what it means.
 | **Unit version** | A unit's content as deployed; answers point to the version their coder saw. Draft edits make no versions. | |
 | **Set column** | A unit field of type `set` that says who or which group a unit is for (e.g. `coder`, `framing`); each cell lists the unit's values (`anna;bob`, `_overlap`). Stored as a *set group* (`unit_sets`; the sets endpoints say `group`). | "set group" in UI text |
 | **Set** | One value of a set column: the units whose cell holds it, in order. `_overlap`, `_practice`, `_gold` are special sets, for every share. | "unitset" |
-| **Coder invitation** | The design's `session.invite`: who codes and how they get in. **Specific coders** (`mode: "coders"`): a set column whose values are coders, each with their own units (`$session.coder`); a link per coder, one link where coders pick their name, or one link where coders sign in with the column's email addresses. **Crowd** (`mode: "crowd"`, the default): one link for anyone, optionally with a coder id from the URL (`coderParam`), required sign-in, distribution criteria (`share`, a shared queue) and a maximum of coders. In the editor: **Coder invitations**. | "invite" for a link |
+| **Coder unit assignment** | The design's `session.invite`: who codes and how they get in. **Specific coders** (`mode: "coders"`): a set column whose values are coders, each with their own units (`$session.coder`); a link per coder, one link where coders pick their name, or one link where coders sign in with the column's email addresses. **Crowd** (`mode: "crowd"`, the default): one link for anyone, optionally with a coder id from the URL (`coderParam`), required sign-in, distribution criteria (`share`, a shared queue) and a maximum of coders. In the editor: **Coder unit assignments**. | "invite" for a link |
 | **URL parameter** | A value a link carries in its URL, declared in `session.urlParams`; `$session.<name>`. Required unless it has a default. In the editor: **URL parameters**. | "session parameter", "link parameter" |
 | **Questions block** | In the editor's tree, the items between unit loops (or before or after them), shown as one block. Only a view: the design stays one list. | an item |
 | **Computed variable** | An item (`type: "computed"`) whose value the server computes when the coder reaches it, never asked. The one type is a random condition (`variable.type: "random"`, drawn random or balanced). `$var.<name>`. In the editor: **Random condition**. | "random condition", "auto question" |
@@ -25,7 +25,7 @@ identifier in code differs, §2 says what it means.
 | **Share** | The units a session gets: those whose cells hold its coder and linked random conditions' values in each column (plus `_overlap`). A loop works within it, like a filter. | |
 | **Placement** | Where a loop puts the overlap, practice or gold units among the coder's own: spread (the default), before, after, or left out (`ignore`). | |
 | **Show if** | An item (`show_if`) whose children only show when its condition holds. | "condition" for the item |
-| **Sign-in** | Coders logging in, to keep their session across devices. Always possible; required only where the coder invitation says so (specific coders who sign in, or a crowd with `login`), and only there do researchers see coders' emails. | a study setting |
+| **Sign-in** | Coders logging in, to keep their session across devices. Always possible; required only where the coder unit assignment says so (specific coders who sign in, or a crowd with `login`), and only there do researchers see coders' emails. | a study setting |
 | **Draft** | Anything not deployed yet: the latest design version if it isn't deployed, and units and sets as edited. | |
 | **Deploy** | Make drafts live: a design version, and/or the draft units and sets. One dialog, one verb. | "publish" |
 | **Deployment** | What coders get now (a design version with the deployed units and sets, active or paused) and its **settings**: panel return links, a link's own limit. | |
@@ -34,7 +34,7 @@ identifier in code differs, §2 says what it means.
 | **Coder id** | Who the coder is: `$session.coder`, the results' `coder` column. Specific coders' value in the coders' column, a crowd's id from a URL parameter (e.g. a panel's `PROLIFIC_PID`), or the login's email where a crowd requires sign-in; never a key. | participant id |
 | **Coder session** | One coder's session in a study (`sessionId`, the results' `session_id`); a coder can have more than one (e.g. a new device). | "coder" for a session row |
 | **Public title** | What coders see as the study's name (the coder home, the coding screen): the design's `public.title`. The study's name is private. | the study's name |
-| **Session** | (1) A coder's run through a study. (2) The design's `session` (the Study entry): the coder invitation, the URL parameters (`$session.<name>`), the normal end and the display. | |
+| **Session** | (1) A coder's run through a study. (2) The design's `session` (the Study entry): the coder unit assignment, the URL parameters (`$session.<name>`), the normal end and the display. | |
 | **Preview** | Trying the drafts as a coder; nothing is stored. | test run |
 
 ## 2. In code

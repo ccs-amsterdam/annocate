@@ -19,8 +19,8 @@ summary: The item tree, the item form, the preview, errors and warnings, saving,
 
 - **Title shown to coders**: edit it in place. The study's own name stays
   private.
-- **Coder invitations**: who codes and how they get in (see
-  [Links](links.md#coder-invitations)).
+- **Coder unit assignments**: who codes and how they get in (see
+  [Links](links.md#coder-unit-assignments)).
 - **URL parameters**: values a link carries (see
   [URL parameters](session-parameters.md)).
 - **Display**: fixed or responsive layouts, and light or dark (see

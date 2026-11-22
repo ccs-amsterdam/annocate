@@ -4,7 +4,7 @@ import type { AnyVariableType } from "./variableTypes.js";
 import { SetGroupNameSchema } from "../sets.js";
 
 // How a unit_loop gets its units (docs/architecture.md §6.2). Who gets
-// which units is the study's coder invitation's (session.ts `invite`): the
+// which units is the study's coder unit assignment's (session.ts `invite`): the
 // coder column (specific coders) or a shared queue (crowd). A loop works
 // within a coder's units like a filter: which of them it includes (a filter
 // on a set column, the coder's own units yes or no) and where the special

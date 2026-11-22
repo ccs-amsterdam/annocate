@@ -52,7 +52,7 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
       <div className="flex flex-wrap items-center gap-1 px-1">
         <HeaderButton
           icon={invite.mode === "coders" ? Users : Globe}
-          label="Coder invitations"
+          label="Coder unit assignments"
           summary={inviteSummary(invite)}
           selected={selected && tab === "invite"}
           issues={issuesOf("invite")}

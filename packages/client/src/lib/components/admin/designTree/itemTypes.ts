@@ -26,7 +26,7 @@ interface ItemTypeInfo {
   description: string;
   icon: LucideIcon;
   color: string;
-  /** Tint and left border of the block wrapping a container and its children. */
+  /** Extra classes on the card wrapping a block (a loop, a Questions block) and its children. */
   blockClass?: string;
 }
 
@@ -36,7 +36,7 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     description: "A block of questions for coders (before, between or after unit loops)",
     icon: ListChecks,
     color: "text-secondary-dark",
-    blockClass: "border-y-2 rounded-none border-secondary/20 py-1 my-1",
+    blockClass: "",
   },
   question: {
     label: "Question",
@@ -55,7 +55,7 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     description: "Loop over units (all, or a set)",
     icon: Repeat,
     color: "text-primary-dark",
-    blockClass: "border-y-2   rounded-none border-primary/20 py-1 my-1 [--iconcolor:var(--color-primary-dark)]",
+    blockClass: "[--iconcolor:var(--color-primary-dark)]",
   },
   show_if: {
     label: "Show if",
@@ -66,7 +66,7 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
   },
   session: {
     label: "Session",
-    description: "Coder invitations and URL parameters",
+    description: "Coder unit assignments and URL parameters",
     icon: Link2,
     color: "text-muted-foreground",
   },

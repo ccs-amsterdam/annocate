@@ -57,7 +57,7 @@ export function deployment(server: Server): Hono<Env> {
     // Who gets which units: the set columns it names, the coders' and random conditions' values (docs/architecture.md §6.3)
     const checks = await assignmentChecks(db, studyId, items, fields, live);
     if (checks.errors.length > 0) return c.json({ error: checks.errors.join(" "), code: "assignment_invalid" }, 400);
-    // Links follow the design's coder invitation (docs/architecture.md §7).
+    // Links follow the design's coder unit assignment (docs/architecture.md §7).
     await checkLinkCount(db, studyId, items, parsed.data.confirmLinks ?? false, live);
     const result = await db.transaction(async (tx) => {
       const deployment = await putDeployment(tx, studyId, parsed.data);

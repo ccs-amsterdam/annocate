@@ -2,7 +2,7 @@ import { expect, test } from "./fixtures";
 import type { StudyResponse, UnitResponse } from "@annotinder/contracts";
 import { api, question } from "./helpers";
 
-// Who gets which units (docs/architecture.md §6): the coder invitations
+// Who gets which units (docs/architecture.md §6): the coder unit assignments
 // show the coders against the units, and make the coder distribution column; a random
 // condition linked to a set column gives each session the units of its value.
 
@@ -40,7 +40,7 @@ async function studyWithColumn(
   return study;
 }
 
-test("the coder invitations show the coders; a dialog makes or updates the coder distribution; a link per coder", async ({
+test("the coder unit assignments show the coders; a dialog makes or updates the coder distribution; a link per coder", async ({
   page,
   request,
 }) => {
@@ -55,7 +55,7 @@ test("the coder invitations show the coders; a dialog makes or updates the coder
   });
 
   await page.goto(`/research/studies/${study.id}/design`);
-  await page.getByRole("button", { name: /^Coder invitations/ }).click();
+  await page.getByRole("button", { name: /^Coder unit assignments/ }).click();
   await expect(page.getByText("2 coders.", { exact: true })).toBeVisible();
 
   // Signing in needs email addresses
@@ -234,7 +234,7 @@ test("dividing units again keeps the units coders already saw", async ({ page, r
   await question(anna, "Topic?");
 
   await page.goto(`/research/studies/${study.id}/design`);
-  await page.getByRole("button", { name: /^Coder invitations/ }).click();
+  await page.getByRole("button", { name: /^Coder unit assignments/ }).click();
   await page.getByRole("button", { name: "Create or update coder distribution…" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Names, each with their own link").check();

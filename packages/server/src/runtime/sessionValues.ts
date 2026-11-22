@@ -3,7 +3,7 @@ import { HttpError } from "../shared/http.js";
 
 // A new session's `$session` values (docs/architecture.md §6-7): the URL
 // parameters the design declares, `source`, and who the coder is (`coder`):
-// per the coder invitation, their value in the coders' column (by their link,
+// per the coder unit assignment, their value in the coders' column (by their link,
 // the name they picked, or their login's email), or a crowd's id from a URL
 // parameter (or the login's email). Fixed when the session starts.
 

@@ -21,7 +21,7 @@ interface LinksPanelProps {
 
 /**
  * The Links tab (docs/architecture.md §7): the links deploying made from
- * the design's coder invitation, one or one per coder. Here their access
+ * the design's coder unit assignment, one or one per coder. Here their access
  * settings (label, coder id, max uses), and revoking or renewing a link.
  * Links the design no longer makes are retired, never deleted: coders and
  * their answers refer to the link they came from.

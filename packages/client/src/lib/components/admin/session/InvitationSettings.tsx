@@ -51,11 +51,14 @@ export function InvitationSettings({
   const columns = groups.map((g) => g.name);
   const setMode = (mode: Invite["mode"]) => {
     if (mode === invite.mode) return;
-    if (mode === "crowd") onChange({ mode: "crowd" });
-    else {
-      // The first set column, if any; else none chosen yet (a new distribution makes one)
-      onChange({ mode: "coders", column: columns[0] ?? "", link: "per_coder" });
-    }
+    // Switching back brings back what was set in that mode (in this editing session)
+    const memory = rememberedModes(client?.studyId);
+    memory[invite.mode] = invite;
+    const back = memory[mode];
+    if (back) onChange(back);
+    else if (mode === "crowd") onChange({ mode: "crowd" });
+    // The first set column, if any; else none chosen yet (a new distribution makes one)
+    else onChange({ mode: "coders", column: columns[0] ?? "", link: "per_coder" });
   };
 
   return (
@@ -402,4 +405,12 @@ function newColumnName(columns: string[]): string {
   let n = 2;
   while (columns.includes(`coder_${n}`)) n++;
   return `coder_${n}`;
+}
+
+/** Per study: the settings last used in each mode, to come back to after switching (kept while the page is open). */
+const modeMemory = new Map<number | string, Partial<Record<Invite["mode"], Invite>>>();
+function rememberedModes(studyId: number | undefined): Partial<Record<Invite["mode"], Invite>> {
+  const key = studyId ?? "none";
+  if (!modeMemory.has(key)) modeMemory.set(key, {});
+  return modeMemory.get(key)!;
 }

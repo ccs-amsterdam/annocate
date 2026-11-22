@@ -15,6 +15,7 @@ import { HelpButton } from "../../help/HelpButton";
 import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
 import { InvitationSettings } from "./session/InvitationSettings";
+import { NoUnitsNotice } from "./session/NoUnitsNotice";
 import { useSessionTab } from "./session/sessionTab";
 import { DisplaySettings } from "./session/DisplaySettings";
 
@@ -22,7 +23,7 @@ const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 
 /**
  * One part of the design's Study entry (docs/architecture.md §6), the one
- * opened from the buttons above the tree: the coder invitation (who codes,
+ * opened from the buttons above the tree: the coder unit assignment (who codes,
  * and how they get in), the URL parameters (values a link carries, e.g.
  * from a panel: `$session.<name>`) or the display. The public title is
  * edited above the tree, the normal end in its "At the end" row.
@@ -55,19 +56,26 @@ export function SessionItemForm({
     if (value === undefined) delete next[key];
     onChange(next);
   };
+  const inviteForm = (
+    <InvitationSettings
+      invite={item.invite}
+      groups={groups}
+      issues={issues}
+      client={client}
+      agreementQuestions={agreementQuestions}
+      onChange={(invite) => set("invite", invite)}
+    />
+  );
   return (
     <div className="flex flex-col gap-4">
       {tab === "display" ? (
         <DisplaySettings display={item.display} onChange={(display) => setDisplay(display)} />
       ) : tab === "invite" ? (
-        <InvitationSettings
-          invite={item.invite}
-          groups={groups}
-          issues={issues}
-          client={client}
-          agreementQuestions={agreementQuestions}
-          onChange={(invite) => set("invite", invite)}
-        />
+        client ? (
+          <NoUnitsNotice client={client}>{inviteForm}</NoUnitsNotice>
+        ) : (
+          inviteForm
+        )
       ) : (
         <UrlParamsSettings
           params={item.urlParams ?? []}

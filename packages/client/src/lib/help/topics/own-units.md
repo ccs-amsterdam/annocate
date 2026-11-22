@@ -10,7 +10,7 @@ for reliability.
 
 ## In four steps
 
-1. **Coder invitations** (above the item tree) → **Specific coders**.
+1. **Coder unit assignments** (above the item tree) → **Specific coders**.
 2. **Column with the coders**: a set column of your units naming a coder
    per unit (`anna`, `bob`). From your CSV (type **set**, see
    [Uploading units](uploading-units.md)), or **Create new coder distribution…**: a

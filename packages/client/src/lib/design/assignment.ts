@@ -1,7 +1,7 @@
 import { ALL_UNITS_SET, RESERVED_SETS, type Invite, type SetGroupResponse } from "@annotinder/contracts";
 
 // Who gets which units (docs/architecture.md §6), as the editor shows
-// it: the coder invitation's coders and the computed items linked to a set
+// it: the coder unit assignment's coders and the computed items linked to a set
 // column, checked against the draft units' set columns.
 
 /** A set column's values (its sets), without the special ones (`_overlap`, `_gold`, `_practice`). */

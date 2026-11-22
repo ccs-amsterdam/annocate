@@ -9,7 +9,7 @@ A **set column** says who or which group each unit is for: a `coder`
 column with names, a `framing` column with `control` and `experiment`.
 Each value is a **set**. The design uses them for:
 
-- **Specific coders** (Coder invitations): each coder gets their value's
+- **Specific coders** (Coder unit assignments): each coder gets their value's
   units (see [Giving each coder their own units](own-units.md));
 - a **random condition linked to units**: each condition its units (see
   [Experimental conditions](experimental-conditions.md));
