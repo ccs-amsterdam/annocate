@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { codebookMarkdown } from "../../design/codebookMarkdown";
 import { RELEASE, designFile, splitDesignItems, type DesignVersion } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useStudyQuery, useUnitFieldsQuery } from "../../admin/queries";
+import { useDeploymentQuery, useDesignVersionQuery, useStudyQuery, useUnitFieldsQuery } from "../../admin/queries";
+import { DeployedValuesContext, deployedOptionValues } from "../../design/deployedValues";
+import { designItems } from "@annotinder/contracts";
 import { unknownUnitFields } from "../../design/unitFieldRefs";
 import { DesignJsonEditor } from "./DesignJsonEditor";
 import { useDesignDraft } from "./designEditor/useDesignDraft";
@@ -92,6 +94,10 @@ export function DesignEditor({
 }: DesignEditorProps) {
   const readOnly = mode === "history";
   const draft = useDesignDraft({ client, version, readOnly, onSaved, restore });
+  // The deployed design's answer values: label edits don't change them (OptionsEditor)
+  const deployment = useDeploymentQuery(client).data ?? null;
+  const deployed = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data ?? null;
+  const deployedValues = useMemo(() => deployedOptionValues(deployed ? designItems(deployed) : null), [deployed]);
   const wide = useMediaQuery(WIDE_SCREEN);
   const narrow = useMediaQuery(NARROW_SCREEN);
   // On a narrow screen: the selected item, else the tree (Back deselects)
@@ -165,96 +171,104 @@ export function DesignEditor({
   });
 
   return (
-    <div className="flex h-full min-h-[32rem] flex-col gap-2">
-      <EditorToolbar
-        status={banner}
-        mode={mode}
-        view={view}
-        onViewChange={setView}
-        errors={errors}
-        warnings={warningIssues}
-        onOpenIssue={openIssue}
-        dirty={dirty}
-        canSave={draft.canSave}
-        canUndo={draft.canUndo}
-        canRedo={draft.canRedo}
-        onUndo={draft.undo}
-        onRedo={draft.redo}
-        changedItems={changedItems}
-        onRevertItem={draft.revert}
-        onRevertAll={draft.revertAll}
-        saving={draft.saving}
-        onSave={() => void draft.save().catch(() => {})}
-        onOpenVersions={onOpenVersions}
-        onExport={async (kind) => {
-          if (kind === "codebook") {
-            downloadFile(codebookMarkdown(draft.cleanItems, "Codebook", version?.note), "codebook.md", "text/markdown");
-            return;
-          }
-          // The whole design as a design file (contracts version.ts), as edited now, with this server's release
-          const server = await client.getServerVersion().catch(() => ({ release: RELEASE, commit: "unknown" }));
-          const { items, session, public: info } = splitDesignItems(draft.cleanItems);
-          const file = designFile(
-            { items, session, public: info, units: version?.units ?? { fields: [] }, note: version?.note ?? null },
-            { name: studyName ?? "design", version: versionNumber ?? null, client: server },
-          );
-          downloadFile(JSON.stringify(file, null, 2), "design.json", "application/json");
-        }}
-      />
+    <DeployedValuesContext.Provider value={deployedValues}>
+      <div className="flex h-full min-h-[32rem] flex-col gap-2">
+        <EditorToolbar
+          status={banner}
+          mode={mode}
+          view={view}
+          onViewChange={setView}
+          errors={errors}
+          warnings={warningIssues}
+          onOpenIssue={openIssue}
+          dirty={dirty}
+          canSave={draft.canSave}
+          canUndo={draft.canUndo}
+          canRedo={draft.canRedo}
+          onUndo={draft.undo}
+          onRedo={draft.redo}
+          changedItems={changedItems}
+          onRevertItem={draft.revert}
+          onRevertAll={draft.revertAll}
+          saving={draft.saving}
+          onSave={() => void draft.save().catch(() => {})}
+          onOpenVersions={onOpenVersions}
+          onExport={async (kind) => {
+            if (kind === "codebook") {
+              downloadFile(
+                codebookMarkdown(draft.cleanItems, "Codebook", version?.note),
+                "codebook.md",
+                "text/markdown",
+              );
+              return;
+            }
+            // The whole design as a design file (contracts version.ts), as edited now, with this server's release
+            const server = await client.getServerVersion().catch(() => ({ release: RELEASE, commit: "unknown" }));
+            const { items, session, public: info } = splitDesignItems(draft.cleanItems);
+            const file = designFile(
+              { items, session, public: info, units: version?.units ?? { fields: [] }, note: version?.note ?? null },
+              { name: studyName ?? "design", version: versionNumber ?? null, client: server },
+            );
+            downloadFile(JSON.stringify(file, null, 2), "design.json", "application/json");
+          }}
+        />
 
-      {draft.saveError && <p className="text-sm text-destructive">{draft.saveError.message}</p>}
+        {draft.saveError && <p className="text-sm text-destructive">{draft.saveError.message}</p>}
 
-      <Dialog open={draft.conflict !== null} onOpenChange={(open) => !open && draft.dismissConflict()}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Someone else saved this draft</DialogTitle>
-            <DialogDescription>
-              {draft.conflict?.updatedBy ?? "Someone"} saved it at{" "}
-              {draft.conflict ? new Date(draft.conflict.updated).toLocaleTimeString() : ""}, while you were editing.
-              Saving yours replaces their changes.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            {onReload && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (confirm("Throw away your unsaved changes and load the saved draft?")) onReload();
-                }}
-              >
-                Discard mine, load theirs
+        <Dialog open={draft.conflict !== null} onOpenChange={(open) => !open && draft.dismissConflict()}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Someone else saved this draft</DialogTitle>
+              <DialogDescription>
+                {draft.conflict?.updatedBy ?? "Someone"} saved it at{" "}
+                {draft.conflict ? new Date(draft.conflict.updated).toLocaleTimeString() : ""}, while you were editing.
+                Saving yours replaces their changes.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2">
+              {onReload && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (confirm("Throw away your unsaved changes and load the saved draft?")) onReload();
+                  }}
+                >
+                  Discard mine, load theirs
+                </Button>
+              )}
+              <Button onClick={() => void draft.save({ overwrite: true }).catch(() => {})}>
+                Save mine over theirs
               </Button>
-            )}
-            <Button onClick={() => void draft.save({ overwrite: true }).catch(() => {})}>Save mine over theirs</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      {view === "json" ? (
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <DesignJsonEditor items={draft.cleanItems} onChange={draft.replaceAll} disabled={readOnly} />
-        </div>
-      ) : (
-        <div
-          className={cn(
-            "grid min-h-0 flex-1 gap-3 overflow-hidden",
-            narrow ? "grid-cols-1" : wide ? "grid-cols-[1fr_1.15fr_1fr]" : "grid-cols-2",
-          )}
-        >
-          {!showItemOnly && <TreePanel draft={draft} readOnly={readOnly} />}
-          {(!narrow || showItemOnly) && (
-            <ItemPanel
-              client={client}
-              draft={draft}
-              readOnly={readOnly}
-              warnings={warnings}
-              previewBeside={wide}
-              onBack={narrow ? () => draft.select(null) : undefined}
-            />
-          )}
-          {wide && <PreviewPanel client={client} draft={draft} />}
-        </div>
-      )}
-    </div>
+        {view === "json" ? (
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <DesignJsonEditor items={draft.cleanItems} onChange={draft.replaceAll} disabled={readOnly} />
+          </div>
+        ) : (
+          <div
+            className={cn(
+              "grid min-h-0 flex-1 gap-3 overflow-hidden",
+              narrow ? "grid-cols-1" : wide ? "grid-cols-[1fr_1.15fr_1fr]" : "grid-cols-2",
+            )}
+          >
+            {!showItemOnly && <TreePanel draft={draft} readOnly={readOnly} />}
+            {(!narrow || showItemOnly) && (
+              <ItemPanel
+                client={client}
+                draft={draft}
+                readOnly={readOnly}
+                warnings={warnings}
+                previewBeside={wide}
+                onBack={narrow ? () => draft.select(null) : undefined}
+              />
+            )}
+            {wide && <PreviewPanel client={client} draft={draft} />}
+          </div>
+        )}
+      </div>
+    </DeployedValuesContext.Provider>
   );
 }

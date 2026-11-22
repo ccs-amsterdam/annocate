@@ -1300,12 +1300,14 @@ export class DeploymentRuntime {
   /**
    * A unit as coders see it under this codebook (docs/architecture.md
    * §8.4): only the fields it uses (`shownUnitFields`), and the deployed
-   * unit version (answers point to it).
+   * unit version (answers point to it). `$unit.id` is the unit's id, unless
+   * the units have a field called id.
    */
   private async shownVersion(unit: Unit): Promise<{ data: UnitData; versionId: number }> {
     const data: UnitData = Object.fromEntries(
       this.shownFields.filter((f) => f in unit.data).map((f) => [f, unit.data[f]]),
     );
+    if (this.shownFields.includes("id") && !("id" in unit.data)) data.id = unit.externalId;
     return { data, versionId: unit.versionId };
   }
 

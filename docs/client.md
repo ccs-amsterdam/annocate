@@ -565,7 +565,7 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   uploading it again, after a warning.
 - **Overview** (`overview/`): live/paused/unpublished, live and draft
   versions, counts, set columns, answers per day, progress per loop;
-  `LiveControls.tsx` pauses and resumes.
+  pausing and resuming (`LiveControls.tsx`) is on the Deploy page.
 - **Settings** (`StudySettingsPage`): the team (`TeamSettings.tsx`, at least
   one ADMIN), rename, archive, keep sessions open, export, delete.
 - **Links** (`LinksPanel.tsx`, `links/`): the links deploying made, with their

@@ -15,6 +15,7 @@ import { hasUnitChanges } from "../../admin/unitChanges";
 import { Button } from "@/components/ui/button";
 import { DeployPanel } from "./DeployPanel";
 import { DeployHistory } from "./DeployHistory";
+import { LiveControls } from "./LiveControls";
 
 /**
  * Deploy › Deploy (docs/client.md §7, "Versions and deploying"): what is
@@ -55,6 +56,17 @@ export function DeployPage({ client, onOpenDesign }: { client: ResearcherApi; on
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
+      {/* Pausing the live study: here, with deploying, not on the overview (it stops coders) */}
+      {deployment && (
+        <section className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card p-4 text-sm">
+          <span>
+            {deployment.active
+              ? "The study is live: coders get units."
+              : "The study is paused: coders get no new units until you resume it."}
+          </span>
+          <LiveControls client={client} deployment={deployment} />
+        </section>
+      )}
       {deployed && (
         <section className="flex flex-col gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm">
           <h2 className="flex items-center gap-1.5 font-medium">

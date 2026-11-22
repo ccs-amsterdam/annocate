@@ -1,11 +1,11 @@
 import { Pause, Play } from "lucide-react";
 import type { DeploymentResponse } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
-import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useDeploymentActiveMutation } from "../../../admin/queries";
+import type { ResearcherApi } from "../../api/httpResearcherApi";
+import { useDeploymentActiveMutation } from "../../admin/queries";
 
 /**
- * Controls of the live study (docs/client.md §7, "Overview"): pause it (coders
+ * Controls of the live study (docs/client.md §7, "Deploy"): pause it (coders
  * get no new units; units they hold can still be finished) or resume it.
  */
 export function LiveControls({ client, deployment }: { client: ResearcherApi; deployment: DeploymentResponse }) {

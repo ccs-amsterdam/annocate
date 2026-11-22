@@ -78,6 +78,23 @@
     border-color: var(--color-gray-200, currentcolor);
   }
 
+  /* What someone typed reads as text; a placeholder is clearly lighter. */
+  input,
+  textarea,
+  select {
+    color: var(--foreground);
+  }
+  ::placeholder {
+    color: color-mix(in srgb, var(--muted-foreground) 65%, transparent);
+    opacity: 1;
+  }
+  /* A native list's options in the theme's colours (a transparent select would show light options with dark-mode text) */
+  option,
+  optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
+
   /* Thin scrollbars, in the primary colour, everywhere (Monaco's: monacoSetup.ts). */
   * {
     scrollbar-width: thin;

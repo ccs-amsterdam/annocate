@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HelpButton } from "../../help/HelpButton";
 import { InfoTip } from "@/components/ui/info-tip";
+import { useDeployedOptionValues } from "../../design/deployedValues";
 
 const DIRECTION_ICONS = { left: ArrowLeft, right: ArrowRight, up: ArrowUp };
 
@@ -34,7 +35,8 @@ export interface OptionsEditorProps<T extends Option> {
 /**
  * The options of a question (docs/client.md §7): a label the coder sees and
  * the value that is stored. For nominal questions the value follows the
- * label (`Human interest` -> `human_interest`) until it is edited by hand.
+ * label (`Human interest` -> `human_interest`) until it is edited by hand,
+ * or once it is in the deployed design (coders may have given it).
  * Ordinal values are 1..n in option order, renumbered when options are
  * added, removed or moved; with "Custom values" they are set by hand (any
  * numbers rising in order). Custom isn't stored: options that aren't 1..n
@@ -51,6 +53,7 @@ export function OptionsEditor<T extends Option>({
 }: OptionsEditorProps<T>) {
   const ordinal = level === "ordinal";
   const [custom, setCustom] = useState(() => ordinal && !isSequence(options));
+  const deployed = useDeployedOptionValues();
   const valuesFollowOrder = ordinal && !custom;
   /** Changes to the list of options: renumbered while values follow the order. */
   const commit = (next: T[]) => onChange(valuesFollowOrder ? renumber(next) : next);
@@ -88,8 +91,12 @@ export function OptionsEditor<T extends Option>({
   const setLabel = (index: number, label: string) => {
     const option = options[index];
     const patch: Partial<Option> = { label: label === "" ? undefined : label };
-    // The value follows the label while it was derived from it (or empty).
-    if (!ordinal && (option.value === "" || option.value === valueFromLabel(option.label ?? String(option.value)))) {
+    // The value follows the label while it was derived from it (or empty), unless coders may already have given it
+    if (
+      !ordinal &&
+      !deployed.has(String(option.value)) &&
+      (option.value === "" || option.value === valueFromLabel(option.label ?? String(option.value)))
+    ) {
       patch.value = valueFromLabel(label);
     }
     update(index, patch as Partial<T>);

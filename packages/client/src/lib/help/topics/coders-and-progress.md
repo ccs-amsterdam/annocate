@@ -21,7 +21,7 @@ coder. Both refresh while open. For full data, download the
 | **Live version** | the version coders get; click to open it                                           |
 | **Draft**        | changes not deployed yet                                                           |
 
-**Pause** and **Resume** are next to the status.
+**Pause** and **Resume** are on the **Deploy** page, with deploying.
 
 ### Numbers
 

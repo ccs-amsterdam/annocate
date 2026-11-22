@@ -2674,6 +2674,14 @@ describe("end items", () => {
   });
 });
 
+describe("unit fields", () => {
+  it("$unit.id is each unit's id, sent only when the layout uses it", async () => {
+    await redeploy({ layout: { template: "# $unit.id" } });
+    const unit = (await coder("ids").next())!;
+    expect(unit.data).toEqual({ id: unit.externalId });
+  });
+});
+
 describe("a crowd with a set column", () => {
   it("makes a link per set; its coders code that set, up to the most coders of that link", async () => {
     await createSet("a", ["unit-1"], "batch");

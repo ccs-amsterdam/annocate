@@ -13,7 +13,6 @@ import { formatWhen } from "../../../admin/format";
 import { StudySettings } from "../StudySettings";
 import { ActivityChart } from "./ActivityChart";
 import { LoopProgress } from "./LoopProgress";
-import { LiveControls } from "./LiveControls";
 import { TeamSettings } from "./TeamSettings";
 import { ExampleNotice } from "./ExampleNotice";
 import { DeployHistory } from "../DeployHistory";
@@ -57,7 +56,6 @@ export function StudyOverview({ client, onNavigate, onOpenDesign }: StudyOvervie
             active={deployment?.active ?? false}
             since={deployment?.updated ?? null}
           />
-          {deployment && <LiveControls client={client} deployment={deployment} />}
           <VersionLink
             icon={CircleDot}
             label="Live version"

@@ -46,7 +46,8 @@ function conditionReferences(condition: Condition | undefined): Reference[] {
  */
 export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[], always = false): UnitFieldWarning[] {
   if (fields.length === 0 && !always) return [];
-  const known = new Set(fields.map((f) => f.name));
+  // `$unit.id` is each unit's id (also without a field called id)
+  const known = new Set([...fields.map((f) => f.name), "id"]);
   const warnings: UnitFieldWarning[] = [];
   const seen = new Set<string>();
   const warn = (item: string, field: string, message: string) => {

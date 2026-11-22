@@ -31,8 +31,8 @@ export function WelcomePage() {
           <h1 className="font-heading mt-4 text-4xl font-bold tracking-tight sm:text-5xl">AnnoTinder</h1>
           <p className="mt-2 text-sm font-medium text-muted-foreground">Open-source annotation for research</p>
           <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            Design a coding task or a survey, share a link, and collect clean, documented data: quick for coders,
-            transparent for researchers.
+            Design a coding task, share a link, and collect clean, documented data: quick for coders, transparent for
+            researchers.
           </p>
         </section>
 

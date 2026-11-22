@@ -12,6 +12,7 @@ import {
 } from "@annotinder/contracts";
 import { UnitLoopForm } from "./UnitLoopForm";
 import { SessionItemForm } from "./SessionItemForm";
+import { EditedQuestionContext } from "../../design/deployedValues";
 import { HelpButton } from "../../help/HelpButton";
 import { ConditionEditor } from "./ConditionEditor";
 import { IssueList } from "./IssueList";
@@ -88,163 +89,168 @@ export function ItemForm({
   const stratifyChoices = [...availableQuestions.map((q) => q.name), ...sessionValueNames.map((n) => `session.${n}`)];
 
   return (
-    <div className="flex flex-col gap-4">
-      {item.type === "session" ? (
-        <SessionItemForm
-          item={item as SessionItem}
-          groups={groups}
-          issues={validationIssues}
-          client={client}
-          onChange={onChange}
-        />
-      ) : item.type === "questions" || item.type === "unit_loop" ? (
-        // Blocks and unit loops have no name: an optional label shows in the tree (and for loops in exports).
-        <div className="flex flex-col gap-1.5">
-          <span className="flex items-center gap-1.5">
-            <label className="text-xs font-semibold text-foreground">Label (optional)</label>
-            <HelpButton topic={item.type === "questions" ? "conditions" : "unit-loops"} label="Help" />
-          </span>
-          <Input
-            value={item.label ?? ""}
-            onChange={(e) => onChange({ ...item, label: e.target.value || undefined })}
-            placeholder={item.type === "questions" ? "e.g. Demographics" : "e.g. News items"}
+    // Which question this is: its options' deployed values don't follow label edits (OptionsEditor)
+    <EditedQuestionContext.Provider value={"name" in item ? item.name : null}>
+      <div className="flex flex-col gap-4">
+        {item.type === "session" ? (
+          <SessionItemForm
+            item={item as SessionItem}
+            groups={groups}
+            issues={validationIssues}
+            client={client}
+            onChange={onChange}
           />
-        </div>
-      ) : (
-        <div className="flex flex-col gap-1.5">
-          <span className="flex items-center gap-1.5">
-            <label className="text-xs font-semibold text-foreground">Item Name</label>
-            <HelpButton
-              topic={item.type === "end" ? "end-items" : item.type === "computed" ? "random-condition" : "questions"}
-              label="Help"
+        ) : item.type === "questions" || item.type === "unit_loop" ? (
+          // Blocks and unit loops have no name: an optional label shows in the tree (and for loops in exports).
+          <div className="flex flex-col gap-1.5">
+            <span className="flex items-center gap-1.5">
+              <label className="text-xs font-semibold text-foreground">Label (optional)</label>
+              <HelpButton topic={item.type === "questions" ? "conditions" : "unit-loops"} label="Help" />
+            </span>
+            <Input
+              value={item.label ?? ""}
+              onChange={(e) => onChange({ ...item, label: e.target.value || undefined })}
+              placeholder={item.type === "questions" ? "e.g. Demographics" : "e.g. News items"}
             />
-          </span>
-          <Input
-            value={item.name}
-            onChange={(e) => onChange({ ...item, name: e.target.value })}
-            placeholder="e.g. sentiment, age"
-            className={nameError ? "border-destructive focus-visible:ring-destructive" : ""}
-          />
-          {nameError && <p className="text-xs text-destructive">{nameError}</p>}
-        </div>
-      )}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <span className="flex items-center gap-1.5">
+              <label className="text-xs font-semibold text-foreground">Item Name</label>
+              <HelpButton
+                topic={item.type === "end" ? "end-items" : item.type === "computed" ? "random-condition" : "questions"}
+                label="Help"
+              />
+            </span>
+            <Input
+              value={item.name}
+              onChange={(e) => onChange({ ...item, name: e.target.value })}
+              placeholder="e.g. sentiment, age"
+              className={nameError ? "border-destructive focus-visible:ring-destructive" : ""}
+            />
+            {nameError && <p className="text-xs text-destructive">{nameError}</p>}
+          </div>
+        )}
 
-      {item.type === "question" && (
-        <>
-          {item.variable.type === "unspecified" ? (
-            // A new question: choose what kind of answer it asks for
-            <div className="flex flex-col gap-1.5">
-              <span className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-foreground">Choose an answer type</span>
-                <HelpButton topic="question-types" label="Help: answer types" />
-              </span>
-              <TypeCardGrid
+        {item.type === "question" && (
+          <>
+            {item.variable.type === "unspecified" ? (
+              // A new question: choose what kind of answer it asks for
+              <div className="flex flex-col gap-1.5">
+                <span className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-foreground">Choose an answer type</span>
+                  <HelpButton topic="question-types" label="Help: answer types" />
+                </span>
+                <TypeCardGrid
+                  cards={answerCards}
+                  onPick={(type) =>
+                    onChange({ ...item, variable: switchVariableType(item.variable, type) } as DesignItem)
+                  }
+                />
+              </div>
+            ) : (
+              <TypeHeader
                 cards={answerCards}
+                value={item.variable.type as (typeof answerCards)[number]["type"]}
                 onPick={(type) =>
                   onChange({ ...item, variable: switchVariableType(item.variable, type) } as DesignItem)
                 }
+                help={<HelpButton topic={TYPE_HELP[item.variable.type]} label="Help: this answer type" />}
               />
-            </div>
-          ) : (
-            <TypeHeader
-              cards={answerCards}
-              value={item.variable.type as (typeof answerCards)[number]["type"]}
-              onPick={(type) => onChange({ ...item, variable: switchVariableType(item.variable, type) } as DesignItem)}
-              help={<HelpButton topic={TYPE_HELP[item.variable.type]} label="Help: this answer type" />}
-            />
-          )}
-          <VariableTypeForm
-            variable={item.variable}
-            spanQuestions={availableQuestions.flatMap((q) =>
-              q.variable.type === "span" ? [{ name: q.name, options: q.variable.options }] : [],
             )}
-            layoutFields={inLoop ? loopNames?.selectable : undefined}
-            stratifyChoices={stratifyChoices}
-            setColumns={groups.map((g) => g.name)}
-            onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
-          />
-          {inLoop && (
-            <InstructionFields item={item as InLoopQuestionItem} onChange={(next) => onChange(next as DesignItem)} />
-          )}
-          {inLoop && loopNames && (
-            <FocusSelect
+            <VariableTypeForm
               variable={item.variable}
-              loopIds={loopNames.shown}
+              spanQuestions={availableQuestions.flatMap((q) =>
+                q.variable.type === "span" ? [{ name: q.name, options: q.variable.options }] : [],
+              )}
+              layoutFields={inLoop ? loopNames?.selectable : undefined}
+              stratifyChoices={stratifyChoices}
+              setColumns={groups.map((g) => g.name)}
               onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
             />
-          )}
-          {/* Reference problems in the question and instruction texts, and others about the answer type */}
-          <IssueList
-            issues={[...issuesAt(validationIssues, "variable"), ...issuesAt(validationIssues, "instruction")]}
-          />
-        </>
-      )}
-
-      {item.type === "computed" && (
-        <>
-          <TypeHeader
-            cards={COMPUTED_TYPE_CARDS}
-            value={item.variable.type}
-            onPick={(type) => onChange({ ...item, variable: switchVariableType(item.variable, type) } as DesignItem)}
-            help={<HelpButton topic="random-condition" label="Help: random conditions" />}
-          />
-          <p className="text-[11px] text-muted-foreground">
-            Worked out when the coder reaches this point; never shown to the coder.
-          </p>
-          <VariableTypeForm
-            variable={item.variable}
-            stratifyChoices={stratifyChoices}
-            setColumns={groups.map((g) => g.name)}
-            onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
-          />
-          <IssueList issues={issuesAt(validationIssues, "variable")} />
-        </>
-      )}
-
-      {item.type === "unit_loop" && (
-        <UnitLoopForm
-          loop={item as UnitLoopItem}
-          client={client}
-          groups={groups}
-          unitFields={unitFields}
-          coderQuestions={availableQuestions}
-          screenouts={screenouts}
-          validationIssues={validationIssues}
-          unitsContext={unitsContext}
-          readOnly={readOnly}
-          onChange={(loop) => onChange(loop)}
-        />
-      )}
-
-      {item.type === "end" && <EndItemFields item={item as EndItem} onChange={onChange} issues={validationIssues} />}
-
-      {(item.type === "questions" || item.type === "unit_loop") && (
-        // A block's or loop's condition: optional (absent: always shown)
-        <div className="flex flex-col gap-1.5 border-t border-border/60 pt-4">
-          <label className="flex items-center gap-2 text-xs font-semibold text-foreground">
-            <input
-              type="checkbox"
-              checked={item.condition !== undefined}
-              onChange={(e) => {
-                const next = { ...item, condition: e.target.checked ? { script: "true" } : undefined } as DesignItem;
-                if (!e.target.checked) delete (next as { condition?: Condition }).condition;
-                onChange(next);
-              }}
+            {inLoop && (
+              <InstructionFields item={item as InLoopQuestionItem} onChange={(next) => onChange(next as DesignItem)} />
+            )}
+            {inLoop && loopNames && (
+              <FocusSelect
+                variable={item.variable}
+                loopIds={loopNames.shown}
+                onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
+              />
+            )}
+            {/* Reference problems in the question and instruction texts, and others about the answer type */}
+            <IssueList
+              issues={[...issuesAt(validationIssues, "variable"), ...issuesAt(validationIssues, "instruction")]}
             />
-            {item.type === "questions" ? "Only show these questions if…" : "Only give coders this loop if…"}
-            <HelpButton topic="conditions" label="Help: conditions" />
-          </label>
-          {item.condition && (
-            <ConditionEditor
-              condition={item.condition}
-              onChange={(condition) => onChange({ ...item, condition } as DesignItem)}
-              questions={availableQuestions}
-              loop={inLoop}
-              issues={issuesAt(validationIssues, "condition")}
+          </>
+        )}
+
+        {item.type === "computed" && (
+          <>
+            <TypeHeader
+              cards={COMPUTED_TYPE_CARDS}
+              value={item.variable.type}
+              onPick={(type) => onChange({ ...item, variable: switchVariableType(item.variable, type) } as DesignItem)}
+              help={<HelpButton topic="random-condition" label="Help: random conditions" />}
             />
-          )}
-        </div>
-      )}
-    </div>
+            <p className="text-[11px] text-muted-foreground">
+              Worked out when the coder reaches this point; never shown to the coder.
+            </p>
+            <VariableTypeForm
+              variable={item.variable}
+              stratifyChoices={stratifyChoices}
+              setColumns={groups.map((g) => g.name)}
+              onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
+            />
+            <IssueList issues={issuesAt(validationIssues, "variable")} />
+          </>
+        )}
+
+        {item.type === "unit_loop" && (
+          <UnitLoopForm
+            loop={item as UnitLoopItem}
+            client={client}
+            groups={groups}
+            unitFields={unitFields}
+            coderQuestions={availableQuestions}
+            screenouts={screenouts}
+            validationIssues={validationIssues}
+            unitsContext={unitsContext}
+            readOnly={readOnly}
+            onChange={(loop) => onChange(loop)}
+          />
+        )}
+
+        {item.type === "end" && <EndItemFields item={item as EndItem} onChange={onChange} issues={validationIssues} />}
+
+        {(item.type === "questions" || item.type === "unit_loop") && (
+          // A block's or loop's condition: optional (absent: always shown)
+          <div className="flex flex-col gap-1.5 border-t border-border/60 pt-4">
+            <label className="flex items-center gap-2 text-xs font-semibold text-foreground">
+              <input
+                type="checkbox"
+                checked={item.condition !== undefined}
+                onChange={(e) => {
+                  const next = { ...item, condition: e.target.checked ? { script: "true" } : undefined } as DesignItem;
+                  if (!e.target.checked) delete (next as { condition?: Condition }).condition;
+                  onChange(next);
+                }}
+              />
+              {item.type === "questions" ? "Only show these questions if…" : "Only give coders this loop if…"}
+              <HelpButton topic="conditions" label="Help: conditions" />
+            </label>
+            {item.condition && (
+              <ConditionEditor
+                condition={item.condition}
+                onChange={(condition) => onChange({ ...item, condition } as DesignItem)}
+                questions={availableQuestions}
+                loop={inLoop}
+                issues={issuesAt(validationIssues, "condition")}
+              />
+            )}
+          </div>
+        )}
+      </div>
+    </EditedQuestionContext.Provider>
   );
 }

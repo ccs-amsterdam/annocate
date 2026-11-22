@@ -137,3 +137,31 @@ test("blocks: questions and unit loops at the top level, in any order; the study
     { type: "unit_loop" },
   ]);
 });
+
+test("a deployed answer value stays when its label is edited; a new option's value follows its label", async ({
+  page,
+  request,
+}) => {
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Deployed values" });
+  const design = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
+    items: [
+      {
+        type: "question",
+        name: "tone",
+        variable: { type: "nominal", question: "Tone?", options: [{ value: "positive", label: "Positive" }] },
+      },
+    ],
+  });
+  await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
+  await page.goto(`/research/studies/${study.id}/design`);
+  await page.getByRole("button", { name: /^tone/ }).click();
+  const labels = page.getByPlaceholder("label", { exact: true });
+  const values = page.getByPlaceholder("value", { exact: true });
+  // Deployed: coders may have answered "positive", so the value stays
+  await page.getByPlaceholder("positive", { exact: true }).fill("Very positive");
+  await expect(values.first()).toHaveValue("positive");
+  // A new option: its value follows its label
+  await page.getByRole("button", { name: /Add option/ }).click();
+  await labels.last().fill("Neutral tone");
+  await expect(values.last()).toHaveValue("neutral_tone");
+});
