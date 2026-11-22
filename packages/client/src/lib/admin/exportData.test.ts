@@ -192,7 +192,7 @@ describe("data download", () => {
       "ended_at",
       "deletion_requested",
       "display",
-      "finished_main",
+      "finished_loop1",
       "age",
     ]);
     expect(table.rows[0]).toEqual([
@@ -222,13 +222,14 @@ describe("data download", () => {
     });
   });
 
-  it("orders the finished columns of unit loops naturally (2 before 10)", () => {
-    const table = codersTable([coder(1, { finished: { "Unit loop 10": 1, "Unit loop 2": 2, "Unit loop 1": 3 } })]);
+  it("names the finished columns of unit loops by their position, in the design's order (labels can repeat)", () => {
+    const table = codersTable([coder(1, { finished: { "News items": 1, "News items (2)": 2, "Unit loop 3": 3 } })]);
     expect(table.headers.filter((h) => h.startsWith("finished_"))).toEqual([
-      "finished_Unit loop 1",
-      "finished_Unit loop 2",
-      "finished_Unit loop 10",
+      "finished_loop1",
+      "finished_loop2",
+      "finished_loop3",
     ]);
+    expect(table.rows[0].slice(-3)).toEqual(["1", "2", "3"]);
   });
 
   it("lists response times with the server's bound, and flags browsers that claim more time than the server saw", () => {
@@ -298,8 +299,8 @@ describe("data download", () => {
     expect(mixed.rows[0][mixed.headers.indexOf("sentiment_label")]).toBe("Positive");
 
     expect(variablesTable(new Map([[2, version("Good")]])).rows).toEqual([
-      ["2", "Unit loop 1", "sentiment", "nominal", "?", "pos", "Good", ""],
-      ["2", "Unit loop 1", "sentiment", "nominal", "?", "neg", "neg", ""],
+      ["2", "1", "Unit loop 1", "sentiment", "nominal", "?", "pos", "Good", ""],
+      ["2", "1", "Unit loop 1", "sentiment", "nominal", "?", "neg", "neg", ""],
     ]);
   });
 

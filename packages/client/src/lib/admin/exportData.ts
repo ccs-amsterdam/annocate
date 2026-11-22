@@ -204,9 +204,9 @@ export function codersTable(
   numeric: ReadonlySet<string> = new Set(),
 ): Table {
   // Natural order, so "Unit loop 2" comes before "Unit loop 10"
-  const loops = [...new Set(coders.flatMap((c) => Object.keys(c.finished)))].sort((a, b) =>
-    a.localeCompare(b, undefined, { numeric: true }),
-  );
+  // The live design's loops in their order (the server lists them so): columns by position, `finished_loop1`,
+  // since labels can repeat and hold spaces; the variables table has each loop's number and title
+  const loops = [...new Set(coders.flatMap((c) => Object.keys(c.finished)))];
   // Units of the special sets each coder finished (overlap, gold, practice)
   const specials = (["overlap", "gold", "practice"] as const).filter((kind) => coders.some((c) => c.special?.[kind]));
   // The session's values (URL parameters, source) by their $session name; its coder has its own column
@@ -232,7 +232,7 @@ export function codersTable(
       "deletion_requested",
       "display",
       ...sessionNames.map((n) => `session.${n}`),
-      ...loops.map((l) => `finished_${l}`),
+      ...loops.map((_, i) => `finished_loop${i + 1}`),
       ...specials.map((kind) => `${kind}_finished`),
       ...columns.map(header),
     ],
@@ -295,7 +295,7 @@ export function unitsTable(
  * The questions of each design version and their options: a row per
  * version, question (a scale: per item, `question.item`) and option, with
  * its label; questions without options have one row. The loop is the one
- * the question is in (empty: asked once per coder).
+ * the question is in, by number and title (empty: asked once per coder).
  */
 export function variablesTable(
   designVersions: ReadonlyMap<number, TopLevelItem[]>,
@@ -306,15 +306,18 @@ export function variablesTable(
     const { questions, loopOf } = collectQuestions(items);
     const titles = new Map(unitLoops(items).map(({ key, loop }) => [key, loopTitle(loop, key)]));
     for (const [name, variable] of questions) {
-      const loop = titles.get(loopOf.get(name) ?? "") ?? "";
+      // The loop's number (as in coders' `finished_loop<n>`) and its title; empty outside loops
+      const number = loopOf.get(name) ?? "";
+      const loop = titles.get(number) ?? "";
       const text = "question" in variable && typeof variable.question === "string" ? variable.question : "";
       const names = variable.type === "scale" ? variable.items.map((i) => `${name}.${i.name}`) : [name];
       const options = optionsOf(variable) ?? [];
       for (const n of names) {
-        if (options.length === 0) rows.push([versionCell(versionOf, id), loop, n, variable.type, text, "", "", ""]);
+        if (options.length === 0) rows.push([versionCell(versionOf, id), number, loop, n, variable.type, text, "", "", ""]);
         for (const o of options)
           rows.push([
             versionCell(versionOf, id),
+            number,
             loop,
             n,
             variable.type,
@@ -326,7 +329,10 @@ export function variablesTable(
       }
     }
   }
-  return { headers: ["design_version", "loop", "variable", "type", "question", "value", "label", "special"], rows };
+  return {
+    headers: ["design_version", "loop_number", "loop", "variable", "type", "question", "value", "label", "special"],
+    rows,
+  };
 }
 
 /** Leeway when comparing the browser's times with the server's (clocks, network). */

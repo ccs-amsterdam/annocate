@@ -97,7 +97,7 @@ has two):
 | `deletion_requested`                         | when they asked for deletion (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)) |
 | `display`                                    | keys, width (in [responsive](answer-layouts.md#fixed-or-responsive) studies) and theme, e.g. `numbers, narrow; numpad, wide` |
 | `session.<name>`                             | URL parameters and `source`                                        |
-| `finished_<loop>`                            | units finished per loop                                            |
+| `finished_loop<n>`                           | units finished per loop, by its position (see `variables.csv`)     |
 | `overlap_finished`, `gold_finished`, `practice_finished` | special units finished (see [Overlap, gold and practice units](special-units.md)) |
 | one column per question                      | answers outside loops and [random conditions](random-condition.md) |
 
@@ -140,9 +140,11 @@ that.
 
 ## variables.csv
 
-The codebook: per design version, question and option, the `loop`,
-`variable`, `type`, `question`, `value`, `label` and `special`. Swipe has
-the type `annotinder`.
+The codebook: per design version, question and option, the
+`loop_number` and `loop` (the loop's number and title; empty outside
+loops), `variable`, `type`, `question`, `value`, `label` and `special`.
+Swipe has the type `annotinder`. `loop_number` matches the coders'
+`finished_loop<n>` columns.
 
 ## Reading the files in R
 
