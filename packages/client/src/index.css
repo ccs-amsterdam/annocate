@@ -1,5 +1,4 @@
 @import "tw-animate-css";
-@import "@fontsource-variable/geist" layer(base);
 @import "tailwindcss";
 
 /* `dark:` follows the `dark` class on <html> (context/theme.ts), not only the system setting. */

@@ -5,7 +5,7 @@ order: 3
 summary: The Overview and Coders tabs - whether the study is live, how many coders started, answers per day and how far each loop and coder got.
 ---
 
-**Overview** shows the study as a whole; **Deploy › Coders** shows every
+**Overview** shows the study as a whole; **Results › Coders** shows every
 coder. Both refresh while open. For full data, download the
 [results](results.md).
 

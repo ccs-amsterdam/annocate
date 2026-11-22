@@ -9,8 +9,8 @@ import { StudyList } from "./StudyList";
 import { DesignManager } from "./DesignManager";
 import type { SaveFn } from "./DesignEditor";
 import { UnitsPage } from "./units/UnitsPage";
-import { CodersPanel } from "./CodersPanel";
 import { ResultsPanel } from "./results/ResultsPanel";
+import { setResultsView } from "./results/resultsView";
 import { LinksPanel } from "./LinksPanel";
 import { StudyOverview, StudySettingsPage } from "./overview/StudyOverview";
 import { StudyPreview } from "./StudyPreview";
@@ -23,7 +23,6 @@ import {
   LayoutDashboard,
   Layers,
   Link2,
-  Users,
   Play,
   Archive,
   FilePen,
@@ -74,7 +73,6 @@ const GROUPS: {
     pages: [
       { id: "Deploy", label: "Deploy changes", icon: Send },
       { id: "Links", label: "Links", icon: Link2 },
-      { id: "Coders", label: "Coders", icon: Users },
     ],
   },
   { label: "Results", icon: Download, pages: [{ id: "Results", label: "Download", icon: Download }] },
@@ -88,7 +86,6 @@ const TAB_HELP: Record<TabId, string> = {
   Units: "uploading-units",
   Deploy: "previewing-and-publishing",
   Links: "links",
-  Coders: "coders-and-progress",
   Results: "results",
   Settings: "overview",
   Preview: "previewing-and-publishing",
@@ -396,7 +393,13 @@ function StudyAdminView({
         {tab === "Overview" && (
           <StudyOverview
             client={client}
-            onNavigate={onTabChange}
+            onNavigate={(target) => {
+              // The coders are in Results
+              if (target === "Coders") {
+                setResultsView("Coders");
+                onTabChange("Results");
+              } else onTabChange(target);
+            }}
             onOpenDesign={(id) => {
               setDesignTarget((t) => ({ id, n: (t?.n ?? 0) + 1 }));
               onTabChange("Design");
@@ -422,7 +425,6 @@ function StudyAdminView({
         {tab === "Deploy" && <DeployPage client={client} onOpenDesign={() => onTabChange("Design")} />}
         {tab === "Units" && <UnitsPage client={client} />}
         {tab === "Links" && <LinksPanel client={client} />}
-        {tab === "Coders" && <CodersPanel client={client} />}
         {tab === "Results" && <ResultsPanel client={client} />}
         {tab === "Preview" && <StudyPreview client={client} coderApiUrl={coderApiUrl} />}
       </main>

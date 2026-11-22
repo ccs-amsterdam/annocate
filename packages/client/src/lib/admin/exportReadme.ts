@@ -2,9 +2,9 @@
 // column holds. Keep it in step with the tables in exportData.ts.
 
 /** What the files in the download are, for the README. */
-export function readme(study: string, exported: Date, labels: boolean, spreadsheetSafe = true): string {
+export function readme(study: string, exported: Date, labels: boolean, format: "csv" | "xlsx" = "csv"): string {
   return `Data of ${study}, downloaded ${exported.toISOString()} from AnnoTinder.
-
+${format === "xlsx" ? "\nresults.xlsx has a sheet per table below, named as its file (without .csv).\n" : ""}
 annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
                  version the coder saw (unit_version_id), the coder, when they
                  first and last answered, the design version (design_version:
@@ -84,19 +84,5 @@ column with the full answer: spans with their field and, per fragment, the
 offset and length in that field of the unit version (units.csv), relations
 with the ids of their spans.
 Join annotations and coders on session_id. Times are UTC (ISO 8601).
-${
-  spreadsheetSafe
-    ? `
-Text that starts with =, +, - or @ (and is not a number) starts with an
-extra ' in these files: spreadsheet programs (Excel, Google Sheets, Numbers)
-would otherwise run it as a formula, which a coder could abuse. Spreadsheets
-show the text without it. In R or Python remove it where it was added,
-e.g. sub("^'([=+@-])", "\\\\1", x) or x.str.replace(r"^'([=+@-])", r"\\1", regex=True).
-`
-    : `
-Downloaded without spreadsheet protection: text starting with =, +, - or @
-is written as it is. Don't open these files in a spreadsheet program, which
-may run such text as a formula.
-`
-}`;
+`;
 }

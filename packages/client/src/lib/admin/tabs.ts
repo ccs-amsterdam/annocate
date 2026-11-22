@@ -1,5 +1,5 @@
 /** The study's pages. Preview is opened with the Preview Study button, not from the tabs. */
-export type TabId = "Overview" | "Design" | "Units" | "Deploy" | "Links" | "Coders" | "Results" | "Settings" | "Preview";
+export type TabId = "Overview" | "Design" | "Units" | "Deploy" | "Links" | "Results" | "Settings" | "Preview";
 
 /** Each page's name in the URL (`/research/studies/<id>/<slug>`). */
 export const TAB_SLUGS: Record<TabId, string> = {
@@ -8,7 +8,6 @@ export const TAB_SLUGS: Record<TabId, string> = {
   Units: "units",
   Deploy: "deploy",
   Links: "links",
-  Coders: "coders",
   Results: "results",
   Settings: "settings",
   Preview: "preview",

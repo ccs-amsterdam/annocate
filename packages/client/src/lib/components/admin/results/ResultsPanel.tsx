@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import {
@@ -16,21 +15,21 @@ import { UnitsView } from "./UnitsView";
 import { CodersView } from "./CodersView";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDesignLabels } from "./designLabels";
-
-const VIEWS = ["Download", "Questions", "Agreement", "Units", "Coders"] as const;
-type View = (typeof VIEWS)[number];
+import { RESULTS_VIEWS, useResultsView, type ResultsView } from "./resultsView";
+import { CodersPanel } from "../CodersPanel";
 
 /**
- * The Results tab (docs/client.md §7, "Results"): downloading the data, and
- * looking at it so far: answers per question and agreement. Those load
- * once, and again on Refresh.
+ * The Results tab (docs/client.md §7, "Results"): the answers so far (per
+ * question, agreement, units by disagreement), the coders (their sessions,
+ * time and agreement), and the download. Summaries load once, and again on
+ * Refresh.
  */
 export function ResultsPanel({ client }: { client: ResearcherApi }) {
-  const [view, setView] = useState<View>("Download");
+  const [view, setView] = useResultsView();
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <div role="tablist" aria-label="Results" className="flex gap-1 border-b border-border">
-        {VIEWS.map((v) => (
+        {RESULTS_VIEWS.map((v) => (
           <button
             key={v}
             type="button"
@@ -53,7 +52,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
   );
 }
 
-type SummaryView = Exclude<View, "Download">;
+type SummaryView = Exclude<ResultsView, "Download">;
 
 function Summary({ client, view }: { client: ResearcherApi; view: SummaryView }) {
   const labels = useDesignLabels(client);
@@ -92,7 +91,12 @@ function Summary({ client, view }: { client: ResearcherApi; view: SummaryView })
       ) : view === "Units" ? (
         <UnitsView client={client} units={units.data!.units} labels={labels} />
       ) : (
-        <CodersView coders={coders.data!.coders} agreement={agreement.data!.questions} />
+        <>
+          {/* The sessions, with deleting and resetting; then their time and agreement */}
+          <CodersPanel client={client} />
+          <h3 className="mt-2 text-sm font-semibold">Time and agreement</h3>
+          <CodersView coders={coders.data!.coders} agreement={agreement.data!.questions} />
+        </>
       )}
     </div>
   );

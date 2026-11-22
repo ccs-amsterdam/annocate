@@ -9,7 +9,7 @@ summary: The item tree, the item form, the preview, errors and warnings, saving,
 
 - the **toolbar**: issue counts, **Visual** or **JSON**, undo and redo,
   **Revert**, **Export** (the design as a document, e.g. for an appendix),
-  **Versions**, **Save** and **Deploy…**;
+  **Versions** and **Save** (deploying is on **Deploy › Deploy changes**);
 - a **banner** saying which version you edit (see
   [Preview, save and deploy](previewing-and-publishing.md));
 - the **tree** on the left, the selected item's **form** on the right and,

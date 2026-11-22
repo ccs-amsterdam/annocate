@@ -38,7 +38,7 @@ Give `part` the type **set**. Coders never get the answer columns
 
 ## Or make them in AnnoTinder
 
-- **Overlap**: **Make the column…** or **Fill a set column** with an
+- **Overlap**: **Create new coder distribution…** or **Fill a set column** with an
   overlap.
 - **Gold and practice units**: select units on **Units** → **Put in**
   `_gold` or `_practice`.

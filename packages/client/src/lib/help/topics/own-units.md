@@ -13,7 +13,7 @@ for reliability.
 1. **Coder invitations** (above the item tree) → **Specific coders**.
 2. **Column with the coders**: a set column of your units naming a coder
    per unit (`anna`, `bob`). From your CSV (type **set**, see
-   [Uploading units](uploading-units.md)), or **Make the column…**: a
+   [Uploading units](uploading-units.md)), or **Create new coder distribution…**: a
    number of coders (`coder_1`, ...), names or email addresses, **Coders
    per unit**, an **Overlap** for every coder, and the **Column name**.
    The units are shuffled and divided.

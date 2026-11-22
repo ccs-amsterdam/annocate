@@ -249,12 +249,9 @@ describe("data download", () => {
     expect(units.rows[0].slice(9, 11)).toEqual(["90000", "60000"]);
   });
 
-  it("quotes CSV cells that need it", () => {
-    expect(toCsv({ headers: ["a", "b"], rows: [['x, "y"', "z"]] })).toBe('\uFEFFa,b\r\n"x, ""y""",z\r\n');
-    // Formulas get a leading ' (numbers don't), unless asked not to
-    const formulas = { headers: ["v"], rows: [["=HYPERLINK(1)"], ["-3.5"], ["+1e3"], ["@sum"], ["-x"], ["a=b"]] };
-    expect(toCsv(formulas)).toBe("\uFEFFv\r\n'=HYPERLINK(1)\r\n-3.5\r\n+1e3\r\n'@sum\r\n'-x\r\na=b\r\n");
-    expect(toCsv(formulas, false)).toContain("\r\n=HYPERLINK(1)\r\n");
+  it("quotes CSV cells that need it, and writes the rest as it is", () => {
+    expect(toCsv({ headers: ["a", "b"], rows: [['x, "y"', "z"]] })).toBe('a,b\r\n"x, ""y""",z\r\n');
+    expect(toCsv({ headers: ["v"], rows: [["=HYPERLINK(1)"]] })).toBe("v\r\n=HYPERLINK(1)\r\n");
   });
 
   it("adds label columns, with the label in the design version each answer was given under", () => {

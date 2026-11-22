@@ -329,10 +329,16 @@ client sees only the values, as `$session.<name>`.
 
 In the editor it isn't a tree item: above the tree, `SessionHeader.tsx` edits
 the public title and has a button per part (**Coder invitations**, **URL
-parameters**) that opens `SessionItemForm.tsx` on it. The coders form picks
-the column and how coders get in; "Make the column…"
-(`session/CoderSetDialog.tsx`) creates it (number of coders, names or email
-addresses, coders per unit, overlap). The crowd form has the coder id URL
+parameters**, **Display**) that opens that part alone (`SessionItemForm.tsx`,
+the open part in `session/sessionTab.ts`); its JSON is that part only
+(`SessionPartJson.tsx`) and its preview shows what it means for coders
+(`SessionPreview.tsx`: the links, what a link must carry, the screen). The
+coders form selects the coder distribution column and how coders get in;
+"Create new coder distribution…" / "Create or update coder distribution…"
+(`session/CoderSetDialog.tsx`) makes or replaces the column, after asking
+(number of coders, names or email addresses, coders per unit, overlap). It
+keeps the units coders were already shown or answered with them by default
+(`GET /coders/units`, contracts `distributeUnits`). The crowd form has the coder id URL
 parameter, "Coders sign in", the most coders, and "Share the units among
 coders" (`share`). The tree's last row, **At the end**, edits the normal end
 (`session.end`).
@@ -426,7 +432,7 @@ memoization.
 ## 7. Admin UI
 
 `components/admin/AdminApp.tsx` is a tabbed shell: Overview, Design, Units,
-Deploy (Links, Coders), Results, Settings. It uses a `ResearcherApi`
+Deploy (Deploy changes, Links), Results, Settings. It uses a `ResearcherApi`
 (`api/httpResearcherApi.ts`).
 
 - **Login**: `account/ResearcherGate.tsx` shows a login screen unless logged
@@ -510,8 +516,9 @@ Deploy (Links, Coders), Results, Settings. It uses a `ResearcherApi`
 - **Versions and deploying** (`design/versions.ts`): *live* is the deployed
   version (frozen), *draft* the latest if not frozen, *history* the rest
   (read only, restorable as the draft). Editing the live version saves a new
-  draft. **Deploy** (`PUT /deployment`, `DeployDialog.tsx`) lists changes
-  against the live version (`design/diff.ts`), takes a version note, and shows
+  draft. The editor only saves; **Deploy › Deploy changes** (`DeployPage.tsx`,
+  `DeployPanel.tsx`; `PUT /deployment`) deploys the saved draft and the draft
+  units and sets: it lists changes against the live version (`design/diff.ts`), takes a version note, and shows
   the server's errors and warnings (reopened units, removed option values,
   changed types). Coders switch to the new version on their next request (§2).
 - **Question forms** (`VariableTypeForm.tsx` picks the form per type in
@@ -542,19 +549,23 @@ Deploy (Links, Coders), Results, Settings. It uses a `ResearcherApi`
   link: label, max uses, a fixed coder id; revoke, reopen, new secret.
   Retired links are listed apart. There is no "create": the Study entry
   declares the invitation.
-- **Coders** (`CodersPanel.tsx`, deletion in `coders/`): per coder session the link, started, last active, answers,
+- **Coders** (Results › Coders; `CodersPanel.tsx`, deletion in `coders/`): per coder session the link, started, last active, answers,
   finished units per loop, and how it ended. Deletion requests come first.
   Reset or delete data per session, or by coder ids or emails
   (`coder-identity.md` §8).
-- **Results** (`results/`): **Questions**, **Agreement**, **Units** (by
+- **Results** (`results/`, opens on Questions; the open view in
+  `results/resultsView.ts`): **Questions**, **Agreement**, **Units** (by
   disagreement; one unit through the loop's layout with every coder's
-  answers) and **Coders** (time per unit, practice tries, kappa) show the
+  answers) and **Coders** (the sessions above, then time per unit, practice
+  tries, kappa) show the
   answers so far from the server's summaries (`getResultsAnswers`,
   `getResultsAgreement`, `listResultUnits`, `getResultUnit`,
   `listResultCoders`), loaded once and on Refresh. **Download**
   (`results/DownloadView.tsx`; `admin/exportData.ts` with the tables,
-  `exportAnswers.ts` for answer cells, `exportReadme.ts`): one zip built in
-  the browser, with `fflate`, from the server's raw export
+  `exportAnswers.ts` for answer cells, `exportReadme.ts`): one zip, as plain
+  CSV files (default) or one `results.xlsx` (`admin/xlsx.ts`, a sheet per
+  table, text as inline strings so never a formula), built in the browser,
+  with `fflate`, from the server's raw export
   (`exportResults`, read by `admin/rawExport.ts`); **Raw export** saves that
   export as is:
   - `annotations.csv`: a row per unit and coder session (unit version, design
@@ -569,7 +580,7 @@ Deploy (Links, Coders), Results, Settings. It uses a `ResearcherApi`
   Cells hold values; "Add label columns" (default on) adds `_label` columns
   (the label the coder saw). Several answers are joined with "; ", spans as
   "value: text", relations as "value: from → to". Answers that don't fit a
-  cell also get a `_json` column. UTF-8 with a byte order mark.
+  cell also get a `_json` column. CSV is UTF-8, written as it is.
 - **Preview** runs the latest design as deployment `<studyId>.preview`
   (`POST /study/:studyId/deployment/preview`); nothing is stored
   (`architecture.md` §5).

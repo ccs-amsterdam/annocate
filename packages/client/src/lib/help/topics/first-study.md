@@ -111,7 +111,7 @@ More: [Preview, save and deploy](previewing-and-publishing.md).
 
 ## 7. Deploy and share the link
 
-1. On **Design**, click **Deploy…** → **Deploy**.
+1. Save the design, then on **Deploy › Deploy changes** click **Deploy**.
 2. Open **Deploy › Links** and click **Copy link**.
 3. Send the link to your coders.
 
@@ -123,9 +123,9 @@ More: [Links](links.md), [What coders see](coder-experience.md).
 ## 8. Follow progress and download results
 
 - **Overview** shows coders started, answers per day and progress per
-  loop; **Deploy › Coders** has a row per coder. See
+  loop; **Results › Coders** has a row per coder. See
   [Following progress](coders-and-progress.md).
-- **Results** → **Download zip**: CSV files, with a row per unit and coder
+- **Results › Download** → **Download**: CSV files (or one Excel workbook), with a row per unit and coder
   in `annotations.csv`. See [Downloading results](results.md).
 
 ## Next

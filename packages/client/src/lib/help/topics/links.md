@@ -19,7 +19,7 @@ Open **Coder invitations** above the item tree and choose:
 | **Crowd** (default) | anyone with the link (a panel, a newsletter)      | one link                                                  |
 
 **Specific coders**: choose the **Column with the coders** (a set column
-naming a coder per unit, or **Make the column…**). Then how they get in:
+naming a coder per unit, or **Create new coder distribution…**). Then how they get in:
 
 - **A link per coder**: send each coder theirs;
 - **One link: coders pick their name from the column**: a name stays on

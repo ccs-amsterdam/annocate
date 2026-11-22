@@ -472,21 +472,12 @@ export function deletedCodersTable(deletions: CoderDeletion[]): Table {
 }
 
 /**
- * Text a spreadsheet program would run as a formula: starting with `=`,
- * `+`, `-` or `@` (or a tab or carriage return), unless it is a number
- * (`-3`, `+1.5e3`). OWASP's "CSV injection".
+ * A table as CSV (RFC 4180 quoting), UTF-8, written as it is: for R, Python
+ * and the like. For spreadsheet programs the download offers .xlsx instead
+ * (xlsx.ts), whose cells are never run as formulas.
  */
-const looksLikeFormula = (v: string) => /^[=+\-@\t\r]/.test(v) && !/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(v);
-
-/**
- * A table as CSV (RFC 4180 quoting), with a byte order mark so spreadsheet
- * programs read it as UTF-8. `spreadsheetSafe` (default): text that would
- * run as a formula gets a leading `'` (README.txt says so, and how to
- * remove it).
- */
-export function toCsv(table: Table, spreadsheetSafe = true): string {
+export function toCsv(table: Table): string {
   const quote = (v: string) => (/[",\n\r]/.test(v) || /^\s|\s$/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-  const cell = (v: string) => quote(spreadsheetSafe && looksLikeFormula(v) ? `'${v}` : v);
-  const lines = [table.headers, ...table.rows].map((row) => row.map(cell).join(","));
-  return `\uFEFF${lines.join("\r\n")}\r\n`;
+  const lines = [table.headers, ...table.rows].map((row) => row.map(quote).join(","));
+  return `${lines.join("\r\n")}\r\n`;
 }

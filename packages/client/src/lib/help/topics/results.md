@@ -5,8 +5,11 @@ order: 1
 summary: Answers and agreement so far, and the results zip - annotations, coders, units and variables as CSV files - and how to read and join them in R or Python.
 ---
 
-On **Results**, click **Download zip**: everything answered so far, as CSV
-files. Download as often as you like, also while coding runs.
+On **Results › Download**, choose **CSV** (the default: plain files for R,
+Python or SPSS) or **Excel (.xlsx)** (one workbook, a sheet per table), and
+click **Download**: everything answered so far, as a zip. Download as often
+as you like, also while coding runs. **Download settings** (folded) has the
+label columns, reset answers, and the raw export.
 
 | File                  | A row per                    | Holds                                                      |
 | --------------------- | ---------------------------- | ---------------------------------------------------------- |
@@ -21,17 +24,18 @@ files. Download as often as you like, also while coding runs.
 | `deleted_coders.csv`  | deleted session              | to delete them from earlier downloads too                  |
 | `README.txt`          |                              | what the columns mean                                      |
 
-Files are UTF-8 (with a marker for spreadsheets); times are UTC
-(`2026-10-27T14:05:00.000Z`).
+Files are UTF-8; times are UTC (`2026-10-27T14:05:00.000Z`). As Excel, each
+table is a sheet of the same name in `results.xlsx`; its text cells are
+plain text, never run as formulas.
 
-**Raw export** (under the zip's options) saves the data as the server keeps
+**Raw export** (under **Download settings**) saves the data as the server keeps
 it, for scripts: a JSON-lines file per table and `manifest.json`. See the
 [researcher API](researcher-api.md) for reading it in R or Python.
 
 ## Looking at the answers in the app
 
-Next to **Download**, four views of the answers so far (click **Refresh**
-for the latest):
+Before **Download**, four views of the answers so far (click **Refresh**
+for the latest); Results opens on **Questions**:
 
 - **Questions**: per question, how often each option was chosen; for
   numbers the range, median and mean.
@@ -43,9 +47,11 @@ for the latest):
   option. Spans: a row per label, each word labelled or not.
 - **Units**: the units two or more coders answered, the ones they disagree
   on most first. Open one to see it as coders did, with each coder's answers.
-- **Coders**: per coder their units, the median seconds per unit (marked
-  **fast** when far under the others), practice tries, and their kappa with
-  the other coders, lowest first.
+- **Coders**: every coder session, with progress, deletion requests,
+  resetting and deleting (see [Coders and progress](coders-and-progress.md));
+  then per coder their median seconds per unit (marked **fast** when far
+  under the others), practice tries, and their kappa with the other coders,
+  lowest first.
 
 ## annotations.csv
 

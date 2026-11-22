@@ -6,11 +6,13 @@ import { answers, api, fromExample, question } from "./helpers";
 
 // The researcher UI, in a real browser (development login).
 
-async function downloadZip(page: Page): Promise<Record<string, string>> {
-  await page.getByRole("button", { name: "Results" }).click();
+async function downloadZip(page: Page, format: "CSV" | "Excel (.xlsx)" = "CSV"): Promise<Record<string, string>> {
+  await page.getByRole("button", { name: "Results", exact: true }).click();
+  await page.getByRole("tab", { name: "Download" }).click();
+  await page.getByLabel(format).check();
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: /Download zip/ }).click(),
+    page.getByRole("button", { name: "Download", exact: true }).click(),
   ]);
   const bytes = await (await download.createReadStream()).toArray();
   const files = unzipSync(new Uint8Array(Buffer.concat(bytes)));
@@ -47,7 +49,13 @@ test("a study from an example: the dialog, the overview note, and its results in
   expect(csvRows(files["annotations.csv"])).toHaveLength(1 + 30);
   expect(csvRows(files["coders.csv"])).toHaveLength(1 + 3);
 
-  // The raw export, as the server keeps it: JSON lines and a manifest
+  // For spreadsheets: one workbook, a sheet per table
+  const workbook = await downloadZip(page, "Excel (.xlsx)");
+  expect(Object.keys(workbook)).toContain("results.xlsx");
+  expect(Object.keys(workbook)).not.toContain("annotations.csv");
+
+  // The raw export, as the server keeps it: JSON lines and a manifest (under the download settings)
+  await page.getByText("Download settings").click();
   const [raw] = await Promise.all([
     page.waitForEvent("download"),
     page.getByRole("button", { name: "Raw export", exact: true }).click(),
@@ -148,6 +156,8 @@ test("your first study, as the help describes it: units, a design, deploy, a lin
     ],
   });
   await page.getByRole("navigation", { name: "Study" }).getByRole("button", { name: "Deploy", exact: true }).click();
+  // The design written through the API (after the upload's v1) is offered
+  await expect(page.getByLabel("Design v2")).toBeVisible();
   await page.getByRole("main").getByRole("button", { name: "Deploy", exact: true }).click();
   await expect
     .poll(

@@ -14,12 +14,14 @@ import {
   timingsTable,
   resetAnswersTable,
   toCsv,
+  type Table,
   unitsTable,
   variablesTable,
 } from "../../../admin/exportData";
 import { Labels, nestedQuestions, numericCodeQuestions, questionOrder } from "../../../admin/exportAnswers";
 import { readme } from "../../../admin/exportReadme";
 import { downloadFile } from "../../../admin/download";
+import { toXlsx } from "../../../admin/xlsx";
 import { Button } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../../help/HelpButton";
@@ -36,7 +38,7 @@ export function DownloadView({ client }: { client: ResearcherApi }) {
   const deployment = useDeploymentQuery(client).data;
   const [withLabels, setWithLabels] = useState(true);
   const [withReset, setWithReset] = useState(false);
-  const [spreadsheetSafe, setSpreadsheetSafe] = useState(true);
+  const [format, setFormat] = useState<"csv" | "xlsx">("csv");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,23 +93,25 @@ export function DownloadView({ client }: { client: ResearcherApi }) {
       const numeric = numericCodeQuestions(live);
       const labels = withLabels ? new Labels(designVersions, liveId) : undefined;
       const now = new Date();
-      const zip = zipSync({
-        "README.txt": strToU8(readme(name, now, withLabels, spreadsheetSafe)),
-        "annotations.csv": strToU8(
-          toCsv(annotationsTable(annotations, coderList, order, labels, nested, numberOf, numeric), spreadsheetSafe),
-        ),
-        "coders.csv": strToU8(toCsv(codersTable(coderList, order, labels, nested, numeric), spreadsheetSafe)),
-        "devices.csv": strToU8(toCsv(devicesTable(raw.devices), spreadsheetSafe)),
-        "display_changes.csv": strToU8(toCsv(displayChangesTable(coderList), spreadsheetSafe)),
-        "timings.csv": strToU8(toCsv(timingsTable(annotations, coderList), spreadsheetSafe)),
-        "deleted_coders.csv": strToU8(toCsv(deletedCodersTable(raw.deletions), spreadsheetSafe)),
-        "units.csv": strToU8(toCsv(unitsTable(raw.units, annotations, raw.sets), spreadsheetSafe)),
-        "variables.csv": strToU8(toCsv(variablesTable(designVersions, numberOf), spreadsheetSafe)),
-        ...designs,
+      // The tables, as CSV files or as the sheets of one workbook
+      const tables: [string, Table][] = [
+        ["annotations", annotationsTable(annotations, coderList, order, labels, nested, numberOf, numeric)],
+        ["coders", codersTable(coderList, order, labels, nested, numeric)],
+        ["units", unitsTable(raw.units, annotations, raw.sets)],
+        ["variables", variablesTable(designVersions, numberOf)],
+        ["timings", timingsTable(annotations, coderList)],
+        ["devices", devicesTable(raw.devices)],
+        ["display_changes", displayChangesTable(coderList)],
+        ["deleted_coders", deletedCodersTable(raw.deletions)],
         ...(withReset
-          ? { "reset_answers.csv": strToU8(toCsv(resetAnswersTable(rows, labels, numberOf, numeric), spreadsheetSafe)) }
-          : {}),
-      });
+          ? [["reset_answers", resetAnswersTable(rows, labels, numberOf, numeric)] as [string, Table]]
+          : []),
+      ];
+      const data: Record<string, Uint8Array> =
+        format === "xlsx"
+          ? { "results.xlsx": toXlsx(tables.map(([sheet, table]) => ({ name: sheet, table }))) }
+          : Object.fromEntries(tables.map(([file, table]) => [`${file}.csv`, strToU8(toCsv(table))]));
+      const zip = zipSync({ "README.txt": strToU8(readme(name, now, withLabels, format)), ...data, ...designs });
       downloadFile(
         zip as BlobPart,
         `${name.replace(/[^\w-]+/g, "_")}_${now.toISOString().slice(0, 10)}.zip`,
@@ -151,7 +155,7 @@ export function DownloadView({ client }: { client: ResearcherApi }) {
 
         <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
           <div className="flex items-center gap-2 font-medium">
-            <FileArchive className="h-4 w-4 text-primary" /> All data (zip)
+            <FileArchive className="h-4 w-4 text-primary" /> All data
             <InfoTip label="What's in the zip">
               <ul className="list-disc pl-4">
                 <li>
@@ -190,42 +194,54 @@ export function DownloadView({ client }: { client: ResearcherApi }) {
                 </li>
               </ul>
               <p className="mt-2">
-                CSV files (UTF-8). Scripts (R, Python) can get the same data from the API with an API key (account
-                menu).
+                As CSV files (UTF-8), or as one Excel workbook with a sheet per table. Scripts (R, Python) can get the
+                same data from the API with an API key (account menu).
               </p>
             </InfoTip>
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={withLabels} onChange={(e) => setWithLabels(e.target.checked)} />
-            Add label columns (the label each coder saw)
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={withReset} onChange={(e) => setWithReset(e.target.checked)} />
-            Include answers that were reset (reset_answers.csv)
-          </label>
-          <div className="flex items-center gap-1">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={spreadsheetSafe} onChange={(e) => setSpreadsheetSafe(e.target.checked)} />
-              Safe to open in a spreadsheet
-            </label>
-            <InfoTip label="About spreadsheet-safe files">
-              Text starting with =, +, - or @ gets a leading &apos; so it can&apos;t run as a formula (README.txt says
-              how to remove it in R or Python).
-            </InfoTip>
-          </div>
-          <Button className="self-start" disabled={busy !== null} onClick={() => void download()}>
-            <Download className="mr-1 h-4 w-4" /> Download zip
-          </Button>
-          <div className="flex items-center gap-1 border-t border-border pt-3 text-sm">
-            <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => void downloadRaw()}>
-              Raw export
+          <div className="flex flex-wrap items-center gap-4">
+            <Button disabled={busy !== null} onClick={() => void download()}>
+              <Download className="mr-1 h-4 w-4" /> Download
             </Button>
-            <InfoTip label="About the raw export">
-              The data as the server keeps it, for scripts: a zip with a JSON-lines file per table (answers, units,
-              coders, design versions, ...) and manifest.json. R: <code>jsonlite::stream_in</code>; Python:{" "}
-              <code>pandas.read_json(..., lines=True)</code>. Labels and wide tables are up to you.
-            </InfoTip>
+            <fieldset className="flex items-center gap-3 text-sm" aria-label="File format">
+              {(
+                [
+                  ["csv", "CSV", "Plain CSV files: for R, Python, SPSS"],
+                  ["xlsx", "Excel (.xlsx)", "One workbook, a sheet per table: for spreadsheets"],
+                ] as const
+              ).map(([value, label, title]) => (
+                <label key={value} className="flex items-center gap-1.5" title={title}>
+                  <input type="radio" name="format" checked={format === value} onChange={() => setFormat(value)} />
+                  {label}
+                </label>
+              ))}
+            </fieldset>
           </div>
+          <details className="text-sm">
+            <summary className="cursor-pointer text-muted-foreground select-none hover:text-foreground">
+              Download settings
+            </summary>
+            <div className="mt-2 flex flex-col gap-2 pl-1">
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={withLabels} onChange={(e) => setWithLabels(e.target.checked)} />
+                Add label columns (the label each coder saw)
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={withReset} onChange={(e) => setWithReset(e.target.checked)} />
+                Include answers that were reset (reset_answers)
+              </label>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => void downloadRaw()}>
+                  Raw export
+                </Button>
+                <InfoTip label="About the raw export">
+                  The data as the server keeps it, for scripts: a zip with a JSON-lines file per table (answers, units,
+                  coders, design versions, ...) and manifest.json. R: <code>jsonlite::stream_in</code>; Python:{" "}
+                  <code>pandas.read_json(..., lines=True)</code>. Labels and wide tables are up to you.
+                </InfoTip>
+              </div>
+            </div>
+          </details>
           {busy && <p className="text-sm text-muted-foreground">{busy}</p>}
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
