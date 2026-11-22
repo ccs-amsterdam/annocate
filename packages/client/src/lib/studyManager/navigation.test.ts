@@ -271,7 +271,7 @@ describe("conditions while navigating", () => {
       loop("Coding", [
         pickQ("relevant", ["yes", "no"]),
         {
-          type: "questions",
+          type: "block",
           condition: { script: `$var.relevant.is("yes")` },
           children: [pickQ("topic")],
         } as InLoopItem,
@@ -301,7 +301,7 @@ describe("conditions while navigating", () => {
         type: "question",
         variable: { type: "nominal", question: "role", options: [{ value: "a" }, { value: "b" }] },
       },
-      { type: "questions", condition: { script: `$var.role.is("a")` }, children: [confirm("only_a")] },
+      { type: "block", condition: { script: `$var.role.is("a")` }, children: [confirm("only_a")] },
       confirm("last"),
     ] as TopLevelItem[];
     server = fakeCoderServer({ items });
@@ -408,7 +408,7 @@ describe("an end item", () => {
       loop("Coding", [
         pickQ("ok", ["yes", "no"]),
         {
-          type: "questions",
+          type: "block",
           condition: { script: `$var.ok.is("no")` },
           children: [{ type: "end", name: "stop", message: "Bye" }],
         } as InLoopItem,
@@ -554,7 +554,7 @@ describe("end items and quitting", () => {
     loop("Coding", [
       pickQ("ok", ["yes", "no"]),
       {
-        type: "questions",
+        type: "block",
         condition: { script: `$var.ok.is("no")` },
         children: [{ type: "end", name: "stop", message: "Bye" }],
       } as InLoopItem,
@@ -596,7 +596,7 @@ describe("computed items", () => {
         name: "group",
         variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }] },
       },
-      { type: "questions", condition: { script: `$var.group.is("a")` }, children: [confirm("for_a")] },
+      { type: "block", condition: { script: `$var.group.is("a")` }, children: [confirm("for_a")] },
       confirm("last"),
     ] as TopLevelItem[];
     server = fakeCoderServer({ items });

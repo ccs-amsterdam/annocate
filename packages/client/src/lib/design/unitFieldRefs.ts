@@ -10,6 +10,7 @@ import {
   type UnitField,
 } from "@annotinder/contracts";
 import { itemTitle } from "../codebook/conditions";
+import { blockInner, isElse } from "../codebook/tree";
 
 /** Where an item (by its title, as in the warnings) is: a validation issue path. */
 export function pathOfItem(items: (TopLevelItem | InLoopItem)[], title: string): (string | number)[] | null {
@@ -67,9 +68,9 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[], al
     const text = (source: string | undefined) =>
       templateReferences(expandSnippets(source ?? "", snippets).source).references;
     for (const child of children) {
-      if (child.type === "questions") {
-        check(itemTitle(child), conditionReferences(child.condition));
-        walk(child.children, snippets);
+      if (child.type === "block" || isElse(child)) {
+        if (child.type === "block") check(itemTitle(child), conditionReferences(child.condition));
+        walk(blockInner(child) as InLoopItem[], snippets);
         continue;
       }
       if (child.type === "end") {
@@ -90,7 +91,7 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[], al
 
   const visit = (list: TopLevelItem[]) => {
     for (const item of list) {
-      if (item.type === "questions") visit(item.children);
+      if (item.type === "block" || isElse(item)) visit(blockInner(item) as TopLevelItem[]);
       if (item.type !== "unit_loop") continue;
       check(
         itemTitle(item),

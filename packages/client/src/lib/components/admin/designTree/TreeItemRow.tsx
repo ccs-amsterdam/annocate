@@ -1,17 +1,17 @@
 import { createElement } from "react";
-import { AlertCircle, CornerDownLeft, Layers, LayoutTemplate } from "lucide-react";
+import { AlertCircle, CornerDownLeft, Layers, LayoutTemplate, Split } from "lucide-react";
 import { useLoopTab } from "../designEditor/loopTab";
 import { cn } from "cn";
 import { useDesignTree } from "./context";
 import { ITEM_TYPES, itemIcon } from "./itemTypes";
 import { AddItemMenu, type AddOption } from "./AddItemMenu";
 import { ActionButton, TreeRow } from "./TreeRow";
-import { getItemKey, insertableTypesAt, type TreeNode } from "./utils";
+import { getChildren, getItemKey, insertableTypesAt, type TreeNode } from "./utils";
 import { parseSimpleCondition, type TopLevelItem, type UnitLoopItem } from "@annotinder/contracts";
 import { describeCondition, itemTitle } from "../../../codebook/conditions";
 import type { TreePosition } from "../../../design/itemEdit";
 import { VARIABLE_TYPE_LABELS } from "../../../design/answerTypes";
-import { findItem, findParent, loopUnitsSummary } from "../../../codebook/tree";
+import { findItem, findParent, isElse, loopUnitsSummary } from "../../../codebook/tree";
 
 /** How an item is called in menus: its title, a condition by its condition, a loop by its position. */
 function rowTitle(item: TreeNode): string {
@@ -82,9 +82,38 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
     <AddItemMenu key="add" options={options} onAdd={tree.addAt} onPreview={tree.setPreview} />
   );
 
+  // A block's else items: their own row, "Else", with the + to add inside (not selected, moved or ticked itself)
+  if (isElse(item))
+    return (
+      <TreeRow actions={action} dimActions={!tree.moving}>
+        {!tree.readOnly && <span className="mr-px h-3.5 w-3.5 shrink-0" aria-hidden />}
+        <span className="pl-1 text-xs font-medium text-muted-foreground italic">Else</span>
+      </TreeRow>
+    );
+  // A block with a condition and no else items yet: a button to begin them
+  const canAddElse =
+    !tree.readOnly &&
+    !tree.moving &&
+    item.type === "block" &&
+    item.condition !== undefined &&
+    !(getChildren(item) ?? []).some((c) => isElse(c) && (getChildren(c) ?? []).length > 0);
+
   return (
     <TreeRow
-      actions={action}
+      actions={
+        canAddElse ? (
+          <>
+            <ActionButton
+              icon={Split}
+              title="Add else items (shown when the condition doesn't hold)"
+              onClick={() => tree.addElse(key)}
+            />
+            {action}
+          </>
+        ) : (
+          action
+        )
+      }
       dimActions={!tree.moving}
       className={cn(
         tree.selected === key ? "" : "font-thin hover:bg-muted/10",
@@ -163,15 +192,15 @@ function ItemLabel({
   changed?: boolean;
 }) {
   // A block's or loop's condition, next to its label (e.g. "Social media use · if use_social is true")
-  const condition = item.type === "questions" || item.type === "unit_loop" ? item.condition : undefined;
+  const condition = item.type === "block" || item.type === "unit_loop" ? item.condition : undefined;
   return (
     <>
       <ItemIcon item={item} />
-      {item.type === "questions" ? (
-        // Blocks have no name: their label, else "Questions" when there's no condition either
+      {item.type === "block" ? (
+        // Blocks have no name: their label, else "Block" when there's no condition either
         (item.label?.trim() || !condition) && (
           <span className={cn("truncate px-1.5 py-0.5", selected ? "font-semibold" : "font-medium")}>
-            {item.label?.trim() || "Questions"}
+            {item.label?.trim() || "Block"}
           </span>
         )
       ) : (

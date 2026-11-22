@@ -1,30 +1,48 @@
 import { cn } from "cn";
 import type { TopLevelItem } from "@annotinder/contracts";
 import type { TreePosition } from "../../../design/itemEdit";
+import { isElse } from "../../../codebook/tree";
 import { TreeItemRow } from "./TreeItemRow";
 import { ITEM_TYPES } from "./itemTypes";
 import { InsertionLine } from "./TreeRow";
 import { samePosition, useDesignTree } from "./context";
 import { getChildren, getItemKey, type TreeNode } from "./utils";
 
-/** A top-level block (a unit loop, a questions block) as a light card: the header row, its items one step in. */
-const BLOCK_CARD = "my-1 rounded-lg border border-border bg-muted/30 py-0.5";
-/** A questions block inside a block or loop: a group with a bar on its left, in the questions blocks' colour. */
-const NESTED_BLOCK = "my-0.5 ml-2 border-l-2 border-secondary/50 pb-0.5";
-const BLOCK_INDENT = "pl-4";
+/** A unit loop, and each run of coder-level items between loops: a light card. */
+const CARD = "my-1 rounded-lg border border-border py-0.5";
+/** The coder-level items' cards: a faint tint of the questions' colour, set apart from the loops. */
+const CODER_SECTION = "bg-secondary/5";
+const LOOP_CARD = "bg-muted/30";
+/** A block, at any level: a bar on its left in the blocks' colour; its items one step in. */
+const BLOCK = "my-0.5 border-l-2 border-secondary-dark/40";
+const INDENT = "pl-4";
 
 /**
- * The design's top level: its blocks (questions blocks and unit loops), each
- * a card; the Study entry is shown above the tree (SessionHeader).
+ * The design's top level: each unit loop a card, and the coder-level items
+ * before, between and after loops together in a tinted card (a section,
+ * only in the tree). The Study entry is shown above the tree.
  */
 export function BlockList({ items }: { items: TopLevelItem[] }) {
+  const sections: { key: string; loop: boolean; items: TopLevelItem[] }[] = [];
+  for (const item of items) {
+    if (item.type === "session") continue;
+    const last = sections.at(-1);
+    if (item.type !== "unit_loop" && last && !last.loop) last.items.push(item);
+    else sections.push({ key: getItemKey(item), loop: item.type === "unit_loop", items: [item] });
+  }
   return (
     <div className="flex flex-col">
-      {items
-        .filter((item) => item.type !== "session")
-        .map((item) => (
-          <TreeNodeView key={getItemKey(item)} item={item} top />
-        ))}
+      {sections.map((section) =>
+        section.loop ? (
+          <TreeNodeView key={section.key} item={section.items[0]} card />
+        ) : (
+          <div key={section.key} className={cn(CARD, CODER_SECTION)}>
+            {section.items.map((item) => (
+              <TreeNodeView key={getItemKey(item)} item={item} />
+            ))}
+          </div>
+        ),
+      )}
       <PreviewLine position={{ into: null }} />
     </div>
   );
@@ -50,13 +68,25 @@ export function TreeList({ nodes, parent }: TreeListProps) {
 }
 
 /**
- * An item. Blocks render as a container holding their own row and their
- * items: at the top level a card, nested a group with a bar on its left.
+ * An item. A unit loop is a card holding its row and its items; a block a
+ * bar on the left, its row aligned with the rows around it; a block's else
+ * items an "Else" group at the end of the block (only once it has items).
  */
-function TreeNodeView({ item, top = false }: { item: TreeNode; top?: boolean }) {
+function TreeNodeView({ item, card = false }: { item: TreeNode; card?: boolean }) {
   const children = getChildren(item);
   const after: TreePosition = { after: getItemKey(item) };
   const before: TreePosition = { before: getItemKey(item) };
+  if (isElse(item)) {
+    if (!children?.length) return null;
+    return (
+      <div data-flip-key={getItemKey(item)} className="mt-0.5">
+        <TreeItemRow item={item} />
+        <div className={INDENT}>
+          <TreeList nodes={children} parent={item} />
+        </div>
+      </div>
+    );
+  }
   if (!children) {
     return (
       <>
@@ -74,10 +104,10 @@ function TreeNodeView({ item, top = false }: { item: TreeNode; top?: boolean }) 
       <PreviewLine position={before} />
       <div
         data-flip-key={getItemKey(item)}
-        className={cn(top ? BLOCK_CARD : NESTED_BLOCK, ITEM_TYPES[item.type].blockClass)}
+        className={cn(card ? cn(CARD, LOOP_CARD) : BLOCK, ITEM_TYPES[item.type as keyof typeof ITEM_TYPES]?.blockClass)}
       >
         <TreeItemRow item={item} />
-        <div className={BLOCK_INDENT}>
+        <div className={INDENT}>
           <TreeList nodes={children} parent={item} />
         </div>
       </div>

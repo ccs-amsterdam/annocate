@@ -25,9 +25,9 @@ export function defaultItemForType(type: DesignItem["type"], name: string): Desi
         layout: { template: "" },
         children: [],
       } as DesignItem;
-    case "questions":
+    case "block":
       // Without a label or a condition: always shown (its form sets them)
-      return { type: "questions", children: [] } as DesignItem;
+      return { type: "block", children: [] } as DesignItem;
     case "end":
       return { type: "end", name, outcome: "screenout" };
     case "session":

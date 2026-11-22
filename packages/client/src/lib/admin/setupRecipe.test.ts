@@ -233,10 +233,10 @@ describe("setup wizard recipes", () => {
       ["control", 4],
       ["treatment", 6],
     ]);
-    // The condition (in a questions block), then the loop
-    expect((recipe.design.items as { type: string }[]).map((i) => i.type)).toEqual(["questions", "unit_loop"]);
+    // The condition, then the loop
+    expect((recipe.design.items as { type: string }[]).map((i) => i.type)).toEqual(["computed", "unit_loop"]);
     expect(recipe.design.items[0]).toMatchObject({
-      children: [{ variable: { type: "random", draw: "balanced", units: "condition" } }],
+      variable: { type: "random", draw: "balanced", units: "condition" },
     });
     expect(recipe.design.session).toEqual({});
     expect(loopOf(a).units).toBeUndefined();
@@ -251,17 +251,14 @@ describe("setup wizard recipes", () => {
     expect(setupProblems(a)).toEqual([]);
     expect(otherIssues(a)).toEqual([]);
     const recipe = setupRecipe(a);
-    type Item = { name?: string; type: string; children?: Item[] };
-    const items = recipe.design.items as Item[];
-    // The questions before and after the loop in blocks
-    expect(items.map((i) => (i.type === "questions" ? i.children!.map((c) => c.name) : i.type))).toEqual([
-      ["condition", "age"],
-      "unit_loop",
-      ["any_comments"],
-    ]);
+    const items = recipe.design.items as { name?: string; type: string }[];
+    expect(items.map((i) => i.name ?? i.type)).toEqual(["condition", "age", "unit_loop", "any_comments"]);
     // The condition selects its units: a computed item linked to a set column named after it
     expect(recipe.sets![0].group).toBe("condition");
-    expect(items[0].children![0]).toMatchObject({ type: "computed", variable: { type: "random", units: "condition" } });
+    expect((recipe.design.items as { type: string; variable?: { units?: string } }[])[0]).toMatchObject({
+      type: "computed",
+      variable: { type: "random", units: "condition" },
+    });
   });
 
   it("a survey alone, or an experiment alone (a survey with an experiment)", () => {
@@ -272,7 +269,7 @@ describe("setup wizard recipes", () => {
     });
     expect(setupProblems(survey)).toEqual([]);
     expect(setupRecipe(survey).design.items).toEqual([
-      { type: "questions", children: [{ type: "question", name: "age", variable: { type: "unspecified" } }] },
+      { type: "question", name: "age", variable: { type: "unspecified" } },
     ]);
     const experiment = setup({
       parts: { annotate: false, survey: false, experiment: true },
@@ -280,8 +277,7 @@ describe("setup wizard recipes", () => {
       questions: { before: ["support"], unit: [], after: [] },
     });
     expect(otherIssues(experiment)).toEqual([]);
-    // The condition and the question, in one block
-    expect(setupRecipe(experiment).design.items).toMatchObject([{ type: "questions", children: [{}, {}] }]);
+    expect(setupRecipe(experiment).design.items).toHaveLength(2);
   });
 
   it("say what is missing or wrong", () => {

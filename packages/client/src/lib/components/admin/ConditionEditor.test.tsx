@@ -10,7 +10,7 @@ const items = [
     variable: { type: "nominal", question: "?", options: [{ value: "student" }, { value: "expert", label: "Expert" }] },
   },
   {
-    type: "questions",
+    type: "block",
     condition: { script: "true" },
     children: [{ type: "question", name: "inner", variable: { type: "confirm", question: "?" } }],
   },

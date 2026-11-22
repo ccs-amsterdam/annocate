@@ -111,7 +111,7 @@ describe("studies from a recipe", () => {
   ];
   const items = [
     {
-      type: "questions",
+      type: "block",
       children: [
         { type: "computed", name: "condition", variable: { type: "random", draw: "random", units: "condition" } },
       ],

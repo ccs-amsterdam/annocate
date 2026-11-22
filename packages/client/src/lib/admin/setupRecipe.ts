@@ -9,7 +9,6 @@ import {
   type UnitCreate,
   type UnitField,
   type UnitData,
-  inBlocks,
 } from "@annotinder/contracts";
 import { placedFields, simpleTemplate, type SimpleLayout } from "../design/simpleLayout";
 
@@ -443,8 +442,7 @@ export function setupRecipe(answers: SetupAnswers): RecipeInput {
       note: "Made with the setup wizard",
       ...(title ? { public: { title } } : {}),
       session: session ?? {},
-      // The questions before, between and after loops in questions blocks
-      items: inBlocks(items),
+      items,
     },
   };
 }

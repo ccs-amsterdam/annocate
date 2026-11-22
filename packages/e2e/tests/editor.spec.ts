@@ -15,7 +15,7 @@ test("writing a design in the editor, as the help describes it, and saving it", 
 
   // A unit loop
   // (Form labels aren't tied to their fields yet: placeholders find them.)
-  await page.getByRole("button", { name: /Add block/ }).click();
+  await page.getByRole("button", { name: /Add item/ }).click();
   await page.getByRole("button", { name: /^Unit loop/ }).click();
   await page.getByPlaceholder("e.g. News items").fill("News articles");
   // A new loop hands out all the session's units, once: nothing to specify
@@ -71,11 +71,8 @@ test("a computed variable: a random condition linked to a set column", async ({ 
   await page.getByText("Computed test").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
 
-  // A questions block (with its first question), then a computed item in it, after the question
-  await page.getByRole("button", { name: /Add block/ }).click();
-  await page.getByRole("button", { name: /^Questions block/ }).click();
-  await page.getByRole("button", { name: "Add an item below" }).nth(1).click();
-  await page.getByRole("button", { name: /^After question/ }).click();
+  // A computed item at the top level
+  await page.getByRole("button", { name: /Add item/ }).click();
   await page.getByRole("button", { name: /^Computed variable/ }).click();
   await page.getByPlaceholder("e.g. sentiment, age").fill("framing");
   await expect(page.getByText("Random condition", { exact: true })).toBeVisible();
@@ -90,37 +87,41 @@ test("a computed variable: a random condition linked to a set column", async ({ 
     .toBe(1);
   const [saved] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
   const { items } = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${saved.id}`);
-  expect(items).toMatchObject([
-    {
-      type: "questions",
-      children: [
-        { type: "question" },
-        { type: "computed", name: "framing", variable: { type: "random", units: "framing" } },
-      ],
-    },
-  ]);
+  expect(items).toMatchObject([{ type: "computed", name: "framing", variable: { type: "random", units: "framing" } }]);
 });
 
-test("blocks: questions and unit loops at the top level, in any order; the study's end", async ({ page, request }) => {
+test("blocks: a label and a condition, else items; questions and loops at the top level; the study's end", async ({
+  page,
+  request,
+}) => {
   const study = await api<StudyResponse>(request, "POST", "/study", { name: "Blocks test" });
   await page.goto(`/research/studies/${study.id}/design`);
 
-  // The top level holds blocks: a unit loop, or questions
-  await page.getByRole("button", { name: /Add block/ }).click();
-  await expect(page.getByRole("button", { name: /^Question\b/ })).toHaveCount(0);
-  await page.getByRole("button", { name: /^Unit loop/ }).click();
-  await page.getByRole("button", { name: /Add block/ }).click();
-  await page.getByRole("button", { name: "At the start" }).click();
-  await page.getByRole("button", { name: /^Questions block/ }).click();
-  // Its first question is selected, to name it
+  // A question at the top level, then a unit loop: no end item there (they go in a block)
+  await page.getByRole("button", { name: /Add item/ }).click();
+  await expect(page.getByRole("button", { name: /^End/ })).toHaveCount(0);
+  await page.getByRole("button", { name: /^Question\b/ }).click();
   await page.getByPlaceholder("e.g. sentiment, age").fill("age");
-  // The block, before the loop; a label on its row
-  await page.getByRole("button", { name: /^Questions(\s|$)/ }).click();
-  await page.getByPlaceholder("e.g. Demographics").fill("About you");
-  await expect(page.getByRole("button", { name: /About you/ })).toBeVisible();
+  await page.getByRole("button", { name: /Add item/ }).click();
+  await page.getByRole("button", { name: "At the end", exact: true }).first().click();
+  await page.getByRole("button", { name: /^Unit loop/ }).click();
 
-  // The study's normal end: its own row, with a message
-  await page.getByRole("button", { name: /At the end/ }).click();
+  // A block after the loop, with a label and a condition (a new block starts empty)
+  await page.getByRole("button", { name: /Add item/ }).click();
+  await page.getByRole("button", { name: "At the end", exact: true }).first().click();
+  await page.getByRole("button", { name: /^Block/ }).click();
+  await page.getByPlaceholder("e.g. Demographics").fill("Adults");
+  await page.getByRole("checkbox", { name: /Only show these questions if/ }).check();
+  // Else items: begun from the block's row, with a first question
+  await page.getByRole("button", { name: /Add else items/ }).click();
+  await page.getByPlaceholder("e.g. sentiment, age").fill("guardian");
+  await expect(page.getByText("Else", { exact: true })).toBeVisible();
+
+  // The study's normal end: a button below the tree, with a message
+  await page
+    .getByRole("button", { name: /At the end/ })
+    .last()
+    .click();
   await page.getByPlaceholder("Thank you for your time.").fill("Thanks for coding!");
 
   await page.getByRole("button", { name: "Save", exact: true }).click();
@@ -133,8 +134,9 @@ test("blocks: questions and unit loops at the top level, in any order; the study
   const version = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${saved.id}`);
   expect(version.session).toMatchObject({ end: { message: "Thanks for coding!" } });
   expect(version.items).toMatchObject([
-    { type: "questions", label: "About you", children: [{ name: "age" }] },
+    { type: "question", name: "age" },
     { type: "unit_loop" },
+    { type: "block", label: "Adults", condition: { script: "true" }, elseChildren: [{ name: "guardian" }] },
   ]);
 });
 

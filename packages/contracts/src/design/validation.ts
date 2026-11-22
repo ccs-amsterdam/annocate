@@ -382,6 +382,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       const it = raw as { type?: unknown; name?: unknown; outcome?: unknown; children?: unknown } | null;
       if (it?.type === "end" && typeof it.name === "string") endItems.set(it.name, it.outcome);
       collectEnds(it?.children);
+      collectEnds((it as { elseChildren?: unknown } | null)?.elseChildren);
     }
   };
   collectEnds(items);
@@ -625,20 +626,17 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
         checkSession(item, itemPath, index, currentPath.length > 0);
         return;
       }
-      // The top level holds blocks: questions blocks and unit loops; a unit loop only there
-      if (currentPath.length === 0 && item.type !== "questions" && item.type !== "unit_loop")
-        issue(
-          [...itemPath, "type"],
-          `At the top level, put ${item.type === "question" ? "questions" : `${String(item.type)} items`} in a questions block`,
-        );
+      // End items go in a block (e.g. with a condition); a unit loop only at the top level
+      if (currentPath.length === 0 && item.type === "end")
+        issue([...itemPath, "type"], "An end item goes in a block (e.g. one with a condition)");
       if (currentPath.length > 0 && item.type === "unit_loop" && !loop)
         issue(
           [...itemPath, "type"],
-          "A unit loop goes at the top level, not inside a questions block (give the loop a condition instead)",
+          "A unit loop goes at the top level, not inside a block (give the loop a condition instead)",
         );
 
       // Check name validity and uniqueness (conditions have no name)
-      if (item.type === "questions" || item.type === "unit_loop") {
+      if (item.type === "block" || item.type === "unit_loop") {
         // Nothing refers to them by name (a loop is identified by its position).
       } else if (!item.name || item.name.trim() === "") {
         issue([...itemPath, "name"], "Item name cannot be empty");
@@ -739,7 +737,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           walk(item.children, [...itemPath, "children"], { name: key, snippets });
           loopAvailable = new Set();
         }
-      } else if (item.type === "questions") {
+      } else if (item.type === "block") {
         checkCondition(item.condition, {
           path: [...itemPath, "condition"],
           loop: loop?.name ?? null,
@@ -748,9 +746,19 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           inside: questionNames(item.children),
         });
         if (!item.children || item.children.length === 0) {
-          issue([...itemPath, "children"], "A questions block must have at least one item");
+          issue([...itemPath, "children"], "A block must have at least one item");
         } else {
           walk(item.children, [...itemPath, "children"], loop);
+        }
+        // Else items: shown when the condition doesn't hold, so only with a condition
+        const otherwise = (item as { elseChildren?: unknown }).elseChildren;
+        if (Array.isArray(otherwise)) {
+          if (!item.condition)
+            issue(
+              [...itemPath, "elseChildren"],
+              "Else items are shown when the condition doesn't hold: give the block a condition",
+            );
+          walk(otherwise, [...itemPath, "elseChildren"], loop);
         }
       } else if (item.type === "end") {
         checkEndTexts(item as EndTexts, itemPath, loop?.name ?? null, available);
@@ -787,7 +795,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     (Array.isArray(list) ? list : []).forEach((raw, i) => {
       const it = raw as RawItem | null;
       if (it?.type === "unit_loop") loopPaths.set(String(loopPaths.size + 1), [...path, i]);
-      else if (it?.type === "questions") findLoops(it.children, [...path, i, "children"]);
+      else if (it?.type === "block") findLoops(it.children, [...path, i, "children"]);
     });
   findLoops(items, []);
   for (const [key, columns] of shares) {
@@ -871,8 +879,10 @@ export function collectQuestions(items: unknown): {
       const item = raw as RawItem | null;
       if (!item || typeof item !== "object") continue;
       if (item.type === "unit_loop") walk(item.children, String(++loops));
-      else if (item.type === "questions") walk(item.children, loop);
-      else if (item.name && "variable" in item && item.variable && !questions.has(item.name)) {
+      else if (item.type === "block") {
+        walk(item.children, loop);
+        walk((item as { elseChildren?: unknown }).elseChildren, loop);
+      } else if (item.name && "variable" in item && item.variable && !questions.has(item.name)) {
         questions.set(item.name, item.variable as AnyVariableType);
         loopOf.set(item.name, loop);
       }
@@ -908,8 +918,9 @@ export function availableQuestions(items: unknown[], at: Path): { name: string; 
         walk(item.children, [...itemPath, "children"]);
         if (found) return;
         result.splice(before);
-      } else if (item.type === "questions") {
+      } else if (item.type === "block") {
         walk(item.children, [...itemPath, "children"]);
+        walk((item as { elseChildren?: unknown }).elseChildren, [...itemPath, "elseChildren"]);
       } else if (item.name && "variable" in item && item.variable) {
         result.push({ name: item.name, variable: item.variable as AnyVariableType });
       }
@@ -934,7 +945,7 @@ function forEachQuestion(
   list.forEach((raw, i) => {
     const child = raw as RawItem | null;
     if (!child || typeof child !== "object") return;
-    if (child.type === "questions")
+    if (child.type === "block")
       forEachQuestion((child as { children?: unknown }).children, [...path, i, "children"], visit);
     else if (child.type !== "unit_loop") visit(child as RawItem & { variable?: unknown }, [...path, i]);
   });

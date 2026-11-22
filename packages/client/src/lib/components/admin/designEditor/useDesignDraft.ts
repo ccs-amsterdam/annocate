@@ -30,7 +30,7 @@ import {
   updateItem,
   type TreePosition,
 } from "../../../design/itemEdit";
-import { findItem } from "../../../codebook/tree";
+import { ELSE, findItem } from "../../../codebook/tree";
 import { pathOfItem, unknownUnitFields } from "../../../design/unitFieldRefs";
 import { carryKeys } from "../../../design/itemShape";
 import { changedKeys, emptyHistory, recordChange, redo, revertItem, undo } from "../../../design/editHistory";
@@ -178,11 +178,16 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
 
   function insertAt(position: TreePosition, type: ItemType) {
     const item = createItem(type);
-    // A new questions block comes with its first question, selected to name it (the block's row sets its label)
-    const first = type === "questions" ? createItem("question") : null;
-    const added = first ? { ...item, children: [first] } : item;
-    setItems(ensureKeys(insertAtPosition(items, position, added as DesignItem)));
-    setSelected(first ? first._key : item._key);
+    setItems(ensureKeys(insertAtPosition(items, position, item)));
+    setSelected(item._key);
+  }
+
+  /** A block's else items begin: its else part (codebook/tree.ts `ELSE`) with a first question, selected. */
+  function addElse(blockKey: string) {
+    const first = createItem("question");
+    const stand = { type: ELSE, _key: generateKey(), children: [first] } as unknown as DesignItem;
+    setItems(ensureKeys(insertAtPosition(items, { into: blockKey }, stand)));
+    setSelected(first._key);
   }
 
   /** Items (and what is inside them) deleted, after asking. */
@@ -297,6 +302,7 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
     saveError: conflict ? null : (createDesignVersion.error ?? updateDesignVersion.error),
     select: setSelected,
     insertAt,
+    addElse,
     remove,
     move,
     update,

@@ -33,6 +33,7 @@ describe("DesignTreeView", () => {
         selected="consent"
         onSelect={vi.fn()}
         onAdd={vi.fn()}
+        onAddElse={vi.fn()}
         onDelete={vi.fn()}
         onMove={vi.fn()}
       />,
@@ -54,6 +55,7 @@ describe("DesignTreeView", () => {
         selected={null}
         onSelect={vi.fn()}
         onAdd={vi.fn()}
+        onAddElse={vi.fn()}
         onDelete={vi.fn()}
         onMove={vi.fn()}
         readOnly

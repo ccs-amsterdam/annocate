@@ -21,134 +21,128 @@
     },
     "items": [
       {
-        "type": "questions",
-        "label": "Experiment",
-        "children": [
-          {
-            "type": "question",
-            "name": "consent",
-            "variable": {
-              "type": "confirm",
-              "question": "In this short study you read a news article and answer a few questions about it. It takes about three minutes. Do you want to take part?"
+        "type": "question",
+        "name": "consent",
+        "variable": {
+          "type": "confirm",
+          "question": "In this short study you read a news article and answer a few questions about it. It takes about three minutes. Do you want to take part?"
+        }
+      },
+      {
+        "type": "computed",
+        "name": "condition",
+        "variable": {
+          "type": "random",
+          "draw": "random",
+          "options": [
+            {
+              "value": "economic"
+            },
+            {
+              "value": "human_interest"
             }
-          },
-          {
-            "type": "computed",
-            "name": "condition",
-            "variable": {
-              "type": "random",
-              "draw": "random",
-              "options": [
-                {
-                  "value": "economic"
-                },
-                {
-                  "value": "human_interest"
-                }
-              ]
+          ]
+        }
+      },
+      {
+        "type": "question",
+        "name": "article",
+        "variable": {
+          "type": "confirm",
+          "question": "Please read this article carefully.\n\n## New wind farm planned off the coast\n\nThe government announced plans for a wind farm with forty turbines, twelve kilometres off the coast. Construction is to start in two years.\n\n::: if $var.condition.is('economic')\nThe project will cost 1.2 billion euros and is expected to create six hundred jobs in the region. Economists expect electricity prices to fall slightly once the turbines are running.\n::: else\nFisherman Kees Jansen, whose family has fished these waters for four generations, worries about his future. \"Nobody has asked us where we are supposed to go,\" he says.\n:::\n\nThe plans will be discussed in parliament next month.\n\nClick the button when you have read the article."
+        }
+      },
+      {
+        "type": "question",
+        "name": "support",
+        "variable": {
+          "type": "ordinal",
+          "question": "Do you support building the wind farm?",
+          "options": [
+            {
+              "value": 1,
+              "label": "Strongly oppose"
+            },
+            {
+              "value": 2,
+              "label": "Oppose"
+            },
+            {
+              "value": 3,
+              "label": "Neutral"
+            },
+            {
+              "value": 4,
+              "label": "Support"
+            },
+            {
+              "value": 5,
+              "label": "Strongly support"
             }
-          },
-          {
-            "type": "question",
-            "name": "article",
-            "variable": {
-              "type": "confirm",
-              "question": "Please read this article carefully.\n\n## New wind farm planned off the coast\n\nThe government announced plans for a wind farm with forty turbines, twelve kilometres off the coast. Construction is to start in two years.\n\n::: if $var.condition.is('economic')\nThe project will cost 1.2 billion euros and is expected to create six hundred jobs in the region. Economists expect electricity prices to fall slightly once the turbines are running.\n::: else\nFisherman Kees Jansen, whose family has fished these waters for four generations, worries about his future. \"Nobody has asked us where we are supposed to go,\" he says.\n:::\n\nThe plans will be discussed in parliament next month.\n\nClick the button when you have read the article."
+          ]
+        }
+      },
+      {
+        "type": "question",
+        "name": "emotions",
+        "variable": {
+          "type": "scale",
+          "question": "How did the article make you feel?",
+          "items": [
+            {
+              "name": "hopeful",
+              "label": "Hopeful"
+            },
+            {
+              "name": "worried",
+              "label": "Worried"
+            },
+            {
+              "name": "angry",
+              "label": "Angry"
             }
-          },
-          {
-            "type": "question",
-            "name": "support",
-            "variable": {
-              "type": "ordinal",
-              "question": "Do you support building the wind farm?",
-              "options": [
-                {
-                  "value": 1,
-                  "label": "Strongly oppose"
-                },
-                {
-                  "value": 2,
-                  "label": "Oppose"
-                },
-                {
-                  "value": 3,
-                  "label": "Neutral"
-                },
-                {
-                  "value": 4,
-                  "label": "Support"
-                },
-                {
-                  "value": 5,
-                  "label": "Strongly support"
-                }
-              ]
+          ],
+          "options": [
+            {
+              "value": 1,
+              "label": "not at all"
+            },
+            {
+              "value": 2,
+              "label": "a little"
+            },
+            {
+              "value": 3,
+              "label": "quite"
+            },
+            {
+              "value": 4,
+              "label": "very"
             }
-          },
-          {
-            "type": "question",
-            "name": "emotions",
-            "variable": {
-              "type": "scale",
-              "question": "How did the article make you feel?",
-              "items": [
-                {
-                  "name": "hopeful",
-                  "label": "Hopeful"
-                },
-                {
-                  "name": "worried",
-                  "label": "Worried"
-                },
-                {
-                  "name": "angry",
-                  "label": "Angry"
-                }
-              ],
-              "options": [
-                {
-                  "value": 1,
-                  "label": "not at all"
-                },
-                {
-                  "value": 2,
-                  "label": "a little"
-                },
-                {
-                  "value": 3,
-                  "label": "quite"
-                },
-                {
-                  "value": 4,
-                  "label": "very"
-                }
-              ]
+          ]
+        }
+      },
+      {
+        "type": "question",
+        "name": "manipulation_check",
+        "variable": {
+          "type": "nominal",
+          "question": "What was the article mostly about?",
+          "options": [
+            {
+              "value": "costs_jobs",
+              "label": "Costs and jobs"
+            },
+            {
+              "value": "fishermen",
+              "label": "A fisherman's worries"
+            },
+            {
+              "value": "dont_know",
+              "label": "I don't remember"
             }
-          },
-          {
-            "type": "question",
-            "name": "manipulation_check",
-            "variable": {
-              "type": "nominal",
-              "question": "What was the article mostly about?",
-              "options": [
-                {
-                  "value": "costs_jobs",
-                  "label": "Costs and jobs"
-                },
-                {
-                  "value": "fishermen",
-                  "label": "A fisherman's worries"
-                },
-                {
-                  "value": "dont_know",
-                  "label": "I don't remember"
-                }
-              ]
-            }
-          }
-        ]
+          ]
+        }
       }
     ]
   },

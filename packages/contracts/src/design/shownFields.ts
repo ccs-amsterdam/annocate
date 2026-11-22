@@ -25,9 +25,10 @@ function loopReferences(loop: UnitLoopItem, spanFields?: (field: string) => void
     for (const raw of list) {
       const item = raw as Partial<DesignItem> | null;
       if (!item || typeof item !== "object") continue;
-      if (item.type === "questions") {
+      if (item.type === "block") {
         addScript(item.condition?.script);
         walk(item.children);
+        walk(item.elseChildren);
       } else if (item.type === "end") {
         addTemplate(item.message);
       } else if ("variable" in item && item.variable) {
@@ -78,8 +79,10 @@ export function loopDependencies(items: readonly unknown[]): Map<string, string[
       for (const raw of list) {
         const item = raw as Partial<DesignItem> | null;
         if (!item || typeof item !== "object") continue;
-        if (item.type === "questions") collect(item.children);
-        else if ("name" in item && typeof item.name === "string") own.add(item.name);
+        if (item.type === "block") {
+          collect(item.children);
+          collect(item.elseChildren);
+        } else if ("name" in item && typeof item.name === "string") own.add(item.name);
       }
     };
     collect(loop.children);
@@ -153,6 +156,7 @@ export function designSetColumns(items: readonly unknown[]): string[] {
         if (typeof column === "string") columns.add(column);
       }
       walk(it?.children);
+      walk((it as { elseChildren?: unknown } | null)?.elseChildren);
     }
   };
   walk(items);
@@ -170,9 +174,10 @@ function scriptCount(loop: UnitLoopItem, field: string): number {
     if (!Array.isArray(list)) return;
     for (const raw of list) {
       const item = raw as Partial<DesignItem> | null;
-      if (item?.type !== "questions") continue;
+      if (item?.type !== "block") continue;
       count(item.condition?.script);
       walk(item.children);
+      walk(item.elseChildren);
     }
   };
   walk(loop.children);

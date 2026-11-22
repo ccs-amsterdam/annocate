@@ -30,6 +30,7 @@ export function TreePanel({ draft, readOnly }: { draft: DesignDraft; readOnly: b
           selected={draft.selected}
           onSelect={draft.select}
           onAdd={draft.insertAt}
+          onAddElse={draft.addElse}
           onDelete={draft.remove}
           onMove={draft.move}
           validationIssues={draft.validationErrors}

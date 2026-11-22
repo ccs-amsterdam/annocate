@@ -4,9 +4,9 @@ import {
   type TopLevelItem,
   type InLoopItem,
   type UnitLoopItem,
-  type QuestionsItem,
+  type BlockItem,
 } from "@annotinder/contracts";
-import { findItem, findParent, flattenTree, isInsideUnitLoop, keyOf } from "../codebook/tree";
+import { ELSE, findItem, findParent, flattenTree, isInsideUnitLoop, keyOf } from "../codebook/tree";
 
 // Pure edits of the design tree for the editor: keys, inserting, moving and
 // deleting items. Items are found by their editor `_key`, or by name.
@@ -23,6 +23,7 @@ interface Node {
   name?: string;
   type: string;
   children?: Node[];
+  elseChildren?: Node[];
 }
 
 const asNodes = (items: (TopLevelItem | InLoopItem | DesignItem)[]) => items as unknown as Node[];
@@ -51,24 +52,37 @@ export function generateKey(): string {
   return `k_${Date.now().toString(36)}_${keySeed}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-/** The items, with an editor key on every item that has none. */
+/**
+ * The items, with an editor key on every item that has none. A block's
+ * else items (`elseChildren`) become a stand-in container after its own
+ * items (codebook/tree.ts `ELSE`), so the tree edits them like any list.
+ */
 export function ensureKeys<T extends TopLevelItem[] | InLoopItem[]>(items: T): T {
   const withKeys = (nodes: Node[]): Node[] =>
     nodes.map((node) => {
-      const copy: Node = { ...node, _key: node._key || generateKey() };
+      const copy: Node & { elseChildren?: Node[] } = { ...node, _key: node._key || generateKey() };
+      if (Array.isArray(copy.elseChildren)) {
+        const otherwise = copy.elseChildren;
+        delete copy.elseChildren;
+        if (otherwise.length > 0) copy.children = [...(copy.children ?? []), { type: ELSE, children: otherwise }];
+      }
       if (hasChildren(copy)) copy.children = withKeys(copy.children);
       return copy;
     });
   return withKeys(asNodes(items)) as unknown as T;
 }
 
-/** The items without their editor keys (as saved). */
+/** The items without their editor keys (as saved): the else stand-in back as the block's `elseChildren`. */
 export function stripKeys<T extends TopLevelItem[] | InLoopItem[]>(items: T): T {
   const withoutKeys = (nodes: Node[]): Node[] =>
     nodes.map((node) => {
-      const rest: Node = { ...node };
+      const rest: Node & { elseChildren?: Node[] } = { ...node };
       delete rest._key;
-      if (hasChildren(rest)) rest.children = withoutKeys(rest.children);
+      if (hasChildren(rest)) {
+        const stand = rest.children.find((c) => c.type === ELSE);
+        rest.children = withoutKeys(rest.children.filter((c) => c.type !== ELSE));
+        if (stand?.children?.length) rest.elseChildren = withoutKeys(stand.children);
+      }
       return rest;
     });
   return withoutKeys(asNodes(items)) as unknown as T;
@@ -187,13 +201,13 @@ export function canMoveItemTo(
   if (isDescendant(sourceItem, targetItem)) return false;
 
   // Determine target container (parent)
-  let targetParent: (UnitLoopItem | QuestionsItem) | null;
+  let targetParent: (UnitLoopItem | BlockItem) | null;
   if (position === "inside") {
     // Target must be a container with children
-    if (targetItem.type !== "unit_loop" && targetItem.type !== "questions") {
+    if (targetItem.type !== "unit_loop" && targetItem.type !== "block") {
       return false;
     }
-    targetParent = targetItem as UnitLoopItem | QuestionsItem;
+    targetParent = targetItem as UnitLoopItem | BlockItem;
   } else {
     // Destination parent is target's parent
     targetParent = findParent(items, targetKey || itemName(targetItem) || "");
@@ -211,7 +225,7 @@ export function canMoveItemTo(
     // Loops cannot be inside another loop
     if (isTargetInLoop) return false;
     if (position === "inside" && targetItem.type === "unit_loop") return false;
-  } else if (sourceItem.type === "questions") {
+  } else if (sourceItem.type === "block") {
     const sourceDescendants = flattenTree(childrenOf(sourceItem));
     const hasInLoopOnly = sourceDescendants.some(isLoopOnlyQuestion);
     const hasTopOnly = sourceDescendants.some((d) => d.type === "unit_loop" || d.type === "computed");
@@ -229,7 +243,7 @@ export function canMoveToRootEnd(items: TopLevelItem[], sourceIdentifier: string
   if (!sourceItem) return false;
   if (items[items.length - 1] === sourceItem) return false;
   if (isLoopOnlyQuestion(sourceItem)) return false;
-  if (sourceItem.type === "questions" && flattenTree(childrenOf(sourceItem)).some(isLoopOnlyQuestion)) return false;
+  if (sourceItem.type === "block" && flattenTree(childrenOf(sourceItem)).some(isLoopOnlyQuestion)) return false;
   return true;
 }
 

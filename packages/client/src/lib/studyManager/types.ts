@@ -34,7 +34,7 @@ export interface NavigationUnitQuestion {
 export interface NavigationPhase {
   index: number;
   name: string;
-  type: "unit_loop" | "questions" | "question" | "end";
+  type: "unit_loop" | "block" | "question" | "end";
   label: string;
   isCurrent: boolean;
   isCompleted: boolean;

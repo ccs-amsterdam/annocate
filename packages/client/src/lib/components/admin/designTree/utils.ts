@@ -35,10 +35,10 @@ function placeOf(items: readonly TopLevelItem[], position: TreePosition): "loop"
  */
 export function insertableTypesAt(items: TopLevelItem[], position: TreePosition): ItemType[] {
   const place = placeOf(items, position);
-  if (place === "loop") return ["question", "questions", "end"];
-  if (place === "block") return ["question", "computed", "questions", "end"];
+  if (place === "loop") return ["question", "block", "end"];
+  if (place === "block") return ["question", "computed", "block", "end"];
   // (The Study entry is always there, first: never added)
-  return ["questions", "unit_loop"];
+  return ["question", "computed", "block", "unit_loop"];
 }
 
 /** The key of the "At the end" row: the study's normal end (the Study entry's `end`), not an item. */

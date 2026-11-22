@@ -1,5 +1,5 @@
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
-import { inBlocks, type AnnotationRow, type CoderProgress, type StudyResponse } from "@annotinder/contracts";
+import type { AnnotationRow, CoderProgress, StudyResponse } from "@annotinder/contracts";
 
 /** The researcher API, as the development user (the test server takes development auth headers). */
 export const DEV_HEADERS = {
@@ -9,10 +9,14 @@ export const DEV_HEADERS = {
 };
 
 export async function api<T>(request: APIRequestContext, method: string, path: string, data?: unknown): Promise<T> {
-  // A design written as a flat list: its loose top-level items in questions blocks (contracts `inBlocks`)
+  // A design's top-level end items go in a block
+  const items = (data as { items?: unknown })?.items;
   const body =
-    method === "POST" && /\/design$/.test(path) && Array.isArray((data as { items?: unknown })?.items)
-      ? { ...(data as object), items: inBlocks((data as { items: unknown[] }).items) }
+    method === "POST" && /\/design$/.test(path) && Array.isArray(items)
+      ? {
+          ...(data as object),
+          items: items.map((i) => ((i as { type?: string }).type === "end" ? { type: "block", children: [i] } : i)),
+        }
       : data;
   const res = await request.fetch(`/api${path}`, {
     method,

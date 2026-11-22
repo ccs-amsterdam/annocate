@@ -7,7 +7,7 @@ describe("release and design files", () => {
       {
         items: [
           {
-            type: "questions",
+            type: "block",
             children: [{ type: "question", name: "q", variable: { type: "confirm", question: "Ok?" } }],
           },
         ],

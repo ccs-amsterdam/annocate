@@ -100,17 +100,17 @@ export function ItemForm({
             client={client}
             onChange={onChange}
           />
-        ) : item.type === "questions" || item.type === "unit_loop" ? (
+        ) : item.type === "block" || item.type === "unit_loop" ? (
           // Blocks and unit loops have no name: an optional label shows in the tree (and for loops in exports).
           <div className="flex flex-col gap-1.5">
             <span className="flex items-center gap-1.5">
               <label className="text-xs font-semibold text-foreground">Label (optional)</label>
-              <HelpButton topic={item.type === "questions" ? "conditions" : "unit-loops"} label="Help" />
+              <HelpButton topic={item.type === "block" ? "conditions" : "unit-loops"} label="Help" />
             </span>
             <Input
               value={item.label ?? ""}
               onChange={(e) => onChange({ ...item, label: e.target.value || undefined })}
-              placeholder={item.type === "questions" ? "e.g. Demographics" : "e.g. News items"}
+              placeholder={item.type === "block" ? "e.g. Demographics" : "e.g. News items"}
             />
           </div>
         ) : (
@@ -223,7 +223,7 @@ export function ItemForm({
 
         {item.type === "end" && <EndItemFields item={item as EndItem} onChange={onChange} issues={validationIssues} />}
 
-        {(item.type === "questions" || item.type === "unit_loop") && (
+        {(item.type === "block" || item.type === "unit_loop") && (
           // A block's or loop's condition: optional (absent: always shown)
           <div className="flex flex-col gap-1.5 border-t border-border/60 pt-4">
             <label className="flex items-center gap-2 text-xs font-semibold text-foreground">
@@ -236,7 +236,7 @@ export function ItemForm({
                   onChange(next);
                 }}
               />
-              {item.type === "questions" ? "Only show these questions if…" : "Only give coders this loop if…"}
+              {item.type === "block" ? "Only show these questions if…" : "Only give coders this loop if…"}
               <HelpButton topic="conditions" label="Help: conditions" />
             </label>
             {item.condition && (

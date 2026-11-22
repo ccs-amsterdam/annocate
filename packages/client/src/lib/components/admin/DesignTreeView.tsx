@@ -16,7 +16,6 @@ import { DesignTreeProvider, type DesignTreeState } from "./designTree/context";
 import { BlockList } from "./designTree/TreeList";
 import { AddItemMenu } from "./designTree/AddItemMenu";
 import { getItemKey, insertableTypesAt, STUDY_END_KEY, type ItemType } from "./designTree/utils";
-import { TreeRow } from "./designTree/TreeRow";
 import { cn } from "cn";
 
 interface DesignTreeViewProps {
@@ -24,6 +23,8 @@ interface DesignTreeViewProps {
   selected: string | null;
   onSelect: (identifier: string) => void;
   onAdd: (position: TreePosition, type: ItemType) => void;
+  /** A block's else items begin (with a first question). */
+  onAddElse: (blockKey: string) => void;
   /** Deletes items (asking first); returns whether they were deleted. */
   onDelete: (keys: string[]) => boolean;
   onMove: (keys: string[], position: TreePosition) => void;
@@ -56,6 +57,7 @@ export function DesignTreeView({
   selected,
   onSelect,
   onAdd,
+  onAddElse,
   onDelete,
   onMove,
   validationIssues = [],
@@ -103,6 +105,7 @@ export function DesignTreeView({
     isChecked: (key) => isInSelection(items, checked, key),
 
     addPositions: (key) => addPositions(items, key),
+    addElse: onAddElse,
     addAt: (position, type) => {
       setPreview([]);
       onAdd(position, type);
@@ -168,11 +171,11 @@ export function DesignTreeView({
             </>
           ) : (
             <AddItemMenu
-              label="Add block"
+              label="Add item"
               options={[
                 {
                   position: end,
-                  label: shown.length ? "At the end" : "First block",
+                  label: shown.length ? "At the end" : "First item",
                   types: insertableTypesAt(items, end),
                 },
                 ...(top ? [{ position: top, label: "At the start", types: insertableTypesAt(items, top) }] : []),
@@ -218,22 +221,22 @@ function StudyEndRow({
       : end?.message
         ? "a message"
         : "the default thank-you";
+  // Like the Study entry's buttons above the tree: the study's own end, not an item
   return (
-    <TreeRow className="mt-1 border-t border-border/60 pt-1">
-      <span className="mr-px h-3.5 w-3.5 shrink-0" aria-hidden />
+    <div className="mt-3 px-2">
       <button
         type="button"
         onClick={onSelect}
+        title="What coders see when they get through the whole design, and where they are sent"
         className={cn(
-          "flex min-w-0 flex-1 cursor-pointer items-center gap-1 rounded pl-1 text-left",
-          selected && "bg-wood/15",
+          "inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1 rounded-md border border-border px-1.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:border-wood/50 hover:text-foreground",
+          selected && "bg-wood/15 text-foreground",
         )}
       >
-        <span className="w-4 shrink-0" />
-        <Flag className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className={cn("truncate px-1.5 py-0.5", selected ? "font-semibold" : "font-medium")}>At the end</span>
-        <span className="truncate text-xs text-muted-foreground">{summary}</span>
+        <Flag className="h-3.5 w-3.5 shrink-0" />
+        <span className="shrink-0">At the end</span>
+        <span className="truncate font-normal text-muted-foreground">· {summary}</span>
       </button>
-    </TreeRow>
+    </div>
   );
 }

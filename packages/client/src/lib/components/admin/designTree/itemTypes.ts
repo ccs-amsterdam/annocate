@@ -30,9 +30,10 @@ interface ItemTypeInfo {
 }
 
 export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
-  questions: {
-    label: "Questions block",
-    description: "Questions together, optionally with a label (e.g. Demographics) and a condition",
+  block: {
+    label: "Block (if/else)",
+    description:
+      "Items together, with an optional label (e.g. Demographics); with a condition, only shown if it holds, else its else items",
     icon: ListChecks,
     color: "text-secondary-dark",
     blockClass: "",

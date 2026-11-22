@@ -7,23 +7,46 @@ import {
   type InLoopItem,
   type UnitData,
   type UnitLoopItem,
-  type QuestionsItem,
+  type BlockItem,
   type VariableValue,
 } from "@annotinder/contracts";
 import { evaluateCondition } from "./conditions";
 import type { ExpressionCache } from "./expressionCache";
 
 // Helpers over the tree of design items (items with `children`: unit
-// loops and questions blocks), shared by the coding runtime and the editor.
+// loops and blocks, which may have `elseChildren`), shared by the coding
+// runtime and the editor. The editor holds a block's else items as a
+// stand-in container after the block's own items (`ELSE`, itemEdit.ts
+// `ensureKeys`); paths stay as saved (`elseChildren`).
+
+/** The type of the editor's stand-in for a block's else items. */
+export const ELSE = "else";
+
+/** Whether an item is the editor's stand-in for a block's else items. */
+export const isElse = (item: unknown): boolean => (item as { type?: unknown } | null)?.type === ELSE;
+
+/** The lists an item holds: `children`, and a block's `elseChildren` (as saved). */
+function listsOf(item: unknown): { key: "children" | "elseChildren"; list: (TopLevelItem | InLoopItem)[] }[] {
+  const it = item as { children?: unknown; elseChildren?: unknown };
+  const out: { key: "children" | "elseChildren"; list: (TopLevelItem | InLoopItem)[] }[] = [];
+  if (Array.isArray(it.children)) out.push({ key: "children", list: it.children as (TopLevelItem | InLoopItem)[] });
+  if (Array.isArray(it.elseChildren))
+    out.push({ key: "elseChildren", list: it.elseChildren as (TopLevelItem | InLoopItem)[] });
+  return out;
+}
+
+/** The items inside a block (its items and else items) or the editor's else stand-in; null for other items. */
+export function blockInner(item: DesignItem): DesignItem[] | null {
+  if (item.type !== "block" && !isElse(item)) return null;
+  return listsOf(item).flatMap((l) => l.list) as DesignItem[];
+}
 
 /** Flattens all items in the tree into a single array in document order. */
 export function flattenTree(items: (TopLevelItem | InLoopItem)[]): DesignItem[] {
   const result: DesignItem[] = [];
   for (const item of items) {
     result.push(item);
-    if ("children" in item && Array.isArray(item.children)) {
-      result.push(...flattenTree(item.children));
-    }
+    for (const { list } of listsOf(item)) result.push(...flattenTree(list));
   }
   return result;
 }
@@ -37,8 +60,8 @@ export function keyOf(item: DesignItem | TopLevelItem | InLoopItem): string | un
 export function findItem(items: (TopLevelItem | InLoopItem)[], identifier: string): DesignItem | null {
   for (const item of items) {
     if (keyOf(item) === identifier || itemName(item) === identifier) return item;
-    if ("children" in item && Array.isArray(item.children)) {
-      const found = findItem(item.children, identifier);
+    for (const { list } of listsOf(item)) {
+      const found = findItem(list, identifier);
       if (found) return found;
     }
   }
@@ -49,27 +72,37 @@ export function findItem(items: (TopLevelItem | InLoopItem)[], identifier: strin
 export function findParent(
   items: (TopLevelItem | InLoopItem)[],
   identifier: string,
-): (UnitLoopItem | QuestionsItem) | null {
+): (UnitLoopItem | BlockItem) | null {
   for (const item of items) {
-    if ("children" in item && Array.isArray(item.children)) {
-      if (item.children.some((child) => keyOf(child) === identifier || itemName(child) === identifier)) {
-        return item as UnitLoopItem | QuestionsItem;
+    for (const { list } of listsOf(item)) {
+      if (list.some((child) => keyOf(child) === identifier || itemName(child) === identifier)) {
+        return item as UnitLoopItem | BlockItem;
       }
-      const found = findParent(item.children, identifier);
+      const found = findParent(list, identifier);
       if (found) return found;
     }
   }
   return null;
 }
 
-/** The path of an item (by name or _key), as in validation issues: `[1, "children", 0]`. */
+/**
+ * The path of an item (by name or _key), as in validation issues (on the
+ * saved items): `[1, "children", 0]`, a block's else item `[1, "elseChildren", 0]`.
+ */
 export function itemPath(items: (TopLevelItem | InLoopItem)[], identifier: string): (string | number)[] | null {
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     if (keyOf(item) === identifier || itemName(item) === identifier) return [i];
-    if ("children" in item && Array.isArray(item.children)) {
-      const inner = itemPath(item.children, identifier);
-      if (inner) return [i, "children", ...inner];
+    for (const { key, list } of listsOf(item)) {
+      // The editor's else stand-in: its items are the block's elseChildren
+      const stand = list.find(isElse) as { children: (TopLevelItem | InLoopItem)[] } | undefined;
+      const inner = itemPath(
+        list.filter((c) => !isElse(c)),
+        identifier,
+      );
+      if (inner) return [i, key, ...inner];
+      const inElse = stand ? itemPath(stand.children, identifier) : null;
+      if (inElse) return [i, "elseChildren", ...inElse];
     }
   }
   return null;
@@ -89,8 +122,16 @@ export function itemAtPath(items: (TopLevelItem | InLoopItem)[], path: (string |
     const item = list[index] as unknown;
     if (!item || typeof item !== "object" || !("type" in item)) break;
     found = item as DesignItem;
-    if (path[i + 1] !== "children") break;
-    list = (item as { children?: unknown }).children;
+    const next = path[i + 1];
+    if (next !== "children" && next !== "elseChildren") break;
+    const children = (item as { children?: unknown[] }).children ?? [];
+    const own = children.filter((c) => !isElse(c));
+    // Saved items have elseChildren; the editor's, an else stand-in among the children
+    list =
+      next === "children"
+        ? own
+        : ((item as { elseChildren?: unknown }).elseChildren ??
+          (children.find(isElse) as { children?: unknown } | undefined)?.children);
     i++;
   }
   return found;
@@ -178,11 +219,12 @@ async function walkSteps(
   steps: DesignItem[],
 ): Promise<boolean> {
   for (const node of nodes) {
-    if (node.type === "questions") {
+    if (node.type === "block") {
       const scope = buildScope(ctx.questions, visible, unit?.data, ctx.session);
-      if (await evaluateCondition(node.condition, scope, ctx.cache, `condition:${node.condition?.script}`)) {
-        if (await walkSteps(node.children, answers, visible, ctx, unit, steps)) return true;
-      }
+      // Its items if the condition holds (none: always), else its else items
+      const holds = await evaluateCondition(node.condition, scope, ctx.cache, `condition:${node.condition?.script}`);
+      const branch = holds ? node.children : (node.elseChildren ?? []);
+      if (await walkSteps(branch as typeof nodes, answers, visible, ctx, unit, steps)) return true;
     } else if (node.type === "unit_loop") {
       // A loop with a condition: only if it holds (on coder-level answers)
       const scope = buildScope(ctx.questions, visible, undefined, ctx.session);

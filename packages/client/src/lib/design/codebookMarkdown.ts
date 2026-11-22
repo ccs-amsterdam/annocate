@@ -76,12 +76,18 @@ function items(list: DesignItem[], depth: number, keys: LoopKeys): string[] {
   const out: string[] = [];
   for (const item of list) {
     if (item.type === "session") continue;
-    if (item.type === "questions") {
+    if (item.type === "block") {
       const label = item.label ? `${item.label}: ` : "";
       out.push(
-        `*Only if ${label}\`${item.condition?.script ?? ""}\`*`,
-        "",
+        ...(item.condition
+          ? [`*Only if ${label}\`${item.condition.script}\`*`, ""]
+          : label
+            ? [`*${item.label}*`, ""]
+            : []),
         ...items((item.children ?? []) as DesignItem[], depth, keys),
+        ...(item.elseChildren?.length
+          ? ["*Otherwise:*", "", ...items(item.elseChildren as DesignItem[], depth, keys)]
+          : []),
       );
     } else if (item.type === "end") {
       out.push(

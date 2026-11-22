@@ -12,8 +12,8 @@ const ItemBaseSchema = z.object({
 });
 
 /**
- * Questions blocks have no name (nothing refers to them): an optional label,
- * for the researcher (e.g. "Demographics"), shown in the editor.
+ * Blocks have no name (nothing refers to them): an optional label, for the
+ * researcher (e.g. "Demographics"), shown in the editor.
  */
 const BlockLabelSchema = z.string().optional().describe("Shown in the editor, e.g. Demographics");
 
@@ -107,6 +107,7 @@ export function redirectSettings(items: readonly unknown[]): string[] {
       const end = item.type === "session" ? (item as { end?: { redirectSetting?: unknown } }).end : undefined;
       if (typeof end?.redirectSetting === "string") names.add(end.redirectSetting);
       walk(item.children);
+      walk((item as { elseChildren?: unknown }).elseChildren);
     }
   };
   walk(items);
@@ -119,10 +120,11 @@ export function redirectSettings(items: readonly unknown[]): string[] {
  */
 export function resolveRedirects<T>(items: readonly T[], urls: Record<string, string>): T[] {
   return items.map((raw) => {
-    const item = raw as { type?: unknown; redirectSetting?: unknown; children?: unknown };
+    const item = raw as { type?: unknown; redirectSetting?: unknown; children?: unknown; elseChildren?: unknown };
     if (!item || typeof item !== "object") return raw;
     let next = item;
     if (Array.isArray(item.children)) next = { ...next, children: resolveRedirects(item.children, urls) };
+    if (Array.isArray(item.elseChildren)) next = { ...next, elseChildren: resolveRedirects(item.elseChildren, urls) };
     if (item.type === "end" && typeof item.redirectSetting === "string") {
       const resolved: Record<string, unknown> = { ...next };
       delete resolved.redirectSetting;
@@ -155,35 +157,37 @@ export type QuestionItem = z.infer<typeof QuestionItemSchema>;
  * Items that can appear inside a unit_loop:
  * - Question items (can include span, relation, categorical, etc.)
  * - End items
- * - Questions blocks (whose children can only be in-loop items)
+ * - Blocks (whose children can only be in-loop items)
  */
 export type InLoopItem =
   | InLoopQuestionItem
   | EndItem
   | {
-      type: "questions";
+      type: "block";
       label?: string;
       condition?: Condition;
       children: InLoopItem[];
+      elseChildren?: InLoopItem[];
     };
 
-export const InLoopQuestionsItemSchema: z.ZodType<Extract<InLoopItem, { type: "questions" }>> = z.lazy(() =>
+export const InLoopBlockItemSchema: z.ZodType<Extract<InLoopItem, { type: "block" }>> = z.lazy(() =>
   z.object({
-    type: z.literal("questions"),
+    type: z.literal("block"),
     label: BlockLabelSchema,
     condition: BlockConditionSchema,
-    children: z.array(InLoopItemSchema).min(1, "A questions block must have at least one item"),
+    children: z.array(InLoopItemSchema).min(1, "A block must have at least one item"),
+    elseChildren: z.array(InLoopItemSchema).min(1).optional().describe("Shown instead when the condition doesn't hold"),
   }),
 );
 
 export const InLoopItemSchema: z.ZodType<InLoopItem> = z.lazy(() =>
-  z.union([InLoopQuestionItemSchema, EndItemSchema, InLoopQuestionsItemSchema]),
+  z.union([InLoopQuestionItemSchema, EndItemSchema, InLoopBlockItemSchema]),
 );
 
 /**
  * A `for unit in ...` loop. Which of the coder's units it includes is
  * described by `units` (unitLoop.ts) and `order`. Children can only be
- * in-loop items (questions, end items, questions blocks): no nested loops.
+ * in-loop items (questions, end items, blocks): no nested loops.
  * With a `condition`, coders only get the loop if it holds.
  */
 export const UnitLoopItemSchema = z.object({
@@ -200,10 +204,9 @@ export const UnitLoopItemSchema = z.object({
 export type UnitLoopItem = z.infer<typeof UnitLoopItemSchema>;
 
 /**
- * Items outside unit loops. The design's top level holds only questions
- * blocks and unit loops (and the Study entry, first: `session.ts`); a
- * questions block holds questions, computed items, end items and nested
- * questions blocks (validation.ts checks where each may be).
+ * Items outside unit loops: questions, computed items, blocks, unit loops
+ * (only at the top level), end items (only in a block) and the Study entry
+ * (first: `session.ts`). validation.ts checks where each may be.
  */
 export type TopLevelItem =
   | TopLevelQuestionItem
@@ -212,18 +215,29 @@ export type TopLevelItem =
   | EndItem
   | SessionItem
   | {
-      type: "questions";
+      type: "block";
       label?: string;
       condition?: Condition;
       children: TopLevelItem[];
+      elseChildren?: TopLevelItem[];
     };
 
-export const TopLevelQuestionsItemSchema: z.ZodType<Extract<TopLevelItem, { type: "questions" }>> = z.lazy(() =>
+/**
+ * A block: items together, for the researcher (an optional label) and to
+ * show them only if a condition holds (`condition`), with `elseChildren`
+ * shown instead when it doesn't.
+ */
+export const TopLevelBlockItemSchema: z.ZodType<Extract<TopLevelItem, { type: "block" }>> = z.lazy(() =>
   z.object({
-    type: z.literal("questions"),
+    type: z.literal("block"),
     label: BlockLabelSchema,
     condition: BlockConditionSchema,
-    children: z.array(TopLevelItemSchema).min(1, "A questions block must have at least one item"),
+    children: z.array(TopLevelItemSchema).min(1, "A block must have at least one item"),
+    elseChildren: z
+      .array(TopLevelItemSchema)
+      .min(1)
+      .optional()
+      .describe("Shown instead when the condition doesn't hold"),
   }),
 );
 
@@ -234,21 +248,26 @@ export const TopLevelItemSchema: z.ZodType<TopLevelItem> = z.lazy(() =>
     UnitLoopItemSchema,
     EndItemSchema,
     SessionItemSchema,
-    TopLevelQuestionsItemSchema,
+    TopLevelBlockItemSchema,
   ]),
 );
 
-/** Any questions block (outside or inside a loop). */
-export type QuestionsItem = Extract<TopLevelItem | InLoopItem, { type: "questions" }>;
+/** Any block (outside or inside a loop). */
+export type BlockItem = Extract<TopLevelItem | InLoopItem, { type: "block" }>;
+
+/** The items a block or loop holds: its children, and a block's else children after them. */
+export function innerItems(item: { children?: readonly unknown[]; elseChildren?: readonly unknown[] }): DesignItem[] {
+  return [...(item.children ?? []), ...(item.elseChildren ?? [])] as DesignItem[];
+}
 
 /**
  * Any design item anywhere in the tree.
  */
 export type DesignItem = TopLevelItem | InLoopItem;
 
-/** An item's name; questions blocks, unit loops and the Study entry have none. */
+/** An item's name; blocks, unit loops and the Study entry have none. */
 export function itemName(item: DesignItem): string | undefined {
-  return item.type === "questions" || item.type === "unit_loop" || item.type === "session" ? undefined : item.name;
+  return item.type === "block" || item.type === "unit_loop" || item.type === "session" ? undefined : item.name;
 }
 
 /**
@@ -265,36 +284,11 @@ export function unitLoops(items: readonly unknown[]): { key: string; loop: UnitL
       const item = raw as Partial<DesignItem> | null;
       if (!item || typeof item !== "object") continue;
       if (item.type === "unit_loop") loops.push({ key: String(loops.length + 1), loop: item as UnitLoopItem });
-      else if (item.type === "questions") walk(item.children);
+      else if (item.type === "block") walk(innerItems(item));
     }
   };
   walk(items);
   return loops;
-}
-
-/**
- * Items with the loose ones at the top level (questions, computed and end
- * items) put in questions blocks: each run of them in one block. Session
- * items, questions blocks and unit loops stay as they are. For designs
- * written as a flat list (the setup wizard).
- */
-export function inBlocks<T>(items: readonly T[]): T[] {
-  const out: T[] = [];
-  let run: T[] | null = null;
-  for (const item of items) {
-    const type = (item as { type?: unknown } | null)?.type;
-    if (type === "session" || type === "questions" || type === "unit_loop") {
-      run = null;
-      out.push(item);
-    } else {
-      if (!run) {
-        run = [];
-        out.push({ type: "questions", children: run } as T);
-      }
-      run.push(item);
-    }
-  }
-  return out;
 }
 
 /** How a loop is called in the editor, progress and exports: its label, or "Unit loop <key>". */

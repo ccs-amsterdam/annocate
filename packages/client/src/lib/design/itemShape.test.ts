@@ -6,7 +6,7 @@ describe("item shape", () => {
   it("accepts lists of items the editor can show, checking children", () => {
     expect(itemsShapeError([{ name: "q", type: "question", variable: { type: "confirm" } }])).toBeNull();
     expect(itemsShapeError({})).toMatch(/list of items/);
-    expect(itemsShapeError([{ type: "questions", children: [{ name: "x", type: "question" }] }])).toBe(
+    expect(itemsShapeError([{ type: "block", children: [{ name: "x", type: "question" }] }])).toBe(
       `'x': a question needs a "variable" with a "type"`,
     );
   });
@@ -38,7 +38,7 @@ describe("item shape", () => {
   it("keeps the keys of conditions at the same place", () => {
     const cond = (key: string | undefined, children: object[]) => ({
       ...(key ? { _key: key } : {}),
-      type: "questions",
+      type: "block",
       condition: { script: "true" },
       children,
     });
@@ -58,7 +58,7 @@ describe("item shape", () => {
   });
 
   it("doesn't ask conditions for a name", () => {
-    expect(itemsShapeError([{ type: "questions", condition: { script: "true" }, children: [] }])).toBeNull();
+    expect(itemsShapeError([{ type: "block", condition: { script: "true" }, children: [] }])).toBeNull();
   });
 });
 
