@@ -21,6 +21,7 @@ import {
   DeleteCodersResponseSchema,
 } from "../coder.js";
 import { StudyOverviewSchema } from "../overview.js";
+import { ResultsAgreementSchema, ResultsAnswersSchema } from "../results.js";
 import {
   ApiKeyCreatedSchema,
   ApiKeyResponseSchema,
@@ -308,6 +309,20 @@ export const researcherEndpoints = {
     query: UnitVersionsQuerySchema,
     request: z.void(),
     response: UnitVersionPageSchema,
+  },
+  /** How coders answered each question so far (results.ts). */
+  getResultsAnswers: {
+    method: "GET",
+    path: "/study/:studyId/results/answers",
+    request: z.void(),
+    response: ResultsAnswersSchema,
+  },
+  /** Agreement per unit-loop question so far (results.ts). */
+  getResultsAgreement: {
+    method: "GET",
+    path: "/study/:studyId/results/agreement",
+    request: z.void(),
+    response: ResultsAgreementSchema,
   },
   /** The devices coders used, for the export (`deviceId` on annotations). */
   listDevices: { method: "GET", path: "/study/:studyId/devices", request: z.void(), response: z.array(DeviceSchema) },

@@ -21,6 +21,7 @@ import type { Store } from "./runtime/store.js";
 import { HttpError } from "./shared/http.js";
 import { annotationsReset } from "./researcher/annotations.reset.js";
 import { annotations } from "./researcher/annotations.js";
+import { results } from "./researcher/results.js";
 import { me } from "./researcher/me.js";
 import { admin } from "./researcher/admin.js";
 import { login } from "./researcher/login.js";
@@ -199,6 +200,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
     deploymentPreview,
     annotationsReset,
     annotations,
+    results,
   ])
     api.route("/", routes(server));
   // Anything else under /api: not found, as JSON (never the app)

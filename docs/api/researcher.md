@@ -116,6 +116,8 @@ work with an API key (403 `not_with_api_key`).
 | [listAnnotations](#listannotations) | `GET /study/:studyId/annotations` | READ | query `AnnotationsQuerySchema` | `AnnotationPageSchema` |
 | [listUnitVersions](#listunitversions) | `GET /study/:studyId/unit-versions` | READ | query `UnitVersionsQuerySchema` | `UnitVersionPageSchema` |
 | [listDevices](#listdevices) | `GET /study/:studyId/devices` | READ | – | `DeviceSchema[]` |
+| [getResultsAnswers](#getresultsanswers) | `GET /study/:studyId/results/answers` | READ | – | `ResultsAnswersSchema` |
+| [getResultsAgreement](#getresultsagreement) | `GET /study/:studyId/results/agreement` | READ | – | `ResultsAgreementSchema` |
 
 ## Account
 
@@ -678,4 +680,25 @@ annotations. Join answers on `unitVersionId`.
 (`coder-identity.md` §4), each with its coder, coarse `type` (phone,
 tablet, desktop), `browser`, `os`, and when it joined the session. Answers
 carry the device they were given on (`deviceId` in `listAnnotations`).
+
+### getResultsAnswers
+
+`GET /study/:studyId/results/answers` → `ResultsAnswersSchema`: per question
+of the deployed design (a scale: per item), the answers given and skipped,
+and per value how often it was given (several answers count each; span and
+relation questions per label). Live answers only. Schemas:
+[`contracts/src/results.ts`](../../packages/contracts/src/results.ts);
+implementation: [`researcher/results.ts`](../../packages/server/src/researcher/results.ts).
+
+### getResultsAgreement
+
+`GET /study/:studyId/results/agreement` → `ResultsAgreementSchema`: per
+unit-loop question, over units two or more coders answered: Krippendorff's
+alpha (nominal, ordinal or interval, from the answer type), percent
+agreement, and per coder their agreement with the others and their Cohen's
+kappa (averaged over the coders they share units with). A question with
+several answers has a row per option (given or not); a span question a row
+per label, over the words of each text (labelled or not). Special options
+("don't know") are left out of ordinal and interval alpha. Measures:
+[`contracts/src/agreement.ts`](../../packages/contracts/src/agreement.ts).
 

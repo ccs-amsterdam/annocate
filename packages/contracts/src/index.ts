@@ -39,6 +39,8 @@ export * from "./overview.js";
 export * from "./account.js";
 export * from "./admin.js";
 export * from "./annotations.js";
+export * from "./agreement.js";
+export * from "./results.js";
 
 export * from "./endpoints/index.js";
 
