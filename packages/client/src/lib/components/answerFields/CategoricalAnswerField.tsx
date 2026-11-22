@@ -21,9 +21,10 @@ import type { AnswerFieldProps, QuestionVariable } from "./types";
 type CategoricalVariable = Extract<QuestionVariable, { type: "nominal" | "ordinal" }>;
 
 /**
- * Nominal and ordinal questions: pick one (or with `multiple`, several) of the options, laid out as the
- * question says or as `auto` picks (resolveLayout). One answer is given on
- * the first click; several are confirmed with Continue.
+ * Nominal and ordinal questions: pick one (or with `multiple`, several) of
+ * the options, laid out as the question says or as `auto` picks (contracts
+ * `resolveLayout`). One answer is given on the first click; several are
+ * confirmed with Continue.
  */
 export function CategoricalAnswerField({ variable, onAnswer, initialValue }: AnswerFieldProps<CategoricalVariable>) {
   const multiple = variable.type === "nominal" && Boolean(variable.multiple);
@@ -62,7 +63,6 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
     onAnswer(buildValues(values.map((value) => ({ value }))));
   };
 
-  // The options for the keyboard (a dropdown has its own filter box)
   // Where each option is (row and column), for the numpad: rows and grids; flex wraps unpredictably
   const posOf = (i: number) =>
     layout === "row" || layout === "compact"
@@ -70,6 +70,7 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
       : layout === "grid"
         ? { row: Math.floor(i / columns), col: i % columns }
         : undefined;
+  // The options for the keyboard (a dropdown has its own filter box)
   const targets =
     layout === "dropdown"
       ? null

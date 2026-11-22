@@ -37,6 +37,7 @@ export const PRIORITY = { base: -10, field: 0, editor: 5, menu: 10 } as const;
 export class KeyController {
   private scopes: Scope[] = [];
   private next = 0;
+  private focusRequested = false;
 
   /** Adds a scope; returns its removal. */
   add(handler: KeyHandler, options: ScopeOptions = {}): () => void {
@@ -46,8 +47,6 @@ export class KeyController {
       this.scopes = this.scopes.filter((s) => s !== scope);
     };
   }
-
-  private focusRequested = false;
 
   /** The next question's field focuses its chosen target when it appears (after going back with the keyboard). */
   requestFocus(): void {

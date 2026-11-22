@@ -6,25 +6,22 @@ export interface PendingSpan {
   field?: string;
   slices: SpanSlice[];
   anchorOffset?: number;
-  /** When clicking an existing span, contains all overlapping span IDs on that token/word */
+  /** A clicked span: the ids of all the spans on that word. */
   existingSpanIds?: string[];
-  /** When editing/deleting an existing span, points to its specific ID */
+  /** A span to open for editing at once. */
   targetSpanId?: string;
   isEditingExisting?: boolean;
-  /** UI mode: "create" (assign code to new selection) or "manage" (menu of existing labels on this word) */
+  /** `create`: a new selection waiting for its label; `manage`: the menu of the spans on a clicked word. */
   mode?: "create" | "manage";
 }
 
 /**
- * Ambient state for the current unit's span annotations. Bridges the answer
- * form (which receives the coder's code choice and renders via
- * `Question`/`SpanAnswerField`) and the interactive text selection that has
- * to happen inside `UnitFields`' rendered layout, for the SAME unit-data
- * fields (docs/client.md §4: annotation should be integrated with the
- * question flow, not a separate "annotation mode").
- *
- * `StudyRunner` mounts one `SpanAnnotationProvider` wrapping both `UnitFields`
- * and the answer form whenever the current step is a `span` question.
+ * The current unit's spans, shared by the text the coder selects in (the
+ * unit's layout, `SelectableText`) and the span question's answer field
+ * (`SpanAnswerField`): annotating is part of answering the question, not a
+ * separate mode (docs/client.md §4 "Span and relation answers").
+ * `StudyRunner` puts one `SpanAnnotationProvider` around the unit and the
+ * answer pane; outside a span question it has no fields.
  */
 export interface SpanAnnotationState {
   /** The unit fields the current span question selects in. */
@@ -45,10 +42,10 @@ export interface SpanAnnotationState {
   overlapsExisting: (slices: SpanSlice[]) => boolean;
   /** True if an identical span (same value and exact same slices) exists. */
   hasExactSpan: (slices: SpanSlice[], value: string) => boolean;
-  /** True when the list of all labeled spans is open in place of the answer form */
+  /** The list of all the unit's spans is open instead of the answer form. */
   isViewingAllLabels: boolean;
   setIsViewingAllLabels: (viewing: boolean) => void;
-  /** The ID of a span focused for inspection/editing (e.g. from the all labels list) */
+  /** A span being edited (e.g. opened from the list): highlighted and scrolled to in the text. */
   focusedSpanId: string | null;
   setFocusedSpanId: (id: string | null) => void;
 }

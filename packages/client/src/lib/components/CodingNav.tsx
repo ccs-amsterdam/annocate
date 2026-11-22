@@ -16,7 +16,7 @@ import {
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import type { NavigationPhase, StudyManagerNavigation } from "../studyManager/StudyManager";
+import type { NavigationPhase, StudyManagerNavigation } from "../studyManager/types";
 
 // The left side of the coding screen's top bar (docs/client.md §2):
 // - the menu (☰): the study's questions and unit loops the coder got to,

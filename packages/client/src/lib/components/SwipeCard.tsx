@@ -6,8 +6,9 @@ import { SwipeContext, useSwipe, type SwipeDirection, type SwipeState } from "./
 // card outside a loop) is dragged left, right or up, from anywhere on the
 // surface around it (the whole coding area); the option for that
 // direction shows in the middle of the surface while dragging (it stays
-// put while the card moves, so it can be read). Released past a threshold (or flung)
-// it flies off and the option is the answer; otherwise it springs back.
+// put while the card moves, so it can be read). Released past a threshold
+// (or flung) it flies off and the option is the answer; otherwise it
+// springs back.
 // Buttons and arrow keys fly it off the same way (`useSwipe`).
 
 /** How far the card must be dragged to answer: a share of its width (sideways), or pixels (up). */
@@ -27,6 +28,12 @@ function optionFor(options: NominalOption[], direction: SwipeDirection): Nominal
 
 function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** Where a drag moves the card: only along the swipe's axis (sideways, or up), the other axis damped. */
+function cardOffset(drag: { x: number; y: number }, hasUp: boolean): { x: number; y: number } {
+  const sideways = Math.abs(drag.x) >= Math.abs(drag.y) || !hasUp;
+  return sideways ? { x: drag.x, y: drag.y * 0.2 } : { x: drag.x * 0.2, y: Math.min(0, drag.y) };
 }
 
 /** The card's transform for an offset: moved, and tilted when moved sideways. */
@@ -220,10 +227,7 @@ export function SwipeSurface({ children, className = "" }: { children: ReactNode
       e.currentTarget.setPointerCapture(e.pointerId);
       el.style.transition = "none";
     }
-    // Only the axis of the swipe moves the card: sideways, or up.
-    const sideways = Math.abs(d.x) >= Math.abs(d.y) || !hasUp;
-    const x = sideways ? d.x : d.x * 0.2;
-    const y = sideways ? d.y * 0.2 : Math.min(0, d.y);
+    const { x, y } = cardOffset(d, hasUp);
     el.style.transform = transformFor(x, y);
     const direction = directionOf(x, y);
     const strength = direction === "up" ? -y / UP_DISTANCE : Math.abs(x) / (el.offsetWidth * SIDEWAYS_SHARE);
@@ -236,9 +240,7 @@ export function SwipeSurface({ children, className = "" }: { children: ReactNode
     if (!d || d.id !== e.pointerId) return;
     drag.current = null;
     if (!d.active || !el) return;
-    const sideways = Math.abs(d.x) >= Math.abs(d.y) || !hasUp;
-    const x = sideways ? d.x : d.x * 0.2;
-    const y = sideways ? d.y * 0.2 : Math.min(0, d.y);
+    const { x, y } = cardOffset(d, hasUp);
     const direction = directionOf(x, y);
     const speed = Math.hypot(d.x, d.y) / Math.max(1, e.timeStamp - d.t0);
     const far = direction === "up" ? -y >= UP_DISTANCE : Math.abs(x) >= el.offsetWidth * SIDEWAYS_SHARE;

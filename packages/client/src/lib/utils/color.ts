@@ -1,6 +1,9 @@
 import type { CSSProperties } from "react";
 
-// Common standard HTML color names for fallback in non-browser environments (e.g. Node / Vitest)
+// Colours of codes (an option's `color`) on buttons, badges and span
+// highlights, readable in light and dark mode.
+
+/** Common CSS colour names, for normalizing without a browser (tests). */
 const NAMED_COLORS: Record<string, string> = {
   black: "#000000",
   white: "#ffffff",
@@ -36,12 +39,10 @@ const NAMED_COLORS: Record<string, string> = {
   crimson: "#dc143c",
 };
 
-/**
- * Converts an rgba string e.g. "rgba(255, 0, 0, 0.5)" to 6-digit hex "#ff0000".
- */
+/** An `rgb()` or `rgba()` colour as 6-digit hex, e.g. "rgba(255, 0, 0, 0.5)" -> "#ff0000" (the alpha is dropped). */
 function rgbaToHex(rgba: string): string {
   const parts = rgba
-    .replace(/^rgba?\(-|\s+|\)$/g, "")
+    .replace(/^rgba?\(|\s+|\)$/g, "")
     .split(",")
     .map((s) => parseFloat(s));
   if (parts.length >= 3) {
@@ -53,9 +54,7 @@ function rgbaToHex(rgba: string): string {
   return rgba;
 }
 
-/**
- * Checks whether the environment currently has dark mode active via Tailwind's `dark` class.
- */
+/** Whether the page is in dark mode (the `dark` class on <html>). */
 function isDarkMode(): boolean {
   if (typeof document === "undefined") return false;
   return document.documentElement.classList.contains("dark");
@@ -139,11 +138,18 @@ export function getContrastTextColor(hexColor?: string): string {
   return luminance > 0.55 ? "#111827" : "#ffffff";
 }
 
+/** A light tint of a colour with a stronger border, and text that reads on it: unselected buttons and badges. */
+function tintStyle(baseHex: string, dark: boolean): CSSProperties {
+  return {
+    backgroundColor: dark ? `${baseHex}38` : `${baseHex}28`, // ~22% in dark, ~16% in light
+    borderColor: dark ? `${baseHex}aa` : `${baseHex}88`,
+    color: dark ? "#ffffff" : "#111827",
+  };
+}
+
 /**
- * Generates styling for selectable code buttons:
- * - Unselected: vivid background tint with alpha, vivid border, high-contrast text
- *   (white in dark mode, crisp dark in light mode).
- * - Selected: vivid solid background with high-contrast text.
+ * A code's button: unselected a tint of its colour (`tintStyle`), selected
+ * the solid colour with contrasting text. Undefined without a colour.
  */
 export function getCodeButtonStyle(color?: string, selected = false, isDark?: boolean): CSSProperties | undefined {
   if (!color) return undefined;
@@ -164,26 +170,21 @@ export function getCodeButtonStyle(color?: string, selected = false, isDark?: bo
     };
   }
 
-  return {
-    backgroundColor: dark ? `${baseHex}38` : `${baseHex}28`, // ~22% in dark, ~16% in light
-    borderColor: dark ? `${baseHex}aa` : `${baseHex}88`,
-    color: dark ? "#ffffff" : "#111827", // White in dark mode for maximum legibility
-  };
+  return tintStyle(baseHex, dark);
 }
 
-export interface SpanSegmentStyleOptions {
+/** A span's colour on a stretch of text, and whether the span starts or ends there. */
+export interface SpanSegmentStyle {
   color?: string;
   isStart?: boolean;
   isEnd?: boolean;
 }
 
 /**
- * Generates styling for highlighted text spans (`<mark>`):
- * Uses a gentle ~22% alpha background so text remains 100% crisp and readable,
- * with solid top and bottom boundary borders (crisp upper ceiling and bottom ribbon),
- * plus solid boundary endcaps (thick left/right border and rounded corners at start/end).
+ * A span highlight (`<mark>`): a light tint behind the text, solid borders
+ * above and below, and a thick rounded end where the span starts or ends.
  */
-export function getSpanHighlightStyle(options?: SpanSegmentStyleOptions | string): CSSProperties {
+export function getSpanHighlightStyle(options?: SpanSegmentStyle | string): CSSProperties {
   const opts = typeof options === "string" ? { color: options } : (options ?? {});
   const fallback = "#fde68a"; // warm yellow
   const baseHex = standardizeColor(opts.color ?? fallback) ?? fallback;
@@ -213,19 +214,12 @@ export function getSpanHighlightStyle(options?: SpanSegmentStyleOptions | string
   };
 }
 
-export interface StackedSegmentSpan {
-  color?: string;
-  isStart?: boolean;
-  isEnd?: boolean;
-}
-
 /**
- * Generates styling for an overlapping segment covered by 2 or more spans.
- * Produces multi-colored gradient ribbons along top and bottom borders,
- * matching the exact vertical height and alignment of single spans (3px top, 3.5px bottom)
- * without overlapping adjacent text lines.
+ * A stretch of text under several spans: bands of their colours along the
+ * top and bottom borders and in the tint, as tall as a single span's
+ * highlight. One span: its highlight (`getSpanHighlightStyle`).
  */
-export function getStackedUnderlineStyle(spans: StackedSegmentSpan[]): CSSProperties {
+export function getStackedUnderlineStyle(spans: SpanSegmentStyle[]): CSSProperties {
   const valid = spans.map((s) => ({
     color: standardizeColor(s.color ?? "#fde68a") ?? "#fde68a",
     isStart: s.isStart,
@@ -286,16 +280,8 @@ export function getStackedUnderlineStyle(spans: StackedSegmentSpan[]): CSSProper
   };
 }
 
-/**
- * Generates styling for a compact tag / badge representing a code.
- * White text in dark mode for maximum legibility.
- */
+/** A code's badge: a tint of its colour (grey without one). */
 export function getCodeBadgeStyle(color?: string, isDark?: boolean): CSSProperties {
-  const dark = isDark ?? isDarkMode();
   const baseHex = standardizeColor(color ?? "#6b7280") ?? "#6b7280";
-  return {
-    backgroundColor: dark ? `${baseHex}38` : `${baseHex}28`,
-    borderColor: dark ? `${baseHex}aa` : `${baseHex}88`,
-    color: dark ? "#ffffff" : "#111827",
-  };
+  return tintStyle(baseHex, isDark ?? isDarkMode());
 }

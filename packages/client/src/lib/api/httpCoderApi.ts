@@ -37,10 +37,9 @@ async function toError(res: Response, path: string): Promise<CoderApiError> {
 }
 
 /**
- * Client-side abstraction over "however we talk to a study's backend" (docs/client.md §2). `HttpCoderApi` is the only implementation for now
- * (talking to the server's coder API, packages/server); a future
- * design/offline variant (for Storybook-like isolated component dev) can
- * implement the same interface without a network round-trip.
+ * What the coding runtime needs from the server (docs/client.md §2,
+ * docs/api/coder.md). `HttpCoderApi` talks to the real server; tests use an
+ * in-memory one (studyManager/fakeCoderServer.ts).
  */
 export interface CoderApi {
   getSession(): Promise<SessionResponse>;
@@ -48,8 +47,11 @@ export interface CoderApi {
   getNextUnits(loop: string, count?: number): Promise<CoderUnitResponse[]>;
   /** A unit the coder already has in a loop (e.g. finished in an earlier visit), to navigate back to it. */
   getLoopUnit(loop: string, unitId: number): Promise<CoderUnitResponse>;
-  /** A finished unit: answers to every question of the loop (`skip` for hidden ones), with how long each took. */
-  /** A finished unit; on a practice unit, whether the answers were right (with feedback); a gold screen-out names its end. */
+  /**
+   * A finished unit: answers to every question of the loop (`skip` for
+   * hidden ones), with how long each took. The response names an `end` when
+   * gold checks ended the session.
+   */
   postUnitVariables(
     unitId: number,
     variables: Record<string, VariableValue>,
@@ -58,7 +60,7 @@ export interface CoderApi {
   ): Promise<SubmitUnitResponse | void>;
   /** The coder-level answers, with how long the questions visited since the last post took. */
   postCoderVariables(variables: Record<string, VariableValue>, timings?: Record<string, AnswerTiming>): Promise<void>;
-  /** The coder reached an `auto` question: its value, assigned by the server (once). */
+  /** The coder reached a computed item: its value, computed by the server (once). */
   computeVariable(name: string): Promise<VariableValue>;
   /** The coder reached an `end` item (`unit`: the unit an end inside a unit loop was reached on), or without one finished the study. */
   endSession(item?: string, unit?: EndUnit): Promise<EndSessionResponse>;
@@ -78,9 +80,8 @@ export interface HttpCoderApiConfig {
   /** The link: creates the coder on first use (and says which URL parameter is the coder id). */
   linkSecret?: string;
   /**
-   * The page's other query parameters: the coder id, the link's
-   * required URL parameters and the design's other URL parameters.
-   * The server stores the ones it needs when the coder starts.
+   * The page's other query parameters: the coder id and the design's URL
+   * parameters. The server stores the ones it needs when the coder starts.
    */
   urlParams?: Record<string, string>;
   /**
@@ -93,7 +94,7 @@ export interface HttpCoderApiConfig {
 }
 
 /** Required on every coder API request: cross-site forms can't send it (CSRF). */
-const CLIENT_HEADERS = { "x-annotinder": "1" };
+export const CLIENT_HEADERS = { "x-annotinder": "1" };
 
 function scopeHeaders(scope: { linkSecret?: string }): Record<string, string> {
   const headers: Record<string, string> = {};

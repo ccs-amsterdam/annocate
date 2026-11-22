@@ -7,8 +7,8 @@ import type { MouseEvent } from "react";
 // would answer it too. The second click of a double click (`detail` 2 or
 // more) is dropped in the answer area; separate clicks always count.
 //
-// A key held down repeats: the keyboard controller drops repeats
-// (keyboard/KeyboardContext.tsx).
+// A key held down repeats: the keyboard drops repeats
+// (keyboard/KeyboardProvider.tsx).
 
 /** `onClickCapture` for the answer area: the second click of a double click never reaches the answer's buttons. */
 export function dropRepeatedClick(event: MouseEvent): void {

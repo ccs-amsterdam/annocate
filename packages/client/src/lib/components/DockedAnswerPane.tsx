@@ -6,10 +6,25 @@ const MIN_HEIGHT = 100;
 /** Room left below the content, so small changes don't flash a scrollbar. */
 const SLACK = 8;
 
+/** The saved height, kept in localStorage (which can be blocked: then nothing is kept). */
 function savedHeight(): number | null {
   if (typeof window === "undefined") return null;
-  const num = parseInt(localStorage.getItem(STORAGE_KEY) ?? "", 10);
+  let num: number;
+  try {
+    num = parseInt(localStorage.getItem(STORAGE_KEY) ?? "", 10);
+  } catch {
+    return null;
+  }
   return Number.isNaN(num) || num < MIN_HEIGHT ? null : num;
+}
+
+function saveHeight(height: number | null): void {
+  try {
+    if (height === null) localStorage.removeItem(STORAGE_KEY);
+    else localStorage.setItem(STORAGE_KEY, String(height));
+  } catch {
+    // Blocked storage: the height lasts until the page reloads
+  }
 }
 
 /**
@@ -67,7 +82,7 @@ export function DockedAnswerPane({ children }: { children: ReactNode }) {
     };
     const onEnd = () => {
       setDragging(false);
-      localStorage.setItem(STORAGE_KEY, String(latest));
+      saveHeight(latest);
     };
     document.body.style.userSelect = "none";
     window.addEventListener("mousemove", onMouseMove);
@@ -89,7 +104,7 @@ export function DockedAnswerPane({ children }: { children: ReactNode }) {
   }
 
   function resetToAuto() {
-    localStorage.removeItem(STORAGE_KEY);
+    saveHeight(null);
     setCustomHeight(null);
   }
 

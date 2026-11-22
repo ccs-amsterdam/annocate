@@ -7,15 +7,11 @@ export interface AnswerFieldProps<TVariable extends QuestionVariable = QuestionV
   variable: TVariable;
   onAnswer: (value: VariableValue) => void;
   /**
-   * This unit's variable answers submitted so far (docs/client.md §4
-   * relation UI) -- only populated for questions in a unit loop, and only
-   * actually used by `RelationAnswerField` to look up a sibling `span`
-   * variable's already-collected spans.
+   * This unit's answers so far (in a unit loop only): a relation question
+   * finds the spans it links in them (docs/client.md §4 "Span and relation
+   * answers").
    */
   unitVariables?: Record<string, VariableValue>;
-  /**
-   * Any previously-submitted answer for this variable, allowing the coder
-   * to review or update their previous answer when navigating backwards.
-   */
+  /** The coder's earlier answer, to start from when they come back to the question. */
   initialValue?: VariableValue;
 }

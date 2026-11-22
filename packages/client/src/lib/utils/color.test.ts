@@ -21,6 +21,11 @@ describe("color standardization", () => {
     expect(standardizeColor("tomato", "50")).toBe("#ff634750");
   });
 
+  it("normalizes rgb() and rgba() colors", () => {
+    expect(standardizeColor("rgb(255, 0, 0)")).toBe("#ff0000");
+    expect(standardizeColor("rgba(0, 128, 0, 0.5)", "28")).toBe("#00800028");
+  });
+
   it("leaves CSS variables intact", () => {
     expect(standardizeColor("var(--primary)")).toBe("var(--primary)");
   });

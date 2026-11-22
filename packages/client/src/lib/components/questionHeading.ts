@@ -4,7 +4,7 @@
 // is, so researchers who write markdown style it themselves.
 
 /** The longest question shown as a heading (characters of its source). */
-export const HEADING_MAX = 150;
+const HEADING_MAX = 150;
 
 /** Whether a question's text is a short single paragraph: shown as a heading. */
 export function isHeadingQuestion(source: string): boolean {

@@ -6,13 +6,10 @@ import {
 import variant from "@jitl/quickjs-wasmfile-release-sync";
 import { HELPER_PRELUDE, parseReference, referenceValue, type ReferenceScope } from "@annotinder/contracts";
 
-/**
- * Shared QuickJS sandbox for evaluating codebook-authored JS expressions
- * (docs/client.md §5 -- script conditions, and `{{ }}` in templates,
- * docs/client.md §3). Both `conditions.ts` and `renderTemplate.ts` build on
- * `evaluateScript` rather than each loading/configuring their own QuickJS
- * instance.
- */
+// The QuickJS sandbox for scripts in a design (docs/client.md §5): script
+// conditions and `{{ }}` in templates. Conditions and templates both
+// evaluate through `evaluateScript`; the module loads once.
+
 let quickJsModulePromise: Promise<QuickJSWASMModule> | null = null;
 
 function loadQuickJS(): Promise<QuickJSWASMModule> {
@@ -23,7 +20,7 @@ function loadQuickJS(): Promise<QuickJSWASMModule> {
 const IDENTIFIER_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
 /** How long one evaluation may run (docs/client.md §5). */
-export const EXPRESSION_DEADLINE_MS = 100;
+const EXPRESSION_DEADLINE_MS = 100;
 
 /** Adds the helper methods (`$var.q.is(...)`) to the scope inside the sandbox. */
 const HELPER_SETUP = `$var = ${HELPER_PRELUDE}($var);`;
@@ -62,19 +59,13 @@ export async function scriptSyntaxError(script: string): Promise<string | null> 
 }
 
 /**
- * Evaluates `expression` (a JS expression) against a map of currently-known
- * values (unit data columns and/or variable values --
- * callers decide what's in scope), returning the raw (JSON-round-tripped)
- * result. Returns `undefined` and logs on any evaluation error (invalid
- * syntax, thrown error, timeout, OOM) rather than throwing, since a bad
- * expression shouldn't crash the coder's session. `setup` (statements) runs
- * first, e.g. to add the helper methods.
+ * Evaluates a JS expression with `values` as its names in scope, and returns
+ * the result (as JSON copies it). Any failure (syntax, a thrown error, the
+ * deadline, the memory limit) is logged and returns `undefined`: a bad
+ * script mustn't break the coder's session. `setup` (statements) runs first,
+ * e.g. to add the helper methods.
  */
-export async function evaluateExpression(
-  expression: string,
-  values: Record<string, unknown>,
-  setup = "",
-): Promise<unknown> {
+async function evaluateExpression(expression: string, values: Record<string, unknown>, setup = ""): Promise<unknown> {
   try {
     const QuickJS = await loadQuickJS();
 
@@ -86,11 +77,6 @@ export async function evaluateExpression(
     try {
       vm.runtime.setMemoryLimit(1024 * 1024);
       vm.runtime.setInterruptHandler(shouldInterruptAfterDeadline(Date.now() + EXPRESSION_DEADLINE_MS));
-
-      const fnHandle = vm.newFunction("evaluate", (...handles) => {
-        return handles[0];
-      });
-      fnHandle.dispose();
 
       const script = `((${names.join(", ")}) => { ${setup} return (${expression}\n); })`;
       const fnResult = vm.evalCode(script);

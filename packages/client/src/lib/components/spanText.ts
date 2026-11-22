@@ -1,6 +1,23 @@
-import type { SpanSlice } from "@annotinder/contracts";
+import { optionLabel, type Option, type SpanSlice } from "@annotinder/contracts";
 
-// Pure helpers for selecting spans of text (SelectableText): word snapping, slices.
+// Pure helpers for span answers (docs/client.md §4 "Span and relation
+// answers"): selecting text (word snapping, slices) and showing spans.
+
+/** A span's text, its parts joined by " ... ". */
+export function spanSummary(slices: readonly Pick<SpanSlice, "text">[]): string {
+  return slices.map((s) => s.text).join(" ... ");
+}
+
+/** The colour of the option with this value (a span's or relation's code). */
+export function optionColor(options: readonly Pick<Option, "value" | "color">[], value: string): string | undefined {
+  return options.find((o) => o.value === value)?.color;
+}
+
+/** The label of the option with this value; the value itself without one. */
+export function optionLabelOf(options: readonly Pick<Option, "value" | "label">[], value: string): string {
+  const option = options.find((o) => o.value === value);
+  return option ? optionLabel(option) : value;
+}
 
 /**
  * Truncates span text with an ellipsis in the middle if it exceeds maxLength.

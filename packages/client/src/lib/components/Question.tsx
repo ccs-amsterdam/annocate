@@ -22,15 +22,15 @@ interface QuestionProps {
   /** A question: its variable, and in a unit loop its instruction. */
   item: Pick<QuestionItem, "variable"> & { name?: string; instruction?: string };
   onAnswer: (value: VariableValue) => void;
-  /** This unit's variable answers submitted so far -- see `AnswerFieldProps.unitVariables`. */
+  /** This unit's answers so far (see `AnswerFieldProps.unitVariables`). */
   unitVariables?: Record<string, VariableValue>;
-  /** Any previously submitted answer for this question -- for review or editing */
+  /** The coder's earlier answer to this question, to start from (going back). */
   initialValue?: VariableValue;
   /** The question and instruction texts with their values filled in (StudyManager); without, values show their source. */
   texts?: QuestionTexts | null;
 }
 
-/** A question's texts, rendered as templates (docs/client.md §3). */
+/** A question's texts, rendered as templates (docs/client.md §4 "Questions and instructions"). */
 export interface QuestionTexts {
   question?: RenderedTemplate;
   /** In a unit loop: how to apply the question, opened from the question (? button or key). */
@@ -66,8 +66,7 @@ export function Question({ item, onAnswer, unitVariables, initialValue, texts }:
   const { variable } = item;
   const spanAnnotation = useSpanAnnotation();
 
-  // Keep docked card compact: hide question header when inspecting/assigning a selected span
-  // or when viewing the full list of labeled spans
+  // A span question labelling a selection, or listing its spans, needs the room: no question text then
   const hideHeader =
     variable.type === "span" && (Boolean(spanAnnotation?.pendingSpan) || Boolean(spanAnnotation?.isViewingAllLabels));
 

@@ -7,33 +7,29 @@ import { Button } from "@/components/ui/button";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 import { useSpanAnnotation } from "../../context/spanAnnotation";
 import { useCoderSettings } from "../../context/coderSettings";
-import { getCodeBadgeStyle, getCodeButtonStyle } from "../../utils/color";
-import { truncateSpanText } from "../spanText";
+import { getCodeButtonStyle } from "../../utils/color";
+import { spanSummary, truncateSpanText } from "../spanText";
 import { ShortcutBadge } from "../ShortcutBadge";
 import { SpanManageLabels } from "./SpanManageLabels";
 import { SpanEditLabel } from "./SpanEditLabel";
-import { X, ArrowLeft, ChevronRight, List } from "lucide-react";
+import { SpanListRow } from "./SpanListRow";
+import { X, ArrowLeft, List } from "lucide-react";
 
 type SpanVariable = Extract<QuestionVariable, { type: "span" }>;
 
 /**
- * Answer field for `span` questions (docs/client.md §4):
- * Coordinates the ambient span annotation state with the question flow.
- *
- * Requirements implemented:
- * 1. Default view: Clean, compact summary + "View labeled spans" button + "Done" button.
- * 2. Compact height: Scrollable overflow container preventing layout inflation.
- * 3. Dedicated Manage Mode: Clicking an existing label in text opens `SpanManageLabels`.
- * 4. Inline Creation Bar: Making a new text selection opens direct code assignment buttons (1-9).
- * 5. Full Label List View (when clicking "View labeled spans"):
- *    Replaces the answer form to review, change, or delete any labeled span in the unit.
+ * The answer field of a `span` question (docs/client.md §4 "Span and
+ * relation answers"). The coder selects text in the unit (`SelectableText`);
+ * this field shows, by turn: the labels for a new selection (keys 1-9), the
+ * spans on a clicked word (`SpanManageLabels`), the list of all the unit's
+ * spans to edit, or else how many are labelled with Done.
  */
 export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
   const annotation = useSpanAnnotation();
   const { theme } = useCoderSettings();
   const isDark = theme === "dark";
 
-  // State to show the full list of all labels in place of the normal answer form
+  // The list of all spans, shown instead of the answer form, and the span opened from it
   const viewingAllLabels = annotation?.isViewingAllLabels ?? false;
   const setViewingAllLabels = (viewing: boolean) => {
     annotation?.setIsViewingAllLabels(viewing);
@@ -49,19 +45,15 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
     setEditingSpanFromList(span);
     annotation?.setFocusedSpanId(span.id);
   };
-
-  function colorFor(code: string): string | undefined {
-    return annotation?.options.find((c) => c.value === code)?.color;
-  }
-
-  function labelFor(value: string): string {
-    const option = annotation?.options.find((c) => c.value === value);
-    return option ? optionLabel(option) : value;
-  }
+  /** Back from editing a span to the list. */
+  const closeSpanEditor = () => {
+    setEditingSpanFromList(null);
+    annotation?.setFocusedSpanId(null);
+  };
 
   const pending = annotation?.pendingSpan;
 
-  // Resolve spans for manage mode
+  // A clicked span (or its word): the spans there, to manage
   const manageSpans =
     annotation && pending && (pending.mode === "manage" || pending.isEditingExisting || pending.targetSpanId)
       ? annotation.spans.filter(
@@ -74,7 +66,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
 
   const isManageMode = Boolean(pending && (pending.mode === "manage" || manageSpans.length > 0));
 
-  // Reset list views if a new span is selected in document
+  // A new selection in the text closes the list
   const setIsViewingAllLabels = annotation?.setIsViewingAllLabels;
   const setFocusedSpanId = annotation?.setFocusedSpanId;
   useEffect(() => {
@@ -103,13 +95,12 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
     { priority: PRIORITY.editor },
   );
 
-  const pendingTextSummary = pending?.slices.map((s) => s.text).join(" ... ") ?? "";
+  const pendingTextSummary = pending ? spanSummary(pending.slices) : "";
 
   return (
     <div className="flex flex-col gap-2.5">
       {pending ? (
         isManageMode && annotation ? (
-          /* Separate Dedicated Form: Menu of existing labels on this word + "Create new label" */
           <SpanManageLabels
             annotation={annotation}
             spans={manageSpans}
@@ -117,7 +108,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
             fallbackSlices={pending.slices}
           />
         ) : (
-          /* Inline Creation Mode: Assign code to new text selection */
+          /* A new selection: pick its label */
           <div className="flex animate-in flex-col gap-2 fade-in slide-in-from-bottom-1">
             <div className="flex items-center justify-between gap-2">
               <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -140,7 +131,6 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
                 )}
               </div>
 
-              {/* Clear pending selection */}
               <button
                 type="button"
                 onClick={() => annotation?.setPendingSpan(null)}
@@ -153,7 +143,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
               </button>
             </div>
 
-            {/* From sm up the labels are at the selection (SpanLabelMenu); on a phone here, near the thumbs */}
+            {/* In a wide coding area the labels are at the selection (SpanLabelMenu); narrower, here, near the thumbs */}
             <p className="hidden text-xs text-muted-foreground @2xl:block">
               Pick a label at the selection
               {annotation && annotation.options.length > 1
@@ -161,7 +151,6 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
                 : ""}
               .
             </p>
-            {/* Code choices flexing to fill the row without trailing blank space */}
             <div className="flex flex-wrap items-center gap-2 pt-0.5 @2xl:hidden">
               {annotation?.options.map((c, idx) => (
                 <button
@@ -182,29 +171,16 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
           </div>
         )
       ) : viewingAllLabels && annotation ? (
-        /* Full list of all labels in place of the normal answer form */
+        /* All the unit's spans, to edit one */
         <div className="flex animate-in flex-col gap-2.5 fade-in slide-in-from-bottom-1">
           {editingSpanFromList ? (
             <SpanEditLabel
               annotation={annotation}
               span={editingSpanFromList}
-              onBack={() => {
-                setEditingSpanFromList(null);
-                annotation.setFocusedSpanId(null);
-              }}
-              onCancel={() => {
-                setEditingSpanFromList(null);
-                setViewingAllLabels(false);
-                annotation.setFocusedSpanId(null);
-              }}
-              onCodeChanged={() => {
-                setEditingSpanFromList(null);
-                annotation.setFocusedSpanId(null);
-              }}
-              onDelete={() => {
-                setEditingSpanFromList(null);
-                annotation.setFocusedSpanId(null);
-              }}
+              onBack={closeSpanEditor}
+              onCancel={() => setViewingAllLabels(false)}
+              onCodeChanged={closeSpanEditor}
+              onDelete={closeSpanEditor}
             />
           ) : (
             <>
@@ -215,11 +191,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
                     variant="ghost"
                     size="sm"
                     className="h-7 cursor-pointer gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-                    onClick={() => {
-                      setViewingAllLabels(false);
-                      setEditingSpanFromList(null);
-                      annotation.setFocusedSpanId(null);
-                    }}
+                    onClick={() => setViewingAllLabels(false)}
                   >
                     <ArrowLeft className="h-3.5 w-3.5" />
                     <span>Back</span>
@@ -231,11 +203,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setViewingAllLabels(false);
-                    setEditingSpanFromList(null);
-                    annotation.setFocusedSpanId(null);
-                  }}
+                  onClick={() => setViewingAllLabels(false)}
                   className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                   title="Close list"
                   aria-label="Close"
@@ -245,45 +213,22 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
               </div>
 
               <div className="flex max-h-[140px] flex-col gap-1.5 overflow-y-auto pr-0.5">
-                {annotation.spans.map((span) => {
-                  const badgeStyle = getCodeBadgeStyle(colorFor(span.value), isDark);
-                  const spanSummary = span.slices.map((sl) => sl.text).join(" ... ");
-                  return (
-                    <button
-                      key={span.id}
-                      type="button"
-                      onClick={() => handleSelectSpanFromList(span)}
-                      className="group flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-border/70 bg-background/80 px-3 py-1.5 text-left shadow-2xs transition-all hover:border-primary/40 hover:bg-muted/60"
-                    >
-                      <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <span
-                          style={badgeStyle}
-                          className="inline-flex shrink-0 items-center rounded-md border px-2 py-0.5 text-xs font-semibold"
-                        >
-                          {labelFor(span.value)}
-                        </span>
-                        <span className="truncate font-serif text-xs text-foreground/90 italic" title={spanSummary}>
-                          &ldquo;{truncateSpanText(spanSummary, 55)}&rdquo;
-                        </span>
-                        {span.slices.length > 1 && (
-                          <span className="py-0.2 shrink-0 rounded bg-muted px-1 font-mono text-[10px] text-muted-foreground">
-                            {span.slices.length} frags
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground transition-colors group-hover:text-primary">
-                        <span>Edit</span>
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </div>
-                    </button>
-                  );
-                })}
+                {annotation.spans.map((span) => (
+                  <SpanListRow
+                    key={span.id}
+                    span={span}
+                    options={annotation.options}
+                    isDark={isDark}
+                    variant="list"
+                    onClick={() => handleSelectSpanFromList(span)}
+                  />
+                ))}
               </div>
             </>
           )}
         </div>
       ) : (
-        /* Normal Idle Overview: Compact prompt + View all labels button + Done button */
+        /* Nothing selected: how many spans, the list, and Done */
         <div className="flex flex-col gap-3 py-0.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">Click or select words above to label spans.</p>

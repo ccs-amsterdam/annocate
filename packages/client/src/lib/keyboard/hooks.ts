@@ -77,7 +77,7 @@ export function useKeyTargets(
     const frame = requestAnimationFrame(() => focusChosen());
     return () => cancelAnimationFrame(frame);
   }, [controller]);
-  const g = options.activeGroup ?? 0;
+  const active = options.activeGroup ?? 0;
   const filtering = (group: readonly KeyTarget[] | undefined) =>
     !!group && effectiveMapping(mapping, group).kind === "filter";
   const matchesOf = (group: readonly KeyTarget[]) =>
@@ -88,17 +88,17 @@ export function useKeyTargets(
       options.onEnter();
       return true;
     }
-    const group = groups[g];
+    const group = groups[active];
     if (!group) return false;
     const index = targetForKey(mapping, group, press.key);
     if (index < 0) return false;
-    onChoose(g, index);
+    onChoose(active, index);
     return true;
   };
   useKeyScope(
     (press) => {
       if (!groups || press.altKey || press.ctrlKey || press.metaKey) return false;
-      const group = groups[g];
+      const group = groups[active];
       if (filtering(group) && group) {
         if (press.key === "Escape" && filter) setFilter("");
         else if (press.key === "Backspace" && filter) setFilter(filter.slice(0, -1));
@@ -106,7 +106,7 @@ export function useKeyTargets(
           const first = matchesOf(group).findIndex((m, i) => m && group[i].fixed === undefined && !group[i].disabled);
           if (first < 0) return true;
           setFilter("");
-          onChoose(g, first);
+          onChoose(active, first);
         } else if (
           press.key.length === 1 &&
           press.key !== " " &&
@@ -125,8 +125,8 @@ export function useKeyTargets(
   const list = groups ?? [];
   return {
     keys: list.map((group) => keysOf(mapping, group)),
-    filter: filtering(list[g]) ? filter : "",
-    matches: list.map((group, i) => (i === g && filtering(group) ? matchesOf(group) : group.map(() => true))),
+    filter: filtering(list[active]) ? filter : "",
+    matches: list.map((group, i) => (i === active && filtering(group) ? matchesOf(group) : group.map(() => true))),
   };
 }
 

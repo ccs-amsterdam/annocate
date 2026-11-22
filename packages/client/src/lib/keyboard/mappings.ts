@@ -62,7 +62,7 @@ export const numpadMapping: KeyMapping = {
 };
 
 /** Letters in order of how easily touch typists reach them: the home row first. */
-export const LETTERS = "asdfjklghqweruiopzxcvnmbty".split("");
+const LETTERS = "asdfjklghqweruiopzxcvnmbty".split("");
 
 /** Home-row letters: a s d f j k l g h, then the rows above and below; up to 26 options (else numbers). */
 export const lettersMapping: KeyMapping = {
@@ -75,7 +75,7 @@ export const lettersMapping: KeyMapping = {
 
 /**
  * Type to filter: typed letters dim the options whose label doesn't match;
- * Enter chooses the first one left (KeyFilter). For questions with buttons;
+ * Enter chooses the first one left (`useKeyTargets`). For questions with buttons;
  * others use numbers.
  */
 export const filterMapping: KeyMapping = {

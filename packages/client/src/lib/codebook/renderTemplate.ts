@@ -178,7 +178,7 @@ async function displayContent(
 
 /**
  * Evaluates a template's values (the unit layout, or a question or
- * instruction text) against a `{ $unit, $var }` scope.
+ * instruction text) against a `{ $unit, $var, $session }` scope.
  * `keyPrefix` names the template's slots in the cache.
  */
 export async function renderTemplate(

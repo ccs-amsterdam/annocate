@@ -21,12 +21,7 @@ export function TemplateMarkdown({ rendered, components }: { rendered: RenderedT
       const value = rendered.values[Number(index)];
       return value ? <TemplateValueView value={value} block={block === "true"} styles={rendered.styles} /> : null;
     },
-    // A `::: style` block (docs/client.md §3, "Blocks")
-    "template-style": ({ index, children }: { index?: string; children?: ReactNode }) => (
-      <div className="flex flex-col gap-4" style={rendered.styles?.[Number(index)] as CSSProperties | undefined}>
-        {children}
-      </div>
-    ),
+    ...styleComponents(rendered.styles),
   } as Components;
   return (
     <ReactMarkdown remarkPlugins={[remarkGfm, [remarkTemplateValues, rendered.values]]} components={allComponents}>
@@ -38,7 +33,7 @@ export function TemplateMarkdown({ rendered, components }: { rendered: RenderedT
 /** Inline markdown values can't contain paragraphs (they're inside one). */
 const INLINE_MARKDOWN: Components = { p: ({ children }) => <>{children}</> };
 
-/** `::: style` blocks in a markdown value (a constant's own blocks: renderTemplate). */
+/** `::: style` blocks (docs/client.md §3, "Blocks"), of the template or inside a markdown value (renderTemplate). */
 function styleComponents(styles: Record<string, string>[] | undefined): Components {
   return {
     "template-style": ({ index, children }: { index?: string; children?: ReactNode }) => (

@@ -1,5 +1,6 @@
 import { CoderStudySchema, type CoderStudy } from "@annotinder/contracts";
 import { z } from "zod";
+import { CLIENT_HEADERS } from "../api/httpCoderApi";
 
 // The studies this browser took part in, for the coder home (`/code`):
 // the server keeps a device's sessions apart per study (docs/coder-identity.md
@@ -58,11 +59,10 @@ export type StudyEntry = OpenedStudy & { study: CoderStudy; elsewhere: boolean }
  */
 export async function loadStudies(apiUrl: string): Promise<StudyEntry[]> {
   const opened = read();
-  const headers = { "x-annotinder": "1" };
   const here = await Promise.all(
     opened.map(async (o) => {
       const res = await fetch(`${apiUrl}/d/${encodeURIComponent(o.deployment)}/summary`, {
-        headers: { ...headers, "x-url-params": new URLSearchParams(o.params).toString() },
+        headers: { ...CLIENT_HEADERS, "x-url-params": new URLSearchParams(o.params).toString() },
         credentials: "same-origin",
       }).catch(() => null);
       if (res?.status === 404) return { opened: o, study: null, gone: true };
@@ -75,7 +75,9 @@ export async function loadStudies(apiUrl: string): Promise<StudyEntry[]> {
     h.study ? [{ ...h.opened, study: h.study, elsewhere: false }] : [],
   );
   // A logged-in coder's sessions on other devices (none without a login)
-  const res = await fetch(`${apiUrl}/coder/sessions`, { headers, credentials: "same-origin" }).catch(() => null);
+  const res = await fetch(`${apiUrl}/coder/sessions`, { headers: CLIENT_HEADERS, credentials: "same-origin" }).catch(
+    () => null,
+  );
   const mine = res?.ok ? z.array(CoderStudySchema).safeParse(await res.json()) : null;
   for (const study of mine?.success ? mine.data : []) {
     if (!entries.some((e) => e.deployment === study.deployment))

@@ -10,11 +10,10 @@ import { evaluateScript } from "./expression";
 import type { ExpressionCache } from "./expressionCache";
 
 /**
- * Evaluates a condition (docs/client.md "References and conditions") for a
- * `condition` item or a unit-loop branch `when`: a simple condition (helper
- * calls, `.answered`, `&&`, `||`, `!`) directly, shared with the contracts
- * package; any other script in the QuickJS sandbox (truthy = holds). A
- * failing script counts as false.
+ * Evaluates a condition (docs/client.md §5 "References and conditions"), e.g.
+ * a `show_if` item's: a simple condition (helper calls, `.answered`, `&&`,
+ * `||`, `!`) directly, shared with the contracts package; any other script
+ * in the QuickJS sandbox (truthy = holds). A failing script counts as false.
  */
 export async function evaluateCondition(
   condition: Condition,
@@ -97,7 +96,7 @@ function readableCondition(condition: SimpleCondition, nested = false): string {
 }
 
 /**
- * How an item is called in the editor: its name; for a condition (which has
+ * How an item is called in the editor: its name; for a `show_if` (which has
  * none) its label, or else its condition; for a unit loop its label, or
  * "Unit loop".
  */

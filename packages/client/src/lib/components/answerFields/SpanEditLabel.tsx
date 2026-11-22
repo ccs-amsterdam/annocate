@@ -6,7 +6,7 @@ import type { SpanAnswer } from "@annotinder/contracts";
 import type { SpanAnnotationState } from "../../context/spanAnnotation";
 import { useCoderSettings } from "../../context/coderSettings";
 import { getCodeBadgeStyle, getCodeButtonStyle } from "../../utils/color";
-import { truncateSpanText } from "../spanText";
+import { optionColor, optionLabelOf, spanSummary, truncateSpanText } from "../spanText";
 import { ShortcutBadge } from "../ShortcutBadge";
 import { Button } from "@/components/ui/button";
 import { Trash2, Check, ArrowLeft, X } from "lucide-react";
@@ -21,27 +21,15 @@ export interface SpanEditLabelProps {
 }
 
 /**
- * Component for deleting or changing an existing label.
- *
- * Displays:
- * 1. The label badge and the span text of this label, with back arrow and cancel icon.
- * 2. Code buttons to change the label (with absolute shortcut badges 1-9).
- * 3. Direct Delete button (with absolute Del shortcut badge).
+ * Changing or deleting a span's label: the span (label and text), a button
+ * per label (keys 1-9) and Delete (Del or Backspace). Without the callbacks,
+ * each action closes the editor (clears the pending selection and focus).
  */
 export function SpanEditLabel({ annotation, span, onBack, onCancel, onCodeChanged, onDelete }: SpanEditLabelProps) {
   const { theme } = useCoderSettings();
   const isDark = theme === "dark";
 
-  function colorFor(code: string): string | undefined {
-    return annotation.options.find((c) => c.value === code)?.color;
-  }
-
-  function labelFor(value: string): string {
-    const option = annotation.options.find((c) => c.value === value);
-    return option ? optionLabel(option) : value;
-  }
-
-  const spanSummary = span.slices.map((s) => s.text).join(" ... ");
+  const summary = spanSummary(span.slices);
 
   const handleCancel = useCallback(() => {
     if (onCancel) {
@@ -96,11 +84,10 @@ export function SpanEditLabel({ annotation, span, onBack, onCancel, onCodeChange
     { priority: PRIORITY.menu },
   );
 
-  const badgeStyle = getCodeBadgeStyle(colorFor(span.value), isDark);
+  const badgeStyle = getCodeBadgeStyle(optionColor(annotation.options, span.value), isDark);
 
   return (
     <div className="flex animate-in flex-col gap-2 fade-in slide-in-from-bottom-1">
-      {/* Header bar: back button, label badge + quoted text, and cancel icon */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {onBack && (
@@ -118,13 +105,13 @@ export function SpanEditLabel({ annotation, span, onBack, onCancel, onCodeChange
             style={badgeStyle}
             className="inline-flex shrink-0 items-center rounded-md border px-2 py-0.5 text-xs font-semibold"
           >
-            {labelFor(span.value)}
+            {optionLabelOf(annotation.options, span.value)}
           </span>
           <span
             className="max-w-sm truncate font-serif text-xs text-foreground italic sm:max-w-md sm:text-sm"
-            title={spanSummary}
+            title={summary}
           >
-            &ldquo;{truncateSpanText(spanSummary, 55)}&rdquo;
+            &ldquo;{truncateSpanText(summary, 55)}&rdquo;
           </span>
           {span.slices.length > 1 && (
             <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
@@ -133,7 +120,6 @@ export function SpanEditLabel({ annotation, span, onBack, onCancel, onCodeChange
           )}
         </div>
 
-        {/* Clear cancel icon button */}
         <button
           type="button"
           onClick={handleCancel}
@@ -146,7 +132,6 @@ export function SpanEditLabel({ annotation, span, onBack, onCancel, onCodeChange
         </button>
       </div>
 
-      {/* Action Row: Code buttons to change label + Delete button */}
       <div className="flex flex-wrap items-center gap-2 pt-0.5">
         {annotation.options.map((c, idx) => {
           const isCurrent = c.value === span.value;
@@ -171,7 +156,6 @@ export function SpanEditLabel({ annotation, span, onBack, onCancel, onCodeChange
           );
         })}
 
-        {/* Delete label button */}
         <Button
           type="button"
           variant="destructive"

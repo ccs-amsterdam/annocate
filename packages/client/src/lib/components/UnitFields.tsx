@@ -10,8 +10,7 @@ import { cn } from "cn";
  * (the question's focus, or a span question's fields) are ids of elements
  * (`data-field`): they are marked, and the first is scrolled into view and
  * briefly highlighted when the question comes up; with `focusDim` the rest
- * of the unit is dimmed. A layout's `colorScheme` shows the unit always
- * light or dark.
+ * of the unit is dimmed.
  */
 export function UnitFields({
   layout,

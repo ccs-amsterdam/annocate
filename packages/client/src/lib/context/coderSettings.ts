@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 
+/** The coder's own settings on the coding screen, kept in this browser (`CoderSettingsProvider`). */
 export interface CoderSettingsContextValue {
   /** The theme shown: the coder's choice, or the study's. */
   theme: "light" | "dark";
@@ -19,7 +20,7 @@ export const CoderSettingsContext = createContext<CoderSettingsContextValue | nu
 export function useCoderSettings(): CoderSettingsContextValue {
   const ctx = useContext(CoderSettingsContext);
   if (!ctx) {
-    // Graceful fallback if rendered outside provider (e.g. in standalone tests)
+    // Outside the coding screen (the editor's previews, tests): the defaults
     return {
       theme: "light",
       setTheme: () => {},

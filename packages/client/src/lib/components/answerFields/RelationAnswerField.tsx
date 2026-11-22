@@ -9,13 +9,16 @@ import {
 import { Button } from "@/components/ui/button";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 import { getCodeBadgeStyle } from "../../utils/color";
+import { optionColor, optionLabelOf, spanSummary } from "../spanText";
 import { X, ArrowRight } from "lucide-react";
 
 type RelationVariable = Extract<QuestionVariable, { type: "relation" }>;
 
-/** The spans available as one endpoint of a relation: this unit's spans
- * submitted so far for `opts.variable` (a span question of the same loop),
- * optionally filtered to just the values listed in `opts.values`. */
+/**
+ * The spans one end of a relation can be: this unit's answer so far to
+ * `opts.variable` (a span question of the same loop), only those with the
+ * values in `opts.values` if it lists any.
+ */
 function endpointSpans(unitVariables: Record<string, VariableValue> | undefined, opts: RelationOptions): SpanAnswer[] {
   const spans = unitVariables?.[opts.variable]?.spans ?? [];
   if (!opts.values || opts.values.length === 0) return spans;
@@ -24,14 +27,14 @@ function endpointSpans(unitVariables: Record<string, VariableValue> | undefined,
 
 function spanLabel(span: SpanAnswer | undefined): string {
   if (!span) return "(unknown span)";
-  const summary = span.slices.map((s) => s.text).join(" ... ");
-  return `"${summary}" (${span.value})`;
+  return `"${spanSummary(span.slices)}" (${span.value})`;
 }
 
 /**
- * Answer field for `relation` questions (docs/client.md §4):
- * links two already-created spans (from `span` questions of the same loop named
- * in `variable.from`/`variable.to`) with a relation type (an option).
+ * The answer field of a `relation` question (docs/client.md §4 "Span and
+ * relation answers"): links pairs of spans (answers to the span questions
+ * of the same loop named in `variable.from` and `variable.to`) with a
+ * relation type (an option).
  */
 export function RelationAnswerField({
   variable,
@@ -72,15 +75,6 @@ export function RelationAnswerField({
 
   function handleRemove(id: string) {
     setRelations((prev) => prev.filter((r) => r.id !== id));
-  }
-
-  function colorFor(codeName: string): string | undefined {
-    return variable.options.find((c) => c.value === codeName)?.color;
-  }
-
-  function labelFor(value: string): string {
-    const option = variable.options.find((c) => c.value === value);
-    return option ? optionLabel(option) : value;
   }
 
   return (
@@ -151,7 +145,7 @@ export function RelationAnswerField({
             {relations.map((rel) => {
               const from = fromSpans.find((s) => s.id === rel.fromId);
               const to = toSpans.find((s) => s.id === rel.toId);
-              const badgeStyle = getCodeBadgeStyle(colorFor(rel.value));
+              const badgeStyle = getCodeBadgeStyle(optionColor(variable.options, rel.value));
               return (
                 <div
                   key={rel.id}
@@ -159,7 +153,7 @@ export function RelationAnswerField({
                 >
                   <span className="truncate">{spanLabel(from)}</span>
                   <span className="py-0.2 shrink-0 rounded border px-1.5 font-semibold" style={badgeStyle}>
-                    {labelFor(rel.value)}
+                    {optionLabelOf(variable.options, rel.value)}
                   </span>
                   <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" />
                   <span className="truncate">{spanLabel(to)}</span>

@@ -3,7 +3,7 @@ import { sandboxDocument, type FrameLook } from "./sandboxDocument";
 
 // `::html` values in a sandboxed frame: see sandboxDocument.ts for its policy.
 
-/** Reads the app's look at an element (its colours follow light/dark mode and a layout's colour scheme). */
+/** Reads the app's look at an element (its colours follow light or dark mode). */
 function lookAt(element: HTMLElement): FrameLook {
   const style = getComputedStyle(element);
   const color = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;

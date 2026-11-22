@@ -1,4 +1,4 @@
-import { HttpCoderApi } from "../api/httpCoderApi";
+import { CLIENT_HEADERS, HttpCoderApi } from "../api/httpCoderApi";
 
 // Device-side half of docs/coder-identity.md §4. The device id lives in one
 // httpOnly cookie for all studies (`annotinder_device`), so this code never
@@ -16,13 +16,17 @@ export interface CoderSessionScope {
 }
 
 /**
+ * Transfer tokens work once, so a remount (or React StrictMode running
+ * effects twice) reuses the same redemption rather than redeem again.
+ */
+const redemptions = new Map<string, Promise<void>>();
+
+/**
  * Redeems a transfer token (from "Continue on another device"): the server
  * adds this device to the session (and gives it a device cookie if it has
  * none).
  */
 export function redeemTransfer(scope: CoderSessionScope, token: string): Promise<void> {
-  // Tokens work once, so a remount (or React StrictMode running effects
-  // twice) must reuse the same redemption rather than redeem again.
   let pending = redemptions.get(token);
   if (!pending) {
     pending = HttpCoderApi.redeemTransfer(scope, token);
@@ -31,15 +35,12 @@ export function redeemTransfer(scope: CoderSessionScope, token: string): Promise
   return pending;
 }
 
-const redemptions = new Map<string, Promise<void>>();
-
 /**
  * Default transfer link: this page with only the deployment and
  * `transfer=<token>` (the session has the rest; a coder id stays out
  * of the link).
  */
 export function defaultTransferUrl(token: string): string {
-  // This page (`/code/<deployment>`), with only the transfer token
   const url = new URL(window.location.href);
   url.search = "";
   url.searchParams.set("transfer", token);
@@ -67,7 +68,7 @@ export async function loginAvailable(): Promise<boolean> {
 
 /** Logs out (to log in with another account). */
 export async function logOut(): Promise<void> {
-  await fetch("/api/auth/logout", { method: "POST", headers: { "x-annotinder": "1" }, credentials: "same-origin" });
+  await fetch("/api/auth/logout", { method: "POST", headers: CLIENT_HEADERS, credentials: "same-origin" });
 }
 
 /** A coder link's URL (`/code/<deployment>?link=<secret>`): what researchers send coders (docs/coder-identity.md). */

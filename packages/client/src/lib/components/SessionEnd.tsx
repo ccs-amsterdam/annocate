@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, CheckCircle2, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Reopen } from "@annotinder/contracts";
-import type { SessionEnding } from "../studyManager/StudyManager";
+import type { SessionEnding } from "../studyManager/types";
 import { TemplateMarkdown } from "./TemplateMarkdown";
 import { QuitDialog } from "./QuitMenu";
 

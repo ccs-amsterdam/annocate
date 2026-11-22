@@ -1,7 +1,13 @@
 import { useCallback, useState, useMemo, type ReactNode } from "react";
-import type { NominalOption, SpanAnswer } from "@annotinder/contracts";
+import type { NominalOption, SpanAnswer, SpanSlice } from "@annotinder/contracts";
 import { SpanAnnotationContext, type PendingSpan, type SpanAnnotationState } from "./spanAnnotation";
 
+/** Whether two spans cover exactly the same text. */
+function sameSlices(a: SpanSlice[], b: SpanSlice[]): boolean {
+  return a.length === b.length && a.every((slice, i) => slice.offset === b[i].offset && slice.length === b[i].length);
+}
+
+/** Holds the current unit's spans (`SpanAnnotationState`); seeded with a span question's earlier answer. */
 export function SpanAnnotationProvider({
   fields,
   options,
@@ -17,12 +23,11 @@ export function SpanAnnotationProvider({
   options: NominalOption[];
   defaultSelectionMode?: "word" | "character";
   allowGaps?: boolean;
-  /** Seeds already-collected spans, e.g. when resuming a unit that already
-   * has an answer stored for this variable. */
+  /** The spans to start with: the question's earlier answer. */
   initialSpans?: SpanAnswer[];
   initialPendingSpan?: PendingSpan;
   initialIsViewingAllLabels?: boolean;
-  /** When variableName changes within the same unit, synchronize internal span state */
+  /** The span question: another question in the same unit starts over. */
   variableName?: string;
   children: ReactNode;
 }) {
@@ -73,14 +78,8 @@ export function SpanAnnotationProvider({
       setPendingSpan,
       addSpan: (slices, spanValue) =>
         setSpans((prev) => {
-          // Ignore exact duplicate of same value on same slices
-          const isDuplicate = prev.some(
-            (s) =>
-              s.value === spanValue &&
-              s.slices.length === slices.length &&
-              s.slices.every((sl, idx) => sl.offset === slices[idx].offset && sl.length === slices[idx].length),
-          );
-          if (isDuplicate) return prev;
+          // The same label on the same text again: nothing new
+          if (prev.some((s) => s.value === spanValue && sameSlices(s.slices, slices))) return prev;
           return [
             ...prev,
             {
@@ -102,12 +101,7 @@ export function SpanAnnotationProvider({
           ),
         ),
       hasExactSpan: (slices, spanValue) =>
-        inPendingField(spans).some(
-          (s) =>
-            s.value === spanValue &&
-            s.slices.length === slices.length &&
-            s.slices.every((sl, idx) => sl.offset === slices[idx].offset && sl.length === slices[idx].length),
-        ),
+        inPendingField(spans).some((s) => s.value === spanValue && sameSlices(s.slices, slices)),
       isViewingAllLabels,
       setIsViewingAllLabels,
       focusedSpanId,

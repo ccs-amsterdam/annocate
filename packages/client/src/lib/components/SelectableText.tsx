@@ -1,18 +1,17 @@
-import { optionLabel } from "@annotinder/contracts";
 import { PRIORITY } from "../keyboard/controller";
 import { useKeyScope } from "../keyboard/hooks";
 import React, { useRef, useCallback, useEffect, useMemo } from "react";
-import type { SpanAnswer } from "@annotinder/contracts";
+import type { SpanAnswer, SpanSlice } from "@annotinder/contracts";
 import { useSpanAnnotation, type PendingSpan } from "../context/spanAnnotation";
-import { getSpanHighlightStyle, getStackedUnderlineStyle } from "../utils/color";
+import { getStackedUnderlineStyle } from "../utils/color";
 import { SpanLabelMenu } from "./SpanLabelMenu";
-import { getWordAtPosition, snapToWord, toggleSliceRange } from "./spanText";
+import { getWordAtPosition, optionColor, optionLabelOf, snapToWord, spanSummary, toggleSliceRange } from "./spanText";
 
-/** Walks all text nodes under `root`, summing lengths, to turn a DOM
- * (node, offsetInNode) position (as reported by `Selection`/`Range`) into a
- * single character offset into `root`'s full text content. Robust to the
- * text being split across multiple text nodes (e.g. existing `<mark>`
- * spans), unlike naively trusting `range.startOffset`. */
+/**
+ * A selection's position (a node and an offset in it, from `Range`) as a
+ * character offset in `root`'s whole text, which is split over several
+ * text nodes (the `<mark>`s of spans).
+ */
 function getAbsoluteOffset(root: Node, target: Node, offsetInTarget: number): number {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let total = 0;
@@ -25,19 +24,48 @@ function getAbsoluteOffset(root: Node, target: Node, offsetInTarget: number): nu
   return total;
 }
 
+/** A stretch of the text with the same spans on it. */
+interface Segment {
+  start: number;
+  end: number;
+  spans: SpanAnswer[];
+  /** Part of the new selection waiting for its label. */
+  isPending: boolean;
+}
+
+/** Cuts the text where any span or the pending selection starts or ends. */
+function textSegments(text: string, spans: SpanAnswer[], pending: { slices: SpanSlice[] } | null): Segment[] {
+  const cuts = new Set<number>([0, text.length]);
+  for (const slice of [...(pending?.slices ?? []), ...spans.flatMap((s) => s.slices)]) {
+    cuts.add(Math.max(0, Math.min(text.length, slice.offset)));
+    cuts.add(Math.max(0, Math.min(text.length, slice.offset + slice.length)));
+  }
+  const sorted = Array.from(cuts).sort((x, y) => x - y);
+  const covers = (slice: SpanSlice, start: number, end: number) =>
+    slice.offset <= start && slice.offset + slice.length >= end;
+  const segments: Segment[] = [];
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const [start, end] = [sorted[i], sorted[i + 1]];
+    if (start >= end) continue;
+    segments.push({
+      start,
+      end,
+      spans: spans.filter((s) => s.slices.some((slice) => covers(slice, start, end))),
+      isPending: Boolean(pending?.slices.some((slice) => covers(slice, start, end))),
+    });
+  }
+  return segments;
+}
+
 /**
- * Renders `text` as plain content, with any already-created spans (from
- * `SpanAnnotationContext`) highlighted, and lets the coder select or click spans.
+ * A unit field a span question selects in (docs/client.md §4 "Span and
+ * relation answers"): the text with its spans highlighted.
  *
- * Interaction rules:
- * - When in span create mode:
- *   - If gaps are allowed (`allowGaps: true`): Tapping or selecting words becomes an on/off switch.
- *   - If gaps are not allowed (`allowGaps: false`): The start word is a fixed anchor. Subsequent taps
- *     change the end boundary, enabling shrinking/unselecting. Taps before anchor are ignored.
- * - When idle:
- *   - Clicking an empty word starts a span selection for that word.
- *   - Clicking an existing label opens the manage menu for that word (showing current labels + "Create new label").
- *   - Dragging across text creates a range selection.
+ * - Nothing pending: clicking a word starts a selection of it, dragging
+ *   selects a range, and clicking a span opens the menu of the spans there.
+ * - A new selection waiting for its label: with gaps allowed, clicking or
+ *   dragging toggles words; without, it moves the selection's end (its
+ *   first word stays; clicks before it are ignored).
  */
 export function SelectableText({ text, field, inline = false }: { text: string; field?: string; inline?: boolean }) {
   const context = useSpanAnnotation();
@@ -60,6 +88,19 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
   const containerRef = useRef<HTMLDivElement>(null);
 
   const pending = annotation?.pendingSpan ?? null;
+  const options = annotation?.options ?? [];
+
+  /** The menu of the spans on a clicked word (`SpanManageLabels`). */
+  const openSpanMenu = useCallback(
+    (spans: SpanAnswer[]) =>
+      annotation?.setPendingSpan({
+        slices: spans[0].slices,
+        existingSpanIds: spans.map((s) => s.id),
+        targetSpanId: undefined,
+        mode: "manage",
+      }),
+    [annotation],
+  );
 
   const processSelection = useCallback(() => {
     if (!annotation) return;
@@ -74,143 +115,62 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
     const isClick = selection.isCollapsed || a === b;
     selection.removeAllRanges();
 
-    if (isClick) {
-      const caret = offset;
-      // Character mode: no snapping, so a click only opens an existing span (spans are made by selecting).
-      const wordRange = annotation.selectionMode === "word" ? getWordAtPosition(text, caret) : null;
+    // The text from `start` to `end`, as a new selection waiting for its label
+    const startSelection = (start: number, stop: number) =>
+      annotation.setPendingSpan({
+        slices: [{ offset: start, length: stop - start, text: text.slice(start, stop) }],
+        anchorOffset: start,
+        mode: "create",
+      });
 
-      // Case 1: If a span is ALREADY pending in create mode:
-      if (pending && pending.mode === "create") {
-        if (!wordRange) return;
-        const [wStart, wEnd] = wordRange;
-
-        if (annotation.allowGaps) {
-          // Gaps ARE allowed: tapping words is an on/off switch!
-          const newSlices = toggleSliceRange(text, pending.slices, {
-            offset: wStart,
-            length: wEnd - wStart,
-          });
-          if (newSlices.length === 0) {
-            annotation.setPendingSpan(null);
-          } else {
-            annotation.setPendingSpan({
-              ...pending,
-              slices: newSlices,
-            });
-          }
-        } else {
-          // Gaps NOT allowed:
-          // Keep anchorOffset fixed. When another word is clicked:
-          // - Selecting points BEFORE the anchor is ignored
-          // - Selecting points AFTER the anchor changes the end point to that point
-          const anchor = pending.anchorOffset ?? pending.slices[0]?.offset ?? wStart;
-          if (wEnd <= anchor) {
-            // Clicked before anchor: ignored as requested
-            return;
-          }
-          const newLength = wEnd - anchor;
-          annotation.setPendingSpan({
-            ...pending,
-            anchorOffset: anchor,
-            slices: [
-              {
-                offset: anchor,
-                length: newLength,
-                text: text.slice(anchor, wEnd),
-              },
-            ],
-          });
-        }
+    // While a new selection waits for its label, more text changes it: with
+    // gaps allowed each word or range toggles; without, the selection runs
+    // from its first word (`anchorOffset`) to the end of what was clicked or
+    // dragged (a click before that first word is ignored).
+    const changeSelection = (pending: PendingSpan, start: number, stop: number) => {
+      if (annotation.allowGaps) {
+        const slices = toggleSliceRange(text, pending.slices, { offset: start, length: stop - start });
+        annotation.setPendingSpan(slices.length === 0 ? null : { ...pending, slices });
         return;
       }
+      const anchor = pending.anchorOffset ?? pending.slices[0]?.offset ?? start;
+      if (isClick && stop <= anchor) return;
+      const newEnd = Math.max(anchor, stop);
+      annotation.setPendingSpan({
+        ...pending,
+        anchorOffset: anchor,
+        slices: [{ offset: anchor, length: newEnd - anchor, text: text.slice(anchor, newEnd) }],
+      });
+    };
 
-      // Case 2: Clicked on an existing labeled span -> Always open the menu first!
-      const covering = annotation.spans.filter((s) =>
-        s.slices.some((sl) => sl.offset <= caret && sl.offset + sl.length > caret),
-      );
-      if (covering.length > 0) {
-        const firstSpan = covering[0];
-        annotation.setPendingSpan({
-          slices: firstSpan.slices,
-          existingSpanIds: covering.map((s) => s.id),
-          targetSpanId: undefined, // Never bypass the menu!
-          mode: "manage",
-        });
-        return;
-      }
-
-      // Case 3: Clicked on an empty word: start a new span selection for that word!
-      if (wordRange) {
-        const [wStart, wEnd] = wordRange;
-        annotation.setPendingSpan({
-          slices: [
-            {
-              offset: wStart,
-              length: wEnd - wStart,
-              text: text.slice(wStart, wEnd),
-            },
-          ],
-          anchorOffset: wStart,
-          mode: "create",
-        });
-        return;
-      }
-
-      // Clicked on empty space with no word: dismiss any open form
-      annotation.setPendingSpan(null);
-      return;
-    } else {
-      // Dragged range selection
+    if (!isClick) {
+      // A dragged range
       let [rangeStart, rangeEnd] = [offset, end];
-      if (annotation.selectionMode === "word") {
-        [rangeStart, rangeEnd] = snapToWord(text, rangeStart, rangeEnd);
-      }
+      if (annotation.selectionMode === "word") [rangeStart, rangeEnd] = snapToWord(text, rangeStart, rangeEnd);
       if (rangeEnd <= rangeStart) return;
-
-      if (pending && pending.mode === "create") {
-        if (annotation.allowGaps) {
-          const newSlices = toggleSliceRange(text, pending.slices, {
-            offset: rangeStart,
-            length: rangeEnd - rangeStart,
-          });
-          if (newSlices.length === 0) {
-            annotation.setPendingSpan(null);
-          } else {
-            annotation.setPendingSpan({
-              ...pending,
-              slices: newSlices,
-            });
-          }
-        } else {
-          const anchor = pending.anchorOffset ?? pending.slices[0]?.offset ?? rangeStart;
-          const newEnd = Math.max(anchor, rangeEnd);
-          annotation.setPendingSpan({
-            ...pending,
-            anchorOffset: anchor,
-            slices: [
-              {
-                offset: anchor,
-                length: newEnd - anchor,
-                text: text.slice(anchor, newEnd),
-              },
-            ],
-          });
-        }
-      } else {
-        annotation.setPendingSpan({
-          slices: [
-            {
-              offset: rangeStart,
-              length: rangeEnd - rangeStart,
-              text: text.slice(rangeStart, rangeEnd),
-            },
-          ],
-          anchorOffset: rangeStart,
-          mode: "create",
-        });
-      }
+      if (pending?.mode === "create") changeSelection(pending, rangeStart, rangeEnd);
+      else startSelection(rangeStart, rangeEnd);
+      return;
     }
-  }, [annotation, pending, text]);
+
+    // A click. In character mode no snapping: a click only opens an existing span (spans are made by selecting).
+    const wordRange = annotation.selectionMode === "word" ? getWordAtPosition(text, offset) : null;
+    if (pending?.mode === "create") {
+      if (wordRange) changeSelection(pending, wordRange[0], wordRange[1]);
+      return;
+    }
+    // On a labelled span: the menu of the spans there, always first
+    const covering = annotation.spans.filter((s) =>
+      s.slices.some((sl) => sl.offset <= offset && sl.offset + sl.length > offset),
+    );
+    if (covering.length > 0) {
+      openSpanMenu(covering);
+      return;
+    }
+    // On a word: a new selection of that word; elsewhere: close what was open
+    if (wordRange) startSelection(wordRange[0], wordRange[1]);
+    else annotation.setPendingSpan(null);
+  }, [annotation, pending, text, openSpanMenu]);
 
   // On the document, not the text: a drag over an inline field (a headline
   // over two lines) can end between its line boxes. processSelection only
@@ -252,131 +212,52 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
     { priority: PRIORITY.field },
   );
 
-  // Compute text segments (unannotated, single-span, or overlapping multi-span)
-  const cuts = new Set<number>([0, text.length]);
-  if (pending) {
-    for (const slice of pending.slices) {
-      cuts.add(Math.max(0, Math.min(text.length, slice.offset)));
-      cuts.add(Math.max(0, Math.min(text.length, slice.offset + slice.length)));
-    }
-  }
-  for (const s of annotation?.spans ?? []) {
-    for (const slice of s.slices) {
-      cuts.add(Math.max(0, Math.min(text.length, slice.offset)));
-      cuts.add(Math.max(0, Math.min(text.length, slice.offset + slice.length)));
-    }
-  }
-  const sortedCuts = Array.from(cuts).sort((x, y) => x - y);
-
-  const segments: Array<{
-    start: number;
-    end: number;
-    spans: SpanAnswer[];
-    isPending: boolean;
-  }> = [];
-
-  for (let i = 0; i < sortedCuts.length - 1; i++) {
-    const start = sortedCuts[i];
-    const end = sortedCuts[i + 1];
-    if (start >= end) continue;
-
-    const covering = (annotation?.spans ?? []).filter((s) =>
-      s.slices.some((slice) => slice.offset <= start && slice.offset + slice.length >= end),
-    );
-    const isPending = Boolean(
-      pending && pending.slices.some((slice) => slice.offset <= start && slice.offset + slice.length >= end),
-    );
-    segments.push({ start, end, spans: covering, isPending });
-  }
-
-  function colorFor(code: string): string | undefined {
-    return annotation?.options.find((c) => c.value === code)?.color;
-  }
-
-  function labelFor(value: string): string {
-    const option = annotation?.options.find((c) => c.value === value);
-    return option ? optionLabel(option) : value;
-  }
+  const segments = textSegments(text, annotation?.spans ?? [], pending);
 
   function handleSegmentClick(e: React.MouseEvent, spans: SpanAnswer[]) {
-    // If currently creating a span, clicking on a labeled segment extends/toggles the span
-    if (annotation?.pendingSpan && annotation.pendingSpan.mode === "create") {
-      return; // Let mouseup/processSelection handle creating/toggling
-    }
-
+    // Creating a span: mouseup (processSelection) extends or toggles it
+    if (annotation?.pendingSpan?.mode === "create") return;
     e.stopPropagation();
-    if (!annotation || spans.length === 0) return;
-    const firstSpan = spans[0];
-    annotation.setPendingSpan({
-      slices: firstSpan.slices,
-      existingSpanIds: spans.map((s) => s.id),
-      targetSpanId: undefined, // Always show the menu first!
-      mode: "manage",
-    });
+    if (spans.length > 0) openSpanMenu(spans);
   }
 
   // The labels for a new selection go right after its last part
   let lastPending = -1;
   if (pending?.mode === "create") segments.forEach((seg, i) => seg.isPending && (lastPending = i));
 
-  function renderSegment(seg: (typeof segments)[number], i: number) {
+  function renderSegment(seg: Segment, i: number) {
+    const content = text.slice(seg.start, seg.end);
     if (seg.spans.length === 0) {
-      if (seg.isPending) {
-        return (
-          <mark key={i} className="rounded-xs bg-wood/25 text-foreground ring-2 ring-wood/70">
-            {text.slice(seg.start, seg.end)}
-          </mark>
-        );
-      }
-      return <span key={i}>{text.slice(seg.start, seg.end)}</span>;
-    }
-
-    if (seg.spans.length === 1) {
-      const span = seg.spans[0];
-      const isStart = span.slices.some((sl) => sl.offset === seg.start);
-      const isEnd = span.slices.some((sl) => sl.offset + sl.length === seg.end);
-      const spanSummary = span.slices.map((sl) => sl.text).join(" ... ");
-      const isFocused = annotation?.focusedSpanId === span.id;
-      return (
-        <mark
-          key={i}
-          data-span-id={span.id}
-          style={getSpanHighlightStyle({ color: colorFor(span.value), isStart, isEnd })}
-          title={`${labelFor(span.value)}: "${spanSummary}" (click to view labels)`}
-          onClick={(e) => handleSegmentClick(e, seg.spans)}
-          className={`cursor-pointer font-normal transition-opacity hover:opacity-85 ${
-            isFocused || seg.isPending ? "ring-2 ring-wood ring-offset-1 ring-offset-background" : ""
-          }`}
-        >
-          {text.slice(seg.start, seg.end)}
+      return seg.isPending ? (
+        <mark key={i} className="rounded-xs bg-wood/25 text-foreground ring-2 ring-wood/70">
+          {content}
         </mark>
+      ) : (
+        <span key={i}>{content}</span>
       );
     }
-
-    // Multiple overlapping spans on this segment
-    const spansInfo = seg.spans.map((s) => ({
-      color: colorFor(s.value),
-      isStart: s.slices.some((sl) => sl.offset === seg.start),
-      isEnd: s.slices.some((sl) => sl.offset + sl.length === seg.end),
-    }));
-    const stackedStyle = getStackedUnderlineStyle(spansInfo);
-    const title = seg.spans
-      .map((s) => `${labelFor(s.value)}: "${s.slices.map((sl) => sl.text).join(" ... ")}"`)
-      .join(", ");
-
+    // One span: its highlight; several overlapping: stacked colour bands
+    const style = getStackedUnderlineStyle(
+      seg.spans.map((s) => ({
+        color: optionColor(options, s.value),
+        isStart: s.slices.some((sl) => sl.offset === seg.start),
+        isEnd: s.slices.some((sl) => sl.offset + sl.length === seg.end),
+      })),
+    );
+    const title = seg.spans.map((s) => `${optionLabelOf(options, s.value)}: "${spanSummary(s.slices)}"`).join(", ");
     const isFocused = Boolean(annotation?.focusedSpanId && seg.spans.some((s) => s.id === annotation.focusedSpanId));
     return (
       <mark
         key={i}
         data-span-id={seg.spans.map((s) => s.id).join(" ")}
-        style={stackedStyle}
+        style={style}
         title={`${title} (click to view labels)`}
         onClick={(e) => handleSegmentClick(e, seg.spans)}
         className={`cursor-pointer font-normal transition-opacity hover:opacity-85 ${
           isFocused || seg.isPending ? "ring-2 ring-wood ring-offset-1 ring-offset-background" : ""
         }`}
       >
-        {text.slice(seg.start, seg.end)}
+        {content}
       </mark>
     );
   }

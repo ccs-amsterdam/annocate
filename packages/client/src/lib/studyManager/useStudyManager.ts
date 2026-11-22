@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import type { CoderApi } from "../api/httpCoderApi";
-import { StudyManager, type StudyManagerSnapshot } from "./StudyManager";
+import { StudyManager } from "./StudyManager";
+import type { StudyManagerSnapshot } from "./types";
 
 /** React binding for `StudyManager`, using `useSyncExternalStore` for tear-free snapshots. */
 export function useStudyManager(coderApi: CoderApi): { manager: StudyManager; snapshot: StudyManagerSnapshot } {

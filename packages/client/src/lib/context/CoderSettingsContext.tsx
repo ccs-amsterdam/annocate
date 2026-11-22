@@ -18,9 +18,10 @@ function write(key: string, value: string): void {
   }
 }
 
+/** The coder's settings (`CoderSettingsContextValue`), read from and saved to this browser. */
 export function CoderSettingsProvider({ children }: { children: React.ReactNode }) {
-  // Shared with the researcher UI (theme.ts).
-  // A study can show one theme for everyone (its display setting): shown instead of the coder's choice
+  // The theme choice is shared with the researcher UI (theme.ts); a study can
+  // show one theme for everyone (its display setting) instead of the coder's choice
   const [locked, lockTheme] = useState<"light" | "dark" | null>(null);
   const [chosen, setTheme] = useTheme(locked);
   const theme = locked ?? chosen;

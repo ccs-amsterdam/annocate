@@ -13,9 +13,8 @@ import {
 import { evaluateCondition } from "./conditions";
 import type { ExpressionCache } from "./expressionCache";
 
-/**
- * Tree utilities over hierarchical, nested codebook items.
- */
+// Helpers over the tree of design items (items with `children`: unit
+// loops and show_if), shared by the coding runtime and the editor.
 
 /** Flattens all items in the tree into a single array in document order. */
 export function flattenTree(items: (TopLevelItem | InLoopItem)[]): DesignItem[] {
@@ -99,14 +98,14 @@ export function itemAtPath(items: (TopLevelItem | InLoopItem)[], path: (string |
 
 /** What a unit loop goes over, for the codebook tree: its filter, and special units not spread (the default). */
 export function loopUnitsSummary(loop: UnitLoopItem): string {
-  const branch = loop.units ?? {};
-  const filter = branch.filter;
+  const spec = loop.units ?? {};
+  const filter = spec.filter;
   const units = filter
     ? `${filter.column} ${filter.only ? "" : "not "}${(filter.only ?? filter.except ?? []).join(", ")}`
     : "the coder's units";
-  const special = (["overlap", "practice", "gold"] as const).filter((k) => branch[k] && branch[k] !== "spread");
-  const own = branch.own === false ? ", only special units" : "";
-  return `${units}${own}${special.map((k) => `, ${k} ${branch[k] === "ignore" ? "left out" : branch[k]}`).join("")}`;
+  const special = (["overlap", "practice", "gold"] as const).filter((k) => spec[k] && spec[k] !== "spread");
+  const own = spec.own === false ? ", only special units" : "";
+  return `${units}${own}${special.map((k) => `, ${k} ${spec[k] === "ignore" ? "left out" : spec[k]}`).join("")}`;
 }
 
 /**
@@ -124,17 +123,19 @@ export function issueIsAbout(
   return Boolean(name) && issue.message.includes(`'${name}'`);
 }
 
-/**
- * Returns true if an item with `name` or `_key` is inside a unit_loop (either directly
- * or through one or more nested conditions).
- */
-export function isInsideUnitLoop(items: TopLevelItem[], identifier: string): boolean {
+/** The unit loop around the item with this name or `_key` (also through conditions), if any. */
+function loopAround(items: TopLevelItem[], identifier: string): UnitLoopItem | undefined {
   let parent = findParent(items, identifier);
   while (parent) {
-    if (parent.type === "unit_loop") return true;
+    if (parent.type === "unit_loop") return parent as UnitLoopItem;
     parent = findParent(items, keyOf(parent) || itemName(parent) || "");
   }
-  return false;
+  return undefined;
+}
+
+/** Whether the item with this name or `_key` is inside a unit loop (also through conditions). */
+export function isInsideUnitLoop(items: TopLevelItem[], identifier: string): boolean {
+  return loopAround(items, identifier) !== undefined;
 }
 
 export interface StepContext {
@@ -223,12 +224,7 @@ export async function computeLoopSteps(
 
 /** The unit loop the item is in (through conditions), if any. */
 export function enclosingLoop(items: TopLevelItem[], item: DesignItem): UnitLoopItem | undefined {
-  let parent = findParent(items, keyOf(item) || itemName(item) || "");
-  while (parent) {
-    if (parent.type === "unit_loop") return parent as UnitLoopItem;
-    parent = findParent(items, keyOf(parent) || itemName(parent) || "");
-  }
-  return undefined;
+  return loopAround(items, keyOf(item) || itemName(item) || "");
 }
 
 /** The unit fields the span questions of a loop select in: shown as selectable text in its layout. */
