@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAnswerLayout } from "../../display/hooks";
 import {
   SPECIAL_KEYS,
@@ -16,6 +16,7 @@ import { buildValues, initialValues } from "./answerValue";
 import { CompactRow, EndLabels, OptionButton, SpecialOptionsRow } from "./OptionButtons";
 import { optionsContainerStyle } from "./optionLayout";
 import { useKeyScope, useKeyTargets } from "../../keyboard/hooks";
+import { ShortcutBadge } from "../ShortcutBadge";
 import { PRIORITY } from "../../keyboard/controller";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 
@@ -83,7 +84,7 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
           ),
         ];
   const keyboard = useKeyTargets(targets, (_, index) => pick(shown[index]), {
-    // Several answers: Enter continues (as the Continue button)
+    // Several answers: Shift + Enter continues (as the Continue button)
     onEnter: multiple ? submit : undefined,
     filterable: true,
   });
@@ -144,8 +145,9 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
       {field}
       {multiple && (
         // The arrows reach it too, below the options
-        <Button type="button" className="h-10" data-key-target="" disabled={!selected.length} onClick={submit}>
+        <Button type="button" className="relative h-10" data-key-target="" disabled={!selected.length} onClick={submit}>
           Continue{selected.length ? ` (${selected.length})` : ""}
+          <ShortcutBadge shortcut="⇧↵" />
         </Button>
       )}
     </div>
@@ -166,6 +168,11 @@ interface OptionsDropdownProps {
 function OptionsDropdown({ options, selected, multiple, onPick }: OptionsDropdownProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const input = useRef<HTMLInputElement>(null);
+  const openRef = useRef(open);
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
   const chosen = options.filter((o) => selected.has(o.value));
   useKeyScope(
     (press) => {
@@ -205,9 +212,17 @@ function OptionsDropdown({ options, selected, multiple, onPick }: OptionsDropdow
           <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[min(32rem,calc(100vw-2rem))] p-0" align="start">
+      <PopoverContent
+        className="w-[min(32rem,calc(100vw-2rem))] p-0"
+        align="start"
+        // Reopened (the keys) before the last close is done: that close doesn't take the focus back to the button
+        onCloseAutoFocus={(e) => {
+          if (openRef.current) e.preventDefault();
+        }}
+      >
         <Command>
           <CommandInput
+            ref={input}
             placeholder="Type to filter…"
             value={search}
             onValueChange={setSearch}

@@ -7,13 +7,13 @@ How the web client (`packages/client`) works and why. Server side:
 
 `src/App.tsx` holds the routes (TanStack Router; query values stay strings):
 
-| URL | Page |
-| --- | --- |
-| `/` | Welcome page (`pages/WelcomePage.tsx`) |
-| `/research` | The researcher UI: the studies |
-| `/research/studies/<id>/<tab>` | A study (`overview`, `editor`, `units`, `links`, `coders`, `results`, `settings`, `preview`); the editor takes `?version=<n>` |
-| `/research/admin` | The server admin page |
-| `/code` | The coder home: studies on this device (`pages/CodeHomePage.tsx`) |
+| URL                                | Page                                                                                                                                                  |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                                | Welcome page (`pages/WelcomePage.tsx`)                                                                                                                |
+| `/research`                        | The researcher UI: the studies                                                                                                                        |
+| `/research/studies/<id>/<tab>`     | A study (`overview`, `editor`, `units`, `links`, `coders`, `results`, `settings`, `preview`); the editor takes `?version=<n>`                         |
+| `/research/admin`                  | The server admin page                                                                                                                                 |
+| `/code`                            | The coder home: studies on this device (`pages/CodeHomePage.tsx`)                                                                                     |
 | `/code/<deployment>?link=<secret>` | Coding (`pages/CodePage.tsx`), plus the link's URL parameters; `?transfer=<token>` continues on another device; without either, this device's session |
 
 - A reload stays where it was. The researcher section is one `AdminApp`
@@ -109,12 +109,12 @@ A template is read in two steps: first the **text is put together**
 conditions", §5) or `{{ js }}`. A suffix says how to show the value; it goes
 after the slot, never inside `{{ }}`:
 
-| Suffix | Shows |
-| --- | --- |
+| Suffix             | Shows                                                          |
+| ------------------ | -------------------------------------------------------------- |
 | `::text` (default) | literal text, never parsed as markdown (`**x**` stays `**x**`) |
-| `::markdown` | rendered markdown (no blocks or values inside) |
-| `::image` | an image from the URL |
-| `::html` | HTML in a sandboxed iframe (below) |
+| `::markdown`       | rendered markdown (no blocks or values inside)                 |
+| `::image`          | an image from the URL                                          |
+| `::html`           | HTML in a sandboxed iframe (below)                             |
 
 `$unit.text` equals `{{$unit.text}}`. `\$` is a literal `$`; references in
 code spans stay literal. Values become text predictably: strings as is,
@@ -206,16 +206,16 @@ Stata value labels:
 
 ### Types
 
-| Type | What | Stored (`VariableValue`) |
-| --- | --- | --- |
-| `nominal` | pick from categories; `multiple` for several | `values: [{ value }]` |
-| `ordinal` | pick from ordered options | `values: [{ value }]` |
-| `numeric` | a number; `min`, `max`, `step` (default 1), break-point `labels` | `values: [{ value }]` |
-| `scale` | `items` rated on the same ordinal `options` (a Likert battery) | `values: [{ item, value }]` |
-| `annotinder` | swipe a card: 2 or 3 options (left, right, up) | `values: [{ value }]` |
-| `confirm` | a button | nothing besides `done` |
-| `span` | select text in the unit (loops only) | `spans: [{ id, field, value, slices }]` |
-| `relation` | link two spans (loops only) | `relations: [{ id, fromId, toId, value }]` |
+| Type         | What                                                             | Stored (`VariableValue`)                   |
+| ------------ | ---------------------------------------------------------------- | ------------------------------------------ |
+| `nominal`    | pick from categories; `multiple` for several                     | `values: [{ value }]`                      |
+| `ordinal`    | pick from ordered options                                        | `values: [{ value }]`                      |
+| `numeric`    | a number; `min`, `max`, `step` (default 1), break-point `labels` | `values: [{ value }]`                      |
+| `scale`      | `items` rated on the same ordinal `options` (a Likert battery)   | `values: [{ item, value }]`                |
+| `annotinder` | swipe a card: 2 or 3 options (left, right, up)                   | `values: [{ value }]`                      |
+| `confirm`    | a button                                                         | nothing besides `done`                     |
+| `span`       | select text in the unit (loops only)                             | `spans: [{ id, field, value, slices }]`    |
+| `relation`   | link two spans (loops only)                                      | `relations: [{ id, fromId, toId, value }]` |
 
 Answers hold values, never labels. `validateAnswer` checks them against the
 current design (option values, one per scale item, at most one unless
@@ -319,8 +319,8 @@ are handled there once.
   row first) or type to filter. Where a mapping can't map a group, numbers do.
   The coder's choice is stored in the browser.
 - The base layer: arrows move focus by screen position, Space/Enter click
-  the focused button, Shift + Left/Right go to the previous/next question,
-  Backspace goes back, Enter continues an answered question.
+  the focused button, Shift + Left/Right go to the previous/next question
+  (back focuses its answer), Shift + Enter continues an answered question.
 
 ### Study entry
 
@@ -369,16 +369,16 @@ hand out units.
 One reference syntax everywhere: scripts, templates, texts, conditions,
 redirect links (`design/references.ts`).
 
-| Reference | Meaning | Questions |
-| --- | --- | --- |
-| `$unit.<field>` | a unit field (inside a loop) | |
-| `$var.<q>.value`, `.label` | the answer; `null` when unanswered | single nominal, ordinal, numeric, swipe, computed |
-| `$var.<q>.values`, `.labels` | the answers; `[]` when unanswered | nominal `multiple`, span, relation |
-| `$var.<q>.texts` | the selected texts | span |
-| `$var.<q>.values` | all items' values, in order | scale |
-| `$var.<q>.items.<item>.value`, `.label` | one item | scale |
-| `$var.<q>.answered` | answered and not skipped | any |
-| `$session.coder`, `.source`, `.<name>` | the coder id, `?source=`, the declared URL parameters (strings; empty when absent) | |
+| Reference                               | Meaning                                                                            | Questions                                         |
+| --------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `$unit.<field>`                         | a unit field (inside a loop)                                                       |                                                   |
+| `$var.<q>.value`, `.label`              | the answer; `null` when unanswered                                                 | single nominal, ordinal, numeric, swipe, computed |
+| `$var.<q>.values`, `.labels`            | the answers; `[]` when unanswered                                                  | nominal `multiple`, span, relation                |
+| `$var.<q>.texts`                        | the selected texts                                                                 | span                                              |
+| `$var.<q>.values`                       | all items' values, in order                                                        | scale                                             |
+| `$var.<q>.items.<item>.value`, `.label` | one item                                                                           | scale                                             |
+| `$var.<q>.answered`                     | answered and not skipped                                                           | any                                               |
+| `$session.coder`, `.source`, `.<name>`  | the coder id, `?source=`, the declared URL parameters (strings; empty when absent) |                                                   |
 
 `.value` on a multiple-answer question (or `.values` on a single one) is a
 validation error. Every question is in `$var`, so scripts never throw on an
@@ -389,13 +389,13 @@ can check every reference.
 checks the method and its arguments. All are false (`count()`: 0) while
 unanswered.
 
-| Question | Methods |
-| --- | --- |
-| single (nominal, swipe, computed) | `is(v)`, `isAny(v1, v2, ...)` |
-| ordinal, scale items | also `gt`, `gte`, `lt`, `lte` |
-| nominal `multiple` | `has(v)`, `hasAny(...)`, `hasAll(...)`, `count()` |
-| numeric | `eq`, `gt`, `gte`, `lt`, `lte`, `between(a, b)` |
-| span, relation | `has(v)`, `count()` |
+| Question                          | Methods                                           |
+| --------------------------------- | ------------------------------------------------- |
+| single (nominal, swipe, computed) | `is(v)`, `isAny(v1, v2, ...)`                     |
+| ordinal, scale items              | also `gt`, `gte`, `lt`, `lte`                     |
+| nominal `multiple`                | `has(v)`, `hasAny(...)`, `hasAll(...)`, `count()` |
+| numeric                           | `eq`, `gt`, `gte`, `lt`, `lte`, `between(a, b)`   |
+| span, relation                    | `has(v)`, `count()`                               |
 
 They compare values, never labels; `is(2)` matches the value `"2"`
 (`sameValue`). `applyHelper` is the TypeScript implementation,
@@ -434,7 +434,7 @@ memoization.
 - `codebook/dependencies.ts`: `extractDependencies` reads which references a
   script uses and their current values (exact, since names are literal).
 - `codebook/expressionCache.ts`: `ExpressionCache.evaluate(key, script,
-  scope)` re-runs QuickJS only when the script or one of those values
+scope)` re-runs QuickJS only when the script or one of those values
   changed.
 - `StudyManager` owns one cache per session; changing units needs no
   invalidation.
@@ -521,6 +521,7 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   - A draft is deleted only from the versions dialog.
   - **Backup**: unsaved edits are copied to localStorage a second after each
     change, and offered back after the browser was closed.
+
 - **Unit loops** have two tabs (`UnitLoopForm.tsx`). **Units**
   (`unitLoop/UnitsEditor.tsx`): what a coder gets, the previous loop's units
   (`sameAsPrevious`), the subset, for a crowd "Units and coders" (everyone codes
@@ -538,8 +539,8 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   `HelpDialog`; `openHelp("topic#heading")` opens it. Code blocks in the
   language `example` are live, editable template examples. A test checks
   front matter, links, the topics the UI opens, and every example.
-- **Versions and deploying** (`design/versions.ts`): *live* is the deployed
-  version (frozen), *draft* the latest if not frozen, *history* the rest
+- **Versions and deploying** (`design/versions.ts`): _live_ is the deployed
+  version (frozen), _draft_ the latest if not frozen, _history_ the rest
   (read only, restorable as the draft). Editing the live version saves a new
   draft. The editor only saves; **Deploy** (`DeployPage.tsx`,
   `DeployPanel.tsx`; `PUT /deployment`) deploys the saved draft and the draft
@@ -611,6 +612,7 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   (the label the coder saw). Several answers are joined with "; ", spans as
   "value: text", relations as "value: from → to". Answers that don't fit a
   cell also get a `_json` column. CSV is UTF-8, written as it is.
+
 - **Preview** runs the latest design as deployment `<studyId>.preview`
   (`POST /study/:studyId/deployment/preview`); nothing is stored
   (`architecture.md` §5).

@@ -186,13 +186,13 @@ test("a double click, or a key held down, answers one question; the next isn't s
   await at(page, TEXTS[1], "Tone?");
 });
 
-test("the keyboard: arrows move between answers and Space chooses; Shift + arrows and Backspace go back and forth", async ({
+test("the keyboard: arrows move between answers and Space chooses; Shift + arrows go back and forth, Shift + Enter continues", async ({
   page,
   request,
 }) => {
   const { link } = await study(request);
   await page.goto(link);
-  await page.keyboard.press("Enter"); // the confirm question: Enter on nothing focused does nothing yet
+  await page.keyboard.press("Shift+Enter"); // the confirm question: not answered yet, so nothing happens
   await page.getByRole("button", { name: "I confirm", exact: true }).click();
   await at(page, TEXTS[0], "Topic?");
 
@@ -204,20 +204,22 @@ test("the keyboard: arrows move between answers and Space chooses; Shift + arrow
   await page.keyboard.press(" ");
   await at(page, TEXTS[0], "Tone?");
 
-  // Backspace: back to the previous question, its answer focused to change it at once (kept, not cleared)
-  await page.keyboard.press("Backspace");
+  // Shift + Left: back to the previous question, its answer focused to change it at once (kept, not cleared)
+  await page.keyboard.press("Shift+ArrowLeft");
   await at(page, TEXTS[0], "Topic?");
   await expect(option(page, "other")).toHaveAttribute("aria-pressed", "true");
   await expect(option(page, "other")).toBeFocused();
 
+  // Backspace no longer goes back (it could while deleting typed text)
+  await page.keyboard.press("Backspace");
+  await at(page, TEXTS[0], "Topic?");
   // Shift + Right: next (the question was answered); Shift + Left: previous
   await page.keyboard.press("Shift+ArrowRight");
   await at(page, TEXTS[0], "Tone?");
   await page.keyboard.press("Shift+ArrowLeft");
   await at(page, TEXTS[0], "Topic?");
-  // Enter continues an answered question
-  await page.locator("body").click({ position: { x: 1, y: 1 } });
-  await page.keyboard.press("Enter");
+  // Shift + Enter continues an answered question
+  await page.keyboard.press("Shift+Enter");
   await at(page, TEXTS[0], "Tone?");
 });
 
@@ -270,7 +272,7 @@ test("special options: apart from the others, chosen with 0 and . in every quest
   await expect(page.locator("[data-special=not_applicable]")).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("1");
   await expect(page.locator("[data-special=not_applicable]")).toHaveAttribute("aria-pressed", "false");
-  await page.keyboard.press("Enter");
+  await page.keyboard.press("Shift+Enter");
   await expect.poll(async () => (await answers(request, created.id)).length).toBe(2);
   const saved = await answers(request, created.id);
   const values = (name: string) =>
@@ -510,6 +512,7 @@ test("a dropdown: the arrows open it to browse; typing opens it with the filter"
   // The arrows open it, then browse it
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("option")).toHaveCount(4);
+  await expect(page.getByPlaceholder("Type to filter…")).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
   await expect.poll(async () => (await answers(request, created.id))[0]?.value.values?.[0]?.value).toBe("Germany");

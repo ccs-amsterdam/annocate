@@ -7,6 +7,7 @@ import { buildValues } from "./answerValue";
 import { CompactRow, EndLabels, SpecialButton } from "./OptionButtons";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 import { useKeyTargets } from "../../keyboard/hooks";
+import { ShortcutBadge } from "../ShortcutBadge";
 
 type ScaleVariable = Extract<QuestionVariable, { type: "scale" }>;
 
@@ -49,7 +50,7 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
     onAnswer(buildValues(items.map((item) => ({ item: item.name, value: selected[item.name] }))));
   }
 
-  // The keyboard answers the first unanswered item; Enter continues.
+  // The keyboard answers the first unanswered item; Shift + Enter continues.
   const keyed = columns.map((o) => ({
     label: optionLabel(o),
     ...(o.special ? { fixed: SPECIAL_KEYS[o.special] } : {}),
@@ -146,7 +147,7 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
 
       <Button
         type="button"
-        className="h-10"
+        className="relative h-10"
         variant={done ? "default" : "secondary"}
         // The arrows reach it too, below the items
         data-key-target=""
@@ -154,6 +155,8 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
         aria-label={done ? "Continue" : `${nAnswered} of ${items.length} answered`}
       >
         {done ? <Play className="size-4" /> : `${nAnswered} / ${items.length}`}
+        {/* Shift + Enter continues once every item is answered */}
+        {done && <ShortcutBadge shortcut="⇧↵" />}
       </Button>
     </div>
   );

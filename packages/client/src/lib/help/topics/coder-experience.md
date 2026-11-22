@@ -32,15 +32,15 @@ several answers, sliders, numbers and scales have **Continue**. See
 
 ## The top bar
 
-| Element                       | Does                                                         |
-| ----------------------------- | ------------------------------------------------------------ |
-| Menu (three lines)            | the questions and loops reached; click one to go there       |
-| `3`                           | the 3rd question                                             |
-| Stack icon and `4 · 2`        | unit 4, its 2nd question; opens the loop's menu              |
-| **<** and **>**               | back and forward                                             |
-| Monitor-and-phone icon        | **Continue on another device**                               |
-| Keyboard                      | **Keyboard shortcuts**: the shortcuts, shortcut style, badges |
-| Gear                          | **Settings**: light or dark                                  |
+| Element                | Does                                                          |
+| ---------------------- | ------------------------------------------------------------- |
+| Menu (three lines)     | the questions and loops reached; click one to go there        |
+| `3`                    | the 3rd question                                              |
+| Stack icon and `4 · 2` | unit 4, its 2nd question; opens the loop's menu               |
+| **<** and **>**        | back and forward                                              |
+| Monitor-and-phone icon | **Continue on another device**                                |
+| Keyboard               | **Keyboard shortcuts**: the shortcuts, shortcut style, badges |
+| Gear                   | **Settings**: light or dark                                   |
 
 The loop's menu shows **Unit 12 of 40**, with buttons for the first,
 previous, next and furthest unit, and a number pad to go to a unit.
@@ -94,9 +94,8 @@ session** (empty).
 | ----------------------- | -------------------------------------------------------- |
 | **←** **→** **↑** **↓** | move between answer buttons                              |
 | **Space** / **Enter**   | choose the focused button                                |
-| **Enter**               | continue, once answered                                  |
-| **Shift + ←** / **→**   | previous or next question                                |
-| **Backspace**           | back to the previous question, to change its answer      |
+| **Shift + Enter**       | continue, once answered (not while typing in a text box) |
+| **Shift + ←** / **→**   | previous or next question (back focuses its answer)      |
 | **0** / **.**           | the special options: not applicable, don't know          |
 | **?**                   | open the question's instructions                         |
 
@@ -106,11 +105,11 @@ selection, **Esc** cancels and **Backspace** removes the last span.
 The keyboard icon in the top bar lists these shortcuts, and coders choose
 their **Shortcut style** there (remembered in their browser):
 
-| Shortcut style     | Choose an option with                                                       |
-| ------------------ | --------------------------------------------------------------------------- |
-| **Numbers**        | **1** to **9**, in order (the default)                                      |
-| **Numpad**         | numbers mapped to the numpad layout; only in responsive studies             |
-| **Type to filter** | typing the answer until it's the only match, then **Enter**; **Esc** clears |
+| Shortcut style     | Choose an option with                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------- |
+| **Numbers**        | **1** to **9**, in order (the default)                                                  |
+| **Numpad**         | numbers mapped to the numpad layout; only in responsive studies                         |
+| **Type to filter** | typing the answer until it's the only match, then **Enter**; **Esc** clears             |
 | **Fast type**      | typing, chosen as soon as one answer matches (**he**, **hi**, **b** for hello, hi, bye) |
 
 Where a style can't work, numbers are used (fast type: a label that is the

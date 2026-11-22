@@ -38,7 +38,7 @@ phone. See [How answers are laid out](answer-layouts.md).
 Coders answer the items in any order; the button counts (**3 / 5**) and
 continues once all are answered. Clicking it early scrolls to the first
 missing item, outlined in red. Number keys answer the first unanswered
-item; **Enter** continues.
+item; **Shift + Enter** continues.
 
 > Long batteries tire coders and invite straight-lining. Keep scales
 > short, or split them.

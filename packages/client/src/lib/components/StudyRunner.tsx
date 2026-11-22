@@ -172,7 +172,7 @@ function CodingScreen({
     setNavDirection("next");
     void manager.goForward();
   };
-  // The keys that work whatever the mapping: arrows, Shift + arrows, Backspace, Enter
+  // The keys that work whatever the mapping: arrows, Shift + arrows, Shift + Enter
   useBaseKeys({
     canGoBack: snapshot.navigation.canGoBack,
     canGoForward: snapshot.navigation.canGoForward,

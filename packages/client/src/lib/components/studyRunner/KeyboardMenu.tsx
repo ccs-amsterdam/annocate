@@ -9,8 +9,9 @@ import { MAPPINGS, mappingById } from "../../keyboard/mappings";
 /** The shortcuts every question has, whatever the shortcut style. */
 const DEFAULT_SHORTCUTS: [string, string][] = [
   ["← → ↑ ↓", "Move between answer options, or swipe"],
-  ["Shift + ←  or  Backspace", "Previous question"],
+  ["Shift + ←", "Previous question"],
   ["Shift + →", "Next question (when possible)"],
+  ["Shift + Enter", "Continue / done (not in a text box)"],
   ["0  /  .", "Not applicable  /  Don't know (when offered)"],
   ["Typing", "Depends on the question: a number, a search"],
 ];
