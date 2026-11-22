@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { buildValues, initialValues } from "./answerValue";
 import { useKeyScope, useKeyTargets } from "../../keyboard/hooks";
 import { PRIORITY } from "../../keyboard/controller";
+import { ShortcutBadge } from "../ShortcutBadge";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 
 type NumericVariable = Extract<QuestionVariable, { type: "numeric" }>;
@@ -14,6 +15,11 @@ type NumericVariable = Extract<QuestionVariable, { type: "numeric" }>;
 function decimals(step: number): number {
   const text = String(step);
   return text.includes(".") ? text.split(".")[1].length : 0;
+}
+
+/** Buttons per row: all of them up to 11, else as many rows as needed, evenly filled (20: 2 rows of 10). */
+function rowLength(n: number): number {
+  return Math.ceil(n / Math.ceil(n / 11));
 }
 
 /**
@@ -52,13 +58,47 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
     { priority: PRIORITY.field },
   );
 
+  // A slider: Left / Right step the value (from the middle at first), Home / End go to the ends, Shift + Enter continues
+  const round = (n: number) => Number(n.toFixed(decimals(step)));
+  useKeyScope(
+    (press) => {
+      if (press.altKey || press.ctrlKey || press.metaKey) return false;
+      const min = variable.min!;
+      const max = variable.max!;
+      if (press.shiftKey) {
+        if (press.key !== "Enter" || value === null) return false;
+        answer(value);
+        return true;
+      }
+      const from = value ?? min + Math.floor((max - min) / 2 / step) * step;
+      const next =
+        press.key === "ArrowLeft"
+          ? from - step
+          : press.key === "ArrowRight"
+            ? from + step
+            : press.key === "Home"
+              ? min
+              : press.key === "End"
+                ? max
+                : null;
+      if (next === null) return false;
+      setValue(round(Math.min(max, Math.max(min, next))));
+      return true;
+    },
+    layout === "slider",
+    { priority: PRIORITY.field },
+  );
+
   const labels = variable.labels ?? [];
 
   if (layout === "buttons") {
     return (
       <div className="flex flex-col gap-1">
-        {/* One row, equal widths: auto picks buttons for up to 11 values, which fit a small phone */}
-        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
+        {/* Equal widths, up to 11 in a row (they fit a small phone); more are spread evenly over rows */}
+        <div
+          className="grid gap-1"
+          style={{ gridTemplateColumns: `repeat(${rowLength(values.length)}, minmax(0, 1fr))` }}
+        >
           {values.map((n) => (
             <Button
               key={n}
@@ -100,11 +140,13 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
         <ScaleLabels labels={labels} min={variable.min!} max={variable.max!} />
         <Button
           type="button"
-          className="h-10"
+          className="relative h-10"
+          data-key-target=""
           disabled={value === null}
           onClick={() => value !== null && answer(value)}
         >
           Continue
+          {value !== null && <ShortcutBadge shortcut="⇧↵" />}
         </Button>
       </div>
     );

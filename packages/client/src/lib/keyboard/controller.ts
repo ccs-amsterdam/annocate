@@ -71,8 +71,9 @@ export class KeyController {
   }
 }
 
-/** Whether a key press comes from typing in a field (those keys are the field's). */
+/** Whether a key press comes from typing in a field (those keys are the field's). A slider isn't one: its keys are scopes' too. */
 export function inTextField(target: EventTarget | null): boolean {
   if (typeof HTMLElement === "undefined" || !(target instanceof HTMLElement)) return false;
+  if (target instanceof HTMLInputElement && target.type === "range") return false;
   return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }

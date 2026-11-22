@@ -112,7 +112,9 @@ describe("resolveLayout", () => {
   });
 
   it("picks numeric layouts from the range", () => {
-    expect(resolveLayout({ type: "numeric", question: "?", min: 0, max: 10 }).layout).toBe("buttons");
+    expect(resolveLayout({ type: "numeric", question: "?", min: 1, max: 6 }).layout).toBe("buttons");
+    expect(resolveLayout({ type: "numeric", question: "?", min: 1, max: 7 }).layout).toBe("slider");
+    expect(resolveLayout({ type: "numeric", question: "?", min: 0, max: 10 }).layout).toBe("slider");
     expect(resolveLayout({ type: "numeric", question: "?", min: 0, max: 100 }).layout).toBe("slider");
     expect(resolveLayout({ type: "numeric", question: "?", min: 0 }).layout).toBe("input");
   });

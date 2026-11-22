@@ -519,3 +519,38 @@ test("a dropdown: the arrows open it to browse; typing opens it with the filter"
   await page.keyboard.press("Enter");
   await expect.poll(async () => (await answers(request, created.id))[0]?.value.values?.[0]?.value).toBe("Germany");
 });
+
+test("a slider (auto from 7 values): Left / Right from the middle, End, Shift + Enter continues", async ({
+  page,
+  request,
+}) => {
+  const created = await api<StudyResponse>(request, "POST", "/study", { name: "Slider keys" });
+  const score = {
+    type: "question",
+    name: "score",
+    variable: { type: "numeric", question: "Score?", min: 1, max: 10 },
+  };
+  const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, { items: [score] });
+  await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
+  await page.goto(`/code/${created.id}?link=${link.secret}`);
+  await question(page, "Score?");
+  const slider = page.getByRole("slider", { name: "Value" });
+  await expect(slider).toBeVisible();
+  // Not answered yet: Shift + Enter does nothing
+  await page.keyboard.press("Shift+Enter");
+  await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeDisabled();
+  // From the middle (5): Right twice is 7, Left once 6
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowLeft");
+  await expect(slider).toHaveValue("6");
+  await page.keyboard.press("End");
+  await expect(slider).toHaveValue("10");
+  // Also with the slider focused (clicked), the keys step once
+  await slider.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(slider).toHaveValue("9");
+  await page.keyboard.press("Shift+Enter");
+  await expect.poll(async () => (await answers(request, created.id))[0]?.value.values?.[0]?.value).toBe(9);
+});

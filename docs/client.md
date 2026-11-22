@@ -232,7 +232,8 @@ shows what it picks and warns when a chosen layout doesn't fit.
   (ordinal: buttons show values, the selected one its label), `dropdown`.
   Auto nominal: a row for 2-3 short labels, a dropdown from 10 options,
   else 2 columns, 1 column, a dropdown. Auto ordinal: a row for 2-3, else 1 column, else compact.
-- Numeric: `buttons` (one row; auto up to 11 values), `slider`, `input` (open ranges).
+- Numeric: `buttons` (up to 11 in a row, more in even rows; auto up to 6
+  values), `slider` (← → Home End, Shift + Enter), `input` (open ranges).
 - Scale: `compact` (a row per item, default) or `grid`. Continue scrolls to
   the first unanswered item.
 

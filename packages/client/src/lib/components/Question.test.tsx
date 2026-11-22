@@ -77,8 +77,11 @@ describe("Question dispatcher", () => {
       type: "question",
       variable: { type: "numeric", question: "How many?", ...extra },
     });
+    expect(renderToStaticMarkup(<Question item={numeric({ min: 1, max: 5 })} onAnswer={onAnswer} />)).toContain(
+      ">5</button>",
+    );
     expect(renderToStaticMarkup(<Question item={numeric({ min: 0, max: 10 })} onAnswer={onAnswer} />)).toContain(
-      ">10</button>",
+      'type="range"',
     );
     expect(
       renderToStaticMarkup(

@@ -97,7 +97,8 @@ function numericLayout(variable: NumericType): ResolvedLayout {
   if (variable.layout && variable.layout !== "auto") return { layout: variable.layout };
   const steps = numericSteps(variable);
   if (steps === null) return { layout: "input" };
-  return { layout: steps <= 11 ? "buttons" : "slider" };
+  // A few values: buttons; from 7, a slider (ten small buttons are hard to tell apart)
+  return { layout: steps <= 6 ? "buttons" : "slider" };
 }
 
 /** The layout a question is shown with: its own, or what `auto` picks. */

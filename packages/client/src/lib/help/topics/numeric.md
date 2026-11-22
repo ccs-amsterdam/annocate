@@ -36,13 +36,15 @@ label for an exact match, else the number.
 | **Number input**            | a box and **Continue**                   | nothing            |
 
 **Auto**: a number input without a minimum or maximum, buttons for up to
-11 numbers, else a slider.
+6 numbers, else a slider.
 
-- **Buttons** are fastest and make every number equally easy: good for
-  0-10. Keys **1** to **9** work with up to nine buttons.
+- **Buttons** are fastest and make every number equally easy. Up to 11
+  fit in one row; choose them yourself for e.g. 0-10. Keys **1** to **9**
+  work with up to nine buttons.
 - **Slider** starts without a value (**Continue** stays disabled until
-  moved). Coders tend to stay near the start, and fine positions are hard
-  on phones.
+  moved). Keys: **←** **→** move it (from the middle), **Home** / **End**
+  go to the ends, **Shift + Enter** continues. Coders tend to stay near the
+  start, and fine positions are hard on phones.
 - **Number input** refuses numbers outside the range or between steps.
   Use it for counts and age.
 
