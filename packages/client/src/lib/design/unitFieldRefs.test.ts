@@ -56,5 +56,15 @@ describe("pathOfItem", () => {
     expect(pathOfItem(items, "loop")).toEqual([0]);
     expect(pathOfItem(items, "q1")).toEqual([0, "children", 1]);
     expect(pathOfItem(items, "nope")).toBeNull();
+    const withElse = [
+      {
+        type: "block",
+        condition: { script: "true" },
+        children: [items[0]],
+        elseChildren: [{ type: "end", name: "e" }],
+      },
+    ] as unknown as TopLevelItem[];
+    expect(pathOfItem(withElse, "q1")).toEqual([0, "children", 0, "children", 1]);
+    expect(pathOfItem(withElse, "e")).toEqual([0, "elseChildren", 0]);
   });
 });

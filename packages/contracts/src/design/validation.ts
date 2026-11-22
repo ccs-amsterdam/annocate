@@ -848,7 +848,10 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     (Array.isArray(list) ? list : []).forEach((raw, i) => {
       const it = raw as RawItem | null;
       if (it?.type === "unit_loop") loopPaths.set(String(loopPaths.size + 1), [...path, i]);
-      else if (it?.type === "block") findLoops(it.children, [...path, i, "children"]);
+      else if (it?.type === "block") {
+        findLoops(it.children, [...path, i, "children"]);
+        findLoops((it as { elseChildren?: unknown }).elseChildren, [...path, i, "elseChildren"]);
+      }
     });
   findLoops(items, []);
   for (const [key, columns] of shares) {

@@ -39,6 +39,7 @@ import {
   type VariableValue,
   type PickNamesResponse,
   type DisplayEntry,
+  validateVariables,
 } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 import { Codings, UnitPool, pickNext, type AgreementKeys, type OverlapPlacement } from "./distribution.js";
@@ -64,10 +65,8 @@ import {
   findEndItem,
   finishedLoops,
   loopAgreementVariables,
-  validateVariables,
   valueOf,
   type LoopInfo,
-  type VariableType,
 } from "./designItems.js";
 import { leastUsed } from "./draws.js";
 
@@ -139,7 +138,7 @@ const SPECIAL = [
   { set: GOLD_SET, units: (s: Share) => s.gold, settings: (u: ResolvedLoopUnits) => u.gold },
 ] as const;
 
-type RandomVariable = Extract<VariableType, { type: "random" }>;
+type RandomVariable = Extract<AnyVariableType, { type: "random" }>;
 
 /** How long a coder can go back after completing a session (docs/coder-identity.md §9). */
 const REOPEN_MS = 15 * 60 * 1000;
@@ -200,7 +199,7 @@ function takeTurn(queue: PickWaiter[]): PickWaiter[] {
 export class DeploymentRuntime {
   private spec!: DeploymentSpec;
   private loops = new Map<string, LoopInfo>();
-  private coderVariableTypes = new Map<string, VariableType>();
+  private coderVariableTypes = new Map<string, AnyVariableType>();
   /** Loop key -> the coder-level questions it depends on (`loopDependencies`), frozen once a coder coded a unit there. */
   private dependencies = new Map<string, string[]>();
   private randomVariables: [string, RandomVariable][] = [];

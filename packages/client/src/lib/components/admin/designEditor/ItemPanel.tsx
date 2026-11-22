@@ -15,7 +15,7 @@ import {
 import { AlertTriangle, ArrowLeft, Code2, Edit3, Eye } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useSetGroupsQuery, useUnitFieldsQuery } from "../../../admin/queries";
-import { enclosingLoop, issueIsAbout, itemPath } from "../../../codebook/tree";
+import { enclosingLoop, flattenTree, issueIsAbout, itemPath } from "../../../codebook/tree";
 import { itemTitle } from "../../../codebook/conditions";
 import { ItemForm } from "../ItemForm";
 import { EndItemFields } from "../itemForm/EndItemFields";
@@ -149,10 +149,7 @@ export function ItemPanel({
 
 /** The names of the design's end items that screen out, anywhere in it. */
 function screenoutEnds(items: DesignItem[]): string[] {
-  return items.flatMap((i): string[] => {
-    if (i.type === "end") return i.outcome === "screenout" ? [i.name] : [];
-    return "children" in i && Array.isArray(i.children) ? screenoutEnds(i.children as DesignItem[]) : [];
-  });
+  return flattenTree(items).flatMap((i) => (i.type === "end" && i.outcome === "screenout" ? [i.name] : []));
 }
 
 /** The selected item's form, with what it needs from the rest of the design. */

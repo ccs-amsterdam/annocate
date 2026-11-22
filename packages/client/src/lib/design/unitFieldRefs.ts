@@ -18,9 +18,10 @@ export function pathOfItem(items: (TopLevelItem | InLoopItem)[], title: string):
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     if (itemTitle(item) === title || ("name" in item && item.name === title)) return [i];
-    if ("children" in item && Array.isArray(item.children)) {
-      const inner = pathOfItem(item.children as InLoopItem[], title);
-      if (inner) return [i, "children", ...inner];
+    for (const key of ["children", "elseChildren"] as const) {
+      const list = (item as { children?: unknown; elseChildren?: unknown })[key];
+      const inner = Array.isArray(list) ? pathOfItem(list as InLoopItem[], title) : null;
+      if (inner) return [i, key, ...inner];
     }
   }
   return null;

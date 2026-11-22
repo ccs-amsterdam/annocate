@@ -5,7 +5,6 @@ import {
   inviteOf,
   sessionItem,
   unitLoops,
-  validateVariables,
   type AnyVariableType,
   type DesignItem,
   type EndItem,
@@ -15,16 +14,13 @@ import {
   type VariableValue,
 } from "@annotinder/contracts";
 
-// Lookups on the design items and annotation validation.
-
-export type VariableType = AnyVariableType;
-export { validateVariables };
+// Lookups on the design items.
 
 export interface LoopInfo {
   /** The loop's position in the design (contracts `unitLoops`): how the coder API and distribution state refer to it. */
   key: string;
   loop: UnitLoopItem;
-  variables: Map<string, VariableType>;
+  variables: Map<string, AnyVariableType>;
   /** How the loop hands out units: its settings, for a crowd maybe a shared queue (contracts `effectiveLoopUnits`). */
   units: ResolvedLoopUnits;
 }
@@ -32,7 +28,7 @@ export interface LoopInfo {
 export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
   const crowd = inviteOf(sessionItem(items)).mode === "crowd";
   return unitLoops(items).map(({ key, loop }) => {
-    const variables = new Map<string, VariableType>();
+    const variables = new Map<string, AnyVariableType>();
     collectQuestions(loop.children as DesignItem[], variables);
     return { key, loop, variables, units: effectiveLoopUnits(loop, crowd, key) };
   });
@@ -79,14 +75,14 @@ export function codingsSignature(loops: Iterable<LoopInfo>): string {
 }
 
 /** Coder-level (non-unit) variables: questions and computed items outside any unit_loop. */
-export function collectCoderVariables(items: TopLevelItem[]): Map<string, VariableType> {
-  const variables = new Map<string, VariableType>();
+export function collectCoderVariables(items: TopLevelItem[]): Map<string, AnyVariableType> {
+  const variables = new Map<string, AnyVariableType>();
   collectQuestions(items, variables);
   return variables;
 }
 
 /** The variables of these items (also inside conditions, not inside unit loops), by name. */
-function collectQuestions(items: DesignItem[], into: Map<string, VariableType>) {
+function collectQuestions(items: DesignItem[], into: Map<string, AnyVariableType>) {
   for (const item of items) {
     if (item.type === "block") collectQuestions(innerItems(item) as DesignItem[], into);
     else if (item.type !== "unit_loop" && item.type !== "end" && item.type !== "session" && item.type !== "layout")
@@ -125,7 +121,7 @@ export function findEndItem(items: readonly DesignItem[], name: string): EndItem
   for (const item of items) {
     if (item.type === "end" && item.name === name) return item;
     if ("children" in item) {
-      const found = findEndItem(item.children as DesignItem[], name);
+      const found = findEndItem(innerItems(item), name);
       if (found) return found;
     }
   }

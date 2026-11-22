@@ -13,15 +13,9 @@ import { flattenTree } from "../codebook/tree";
 
 /** The questions of a loop (also inside conditions) by name. */
 export function loopVariables(loop: CoderUnitLoopItem): Map<string, AnyVariableType> {
-  const result = new Map<string, AnyVariableType>();
-  const walk = (items: InLoopItem[]) => {
-    for (const item of items) {
-      if (item.type === "block") walk([...item.children, ...(item.elseChildren ?? [])]);
-      else if (item.type === "question") result.set(item.name, item.variable);
-    }
-  };
-  walk(loop.children);
-  return result;
+  return new Map(
+    flattenTree(loop.children).flatMap((item) => (item.type === "question" ? [[item.name, item.variable]] : [])),
+  );
 }
 
 /** A loop's question names in codebook order (also inside conditions), for `::: from` blocks in its layout. */
@@ -48,12 +42,5 @@ export function currentAnswers(
 
 /** The `end` item with this name (where a session ended); null if the codebook no longer has it. */
 export function findEnd(items: (TopLevelItem | InLoopItem)[], name: string): EndItem | null {
-  for (const item of items) {
-    if (item.type === "end" && item.name === name) return item;
-    if ("children" in item) {
-      const found = findEnd(item.children as (TopLevelItem | InLoopItem)[], name);
-      if (found) return found;
-    }
-  }
-  return null;
+  return flattenTree(items).find((item): item is EndItem => item.type === "end" && item.name === name) ?? null;
 }

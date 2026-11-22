@@ -49,6 +49,9 @@ function locate(
           : item.name;
     out.set(id, { item, parent: container?.title ?? null, parentId });
     if ("children" in item && Array.isArray(item.children)) locate(item.children, { id, title: itemTitle(item) }, out);
+    // A block's else items: a container of their own (moving an item in or out of them is a move)
+    if (item.type === "block" && item.elseChildren)
+      locate(item.elseChildren, { id: `${id}/else`, title: itemTitle(item) }, out);
   }
   return out;
 }
@@ -57,6 +60,7 @@ function locate(
 function ownContent(item: DesignItem): string {
   const own: Record<string, unknown> = { ...item };
   delete own.children;
+  delete own.elseChildren;
   return JSON.stringify(own);
 }
 
