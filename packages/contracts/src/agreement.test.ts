@@ -70,3 +70,33 @@ describe("Cohen's kappa", () => {
     expect(first.kappa).not.toBeNull();
   });
 });
+
+describe("pairAgreement", () => {
+  it("every pair of coders with units in common: kappa and percent; their average is each coder's kappa", async () => {
+    const { pairAgreement, coderAgreement, cohensKappa } = await import("./agreement.js");
+    const codings = [
+      { unit: 1, coder: 1, value: "a" },
+      { unit: 1, coder: 2, value: "a" },
+      { unit: 1, coder: 3, value: "b" },
+      { unit: 2, coder: 1, value: "b" },
+      { unit: 2, coder: 2, value: "b" },
+      { unit: 3, coder: 1, value: "a" },
+      { unit: 3, coder: 3, value: "a" },
+      { unit: 4, coder: 4, value: "a" },
+    ];
+    const pairs = pairAgreement(codings);
+    // Coder 4 shares nothing; 2 and 3 share unit 1
+    expect(pairs.map((p) => [p.a, p.b, p.units, p.percent])).toEqual([
+      [1, 2, 2, 1],
+      [1, 3, 2, 0.5],
+      [2, 3, 1, 0],
+    ]);
+    const map = (coder: number) => new Map(codings.filter((c) => c.coder === coder).map((c) => [c.unit, c.value]));
+    expect(pairs[0].kappa).toBe(cohensKappa(map(1), map(2)));
+    // Coder 1's kappa: the pairs' kappas, weighed by shared units
+    const one = coderAgreement(codings).find((c) => c.coder === 1)!;
+    const with1 = pairs.filter((p) => p.a === 1 && p.kappa !== null);
+    const mean = with1.reduce((s, p) => s + p.kappa! * p.units, 0) / with1.reduce((s, p) => s + p.units, 0);
+    expect(one.kappa).toBeCloseTo(mean, 10);
+  });
+});

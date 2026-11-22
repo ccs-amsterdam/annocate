@@ -120,6 +120,44 @@ export function cohensKappa(
   return (agree / shared - chance) / (1 - chance);
 }
 
+/** Two coders' agreement over the units they both coded. */
+export interface PairAgreement {
+  a: number;
+  b: number;
+  /** Units both coded. */
+  units: number;
+  /** The share of those units with the same value. */
+  percent: number;
+  kappa: number | null;
+}
+
+/** Every pair of coders who coded units in common: Cohen's kappa and percent agreement (a < b). */
+export function pairAgreement(codings: readonly Coding[]): PairAgreement[] {
+  const byCoder = new Map<number, Map<string | number, string | number>>();
+  for (const coding of codings) {
+    let mine = byCoder.get(coding.coder);
+    if (!mine) byCoder.set(coding.coder, (mine = new Map()));
+    mine.set(coding.unit, coding.value);
+  }
+  const coders = [...byCoder.keys()].sort((x, y) => x - y);
+  const result: PairAgreement[] = [];
+  for (let i = 0; i < coders.length; i++)
+    for (let j = i + 1; j < coders.length; j++) {
+      const a = byCoder.get(coders[i])!;
+      const b = byCoder.get(coders[j])!;
+      let units = 0;
+      let agree = 0;
+      for (const [unit, value] of a) {
+        if (!b.has(unit)) continue;
+        units++;
+        if (b.get(unit) === value) agree++;
+      }
+      if (units === 0) continue;
+      result.push({ a: coders[i], b: coders[j], units, percent: agree / units, kappa: cohensKappa(a, b) });
+    }
+  return result;
+}
+
 /** How one coder agrees with the others. */
 export interface CoderAgreement {
   coder: number;
@@ -127,7 +165,7 @@ export interface CoderAgreement {
   units: number;
   /** The share of their pairs with other coders (same unit) with the same value. */
   percent: number | null;
-  /** Cohen's kappa with each other coder, averaged weighing by shared units. */
+  /** Cohen's kappa with each other coder, averaged weighing by shared units (the pairs: `pairAgreement`). */
   kappa: number | null;
 }
 

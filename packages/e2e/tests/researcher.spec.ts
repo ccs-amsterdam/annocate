@@ -80,6 +80,11 @@ test("results so far: answers per question, and agreement with each coder's", as
   await expect(page.getByRole("cell", { name: "0.61" })).toBeVisible();
   await page.getByRole("button", { name: /sentiment/ }).click();
   await expect(page.getByRole("cell", { name: "Example coder 2", exact: true })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Mean kappa" })).toBeVisible();
+  // Kappa per pair: a matrix of the three coders
+  await page.getByRole("button", { name: "Kappa per pair" }).click();
+  await expect(page.getByRole("rowheader", { name: "Example coder 1" })).toBeVisible();
+  await expect(page.getByRole("rowheader")).toHaveCount(3);
   if (process.env.E2E_SHOTS)
     await page.screenshot({ path: `${process.env.E2E_SHOTS}/results-agreement.png`, fullPage: true });
 

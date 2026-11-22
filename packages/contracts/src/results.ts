@@ -37,6 +37,7 @@ export const CoderAgreementRowSchema = z.object({
   coder: z.string().nullable(),
   units: z.number().int().nonnegative(),
   percent: z.number().nullable(),
+  /** Cohen's kappa with each other coder, averaged weighing by shared units. */
   kappa: z.number().nullable(),
 });
 export type CoderAgreementRow = z.infer<typeof CoderAgreementRowSchema>;
@@ -61,6 +62,16 @@ export const QuestionAgreementSchema = z.object({
   /** Units (for spans: words) with two or more coders. */
   units: z.number().int().nonnegative(),
   coders: z.array(CoderAgreementRowSchema),
+  /** Every pair of coders with units in common (by session id, a < b): Cohen's kappa and percent agreement. */
+  pairs: z.array(
+    z.object({
+      a: IdSchema,
+      b: IdSchema,
+      units: z.number().int().positive(),
+      percent: z.number(),
+      kappa: z.number().nullable(),
+    }),
+  ),
 });
 export type QuestionAgreement = z.infer<typeof QuestionAgreementSchema>;
 

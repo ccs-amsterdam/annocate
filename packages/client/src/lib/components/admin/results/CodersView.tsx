@@ -36,8 +36,9 @@ export function CodersView({ coders, agreement }: { coders: ResultCoder[]; agree
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">
         Time per unit: the time its questions were on screen, added up; the median over the coder&apos;s units. Fast:
-        under a third of the coders&apos; typical time. Agreement: Cohen&apos;s kappa with the other coders, over all
-        questions.
+        under a third of the coders&apos; typical time. Mean kappa: Cohen&apos;s kappa is for pairs of coders, so this
+        is the average of the coder&apos;s kappa with each other coder, over all questions (weighed by the units they
+        share). Agreement per pair: Agreement, a question&apos;s Kappa per pair.
       </p>
       <div className="overflow-x-auto rounded-lg border border-border bg-card">
         <table className="w-full text-sm">
@@ -56,7 +57,7 @@ export function CodersView({ coders, agreement }: { coders: ResultCoder[]; agree
                 Practice tries
               </th>
               <th scope="col" className="px-3 py-2 text-right font-medium">
-                Kappa
+                Mean kappa
               </th>
             </tr>
           </thead>

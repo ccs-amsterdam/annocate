@@ -2,6 +2,7 @@ import { Hono, type Context } from "hono";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   coderAgreement,
+  pairAgreement,
   collectQuestions,
   krippendorffAlpha,
   percentAgreement,
@@ -243,6 +244,7 @@ async function agreement(db: Db, studyId: number): Promise<QuestionAgreement[]> 
           coder: names.get(coder) ?? null,
           ...rest,
         })),
+        pairs: pairAgreement(codings),
       });
     }
   }

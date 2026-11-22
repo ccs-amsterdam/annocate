@@ -103,11 +103,43 @@ export function AgreementView({ questions, labels }: { questions: QuestionAgreem
   );
 }
 
-/** Each coder's agreement with the others on one question, lowest first (who to look at). */
+/** Each coder's agreement with the others on one question, lowest first (who to look at); or kappa per pair. */
 function CoderTable({ question }: { question: QuestionAgreement }) {
+  const [matrix, setMatrix] = useState(false);
   if (question.coders.length === 0)
     return <p className="text-xs text-muted-foreground">No coder shares units with another yet.</p>;
   const coders = [...question.coders].sort((a, b) => (a.kappa ?? 2) - (b.kappa ?? 2));
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-1" role="group" aria-label="Agreement view">
+        {(
+          [
+            [false, "Per coder"],
+            [true, "Kappa per pair"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={label}
+            type="button"
+            aria-pressed={matrix === value}
+            onClick={() => setMatrix(value)}
+            className={cn(
+              "cursor-pointer rounded px-2 py-0.5 text-xs",
+              matrix === value
+                ? "bg-wood/15 font-medium text-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {matrix ? <PairMatrix question={question} /> : <CoderRows coders={coders} />}
+    </div>
+  );
+}
+
+function CoderRows({ coders }: { coders: QuestionAgreement["coders"] }) {
   return (
     <table className="w-full text-xs">
       <thead className="text-left text-muted-foreground">
@@ -121,8 +153,12 @@ function CoderTable({ question }: { question: QuestionAgreement }) {
           <th scope="col" className="py-1 text-right font-medium">
             Agree
           </th>
-          <th scope="col" className="py-1 text-right font-medium" title="Cohen's kappa with each other coder, averaged">
-            Kappa
+          <th
+            scope="col"
+            className="py-1 text-right font-medium"
+            title="Cohen's kappa is for pairs of coders: this is the average of the coder's kappa with each other coder, weighed by the units they share"
+          >
+            Mean kappa
           </th>
         </tr>
       </thead>
@@ -137,5 +173,96 @@ function CoderTable({ question }: { question: QuestionAgreement }) {
         ))}
       </tbody>
     </table>
+  );
+}
+
+/** At most this many coders in the matrix: beyond that it can't be read. */
+const MATRIX_CODERS = 10;
+
+/**
+ * Cohen's kappa per pair of coders, as a matrix: at most ten coders (the
+ * ones with the lowest mean kappa first); others can be added, which drops
+ * the first chosen.
+ */
+function PairMatrix({ question }: { question: QuestionAgreement }) {
+  const all = [...question.coders].sort((a, b) => (a.kappa ?? 2) - (b.kappa ?? 2));
+  const [chosen, setChosen] = useState<number[]>(() => all.slice(0, MATRIX_CODERS).map((c) => c.sessionId));
+  const nameOf = (id: number) => all.find((c) => c.sessionId === id)?.coder ?? `Session ${id}`;
+  const pair = (x: number, y: number) =>
+    question.pairs.find((p) => (p.a === x && p.b === y) || (p.a === y && p.b === x));
+  const others = all.filter((c) => !chosen.includes(c.sessionId));
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="overflow-x-auto">
+        <table className="text-xs">
+          <thead>
+            <tr>
+              <th />
+              {chosen.map((id) => (
+                <th
+                  key={id}
+                  scope="col"
+                  className="max-w-24 truncate px-1.5 py-1 text-right font-medium"
+                  title={nameOf(id)}
+                >
+                  {nameOf(id)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {chosen.map((row) => (
+              <tr key={row}>
+                <th scope="row" className="max-w-32 truncate py-1 pr-2 text-left font-medium" title={nameOf(row)}>
+                  {nameOf(row)}
+                </th>
+                {chosen.map((col) => {
+                  const p = row === col ? undefined : pair(row, col);
+                  return (
+                    <td
+                      key={col}
+                      className={cn(
+                        "px-1.5 py-1 text-right tabular-nums",
+                        p ? alphaClass(p.kappa) : "text-muted-foreground",
+                      )}
+                      title={p ? `${p.units} shared units, ${percent(p.percent)} the same` : undefined}
+                    >
+                      {row === col ? "" : p ? fixed(p.kappa) : "·"}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Hover a cell for the units the pair shares; · : no units in common.
+      </p>
+      {others.length > 0 && (
+        <label className="flex items-center gap-2 text-xs">
+          Add a coder
+          <select
+            className="h-7 rounded-md border border-input bg-background px-1.5 text-xs"
+            value=""
+            onChange={(e) => {
+              const id = Number(e.target.value);
+              // At most ten: adding one drops the first chosen
+              setChosen((now) => [...now, id].slice(-MATRIX_CODERS));
+            }}
+          >
+            <option value="">Choose…</option>
+            {others.map((c) => (
+              <option key={c.sessionId} value={c.sessionId}>
+                {c.coder ?? `Session ${c.sessionId}`}
+              </option>
+            ))}
+          </select>
+          {chosen.length >= MATRIX_CODERS && (
+            <span className="text-muted-foreground">(at most ten: replaces the first)</span>
+          )}
+        </label>
+      )}
+    </div>
   );
 }
