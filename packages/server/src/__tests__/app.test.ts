@@ -31,6 +31,17 @@ async function createStudy(name = "Test study") {
   return res.json() as Promise<{ id: number; name: string }>;
 }
 
+describe("responses", () => {
+  it("are gzipped for clients that accept it", async () => {
+    for (let i = 0; i < 20; i++) await createStudy(`Study number ${i}`);
+    const zipped = await app.request("/api/study", { headers: { ...adminHeaders, "accept-encoding": "gzip" } });
+    expect(zipped.headers.get("content-encoding")).toBe("gzip");
+    const plain = await app.request("/api/study", { headers: adminHeaders });
+    expect(plain.headers.get("content-encoding")).toBeNull();
+    expect((await json(plain)).length).toBe(20);
+  });
+});
+
 describe("study routes", () => {
   it("creates and fetches a study", async () => {
     const study = await createStudy("My study");
