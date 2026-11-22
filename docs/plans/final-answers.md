@@ -79,11 +79,12 @@ for practice and gold. The columns stay for answer keys made elsewhere.
 - The runtime registry parses `<studyId>.<job>`.
 - Results, progress and agreement filter on the coders' job.
 
-## Open questions
+## Decided
 
-1. A decide job shows the coders' answers: with their coder ids, or
-   anonymous counts per option?
-2. When coders' answers change after a decision: keep the decision (and flag
-   it), or reopen the unit?
-3. Should a reference job's answers also count as one more coder in
-   agreement (researcher vs. coders)?
+1. **Coders' answers in a decide job**: a button opens a dialog with the
+   answers per coder id, and a tab with the counts per option.
+2. **Answers that change after a decision**: the decision stays. A decision
+   shows when answers to its unit and question were given or changed after
+   it (from the timestamps), so the researcher can look again. Answers are
+   not frozen.
+3. **A reference job in agreement**: optional, off by default.
