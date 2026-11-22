@@ -24,6 +24,10 @@ files. Download as often as you like, also while coding runs.
 Files are UTF-8 (with a marker for spreadsheets); times are UTC
 (`2026-10-27T14:05:00.000Z`).
 
+**Raw export** (under the zip's options) saves the data as the server keeps
+it, for scripts: a JSON-lines file per table and `manifest.json`. See the
+[researcher API](researcher-api.md) for reading it in R or Python.
+
 ## Looking at the answers in the app
 
 Next to **Download**, four views of the answers so far (click **Refresh**

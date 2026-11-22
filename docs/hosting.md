@@ -324,7 +324,7 @@ those for `compose.yml`.
 | Variable | What |
 | --- | --- |
 | `ANNOTINDER_PUBLIC_URL` | Where browsers reach AnnoTinder, no trailing slash. The login callback is `<ANNOTINDER_PUBLIC_URL>/api/auth/callback`; `https://` turns on HSTS |
-| `ANNOTINDER_SECRET` | Signs login state and preview links (`openssl rand -hex 32`); without it these end at every restart |
+| `ANNOTINDER_SECRET` | Signs login state, preview links and download links (`openssl rand -hex 32`); without it these end at every restart |
 | `DATABASE_URL` | Postgres, e.g. `postgres://user:pass@host:5432/annotinder` (compose sets it). Without it: PGlite in `PGLITE_DIR` (development) |
 | `OIDC_HOST`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | The login provider's issuer and client. Without them nobody can log in |
 | `OIDC_MFA_CLAIM` | Which ID token claim is a second factor: `amr:mfa` (default) or `acr:<value>` (`security.md` §1) |
@@ -343,6 +343,7 @@ those for `compose.yml`.
 | `PGPOOL_MAX` | Database connections per server process (default 20) |
 | `PGLITE_DIR` | Without `DATABASE_URL`: the PGlite folder (default `packages/server/.pglite`) |
 | `ANNOTINDER_CLIENT_DIR` | The built client (the image sets it) |
+| `ANNOTINDER_FILES_DIR` | Where results exports are kept (default: a folder in the temp folder). A cache: losing it only means the next export is written again |
 | `ANNOTINDER_DEMO` | `1`: an empty database gets the demo study. Development only |
 | `AUTH_DEV_MODE` | `1`: development auth headers instead of a login; the server only starts if it listens on localhost. **Never on a server others use** |
 

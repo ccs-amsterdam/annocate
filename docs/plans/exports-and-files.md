@@ -1,4 +1,9 @@
-# Results export and file storage (plan)
+# Results export and file storage
+
+Built: the raw export, disk storage with signed links, and the browser's
+download built from it (`docs/api/researcher.md` "exportResults"). To do:
+the S3 backend (and Garage in `compose.yml`), multimedia, an R/Python
+helper.
 
 ## Goals
 

@@ -2,8 +2,7 @@
 
 Built: the four views (`docs/client.md` §7 "Results"). Not yet: filters by
 loop and design version, a histogram for numbers, gold scores per coder,
-spans drawn in the text (the Units view lists them), and the streamed
-export below.
+spans drawn in the text (the Units view lists them).
 
 Today the Results tab only downloads a zip. A researcher who wants to know
 whether coding goes well (an unclear question, a careless coder, low
@@ -54,20 +53,9 @@ agreement per question, one unit's answers at a time. The browser never
 downloads all answers for the viewer. One request per view; Refresh asks
 again.
 
-## Later: a streamed export
+## Export
 
-The download now pages through all answers into the browser, which builds
-the zip. For large studies the server builds and streams the zip instead,
-and the browser's zip code goes (one way to build the files, not two). To
-design in from the start:
-
-- A last entry with the row counts, so a broken download is recognised.
-- A short-lived download token: a link can't send the `x-annotinder`
-  header, and saving to disk needs a link.
-- One database snapshot for all files.
-- The same files and columns as now (the label code moves to contracts).
-
-The paged answers API stays, for R and Python.
+The raw export the download is built from: [exports-and-files.md](exports-and-files.md).
 
 ## Later
 

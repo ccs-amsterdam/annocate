@@ -121,6 +121,7 @@ work with an API key (403 `not_with_api_key`).
 | [listResultUnits](#listresultunits) | `GET /study/:studyId/results/units` | READ | – | `ResultsUnitsSchema` |
 | [getResultUnit](#getresultunit) | `GET /study/:studyId/results/units/:unitId` | READ | – | `ResultsUnitSchema` |
 | [listResultCoders](#listresultcoders) | `GET /study/:studyId/results/coders` | READ | – | `ResultsCodersSchema` |
+| [exportResults](#exportresults) | `POST /study/:studyId/results/export` | READ | – | `ResultsExportSchema` |
 
 ## Account
 
@@ -724,4 +725,33 @@ with the coder session and coder id.
 session with unit answers: units answered, the median time per unit (the
 browser's on-screen times of its questions added up), and the answers
 practice questions needed on average until right.
+
+### exportResults
+
+`POST /study/:studyId/results/export` → `ResultsExportSchema`: `{ url,
+expires, size }`, a link to the study's raw export, valid an hour. Follow
+`url` (relative to the server; no API key needed: the link is the key) to
+download it. The server writes the export when asked, or returns the same
+file while the study is unchanged.
+
+The export is a zip of JSON-lines files, one per table, rows in this API's
+shapes: `answers.jsonl` (`AnnotationRow`, also reset answers with
+`retiredAt`), `units.jsonl` (`UnitVersion`), `coders.jsonl`
+(`CoderProgress`), `design_versions.jsonl` (`DesignVersion` plus its
+`number`), `deployments.jsonl`, `sets.jsonl`, `devices.jsonl`,
+`deletions.jsonl`, and `manifest.json` (`ResultsExportManifestSchema`) with
+the rows per file. The manifest is written last: a zip without it, or with
+other counts, is incomplete. All files come from one snapshot of the study.
+
+```r
+zip <- tempfile(fileext = ".zip")
+download.file(paste0(server, link$url), zip, mode = "wb")
+answers <- jsonlite::stream_in(unz(zip, "answers.jsonl"))
+```
+
+```python
+import io, zipfile, pandas as pd, requests
+z = zipfile.ZipFile(io.BytesIO(requests.get(server + link["url"]).content))
+answers = pd.read_json(z.open("answers.jsonl"), lines=True)
+```
 

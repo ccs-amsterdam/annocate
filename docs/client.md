@@ -547,7 +547,9 @@ Units), Deploy (Links, Coders), Results, Settings. It uses a `ResearcherApi`
   `listResultCoders`), loaded once and on Refresh. **Download**
   (`results/DownloadView.tsx`; `admin/exportData.ts` with the tables,
   `exportAnswers.ts` for answer cells, `exportReadme.ts`): one zip built in
-  the browser from the researcher API, with `fflate`:
+  the browser, with `fflate`, from the server's raw export
+  (`exportResults`, read by `admin/rawExport.ts`); **Raw export** saves that
+  export as is:
   - `annotations.csv`: a row per unit and coder session (unit version, design
     version), a column per question (scales a column per item);
   - `coders.csv`: coder-level answers, how the session ended, units finished;
@@ -560,8 +562,7 @@ Units), Deploy (Links, Coders), Results, Settings. It uses a `ResearcherApi`
   Cells hold values; "Add label columns" (default on) adds `_label` columns
   (the label the coder saw). Several answers are joined with "; ", spans as
   "value: text", relations as "value: from → to". Answers that don't fit a
-  cell also get a `_json` column. UTF-8 with a byte order mark. Large studies
-  would be better served by a streaming download from the server (later).
+  cell also get a `_json` column. UTF-8 with a byte order mark.
 - **Preview** runs the latest design as deployment `<studyId>.preview`
   (`POST /study/:studyId/deployment/preview`); nothing is stored
   (`architecture.md` §5).

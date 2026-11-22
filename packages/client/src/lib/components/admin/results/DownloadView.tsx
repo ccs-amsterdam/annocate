@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { strToU8, zipSync } from "fflate";
-import { designFile, type AnnotationRow, type TopLevelItem, type UnitVersion } from "@annotinder/contracts";
-import { describeVersions } from "../../../design/versions";
+import { designFile, type TopLevelItem } from "@annotinder/contracts";
+import { readRawExport } from "../../../admin/rawExport";
 import { Download, FileArchive } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useCodersQuery, useDeploymentQuery, useStudyQuery } from "../../../admin/queries";
@@ -24,22 +24,6 @@ import { Button } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../../help/HelpButton";
 
-/** Every row of a paged researcher API list. */
-async function allPages<T>(
-  fetchPage: (after: number | undefined) => Promise<{ rows: T[]; next: number | null }>,
-  onProgress: (n: number) => void,
-): Promise<T[]> {
-  const rows: T[] = [];
-  let after: number | undefined;
-  for (;;) {
-    const page = await fetchPage(after);
-    rows.push(...page.rows);
-    onProgress(rows.length);
-    if (page.next === null) return rows;
-    after = page.next;
-  }
-}
-
 /**
  * Downloading the study's data (docs/client.md §7, "Results"): one zip with
  * the annotations, coders, the unit versions coded and the design's
@@ -59,51 +43,39 @@ export function DownloadView({ client }: { client: ResearcherApi }) {
   const finished = (coders.data ?? []).reduce((n, c) => n + Object.values(c.finished).reduce((a, b) => a + b, 0), 0);
   const name = study?.name ?? `study ${client.studyId}`;
 
+  /** The study's raw export, from the server (written now, or reused if nothing changed). */
+  async function rawExport() {
+    setBusy("Preparing the export…");
+    const { url } = await client.exportResults();
+    setBusy("Downloading…");
+    return readRawExport(await client.downloadExport(url));
+  }
+
   async function download() {
     setError(null);
-    setBusy("Loading coders…");
     try {
-      const coderList = (await coders.refetch()).data ?? [];
-      const deletions = await client.listCoderDeletions();
-      const devices = await client.listDevices();
-      const rows = await allPages<AnnotationRow>(
-        async (after) => {
-          const page = await client.listAnnotations({
-            after,
-            limit: 10000,
-            ...(withReset ? { retired: "true" as const } : {}),
-          });
-          return { rows: page.annotations, next: page.next };
-        },
-        (n) => setBusy(`Loading answers: ${n}…`),
-      );
-      const versions = await allPages<UnitVersion>(
-        async (after) => {
-          const page = await client.listUnitVersions({ after, limit: 10000 });
-          return { rows: page.versions, next: page.next };
-        },
-        (n) => setBusy(`Loading units: ${n}…`),
-      );
+      const raw = await rawExport();
+      setBusy("Making the tables…");
+      const rows = withReset ? raw.answers : raw.answers.filter((a) => !a.retiredAt);
       const annotations = rows.filter((a) => !a.retiredAt);
-      // The design versions answers were given under, and the live one.
-      setBusy("Loading design versions…");
+      const coderList = raw.coders;
+      const numberOf = (id: number) => raw.designVersions.find((v) => v.id === id)?.number ?? null;
+      // The design versions answers were given under, and the live one
+      const liveId = deployment?.designVersionId ?? null;
       const ids = new Set(rows.flatMap((a) => (a.designVersionId === null ? [] : [a.designVersionId])));
-      if (deployment) ids.add(deployment.designVersionId);
+      if (liveId !== null) ids.add(liveId);
       const designVersions = new Map<number, TopLevelItem[]>();
       const designs: Record<string, Uint8Array> = {};
-      // Per design version: design.json, with the client it ran on (its latest deployment)
-      const numbers = describeVersions(await client.listDesignVersions(), deployment?.designVersionId ?? null);
-      const deployments = await client.listDeploymentVersions();
-      for (const id of ids) {
-        const version = await client.getDesignVersion(id);
-        designVersions.set(id, version.items as TopLevelItem[]);
-        const ran = deployments.find((d) => d.designVersionId === id && d.client)?.client;
-        const number = numbers.numberOf(id);
-        designs[`designs/v${number ?? id}.json`] = strToU8(
+      for (const version of raw.designVersions) {
+        if (!ids.has(version.id)) continue;
+        designVersions.set(version.id, version.items as TopLevelItem[]);
+        // With the client it ran on (its latest deployment)
+        const ran = raw.deployments.find((d) => d.designVersionId === version.id && d.client)?.client;
+        designs[`designs/v${version.number}.json`] = strToU8(
           JSON.stringify(
             designFile(version, {
               name,
-              version: number,
+              version: version.number,
               client: ran ?? { release: "unknown", commit: "unknown" },
               exportedAt: new Date(),
             }),
@@ -113,7 +85,6 @@ export function DownloadView({ client }: { client: ResearcherApi }) {
         );
       }
 
-      const liveId = deployment?.designVersionId ?? null;
       const live = liveId === null ? undefined : designVersions.get(liveId);
       const order = questionOrder(live);
       const nested = nestedQuestions(live);
@@ -123,25 +94,18 @@ export function DownloadView({ client }: { client: ResearcherApi }) {
       const zip = zipSync({
         "README.txt": strToU8(readme(name, now, withLabels, spreadsheetSafe)),
         "annotations.csv": strToU8(
-          toCsv(
-            annotationsTable(annotations, coderList, order, labels, nested, numbers.numberOf, numeric),
-            spreadsheetSafe,
-          ),
+          toCsv(annotationsTable(annotations, coderList, order, labels, nested, numberOf, numeric), spreadsheetSafe),
         ),
         "coders.csv": strToU8(toCsv(codersTable(coderList, order, labels, nested, numeric), spreadsheetSafe)),
-        "devices.csv": strToU8(toCsv(devicesTable(devices), spreadsheetSafe)),
+        "devices.csv": strToU8(toCsv(devicesTable(raw.devices), spreadsheetSafe)),
         "display_changes.csv": strToU8(toCsv(displayChangesTable(coderList), spreadsheetSafe)),
         "timings.csv": strToU8(toCsv(timingsTable(annotations, coderList), spreadsheetSafe)),
-        "deleted_coders.csv": strToU8(toCsv(deletedCodersTable(deletions), spreadsheetSafe)),
-        "units.csv": strToU8(toCsv(unitsTable(versions, annotations, await client.listSetGroups()), spreadsheetSafe)),
-        "variables.csv": strToU8(toCsv(variablesTable(designVersions, numbers.numberOf), spreadsheetSafe)),
+        "deleted_coders.csv": strToU8(toCsv(deletedCodersTable(raw.deletions), spreadsheetSafe)),
+        "units.csv": strToU8(toCsv(unitsTable(raw.units, annotations, raw.sets), spreadsheetSafe)),
+        "variables.csv": strToU8(toCsv(variablesTable(designVersions, numberOf), spreadsheetSafe)),
         ...designs,
         ...(withReset
-          ? {
-              "reset_answers.csv": strToU8(
-                toCsv(resetAnswersTable(rows, labels, numbers.numberOf, numeric), spreadsheetSafe),
-              ),
-            }
+          ? { "reset_answers.csv": strToU8(toCsv(resetAnswersTable(rows, labels, numberOf, numeric), spreadsheetSafe)) }
           : {}),
       });
       downloadFile(
@@ -149,6 +113,23 @@ export function DownloadView({ client }: { client: ResearcherApi }) {
         `${name.replace(/[^\w-]+/g, "_")}_${now.toISOString().slice(0, 10)}.zip`,
         "application/zip",
       );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** The raw export as is: the browser saves it from the link. */
+  async function downloadRaw() {
+    setError(null);
+    setBusy("Preparing the export…");
+    try {
+      const { url } = await client.exportResults();
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "";
+      a.click();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -235,6 +216,16 @@ export function DownloadView({ client }: { client: ResearcherApi }) {
           <Button className="self-start" disabled={busy !== null} onClick={() => void download()}>
             <Download className="mr-1 h-4 w-4" /> Download zip
           </Button>
+          <div className="flex items-center gap-1 border-t border-border pt-3 text-sm">
+            <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => void downloadRaw()}>
+              Raw export
+            </Button>
+            <InfoTip label="About the raw export">
+              The data as the server keeps it, for scripts: a zip with a JSON-lines file per table (answers, units,
+              coders, design versions, ...) and manifest.json. R: <code>jsonlite::stream_in</code>; Python:{" "}
+              <code>pandas.read_json(..., lines=True)</code>. Labels and wide tables are up to you.
+            </InfoTip>
+          </div>
           {busy && <p className="text-sm text-muted-foreground">{busy}</p>}
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>

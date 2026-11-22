@@ -25,6 +25,7 @@ import {
   type ResultsAgreement,
   type ResultsAnswers,
   type ResultsCoders,
+  type ResultsExport,
   type ResultsUnit,
   type ResultsUnits,
   type CoderProgress,
@@ -200,6 +201,10 @@ export interface ResearcherApi {
   listResultUnits(): Promise<ResultsUnits>;
   getResultUnit(unitId: number): Promise<ResultsUnit>;
   listResultCoders(): Promise<ResultsCoders>;
+  /** A link to the study's raw export (written now, or reused if nothing changed). */
+  exportResults(): Promise<ResultsExport>;
+  /** The file behind an export link. */
+  downloadExport(url: string): Promise<Uint8Array>;
 }
 
 export interface HttpResearcherApiConfig {
@@ -351,6 +356,17 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async listResultCoders(): Promise<ResultsCoders> {
     return this.request(this.studyPath(researcherEndpoints.listResultCoders.path));
+  }
+
+  async exportResults(): Promise<ResultsExport> {
+    return this.request(this.studyPath(researcherEndpoints.exportResults.path), { method: "POST" });
+  }
+
+  async downloadExport(url: string): Promise<Uint8Array> {
+    // The link is the key: no login headers (it may point to a storage service)
+    const res = await fetch(url);
+    if (!res.ok) throw new ResearcherApiError(res.status, `The download failed (${res.status})`, undefined);
+    return new Uint8Array(await res.arrayBuffer());
   }
 
   async listUnitVersions(query: UnitVersionsQuery = {}): Promise<UnitVersionPage> {

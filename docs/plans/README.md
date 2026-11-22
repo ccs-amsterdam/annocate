@@ -9,6 +9,7 @@ what exists.
 | [question-loops.md](question-loops.md) | The same questions once per value of a list (per span, per answer value); value loops and value branches; loop settings that depend on a condition |
 | [results-viewer.md](results-viewer.md) | Looking at the answers in the app: answers per question, agreement, a unit with every coder's answers, a coder's answers and times |
 | [final-answers.md](final-answers.md) | One answer per unit from several coders' (a majority rule, or a researcher deciding); coding jobs: links to decide disagreements or code a sample first |
+| [exports-and-files.md](exports-and-files.md) | The raw results export (built) and file storage: S3 and Garage later, multimedia |
 | [encryption.md](encryption.md) | Encrypting participants' answers in the browser (on hold) |
 
 Elsewhere: local coding from R and Python (`../compositions.md`), templates

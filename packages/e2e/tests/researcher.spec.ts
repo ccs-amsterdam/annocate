@@ -46,6 +46,16 @@ test("a study from an example: the dialog, the overview note, and its results in
   // 3 example coders, 10 units each
   expect(csvRows(files["annotations.csv"])).toHaveLength(1 + 30);
   expect(csvRows(files["coders.csv"])).toHaveLength(1 + 3);
+
+  // The raw export, as the server keeps it: JSON lines and a manifest
+  const [raw] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Raw export", exact: true }).click(),
+  ]);
+  const rawFiles = unzipSync(new Uint8Array(Buffer.concat(await (await raw.createReadStream()).toArray())));
+  const manifest = JSON.parse(strFromU8(rawFiles["manifest.json"])) as { counts: Record<string, number> };
+  expect(manifest.counts["answers.jsonl"]).toBe(30);
+  expect(raw.suggestedFilename()).toMatch(/_results_.*\.zip$/);
 });
 
 test("results so far: answers per question, and agreement with each coder's", async ({ page, request }) => {
