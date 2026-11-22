@@ -38,8 +38,8 @@ On the loop's **Units** tab:
   assignment's column can't be used here.
 - **Coding units**: **Include** (default) or **Leave out (only special
   units)**, e.g. for a practice round.
-- In a later loop, **Coding units: The units each coder got in** an
-  earlier loop: the units each coder finished there, in that order, e.g.
+- In a later loop, **Coding units: The units each coder got in the
+  previous loop**: the units each coder finished there, in that order, e.g.
   a second round of questions on the same units. They are fixed when the
   coder reaches the loop.
 

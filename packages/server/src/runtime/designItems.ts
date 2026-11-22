@@ -33,7 +33,7 @@ export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
   return unitLoops(items).map(({ key, loop }) => {
     const variables = new Map<string, VariableType>();
     collectQuestions(loop.children as DesignItem[], variables);
-    return { key, loop, variables, units: effectiveLoopUnits(loop, crowd) };
+    return { key, loop, variables, units: effectiveLoopUnits(loop, crowd, key) };
   });
 }
 

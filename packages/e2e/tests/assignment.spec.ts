@@ -171,6 +171,9 @@ test("uploading units with a set column makes the column, shown with its values"
   await expect(page.getByRole("button", { name: /^anna 2$/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /^bob 2$/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /^_overlap 1$/ })).toBeVisible();
+  // The table has the set column once (its cells), not again as a field
+  await expect(page.getByRole("cell", { name: "coder", exact: true })).toHaveCount(1);
+  await expect(page.getByRole("cell", { name: "anna;bob" })).toBeVisible();
 });
 
 test("a link where coders pick their name: a name stays on the first device that picks it", async ({

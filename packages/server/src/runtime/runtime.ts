@@ -1248,32 +1248,38 @@ export class DeploymentRuntime {
         const route = c.assignments[loop] ? this.routeOf(c, info) : null;
         return route ? [{ sessionId: c.sessionId, route }] : [];
       });
-      // One row per pool: a set with its rule (a shared queue, or handed out whole).
-      const pools = new Map<string, { pool: UnitPool; coders: number[] }>();
+      // One row per pool: a set with its rule (a shared queue, or handed out whole). The previous loop's units are
+      // each coder's own: one row for all of them
+      const found = new Map<string, { set: string; rule: UnitPool["rule"]; unitIds: number[]; coders: number[] }>();
+      for (const { sessionId, route } of routes) {
+        const routed = this.pools(route, codings, []);
+        for (const pool of [routed.main, ...routed.extras.map((e) => e.pool)]) {
+          const set = pool.set.replace(/^session \d+ as /, "as ");
+          const key = `${set}/${JSON.stringify(pool.rule)}`;
+          if (!found.has(key)) found.set(key, { set, rule: pool.rule, unitIds: [], coders: [] });
+          const row = found.get(key)!;
+          row.unitIds.push(...pool.unitIds);
+          row.coders.push(sessionId);
+        }
+      }
       const loopLeases = leases
         .filter((l) => l.loop === loop)
         .map((l) => ({ ...l, expires: new Date(l.expires).getTime() }));
       // Shares overlap (`_overlap`, `a;b`): a unit is listed once, in the first row that has it
       const listed = new Set<number>();
-      for (const { sessionId, route } of routes) {
-        const routed = this.pools(route, codings, []);
-        for (const pool of [routed.main, ...routed.extras.map((e) => e.pool)]) {
-          const key = `${pool.set}/${JSON.stringify(pool.rule)}`;
-          if (!pools.has(key)) {
-            const row = new UnitPool(
-              pool.set,
-              pool.unitIds.filter((id) => !listed.has(id)),
-              pool.rule,
-              codings,
-            );
-            row.loadLeases(loopLeases);
-            for (const id of row.unitIds) listed.add(id);
-            pools.set(key, { pool: row, coders: [] });
-          }
-          pools.get(key)!.coders.push(sessionId);
-        }
+      const pools: { pool: UnitPool; coders: number[] }[] = [];
+      for (const { set, rule, unitIds, coders } of found.values()) {
+        const pool = new UnitPool(
+          set,
+          [...new Set(unitIds)].filter((id) => !listed.has(id)),
+          rule,
+          codings,
+        );
+        pool.loadLeases(loopLeases);
+        for (const id of pool.unitIds) listed.add(id);
+        pools.push({ pool, coders });
       }
-      for (const { pool, coders } of pools.values()) {
+      for (const { pool, coders } of pools) {
         sources.push({
           loop: loopTitle(info.loop, loop),
           set: pool.set,

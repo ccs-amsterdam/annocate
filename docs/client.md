@@ -503,8 +503,8 @@ Deploy (Deploy changes, Links), Results, Settings. It uses a `ResearcherApi`
   - **Backup**: unsaved edits are copied to localStorage a second after each
     change, and offered back after the browser was closed.
 - **Unit loops** have two tabs (`UnitLoopForm.tsx`). **Units**
-  (`unitLoop/UnitsEditor.tsx`): what a coder gets, an earlier loop's units
-  (`sameAs`), the subset, for a crowd "Units and coders" (everyone codes
+  (`unitLoop/UnitsEditor.tsx`): what a coder gets, the previous loop's units
+  (`sameAsPrevious`), the subset, for a crowd "Units and coders" (everyone codes
   everything, or divide the units: the distribution criteria), the coding
   units and the assignment column's overlap/practice/gold with placement,
   the checks, and the order (`architecture.md` §6.2). **Layout**: the template in Monaco

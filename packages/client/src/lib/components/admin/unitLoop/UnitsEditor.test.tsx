@@ -50,9 +50,11 @@ describe("a loop's Units settings", () => {
     expect(html).toContain("Coder unit assignments");
   });
 
-  it("a later loop can take an earlier loop's units: then no subset or dividing", () => {
-    const html = render({ sameAs: 1 }, { mode: "crowd" }, [{ number: 1, title: "First pass" }]);
-    expect(html).toContain('<option value="1" selected="">The units each coder got in First pass</option>');
+  it("a loop can take the previous loop's units: then no subset or dividing", () => {
+    const html = render({ sameAsPrevious: true }, { mode: "crowd" }, [{ number: 1, title: "First pass" }]);
+    expect(html).toContain(
+      '<option value="previous" selected="">The units each coder got in the previous loop (First pass)</option>',
+    );
     expect(html).not.toContain("Select unit subset(s)");
     expect(html).not.toContain("Divide units among coders");
   });

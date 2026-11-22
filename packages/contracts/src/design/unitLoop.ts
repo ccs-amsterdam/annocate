@@ -12,7 +12,7 @@ import { SetGroupNameSchema } from "../sets.js";
 // or spread throughout), the checks on practice and gold units, and for a
 // crowd whether the units are divided among the coders (a shared queue) or
 // every coder codes all of them. A later loop can instead take the units
-// a coder got in an earlier loop (`sameAs`). The design refers to set
+// a coder got in the previous loop (`sameAsPrevious`). The design refers to set
 // columns and their values by name; which units are in them lives with the
 // units, so a design can be shared and reproduced without revealing them.
 
@@ -168,9 +168,9 @@ export type Criteria = z.infer<typeof CriteriaSchema>;
  * subset of them (`subset`), the coding units or not (`coding`, default
  * yes), where the special units go (default `spread`), with the checks on
  * practice and gold units; for a crowd, `divide`: the coding units are a
- * shared queue (else every coder codes all of them); `sameAs`: the coding
- * units are those the coder finished in that earlier loop (its number,
- * counting from 1), in that order. Absent: all of them.
+ * shared queue (else every coder codes all of them); `sameAsPrevious`: the
+ * coding units are those the coder finished in the previous loop, in that
+ * order (a third loop with it takes the second's, so the first's). Absent: all of them.
  */
 export const LoopUnitsSchema = z.object({
   subset: SubsetSchema.optional(),
@@ -181,7 +181,7 @@ export const LoopUnitsSchema = z.object({
   practiceCheck: PracticeCheckSchema.optional(),
   goldCheck: GoldCheckSchema.optional(),
   divide: CriteriaSchema.optional(),
-  sameAs: z.number().int().positive().optional(),
+  sameAsPrevious: z.boolean().optional(),
 });
 export type LoopUnits = z.infer<typeof LoopUnitsSchema>;
 
@@ -199,7 +199,7 @@ export interface ResolvedLoopUnits {
   /** The coding units are included (else only special units). */
   own: boolean;
   criteria?: Criteria;
-  /** The key of the earlier loop whose units (per coder) this loop takes. */
+  /** The key of the previous loop, whose units (per coder) this loop takes. */
   sameAs?: string;
   overlap?: ResolvedPlacement;
   practice?: ResolvedPlacement & PracticeCheck;
@@ -214,11 +214,13 @@ export interface ResolvedPlacement {
 /**
  * A loop's units as the server hands them out (`ResolvedLoopUnits`): its
  * settings; `crowd`: the coders are a crowd (only then are units divided).
- * Taking an earlier loop's units, the units aren't divided again.
+ * Taking the previous loop's units, the units aren't divided again. `key`:
+ * the loop's (contracts `unitLoops`).
  */
-export function effectiveLoopUnits(loop: { units?: LoopUnits }, crowd: boolean): ResolvedLoopUnits {
+export function effectiveLoopUnits(loop: { units?: LoopUnits }, crowd: boolean, key: string): ResolvedLoopUnits {
   const u = loopUnits(loop);
-  const shared = crowd && u.sameAs === undefined ? u.divide : undefined;
+  const previous = u.sameAsPrevious && Number(key) > 1 ? String(Number(key) - 1) : undefined;
+  const shared = crowd && previous === undefined ? u.divide : undefined;
   const place = (p: Placement | undefined): ResolvedPlacement => {
     switch (p ?? "spread") {
       case "ignore":
@@ -240,7 +242,7 @@ export function effectiveLoopUnits(loop: { units?: LoopUnits }, crowd: boolean):
     ...(u.subset ? { subset: u.subset } : {}),
     own: u.coding ?? true,
     ...(shared ? { criteria: shared } : {}),
-    ...(u.sameAs !== undefined ? { sameAs: String(u.sameAs) } : {}),
+    ...(previous !== undefined ? { sameAs: previous } : {}),
     overlap: place(u.overlap),
     ...(practice.placement === "disabled" ? {} : { practice: { ...practice, ...u.practiceCheck } }),
     ...(gold.placement === "disabled" ? {} : { gold: { ...gold, ...u.goldCheck } }),

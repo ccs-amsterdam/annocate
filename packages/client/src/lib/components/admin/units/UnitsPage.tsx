@@ -134,7 +134,8 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
       <UnitTable
         client={client}
         units={pageQuery.data?.units ?? []}
-        fields={fields}
+        // Set columns show as their own columns (their cells), not again as fields
+        fields={fields.filter((f) => f.type !== "set")}
         groups={groups.map((g) => g.name)}
         cells={cells}
         selected={selected}

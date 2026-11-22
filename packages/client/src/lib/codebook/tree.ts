@@ -103,12 +103,11 @@ export function itemAtPath(items: (TopLevelItem | InLoopItem)[], path: (string |
 export function loopUnitsSummary(loop: UnitLoopItem): string {
   const spec = loop.units ?? {};
   const subset = spec.subset;
-  const units =
-    spec.sameAs !== undefined
-      ? `loop ${spec.sameAs}'s units`
-      : subset
-        ? `${subset.column} ${subset.sets.join(", ")}`
-        : "the coder's units";
+  const units = spec.sameAsPrevious
+    ? "the previous loop's units"
+    : subset
+      ? `${subset.column} ${subset.sets.join(", ")}`
+      : "the coder's units";
   const divided = spec.divide ? ", divided" : "";
   const special = (["overlap", "practice", "gold"] as const).filter((k) => spec[k] && spec[k] !== "spread");
   const own = spec.coding === false ? ", only special units" : "";

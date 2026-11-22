@@ -95,8 +95,8 @@ export function shareLabel(key: string): string {
   const who =
     values === "all"
       ? "all units"
-      : values.startsWith("session ")
-        ? `a coder's units of loop ${values.split(" as ")[1]}`
+      : values.startsWith("as ")
+        ? "each coder's units of the previous loop"
         : values
             .split(",")
             .map((pair) => pair.split("="))

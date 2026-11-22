@@ -389,7 +389,7 @@ function withDivide(items: object[]): object[] {
       void _divide;
       return rest;
     }
-    if (it.type === "unit_loop" && divide && !it.units?.divide && it.units?.sameAs === undefined)
+    if (it.type === "unit_loop" && divide && !it.units?.divide && !it.units?.sameAsPrevious)
       return { ...it, units: { ...it.units, divide } };
     return it;
   });
@@ -474,7 +474,7 @@ describe("shared queues", () => {
     expect((await coder("c").next("2"))!.id).toBe(second[0]);
   });
 
-  it("a later loop can take the units each coder got in an earlier loop, in that order", async () => {
+  it("a loop can take the units each coder got in the previous loop, in that order", async () => {
     const first = {
       type: "unit_loop",
       label: "first",
@@ -482,7 +482,7 @@ describe("shared queues", () => {
       layout: { template: "" },
       children: [{ type: "question", name: "other", variable: { type: "confirm", question: "?" } }],
     };
-    await redeploy({ units: { sameAs: 1 } }, [crowd(), first]);
+    await redeploy({ units: { sameAsPrevious: true } }, [crowd(), first]);
     const a = coder("a");
     const got: number[] = [];
     for (let unit = await a.next("1"); unit; unit = await a.next("1")) {
@@ -500,6 +500,13 @@ describe("shared queues", () => {
     const b = coder("b");
     const bFirst = await b.next("1");
     expect(got).not.toContain(bFirst!.id);
+    expect((await b.submit(bFirst!.id, { other: { done: true } }, "1")).status).toBe(200);
+    expect((await b.next("2"))!.id).toBe(bFirst!.id);
+    // The status: one row for the loop, whatever the number of coders
+    const status = (await (
+      await server.request("/api/study/1/deployment/status", { headers: adminHeaders })
+    ).json()) as DeploymentStatus;
+    expect(status.sources.filter((s) => s.loop === "main_loop").map((s) => [s.set, s.coders])).toEqual([["as 1", 2]]);
   });
 
   it("refuse annotations for units that were not handed to the coder", async () => {

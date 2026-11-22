@@ -15,7 +15,7 @@ coders** (the default is **Everyone codes everything**). The rules are
 set per loop, and each loop has its own queue of its units (per link with
 a link per set, and per condition if conditions are linked to units, see
 [Handing out units](unit-distribution.md)). A loop that takes the units
-each coder got in an earlier loop isn't divided again.
+each coder got in the previous loop isn't divided again.
 
 ## The settings
 

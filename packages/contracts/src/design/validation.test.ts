@@ -229,12 +229,14 @@ describe("the Session item", () => {
       expect.stringContaining("is the coder unit assignment's column"),
     ]);
     n = 0;
-    expect(messages([crowd, loop({}), loop({ sameAs: 1 })])).toEqual([]);
+    expect(messages([crowd, loop({}), loop({ sameAsPrevious: true })])).toEqual([]);
     n = 0;
-    expect(messages([crowd, loop({ sameAs: 1 })])).toEqual(["A loop can only take the units of a loop before it"]);
+    expect(messages([crowd, loop({ sameAsPrevious: true })])).toEqual([
+      "There is no previous loop to take the units of",
+    ]);
     n = 0;
-    expect(messages([crowd, loop({}), loop({ sameAs: 1, divide: {} })])).toEqual([
-      "Taking the units of an earlier loop, they aren't divided again: remove dividing",
+    expect(messages([crowd, loop({}), loop({ sameAsPrevious: true, divide: {} })])).toEqual([
+      "Taking the units of the previous loop, they aren't divided again: remove dividing",
     ]);
   });
 });

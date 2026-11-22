@@ -136,8 +136,8 @@ The server works out the units from the session's values: the session's
 units (its coder or crowd link's set, and linked computed variables; a
 linked computed variable the coder doesn't have yet is drawn now), within
 the loop's subset and placements, and a crowd loop's shared queue
-(`units.divide`), or the units the coder finished in an earlier loop
-(`units.sameAs`; `architecture.md` §6.2). A session without a value it needs gets 409 `not_assigned`; a
+(`units.divide`), or the units the coder finished in the previous loop
+(`units.sameAsPrevious`; `architecture.md` §6.2). A session without a value it needs gets 409 `not_assigned`; a
 session whose values select no units gets none in the loop.
 
 ### getLoopUnit

@@ -249,9 +249,11 @@ units:
   and a post loop on a `phase` column. Not the coder unit assignment's
   column (validation error).
 - **`coding: false`**: only the special units (e.g. a practice round).
-- **`sameAs: n`**: the units each coder finished in loop `n` (counting from
-  1, an earlier loop), in that order; fixed when the coder reaches this
-  loop (stored in their `assignments`). Not with `subset` or `divide`.
+- **`sameAsPrevious: true`**: the units each coder finished in the previous
+  loop, in that order; fixed when the coder reaches this loop (stored in
+  their `assignments`). A third loop with it takes the second's (so the
+  first's). Not with `subset` or `divide`; a coder who skipped the previous
+  loop gets none.
 - **Without `divide`** every coder codes all their units once.
 - **With `divide`** (only for a crowd; validation error otherwise), the
   loop's units are a queue shared by sessions with the same units (those of
@@ -299,7 +301,7 @@ special set.
 **Nothing to route.** A coder's units follow from their session values,
 recomputed per request; nothing about them is stored except which loops a
 coder reached (`assignments`, by loop key, `{ "<loop>": { "at": <ms> } }`,
-with `units` for a loop taking an earlier loop's units).
+with `units` for a loop taking the previous loop's units).
 A coder keeps units they coded in a loop even if their values or the loop's
 settings change.
 
@@ -520,7 +522,7 @@ transaction.
 
 | Where | What |
 | --- | --- |
-| `contracts/src/design/unitLoop.ts` | a loop's `units`: subset, placements, practice and gold checks, distribution criteria, `sameAs` |
+| `contracts/src/design/unitLoop.ts` | a loop's `units`: subset, placements, practice and gold checks, distribution criteria, `sameAsPrevious` |
 | `contracts/src/design/session.ts` | the Study entry: coder unit assignment, URL parameters, normal end, display |
 | `contracts/src/design/references.ts`, `condition.ts` | `$unit`/`$var`/`$session` references, templates, conditions, helpers |
 | `contracts/src/sets.ts` | set columns, `splitIntoSets` |

@@ -140,7 +140,7 @@ export type CoderParam = z.infer<typeof CoderParamSchema>;
  */
 export const CodersInviteSchema = z.object({
   mode: z.literal("coders"),
-  column: SetGroupNameSchema,
+  column: z.string().min(1, "Choose the column with the coders (or make one)").pipe(SetGroupNameSchema),
   link: z.enum(["per_coder", "login", "pick_name"]),
   nameDevices: z.enum(["first", "any"]).optional(),
 });

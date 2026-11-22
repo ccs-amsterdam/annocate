@@ -44,7 +44,6 @@ export function InvitationSettings({
   client?: ResearcherApi;
   onChange: (invite: Invite) => void;
 }) {
-  const columns = groups.map((g) => g.name);
   const setMode = (mode: Invite["mode"]) => {
     if (mode === invite.mode) return;
     // Switching back brings back what was set in that mode (in this editing session)
@@ -53,8 +52,8 @@ export function InvitationSettings({
     const back = memory[mode];
     if (back) onChange(back);
     else if (mode === "crowd") onChange({ mode: "crowd" });
-    // The first set column, if any; else none chosen yet (a new distribution makes one)
-    else onChange({ mode: "coders", column: columns[0] ?? "", link: "per_coder" });
+    // No column chosen yet: the researcher picks one, or makes one
+    else onChange({ mode: "coders", column: "", link: "per_coder" });
   };
 
   return (

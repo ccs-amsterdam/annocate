@@ -453,7 +453,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
    * A loop's units against the coder unit assignment: a subset of another
    * column than the assignment's; dividing only for a crowd, its agreement
    * question one of this loop's with one categorical answer; an earlier
-   * loop's units from a loop before this one, and then not divided again.
+   * previous loop's units only with a previous loop, and then not divided again.
    */
   function checkLoopUnits(
     raw: Partial<LoopUnits> | null | undefined,
@@ -475,11 +475,10 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
         [...path, "divide"],
         "Dividing units among coders is for a crowd: specific coders get the units of their set (Coder unit assignments)",
       );
-    const sameAs = units.sameAs;
-    if (sameAs !== undefined) {
-      if (sameAs >= Number(loopName)) issue([...path, "sameAs"], "A loop can only take the units of a loop before it");
+    if (units.sameAsPrevious) {
+      if (Number(loopName) <= 1) issue([...path, "sameAsPrevious"], "There is no previous loop to take the units of");
       if (units.divide)
-        issue([...path, "divide"], "Taking the units of an earlier loop, they aren't divided again: remove dividing");
+        issue([...path, "divide"], "Taking the units of the previous loop, they aren't divided again: remove dividing");
     }
     const agreement = units.divide?.until?.on;
     if (typeof agreement === "string") {

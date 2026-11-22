@@ -58,7 +58,8 @@ export function UnitsEditor({
     if (value === undefined) delete next[key];
     onChange(next);
   };
-  const sameAs = settings.sameAs;
+  const sameAs = settings.sameAsPrevious ? true : undefined;
+  const previous = earlier[earlier.length - 1];
   const shows = (kind: "practice" | "gold", set: string, check: unknown) =>
     settings[kind] !== "ignore" && (count(set) > 0 || check !== undefined);
   const codingCount = column
@@ -70,18 +71,17 @@ export function UnitsEditor({
         <span>{shareSummary(context.sources, settings.subset)}</span>
         <HelpButton topic="unit-distribution" label="Help: unit distribution" />
       </p>
-      {earlier.length > 0 && (
+      {(previous || sameAs) && (
         <label className={labelClass}>
           Coding units
           <select
             className={`${selectClass} w-fit font-normal`}
-            value={sameAs === undefined ? "" : String(sameAs)}
+            value={sameAs ? "previous" : ""}
             onChange={(e) => {
-              const n = e.target.value === "" ? undefined : Number(e.target.value);
-              const next: LoopUnits = { ...settings, sameAs: n };
-              if (n === undefined) delete next.sameAs;
+              const next: LoopUnits = { ...settings, sameAsPrevious: true };
+              if (e.target.value !== "previous") delete next.sameAsPrevious;
               else {
-                // An earlier loop's units: not selected or divided again here
+                // The previous loop's units: not selected or divided again here
                 delete next.subset;
                 delete next.divide;
               }
@@ -89,11 +89,9 @@ export function UnitsEditor({
             }}
           >
             <option value="">Selected for this loop</option>
-            {earlier.map((l) => (
-              <option key={l.number} value={l.number}>
-                The units each coder got in {l.title}
-              </option>
-            ))}
+            <option value="previous">
+              The units each coder got in the previous loop{previous ? ` (${previous.title})` : ""}
+            </option>
           </select>
         </label>
       )}
