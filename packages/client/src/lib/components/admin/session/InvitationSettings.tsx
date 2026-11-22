@@ -53,8 +53,8 @@ export function InvitationSettings({
     if (mode === invite.mode) return;
     if (mode === "crowd") onChange({ mode: "crowd" });
     else {
-      const column = columns.includes("coders") ? "coders" : columns.includes("coder") ? "coder" : "coders";
-      onChange({ mode: "coders", column, link: "per_coder" });
+      // The first set column, if any; else none chosen yet (a new distribution makes one)
+      onChange({ mode: "coders", column: columns[0] ?? "", link: "per_coder" });
     }
   };
 
@@ -139,8 +139,8 @@ function CodersForm({
       <div className="flex flex-wrap items-end gap-2">
         <label className={labelClass}>
           <span className="flex items-center gap-1">
-            Column with the coders
-            <InfoTip label="About the coders' column">
+            Select coder distribution column
+            <InfoTip label="About the coder distribution">
               A set column of the units says who codes each unit (<span className="font-mono">anna</span>,{" "}
               <span className="font-mono">anna;bob</span> for both, <span className="font-mono">_overlap</span> for
               everyone). Make one here, or on the Units page.
@@ -151,7 +151,8 @@ function CodersForm({
             value={invite.column}
             onChange={(e) => onChange({ ...invite, column: e.target.value })}
           >
-            {!known && <option value={invite.column}>{invite.column} (not made yet)</option>}
+            {!invite.column && <option value="">-- select --</option>}
+            {invite.column && !known && <option value={invite.column}>{invite.column} (no such column)</option>}
             {columns.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -161,15 +162,15 @@ function CodersForm({
         </label>
         {client && (
           <Button type="button" variant="outline" size="sm" className="h-8" onClick={() => setMaking(true)}>
-            {known ? "Make it again…" : "Make the column…"}
+            {known ? "Create or update coder distribution…" : "Create new coder distribution…"}
           </Button>
         )}
         <HelpButton topic="sets" label="Help: dividing units" />
       </div>
       {!known ? (
-        <p className="text-[11px] text-amber-700 dark:text-amber-400">
-          The units have no column &quot;{invite.column}&quot; yet: make it to say who codes which units.
-        </p>
+        invite.column ? (
+          <p className="text-[11px] text-destructive">The units have no column &quot;{invite.column}&quot;.</p>
+        ) : null
       ) : coders.kind === "none" ? (
         <p className="text-[11px] text-amber-700 dark:text-amber-400">
           Column &quot;{invite.column}&quot; has no coders yet.
@@ -239,7 +240,7 @@ function CodersForm({
       {making && client && (
         <CoderSetDialog
           client={client}
-          column={invite.column}
+          column={known ? invite.column : newColumnName(columns)}
           groups={groups}
           onDone={(result) => {
             setMaking(false);
@@ -393,4 +394,12 @@ function Distribution({
       )}
     </div>
   );
+}
+
+/** A name for a new coder distribution column: `coder`, or `coder_2`, ... if taken. */
+function newColumnName(columns: string[]): string {
+  if (!columns.includes("coder")) return "coder";
+  let n = 2;
+  while (columns.includes(`coder_${n}`)) n++;
+  return `coder_${n}`;
 }

@@ -42,6 +42,7 @@ const stubClient: ResearcherApi = {
   listResultUnits: () => Promise.resolve({ units: [] }),
   getResultUnit: () => Promise.reject(new Error("no units")),
   listResultCoders: () => Promise.resolve({ coders: [] }),
+  listCoderUnits: () => Promise.resolve({ coders: [] }),
   exportResults: () => Promise.reject(new Error("no export")),
   downloadExport: () => Promise.reject(new Error("no export")),
   listLinks: () => new Promise(() => {}),

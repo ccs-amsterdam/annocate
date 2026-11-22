@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  CoderUnitsSchema,
   ResultsAgreementSchema,
   ResultsAnswersSchema,
   ResultsCodersSchema,
@@ -107,6 +108,13 @@ describe("results", () => {
     const { coders } = await get(`/study/${await example("swipe-sentiment")}/results/coders`, ResultsCodersSchema);
     expect(coders.map((c) => c.units)).toEqual([10, 10, 10]);
     for (const c of coders) expect(c.medianUnitSeconds === null || c.medianUnitSeconds > 0).toBe(true);
+  });
+
+  it("list per coder id the units they saw or answered (to keep them when redistributing)", async () => {
+    const study = await example("swipe-sentiment");
+    const { coders } = await get(`/study/${study}/coders/units`, CoderUnitsSchema);
+    expect(coders.map((c) => c.coder)).toEqual(["Example coder 1", "Example coder 2", "Example coder 3"]);
+    expect(coders.every((c) => c.unitIds.length === 10)).toBe(true);
   });
 
   it("leave out answers a researcher reset", async () => {

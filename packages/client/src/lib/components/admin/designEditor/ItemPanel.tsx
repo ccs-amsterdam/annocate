@@ -27,6 +27,9 @@ import { ITEM_TYPES } from "../designTree/itemTypes";
 import { SegmentedToggle } from "./SegmentedToggle";
 import { shareSources } from "../../../design/assignment";
 import { ItemJsonEditor } from "./ItemJsonEditor";
+import { SessionPartJson } from "../session/SessionPartJson";
+import { SessionPreview } from "../session/SessionPreview";
+import { SESSION_PART_LABELS, useSessionTab } from "../session/sessionTab";
 import type { DesignDraft } from "./useDesignDraft";
 import type { UnitFieldWarning } from "../../../design/unitFieldRefs";
 
@@ -51,6 +54,8 @@ export function ItemPanel({
   onBack?: () => void;
 }) {
   const [chosenPane, setPane] = useState<ItemPane>("edit");
+  const [sessionPart] = useSessionTab();
+  const groupsQuery = useSetGroupsQuery(client);
   const pane: ItemPane = previewBeside && chosenPane === "preview" ? "edit" : chosenPane;
   const item = draft.selectedItem;
   const itemWarnings = item ? warnings.filter((w) => w.item === itemTitle(item)) : [];
@@ -79,7 +84,7 @@ export function ItemPanel({
               className="inline-flex items-center rounded-md border border-border bg-background px-2 py-0.5 text-xs font-semibold text-foreground shadow-2xs"
               title="Item type"
             >
-              {ITEM_TYPES[item.type]?.label ?? item.type}
+              {item.type === "session" ? SESSION_PART_LABELS[sessionPart] : (ITEM_TYPES[item.type]?.label ?? item.type)}
             </span>
 
             <SegmentedToggle
@@ -107,8 +112,18 @@ export function ItemPanel({
                 ))}
               </ul>
             )}
-            {pane === "preview" ? (
+            {pane === "preview" && item.type === "session" ? (
+              <SessionPreview item={item} part={sessionPart} groups={groupsQuery.data ?? []} studyId={client.studyId} />
+            ) : pane === "preview" ? (
               <ItemPreview key={getItemKey(item)} client={client} draft={draft} item={item} />
+            ) : pane === "json" && item.type === "session" ? (
+              <SessionPartJson
+                item={item}
+                part={sessionPart}
+                readOnly={readOnly}
+                issues={draft.validationIssues.filter((i) => i.path[0] === 0 && i.path[1] === sessionPart)}
+                onChange={(next) => draft.update(getItemKey(item), next)}
+              />
             ) : pane === "json" ? (
               <ItemJsonEditor
                 key={getItemKey(item)}
@@ -193,9 +208,15 @@ function ItemEditForm({
 /** The preview's own column on wide screens (DesignEditor). */
 export function PreviewPanel({ client, draft }: { client: ResearcherApi; draft: DesignDraft }) {
   const item = draft.selectedItem;
+  const [sessionPart] = useSessionTab();
+  const groupsQuery = useSetGroupsQuery(client);
   return (
     <div className="flex min-h-0 flex-col overflow-hidden">
-      {item ? (
+      {item?.type === "session" ? (
+        <div className="overflow-y-auto rounded-xl border border-border bg-card p-4">
+          <SessionPreview item={item} part={sessionPart} groups={groupsQuery.data ?? []} studyId={client.studyId} />
+        </div>
+      ) : item ? (
         <ItemPreview key={getItemKey(item)} client={client} draft={draft} item={item} />
       ) : (
         <div className="flex h-full items-center justify-center rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">

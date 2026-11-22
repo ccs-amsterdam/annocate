@@ -126,3 +126,9 @@ export const LinkResponseSchema = LinkWriteSchema.extend({
   retiredAt: z.coerce.date().nullable(),
 });
 export type LinkResponse = z.infer<typeof LinkResponseSchema>;
+
+/** `GET /study/:studyId/coders/units`: per coder id, the units their sessions were shown or answered (to keep them when redistributing). */
+export const CoderUnitsSchema = z.object({
+  coders: z.array(z.object({ coder: z.string(), unitIds: z.array(IdSchema) })),
+});
+export type CoderUnits = z.infer<typeof CoderUnitsSchema>;

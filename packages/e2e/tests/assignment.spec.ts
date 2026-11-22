@@ -3,7 +3,7 @@ import type { StudyResponse, UnitResponse } from "@annotinder/contracts";
 import { api, question } from "./helpers";
 
 // Who gets which units (docs/architecture.md §6): the coder invitations
-// show the coders against the units, and make the coders' column; a random
+// show the coders against the units, and make the coder distribution column; a random
 // condition linked to a set column gives each session the units of its value.
 
 const loop = (overlap?: unknown) => ({
@@ -40,7 +40,7 @@ async function studyWithColumn(
   return study;
 }
 
-test("the coder invitations show the coders; a dialog makes the coders' column; a link per coder", async ({
+test("the coder invitations show the coders; a dialog makes or updates the coder distribution; a link per coder", async ({
   page,
   request,
 }) => {
@@ -64,12 +64,15 @@ test("the coder invitations show the coders; a dialog makes the coders' column; 
   await page.getByLabel(/A link per coder/).check();
 
   // Made again in the dialog: three named coders, two per unit
-  await page.getByRole("button", { name: "Make it again…" }).click();
+  await page.getByRole("button", { name: "Create or update coder distribution…" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Names, each with their own link").check();
   await dialog.getByLabel(/Names \(one per line\)/).fill("carla\ndave\nemma");
   await dialog.getByLabel("Coders per unit").fill("2");
+  // The column exists: making it asks first
   await dialog.getByRole("button", { name: "Make the column" }).click();
+  await expect(dialog.getByText(/Column coder exists/)).toBeVisible();
+  await dialog.getByRole("button", { name: "Overwrite" }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByText("3 coders.", { exact: true })).toBeVisible();
 
@@ -209,4 +212,45 @@ test("the preview runs as a coder picked above it", async ({ page, request }) =>
   await expect(page.getByText("Anna's text")).toBeVisible();
   await page.getByLabel("Preview as coder").selectOption("bob");
   await expect(page.getByText("Bob's text")).toBeVisible();
+});
+
+test("dividing units again keeps the units coders already saw", async ({ page, request, browser }) => {
+  const study = await studyWithColumn(request, "Redistribute", "coder", {
+    "Anna's text": "anna",
+    "Bob's text": "bob",
+  });
+  const design = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
+    session: { invite: { mode: "coders", column: "coder", link: "pick_name" } },
+    items: [loop()],
+  });
+  await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  // Anna starts coding: she is shown her unit
+  const anna = await (await browser.newContext()).newPage();
+  await anna.goto(`/code/${study.id}?link=${link.secret}`);
+  await anna.getByRole("button", { name: "anna", exact: true }).click();
+  await question(anna, "Topic?");
+
+  await page.goto(`/research/studies/${study.id}/design`);
+  await page.getByRole("button", { name: /^Coder invitations/ }).click();
+  await page.getByRole("button", { name: "Create or update coder distribution…" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Names, each with their own link").check();
+  await dialog.getByLabel(/Names \(one per line\)/).fill("anna\nbob\ncarla");
+  const keep = dialog.getByLabel(/Keep the units coders already have/);
+  await expect(keep).toBeChecked();
+  await expect(dialog.getByText(/1 unit assignments are kept/)).toBeVisible();
+  await dialog.getByRole("button", { name: "Make the column" }).click();
+  await dialog.getByRole("button", { name: "Overwrite" }).click();
+  await expect(dialog).toBeHidden();
+  const groups = await api<{ name: string; sets: { name: string; unitIds: number[] }[] }[]>(
+    request,
+    "GET",
+    `/study/${study.id}/sets`,
+  );
+  // Anna's text is the first unit (u1)
+  const units = await api<{ id: number; externalId: string }[]>(request, "GET", `/study/${study.id}/units`);
+  const annaUnit = units.find((u) => u.externalId === "u1")!.id;
+  const column = groups.find((g) => g.name === "coder")!;
+  expect(column.sets.find((s) => s.name === "anna")!.unitIds).toContain(annaUnit);
 });

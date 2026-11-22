@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addToSets, cellsFromSets, parseSetCell, setsFromCells, splitIntoSets } from "./sets.js";
+import { addToSets, cellsFromSets, parseSetCell, setsFromCells, splitIntoSets, distributeUnits } from "./sets.js";
 
 describe("set cells", () => {
   it("read one set, several, and positions", () => {
@@ -88,5 +88,33 @@ describe("addToSets", () => {
       ["s3", 3],
       ["s4", 3],
     ]);
+  });
+});
+
+describe("distributeUnits", () => {
+  const units = Array.from({ length: 12 }, (_, i) => i + 1);
+  const sizes = (sets: { name: string; units: number[] }[]) => sets.map((s) => s.units.length);
+
+  it("gives every unit to perUnit coders, evenly, plus the overlap to everyone", () => {
+    const { sets } = distributeUnits(units, ["a", "b", "c"], { perUnit: 2, overlapUnits: 3, seed: 1 });
+    expect(sets.map((s) => s.name)).toEqual(["a", "b", "c", "_overlap"]);
+    expect(sets[3].units).toHaveLength(3);
+    expect(sizes(sets.slice(0, 3))).toEqual([6, 6, 6]);
+    const count = new Map<number, number>();
+    for (const s of sets.slice(0, 3)) for (const u of s.units) count.set(u, (count.get(u) ?? 0) + 1);
+    expect([...count.values()].every((n) => n === 2)).toBe(true);
+  });
+
+  it("keeps the units coders already have, then fills up the rest", () => {
+    const keep = new Map([
+      ["a", [1, 2, 3, 4]],
+      ["gone", [5]],
+    ]);
+    const { sets, kept } = distributeUnits(units, ["a", "b", "c"], { seed: 1, keep });
+    expect(kept).toBe(4);
+    expect(sets[0].units).toEqual(expect.arrayContaining([1, 2, 3, 4]));
+    // One coder per unit: every unit once, about evenly
+    expect(sizes(sets).reduce((x, y) => x + y, 0)).toBe(12);
+    expect(Math.max(...sizes(sets)) - Math.min(...sizes(sets))).toBeLessThanOrEqual(1);
   });
 });

@@ -25,6 +25,7 @@ import {
   type ResultsAgreement,
   type ResultsAnswers,
   type ResultsCoders,
+  type CoderUnits,
   type ResultsExport,
   type ResultsUnit,
   type ResultsUnits,
@@ -201,6 +202,8 @@ export interface ResearcherApi {
   listResultUnits(): Promise<ResultsUnits>;
   getResultUnit(unitId: number): Promise<ResultsUnit>;
   listResultCoders(): Promise<ResultsCoders>;
+  /** Per coder id, the units they were shown or answered. */
+  listCoderUnits(): Promise<CoderUnits>;
   /** A link to the study's raw export (written now, or reused if nothing changed). */
   exportResults(): Promise<ResultsExport>;
   /** The file behind an export link. */
@@ -352,6 +355,10 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async getResultUnit(unitId: number): Promise<ResultsUnit> {
     return this.request(this.studyPath(researcherEndpoints.getResultUnit.path).replace(":unitId", String(unitId)));
+  }
+
+  async listCoderUnits(): Promise<CoderUnits> {
+    return this.request(this.studyPath(researcherEndpoints.listCoderUnits.path));
   }
 
   async listResultCoders(): Promise<ResultsCoders> {

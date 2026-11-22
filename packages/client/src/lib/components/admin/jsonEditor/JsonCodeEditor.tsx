@@ -16,4 +16,4 @@ export function JsonCodeEditor(props: MonacoJsonProps) {
   );
 }
 
-export { DESIGN_MODEL, ITEM_MODEL } from "./models";
+export { DESIGN_MODEL, ITEM_MODEL, SESSION_PART_MODEL } from "./models";

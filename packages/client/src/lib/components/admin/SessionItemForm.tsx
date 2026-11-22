@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Globe, Link2, Monitor, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import {
   urlParamKey,
   type DesignIssue,
@@ -14,7 +14,6 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../help/HelpButton";
 import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
-import { SegmentedToggle } from "./designEditor/SegmentedToggle";
 import { InvitationSettings } from "./session/InvitationSettings";
 import { useSessionTab } from "./session/sessionTab";
 import { DisplaySettings } from "./session/DisplaySettings";
@@ -22,11 +21,11 @@ import { DisplaySettings } from "./session/DisplaySettings";
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 
 /**
- * The design's Study entry (docs/architecture.md §6), in three parts: the
- * coder invitation (who codes, and how they get in), the URL parameters
- * (values a link carries, e.g. from a panel: `$session.<name>`) and the
- * display. The public title is edited above the tree, the normal end in its
- * "At the end" row.
+ * One part of the design's Study entry (docs/architecture.md §6), the one
+ * opened from the buttons above the tree: the coder invitation (who codes,
+ * and how they get in), the URL parameters (values a link carries, e.g.
+ * from a panel: `$session.<name>`) or the display. The public title is
+ * edited above the tree, the normal end in its "At the end" row.
  */
 export function SessionItemForm({
   item,
@@ -45,7 +44,7 @@ export function SessionItemForm({
   agreementQuestions?: string[];
   onChange: (item: SessionItem) => void;
 }) {
-  const [tab, setTab] = useSessionTab();
+  const [tab] = useSessionTab();
   const setDisplay = (display: NonNullable<SessionItem["display"]>) => {
     const next: SessionItem = { ...item, display };
     if (Object.keys(display).length === 0) delete next.display;
@@ -58,15 +57,6 @@ export function SessionItemForm({
   };
   return (
     <div className="flex flex-col gap-4">
-      <SegmentedToggle
-        value={tab}
-        onChange={setTab}
-        options={[
-          { value: "invite", label: "Coder invitations", icon: Globe },
-          { value: "urlParams", label: "URL parameters", icon: Link2 },
-          { value: "display", label: "Display", icon: Monitor },
-        ]}
-      />
       {tab === "display" ? (
         <DisplaySettings display={item.display} onChange={(display) => setDisplay(display)} />
       ) : tab === "invite" ? (

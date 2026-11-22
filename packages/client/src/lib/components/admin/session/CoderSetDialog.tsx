@@ -1,7 +1,13 @@
 import { useState } from "react";
-import { OVERLAP_SET, SetGroupNameSchema, isEmail, splitIntoSets, type SetGroupResponse } from "@annotinder/contracts";
+import {
+  OVERLAP_SET,
+  SetGroupNameSchema,
+  distributeUnits,
+  isEmail,
+  type SetGroupResponse,
+} from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { usePutSetGroupMutation, useUnitsQuery } from "../../../admin/queries";
+import { useCoderUnitsQuery, usePutSetGroupMutation, useUnitsQuery } from "../../../admin/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,12 +15,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 type Who = "count" | "names" | "emails";
 
 /**
- * Makes the coders' set column (docs/architecture.md §6): every unit goes
- * to one or more coders (`coders per unit`), and some units (the overlap)
- * to every coder, e.g. to compare coders. Coders are numbered
- * (`coder_1` ...), named, or their email addresses (they sign in). The
- * units are shuffled first (seeded); the server stores the column, which
- * the Units page shows and edits like any other.
+ * Makes or updates a coder distribution: a set column of the units
+ * (docs/architecture.md §6). Every unit goes to one or more coders (`coders
+ * per unit`), and some units (the overlap) to every coder, e.g. to compare
+ * coders. Coders are numbered (`coder_1` ...), named, or their email
+ * addresses (they sign in). With "keep", units a coder was already shown or
+ * answered stay theirs first, so dividing again loses no work. The units are
+ * shuffled first (seeded); the server stores the column, which the Units
+ * page shows and edits like any other. Replacing a column asks first.
  */
 export function CoderSetDialog({
   client,
@@ -32,6 +40,9 @@ export function CoderSetDialog({
   const unitsQuery = useUnitsQuery(client);
   const putGroup = usePutSetGroupMutation(client);
   const unitIds = (unitsQuery.data ?? []).map((u) => u.id);
+  const seen = useCoderUnitsQuery(client).data?.coders ?? [];
+  const [keep, setKeep] = useState(true);
+  const [confirming, setConfirming] = useState(false);
   const [column, setColumn] = useState(initialColumn);
   const [who, setWho] = useState<Who>("count");
   const [count, setCount] = useState(3);
@@ -52,12 +63,12 @@ export function CoderSetDialog({
   const existing = groups.find((g) => g.name === column);
 
   const overlapOption = overlapIsPercent ? { overlapFraction: overlap / 100 } : { overlapUnits: overlap };
-  const split =
+  // Units coders of these names already saw (also under another column's name: the coder id is what counts)
+  const keepMap = new Map(seen.filter((c) => names.includes(c.coder)).map((c) => [c.coder, c.unitIds]));
+  const { sets, kept } =
     names.length > 0
-      ? splitIntoSets(unitIds, { sets: names.length, perUnit, shuffle: true, seed, ...overlapOption })
-      : [];
-  let i = 0;
-  const sets = split.map((s) => (s.name === OVERLAP_SET ? s : { ...s, name: names[i++] }));
+      ? distributeUnits(unitIds, names, { perUnit, seed, ...overlapOption, keep: keep ? keepMap : undefined })
+      : { sets: [], kept: 0 };
   const overlapUnits = sets.find((s) => s.name === OVERLAP_SET)?.units.length ?? 0;
   const perCoder = sets.filter((s) => s.name !== OVERLAP_SET).map((s) => s.units.length);
   const problem = !validName
@@ -76,7 +87,7 @@ export function CoderSetDialog({
     <Dialog open onOpenChange={(open) => !open && onDone(null)}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Make the coders&apos; column</DialogTitle>
+          <DialogTitle>{existing ? "Update the coder distribution" : "New coder distribution"}</DialogTitle>
           <DialogDescription>
             Divides the {unitIds.length} units over your coders, as a set column of the units. You can edit it later on
             the Units page.
@@ -158,7 +169,10 @@ export function CoderSetDialog({
               <Input
                 className="h-8 w-32 font-mono text-xs font-normal"
                 value={column}
-                onChange={(e) => setColumn(e.target.value)}
+                onChange={(e) => {
+                  setColumn(e.target.value);
+                  setConfirming(false);
+                }}
               />
             </label>
           </div>
@@ -169,10 +183,18 @@ export function CoderSetDialog({
               {overlapUnits > 0 ? `, plus ${overlapUnits} overlap units for everyone` : ""}. Units are shuffled first.
             </p>
           )}
-          {existing && !problem && (
-            <p className="text-xs text-amber-700 dark:text-amber-400">
-              Replaces column {column} ({existing.sets.length} values now).
-            </p>
+          {keepMap.size > 0 && (
+            <label className="flex items-start gap-2 text-xs">
+              <input type="checkbox" className="mt-0.5" checked={keep} onChange={(e) => setKeep(e.target.checked)} />
+              <span>
+                Keep the units coders already have ({[...keepMap.values()].reduce((n, u) => n + u.length, 0)} units
+                shown to {keepMap.size} of these coders)
+                <span className="block text-muted-foreground">
+                  A coder who already saw units gets those first, so nobody loses work; the rest is divided as usual.
+                  {keep && kept > 0 ? ` ${kept} unit assignments are kept.` : ""}
+                </span>
+              </span>
+            </label>
           )}
           {problem && <p className="text-xs text-destructive">{problem}</p>}
           {putGroup.isError && <p className="text-xs text-destructive">{putGroup.error.message}</p>}
@@ -180,19 +202,26 @@ export function CoderSetDialog({
             <Button variant="outline" onClick={() => onDone(null)}>
               Cancel
             </Button>
+            {confirming && existing && (
+              <span className="mr-auto self-center text-xs text-amber-700 dark:text-amber-400">
+                Column {column} exists ({existing.sets.length} values): overwrite it?
+              </span>
+            )}
             <Button
               disabled={problem !== null || putGroup.isPending}
               onClick={() =>
-                putGroup.mutate(
-                  {
-                    group: column,
-                    body: { sets: sets.map((s) => ({ name: s.name, unitIds: s.units, ordered: false })) },
-                  },
-                  { onSuccess: () => onDone({ column, emails: who === "emails" }) },
-                )
+                existing && !confirming
+                  ? setConfirming(true)
+                  : putGroup.mutate(
+                      {
+                        group: column,
+                        body: { sets: sets.map((s) => ({ name: s.name, unitIds: s.units, ordered: false })) },
+                      },
+                      { onSuccess: () => onDone({ column, emails: who === "emails" }) },
+                    )
               }
             >
-              {putGroup.isPending ? "Making…" : "Make the column"}
+              {putGroup.isPending ? "Making…" : confirming && existing ? "Overwrite" : "Make the column"}
             </Button>
           </div>
         </div>

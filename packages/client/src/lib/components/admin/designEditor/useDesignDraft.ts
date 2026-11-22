@@ -83,9 +83,15 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
   const savedSerialized = useMemo(() => JSON.stringify(stripKeys(saved)), [saved]);
   // Errors and warnings; drafts can be saved with errors, deploying needs none. Plus unit fields the
   // design uses but doesn't declare (docs/architecture.md §8.4), against the open version's fields as the
-  // server checks them at deploy (a new design: the study's current fields)
+  // server checks them at deploy (a new design: the study's current fields). Also the study's current
+  // fields: a set column made while editing (e.g. the coders') is declared on the latest version, and
+  // saving takes it along.
   const studyFields = useUnitFieldsQuery(client).data;
-  const declared = version ? version.units.fields : studyFields;
+  const declared = useMemo(() => {
+    if (!version) return studyFields;
+    const extra = (studyFields ?? []).filter((f) => !version.units.fields.some((v) => v.name === f.name));
+    return [...version.units.fields, ...extra];
+  }, [version, studyFields]);
   const undeclared = useMemo(() => (declared ? undeclaredFields(cleanItems, declared) : []), [cleanItems, declared]);
   const validationIssues = useMemo(() => {
     const issues: DesignIssue[] = validateDesignItems(cleanItems);

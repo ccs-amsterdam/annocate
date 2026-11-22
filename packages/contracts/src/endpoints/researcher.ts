@@ -19,6 +19,7 @@ import {
   CoderDeletionSchema,
   DeleteCodersSchema,
   DeleteCodersResponseSchema,
+  CoderUnitsSchema,
 } from "../coder.js";
 import { StudyOverviewSchema } from "../overview.js";
 import {
@@ -204,6 +205,13 @@ export const researcherEndpoints = {
     path: "/study/:studyId/coders",
     request: z.void(),
     response: z.array(CoderProgressSchema),
+  },
+  /** Per coder id: the units they were shown or answered (coders.ts). */
+  listCoderUnits: {
+    method: "GET",
+    path: "/study/:studyId/coders/units",
+    request: z.void(),
+    response: CoderUnitsSchema,
   },
   /** Deletes coders and all their answers for good (e.g. a coder withdrew), by session id, coder id or email (ADMIN). */
   deleteCoders: {

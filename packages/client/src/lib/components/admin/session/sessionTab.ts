@@ -23,3 +23,10 @@ export function useSessionTab(): [SessionTab, (tab: SessionTab) => void] {
   );
   return [tab, setSessionTab];
 }
+
+/** Each part's name, as the buttons above the tree and the panel's header call it. */
+export const SESSION_PART_LABELS: Record<SessionTab, string> = {
+  invite: "Coder invitations",
+  urlParams: "URL parameters",
+  display: "Display",
+};

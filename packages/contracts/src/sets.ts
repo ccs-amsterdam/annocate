@@ -184,6 +184,68 @@ export function splitIntoSets<T>(
   return out;
 }
 
+/**
+ * Divides units over named coders (a coder distribution column,
+ * docs/architecture.md §6): the overlap (`_overlap`) for everyone, then
+ * every other unit to `perUnit` coders, each unit to the coders with the
+ * fewest so far. With `keep`, units a coder already has (e.g. saw while
+ * coding) stay theirs first, so redistributing loses nobody's work; such a
+ * unit may end up with more coders than `perUnit`. Seeded: reproducible.
+ */
+export function distributeUnits(
+  units: number[],
+  coders: string[],
+  options: {
+    perUnit?: number;
+    overlapUnits?: number;
+    overlapFraction?: number;
+    seed?: number;
+    /** Coder -> units to keep with them. */
+    keep?: ReadonlyMap<string, Iterable<number>>;
+  } = {},
+): { sets: { name: string; units: number[] }[]; kept: number } {
+  const shuffled = seededShuffle(units, options.seed ?? 0);
+  const overlapCount = Math.min(
+    shuffled.length,
+    options.overlapUnits ?? Math.round((options.overlapFraction ?? 0) * shuffled.length),
+  );
+  const overlap = shuffled.slice(0, overlapCount);
+  const rest = shuffled.slice(overlapCount);
+  const perUnit = Math.min(coders.length, Math.max(1, Math.floor(options.perUnit ?? 1)));
+  const assigned = new Map<string, Set<number>>(coders.map((c) => [c, new Set()]));
+  const coderCount = new Map<number, number>();
+  const inRest = new Set(rest);
+  let kept = 0;
+  for (const coder of coders)
+    for (const unit of options.keep?.get(coder) ?? []) {
+      if (!inRest.has(unit) || assigned.get(coder)!.has(unit)) continue;
+      assigned.get(coder)!.add(unit);
+      coderCount.set(unit, (coderCount.get(unit) ?? 0) + 1);
+      kept++;
+    }
+  for (const unit of rest) {
+    for (let need = perUnit - (coderCount.get(unit) ?? 0); need > 0; need--) {
+      let best: string | null = null;
+      for (const coder of coders) {
+        const mine = assigned.get(coder)!;
+        if (mine.has(unit)) continue;
+        if (best === null || mine.size < assigned.get(best)!.size) best = coder;
+      }
+      if (best === null) break;
+      assigned.get(best)!.add(unit);
+      coderCount.set(unit, (coderCount.get(unit) ?? 0) + 1);
+    }
+  }
+  // Each coder's units in the shuffled order
+  const order = new Map(rest.map((u, i) => [u, i]));
+  const sets = coders.map((name) => ({
+    name,
+    units: [...assigned.get(name)!].sort((a, b) => order.get(a)! - order.get(b)!),
+  }));
+  if (overlap.length > 0) sets.push({ name: OVERLAP_SET, units: overlap });
+  return { sets, kept };
+}
+
 /** Deterministic shuffle (Mulberry32). */
 export function seededShuffle<T>(array: T[], seed: number): T[] {
   const result = [...array];

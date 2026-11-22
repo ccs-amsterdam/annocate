@@ -6,6 +6,7 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 import type {
+  CoderUnits,
   ResultsAgreement,
   ResultsAnswers,
   ResultsCoders,
@@ -272,6 +273,8 @@ function useSetGroupMutation<T, V>(client: ResearcherApi, mutationFn: (vars: V) 
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: keys.sets(client.studyId) }),
+        // A new set column is also a unit field (declared on the latest design version)
+        queryClient.invalidateQueries({ queryKey: keys.unitFields(client.studyId) }),
         queryClient.invalidateQueries({ queryKey: keys.pending(client.studyId) }),
         queryClient.invalidateQueries({ queryKey: keys.overview(client.studyId) }),
       ]),
@@ -538,5 +541,14 @@ export function useResultCodersQuery(client: ResearcherApi): UseQueryResult<Resu
     queryKey: keys.results(client.studyId, "coders"),
     queryFn: () => client.listResultCoders(),
     staleTime: Infinity,
+  });
+}
+
+/** Per coder id, the units they were shown or answered (to keep them when dividing units again). */
+export function useCoderUnitsQuery(client: ResearcherApi, enabled = true): UseQueryResult<CoderUnits> {
+  return useQuery({
+    queryKey: [...keys.coders(client.studyId), "units"],
+    queryFn: () => client.listCoderUnits(),
+    enabled,
   });
 }
