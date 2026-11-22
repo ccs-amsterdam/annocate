@@ -34,11 +34,8 @@ A **Refresh** button reloads; nothing updates by itself.
   coder view), and its average.
 - Several answers per question (`multiple`): each option as a yes/no
   question.
-- **Spans**, two measures:
-  - *Label counts*: per unit and label, how many spans each coder made; alpha
-    (interval) per label. Coarse: two coders marking different words agree.
-  - *Words*: each word of the text labelled or not, per label; alpha
-    (nominal) and kappa. The usual measure for text annotation.
+- **Spans**: each word of the text labelled or not, per label; alpha
+  (nominal) and kappa. The usual measure for text annotation.
 
 Computed in TypeScript (contracts, so the server and the client share it),
 checked against published examples (Krippendorff 2011) and R's `irr`. It is
@@ -67,8 +64,7 @@ design in from the start:
 
 The paged answers API stays, for R and Python.
 
-## Open questions
+## Later
 
-1. Adjudication: a researcher picking the final answer for units where
-   coders disagree (a dataset with one answer per unit). Wanted later?
-2. Spans: both measures above, or one first?
+Final answers (a majority, or a researcher deciding disagreements) and the
+coding jobs they need: [final-answers.md](final-answers.md).
