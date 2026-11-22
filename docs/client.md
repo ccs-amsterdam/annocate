@@ -336,11 +336,15 @@ the open part in `session/sessionTab.ts`); its JSON is that part only
 coders form selects the coder distribution column and how coders get in;
 "Create new coder distribution…" / "Create or update coder distribution…"
 (`session/CoderSetDialog.tsx`) makes or replaces the column, after asking
-(number of coders, names or email addresses, coders per unit, overlap). It
-keeps the units coders were already shown or answered with them by default
-(`GET /coders/units`, contracts `distributeUnits`). The crowd form has the coder id URL
-parameter, "Coders sign in", the most coders, and "Share the units among
-coders" (`share`). The tree's last row, **At the end**, edits the normal end
+(names, email addresses or a number of coders; coders per unit or
+everyone codes everything; the column name; overlap units, and optionally
+practice and gold units). It keeps the units coders were already shown or
+answered with them by default (`GET /coders/units`, contracts
+`distributeUnits`). The crowd form has the coder id URL parameter, "Coders
+sign in", an optional set column for special units ("Create special units…"
+makes one with the same dialog: special units only; other sets give a link
+per set), and "Max. nr of coders" (per link, and per set with a link per
+set). The tree's last row, **At the end**, edits the normal end
 (`session.end`).
 
 ## 5. Scripting sandbox: QuickJS
@@ -458,8 +462,9 @@ Deploy (Deploy changes, Links), Results, Settings. It uses a `ResearcherApi`
      computed item, first in the design).
   3. **Units**: the CSV upload (or later), and the order.
   4. **Who codes what**: everyone everything (a crowd); sets per coder, each
-     with a link (`per_coder`); crowd coding (`share`); or experimental
-     groups (a computed item linked to a column).
+     with a link (`per_coder`); crowd coding (the loop's `units.divide`, and
+     a crowd column `coders` for an overlap or gold/practice checks); or
+     experimental groups (a computed item linked to a column).
   5. **How coders see a unit**: the layout sketch (`LayoutDesigner.tsx`:
      title, byline, body), with a preview.
   6. **Questions**: names, one per line, before, per unit and after. They get
@@ -498,10 +503,11 @@ Deploy (Deploy changes, Links), Results, Settings. It uses a `ResearcherApi`
   - **Backup**: unsaved edits are copied to localStorage a second after each
     change, and offered back after the browser was closed.
 - **Unit loops** have two tabs (`UnitLoopForm.tsx`). **Units**
-  (`unitLoop/UnitsEditor.tsx`): what a coder gets, the filter, own units,
-  overlap/practice/gold with placement, the checks, and the order
-  (`architecture.md` §6.2). Distribution criteria belong to the crowd
-  invitation, not the loop. **Layout**: the template in Monaco
+  (`unitLoop/UnitsEditor.tsx`): what a coder gets, an earlier loop's units
+  (`sameAs`), the subset, for a crowd "Units and coders" (everyone codes
+  everything, or divide the units: the distribution criteria), the coding
+  units and the assignment column's overlap/practice/gold with placement,
+  the checks, and the order (`architecture.md` §6.2). **Layout**: the template in Monaco
   (`jsonEditor/MonacoTemplate.tsx`) with highlighting and completions after
   `$`, `[[`, `::` and `:::`, and the snippets. A code lens above each
   `::: if` shows the condition in words and opens the rules editor. An Insert
@@ -544,9 +550,10 @@ Deploy (Deploy changes, Links), Results, Settings. It uses a `ResearcherApi`
   `LiveControls.tsx` pauses and resumes.
 - **Settings** (`StudySettingsPage`): the team (`TeamSettings.tsx`, at least
   one ADMIN), rename, archive, keep sessions open, export, delete.
-- **Links** (`LinksPanel.tsx`, `links/`): the links deploying made, with coder, uses,
-  status and the URL parameters they take (copied with placeholders). Per
-  link: label, max uses, a fixed coder id; revoke, reopen, new secret.
+- **Links** (`LinksPanel.tsx`, `links/`): the links deploying made, with their
+  label, coder or set, uses (of the design's maximum), status and the URL
+  parameters they take (copied with placeholders). Per link: revoke,
+  reopen, new secret; no settings of their own.
   Retired links are listed apart. There is no "create": the Study entry
   declares the invitation.
 - **Coders** (Results › Coders; `CodersPanel.tsx`, deletion in `coders/`): per coder session the link, started, last active, answers,

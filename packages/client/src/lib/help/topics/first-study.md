@@ -90,8 +90,9 @@ Click **Coder unit assignments** above the tree:
 
 - **Crowd** (the default): one link for anyone. Without more settings,
   every coder codes all units. Optionally take a coder id from the URL
-  (for a panel), ask coders to sign in, share the units among coders, or
-  set a maximum number of coders.
+  (for a panel), ask coders to sign in, choose a set column with special
+  units, or set a maximum number of coders. Whether coders divide the
+  units is set on each unit loop.
 - **Specific coders**: coders you know, each with their own units, named
   in a set column of the units. They get a link each, pick their name from
   one link, or sign in.

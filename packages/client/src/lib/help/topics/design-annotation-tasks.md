@@ -105,7 +105,7 @@ Changing the codebook during coding: see
 - **Random order** spreads learning and fatigue over units (see
   [Order](unit-distribution.md#order)); keep set order when order matters.
 - **Limit work per coder**: quality drops after about an hour. Coders can
-  stop and resume. In crowd coding, cap **Units per coder** (see
+  stop and resume. In crowd coding, cap **Max units per coder** (see
   [Shared queues](shared-queues.md)).
 - **Look at timing**: `timings.csv` shows implausibly fast coders.
 

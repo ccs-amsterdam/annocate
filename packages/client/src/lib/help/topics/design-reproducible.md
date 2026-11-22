@@ -16,7 +16,7 @@ and coders.
 | --------------- | ------------------------------------------------------------------------------------- | -------------------------------- |
 | **Design**      | questions, conditions, layouts, distribution rules, coder unit assignments, URL parameters | yes: the instrument              |
 | **Set columns** | which coder or condition each unit is for                                             | as data, if you may share units  |
-| **Links**       | made from the invitations, with labels, fixed coder ids, max uses                     | no: about your coders            |
+| **Links**       | made from the coder unit assignments, with their secrets and uses                     | no: about your coders            |
 
 ## The design names, but never binds
 
@@ -35,8 +35,8 @@ include new units once deployed.
 
 ## Links hold who may take part
 
-Who the coders are (the coders' column), fixed coder ids and max uses stay
-on the server, outside the design (see [Links](links.md)).
+Who the coders are (the coders' column) and the links with their secrets
+stay on the server, outside the design (see [Links](links.md)).
 
 ## Sharing a design
 

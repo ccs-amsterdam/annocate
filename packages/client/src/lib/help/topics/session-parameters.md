@@ -41,6 +41,7 @@ value filled in.
 | ----------------- | ------------------------------------------------------------------ |
 | `$session.source` | the `?source=` of any link: where a coder came from; never required |
 | `$session.coder`  | the coder id (see [Links](links.md#coder-ids))                     |
+| `$session.group`  | a crowd link's set, with a link per set (see [Links](links.md))    |
 
 ## Public title
 

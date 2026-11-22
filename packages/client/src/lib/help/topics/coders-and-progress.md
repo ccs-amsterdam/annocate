@@ -39,7 +39,7 @@ coders.
 
 ### Progress
 
-Per loop and share (a coder, a condition, or _all units_): **complete**
+Per loop and share (a coder, a link's set, a condition, or _all units_): **complete**
 units out of all, and coders given units.
 
 - **Shared queue**: complete means coded (or agreed on) enough. A full bar

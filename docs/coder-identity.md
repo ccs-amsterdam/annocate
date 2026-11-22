@@ -10,7 +10,7 @@ quitting and deleting data (§8), closing sessions (§9) and response times
   they get in** (study roles, the coder unit assignment). No passwords on the
   server.
 - **Only authentication unlocks earlier work from another device.** An id
-  from a link (a coder id in a panel URL, or one fixed on a link) is a
+  from a link (a coder id in a panel URL, or a specific coder's own link) is a
   *label*, not a credential: anyone with the link could use it.
 - **Unauthenticated work stays on its device**, unless the coder moves it
   with a one-time transfer link.
@@ -22,7 +22,7 @@ quitting and deleting data (§8), closing sessions (§9) and response times
 | **Coder session** (`sessionId`) | One coder's run through a study: answers, progress. Everything is keyed by it | `coder_sessions` |
 | **Device id** | A random secret the server gives a browser once, for all studies, in the httpOnly cookie `annotinder_device`. Never stored by the server | the browser |
 | **Device key** | SHA-256 of device id, deployment and the crowd's coder id from the URL (if any): the device's key to its session in one study. Only this is stored, so a device's sessions in different studies can't be linked. One per device of a session | `session_devices` |
-| **Coder id** (`coder`) | Who the coder is: `$session.coder`, the results' `coder` column. Specific coders: their value in the coders' column. A crowd: the `coderParam` URL value (e.g. `PROLIFIC_PID`), else the login's email where sign-in is required, or a coder id fixed on the link. A label, never a credential | `coder_sessions.coder` |
+| **Coder id** (`coder`) | Who the coder is: `$session.coder`, the results' `coder` column. Specific coders: their value in the coders' column. A crowd: the `coderParam` URL value (e.g. `PROLIFIC_PID`), else the login's email where sign-in is required. A label, never a credential | `coder_sessions.coder` |
 | **Linked email** | A verified address from a login (§5), linked to the session once, to continue on other devices | `coder_sessions.email` |
 | **Transfer link** | A one-time link (15 minutes) that adds another device to the session | `transfers` (token hash only) |
 
@@ -31,8 +31,9 @@ one person group them by coder id or email in analysis.
 
 ## 3. Links
 
-Links are made by deploying: one, or one per coder for specific coders with a
-link each (`architecture.md` §7). A link no longer part of the design is
+Links are made by deploying: one, one per coder for specific coders with a
+link each, or one per set of a crowd's column (`$session.group`,
+`architecture.md` §7). A link no longer part of the design is
 retired (403 `link_inactive` for new sessions; started sessions go on). A
 revoked link (403 `link_revoked`) can be reopened. The coder unit assignment
 (`architecture.md` §6.1) decides how a session starts:
@@ -42,12 +43,13 @@ revoked link (403 `link_revoked`) can be reopened. The coder unit assignment
 | specific coders, `per_coder` | optional | the link's coder |
 | specific coders, `pick_name` | optional | the picked name (`nameDevices: "first"`: the first device's; `"any"`: picking it continues its session) |
 | specific coders, `login` | required; only the column's addresses (403 `email_not_allowed`) | the login's address |
-| crowd | optional | none, a coder id fixed on the link, or `coderParam` (`?<param>=…`, required unless `optional: true`) |
-| crowd with `login: true` | required (401 `auth_required`) | the login's email, unless the URL or link gives one |
+| crowd | optional | none, or `coderParam` (`?<param>=…`, required unless `optional: true`) |
+| crowd with `login: true` | required (401 `auth_required`) | the login's email, unless the URL gives one |
 
 Coders can always log in, to resume elsewhere. Where sign-in is optional,
-researchers don't see the email (contracts `loginRequired`). A link's
-`maxUses` (or the crowd's `maxCoders`) caps its sessions.
+researchers don't see the email (contracts `loginRequired`). A crowd's
+`maxCoders` (or for a set's link its `groupMaxCoders`) caps a link's
+sessions (403 `link_used_up`; the link's `maxUses`).
 
 **Duplicate coder ids are allowed**: a coder who can't reach their first
 session (§4) starts another, as can anyone holding a link with that coder id.
@@ -94,8 +96,8 @@ privacy: no session is opened by a label.
 
   Tokens are stored as hashes and deleted when used.
 - **A link with a coder id on a new device** (no cookie, and that coder
-  already has a session: a crowd's `coderParam`, a fixed coder id, or a
-  specific coder's own link):
+  already has a session: a crowd's `coderParam`, or a specific coder's own
+  link):
   1. The server refuses to create a second session silently:
      `409 { code: "coder_has_session" }`.
   2. The client says: continue on the original device, or make a transfer
@@ -105,7 +107,7 @@ privacy: no session is opened by a label.
      a new session** retries with `x-new-session: 1` (first request only). The
      new session can't see the earlier answers.
 
-  New sessions of a known coder don't count toward the link's `maxUses`. This
+  New sessions of a known coder don't count toward the link's maximum. This
   tells someone holding the link that the coder id was used before, nothing
   else.
 - **Anonymous links on a new device** simply start a new session.

@@ -2,17 +2,20 @@
 title: Shared queues: coding until enough coders agree
 section: Units and distribution
 order: 4
-summary: Crowd coding (units shared among coders) - how many codings a unit needs, agreement rules, limits per coder, priority and what it means for analysis.
+summary: Crowd coding (units divided among coders, per unit loop) - how many codings a unit needs, agreement rules, limits per coder, priority and what it means for analysis.
 ---
 
 With **crowd coding**, coders draw from one queue. Each unit is handed out
 until it is **done**: a number of coders coded it, or agreed on it. You
 don't need to know how many coders will come; those who do more code more.
 
-**Coder unit assignments** → **Crowd** → tick **Share the units among coders**.
-The rules apply in every unit loop. Each loop's queue holds its units (per
-condition, if conditions are linked to units, see
-[Handing out units](unit-distribution.md)).
+With a **Crowd** in **Coder unit assignments**, open a unit loop's
+**Units** tab and choose **Divide units among coders** under **Units and
+coders** (the default is **Everyone codes everything**). The rules are
+set per loop, and each loop has its own queue of its units (per link with
+a link per set, and per condition if conditions are linked to units, see
+[Handing out units](unit-distribution.md)). A loop that takes the units
+each coder got in an earlier loop isn't divided again.
 
 ## The settings
 
@@ -28,8 +31,7 @@ condition, if conditions are linked to units, see
   or reliability.
 - **Agreement per unit**, on a loop question with one categorical answer
   (categories, ordered options, swipe): done once _at least_ coders gave
-  the same answer. Skipped answers don't count. In loops without that
-  question, a unit is done after that many coders.
+  the same answer. Skipped answers don't count.
 
 _"Until 2 coders agree on `sentiment`, at most 5"_ gives easy units 2
 codings and hard ones up to 5. Only coders who **finished** a unit count.
@@ -73,8 +75,8 @@ A unit handed out is **reserved** for that coder for 15 minutes (a browser
 loads up to five ahead), so the last needed coding doesn't go to five
 coders at once. A reload gets the same units; a coder who leaves frees
 them after 15 minutes. A unit occasionally gets one coding more than
-needed. The time is `leaseSeconds` in `session.invite.share` in the JSON
-view (default `900`).
+needed. The time is `leaseSeconds` in the loop's `units.divide` in the
+JSON view (default `900`).
 
 ## What this means for analysis
 

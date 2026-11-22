@@ -96,7 +96,6 @@ work with an API key (403 `not_with_api_key`).
 | [deleteSetGroup](#deletesetgroup) | `DELETE /study/:studyId/sets/:group` | WRITE | – | – |
 | **Links and coders** | | | | |
 | [listLinks](#listlinks) | `GET /study/:studyId/links` | WRITE | – | `LinkResponseSchema[]` |
-| [updateLink](#updatelink) | `PUT /study/:studyId/links/:id` | WRITE | `LinkWriteSchema` | `LinkResponseSchema` |
 | [revokeLink](#revokelink) | `POST /study/:studyId/links/:id/revoke` | WRITE | – | `LinkResponseSchema` |
 | [reopenLink](#reopenlink) | `POST /study/:studyId/links/:id/reopen` | WRITE | – | `LinkResponseSchema` |
 | [renewLinkSecret](#renewlinksecret) | `POST /study/:studyId/links/:id/secret` | WRITE | – | `LinkResponseSchema` |
@@ -429,7 +428,8 @@ are named sets of units (tables `unit_sets`, `unit_set_members`;
 `docs/architecture.md` §6). The endpoints call a column a *group* and
 its values *sets*. A column's name is like a field name; values are at most
 128 characters, without `;` or `#`. `_overlap`, `_practice` and `_gold` are
-reserved: the column's special units. A unit can have several values of a
+reserved: the special units, in the coder unit assignment's column (elsewhere
+ordinary values). A unit can have several values of a
 column. Sets are not part of the unit's data (changing them is no new unit
 version). They are drafts: coders and links get them when they are
 deployed with `units: true`.
@@ -452,8 +452,8 @@ otherwise).
 ### deleteSetGroup
 
 `DELETE /study/:studyId/sets/:group` → 204. 409 while the deployed or latest
-design uses the column (the invitation's coders, a computed item linked to
-units, or a loop's filter).
+design uses the column (the coder unit assignment's column, a computed item
+linked to units, or a loop's subset).
 
 Filling a column (values given or `s1..sN`, plus `_overlap`) is done by the client
 (`splitIntoSets` in `sets.ts`), which then writes the group with
@@ -467,26 +467,24 @@ See [`docs/coder-identity.md`](../coder-identity.md) for what links do.
 
 Links are not created by hand: deploying makes one, or for specific coders
 with a link each (`invite: { mode: "coders", link: "per_coder" }`) one per
-coder of the column (`params: { coder }`), and deploying set column
+coder of the column (`params: { coder }`), or for a crowd whose `column` has
+sets besides the special ones one per set (`params: { group }`), and
+deploying set column
 changes syncs them ([putDeployment](#putdeployment)): links follow the
 deployed sets. A link no
 longer made is **retired** (`retiredAt`), never deleted: new coders get 403
 `link_inactive`, coders who started keep working. It comes back, with the
 same secret, if it is made again (e.g. the coder is back in the column).
+A link has no settings of its own: its label is its values (or "Open
+link"), and its `maxUses` (read-only) is the deployed design's crowd limit
+for it (`maxCoders`, or the set's `groupMaxCoders`).
 
 ### listLinks
 
 `GET /study/:studyId/links` → `LinkResponseSchema[]`, active links
-first, with `params` (`{ coder }` for a coder's link, else `{}`), `uses`,
-`created`, `revokedAt` and `retiredAt`.
-
-### updateLink
-
-`PUT /study/:studyId/links/:id` (`LinkWriteSchema`) →
-`LinkResponseSchema`. The link's `label`, `maxUses` and a fixed coder
-id (`coder`, the session's `$session.coder`). Full replace of these settings. Sign-in is the design's
-coder unit assignment, not a link's. A link's `maxUses` overrides a crowd
-invitation's `maxCoders`.
+first, with `label`, `params` (`{ coder }` for a coder's link, `{ group }`
+for a set's, else `{}`), `uses`, `maxUses`, `created`, `revokedAt` and
+`retiredAt`.
 
 ### revokeLink
 
@@ -510,10 +508,12 @@ coders who already started keep working.
 `GET /study/:studyId/coders` → `CoderProgressSchema[]`: per coder session
 (`id`) the link, the coder id (`coder`), started, last active, live answers, finished units per
 loop of the live design version, `special`: the units of the deployed
-`_overlap`, `_gold` and `_practice` sets they finished, of how many (for
+`_overlap`, `_gold` and `_practice` sets of the coder unit assignment's
+column they finished, of how many (for
 the kinds the study has), `variables`: their coder-level values
 (answers outside unit loops, and computed variables), `session`: their
-`$session` values (URL parameters, `source`, the coder), `email` only where
+`$session` values (URL parameters, `source`, the coder, a crowd link's set
+`group`), `email` only where
 the coder unit assignment requires sign-in, `ended`: how the
 session ended (at an `end` item: item, outcome `screenout` or `complete`;
 or outcome `quit`; and the time), or null, and `deletionRequest`: the
@@ -580,8 +580,9 @@ or pause/resume with `active`. Units and sets are drafts until deployed
    and resuming don't: coders don't reload), record the version with what
    it changed ([listDeploymentVersions](#listdeploymentversions)), and make
    the design version immutable;
-4. sync the study's links (contracts `linkCombinations`): one, or one per
-   coder with a link each; links no longer made (a coder who is gone) are
+4. sync the study's links (contracts `linkCombinations`): one, one per
+   coder with a link each, or one per set of a crowd's column; links no
+   longer made (a coder or set that is gone) are
    retired. Above 500 links this
    needs `confirmLinks: true` (409 `confirm_links` otherwise), and more
    than 2000 is 400 `too_many_links`. The response's `links` is the number
@@ -596,7 +597,8 @@ study is paused) until it is resumed.
 Return `warnings` the researcher should see, e.g. a loop that gained
 questions, which makes units coders finished unfinished again, a column
 without values, units no session gets, column values a linked computed item
-doesn't list, special units a loop places but the columns don't have, or an
+doesn't list, special units a loop places but the assignment's column
+doesn't have, or an
 end item's redirect setting without a URL.
 
 ### getPendingChanges

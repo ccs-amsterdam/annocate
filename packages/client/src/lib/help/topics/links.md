@@ -2,7 +2,7 @@
 title: Links
 section: Coders
 order: 1
-summary: The links coders open to start - made from the design's coder unit assignments, with who may use them, coder ids, sign-in and a maximum number of uses.
+summary: The links coders open to start - made from the design's coder unit assignments, with coder ids, sign-in and a maximum number of coders per link.
 ---
 
 Coders start by opening a **link**, listed under **Deploy › Links**.
@@ -16,10 +16,11 @@ Open **Coder unit assignments** above the item tree and choose:
 | Invitation          | Who codes                                         | Links                                                     |
 | ------------------- | ------------------------------------------------- | --------------------------------------------------------- |
 | **Specific coders** | coders you know, each with their own units        | a link per coder, or one link to pick a name or sign in   |
-| **Crowd** (default) | anyone with the link (a panel, a newsletter)      | one link                                                  |
+| **Crowd** (default) | anyone with the link (a panel, a newsletter)      | one link, or a link per set of its set column             |
 
-**Specific coders**: choose the **Column with the coders** (a set column
-naming a coder per unit, or **Create new coder distribution…**). Then how they get in:
+**Specific coders**: choose the **coder distribution column** (a set
+column naming a coder per unit, or **Create new coder distribution…**).
+Then how they get in:
 
 - **A link per coder**: send each coder theirs;
 - **One link: coders pick their name from the column**: a name stays on
@@ -34,9 +35,14 @@ See [Giving each coder their own units](own-units.md).
 - **Coder id from a URL parameter**, e.g. a panel's `PROLIFIC_PID` (see
   [Coder ids](#coder-ids));
 - **Coders sign in**: you see their email address (see [Login](#login));
-- **Coders at most**: the sample size;
-- **Share the units among coders**: a shared queue instead of everyone
-  coding all units (see [Shared queues](shared-queues.md)).
+- **Set column**: special units for every coder (**Create special
+  units…**); if the column also has other sets, a link per set, whose
+  coders code that set (`$session.group`);
+- **Max. nr of coders**: the sample size, per link (with a link per set,
+  also per set; see [Max. nr of coders](#max-nr-of-coders)).
+
+Whether a crowd's units are divided among the coders is set per unit loop
+(see [Shared queues](shared-queues.md)).
 
 Unit settings only matter once the design has a unit loop; specific
 coders without units is fine (e.g. a survey of experts, a link each).
@@ -50,19 +56,6 @@ same link again. Retired links show _"This link is no longer active"_;
 coders who started keep working. More than 500 links asks to confirm; at
 most 2000.
 
-## Who may use a link
-
-The pencil icon (**Who may use this link**):
-
-| Setting            | Does                                                |
-| ------------------ | --------------------------------------------------- |
-| **Label**          | for you; shown on Coders and in the results         |
-| **Max uses**       | stop new coders after this many                     |
-| **Fixed coder id** | everyone using this link gets this id               |
-
-**New link** (key icon) gives a new address, e.g. when it was shared too
-widely; coders who started keep working.
-
 ## Coder ids
 
 A **coder id** says who the coder is, in the **Coder** column and the
@@ -75,7 +68,6 @@ A **coder id** says who the coder is, in the **Coder** column and the
 | Crowd                             | none (anonymous; a number)                |
 | Crowd, coder id from URL parameter | the parameter's value                    |
 | Crowd with sign-in                | their email address                       |
-| A link with a fixed coder id      | that id                                   |
 
 **Coder id from a URL parameter**: name the **URL parameter**, optionally
 a **Pattern** (e.g. `[0-9]{6}`), and whether it is **Required** (default:
@@ -100,26 +92,28 @@ the link there continues it. **Continue on another device** moves it (see
 > without a coder id continues the first person's session. Give each
 > person a coder id, or use private windows.
 
-## Max uses
+## Max. nr of coders
 
-After **Max uses** starts, the link is _used up_ for new coders; started
-coders continue. Use it to cap a batch, or 1 for a personal link. A
-crowd's **Coders at most** sets this in the design; a link's own max uses
-overrides it.
+A crowd's **Max. nr of coders** (in the design) is the most sessions a
+link starts; after that it is _used up_ for new coders, and started
+coders continue. With a link per set, each link has this maximum, or its
+own set's if you give one. To change it, change the design and deploy
+again.
 
 ## The list of links
 
 | Column      | Shows                                                    |
 | ----------- | -------------------------------------------------------- |
-| **Label**   | the label (the coder, or "Open link")                    |
-| **For**     | the coder, with a link per coder                         |
+| **Label**   | the link's values (the coder or set), or "Open link"     |
+| **For**     | the coder or set, or everyone                            |
 | **Link**    | **Copy link**, with placeholders for required parameters |
-| **Access**  | anyone, or a fixed coder id                              |
 | **Uses**    | coders started (and the maximum)                         |
 | **Status**  | _open_, _used up_, _revoked_ or _retired_                |
 
-**Revoke** stops new sessions (started coders keep working); **Reopen**
-undoes it.
+A link has no settings of its own: they come from the design. **Revoke**
+stops new sessions (started coders keep working); **Reopen** undoes it.
+**New link** (key icon) gives a new address, e.g. when it was shared too
+widely; coders who started keep working.
 
 ## Login
 

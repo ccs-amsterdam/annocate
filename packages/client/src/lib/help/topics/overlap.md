@@ -7,14 +7,16 @@ summary: Overlap units that every coder codes besides their own set - for interc
 
 An **overlap** is a set of units every coder codes, besides their own:
 when coders divide the work, it gives units all of them coded, for
-intercoder reliability. It is the value `_overlap` in a
-[set column](sets.md). For only some coders, write `anna;bob`.
+intercoder reliability. It is the value `_overlap` in the set column of
+the **Coder unit assignments** (the coders' column, or a crowd's set
+column; see [Sets](sets.md)). For only some coders, write `anna;bob`.
 
 ## Setting it up
 
-1. Mark the overlap: **Create new coder distribution…** in **Coder unit assignments** (or
-   **Fill a set column** on **Units**) with an overlap of e.g. 10%, or
-   write `_overlap` in your CSV.
+1. Mark the overlap: **Create new coder distribution…** (specific coders)
+   or **Create special units…** (a crowd) in **Coder unit assignments**
+   (or **Fill a set column** on **Units**) with an overlap of e.g. 10%,
+   or write `_overlap` in your CSV.
 2. On the loop's **Units** tab, the **Overlap units** row shows the count;
    choose where they go.
 
@@ -22,13 +24,13 @@ intercoder reliability. It is the value `_overlap` in a
 
 | Placed                          | Coders get                               |
 | ------------------------------- | ---------------------------------------- |
-| **Spread through them** (default) | overlap units evenly among their own   |
-| **Before them**                 | overlap first                            |
-| **After them**                  | overlap last                             |
+| **Spread throughout** (default) | overlap units evenly among their own     |
+| **Before coding units**         | overlap first                            |
+| **After coding units**          | overlap last                             |
 | **Leave out**                   | none in this loop                        |
 
 Spread: 100 own units and 4 overlap gives one after every 20. In a
-[shared queue](shared-queues.md) without a maximum of units per coder,
+[shared queue](shared-queues.md) (a divided crowd) without a maximum of units per coder,
 they come at random (about one in ten, at most twenty apart). Coders can't
 tell which units are overlap. Gold and practice units are placed the same
 way.

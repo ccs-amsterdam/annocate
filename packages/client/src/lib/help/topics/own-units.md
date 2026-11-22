@@ -11,12 +11,14 @@ for reliability.
 ## In four steps
 
 1. **Coder unit assignments** (above the item tree) → **Specific coders**.
-2. **Column with the coders**: a set column of your units naming a coder
-   per unit (`anna`, `bob`). From your CSV (type **set**, see
-   [Uploading units](uploading-units.md)), or **Create new coder distribution…**: a
-   number of coders (`coder_1`, ...), names or email addresses, **Coders
-   per unit**, an **Overlap** for every coder, and the **Column name**.
-   The units are shuffled and divided.
+2. **Select coder distribution column**: a set column of your units
+   naming a coder per unit (`anna`, `bob`). From your CSV (type **set**,
+   see [Uploading units](uploading-units.md)), or **Create new coder
+   distribution…**: names (default), email addresses or a number of coders
+   (`coder_1`, ...), **Coders per unit** (**Divide the units** with a
+   number, or **Everyone codes everything**), the **Column name**, and
+   **Special units**: overlap units for every coder, and optionally
+   practice and gold units. The units are shuffled and divided.
 3. Choose **A link per coder** and **Deploy**.
 4. **Deploy › Links** lists a link per coder: send each coder theirs.
 
@@ -43,7 +45,7 @@ devices, but you don't see their address.
 | `anna;bob`  | Anna and Bob |
 | `_overlap`  | every coder  |
 
-`_overlap` units are spread through each coder's units by default (see
+`_overlap` units are spread throughout each coder's units by default (see
 [Overlap](overlap.md)).
 
 ## More coders later
@@ -55,7 +57,7 @@ coder's link is retired.
 ## When this isn't what you need
 
 - Every coder codes **all** units: **Crowd**, one link.
-- Coders come and go, each unit needs e.g. two codings:
-  [crowd coding](shared-queues.md).
+- Coders come and go, each unit needs e.g. two codings: a crowd, with the
+  loop's units divided ([crowd coding](shared-queues.md)).
 - Units per experimental **condition**:
   [Experimental conditions](experimental-conditions.md).

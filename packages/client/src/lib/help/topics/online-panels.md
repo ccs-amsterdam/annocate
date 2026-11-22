@@ -27,8 +27,8 @@ expect them back when done.
    `PROLIFIC_PID=<coder id>`.
 3. Replace `<coder id>` with the panel's placeholder (Prolific:
    `{{%PROLIFIC_PID%}}`) and give that link to the panel.
-4. Optionally set a **Label** (_Prolific pilot_) and **Max uses** a bit
-   above the number of places.
+4. Optionally set **Max. nr of coders** (in **Coder unit assignments**,
+   before deploying) a bit above the number of places.
 
 The id shows on **Coders** and as `coder` in the results, and keeps
 sessions apart (see [Coder ids](links.md#coder-ids)).
@@ -97,8 +97,8 @@ with [Show if](conditions.md) or `::: if`. See
 
 ## How many coders?
 
-For crowd coding, share the units (see [Shared queues](shared-queues.md))
-and set **Units per coder, at most**:
+For crowd coding, divide the loop's units among the coders (see
+[Shared queues](shared-queues.md)) and set **Max units per coder**:
 
 ```text
 coders ≈ units × coders per unit ÷ units per coder
@@ -110,8 +110,8 @@ unit is full, later coders skip the loop (and with an end item
 **Overview** shows the units complete (see
 [Following progress](coders-and-progress.md)).
 
-For an experiment where everyone judges the same few messages, don't share
-the units; consider **Random** order.
+For an experiment where everyone judges the same few messages, keep
+**Everyone codes everything**; consider **Random** order.
 
 ## Before you launch
 

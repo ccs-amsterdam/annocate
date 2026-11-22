@@ -11,9 +11,12 @@ Each value is a **set**. The design uses them for:
 
 - **Specific coders** (Coder unit assignments): each coder gets their value's
   units (see [Giving each coder their own units](own-units.md));
+- a **Crowd's set column** (Coder unit assignments): its special units for
+  every coder, and with other values a link per value, whose coders code
+  that set;
 - a **random condition linked to units**: each condition its units (see
   [Experimental conditions](experimental-conditions.md));
-- a **loop's filter**: e.g. a pre-test and a post-test loop (see
+- a **loop's subset**: e.g. a pre-test and a post-test loop (see
   [Handing out units](unit-distribution.md)).
 
 Without a set column every coder gets all units.
@@ -32,7 +35,9 @@ Upload a column with the type **set**; each cell lists the unit's values:
 | `anna#3`    | for `anna`, as her third unit                             |
 | _(empty)_   | for nobody (deploying warns)                              |
 
-Values can't contain `;` or `#`. Uploading again replaces the column.
+`_overlap`, `_practice` and `_gold` are special only in the coder unit
+assignment's column; elsewhere they are ordinary values. Values can't
+contain `;` or `#`. Uploading again replaces the column.
 
 ## Seeing set columns
 

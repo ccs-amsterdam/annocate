@@ -17,7 +17,7 @@ On the AnnoTinder server you use:
 | ------------------- | ---------------------------------------------------------------------------------------------- |
 | **Units**           | your upload, and each unit as coders saw it                                                    |
 | **Design versions** | every saved and deployed version                                                               |
-| **Links**           | label, coder, fixed coder id, max uses, uses                                                   |
+| **Links**           | label, the values it carries (a coder or set), uses                                            |
 | **Coders**          | per session: link, coder id, answers outside loops, URL parameters the design reads, units given, start, how it ended |
 | **Devices and display** | kind of device, browser, operating system; keys for answers, screen width, theme          |
 | **Answers**         | per unit and question, with times, design version and unit version                             |
