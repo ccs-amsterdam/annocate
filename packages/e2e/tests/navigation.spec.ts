@@ -481,3 +481,33 @@ test("the keyboard reaches Continue below a question with several answers", asyn
   await page.keyboard.press("Enter");
   await expect.poll(async () => (await answers(request, created.id)).length).toBe(1);
 });
+
+test("a dropdown: the arrows open it to browse; typing opens it with the filter", async ({ page, request }) => {
+  const created = await api<StudyResponse>(request, "POST", "/study", { name: "Dropdown keys" });
+  const country = {
+    type: "question",
+    name: "country",
+    variable: {
+      type: "nominal",
+      layout: "dropdown",
+      question: "Country?",
+      options: ["Belgium", "Germany", "Netherlands", "Norway"].map((value) => ({ value })),
+    },
+  };
+  const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, { items: [country] });
+  await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
+  await page.goto(`/code/${created.id}?link=${link.secret}`);
+  await question(page, "Country?");
+  // Typing opens it with the filter
+  await page.keyboard.type("neth");
+  await expect(page.getByPlaceholder("Type to filter…")).toHaveValue("neth");
+  await expect(page.getByRole("option")).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  // The arrows open it, then browse it
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("option")).toHaveCount(4);
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect.poll(async () => (await answers(request, created.id))[0]?.value.values?.[0]?.value).toBe("Germany");
+});

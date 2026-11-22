@@ -15,7 +15,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { buildValues, initialValues } from "./answerValue";
 import { CompactRow, EndLabels, OptionButton, SpecialOptionsRow } from "./OptionButtons";
 import { optionsContainerStyle } from "./optionLayout";
-import { useKeyTargets } from "../../keyboard/hooks";
+import { useKeyScope, useKeyTargets } from "../../keyboard/hooks";
+import { PRIORITY } from "../../keyboard/controller";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 
 type CategoricalVariable = Extract<QuestionVariable, { type: "nominal" | "ordinal" }>;
@@ -158,12 +159,40 @@ interface OptionsDropdownProps {
   onPick: (option: Option) => void;
 }
 
-/** A combobox with a filter box, for long lists. */
+/**
+ * A combobox with a filter box, for long lists. The keyboard opens it: the
+ * arrows (then browse with them), or typing (which starts the filter).
+ */
 function OptionsDropdown({ options, selected, multiple, onPick }: OptionsDropdownProps) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const chosen = options.filter((o) => selected.has(o.value));
+  useKeyScope(
+    (press) => {
+      if (press.altKey || press.ctrlKey || press.metaKey || press.shiftKey) return false;
+      if (press.key === "ArrowDown" || press.key === "ArrowUp") {
+        setSearch("");
+        setOpen(true);
+        return true;
+      }
+      if (press.key.length === 1 && press.key !== " " && press.key !== "?") {
+        setSearch(press.key);
+        setOpen(true);
+        return true;
+      }
+      return false;
+    },
+    !open,
+    { priority: PRIORITY.field },
+  );
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setSearch("");
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -178,7 +207,16 @@ function OptionsDropdown({ options, selected, multiple, onPick }: OptionsDropdow
       </PopoverTrigger>
       <PopoverContent className="w-[min(32rem,calc(100vw-2rem))] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Type to filter…" />
+          <CommandInput
+            placeholder="Type to filter…"
+            value={search}
+            onValueChange={setSearch}
+            // Opened by typing: the cursor after that letter, so the next one adds to it
+            onFocus={(e) => {
+              const input = e.currentTarget;
+              requestAnimationFrame(() => input.setSelectionRange(input.value.length, input.value.length));
+            }}
+          />
           <CommandList>
             <CommandEmpty>No matches.</CommandEmpty>
             <CommandGroup>
