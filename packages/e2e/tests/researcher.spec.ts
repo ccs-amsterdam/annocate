@@ -147,9 +147,8 @@ test("your first study, as the help describes it: units, a design, deploy, a lin
       },
     ],
   });
-  await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("button", { name: "Deploy…", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Deploy", exact: true }).click();
+  await page.getByRole("navigation", { name: "Study" }).getByRole("button", { name: "Deploy", exact: true }).click();
+  await page.getByRole("main").getByRole("button", { name: "Deploy", exact: true }).click();
   await expect
     .poll(
       async () =>
@@ -159,7 +158,6 @@ test("your first study, as the help describes it: units, a design, deploy, a lin
     .toBe(codebook.id);
 
   // 7. Link coders: publishing made the study's link; give it a label
-  await page.getByRole("button", { name: "Deploy", exact: true }).click();
   await page.getByRole("button", { name: "Links", exact: true }).click();
   await expect(page.getByText("Open link")).toBeVisible();
   await page.getByRole("button", { name: "Who may use this link" }).click();

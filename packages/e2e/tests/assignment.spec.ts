@@ -77,10 +77,12 @@ test("the coder invitations show the coders; a dialog makes or updates the coder
   await expect(page.getByText("3 coders.", { exact: true })).toBeVisible();
 
   // Deployed: a link per coder on the Links page
-  await page.getByRole("button", { name: "Deploy…", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Deploy", exact: true }).click();
-  await expect(page.getByRole("dialog")).toBeHidden();
-  await page.getByRole("button", { name: "Deploy", exact: true }).click();
+  // Saved in the editor, deployed on the Deploy page
+  await page.getByRole("button", { name: /^Save/ }).click();
+  await expect(page.getByText(/not deployed/)).toBeVisible();
+  await page.getByRole("navigation", { name: "Study" }).getByRole("button", { name: "Deploy", exact: true }).click();
+  await page.getByRole("main").getByRole("button", { name: "Deploy", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Deployed" })).toBeVisible();
   await page.getByRole("button", { name: "Links", exact: true }).click();
   for (const name of ["carla", "dave", "emma"])
     await expect(page.getByRole("cell", { name: `coder ${name}` })).toBeVisible();

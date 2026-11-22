@@ -46,11 +46,11 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
   await page.goto("/research");
   await page.getByText("Draft units").click();
   await expect(page.getByText(/Not deployed yet:.*1 added/)).toBeVisible();
-  await page.getByRole("button", { name: "Deploy…" }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText("Units and sets: 1 added")).toBeVisible();
-  await dialog.getByRole("button", { name: "Deploy", exact: true }).click();
-  await expect(page.getByText(/Not deployed yet/)).toBeHidden();
+  await page.getByRole("button", { name: "Review and deploy" }).click();
+  const deployPage = page.getByRole("main");
+  await expect(deployPage.getByText("Units and sets: 1 added")).toBeVisible();
+  await deployPage.getByRole("button", { name: "Deploy", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Deployed" })).toBeVisible();
   const versions = await api<{ version: number; changes: unknown }[]>(
     request,
     "GET",
@@ -179,7 +179,7 @@ test("a link per value of a URL parameter, built in the browser", async ({ page,
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: codebook.id });
   await page.goto("/research");
   await page.getByText("Schools").click();
-  await page.getByRole("button", { name: "Deploy", exact: true }).click();
+  await page.getByRole("navigation", { name: "Study" }).getByRole("button", { name: "Deploy", exact: true }).click();
   await page.getByRole("button", { name: "Links", exact: true }).click();
   await page.getByRole("button", { name: "school", exact: true }).click();
   await expect(page.getByRole("cell", { name: /school=north/ })).toBeVisible();

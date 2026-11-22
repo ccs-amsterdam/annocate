@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import type { DesignVersion } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import {
   useDesignVersionsQuery,
@@ -7,14 +6,12 @@ import {
   useCreateDesignVersionMutation,
   useDeleteDesignVersionMutation,
   useDeploymentQuery,
-  useConfirmedDeploy,
   useUpdateDesignVersionMutation,
 } from "../../admin/queries";
 import { describeVersions } from "../../design/versions";
 import { DesignEditor, type DesignEditorMode, type SaveFn } from "./DesignEditor";
 import { DesignStatusBanner } from "./DesignStatusBanner";
 import { DesignVersionsDialog } from "./DesignVersionsDialog";
-import { DeployDialog } from "./DeployDialog";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Loader2 } from "lucide-react";
 import { clearBackup, type DesignBackup } from "../../design/localBackup";
@@ -33,6 +30,8 @@ interface DesignManagerProps {
   initialVersion?: number;
   /** The open version changed: its number, or undefined for the current version (the URL follows). */
   onVersionChange?: (version: number | undefined) => void;
+  /** To the Deploy page (deploying happens there). */
+  onOpenDeploy?: () => void;
 }
 
 /**
@@ -42,7 +41,7 @@ interface DesignManagerProps {
  * Versions (docs/client.md §7): coders get the *live* version
  * (the deployment's design version), the editor works on the *draft* (the latest
  * version, if not yet deployed), and everything else is read-only history.
- * Deploying makes the draft live, which also freezes it.
+ * Deploying (on the Deploy page) makes the draft live, which also freezes it.
  */
 export function DesignManager({
   client,
@@ -52,6 +51,7 @@ export function DesignManager({
   restore = null,
   initialVersion,
   onVersionChange,
+  onOpenDeploy,
 }: DesignManagerProps) {
   const designVersionsQuery = useDesignVersionsQuery(client);
   const deploymentQuery = useDeploymentQuery(client);
@@ -85,17 +85,14 @@ export function DesignManager({
   }, [shownNumber, fromUrl]);
   const openId = fromUrl ? null : (selectedId ?? versions.currentId);
   const openQuery = useDesignVersionQuery(client, openId);
-  const liveQuery = useDesignVersionQuery(client, versions.liveId);
 
   // Bumped when the open version's content is replaced underneath the editor (restore)
   const [editorEpoch, setEditorEpoch] = useState(0);
   const [versionsDialogOpen, setVersionsDialogOpen] = useState(false);
-  const [toDeploy, setToDeploy] = useState<DesignVersion | null>(null);
 
   const createDesignVersion = useCreateDesignVersionMutation(client);
   const updateDesignVersion = useUpdateDesignVersionMutation(client);
   const deleteDesignVersion = useDeleteDesignVersionMutation(client);
-  const deploy = useConfirmedDeploy(client);
 
   // Unsaved changes tracking
   const saveRef = useRef<SaveFn | null>(null);
@@ -226,6 +223,7 @@ export function DesignManager({
               draftNumber={draftNumber}
               onRestore={openId !== null ? () => restoreVersion(openId) : undefined}
               onBackToCurrent={() => viewVersion(versions.currentId ?? -1)}
+              onOpenDeploy={onOpenDeploy}
             />
           }
           onDirtyChange={setIsDirty}
@@ -234,7 +232,6 @@ export function DesignManager({
             setIsDirty(false);
             setChosenId(saved.id);
           }}
-          onDeploy={setToDeploy}
           restore={pendingRestore && pendingRestore.designVersionId === openId ? pendingRestore : null}
           onRestored={() => setPendingRestore(null)}
           onReload={async () => {
@@ -254,31 +251,6 @@ export function DesignManager({
         onView={viewVersion}
         onRestore={restoreVersion}
         onDeleteDraft={() => void deleteDraft()}
-      />
-
-      <DeployDialog
-        key={toDeploy?.id ?? "closed"}
-        client={client}
-        open={toDeploy !== null}
-        version={toDeploy}
-        versionNumber={toDeploy ? (versions.numberOf(toDeploy.id) ?? designVersions.length + 1) : 0}
-        live={versions.liveId !== null ? (liveQuery.data ?? null) : null}
-        liveNumber={liveNumber}
-        onDeploy={async (version, note, units) => {
-          if (version && note !== (version.note ?? "")) {
-            // Based on the saved revision; the editor reloads after (its revision is now old), deploy or not
-            const updated = await updateDesignVersion.mutateAsync({
-              id: version.id,
-              body: { note: note || undefined, items: version.items, revision: version.revision },
-            });
-            setToDeploy(updated);
-            setEditorEpoch((n) => n + 1);
-          }
-          const deployment = await deploy({ designVersionId: version?.id ?? versions.liveId!, units });
-          if (version) setChosenId(null);
-          return deployment;
-        }}
-        onClose={() => setToDeploy(null)}
       />
 
       <UnsavedChangesDialog

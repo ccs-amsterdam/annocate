@@ -47,8 +47,6 @@ interface DesignEditorProps {
   /** Shown below the toolbar: what version this is and what to do next. */
   banner?: ReactNode;
   onSaved: (version: DesignVersion) => void;
-  /** Shows a Deploy button; called with the saved version (unsaved changes are saved first). */
-  onDeploy?: (version: DesignVersion) => void;
   onDirtyChange?: (isDirty: boolean) => void;
   onOpenVersions?: () => void;
   /** Receives the editor's save function (and null on unmount). */
@@ -85,7 +83,6 @@ export function DesignEditor({
   mode = "draft",
   banner,
   onSaved,
-  onDeploy,
   onDirtyChange,
   onOpenVersions,
   registerSave,
@@ -167,13 +164,6 @@ export function DesignEditor({
     return () => registerSave?.(null);
   });
 
-  async function deploy() {
-    if (!onDeploy) return;
-    // A live version that wasn't changed can't be deployed again; anything unsaved is saved first
-    if (dirty || !version || version.immutable) onDeploy(await draft.save());
-    else onDeploy(version);
-  }
-
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
       <EditorToolbar
@@ -186,7 +176,6 @@ export function DesignEditor({
         onOpenIssue={openIssue}
         dirty={dirty}
         canSave={draft.canSave}
-        valid={draft.valid}
         canUndo={draft.canUndo}
         canRedo={draft.canRedo}
         onUndo={draft.undo}
@@ -196,7 +185,6 @@ export function DesignEditor({
         onRevertAll={draft.revertAll}
         saving={draft.saving}
         onSave={() => void draft.save().catch(() => {})}
-        onDeploy={onDeploy && (() => void deploy().catch(() => {}))}
         onOpenVersions={onOpenVersions}
         onExport={async (kind) => {
           if (kind === "codebook") {

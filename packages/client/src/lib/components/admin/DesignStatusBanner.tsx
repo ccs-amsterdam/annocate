@@ -15,6 +15,8 @@ interface DesignStatusBannerProps {
   draftNumber: number | null;
   onRestore?: () => void;
   onBackToCurrent?: () => void;
+  /** To the Deploy page, where the saved draft is deployed. */
+  onOpenDeploy?: () => void;
 }
 
 /**
@@ -28,13 +30,14 @@ export function DesignStatusBanner({
   draftNumber,
   onRestore,
   onBackToCurrent,
+  onOpenDeploy,
 }: DesignStatusBannerProps) {
   const openIsLive = openNumber !== null && openNumber === liveNumber;
 
   if (openNumber === null) {
     return (
       <Banner tone="draft" icon={Sparkles} title="New design">
-        Save it as a draft, and deploy it when coders can start.
+        Save it as a draft, and deploy it on the Deploy page when coders can start.
       </Banner>
     );
   }
@@ -80,10 +83,21 @@ export function DesignStatusBanner({
   }
 
   return (
-    <Banner tone="draft" icon={FilePen} title={`Draft v${openNumber} · not live yet`}>
+    <Banner
+      tone="draft"
+      icon={FilePen}
+      title={`Draft v${openNumber} · not deployed`}
+      actions={
+        onOpenDeploy && (
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onOpenDeploy}>
+            Deploy…
+          </Button>
+        )
+      }
+    >
       {liveNumber !== null
-        ? `Coders are using v${liveNumber} until you deploy this draft.`
-        : "Nothing is deployed yet, so coders can't start this study. Deploy when it's ready."}
+        ? `Coders are using v${liveNumber} until you deploy this draft on the Deploy page.`
+        : "Nothing is deployed yet, so coders can't start this study. Save, then deploy on the Deploy page."}
     </Banner>
   );
 }

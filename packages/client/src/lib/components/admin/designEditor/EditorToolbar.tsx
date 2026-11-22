@@ -6,7 +6,6 @@ import {
   FileDown,
   History,
   Redo2,
-  Rocket,
   RotateCcw,
   Sliders,
   Undo2,
@@ -44,8 +43,6 @@ interface EditorToolbarProps {
   onOpenIssue: (issue: EditorIssue) => void;
   dirty: boolean;
   canSave: boolean;
-  /** Whether the design passes validation (required to deploy). */
-  valid: boolean;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
@@ -56,8 +53,6 @@ interface EditorToolbarProps {
   onRevertAll: () => void;
   saving: boolean;
   onSave: () => void;
-  /** Omit to hide the Deploy button. */
-  onDeploy?: () => void;
   onOpenVersions?: () => void;
   /** Download the codebook (what coders see, Markdown) or the design file (all of the design, JSON). */
   onExport?: (kind: "codebook" | "design") => void;
@@ -73,7 +68,6 @@ export function EditorToolbar({
   onOpenIssue,
   dirty,
   canSave,
-  valid,
   canUndo,
   canRedo,
   onUndo,
@@ -83,14 +77,12 @@ export function EditorToolbar({
   onRevertAll,
   saving,
   onSave,
-  onDeploy,
   onOpenVersions,
   onExport,
   status,
 }: EditorToolbarProps) {
   const [exportOpen, setExportOpen] = useState(false);
   const readOnly = mode === "history";
-  const canDeploy = !readOnly && valid && (dirty || mode === "draft");
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-2">
@@ -197,7 +189,6 @@ export function EditorToolbar({
           <Button
             type="button"
             size="sm"
-            variant={onDeploy ? "outline" : "default"}
             onClick={onSave}
             disabled={saving || !canSave}
             title={
@@ -207,30 +198,10 @@ export function EditorToolbar({
                   ? "Save your changes as a new draft. Coders keep using the live version until you deploy."
                   : errors.length > 0
                     ? "Saves the draft as it is; fix the issues before deploying"
-                    : undefined
+                    : "Save the draft; deploy it on the Deploy page"
             }
           >
             {saving ? "Saving..." : mode === "live" ? "Save as draft" : "Save"}
-          </Button>
-        )}
-
-        {onDeploy && !readOnly && (
-          <Button
-            type="button"
-            size="sm"
-            onClick={onDeploy}
-            disabled={!canDeploy || saving}
-            title={
-              !valid
-                ? "Fix the issues before deploying"
-                : !canDeploy
-                  ? "This version is already live"
-                  : "Deploy this version (and choose whether to deploy the draft units too): coders switch to it when they next save an answer"
-            }
-            className="flex items-center gap-1.5"
-          >
-            <Rocket className="h-3.5 w-3.5" />
-            Deploy…
           </Button>
         )}
       </div>

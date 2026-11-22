@@ -1,61 +1,29 @@
-import { useState } from "react";
-import { designErrors, designItems, undeclaredFields, type TopLevelItem } from "@annotinder/contracts";
 import { Rocket } from "lucide-react";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import {
-  useDesignVersionQuery,
-  useDesignVersionsQuery,
-  useDeploymentQuery,
-  usePendingChangesQuery,
-  useConfirmedDeploy,
-  useUpdateDesignVersionMutation,
-} from "../../admin/queries";
+import { useDeploymentQuery, useDesignVersionsQuery, usePendingChangesQuery } from "../../admin/queries";
 import { describeVersions } from "../../design/versions";
 import { Button } from "@/components/ui/button";
-import { DeployDialog } from "./DeployDialog";
 import { describeUnitChanges, hasUnitChanges } from "../../admin/unitChanges";
 
 /**
  * Everything is a draft until deployed (docs/architecture.md §8.4): when a
- * deployed study's drafts differ from what coders get, says what differs and
- * opens the deploy dialog. Draft units and sets are ticked there; a
- * design draft is offered, not ticked (it's deployed from the editor
- * as a rule).
+ * deployed study's drafts differ from what coders get, says what differs,
+ * with the way to the Deploy page.
  */
-export function PendingDeployBar({
-  client,
-  includeDesign = false,
-}: {
-  client: ResearcherApi;
-  includeDesign?: boolean;
-}) {
+export function PendingDeployBar({ client, onOpenDeploy }: { client: ResearcherApi; onOpenDeploy: () => void }) {
   const deployment = useDeploymentQuery(client).data;
   const pending = usePendingChangesQuery(client, !!deployment).data;
   const designVersionsQuery = useDesignVersionsQuery(client);
-  const designVersions = designVersionsQuery.data ?? [];
-  const versions = describeVersions(designVersions, deployment?.designVersionId ?? null);
-  // Only a draft (not frozen) design version is offered: an older version is restored from the editor first.
+  const versions = describeVersions(designVersionsQuery.data ?? [], deployment?.designVersionId ?? null);
+  // Only a draft (not frozen) design version counts: an older version is restored in the editor first
   const draftId =
     pending?.designVersionId !== null && pending?.designVersionId === versions.draftId ? versions.draftId : null;
-  const draft = useDesignVersionQuery(client, draftId).data ?? null;
-  const live = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data ?? null;
-  const deploy = useConfirmedDeploy(client);
-  const updateDesignVersion = useUpdateDesignVersionMutation(client);
-  const [open, setOpen] = useState(false);
 
-  // The versions are needed to number them (and not take a deployed study for a first deploy)
   if (!deployment || !pending || !designVersionsQuery.data) return null;
-  const units = pending.units;
-  const unitsChanged = hasUnitChanges(units);
-  // As the server checks it: no errors, and every unit field it uses declared
-  const draftValid =
-    draft !== null &&
-    designErrors(designItems(draft) as TopLevelItem[]).length === 0 &&
-    undeclaredFields(designItems(draft), draft.units.fields).length === 0;
+  const unitsChanged = hasUnitChanges(pending.units);
   if (!unitsChanged && draftId === null) return null;
-
   const parts = [
-    unitsChanged && `units ${describeUnitChanges(units)}`,
+    unitsChanged && `units ${describeUnitChanges(pending.units)}`,
     draftId !== null && `design draft v${versions.numberOf(draftId)}`,
   ].filter(Boolean);
   return (
@@ -66,30 +34,9 @@ export function PendingDeployBar({
       <span>
         <strong>Not deployed yet:</strong> {parts.join("; ")}.
       </span>
-      <Button size="sm" className="ml-auto h-7" onClick={() => setOpen(true)}>
-        <Rocket className="mr-1.5 h-4 w-4" /> Deploy…
+      <Button size="sm" className="ml-auto h-7" onClick={onOpenDeploy}>
+        <Rocket className="mr-1.5 h-4 w-4" /> Review and deploy
       </Button>
-      {open && (
-        <DeployDialog
-          client={client}
-          open
-          version={draftValid ? draft : null}
-          versionNumber={draftId !== null ? (versions.numberOf(draftId) ?? 0) : 0}
-          live={live}
-          liveNumber={versions.numberOf(deployment.designVersionId)}
-          includeDesign={includeDesign}
-          onDeploy={async (version, note, withUnits) => {
-            if (version && note !== (version.note ?? "")) {
-              await updateDesignVersion.mutateAsync({
-                id: version.id,
-                body: { note: note || undefined, items: version.items, revision: version.revision },
-              });
-            }
-            return deploy({ designVersionId: version?.id ?? deployment.designVersionId, units: withUnits });
-          }}
-          onClose={() => setOpen(false)}
-        />
-      )}
     </div>
   );
 }

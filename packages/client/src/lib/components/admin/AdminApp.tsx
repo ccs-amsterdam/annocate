@@ -36,6 +36,7 @@ import {
 import { clearBackup, readBackup, type DesignBackup } from "../../design/localBackup";
 import { HelpDialog } from "../../help/HelpDialog";
 import { PendingDeployBar } from "./PendingDeployBar";
+import { DeployPage } from "./DeployPage";
 import { openHelp } from "../../help/helpStore";
 import type { TabId } from "../../admin/tabs";
 
@@ -71,6 +72,7 @@ const GROUPS: {
     label: "Deploy",
     icon: Send,
     pages: [
+      { id: "Deploy", label: "Deploy changes", icon: Send },
       { id: "Links", label: "Links", icon: Link2 },
       { id: "Coders", label: "Coders", icon: Users },
     ],
@@ -84,6 +86,7 @@ const TAB_HELP: Record<TabId, string> = {
   Overview: "overview",
   Design: "design-editor",
   Units: "uploading-units",
+  Deploy: "previewing-and-publishing",
   Links: "links",
   Coders: "coders-and-progress",
   Results: "results",
@@ -386,8 +389,10 @@ function StudyAdminView({
         }
       >
         {banner}
-        {/* The editor has its own Deploy */}
-        {tab !== "Design" && <PendingDeployBar client={client} />}
+        {/* Elsewhere, what isn't deployed yet, with the way to the Deploy page (the editor's banner says it there) */}
+        {tab !== "Design" && tab !== "Deploy" && (
+          <PendingDeployBar client={client} onOpenDeploy={() => onTabChange("Deploy")} />
+        )}
         {tab === "Overview" && (
           <StudyOverview
             client={client}
@@ -411,8 +416,10 @@ function StudyAdminView({
             registerSave={(save) => {
               saveDesign.current = save;
             }}
+            onOpenDeploy={() => onTabChange("Deploy")}
           />
         )}
+        {tab === "Deploy" && <DeployPage client={client} onOpenDesign={() => onTabChange("Design")} />}
         {tab === "Units" && <UnitsPage client={client} />}
         {tab === "Links" && <LinksPanel client={client} />}
         {tab === "Coders" && <CodersPanel client={client} />}
