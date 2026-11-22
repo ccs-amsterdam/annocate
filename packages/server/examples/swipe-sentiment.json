@@ -3,9 +3,9 @@
   "title": "Sentiment by swiping",
   "description": "Coders swipe news headlines left (negative), right (positive) or up (neutral). The 20 units are divided over 3 coders (Anna, Bob and Carla, a link each), plus 5 overlap units every coder gets, to compare their answers. With example answers from the 3 coders, who disagree on some overlap units.",
   "tryThis": [
-    "Download the results (Results tab) to see what the example coders' answers look like: session.coder says who coded what.",
-    "Open a coder's link (Deploy › Links) in a private window: you get that coder's 5 units, with the 5 overlap units spread in between.",
-    "See who codes what: the set column 'coder' on the Units tab, and 'Units are divided over coders' in the editor's Session."
+    "Download the results (Results tab) to see what the example coders' answers look like: the coder column says who coded what.",
+    "Open a coder's link (Links tab) in a private window: you get that coder's 5 units, with the 5 overlap units spread in between.",
+    "See who codes what: the set column 'coder' on the Units tab, and 'Specific coders' with a link per coder in the Study entry (Design tab)."
   ],
   "name": "Sentiment by swiping",
   "publish": true,

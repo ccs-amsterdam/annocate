@@ -1,10 +1,10 @@
 {
   "category": "Surveys and experiments",
   "title": "A simple survey",
-  "description": "A short survey about news use: question types for surveys, a Show if item that only asks a follow-up to some respondents, and an end item that screens out respondents under 18. No units. With example answers from 3 respondents.",
+  "description": "A short survey about news use: question types for surveys, a block with a condition that only asks a follow-up to some coders, and an end item that screens out coders under 18. No units. With example answers from 3 coders.",
   "tryThis": [
     "Open the link in a private window, and fill in the survey once as someone under 18.",
-    "Look at the condition and the end item in the codebook (Codebook tab).",
+    "Look at the conditions and the end item in the design (Design tab).",
     "Download the results: survey answers are in coders.csv."
   ],
   "name": "A simple survey",

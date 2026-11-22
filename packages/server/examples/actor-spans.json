@@ -81,7 +81,7 @@
                 }
               ]
             },
-            "instruction": "Select the words with your mouse (or finger), then choose a label. Click a label to change or remove it."
+            "instruction": "Select the words with your mouse (or finger), or with the arrow keys and Space, then choose a label. Click a labelled span to change or remove its label."
           }
         ]
       }

@@ -1,10 +1,10 @@
 {
   "category": "Surveys and experiments",
   "title": "Experiment with annotations: a tour",
-  "description": "A tour of AnnoTinder's question types and features: survey questions, a random experiment that changes the layout and the questions, Show if items, and a unit loop with swiping, choices, a scale and span annotation.",
+  "description": "A tour of AnnoTinder's question types and features: survey questions, a random experiment that changes the layout and the questions, blocks with a condition, and a unit loop with swiping, choices, span annotation and a slider.",
   "tryThis": [
     "Open the link (Links tab) in a private window, and code as a coder would.",
-    "Open the codebook (Codebook tab) to see how each feature is set up.",
+    "Open the design (Design tab) to see how each feature is set up.",
     "Code twice, as a beginner and as an expert, to see the conditions at work."
   ],
   "name": "Demo: a tour of AnnoTinder",
@@ -21,7 +21,7 @@
       "id": "unit-2",
       "data": {
         "headline": "Experiments inside codebooks: AnnoTinder adds conditions and random groups",
-        "text": "A new version of AnnoTinder lets researchers build experiments directly into a codebook. A random condition assigns each coder to a control or experiment group, and Show if items show or hide questions depending on earlier answers. Communication scholar Maria Jansen of the Northbridge Media Institute called the feature a cheap way to test how instructions affect coding quality."
+        "text": "A new version of AnnoTinder lets researchers build experiments directly into a codebook. A random condition assigns each coder to a control or experiment group, and conditions show or hide questions depending on earlier answers. Communication scholar Maria Jansen of the Northbridge Media Institute called the feature a cheap way to test how instructions affect coding quality."
       }
     },
     {
@@ -68,7 +68,7 @@
         "name": "age",
         "variable": {
           "type": "numeric",
-          "question": "How old are you?\n\nA numeric question. With an open range it is a number input; with a small range, buttons; else a slider.",
+          "question": "How old are you?\n\nA numeric question. Up to 6 values show as buttons, 7 or more as a slider, and an open range as a number input (chosen here, with layout: input).",
           "min": 0,
           "max": 120,
           "layout": "input"
@@ -119,7 +119,7 @@
         "variable": {
           "type": "nominal",
           "layout": "dropdown",
-          "question": "What best describes your role?\n\nA long list as a dropdown: type to filter the options.",
+          "question": "What best describes your role?\n\nTen or more options show as a dropdown: type to filter them.",
           "options": [
             {
               "value": "student",
@@ -175,7 +175,7 @@
             "name": "experiment_check",
             "variable": {
               "type": "nominal",
-              "question": "You were randomly assigned to the experiment group, so only you (and others in this group) see this question. Did you know codebooks can contain experiments?\n\nA random condition assigned you to a group at random. A Show if item then shows this question only to the experiment group.",
+              "question": "You were randomly assigned to the experiment group, so only you (and others in this group) see this question. Did you know codebooks can contain experiments?\n\nA random condition assigned you to a group at random. A block with a condition then shows this question only to the experiment group.",
               "options": [
                 {
                   "value": "yes",
@@ -271,7 +271,7 @@
                 }
               ]
             },
-            "instruction": "A swipe question: swipe the card left, right or up, or use the arrow keys. It's the fastest way to answer simple questions."
+            "instruction": "A swipe question: swipe the card left, right or up, or use the arrow keys or the shortcut keys shown on the buttons. It's the fastest way to answer simple questions."
           },
           {
             "type": "question",
@@ -331,7 +331,7 @@
                 }
               ]
             },
-            "instruction": "With multiple: true, a nominal question lets you pick several options."
+            "instruction": "With multiple: true, a nominal question lets you pick several options. Then continue with the button, or Shift+Enter on a keyboard."
           },
           {
             "type": "question",
@@ -363,7 +363,7 @@
                 }
               ]
             },
-            "instruction": "A span question: select words in the headline or the text and give them a label. You can label as many spans as you like."
+            "instruction": "A span question: select words in the headline or the text (or use the arrow keys and Space) and give them a label. You can label as many spans as you like."
           },
           {
             "type": "block",
@@ -437,7 +437,7 @@
                     }
                   ]
                 },
-                "instruction": "You see this because you are interested in technology. A numeric question with a small range shows a button per value."
+                "instruction": "You see this because you are interested in technology. A numeric question with 7 or more values (here 0 to 10) shows a slider."
               }
             ]
           }
