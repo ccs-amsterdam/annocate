@@ -333,8 +333,9 @@ A design version is `{ public, session, units, items }`: `public` what
 coders see about the study (`{ title }`, or null), `session` how a coder's
 session starts (the coder unit assignment `invite`, URL parameters `urlParams`,
 the normal end `end`; `{}` without), `units.fields` the declared unit
-fields, `items` the top-level questions blocks and unit loops (holding the
-questions, computed and end items, and nested questions blocks). On `PUT`,
+fields, `items` the top-level questions, computed items, blocks and unit loops
+(blocks and loops holding questions, end items and nested blocks; blocks
+also computed items). On `PUT`,
 a left-out `session`, `public` or `units` is kept; `public: null` removes it.
 
 ### updateDesignVersion

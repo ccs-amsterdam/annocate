@@ -281,7 +281,7 @@ shows the ending (`coder-identity.md` §9).
   shows as a heading.
 - **Instructions**: `instruction` (a template: how to apply the question to
   units) and `instructionOpen` (`first` | `practice`) belong to questions in
-  a unit loop; top-level questions refuse them (put details in the question
+  a unit loop; questions outside a loop refuse them (put details in the question
   text). A ? button by the question, or the ? key, opens the instruction in
   a dialog (`components/QuestionInstruction.tsx`), with a dot until opened
   once. With `instructionOpen` it opens by itself on the first unit with the

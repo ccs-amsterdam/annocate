@@ -141,7 +141,7 @@ never which unit ids or which people.
 
 | Layer | Contains | Reproducible? |
 | --- | --- | --- |
-| Design | questions blocks (questions, computed items, end items; optionally a condition), unit loops (optionally a condition; subsets, placements, a crowd's distribution criteria), the session (coder unit assignment, URL parameters, the normal end). Refers to set columns and values by name, to coders only via `$session` values | yes |
+| Design | questions, computed items, blocks (items, optionally a label and a condition with else items; end items only in a block), unit loops (optionally a condition; subsets, placements, a crowd's distribution criteria), the session (coder unit assignment, URL parameters, the normal end). Refers to set columns and values by name, to coders only via `$session` values | yes |
 | Set columns | per column, named sets of units in order (e.g. column `coders`: `anna`, `bob`, `_overlap`) | data |
 | Links | made from the coder unit assignment (one, one per coder, or one per set of a crowd's column), with their secrets and uses | no (server only) |
 

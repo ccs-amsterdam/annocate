@@ -34,7 +34,7 @@ dismisses it.
 | --- | --- | --- |
 | Simple annotation | Sentiment by swiping | a swipe question; 20 units divided over 3 specific coders (a link each, `invite: { mode: "coders" }`) plus 5 overlap units; example answers that disagree on some overlap units |
 | Simple annotation | Labeling actors in texts | span annotation |
-| Surveys and experiments | A simple survey | survey question types in a questions block, nested questions blocks with a condition, an end item that screens out |
+| Surveys and experiments | A simple survey | survey question types, blocks with a condition (one holding an end item that screens out) |
 | Surveys and experiments | A simple experiment | a random condition (a computed item) choosing one of two versions of a text |
 | Surveys and experiments | Survey with annotations | survey questions, then a unit loop; both in one download |
 | Surveys and experiments | Experiment with annotations: a tour | the question types, a condition that changes layout and questions, a unit loop |
