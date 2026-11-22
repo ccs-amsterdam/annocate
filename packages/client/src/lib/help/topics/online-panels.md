@@ -23,7 +23,7 @@ expect them back when done.
 1. **Coder unit assignments** → **Crowd** → tick **Coder id from a URL
    parameter**, with the panel's name for it (`PROLIFIC_PID`). Keep
    **Required** on; optionally a **pattern** such as `[0-9a-f]{24}`.
-2. Deploy. The link under **Deploy › Links** ends in
+2. Deploy. The link under **Links** ends in
    `PROLIFIC_PID=<coder id>`.
 3. Replace `<coder id>` with the panel's placeholder (Prolific:
    `{{%PROLIFIC_PID%}}`) and give that link to the panel.

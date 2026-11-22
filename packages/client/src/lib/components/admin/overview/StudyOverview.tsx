@@ -5,7 +5,6 @@ import {
   useDesignVersionsQuery,
   useDeploymentQuery,
   useDeploymentStatusQuery,
-  useDeploymentVersionsQuery,
   useLinksQuery,
   useOverviewQuery,
 } from "../../../admin/queries";
@@ -17,7 +16,7 @@ import { LoopProgress } from "./LoopProgress";
 import { LiveControls } from "./LiveControls";
 import { TeamSettings } from "./TeamSettings";
 import { ExampleNotice } from "./ExampleNotice";
-import { describeUnitChanges } from "../../../admin/unitChanges";
+import { DeployHistory } from "../DeployHistory";
 
 type OverviewTarget = "Units" | "Links" | "Coders";
 
@@ -126,7 +125,11 @@ export function StudyOverview({ client, onNavigate, onOpenDesign }: StudyOvervie
       </div>
 
       {/* What each deploy changed: history, so last */}
-      {deployment && <DeployHistory client={client} numberOf={versions.numberOf} />}
+      {deployment && (
+        <Card title="Deploys" subtitle="What each deploy made live">
+          <DeployHistory client={client} limit={5} />
+        </Card>
+      )}
 
       {overview && overview.groups.length > 0 && (
         <Card title="Set groups">
@@ -279,43 +282,3 @@ function Loading() {
   return <p className="text-sm text-muted-foreground">Loading...</p>;
 }
 
-/**
- * The deploys, newest first (docs/architecture.md §8.4): which design version
- * each made live and what changed. Deploys are numbered on their own (#3),
- * design versions as v2.
- */
-function DeployHistory({ client, numberOf }: { client: ResearcherApi; numberOf: (id: number) => number | null }) {
-  const versions = useDeploymentVersionsQuery(client).data ?? [];
-  if (versions.length === 0) return null;
-  return (
-    <Card title="Deploys" subtitle="What each deploy made live">
-      <ol className="flex flex-col gap-1 text-sm">
-        {versions.slice(0, 8).map((v, i) => {
-          const parts = [
-            v.changes.design && `design v${numberOf(v.designVersionId) ?? "?"}`,
-            v.changes.units && `units: ${describeUnitChanges(v.changes.units)}`,
-          ].filter(Boolean);
-          return (
-            // The current deploy: a faint leaf tint
-            <li
-              key={v.version}
-              className={`flex flex-wrap items-baseline gap-x-2 rounded-md px-2 py-0.5 ${i === 0 ? "bg-leaf/10" : ""}`}
-            >
-              <span className="font-mono text-xs text-muted-foreground">#{v.version}</span>
-              <span>{parts.length > 0 ? parts.join("; ") : "settings only"}</span>
-              <span className="text-xs text-muted-foreground">{formatWhen(v.created)}</span>
-              {v.client && (
-                <span
-                  className="text-xs text-muted-foreground"
-                  title={`AnnoTinder ${v.client.release}, commit ${v.client.commit}`}
-                >
-                  on {v.client.release}
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-    </Card>
-  );
-}

@@ -20,7 +20,7 @@ for reliability.
    **Special units**: overlap units for every coder, and optionally
    practice and gold units. The units are shuffled and divided.
 3. Choose **A link per coder** and **Deploy**.
-4. **Deploy › Links** lists a link per coder: send each coder theirs.
+4. **Links** lists a link per coder: send each coder theirs.
 
 The loops then give each coder their own units; nothing to set on the
 loop. In the design the coder is `$session.coder`.

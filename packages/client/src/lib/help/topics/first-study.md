@@ -112,8 +112,8 @@ More: [Preview, save and deploy](previewing-and-publishing.md).
 
 ## 7. Deploy and share the link
 
-1. Save the design, then on **Deploy › Deploy changes** click **Deploy**.
-2. Open **Deploy › Links** and click **Copy link**.
+1. Save the design, then on **Deploy** click **Deploy**.
+2. Open **Links** and click **Copy link**.
 3. Send the link to your coders.
 
 > Test with **Preview**, not the link: opening the link makes you a coder,

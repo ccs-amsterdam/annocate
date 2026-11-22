@@ -20,7 +20,7 @@ New here? Follow [Your first study](first-study.md).
 | **Design**  | The questions, how units are shown and handed out, who codes. Versions v1, v2, ...     | Design          |
 | **Units**   | The material to code: rows with an id and fields such as `headline` and `text`         | Units           |
 | **Sets**    | Columns of the units that say which coder (or condition) gets which units              | Units           |
-| **Links**   | The links coders open to start, made when you deploy                                   | Deploy › Links  |
+| **Links**   | The links coders open to start, made when you deploy                                   | Links           |
 | **Coders**  | Everyone who started, and how far they got                                             | Results › Coders |
 | **Results** | All answers, as a zip of CSV files                                                     | Results         |
 

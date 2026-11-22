@@ -166,6 +166,9 @@ test("your first study, as the help describes it: units, a design, deploy, a lin
           ?.designVersionId,
     )
     .toBe(codebook.id);
+  // The Deploy page lists the deploy, with what it made live
+  await expect(page.getByRole("list", { name: "Deploys" }).getByText("#1")).toBeVisible();
+  await expect(page.getByRole("list", { name: "Deploys" }).getByText(/design v2/)).toBeVisible();
 
   // 7. Link coders: deploying made the study's link
   await page.getByRole("button", { name: "Links", exact: true }).click();

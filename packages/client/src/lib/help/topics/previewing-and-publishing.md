@@ -11,7 +11,7 @@ You edit a draft; coders only see your changes once you deploy.
 | --------------- | ------------------------------------ | -------------- |
 | Unsaved changes | only you, in this browser            | editing        |
 | Draft           | you, your co-editors, and **Preview** | **Save**       |
-| Live version    | coders                               | **Deploy changes** |
+| Live version    | coders                               | **Deploy**         |
 
 Every saved version gets a number (v1, v2, ...). Deployed versions never
 change, so every answer stays linked to the version it was given under.
@@ -70,7 +70,7 @@ editor's item preview shows unsaved changes at once: use it while writing.
 
 ## Deploying
 
-The editor only saves: deploy on **Deploy › Deploy changes** (the editor's
+The editor only saves: deploy on **Deploy** (the editor's
 banner and the "Not deployed yet" bar on other pages link there). It has a
 checkbox for the saved **design** draft and for the draft **units and
 sets**; what you leave out stays a draft. It shows:

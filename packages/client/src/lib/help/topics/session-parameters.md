@@ -31,7 +31,7 @@ doesn't fit) doesn't start. Copied links end in placeholders
 
 ## A link per value
 
-For a list of values, **Deploy › Links** can show **A link per value of a
+For a list of values, **Links** can show **A link per value of a
 URL parameter**, e.g. one per school. These are the same links with the
 value filled in.
 

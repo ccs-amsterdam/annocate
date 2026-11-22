@@ -55,9 +55,9 @@ export type LeaveGuard = (when: boolean) => { blocked: boolean; proceed: () => v
 const noGuard: LeaveGuard = () => ({ blocked: false, proceed: () => {}, stay: () => {} });
 
 /**
- * The tabs, grouped: the overview, the design, the units, deploying the
- * study (links, coders), its results, and settings. A group with more than
- * one page shows them as sub tabs.
+ * The tabs, grouped: the overview, the design, the units, deploying (with
+ * its history), the links, the results, and settings. A group with more
+ * than one page shows them as sub tabs.
  */
 const GROUPS: {
   label: string;
@@ -67,14 +67,8 @@ const GROUPS: {
   { label: "Overview", icon: LayoutDashboard, pages: [{ id: "Overview", label: "Overview", icon: LayoutDashboard }] },
   { label: "Design", icon: PencilRuler, pages: [{ id: "Design", label: "Design", icon: PencilRuler }] },
   { label: "Units", icon: Layers, pages: [{ id: "Units", label: "Units", icon: Layers }] },
-  {
-    label: "Deploy",
-    icon: Send,
-    pages: [
-      { id: "Deploy", label: "Deploy changes", icon: Send },
-      { id: "Links", label: "Links", icon: Link2 },
-    ],
-  },
+  { label: "Deploy", icon: Send, pages: [{ id: "Deploy", label: "Deploy", icon: Send }] },
+  { label: "Links", icon: Link2, pages: [{ id: "Links", label: "Links", icon: Link2 }] },
   { label: "Results", icon: Download, pages: [{ id: "Results", label: "Download", icon: Download }] },
   { label: "Settings", icon: Settings, pages: [{ id: "Settings", label: "Settings", icon: Settings }] },
 ];

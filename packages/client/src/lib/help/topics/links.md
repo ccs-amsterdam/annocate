@@ -5,7 +5,7 @@ order: 1
 summary: The links coders open to start - made from the design's coder unit assignments, with coder ids, sign-in and a maximum number of coders per link.
 ---
 
-Coders start by opening a **link**, listed under **Deploy › Links**.
+Coders start by opening a **link**, listed under **Links**.
 Deploying makes the links: you don't create them by hand. The design's
 **Coder unit assignments** decide which links there are.
 

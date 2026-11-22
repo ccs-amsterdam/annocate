@@ -108,7 +108,7 @@ function InvitePreview({ item, groups, base }: { item: SessionItem; groups: SetG
       </Row>
       <Row label="Links">
         {invite.link === "per_coder"
-          ? "A link per coder, made when you deploy (Deploy › Links)"
+          ? "A link per coder, made when you deploy (the Links page)"
           : invite.link === "pick_name"
             ? "One link; coders pick their name from the list"
             : "One link; coders sign in, and get the units of their email address"}

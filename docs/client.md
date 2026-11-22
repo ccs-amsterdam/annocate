@@ -436,7 +436,7 @@ memoization.
 ## 7. Admin UI
 
 `components/admin/AdminApp.tsx` is a tabbed shell: Overview, Design, Units,
-Deploy (Deploy changes, Links), Results, Settings. It uses a `ResearcherApi`
+Deploy (with the deploy history), Links, Results, Settings. It uses a `ResearcherApi`
 (`api/httpResearcherApi.ts`).
 
 - **Login**: `account/ResearcherGate.tsx` shows a login screen unless logged
@@ -522,7 +522,7 @@ Deploy (Deploy changes, Links), Results, Settings. It uses a `ResearcherApi`
 - **Versions and deploying** (`design/versions.ts`): *live* is the deployed
   version (frozen), *draft* the latest if not frozen, *history* the rest
   (read only, restorable as the draft). Editing the live version saves a new
-  draft. The editor only saves; **Deploy › Deploy changes** (`DeployPage.tsx`,
+  draft. The editor only saves; **Deploy** (`DeployPage.tsx`,
   `DeployPanel.tsx`; `PUT /deployment`) deploys the saved draft and the draft
   units and sets: it lists changes against the live version (`design/diff.ts`), takes a version note, and shows
   the server's errors and warnings (reopened units, removed option values,

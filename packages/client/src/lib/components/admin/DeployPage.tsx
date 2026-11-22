@@ -14,6 +14,7 @@ import { describeVersions } from "../../design/versions";
 import { hasUnitChanges } from "../../admin/unitChanges";
 import { Button } from "@/components/ui/button";
 import { DeployPanel } from "./DeployPanel";
+import { DeployHistory } from "./DeployHistory";
 
 /**
  * Deploy › Deploy (docs/client.md §7, "Versions and deploying"): what is
@@ -109,6 +110,14 @@ export function DeployPage({ client, onOpenDesign }: { client: ResearcherApi; on
             }}
           />
         </>
+      )}
+      {deployment && (
+        <section className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
+          <h2 className="text-sm font-semibold">
+            Deploys <span className="font-normal text-muted-foreground">what each deploy made live, with its note</span>
+          </h2>
+          <DeployHistory client={client} />
+        </section>
       )}
     </div>
   );
