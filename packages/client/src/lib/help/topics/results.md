@@ -41,18 +41,21 @@ for the latest); Results opens on **Questions**:
   numbers the range, median and mean.
 - **Agreement**: per question in a unit loop, over units two or more coders
   answered: Krippendorff's alpha (1 is full agreement, 0 what chance gives;
-  from 0.8 commonly taken as reliable) and the share of coders who agree.
-  Click a question to see each coder's agreement with the others, with
-  Cohen's kappa, lowest first: who to look at. Several answers: a row per
-  option. Spans: a row per label, each word labelled or not.
+  from 0.8 commonly taken as reliable) and the share of pairs of coders
+  who agree.
+  Click a question to see, **Per coder**, each coder's agreement with the
+  others, with their mean Cohen's kappa (the average of their kappa with
+  each other coder, weighed by the units they share), lowest first: who to
+  look at; or **Kappa per pair**, a matrix of up to ten coders (hover a cell
+  for the units the pair shares). Several answers: a row per option. Spans: a row per label, each word labelled or not.
 - **Units**: the units two or more coders answered, the ones they disagree
   on most first. Open one to see it with the loop's first layout, with
   each coder's answers.
 - **Coders**: every coder session, with progress, deletion requests,
   resetting and deleting (see [Coders and progress](coders-and-progress.md));
   then per coder their median seconds per unit (marked **fast** when far
-  under the others), practice tries, and their kappa with the other coders,
-  lowest first.
+  under the others), practice tries, and their mean kappa with the other
+  coders over all questions, lowest first.
 
 ## annotations.csv
 

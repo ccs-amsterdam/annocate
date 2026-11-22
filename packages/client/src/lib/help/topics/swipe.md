@@ -30,7 +30,9 @@ and _Yes_ right, and don't swap them during a study.
 - **Swipe**: drag the unit sideways (or up) and let go past about a third,
   or flick. Earlier, it springs back.
 - **Tap** a button under the question.
-- **Keys**: **←**, **→**, **↑**, or **1**, **2**, **3**.
+- **Keys**: **←**, **→**, **↑**, or the coder's
+  [shortcut style](coder-experience.md#keyboard-shortcuts) keys (by default
+  **1**, **2**, **3**).
 
 Long units still scroll; swiping up only answers at the end of the text.
 Outside a loop the question itself is the card. Tick **Show the unit on a

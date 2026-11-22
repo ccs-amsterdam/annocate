@@ -27,12 +27,12 @@ issues. Preview and deploy need a design without issues.
 
 The banner under the toolbar says what you are looking at:
 
-| Banner                              | Means                                                                    |
-| ----------------------------------- | ------------------------------------------------------------------------ |
-| **New design**                      | nothing saved yet; the first save makes v1                               |
-| **Draft v3: not live yet**          | you edit the draft; coders use the live version until you deploy         |
-| **v2 is live: coders are using it** | no draft; **Save as draft** makes your changes a new draft               |
-| **Viewing v1, an older version**    | read only                                                                |
+| Banner                                 | Means                                                                 |
+| -------------------------------------- | --------------------------------------------------------------------- |
+| **New design**                         | nothing saved yet; the first save makes v1                            |
+| **Draft v3 · not deployed**            | you edit the draft; coders use the live version until you deploy      |
+| **v2 · live**                          | no draft; **Save as draft** makes your changes a new draft            |
+| **Viewing v1 · older version · read only** | read only; **Restore as draft** copies it into the draft          |
 
 Leaving **Design** with unsaved changes asks to save or discard them.
 See also [Backups in your browser](design-editor.md#backups-in-your-browser).
@@ -77,12 +77,14 @@ sets**; what you leave out stays a draft. It shows:
 
 - **Warnings** about earlier answers that no longer fit (a removed option,
   a changed type);
-- **Changes since** the live version;
+- the changes since the live version;
 - **What changed?**: a note for the history (prefilled; rewrite it if you
   like).
 
 Below, **Deploys** lists every deploy: what it made live, with its design
-version's note.
+version's note (the **Overview** shows the last five). Once live, **Pause**
+on the same page stops new units for coders until **Resume** (see
+[Coders and progress](coders-and-progress.md)).
 
 The first deploy lets coders start and makes the study's
 [links](links.md). See also

@@ -49,13 +49,15 @@ new block starts empty.
 
 The items before, between and after unit loops are grouped in a lightly
 tinted card; each unit loop is its own card. A block lines up with the
-items around it, its items one step in (its else items too, under **Else**).
+items around it, its items one step in; its else items follow under an
+**Else** row, as far in as its other items.
 
 Each item shows an icon for its type (a question: its answer type). A loop
 shows its label and which units it hands out. A block shows its label
 and/or its condition (_if age < 18_); without either it says **Block**. A
-block with a condition has an **Add else items** button on its row; its
-**Else** part shows under its items once it has items.
+block with a condition has an **Add else items** button on its row, which
+opens the add menu (_If not, then…_); its **Else** part shows under its
+items once it has items.
 
 Below the tree, **At the end** is what coders see after the whole study,
 and where they go next (see [Ending a session](end-items.md)).
@@ -72,7 +74,7 @@ for an issue (hover to read it).
 3. Choose the type: at the top level **Question**, **Computed variable**,
    **Block (if/else)** or **Unit loop**; in a block **Question**,
    **Computed variable**, **Block (if/else)** or **End**; in a loop
-   **Question**, **Block (if/else)** or **End**.
+   **Question**, **Unit layout**, **Block (if/else)** or **End**.
 
 The new item goes below the row (for a loop or block: at the top inside
 it). New questions are `question_1`, ... and need an answer type; new end

@@ -35,11 +35,13 @@ In the text, the spans the rules use are shown as buttons:
 1. Click a span where a relation can start; the others are dimmed.
 2. Click where it goes: only spans the rules allow can be clicked.
 3. If only one kind of relation fits, it is made at once; otherwise coders
-   choose it under the question (keys 1-9).
+   choose it under the question (with the shortcut style's keys, by
+   default 1-9).
 
-An arrow with the relation's name shows each relation in the text.
-Clicking the name, or a relation in the list, opens it to change its kind;
-choosing a kind it has removes it. **Esc** cancels a started relation.
+A faint arrow shows each relation in the text; pointing at it (or at one
+of its spans) makes it solid, with the relation's name. Clicking the
+arrow, or a relation in the list, opens it to change its kind; choosing a
+kind it has removes it. **Esc** cancels a started relation.
 **Done** counts the relations; **Skip** is stored as skipped, not as _no
 relations_. A relation to itself is not possible. Coders can go back to add
 a missing span; relations stay unless their spans were deleted.

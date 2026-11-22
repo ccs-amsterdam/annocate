@@ -2,7 +2,7 @@
 title: Following progress
 section: Coders
 order: 3
-summary: The Overview and Coders tabs - whether the study is live, how many coders started, answers per day and how far each loop and coder got.
+summary: Overview and Results › Coders - whether the study is live, how many coders started, answers per day and how far each loop and coder got.
 ---
 
 **Overview** shows the study as a whole; **Results › Coders** shows every
@@ -47,7 +47,7 @@ units out of all, and coders given units.
 - **Otherwise**: every coder who got the unit finished it. A coder who
   stopped keeps the bar from filling, so check **Coders** too.
 
-## The Coders tab
+## The Coders view
 
 | Column              | Shows                                                          |
 | ------------------- | -------------------------------------------------------------- |

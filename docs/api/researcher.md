@@ -522,6 +522,14 @@ or outcome `quit`; and the time), or null, and `deletionRequest`: the
 coder's request to delete their answers (`at`, `postponedAt` once the
 researcher chose to delete later), or null.
 
+### listCoderUnits
+
+`GET /study/:studyId/coders/units` → `CoderUnitsSchema` (`{ coders: [{
+coder, unitIds }] }`): per coder id, the units their sessions were shown
+or answered (retired answers left out). The researcher UI keeps these
+with their coders when it makes a coder distribution again (contracts
+`distributeUnits`).
+
 ### deleteCoders
 
 `POST /study/:studyId/coders/delete` (`DeleteCodersSchema`: `{ sessionIds?,
@@ -703,8 +711,11 @@ implementation: [`researcher/results.ts`](../../packages/server/src/researcher/r
 `GET /study/:studyId/results/agreement` → `ResultsAgreementSchema`: per
 unit-loop question, over units two or more coders answered: Krippendorff's
 alpha (nominal, ordinal or interval, from the answer type), percent
-agreement, and per coder their agreement with the others and their Cohen's
-kappa (averaged over the coders they share units with). A question with
+agreement (the share of pairs of coders of a unit who agree), per coder
+their agreement with the others and their Cohen's kappa (averaged over the
+coders they share units with, weighed by the units shared), and `pairs`:
+every pair of coders with units in common, with Cohen's kappa and percent
+agreement. A question with
 several answers has a row per option (given or not); a span question a row
 per label, over the words of each text (labelled or not). Special options
 ("don't know") are left out of ordinal and interval alpha. Measures:

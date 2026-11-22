@@ -39,7 +39,7 @@ several answers, sliders, numbers and scales have **Continue**. See
 | ---------------------- | ------------------------------------------------------------- |
 | Menu (three lines)     | the questions and loops reached; click one to go there        |
 | `3`                    | the 3rd question                                              |
-| Stack icon and `4 · 2` | unit 4, its 2nd question; opens the loop's menu               |
+| Stack icon and `4 · 2` | unit 4, its 2nd question (`4` with one question); the loop's menu |
 | **<** and **>**        | back and forward                                              |
 | Monitor-and-phone icon | **Continue on another device**                                |
 | Keyboard               | **Keyboard shortcuts**: the shortcuts, shortcut style, badges |
@@ -47,7 +47,9 @@ several answers, sliders, numbers and scales have **Continue**. See
 
 The loop's menu shows **Unit 12 of 40**, with buttons for the first,
 previous, next and furthest unit, and a number pad to go to a unit.
-Coders can go to any unit up to the furthest they reached.
+Coders can go to any unit up to the furthest they reached; the menu also
+lists the unit's questions they got to. When the number of units is known,
+a line along the bottom of the bar shows how far the coder is.
 
 Give loops a clear label and start each question with a short first line:
 that is what the menu shows.

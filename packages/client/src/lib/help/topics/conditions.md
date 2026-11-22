@@ -36,8 +36,9 @@ Unit loop
 4. Add items inside it, or move existing ones in. A new block starts
    empty.
 
-It can hold questions, computed variables (outside loops), other blocks
-and [end items](end-items.md). A unit loop can't go inside a block: give
+It can hold questions, computed variables (outside loops), other blocks,
+[end items](end-items.md) and, in a loop,
+[layout items](layout-templates.md#layout-items). A unit loop can't go inside a block: give
 the loop a condition instead (see [Loop conditions](#loop-conditions)).
 
 ## Else items

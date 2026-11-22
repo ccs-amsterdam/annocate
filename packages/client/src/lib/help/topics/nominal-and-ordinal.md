@@ -16,7 +16,7 @@ summary: Questions where coders pick from a list of options - with or without an
 | ------------------ | ------------------------------------------------------- |
 | **Label (shown)**  | what coders see, e.g. _Human interest_                  |
 | **Value (stored)** | what is saved and exported, e.g. `human_interest`       |
-| **Color**          | optional, e.g. `#22c55e` or `green`                     |
+| **Color**          | optional: a swatch opens a palette, **Any colour** or **None** |
 
 **+ Add option** adds one; the arrows move it, the cross removes it. Coders
 see them in this order.
@@ -53,7 +53,9 @@ change the list. Tick **Custom values** for other numbers (`-2 … 2`,
 ### Colours
 
 A colour helps coders find an option (red negative, green positive). Use
-few: if everything is bright, nothing stands out.
+few: if everything is bright, nothing stands out. The palette's colours
+read well in light and dark mode; **Any colour** opens the browser's own
+picker. In the JSON a colour is e.g. `#22c55e` or `green`.
 
 ### Special options
 

@@ -1,32 +1,23 @@
-# React + TypeScript + Vite
+# @annotinder/client
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The AnnoTinder web app (React 19, Vite, Tailwind 4): the coding screen
+coders use (`/code`) and the researcher UI (`/research`). The server serves
+the built app.
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+pnpm dev            # from the repo root: client on :5173, server on :8787
+pnpm --filter @annotinder/client test
+pnpm --filter @annotinder/client lint   # ESLint
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+How it works: [docs/client.md](../../docs/client.md).
+
+## Code
+
+- `src/lib/studyManager/`, `src/lib/components/StudyRunner.tsx`: the coding
+  runtime.
+- `src/lib/codebook/`: templates, conditions, expressions, the item tree.
+- `src/lib/keyboard/`: key handling and shortcut styles.
+- `src/lib/components/admin/`: the researcher UI.
+- `src/lib/help/topics/`: the in-app help, one Markdown file per topic
+  (tested: front matter, links and examples).

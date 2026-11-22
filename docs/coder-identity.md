@@ -130,7 +130,7 @@ out doesn't affect coding. Code: `coder.ts`, `DeploymentRuntime.resolveCoder`,
 
 - **The invitation decides.** Coders can always log in. Sign-in is required
   for specific coders with `link: "login"` and a crowd with `login`; only
-  there do researchers see coders' emails (Coders tab, export).
+  there do researchers see coders' emails (Results › Coders, export).
 - **When a login is read**: only while the session has no email, or on a
   device without a session in this study. Never while coding, never in
   previews.
@@ -209,7 +209,7 @@ holds the data elsewhere, and immediate deletion would let a paid coder
 withdraw the work after payment. It needs no proof of identity: it comes from
 the session itself.
 
-**Researcher side** (Coders tab): open requests come first, with *Delete now*
+**Researcher side** (Results › Coders): open requests come first, with *Delete now*
 or *Delete later* (`POST /study/:studyId/coders/:id/deletion-request/postpone`
 sets `postponedAt`; the request stays until the data is deleted). Declining
 isn't a button: that is for the researcher's protocol. Any coder's data can be
@@ -221,7 +221,7 @@ later starts a new session from its link.
 Every deletion is logged (`session_deletions`: session id, coder id,
 requested, deleted, by whom, answer count; no email), so the researcher can
 also delete the coder from earlier downloads (`GET /study/:studyId/coders/deletions`,
-the Coders tab, `deleted_coders.csv`). The export also has `ended` = `quit`
+Results › Coders, `deleted_coders.csv`). The export also has `ended` = `quit`
 and a `deletion_requested` column.
 
 ## 9. Closing finished sessions

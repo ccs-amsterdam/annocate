@@ -284,14 +284,14 @@ shows what it picks and warns when a chosen layout doesn't fit.
 - Scale: `compact` (a row per item, default) or `grid`. Continue scrolls to
   the first unanswered item.
 
-Number keys 1-9 pick an option; one answer is given on the first click,
-several are confirmed with Continue.
+The shortcut style's keys (by default 1-9, §4 "Keyboard") pick an option;
+one answer is given on the first click, several are confirmed with Continue.
 
 **Swiping** (`annotinder`, `components/SwipeCard.tsx`): in a loop the unit is
 the card (framed only with `card: true`). The coder drags anywhere on the
 coding area; past 30% of the width (120 px up), or flung, the card flies off
-and that option is the answer. Direction buttons, arrow keys and 1, 2, 3 work
-too. Vertical drags still scroll long units (`touch-action: pan-y`).
+and that option is the answer. Direction buttons, arrow keys and the
+shortcut style's keys work too. Vertical drags still scroll long units (`touch-action: pan-y`).
 
 ### Span and relation answers
 
@@ -315,8 +315,9 @@ too. Vertical drags still scroll long units (`touch-action: pan-y`).
   question `StudyRunner` adds a `RelationAnnotationProvider`; the selectable
   text shows the rules' spans as buttons (`RelationText`): click a start,
   then a destination; with several possible types the answer field asks.
-  `RelationArrows` draws the relations as arcs in an SVG inside the unit's
-  content, positioned against it: it scrolls with the text, and is measured
+  `RelationArrows` draws the relations as arcs (faint until pointed at,
+  then solid with their label; a click opens the relation) in an SVG
+  inside the unit's content, positioned against it: it scrolls with the text, and is measured
   again only when the relations change or the content resizes.
 
 ### End items
@@ -370,9 +371,11 @@ are handled there once.
 - Answer fields declare their choices (`useKeyTargets`: groups of targets; a
   scale has a group per item) and get each target's key for its badge.
 - A `KeyMapping` (`keyboard/mappings.ts`) decides which key picks which
-  target: numbers (default), numpad (by position, up to 3 x 3), letters (home
-  row first) or type to filter. Where a mapping can't map a group, numbers do.
-  The coder's choice is stored in the browser.
+  target: numbers (default), numpad (by position, up to 3 x 3), fast type
+  (each label's shortest unique start, id `letters`) or type to filter. Where a mapping can't map a group, numbers do.
+  The coder's choice is stored in the browser. The keyboard menu in the
+  coding screen's top bar (`studyRunner/KeyboardMenu.tsx`) lists the
+  shortcuts and holds the shortcut style and "Show shortcut badges".
 - The base layer: arrows move focus by screen position, Space/Enter click
   the focused button, Shift + Left/Right go to the previous/next question
   (back focuses its answer), Shift + Enter continues an answered question.
@@ -540,11 +543,12 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   `elseChildren` (only with a condition). The coder-level items before,
   between and after loops are grouped in a lightly tinted card (only in the
   tree); each loop is its own card; a block lines up with the items around
-  it, its items (else items too, under "Else") one step in. A block's row shows its label
+  it, its items one step in; its else items follow under an "Else" row, as
+  far in as the others. A block's row shows its label
   and/or "if <condition>", else "Block"; questions aren't numbered. With a
-  condition it has an "Add else items" button, which adds an "Else" part
-  with a first question; the Else part shows under the block's items only
-  when it has items. "Add item" adds a question, computed variable, block
+  condition (and no else items yet) its row has an else button that opens
+  the usual add menu, headed "If not, then…", and adds the chosen item as
+  the first else item; the Else part shows only when it has items. "Add item" adds a question, computed variable, block
   ("Block (if/else)", starting empty) or unit loop; a row's + adds items
   allowed there (`insertableTypesAt`): in a block question, computed
   variable, block, end; in a loop question, layout ("Unit layout"), block,
@@ -578,7 +582,8 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   - **Backup**: unsaved edits are copied to localStorage a second after each
     change, and offered back after the browser was closed.
 
-- **Unit loops** (`UnitLoopForm.tsx`): the loop's form holds only its units
+- **Unit loops** (`UnitLoopForm.tsx`): besides its label and condition
+  (`ItemForm.tsx`, as for blocks), the loop's form holds its units
   settings (`unitLoop/UnitsEditor.tsx`): what a coder gets, the previous loop's units
   (`sameAsPrevious`), the subset, for a crowd "Units and coders" (everyone codes
   everything, or divide the units: the distribution criteria), the coding
@@ -628,8 +633,9 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   remove them, or reset their answers. A coded unit is replaced only by
   uploading it again, after a warning.
 - **Overview** (`overview/`): live/paused/unpublished, live and draft
-  versions, counts, set columns, answers per day, progress per loop;
-  pausing and resuming (`LiveControls.tsx`) is on the Deploy page.
+  versions, counts, set columns, answers per day, progress per loop, the
+  last five deploys; pausing and resuming (`LiveControls.tsx`) is on the
+  Deploy page.
 - **Settings** (`StudySettingsPage`): the team (`TeamSettings.tsx`, at least
   one ADMIN), rename, archive, keep sessions open, export, delete.
 - **Links** (`LinksPanel.tsx`, `links/`): the links deploying made, with their
@@ -643,10 +649,12 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   Reset or delete data per session, or by coder ids or emails
   (`coder-identity.md` §8).
 - **Results** (`results/`, opens on Questions; the open view in
-  `results/resultsView.ts`): **Questions**, **Agreement**, **Units** (by
+  `results/resultsView.ts`): **Questions**, **Agreement** (per question
+  alpha and the share agreeing; per coder their mean kappa, or a matrix of
+  kappa per pair), **Units** (by
   disagreement; one unit through the loop's first layout with every coder's
   answers) and **Coders** (the sessions above, then time per unit, practice
-  tries, kappa) show the
+  tries, mean kappa) show the
   answers so far from the server's summaries (`getResultsAnswers`,
   `getResultsAgreement`, `listResultUnits`, `getResultUnit`,
   `listResultCoders`), loaded once and on Refresh. **Download**
