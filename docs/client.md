@@ -252,8 +252,15 @@ too. Vertical drags still scroll long units (`touch-action: pan-y`).
   field. Word mode snaps to words; character mode takes the exact selection.
 - Spans may overlap. Clicking a span opens its labels; Backspace or Delete
   removes the last span.
-- Relations link two spans of sibling span questions, with one of the
-  relation's options, picked from dropdowns.
+- Relations link two spans of earlier span questions of the loop, with one
+  of the relation's options, as its `rules` allow (contracts
+  `relations.ts`; the server checks them on submit). During a relation
+  question `StudyRunner` adds a `RelationAnnotationProvider`; the selectable
+  text shows the rules' spans as buttons (`RelationText`): click a start,
+  then a destination; with several possible types the answer field asks.
+  `RelationArrows` draws the relations as arcs in an SVG inside the unit's
+  content, positioned against it: it scrolls with the text, and is measured
+  again only when the relations change or the content resizes.
 
 ### End items
 
@@ -580,6 +587,7 @@ Deploy (Links, Coders), Results, Settings. It uses a `ResearcherApi`
 
 - No notice that someone else is editing the same design (a conflict shows
   only on save).
-- Spans: no click-to-pick for relations, no image regions.
+- Spans: no image regions. Relations: no relations between relations; no
+  agreement measure for them yet.
 - Swipe could become `layout: "swipe"` of `nominal`.
 - Not built: numeric batteries, scale helpers (sum, mean), translated labels.

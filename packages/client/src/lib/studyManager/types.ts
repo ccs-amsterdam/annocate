@@ -1,4 +1,5 @@
 import type {
+  AnyVariableType,
   CoderUnitResponse,
   DesignItem,
   Display,
@@ -67,6 +68,8 @@ export interface StudyManagerSnapshot {
   currentItem: DesignItem | null;
   currentUnit: CoderUnitResponse | null;
   currentUnitLayout: UnitLayout | null;
+  /** In a unit loop: its questions by name (a relation question shows the spans of others). */
+  currentLoopVariables: ReadonlyMap<string, AnyVariableType> | null;
   /** The layout's template with its values evaluated for the current unit. */
   currentUnitTemplate: RenderedTemplate | null;
   /** The current question's texts with their values evaluated. */

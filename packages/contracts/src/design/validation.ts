@@ -130,6 +130,9 @@ function flattenUnions(
     return flattenUnions(best, path);
   });
 }
+/** One end of a relation rule, as validation reads it (unparsed). */
+type RuleEnd = { variable?: string; values?: string[] };
+
 /** What the item schemas can't check: names, structure, references (see validateDesignItems). */
 export function semanticIssues(items: unknown[]): DesignIssue[] {
   const issues: DesignIssue[] = [];
@@ -138,7 +141,8 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   const loopTitles = new Map(unitLoops(items).map(({ key, loop }) => [key, loopTitle(loop, key)]));
   let loopCount = 0;
   const seenNames = new Map<string, Path>();
-  const spanVariables = new Set<string>();
+  /** Span questions seen so far: name -> their loop and option values (what relation rules can name). */
+  const spanVariables = new Map<string, { loop: string | null; values: Set<string> }>();
   /** Coder-level questions seen so far. */
   const coderAvailable = new Set<string>();
   /** Questions of the current loop seen so far. */
@@ -615,23 +619,41 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           | {
               type?: string;
               question?: unknown;
-              from?: { variable?: string };
-              to?: { variable?: string };
+              options?: { value?: unknown }[];
+              rules?: { from?: RuleEnd; to?: RuleEnd; options?: unknown[] }[];
             }
           | undefined;
-        // Check relation variable references
-        if (variable?.type === "relation") {
-          for (const end of ["from", "to"] as const) {
-            const ref = variable[end]?.variable;
-            if (ref && !spanVariables.has(ref)) {
-              issue(
-                [...itemPath, "variable", end, "variable"],
-                `Relation '${end}' refers to '${ref}' which is not a preceding span question`,
-              );
+        if (variable?.type === "relation" && Array.isArray(variable.rules)) {
+          const types = new Set((variable.options ?? []).map((o) => o?.value));
+          variable.rules.forEach((rule, r) => {
+            for (const end of ["from", "to"] as const) {
+              const ref = rule?.[end]?.variable;
+              const path = [...itemPath, "variable", "rules", r, end];
+              if (!ref) continue;
+              const span = spanVariables.get(ref);
+              if (!span || span.loop !== (loop?.name ?? null)) {
+                issue(
+                  [...path, "variable"],
+                  `A relation rule refers to '${ref}', which is not a span question before it in this loop`,
+                );
+                continue;
+              }
+              for (const value of rule[end]?.values ?? [])
+                if (!span.values.has(value)) issue([...path, "values"], `'${ref}' has no label '${value}'`);
             }
-          }
+            for (const type of rule?.options ?? [])
+              if (!types.has(type))
+                issue(
+                  [...itemPath, "variable", "rules", r, "options"],
+                  `This relation question has no type '${String(type)}'`,
+                );
+          });
         }
-        if (variable?.type === "span" && item.name) spanVariables.add(item.name);
+        if (variable?.type === "span" && item.name)
+          spanVariables.set(item.name, {
+            loop: loop?.name ?? null,
+            values: new Set((variable.options ?? []).flatMap((o) => (typeof o?.value === "string" ? [o.value] : []))),
+          });
         if (!loop && (item.variable as { focus?: unknown } | undefined)?.focus !== undefined) {
           issue([...itemPath, "variable", "focus"], "Focus only works for questions in a unit loop");
         }

@@ -2,7 +2,7 @@
 title: Relations
 section: Question types
 order: 9
-summary: Relation questions - link two spans that coders selected, with a label for how they relate.
+summary: Relation questions - coders click two spans they marked to link them, as rules allow, with a label for how they relate.
 ---
 
 A **Relations** question asks coders to link spans they marked earlier in
@@ -12,29 +12,37 @@ unit loops.
 
 ## Setting up
 
-| Setting                  | Does                                                    |
-| ------------------------ | ------------------------------------------------------- |
-| **Options**              | the kinds of relation, e.g. _criticizes_, _supports_    |
-| **From (span question)** | the span question where a relation starts               |
-| **To (span question)**   | the span question where it ends                         |
+**Options** are the kinds of relation, e.g. _criticizes_, _supports_.
+Relations have a direction: name them to read _from … to_.
 
-From and To must be [span questions](span.md) **earlier in the loop**;
-they can be the same (actors to actors) or differ (actors to issues).
-Relations have a direction: name options to read _from … to_.
+**Rules** say which relations coders can make. A rule has:
 
-To offer only some spans, add `values` in the JSON view:
+| Part      | Says                                                                 |
+| --------- | -------------------------------------------------------------------- |
+| **From**  | a [span question](span.md) earlier in the loop, and which of its labels (none chosen: any) |
+| **To**    | the same or another span question, and which labels                   |
+| **Types** | which kinds of relation this rule allows (none chosen: all)           |
 
-```json
-"from": { "variable": "actors", "values": ["person"] },
-"to": { "variable": "actors" }
-```
+For example, _persons and organisations criticize each other_ is one rule
+(actors → actors, type _criticizes_); _organisations employ persons_ is
+another (actors: organisation → actors: person, type _employs_). Add as
+many rules as you need; a relation is allowed when any rule allows it.
 
-## How coders link spans
+## How coders make relations
 
-Coders pick **Select from …**, the kind of relation, and **Select to …**,
-then click **Link**. The cross removes a relation. **Done** counts them;
-**Skip** is stored as skipped, not as _no relations_. Coders can go back to
-add a missing span; relations stay unless their spans were deleted.
+In the text, the spans the rules use are shown as buttons:
+
+1. Click a span where a relation can start; the others are dimmed.
+2. Click where it goes: only spans the rules allow can be clicked.
+3. If only one kind of relation fits, it is made at once; otherwise coders
+   choose it under the question (keys 1-9).
+
+An arrow with the relation's name shows each relation in the text.
+Clicking the name, or a relation in the list, opens it to change its kind;
+choosing a kind it has removes it. **Esc** cancels a started relation.
+**Done** counts the relations; **Skip** is stored as skipped, not as _no
+relations_. A relation to itself is not possible. Coders can go back to add
+a missing span; relations stay unless their spans were deleted.
 
 > Linking is demanding. Pilot it, keep relation types few, and give
 > examples in the instructions.

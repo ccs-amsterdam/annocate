@@ -7,7 +7,8 @@ import { LayoutSelect } from "./variableType/LayoutSelect";
 import { CategoricalFields } from "./variableType/CategoricalFields";
 import { NumericFields } from "./variableType/NumericFields";
 import { RandomConditionFields } from "./variableType/RandomConditionFields";
-import { SpanFieldsPicker, SpanQuestionSelect } from "./variableType/SpanFields";
+import { SpanFieldsPicker } from "./variableType/SpanFields";
+import { RelationRules, type SpanQuestion } from "./variableType/RelationRules";
 
 /**
  * The form for a question's answer type (docs/client.md §4 "Types"): the
@@ -18,15 +19,15 @@ import { SpanFieldsPicker, SpanQuestionSelect } from "./variableType/SpanFields"
 export function VariableTypeForm({
   variable,
   onChange,
-  unitVariableNames,
+  spanQuestions = [],
   layoutFields,
   stratifyChoices = [],
   setColumns = [],
 }: {
   variable: AnyVariableType;
   onChange: (next: AnyVariableType) => void;
-  /** The loop's question names, for `relation`'s from/to question pickers. */
-  unitVariableNames?: string[];
+  /** For a relation question: the span questions before it in its loop, with their labels. */
+  spanQuestions?: SpanQuestion[];
   /** In a loop: what span questions can select in (`unit.<field>` shown as plain text, ::: text blocks). */
   layoutFields?: string[];
   /** For a random condition: what a balanced draw can balance within (earlier questions, `session.<name>`). */
@@ -157,20 +158,12 @@ export function VariableTypeForm({
         <>
           <QuestionField value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
           <OptionsEditor options={v.options} onChange={(options) => onChange({ ...v, options })} />
-          <div className="grid grid-cols-2 gap-3">
-            <SpanQuestionSelect
-              label="From (span question)"
-              value={v.from.variable}
-              questions={unitVariableNames ?? []}
-              onChange={(variable) => onChange({ ...v, from: { ...v.from, variable } })}
-            />
-            <SpanQuestionSelect
-              label="To (span question)"
-              value={v.to.variable}
-              questions={unitVariableNames ?? []}
-              onChange={(variable) => onChange({ ...v, to: { ...v.to, variable } })}
-            />
-          </div>
+          <RelationRules
+            rules={v.rules}
+            types={v.options}
+            spanQuestions={spanQuestions}
+            onChange={(rules) => onChange({ ...v, rules })}
+          />
         </>
       );
     }

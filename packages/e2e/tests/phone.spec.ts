@@ -223,3 +223,75 @@ test("on a phone, a coder picks their name from the list", async ({ request, bro
   await question(page, "Seen it?");
   await expect(page.getByText("Bob's text")).toBeVisible();
 });
+
+test("on a phone, a relation is two taps: the start span, then where it goes", async ({ request, browser }) => {
+  const text = "Mayor Anna de Wit met the board of the Harbour Company on Monday.";
+  const { id, link } = await deploy(
+    request,
+    "Phone relations",
+    [text],
+    [
+      {
+        type: "unit_loop",
+        layout: { template: "$unit.text" },
+        children: [
+          {
+            type: "question",
+            name: "actors",
+            variable: {
+              type: "span",
+              question: "Mark the actors.",
+              fields: ["text"],
+              options: [
+                { value: "person", label: "Person" },
+                { value: "organisation", label: "Organisation" },
+              ],
+            },
+          },
+          {
+            type: "question",
+            name: "links",
+            variable: {
+              type: "relation",
+              question: "How are they related?",
+              options: [{ value: "employs", label: "Employs" }],
+              rules: [
+                {
+                  from: { variable: "actors", values: ["organisation"] },
+                  to: { variable: "actors", values: ["person"] },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  );
+  const page = await phone(browser);
+  await page.goto(link);
+  await question(page, "Mark the actors.");
+  await page.waitForTimeout(800);
+  for (const [phrase, first, last, label] of [
+    ["Anna de Wit", "Anna", "Wit", "Person"],
+    ["Harbour Company", "Harbour", "Company", "Organisation"],
+  ]) {
+    const a = await wordAt(page, phrase, first);
+    await page.touchscreen.tap(a.x, a.y);
+    const b = await wordAt(page, phrase, last);
+    await page.touchscreen.tap(b.x, b.y);
+    await page.getByRole("button", { name: label, exact: true }).first().tap();
+  }
+  await page.getByRole("button", { name: "Done (2)" }).tap();
+
+  await question(page, "How are they related?");
+  await fitsWidth(page);
+  // A person can't start an "employs" relation here
+  await expect(page.getByRole("button", { name: /Person: "Anna de Wit"/ })).toBeDisabled();
+  await page.getByRole("button", { name: /Organisation: "Harbour Company"/ }).tap();
+  await page.getByRole("button", { name: /Person: "Anna de Wit"/ }).tap();
+  await expect(page.locator("[data-relation-arrow]")).toHaveCount(1);
+  await page.getByRole("button", { name: "Done (1)" }).tap();
+  await expect
+    .poll(async () => (await answers(request, id)).find((a) => a.variable === "links")?.value.relations?.length)
+    .toBe(1);
+});

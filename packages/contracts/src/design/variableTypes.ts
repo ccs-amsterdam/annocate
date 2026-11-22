@@ -208,17 +208,28 @@ export const SpanTypeSchema = VariableBaseSchema.extend({
 });
 export type SpanType = z.infer<typeof SpanTypeSchema>;
 
-export const RelationOptionsSchema = z.object({
-  variable: z.string(),
+/** One end of a relation rule: spans of a span question (of the same loop), only those with `values` if given. */
+export const RelationEndSchema = z.object({
+  variable: z.string().describe("The span question (in the same unit loop) whose spans this end can be"),
   /** Only spans with these values (default: all). */
   values: z.array(z.string()).optional(),
 });
-export type RelationOptions = z.infer<typeof RelationOptionsSchema>;
+export type RelationEnd = z.infer<typeof RelationEndSchema>;
+
+/** Which relations can go from which spans to which (docs/client.md §4 "Span and relation answers"). */
+export const RelationRuleSchema = z.object({
+  from: RelationEndSchema,
+  to: RelationEndSchema,
+  /** The relation types (option values) this rule allows; default all. */
+  options: z.array(z.string()).optional(),
+});
+export type RelationRule = z.infer<typeof RelationRuleSchema>;
+
+/** Relations between spans: from a span to another, with a relation type (an option), as the rules allow. */
 export const RelationTypeSchema = VariableBaseSchema.extend({
   type: z.literal("relation"),
   options: NominalOptionsSchema.refine(noSpecialOptions, NO_SPECIAL_MESSAGE),
-  from: RelationOptionsSchema,
-  to: RelationOptionsSchema,
+  rules: z.array(RelationRuleSchema).min(1, "Add a rule: which spans a relation can go from and to"),
 });
 export type RelationType = z.infer<typeof RelationTypeSchema>;
 

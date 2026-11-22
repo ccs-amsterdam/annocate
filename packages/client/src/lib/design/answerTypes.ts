@@ -106,8 +106,7 @@ function defaultVariable(type: string): AnyVariableType {
         type: "relation",
         question: "",
         options: [{ value: "relation_1", label: "Relation 1" }],
-        from: { variable: "" },
-        to: { variable: "" },
+        rules: [{ from: { variable: "" }, to: { variable: "" } }],
       };
     default:
       throw new Error(`Unknown variable type: ${type}`);

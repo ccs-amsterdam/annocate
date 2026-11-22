@@ -49,7 +49,6 @@ export function ItemForm({
   client,
   groups,
   sessionValueNames = [],
-  unitVariableNames = [],
   availableQuestions = [],
   inLoop = false,
   unitFields = [],
@@ -70,8 +69,6 @@ export function ItemForm({
   groups: SetGroupResponse[];
   /** The `$session` names (declared and built-in). */
   sessionValueNames?: string[];
-  /** The questions in unit loops (a relation's from and to). */
-  unitVariableNames?: string[];
   /** Questions references may use at this item (contracts `availableQuestions`): for conditions and balancing. */
   availableQuestions?: { name: string; variable: AnyVariableType }[];
   /** The item is inside a unit loop: loop answer types, an instruction and focus; conditions may use `$unit`. */
@@ -164,7 +161,9 @@ export function ItemForm({
           )}
           <VariableTypeForm
             variable={item.variable}
-            unitVariableNames={unitVariableNames}
+            spanQuestions={availableQuestions.flatMap((q) =>
+              q.variable.type === "span" ? [{ name: q.name, options: q.variable.options }] : [],
+            )}
             layoutFields={inLoop ? loopNames?.selectable : undefined}
             stratifyChoices={stratifyChoices}
             setColumns={groups.map((g) => g.name)}
@@ -200,7 +199,6 @@ export function ItemForm({
           </p>
           <VariableTypeForm
             variable={item.variable}
-            unitVariableNames={unitVariableNames}
             stratifyChoices={stratifyChoices}
             setColumns={groups.map((g) => g.name)}
             onChange={(variable) => onChange({ ...item, variable } as DesignItem)}

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { DesignItem } from "@annotinder/contracts";
 import { Question } from "./Question";
 import { SwipeCard, SwipeProvider, SwipeSurface } from "./SwipeCard";
+import { RelationAnnotationProvider } from "../context/RelationAnnotationContext";
 import { SpanAnnotationProvider } from "../context/SpanAnnotationContext";
 
 type QuestionItem = Extract<DesignItem, { type: "question" }>;
@@ -370,18 +371,14 @@ describe("Question dispatcher", () => {
     expect(html).toContain("issue");
   });
 
-  it("renders relation, given prior span answers via unitVariables", () => {
-    const item: QuestionItem = {
-      name: "rel_q",
-      type: "question",
-      variable: {
-        type: "relation",
-        question: "Link actors to issues",
-        from: { variable: "spans_var" },
-        to: { variable: "spans_var" },
-        options: [{ value: "supports" }, { value: "opposes" }],
-      },
+  it("renders a relation question: what to do, and the relations made, by their spans' text", () => {
+    const variable = {
+      type: "relation" as const,
+      question: "Link actors to issues",
+      rules: [{ from: { variable: "spans_var", values: ["actor"] }, to: { variable: "spans_var", values: ["issue"] } }],
+      options: [{ value: "supports" }, { value: "opposes" }],
     };
+    const item: QuestionItem = { name: "rel_q", type: "question", variable };
     const unitVariables = {
       spans_var: {
         done: true,
@@ -392,11 +389,26 @@ describe("Question dispatcher", () => {
         ],
       },
     };
-    const html = renderToStaticMarkup(<Question item={item} onAnswer={onAnswer} unitVariables={unitVariables} />);
+    const html = renderToStaticMarkup(
+      <RelationAnnotationProvider
+        variable={variable}
+        loopVariables={null}
+        unitVariables={unitVariables}
+        initialRelations={[
+          { id: "r1", fromId: "s1", toId: "s2", value: "supports" },
+          { id: "r2", fromId: "s1", toId: "gone", value: "opposes" },
+        ]}
+      >
+        <Question item={item} onAnswer={onAnswer} unitVariables={unitVariables} />
+      </RelationAnnotationProvider>,
+    );
     expect(html).toContain("Link actors to issues");
+    expect(html).toContain("Click a span where a relation starts");
     expect(html).toContain("John");
     expect(html).toContain("Climate");
     expect(html).toContain("supports");
-    expect(html).toContain("opposes");
+    // A relation to a span that no longer exists is dropped
+    expect(html).not.toContain("opposes");
+    expect(html).toContain("Done (1)");
   });
 });

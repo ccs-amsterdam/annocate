@@ -1,10 +1,12 @@
-import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
-import type { VariableValue } from "@annotinder/contracts";
+import { useState, useMemo, useEffect, useRef, type ComponentProps, type ReactNode } from "react";
+import type { RelationType, VariableValue } from "@annotinder/contracts";
 import { CircleCheck } from "lucide-react";
 import { HttpCoderApi } from "../api/httpCoderApi";
 import { defaultTransferUrl, redeemTransfer, type CoderSessionScope } from "../session/coderSession";
 import { useStudyManager } from "../studyManager/useStudyManager";
 import { SpanAnnotationProvider } from "../context/SpanAnnotationContext";
+import { RelationAnnotationProvider } from "../context/RelationAnnotationContext";
+import { RelationArrows } from "./RelationArrows";
 import { CoderSettingsProvider } from "../context/CoderSettingsContext";
 import { KeyboardProvider } from "../keyboard/KeyboardProvider";
 import { useBaseKeys } from "../keyboard/hooks";
@@ -185,6 +187,8 @@ function CodingScreen({
   // A new unit slides in from the side the coder moved to
   const currentUnitId = snapshot.currentUnit?.id ?? snapshot.navigation.currentUnitIndex ?? "none";
   const prevUnitIdRef = useRef<number | string | null>(currentUnitId);
+  /** The unit's content: relation arrows are positioned against it. */
+  const unitContentRef = useRef<HTMLDivElement>(null);
   const [unitAnimationKey, setUnitAnimationKey] = useState<string>(() => `unit-${currentUnitId}`);
   const [unitSlideClass, setUnitSlideClass] = useState<string>("");
   useEffect(() => {
@@ -242,6 +246,7 @@ function CodingScreen({
     inUnit && snapshot.currentUnit && snapshot.currentUnitLayout && snapshot.currentUnitTemplate,
   );
   const spanVariable = inUnit && item.variable.type === "span" ? item.variable : null;
+  const relationVariable = inUnit && item.variable.type === "relation" ? item.variable : null;
 
   const handleAnswer = (value: VariableValue) => {
     setNavDirection("next");
@@ -323,54 +328,64 @@ function CodingScreen({
             initialSpans={spanVariable ? snapshot.currentUnitVariables?.[item.name]?.spans : undefined}
             variableName={item.name}
           >
-            {/* A size container: the answer pane's max height is a share of this area (cqh). On a tall
+            <MaybeRelations
+              key={`relations-${snapshot.currentUnit!.id}-${item.name}`}
+              variable={relationVariable}
+              loopVariables={snapshot.currentLoopVariables}
+              unitVariables={snapshot.currentUnitVariables ?? undefined}
+              initialRelations={relationVariable ? snapshot.currentUnitVariables?.[item.name]?.relations : undefined}
+            >
+              {/* A size container: the answer pane's max height is a share of this area (cqh). On a tall
               desktop screen it has a max height and is centred, so the answers stay near the unit. */}
-            {withSwipe(
-              <div className="flex min-h-0 flex-1 flex-col @5xl:p-6">
-                <SwipeSurface className="[container-type:size] relative flex w-full flex-1 flex-col overflow-hidden @5xl:mx-auto @5xl:my-auto @5xl:max-h-[56rem] @5xl:max-w-3xl @5xl:rounded-2xl @5xl:border @5xl:border-border @5xl:bg-card @5xl:shadow-sm">
-                  {/* The unit, scrolling. Stable gutter: a scrollbar appearing doesn't move the text. */}
-                  <div className="min-h-[100px] flex-1 subtle-scrollbar [scrollbar-gutter:stable] overflow-x-hidden overflow-y-auto p-3 sm:p-5">
-                    <div
-                      key={unitAnimationKey}
-                      className={`mx-auto max-w-2xl ${unitSlideClass}`}
-                      onAnimationEnd={() => setUnitSlideClass("")}
-                    >
-                      {swipeVariable ? (
-                        // The unit moves when swiped; on a card only if the question asks for one (no layout jump otherwise)
-                        <SwipeCard
-                          key={questionKey}
-                          className={
-                            swipeVariable.card
-                              ? "rounded-2xl border border-border bg-card p-4 shadow-md sm:p-5"
-                              : "rounded-2xl bg-background"
-                          }
-                        >
+              {withSwipe(
+                <div className="flex min-h-0 flex-1 flex-col @5xl:p-6">
+                  <SwipeSurface className="[container-type:size] relative flex w-full flex-1 flex-col overflow-hidden @5xl:mx-auto @5xl:my-auto @5xl:max-h-[56rem] @5xl:max-w-3xl @5xl:rounded-2xl @5xl:border @5xl:border-border @5xl:bg-card @5xl:shadow-sm">
+                    {/* The unit, scrolling. Stable gutter: a scrollbar appearing doesn't move the text. */}
+                    <div className="min-h-[100px] flex-1 subtle-scrollbar [scrollbar-gutter:stable] overflow-x-hidden overflow-y-auto p-3 sm:p-5">
+                      <div
+                        key={unitAnimationKey}
+                        ref={unitContentRef}
+                        className={`relative mx-auto max-w-2xl ${relationVariable ? "pt-12" : ""} ${unitSlideClass}`}
+                        onAnimationEnd={() => setUnitSlideClass("")}
+                      >
+                        {relationVariable && <RelationArrows containerRef={unitContentRef} />}
+                        {swipeVariable ? (
+                          // The unit moves when swiped; on a card only if the question asks for one (no layout jump otherwise)
+                          <SwipeCard
+                            key={questionKey}
+                            className={
+                              swipeVariable.card
+                                ? "rounded-2xl border border-border bg-card p-4 shadow-md sm:p-5"
+                                : "rounded-2xl bg-background"
+                            }
+                          >
+                            <UnitFields
+                              layout={snapshot.currentUnitLayout!}
+                              rendered={snapshot.currentUnitTemplate!}
+                              focus={focus}
+                              focusDim={focusDim}
+                            />
+                          </SwipeCard>
+                        ) : (
                           <UnitFields
                             layout={snapshot.currentUnitLayout!}
                             rendered={snapshot.currentUnitTemplate!}
                             focus={focus}
                             focusDim={focusDim}
                           />
-                        </SwipeCard>
-                      ) : (
-                        <UnitFields
-                          layout={snapshot.currentUnitLayout!}
-                          rendered={snapshot.currentUnitTemplate!}
-                          focus={focus}
-                          focusDim={focusDim}
-                        />
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  <DockedAnswerPane>
-                    <div key={questionKey} className={slideClass}>
-                      {questionElement}
-                    </div>
-                  </DockedAnswerPane>
-                </SwipeSurface>
-              </div>,
-            )}
+                    <DockedAnswerPane>
+                      <div key={questionKey} className={slideClass}>
+                        {questionElement}
+                      </div>
+                    </DockedAnswerPane>
+                  </SwipeSurface>
+                </div>,
+              )}
+            </MaybeRelations>
           </SpanAnnotationProvider>
         ) : (
           // A question without a unit (coder-level): a card in the middle
@@ -386,5 +401,20 @@ function CodingScreen({
         )}
       </div>
     </DisplayContext.Provider>
+  );
+}
+
+/** The relation question's state around the unit and the answer pane, while one is on screen. */
+function MaybeRelations({
+  variable,
+  children,
+  ...props
+}: Omit<ComponentProps<typeof RelationAnnotationProvider>, "variable"> & { variable: RelationType | null }) {
+  return variable ? (
+    <RelationAnnotationProvider variable={variable} {...props}>
+      {children}
+    </RelationAnnotationProvider>
+  ) : (
+    <>{children}</>
   );
 }

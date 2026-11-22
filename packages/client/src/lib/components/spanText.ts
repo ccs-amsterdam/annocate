@@ -1,4 +1,4 @@
-import { optionLabel, type Option, type SpanSlice } from "@annotinder/contracts";
+import { optionLabel, type Option, type SpanAnswer, type SpanSlice } from "@annotinder/contracts";
 
 // Pure helpers for span answers (docs/client.md §4 "Span and relation
 // answers"): selecting text (word snapping, slices) and showing spans.
@@ -187,4 +187,41 @@ export function getWordAtPosition(text: string, offset: number): [number, number
   }
 
   return [start, end];
+}
+
+/** A stretch of the text with the same spans on it. */
+export interface Segment<T extends { slices: SpanSlice[] } = SpanAnswer> {
+  start: number;
+  end: number;
+  spans: T[];
+  /** Part of the new selection waiting for its label. */
+  isPending: boolean;
+}
+
+/** Cuts the text where any span or the pending selection starts or ends. */
+export function textSegments<T extends { slices: SpanSlice[] }>(
+  text: string,
+  spans: T[],
+  pending: { slices: SpanSlice[] } | null,
+): Segment<T>[] {
+  const cuts = new Set<number>([0, text.length]);
+  for (const slice of [...(pending?.slices ?? []), ...spans.flatMap((s) => s.slices)]) {
+    cuts.add(Math.max(0, Math.min(text.length, slice.offset)));
+    cuts.add(Math.max(0, Math.min(text.length, slice.offset + slice.length)));
+  }
+  const sorted = Array.from(cuts).sort((x, y) => x - y);
+  const covers = (slice: SpanSlice, start: number, end: number) =>
+    slice.offset <= start && slice.offset + slice.length >= end;
+  const segments: Segment<T>[] = [];
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const [start, end] = [sorted[i], sorted[i + 1]];
+    if (start >= end) continue;
+    segments.push({
+      start,
+      end,
+      spans: spans.filter((s) => s.slices.some((slice) => covers(slice, start, end))),
+      isPending: Boolean(pending?.slices.some((slice) => covers(slice, start, end))),
+    });
+  }
+  return segments;
 }

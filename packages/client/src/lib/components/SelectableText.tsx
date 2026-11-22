@@ -1,11 +1,22 @@
 import { PRIORITY } from "../keyboard/controller";
 import { useKeyScope } from "../keyboard/hooks";
 import React, { useRef, useCallback, useEffect, useMemo } from "react";
-import type { SpanAnswer, SpanSlice } from "@annotinder/contracts";
+import type { SpanAnswer } from "@annotinder/contracts";
 import { useSpanAnnotation, type PendingSpan } from "../context/spanAnnotation";
+import { useRelationAnnotation } from "../context/relationAnnotation";
+import { RelationText } from "./RelationText";
 import { getStackedUnderlineStyle } from "../utils/color";
 import { SpanLabelMenu } from "./SpanLabelMenu";
-import { getWordAtPosition, optionColor, optionLabelOf, snapToWord, spanSummary, toggleSliceRange } from "./spanText";
+import {
+  getWordAtPosition,
+  optionColor,
+  optionLabelOf,
+  snapToWord,
+  spanSummary,
+  textSegments,
+  toggleSliceRange,
+  type Segment,
+} from "./spanText";
 
 /**
  * A selection's position (a node and an offset in it, from `Range`) as a
@@ -24,39 +35,6 @@ function getAbsoluteOffset(root: Node, target: Node, offsetInTarget: number): nu
   return total;
 }
 
-/** A stretch of the text with the same spans on it. */
-interface Segment {
-  start: number;
-  end: number;
-  spans: SpanAnswer[];
-  /** Part of the new selection waiting for its label. */
-  isPending: boolean;
-}
-
-/** Cuts the text where any span or the pending selection starts or ends. */
-function textSegments(text: string, spans: SpanAnswer[], pending: { slices: SpanSlice[] } | null): Segment[] {
-  const cuts = new Set<number>([0, text.length]);
-  for (const slice of [...(pending?.slices ?? []), ...spans.flatMap((s) => s.slices)]) {
-    cuts.add(Math.max(0, Math.min(text.length, slice.offset)));
-    cuts.add(Math.max(0, Math.min(text.length, slice.offset + slice.length)));
-  }
-  const sorted = Array.from(cuts).sort((x, y) => x - y);
-  const covers = (slice: SpanSlice, start: number, end: number) =>
-    slice.offset <= start && slice.offset + slice.length >= end;
-  const segments: Segment[] = [];
-  for (let i = 0; i < sorted.length - 1; i++) {
-    const [start, end] = [sorted[i], sorted[i + 1]];
-    if (start >= end) continue;
-    segments.push({
-      start,
-      end,
-      spans: spans.filter((s) => s.slices.some((slice) => covers(slice, start, end))),
-      isPending: Boolean(pending?.slices.some((slice) => covers(slice, start, end))),
-    });
-  }
-  return segments;
-}
-
 /**
  * A unit field a span question selects in (docs/client.md §4 "Span and
  * relation answers"): the text with its spans highlighted.
@@ -68,6 +46,17 @@ function textSegments(text: string, spans: SpanAnswer[], pending: { slices: Span
  *   first word stays; clicks before it are ignored).
  */
 export function SelectableText({ text, field, inline = false }: { text: string; field?: string; inline?: boolean }) {
+  const spanContext = useSpanAnnotation();
+  const relations = useRelationAnnotation();
+  const own = field !== undefined ? field.replace(/^unit\./, "") : spanContext?.fields[0];
+  // A relation question on screen: its spans to click (no span question selects here then)
+  if (relations && own !== undefined && !spanContext?.fields.includes(own))
+    return <RelationText text={text} field={own} inline={inline} />;
+  return <SpanSelectableText text={text} field={field} inline={inline} />;
+}
+
+/** The text a span question selects in (see SelectableText). */
+function SpanSelectableText({ text, field, inline = false }: { text: string; field?: string; inline?: boolean }) {
   const context = useSpanAnnotation();
   // Only the span question on screen that selects in this field can select;
   // otherwise the text looks the same, so the layout doesn't shift.

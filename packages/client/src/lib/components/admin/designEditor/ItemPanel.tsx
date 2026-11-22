@@ -4,7 +4,6 @@ import {
   splitDesignItems,
   collectQuestions,
   availableQuestions,
-  itemName,
   templateNames,
   expandSnippets,
   sessionItem,
@@ -16,7 +15,7 @@ import {
 import { AlertTriangle, ArrowLeft, Code2, Edit3, Eye } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useSetGroupsQuery, useUnitFieldsQuery } from "../../../admin/queries";
-import { enclosingLoop, flattenTree, isInsideUnitLoop, issueIsAbout, itemPath } from "../../../codebook/tree";
+import { enclosingLoop, flattenTree, issueIsAbout, itemPath } from "../../../codebook/tree";
 import { itemTitle } from "../../../codebook/conditions";
 import { ItemForm } from "../ItemForm";
 import { EndItemFields } from "../itemForm/EndItemFields";
@@ -157,7 +156,6 @@ function ItemEditForm({
   const { items, cleanItems, validationIssues } = draft;
   const key = getItemKey(item);
 
-  const unitVariableNames = useMemo(() => unitQuestionNames(items), [items]);
   // What references may use at this item: the same rules as validation
   const available = useMemo(() => availableQuestions(cleanItems, itemPath(items, key) ?? []), [cleanItems, items, key]);
   const loop = enclosingLoop(items, item);
@@ -175,7 +173,6 @@ function ItemEditForm({
         client={readOnly ? undefined : client}
         groups={groupsQuery.data ?? []}
         sessionValueNames={sessionNames(cleanItems)}
-        unitVariableNames={unitVariableNames}
         availableQuestions={available}
         inLoop={!!loop}
         unitFields={(unitFieldsQuery.data ?? []).map((f) => f.name)}
@@ -191,13 +188,6 @@ function ItemEditForm({
       />
     </fieldset>
   );
-}
-
-/** The names of the questions inside unit loops (a relation's from and to). */
-function unitQuestionNames(items: TopLevelItem[]): string[] {
-  return flattenTree(items)
-    .filter((i) => i.type === "question" && isInsideUnitLoop(items, getItemKey(i)))
-    .flatMap((i) => itemName(i) ?? []);
 }
 
 /** The preview's own column on wide screens (DesignEditor). */

@@ -1,4 +1,5 @@
-import type { AnyVariableType } from "./variableTypes.js";
+import type { AnyVariableType, RelationType } from "./variableTypes.js";
+import { relationTypesFor, ruleVariables, type RuleSpan } from "./relations.js";
 import type { VariableValue } from "../variableValue.js";
 import { questionKind, questionValues } from "./references.js";
 
@@ -81,6 +82,34 @@ export function validateVariables(
 ): string[] {
   return Object.entries(variables).flatMap(([name, value]) => {
     const variable = allowed.get(name);
-    return variable ? validateAnswer(name, variable, value) : [`Unknown variable '${name}'`];
+    if (!variable) return [`Unknown variable '${name}'`];
+    const errors = validateAnswer(name, variable, value);
+    if (variable.type === "relation" && !value.skip) errors.push(...relationErrors(name, variable, value, variables));
+    return errors;
   });
+}
+
+/**
+ * A relation answer against its rules (relations.ts): each relation goes
+ * between spans given in the same answers (to the span questions the rules
+ * name), with a type the rules allow for that pair.
+ */
+function relationErrors(
+  name: string,
+  variable: RelationType,
+  value: VariableValue,
+  variables: Record<string, VariableValue>,
+): string[] {
+  const spans = new Map<string, RuleSpan>();
+  for (const question of ruleVariables(variable.rules))
+    for (const s of variables[question]?.spans ?? []) spans.set(s.id, { id: s.id, variable: question, value: s.value });
+  const errors: string[] = [];
+  for (const r of value.relations ?? []) {
+    const from = spans.get(r.fromId);
+    const to = spans.get(r.toId);
+    if (!from || !to) errors.push(`'${name}': a relation refers to a span that isn't there`);
+    else if (!relationTypesFor(variable.rules, variable.options, from, to).includes(r.value))
+      errors.push(`'${name}': a '${r.value}' relation isn't allowed from '${from.value}' to '${to.value}'`);
+  }
+  return errors;
 }

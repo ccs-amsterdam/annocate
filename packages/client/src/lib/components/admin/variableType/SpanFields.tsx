@@ -70,34 +70,3 @@ export function SpanFieldsPicker({
     </div>
   );
 }
-
-/** A relation's from or to: one of the loop's span questions. */
-export function SpanQuestionSelect({
-  label,
-  value,
-  questions,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  questions: string[];
-  onChange: (question: string) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-sm font-medium">{label}</label>
-      <select
-        className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="">-- select --</option>
-        {questions.map((n) => (
-          <option key={n} value={n}>
-            {n}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}

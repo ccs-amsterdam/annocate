@@ -1,174 +1,125 @@
-import { useState } from "react";
-import {
-  optionLabel,
-  type RelationAnswer,
-  type RelationOptions,
-  type SpanAnswer,
-  type VariableValue,
-} from "@annotinder/contracts";
+import { ArrowRight, X } from "lucide-react";
+import { optionLabel } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
-import type { AnswerFieldProps, QuestionVariable } from "./types";
-import { getCodeBadgeStyle } from "../../utils/color";
+import { PRIORITY } from "../../keyboard/controller";
+import { useKeyScope, useKeyTargets } from "../../keyboard/hooks";
+import { useCoderSettings } from "../../context/coderSettings";
+import { useRelationAnnotation, type RelationSpan } from "../../context/relationAnnotation";
+import { getCodeBadgeStyle, getCodeButtonStyle } from "../../utils/color";
+import { ShortcutBadge } from "../ShortcutBadge";
 import { optionColor, optionLabelOf, spanSummary } from "../spanText";
-import { X, ArrowRight } from "lucide-react";
+import type { AnswerFieldProps, QuestionVariable } from "./types";
 
 type RelationVariable = Extract<QuestionVariable, { type: "relation" }>;
 
-/**
- * The spans one end of a relation can be: this unit's answer so far to
- * `opts.variable` (a span question of the same loop), only those with the
- * values in `opts.values` if it lists any.
- */
-function endpointSpans(unitVariables: Record<string, VariableValue> | undefined, opts: RelationOptions): SpanAnswer[] {
-  const spans = unitVariables?.[opts.variable]?.spans ?? [];
-  if (!opts.values || opts.values.length === 0) return spans;
-  return spans.filter((s) => opts.values?.includes(s.value));
-}
-
-function spanLabel(span: SpanAnswer | undefined): string {
-  if (!span) return "(unknown span)";
-  return `"${spanSummary(span.slices)}" (${span.value})`;
-}
+const spanName = (span: RelationSpan | undefined) => (span ? `"${spanSummary(span.slices)}"` : "(a span)");
 
 /**
  * The answer field of a `relation` question (docs/client.md §4 "Span and
- * relation answers"): links pairs of spans (answers to the span questions
- * of the same loop named in `variable.from` and `variable.to`) with a
- * relation type (an option).
+ * relation answers"). Relations are made in the text (`RelationText`): click
+ * where one starts, then where it goes. Here: what to do next, the relation
+ * type when there is a choice (keys 1-9, Esc to cancel), and the relations
+ * made, to open or remove.
  */
-export function RelationAnswerField({
-  variable,
-  unitVariables,
-  initialValue,
-  onAnswer,
-}: AnswerFieldProps<RelationVariable>) {
-  const fromSpans = endpointSpans(unitVariables, variable.from);
-  const toSpans = endpointSpans(unitVariables, variable.to);
-
-  // Back at this question: the relations given before, as far as their spans still exist.
-  const [relations, setRelations] = useState<RelationAnswer[]>(() =>
-    (initialValue?.relations ?? []).filter(
-      (r) => fromSpans.some((s) => s.id === r.fromId) && toSpans.some((s) => s.id === r.toId),
-    ),
+export function RelationAnswerField({ onAnswer }: AnswerFieldProps<RelationVariable>) {
+  const ctx = useRelationAnnotation();
+  const { theme } = useCoderSettings();
+  const pending = ctx?.pending ?? null;
+  const types = pending && ctx ? ctx.typesFor(pending.fromId, pending.toId) : [];
+  const typeOptions = (ctx?.options ?? []).filter((o) => types.includes(o.value));
+  const { keys } = useKeyTargets(pending ? [typeOptions.map((o) => ({ label: optionLabel(o) }))] : null, (_, i) =>
+    ctx?.choose(typeOptions[i].value),
   );
-  const [fromId, setFromId] = useState("");
-  const [toId, setToId] = useState("");
-  const [code, setCode] = useState(variable.options[0]?.value ?? "");
-
-  function handleAdd() {
-    if (!fromId || !toId || !code) return;
-    if (relations.some((r) => r.fromId === fromId && r.toId === toId && r.value === code)) {
-      return;
-    }
-    setRelations((prev) => [
-      ...prev,
-      {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        fromId,
-        toId,
-        value: code,
-      },
-    ]);
-    setFromId("");
-    setToId("");
-  }
-
-  function handleRemove(id: string) {
-    setRelations((prev) => prev.filter((r) => r.id !== id));
-  }
+  useKeyScope(
+    (press) => {
+      if (press.key !== "Escape" || !ctx) return false;
+      ctx.cancel();
+      return true;
+    },
+    !!ctx && (ctx.start !== null || pending !== null),
+    { priority: PRIORITY.field },
+  );
+  if (!ctx) return null;
+  const span = (id: string) => ctx.spans.find((s) => s.id === id);
+  const chosen = (type: string) =>
+    !!pending && ctx.relations.some((r) => r.fromId === pending.fromId && r.toId === pending.toId && r.value === type);
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span>
-          Link {variable.from.variable} to {variable.to.variable}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <select
-          value={fromId}
-          onChange={(e) => setFromId(e.target.value)}
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-        >
-          <option value="">Select from {variable.from.variable}...</option>
-          {fromSpans.map((s) => (
-            <option key={s.id} value={s.id}>
-              {spanLabel(s)}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-        >
-          {variable.options.map((c) => (
-            <option key={c.value} value={c.value}>
-              {optionLabel(c)}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={toId}
-          onChange={(e) => setToId(e.target.value)}
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-        >
-          <option value="">Select to {variable.to.variable}...</option>
-          {toSpans.map((s) => (
-            <option key={s.id} value={s.id}>
-              {spanLabel(s)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={!fromId || !toId || !code}
-          onClick={handleAdd}
-          className="text-xs"
-        >
-          Link
-        </Button>
-      </div>
-
-      {relations.length > 0 && (
-        <div className="flex flex-col gap-1 border-t border-border pt-1">
-          <span className="text-xs font-semibold text-muted-foreground">Relations ({relations.length}):</span>
-          <div className="flex max-h-32 flex-col gap-1 overflow-y-auto">
-            {relations.map((rel) => {
-              const from = fromSpans.find((s) => s.id === rel.fromId);
-              const to = toSpans.find((s) => s.id === rel.toId);
-              const badgeStyle = getCodeBadgeStyle(optionColor(variable.options, rel.value));
-              return (
-                <div
-                  key={rel.id}
-                  className="flex items-center justify-between gap-1 rounded bg-muted/50 px-2 py-1 text-xs"
-                >
-                  <span className="truncate">{spanLabel(from)}</span>
-                  <span className="py-0.2 shrink-0 rounded border px-1.5 font-semibold" style={badgeStyle}>
-                    {optionLabelOf(variable.options, rel.value)}
-                  </span>
-                  <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{spanLabel(to)}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(rel.id)}
-                    className="ml-1 shrink-0 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              );
-            })}
+      {pending ? (
+        <div className="flex flex-col gap-2" role="group" aria-label="Relation type">
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <span className="flex min-w-0 items-center gap-1">
+              <span className="truncate">{spanName(span(pending.fromId))}</span>
+              <ArrowRight className="h-3 w-3 shrink-0" />
+              <span className="truncate">{spanName(span(pending.toId))}</span>
+            </span>
+            <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={ctx.cancel}>
+              Cancel
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {typeOptions.map((option, i) => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={chosen(option.value)}
+                onClick={() => ctx.choose(option.value)}
+                className="relative flex cursor-pointer items-center rounded-md border px-2.5 py-1 text-xs font-semibold shadow-xs"
+                style={getCodeButtonStyle(option.color, chosen(option.value), theme === "dark")}
+              >
+                {keys[0]?.[i] && <ShortcutBadge shortcut={keys[0][i]!} />}
+                {optionLabel(option)}
+                {chosen(option.value) && <span className="ml-1 font-normal">(remove)</span>}
+              </button>
+            ))}
           </div>
         </div>
+      ) : (
+        <p className="text-xs text-muted-foreground" aria-live="polite">
+          {ctx.spans.length === 0
+            ? "There are no spans to relate in this unit."
+            : ctx.start
+              ? `From ${spanName(span(ctx.start))}: now click where the relation goes (Esc to cancel).`
+              : "Click a span where a relation starts, then the span it goes to."}
+        </p>
+      )}
+
+      {ctx.relations.length > 0 && (
+        <ul className="flex max-h-32 flex-col gap-1 overflow-y-auto border-t border-border pt-2" aria-label="Relations">
+          {ctx.relations.map((r) => (
+            <li
+              key={r.id}
+              onPointerEnter={() => ctx.setHighlighted(r.id)}
+              onPointerLeave={() => ctx.setHighlighted(null)}
+              className="flex items-center gap-1 rounded bg-muted/50 px-2 py-1 text-xs"
+            >
+              <button
+                type="button"
+                onClick={() => ctx.openRelation(r.id)}
+                className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 text-left"
+              >
+                <span className="truncate">{spanName(span(r.fromId))}</span>
+                <span
+                  className="shrink-0 rounded border px-1.5 font-semibold"
+                  style={getCodeBadgeStyle(optionColor(ctx.options, r.value))}
+                >
+                  {optionLabelOf(ctx.options, r.value)}
+                </span>
+                <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                <span className="truncate">{spanName(span(r.toId))}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => ctx.remove(r.id)}
+                aria-label="Remove this relation"
+                className="shrink-0 cursor-pointer text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
 
       <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
@@ -180,8 +131,8 @@ export function RelationAnswerField({
         >
           Skip
         </Button>
-        <Button size="sm" onClick={() => onAnswer({ done: true, skip: false, relations })}>
-          Done ({relations.length})
+        <Button size="sm" onClick={() => onAnswer({ done: true, skip: false, relations: ctx.relations })}>
+          Done ({ctx.relations.length})
         </Button>
       </div>
     </div>

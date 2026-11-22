@@ -9,6 +9,7 @@ export * from "./common.js";
 
 export * from "./design/options.js";
 export * from "./design/variableTypes.js";
+export * from "./design/relations.js";
 export * from "./design/references.js";
 export * from "./design/templateBlocks.js";
 export * from "./design/snippets.js";
