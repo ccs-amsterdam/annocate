@@ -134,39 +134,52 @@ export function RelationArrows({ containerRef }: { containerRef: RefObject<HTMLE
   return (
     <svg className="pointer-events-none absolute inset-0 z-10 h-full w-full overflow-visible" aria-hidden="true">
       {arrows.map((a) => {
-        const opacity = highlighted === null ? 0.75 : isFull(a) ? 1 : 0.2;
+        // Faint until pointed at (the arrow, its spans): then solid, with its label
+        const full = isFull(a);
+        const opacity = full ? 1 : highlighted === null ? 0.35 : 0.15;
         const width = a.label.text.length * 6.2 + 10;
+        const events = {
+          onClick: () => ctx.openRelation(a.id),
+          onPointerEnter: () => ctx.setHighlighted(a.id),
+          onPointerLeave: () => ctx.setHighlighted(null),
+        };
         return (
           <g key={a.id} data-relation-arrow={a.id} style={{ opacity }} className="transition-opacity">
-            <path d={a.path} fill="none" stroke={a.color} strokeWidth={isFull(a) ? 2.5 : 1.75} />
-            <polygon points={a.head} fill={a.color} />
-            {/* The label: clicking it opens the relation (to change or remove it) */}
-            <g
+            <path d={a.path} fill="none" stroke={a.color} strokeWidth={full ? 2.5 : 1.75} />
+            {/* A wider invisible line: easy to point at; clicking it opens the relation (to change or remove it) */}
+            <path
+              d={a.path}
+              fill="none"
+              stroke="transparent"
+              strokeWidth={12}
               className="pointer-events-auto cursor-pointer"
-              onClick={() => ctx.openRelation(a.id)}
-              onPointerEnter={() => ctx.setHighlighted(a.id)}
-              onPointerLeave={() => ctx.setHighlighted(null)}
-            >
-              <rect
-                x={a.label.x - width / 2}
-                y={a.label.y - 8}
-                width={width}
-                height={16}
-                rx={4}
-                fill="var(--background)"
-                stroke={a.color}
-              />
-              <text
-                x={a.label.x}
-                y={a.label.y + 3.5}
-                textAnchor="middle"
-                fontSize={10.5}
-                fontWeight={600}
-                fill="var(--foreground)"
-              >
-                {a.label.text}
-              </text>
-            </g>
+              aria-label={a.label.text}
+              {...events}
+            />
+            <polygon points={a.head} fill={a.color} />
+            {full && (
+              <g className="pointer-events-auto cursor-pointer" {...events}>
+                <rect
+                  x={a.label.x - width / 2}
+                  y={a.label.y - 8}
+                  width={width}
+                  height={16}
+                  rx={4}
+                  fill="var(--background)"
+                  stroke={a.color}
+                />
+                <text
+                  x={a.label.x}
+                  y={a.label.y + 3.5}
+                  textAnchor="middle"
+                  fontSize={10.5}
+                  fontWeight={600}
+                  fill="var(--foreground)"
+                >
+                  {a.label.text}
+                </text>
+              </g>
+            )}
           </g>
         );
       })}

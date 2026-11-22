@@ -3,6 +3,27 @@ import type { CSSProperties } from "react";
 // Colours of codes (an option's `color`) on buttons, badges and span
 // highlights, readable in light and dark mode.
 
+/**
+ * A colour for a code without one (span labels, relation types), from a
+ * hash of its value: the same value has the same colour everywhere, and
+ * different values are easy to tell apart. As hex (HSL hue from the hash,
+ * fixed saturation and lightness).
+ */
+export function valueColor(value: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
+  const hue = (hash >>> 0) % 360;
+  const s = 0.65;
+  const l = 0.5;
+  const k = (n: number) => (n + hue / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const channel = (n: number) =>
+    Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1))))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${channel(0)}${channel(8)}${channel(4)}`;
+}
+
 /** Common CSS colour names, for normalizing without a browser (tests). */
 const NAMED_COLORS: Record<string, string> = {
   black: "#000000",

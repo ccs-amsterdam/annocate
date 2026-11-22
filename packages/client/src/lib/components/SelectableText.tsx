@@ -240,7 +240,7 @@ function SpanSelectableText({ text, field, inline = false }: { text: string; fie
         key={i}
         data-span-id={seg.spans.map((s) => s.id).join(" ")}
         style={style}
-        title={`${title} (click to view labels)`}
+        title={title}
         onClick={(e) => handleSegmentClick(e, seg.spans)}
         className={`cursor-pointer font-normal transition-opacity hover:opacity-85 ${
           isFocused || seg.isPending ? "ring-2 ring-wood ring-offset-1 ring-offset-background" : ""

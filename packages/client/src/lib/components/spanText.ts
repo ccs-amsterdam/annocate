@@ -1,4 +1,5 @@
 import { optionLabel, type Option, type SpanAnswer, type SpanSlice } from "@annotinder/contracts";
+import { valueColor } from "../utils/color";
 
 // Pure helpers for span answers (docs/client.md §4 "Span and relation
 // answers"): selecting text (word snapping, slices) and showing spans.
@@ -8,9 +9,12 @@ export function spanSummary(slices: readonly Pick<SpanSlice, "text">[]): string 
   return slices.map((s) => s.text).join(" ... ");
 }
 
-/** The colour of the option with this value (a span's or relation's code). */
-export function optionColor(options: readonly Pick<Option, "value" | "color">[], value: string): string | undefined {
-  return options.find((o) => o.value === value)?.color;
+/**
+ * The colour of the option with this value (a span's or relation's code):
+ * its own, else one from the value (`valueColor`): colours tell codes apart.
+ */
+export function optionColor(options: readonly Pick<Option, "value" | "color">[], value: string): string {
+  return options.find((o) => o.value === value)?.color || valueColor(value);
 }
 
 /** The label of the option with this value; the value itself without one. */
