@@ -1,5 +1,5 @@
 import { CollapsibleHeader, CollapsingChrome } from "./lib/hooks/useCollapsingChrome";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { Suspense, createContext, lazy, useContext, useEffect, useState, type ReactNode } from "react";
 import {
   Link,
   Outlet,
@@ -15,10 +15,8 @@ import {
   useSearch,
 } from "@tanstack/react-router";
 import type { AuthOptions, MeResponse } from "@annotinder/contracts";
-import { AdminApp, type AdminLocation, type LeaveGuard } from "./lib/components/admin/AdminApp";
+import type { AdminLocation, LeaveGuard } from "./lib/components/admin/AdminApp";
 import { TAB_SLUGS, type TabId } from "./lib/admin/tabs";
-import { ResearcherGate } from "./lib/components/admin/account/ResearcherGate";
-import { AccountMenu } from "./lib/components/admin/account/AccountMenu";
 import { HttpResearcherApi } from "./lib/api/httpResearcherApi";
 import { ServerApi } from "./lib/api/serverApi";
 import { useTheme } from "./lib/context/theme";
@@ -34,6 +32,15 @@ import { Popover, PopoverContent, PopoverTrigger } from "./components/ui/popover
 // (session cookies are same-origin only); in development Vite serves it
 // and forwards /api (vite.config.ts).
 const API_URL = "/api";
+
+// The researcher UI loads when it is first shown: coders don't download it.
+const AdminApp = lazy(() => import("./lib/components/admin/AdminApp").then((m) => ({ default: m.AdminApp })));
+const ResearcherGate = lazy(() =>
+  import("./lib/components/admin/account/ResearcherGate").then((m) => ({ default: m.ResearcherGate })),
+);
+const AccountMenu = lazy(() =>
+  import("./lib/components/admin/account/AccountMenu").then((m) => ({ default: m.AccountMenu })),
+);
 
 /** Logged-in researchers: the session cookie. */
 const sessionApi = new HttpResearcherApi({ baseUrl: API_URL });
@@ -126,12 +133,14 @@ function AppHeader() {
       </nav>
       <div className="flex flex-1 justify-end">
         {researcher.state && (
-          <AccountMenu
-            client={researcher.api}
-            me={researcher.state.me}
-            dev={researcher.dev}
-            canLogIn={researcher.state.options.login}
-          />
+          <Suspense fallback={null}>
+            <AccountMenu
+              client={researcher.api}
+              me={researcher.state.me}
+              dev={researcher.dev}
+              canLogIn={researcher.state.options.login}
+            />
+          </Suspense>
         )}
       </div>
     </header>
@@ -186,12 +195,12 @@ const SLUG_TABS = Object.fromEntries(Object.entries(TAB_SLUGS).map(([tab, slug])
 function ResearchPage({ location }: { location: AdminLocation }) {
   const researcher = useResearcher();
   const navigate = useNavigate();
-  if (!researcher.state)
-    return (
-      <div className="flex h-full min-h-[300px] items-center justify-center p-8">
-        <LogoSmoke label="Loading…" />
-      </div>
-    );
+  const loading = (
+    <div className="flex h-full min-h-[300px] items-center justify-center p-8">
+      <LogoSmoke label="Loading…" />
+    </div>
+  );
+  if (!researcher.state) return loading;
   const onNavigate = (to: AdminLocation, options?: { replace?: boolean }) => {
     const replace = options?.replace ?? false;
     if (to.page === "studies") void navigate({ to: "/research", replace });
@@ -218,11 +227,13 @@ function ResearchPage({ location }: { location: AdminLocation }) {
   return (
     <WithHeader>
       <div className="flex h-full flex-col overflow-hidden">
-        {researcher.dev ? (
-          admin(devApi, researcher.state.me)
-        ) : (
-          <ResearcherGate client={sessionApi}>{(who) => admin(sessionApi, who)}</ResearcherGate>
-        )}
+        <Suspense fallback={loading}>
+          {researcher.dev ? (
+            admin(devApi, researcher.state.me)
+          ) : (
+            <ResearcherGate client={sessionApi}>{(who) => admin(sessionApi, who)}</ResearcherGate>
+          )}
+        </Suspense>
       </div>
     </WithHeader>
   );
