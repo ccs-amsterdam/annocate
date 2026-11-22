@@ -28,7 +28,7 @@ export type CoderTopLevelItem =
   | CoderComputedItem
   | CoderUnitLoopItem
   | EndItem
-  | { type: "show_if"; label?: string; condition: Condition; children: CoderTopLevelItem[] };
+  | { type: "questions"; label?: string; condition?: Condition; children: CoderTopLevelItem[] };
 
 /** The coder codebook of a deployed (or previewed) design version. */
 export const CoderCodebookSchema = z.object({
@@ -56,7 +56,7 @@ function coderItems(items: readonly TopLevelItem[]): CoderTopLevelItem[] {
     switch (item.type) {
       case "session":
         return [];
-      case "show_if":
+      case "questions":
         return [{ ...item, children: coderItems(item.children) }];
       case "unit_loop": {
         const loop: CoderUnitLoopItem = { ...item, children: item.children as InLoopItem[] };

@@ -18,7 +18,7 @@ describe("the coder codebook", () => {
         },
       },
       {
-        type: "show_if",
+        type: "questions",
         condition: { script: "true" },
         children: [
           {
@@ -39,7 +39,7 @@ describe("the coder codebook", () => {
     expect(toCoderItems(items)).toEqual([
       { type: "computed", name: "condition", variable: { type: "random", options: [{ value: "a", label: "A" }] } },
       {
-        type: "show_if",
+        type: "questions",
         condition: { script: "true" },
         children: [
           {

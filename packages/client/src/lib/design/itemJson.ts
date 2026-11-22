@@ -27,7 +27,7 @@ export function itemFromJson(text: string, current: DesignItem): { item: DesignI
   const next: Record<string, unknown> = { ...(parsed as Record<string, unknown>) };
   const type = next.type;
   const children = (current as { children?: unknown }).children;
-  if (type === "unit_loop" || type === "show_if") next.children = Array.isArray(children) ? children : [];
+  if (type === "unit_loop" || type === "questions") next.children = Array.isArray(children) ? children : [];
   const key = (current as { _key?: string })._key;
   if (key) next._key = key;
   return { item: next as unknown as DesignItem };

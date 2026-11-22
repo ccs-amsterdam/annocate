@@ -22,7 +22,7 @@ import { flattenTree, keyOf } from "../codebook/tree";
 function cond(key: string, children: DesignItem[] = []): TopLevelItem {
   return {
     _key: key,
-    type: "show_if",
+    type: "questions",
     condition: { script: "true" },
     children: children as TopLevelItem[],
   } as TopLevelItem;
@@ -187,7 +187,7 @@ describe("itemEdit", () => {
     it("updates item properties while preserving children", () => {
       const items: TopLevelItem[] = [cond("p1", [cond("child")])];
       const next = updateItem(items, "p1", {
-        type: "show_if",
+        type: "questions",
         label: "relabeled",
         condition: { script: "$var.x.value > 1" },
       } as unknown as TopLevelItem);

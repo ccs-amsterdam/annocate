@@ -13,7 +13,7 @@ its own units. It is how you run experiments (see
 
 ## Adding one
 
-In a **Questions** block, click **+** → **Computed variable** → **Random
+In a questions block, click **+** → **Computed variable** → **Random
 condition**. Give it an **Item Name**, e.g. `group`, and **Options** (the
 values, with optional labels). It can't go inside a unit loop.
 

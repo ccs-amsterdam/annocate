@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { DesignTreeProvider, type DesignTreeState } from "./designTree/context";
 import { BlockList } from "./designTree/TreeList";
 import { AddItemMenu } from "./designTree/AddItemMenu";
-import { getItemKey, insertableTypesAt, questionNumbers, STUDY_END_KEY, type ItemType } from "./designTree/utils";
+import { getItemKey, insertableTypesAt, STUDY_END_KEY, type ItemType } from "./designTree/utils";
 import { TreeRow } from "./designTree/TreeRow";
 import { cn } from "cn";
 
@@ -87,10 +87,8 @@ export function DesignTreeView({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [moving, checked.size]);
 
-  const numbers = questionNumbers(items);
   const state: DesignTreeState = {
     items,
-    numberOf: (key) => numbers.get(key) ?? null,
     selected,
     readOnly,
     select: onSelect,
@@ -129,8 +127,6 @@ export function DesignTreeView({
   // The Study entry (always first) is shown above the tree (SessionHeader), not in it
   const shown = items.filter((item) => item.type !== "session");
   const top: TreePosition | null = shown.length > 0 ? { before: getItemKey(shown[0]) } : null;
-  // A new block at the start: before a loop, or before the first Questions block (a loop only: questions would join it)
-  const startTypes: ItemType[] = shown[0]?.type === "unit_loop" ? ["questions", "unit_loop"] : ["unit_loop"];
   const count = ticked.length === 1 ? "1 item" : `${ticked.length} items`;
 
   return (
@@ -179,7 +175,7 @@ export function DesignTreeView({
                   label: shown.length ? "At the end" : "First block",
                   types: insertableTypesAt(items, end),
                 },
-                ...(top ? [{ position: top, label: "At the start", types: startTypes }] : []),
+                ...(top ? [{ position: top, label: "At the start", types: insertableTypesAt(items, top) }] : []),
               ]}
               onAdd={state.addAt}
               onPreview={setPreview}

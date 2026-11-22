@@ -141,7 +141,7 @@ never which unit ids or which people.
 
 | Layer | Contains | Reproducible? |
 | --- | --- | --- |
-| Design | questions, computed items, Show if items, unit loops (subsets, placements, a crowd's distribution criteria), the session (coder unit assignment, URL parameters, the normal end). Refers to set columns and values by name, to coders only via `$session` values | yes |
+| Design | questions blocks (questions, computed items, end items; optionally a condition), unit loops (optionally a condition; subsets, placements, a crowd's distribution criteria), the session (coder unit assignment, URL parameters, the normal end). Refers to set columns and values by name, to coders only via `$session` values | yes |
 | Set columns | per column, named sets of units in order (e.g. column `coders`: `anna`, `bob`, `_overlap`) | data |
 | Links | made from the coder unit assignment (one, one per coder, or one per set of a crowd's column), with their secrets and uses | no (server only) |
 
@@ -355,7 +355,7 @@ goes on with the value. Coders screened out before one don't count.
 The client can't overwrite drawn values.
 
 **Frozen answers.** A coder-level answer a loop depends on (its layout,
-questions or Show if conditions refer to it: contracts `loopDependencies`) is
+questions or conditions refer to it: contracts `loopDependencies`) is
 frozen once the coder coded a unit in that loop
 (`annotation_values.frozen`); the coding screen shows it read-only.
 
@@ -412,7 +412,7 @@ email. Details: `coder-identity.md`.
 When a coder comes back (reload, transfer, next day) the client continues
 where they left off:
 
-- **Top-level questions** with an answer that fits the current design are
+- **Questions outside loops** with an answer that fits the current design are
   skipped (still reachable by going back).
 - **Unit loops.** `GET /session` returns per loop the finished unit ids in
   order and `totalUnits` (`null` when it depends on other coders). The client
@@ -437,7 +437,7 @@ Answers are keyed by question name and always checked against the
 | Question removed | old answers kept, not shown | not asked |
 | Option value removed | stay finished; the answer is asked again if the coder goes back and resubmits | asked again |
 | Question renamed | = removed + added | = removed + added |
-| Show if / order changed | stay finished | follow the new design |
+| Conditions / order changed | stay finished | follow the new design |
 | Distribution changed | units follow the new settings; coded units stay the coder's (§6.2) | new rules |
 
 How:
@@ -569,7 +569,7 @@ against a mock provider.
    at the provider.
 9. **Multimedia** should not flow through JSON: units reference media by id,
    the server returns short-lived signed URLs to a blob store.
-10. **Semantic validation.** Running Show if conditions on the server to
+10. **Semantic validation.** Running conditions on the server to
     reject answers to questions the coder never saw. Conditions now run in the
     client, which keeps client-side encryption possible.
 11. **Scale.** A turn of a shared queue's lock reads the loop's codings and

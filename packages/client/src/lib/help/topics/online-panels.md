@@ -52,14 +52,16 @@ which, so a broken link shows in your first test.
 Use [end items](end-items.md), one per return link:
 
 ```text
-Consent                   categories: yes, no
-Show if: consent is "no"
-  └ End: no_consent       screened out → panel's "no consent" link
-Age                       number
-Show if: age < 18
-  └ End: too_young        screened out → panel's screenout link
+About you
+  Consent                 categories: yes, no
+  if consent is "no"
+    └ End: no_consent     screened out → panel's "no consent" link
+  Age                     number
+  if age < 18
+    └ End: too_young      screened out → panel's screenout link
 Unit loop                 10 news articles
-End: done                 complete → panel's completion link
+Wrap-up
+  End: done               complete → panel's completion link
 ```
 
 In each end item, **Then send coders to** → _A panel's return link_, with a
@@ -81,10 +83,10 @@ panel.
 
 ## Screening and attention checks
 
-- **Screening**: screening questions first, each followed by a Show if
-  with a screened-out end item. Pre-screen on the panel where you can.
-- **Attention checks**: a question with one right answer and a Show if on
-  other answers.
+- **Screening**: screening questions first, each followed by a questions
+  block with a condition and a screened-out end item. Pre-screen on the panel where you can.
+- **Attention checks**: a question with one right answer and a questions
+  block with a condition on other answers.
 
 > Follow the panel's rules on screening out and rejecting (e.g. whether
 > screened-out participants are paid).
@@ -92,7 +94,8 @@ panel.
 ## Experimental conditions
 
 Draw a [random condition](random-condition.md) and show different material
-with [Show if](conditions.md) or `::: if`. See
+with [conditions](conditions.md) on questions blocks or loops, or
+`::: if`. See
 [Experimental conditions](experimental-conditions.md).
 
 ## How many coders?

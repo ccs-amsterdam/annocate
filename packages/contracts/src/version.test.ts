@@ -5,7 +5,12 @@ describe("release and design files", () => {
   it("a design file holds the design with its format and client", () => {
     const file = designFile(
       {
-        items: [{ type: "question", name: "q", variable: { type: "confirm", question: "Ok?" } }],
+        items: [
+          {
+            type: "questions",
+            children: [{ type: "question", name: "q", variable: { type: "confirm", question: "Ok?" } }],
+          },
+        ],
         session: null,
         public: null,
         units: { fields: [] },

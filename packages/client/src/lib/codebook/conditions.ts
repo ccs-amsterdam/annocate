@@ -11,16 +11,18 @@ import type { ExpressionCache } from "./expressionCache";
 
 /**
  * Evaluates a condition (docs/client.md §5 "References and conditions"), e.g.
- * a `show_if` item's: a simple condition (helper calls, `.answered`, `&&`,
+ * a questions block's: a simple condition (helper calls, `.answered`, `&&`,
  * `||`, `!`) directly, shared with the contracts package; any other script
  * in the QuickJS sandbox (truthy = holds). A failing script counts as false.
  */
 export async function evaluateCondition(
-  condition: Condition,
+  condition: Condition | undefined,
   scope: ReferenceScope,
   cache?: ExpressionCache,
   key = "condition",
 ): Promise<boolean> {
+  // A block or loop without a condition is always shown
+  if (!condition) return true;
   const simple = parseSimpleCondition(condition.script);
   if (simple) return evaluateSimpleCondition(simple, scope);
   const result = cache
@@ -96,12 +98,13 @@ function readableCondition(condition: SimpleCondition, nested = false): string {
 }
 
 /**
- * How an item is called in the editor: its name; for a `show_if` (which has
- * none) its label, or else its condition; for a unit loop its label, or
- * "Unit loop".
+ * How an item is called in the editor: its name; for a questions block (which has
+ * none) its label, or else its condition, or "Questions"; for a unit loop its
+ * label, or "Unit loop".
  */
 export function itemTitle(item: DesignItem): string {
-  if (item.type === "show_if") return item.label?.trim() || `if ${describeCondition(item.condition)}`;
+  if (item.type === "questions")
+    return item.label?.trim() || (item.condition ? `if ${describeCondition(item.condition)}` : "Questions");
   if (item.type === "unit_loop") return item.label?.trim() || "Unit loop";
   if (item.type === "session") return "Study entry";
   return item.name;

@@ -81,6 +81,9 @@ sets**; what you leave out stays a draft. It shows:
 - **What changed?**: a note for the history (prefilled; rewrite it if you
   like).
 
+Below, **Deploys** lists every deploy: what it made live, with its design
+version's note.
+
 The first deploy lets coders start and makes the study's
 [links](links.md). See also
 [Changing a design while coding runs](changing-a-live-design.md).

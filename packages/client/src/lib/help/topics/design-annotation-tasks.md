@@ -21,7 +21,7 @@ row of your CSV.
   grey box, see [Colours and styles](colours-and-styles.md)). Only what
   changes judgements.
 - **Things inside a unit** (actors, claims) are [spans](span.md).
-- **Things about the coder** go in a Questions block, outside the loop.
+- **Things about the coder** go in a questions block, outside the loop.
 
 ## One judgement per question
 

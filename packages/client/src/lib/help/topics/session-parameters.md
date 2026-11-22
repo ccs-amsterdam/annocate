@@ -53,4 +53,4 @@ study's own name stays private. Without one: "Untitled study".
 
 A value typed into a link isn't random: draw conditions with a
 [random condition](experimental-conditions.md). A URL parameter can still
-steer the design, e.g. a `language` in Show if rules.
+steer the design, e.g. a `language` in a questions block's condition.

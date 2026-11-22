@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  inBlocks,
   TopLevelItemSchema,
   type TopLevelItem,
   type InLoopItem,
   type TopLevelQuestionItem,
   type InLoopQuestionItem,
 } from "./item.js";
-import { availableQuestions, validateDesignItems } from "./validation.js";
+import { availableQuestions, validateDesignItems as validateItems } from "./validation.js";
 import { DesignItemsSchema } from "./designVersion.js";
 import type { Condition } from "./condition.js";
 
@@ -25,10 +26,10 @@ function unitLoop(
   return { type: "unit_loop", label: name, layout: { template, snippets }, children };
 }
 function topCondition(name: string, children: TopLevelItem[], condition: Condition = { script: "true" }): TopLevelItem {
-  return { type: "show_if", label: name, condition, children };
+  return { type: "questions", label: name, condition, children };
 }
 function inLoopCondition(name: string, children: InLoopItem[], condition: Condition = { script: "true" }): InLoopItem {
-  return { type: "show_if", label: name, condition, children };
+  return { type: "questions", label: name, condition, children };
 }
 const select = (values: string[], extra: object = {}) => ({
   type: "nominal",
@@ -36,13 +37,15 @@ const select = (values: string[], extra: object = {}) => ({
   options: values.map((value) => ({ value })),
   ...extra,
 });
+/** Validation, with loose top-level items in questions blocks (most tests are about something else). */
+const validateDesignItems = (items: unknown[]) => validateItems(inBlocks(items));
 const messages = (items: unknown[]) => validateDesignItems(items).map((i) => i.message);
 
 describe("validateDesignItems", () => {
   it("accepts a minimal valid tree codebook", () => {
     const items: TopLevelItem[] = [unitLoop("loop", [questionVar("q1")])];
     expect(validateDesignItems(items)).toEqual([]);
-    expect(() => DesignItemsSchema.parse(items)).not.toThrow();
+    expect(() => DesignItemsSchema.parse(inBlocks(items))).not.toThrow();
   });
 
   it("saves questions without an answer type, but reports them", () => {
@@ -52,7 +55,7 @@ describe("validateDesignItems", () => {
     ];
     // A valid shape (a draft can be saved); not publishable
     expect(TopLevelItemSchema.array().safeParse(items).success).toBe(true);
-    expect(DesignItemsSchema.safeParse(items).success).toBe(false);
+    expect(DesignItemsSchema.safeParse(inBlocks(items)).success).toBe(false);
     expect(messages(items)).toEqual([
       "Question 'age' has no answer type yet: choose one",
       "Question 'topic' has no answer type yet: choose one",
@@ -96,7 +99,7 @@ describe("validateDesignItems", () => {
     expect(messages([random({ options: [{ value: "a" }] }), loop])).toEqual([]);
     expect(messages([random({})])).toEqual(["List the values, or link the variable to a set column of the units"]);
     // Usable as $var.<name> after it
-    const after = topCondition("c", [loop], { script: `$var.set.is("a")` });
+    const after = { ...loop, condition: { script: `$var.set.is("a")` } };
     expect(messages([random({ options: [{ value: "a" }, { value: "b" }] }), after])).toEqual([]);
     expect(messages([after, random({ options: [{ value: "a" }] })])).toEqual([
       "$var.set.is: 'set' is asked after this point",
@@ -249,7 +252,7 @@ describe("validateDesignItems (more)", () => {
       unitLoop("loop", [questionVar("q1")]),
     ];
     expect(validateDesignItems(items)).toEqual([]);
-    expect(() => DesignItemsSchema.parse(items)).not.toThrow();
+    expect(() => DesignItemsSchema.parse(inBlocks(items))).not.toThrow();
   });
 
   it("allows questions both inside and outside a unit_loop", () => {
@@ -270,7 +273,7 @@ describe("validateDesignItems (more)", () => {
       ),
     ];
     expect(validateDesignItems(items)).toEqual([]);
-    expect(() => DesignItemsSchema.parse(items)).not.toThrow();
+    expect(() => DesignItemsSchema.parse(inBlocks(items))).not.toThrow();
   });
 
   it("rejects span question outside a unit_loop", () => {
@@ -285,20 +288,20 @@ describe("validateDesignItems (more)", () => {
     ];
     const issues = validateDesignItems(items);
     expect(issues.some((i) => i.message.includes("can only be used inside a unit_loop"))).toBe(true);
-    expect(() => DesignItemsSchema.parse(items)).toThrow();
+    expect(() => DesignItemsSchema.parse(inBlocks(items))).toThrow();
   });
 
   it("allows condition items nested inside a unit_loop", () => {
     const items: TopLevelItem[] = [unitLoop("loop", [inLoopCondition("gate", [questionVar("q1")])])];
     expect(validateDesignItems(items)).toEqual([]);
-    expect(() => DesignItemsSchema.parse(items)).not.toThrow();
+    expect(() => DesignItemsSchema.parse(inBlocks(items))).not.toThrow();
   });
 
   it("rejects duplicate names across the entire tree", () => {
     const items: TopLevelItem[] = [questionVar("dup_name"), unitLoop("loop", [questionVar("dup_name")])];
     const issues = validateDesignItems(items);
     expect(issues.some((i) => i.message.includes("Duplicate name 'dup_name'"))).toBe(true);
-    expect(() => DesignItemsSchema.parse(items)).toThrow();
+    expect(() => DesignItemsSchema.parse(inBlocks(items))).toThrow();
   });
 
   it("rejects a unit_loop with no children via schema", () => {
@@ -310,7 +313,7 @@ describe("validateDesignItems (more)", () => {
         children: [],
       },
     ];
-    expect(() => DesignItemsSchema.parse(items)).toThrow();
+    expect(() => DesignItemsSchema.parse(inBlocks(items))).toThrow();
   });
 
   it("rejects nested unit_loops via schema", () => {
@@ -329,7 +332,7 @@ describe("validateDesignItems (more)", () => {
         ],
       },
     ];
-    expect(() => DesignItemsSchema.parse(items)).toThrow();
+    expect(() => DesignItemsSchema.parse(inBlocks(items))).toThrow();
   });
 
   it("detects empty and invalid names via validateDesignItems", () => {
@@ -600,8 +603,33 @@ describe("reference validation", () => {
   });
 });
 
+describe("blocks", () => {
+  it("the top level holds questions blocks and unit loops; a loop only there, with an optional condition", () => {
+    const q = questionVar("q1");
+    const loop = unitLoop("loop", [questionVar("u1")]);
+    expect(validateItems([q, loop]).map((i) => i.message)).toEqual([
+      "At the top level, put questions in a questions block",
+    ]);
+    expect(validateItems([{ type: "questions", children: [q] }, loop])).toEqual([]);
+    // A label, a condition, both or neither
+    expect(validateItems([{ type: "questions", label: "Intro", children: [q] }])).toEqual([]);
+    expect(validateItems([{ type: "questions", children: [loop] }]).map((i) => i.message)).toEqual([
+      "A unit loop goes at the top level, not inside a questions block (give the loop a condition instead)",
+    ]);
+    // A loop's condition: on coder-level answers before it, never $unit
+    const block = { type: "questions", children: [q] };
+    expect(validateItems([block, { ...loop, condition: { script: "$var.q1.answered" } }])).toEqual([]);
+    expect(validateItems([block, { ...loop, condition: { script: "$unit.text == 'a'" } }]).length).toBeGreaterThan(0);
+    expect(inBlocks([q, loop, q])).toEqual([
+      { type: "questions", children: [q] },
+      loop,
+      { type: "questions", children: [q] },
+    ]);
+  });
+});
+
 describe("question types", () => {
-  const parse = (variable: object) => DesignItemsSchema.safeParse([questionVar("q", variable)]);
+  const parse = (variable: object) => DesignItemsSchema.safeParse(inBlocks([questionVar("q", variable)]));
   // What the editor shows (validateDesignItems), checked against the schema.
   const errorsOf = (variable: object) => {
     const messages = validateDesignItems([questionVar("q", variable)]).map((i) => i.message);
@@ -663,7 +691,7 @@ describe("end items", () => {
       ]),
     ];
     expect(validateDesignItems(items)).toEqual([]);
-    expect(() => DesignItemsSchema.parse(items)).not.toThrow();
+    expect(() => DesignItemsSchema.parse(inBlocks(items))).not.toThrow();
   });
 
   it("checks the redirect URL", () => {

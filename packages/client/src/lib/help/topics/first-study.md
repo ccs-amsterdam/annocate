@@ -31,7 +31,7 @@ On the **Studies** page, click **Create new study** and choose:
 - **From an example**: a ready study to look around in.
 
 The study opens on **Overview**. The tabs: **Design**, **Units**,
-**Deploy** (**Links**, **Coders**), **Results** and **Settings**;
+**Deploy**, **Links**, **Results** (with **Coders**) and **Settings**;
 **Preview** is at the top right.
 
 ## 2. Upload the units
@@ -60,7 +60,7 @@ form of what you select.
    article?_ with _Negative_, _Neutral_, _Positive_ (stored as 1, 2, 3).
 
 Questions asked once per coder, such as consent or background questions,
-go in a **Questions** block (**Add block** → **Questions**) before or
+go in a questions block (**Add block** → **Questions block**) before or
 after the loop.
 
 More: [The design editor](design-editor.md), [Questions](questions.md),

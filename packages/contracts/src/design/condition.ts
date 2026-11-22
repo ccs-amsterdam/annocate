@@ -2,7 +2,7 @@ import { z } from "zod";
 import { sameValue, type OptionValue } from "./options.js";
 import { HELPER_METHODS, type HelperMethod, type ReferenceScope } from "./references.js";
 
-// The condition notation of `show_if` items (docs/client.md "References
+// The condition notation of `questions block` items (docs/client.md "References
 // and conditions"): a script. A *simple*
 // condition uses only helper calls (`$var.topics.has("sports")`),
 // `$var.q.answered`, `&&`, `||`, `!` and parentheses; it is parsed and

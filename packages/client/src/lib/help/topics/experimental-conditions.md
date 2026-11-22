@@ -11,7 +11,7 @@ Everyone uses the same link; the draw decides the condition.
 
 ## Adding a condition
 
-1. In a **Questions** block: **+** → **Computed variable** → **Random
+1. In a questions block: **+** → **Computed variable** → **Random
    condition**.
 2. **Item Name**, e.g. `framing` (used as `$var.framing`).
 3. **Options**: the values, or **All values in the column** when linked to
@@ -24,8 +24,9 @@ does this), or later, after screening or to balance on earlier answers.
 
 ## Using a condition
 
-`$var.framing.is("experiment")` in a [Show if](conditions.md), a
-`::: if` in a layout, or an end item's return link.
+`$var.framing.is("experiment")` as the condition of a
+[questions block or unit loop](conditions.md), a `::: if` in a layout, or
+an end item's return link.
 
 ## Giving each condition its own units
 

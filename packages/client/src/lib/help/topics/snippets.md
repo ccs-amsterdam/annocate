@@ -45,7 +45,7 @@ editor reports those places.
 
 Anywhere in the loop's template (a line, inside a sentence, a fence line
 `::: if [[is_viral]]`, a script `{{ [[reactions]] * 2 }}`) and in the
-loop's question and instruction texts. Not outside loops, in Show if items
+loop's question and instruction texts. Not outside loops, in conditions
 or in end items.
 
 A snippet is text, not a value: it takes no suffix, may use other snippets

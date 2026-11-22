@@ -25,7 +25,7 @@ function loopReferences(loop: UnitLoopItem, spanFields?: (field: string) => void
     for (const raw of list) {
       const item = raw as Partial<DesignItem> | null;
       if (!item || typeof item !== "object") continue;
-      if (item.type === "show_if") {
+      if (item.type === "questions") {
         addScript(item.condition?.script);
         walk(item.children);
       } else if (item.type === "end") {
@@ -78,7 +78,7 @@ export function loopDependencies(items: readonly unknown[]): Map<string, string[
       for (const raw of list) {
         const item = raw as Partial<DesignItem> | null;
         if (!item || typeof item !== "object") continue;
-        if (item.type === "show_if") collect(item.children);
+        if (item.type === "questions") collect(item.children);
         else if ("name" in item && typeof item.name === "string") own.add(item.name);
       }
     };
@@ -170,7 +170,7 @@ function scriptCount(loop: UnitLoopItem, field: string): number {
     if (!Array.isArray(list)) return;
     for (const raw of list) {
       const item = raw as Partial<DesignItem> | null;
-      if (item?.type !== "show_if") continue;
+      if (item?.type !== "questions") continue;
       count(item.condition?.script);
       walk(item.children);
     }

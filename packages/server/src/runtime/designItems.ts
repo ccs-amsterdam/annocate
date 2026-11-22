@@ -87,7 +87,7 @@ export function collectCoderVariables(items: TopLevelItem[]): Map<string, Variab
 /** The variables of these items (also inside conditions, not inside unit loops), by name. */
 function collectQuestions(items: DesignItem[], into: Map<string, VariableType>) {
   for (const item of items) {
-    if (item.type === "show_if") collectQuestions(item.children as DesignItem[], into);
+    if (item.type === "questions") collectQuestions(item.children as DesignItem[], into);
     else if (item.type !== "unit_loop" && item.type !== "end" && item.type !== "session")
       into.set(item.name, item.variable);
   }

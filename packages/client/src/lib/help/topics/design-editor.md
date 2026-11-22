@@ -32,17 +32,26 @@ The tree is a list of **blocks**, in the order coders meet them:
 
 - a **Unit loop**: questions asked for every unit (see
   [Unit loops](unit-loops.md));
-- a **Questions** block: questions asked once, computed items (such as a
-  [random condition](random-condition.md)), Show if and end items.
+- a **Questions block**: questions asked once, computed items (such as a
+  [random condition](random-condition.md)), nested questions blocks and
+  end items (see [Questions blocks and conditions](conditions.md)).
 
-**Add block** above the tree adds one **At the end** or **At the start**.
+Either can have a condition, so only some coders get it. Questions always
+go in a block: a question can't stand on its own at the top level.
+
+**Add block** above the tree adds a **Questions block** or **Unit loop**
+**At the end** or **At the start**. A new questions block comes with its
+first question, selected so you can name it.
 
 ## The tree
 
+Top-level blocks and loops are cards. A questions block inside another
+block or a loop is an indented group with a coloured bar on the left.
+
 Each item shows an icon for its type (a question: its answer type). A loop
-shows its label and which units it hands out; a Show if item its
-condition in words (_if age < 18_) or its label. Questions are numbered as
-coders see them in the top bar.
+shows its label and which units it hands out. A questions block shows its
+label and/or its condition in words (_if age < 18_); without either it
+says **Questions**.
 
 The last row, **At the end**, is what coders see after the whole study,
 and where they go next (see [Ending a session](end-items.md)).
@@ -56,17 +65,18 @@ for an issue (hover to read it).
 2. Where there is more than one place (e.g. below the last item of a
    loop), choose **Where?**: **After tone**, **After News articles**, ...
    A line in the tree shows the place.
-3. Choose the type: **Question**, **Show if**, **End** or, in a Questions
-   block, **Computed variable**.
+3. Choose the type: in a questions block **Question**, **Computed
+   variable**, **Questions block** or **End**; in a loop **Question**,
+   **Questions block** or **End**.
 
-The new item goes below the row (for a loop or Show if: at the top inside
-it). New questions are `question_1`, ... and need an answer type; new end
-items start as **Screened out**. Loops can't be nested.
+The new item goes below the row (for a loop or questions block: at the top
+inside it). New questions are `question_1`, ... and need an answer type; new end
+items start as **Screened out**. Loops can't be nested or put in a questions block.
 
 ## Moving and deleting
 
-Tick the box in front of items (it appears on hover); a loop or Show if
-takes its contents along. Then:
+Tick the box in front of items (it appears on hover); a loop or questions
+block takes its contents along. Then:
 
 - **Delete**: after asking once.
 - **Move**: click the arrow on the row to move them below, or **Move to

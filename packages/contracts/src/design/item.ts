@@ -12,10 +12,15 @@ const ItemBaseSchema = z.object({
 });
 
 /**
- * Conditions have no name (nothing refers to them): the editor shows their
- * condition, or this label if the researcher gives one.
+ * Questions blocks have no name (nothing refers to them): an optional label,
+ * for the researcher (e.g. "Demographics"), shown in the editor.
  */
-const ConditionLabelSchema = z.string().optional().describe("Shown in the editor instead of the condition");
+const BlockLabelSchema = z.string().optional().describe("Shown in the editor, e.g. Demographics");
+
+/** A block's or loop's condition: absent, always shown. */
+const BlockConditionSchema = ConditionSchema.optional().describe(
+  "Shown only if this holds: a script over earlier answers ($var), and in a loop $unit",
+);
 
 /**
  * A question item appearing at the top level of a design.
@@ -150,40 +155,44 @@ export type QuestionItem = z.infer<typeof QuestionItemSchema>;
  * Items that can appear inside a unit_loop:
  * - Question items (can include span, relation, categorical, etc.)
  * - End items
- * - Condition items (whose children can only be in-loop items)
+ * - Questions blocks (whose children can only be in-loop items)
  */
 export type InLoopItem =
   | InLoopQuestionItem
   | EndItem
   | {
-      type: "show_if";
+      type: "questions";
       label?: string;
-      condition: Condition;
+      condition?: Condition;
       children: InLoopItem[];
     };
 
-export const InLoopConditionItemSchema: z.ZodType<Extract<InLoopItem, { type: "show_if" }>> = z.lazy(() =>
+export const InLoopQuestionsItemSchema: z.ZodType<Extract<InLoopItem, { type: "questions" }>> = z.lazy(() =>
   z.object({
-    type: z.literal("show_if"),
-    label: ConditionLabelSchema,
-    condition: ConditionSchema.describe("A script over earlier answers ($var), and in a loop $unit"),
-    children: z.array(InLoopItemSchema).min(1, "Condition must have at least one child item"),
+    type: z.literal("questions"),
+    label: BlockLabelSchema,
+    condition: BlockConditionSchema,
+    children: z.array(InLoopItemSchema).min(1, "A questions block must have at least one item"),
   }),
 );
 
 export const InLoopItemSchema: z.ZodType<InLoopItem> = z.lazy(() =>
-  z.union([InLoopQuestionItemSchema, EndItemSchema, InLoopConditionItemSchema]),
+  z.union([InLoopQuestionItemSchema, EndItemSchema, InLoopQuestionsItemSchema]),
 );
 
 /**
  * A `for unit in ...` loop. Which of the coder's units it includes is
  * described by `units` (unitLoop.ts) and `order`. Children can only be
- * in-loop items (questions, end items, in-loop conditions): no nested loops.
+ * in-loop items (questions, end items, questions blocks): no nested loops.
+ * With a `condition`, coders only get the loop if it holds.
  */
 export const UnitLoopItemSchema = z.object({
   type: z.literal("unit_loop"),
   /** Shown in the editor and in exports; the loop has no name (it is identified by its position, see `unitLoops`). */
   label: z.string().optional().describe("Shown in the editor and in exports"),
+  condition: ConditionSchema.optional().describe(
+    "Coders get the loop only if this holds: a script over earlier answers ($var)",
+  ),
   ...UnitLoopDistributionShape,
   layout: UnitLayoutSchema,
   children: z.array(InLoopItemSchema).min(1, "A unit_loop must have at least one child item"),
@@ -191,12 +200,10 @@ export const UnitLoopItemSchema = z.object({
 export type UnitLoopItem = z.infer<typeof UnitLoopItemSchema>;
 
 /**
- * Items that can appear at the top level:
- * - Question items (coder-level)
- * - Unit loops
- * - Computed items and end items
- * - Top-level condition items (whose children can be any top-level items)
- * - The Study entry (at most one, first: `session.ts`)
+ * Items outside unit loops. The design's top level holds only questions
+ * blocks and unit loops (and the Study entry, first: `session.ts`); a
+ * questions block holds questions, computed items, end items and nested
+ * questions blocks (validation.ts checks where each may be).
  */
 export type TopLevelItem =
   | TopLevelQuestionItem
@@ -205,18 +212,18 @@ export type TopLevelItem =
   | EndItem
   | SessionItem
   | {
-      type: "show_if";
+      type: "questions";
       label?: string;
-      condition: Condition;
+      condition?: Condition;
       children: TopLevelItem[];
     };
 
-export const TopLevelConditionItemSchema: z.ZodType<Extract<TopLevelItem, { type: "show_if" }>> = z.lazy(() =>
+export const TopLevelQuestionsItemSchema: z.ZodType<Extract<TopLevelItem, { type: "questions" }>> = z.lazy(() =>
   z.object({
-    type: z.literal("show_if"),
-    label: ConditionLabelSchema,
-    condition: ConditionSchema.describe("A script over earlier answers ($var), and in a loop $unit"),
-    children: z.array(TopLevelItemSchema).min(1, "Condition must have at least one child item"),
+    type: z.literal("questions"),
+    label: BlockLabelSchema,
+    condition: BlockConditionSchema,
+    children: z.array(TopLevelItemSchema).min(1, "A questions block must have at least one item"),
   }),
 );
 
@@ -227,23 +234,21 @@ export const TopLevelItemSchema: z.ZodType<TopLevelItem> = z.lazy(() =>
     UnitLoopItemSchema,
     EndItemSchema,
     SessionItemSchema,
-    TopLevelConditionItemSchema,
+    TopLevelQuestionsItemSchema,
   ]),
 );
 
-/**
- * Any condition item (top level or inside loop).
- */
-export type ConditionItem = Extract<TopLevelItem | InLoopItem, { type: "show_if" }>;
+/** Any questions block (outside or inside a loop). */
+export type QuestionsItem = Extract<TopLevelItem | InLoopItem, { type: "questions" }>;
 
 /**
  * Any design item anywhere in the tree.
  */
 export type DesignItem = TopLevelItem | InLoopItem;
 
-/** An item's name; conditions, unit loops and the Study entry have none. */
+/** An item's name; questions blocks, unit loops and the Study entry have none. */
 export function itemName(item: DesignItem): string | undefined {
-  return item.type === "show_if" || item.type === "unit_loop" || item.type === "session" ? undefined : item.name;
+  return item.type === "questions" || item.type === "unit_loop" || item.type === "session" ? undefined : item.name;
 }
 
 /**
@@ -260,11 +265,36 @@ export function unitLoops(items: readonly unknown[]): { key: string; loop: UnitL
       const item = raw as Partial<DesignItem> | null;
       if (!item || typeof item !== "object") continue;
       if (item.type === "unit_loop") loops.push({ key: String(loops.length + 1), loop: item as UnitLoopItem });
-      else if (item.type === "show_if") walk(item.children);
+      else if (item.type === "questions") walk(item.children);
     }
   };
   walk(items);
   return loops;
+}
+
+/**
+ * Items with the loose ones at the top level (questions, computed and end
+ * items) put in questions blocks: each run of them in one block. Session
+ * items, questions blocks and unit loops stay as they are. For designs
+ * written as a flat list (the setup wizard).
+ */
+export function inBlocks<T>(items: readonly T[]): T[] {
+  const out: T[] = [];
+  let run: T[] | null = null;
+  for (const item of items) {
+    const type = (item as { type?: unknown } | null)?.type;
+    if (type === "session" || type === "questions" || type === "unit_loop") {
+      run = null;
+      out.push(item);
+    } else {
+      if (!run) {
+        run = [];
+        out.push({ type: "questions", children: run } as T);
+      }
+      run.push(item);
+    }
+  }
+  return out;
 }
 
 /** How a loop is called in the editor, progress and exports: its label, or "Unit loop <key>". */

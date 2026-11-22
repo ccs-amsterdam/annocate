@@ -172,16 +172,17 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
   }
 
   function createItem(type: ItemType) {
-    // A new Questions block (the tree's grouping): its first question
-    const itemType = type === "questions" ? "question" : type;
-    const name = getUniqueItemName(items, itemType);
-    return { ...defaultItemForType(itemType, name), _key: generateKey() };
+    const name = getUniqueItemName(items, type);
+    return { ...defaultItemForType(type, name), _key: generateKey() };
   }
 
   function insertAt(position: TreePosition, type: ItemType) {
     const item = createItem(type);
-    setItems(ensureKeys(insertAtPosition(items, position, item)));
-    setSelected(item._key);
+    // A new questions block comes with its first question, selected to name it (the block's row sets its label)
+    const first = type === "questions" ? createItem("question") : null;
+    const added = first ? { ...item, children: [first] } : item;
+    setItems(ensureKeys(insertAtPosition(items, position, added as DesignItem)));
+    setSelected(first ? first._key : item._key);
   }
 
   /** Items (and what is inside them) deleted, after asking. */

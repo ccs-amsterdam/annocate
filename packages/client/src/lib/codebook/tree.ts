@@ -7,14 +7,14 @@ import {
   type InLoopItem,
   type UnitData,
   type UnitLoopItem,
-  type ConditionItem,
+  type QuestionsItem,
   type VariableValue,
 } from "@annotinder/contracts";
 import { evaluateCondition } from "./conditions";
 import type { ExpressionCache } from "./expressionCache";
 
 // Helpers over the tree of design items (items with `children`: unit
-// loops and show_if), shared by the coding runtime and the editor.
+// loops and questions blocks), shared by the coding runtime and the editor.
 
 /** Flattens all items in the tree into a single array in document order. */
 export function flattenTree(items: (TopLevelItem | InLoopItem)[]): DesignItem[] {
@@ -49,11 +49,11 @@ export function findItem(items: (TopLevelItem | InLoopItem)[], identifier: strin
 export function findParent(
   items: (TopLevelItem | InLoopItem)[],
   identifier: string,
-): (UnitLoopItem | ConditionItem) | null {
+): (UnitLoopItem | QuestionsItem) | null {
   for (const item of items) {
     if ("children" in item && Array.isArray(item.children)) {
       if (item.children.some((child) => keyOf(child) === identifier || itemName(child) === identifier)) {
-        return item as UnitLoopItem | ConditionItem;
+        return item as UnitLoopItem | QuestionsItem;
       }
       const found = findParent(item.children, identifier);
       if (found) return found;
@@ -178,13 +178,15 @@ async function walkSteps(
   steps: DesignItem[],
 ): Promise<boolean> {
   for (const node of nodes) {
-    if (node.type === "show_if") {
+    if (node.type === "questions") {
       const scope = buildScope(ctx.questions, visible, unit?.data, ctx.session);
-      if (await evaluateCondition(node.condition, scope, ctx.cache, `condition:${node.condition.script}`)) {
+      if (await evaluateCondition(node.condition, scope, ctx.cache, `condition:${node.condition?.script}`)) {
         if (await walkSteps(node.children, answers, visible, ctx, unit, steps)) return true;
       }
     } else if (node.type === "unit_loop") {
-      steps.push(node);
+      // A loop with a condition: only if it holds (on coder-level answers)
+      const scope = buildScope(ctx.questions, visible, undefined, ctx.session);
+      if (await evaluateCondition(node.condition, scope, ctx.cache, `loop:${node.condition?.script}`)) steps.push(node);
     } else if (node.type === "end") {
       steps.push(node);
       return true;

@@ -29,15 +29,17 @@ New here? Follow [Your first study](first-study.md).
 A design is a list of **blocks**:
 
 - **Questions blocks**: questions asked once per coder (consent,
-  background questions, instructions).
+  background questions, instructions), optionally with a label such as
+  _Demographics_.
 - **Unit loops**: questions asked for every unit a coder gets. The loop
   also says how a unit is shown and which units a coder gets. See
   [Unit loops](unit-loops.md).
 
 Inside a block you add **questions** (see
-[Question types](question-types.md)), **Show if** conditions (see
-[Conditions](conditions.md)) and **end items** (see
-[Ending a session](end-items.md)). Above the blocks, **Coder unit assignments**
+[Question types](question-types.md)), nested **questions blocks** with a
+condition (see [Questions blocks and conditions](conditions.md)) and
+**end items** (see [Ending a session](end-items.md)). A top-level block or
+loop can have a condition too. Above the blocks, **Coder unit assignments**
 say who codes and how they get in, **URL parameters** what a link carries,
 and **Display** how the screen looks.
 

@@ -67,7 +67,7 @@ visible to you: say so in your consent text.
   conditions. Other fields are never sent.
 - **Only their own units**, a few at a time.
 
-Show if conditions run in the browser, so a skilled coder could read
+Conditions run in the browser, so a skilled coder could read
 another group's texts. Which units a coder gets is decided on the server.
 
 > If some coders must never see some material, use a separate study.

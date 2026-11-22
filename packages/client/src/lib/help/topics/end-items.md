@@ -14,15 +14,17 @@ item** ends the session earlier, for coders who:
 - must be sent back to an online panel (see
   [Online panels and crowd coding](online-panels.md)).
 
-Put it inside a [Show if](conditions.md), so only some coders reach it:
+Put it inside a [questions block with a condition](conditions.md), so only
+some coders reach it:
 
 ```text
-Consent                   categories: yes, no
-Show if: consent is "no"
-  └ End: no_consent       screened out
-Age                       number
-Show if: age < 18
-  └ End: too_young        screened out
+About you
+  Consent                 categories: yes, no
+  if consent is "no"
+    └ End: no_consent     screened out
+  Age                     number
+  if age < 18
+    └ End: too_young      screened out
 Unit loop                 20 news articles
 At the end                "Thank you!", back to the panel
 ```
@@ -74,12 +76,12 @@ https://panel.example/return?status=complete&id=$session.coder&group=$var.group.
 
 ## Typical uses
 
-- **Consent refused**: _"Do you agree to take part?"_, then Show if
-  _consent is "no"_ with a screened-out end item.
-- **Not eligible**: screening questions first, then a Show if (**Any rule
-  may hold**) around a screened-out end item.
-- **Failed attention check**: _"Choose 'Somewhat disagree'"_, then Show
-  if _check is not "somewhat_disagree"_. In a loop, the unit's answers are
+- **Consent refused**: _"Do you agree to take part?"_, then a questions
+  block if _consent is "no"_ with a screened-out end item.
+- **Not eligible**: screening questions first, then a questions block
+  with a condition (**Any rule may hold**) around a screened-out end item.
+- **Failed attention check**: _"Choose 'Somewhat disagree'"_, then a
+  questions block if _check is not "somewhat_disagree"_. In a loop, the unit's answers are
   saved first.
 - **Back to the panel**: **At the end** sends coders to the completion
   link; end items in screening conditions to the screenout link.

@@ -21,7 +21,7 @@ const selectClass = "h-7 rounded-md border border-input bg-background px-1.5 tex
 
 /** A loop's questions in order (through conditions). */
 function loopQuestionNames(loop: UnitLoopItem): string[] {
-  return flattenTree(loop.children).flatMap((i) => (i.type !== "show_if" && "name" in i ? [i.name] : []));
+  return flattenTree(loop.children).flatMap((i) => (i.type !== "questions" && "name" in i ? [i.name] : []));
 }
 
 /** The questions a template refers to, in its values and in its blocks' conditions. */

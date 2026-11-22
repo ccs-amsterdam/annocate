@@ -15,7 +15,6 @@ import { findItem, findParent, loopUnitsSummary } from "../../../codebook/tree";
 
 /** How an item is called in menus: its title, a condition by its condition, a loop by its position. */
 function rowTitle(item: TreeNode): string {
-  if (item.type === "show_if" && !item.label?.trim()) return `if ${describeCondition(item.condition)}`;
   if (item.type === "unit_loop") return treeLoopTitle(item);
   return itemTitle(item) || "(unnamed)";
 }
@@ -120,7 +119,6 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
       >
         <ItemLabel
           item={item}
-          number={tree.numberOf(key)}
           selected={tree.selected === key}
           issue={tree.getIssue(item)}
           changed={tree.isChanged(item)}
@@ -155,45 +153,43 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
 
 function ItemLabel({
   item,
-  number,
   selected = false,
   issue,
   changed = false,
 }: {
   item: TreeNode;
-  /** A question's number, as coders see it. */
-  number: number | null;
   selected?: boolean;
   issue: string | null;
   changed?: boolean;
 }) {
+  // A block's or loop's condition, next to its label (e.g. "Social media use · if use_social is true")
+  const condition = item.type === "questions" || item.type === "unit_loop" ? item.condition : undefined;
   return (
     <>
-      {/* Every row has the number's place, so the icons line up; a loop heads its card, flush left */}
-      {item.type !== "unit_loop" && (
-        <span
-          className="w-4 shrink-0 text-right font-mono text-[11px] text-muted-foreground"
-          title={number === null ? undefined : `Question ${number}, as coders see it`}
-        >
-          {number}
-        </span>
-      )}
       <ItemIcon item={item} />
-      {item.type === "show_if" ? (
-        // Conditions have no name: shown by their condition, unless they have a label.
-        <span
-          className={cn(
-            "truncate px-1.5 py-0.5 font-mono font-medium text-foreground/50",
-            parseSimpleCondition(item.condition.script) ? "text-sm" : "font-mono text-xs",
-          )}
-        >
-          {itemTitle(item)}
-        </span>
+      {item.type === "questions" ? (
+        // Blocks have no name: their label, else "Questions" when there's no condition either
+        (item.label?.trim() || !condition) && (
+          <span className={cn("truncate px-1.5 py-0.5", selected ? "font-semibold" : "font-medium")}>
+            {item.label?.trim() || "Questions"}
+          </span>
+        )
       ) : (
         <span className={cn("truncate px-1.5 py-0.5", selected ? "font-semibold" : "font-medium")}>
           {item.type === "unit_loop"
             ? treeLoopTitle(item)
             : itemTitle(item) || <em className="font-normal text-muted-foreground">(unnamed)</em>}
+        </span>
+      )}
+      {condition && (
+        <span
+          className={cn(
+            "truncate px-1 text-muted-foreground",
+            parseSimpleCondition(condition.script) ? "text-xs" : "font-mono text-[11px]",
+          )}
+          title={condition.script}
+        >
+          if {describeCondition(condition)}
         </span>
       )}
       {item.type === "unit_loop" && (

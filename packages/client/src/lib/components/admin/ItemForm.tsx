@@ -97,19 +97,17 @@ export function ItemForm({
           client={client}
           onChange={onChange}
         />
-      ) : item.type === "show_if" || item.type === "unit_loop" ? (
-        // Conditions and unit loops have no name: an optional label shows in the tree (and for loops in exports).
+      ) : item.type === "questions" || item.type === "unit_loop" ? (
+        // Blocks and unit loops have no name: an optional label shows in the tree (and for loops in exports).
         <div className="flex flex-col gap-1.5">
           <span className="flex items-center gap-1.5">
             <label className="text-xs font-semibold text-foreground">Label (optional)</label>
-            <HelpButton topic={item.type === "show_if" ? "conditions" : "unit-loops"} label="Help" />
+            <HelpButton topic={item.type === "questions" ? "conditions" : "unit-loops"} label="Help" />
           </span>
           <Input
             value={item.label ?? ""}
             onChange={(e) => onChange({ ...item, label: e.target.value || undefined })}
-            placeholder={
-              item.type === "show_if" ? "Shown in the tree instead of the condition, e.g. Too young" : "e.g. News items"
-            }
+            placeholder={item.type === "questions" ? "e.g. Demographics" : "e.g. News items"}
           />
         </div>
       ) : (
@@ -220,19 +218,31 @@ export function ItemForm({
 
       {item.type === "end" && <EndItemFields item={item as EndItem} onChange={onChange} issues={validationIssues} />}
 
-      {item.type === "show_if" && (
+      {(item.type === "questions" || item.type === "unit_loop") && (
+        // A block's or loop's condition: optional (absent: always shown)
         <div className="flex flex-col gap-1.5 border-t border-border/60 pt-4">
-          <span className="flex items-center gap-1.5">
-            <label className="text-xs font-semibold text-foreground">Show the items in this condition if</label>
+          <label className="flex items-center gap-2 text-xs font-semibold text-foreground">
+            <input
+              type="checkbox"
+              checked={item.condition !== undefined}
+              onChange={(e) => {
+                const next = { ...item, condition: e.target.checked ? { script: "true" } : undefined } as DesignItem;
+                if (!e.target.checked) delete (next as { condition?: Condition }).condition;
+                onChange(next);
+              }}
+            />
+            {item.type === "questions" ? "Only show these questions if…" : "Only give coders this loop if…"}
             <HelpButton topic="conditions" label="Help: conditions" />
-          </span>
-          <ConditionEditor
-            condition={(item as { condition: Condition }).condition ?? { script: "true" }}
-            onChange={(condition) => onChange({ ...item, condition } as DesignItem)}
-            questions={availableQuestions}
-            loop={inLoop}
-            issues={issuesAt(validationIssues, "condition")}
-          />
+          </label>
+          {item.condition && (
+            <ConditionEditor
+              condition={item.condition}
+              onChange={(condition) => onChange({ ...item, condition } as DesignItem)}
+              questions={availableQuestions}
+              loop={inLoop}
+              issues={issuesAt(validationIssues, "condition")}
+            />
+          )}
         </div>
       )}
     </div>

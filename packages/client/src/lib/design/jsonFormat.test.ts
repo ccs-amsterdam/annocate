@@ -31,11 +31,11 @@ describe("formatJson", () => {
   });
 
   it("puts keys in reading order, children last", () => {
-    const stored = { children: [], label: "c", type: "show_if", condition: { script: "true" } };
+    const stored = { children: [], label: "c", type: "questions", condition: { script: "true" } };
     expect(formatJson(stored)).toBe(
       [
         "{",
-        '  "type": "show_if",',
+        '  "type": "questions",',
         '  "label": "c",',
         '  "condition": { "script": "true" },',
         '  "children": []',

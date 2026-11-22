@@ -136,7 +136,7 @@ export async function loopVariables(db: Db, studyId: number, designVersionId: nu
   if (!parsed?.success) return loops;
   const questions = (items: DesignItem[]): string[] =>
     items.flatMap((i) =>
-      i.type === "show_if" ? questions(i.children as DesignItem[]) : "variable" in i ? [i.name] : [],
+      i.type === "questions" ? questions(i.children as DesignItem[]) : "variable" in i ? [i.name] : [],
     );
   for (const { key, loop } of unitLoops(parsed.data)) {
     const title = loopTitle(loop, key);

@@ -90,7 +90,8 @@ See [URL parameters](session-parameters.md).
 | ------------------------------- | --------- | ------ | ---------- | ------- |
 | A loop's layout                 | yes       | yes    | yes        | yes     |
 | Question and instruction texts  | in a loop | yes    | yes        | yes     |
-| Conditions (Show if, `::: if`)  | in a loop | yes    | yes        | yes     |
+| Conditions (blocks, `::: if`)   | in a loop | yes    | yes        | yes     |
+| A unit loop's condition         | no        | yes    | yes        | yes     |
 | End item messages               | in a loop | yes    | yes        | yes     |
 | End item redirect links         | no        | yes    | yes        | no      |
 

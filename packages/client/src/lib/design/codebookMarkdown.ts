@@ -76,7 +76,7 @@ function items(list: DesignItem[], depth: number, keys: LoopKeys): string[] {
   const out: string[] = [];
   for (const item of list) {
     if (item.type === "session") continue;
-    if (item.type === "show_if") {
+    if (item.type === "questions") {
       const label = item.label ? `${item.label}: ` : "";
       out.push(
         `*Only if ${label}\`${item.condition?.script ?? ""}\`*`,

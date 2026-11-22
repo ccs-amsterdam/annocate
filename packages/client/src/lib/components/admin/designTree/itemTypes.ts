@@ -2,7 +2,6 @@ import {
   CircleDashed,
   ArrowLeftRight,
   CircleCheck,
-  GitBranch,
   Grid3x3,
   Hash,
   Highlighter,
@@ -32,8 +31,8 @@ interface ItemTypeInfo {
 
 export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
   questions: {
-    label: "Questions",
-    description: "A block of questions for coders (before, between or after unit loops)",
+    label: "Questions block",
+    description: "Questions together, optionally with a label (e.g. Demographics) and a condition",
     icon: ListChecks,
     color: "text-secondary-dark",
     blockClass: "",
@@ -56,13 +55,6 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     icon: FileStack,
     color: "text-primary-dark",
     blockClass: "[--iconcolor:var(--color-primary-dark)]",
-  },
-  show_if: {
-    label: "Show if",
-    description: "Show items only if rules or a script hold",
-    icon: GitBranch,
-    color: "text-secondary-dark",
-    blockClass: "",
   },
   session: {
     label: "Session",

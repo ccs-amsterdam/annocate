@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TopLevelItem } from "@annotinder/contracts";
-import { insertableTypesAt, topBlocks } from "./utils";
+import { insertableTypesAt } from "./utils";
 
 const session = { type: "session", _key: "S" };
 const question = (key: string) => ({
@@ -9,6 +9,7 @@ const question = (key: string) => ({
   name: key,
   variable: { type: "confirm", question: "?" },
 });
+const block = (key: string, ...children: object[]) => ({ type: "questions", _key: key, children });
 const loop = (key: string) => ({
   type: "unit_loop",
   _key: key,
@@ -18,22 +19,14 @@ const loop = (key: string) => ({
 const items = (...list: object[]) => list as unknown as TopLevelItem[];
 
 describe("the tree's blocks", () => {
-  const design = items(session, question("a"), question("b"), loop("L1"), loop("L2"), question("c"));
-
-  it("groups the items between unit loops in Questions blocks", () => {
-    expect(
-      topBlocks(design).map((b) =>
-        b.kind === "loop"
-          ? (b.item as unknown as { _key: string })._key
-          : b.items.map((i) => (i as unknown as { _key: string })._key),
-      ),
-    ).toEqual([["a", "b"], "L1", "L2", ["c"]]);
-  });
+  const design = items(session, block("B1", question("a"), question("b")), loop("L1"), block("B2", question("c")));
 
   it("offers blocks between blocks, and items in them", () => {
     expect(insertableTypesAt(design, { into: null })).toEqual(["questions", "unit_loop"]);
     expect(insertableTypesAt(design, { after: "L1" })).toEqual(["questions", "unit_loop"]);
-    expect(insertableTypesAt(design, { after: "a" })).toEqual(["question", "computed", "show_if", "end"]);
-    expect(insertableTypesAt(design, { into: "L1" })).toEqual(["question", "show_if", "end"]);
+    expect(insertableTypesAt(design, { before: "B1" })).toEqual(["questions", "unit_loop"]);
+    expect(insertableTypesAt(design, { after: "a" })).toEqual(["question", "computed", "questions", "end"]);
+    expect(insertableTypesAt(design, { into: "B2" })).toEqual(["question", "computed", "questions", "end"]);
+    expect(insertableTypesAt(design, { into: "L1" })).toEqual(["question", "questions", "end"]);
   });
 });

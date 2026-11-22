@@ -9,7 +9,7 @@ import type {
   UnitData,
   VariableValue,
 } from "@annotinder/contracts";
-import { RELEASE, splitDesignItems } from "@annotinder/contracts";
+import { RELEASE, inBlocks, splitDesignItems } from "@annotinder/contracts";
 import type { Db } from "../db/index.js";
 import { and, eq, isNull } from "drizzle-orm";
 import { annotationValues, links as linksTable, units } from "../db/schema/index.js";
@@ -378,11 +378,14 @@ const crowd = (divide?: object, extra: object = {}) =>
   sessionItem({ invite: { mode: "crowd", ...extra }, ...(divide ? { [DIVIDE]: divide } : {}) });
 const DIVIDE = "__divide";
 
-/** The items with a crowd's `divide` (`crowd`) in every unit loop without its own. */
+/**
+ * The items with a crowd's `divide` (`crowd`) in every unit loop without its
+ * own, and loose top-level items in questions blocks (contracts `inBlocks`).
+ */
 function withDivide(items: object[]): object[] {
   const session = items.find((i) => (i as { type?: string }).type === "session") as Record<string, unknown> | undefined;
   const divide = session?.[DIVIDE];
-  return items.map((raw) => {
+  return inBlocks(items).map((raw) => {
     const it = raw as { type?: string; units?: Record<string, unknown> } & Record<string, unknown>;
     if (it.type === "session") {
       const { [DIVIDE]: _divide, ...rest } = it;
@@ -2289,8 +2292,12 @@ describe("deployment settings", () => {
     expect(((await put.json()) as { redirectUrls: unknown }).redirectUrls).toEqual({
       panel_done: "https://panel.example/done?id=$session.coder",
     });
-    const items = (await coder("first").session()).codebook.items as { type: string; redirectUrl?: string }[];
-    expect(items.find((i) => i.type === "end")?.redirectUrl).toBe("https://panel.example/done?id=$session.coder");
+    type Item = { type: string; redirectUrl?: string; children?: Item[] };
+    const items = (await coder("first").session()).codebook.items as Item[];
+    const served = items
+      .flatMap((i) => (i.type === "questions" ? (i.children ?? []) : [i]))
+      .find((i) => i.type === "end");
+    expect(served?.redirectUrl).toBe("https://panel.example/done?id=$session.coder");
     // maxUses 1: the demo link took "first"; a second new coder is refused
     const second = await send("second", "/session", {}, { "x-link-secret": "demo-secret" });
     expect(second.status).toBe(403);

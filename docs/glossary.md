@@ -8,10 +8,10 @@ identifier in code differs, §2 says what it means.
 | Term | Meaning | Not |
 | --- | --- | --- |
 | **Study** | What a researcher runs in AnnoTinder: its design, units, deployments, links and results. Coders take part in it. | job, project |
-| **Design** | Everything someone repeating the study needs: the **unit fields**, the **session** (the coder unit assignment, URL parameters, the normal end) and the **items** (questions, computed variables, unit loops, Show if items, end items). Versioned. | "codebook" for the whole |
+| **Design** | Everything someone repeating the study needs: the **unit fields**, the **session** (the coder unit assignment, URL parameters, the normal end) and the **items** (questions blocks and unit loops at the top level; inside them questions, computed variables, nested questions blocks, end items). Versioned. | "codebook" for the whole |
 | **Design version** (v1, v2, ...) | A saved state of the design. The latest one is the **draft** until it is deployed; deployed versions are frozen. | "codebook version" |
-| **Codebook** | The part of the design coders see: questions with their instructions and options, layouts, Show if conditions, end messages. What the coding client gets (the *coder codebook*) and what **Export** writes (`codebook.md`), e.g. for a paper. The **Design** tab edits the design's items and session. | the whole design; a version |
-| **Item** | An entry of the design: a question, computed variable, unit loop, Show if item, end item, or the session (the Study entry: the first item, edited above the editor's tree). | |
+| **Codebook** | The part of the design coders see: questions with their instructions and options, layouts, conditions, end messages. What the coding client gets (the *coder codebook*) and what **Export** writes (`codebook.md`), e.g. for a paper. The **Design** tab edits the design's items and session. | the whole design; a version |
+| **Item** | An entry of the design: a questions block, unit loop, question, computed variable, end item, or the session (the Study entry: the first item, edited above the editor's tree). | |
 | **Question** | An item coders answer; its **answer type** (`variable` in the JSON, e.g. `nominal`) says how. Its answers are a column in the results. | "variable" in UI text |
 | **Unit** | A thing coders code, with **unit fields** (declared in the design). | document, item |
 | **Unit version** | A unit's content as deployed; answers point to the version their coder saw. Draft edits make no versions. | |
@@ -19,13 +19,12 @@ identifier in code differs, §2 says what it means.
 | **Set** | One value of a set column: the units whose cell holds it, in order. `_overlap`, `_practice`, `_gold` are special sets, for every coder, but only in the coder unit assignment's column (elsewhere ordinary values). | "unitset" |
 | **Coder unit assignment** | The design's `session.invite`: who codes and how they get in. **Specific coders** (`mode: "coders"`): a set column whose values are coders, each with their own units (`$session.coder`); a link per coder, one link where coders pick their name, or one link where coders sign in with the column's email addresses. **Crowd** (`mode: "crowd"`, the default): one link for anyone, optionally with a coder id from the URL (`coderParam`), required sign-in, a set column for the special units (`column`; with other sets, a link per set: `$session.group`) and a maximum of coders per link (`maxCoders`, per set `groupMaxCoders`). Its special units (overlap, practice, gold) are those of its column. Whether a crowd divides the units is each loop's (`units.divide`). In the editor: **Coder unit assignments**. | "invite" for a link |
 | **URL parameter** | A value a link carries in its URL, declared in `session.urlParams`; `$session.<name>`. Required unless it has a default. In the editor: **URL parameters**. | "session parameter", "link parameter" |
-| **Questions block** | In the editor's tree, the items between unit loops (or before or after them), shown as one block. Only a view: the design stays one list. | an item |
+| **Questions block** | An item (`type: "questions"`) holding questions, computed and end items and other questions blocks, with an optional `label` (e.g. "Demographics") and `condition` (absent: always shown; else its children only show when it holds). The top level holds only questions blocks and unit loops; nested blocks make questions conditional. | "Show if" |
 | **Computed variable** | An item (`type: "computed"`) whose value the server computes when the coder reaches it, never asked. The one type is a random condition (`variable.type: "random"`, drawn random or balanced). `$var.<name>`. In the editor: **Random condition**. | "random condition", "auto question" |
 | **Linked to units** | A random condition whose value also selects units: those with its value in a set column. | |
 | **Share** | The units a session gets: those whose cells hold its coder (or crowd link's set) and linked random conditions' values in each column (plus `_overlap`). A loop works within it: a subset (`units.subset`), the coding units or not (`units.coding`), or the previous loop's units (`units.sameAsPrevious`). | |
 | **Shared queue** | A crowd's loop with `units.divide`: its units are handed out among the coders (of one link) until each is done. In the editor: **Divide units among coders**. | |
 | **Placement** | Where a loop puts the overlap, practice or gold units among the coding units: spread (the default), before, after, or left out (`ignore`). In the editor: **Spread throughout**, **Before coding units**, **After coding units**, **Leave out**. | |
-| **Show if** | An item (`show_if`) whose children only show when its condition holds. | "condition" for the item |
 | **Sign-in** | Coders logging in, to keep their session across devices. Always possible; required only where the coder unit assignment says so (specific coders who sign in, or a crowd with `login`), and only there do researchers see coders' emails. | a study setting |
 | **Draft** | Anything not deployed yet: the latest design version if it isn't deployed, and units and sets as edited. | |
 | **Deploy** | Make drafts live: a design version, and/or the draft units and sets. One dialog, one verb. | "publish" |
@@ -50,5 +49,5 @@ Code says what the app says. Where it doesn't:
 | client `codebook/` | the coding client's runtime (templates, conditions, expressions, the item tree) |
 | `putDeployment` (`PUT /deployment`) | **deploy** |
 | `variable` (a question's answer type; `VariableValue`) | a question's **answer type**; an **answer** |
-| `condition.ts`, `ConditionEditor`, `conditionRules` | a Show if item's (or `::: if` block's) **condition**: a script, or simple rules |
+| `condition.ts`, `ConditionEditor`, `conditionRules` | a questions block's or unit loop's (or `::: if` block's) **condition**: a script, or simple rules |
 | set groups (`unit_sets`, the sets endpoints' `group`) | **set columns** |

@@ -35,8 +35,6 @@ export interface DesignTreeState {
   setPreview: (positions: TreePosition[]) => void;
 
   getIssue: (item: DesignItem) => string | null;
-  /** A question's number, as coders see it: among the study's questions, or in a unit loop among the loop's. */
-  numberOf: (key: string) => number | null;
   /** Whether the item has unsaved changes. */
   isChanged: (item: DesignItem) => boolean;
 }

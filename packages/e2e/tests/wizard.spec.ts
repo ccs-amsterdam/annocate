@@ -70,13 +70,18 @@ test("annotation with questions and an experiment: a set of units per condition,
     variable?: { type: string; question?: string };
     children?: { name: string; variable: { type: string; question?: string } }[];
   }[];
-  expect(items.map((i) => i.name ?? i.type)).toEqual(["condition", "age", "unit_loop", "comments"]);
+  // Questions blocks before and after the loop
+  expect(items.map((i) => (i.type === "questions" ? i.children!.map((c) => c.name) : i.type))).toEqual([
+    ["condition", "age"],
+    "unit_loop",
+    ["comments"],
+  ]);
   // The experimental groups: a computed item (a random condition) linked to the condition's set column
-  expect(items[0]).toMatchObject({
+  expect(items[0].children![0]).toMatchObject({
     type: "computed",
     variable: { type: "random", draw: "balanced", units: "condition" },
   });
-  expect(items[2].children!.map((c) => [c.name, c.variable])).toEqual([
+  expect(items[1].children!.map((c) => [c.name, c.variable])).toEqual([
     ["how_credible_is_it", { type: "unspecified", question: "How credible is it?" }],
     ["topic", { type: "unspecified" }],
   ]);

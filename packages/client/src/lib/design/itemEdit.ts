@@ -4,7 +4,7 @@ import {
   type TopLevelItem,
   type InLoopItem,
   type UnitLoopItem,
-  type ConditionItem,
+  type QuestionsItem,
 } from "@annotinder/contracts";
 import { findItem, findParent, flattenTree, isInsideUnitLoop, keyOf } from "../codebook/tree";
 
@@ -187,13 +187,13 @@ export function canMoveItemTo(
   if (isDescendant(sourceItem, targetItem)) return false;
 
   // Determine target container (parent)
-  let targetParent: (UnitLoopItem | ConditionItem) | null;
+  let targetParent: (UnitLoopItem | QuestionsItem) | null;
   if (position === "inside") {
     // Target must be a container with children
-    if (targetItem.type !== "unit_loop" && targetItem.type !== "show_if") {
+    if (targetItem.type !== "unit_loop" && targetItem.type !== "questions") {
       return false;
     }
-    targetParent = targetItem as UnitLoopItem | ConditionItem;
+    targetParent = targetItem as UnitLoopItem | QuestionsItem;
   } else {
     // Destination parent is target's parent
     targetParent = findParent(items, targetKey || itemName(targetItem) || "");
@@ -211,7 +211,7 @@ export function canMoveItemTo(
     // Loops cannot be inside another loop
     if (isTargetInLoop) return false;
     if (position === "inside" && targetItem.type === "unit_loop") return false;
-  } else if (sourceItem.type === "show_if") {
+  } else if (sourceItem.type === "questions") {
     const sourceDescendants = flattenTree(childrenOf(sourceItem));
     const hasInLoopOnly = sourceDescendants.some(isLoopOnlyQuestion);
     const hasTopOnly = sourceDescendants.some((d) => d.type === "unit_loop" || d.type === "computed");
@@ -229,7 +229,7 @@ export function canMoveToRootEnd(items: TopLevelItem[], sourceIdentifier: string
   if (!sourceItem) return false;
   if (items[items.length - 1] === sourceItem) return false;
   if (isLoopOnlyQuestion(sourceItem)) return false;
-  if (sourceItem.type === "show_if" && flattenTree(childrenOf(sourceItem)).some(isLoopOnlyQuestion)) return false;
+  if (sourceItem.type === "questions" && flattenTree(childrenOf(sourceItem)).some(isLoopOnlyQuestion)) return false;
   return true;
 }
 

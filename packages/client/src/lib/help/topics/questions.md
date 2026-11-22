@@ -85,11 +85,11 @@ rest of the unit** fades the rest. The list offers what the layout shows
 
 ## Where a question goes
 
-| Where              | Asked                         | Results                                    |
-| ------------------ | ----------------------------- | ------------------------------------------ |
-| A Questions block  | once per coder                | `coders.csv`: a row per coder              |
-| A unit loop        | once per unit                 | `annotations.csv`: a row per unit and coder |
-| Inside a Show if   | only when the condition holds | as above; empty when skipped               |
+| Where                       | Asked                         | Results                                     |
+| --------------------------- | ----------------------------- | ------------------------------------------- |
+| A questions block           | once per coder                | `coders.csv`: a row per coder               |
+| A unit loop                 | once per unit                 | `annotations.csv`: a row per unit and coder |
+| In a block with a condition | only when the condition holds | as above; empty when skipped                |
 
 Texts, layouts and conditions can only use earlier answers, and a loop's
 answers can't be used in another loop.

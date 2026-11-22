@@ -4,7 +4,7 @@ import type { TopLevelItem } from "@annotinder/contracts";
 // a known type, a name (except conditions and unit loops), and for questions a variable with a type. Everything
 // else is left to validation, whose messages the editor shows.
 
-const ITEM_TYPES = ["question", "computed", "unit_loop", "show_if", "end"];
+const ITEM_TYPES = ["question", "computed", "unit_loop", "questions", "end"];
 
 /** Why a parsed value isn't an item the editor can show; null if it is. With `children`, they are checked too. */
 export function itemShapeError(raw: unknown, { children }: { children: boolean }): string | null {
@@ -14,7 +14,7 @@ export function itemShapeError(raw: unknown, { children }: { children: boolean }
   const label = typeof item.name === "string" && item.name ? `'${item.name}'` : "An item";
   if (typeof item.type !== "string" || !ITEM_TYPES.includes(item.type))
     return `${label}: type must be one of ${ITEM_TYPES.join(", ")}`;
-  if (item.type !== "show_if" && item.type !== "unit_loop" && typeof item.name !== "string")
+  if (item.type !== "questions" && item.type !== "unit_loop" && typeof item.name !== "string")
     return `${label} needs a name`;
   const isQuestion = item.type === "question" || item.type === "computed";
   const variable = item.variable as { type?: unknown } | undefined;
@@ -44,8 +44,8 @@ export function itemsShapeError(raw: unknown): string | null {
   return null;
 }
 
-type Unnamed = "show_if" | "unit_loop";
-const unnamed = (type: unknown): type is Unnamed => type === "show_if" || type === "unit_loop";
+type Unnamed = "questions" | "unit_loop";
+const unnamed = (type: unknown): type is Unnamed => type === "questions" || type === "unit_loop";
 
 /**
  * An item's identity for matching keys: its name, or for a condition or
@@ -66,7 +66,7 @@ function matchId(item: Record<string, unknown>, parent: string, counts: Record<U
 export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLevelItem[] {
   const keys = new Map<string, string>();
   const index = (list: unknown[], parent: string) => {
-    const counts = { show_if: 0, unit_loop: 0 };
+    const counts = { questions: 0, unit_loop: 0 };
     for (const raw of list) {
       const item = raw as Record<string, unknown>;
       const id = matchId(item, parent, counts);
@@ -79,7 +79,7 @@ export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLe
 
   const used = new Set<string>();
   const walk = (list: unknown[], parent: string): unknown[] => {
-    const counts = { show_if: 0, unit_loop: 0 };
+    const counts = { questions: 0, unit_loop: 0 };
     return list.map((raw) => {
       const item = { ...(raw as Record<string, unknown>) };
       const id = matchId(item, parent, counts);

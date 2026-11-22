@@ -1,31 +1,49 @@
 ---
-title: Show if (conditions)
+title: Questions blocks and conditions
 section: Editor
 order: 4
-summary: Show questions, loops or end items only when earlier answers (or the unit) say so.
+summary: Group questions in blocks, and show a block or a unit loop only when earlier answers (or the unit) say so.
 ---
 
-A **Show if** item holds other items and shows them only when its
-condition holds; otherwise the coder skips to what comes after it.
+A **questions block** holds questions, and optionally a **label** (e.g.
+_Demographics_) and a **condition**. Without a condition it is always
+shown; with one, only when the condition holds, otherwise the coder skips
+to what comes after it.
+
+At the top level, questions always go in a questions block (or a unit
+loop). Put a block inside another block, or inside a loop, to make
+questions conditional:
 
 ```text
-Topic                     categories: politics, economy, sports, ...
-Show if: topic is "politics"
-  ├ Actors                mark text: the politicians mentioned
-  └ Party                 categories: ...
-Tone                      asked for every unit
+Unit loop
+  Topic                   categories: politics, economy, sports, ...
+  if topic is "politics"
+    ├ Actors              mark text: the politicians mentioned
+    └ Party               categories: ...
+  Tone                    asked for every unit
 ```
 
-## Adding a Show if item
+## Adding a questions block
 
-1. Click **+** in the tree and choose **Show if** (see
+1. At the top level: **Add block** above the tree → **Questions block**.
+   Inside a block or loop: click **+** and choose **Questions block** (see
    [The design editor](design-editor.md#adding-items)).
-2. Under **Show the items in this condition if**, set the rules.
-3. Add items inside it, or move existing ones in.
-4. Optionally give it a **Label** (shown in the tree instead of the rule).
+2. Optionally fill in **Label (optional)**, e.g. _Demographics_ (shown
+   in the tree).
+3. To make it conditional, tick **Only show these questions if…** and set
+   the rules.
+4. Add items inside it, or move existing ones in.
 
-It can hold questions, other Show if items and [end items](end-items.md).
-Without rules it always holds.
+It can hold questions, computed variables (outside loops), other questions
+blocks and [end items](end-items.md). A unit loop can't go inside a
+questions block: give the loop a condition instead (see
+[Loop conditions](#loop-conditions)).
+
+## Loop conditions
+
+A unit loop can have a condition too: tick **Only give coders this loop
+if…** in the loop's form. Coders get the loop only if it holds. It can use
+answers given before the loop (`$var`), not the unit's data (`$unit`).
 
 ## The rules editor
 
@@ -95,15 +113,15 @@ questions.
 
 ## Inside and outside a loop
 
-- **Outside** a loop: about the coder (screening, consent, groups, or
-  skipping a whole loop).
+- **Outside** a loop: about the coder (screening, consent, groups). To
+  skip a whole loop, give the loop a condition.
 - **Inside** a loop: checked per unit, with this unit's earlier answers
   and its data (in script mode: `$unit.lang === "nl"`).
 
 ## Conditions in a layout or text
 
 To show part of a layout or text only in some cases, write a `::: if`
-block; no Show if item needed:
+block; no questions block needed:
 
 ```example
 answers:

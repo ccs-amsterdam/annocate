@@ -17,14 +17,14 @@ export const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 /** The names of a loop's questions, in order (through conditions). */
 export function questionNames(items: DesignItem[]): string[] {
   return items.flatMap((i) =>
-    i.type === "show_if" ? questionNames(i.children as DesignItem[]) : "name" in i ? [i.name] : [],
+    i.type === "questions" ? questionNames(i.children as DesignItem[]) : "name" in i ? [i.name] : [],
   );
 }
 
 /** A loop's questions with their answer types (through conditions). */
 export function questionsOf(items: DesignItem[]): { name: string; variable: AnyVariableType }[] {
   return items.flatMap((i) =>
-    i.type === "show_if"
+    i.type === "questions"
       ? questionsOf(i.children as DesignItem[])
       : "variable" in i
         ? [{ name: i.name, variable: i.variable }]
@@ -35,7 +35,7 @@ export function questionsOf(items: DesignItem[]): { name: string; variable: AnyV
 /** The loop's questions that gold and practice units can check (compared by value). */
 export function checkableQuestions(items: DesignItem[]): AnswerKeyQuestion[] {
   return items.flatMap((i): AnswerKeyQuestion[] => {
-    if (i.type === "show_if") return checkableQuestions(i.children as DesignItem[]);
+    if (i.type === "questions") return checkableQuestions(i.children as DesignItem[]);
     return "variable" in i && (CHECKABLE_TYPES as readonly string[]).includes(i.variable.type)
       ? [{ name: i.name, variable: i.variable }]
       : [];
@@ -45,7 +45,7 @@ export function checkableQuestions(items: DesignItem[]): AnswerKeyQuestion[] {
 /** The questions of a loop an agreement rule can use: one categorical answer (contracts `supportsAgreement`). */
 export function agreeableQuestions(items: DesignItem[]): string[] {
   return items.flatMap((i): string[] => {
-    if (i.type === "show_if") return agreeableQuestions(i.children as DesignItem[]);
+    if (i.type === "questions") return agreeableQuestions(i.children as DesignItem[]);
     return i.type === "question" && supportsAgreement(i.variable) ? [i.name] : [];
   });
 }

@@ -10,7 +10,7 @@ const items = [
     children: [
       { type: "question", name: "q1", variable: { type: "confirm", question: "Is {{$unit.topic}} right?" } },
       {
-        type: "show_if",
+        type: "questions",
         condition: { script: "$unit.source === 'x'" },
         children: [
           { type: "question", name: "q2", variable: { type: "confirm", question: "'$unit.quoted' $unit.body" } },

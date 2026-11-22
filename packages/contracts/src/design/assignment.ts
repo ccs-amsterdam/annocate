@@ -49,7 +49,7 @@ export function loopShareColumns(items: readonly unknown[]): Map<string, ShareCo
         if (!randomShares.some((r) => r.name === it.name))
           randomShares.push({ name: it.name, column: it.variable.units, random: true });
       }
-      if (it.type === "show_if") walk(it.children);
+      if (it.type === "questions") walk(it.children);
     }
   };
   walk(items);

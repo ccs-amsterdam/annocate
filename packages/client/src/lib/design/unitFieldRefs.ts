@@ -66,7 +66,7 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[], al
     const text = (source: string | undefined) =>
       templateReferences(expandSnippets(source ?? "", snippets).source).references;
     for (const child of children) {
-      if (child.type === "show_if") {
+      if (child.type === "questions") {
         check(itemTitle(child), conditionReferences(child.condition));
         walk(child.children, snippets);
         continue;
@@ -89,7 +89,7 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[], al
 
   const visit = (list: TopLevelItem[]) => {
     for (const item of list) {
-      if (item.type === "show_if") visit(item.children);
+      if (item.type === "questions") visit(item.children);
       if (item.type !== "unit_loop") continue;
       check(
         itemTitle(item),

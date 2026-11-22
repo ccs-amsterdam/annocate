@@ -16,7 +16,7 @@ export function loopVariables(loop: CoderUnitLoopItem): Map<string, AnyVariableT
   const result = new Map<string, AnyVariableType>();
   const walk = (items: InLoopItem[]) => {
     for (const item of items) {
-      if (item.type === "show_if") walk(item.children);
+      if (item.type === "questions") walk(item.children);
       else if (item.type !== "end") result.set(item.name, item.variable);
     }
   };
@@ -26,7 +26,7 @@ export function loopVariables(loop: CoderUnitLoopItem): Map<string, AnyVariableT
 
 /** A loop's question names in codebook order (also inside conditions), for `::: from` blocks in its layout. */
 export function loopQuestionNames(loop: CoderUnitLoopItem): string[] {
-  return flattenTree(loop.children).flatMap((item) => (item.type === "show_if" ? [] : (itemName(item) ?? [])));
+  return flattenTree(loop.children).flatMap((item) => (item.type === "questions" ? [] : (itemName(item) ?? [])));
 }
 
 /**

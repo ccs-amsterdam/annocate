@@ -102,10 +102,11 @@ function exampleQuestion(alternatives: (string | number | null)[]): AnyVariableT
 export function exampleDesign(data: HelpExampleData): unknown[] {
   const question = (name: string, variable: AnyVariableType) => ({ type: "question", name, variable });
   const confirm = { type: "confirm", question: "?" } as AnyVariableType;
+  const before = Object.entries(data.answers)
+    .filter(([name]) => !data.steps.includes(name))
+    .map(([name, alternatives]) => question(name, exampleQuestion(alternatives)));
   return [
-    ...Object.entries(data.answers)
-      .filter(([name]) => !data.steps.includes(name))
-      .map(([name, alternatives]) => question(name, exampleQuestion(alternatives))),
+    ...(before.length > 0 ? [{ type: "questions", children: before }] : []),
     {
       type: "unit_loop",
       layout: { template: data.template, ...(data.snippets ? { snippets: data.snippets } : {}) },

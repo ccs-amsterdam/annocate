@@ -7,7 +7,7 @@ summary: Questions that are asked once for every unit - how a loop works, and wh
 
 A **unit loop** asks its questions for every unit a coder gets: the first
 unit with its questions, then the next, until the coder's units are done.
-Questions asked once per coder go in **Questions** blocks before or after
+Questions asked once per coder go in questions blocks before or after
 the loop.
 
 ## Adding a loop

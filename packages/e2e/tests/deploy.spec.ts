@@ -81,7 +81,7 @@ test("the design's unit fields: how the design uses each, removing an unused one
         layout: { template: "$unit.text" },
         children: [
           {
-            type: "show_if",
+            type: "questions",
             condition: { script: "$unit.year > 2000" },
             children: [
               {
@@ -148,7 +148,7 @@ test("export: the codebook as a document (what coders see), and the design file"
     client: { release: RELEASE },
     name: "Codebook export",
     version: 1,
-    design: { items: [{ name: "age" }] },
+    design: { items: [{ type: "questions", children: [{ name: "age" }] }] },
   });
 });
 
