@@ -52,7 +52,7 @@ export function TreeRow({
         <div
           className={cn(
             "flex shrink-0 items-center gap-0.5 transition-opacity",
-            dimActions && "opacity-30 group-hover:opacity-100",
+            dimActions && "opacity-30 group-hover:opacity-100 focus-within:opacity-100 has-[[data-open]]:opacity-100",
           )}
         >
           {actions}

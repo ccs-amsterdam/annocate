@@ -12,6 +12,7 @@ export * from "./design/variableTypes.js";
 export * from "./design/relations.js";
 export * from "./design/references.js";
 export * from "./design/templateBlocks.js";
+export * from "./design/safeCss.js";
 export * from "./design/snippets.js";
 export * from "./design/condition.js";
 export * from "./design/layout.js";

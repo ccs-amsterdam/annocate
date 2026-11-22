@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { styleProblems } from "./safeCss.js";
 
 // A unit's layout (docs/client.md §3): a single markdown template, rendered
 // with a real, XSS-safe-by-construction markdown library (no raw HTML, see
@@ -26,6 +27,12 @@ export const UnitLayoutSchema = z.object({
     .describe(
       "Named pieces of the template, put in with [[name]] as if typed there (anywhere: lines, block fences, scripts)",
     ),
-  style: z.record(z.string(), z.string()).optional().describe("Optional inline CSS for the layout's root container"),
+  style: z
+    .record(z.string(), z.string())
+    .superRefine((style, ctx) => {
+      for (const message of styleProblems(style)) ctx.addIssue({ code: "custom", message });
+    })
+    .optional()
+    .describe("Optional inline CSS for the layout's root container (the properties safeCss.ts allows)"),
 });
 export type UnitLayout = z.infer<typeof UnitLayoutSchema>;

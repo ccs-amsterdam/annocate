@@ -101,7 +101,8 @@ export function AddItemMenu({
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    // data-open: the row keeps its actions fully visible while the menu is open (TreeRow)
+    <div ref={containerRef} className="relative" data-open={open || undefined}>
       {label === undefined ? (
         <ActionButton
           icon={icon}

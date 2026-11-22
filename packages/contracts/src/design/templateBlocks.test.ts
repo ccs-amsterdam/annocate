@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseTemplateBlocks, parseInlineCss, templateNames } from "./templateBlocks.js";
+import { styleProblems } from "./safeCss.js";
 import { parseTemplate } from "./references.js";
 
 const text = (source: string, node: { start: number; end: number }) => source.slice(node.start, node.end);
@@ -53,14 +54,20 @@ describe("template blocks", () => {
     ).toEqual(["$unit.text"]);
   });
 
-  it("reads inline CSS as a React style", () => {
-    expect(parseInlineCss("color: darkred; font-size: 120%; --x: 1").style).toEqual({
+  it("reads inline CSS as a React style: only allowed properties, nothing loaded", () => {
+    expect(parseInlineCss("color: darkred; font-size: 120%; margin-top: 1em").style).toEqual({
       color: "darkred",
       fontSize: "120%",
-      "--x": "1",
+      marginTop: "1em",
     });
-    expect(parseInlineCss("position: fixed").errors[0]).toMatch(/isn't allowed/);
+    expect(parseInlineCss("position: fixed").errors[0]).toMatch(/isn't one of the CSS properties/);
+    expect(parseInlineCss("z-index: 99").errors[0]).toMatch(/isn't one of the CSS properties/);
+    expect(parseInlineCss("--x: 1").errors[0]).toMatch(/not a CSS declaration/);
+    expect(parseInlineCss("background-color: url(https://tracker.example/x)").errors[0]).toMatch(/no url\(\)/);
     expect(parseInlineCss("bold").errors[0]).toMatch(/not a CSS declaration/);
+    expect(styleProblems({ fontSize: "120%", backgroundImage: "url(x)" })).toEqual([
+      expect.stringContaining("background-image isn't one of"),
+    ]);
   });
 
   it("parses typed blocks with an optional name", () => {

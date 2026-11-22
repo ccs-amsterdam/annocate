@@ -377,11 +377,12 @@ function StudyAdminView({
         </header>
       </CollapsibleHeader>
 
-      {/* The editor fills the height, its panes scroll on their own; other pages scroll as a whole */}
+      {/* The editor fills the height, its panes scroll on their own (on a low window, with a minimum height: then
+          the page scrolls); other pages scroll as a whole */}
       <main
         className={
           tab === "Design"
-            ? "flex min-h-0 flex-1 flex-col overflow-hidden px-3 pt-2 pb-3 sm:px-4"
+            ? "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pt-2 pb-3 sm:px-4"
             : "min-h-0 flex-1 overflow-auto p-4 sm:p-6"
         }
       >

@@ -103,8 +103,11 @@ and may be hard to read in one. These follow the theme:
 ### What isn't possible
 
 Only declarations: no selectors, classes, `:hover` or media queries, and
-only the text in the block (not the answer buttons). `position: fixed` and
-`sticky` are refused. HTML from `::html` sits in its own frame; style it
+only the text in the block (not the answer buttons). Only properties that
+change how text and boxes look: colours, fonts, spacing, borders, sizes,
+flex and grid. Positioning (`position`, `z-index`, `transform`) and
+anything that loads something (`url(…)`, so no background images) are
+refused: use `::: image` for images. HTML from `::html` sits in its own frame; style it
 from within (see [HTML in a layout](html.md)).
 
 ## Light or dark

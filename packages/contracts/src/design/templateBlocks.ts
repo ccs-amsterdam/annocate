@@ -1,3 +1,4 @@
+import { cssProblem } from "./safeCss.js";
 import {
   extractReferences,
   parseTemplate,
@@ -259,13 +260,11 @@ export function parseTemplateBlocks(source: string): ParsedBlocks {
   return { nodes: root, errors, hasBlocks: fences.length > 0 };
 }
 
-/** `position` values a block may not use: they would take the text out of the unit area, over the app's controls. */
-const POSITION_NOT_ALLOWED = /^(fixed|sticky)$/i;
-
 /**
  * `color: darkred; font-size: 120%` as a React style object
- * (`{ color: "darkred", fontSize: "120%" }`). Values are used as written:
- * React sets them per property, so they can't add selectors or run code.
+ * (`{ color: "darkred", fontSize: "120%" }`): only the properties and
+ * values `safeCss.ts` allows. React sets them per property, so they can't
+ * add selectors or run code.
  */
 export function parseInlineCss(css: string): { style: Record<string, string>; errors: string[] } {
   const style: Record<string, string> = {};
@@ -276,15 +275,16 @@ export function parseInlineCss(css: string): { style: Record<string, string>; er
     const colon = declaration.indexOf(":");
     const property = colon === -1 ? "" : declaration.slice(0, colon).trim().toLowerCase();
     const value = colon === -1 ? "" : declaration.slice(colon + 1).trim();
-    if (!/^(--)?[a-z][a-z0-9-]*$/.test(property) || !value) {
+    if (!/^[a-z][a-z0-9-]*$/.test(property) || !value) {
       errors.push(`"${declaration}" is not a CSS declaration (property: value)`);
       continue;
     }
-    if (property === "position" && POSITION_NOT_ALLOWED.test(value)) {
-      errors.push(`position: ${value} isn't allowed: it would place the text over the app`);
+    const problem = cssProblem(property, value);
+    if (problem) {
+      errors.push(problem);
       continue;
     }
-    const key = property.startsWith("--") ? property : property.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+    const key = property.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
     style[key] = value;
   }
   if (Object.keys(style).length === 0 && errors.length === 0)

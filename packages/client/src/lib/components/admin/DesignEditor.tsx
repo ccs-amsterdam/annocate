@@ -165,7 +165,7 @@ export function DesignEditor({
   });
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2">
+    <div className="flex h-full min-h-[32rem] flex-col gap-2">
       <EditorToolbar
         status={banner}
         mode={mode}

@@ -11,7 +11,7 @@ import {
   Link2,
   ListChecks,
   LogOut,
-  Repeat,
+  FileStack,
   Shuffle,
   Spline,
   Tag,
@@ -53,7 +53,7 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
   unit_loop: {
     label: "Unit loop",
     description: "Loop over units (all, or a set)",
-    icon: Repeat,
+    icon: FileStack,
     color: "text-primary-dark",
     blockClass: "[--iconcolor:var(--color-primary-dark)]",
   },
