@@ -6,7 +6,7 @@ summary: End items end a coder's session early or on purpose - screened out or c
 ---
 
 A session normally ends after the whole design; what coders see then, and
-where they go, is set at **At the end**, the tree's last row. An **end
+where they go, is set at **At the end**, the button below the tree. An **end
 item** ends the session earlier, for coders who:
 
 - don't consent or don't fit the study;
@@ -14,17 +14,16 @@ item** ends the session earlier, for coders who:
 - must be sent back to an online panel (see
   [Online panels and crowd coding](online-panels.md)).
 
-Put it inside a [questions block with a condition](conditions.md), so only
-some coders reach it:
+Put it inside a [block with a condition](conditions.md), so only some
+coders reach it (an end item can't stand on its own at the top level):
 
 ```text
-About you
-  Consent                 categories: yes, no
-  if consent is "no"
-    └ End: no_consent     screened out
-  Age                     number
-  if age < 18
-    └ End: too_young      screened out
+Consent                   categories: yes, no
+if consent is "no"
+  └ End: no_consent       screened out
+Age                       number
+if age < 18
+  └ End: too_young        screened out
 Unit loop                 20 news articles
 At the end                "Thank you!", back to the panel
 ```
@@ -76,12 +75,12 @@ https://panel.example/return?status=complete&id=$session.coder&group=$var.group.
 
 ## Typical uses
 
-- **Consent refused**: _"Do you agree to take part?"_, then a questions
-  block if _consent is "no"_ with a screened-out end item.
-- **Not eligible**: screening questions first, then a questions block
-  with a condition (**Any rule may hold**) around a screened-out end item.
+- **Consent refused**: _"Do you agree to take part?"_, then a block
+  if _consent is "no"_ with a screened-out end item.
+- **Not eligible**: screening questions first, then a block with a
+  condition (**Any rule may hold**) around a screened-out end item.
 - **Failed attention check**: _"Choose 'Somewhat disagree'"_, then a
-  questions block if _check is not "somewhat_disagree"_. In a loop, the unit's answers are
+  block if _check is not "somewhat_disagree"_. In a loop, the unit's answers are
   saved first.
 - **Back to the panel**: **At the end** sends coders to the completion
   link; end items in screening conditions to the screenout link.
@@ -89,5 +88,5 @@ https://panel.example/return?status=complete&id=$session.coder&group=$var.group.
 > Panels have rules about screening out and attention checks (e.g.
 > whether to pay). Check them first.
 
-End items can go anywhere and need a unique name. One after a loop is
+End items go in a block (in a loop or not) and need a unique name. One after a loop is
 reached once the coder finished that loop.

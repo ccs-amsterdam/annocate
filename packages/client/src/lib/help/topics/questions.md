@@ -87,7 +87,7 @@ rest of the unit** fades the rest. The list offers what the layout shows
 
 | Where                       | Asked                         | Results                                     |
 | --------------------------- | ----------------------------- | ------------------------------------------- |
-| A questions block           | once per coder                | `coders.csv`: a row per coder               |
+| Outside a unit loop         | once per coder                | `coders.csv`: a row per coder               |
 | A unit loop                 | once per unit                 | `annotations.csv`: a row per unit and coder |
 | In a block with a condition | only when the condition holds | as above; empty when skipped                |
 

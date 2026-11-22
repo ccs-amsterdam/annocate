@@ -37,7 +37,7 @@ Confirm can't be refused. If coders must be able to say no:
 
 1. a [categories](nominal-and-ordinal.md) question `consent`: _I agree_
    (`yes`), _I do not agree_ (`no`);
-2. a questions block with the condition `$var.consent.is("no")` and a
+2. a block with the condition `$var.consent.is("no")` and a
    screened-out [end item](end-items.md).
 
 This also records the refusal.

@@ -38,8 +38,7 @@ changed there afterwards.
    [Overlap, gold and practice units](special-units.md)).
 
 It then makes the units, their [set column](sets.md) and a design draft:
-the questions before and after the units in questions blocks around the
-unit loop.
+the questions before and after the units around the unit loop.
 Deploying makes the links (one, or one per coder).
 
 ## What to do next

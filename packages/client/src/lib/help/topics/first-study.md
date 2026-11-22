@@ -45,10 +45,10 @@ More: [Uploading units](uploading-units.md).
 
 ## 3. Write the questions
 
-Open **Design**. Left: the design as a tree of blocks. Right: the
+Open **Design**. Left: the design as a tree of items. Right: the
 form of what you select.
 
-1. Click **Add block** → **Unit loop**. A unit loop asks its questions for
+1. Click **Add item** → **Unit loop**. A unit loop asks its questions for
    every unit. Give it a **Label**, e.g. _News articles_.
 2. Hover over the loop, click **+** → **Inside News articles** →
    **Question**.
@@ -60,8 +60,7 @@ form of what you select.
    article?_ with _Negative_, _Neutral_, _Positive_ (stored as 1, 2, 3).
 
 Questions asked once per coder, such as consent or background questions,
-go in a questions block (**Add block** → **Questions block**) before or
-after the loop.
+go before or after the loop (**Add item** → **Question**).
 
 More: [The design editor](design-editor.md), [Questions](questions.md),
 [Choosing a question type](question-types.md).

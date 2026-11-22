@@ -44,8 +44,9 @@ settings and transfer menus, and the loading, error and pick-a-name screens
 (`SessionNotices.tsx`).
 
 - **Steps.** It computes the visible steps from the codebook: top-level
-  items, then loop questions, with conditions (of questions blocks, and
-  of loops: a loop whose condition fails is left out) evaluated in document
+  items, then loop questions, with conditions (of blocks, which show
+  their children or else their `elseChildren`, and of loops: a loop whose
+  condition fails is left out) evaluated in document
   order (§5). Answers of questions a condition now hides count as unanswered, and
   are posted as `skip`.
 - **Rendering inputs.** It renders the unit layout and the current question's
@@ -162,7 +163,7 @@ Pandoc's fenced divs.
 ```
 
 - `if` / `else if` / `else`: the first branch whose condition holds (the
-  same scripts as questions blocks' conditions).
+  same scripts as blocks' conditions).
 - `from <question>`: shows from that question of the loop on; consecutive
   `from` fences form a chain of which the last reached stage shows. Loops
   only.
@@ -265,7 +266,7 @@ too. Vertical drags still scroll long units (`touch-action: pan-y`).
 
 ### End items
 
-An `end` item ends the session when reached, usually inside a questions block with a condition:
+An `end` item ends the session when reached, usually inside a block with a condition (not at the top level):
 `outcome` `screenout` or `complete`, an optional `message` (a template) and
 `redirectUrl` (e.g. a panel's return link; `$var` values URL-encoded).
 `StudyManager` calls `POST /end` (in a loop after saving the unit) and shows
@@ -345,7 +346,7 @@ answered with them by default (`GET /coders/units`, contracts
 sign in", an optional set column for special units ("Create special units…"
 makes one with the same dialog: special units only; other sets give a link
 per set), and "Max. nr of coders" (per link, and per set with a link per
-set). The tree's last row, **At the end**, edits the normal end
+set). **At the end**, a button below the tree, edits the normal end
 (`session.end`).
 
 ## 5. Scripting sandbox: QuickJS
@@ -412,8 +413,8 @@ condition:
   TypeScript (`parseSimpleCondition`, `evaluateSimpleCondition`).
 - **Advanced**: anything else, run in QuickJS.
 
-A questions block's condition hides its children when false (absent: always
-shown). A unit loop's condition decides whether the coder gets the loop at
+A block's condition hides its children when false (absent: always
+shown), showing its `elseChildren` instead, if any. A unit loop's condition decides whether the coder gets the loop at
 all; it can only use coder-level answers before the loop, not `$unit`.
 
 **Validation** (`validateDesignItems`) walks the design in order and checks
@@ -464,7 +465,7 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   1. **What do you want to do?** Name; annotate units, ask questions, or
      experiment.
   2. **The experiment**: a condition's name and values, balanced or random (a
-     computed item, first in the design, in a questions block).
+     computed item, first in the design).
   3. **Units**: the CSV upload (or later), and the order.
   4. **Who codes what**: everyone everything (a crowd); sets per coder, each
      with a link (`per_coder`); crowd coding (the loop's `units.divide`, and
@@ -476,27 +477,31 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
      the answer type `unspecified`, which must be set in the editor before
      previewing or deploying.
   7. **Check and create**: a summary; the design is created as a draft.
-     The questions before and after the loop go in questions blocks
-     (contracts `inBlocks`, which wraps each run of loose top-level items in
-     one).
-- **Blocks** (`DesignTreeView.tsx`, `designTree/`): the design's top level
-  holds only blocks: `questions` blocks and unit loops (validation refuses
-  loose questions, computed and end items there, and a loop inside a
-  questions block). Top-level blocks and loops are cards; a nested questions
-  block is an indented group with a coloured bar. A block's row shows its
-  label and/or "if <condition>", else "Questions"; questions aren't
-  numbered. "Add block" adds a questions block (with its first question,
-  selected to name it) or a unit loop; a row's + adds items allowed there
-  (`insertableTypesAt`): in a block question, computed variable, questions
-  block, end; in a loop question, questions block, end. Above the tree the
-  Study entry (§4), below it **At the end**.
+     The questions before and after the loop go at the top level.
+- **Tree** (`DesignTreeView.tsx`, `designTree/`): the top level holds
+  questions, computed items, `block`s and unit loops; validation refuses an
+  end item there ("An end item goes in a block") and a loop inside a block.
+  A block has an optional `label`, `condition`, `children` and
+  `elseChildren` (only with a condition). The coder-level items before,
+  between and after loops are grouped in a lightly tinted card (only in the
+  tree); each loop is its own card; a block has a coloured bar on its left
+  and lines up with the items around it. A block's row shows its label
+  and/or "if <condition>", else "Block"; questions aren't numbered. With a
+  condition it has an "Add else items" button, which adds an "Else" part
+  with a first question; the Else part shows under the block's items only
+  when it has items. "Add item" adds a question, computed variable, block
+  ("Block (if/else)", starting empty) or unit loop; a row's + adds items
+  allowed there (`insertableTypesAt`): in a block question, computed
+  variable, block, end; in a loop question, block, end. Above the tree the
+  Study entry (§4), below it the **At the end** button, styled like the
+  Study entry's buttons.
 - **Design editor**: edits the whole design in memory, validated with
   `validateDesignItems`, saved as a whole.
   - **Visual**: the tree, and the selected item as a form, as JSON
     (`ItemJsonEditor.tsx`) or as a preview (`ItemPreview.tsx`: a loop with the
     study's units, a picker for the question on screen, answer pickers for
     `::: if`). On screens at least 1500 px wide the preview is a third column.
-    Questions blocks and loops have no name; loops show their label or
+    Blocks and loops have no name; loops show their label or
     "Unit loop". Moving and deleting work on ticked items from the toolbar; where a
     place is ambiguous (the end of a container) the menu asks where.
   - **JSON**: the whole design (`DesignJsonEditor.tsx`), in Monaco (loaded
@@ -549,7 +554,7 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   (`OptionsEditor.tsx`: label, value, colour, order; ordinal values renumber
   unless "Custom values"), `multiple`, a layout select whose `auto` entry
   names its choice, numeric range, step and labels. Switching nominal ↔
-  ordinal keeps the options. A questions block's or loop's condition
+  ordinal keeps the options. A block's or loop's condition
   ("Only show these questions if…", "Only give coders this loop if…") uses
   `ConditionEditor.tsx`:
   **Rules | Script** over the same script. Rules are a flat list joined by

@@ -22,7 +22,7 @@ coders answer and what is stored, and so your measurement level.
 | [Relations](relation.md) (loops only)         | link two marked passages            | pairs with a label        | who criticizes whom                       |
 
 A [random condition](random-condition.md) is not a question but a
-**Computed variable** (in a Questions block): drawn, never asked.
+**Computed variable** (outside unit loops): drawn, never asked.
 
 Questions from **Guided setup** start **to specify**: you can save, but
 not preview or deploy, until each has a type.

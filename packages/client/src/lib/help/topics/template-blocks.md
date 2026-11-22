@@ -17,7 +17,7 @@ above the template writes the block around the selected text.
 ## Show if a condition holds
 
 `::: if <condition>` shows its lines only when the condition holds (the
-same conditions as a [questions block](conditions.md)):
+same conditions as a [block](conditions.md)):
 
 ```example
 unit:

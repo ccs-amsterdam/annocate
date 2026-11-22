@@ -1,18 +1,17 @@
 ---
-title: Questions blocks and conditions
+title: Blocks and conditions
 section: Editor
 order: 4
-summary: Group questions in blocks, and show a block or a unit loop only when earlier answers (or the unit) say so.
+summary: Group items in blocks, and show a block (or its else items) or a unit loop only when earlier answers (or the unit) say so.
 ---
 
-A **questions block** holds questions, and optionally a **label** (e.g.
+A **block** holds items, and optionally a **label** (e.g.
 _Demographics_) and a **condition**. Without a condition it is always
-shown; with one, only when the condition holds, otherwise the coder skips
-to what comes after it.
+shown; with one, only when the condition holds. Otherwise the coder gets
+its **else items**, if it has any, or skips to what comes after it.
 
-At the top level, questions always go in a questions block (or a unit
-loop). Put a block inside another block, or inside a loop, to make
-questions conditional:
+A block works the same at the top level, inside another block or inside a
+unit loop:
 
 ```text
 Unit loop
@@ -20,24 +19,33 @@ Unit loop
   if topic is "politics"
     ├ Actors              mark text: the politicians mentioned
     └ Party               categories: ...
+  Else
+    └ Main actor          short text
   Tone                    asked for every unit
 ```
 
-## Adding a questions block
+## Adding a block
 
-1. At the top level: **Add block** above the tree → **Questions block**.
-   Inside a block or loop: click **+** and choose **Questions block** (see
+1. At the top level: **Add item** above the tree → **Block (if/else)**.
+   Inside a block or loop: click **+** and choose **Block (if/else)** (see
    [The design editor](design-editor.md#adding-items)).
 2. Optionally fill in **Label (optional)**, e.g. _Demographics_ (shown
    in the tree).
 3. To make it conditional, tick **Only show these questions if…** and set
    the rules.
-4. Add items inside it, or move existing ones in.
+4. Add items inside it, or move existing ones in. A new block starts
+   empty.
 
-It can hold questions, computed variables (outside loops), other questions
-blocks and [end items](end-items.md). A unit loop can't go inside a
-questions block: give the loop a condition instead (see
-[Loop conditions](#loop-conditions)).
+It can hold questions, computed variables (outside loops), other blocks
+and [end items](end-items.md). A unit loop can't go inside a block: give
+the loop a condition instead (see [Loop conditions](#loop-conditions)).
+
+## Else items
+
+A block with a condition can also have items shown when the condition
+doesn't hold. Click **Add else items** on the block's row: this adds an
+**Else** part, under the block's items, with a first question. Only a
+block with a condition can have else items.
 
 ## Loop conditions
 
@@ -121,7 +129,7 @@ questions.
 ## Conditions in a layout or text
 
 To show part of a layout or text only in some cases, write a `::: if`
-block; no questions block needed:
+block; no block item needed:
 
 ```example
 answers:
