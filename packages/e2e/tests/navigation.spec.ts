@@ -83,12 +83,15 @@ test("Previous and Next: within a unit, between units, and out of and back into 
   await option(page, "negative").click();
   await at(page, TEXTS[1], "Topic?");
 
-  // Back to the previous unit's last question, with its answer
+  // Back to the previous unit's last question, with its answer; the progress bar marks where the coder is
+  await expect(page.locator("[data-progress-current]")).toHaveCount(0);
   await previous(page);
   await at(page, TEXTS[0], "Tone?");
   await expect(option(page, "negative")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("[data-progress-current]")).toHaveCount(1);
   await next(page);
   await at(page, TEXTS[1], "Topic?");
+  await expect(page.locator("[data-progress-current]")).toHaveCount(0);
 });
 
 test("after the loop, one press of Previous goes to the last unit; changing it saves it again", async ({
