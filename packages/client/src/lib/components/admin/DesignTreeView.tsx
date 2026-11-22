@@ -24,7 +24,7 @@ interface DesignTreeViewProps {
   onSelect: (identifier: string) => void;
   onAdd: (position: TreePosition, type: ItemType) => void;
   /** A block's else items begin (with a first question). */
-  onAddElse: (blockKey: string) => void;
+  onAddElse: (blockKey: string, type: ItemType) => void;
   /** Deletes items (asking first); returns whether they were deleted. */
   onDelete: (keys: string[]) => boolean;
   onMove: (keys: string[], position: TreePosition) => void;

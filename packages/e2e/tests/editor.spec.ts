@@ -112,8 +112,10 @@ test("blocks: a label and a condition, else items; questions and loops at the to
   await page.getByRole("button", { name: /^Block/ }).click();
   await page.getByPlaceholder("e.g. Demographics").fill("Adults");
   await page.getByRole("checkbox", { name: /Only show these questions if/ }).check();
-  // Else items: begun from the block's row, with a first question
+  // Else items: begun from the block's row, with the usual menu (its header says what it adds)
   await page.getByRole("button", { name: /Add else items/ }).click();
+  await expect(page.getByText("If not, then…")).toBeVisible();
+  await page.getByRole("button", { name: /^Question/ }).click();
   await page.getByPlaceholder("e.g. sentiment, age").fill("guardian");
   await expect(page.getByText("Else", { exact: true })).toBeVisible();
 

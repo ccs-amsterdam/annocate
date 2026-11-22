@@ -103,10 +103,18 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
       actions={
         canAddElse ? (
           <>
-            <ActionButton
+            {/* The usual add menu, its header saying where: the else items */}
+            <AddItemMenu
               icon={Split}
               title="Add else items (shown when the condition doesn't hold)"
-              onClick={() => tree.addElse(key)}
+              options={[
+                {
+                  position: { into: key },
+                  label: "If not, then…",
+                  types: insertableTypesAt(tree.items, { into: key }),
+                },
+              ]}
+              onAdd={(_, type) => tree.addElse(key, type)}
             />
             {action}
           </>

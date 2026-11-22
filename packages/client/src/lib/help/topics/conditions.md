@@ -43,9 +43,9 @@ the loop a condition instead (see [Loop conditions](#loop-conditions)).
 ## Else items
 
 A block with a condition can also have items shown when the condition
-doesn't hold. Click **Add else items** on the block's row: this adds an
-**Else** part, under the block's items, with a first question. Only a
-block with a condition can have else items.
+doesn't hold. Click **Add else items** on the block's row and choose the
+first item in the menu (_If not, then…_): this adds an **Else** part, under
+the block's items. Only a block with a condition can have else items.
 
 ## Loop conditions
 
