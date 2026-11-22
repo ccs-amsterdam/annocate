@@ -26,7 +26,7 @@ describe("who gets which units, in the editor", () => {
 
 describe("share summaries", () => {
   it("say whose units a loop hands out, with its filter", async () => {
-    const { shareSources, shareSummary, shareLabel, valueCounts } = await import("./assignment");
+    const { shareSources, shareSummary, shareLabel } = await import("./assignment");
     const sources = shareSources({ mode: "coders", column: "coder", link: "per_coder" }, [
       { name: "framing", units: "framing" },
       { name: "lang" },
@@ -42,18 +42,5 @@ describe("share summaries", () => {
       "anna · framing control, only post",
     );
     expect(shareLabel("all")).toBe("all units");
-    const groups = [
-      {
-        name: "phase",
-        sets: [
-          { name: "_overlap", unitIds: [9], ordered: false },
-          { name: "pre", unitIds: [1, 2], ordered: false },
-        ],
-      },
-    ];
-    expect(valueCounts(groups, "phase")).toEqual([
-      { value: "pre", count: 2, special: false },
-      { value: "_overlap", count: 1, special: true },
-    ]);
   });
 });

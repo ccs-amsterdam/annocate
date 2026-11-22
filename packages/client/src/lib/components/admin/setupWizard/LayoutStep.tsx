@@ -10,7 +10,7 @@ export function LayoutStep({ answers, set }: StepProps) {
     <>
       <Intro>
         Choose what coders see of each unit: click a place (title, byline, body) to put a field there, or drag a field
-        onto it. The editor&apos;s Layout tab can change this later.
+        onto it. The layout item in the editor can change this later.
       </Intro>
       <div className="grid gap-4 sm:grid-cols-2">
         <section className="space-y-2">

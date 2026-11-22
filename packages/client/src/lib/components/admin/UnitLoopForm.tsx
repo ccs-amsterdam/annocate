@@ -28,46 +28,15 @@ export function UnitLoopForm({
   onChange,
 }: {
   loop: UnitLoopItem;
-  /** The rest of the design as the Units tab needs it: the coder unit assignment, earlier loops. */
+  /** The rest of the design as the units settings need it: the coder unit assignment, earlier loops. */
   unitsContext?: LoopUnitsContext;
   /** The design's end items with outcome `screenout`: where gold checks can end a session. */
   screenouts?: string[];
-  /** For "Generate sets…" (absent: not offered). */
+  /** For writing right answers (absent: not offered). */
   client?: ResearcherApi;
   /** The study's set groups. */
   groups: SetGroupResponse[];
   validationIssues: DesignIssue[];
-  onChange: (loop: UnitLoopItem) => void;
-}) {
-  return (
-    <UnitsSettings
-      loop={loop}
-      client={client}
-      groups={groups}
-      screenouts={screenouts}
-      validationIssues={validationIssues}
-      unitsContext={unitsContext}
-      onChange={onChange}
-    />
-  );
-}
-
-/** Which units coders get (the loop's `units`), and the order. */
-function UnitsSettings({
-  loop,
-  client,
-  groups,
-  screenouts,
-  validationIssues,
-  unitsContext,
-  onChange,
-}: {
-  loop: UnitLoopItem;
-  client?: ResearcherApi;
-  groups: SetGroupResponse[];
-  screenouts: string[];
-  validationIssues: DesignIssue[];
-  unitsContext: LoopUnitsContext;
   onChange: (loop: UnitLoopItem) => void;
 }) {
   const setUnits = (units: LoopUnits) => {
@@ -80,7 +49,6 @@ function UnitsSettings({
     <div className="flex flex-col gap-5">
       <UnitsEditor
         units={loop.units ?? {}}
-        client={client}
         groups={groups}
         checkable={checkableQuestions(loop.children as DesignItem[])}
         agreeable={agreeableQuestions(loop.children as DesignItem[])}

@@ -16,22 +16,21 @@ export function getChildren(item: TreeNode): TreeNode[] | null {
 }
 
 /**
- * Where a position is: in a unit loop, in a questions block (outside loops),
- * or at the top level (between blocks: where questions blocks and unit
- * loops go).
+ * Where a position is: in a unit loop, in a block (outside loops), or at
+ * the top level (where unit loops can go too).
  */
 function placeOf(items: readonly TopLevelItem[], position: TreePosition): "loop" | "block" | "top" {
   if (positionInLoop(items as TopLevelItem[], position)) return "loop";
   if ("into" in position) return position.into === null ? "top" : "block";
   const key = "before" in position ? position.before : position.after;
-  // Next to a top-level item: between blocks; else inside a block
+  // Next to a top-level item: at the top level; else inside a block
   return items.some((i) => getItemKey(i) === key) ? "top" : "block";
 }
 
 /**
  * Item types that can be created at a position: in a loop its items; in a
- * questions block questions, computed items, nested questions blocks and
- * ends; at the top level a questions block or a unit loop.
+ * block questions, computed items, nested blocks and ends; at the top level
+ * the same with unit loops instead of ends.
  */
 export function insertableTypesAt(items: TopLevelItem[], position: TreePosition): ItemType[] {
   const place = placeOf(items, position);

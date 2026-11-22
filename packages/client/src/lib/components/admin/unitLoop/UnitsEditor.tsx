@@ -15,7 +15,6 @@ import { IssueList } from "../IssueList";
 import { HelpButton } from "../../../help/HelpButton";
 import { columnValues, shareSummary, type LoopUnitsContext } from "../../../design/assignment";
 import { type AnswerKeyQuestion } from "../units/AnswerKeyDialog";
-import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { selectClass, labelClass, type AnswerKeyContext, numberOrUndefined, range } from "./helpers";
 import { GoldChecks, PlacementRow, PracticeChecks } from "./SpecialUnits";
 
@@ -41,7 +40,6 @@ export function UnitsEditor({
   units: LoopUnits;
   context: LoopUnitsContext;
   answerKey?: AnswerKeyContext;
-  client?: ResearcherApi;
   groups: SetGroupResponse[];
   checkable: AnswerKeyQuestion[];
   /** The loop's questions an agreement rule can use. */

@@ -64,7 +64,7 @@ export function ItemForm({
   onChange,
 }: {
   item: DesignItem;
-  /** For "Generate sets…" in a loop's form. */
+  /** For the forms that ask the server (the Study entry's, a loop's right answers); absent: read only. */
   client?: ResearcherApi;
   /** The study's set groups (the units' set columns). */
   groups: SetGroupResponse[];

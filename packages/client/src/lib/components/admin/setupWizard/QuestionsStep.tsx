@@ -82,7 +82,7 @@ function ChecksSection({ answers, set }: StepProps) {
         <strong>Gold</strong> units check coders silently; <strong>practice</strong> units tell them when they were
         wrong. They are the units in the sets <code>_gold</code> and <code>_practice</code> (a sets column with those
         values, or later on the Units page), with the right answer in a column per question. You can write the answers
-        later with <strong>Create gold values</strong> in the loop&apos;s Units tab.
+        later with <strong>Create gold values</strong> in the unit loop&apos;s settings.
       </p>
       <table className="w-fit text-left text-xs">
         <thead className="text-muted-foreground">

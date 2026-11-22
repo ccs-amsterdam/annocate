@@ -27,7 +27,6 @@ export type OutputSuffix = (typeof OUTPUT_SUFFIXES)[number];
 
 /** `$var.<q>` properties. */
 export const VAR_PROPERTIES = ["value", "label", "values", "labels", "texts", "answered", "items"] as const;
-export type VarProperty = (typeof VAR_PROPERTIES)[number];
 /** Properties of a scale item, `$var.<q>.items.<item>`. */
 export const ITEM_PROPERTIES = ["value", "label"] as const;
 

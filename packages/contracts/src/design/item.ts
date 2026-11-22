@@ -146,13 +146,6 @@ export function fillRedirectUrl(url: string, scope: ReferenceScope): string {
     .join("");
 }
 
-/** A question item anywhere in the tree (any answer type a unit loop allows). */
-export const QuestionItemSchema = ItemBaseSchema.extend({
-  type: z.literal("question"),
-  variable: UnitVariableTypeSchema,
-});
-export type QuestionItem = z.infer<typeof QuestionItemSchema>;
-
 /**
  * How a unit is shown (docs/client.md §3), from where the coder passes it
  * on: the questions after it show the unit with this layout, until the

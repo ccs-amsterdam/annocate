@@ -72,18 +72,6 @@ export function shareSummary(sources: readonly ShareSource[], subset?: { column:
   return `${whose}; this loop only those in ${values || "(choose sets)"} of ${subset.column}.`;
 }
 
-/** The values of a set column with their number of units (the special ones last). */
-export function valueCounts(
-  groups: readonly SetGroupResponse[],
-  column: string,
-): { value: string; count: number; special: boolean }[] {
-  const special = new Set<string>(RESERVED_SETS);
-  const sets = groups.find((g) => g.name === column)?.sets ?? [];
-  return sets
-    .map((s) => ({ value: s.name, count: s.unitIds.length, special: special.has(s.name) }))
-    .sort((a, b) => Number(a.special) - Number(b.special));
-}
-
 /**
  * A share's key from the server's progress (`coder=anna,framing=control |
  * phase post | overlap before`) as people read it: "anna · framing control,

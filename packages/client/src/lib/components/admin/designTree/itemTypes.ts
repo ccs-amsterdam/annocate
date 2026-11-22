@@ -26,7 +26,7 @@ interface ItemTypeInfo {
   description: string;
   icon: LucideIcon;
   color: string;
-  /** Extra classes on the card wrapping a block (a loop, a Questions block) and its children. */
+  /** Extra classes on the card wrapping a container (a loop, a block) and its children. */
   blockClass?: string;
 }
 

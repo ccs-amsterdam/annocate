@@ -18,8 +18,8 @@ import { UnitFields } from "../UnitFields";
 // empty title, byline and body, and the unit fields not shown yet. Click a
 // place to choose a field for it, or drag a field onto it; clicking a field
 // adds it to the body. Title and byline hold one field; the body any
-// number, in order. The default layout form, in the setup wizard and the
-// loop's Layout tab. More places (an image, a footer, columns) can join the
+// number, in order. The default layout form, in the setup wizard and a
+// layout item's form. More places (an image, a footer, columns) can join the
 // sketch later.
 
 /** Drag data: a field's name. */
