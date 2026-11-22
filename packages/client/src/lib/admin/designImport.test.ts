@@ -11,8 +11,10 @@ const design = {
   items: [
     {
       type: "unit_loop",
-      layout: { template: "$unit.text" },
-      children: [{ type: "question", name: "tone", variable: { type: "confirm", question: "?" } }],
+      children: [
+        { type: "layout", template: "$unit.text" },
+        { type: "question", name: "tone", variable: { type: "confirm", question: "?" } },
+      ],
     },
   ],
 } as never;

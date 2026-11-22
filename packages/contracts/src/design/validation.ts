@@ -1,4 +1,5 @@
-import { TopLevelItemSchema, loopTitle, unitLoops, type DesignItem } from "./item.js";
+import { TopLevelItemSchema, loopTitle, unitLoops, type DesignItem, type LayoutItem } from "./item.js";
+import { layoutsByItem, loopSnippets } from "./layoutItems.js";
 import type { AnyVariableType } from "./variableTypes.js";
 import { sameValue } from "./options.js";
 import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
@@ -51,6 +52,18 @@ export interface DesignIssue {
 type Path = (string | number)[];
 /** An item as stored: any field may be missing; conditions have no name. */
 type RawItem = Partial<DesignItem> & { name?: string };
+
+/** The unit loop around a point of the walk: its key, the snippets texts may use, the layouts that apply where. */
+interface LoopContext {
+  name: string;
+  snippets: Record<string, string>;
+  /** Its questions in order (for `::: from` in layouts). */
+  order: string[];
+  /** The layouts that may apply to each named item (layoutItems.ts). */
+  candidates: Map<string, (LayoutItem | null)[]>;
+  /** What each layout item shows, once checked (it comes before the questions it applies to). */
+  layoutNames: Map<object, { shown: Set<string>; selectable: Set<string> }>;
+}
 /** The texts of an end (an end item, or the Study entry's `end`), as stored. */
 type EndTexts = { message?: unknown; redirectUrl?: unknown; redirectSetting?: unknown };
 
@@ -421,7 +434,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
         }
       });
       // The right answers must never reach coders: no layout or question may show their columns
-      const shown = JSON.stringify([loop.layout, loop.children]);
+      const shown = JSON.stringify(loop.children);
       for (const name of Array.isArray(settings.questions) ? (settings.questions as unknown[]) : []) {
         if (typeof name !== "string") continue;
         const columns = kind === "gold" ? [goldColumn(name)] : [practiceColumn(name), practiceMessageColumn(name)];
@@ -495,45 +508,83 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     }
   }
 
-  function checkLoop(item: RawItem, itemPath: Path, loopName: string) {
-    const loop = item as {
-      units?: Partial<LoopUnits> | null;
-      children?: unknown;
-      layout?: { template?: unknown; snippets?: Record<string, string> };
-    };
+  /** A loop's units settings; what its walk needs to check layouts and the questions after them. */
+  function checkLoop(item: RawItem, itemPath: Path, loopName: string): LoopContext {
+    const loop = item as { units?: Partial<LoopUnits> | null; children?: unknown };
     const loopQuestions = questionNames(loop.children);
     checkUnitChecks(loop, itemPath, loopQuestions);
     checkLoopUnits(loop.units, [...itemPath, "units"], loopName, loopQuestions);
+    return {
+      name: loopName,
+      snippets: loopSnippets(loop.children),
+      order: [...loopQuestions],
+      candidates: layoutsByItem(loop.children),
+      layoutNames: new Map(),
+    };
+  }
 
-    const snippets = loop.layout?.snippets ?? {};
-    const names = checkTemplate(
-      loop.layout?.template,
-      {
-        path: [...itemPath, "layout", "template"],
-        loop: loopName,
-        available: coderAvailable,
-        snippets,
-        loopOrder: [...loopQuestions],
-      },
-      "layout",
+  /** A layout item's template (with its own snippets): what it shows, for the questions after it. */
+  function checkLayoutItem(item: RawItem, itemPath: Path, loop: LoopContext) {
+    const layout = item as { template?: unknown; snippets?: Record<string, string> };
+    if (typeof layout.template !== "string") return;
+    loop.layoutNames.set(
+      item,
+      checkTemplate(
+        layout.template,
+        {
+          path: [...itemPath, "template"],
+          loop: loop.name,
+          available: coderAvailable,
+          snippets: layout.snippets ?? {},
+          loopOrder: loop.order,
+        },
+        "layout",
+      ),
     );
+  }
+
+  /**
+   * A loop question's focus and span fields: shown by each layout that may
+   * apply to it (layoutItems.ts), as plain text for span fields.
+   */
+  function checkShownByLayouts(item: RawItem, itemPath: Path, loop: LoopContext) {
+    const variable = (item as { variable?: unknown }).variable as
+      { type?: string; fields?: unknown; focus?: unknown } | undefined;
+    const focus = (Array.isArray(variable?.focus) ? variable.focus : []).filter(
+      (f): f is string => typeof f === "string",
+    );
+    const fields = (variable?.type === "span" && Array.isArray(variable.fields) ? variable.fields : []).filter(
+      (f): f is string => typeof f === "string",
+    );
+    if (focus.length === 0 && fields.length === 0) return;
+    const layouts = (loop.candidates.get(item.name ?? "") ?? []).filter((c) => c !== null);
+    if (layouts.length === 0) {
+      if (focus.length > 0)
+        issue([...itemPath, "variable", "focus"], "No layout comes before this question: there is nothing to focus");
+      if (fields.length > 0)
+        issue(
+          [...itemPath, "variable", "fields"],
+          `Span question '${item.name}' selects text in the unit, but no layout comes before it to show the unit`,
+        );
+      return;
+    }
     const idHint = (id: string) =>
       id.startsWith("unit.") ? ` (as $${id})` : id.startsWith("var.") ? "" : ` (as a ::: block named '${id}')`;
-    forEachQuestion(loop.children, [...itemPath, "children"], (q, path) => {
-      const variable = q.variable as { type?: string; fields?: unknown; focus?: unknown } | undefined;
-      for (const id of Array.isArray(variable?.focus) ? variable.focus : []) {
-        if (typeof id === "string" && !names.shown.has(id))
-          issue([...path, "variable", "focus"], `'${id}' is not shown in the layout${idHint(id)}`);
-      }
-      for (const field of variable?.type === "span" && Array.isArray(variable.fields) ? variable.fields : []) {
-        if (typeof field !== "string" || names.selectable.has(`unit.${field}`)) continue;
+    for (const layout of layouts) {
+      const names = loop.layoutNames.get(layout);
+      if (!names) continue;
+      const which = layouts.length > 1 ? ` '${layout.label?.trim() || "Unit layout"}'` : "";
+      for (const id of focus)
+        if (!names.shown.has(id))
+          issue([...itemPath, "variable", "focus"], `'${id}' is not shown in the layout${which}${idHint(id)}`);
+      for (const field of fields) {
+        if (names.selectable.has(`unit.${field}`)) continue;
         issue(
-          [...path, "variable", "fields"],
-          `Span question '${q.name}' selects text in the unit field '${field}', but the layout doesn't show it as plain text ($unit.${field})`,
+          [...itemPath, "variable", "fields"],
+          `Span question '${item.name}' selects text in the unit field '${field}', but the layout${which} doesn't show it as plain text ($unit.${field})`,
         );
       }
-    });
-    return snippets;
+    }
   }
 
   /** The Study entry: first, once, top level; its URL parameters' names and keys unique; the invitation's agreement question. */
@@ -608,11 +659,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     }
   }
 
-  function walk(
-    itemList: unknown[],
-    currentPath: Path,
-    loop: { name: string; snippets: Record<string, string> } | null,
-  ) {
+  function walk(itemList: unknown[], currentPath: Path, loop: LoopContext | null) {
     if (!Array.isArray(itemList)) return;
 
     itemList.forEach((rawItem, index) => {
@@ -634,6 +681,11 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           [...itemPath, "type"],
           "A unit loop goes at the top level, not inside a block (give the loop a condition instead)",
         );
+      if (item.type === "layout") {
+        if (loop) checkLayoutItem(item, itemPath, loop);
+        else issue([...itemPath, "type"], "A layout shows a unit: it goes in a unit loop");
+        return;
+      }
 
       // Check name validity and uniqueness (conditions have no name)
       if (item.type === "block" || item.type === "unit_loop") {
@@ -698,6 +750,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
         if (!loop && (item.variable as { focus?: unknown } | undefined)?.focus !== undefined) {
           issue([...itemPath, "variable", "focus"], "Focus only works for questions in a unit loop");
         }
+        if (loop) checkShownByLayouts(item, itemPath, loop);
 
         const texts = [
           { text: variable?.question, path: [...itemPath, "variable", "question"] },
@@ -723,7 +776,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       if (item.type === "unit_loop") {
         const key = String(++loopCount);
         if (loop) issue([...itemPath, "type"], "A unit loop cannot be inside another unit loop");
-        const snippets = checkLoop(item, itemPath, key);
+        const context = checkLoop(item, itemPath, key);
         // Whether coders get the loop: decided before it, on coder-level answers
         checkCondition((item as { condition?: Condition }).condition, {
           path: [...itemPath, "condition"],
@@ -734,7 +787,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           issue([...itemPath, "children"], "A unit loop must have at least one item");
         } else if (!loop) {
           loopAvailable = new Set();
-          walk(item.children, [...itemPath, "children"], { name: key, snippets });
+          walk(item.children, [...itemPath, "children"], context);
           loopAvailable = new Set();
         }
       } else if (item.type === "block") {
@@ -945,9 +998,11 @@ function forEachQuestion(
   list.forEach((raw, i) => {
     const child = raw as RawItem | null;
     if (!child || typeof child !== "object") return;
-    if (child.type === "block")
+    if (child.type === "block") {
       forEachQuestion((child as { children?: unknown }).children, [...path, i, "children"], visit);
-    else if (child.type !== "unit_loop") visit(child as RawItem & { variable?: unknown }, [...path, i]);
+      forEachQuestion((child as { elseChildren?: unknown }).elseChildren, [...path, i, "elseChildren"], visit);
+    } else if (child.type !== "unit_loop" && child.type !== "layout")
+      visit(child as RawItem & { variable?: unknown }, [...path, i]);
   });
 }
 

@@ -8,8 +8,7 @@ const loop = (name: string, children: unknown[]) =>
   ({
     type: "unit_loop",
     label: name,
-    layout: { template: "text" },
-    children,
+    children: [{ type: "layout", template: "text" }, ...children],
   }) as TopLevelItem;
 
 describe("diffDesigns", () => {

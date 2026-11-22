@@ -9,8 +9,8 @@ import { api, question } from "./helpers";
 const loop = (overlap?: unknown) => ({
   type: "unit_loop",
   units: overlap ? { overlap } : {},
-  layout: { template: "$unit.text" },
   children: [
+    { type: "layout", template: "$unit.text" },
     {
       type: "question",
       name: "topic",
@@ -133,6 +133,7 @@ test("two loops take a subset of one set column: first the pre units, then the p
     label: name,
     units: { subset: { column: "phase", sets: [only] } },
     children: [
+      loop().children[0],
       {
         type: "question",
         name,

@@ -154,13 +154,28 @@ export const QuestionItemSchema = ItemBaseSchema.extend({
 export type QuestionItem = z.infer<typeof QuestionItemSchema>;
 
 /**
+ * How a unit is shown (docs/client.md §3), from where the coder passes it
+ * on: the questions after it show the unit with this layout, until the
+ * next layout item. Before any (or with none), questions show no unit.
+ * In a block with a condition, it applies only when the block is shown.
+ * Layout items have no name; the label is for the editor.
+ */
+export const LayoutItemSchema = UnitLayoutSchema.extend({
+  type: z.literal("layout"),
+  label: z.string().optional().describe("Shown in the editor, e.g. With the full text"),
+});
+export type LayoutItem = z.infer<typeof LayoutItemSchema>;
+
+/**
  * Items that can appear inside a unit_loop:
  * - Question items (can include span, relation, categorical, etc.)
+ * - Layout items (how the unit is shown from there on)
  * - End items
  * - Blocks (whose children can only be in-loop items)
  */
 export type InLoopItem =
   | InLoopQuestionItem
+  | LayoutItem
   | EndItem
   | {
       type: "block";
@@ -181,13 +196,13 @@ export const InLoopBlockItemSchema: z.ZodType<Extract<InLoopItem, { type: "block
 );
 
 export const InLoopItemSchema: z.ZodType<InLoopItem> = z.lazy(() =>
-  z.union([InLoopQuestionItemSchema, EndItemSchema, InLoopBlockItemSchema]),
+  z.union([InLoopQuestionItemSchema, LayoutItemSchema, EndItemSchema, InLoopBlockItemSchema]),
 );
 
 /**
  * A `for unit in ...` loop. Which of the coder's units it includes is
  * described by `units` (unitLoop.ts) and `order`. Children can only be
- * in-loop items (questions, end items, blocks): no nested loops.
+ * in-loop items (questions, layouts, end items, blocks): no nested loops.
  * With a `condition`, coders only get the loop if it holds.
  */
 export const UnitLoopItemSchema = z.object({
@@ -198,7 +213,6 @@ export const UnitLoopItemSchema = z.object({
     "Coders get the loop only if this holds: a script over earlier answers ($var)",
   ),
   ...UnitLoopDistributionShape,
-  layout: UnitLayoutSchema,
   children: z.array(InLoopItemSchema).min(1, "A unit_loop must have at least one child item"),
 });
 export type UnitLoopItem = z.infer<typeof UnitLoopItemSchema>;
@@ -265,9 +279,11 @@ export function innerItems(item: { children?: readonly unknown[]; elseChildren?:
  */
 export type DesignItem = TopLevelItem | InLoopItem;
 
-/** An item's name; blocks, unit loops and the Study entry have none. */
+/** An item's name; blocks, unit loops, layouts and the Study entry have none. */
 export function itemName(item: DesignItem): string | undefined {
-  return item.type === "block" || item.type === "unit_loop" || item.type === "session" ? undefined : item.name;
+  return item.type === "block" || item.type === "unit_loop" || item.type === "session" || item.type === "layout"
+    ? undefined
+    : item.name;
 }
 
 /**

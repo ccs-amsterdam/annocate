@@ -11,8 +11,8 @@ describe("codebookMarkdown", () => {
         type: "unit_loop",
         label: "articles",
         units: { gold: { placement: "last", questions: ["topic"] } },
-        layout: { template: "$unit.headline" },
         children: [
+          { type: "layout", template: "$unit.headline" },
           {
             type: "question",
             name: "topic",

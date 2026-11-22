@@ -28,8 +28,8 @@ async function study(request: Parameters<typeof api>[0]): Promise<{ id: number; 
       {
         type: "unit_loop",
         label: "Texts",
-        layout: { template: "$unit.text" },
         children: [
+          { type: "layout", template: "$unit.text" },
           nominal("topic", "Topic?", ["politics", "other"]),
           nominal("tone", "Tone?", ["positive", "negative"]),
         ],
@@ -243,8 +243,8 @@ test("special options: apart from the others, chosen with 0 and . in every quest
     items: [
       {
         type: "unit_loop",
-        layout: { template: "$unit.text" },
         children: [
+          { type: "layout", template: "$unit.text" },
           { type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options } },
           {
             type: "question",
@@ -323,8 +323,10 @@ test("display: the numpad only in a responsive study (three columns, 7 8 9 at th
       items: [
         {
           type: "unit_loop",
-          layout: { template: "$unit.text" },
-          children: [nominal("topic", "Topic?", ["politics", "economy", "sports", "other"])],
+          children: [
+            { type: "layout", template: "$unit.text" },
+            nominal("topic", "Topic?", ["politics", "economy", "sports", "other"]),
+          ],
         },
       ],
     });
@@ -370,8 +372,7 @@ test("display: each coder's keys and screen are recorded when they change; quick
     items: [
       {
         type: "unit_loop",
-        layout: { template: "$unit.text" },
-        children: [nominal("topic", "Topic?", ["politics", "other"])],
+        children: [{ type: "layout", template: "$unit.text" }, nominal("topic", "Topic?", ["politics", "other"])],
       },
     ],
   });
@@ -417,8 +418,8 @@ test("an instruction: behind the ? button or key, a dot until read; it can open 
       },
       {
         type: "unit_loop",
-        layout: { template: "$unit.text" },
         children: [
+          { type: "layout", template: "$unit.text" },
           { ...nominal("topic", "Topic?", ["politics", "other"]), instruction: "The topic with **most words**." },
           {
             ...nominal("tone", "Tone?", ["positive", "negative"]),

@@ -38,11 +38,11 @@ function locate(
   container: { id: string; title: string } | null = null,
   out = new Map<string, Located>(),
 ) {
-  const counts = { block: 0, unit_loop: 0 };
+  const counts = { block: 0, unit_loop: 0, layout: 0 };
   for (const item of items) {
     const parentId = container?.id ?? "";
     const id =
-      item.type === "block" || item.type === "unit_loop"
+      item.type === "block" || item.type === "unit_loop" || item.type === "layout"
         ? `${parentId}/${item.type} ${counts[item.type]++}`
         : item.type === "session"
           ? "/session"

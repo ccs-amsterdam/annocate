@@ -89,7 +89,7 @@ export function collectCoderVariables(items: TopLevelItem[]): Map<string, Variab
 function collectQuestions(items: DesignItem[], into: Map<string, VariableType>) {
   for (const item of items) {
     if (item.type === "block") collectQuestions(innerItems(item) as DesignItem[], into);
-    else if (item.type !== "unit_loop" && item.type !== "end" && item.type !== "session")
+    else if (item.type !== "unit_loop" && item.type !== "end" && item.type !== "session" && item.type !== "layout")
       into.set(item.name, item.variable);
   }
 }

@@ -3,23 +3,24 @@ import { sessionItem } from "./session.js";
 import { goldColumn, practiceColumn, practiceMessageColumn } from "./unitLoop.js";
 import { extractReferences, type Reference } from "./references.js";
 import { expandSnippets } from "./snippets.js";
+import { loopSnippets } from "./layoutItems.js";
 import { allTemplateReferences } from "./templateBlocks.js";
 
 /**
- * Every reference a unit loop makes: in its layout (with its snippets),
- * question texts, conditions and end messages. References are always literal (validation refuses
+ * Every reference a unit loop makes: in its layout items (each with its
+ * snippets), question texts, conditions and end messages. References are always literal (validation refuses
  * `$unit[...]`), so the list is complete. Span questions' fields go to
  * `spanFields`.
  */
 function loopReferences(loop: UnitLoopItem, spanFields?: (field: string) => void): Reference[] {
   const refs: Reference[] = [];
-  const snippets = loop.layout?.snippets;
-  const addTemplate = (source: unknown) =>
-    typeof source === "string" && refs.push(...allTemplateReferences(expandSnippets(source, snippets).source));
+  // Texts in the loop may use any of its layouts' snippets
+  const snippets = loopSnippets(loop.children);
+  const addTemplate = (source: unknown, own: Record<string, string> = snippets) =>
+    typeof source === "string" && refs.push(...allTemplateReferences(expandSnippets(source, own).source));
   const addScript = (source: unknown) =>
     typeof source === "string" && refs.push(...extractReferences(source).references);
 
-  addTemplate(loop.layout?.template);
   const walk = (list: unknown) => {
     if (!Array.isArray(list)) return;
     for (const raw of list) {
@@ -29,6 +30,8 @@ function loopReferences(loop: UnitLoopItem, spanFields?: (field: string) => void
         addScript(item.condition?.script);
         walk(item.children);
         walk(item.elseChildren);
+      } else if (item.type === "layout") {
+        addTemplate(item.template, item.snippets ?? {});
       } else if (item.type === "end") {
         addTemplate(item.message);
       } else if ("variable" in item && item.variable) {

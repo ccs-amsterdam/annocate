@@ -9,8 +9,10 @@ import {
   type DesignIssue,
   type EndItem,
   type InLoopQuestionItem,
+  type LayoutItem,
 } from "@annotinder/contracts";
 import { UnitLoopForm } from "./UnitLoopForm";
+import { LayoutForm } from "./unitLoop/LayoutForm";
 import { SessionItemForm } from "./SessionItemForm";
 import { EditedQuestionContext } from "../../design/deployedValues";
 import { HelpButton } from "../../help/HelpButton";
@@ -43,7 +45,7 @@ const TYPE_HELP: Record<AnyVariableType["type"], string> = {
 /**
  * The form of the item selected in the design editor's tree: its name (or
  * label), and what its type needs: a question's answer type, a loop's
- * units and layout, a condition, an end, or the Study entry.
+ * units, a layout, a condition, an end, or the Study entry.
  */
 export function ItemForm({
   item,
@@ -52,6 +54,7 @@ export function ItemForm({
   sessionValueNames = [],
   availableQuestions = [],
   inLoop = false,
+  loopItems = [],
   unitFields = [],
   loopNames,
   readOnly = false,
@@ -71,9 +74,11 @@ export function ItemForm({
   availableQuestions?: { name: string; variable: AnyVariableType }[];
   /** The item is inside a unit loop: loop answer types, an instruction and focus; conditions may use `$unit`. */
   inLoop?: boolean;
-  /** The study's unit fields (completions in a loop's template). */
+  /** In a loop: its items (as saved), for a layout's questions. */
+  loopItems?: DesignItem[];
+  /** The study's unit fields (completions in a layout's template). */
   unitFields?: string[];
-  /** For a question in a loop: the names its layout shows ("Show field"), and what span questions can select in. */
+  /** For a question in a loop: what the layouts before it show ("Show field"), and what span questions can select in. */
   loopNames?: { shown: string[]; selectable: string[] };
   readOnly?: boolean;
   validationIssues?: DesignIssue[];
@@ -100,17 +105,28 @@ export function ItemForm({
             client={client}
             onChange={onChange}
           />
-        ) : item.type === "block" || item.type === "unit_loop" ? (
-          // Blocks and unit loops have no name: an optional label shows in the tree (and for loops in exports).
+        ) : item.type === "block" || item.type === "unit_loop" || item.type === "layout" ? (
+          // Blocks, unit loops and layouts have no name: an optional label shows in the tree (and for loops in exports).
           <div className="flex flex-col gap-1.5">
             <span className="flex items-center gap-1.5">
               <label className="text-xs font-semibold text-foreground">Label (optional)</label>
-              <HelpButton topic={item.type === "block" ? "conditions" : "unit-loops"} label="Help" />
+              <HelpButton
+                topic={
+                  item.type === "block" ? "conditions" : item.type === "layout" ? "layout-templates" : "unit-loops"
+                }
+                label="Help"
+              />
             </span>
             <Input
               value={item.label ?? ""}
               onChange={(e) => onChange({ ...item, label: e.target.value || undefined })}
-              placeholder={item.type === "block" ? "e.g. Demographics" : "e.g. News items"}
+              placeholder={
+                item.type === "block"
+                  ? "e.g. Demographics"
+                  : item.type === "layout"
+                    ? "e.g. With the full text"
+                    : "e.g. News items"
+              }
             />
           </div>
         ) : (
@@ -206,17 +222,26 @@ export function ItemForm({
           </>
         )}
 
+        {item.type === "layout" && (
+          <LayoutForm
+            layout={item as LayoutItem}
+            loopItems={loopItems}
+            unitFields={unitFields}
+            coderQuestions={availableQuestions}
+            issues={validationIssues}
+            readOnly={readOnly}
+            onChange={(layout) => onChange(layout)}
+          />
+        )}
+
         {item.type === "unit_loop" && (
           <UnitLoopForm
             loop={item as UnitLoopItem}
             client={client}
             groups={groups}
-            unitFields={unitFields}
-            coderQuestions={availableQuestions}
             screenouts={screenouts}
             validationIssues={validationIssues}
             unitsContext={unitsContext}
-            readOnly={readOnly}
             onChange={(loop) => onChange(loop)}
           />
         )}

@@ -5,8 +5,8 @@ import {
   type AnyVariableType,
   type DesignItem,
   type DesignIssue,
+  type LayoutItem,
   type UnitLayout,
-  type UnitLoopItem,
 } from "@annotinder/contracts";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,29 +19,31 @@ import { LayoutDesigner } from "../LayoutDesigner";
 import { questionNames, questionsOf } from "./helpers";
 import { Section } from "./Section";
 
-// The unit loop form's Layout tab: how a unit is shown (template, snippets).
+// A layout item's form: how a unit is shown from there on (template, snippets).
 
 /** How a unit is shown: a simple form (title, byline, body), or the markdown template and its snippets. */
-export function LayoutTab({
-  loop,
+export function LayoutForm({
+  layout,
+  loopItems,
   unitFields,
   coderQuestions,
   issues,
   readOnly,
   onChange,
 }: {
-  loop: UnitLoopItem;
+  layout: LayoutItem;
+  /** The items of the loop it is in (its questions, for `::: from` and conditions). */
+  loopItems: DesignItem[];
   unitFields: string[];
   coderQuestions: { name: string; variable: AnyVariableType }[];
   issues: DesignIssue[];
   readOnly: boolean;
-  onChange: (loop: UnitLoopItem) => void;
+  onChange: (layout: LayoutItem) => void;
 }) {
-  const layout = loop.layout ?? { template: "" };
   const snippets = Object.entries(layout.snippets ?? {});
-  const loopQuestions = questionNames(loop.children as DesignItem[]);
+  const loopQuestions = questionNames(loopItems);
   // `::: if` in the layout may use coder-level questions, and (inside `::: from`) the loop's own.
-  const conditionQuestions = [...coderQuestions, ...questionsOf(loop.children as DesignItem[])];
+  const conditionQuestions = [...coderQuestions, ...questionsOf(loopItems)];
   const names = {
     // `$unit.id` is each unit's id (unless a field is called id)
     fields: unitFields.includes("id") ? unitFields : [...unitFields, "id"],
@@ -56,18 +58,18 @@ export function LayoutTab({
   // The simple form (title, byline, body) unless the template is more than it can show, or the researcher chose to write it.
   const simple = parseSimpleLayout(layout.template);
   const [advanced, setAdvanced] = useState(simple === null);
-  const setLayout = (next: Partial<UnitLayout>) => onChange({ ...loop, layout: { ...layout, ...next } });
+  const setLayout = (next: Partial<UnitLayout>) => onChange({ ...layout, ...next });
   const setSnippets = (entries: [string, string][]) => {
     const next = { ...layout };
     if (entries.length === 0) delete next.snippets;
     else next.snippets = Object.fromEntries(entries);
-    onChange({ ...loop, layout: next });
+    onChange(next);
   };
 
   if (!advanced && simple) {
     return (
       <div className="flex flex-col gap-5">
-        <Section title="Layout" help="What coders see of each unit." topic="layout-templates">
+        <Section title="Layout" help="What coders see of each unit, from here on." topic="layout-templates">
           {readOnly ? (
             <pre className="rounded-md border border-input p-2 font-mono text-xs whitespace-pre-wrap">
               {layout.template}

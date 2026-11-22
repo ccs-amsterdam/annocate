@@ -1,11 +1,10 @@
 import { createElement } from "react";
-import { AlertCircle, CornerDownLeft, Layers, LayoutTemplate, Split } from "lucide-react";
-import { useLoopTab } from "../designEditor/loopTab";
+import { AlertCircle, CornerDownLeft, Split } from "lucide-react";
 import { cn } from "cn";
 import { useDesignTree } from "./context";
 import { ITEM_TYPES, itemIcon } from "./itemTypes";
 import { AddItemMenu, type AddOption } from "./AddItemMenu";
-import { ActionButton, TreeRow } from "./TreeRow";
+import { TreeRow } from "./TreeRow";
 import { getChildren, getItemKey, insertableTypesAt, type TreeNode } from "./utils";
 import { parseSimpleCondition, type TopLevelItem, type UnitLoopItem } from "@annotinder/contracts";
 import { describeCondition, itemTitle } from "../../../codebook/conditions";
@@ -54,7 +53,6 @@ function moveLabel(label: string): string {
 export function TreeItemRow({ item }: { item: TreeNode }) {
   const tree = useDesignTree();
   const key = getItemKey(item);
-  const [loopTab, setLoopTab] = useLoopTab();
   const ticked = tree.isChecked(key);
   const inTicked = ticked && !tree.checked.has(key);
   const positions = tree.readOnly ? [] : tree.addPositions(key);
@@ -161,29 +159,6 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
           changed={tree.isChanged(item)}
         />
       </button>
-      {item.type === "unit_loop" && (
-        // Open the loop on a tab of its form: also marks loops in the tree.
-        <span className="flex shrink-0 items-center gap-0.5">
-          <ActionButton
-            icon={LayoutTemplate}
-            title="Layout: how a unit is shown"
-            className={cn(tree.selected === key && loopTab === "layout" && "bg-wood/15 text-foreground")}
-            onClick={() => {
-              setLoopTab("layout");
-              tree.select(key);
-            }}
-          />
-          <ActionButton
-            icon={Layers}
-            title="Units: which units coders get"
-            className={cn(tree.selected === key && loopTab === "units" && "bg-wood/15 text-foreground")}
-            onClick={() => {
-              setLoopTab("units");
-              tree.select(key);
-            }}
-          />
-        </span>
-      )}
     </TreeRow>
   );
 }

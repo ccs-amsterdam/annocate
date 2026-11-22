@@ -20,7 +20,7 @@ const pickQ = (name: string, options = ["A", "B"]): InLoopItem => ({
   variable: { type: "nominal", question: name, options: options.map((value) => ({ value })) },
 });
 const loop = (label: string, children: InLoopItem[]): TopLevelItem =>
-  ({ label, type: "unit_loop", layout: { template: "" }, children }) as TopLevelItem;
+  ({ label, type: "unit_loop", children: [{ type: "layout", template: "" }, ...children] }) as TopLevelItem;
 const units = (...ids: number[]): FakeUnit[] => ids.map((id) => ({ id }));
 
 const yes = { done: true } as unknown as VariableValue;

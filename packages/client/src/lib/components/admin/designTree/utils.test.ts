@@ -13,7 +13,6 @@ const block = (key: string, ...children: object[]) => ({ type: "block", _key: ke
 const loop = (key: string) => ({
   type: "unit_loop",
   _key: key,
-  layout: { template: "" },
   children: [question(`${key}_q`)],
 });
 const items = (...list: object[]) => list as unknown as TopLevelItem[];
@@ -28,6 +27,6 @@ describe("the tree's blocks", () => {
     expect(insertableTypesAt(design, { before: "B1" })).toEqual(["question", "computed", "block", "unit_loop"]);
     expect(insertableTypesAt(design, { after: "a" })).toEqual(["question", "computed", "block", "end"]);
     expect(insertableTypesAt(design, { into: "B2" })).toEqual(["question", "computed", "block", "end"]);
-    expect(insertableTypesAt(design, { into: "L1" })).toEqual(["question", "block", "end"]);
+    expect(insertableTypesAt(design, { into: "L1" })).toEqual(["question", "layout", "block", "end"]);
   });
 });

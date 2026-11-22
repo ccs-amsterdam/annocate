@@ -11,6 +11,7 @@ import {
   ListChecks,
   LogOut,
   FileStack,
+  LayoutTemplate,
   Shuffle,
   Spline,
   Tag,
@@ -56,6 +57,12 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     icon: FileStack,
     color: "text-primary-dark",
     blockClass: "[--iconcolor:var(--color-primary-dark)]",
+  },
+  layout: {
+    label: "Unit layout",
+    description: "How the unit is shown from here on (none: questions without the unit)",
+    icon: LayoutTemplate,
+    color: "text-primary-dark",
   },
   session: {
     label: "Session",

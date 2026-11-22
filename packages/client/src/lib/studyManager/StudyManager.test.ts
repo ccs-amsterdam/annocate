@@ -20,7 +20,7 @@ function confirm(name: string): TopLevelQuestionItem {
 }
 
 function unitLoop(name: string, children: InLoopItem[]): UnitLoopItem {
-  return { label: name, type: "unit_loop", layout: { template: "" }, children };
+  return { label: name, type: "unit_loop", children: [{ type: "layout", template: "" }, ...children] };
 }
 
 function unitVar(name: string): InLoopQuestionItem {
@@ -549,8 +549,8 @@ describe("rendering templates", () => {
       {
         type: "unit_loop",
         label: "main",
-        layout: { template: "# $unit.title\n\n[[intro]] $unit.title", snippets: { intro: "Hello" } },
         children: [
+          { type: "layout", template: "# $unit.title\n\n[[intro]] $unit.title", snippets: { intro: "Hello" } },
           {
             type: "question",
             name: "q1",
@@ -578,6 +578,53 @@ describe("rendering templates", () => {
     expect(snap.currentUnitTemplate?.values.map((v) => v.text)).toEqual(["*Big*", "*Big*"]);
     expect(snap.currentUnitTemplate?.markdown).toContain("Hello");
     expect(snap.currentTexts?.question?.values.map((v) => v.text)).toEqual(["student", "*Big*"]);
+  });
+});
+
+describe("layout items", () => {
+  it("show the unit from where the coder passes them: none before the first, the one in a block whose condition holds", async () => {
+    const confirm = (name: string) => ({ type: "question", name, variable: { type: "confirm", question: `${name}?` } });
+    const items = [
+      {
+        type: "unit_loop",
+        children: [
+          confirm("warmup"),
+          { type: "layout", template: "Title: $unit.title" },
+          confirm("read"),
+          {
+            type: "block",
+            condition: { script: "$unit.title == 'Long'" },
+            children: [{ type: "layout", template: "Full: $unit.text" }],
+          },
+          confirm("judge"),
+        ],
+      },
+    ] as TopLevelItem[];
+    let served = false;
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session(items)),
+      getNextUnit: vi.fn(async () =>
+        served
+          ? null
+          : ((served = true),
+            { id: 1, externalId: "u1", data: { title: "Long", text: "Body" }, variables: {} } as CoderUnitResponse),
+      ),
+    });
+    const manager = new StudyManager(server);
+    await manager.start();
+    const done = { done: true } as unknown as VariableValue;
+    // Before any layout item: the question without the unit
+    expect(itemName(manager.getSnapshot().currentItem!)).toBe("warmup");
+    expect(manager.getSnapshot().currentUnitTemplate).toBeNull();
+    await manager.answer(done);
+    expect(manager.getSnapshot().currentUnitTemplate?.markdown).toContain("Title:");
+    await manager.answer(done);
+    // The block's condition holds for this unit: its layout from there on
+    expect(itemName(manager.getSnapshot().currentItem!)).toBe("judge");
+    expect(manager.getSnapshot().currentUnitTemplate?.markdown).toContain("Full:");
+    // Back: the layout that question had
+    await manager.goBack();
+    expect(manager.getSnapshot().currentUnitTemplate?.markdown).toContain("Title:");
   });
 });
 
@@ -792,7 +839,11 @@ describe("frozen answers", () => {
       type: "question",
       variable: { type: "nominal", question: "Role?", options: [{ value: "A" }, { value: "B" }] },
     } as TopLevelQuestionItem;
-    const loop = { ...unitLoop("main", [unitVar("q1")]), layout: { template: "As {{$var.role.label}}" } };
+    const loop: UnitLoopItem = {
+      label: "main",
+      type: "unit_loop",
+      children: [{ type: "layout", template: "As {{$var.role.label}}" }, unitVar("q1")],
+    };
     let served = 0;
     const server = makeFlakyServer({
       getSession: vi.fn(async () => session([role, loop])),

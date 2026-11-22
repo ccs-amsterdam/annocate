@@ -15,8 +15,8 @@ describe("DesignTreeView", () => {
     {
       type: "unit_loop",
       label: "main_loop",
-      layout: { template: "text" },
       children: [
+        { type: "layout", template: "text" },
         {
           type: "question",
           name: "sentiment",
@@ -42,7 +42,8 @@ describe("DesignTreeView", () => {
     expect(html).toContain("consent");
     expect(html).toContain("main_loop");
     expect(html).toContain("sentiment");
-    expect(html.match(/Add an item below/g)).toHaveLength(3);
+    // consent, the loop, its layout and sentiment
+    expect(html.match(/Add an item below/g)).toHaveLength(4);
     expect(html).toContain('aria-label="Select consent"');
     // How to edit is behind the tree's info icon (TreePanel), not a line above the items
     expect(html).not.toContain("tick items to move or delete");

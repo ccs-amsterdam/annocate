@@ -6,8 +6,8 @@ const items = [
   {
     type: "unit_loop",
     label: "loop",
-    layout: { template: "# {{$unit.headline}}\n\n$unit.body" },
     children: [
+      { type: "layout", template: "# {{$unit.headline}}\n\n$unit.body" },
       { type: "question", name: "q1", variable: { type: "confirm", question: "Is {{$unit.topic}} right?" } },
       {
         type: "block",
@@ -54,7 +54,7 @@ describe("unknownUnitFields", () => {
 describe("pathOfItem", () => {
   it("finds an item by its title, as a validation issue path", () => {
     expect(pathOfItem(items, "loop")).toEqual([0]);
-    expect(pathOfItem(items, "q1")).toEqual([0, "children", 0]);
+    expect(pathOfItem(items, "q1")).toEqual([0, "children", 1]);
     expect(pathOfItem(items, "nope")).toBeNull();
   });
 });

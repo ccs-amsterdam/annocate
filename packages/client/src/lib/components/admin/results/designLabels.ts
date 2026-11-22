@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import {
   collectQuestions,
+  loopLayouts,
   loopTitle,
   optionLabel,
   unitLoops,
@@ -22,7 +23,7 @@ export interface DesignLabels {
   options: (question: string) => (string | number)[];
   /** The deployed design's questions. */
   questions: ReadonlyMap<string, AnyVariableType>;
-  /** A loop's unit layout and its questions in design order. */
+  /** A loop's unit layout (its first layout item; none: an empty one) and its questions in design order. */
   loop: (key: string) => { layout: UnitLayout; questions: string[] } | undefined;
 }
 
@@ -35,7 +36,9 @@ export function useDesignLabels(client: ResearcherApi): DesignLabels {
     const { questions, loopOf } = collectQuestions(items);
     const designLoops = unitLoops(items);
     const loops = new Map(designLoops.map(({ key, loop }) => [key, loopTitle(loop, key)]));
-    const layouts = new Map(designLoops.map(({ key, loop }) => [key, loop.layout]));
+    const layouts = new Map(
+      designLoops.map(({ key, loop }) => [key, loopLayouts(loop.children)[0] ?? { template: "" }]),
+    );
     const optionsOf = (name: string): { value: string | number; label?: string }[] => {
       const type: AnyVariableType | undefined = questions.get(name);
       return type && "options" in type && Array.isArray(type.options) ? type.options : [];

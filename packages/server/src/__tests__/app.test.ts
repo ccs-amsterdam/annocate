@@ -75,8 +75,10 @@ describe("codebook routes", () => {
         type: "unit_loop",
         label: "loop",
         units: {},
-        layout: { template: "" },
-        children: [{ type: "question", name: "q1", variable: { type: "confirm", question: "Confirm?" } }],
+        children: [
+          { type: "layout", template: "" },
+          { type: "question", name: "q1", variable: { type: "confirm", question: "Confirm?" } },
+        ],
       },
     ];
     const post = (items: unknown) =>
@@ -401,8 +403,7 @@ describe("links, coder progress and overview", () => {
       type: "unit_loop",
       label: "l",
       units: {},
-      layout: { template: "" },
-      children: [question("q1"), question("q2")],
+      children: [{ type: "layout", template: "" }, question("q1"), question("q2")],
     };
     if (names) await setCoders(study.id, names);
     const publish = async (items: object[], confirmLinks?: boolean) => {

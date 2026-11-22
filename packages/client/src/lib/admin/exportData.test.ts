@@ -260,8 +260,8 @@ describe("data download", () => {
       [
         {
           type: "unit_loop",
-          layout: { template: "" },
           children: [
+            { type: "layout", template: "" },
             {
               type: "question",
               name: "sentiment",

@@ -22,7 +22,9 @@ function unitLoop(
   template = "",
   snippets?: Record<string, string>,
 ): TopLevelItem {
-  return { type: "unit_loop", label: name, layout: { template, snippets }, children };
+  // A layout item first, when there is a template
+  const layout: InLoopItem[] = template || snippets ? [{ type: "layout", template, snippets }] : [];
+  return { type: "unit_loop", label: name, children: [...layout, ...children] };
 }
 function topCondition(name: string, children: TopLevelItem[], condition: Condition = { script: "true" }): TopLevelItem {
   return { type: "block", label: name, condition, children };
@@ -65,8 +67,7 @@ describe("validateDesignItems", () => {
         type: "unit_loop",
         label: "loop",
         units,
-        layout: { template: "" },
-        children: [questionVar("q1", select(["a", "b"]))],
+        children: [{ type: "layout", template: "" }, questionVar("q1", select(["a", "b"]))],
       },
     ];
     expect(messages(loop({}))).toEqual([]);
@@ -200,8 +201,7 @@ describe("the Session item", () => {
       return {
         type: "unit_loop",
         units,
-        layout: { template: "" },
-        children: [questionVar(q, select(["a", "b"])), questionVar(c)],
+        children: [{ type: "layout", template: "" }, questionVar(q, select(["a", "b"])), questionVar(c)],
       };
     };
     const divide = (divide: object) => ((n = 0), loop({ divide }));
@@ -306,7 +306,6 @@ describe("validateDesignItems (more)", () => {
       {
         type: "unit_loop",
         label: "empty_loop",
-        layout: { template: "" },
         children: [],
       },
     ];
@@ -318,13 +317,12 @@ describe("validateDesignItems (more)", () => {
       {
         type: "unit_loop",
         label: "outer",
-        layout: { template: "" },
         children: [
+          { type: "layout", template: "" },
           {
             type: "unit_loop",
             label: "inner",
-            layout: { template: "" },
-            children: [questionVar("q1")],
+            children: [{ type: "layout", template: "" }, questionVar("q1")],
           },
         ],
       },
@@ -739,8 +737,11 @@ describe("practice and gold units", () => {
   const loop = (units: object, template = "$unit.text") => ({
     type: "unit_loop",
     units: { overlap: "spread", ...units },
-    layout: { template },
-    children: [questionVar("sentiment", select(["pos", "neg"])), questionVar("note", { type: "unspecified" })],
+    children: [
+      { type: "layout", template },
+      questionVar("sentiment", select(["pos", "neg"])),
+      questionVar("note", { type: "unspecified" }),
+    ],
   });
   // An end item, in a block
   const end = { type: "block", children: [{ type: "end", name: "low_quality", outcome: "screenout" }] };
@@ -776,8 +777,8 @@ describe("instructions", () => {
   it("are for questions in unit loops, on the question item; at the top level the schema refuses them", () => {
     const loop = {
       type: "unit_loop",
-      layout: { template: "$unit.text" },
       children: [
+        { type: "layout", template: "$unit.text" },
         {
           type: "question",
           name: "topic",

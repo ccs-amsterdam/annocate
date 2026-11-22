@@ -141,8 +141,8 @@ test("your first study, as the help describes it: units, a design, deploy, a lin
       {
         type: "unit_loop",
         label: "News articles",
-        layout: { template: "# $unit.headline\n\n$unit.text" },
         children: [
+          { type: "layout", template: "# $unit.headline\n\n$unit.text" },
           {
             type: "question",
             name: "topic",

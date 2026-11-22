@@ -426,9 +426,11 @@ export function setupRecipe(answers: SetupAnswers): RecipeInput {
       // Absent: all the session's units, once
       ...(Object.keys(units).length > 0 ? { units } : {}),
       ...(answers.order === "random" ? { order: "random" } : {}),
-      // The editor's Layout tab can refine it
-      layout: { template: simpleTemplate(answers.layout) },
-      children: parseQuestions(answers.questions.unit).map(unspecified),
+      // A layout item first (the editor can refine it), then the questions
+      children: [
+        { type: "layout", template: simpleTemplate(answers.layout) },
+        ...parseQuestions(answers.questions.unit).map(unspecified),
+      ],
     });
     if (lists.includes("after")) items.push(...parseQuestions(answers.questions.after).map(unspecified));
   }

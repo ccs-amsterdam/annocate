@@ -11,8 +11,8 @@ describe("DesignJsonEditor", () => {
     {
       type: "unit_loop",
       label: "loop",
-      layout: { template: "# $unit.headline\n\n$unit.text", snippets: { intro: "Hi" } },
       children: [
+        { type: "layout", template: "# $unit.headline\n\n$unit.text", snippets: { intro: "Hi" } },
         {
           type: "question",
           name: "q",
@@ -33,10 +33,10 @@ describe("DesignJsonEditor", () => {
     expect(html).toContain("Format");
   });
 
-  it("finds the variable and layout objects to fold", () => {
+  it("finds the variable objects to fold", () => {
     const text = formatJson(items);
     const lines = text.split("\n");
     const folds = getFoldableLineNumbers(text).map((n) => lines[n - 1].trim());
-    expect(folds).toEqual(['"layout": {', '"variable": {']);
+    expect(folds).toEqual(['"variable": {']);
   });
 });

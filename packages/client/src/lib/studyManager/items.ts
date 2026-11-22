@@ -6,7 +6,7 @@ import type {
   TopLevelItem,
   VariableValue,
 } from "@annotinder/contracts";
-import { itemName, validateAnswer } from "@annotinder/contracts";
+import { validateAnswer } from "@annotinder/contracts";
 import { flattenTree } from "../codebook/tree";
 
 // Lookups in the coder codebook that StudyManager needs.
@@ -17,7 +17,7 @@ export function loopVariables(loop: CoderUnitLoopItem): Map<string, AnyVariableT
   const walk = (items: InLoopItem[]) => {
     for (const item of items) {
       if (item.type === "block") walk([...item.children, ...(item.elseChildren ?? [])]);
-      else if (item.type !== "end") result.set(item.name, item.variable);
+      else if (item.type === "question") result.set(item.name, item.variable);
     }
   };
   walk(loop.children);
@@ -26,7 +26,7 @@ export function loopVariables(loop: CoderUnitLoopItem): Map<string, AnyVariableT
 
 /** A loop's question names in codebook order (also inside conditions), for `::: from` blocks in its layout. */
 export function loopQuestionNames(loop: CoderUnitLoopItem): string[] {
-  return flattenTree(loop.children).flatMap((item) => (item.type === "block" ? [] : (itemName(item) ?? [])));
+  return flattenTree(loop.children).flatMap((item) => (item.type === "question" ? [item.name] : []));
 }
 
 /**

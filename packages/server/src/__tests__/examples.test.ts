@@ -118,8 +118,10 @@ describe("studies from a recipe", () => {
     },
     {
       type: "unit_loop",
-      layout: { template: "$unit.text" },
-      children: [{ type: "question", name: "topic", variable: { type: "unspecified" } }],
+      children: [
+        { type: "layout", template: "$unit.text" },
+        { type: "question", name: "topic", variable: { type: "unspecified" } },
+      ],
     },
   ];
   const recipe = {
@@ -175,7 +177,8 @@ describe("studies from a recipe", () => {
 
     // Published (the question specified): one open link
     const specified = structuredClone(items);
-    (specified[1] as { children: { variable: object }[] }).children[0].variable = { type: "confirm", question: "?" };
+    // (Its first child is the layout item)
+    (specified[1] as { children: { variable: object }[] }).children[1].variable = { type: "confirm", question: "?" };
     const published = await post({ ...recipe, design: { items: specified }, publish: true });
     expect(published.status, await published.clone().text()).toBe(201);
     const { id } = StudyResponseSchema.parse(await published.json());

@@ -313,7 +313,8 @@ export function variablesTable(
       const names = variable.type === "scale" ? variable.items.map((i) => `${name}.${i.name}`) : [name];
       const options = optionsOf(variable) ?? [];
       for (const n of names) {
-        if (options.length === 0) rows.push([versionCell(versionOf, id), number, loop, n, variable.type, text, "", "", ""]);
+        if (options.length === 0)
+          rows.push([versionCell(versionOf, id), number, loop, n, variable.type, text, "", "", ""]);
         for (const o of options)
           rows.push([
             versionCell(versionOf, id),

@@ -6,15 +6,16 @@ const loop = {
   _key: "k1",
   type: "unit_loop",
   label: "loop",
-  layout: { template: "$unit.text" },
-  children: [{ type: "question", name: "q", variable: { type: "confirm", question: "?" } }],
+  children: [
+    { type: "layout", template: "$unit.text" },
+    { type: "question", name: "q", variable: { type: "confirm", question: "?" } },
+  ],
 } as unknown as DesignItem;
 
 describe("item JSON", () => {
   it("shows the item without its key and children, compactly", () => {
     const json = itemToJson(loop);
     expect(json).toContain('"label": "loop"');
-    expect(json).toContain('"layout": { "template": "$unit.text" }');
     expect(json).not.toContain("_key");
     expect(json).not.toContain("children");
   });

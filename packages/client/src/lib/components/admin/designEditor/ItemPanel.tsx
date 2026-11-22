@@ -4,8 +4,7 @@ import {
   splitDesignItems,
   collectQuestions,
   availableQuestions,
-  templateNames,
-  expandSnippets,
+  itemName,
   sessionItem,
   unitLoops,
   loopTitle,
@@ -33,6 +32,7 @@ import { SessionPreview } from "../session/SessionPreview";
 import { SESSION_PART_LABELS, useSessionTab } from "../session/sessionTab";
 import type { DesignDraft } from "./useDesignDraft";
 import type { UnitFieldWarning } from "../../../design/unitFieldRefs";
+import { savedLoop, shownByLayouts } from "../../../design/loopLayouts";
 
 type ItemPane = "edit" | "json" | "preview";
 
@@ -175,6 +175,9 @@ function ItemEditForm({
   // What references may use at this item: the same rules as validation
   const available = useMemo(() => availableQuestions(cleanItems, itemPath(items, key) ?? []), [cleanItems, items, key]);
   const loop = enclosingLoop(items, item);
+  // The loop as saved: its layout items follow the flow there (blocks' else items as elseChildren)
+  const saved = useMemo(() => (loop ? savedLoop(items, cleanItems, loop) : undefined), [items, cleanItems, loop]);
+  const name = itemName(item);
   const itemIssues = useMemo(
     () => validationIssues.filter((issue) => issueIsAbout(items, issue, item)),
     [item, validationIssues, items],
@@ -191,10 +194,9 @@ function ItemEditForm({
         sessionValueNames={sessionNames(cleanItems)}
         availableQuestions={available}
         inLoop={!!loop}
+        loopItems={(saved?.children ?? []) as DesignItem[]}
         unitFields={(unitFieldsQuery.data ?? []).map((f) => f.name)}
-        loopNames={
-          loop ? templateNames(expandSnippets(loop.layout?.template ?? "", loop.layout?.snippets).source) : undefined
-        }
+        loopNames={saved && name ? shownByLayouts(saved, name) : undefined}
         readOnly={readOnly}
         validationIssues={itemIssues}
         screenouts={item.type === "unit_loop" ? screenoutEnds(cleanItems) : undefined}

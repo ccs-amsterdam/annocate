@@ -269,7 +269,10 @@ const sentimentQuestion = {
  * question, `sentiment`) and deploys it as a new version. Returns the
  * deployment response.
  */
-async function redeploy(loop: object, extraItems: object[] = []): Promise<DeploymentResponse> {
+async function redeploy(
+  { layout, ...loop }: { layout?: object } & Record<string, unknown>,
+  extraItems: object[] = [],
+): Promise<DeploymentResponse> {
   const res = await server.request("/api/study/1/design", {
     method: "POST",
     headers: adminHeaders,
@@ -283,8 +286,8 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
             type: "unit_loop",
             label: "main_loop",
             units: {},
-            layout: { template: "" },
-            children: [sentimentQuestion],
+            // `layout`: the loop's layout item (first)
+            children: [{ type: "layout", template: "", ...layout }, sentimentQuestion],
             ...loop,
           },
         ]),
@@ -443,8 +446,10 @@ describe("shared queues", () => {
       type: "unit_loop",
       label: "other",
       units: { divide: { codersPerUnit: { min: 2, max: 2 }, priority: "saturate" } },
-      layout: { template: "" },
-      children: [{ type: "question", name: "other", variable: { type: "confirm", question: "?" } }],
+      children: [
+        { type: "layout", template: "" },
+        { type: "question", name: "other", variable: { type: "confirm", question: "?" } },
+      ],
     };
     await redeploy({}, [
       crowd({ until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 }, priority: "saturate" }),
@@ -480,8 +485,10 @@ describe("shared queues", () => {
       type: "unit_loop",
       label: "first",
       units: { divide: { codersPerUnit: { min: 1, max: 1 }, unitsPerCoder: { max: 2 } } },
-      layout: { template: "" },
-      children: [{ type: "question", name: "other", variable: { type: "confirm", question: "?" } }],
+      children: [
+        { type: "layout", template: "" },
+        { type: "question", name: "other", variable: { type: "confirm", question: "?" } },
+      ],
     };
     await redeploy({ units: { sameAsPrevious: true } }, [crowd(), first]);
     const a = coder("a");
@@ -717,7 +724,7 @@ describe("coders", () => {
       body: JSON.stringify(
         splitDesignItems([
           codersInvite("coder", "login"),
-          { type: "unit_loop", units: {}, layout: { template: "" }, children: [sentimentQuestion] },
+          { type: "unit_loop", units: {}, children: [{ type: "layout", template: "" }, sentimentQuestion] },
         ]),
       ),
     });
@@ -809,8 +816,10 @@ describe("computed items linked to a column", () => {
       type: "unit_loop",
       label: "before",
       units: {},
-      layout: { template: "" },
-      children: [{ type: "question", name: "other", variable: { type: "confirm", question: "?" } }],
+      children: [
+        { type: "layout", template: "" },
+        { type: "question", name: "other", variable: { type: "confirm", question: "?" } },
+      ],
     };
     await redeploy({}, [loopBefore, part]);
     const a = coder("a");
@@ -859,8 +868,10 @@ describe("assignment edge cases (review of the unit assignment)", () => {
       type: "unit_loop",
       label: "first",
       units: { overlap: "ignore" },
-      layout: { template: "" },
-      children: [{ type: "question", name: "other", variable: { type: "confirm", question: "?" } }],
+      children: [
+        { type: "layout", template: "" },
+        { type: "question", name: "other", variable: { type: "confirm", question: "?" } },
+      ],
     };
     await redeploy({ units: { overlap: "before" } }, [crowd(undefined, { column: "g" }), first]);
     const c = coder("c");
@@ -875,8 +886,10 @@ describe("assignment edge cases (review of the unit assignment)", () => {
       type: "unit_loop",
       label: "before",
       units: {},
-      layout: { template: "" },
-      children: [{ type: "question", name: "other", variable: { type: "confirm", question: "?" } }],
+      children: [
+        { type: "layout", template: "" },
+        { type: "question", name: "other", variable: { type: "confirm", question: "?" } },
+      ],
     };
     await redeploy({ units: { overlap: "ignore" } }, [before]);
     const c = coder("c");
@@ -1101,7 +1114,7 @@ describe("routing by session values", () => {
     expect((await b.submit(coded.id, sentiment("positive"))).status).toBe(200);
     // Another loop in front: this one is loop 2 now, and has another label
     const warmUp = { type: "question", name: "warm_up", variable: { type: "confirm", question: "?" } };
-    const before = { type: "unit_loop", label: "warm-up", layout: { template: "" }, children: [warmUp] };
+    const before = { type: "unit_loop", label: "warm-up", children: [{ type: "layout", template: "" }, warmUp] };
     await redeploy({ label: "renamed" }, [condition, before]);
     expect((await b.next("2"))!.externalId).toBe("unit-3");
     // A subset that leaves out what b coded: b can still go back to it and change the answer
@@ -2054,9 +2067,8 @@ describe("finished units follow the current codebook", () => {
     const second = {
       type: "unit_loop",
       label: "second_loop",
-      layout: { template: "" },
       units: {},
-      children: [relevance],
+      children: [{ type: "layout", template: "" }, relevance],
     };
     await redeploy(fixedMain, [second]);
     const c = coder("two");
@@ -2404,7 +2416,13 @@ describe("unit fields in the design", () => {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({
-        items: [{ type: "unit_loop", units: {}, layout: { template: "$unit.nowhere" }, children: [sentimentQuestion] }],
+        items: [
+          {
+            type: "unit_loop",
+            units: {},
+            children: [{ type: "layout", template: "$unit.nowhere" }, sentimentQuestion],
+          },
+        ],
       }),
     });
     const { id } = (await created.json()) as { id: number };
@@ -2480,7 +2498,14 @@ describe("researcher preview", () => {
       headers: adminHeaders,
       body: JSON.stringify({
         note,
-        items: [{ type: "unit_loop", label: note, layout: { template: "" }, children: [sentimentQuestion], units: {} }],
+        items: [
+          {
+            type: "unit_loop",
+            label: note,
+            children: [{ type: "layout", template: "" }, sentimentQuestion],
+            units: {},
+          },
+        ],
       }),
     });
     expect(res.status).toBe(201);
@@ -2593,8 +2618,8 @@ describe("end items", () => {
   it("inside a unit loop: remember the unit; the closed session gets only what the end screen uses", async () => {
     // An end in the loop whose message uses a unit field and an answer
     await redeploy({
-      layout: { template: "$unit.headline" },
       children: [
+        { type: "layout", template: "$unit.headline" },
         sentimentQuestion,
         { type: "end", name: "done_here", outcome: "complete", message: "$unit.headline: $var.sentiment.label" },
       ],

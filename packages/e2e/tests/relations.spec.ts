@@ -15,8 +15,8 @@ async function study(request: Parameters<typeof api>[0]) {
       items: [
         {
           type: "unit_loop",
-          layout: { template: "$unit.text" },
           children: [
+            { type: "layout", template: "$unit.text" },
             {
               type: "question",
               name: "actors",

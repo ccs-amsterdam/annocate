@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   collectQuestions,
+  itemName,
+  loopLayouts,
   parseTemplateBlocks,
   templateReferences,
   type AnyVariableType,
@@ -14,6 +16,7 @@ import {
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useSetGroupsQuery, useUnitPageQuery } from "../../../admin/queries";
 import { enclosingLoop, flattenTree } from "../../../codebook/tree";
+import { layoutForPreview, savedLoop } from "../../../design/loopLayouts";
 import { QuestionPreview } from "../QuestionPreview";
 import type { DesignDraft } from "./useDesignDraft";
 
@@ -58,6 +61,16 @@ function optionsOf(variable: AnyVariableType | undefined): { value: OptionValue;
 export function ItemPreview({ client, draft, item }: { client: ResearcherApi; draft: DesignDraft; item: DesignItem }) {
   const loop = item.type === "unit_loop" ? (item as UnitLoopItem) : enclosingLoop(draft.items, item);
   const { questions } = useMemo(() => collectQuestions(draft.cleanItems), [draft.cleanItems]);
+  // The layout to show the unit with: the selected layout; for a loop its first; else the last before the item
+  const saved = loop ? savedLoop(draft.items, draft.cleanItems, loop) : undefined;
+  const layout =
+    item.type === "layout"
+      ? item
+      : !saved
+        ? null
+        : item.type === "unit_loop"
+          ? (loopLayouts(saved.children)[0] ?? null)
+          : layoutForPreview(saved, itemName(item));
   const order = loop ? loopQuestionNames(loop) : [];
 
   const [unitIndex, setUnitIndex] = useState(0);
@@ -79,7 +92,7 @@ export function ItemPreview({ client, draft, item }: { client: ResearcherApi; dr
   const current = onScreen ?? selectedQuestion ?? order[0] ?? null;
 
   const [picked, setPicked] = useState<Record<string, number>>({});
-  const used = loop ? referencedQuestions(loop.layout?.template ?? "").filter((q) => optionsOf(questions.get(q))) : [];
+  const used = layout ? referencedQuestions(layout.template).filter((q) => optionsOf(questions.get(q))) : [];
   const answers: Record<string, VariableValue> = {};
   for (const q of used) {
     const options = optionsOf(questions.get(q));
@@ -171,6 +184,7 @@ export function ItemPreview({ client, draft, item }: { client: ResearcherApi; dr
   return (
     <QuestionPreview
       item={item}
+      layout={layout}
       parentLoop={loop}
       unitData={unit?.data}
       questions={questions}

@@ -97,7 +97,7 @@ function exampleQuestion(alternatives: (string | number | null)[]): AnyVariableT
 /**
  * The example as a design, for checking it: its answers as questions
  * before a loop (those in `steps` in the loop, in that order, the other
- * steps as confirm questions), and the template as the loop's layout.
+ * steps as confirm questions), and the template as the loop's layout item.
  */
 export function exampleDesign(data: HelpExampleData): unknown[] {
   const question = (name: string, variable: AnyVariableType) => ({ type: "question", name, variable });
@@ -108,10 +108,12 @@ export function exampleDesign(data: HelpExampleData): unknown[] {
       .map(([name, alternatives]) => question(name, exampleQuestion(alternatives))),
     {
       type: "unit_loop",
-      layout: { template: data.template, ...(data.snippets ? { snippets: data.snippets } : {}) },
-      children: data.steps.length
-        ? data.steps.map((name) => question(name, data.answers[name] ? exampleQuestion(data.answers[name]) : confirm))
-        : [question("done", confirm)],
+      children: [
+        { type: "layout", template: data.template, ...(data.snippets ? { snippets: data.snippets } : {}) },
+        ...(data.steps.length
+          ? data.steps.map((name) => question(name, data.answers[name] ? exampleQuestion(data.answers[name]) : confirm))
+          : [question("done", confirm)]),
+      ],
     },
   ];
 }

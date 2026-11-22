@@ -18,13 +18,15 @@ export function defaultItemForType(type: DesignItem["type"], name: string): Desi
         variable: { type: "random", draw: "random", options: defaultRandomOptions() },
       };
     case "unit_loop":
-      // Like a condition, a new loop starts empty: its questions are added in
-      // the tree. By default it hands out all the session's units, once (its form changes that).
+      // A new loop starts with a layout item, its questions are added in the
+      // tree. By default it hands out all the session's units, once (its form changes that).
       return {
         type: "unit_loop",
-        layout: { template: "" },
-        children: [],
+        children: [{ type: "layout", template: "" }],
       } as DesignItem;
+    case "layout":
+      // The simple form starts empty: the researcher places the unit's fields
+      return { type: "layout", template: "" };
     case "block":
       // Without a label or a condition: always shown (its form sets them)
       return { type: "block", children: [] } as DesignItem;

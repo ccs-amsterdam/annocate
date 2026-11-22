@@ -182,8 +182,10 @@ test("an ::html field shows in its sandboxed frame, sized by its script, within 
       items: [
         {
           type: "unit_loop",
-          layout: { template: "$unit.table::html" },
-          children: [{ type: "question", name: "ok", variable: { type: "confirm", question: "Seen it?" } }],
+          children: [
+            { type: "layout", template: "$unit.table::html" },
+            { type: "question", name: "ok", variable: { type: "confirm", question: "Seen it?" } },
+          ],
         },
       ],
     },

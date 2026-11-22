@@ -13,6 +13,7 @@ import type {
   EndItem,
   ReferenceScope,
   UnitData,
+  LayoutItem,
 } from "@annotinder/contracts";
 import {
   answerMatchesKey,
@@ -24,6 +25,8 @@ import {
   collectQuestions,
   fillRedirectUrl,
   itemName,
+  loopLayouts,
+  loopSnippets,
   validateAnswer,
 } from "@annotinder/contracts";
 import type { CoderApi } from "../api/httpCoderApi";
@@ -141,6 +144,8 @@ export class StudyManager {
   private activeLoop: CoderUnitLoopItem | null = null;
   private currentUnit: CoderUnitResponse | null = null;
   private loopSteps: DesignItem[] = [];
+  /** The layout each loop step shows the unit with (the last layout item passed; null: no unit). */
+  private loopStepLayouts: (LayoutItem | null)[] = [];
   private loopIndex = -1;
   /** Per unit_loop: the units seen in this session (plus, after a resume, those finished earlier). */
   private histories = new Map<string, LoopHistory>();
@@ -824,7 +829,7 @@ export class StudyManager {
 
   private async refreshLoopSteps(): Promise<void> {
     if (!this.activeLoop || !this.currentUnit) return;
-    const { steps, visible } = await computeLoopSteps(
+    const { steps, visible, layouts } = await computeLoopSteps(
       this.activeLoop,
       this.coderVisible,
       this.unitVariableValues,
@@ -832,6 +837,7 @@ export class StudyManager {
       this.stepContext,
     );
     this.loopSteps = steps;
+    this.loopStepLayouts = layouts;
     this.unitVisible = visible;
   }
 
@@ -884,22 +890,32 @@ export class StudyManager {
     const unit = this.currentUnit;
     if (!loop || !unit) return;
     const step = this.loopSteps[this.loopIndex];
+    // The layout this step shows the unit with; none: the question alone
+    const layout = this.loopStepLayouts[this.loopIndex] ?? null;
     try {
       const scope = this.scope(this.unitVisible, unitScopeData(unit) as UnitData);
-      const snippets = loop.layout.snippets;
       const [template, texts] = await Promise.all([
-        renderTemplate(loop.layout.template, scope, this.expressionCache, `layout:${this.keyOf(loop)}`, {
-          progress: { current: step && "name" in step ? step.name : null, order: loopQuestionNames(loop) },
-          snippets,
-          selectable: spanColumns(loop),
-        }),
-        this.questionTexts(step, scope, snippets),
+        layout
+          ? renderTemplate(
+              layout.template,
+              scope,
+              this.expressionCache,
+              `layout:${this.keyOf(loop)}:${loopLayouts(loop.children).indexOf(layout)}`,
+              {
+                progress: { current: step && "name" in step ? step.name : null, order: loopQuestionNames(loop) },
+                snippets: layout.snippets,
+                selectable: spanColumns(loop),
+              },
+            )
+          : null,
+        // Texts may use any of the loop's snippets
+        this.questionTexts(step, scope, loopSnippets(loop.children)),
       ]);
       this.publish({
         phase: "unit_variable",
         currentItem: step,
         currentUnit: unit,
-        currentUnitLayout: loop.layout,
+        currentUnitLayout: layout,
         currentLoopVariables: loopVariables(loop),
         currentUnitTemplate: template,
         currentTexts: texts,
@@ -1286,6 +1302,7 @@ export class StudyManager {
     this.activeLoop = null;
     this.currentUnit = null;
     this.loopSteps = [];
+    this.loopStepLayouts = [];
     this.loopIndex = -1;
     this.unitVariableValues = {};
     this.unitVisible = {};

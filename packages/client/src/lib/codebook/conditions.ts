@@ -109,5 +109,6 @@ export function itemTitle(item: DesignItem): string {
     return item.label?.trim() || (item.condition ? `if ${describeCondition(item.condition)}` : "Block");
   if (item.type === "unit_loop") return item.label?.trim() || "Unit loop";
   if (item.type === "session") return "Study entry";
+  if (item.type === "layout") return item.label?.trim() || "Unit layout";
   return item.name;
 }

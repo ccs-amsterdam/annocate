@@ -170,10 +170,11 @@
       {
         "type": "unit_loop",
         "label": "Headlines",
-        "layout": {
-          "template": "# $unit.headline"
-        },
         "children": [
+          {
+            "type": "layout",
+            "template": "# $unit.headline"
+          },
           {
             "type": "question",
             "name": "sentiment",

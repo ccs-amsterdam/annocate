@@ -136,8 +136,8 @@ test("on a phone: a scale, special options and the instruction fit and work by t
     [
       {
         type: "unit_loop",
-        layout: { template: "$unit.text" },
         children: [
+          { type: "layout", template: "$unit.text" },
           {
             type: "question",
             name: "topic",
@@ -208,8 +208,10 @@ test("on a phone, a coder picks their name from the list", async ({ request, bro
     items: [
       {
         type: "unit_loop",
-        layout: { template: "$unit.text" },
-        children: [{ type: "question", name: "ok", variable: { type: "confirm", question: "Seen it?" } }],
+        children: [
+          { type: "layout", template: "$unit.text" },
+          { type: "question", name: "ok", variable: { type: "confirm", question: "Seen it?" } },
+        ],
       },
     ],
   });
@@ -233,8 +235,8 @@ test("on a phone, a relation is two taps: the start span, then where it goes", a
     [
       {
         type: "unit_loop",
-        layout: { template: "$unit.text" },
         children: [
+          { type: "layout", template: "$unit.text" },
           {
             type: "question",
             name: "actors",

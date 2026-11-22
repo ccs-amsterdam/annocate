@@ -56,10 +56,11 @@
       {
         "type": "unit_loop",
         "label": "Texts",
-        "layout": {
-          "template": "$unit.text"
-        },
         "children": [
+          {
+            "type": "layout",
+            "template": "$unit.text"
+          },
           {
             "type": "question",
             "name": "actors",

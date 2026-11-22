@@ -35,7 +35,7 @@ const otherIssues = (a: SetupAnswers) => {
   return validateDesignItems(designItems(recipe.design)).filter((i) => !i.message.includes("no answer type yet"));
 };
 const loopOf = (a: SetupAnswers) =>
-  (setupRecipe(a).design.items as { type: string; units?: unknown; layout?: { template: string } }[]).find(
+  (setupRecipe(a).design.items as { type: string; units?: unknown; children: unknown[] }[]).find(
     (i) => i.type === "unit_loop",
   )!;
 
@@ -73,7 +73,7 @@ describe("setup wizard recipes", () => {
     const a = setup({ layout: { title: "group", body: ["text"] } });
     expect(setupProblems(a)).toEqual([]);
     expect(otherIssues(a)).toEqual([]);
-    expect(loopOf(a)).toMatchObject({ layout: { template: "# $unit.group\n\n$unit.text" } });
+    expect(loopOf(a).children[0]).toEqual({ type: "layout", template: "# $unit.group\n\n$unit.text" });
     expect(loopOf(a).units).toBeUndefined();
     expect(setupRecipe(a).sets).toEqual([]);
   });

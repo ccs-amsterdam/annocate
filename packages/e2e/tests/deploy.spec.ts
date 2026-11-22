@@ -18,8 +18,8 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
     items: [
       {
         type: "unit_loop",
-        layout: { template: "$unit.text" },
         children: [
+          { type: "layout", template: "$unit.text" },
           {
             type: "question",
             name: "topic",
@@ -78,8 +78,8 @@ test("the design's unit fields: how the design uses each, removing an unused one
     items: [
       {
         type: "unit_loop",
-        layout: { template: "$unit.text" },
         children: [
+          { type: "layout", template: "$unit.text" },
           {
             type: "block",
             condition: { script: "$unit.year > 2000" },

@@ -120,7 +120,6 @@ describe("itemEdit", () => {
       const loop: TopLevelItem = {
         type: "unit_loop",
         ...{ _key: "loop" },
-        layout: { template: "" },
         children: [
           {
             type: "question",
@@ -138,7 +137,6 @@ describe("itemEdit", () => {
     const loop: TopLevelItem = {
       type: "unit_loop",
       ...{ _key: "loop" },
-      layout: { template: "" },
       children: [
         {
           type: "question",
@@ -163,7 +161,6 @@ describe("itemEdit", () => {
       const spanLoop: TopLevelItem = {
         type: "unit_loop",
         ...{ _key: "loop" },
-        layout: { template: "" },
         children: [
           {
             type: "question",
@@ -206,7 +203,6 @@ describe("itemEdit", () => {
       {
         _key: "loop",
         type: "unit_loop",
-        layout: { template: "text" },
         children: [cond("c", [q("x")])],
       } as unknown as TopLevelItem,
       q("b") as TopLevelItem,

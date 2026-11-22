@@ -12,8 +12,8 @@ import { loopShareColumns } from "./assignment.js";
 const loop = {
   type: "unit_loop",
   units: { subset: { column: "parts", sets: ["a"] }, overlap: "ignore" },
-  layout: { template: "{{$unit.headline}} as {{$var.role.label}}" },
   children: [
+    { type: "layout", template: "{{$unit.headline}} as {{$var.role.label}}" },
     {
       type: "question",
       name: "topic",
@@ -45,8 +45,8 @@ describe("fieldUsage", () => {
       {
         type: "unit_loop",
         units: { gold: "after", goldCheck: { questions: ["topic"] } },
-        layout: { template: "$unit.title" },
         children: [
+          { type: "layout", template: "$unit.title" },
           {
             type: "block",
             condition: { script: "$unit.year > 2000" },
@@ -75,7 +75,7 @@ describe("fieldUsage", () => {
 describe("set columns", () => {
   const items = [
     { type: "session", invite: { mode: "coders", column: "coder", link: "per_coder" } },
-    { type: "unit_loop", layout: { template: "" }, children: [] },
+    { type: "unit_loop", children: [{ type: "layout", template: "" }] },
     {
       type: "block",
       condition: { script: "true" },
@@ -84,8 +84,7 @@ describe("set columns", () => {
     {
       type: "unit_loop",
       units: { subset: { column: "phase", sets: ["post"] } },
-      layout: { template: "" },
-      children: [],
+      children: [{ type: "layout", template: "" }],
     },
   ];
 

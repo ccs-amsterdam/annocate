@@ -8,6 +8,7 @@ import {
   type UnitData,
   type UnitLoopItem,
   type BlockItem,
+  type LayoutItem,
   type VariableValue,
 } from "@annotinder/contracts";
 import { evaluateCondition } from "./conditions";
@@ -202,6 +203,8 @@ export interface Steps {
    * answer to a hidden question never decides what comes next.
    */
   visible: Record<string, VariableValue>;
+  /** In a unit loop: the layout each step shows the unit with (the last layout item passed; null: none). */
+  layouts: (LayoutItem | null)[];
 }
 
 /**
@@ -216,15 +219,25 @@ async function walkSteps(
   visible: Record<string, VariableValue>,
   ctx: StepContext,
   unit: { data: UnitData } | null,
-  steps: DesignItem[],
+  out: Steps,
+  layout: { current: LayoutItem | null },
 ): Promise<boolean> {
+  const steps = {
+    push: (item: DesignItem) => {
+      out.steps.push(item);
+      out.layouts.push(layout.current);
+    },
+  };
   for (const node of nodes) {
     if (node.type === "block") {
       const scope = buildScope(ctx.questions, visible, unit?.data, ctx.session);
       // Its items if the condition holds (none: always), else its else items
       const holds = await evaluateCondition(node.condition, scope, ctx.cache, `condition:${node.condition?.script}`);
       const branch = holds ? node.children : (node.elseChildren ?? []);
-      if (await walkSteps(branch as typeof nodes, answers, visible, ctx, unit, steps)) return true;
+      if (await walkSteps(branch as typeof nodes, answers, visible, ctx, unit, out, layout)) return true;
+    } else if (node.type === "layout") {
+      // How the unit is shown from here on (not a step)
+      layout.current = node;
     } else if (node.type === "unit_loop") {
       // A loop with a condition: only if it holds (on coder-level answers)
       const scope = buildScope(ctx.questions, visible, undefined, ctx.session);
@@ -248,10 +261,9 @@ export async function computeTopLevelSteps(
   answers: Record<string, VariableValue>,
   ctx: StepContext,
 ): Promise<Steps> {
-  const steps: DesignItem[] = [];
-  const visible: Record<string, VariableValue> = {};
-  await walkSteps(items, answers, visible, ctx, null, steps);
-  return { steps, visible };
+  const out: Steps = { steps: [], visible: {}, layouts: [] };
+  await walkSteps(items, answers, out.visible, ctx, null, out, { current: null });
+  return out;
 }
 
 /**
@@ -266,10 +278,9 @@ export async function computeLoopSteps(
   unit: UnitData,
   ctx: StepContext,
 ): Promise<Steps> {
-  const steps: DesignItem[] = [];
-  const visible: Record<string, VariableValue> = { ...coderAnswers };
-  await walkSteps(loop.children, unitAnswers, visible, ctx, { data: unit }, steps);
-  return { steps, visible };
+  const out: Steps = { steps: [], visible: { ...coderAnswers }, layouts: [] };
+  await walkSteps(loop.children, unitAnswers, out.visible, ctx, { data: unit }, out, { current: null });
+  return out;
 }
 
 /** The unit loop the item is in (through conditions), if any. */

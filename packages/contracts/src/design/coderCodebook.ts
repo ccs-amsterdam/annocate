@@ -7,7 +7,7 @@ import { DisplaySchema, STUDY_END_NAME, type SessionItem } from "./session.js";
 
 // The coder codebook (docs/api/coder.md): what coders' browsers
 // get of a codebook, only what the coding client needs. Unit loops keep
-// their layout, questions and order (the server works out the units).
+// their layout items, questions and order (the server works out the units).
 // Left out: how units are handed out (the loop's `units`: filters,
 // criteria, overlap, practice and gold settings), the Study entry (its
 // values come with the session), and how computed values are made (draw,

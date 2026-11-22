@@ -35,7 +35,7 @@ function placeOf(items: readonly TopLevelItem[], position: TreePosition): "loop"
  */
 export function insertableTypesAt(items: TopLevelItem[], position: TreePosition): ItemType[] {
   const place = placeOf(items, position);
-  if (place === "loop") return ["question", "block", "end"];
+  if (place === "loop") return ["question", "layout", "block", "end"];
   if (place === "block") return ["question", "computed", "block", "end"];
   // (The Study entry is always there, first: never added)
   return ["question", "computed", "block", "unit_loop"];

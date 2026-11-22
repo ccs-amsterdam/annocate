@@ -4,6 +4,8 @@ import {
   type AnyVariableType,
   type DesignItem,
   type UnitData,
+  type UnitLayout,
+  type UnitLoopItem,
   type VariableValue,
 } from "@annotinder/contracts";
 import { type TemplateProgress } from "../../codebook/renderTemplate";
@@ -26,6 +28,8 @@ const MOCK_UNIT_DATA: UnitData = {
 
 interface QuestionPreviewProps {
   item: DesignItem;
+  /** In a loop: the layout the unit is shown with (layoutItems.ts); null: the question without the unit. */
+  layout: UnitLayout | null;
   parentLoop?: Extract<DesignItem, { type: "unit_loop" }> | null;
   /** The unit to show (default: a made-up one). */
   unitData?: UnitData;
@@ -44,6 +48,7 @@ interface QuestionPreviewProps {
  */
 export function QuestionPreview({
   item,
+  layout,
   parentLoop,
   unitData = MOCK_UNIT_DATA,
   questions,
@@ -57,19 +62,16 @@ export function QuestionPreview({
   const isComputed = item.type === "computed";
   const isLoop = item.type === "unit_loop";
   const isCondition = item.type === "block";
-  const inLoop = isLoop || (isVariable && !!parentLoop);
+  const isLayout = item.type === "layout";
+  // The unit shows in a loop, with the layout that applies (none: the question alone)
+  const showsUnit = layout !== null && (isLoop || isLayout || (isVariable && !!parentLoop));
 
-  const spanVariable = isVariable && inLoop && item.variable.type === "span" ? item.variable : null;
+  const spanVariable = isVariable && showsUnit && item.variable.type === "span" ? item.variable : null;
 
-  const layout = isLoop
-    ? item.layout
-    : (parentLoop?.layout ?? {
-        template: "# $unit.headline\n\n$unit.text",
-      });
-  const loop = isLoop ? item : parentLoop;
+  const loop: UnitLoopItem | undefined = isLoop ? item : (parentLoop ?? undefined);
   // Span questions' fields are selectable during every question, as while coding.
   const selectable = loop ? spanColumns(loop) : (spanVariable?.fields ?? []);
-  const rendered = useRenderedLayout(layout, unitData, questions, answers, progress, selectable);
+  const rendered = useRenderedLayout(layout ?? { template: "" }, unitData, questions, answers, progress, selectable);
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
@@ -90,8 +92,8 @@ export function QuestionPreview({
       {/* The coding screen */}
       <div className="flex-1 overflow-y-auto bg-background/50 p-4">
         <div className="mx-auto flex max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-md">
-          {/* The unit (in a loop) */}
-          {inLoop && (
+          {/* The unit (in a loop, with a layout) */}
+          {showsUnit && layout && (
             <div className="border-b border-border/60 bg-background p-4 text-sm">
               {spanVariable ? (
                 <SpanAnnotationProvider
@@ -142,6 +144,12 @@ export function QuestionPreview({
                 Coders never see this item. The server draws its value when a coder reaches it; use it as
                 <code className="mx-1 rounded bg-muted px-1 font-mono">$var.{item.name}</code> in conditions and texts.
               </p>
+            </div>
+          )}
+
+          {isLayout && (
+            <div className="p-4 text-xs text-muted-foreground">
+              The questions after this layout show the unit like this, until the next layout.
             </div>
           )}
 

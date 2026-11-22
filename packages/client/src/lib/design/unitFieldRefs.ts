@@ -2,6 +2,7 @@ import {
   allTemplateReferences,
   expandSnippets,
   extractReferences,
+  loopSnippets,
   templateReferences,
   type Condition,
   type InLoopItem,
@@ -39,7 +40,7 @@ function conditionReferences(condition: Condition | undefined): Reference[] {
 
 /**
  * References to unit fields that don't exist: `$unit.x` anywhere in a unit
- * loop (layout template with its snippets, conditions, question texts), and
+ * loop (layout items with their snippets, conditions, question texts), and
  * the `unit.<field>` names span questions select in. Warnings, not errors:
  * units may still be uploaded after the design is written.
  * Nothing to check while the study has no units (`fields` empty), unless
@@ -73,6 +74,10 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[], al
         walk(blockInner(child) as InLoopItem[], snippets);
         continue;
       }
+      if (child.type === "layout") {
+        check(itemTitle(child), allTemplateReferences(expandSnippets(child.template, child.snippets).source));
+        continue;
+      }
       if (child.type === "end") {
         check(child.name, templateReferences(child.message ?? "").references);
         continue;
@@ -93,11 +98,8 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[], al
     for (const item of list) {
       if (item.type === "block" || isElse(item)) visit(blockInner(item) as TopLevelItem[]);
       if (item.type !== "unit_loop") continue;
-      check(
-        itemTitle(item),
-        allTemplateReferences(expandSnippets(item.layout?.template ?? "", item.layout?.snippets).source),
-      );
-      walk(item.children, item.layout?.snippets);
+      // Texts in the loop may use any of its layouts' snippets
+      walk(item.children, loopSnippets(item.children));
     }
   };
   visit(items);

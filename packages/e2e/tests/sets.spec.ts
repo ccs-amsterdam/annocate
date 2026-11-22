@@ -46,8 +46,8 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
       {
         type: "unit_loop",
         units: { overlap: "before" },
-        layout: { template: "$unit.text" },
         children: [
+          { type: "layout", template: "$unit.text" },
           {
             type: "question",
             name: "topic",

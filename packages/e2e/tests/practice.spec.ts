@@ -49,8 +49,8 @@ test("a practice question gives feedback when wrong, answered again until right;
           gold: "after",
           goldCheck: { questions: ["topic"], health: { start: 1, wrong: -1, end: "low_quality" } },
         },
-        layout: { template: "$unit.text" },
         children: [
+          { type: "layout", template: "$unit.text" },
           {
             type: "question",
             name: "topic",
@@ -120,8 +120,8 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
         type: "unit_loop",
         name: "articles",
         units: { gold: "after", goldCheck: { questions: ["topic"] } },
-        layout: { template: "$unit.text" },
         children: [
+          { type: "layout", template: "$unit.text" },
           {
             type: "question",
             name: "topic",
@@ -135,8 +135,11 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
   await page.goto("/research");
   await page.getByText("Gold answers").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  // The loop's Units tab
-  await page.getByTitle("Units: which units coders get").click();
+  // The loop's form: which units coders get
+  await page
+    .getByRole("button", { name: /^Unit loop/ })
+    .first()
+    .click();
   await page.getByRole("button", { name: "Create gold values…" }).click();
 
   const dialog = page.getByRole("dialog");
