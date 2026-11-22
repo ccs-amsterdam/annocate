@@ -20,6 +20,8 @@ import type { Server, Env } from "../context.js";
 import { rows, type Db } from "../db/index.js";
 import { coderSessions, deployments, designVersions, units } from "../db/schema/index.js";
 import { HttpError } from "../shared/http.js";
+import { fileToken, LINK_SECONDS } from "../shared/files.js";
+import { ensureResultsExport } from "../shared/resultsExport.js";
 import { unitVersionData } from "../db/sql.js";
 import { designVersionItems } from "../shared/designVersions.js";
 import { requireStudyUser } from "./auth.js";
@@ -373,6 +375,16 @@ export function results(server: Server): Hono<Env> {
     const found = Number.isInteger(unitId) && unitId > 0 ? await resultUnit(server.db, c.get("studyId"), unitId) : null;
     if (!found) throw new HttpError(404, "Unit not found");
     return c.json(found);
+  });
+  // The raw export (shared/resultsExport.ts): written or reused, then a download link
+  app.post("/study/:studyId/results/export", requireStudyUser(server, "READ"), async (c) => {
+    const { key, size, filename } = await ensureResultsExport(server.db, server.files, c.get("studyId"));
+    const expires = Date.now() + LINK_SECONDS * 1000;
+    return c.json({
+      url: `/api/files/${fileToken(server.secret, key, filename, expires)}`,
+      expires: new Date(expires),
+      size,
+    });
   });
   app.get("/study/:studyId/results/coders", requireStudyUser(server, "READ"), async (c) =>
     c.json({ coders: await resultCoders(server.db, c.get("studyId")) }),

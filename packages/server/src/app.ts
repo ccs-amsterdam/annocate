@@ -22,6 +22,8 @@ import { HttpError } from "./shared/http.js";
 import { annotationsReset } from "./researcher/annotations.reset.js";
 import { annotations } from "./researcher/annotations.js";
 import { results } from "./researcher/results.js";
+import { DiskFileStore, readFileToken, type FileStore } from "./shared/files.js";
+import { Readable } from "node:stream";
 import { me } from "./researcher/me.js";
 import { admin } from "./researcher/admin.js";
 import { login } from "./researcher/login.js";
@@ -48,6 +50,8 @@ import { studyExports } from "./researcher/studyExport.js";
 export interface AppOptions {
   /** Signs preview tokens. Random per process if not given (previews then end with a restart). */
   secret?: string;
+  /** Where the server keeps files (default: a folder in the system's temp folder). */
+  files?: FileStore;
   runtime?: Partial<RuntimeOptions>;
   /** Tests: observe or alter what the runtime reads and writes. */
   wrapStore?: (store: Store) => Store;
@@ -107,6 +111,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
         }
       : null,
     secret,
+    files: options.files ?? new DiskFileStore(),
     admins: (options.admins ?? []).map((e) => e.trim().toLowerCase()).filter(Boolean),
     stepUpMaxAge: options.stepUpMaxAge ?? 600,
     insecure: {
@@ -203,6 +208,21 @@ export function createApp(db: Db, options: AppOptions = {}) {
     results,
   ])
     api.route("/", routes(server));
+  // Download links (shared/files.ts): the token names the file and expires
+  api.get("/files/:token", async (c) => {
+    const file = readFileToken(server.secret, c.req.param("token"));
+    const size = file && (await server.files.size(file.key));
+    if (!file || size === null || size === undefined)
+      return c.json({ error: "This download link has expired or doesn't exist", code: "link_expired" }, 404);
+    return new Response(Readable.toWeb(server.files.read(file.key)) as ReadableStream, {
+      headers: {
+        "content-type": "application/zip",
+        "content-length": String(size),
+        "content-disposition": `attachment; filename="${file.filename.replace(/"/g, "")}"`,
+        "cache-control": "private, no-store",
+      },
+    });
+  });
   // Anything else under /api: not found, as JSON (never the app)
   api.all("*", (c) => c.json({ error: "Not found" }, 404));
   app.route("/api", api);

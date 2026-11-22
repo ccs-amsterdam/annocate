@@ -4,6 +4,7 @@ import { describeDatabase, openDatabase } from "./database.js";
 import { seed } from "./seed.js";
 import { createApp } from "./app.js";
 import { parseMfaClaim, type MfaClaim } from "./oidc.js";
+import { DiskFileStore } from "./shared/files.js";
 
 // Node entry point. PORT (default 8787); HOST (where to listen; default all
 // addresses, in development mode localhost only); DATABASE_URL (Postgres),
@@ -27,7 +28,8 @@ import { parseMfaClaim, type MfaClaim } from "./oidc.js";
 // ANNOTINDER_ADMINS (comma-separated emails: the server's first admins);
 // ANNOTINDER_FRAME_ANCESTORS (origins that may frame AnnoTinder, e.g. AmCAT's);
 // ANNOTINDER_TRUST_PROXY=1 (behind a proxy: client addresses from X-Forwarded-For);
-// ANNOTINDER_RATE_LIMITS=off (no rate limits; docs/security.md).
+// ANNOTINDER_RATE_LIMITS=off (no rate limits; docs/security.md); ANNOTINDER_FILES_DIR
+// (where exports are kept; default a temp folder: they are a cache).
 
 const port = Number(process.env.PORT ?? 8787);
 const devMode = process.env.AUTH_DEV_MODE === "1";
@@ -116,6 +118,7 @@ const trustProxy = process.env.ANNOTINDER_TRUST_PROXY === "1";
 const app = createApp(db, {
   // An empty value counts as unset (a random secret), never as an empty signing key
   secret: process.env.ANNOTINDER_SECRET || undefined,
+  files: new DiskFileStore(process.env.ANNOTINDER_FILES_DIR || undefined),
   devMode,
   login,
   admins,

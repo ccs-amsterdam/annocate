@@ -222,6 +222,9 @@ importers:
       drizzle-orm:
         specifier: 0.45.4
         version: 0.45.4(@electric-sql/pglite@0.5.9)(@types/pg@8.23.1)(pg@8.23.1)
+      fflate:
+        specifier: 0.8.2
+        version: 0.8.2
       hono:
         specifier: ^4.6.14
         version: 4.13.8

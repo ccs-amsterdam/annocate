@@ -3,6 +3,7 @@ import type { Role } from "@annotinder/contracts";
 import type { Deployments } from "./runtime/registry.js";
 import type { Researcher } from "./researcher/auth.js";
 import type { Oidc } from "./oidc.js";
+import type { FileStore } from "./shared/files.js";
 
 /** What every endpoint gets (built in app.ts). */
 export interface Server {
@@ -23,8 +24,10 @@ export interface Server {
     accountUrl: string | null;
     previous: { oidc: Oidc; until: Date } | null;
   } | null;
-  /** Signs short-lived cookies and preview tokens. */
+  /** Signs short-lived cookies, preview tokens and download links. */
   secret: string;
+  /** Files the server keeps, e.g. results exports (shared/files.ts; `ANNOTINDER_FILES_DIR`). */
+  files: FileStore;
   /** Emails that are admins on this server (`ANNOTINDER_ADMINS`), lowercased; admins can make more. */
   admins: readonly string[];
   /** How recent (seconds) a login's second factor must be for sensitive actions (`AUTH_STEP_UP_MAX_AGE`, default 600). */

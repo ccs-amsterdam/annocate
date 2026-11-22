@@ -25,6 +25,7 @@ import {
   ResultsAgreementSchema,
   ResultsAnswersSchema,
   ResultsCodersSchema,
+  ResultsExportSchema,
   ResultsUnitSchema,
   ResultsUnitsSchema,
 } from "../results.js";
@@ -343,6 +344,13 @@ export const researcherEndpoints = {
     path: "/study/:studyId/results/units/:unitId",
     request: z.void(),
     response: ResultsUnitSchema,
+  },
+  /** A link to the study's raw export, written now or reused if nothing changed (results.ts). */
+  exportResults: {
+    method: "POST",
+    path: "/study/:studyId/results/export",
+    request: z.void(),
+    response: ResultsExportSchema,
   },
   /** Per coder session: units, time per unit, practice tries (results.ts). */
   listResultCoders: {

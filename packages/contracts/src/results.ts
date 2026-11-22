@@ -117,3 +117,24 @@ export type ResultCoder = z.infer<typeof ResultCoderSchema>;
 /** `GET /study/:studyId/results/coders`. */
 export const ResultsCodersSchema = z.object({ coders: z.array(ResultCoderSchema) });
 export type ResultsCoders = z.infer<typeof ResultsCodersSchema>;
+
+/** `POST /study/:studyId/results/export`: a short-lived link to the study's raw export (docs/plans/exports-and-files.md). */
+export const ResultsExportSchema = z.object({
+  /** Relative to the server (`/api/files/...`) or, later, a storage service's link. No login needed: the link is the key. */
+  url: z.string(),
+  expires: z.coerce.date(),
+  /** Bytes. */
+  size: z.number().int().nonnegative(),
+});
+export type ResultsExport = z.infer<typeof ResultsExportSchema>;
+
+/** The raw export's `manifest.json`, written last: its counts say every file is complete. */
+export const ResultsExportManifestSchema = z.object({
+  format: z.literal(1),
+  study: z.object({ id: IdSchema, name: z.string() }),
+  exported: z.coerce.date(),
+  release: z.string(),
+  /** Rows per file (`answers.jsonl`, `units.jsonl`, ...). */
+  counts: z.record(z.string(), z.number().int().nonnegative()),
+});
+export type ResultsExportManifest = z.infer<typeof ResultsExportManifestSchema>;
