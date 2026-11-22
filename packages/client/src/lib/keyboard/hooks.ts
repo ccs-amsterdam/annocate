@@ -44,6 +44,8 @@ export interface KeyTargetOptions {
   onEnter?: () => void;
   /** The field shows what was typed and dims what doesn't match: type-to-filter works (else numbers). */
   filterable?: boolean;
+  /** The scope's priority (default a field's; a span's label menu is above the question's keys). */
+  priority?: number;
 }
 
 export interface KeyTargets {
@@ -149,7 +151,7 @@ export function useKeyTargets(
       return chooseByKey(press);
     },
     groups !== null,
-    { priority: PRIORITY.field },
+    { priority: options.priority ?? PRIORITY.field },
   );
   const list = groups ?? [];
   return {
@@ -164,6 +166,16 @@ export function useKeyTargets(
           : group.map(() => true),
     ),
   };
+}
+
+/**
+ * The keys (badges) `useKeyTargets` gives one group of targets, for a part
+ * of the screen that shows them while another component takes the presses
+ * (a span's labels at the selection). Without type-to-filter: numbers.
+ */
+export function useTargetKeys(group: readonly KeyTarget[]): (string | null)[] {
+  const chosen = useKeyMapping();
+  return keysOf(chosen.kind === "filter" ? numbersMapping : chosen, group);
 }
 
 export interface BaseKeys {

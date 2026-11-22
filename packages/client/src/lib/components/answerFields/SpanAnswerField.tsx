@@ -1,6 +1,6 @@
 import { optionLabel } from "@annotinder/contracts";
 import { PRIORITY } from "../../keyboard/controller";
-import { useKeyScope } from "../../keyboard/hooks";
+import { useKeyScope, useKeyTargets } from "../../keyboard/hooks";
 import { useState, useEffect } from "react";
 import type { SpanAnswer } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
@@ -77,21 +77,25 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
     }
   }, [pending, setIsViewingAllLabels, setFocusedSpanId]);
 
-  // Creating a span: number keys choose its label, Escape cancels
+  // Creating a span: the shortcut style's keys choose its label (as for an answer's options), Escape cancels
+  const labelling = !!annotation?.pendingSpan && !isManageMode;
+  const labelKeys =
+    useKeyTargets(
+      labelling && annotation ? [annotation.options.map((o) => ({ label: optionLabel(o) }))] : null,
+      (_, index) => {
+        if (!annotation?.pendingSpan) return;
+        annotation.addSpan(annotation.pendingSpan.slices, annotation.options[index].value);
+        annotation.setPendingSpan(null);
+      },
+      { priority: PRIORITY.editor },
+    ).keys[0] ?? [];
   useKeyScope(
     (press) => {
-      if (!annotation?.pendingSpan) return false;
-      if (press.key === "Escape") {
-        annotation.setPendingSpan(null);
-        return true;
-      }
-      const num = parseInt(press.key, 10);
-      if (isNaN(num) || num < 1 || num > annotation.options.length) return false;
-      annotation.addSpan(annotation.pendingSpan.slices, annotation.options[num - 1].value);
+      if (press.key !== "Escape" || !annotation?.pendingSpan) return false;
       annotation.setPendingSpan(null);
       return true;
     },
-    !!annotation?.pendingSpan && !isManageMode,
+    labelling,
     { priority: PRIORITY.editor },
   );
 
@@ -145,11 +149,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
 
             {/* In a wide coding area the labels are at the selection (SpanLabelMenu); narrower, here, near the thumbs */}
             <p className="hidden text-xs text-muted-foreground @2xl:block">
-              Pick a label at the selection
-              {annotation && annotation.options.length > 1
-                ? `, or press 1 to ${Math.min(9, annotation.options.length)}`
-                : ""}
-              .
+              Pick a label at the selection{labelKeys.some(Boolean) ? ", or press its key" : ""}.
             </p>
             <div className="flex flex-wrap items-center gap-2 pt-0.5 @2xl:hidden">
               {annotation?.options.map((c, idx) => (
@@ -163,7 +163,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
                     annotation.setPendingSpan(null);
                   }}
                 >
-                  {idx < 9 && <ShortcutBadge shortcut={String(idx + 1)} />}
+                  {labelKeys[idx] && <ShortcutBadge shortcut={labelKeys[idx]!} />}
                   <span className="truncate">{optionLabel(c)}</span>
                 </button>
               ))}

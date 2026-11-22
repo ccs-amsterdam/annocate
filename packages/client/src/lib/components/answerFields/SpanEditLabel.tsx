@@ -1,6 +1,6 @@
 import { optionLabel } from "@annotinder/contracts";
 import { PRIORITY } from "../../keyboard/controller";
-import { useKeyScope } from "../../keyboard/hooks";
+import { useKeyScope, useKeyTargets } from "../../keyboard/hooks";
 import { useCallback } from "react";
 import type { SpanAnswer } from "@annotinder/contracts";
 import type { SpanAnnotationState } from "../../context/spanAnnotation";
@@ -64,7 +64,13 @@ export function SpanEditLabel({ annotation, span, onBack, onCancel, onCodeChange
     }
   }, [annotation, span, onDelete]);
 
-  // Editing a span: number keys change its label, Delete/Backspace removes it, Escape cancels
+  // Editing a span: the shortcut style's keys change its label, Delete/Backspace removes it, Escape cancels
+  const labelKeys =
+    useKeyTargets(
+      [annotation.options.map((o) => ({ label: optionLabel(o) }))],
+      (_, index) => handleCodeChange(annotation.options[index].value),
+      { priority: PRIORITY.menu },
+    ).keys[0] ?? [];
   useKeyScope(
     (press) => {
       if (press.key === "Escape") {
@@ -75,10 +81,7 @@ export function SpanEditLabel({ annotation, span, onBack, onCancel, onCodeChange
         handleDelete();
         return true;
       }
-      const num = parseInt(press.key, 10);
-      if (isNaN(num) || num < 1 || num > annotation.options.length) return false;
-      handleCodeChange(annotation.options[num - 1].value);
-      return true;
+      return false;
     },
     true,
     { priority: PRIORITY.menu },
@@ -149,7 +152,7 @@ export function SpanEditLabel({ annotation, span, onBack, onCancel, onCodeChange
               onClick={() => handleCodeChange(c.value)}
               title={isCurrent ? `Currently assigned: ${optionLabel(c)}` : `Change to ${optionLabel(c)}`}
             >
-              {idx < 9 && <ShortcutBadge shortcut={String(idx + 1)} />}
+              {labelKeys[idx] && <ShortcutBadge shortcut={labelKeys[idx]!} />}
               <span className="truncate">{optionLabel(c)}</span>
               {isCurrent && <Check className="ml-0.5 h-3.5 w-3.5 shrink-0 text-foreground" />}
             </button>

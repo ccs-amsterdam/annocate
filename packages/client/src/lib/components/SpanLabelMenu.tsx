@@ -5,6 +5,7 @@ import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 import { useCoderSettings } from "../context/coderSettings";
 import { getCodeButtonStyle } from "../utils/color";
 import { ShortcutBadge } from "./ShortcutBadge";
+import { useTargetKeys } from "../keyboard/hooks";
 
 /**
  * The labels for a new span, right at the selection (when the coding area
@@ -14,8 +15,8 @@ import { ShortcutBadge } from "./ShortcutBadge";
  * container, so it measures that area itself.
  * Rendered as a zero-width anchor after the selection's last part. It
  * doesn't take focus or close on clicks elsewhere: coders go on adjusting
- * the selection in the text. Keys (1-9, Esc) are handled by the answer
- * field, as for the pane's buttons.
+ * the selection in the text. Keys (the shortcut style's, Esc) are handled
+ * by the answer field, as for the pane's buttons.
  */
 export function SpanLabelMenu({
   options,
@@ -30,6 +31,7 @@ export function SpanLabelMenu({
 }) {
   const { theme } = useCoderSettings();
   const isDark = theme === "dark";
+  const keys = useTargetKeys(options.map((o) => ({ label: optionLabel(o) })));
   const [wide, setWide] = useState(false);
   const measure = (anchor: HTMLSpanElement | null) => {
     const area = anchor?.closest<HTMLElement>(".\\@container");
@@ -75,7 +77,7 @@ export function SpanLabelMenu({
               className="relative flex cursor-pointer items-center justify-center rounded-md border px-2.5 py-1 text-xs font-semibold shadow-xs transition-transform hover:scale-105 active:scale-95"
               style={getCodeButtonStyle(option.color, false, isDark)}
             >
-              {idx < 9 && <ShortcutBadge shortcut={String(idx + 1)} />}
+              {keys[idx] && <ShortcutBadge shortcut={keys[idx]!} />}
               <span className="truncate">{optionLabel(option)}</span>
             </button>
           ))}
