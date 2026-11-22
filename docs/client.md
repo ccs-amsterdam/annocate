@@ -35,6 +35,14 @@ How the web client (`packages/client`) works and why. Server side:
 `useStudyManager` binds it to React with `useSyncExternalStore`. It talks only
 to the `CoderApi` interface (`api/httpCoderApi.ts`); tests use stubs.
 
+Its parts, in `studyManager/`: `outbox.ts` (background saving), `unitDraft.ts`
+(the open unit's answers in localStorage), `items.ts` (codebook lookups),
+`practice.ts`, `navigationLabels.ts`, `errors.ts` and `types.ts` (the
+snapshot the screen reads). The screen is `components/StudyRunner.tsx`, with
+its parts in `components/studyRunner/`: the top bar, the question panel,
+settings and transfer menus, and the loading, error and pick-a-name screens
+(`SessionNotices.tsx`).
+
 - **Steps.** It computes the visible steps from the codebook: top-level
   items, then loop questions, with conditions evaluated in document order
   (§5). Answers of questions a condition now hides count as unanswered, and
@@ -49,7 +57,7 @@ to the `CoderApi` interface (`api/httpCoderApi.ts`); tests use stubs.
   background when 2 are left.
 - **Saving in the background.** Answers go into an outbox, posted one at a
   time in order; a newer post for the same answers replaces one still
-  waiting. Connection failures (network, 5xx, 408, 429) are retried, backing
+  waiting (`Outbox`). Connection failures (network, 5xx, 408, 429) are retried, backing
   off up to 30 s; other failures stop saving and show an error. The outbox is
   emptied before `/end` and `/quit`. `StudyRunner` shows "Not saved yet: no
   connection" and asks before the page closes with unsaved answers.
@@ -421,13 +429,14 @@ Units), Deploy (Links, Coders), Results, Settings. It uses a `ResearcherApi`
   out. On a development server, development headers replace the login.
 - **Accounts**: only researchers create studies; `account/ResearcherAccess.tsx`
   handles requests to become one. Admins get the server admin page
-  (`server/ServerAdmin.tsx`: warnings, users, plans, registration, studies,
-  log; `docs/accounts.md`).
+  (`server/ServerAdmin.tsx`, a tab per file in `server/`: warnings, users,
+  plans, registration, studies, log; `docs/accounts.md`).
 - **From a file** (`ImportStudyDialog.tsx`): a study export (its manifest is
   read in the browser, then `POST /study/import`, with or without coders) or a
   design file (sent as a recipe, `docs/examples.md`). Export is in the study's
   Settings (`docs/hosting.md` "Moving a study").
-- **Guided setup** (`SetupWizard.tsx`, `lib/admin/setupRecipe.ts`): a short
+- **Guided setup** (`SetupWizard.tsx`, its steps in `setupWizard/`;
+  `lib/admin/setupRecipe.ts`): a short
   way to a new study's skeleton. It writes a recipe (`docs/examples.md`) and
   opens the study in the editor; there is no way back into the wizard. Steps:
   1. **What do you want to do?** Name; annotate units, ask questions, or
@@ -498,7 +507,9 @@ Units), Deploy (Links, Coders), Results, Settings. It uses a `ResearcherApi`
   against the live version (`design/diff.ts`), takes a version note, and shows
   the server's errors and warnings (reopened units, removed option values,
   changed types). Coders switch to the new version on their next request (§2).
-- **Question forms** (`VariableTypeForm.tsx`): the options editor
+- **Question forms** (`VariableTypeForm.tsx` picks the form per type in
+  `variableType/`; `ItemForm.tsx`, with end items and loop-question fields in
+  `itemForm/`): the options editor
   (`OptionsEditor.tsx`: label, value, colour, order; ordinal values renumber
   unless "Custom values"), `multiple`, a layout select whose `auto` entry
   names its choice, numeric range, step and labels. Switching nominal ↔
@@ -519,16 +530,17 @@ Units), Deploy (Links, Coders), Results, Settings. It uses a `ResearcherApi`
   `LiveControls.tsx` pauses and resumes.
 - **Settings** (`StudySettingsPage`): the team (`TeamSettings.tsx`, at least
   one ADMIN), rename, archive, keep sessions open, export, delete.
-- **Links** (`LinksPanel.tsx`): the links deploying made, with coder, uses,
+- **Links** (`LinksPanel.tsx`, `links/`): the links deploying made, with coder, uses,
   status and the URL parameters they take (copied with placeholders). Per
   link: label, max uses, a fixed coder id; revoke, reopen, new secret.
   Retired links are listed apart. There is no "create": the Study entry
   declares the invitation.
-- **Coders**: per coder session the link, started, last active, answers,
+- **Coders** (`CodersPanel.tsx`, deletion in `coders/`): per coder session the link, started, last active, answers,
   finished units per loop, and how it ended. Deletion requests come first.
   Reset or delete data per session, or by coder ids or emails
   (`coder-identity.md` §8).
-- **Results** (`ResultsPanel.tsx`, `admin/exportData.ts`): one zip built in
+- **Results** (`ResultsPanel.tsx`; `admin/exportData.ts` with the tables,
+  `exportAnswers.ts` for answer cells, `exportReadme.ts`): one zip built in
   the browser from the researcher API, with `fflate`:
   - `annotations.csv`: a row per unit and coder session (unit version, design
     version), a column per question (scales a column per item);
