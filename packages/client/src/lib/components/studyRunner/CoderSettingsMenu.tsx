@@ -1,23 +1,16 @@
-import { InfoTip } from "@/components/ui/info-tip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Moon, Settings, Sun } from "lucide-react";
 import { useCoderSettings } from "../../context/coderSettings";
-import { useDisplay } from "../../display/context";
-import { MAPPINGS, mappingById } from "../../keyboard/mappings";
 
 const THEMES = [
   { value: "light", label: "Light", Icon: Sun },
   { value: "dark", label: "Dark", Icon: Moon },
 ] as const;
 
-/** The coder's settings in the coding screen's top bar: light or dark, shortcut badges, and the keys for answers. */
+/** The coder's settings in the coding screen's top bar: light or dark (the keyboard's are KeyboardMenu). */
 export function CoderSettingsMenu() {
-  const { theme, setTheme, themeLocked, showShortcuts, setShowShortcuts, keyMapping, setKeyMapping } =
-    useCoderSettings();
-  // The numpad needs layouts that adapt (a responsive study); a study may show one theme for everyone
-  const display = useDisplay();
-  const numpadAllowed = display.layouts === "responsive";
-  const shownMapping = keyMapping === "numpad" && !numpadAllowed ? "numbers" : keyMapping;
+  // A study may show one theme for everyone
+  const { theme, setTheme, themeLocked } = useCoderSettings();
 
   return (
     <Popover>
@@ -58,62 +51,6 @@ export function CoderSettingsMenu() {
               </button>
             ))}
           </div>
-        </div>
-
-        <div className="space-y-1.5 border-t border-border/60 pt-2">
-          <div className="flex items-center justify-between">
-            <label htmlFor="toggle-shortcuts" className="cursor-pointer text-xs font-medium text-foreground">
-              Shortcuts
-            </label>
-            <button
-              id="toggle-shortcuts"
-              type="button"
-              role="switch"
-              aria-checked={showShortcuts}
-              onClick={() => setShowShortcuts(!showShortcuts)}
-              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none ${
-                showShortcuts ? "bg-primary" : "bg-muted"
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition-transform ${
-                  showShortcuts ? "translate-x-4" : "translate-x-0"
-                }`}
-              />
-            </button>
-          </div>
-          <p className="text-[11px] leading-tight text-muted-foreground">
-            Show keyboard hotkey badges on answer options
-          </p>
-          <label htmlFor="key-mapping" className="block pt-1 text-xs font-medium text-foreground">
-            Keys for answers
-          </label>
-          <select
-            id="key-mapping"
-            className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
-            value={shownMapping}
-            onChange={(e) => setKeyMapping(e.target.value)}
-          >
-            {MAPPINGS.map((m) => (
-              <option key={m.id} value={m.id} disabled={m.id === "numpad" && !numpadAllowed}>
-                {m.name}
-                {m.id === "numpad" && !numpadAllowed ? " (not in this study)" : ""}
-              </option>
-            ))}
-          </select>
-          {!numpadAllowed && (
-            <p className="flex items-start gap-1 text-[11px] leading-tight text-muted-foreground">
-              <InfoTip label="Why no numpad?">
-                Numpad keys need layouts that adapt to them: buttons in three columns. This study shows every coder the
-                same layout (a setting of the study, Display: layouts fixed), so the numpad isn&apos;t available here.
-              </InfoTip>
-              Numpad: not in this study
-            </p>
-          )}
-          <p className="text-[11px] leading-tight text-muted-foreground">
-            {mappingById(shownMapping).description}. Always: arrows and Space, Shift + ← → for previous and next,
-            Backspace to go back, 0 not applicable, . don&apos;t know.
-          </p>
         </div>
       </PopoverContent>
     </Popover>

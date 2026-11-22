@@ -19,7 +19,7 @@ label columns, reset answers, and the raw export.
 | `variables.csv`       | design version, question, option | the codebook: values and labels                        |
 | `designs/v<n>.json`   | design version               | the whole design, with the AnnoTinder release it ran on    |
 | `devices.csv`         | device                       | kind, browser, operating system                            |
-| `display_changes.csv` | display change               | keys for answers, screen width, theme                      |
+| `display_changes.csv` | display change               | shortcut style, screen width, theme                      |
 | `timings.csv`         | answer                       | time per question                                          |
 | `deleted_coders.csv`  | deleted session              | to delete them from earlier downloads too                  |
 | `README.txt`          |                              | what the columns mean                                      |

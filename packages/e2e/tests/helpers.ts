@@ -51,3 +51,11 @@ export async function coders(request: APIRequestContext, studyId: number): Promi
 export async function question(page: Page, text: string | RegExp): Promise<void> {
   await expect(page.getByText(text).first()).toBeVisible();
 }
+
+/** Chooses a shortcut style in the coding screen's keyboard menu (`Fast type`, `Numpad`, ...). */
+export async function shortcutStyle(page: Page, name: string): Promise<void> {
+  await page.getByRole("button", { name: "Keyboard shortcuts" }).click();
+  await page.getByRole("button", { name: /^Shortcut style/ }).click();
+  await page.getByRole("option", { name: new RegExp(`^${name}`) }).click();
+  await page.keyboard.press("Escape");
+}

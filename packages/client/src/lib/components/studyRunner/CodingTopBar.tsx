@@ -5,6 +5,7 @@ import type { StudyManagerSnapshot } from "../../studyManager/types";
 import { CodingNav, CodingProgress } from "../CodingNav";
 import { QuitMenu } from "../QuitMenu";
 import { CoderSettingsMenu } from "./CoderSettingsMenu";
+import { KeyboardMenu } from "./KeyboardMenu";
 import { TransferMenu } from "./TransferMenu";
 
 /**
@@ -60,6 +61,7 @@ export function CodingTopBar({
             canLogIn={snapshot.canLogIn}
           />
         )}
+        <KeyboardMenu />
         <CoderSettingsMenu />
         <QuitMenu
           onQuit={(requestDeletion) => manager.quit(requestDeletion)}

@@ -33,6 +33,9 @@ for (const scheme of ["light", "dark"] as const) {
     await swipe.keyboard.press("Escape");
     await swipe.getByRole("button", { name: "Coder Settings" }).click();
     found.settings = await violations(swipe);
+    await swipe.keyboard.press("Escape");
+    await swipe.getByRole("button", { name: "Keyboard shortcuts" }).click();
+    found.keyboard = await violations(swipe);
 
     const spans = await coder(browser, scheme);
     await spans.goto((await fromExample(request, "actor-spans")).link);

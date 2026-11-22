@@ -35,7 +35,7 @@ export type MappingId = "numbers" | "numpad" | "letters" | "filter";
 export const numbersMapping: KeyMapping = {
   id: "numbers",
   name: "Numbers",
-  description: "1 to 9, in the order of the options",
+  description: "Select answer options with number keys",
   assign: (group) => group.map((_, i) => (i < 9 ? String(i + 1) : null)),
 };
 
@@ -56,7 +56,7 @@ const NUMPAD = [
 export const numpadMapping: KeyMapping = {
   id: "numpad",
   name: "Numpad",
-  description: "The numpad's keys where the buttons are (7 8 9 at the top)",
+  description: "Numbers, but mapped to the numpad layout. Only if the study has responsive layouts",
   supports: (group) => group.length > 0 && group.every((t) => t.pos !== undefined && t.pos.col < 3),
   assign: (group) => group.map((t) => NUMPAD[t.pos!.row]?.[t.pos!.col] ?? null),
 };
@@ -91,14 +91,15 @@ export function labelKeys(labels: readonly string[]): string[] | null {
 }
 
 /**
- * Letters from the labels: each option's shortest start that no other
- * shares, typed to choose it (he, hi, b for hello, hi, bye). Groups where
- * that's impossible (a label that is the start of another) use numbers.
+ * Fast type (id `letters`): each option's shortest start that no other
+ * label shares, typed to choose it at once (he, hi, b for hello, hi, bye).
+ * Groups where that's impossible (a label that is the start of another)
+ * use numbers.
  */
 export const lettersMapping: KeyMapping = {
   id: "letters",
-  name: "Letters",
-  description: "The first letters of each label (he, hi, b for hello, hi, bye)",
+  name: "Fast type",
+  description: "Type to filter, but select as soon as one answer matches",
   supports: (group) => group.length > 0 && labelKeys(group.map((t) => t.label)) !== null,
   assign: (group) => labelKeys(group.map((t) => t.label)) ?? group.map(() => null),
 };
@@ -111,7 +112,7 @@ export const lettersMapping: KeyMapping = {
 export const filterMapping: KeyMapping = {
   id: "filter",
   name: "Type to filter",
-  description: "Type part of a label, Enter chooses (for long lists)",
+  description: "Type the answer until it's the only match, then Enter to select",
   kind: "filter",
   assign: (group) => group.map(() => null),
 };

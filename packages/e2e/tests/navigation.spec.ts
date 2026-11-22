@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import type { StudyResponse, UnitResponse } from "@annotinder/contracts";
 import { expect, test } from "./fixtures";
-import { answers, api, coders, question } from "./helpers";
+import { answers, api, coders, question, shortcutStyle } from "./helpers";
 
 // Navigating while coding, in a real browser against the real server:
 // Previous and Next, the menu, changing an earlier answer, a reload, and
@@ -283,17 +283,13 @@ test("the coder chooses the keys for answers: letters, or typing to filter", asy
   await at(page, TEXTS[0], "Topic?");
 
   // Letters: the start of each label no other label shares (their badges too)
-  await page.getByRole("button", { name: "Coder Settings" }).click();
-  await page.getByLabel("Keys for answers").selectOption("letters");
-  await page.keyboard.press("Escape");
+  await shortcutStyle(page, "Fast type");
   await expect(page.locator("[data-key-target] kbd").first()).toHaveText("p");
   await page.keyboard.press("o");
   await at(page, TEXTS[0], "Tone?");
 
   // Type to filter: typed letters dim the others; Enter chooses the first match
-  await page.getByRole("button", { name: "Coder Settings" }).click();
-  await page.getByLabel("Keys for answers").selectOption("filter");
-  await page.keyboard.press("Escape");
+  await shortcutStyle(page, "Type to filter");
   await page.keyboard.type("neg");
   await expect(page.getByRole("status").filter({ hasText: "neg" })).toBeVisible();
   await page.keyboard.press("Enter");
@@ -337,15 +333,17 @@ test("display: the numpad only in a responsive study (three columns, 7 8 9 at th
   await expect(page.locator("html")).toHaveClass(/dark/);
   await settings();
   await expect(page.getByText("This study is shown dark for everyone.")).toBeVisible();
-  await expect(page.getByRole("option", { name: /Numpad/ })).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Keyboard shortcuts" }).click();
+  await page.getByRole("button", { name: /^Shortcut style/ }).click();
+  await expect(page.getByRole("option", { name: /^Numpad/ })).toBeDisabled();
+  await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
 
   // Responsive: the numpad, buttons in three columns
   await page.goto(await make("Responsive display", { layouts: "responsive" }));
   await question(page, "Topic?");
-  await settings();
-  await page.getByLabel("Keys for answers").selectOption("numpad");
-  await page.keyboard.press("Escape");
+  await shortcutStyle(page, "Numpad");
   const badges = page.locator("[data-key-target] kbd");
   await expect(badges).toHaveText(["7", "8", "9", "4"]);
   await page.keyboard.press("8");
@@ -381,9 +379,7 @@ test("display: each coder's keys and screen are recorded when they change; quick
   await expect.poll(logged).toEqual([expect.stringMatching(/^numbers narrow (light|dark)$/)]);
 
   // A change of keys: recorded right away
-  await page.getByRole("button", { name: "Coder Settings" }).click();
-  await page.getByLabel("Keys for answers").selectOption("letters");
-  await page.keyboard.press("Escape");
+  await shortcutStyle(page, "Fast type");
   await expect.poll(logged).toHaveLength(2);
 
   // Wide, then narrow again within 3 seconds: nothing; then wide for good: one entry

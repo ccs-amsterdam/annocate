@@ -39,7 +39,8 @@ several answers, sliders, numbers and scales have **Continue**. See
 | Stack icon and `4 · 2`        | unit 4, its 2nd question; opens the loop's menu              |
 | **<** and **>**               | back and forward                                             |
 | Monitor-and-phone icon        | **Continue on another device**                               |
-| Gear                          | **Settings**: light or dark, keys for answers, key badges    |
+| Keyboard                      | **Keyboard shortcuts**: the shortcuts, shortcut style, badges |
+| Gear                          | **Settings**: light or dark                                  |
 
 The loop's menu shows **Unit 12 of 40**, with buttons for the first,
 previous, next and furthest unit, and a number pad to go to a unit.
@@ -102,21 +103,21 @@ session** (empty).
 Swipe questions use the arrows to swipe. In span questions, keys label a
 selection, **Esc** cancels and **Backspace** removes the last span.
 
-Coders choose the **Keys for answers** in their settings (remembered in
-their browser):
+The keyboard icon in the top bar lists these shortcuts, and coders choose
+their **Shortcut style** there (remembered in their browser):
 
-| Keys for answers   | Choose an option with                                                  |
-| ------------------ | ---------------------------------------------------------------------- |
-| **Numbers**        | **1** to **9**, in order (the default)                                 |
-| **Numpad**         | the numpad key where the button is; only in responsive studies         |
-| **Letters**        | the first letters of each label (**he**, **hi**, **b** for hello, hi, bye) |
-| **Type to filter** | typing part of a label; **Enter** picks the first match, **Esc** clears |
+| Shortcut style     | Choose an option with                                                       |
+| ------------------ | --------------------------------------------------------------------------- |
+| **Numbers**        | **1** to **9**, in order (the default)                                      |
+| **Numpad**         | numbers mapped to the numpad layout; only in responsive studies             |
+| **Type to filter** | typing the answer until it's the only match, then **Enter**; **Esc** clears |
+| **Fast type**      | typing, chosen as soon as one answer matches (**he**, **hi**, **b** for hello, hi, bye) |
 
-Where a choice can't work, numbers are used (letters: at most 26 options;
-numpad: at most three rows and columns, and only with responsive layouts,
-see [Display](answer-layouts.md#fixed-or-responsive)). Badges on the
-buttons show the keys; **Shortcuts** in the settings hides them. On touch
-devices they are hidden from the start.
+Where a style can't work, numbers are used (fast type: a label that is the
+start of another; numpad: at most three rows and columns, and only with
+responsive layouts, see [Display](answer-layouts.md#fixed-or-responsive)).
+Badges on the buttons show the keys; **Show shortcut badges** hides them.
+On touch devices they are hidden from the start.
 
 ## Phones
 
