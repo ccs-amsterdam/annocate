@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { strToU8, zipSync } from "fflate";
 import { designFile, type AnnotationRow, type TopLevelItem, type UnitVersion } from "@annotinder/contracts";
-import { describeVersions } from "../../design/versions";
+import { describeVersions } from "../../../design/versions";
 import { Download, FileArchive } from "lucide-react";
-import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useCodersQuery, useDeploymentQuery, useStudyQuery } from "../../admin/queries";
+import type { ResearcherApi } from "../../../api/httpResearcherApi";
+import { useCodersQuery, useDeploymentQuery, useStudyQuery } from "../../../admin/queries";
 import {
   annotationsTable,
   codersTable,
@@ -16,13 +16,13 @@ import {
   toCsv,
   unitsTable,
   variablesTable,
-} from "../../admin/exportData";
-import { Labels, nestedQuestions, numericCodeQuestions, questionOrder } from "../../admin/exportAnswers";
-import { readme } from "../../admin/exportReadme";
-import { downloadFile } from "../../admin/download";
+} from "../../../admin/exportData";
+import { Labels, nestedQuestions, numericCodeQuestions, questionOrder } from "../../../admin/exportAnswers";
+import { readme } from "../../../admin/exportReadme";
+import { downloadFile } from "../../../admin/download";
 import { Button } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
-import { HelpButton } from "../../help/HelpButton";
+import { HelpButton } from "../../../help/HelpButton";
 
 /** Every row of a paged researcher API list. */
 async function allPages<T>(
@@ -46,7 +46,7 @@ async function allPages<T>(
  * variables as CSV files, and a README, built in the browser from the
  * researcher API.
  */
-export function ResultsPanel({ client }: { client: ResearcherApi }) {
+export function DownloadView({ client }: { client: ResearcherApi }) {
   const coders = useCodersQuery(client);
   const study = useStudyQuery(client).data;
   const deployment = useDeploymentQuery(client).data;
@@ -157,7 +157,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5">
         <div>
           <h2 className="flex items-center gap-1.5 text-lg font-medium">

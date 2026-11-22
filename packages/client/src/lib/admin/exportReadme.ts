@@ -1,4 +1,4 @@
-// The README.txt of the data download (ResultsPanel.tsx): what each file and
+// The README.txt of the data download (results/DownloadView.tsx): what each file and
 // column holds. Keep it in step with the tables in exportData.ts.
 
 /** What the files in the download are, for the README. */

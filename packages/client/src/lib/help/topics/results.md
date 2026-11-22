@@ -1,8 +1,8 @@
 ---
-title: Downloading results
+title: Results
 section: Results
 order: 1
-summary: The results zip - annotations, coders, units and variables as CSV files - and how to read and join them in R or Python.
+summary: Answers and agreement so far, and the results zip - annotations, coders, units and variables as CSV files - and how to read and join them in R or Python.
 ---
 
 On **Results**, click **Download zip**: everything answered so far, as CSV
@@ -23,6 +23,20 @@ files. Download as often as you like, also while coding runs.
 
 Files are UTF-8 (with a marker for spreadsheets); times are UTC
 (`2026-10-27T14:05:00.000Z`).
+
+## Looking at the answers in the app
+
+Next to **Download**, two views of the answers so far (click **Refresh**
+for the latest):
+
+- **Questions**: per question, how often each option was chosen; for
+  numbers the range, median and mean.
+- **Agreement**: per question in a unit loop, over units two or more coders
+  answered: Krippendorff's alpha (1 is full agreement, 0 what chance gives;
+  from 0.8 commonly taken as reliable) and the share of coders who agree.
+  Click a question to see each coder's agreement with the others, with
+  Cohen's kappa, lowest first: who to look at. Several answers: a row per
+  option. Spans: a row per label, each word labelled or not.
 
 ## annotations.csv
 

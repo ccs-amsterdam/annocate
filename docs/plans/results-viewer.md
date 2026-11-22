@@ -1,4 +1,7 @@
-# Results viewer (proposal)
+# Results viewer
+
+Built: Questions and Agreement (`docs/client.md` §7 "Results"). To do: Units
+and Coders, and the streamed export below.
 
 Today the Results tab only downloads a zip. A researcher who wants to know
 whether coding goes well (an unclear question, a careless coder, low

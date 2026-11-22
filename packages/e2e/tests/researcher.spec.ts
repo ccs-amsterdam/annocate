@@ -2,7 +2,7 @@ import { type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { unzipSync, strFromU8 } from "fflate";
 import type { StudyResponse } from "@annotinder/contracts";
-import { answers, api, question } from "./helpers";
+import { answers, api, fromExample, question } from "./helpers";
 
 // The researcher UI, in a real browser (development login).
 
@@ -46,6 +46,24 @@ test("a study from an example: the dialog, the overview note, and its results in
   // 3 example coders, 10 units each
   expect(csvRows(files["annotations.csv"])).toHaveLength(1 + 30);
   expect(csvRows(files["coders.csv"])).toHaveLength(1 + 3);
+});
+
+test("results so far: answers per question, and agreement with each coder's", async ({ page, request }) => {
+  const { study } = await fromExample(request, "swipe-sentiment");
+  await page.goto(`/research/studies/${study.id}/results`);
+  await page.getByRole("tab", { name: "Questions" }).click();
+  // The design's labels, and the counts of the 3 example coders' 30 answers
+  await expect(page.getByText("30 answered")).toBeVisible();
+  await expect(page.getByText("Good news", { exact: true })).toBeVisible();
+  if (process.env.E2E_SHOTS)
+    await page.screenshot({ path: `${process.env.E2E_SHOTS}/results-questions.png`, fullPage: true });
+
+  await page.getByRole("tab", { name: "Agreement" }).click();
+  await expect(page.getByRole("cell", { name: "0.61" })).toBeVisible();
+  await page.getByRole("button", { name: /sentiment/ }).click();
+  await expect(page.getByRole("cell", { name: "Example coder 2", exact: true })).toBeVisible();
+  if (process.env.E2E_SHOTS)
+    await page.screenshot({ path: `${process.env.E2E_SHOTS}/results-agreement.png`, fullPage: true });
 });
 
 test("your first study, as the help describes it: units, a design, deploy, a link, code", async ({

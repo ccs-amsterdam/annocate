@@ -10,7 +10,7 @@ import { DesignManager } from "./DesignManager";
 import type { SaveFn } from "./DesignEditor";
 import { UnitsPage } from "./units/UnitsPage";
 import { CodersPanel } from "./CodersPanel";
-import { ResultsPanel } from "./ResultsPanel";
+import { ResultsPanel } from "./results/ResultsPanel";
 import { LinksPanel } from "./LinksPanel";
 import { StudyOverview, StudySettingsPage } from "./overview/StudyOverview";
 import { StudyPreview } from "./StudyPreview";

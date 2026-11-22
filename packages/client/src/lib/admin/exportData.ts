@@ -28,7 +28,7 @@ import { answerColumns, answerJson, answerText, cellOf, header, optionsOf, type 
 //   reset answers.
 //
 // How answers become cells is in exportAnswers.ts; README.txt in
-// exportReadme.ts. ResultsPanel.tsx puts them all in the zip.
+// exportReadme.ts. results/DownloadView.tsx puts them all in the zip.
 
 /** A table for a CSV file. */
 export interface Table {

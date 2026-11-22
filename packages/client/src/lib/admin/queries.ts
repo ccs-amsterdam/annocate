@@ -6,6 +6,8 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 import type {
+  ResultsAgreement,
+  ResultsAnswers,
   DesignVersionMeta,
   DeploymentVersion,
   PendingChanges,
@@ -63,6 +65,7 @@ const keys = {
   deploymentVersions: (studyId?: number) => ["admin", "study", studyId ?? "current", "deployment", "versions"] as const,
   links: (studyId?: number) => ["admin", "study", studyId ?? "current", "links"] as const,
   overview: (studyId?: number) => ["admin", "study", studyId ?? "current", "overview"] as const,
+  results: (studyId: number | undefined, view: string) => ["admin", "study", studyId ?? "current", "results", view] as const,
 };
 
 export function useStudiesQuery(client: ResearcherApi): UseQueryResult<StudyResponse[]> {
@@ -486,4 +489,22 @@ export function useConfirmedDeploy(client: ResearcherApi): (vars: DeployVars) =>
       return deploy.mutateAsync({ ...vars, confirmLinks: true });
     }
   };
+}
+
+/** How coders answered each question so far. Loaded once; the Results tab's Refresh asks again. */
+export function useResultsAnswersQuery(client: ResearcherApi): UseQueryResult<ResultsAnswers> {
+  return useQuery({
+    queryKey: keys.results(client.studyId, "answers"),
+    queryFn: () => client.getResultsAnswers(),
+    staleTime: Infinity,
+  });
+}
+
+/** Agreement per unit-loop question so far. Loaded once; Refresh asks again. */
+export function useResultsAgreementQuery(client: ResearcherApi): UseQueryResult<ResultsAgreement> {
+  return useQuery({
+    queryKey: keys.results(client.studyId, "agreement"),
+    queryFn: () => client.getResultsAgreement(),
+    staleTime: Infinity,
+  });
 }
