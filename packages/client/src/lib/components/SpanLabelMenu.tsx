@@ -73,8 +73,11 @@ export function SpanLabelMenu({
             <button
               key={String(option.value)}
               type="button"
+              // The arrows reach it; a selection made with the keyboard focuses the first
+              data-key-target=""
+              data-span-label=""
               onClick={() => onLabel(String(option.value))}
-              className="relative flex cursor-pointer items-center justify-center rounded-md border px-2.5 py-1 text-xs font-semibold shadow-xs transition-transform hover:scale-105 active:scale-95"
+              className="relative flex cursor-pointer items-center justify-center rounded-md border px-2.5 py-1 text-xs font-semibold shadow-xs transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
               style={getCodeButtonStyle(option.color, false, isDark)}
             >
               {keys[idx] && <ShortcutBadge shortcut={keys[idx]!} />}

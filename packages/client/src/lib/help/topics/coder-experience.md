@@ -102,8 +102,13 @@ session** (empty).
 | **0** / **.**           | the special options: not applicable, don't know          |
 | **?**                   | open the question's instructions                         |
 
-Swipe questions use the arrows to swipe. In span questions, keys label a
-selection, **Esc** cancels and **Backspace** removes the last span.
+Swipe questions use the arrows to swipe (the shortcut style's keys work
+too). In span questions the arrows move over the words (**↑** **↓**: a
+line); **Space** starts a selection, the arrows extend it, and **Space**
+again ends it. The labels then have focus: the arrows move between them,
+**Space** or the label's key chooses one, **Esc** cancels. **Enter** on a
+labelled word opens its spans, **Backspace** removes the last span, and
+**Shift + Enter** is **Done**.
 
 The keyboard icon in the top bar lists these shortcuts, and coders choose
 their **Shortcut style** there (remembered in their browser):

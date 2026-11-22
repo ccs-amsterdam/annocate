@@ -202,13 +202,15 @@ export interface Segment<T extends { slices: SpanSlice[] } = SpanAnswer> {
   isPending: boolean;
 }
 
-/** Cuts the text where any span or the pending selection starts or ends. */
+/** Cuts the text where any span or the pending selection starts or ends (and at `extra` offsets, e.g. the keyboard's word). */
 export function textSegments<T extends { slices: SpanSlice[] }>(
   text: string,
   spans: T[],
   pending: { slices: SpanSlice[] } | null,
+  extra: readonly number[] = [],
 ): Segment<T>[] {
   const cuts = new Set<number>([0, text.length]);
+  for (const at of extra) cuts.add(Math.max(0, Math.min(text.length, at)));
   for (const slice of [...(pending?.slices ?? []), ...spans.flatMap((s) => s.slices)]) {
     cuts.add(Math.max(0, Math.min(text.length, slice.offset)));
     cuts.add(Math.max(0, Math.min(text.length, slice.offset + slice.length)));
@@ -228,4 +230,17 @@ export function textSegments<T extends { slices: SpanSlice[] }>(
     });
   }
   return segments;
+}
+
+/** The words of a text (runs of non-space characters), as [start, end) offsets: what the keyboard steps through. */
+export function wordRanges(text: string): [number, number][] {
+  return [...text.matchAll(/\S+/g)].map((m) => [m.index, m.index + m[0].length]);
+}
+
+/** The text from word `a` to word `b` (either order), as one slice. */
+export function wordsSlice(text: string, words: readonly [number, number][], a: number, b: number): SpanSlice {
+  const [first, last] = a <= b ? [a, b] : [b, a];
+  const offset = words[first][0];
+  const end = words[last][1];
+  return { offset, length: end - offset, text: text.slice(offset, end) };
 }

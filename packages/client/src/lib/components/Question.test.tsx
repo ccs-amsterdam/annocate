@@ -147,9 +147,8 @@ describe("Question dispatcher", () => {
     };
     const html = renderToStaticMarkup(<Question item={item} onAnswer={onAnswer} />);
     expect(html).toContain("Relevant?");
-    const order = ["no (swipe left)", "Not sure (swipe up)", "yes (swipe right)"].map((l) =>
-      html.indexOf(`aria-label="${l}"`),
-    );
+    const order = ["no", "Not sure", "yes"].map((label) => html.indexOf(`${label}</span>`));
+    expect(html).toContain("(swipe left)");
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     // Without a card to swipe (e.g. the editor's preview), only keys and buttons.
@@ -186,7 +185,7 @@ describe("Question dispatcher", () => {
         <Question item={item} onAnswer={onAnswer} />
       </SpanAnnotationProvider>,
     );
-    expect(html).toContain("Click or select words above to label spans.");
+    expect(html).toContain("Click or select words above to label spans, or use the arrow keys and Space.");
     expect(html).toContain("0 labeled");
     expect(html).toContain("Done (0)");
   });

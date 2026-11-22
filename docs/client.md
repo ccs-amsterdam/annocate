@@ -302,6 +302,13 @@ too. Vertical drags still scroll long units (`touch-action: pan-y`).
   field. Word mode snaps to words; character mode takes the exact selection.
 - Spans may overlap. Clicking a span opens its labels; Backspace or Delete
   removes the last span.
+- The keyboard (`SelectableText`, in the question's first field): the
+  arrows move a word cursor (up/down by line, from where the words are on
+  screen); Space starts a selection, the arrows extend it, Space ends it
+  and focuses the first label button (`data-span-label`). Labels take the
+  shortcut style's keys (`useKeyTargets` at editor priority; the menu at
+  the selection shows the same keys, `useTargetKeys`). Enter on a labelled
+  word opens its spans; Shift + Enter is Done.
 - Relations link two spans of earlier span questions of the loop, with one
   of the relation's options, as its `rules` allow (contracts
   `relations.ts`; the server checks them on submit). During a relation

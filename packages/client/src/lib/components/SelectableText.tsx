@@ -1,6 +1,7 @@
 import { PRIORITY } from "../keyboard/controller";
 import { useKeyScope } from "../keyboard/hooks";
-import React, { useRef, useCallback, useEffect, useMemo } from "react";
+import { arrowDirection, type Direction } from "../keyboard/focus";
+import React, { useRef, useCallback, useEffect, useMemo, useState } from "react";
 import type { SpanAnswer } from "@annotinder/contracts";
 import { useSpanAnnotation, type PendingSpan } from "../context/spanAnnotation";
 import { useRelationAnnotation } from "../context/relationAnnotation";
@@ -15,6 +16,8 @@ import {
   spanSummary,
   textSegments,
   toggleSliceRange,
+  wordRanges,
+  wordsSlice,
   type Segment,
 } from "./spanText";
 
@@ -35,6 +38,63 @@ function getAbsoluteOffset(root: Node, target: Node, offsetInTarget: number): nu
   return total;
 }
 
+/** A Range over `root`'s text from character `start` to `end` (the text is split over several text nodes). */
+function rangeOf(root: Node, start: number, end: number): Range | null {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const range = document.createRange();
+  let total = 0;
+  let started = false;
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const length = node.textContent?.length ?? 0;
+    if (!started && start < total + length) {
+      range.setStart(node, start - total);
+      started = true;
+    }
+    if (started && end <= total + length) {
+      range.setEnd(node, end - total);
+      return range;
+    }
+    total += length;
+  }
+  return null;
+}
+
+/**
+ * The word on the line above or below word `from` (the one nearest it
+ * across), by where the words are on screen; `from` itself at the first or
+ * last line.
+ */
+function wordOnNextLine(root: Node, words: readonly [number, number][], from: number, down: boolean): number {
+  const rect = (i: number) => rangeOf(root, words[i][0], words[i][1])?.getBoundingClientRect();
+  const current = rect(from);
+  if (!current) return from;
+  const middleY = current.top + current.height / 2;
+  const middleX = current.left + current.width / 2;
+  let best = from;
+  let lineDistance = Infinity;
+  let bestDx = Infinity;
+  for (let i = down ? from + 1 : from - 1; down ? i < words.length : i >= 0; i += down ? 1 : -1) {
+    const r = rect(i);
+    if (!r) continue;
+    const dy = down ? r.top + r.height / 2 - middleY : middleY - (r.top + r.height / 2);
+    if (dy < current.height / 2) continue; // Still on this line
+    if (lineDistance === Infinity) lineDistance = dy;
+    else if (dy - lineDistance > current.height / 2) break; // Past the next line
+    const dx = Math.abs(r.left + r.width / 2 - middleX);
+    if (dx < bestDx) {
+      best = i;
+      bestDx = dx;
+    }
+  }
+  return best;
+}
+
+/** Focuses a new selection's first label button (SpanAnswerField's, or the menu at the selection). */
+function focusLabels(): void {
+  const buttons = [...document.querySelectorAll<HTMLElement>("[data-span-label]")];
+  buttons.find((el) => el.getClientRects().length > 0)?.focus();
+}
+
 /**
  * A unit field a span question selects in (docs/client.md §4 "Span and
  * relation answers"): the text with its spans highlighted.
@@ -44,6 +104,11 @@ function getAbsoluteOffset(root: Node, target: Node, offsetInTarget: number): nu
  * - A new selection waiting for its label: with gaps allowed, clicking or
  *   dragging toggles words; without, it moves the selection's end (its
  *   first word stays; clicks before it are ignored).
+ * - The keyboard (in the question's first field): the arrows move a cursor
+ *   over the words (up and down: a line), Space starts a selection there,
+ *   the arrows extend it, and Space again ends it; the label buttons then
+ *   have focus (the arrows move between them, Space or Enter or their key
+ *   chooses one, Esc cancels). Enter on a labelled word opens its spans.
  */
 export function SelectableText({ text, field, inline = false }: { text: string; field?: string; inline?: boolean }) {
   const spanContext = useSpanAnnotation();
@@ -78,6 +143,14 @@ function SpanSelectableText({ text, field, inline = false }: { text: string; fie
 
   const pending = annotation?.pendingSpan ?? null;
   const options = annotation?.options ?? [];
+
+  // The keyboard: the word it is on, and while selecting the word the selection started at
+  const words = useMemo(() => wordRanges(text), [text]);
+  const [cursor, setCursor] = useState<number | null>(null);
+  const [anchor, setAnchor] = useState<number | null>(null);
+  // A selection that was cancelled or labelled ends the keyboard's selecting
+  if (anchor !== null && !pending) setAnchor(null);
+  const keyboardField = annotation !== null && ctx !== null && own === ctx.fields[0];
 
   /** The menu of the spans on a clicked word (`SpanManageLabels`). */
   const openSpanMenu = useCallback(
@@ -177,6 +250,79 @@ function SpanSelectableText({ text, field, inline = false }: { text: string; fie
     }
   }
 
+  // The keyboard in the text (see SpanSelectableText's description)
+  useKeyScope(
+    (press) => {
+      if (!annotation || press.altKey || press.ctrlKey || press.metaKey || press.shiftKey) return false;
+      // Space or Enter on a focused button is the button's
+      if (press.onControl) return false;
+      const selecting = anchor !== null;
+      // A selection waiting for its label: the keys are the labels' (the base keys move between them)
+      if (pending && !selecting) return false;
+      const direction: Direction | undefined = arrowDirection(press.key);
+      if (direction) {
+        if (words.length === 0) return false;
+        const at = cursor ?? -1;
+        const next =
+          at < 0
+            ? 0
+            : direction === "left"
+              ? Math.max(0, at - 1)
+              : direction === "right"
+                ? Math.min(words.length - 1, at + 1)
+                : containerRef.current
+                  ? wordOnNextLine(containerRef.current, words, at, direction === "down")
+                  : at;
+        setCursor(next);
+        if (selecting) {
+          annotation.setPendingSpan({
+            slices: [wordsSlice(text, words, anchor, next)],
+            anchorOffset: words[Math.min(anchor, next)][0],
+            mode: "create",
+          });
+        }
+        return true;
+      }
+      if (press.key === " " && cursor !== null) {
+        if (!selecting) {
+          setAnchor(cursor);
+          annotation.setPendingSpan({
+            slices: [wordsSlice(text, words, cursor, cursor)],
+            anchorOffset: words[cursor][0],
+            mode: "create",
+          });
+        } else {
+          // The selection is done: on to its label
+          setAnchor(null);
+          requestAnimationFrame(focusLabels);
+        }
+        return true;
+      }
+      if (press.key === "Enter" && cursor !== null && !selecting) {
+        const [start] = words[cursor];
+        const covering = annotation.spans.filter((sp) =>
+          sp.slices.some((sl) => sl.offset <= start && sl.offset + sl.length > start),
+        );
+        if (covering.length === 0) return false;
+        openSpanMenu(covering);
+        return true;
+      }
+      if (press.key === "Escape" && cursor !== null && !pending) {
+        setCursor(null);
+        return true;
+      }
+      return false;
+    },
+    keyboardField,
+    { priority: PRIORITY.field },
+  );
+  const cursorRange = cursor !== null && words[cursor] ? words[cursor] : null;
+
+  // The keyboard's word stays in view
+  useEffect(() => {
+    containerRef.current?.querySelector("[data-cursor]")?.scrollIntoView({ block: "nearest" });
+  }, [cursor]);
+
   // Scroll focused span into view when inspected from the labels list
   useEffect(() => {
     if (!annotation?.focusedSpanId || !containerRef.current) return;
@@ -201,7 +347,7 @@ function SpanSelectableText({ text, field, inline = false }: { text: string; fie
     { priority: PRIORITY.field },
   );
 
-  const segments = textSegments(text, annotation?.spans ?? [], pending);
+  const segments = textSegments(text, annotation?.spans ?? [], pending, cursorRange ?? []);
 
   function handleSegmentClick(e: React.MouseEvent, spans: SpanAnswer[]) {
     // Creating a span: mouseup (processSelection) extends or toggles it
@@ -216,13 +362,23 @@ function SpanSelectableText({ text, field, inline = false }: { text: string; fie
 
   function renderSegment(seg: Segment, i: number) {
     const content = text.slice(seg.start, seg.end);
+    // The word the keyboard is on: an outline
+    const atCursor = cursorRange !== null && seg.start >= cursorRange[0] && seg.end <= cursorRange[1];
+    const cursorClass = atCursor ? "rounded-xs outline-2 outline-offset-1 outline-primary" : "";
+    const cursorProps = atCursor ? { "data-cursor": "" } : {};
     if (seg.spans.length === 0) {
       return seg.isPending ? (
-        <mark key={i} className="rounded-xs bg-wood/25 text-foreground ring-2 ring-wood/70">
+        <mark
+          key={i}
+          {...cursorProps}
+          className={`rounded-xs bg-wood/25 text-foreground ring-2 ring-wood/70 ${cursorClass}`}
+        >
           {content}
         </mark>
       ) : (
-        <span key={i}>{content}</span>
+        <span key={i} {...cursorProps} className={cursorClass || undefined}>
+          {content}
+        </span>
       );
     }
     // One span: its highlight; several overlapping: stacked colour bands
@@ -238,13 +394,14 @@ function SpanSelectableText({ text, field, inline = false }: { text: string; fie
     return (
       <mark
         key={i}
+        {...cursorProps}
         data-span-id={seg.spans.map((s) => s.id).join(" ")}
         style={style}
         title={title}
         onClick={(e) => handleSegmentClick(e, seg.spans)}
         className={`cursor-pointer font-normal transition-opacity hover:opacity-85 ${
           isFocused || seg.isPending ? "ring-2 ring-wood ring-offset-1 ring-offset-background" : ""
-        }`}
+        } ${cursorClass}`}
       >
         {content}
       </mark>

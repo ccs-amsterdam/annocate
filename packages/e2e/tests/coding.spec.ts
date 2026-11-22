@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import { answers, api, coders, fromExample, question } from "./helpers";
+import { answers, api, coders, fromExample, question, shortcutStyle } from "./helpers";
 
 // Coders at work, in a real browser, on studies made from the examples.
 
@@ -162,6 +162,49 @@ test("a coder selects actors in a text and labels them", async ({ page, request 
     .toBe(1);
   const [row] = (await answers(request, study.id)).filter((x) => !examples.includes(x.sessionId));
   expect(row.value.spans).toMatchObject([{ value: "person", field: "text", slices: [{ text: "Anna de Wit" }] }]);
+});
+
+test("spans by keyboard: the arrows move over the words, Space selects from there to there, then the labels", async ({
+  page,
+  request,
+}) => {
+  const { study, link } = await fromExample(request, "actor-spans");
+  const examples = (await coders(request, study.id)).map((c) => c.id);
+  await page.goto(link);
+  await question(page, "Select every person and organisation mentioned in the text.");
+  await page.waitForTimeout(800);
+  await shortcutStyle(page, "Fast type");
+  // (The menu's button keeps focus when it closes: Space would open it again)
+  await page.locator("body").click({ position: { x: 1, y: 1 } });
+  // "Mayor Anna de Wit met the board of the Harbour Company ...": the first arrow is on Mayor, the next on Anna
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator("[data-cursor]").first()).toHaveText("Anna");
+  // Space starts a selection, the arrows extend it, Space ends it: the first label has focus
+  await page.keyboard.press("Space");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Space");
+  await expect(page.locator("[data-span-label]:focus")).toHaveText(/Person/);
+  await page.keyboard.press("Space");
+  // On from there to Harbour Company; this time the label by its key (Fast type: o)
+  for (let i = 0; i < 6; i++) await page.keyboard.press("ArrowRight");
+  await expect(page.locator("[data-cursor]").first()).toHaveText("Harbour");
+  await page.keyboard.press("Space");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Space");
+  await page.keyboard.press("o");
+  // Shift + Enter: Done
+  await expect(page.getByRole("button", { name: /Done \(2\)/ })).toBeVisible();
+  await page.keyboard.press("Shift+Enter");
+  await expect
+    .poll(async () => (await answers(request, study.id)).filter((x) => !examples.includes(x.sessionId)).length)
+    .toBe(1);
+  const [row] = (await answers(request, study.id)).filter((x) => !examples.includes(x.sessionId));
+  expect(row.value.spans).toMatchObject([
+    { value: "person", slices: [{ text: "Anna de Wit" }] },
+    { value: "organisation", slices: [{ text: "Harbour Company" }] },
+  ]);
 });
 
 test("an ::html field shows in its sandboxed frame, sized by its script, within the page's security policy", async ({

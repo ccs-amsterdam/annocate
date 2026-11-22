@@ -38,6 +38,10 @@ in several fields.
 2. Click a later word to extend the selection (with gaps: add or remove).
 3. **Pick a label**: click it or press its key. **Esc** cancels.
 
+With the keyboard: the arrows move over the words, **Space** starts a
+selection, the arrows extend it and **Space** ends it; then pick a label
+with the arrows and **Space**, or its key. **Shift + Enter** is **Done**.
+
 Spans may overlap and the same text can have several labels. Clicking a
 span shows its labels, with **Edit**, **Delete** and **Create new label**.
 **View labeled spans** lists them all. **Done** counts the spans; **Done

@@ -73,7 +73,6 @@ export function AnnotinderAnswerField({ variable, onAnswer }: AnswerFieldProps<A
               key={direction}
               type="button"
               variant="outline"
-              aria-label={`${optionLabel(option)} (swipe ${direction})`}
               className={`relative h-10 min-w-0 flex-1 gap-1.5 px-2 ${direction === "right" ? "flex-row-reverse" : ""} ${dimmed(index) ? "opacity-40" : ""}`}
               // The option's color on the border and arrow; the label stays readable text
               style={option.color ? { borderColor: option.color } : undefined}
@@ -82,6 +81,8 @@ export function AnnotinderAnswerField({ variable, onAnswer }: AnswerFieldProps<A
             >
               <Icon className="size-4 shrink-0" style={option.color ? { color: option.color } : undefined} />
               <span className="truncate font-medium">{optionLabel(option)}</span>
+              {/* The name: the label as shown, and the direction (the badge isn't read) */}
+              <span className="sr-only"> (swipe {direction})</span>
               {keys[index] && <ShortcutBadge shortcut={keys[index]} />}
             </Button>
           );

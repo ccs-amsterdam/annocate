@@ -99,6 +99,18 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
     { priority: PRIORITY.editor },
   );
 
+  const done = () => onAnswer({ done: true, skip: false, spans: annotation?.spans ?? [] });
+  // Shift + Enter: Done, when nothing is being selected or edited
+  useKeyScope(
+    (press) => {
+      if (press.key !== "Enter" || !press.shiftKey || pending || viewingAllLabels) return false;
+      done();
+      return true;
+    },
+    true,
+    { priority: PRIORITY.field },
+  );
+
   const pendingTextSummary = pending ? spanSummary(pending.slices) : "";
 
   return (
@@ -156,7 +168,10 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
                 <button
                   key={c.value}
                   type="button"
-                  className="relative flex max-w-[180px] min-w-[95px] flex-1 cursor-pointer items-center justify-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold shadow-xs transition-all hover:scale-105 active:scale-95"
+                  // The arrows reach it; a selection made with the keyboard focuses the first
+                  data-key-target=""
+                  data-span-label=""
+                  className="relative flex max-w-[180px] min-w-[95px] flex-1 cursor-pointer items-center justify-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold shadow-xs transition-all hover:scale-105 focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
                   style={getCodeButtonStyle(c.color, false, isDark)}
                   onClick={() => {
                     annotation.addSpan(pending.slices, c.value);
@@ -231,7 +246,9 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
         /* Nothing selected: how many spans, the list, and Done */
         <div className="flex flex-col gap-3 py-0.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">Click or select words above to label spans.</p>
+            <p className="text-xs text-muted-foreground">
+              Click or select words above to label spans, or use the arrow keys and Space.
+            </p>
             <span className="font-mono text-xs font-medium text-muted-foreground">
               {annotation?.spans.length ?? 0} labeled
             </span>
@@ -255,16 +272,12 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
 
             <Button
               size="sm"
-              className="h-8 cursor-pointer px-4 text-xs font-medium"
-              onClick={() =>
-                onAnswer({
-                  done: true,
-                  skip: false,
-                  spans: annotation?.spans ?? [],
-                })
-              }
+              className="relative h-8 cursor-pointer px-4 text-xs font-medium"
+              data-key-target=""
+              onClick={done}
             >
               Done ({annotation?.spans.length ?? 0})
+              <ShortcutBadge shortcut="⇧↵" />
             </Button>
           </div>
         </div>
