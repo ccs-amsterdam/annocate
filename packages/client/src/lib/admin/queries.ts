@@ -68,7 +68,8 @@ const keys = {
   deploymentVersions: (studyId?: number) => ["admin", "study", studyId ?? "current", "deployment", "versions"] as const,
   links: (studyId?: number) => ["admin", "study", studyId ?? "current", "links"] as const,
   overview: (studyId?: number) => ["admin", "study", studyId ?? "current", "overview"] as const,
-  results: (studyId: number | undefined, view: string) => ["admin", "study", studyId ?? "current", "results", view] as const,
+  results: (studyId: number | undefined, view: string) =>
+    ["admin", "study", studyId ?? "current", "results", view] as const,
 };
 
 export function useStudiesQuery(client: ResearcherApi): UseQueryResult<StudyResponse[]> {
