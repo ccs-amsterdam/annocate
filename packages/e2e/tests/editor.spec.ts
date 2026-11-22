@@ -167,3 +167,30 @@ test("a deployed answer value stays when its label is edited; a new option's val
   await labels.last().fill("Neutral tone");
   await expect(values.last()).toHaveValue("neutral_tone");
 });
+
+test("an answer option's colour: from the palette, or none", async ({ page, request }) => {
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Option colours" });
+  await api(request, "POST", `/study/${study.id}/design`, {
+    items: [
+      {
+        type: "question",
+        name: "tone",
+        variable: { type: "nominal", question: "Tone?", options: [{ value: "positive", label: "Positive" }] },
+      },
+    ],
+  });
+  await page.goto(`/research/studies/${study.id}/design`);
+  await page.getByRole("button", { name: /^tone/ }).click();
+  await page.getByRole("button", { name: "Colour of Positive: none" }).click();
+  await page.getByRole("button", { name: "#22c55e" }).click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Colour of Positive: #22c55e" })).toBeVisible();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect
+    .poll(async () => {
+      const [saved] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
+      const version = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${saved.id}`);
+      return JSON.stringify(version.items);
+    })
+    .toContain('"color":"#22c55e"');
+});

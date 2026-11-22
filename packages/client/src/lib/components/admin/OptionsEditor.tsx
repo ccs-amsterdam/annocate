@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HelpButton } from "../../help/HelpButton";
 import { InfoTip } from "@/components/ui/info-tip";
+import { ColorPicker } from "./ColorPicker";
 import { useDeployedOptionValues } from "../../design/deployedValues";
 
 const DIRECTION_ICONS = { left: ArrowLeft, right: ArrowRight, up: ArrowUp };
@@ -198,12 +199,10 @@ export function OptionsEditor<T extends Option>({
                 }
                 className={`h-8 font-mono text-xs ${valuesFollowOrder ? "bg-muted/40 text-muted-foreground" : ""}`}
               />
-              <Input
-                data-option-row={i}
-                placeholder="color"
-                value={option.color ?? ""}
-                onChange={(e) => update(i, { color: e.target.value || undefined } as Partial<T>)}
-                className="h-8 text-xs"
+              <ColorPicker
+                label={`Colour of ${option.label || String(option.value) || "this option"}`}
+                value={option.color}
+                onChange={(color) => update(i, { color } as Partial<T>)}
               />
               {specials && (
                 <select
