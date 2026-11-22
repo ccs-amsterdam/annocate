@@ -6,7 +6,7 @@ import { SESSION_COOKIE } from "./researcher/login.js";
 import { securityHeaders } from "./shared/securityHeaders.js";
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
-import { compress, COMPRESSIBLE_CONTENT_TYPE_REGEX } from "hono/compress";
+import { compress } from "hono/compress";
 import { bodyLimit } from "hono/body-limit";
 import { join } from "node:path";
 import { serveStatic } from "@hono/node-server/serve-static";
@@ -116,16 +116,10 @@ export function createApp(db: Db, options: AppOptions = {}) {
 
   const app = new Hono<Env>();
   app.use("*", securityHeaders({ frameAncestors: options.frameAncestors, https: options.https ?? false }));
-  // Compressed responses (gzip): JSON and the client's files shrink 5 to 20 times; also streamed
-  // responses (NDJSON). No BREACH risk: cross-site pages can't make a browser send API requests
-  // with its cookies (the x-annotinder header, researcher/auth.ts).
-  app.use(
-    "*",
-    compress({
-      encoding: "gzip",
-      contentTypeFilter: (type) => COMPRESSIBLE_CONTENT_TYPE_REGEX.test(type) || /^application\/x-ndjson\b/.test(type),
-    }),
-  );
+  // Compressed responses (gzip): JSON and the client's files shrink 5 to 20 times. No BREACH
+  // risk: cross-site pages can't make a browser send API requests with its cookies (the
+  // x-annotinder header, researcher/auth.ts).
+  app.use("*", compress({ encoding: "gzip" }));
   const onError = (err: Error, c: Context) => {
     if (err instanceof HttpError)
       return c.json({ error: err.message, ...(err.code ? { code: err.code } : {}) }, err.status);
