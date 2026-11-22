@@ -148,6 +148,8 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
         type="button"
         className="h-10"
         variant={done ? "default" : "secondary"}
+        // The arrows reach it too, below the items
+        data-key-target=""
         onClick={submit}
         aria-label={done ? "Continue" : `${nAnswered} of ${items.length} answered`}
       >

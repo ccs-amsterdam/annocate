@@ -454,3 +454,30 @@ test("an instruction: behind the ? button or key, a dot until read; it can open 
   await at(page, TEXTS[1], "Tone?");
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+test("the keyboard reaches Continue below a question with several answers", async ({ page, request }) => {
+  const created = await api<StudyResponse>(request, "POST", "/study", { name: "Several answers" });
+  const question_ = {
+    type: "question",
+    name: "topics",
+    variable: {
+      type: "nominal",
+      multiple: true,
+      question: "Topics?",
+      options: [{ value: "politics" }, { value: "sports" }],
+    },
+  };
+  const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, { items: [question_] });
+  await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
+  await page.goto(`/code/${created.id}?link=${link.secret}`);
+  await question(page, "Topics?");
+  // Choose one with the arrows and Space, then down to Continue and Enter
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Space");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("button", { name: "Continue (1)" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect.poll(async () => (await answers(request, created.id)).length).toBe(1);
+});

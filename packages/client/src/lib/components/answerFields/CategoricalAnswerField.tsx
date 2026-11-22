@@ -142,7 +142,8 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
       )}
       {field}
       {multiple && (
-        <Button type="button" className="h-10" disabled={!selected.length} onClick={submit}>
+        // The arrows reach it too, below the options
+        <Button type="button" className="h-10" data-key-target="" disabled={!selected.length} onClick={submit}>
           Continue{selected.length ? ` (${selected.length})` : ""}
         </Button>
       )}
