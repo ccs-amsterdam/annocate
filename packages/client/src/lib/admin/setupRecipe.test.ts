@@ -8,6 +8,7 @@ import {
   setupProblems,
   setupRecipe,
   type SetupAnswers,
+  WIZARD_GROUP,
 } from "./setupRecipe";
 
 const setupUnits = {
@@ -160,10 +161,12 @@ describe("setup wizard recipes", () => {
     expect(setupRecipe(a).design.session).toEqual({
       invite: {
         mode: "crowd",
-        share: { until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 }, unitsPerCoder: { min: 2, max: 5 } },
+        column: WIZARD_GROUP,
       },
     });
-    expect(loopOf(a).units).toBeUndefined();
+    expect(loopOf(a).units).toEqual({
+      divide: { until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 }, unitsPerCoder: { min: 2, max: 5 } },
+    });
     // The overlap: everyone's, in a column of its own
     expect(setupRecipe(a).sets![0].sets.map((s) => [s.name, s.units.length])).toEqual([["_overlap", 2]]);
   });
@@ -172,9 +175,9 @@ describe("setup wizard recipes", () => {
     const a = setup({ distribution: { mode: "crowd", shared: { codersPerUnit: { min: 2, max: 2 } }, overlap: null } });
     expect(otherIssues(a)).toEqual([]);
     expect(setupRecipe(a).design.session).toEqual({
-      invite: { mode: "crowd", share: { codersPerUnit: { min: 2, max: 2 } } },
+      invite: { mode: "crowd" },
     });
-    expect(loopOf(a).units).toBeUndefined();
+    expect(loopOf(a).units).toEqual({ divide: { codersPerUnit: { min: 2, max: 2 } } });
     expect(setupRecipe(a).sets).toEqual([]);
   });
 
@@ -183,9 +186,13 @@ describe("setup wizard recipes", () => {
       distribution: { mode: "crowd", shared: { codersPerUnit: { min: 2, max: 2 } }, overlap: null },
       checks: { gold: ["topic"], practice: [] },
     });
-    // Gold units come from a set column's _gold (added on the Units page)
+    // Gold units come from the crowd's column's _gold (added on the Units page)
     expect(setupRecipe(a).sets).toEqual([]);
-    expect(loopOf(a).units).toEqual({ goldCheck: { questions: ["topic"] } });
+    expect(setupRecipe(a).design.session).toEqual({ invite: { mode: "crowd", column: WIZARD_GROUP } });
+    expect(loopOf(a).units).toEqual({
+      divide: { codersPerUnit: { min: 2, max: 2 } },
+      goldCheck: { questions: ["topic"] },
+    });
   });
 
   it("sets from a column: values with the same set name are one set; special units stay out of the overlap", () => {

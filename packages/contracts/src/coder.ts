@@ -89,20 +89,16 @@ export type CoderDeletion = z.infer<typeof CoderDeletionSchema>;
 
 /**
  * A link (docs/coder-identity.md §3). Links are generated from the
- * deployed design version's coder unit assignment: a link per coder, or one link
- * (docs/architecture.md §7). The researcher manages who may use a link, not
- * which links exist.
+ * deployed design version's coder unit assignment: a link per coder, a link
+ * per set of a crowd's column, or one link (docs/architecture.md §7). Their
+ * settings are the design's; the researcher can revoke a link, reopen it,
+ * or give it a new secret.
  */
-export const LinkWriteSchema = z.object({
-  label: z.string().min(1).max(128),
-  /** A coder id fixed on this link (e.g. a personal link). A label, never a credential. */
-  coder: z.string().min(1).max(256).optional(),
-  /** Stop accepting new coders after this many. */
+export const LinkResponseSchema = z.object({
+  /** What the link is for: its values, or "Open link". */
+  label: z.string(),
+  /** The most sessions it starts (a crowd's most coders, per link), from the deployed design. */
   maxUses: z.number().int().positive().optional(),
-});
-export type LinkWrite = z.input<typeof LinkWriteSchema>;
-
-export const LinkResponseSchema = LinkWriteSchema.extend({
   id: IdSchema,
   studyId: IdSchema,
   /** Opaque secret used to build the link URL; not the same as a coder session token. */

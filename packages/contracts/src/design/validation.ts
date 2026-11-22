@@ -17,6 +17,7 @@ import {
   sessionItem,
   sessionNames,
   type SessionItem,
+  assignmentColumn,
 } from "./session.js";
 import { loopShareColumns } from "./assignment.js";
 import { expandSnippets, usesSnippets } from "./snippets.js";
@@ -448,6 +449,52 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     }
   }
 
+  /**
+   * A loop's units against the coder unit assignment: a subset of another
+   * column than the assignment's; dividing only for a crowd, its agreement
+   * question one of this loop's with one categorical answer; an earlier
+   * loop's units from a loop before this one, and then not divided again.
+   */
+  function checkLoopUnits(
+    raw: Partial<LoopUnits> | null | undefined,
+    path: Path,
+    loopName: string,
+    loopQuestions: ReadonlySet<string>,
+  ) {
+    const units = raw && typeof raw === "object" ? raw : null;
+    if (!units) return;
+    const invite = sessionItem(items)?.invite;
+    const column = assignmentColumn(sessionItem(items));
+    if (units.subset?.column && units.subset.column === column)
+      issue(
+        [...path, "subset", "column"],
+        `'${column}' is the coder unit assignment's column: it already decides whose units are whose. Choose another column for a subset`,
+      );
+    if (units.divide && invite?.mode !== "crowd")
+      issue(
+        [...path, "divide"],
+        "Dividing units among coders is for a crowd: specific coders get the units of their set (Coder unit assignments)",
+      );
+    const sameAs = units.sameAs;
+    if (sameAs !== undefined) {
+      if (sameAs >= Number(loopName)) issue([...path, "sameAs"], "A loop can only take the units of a loop before it");
+      if (units.divide)
+        issue([...path, "divide"], "Taking the units of an earlier loop, they aren't divided again: remove dividing");
+    }
+    const agreement = units.divide?.until?.on;
+    if (typeof agreement === "string") {
+      const at = [...path, "divide", "until", "on"];
+      const variable = questions.get(agreement);
+      if (!variable || !loopQuestions.has(agreement))
+        issue(at, `Agreement question '${agreement}' is not a question in this loop`);
+      else if (!supportsAgreement(variable))
+        issue(
+          at,
+          `Agreement needs a question with one categorical answer (nominal without multiple answers, ordinal or swipe); "${agreement}" is ${describeQuestion(variable)}`,
+        );
+    }
+  }
+
   function checkLoop(item: RawItem, itemPath: Path, loopName: string) {
     const loop = item as {
       units?: Partial<LoopUnits> | null;
@@ -456,6 +503,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     };
     const loopQuestions = questionNames(loop.children);
     checkUnitChecks(loop, itemPath, loopQuestions);
+    checkLoopUnits(loop.units, [...itemPath, "units"], loopName, loopQuestions);
 
     const snippets = loop.layout?.snippets ?? {};
     const names = checkTemplate(
@@ -514,27 +562,12 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     });
     // Unit settings without a unit loop: kept, but not used (yet)
     const hasLoop = items.some((i) => (i as { type?: unknown } | null)?.type === "unit_loop");
-    if (!hasLoop && (invite?.mode === "coders" || (invite?.mode === "crowd" && invite.share)))
+    if (!hasLoop && invite?.mode === "coders")
       issue(
         [...itemPath, "invite"],
-        invite.mode === "coders"
-          ? "Specific coders each get their own units, but the design has no unit loop yet: until it has, coders get no units (their links work)"
-          : "The crowd shares the units, but the design has no unit loop yet: until it has, sharing isn't used",
+        "Specific coders each get their own units, but the design has no unit loop yet: until it has, coders get no units (their links work)",
         true,
       );
-    // A crowd's agreement rule: a question with one categorical answer, in a unit loop
-    const agreement = invite?.mode === "crowd" && hasLoop ? invite.share?.until?.on : undefined;
-    if (typeof agreement === "string") {
-      const at = [...itemPath, "invite", "share", "until", "on"];
-      const variable = questions.get(agreement);
-      if (!variable || loopOf.get(agreement) === null)
-        issue(at, `Agreement question '${agreement}' is not a question in a unit loop`);
-      else if (!supportsAgreement(variable))
-        issue(
-          at,
-          `Agreement needs a question with one categorical answer (nominal without multiple answers, ordinal or swipe); "${agreement}" is ${describeQuestion(variable)}`,
-        );
-    }
   }
 
   /** A computed item: outside loops; a random one linked to a column selects units (one value per column); stratified on earlier answers or session values. */

@@ -34,11 +34,11 @@ describe("share summaries", () => {
     expect(sources.map((s) => s.label)).toEqual(["coder", "framing"]);
     expect(sources[1].inFlow).toBe(true);
     expect(shareSources({ mode: "crowd" })).toEqual([]);
-    expect(shareSummary([], undefined)).toBe("A session gets all units, and codes them all.");
-    expect(shareSummary(sources.slice(0, 2), { column: "phase", only: ["post"] })).toBe(
-      "A session gets the units of its coder × framing; this loop only those with “post” in phase.",
+    expect(shareSummary([], undefined)).toBe("A session gets all units.");
+    expect(shareSummary(sources.slice(0, 2), { column: "phase", sets: ["post"] })).toBe(
+      "A session gets the units of its coder × framing; this loop only those in “post” of phase.",
     );
-    expect(shareLabel("coder=anna,framing=control | phase only post | overlap")).toBe(
+    expect(shareLabel("coder=anna,framing=control | phase post | overlap before")).toBe(
       "anna · framing control, only post",
     );
     expect(shareLabel("all")).toBe("all units");

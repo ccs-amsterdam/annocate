@@ -3,13 +3,16 @@ import { SafeNameSchema } from "../common.js";
 import type { AnyVariableType } from "./variableTypes.js";
 import { SetGroupNameSchema } from "../sets.js";
 
-// How a unit_loop gets its units (docs/architecture.md §6.2). Who gets
-// which units is the study's coder unit assignment's (session.ts `invite`): the
-// coder column (specific coders) or a shared queue (crowd). A loop works
-// within a coder's units like a filter: which of them it includes (a filter
-// on a set column, the coder's own units yes or no) and where the special
-// units go (overlap, practice, gold: left out, before, after or spread),
-// plus the checks on practice and gold units. The design refers to set
+// How a unit_loop gets its units (docs/architecture.md §6.2). Who the
+// coders are is the study's coder unit assignment's (session.ts `invite`):
+// specific coders by a set column, or a crowd (optionally with a set column
+// too). A loop works within a coder's units: a subset (some sets of another
+// set column), the coding units yes or no, where the special units of the
+// assignment's column go (overlap, practice, gold: left out, before, after
+// or spread throughout), the checks on practice and gold units, and for a
+// crowd whether the units are divided among the coders (a shared queue) or
+// every coder codes all of them. A later loop can instead take the units
+// a coder got in an earlier loop (`sameAs`). The design refers to set
 // columns and their values by name; which units are in them lives with the
 // units, so a design can be shared and reproduced without revealing them.
 
@@ -39,9 +42,10 @@ export const DEFAULT_RATE = 10;
 
 /**
  * Where a loop puts special units (`_overlap`, `_practice`, `_gold` sets of
- * any set column) among the coder's own units: left out (`ignore`),
- * `before` or `after` them, or `spread` evenly through them (in a shared
- * queue without a maximum of units per coder: about one in ten, at random).
+ * the coder unit assignment's column) among the coding units: left out
+ * (`ignore`), `before` or `after` them, or `spread` evenly throughout them
+ * (in a shared queue without a maximum of units per coder: about one in
+ * ten, at random).
  */
 export const PlacementSchema = z.enum(["ignore", "before", "after", "spread"]);
 export type Placement = z.infer<typeof PlacementSchema>;
@@ -93,26 +97,20 @@ export const practiceMessageColumn = (question: string) => `${question}_practice
 export const CHECKABLE_TYPES = ["nominal", "ordinal", "annotinder", "numeric", "confirm"] as const;
 
 /**
- * A loop's filter: only the session's units that are (`only`) or aren't
- * (`except`) in these values of a set column. Reserved values count too
- * (`except: ["_overlap"]`).
+ * A loop's subset: only the coder's units in these sets of a set column
+ * (not the coder unit assignment's column: that one says whose units they
+ * are).
  */
-export const UnitFilterSchema = z
-  .object({
-    column: SetGroupNameSchema,
-    only: z.array(z.string().min(1).max(128)).min(1).max(100).optional(),
-    except: z.array(z.string().min(1).max(128)).min(1).max(100).optional(),
-  })
-  .refine((f) => (f.only === undefined) !== (f.except === undefined), {
-    message: "A filter has either only or except values",
-    path: ["only"],
-  });
-export type UnitFilter = z.infer<typeof UnitFilterSchema>;
+export const SubsetSchema = z.object({
+  column: SetGroupNameSchema,
+  sets: z.array(z.string().min(1).max(128)).min(1, "Choose at least one set").max(100),
+});
+export type Subset = z.infer<typeof SubsetSchema>;
 
 /**
- * Distribution criteria: the loop's units (within the session's) are a
- * shared queue among the coders with the same units, handed out until done
- * (crowd coding). A unit is done once `codersPerUnit.min` coders coded it,
+ * Dividing a loop's units among a crowd's coders (`divide`): the loop's
+ * units are a shared queue among the coders with the same units (those of
+ * one link), handed out until done. A unit is done once `codersPerUnit.min` coders coded it,
  * or, with `until`, once `until.agree` coders gave the same answer to the
  * question `until.on`; it is never handed out to more than
  * `codersPerUnit.max` coders (except to a coder below
@@ -166,38 +164,43 @@ export const CriteriaSchema = z
 export type Criteria = z.infer<typeof CriteriaSchema>;
 
 /**
- * Which of a coder's units a loop includes (docs/architecture.md §6.2),
- * like a filter: those of some values of a set column (`filter`), the
- * coder's own units or not (`own`, default yes), and where the special
- * units go (default `spread`), with the checks on practice and gold units.
- * Absent: all of them.
+ * Which of a coder's units a loop includes (docs/architecture.md §6.2): a
+ * subset of them (`subset`), the coding units or not (`coding`, default
+ * yes), where the special units go (default `spread`), with the checks on
+ * practice and gold units; for a crowd, `divide`: the coding units are a
+ * shared queue (else every coder codes all of them); `sameAs`: the coding
+ * units are those the coder finished in that earlier loop (its number,
+ * counting from 1), in that order. Absent: all of them.
  */
 export const LoopUnitsSchema = z.object({
-  filter: UnitFilterSchema.optional(),
-  own: z.boolean().optional(),
+  subset: SubsetSchema.optional(),
+  coding: z.boolean().optional(),
   overlap: PlacementSchema.optional(),
   practice: PlacementSchema.optional(),
   gold: PlacementSchema.optional(),
   practiceCheck: PracticeCheckSchema.optional(),
   goldCheck: GoldCheckSchema.optional(),
+  divide: CriteriaSchema.optional(),
+  sameAs: z.number().int().positive().optional(),
 });
 export type LoopUnits = z.infer<typeof LoopUnitsSchema>;
 
-/** A loop's units settings (`{}` when absent: all the coder's units, special units spread). */
+/** A loop's units settings (`{}` when absent: all the coder's units, special units spread throughout). */
 export const loopUnits = (loop: { units?: LoopUnits }): LoopUnits => loop.units ?? {};
 
 /**
- * How the server hands out a loop's units: the loop's settings with the
- * invitation's shared queue (crowd coding), and the special units'
- * placements as the distribution works with them (`first`, `last`,
- * `spread`, or `rate`: about one in `every`, for a shared queue without a
- * maximum of units per coder).
+ * How the server hands out a loop's units: the loop's settings (a crowd's
+ * shared queue, `criteria`), and the special units' placements as the
+ * distribution works with them (`first`, `last`, `spread`, or `rate`: about
+ * one in `every`, for a shared queue without a maximum of units per coder).
  */
 export interface ResolvedLoopUnits {
-  filter?: UnitFilter;
-  /** The coder's own units are included (else only special units). */
+  subset?: Subset;
+  /** The coding units are included (else only special units). */
   own: boolean;
   criteria?: Criteria;
+  /** The key of the earlier loop whose units (per coder) this loop takes. */
+  sameAs?: string;
   overlap?: ResolvedPlacement;
   practice?: ResolvedPlacement & PracticeCheck;
   gold?: ResolvedPlacement & { questions?: string[]; health?: GoldCheck["health"] };
@@ -210,29 +213,12 @@ export interface ResolvedPlacement {
 
 /**
  * A loop's units as the server hands them out (`ResolvedLoopUnits`): its
- * settings, with the shared queue of a crowd invitation (`criteria`; per
- * loop: an agreement rule only where the loop has its question).
+ * settings; `crowd`: the coders are a crowd (only then are units divided).
+ * Taking an earlier loop's units, the units aren't divided again.
  */
-export function effectiveLoopUnits(
-  loop: { units?: LoopUnits; children?: readonly unknown[] },
-  criteria?: Criteria,
-): ResolvedLoopUnits {
+export function effectiveLoopUnits(loop: { units?: LoopUnits }, crowd: boolean): ResolvedLoopUnits {
   const u = loopUnits(loop);
-  const names = new Set<string>();
-  const walk = (list: readonly unknown[] | undefined) => {
-    for (const raw of list ?? []) {
-      const it = raw as { name?: unknown; children?: unknown[] } | null;
-      if (typeof it?.name === "string") names.add(it.name);
-      walk(it?.children);
-    }
-  };
-  walk(loop.children);
-  let shared = criteria;
-  if (shared?.until && !names.has(shared.until.on)) {
-    // This loop doesn't ask the agreement question: its units are done after the most coders per unit
-    const { until, ...rest } = shared;
-    shared = { ...rest, codersPerUnit: { min: until.agree, max: rest.codersPerUnit?.max } };
-  }
+  const shared = crowd && u.sameAs === undefined ? u.divide : undefined;
   const place = (p: Placement | undefined): ResolvedPlacement => {
     switch (p ?? "spread") {
       case "ignore":
@@ -251,9 +237,10 @@ export function effectiveLoopUnits(
   const practice = place(u.practice);
   const gold = place(u.gold);
   return {
-    ...(u.filter ? { filter: u.filter } : {}),
-    own: u.own ?? true,
+    ...(u.subset ? { subset: u.subset } : {}),
+    own: u.coding ?? true,
     ...(shared ? { criteria: shared } : {}),
+    ...(u.sameAs !== undefined ? { sameAs: String(u.sameAs) } : {}),
     overlap: place(u.overlap),
     ...(practice.placement === "disabled" ? {} : { practice: { ...practice, ...u.practiceCheck } }),
     ...(gold.placement === "disabled" ? {} : { gold: { ...gold, ...u.goldCheck } }),

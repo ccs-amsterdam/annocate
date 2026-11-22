@@ -32,29 +32,31 @@ export function PlacementRow({
 }: {
   label: string;
   help?: string;
-  /** How many units of this kind the set columns have. */
+  /** How many units of this kind the column has (none: the setting is disabled). */
   count: number;
   value: Placement | undefined;
   onChange: (placement: Placement) => void;
 }) {
   return (
     <>
-      <span className="flex items-center gap-1.5 text-xs font-semibold">
+      <span className={`flex items-center gap-1.5 text-xs font-semibold ${count === 0 ? "text-muted-foreground" : ""}`}>
         {label}
         {help && <HelpButton topic={help} label={`Help: ${label.toLowerCase()}`} />}
       </span>
-      <span className="text-right font-mono text-[11px] text-muted-foreground" title="Units marked so in a set column">
+      <span className="text-right font-mono text-[11px] text-muted-foreground" title="Units marked so in the column">
         {count}
       </span>
       <select
         className={`${selectClass} w-fit font-normal`}
         aria-label={label}
+        disabled={count === 0}
+        title={count === 0 ? "The column has none of these units" : undefined}
         value={value ?? "spread"}
         onChange={(e) => onChange(e.target.value as Placement)}
       >
-        <option value="spread">Spread through them</option>
-        <option value="before">Before them</option>
-        <option value="after">After them</option>
+        <option value="spread">Spread throughout</option>
+        <option value="before">Before coding units</option>
+        <option value="after">After coding units</option>
         <option value="ignore">Leave out</option>
       </select>
     </>

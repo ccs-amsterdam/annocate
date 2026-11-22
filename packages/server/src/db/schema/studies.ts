@@ -97,7 +97,7 @@ export const deploymentVersions = pgTable(
  * Links: how coders join a study (docs/coder-identity.md). Made from the
  * design's coder unit assignment (params: the coder of a link per coder;
  * link_key: which link, as JSON), so a deploy keeps, adds and retires them.
- * coder: a fixed coder id; max_uses / uses: a sample size per link.
+ * uses: the sessions it started (a crowd's most coders, per link).
  */
 export const links = pgTable(
   "links",
@@ -108,10 +108,8 @@ export const links = pgTable(
       .references(() => studies.id, { onDelete: "cascade" }),
     label: text().notNull(),
     secret: text().notNull().unique("links_secret_key"),
-    coder: text(),
     params: jsonb().$type<Record<string, string>>().notNull().default({}),
     linkKey: text().notNull().default("[]"),
-    maxUses: integer(),
     uses: integer().notNull().default(0),
     created: timestamptz().notNull().defaultNow(),
     revokedAt: timestamptz(),

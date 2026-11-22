@@ -5,10 +5,12 @@ import {
   DesignItemsSchema,
   linkCombinations,
   linkKey,
+  linkMaxCoders,
   sessionColumns,
   sessionItem,
   type DesignItem,
   type LinkResponse,
+  type SessionItem,
 } from "@annotinder/contracts";
 import { and, asc, eq, inArray, isNotNull, isNull, notInArray, sql } from "drizzle-orm";
 import type { Db } from "../db/index.js";
@@ -20,15 +22,16 @@ import { HttpError } from "./http.js";
 /** A row of `links`: a link (docs/architecture.md §7). */
 export type LinkRow = typeof linksTable.$inferSelect;
 
-export function toLinkResponse(row: LinkRow): LinkResponse {
+/** A link for the researcher; `session`: the deployed design's Study entry (the most sessions a link starts). */
+export function toLinkResponse(row: LinkRow, session: SessionItem | null): LinkResponse {
+  const maxUses = linkMaxCoders(session, row.params.group);
   return {
     id: row.id,
     studyId: row.studyId,
     label: row.label,
     secret: row.secret,
     uses: row.uses,
-    ...(row.maxUses !== null ? { maxUses: row.maxUses } : {}),
-    ...(row.coder !== null ? { coder: row.coder } : {}),
+    ...(maxUses !== undefined ? { maxUses } : {}),
     created: row.created,
     revokedAt: row.revokedAt,
     params: row.params,
@@ -69,6 +72,17 @@ export async function checkLinkCount(
 
 /** A new link's label: its values, or "Open link" without. */
 const linkLabel = (values: Record<string, string>) => Object.values(values).join(" · ") || "Open link";
+
+/** The deployed design's Study entry, if deployed. */
+export async function deployedSession(db: Db, studyId: number): Promise<SessionItem | null> {
+  const [deployed] = await db
+    .select({ items: designVersions.items, session: designVersions.session })
+    .from(deployments)
+    .innerJoin(designVersions, eq(designVersions.id, deployments.designVersionId))
+    .where(eq(deployments.studyId, studyId));
+  const parsed = deployed ? DesignItemsSchema.safeParse(designVersionItems(deployed)) : null;
+  return parsed?.success ? sessionItem(parsed.data) : null;
+}
 
 /**
  * Makes the study's links match its deployed design version

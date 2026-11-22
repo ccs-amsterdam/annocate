@@ -5,7 +5,8 @@ import { HttpError } from "../shared/http.js";
 // parameters the design declares, `source`, and who the coder is (`coder`):
 // per the coder unit assignment, their value in the coders' column (by their link,
 // the name they picked, or their login's email), or a crowd's id from a URL
-// parameter (or the login's email). Fixed when the session starts.
+// parameter (or the login's email); and a crowd link's set (`group`). Fixed
+// when the session starts.
 
 /** What the codebook asks of a new session, and the set columns' values. */
 export interface SessionRules {
@@ -35,7 +36,7 @@ const fits = (value: string, pattern?: string) => !pattern || new RegExp(`^(?:${
  */
 export function sessionValues(
   rules: SessionRules,
-  link: { params: Record<string, string>; coder: string | null },
+  params: Record<string, string>,
   urlParams: Record<string, string>,
   email: string | null,
 ): { coder: string | null; session: Record<string, string> } {
@@ -62,8 +63,8 @@ export function sessionValues(
   if (source !== undefined) session.source = source;
 
   if (loginRequired(rules.item) && !email) throw new HttpError(401, "This study requires login", "auth_required");
-  // Who the coder is ($session.coder): a coder fixed on the link, else per the invitation
-  let coderId = link.coder;
+  // Who the coder is ($session.coder): per the invitation
+  let coderId: string | null = null;
   const invite = inviteOf(rules.item);
   if (invite.mode === "coders") {
     // The coder: the login's email, or the link's
@@ -74,10 +75,9 @@ export function sessionValues(
       coder = values.find((v) => v.toLowerCase() === lower);
       if (coder === undefined)
         throw new HttpError(403, "This email address has no access to this study", "email_not_allowed");
-    } else if (link.params.coder !== undefined) {
-      if (!values.includes(link.params.coder))
-        throw new HttpError(403, "This link is no longer active", "link_inactive");
-      coder = link.params.coder;
+    } else if (params.coder !== undefined) {
+      if (!values.includes(params.coder)) throw new HttpError(403, "This link is no longer active", "link_inactive");
+      coder = params.coder;
     }
     if (coder !== undefined) coderId = coder;
   } else {
@@ -89,7 +89,13 @@ export function sessionValues(
     if (param && value !== undefined) {
       if (!fits(value, param.pattern)) throw invalid(param.param);
       coderId = value;
-    } else if (invite.login && email) coderId ??= email.toLowerCase();
+    } else if (invite.login && email) coderId = email.toLowerCase();
+    // A link per set of the crowd's column: the set its coders code
+    if (invite.column && params.group !== undefined) {
+      if (!rules.setsOf(invite.column).includes(params.group))
+        throw new HttpError(403, "This link is no longer active", "link_inactive");
+      session.group = params.group;
+    }
   }
   if (coderId) session.coder = coderId;
   return { coder: coderId, session };
@@ -111,9 +117,11 @@ export function previewSessionValues(rules: SessionRules, urlParams: Record<stri
   if (invite.mode === "coders") {
     const coder = given("coder") ?? rules.setsOf(invite.column)[0];
     if (coder !== undefined) session.coder = coder;
-  } else if (invite.coderParam) {
-    const coder = given(invite.coderParam.param);
+  } else {
+    const coder = invite.coderParam ? given(invite.coderParam.param) : undefined;
     if (coder) session.coder = coder;
+    const group = invite.column ? (given("group") ?? rules.setsOf(invite.column)[0]) : undefined;
+    if (group !== undefined) session.group = group;
   }
   return session;
 }

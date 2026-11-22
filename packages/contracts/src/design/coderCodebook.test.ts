@@ -26,7 +26,7 @@ describe("the coder codebook", () => {
             label: "Main",
             order: "random",
             units: {
-              filter: { column: "g", only: ["queue"] },
+              subset: { column: "g", sets: ["queue"] },
               criteria: { codersPerUnit: { min: 2, max: 2 } },
               overlap: { placement: "last" },
             },

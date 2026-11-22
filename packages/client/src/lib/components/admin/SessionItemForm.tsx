@@ -33,7 +33,6 @@ export function SessionItemForm({
   groups,
   issues,
   client,
-  agreementQuestions = [],
   onChange,
 }: {
   item: SessionItem;
@@ -41,8 +40,6 @@ export function SessionItemForm({
   issues: DesignIssue[];
   /** To make a coders' column (absent: read only). */
   client?: ResearcherApi;
-  /** Unit loop questions an agreement rule can use. */
-  agreementQuestions?: string[];
   onChange: (item: SessionItem) => void;
 }) {
   const [tab] = useSessionTab();
@@ -62,7 +59,6 @@ export function SessionItemForm({
       groups={groups}
       issues={issues}
       client={client}
-      agreementQuestions={agreementQuestions}
       onChange={(invite) => set("invite", invite)}
     />
   );

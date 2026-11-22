@@ -1,15 +1,14 @@
 import { randomBytes } from "node:crypto";
 import { Hono } from "hono";
-import { LinkWriteSchema } from "@annotinder/contracts";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { links as linksTable } from "../db/schema/index.js";
 import type { Server, Env } from "../context.js";
 import { requireStudyUser } from "./auth.js";
-import { forgetLink, toLinkResponse } from "../shared/links.js";
+import { deployedSession, forgetLink, toLinkResponse, type LinkRow } from "../shared/links.js";
 
 // Links (docs/architecture.md §7): made from the deployed design version
-// (shared/links.ts `syncLinks`); here only their settings, revoking and
-// reopening, and a new secret.
+// (shared/links.ts `syncLinks`), with the design's settings; here only
+// revoking and reopening, and a new secret.
 
 /** A study's link, by id (from the path). */
 const linkWhere = (studyId: number, id: string | undefined) =>
@@ -18,6 +17,7 @@ const linkWhere = (studyId: number, id: string | undefined) =>
 export function links(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
+  const respond = async (row: LinkRow) => Response.json(toLinkResponse(row, await deployedSession(db, row.studyId)));
 
   app.get("/study/:studyId/links", requireStudyUser(server, "WRITE"), async (c) => {
     const rows = await db
@@ -25,21 +25,8 @@ export function links(server: Server): Hono<Env> {
       .from(linksTable)
       .where(eq(linksTable.studyId, c.get("studyId")))
       .orderBy(sql`${linksTable.retiredAt} IS NOT NULL`, asc(linksTable.id));
-    return c.json(rows.map(toLinkResponse));
-  });
-
-  app.put("/study/:studyId/links/:id", requireStudyUser(server, "WRITE"), async (c) => {
-    const parsed = LinkWriteSchema.safeParse(await c.req.json());
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
-    const { label, maxUses, coder } = parsed.data;
-    const [row] = await db
-      .update(linksTable)
-      .set({ label, maxUses: maxUses ?? null, coder: coder ?? null })
-      .where(linkWhere(c.get("studyId"), c.req.param("id")))
-      .returning();
-    if (!row) return c.json({ error: "Link not found" }, 404);
-    forgetLink(row.secret);
-    return c.json(toLinkResponse(row));
+    const session = await deployedSession(db, c.get("studyId"));
+    return c.json(rows.map((row) => toLinkResponse(row, session)));
   });
 
   // No new coders from this link; coders who already started keep working.
@@ -50,7 +37,7 @@ export function links(server: Server): Hono<Env> {
       .where(linkWhere(c.get("studyId"), c.req.param("id")))
       .returning();
     if (!row) return c.json({ error: "Link not found" }, 404);
-    return c.json(toLinkResponse(row));
+    return respond(row);
   });
 
   // Open to new coders again (undoes a revoke)
@@ -61,7 +48,7 @@ export function links(server: Server): Hono<Env> {
       .where(linkWhere(c.get("studyId"), c.req.param("id")))
       .returning();
     if (!row) return c.json({ error: "Link not found" }, 404);
-    return c.json(toLinkResponse(row));
+    return respond(row);
   });
 
   // A new secret: the old link stops working (e.g. it was shared too widely); sessions that started go on.
@@ -77,7 +64,7 @@ export function links(server: Server): Hono<Env> {
       .where(eq(linksTable.id, old.id))
       .returning();
     forgetLink(old.secret);
-    return c.json(toLinkResponse(row!));
+    return respond(row!);
   });
 
   return app;

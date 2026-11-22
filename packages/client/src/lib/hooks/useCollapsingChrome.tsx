@@ -1,9 +1,20 @@
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode, type UIEvent } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useRef,
+  useState,
+  type ReactNode,
+  type TouchEvent,
+  type UIEvent,
+  type WheelEvent,
+} from "react";
 
 /**
  * Headers that get out of the way: scrolling down in any scroll area below
- * them (a page, the editor's tree or item panel) hides them; scrolling up, or
- * back near the top, shows them again. Keyboard focus in a header shows it.
+ * them (a page, the editor's tree or item panel) hides them; scrolling up
+ * anywhere on the page (also where nothing scrolls), or back near the top,
+ * shows them again. Keyboard focus in a header shows it.
  */
 interface Chrome {
   collapsed: boolean;
@@ -52,9 +63,28 @@ export function CollapsingChrome({ children, className }: { children: ReactNode;
     [setCollapsed],
   );
   const show = useCallback(() => setCollapsed(false), [setCollapsed]);
+  // Scrolling up anywhere shows the headers, also over an area that doesn't scroll (else they could only come
+  // back from the area that hid them)
+  const onWheel = useCallback((e: WheelEvent) => e.deltaY < -JITTER && show(), [show]);
+  const touchY = useRef<number | null>(null);
+  const onTouchStart = useCallback((e: TouchEvent) => (touchY.current = e.touches[0]?.clientY ?? null), []);
+  const onTouchMove = useCallback(
+    (e: TouchEvent) => {
+      const y = e.touches[0]?.clientY;
+      // A finger moving down scrolls up
+      if (touchY.current !== null && y !== undefined && y - touchY.current > 4 * JITTER) show();
+    },
+    [show],
+  );
   return (
     <ChromeContext.Provider value={{ collapsed, show }}>
-      <div className={className} onScrollCapture={onScroll}>
+      <div
+        className={className}
+        onScrollCapture={onScroll}
+        onWheelCapture={onWheel}
+        onTouchStartCapture={onTouchStart}
+        onTouchMoveCapture={onTouchMove}
+      >
         {children}
       </div>
     </ChromeContext.Provider>

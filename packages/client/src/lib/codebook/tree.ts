@@ -96,16 +96,23 @@ export function itemAtPath(items: (TopLevelItem | InLoopItem)[], path: (string |
   return found;
 }
 
-/** What a unit loop goes over, for the codebook tree: its filter, and special units not spread (the default). */
+/**
+ * What a unit loop goes over, for the codebook tree: an earlier loop's
+ * units or its subset, dividing, and special units not spread (the default).
+ */
 export function loopUnitsSummary(loop: UnitLoopItem): string {
   const spec = loop.units ?? {};
-  const filter = spec.filter;
-  const units = filter
-    ? `${filter.column} ${filter.only ? "" : "not "}${(filter.only ?? filter.except ?? []).join(", ")}`
-    : "the coder's units";
+  const subset = spec.subset;
+  const units =
+    spec.sameAs !== undefined
+      ? `loop ${spec.sameAs}'s units`
+      : subset
+        ? `${subset.column} ${subset.sets.join(", ")}`
+        : "the coder's units";
+  const divided = spec.divide ? ", divided" : "";
   const special = (["overlap", "practice", "gold"] as const).filter((k) => spec[k] && spec[k] !== "spread");
-  const own = spec.own === false ? ", only special units" : "";
-  return `${units}${own}${special.map((k) => `, ${k} ${spec[k] === "ignore" ? "left out" : spec[k]}`).join("")}`;
+  const own = spec.coding === false ? ", only special units" : "";
+  return `${units}${divided}${own}${special.map((k) => `, ${k} ${spec[k] === "ignore" ? "left out" : spec[k]}`).join("")}`;
 }
 
 /**

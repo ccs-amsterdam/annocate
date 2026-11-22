@@ -12,6 +12,8 @@ export interface ShareColumn {
   column: string;
   /** A random condition, drawn when reached; else a session value. */
   random?: boolean;
+  /** A session value a session may lack (a crowd link without a set): then the column doesn't select its units. */
+  optional?: boolean;
 }
 
 /**

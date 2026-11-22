@@ -9,9 +9,9 @@ import {
 } from "@annotinder/contracts";
 import { useLoopTab, type LoopTab } from "./designEditor/loopTab";
 import { issuesAt } from "./issues";
-import { type ShareSource } from "../../design/assignment";
+import { type LoopUnitsContext } from "../../design/assignment";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { selectClass, checkableQuestions } from "./unitLoop/helpers";
+import { selectClass, checkableQuestions, agreeableQuestions } from "./unitLoop/helpers";
 import { Section } from "./unitLoop/Section";
 import { LayoutTab } from "./unitLoop/LayoutTab";
 import { UnitsEditor } from "./unitLoop/UnitsEditor";
@@ -29,13 +29,13 @@ export function UnitLoopForm({
   coderQuestions,
   screenouts = [],
   validationIssues,
-  shareSources = [],
+  unitsContext = { invite: { mode: "crowd" }, sources: [], earlier: [] },
   readOnly = false,
   onChange,
 }: {
   loop: UnitLoopItem;
-  /** What selects a session's units (its coder, linked conditions): for the Units tab's summary. */
-  shareSources?: ShareSource[];
+  /** The rest of the design as the Units tab needs it: the coder unit assignment, earlier loops. */
+  unitsContext?: LoopUnitsContext;
   /** The design's end items with outcome `screenout`: where gold checks can end a session. */
   screenouts?: string[];
   /** For "Generate sets…" (absent: not offered). */
@@ -90,7 +90,7 @@ export function UnitLoopForm({
           groups={groups}
           screenouts={screenouts}
           validationIssues={validationIssues}
-          shareSources={shareSources}
+          unitsContext={unitsContext}
           onChange={onChange}
         />
       ) : (
@@ -114,7 +114,7 @@ function UnitsTab({
   groups,
   screenouts,
   validationIssues,
-  shareSources,
+  unitsContext,
   onChange,
 }: {
   loop: UnitLoopItem;
@@ -122,7 +122,7 @@ function UnitsTab({
   groups: SetGroupResponse[];
   screenouts: string[];
   validationIssues: DesignIssue[];
-  shareSources: ShareSource[];
+  unitsContext: LoopUnitsContext;
   onChange: (loop: UnitLoopItem) => void;
 }) {
   const setUnits = (units: LoopUnits) => {
@@ -138,9 +138,10 @@ function UnitsTab({
         client={client}
         groups={groups}
         checkable={checkableQuestions(loop.children as DesignItem[])}
+        agreeable={agreeableQuestions(loop.children as DesignItem[])}
         answerKey={client && loop.layout ? { client, layout: loop.layout } : undefined}
         screenouts={screenouts}
-        shareSources={shareSources}
+        context={unitsContext}
         issues={issuesAt(validationIssues, "units")}
         onChange={setUnits}
       />

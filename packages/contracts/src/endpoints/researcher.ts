@@ -14,7 +14,6 @@ import { UnitFieldSchema, UnitsSpecSchema } from "../unitFields.js";
 import { SetGroupResponseSchema, SetGroupWriteSchema } from "../sets.js";
 import {
   CoderProgressSchema,
-  LinkWriteSchema,
   LinkResponseSchema,
   CoderDeletionSchema,
   DeleteCodersSchema,
@@ -239,13 +238,6 @@ export const researcherEndpoints = {
     path: "/study/:studyId/links",
     request: z.void(),
     response: z.array(LinkResponseSchema),
-  },
-  /** A link's settings (label, max uses, coder id). Links themselves come from the deployed design version. */
-  updateLink: {
-    method: "PUT",
-    path: "/study/:studyId/links/:id",
-    request: LinkWriteSchema,
-    response: LinkResponseSchema,
   },
   /** No new coders from this link (coders who started keep working); a redeploy keeps it revoked. Undone by `reopenLink`. */
   revokeLink: {

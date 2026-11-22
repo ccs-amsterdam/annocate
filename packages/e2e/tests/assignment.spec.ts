@@ -123,12 +123,15 @@ test("a random condition linked to units: balanced, each session codes its value
   expect(seen.sort()).toEqual(["Alarming report", "Calm report"]);
 });
 
-test("two loops filter one set column: first the pre units, then the post units", async ({ request, browser }) => {
+test("two loops take a subset of one set column: first the pre units, then the post units", async ({
+  request,
+  browser,
+}) => {
   const study = await studyWithColumn(request, "Pre and post", "phase", { "Before text": "pre", "After text": "post" });
   const filtered = (only: string, name: string, text: string) => ({
     ...loop(),
     label: name,
-    units: { filter: { column: "phase", only: [only] } },
+    units: { subset: { column: "phase", sets: [only] } },
     children: [
       {
         type: "question",

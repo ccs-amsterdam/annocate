@@ -152,9 +152,12 @@ test("crowd coding with an overlap; the invitation and the loop's checks are set
   const [draft] = await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`);
   const version = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${draft.id}`);
   const [loop] = version.items as { units: unknown; layout: { template: string } }[];
-  // The shared queue is the crowd invitation's; the overlap and gold units are spread (the default)
-  expect(version.session).toEqual({ invite: { mode: "crowd", share: { codersPerUnit: { min: 2, max: 2 } } } });
-  expect(loop.units).toEqual({ goldCheck: { questions: ["sentiment"] } });
+  // The loop divides its units among the crowd; the overlap and gold units (the crowd's column's) are spread (the default)
+  expect(version.session).toEqual({ invite: { mode: "crowd", column: "coders" } });
+  expect(loop.units).toEqual({
+    divide: { codersPerUnit: { min: 2, max: 2 } },
+    goldCheck: { questions: ["sentiment"] },
+  });
   expect(loop.layout.template).toBe("# $unit.headline\n\n$unit.text");
   const [group] = await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`);
   // The overlap: everyone's, in a set column of its own (the queue is all units)

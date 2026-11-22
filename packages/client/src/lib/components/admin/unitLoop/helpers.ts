@@ -1,11 +1,8 @@
 import {
+  supportsAgreement,
   CHECKABLE_TYPES,
-  GOLD_SET,
-  OVERLAP_SET,
-  PRACTICE_SET,
   type AnyVariableType,
   type DesignItem,
-  type SetGroupResponse,
   type UnitLayout,
 } from "@annotinder/contracts";
 import { type AnswerKeyQuestion } from "../units/AnswerKeyDialog";
@@ -45,24 +42,18 @@ export function checkableQuestions(items: DesignItem[]): AnswerKeyQuestion[] {
   });
 }
 
+/** The questions of a loop an agreement rule can use: one categorical answer (contracts `supportsAgreement`). */
+export function agreeableQuestions(items: DesignItem[]): string[] {
+  return items.flatMap((i): string[] => {
+    if (i.type === "show_if") return agreeableQuestions(i.children as DesignItem[]);
+    return i.type === "question" && supportsAgreement(i.variable) ? [i.name] : [];
+  });
+}
+
 /** What "Right answers…" needs: the API and the loop's layout. */
 export interface AnswerKeyContext {
   client: ResearcherApi;
   layout: UnitLayout;
-}
-
-/**
- * The special sets of every set column as one group: practice and gold
- * units of any column are everyone's; the overlap counts here are an upper
- * bound (a session gets those of its own columns).
- */
-export function allColumns(groups: SetGroupResponse[]): SetGroupResponse | undefined {
-  if (groups.length === 0) return undefined;
-  const union = (set: string) => [...new Set(groups.flatMap((g) => g.sets.find((s) => s.name === set)?.unitIds ?? []))];
-  return {
-    name: "(all set columns)",
-    sets: [OVERLAP_SET, PRACTICE_SET, GOLD_SET].map((name) => ({ name, unitIds: union(name), ordered: false })),
-  };
 }
 
 export const numberOrUndefined = (v: string) => (v === "" ? undefined : Number(v));

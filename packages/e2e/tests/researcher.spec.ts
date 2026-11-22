@@ -167,13 +167,9 @@ test("your first study, as the help describes it: units, a design, deploy, a lin
     )
     .toBe(codebook.id);
 
-  // 7. Link coders: publishing made the study's link; give it a label
+  // 7. Link coders: deploying made the study's link
   await page.getByRole("button", { name: "Links", exact: true }).click();
   await expect(page.getByText("Open link")).toBeVisible();
-  await page.getByRole("button", { name: "Who may use this link" }).click();
-  await page.getByLabel("Label").fill("Pilot coders");
-  await page.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(page.getByText("Pilot coders")).toBeVisible();
   const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
 
   // A coder codes the three articles

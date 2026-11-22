@@ -439,18 +439,6 @@ describe("links, coder progress and overview", () => {
     expect(await status(resolve("a", used.secret))).toBe(200);
     expect((await get("/links"))[0].uses).toBe(1);
 
-    // Access settings
-    const updated = await json(
-      await app.request(`/api/study/${study.id}/links/${unused.id}`, {
-        method: "PUT",
-        headers: adminHeaders,
-        body: JSON.stringify({ label: "Panel", maxUses: 1 }),
-      }),
-    );
-    expect(updated).toMatchObject({ label: "Panel", maxUses: 1, params: { coder: "waiting" } });
-    expect(await status(resolve("u1", unused.secret))).toBe(200);
-    expect(await status(resolve("u2", unused.secret))).toBe(403); // link_used_up
-
     // A new secret: the old one stops working
     const renewed = await json(
       await app.request(`/api/study/${study.id}/links/${used.id}/secret`, { method: "POST", headers: adminHeaders }),

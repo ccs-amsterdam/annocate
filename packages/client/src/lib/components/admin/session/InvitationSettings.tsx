@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Globe, Users } from "lucide-react";
 import {
   DEFAULT_INVITE,
-  type Criteria,
   type CrowdInvite,
   type DesignIssue,
   type Invite,
@@ -18,7 +17,6 @@ import { coderSummary, columnValues } from "../../../design/assignment";
 import { IssueList } from "../IssueList";
 import { issuesAt } from "../issues";
 import { CoderSetDialog } from "./CoderSetDialog";
-import { SharedSettings } from "../unitLoop/UnitsEditor";
 
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs font-normal";
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
@@ -28,15 +26,15 @@ const labelClass = "flex flex-col gap-1 text-xs font-semibold";
  * docs/architecture.md §6): specific coders (the values of a set column of
  * the units, each with their own units; a link each, or one link where they
  * sign in with their email address), or a crowd (one link for anyone: an
- * optional coder id from the URL, optional sign-in, and a shared
- * queue of units with distribution rules).
+ * optional coder id from the URL, optional sign-in, optionally a set column
+ * for special units and a link per set). Whether a crowd divides the units
+ * is each unit loop's.
  */
 export function InvitationSettings({
   invite = DEFAULT_INVITE,
   groups,
   issues,
   client,
-  agreementQuestions,
   onChange,
 }: {
   invite?: Invite;
@@ -44,8 +42,6 @@ export function InvitationSettings({
   issues: DesignIssue[];
   /** To make a coders' column (absent: read only). */
   client?: ResearcherApi;
-  /** Unit loop questions an agreement rule can use. */
-  agreementQuestions: string[];
   onChange: (invite: Invite) => void;
 }) {
   const columns = groups.map((g) => g.name);
@@ -82,7 +78,7 @@ export function InvitationSettings({
       {invite.mode === "coders" ? (
         <CodersForm invite={invite} groups={groups} client={client} onChange={onChange} />
       ) : (
-        <CrowdForm invite={invite} agreementQuestions={agreementQuestions} onChange={onChange} />
+        <CrowdForm invite={invite} groups={groups} client={client} onChange={onChange} />
       )}
       <IssueList issues={issuesAt(issues, "invite")} />
     </div>
@@ -257,18 +253,26 @@ function CodersForm({
 
 function CrowdForm({
   invite,
-  agreementQuestions,
+  groups,
+  client,
   onChange,
 }: {
   invite: CrowdInvite;
-  agreementQuestions: string[];
+  groups: SetGroupResponse[];
+  client?: ResearcherApi;
   onChange: (invite: Invite) => void;
 }) {
+  const [making, setMaking] = useState(false);
   const set = <K extends keyof CrowdInvite>(key: K, value: CrowdInvite[K] | undefined) => {
     const next = { ...invite, [key]: value };
     if (value === undefined) delete next[key];
     onChange(next);
   };
+  const columns = groups.map((g) => g.name);
+  const known = invite.column !== undefined && columns.includes(invite.column);
+  // A link per set of the column (besides the special ones)
+  const linkSets = invite.column ? columnValues(groups, invite.column) : [];
+  const count = (value: string) => (value === "" ? undefined : Math.max(1, Number(value)));
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
@@ -331,80 +335,123 @@ function CrowdForm({
             their address.
           </InfoTip>
         </label>
+      </div>
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-end gap-2">
+          <label className={labelClass}>
+            <span className="flex items-center gap-1">
+              Set column (optional)
+              <InfoTip label="About a crowd's set column">
+                A set column of the units with special units for every coder: overlap units (to compare coders), and
+                practice and gold units (to train or test them). If it also has other sets, each set gets its own link,
+                whose coders code that set (e.g. a group per panel).
+              </InfoTip>
+            </span>
+            <select
+              className={cn(selectClass, "font-mono")}
+              value={invite.column ?? ""}
+              onChange={(e) => {
+                const next = { ...invite, column: e.target.value || undefined };
+                if (!next.column) {
+                  delete next.column;
+                  delete next.groupMaxCoders;
+                }
+                onChange(next);
+              }}
+            >
+              <option value="">None: all units</option>
+              {invite.column && !known && <option value={invite.column}>{invite.column} (no such column)</option>}
+              {columns.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
+          {client && (
+            <Button type="button" variant="outline" size="sm" className="h-8" onClick={() => setMaking(true)}>
+              {known ? "Update special units…" : "Create special units…"}
+            </Button>
+          )}
+        </div>
+        {invite.column && !known && (
+          <p className="text-[11px] text-destructive">The units have no column &quot;{invite.column}&quot;.</p>
+        )}
+        {known && (
+          <p className="text-[11px] text-muted-foreground">
+            {linkSets.length > 0
+              ? `A link per set: ${linkSets.slice(0, 6).join(", ")}${linkSets.length > 6 ? ", …" : ""}. Units without a value in ${invite.column} aren't coded.`
+              : `One link; ${invite.column}'s special units go to every coder, the other units are the crowd's.`}
+          </p>
+        )}
+      </div>
+      <div className="flex flex-col gap-2">
         <label className="flex items-center gap-2 text-xs font-semibold">
-          Coders at most
+          Max. nr of coders{linkSets.length > 0 ? " per link" : ""}
           <Input
             type="number"
             min={1}
             className="h-8 w-24 text-xs font-normal"
             placeholder="no limit"
             value={invite.maxCoders ?? ""}
-            onChange={(e) => set("maxCoders", e.target.value === "" ? undefined : Math.max(1, Number(e.target.value)))}
+            onChange={(e) => set("maxCoders", count(e.target.value))}
           />
           <InfoTip label="About the most coders">
-            The link starts at most this many sessions (the sample size). A link&apos;s own limit, on the Links page,
-            overrides it.
+            A link starts at most this many sessions (the sample size). With a link per set, you can set it per link
+            below.
           </InfoTip>
         </label>
+        {linkSets.length > 0 && (
+          <div className="grid w-fit grid-cols-[auto_6rem] items-center gap-x-3 gap-y-1 pl-4">
+            {linkSets.map((group) => (
+              <label key={group} className="contents text-xs">
+                <span className="font-mono">{group}</span>
+                <Input
+                  type="number"
+                  min={1}
+                  aria-label={`Max. nr of coders: ${group}`}
+                  className="h-7 text-xs"
+                  placeholder={invite.maxCoders === undefined ? "no limit" : String(invite.maxCoders)}
+                  value={invite.groupMaxCoders?.[group] ?? ""}
+                  onChange={(e) => {
+                    const limits = { ...invite.groupMaxCoders };
+                    const n = count(e.target.value);
+                    if (n === undefined) delete limits[group];
+                    else limits[group] = n;
+                    set("groupMaxCoders", Object.keys(limits).length > 0 ? limits : undefined);
+                  }}
+                />
+              </label>
+            ))}
+          </div>
+        )}
       </div>
-      <Distribution
-        criteria={invite.share}
-        agreementQuestions={agreementQuestions}
-        onChange={(share) => set("share", share)}
-      />
+      <p className="text-[11px] text-muted-foreground">
+        Whether the units are divided among the coders, or every coder codes all of them, is set per unit loop (its
+        Units settings).
+      </p>
+      {making && client && (
+        <CoderSetDialog
+          client={client}
+          crowd
+          column={known ? invite.column! : newColumnName(columns, "special")}
+          groups={groups}
+          onDone={(result) => {
+            setMaking(false);
+            if (result) onChange({ ...invite, column: result.column });
+          }}
+        />
+      )}
     </section>
   );
 }
 
-/**
- * How a crowd shares the units (contracts `CriteriaSchema`), applied in
- * every unit loop: absent, every coder codes all units.
- */
-function Distribution({
-  criteria,
-  agreementQuestions,
-  onChange,
-}: {
-  criteria: Criteria | undefined;
-  agreementQuestions: string[];
-  onChange: (criteria: Criteria | undefined) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <label className="flex items-center gap-2 text-xs font-semibold">
-        <input
-          type="checkbox"
-          checked={criteria !== undefined}
-          onChange={(e) => onChange(e.target.checked ? { codersPerUnit: { min: 1 } } : undefined)}
-        />
-        Share the units among coders
-        <InfoTip label="About sharing units">
-          Without this, every coder codes all units. Shared, the units are handed out until each has enough coders:
-          coders get the units that still need them. The rules apply in every unit loop; an agreement rule only in loops
-          that ask its question (elsewhere a unit is done after that many coders).
-        </InfoTip>
-        <HelpButton topic="shared-queues" label="Help: sharing units" />
-      </label>
-      {criteria && (
-        <div className="rounded-md border border-border p-3">
-          <SharedSettings
-            criteria={criteria}
-            agreeable={agreementQuestions}
-            allowAgreement={agreementQuestions.length > 0 || criteria.until !== undefined}
-            onChange={onChange}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** A name for a new coder distribution column: `coder`, or `coder_2`, ... if taken. */
-function newColumnName(columns: string[]): string {
-  if (!columns.includes("coder")) return "coder";
+/** A name for a new column: `coder` (or `base`), or `coder_2`, ... if taken. */
+function newColumnName(columns: string[], base = "coder"): string {
+  if (!columns.includes(base)) return base;
   let n = 2;
-  while (columns.includes(`coder_${n}`)) n++;
-  return `coder_${n}`;
+  while (columns.includes(`${base}_${n}`)) n++;
+  return `${base}_${n}`;
 }
 
 /** Per study: the settings last used in each mode, to come back to after switching (kept while the page is open). */

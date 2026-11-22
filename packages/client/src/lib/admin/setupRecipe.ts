@@ -169,7 +169,7 @@ export function parseQuestions(lines: string[]): SetupQuestion[] {
 }
 
 /** The set column the wizard puts its sets in: the coders. */
-const WIZARD_GROUP = "coders";
+export const WIZARD_GROUP = "coders";
 
 /** A set's name from a column's value: no `;` or `#`, and no leading `_` (reserved). */
 const setName = (value: string) =>
@@ -383,10 +383,19 @@ export function setupRecipe(answers: SetupAnswers): RecipeInput {
         session = { invite: { mode: "coders", column: WIZARD_GROUP, link: "per_coder" } };
         break;
       case "crowd":
-        // The overlap: everyone's (a column's _overlap, without a column dividing the units)
+        // The overlap: everyone's (the crowd's column, with only special units; also where gold and
+        // practice units go, marked on the Units page)
         if (overlap.length > 0) groups.push({ group: WIZARD_GROUP, sets: overlapSet });
-        // A shared queue: the crowd invitation's (overlap spread, about one in ten without a maximum per coder)
-        session = { invite: { mode: "crowd", share: d.shared } };
+        session = {
+          invite: {
+            mode: "crowd",
+            ...(overlap.length > 0 || answers.checks.gold.length + answers.checks.practice.length > 0
+              ? { column: WIZARD_GROUP }
+              : {}),
+          },
+        };
+        // The loop divides its units among the coders (overlap spread, about one in ten without a maximum per coder)
+        units = { divide: d.shared };
         break;
       case "groups":
         // A set column named after the condition, a value per condition: the condition (drawn before the loop) selects its units

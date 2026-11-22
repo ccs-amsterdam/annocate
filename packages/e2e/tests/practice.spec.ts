@@ -113,6 +113,8 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
     ],
   });
   await api(request, "POST", `/study/${study.id}/design`, {
+    // The gold units are those of the coder unit assignment's column
+    session: { invite: { mode: "crowd", column: "part" } },
     items: [
       {
         type: "unit_loop",

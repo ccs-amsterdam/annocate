@@ -8,6 +8,7 @@ import {
   notSetColumns,
   sessionColumns,
   sessionItem,
+  assignmentColumn,
   collectQuestions,
   goldColumn,
   parseAnswerKey,
@@ -263,7 +264,9 @@ async function answerKeyWarnings(
   const warnings: string[] = [];
   const unitsIn = (column: string, set: string) =>
     (groups.get(column) ?? []).find((s) => s.name === set)?.unitIds ?? [];
-  const special = (set: string) => [...new Set([...groups.keys()].flatMap((g) => unitsIn(g, set)))];
+  // The special units are the coder unit assignment's column's
+  const assigned = assignmentColumn(sessionItem(items));
+  const special = (set: string) => (assigned ? unitsIn(assigned, set) : []);
   const { questions } = collectQuestions(items);
   for (const { key, loop } of unitLoops(items)) {
     const title = loopTitle(loop, key);
@@ -276,7 +279,9 @@ async function answerKeyWarnings(
       const specials = special(set);
       if (specials.length === 0) {
         warnings.push(
-          `Loop '${title}': it checks ${set === GOLD_SET ? "gold" : "practice"} units, but no set column has ${set} units.`,
+          assigned
+            ? `Loop '${title}': it checks ${set === GOLD_SET ? "gold" : "practice"} units, but the column ${assigned} has no ${set} units.`
+            : `Loop '${title}': it checks ${set === GOLD_SET ? "gold" : "practice"} units, but the coder unit assignment has no set column (the special units are its column's).`,
         );
         continue;
       }

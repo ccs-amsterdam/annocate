@@ -7,15 +7,16 @@ import {
   templateNames,
   expandSnippets,
   sessionItem,
-  supportsAgreement,
+  unitLoops,
+  loopTitle,
+  inviteOf,
   type DesignItem,
   type EndItem,
-  type TopLevelItem,
 } from "@annotinder/contracts";
 import { AlertTriangle, ArrowLeft, Code2, Edit3, Eye } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useSetGroupsQuery, useUnitFieldsQuery } from "../../../admin/queries";
-import { enclosingLoop, flattenTree, issueIsAbout, itemPath } from "../../../codebook/tree";
+import { enclosingLoop, issueIsAbout, itemPath } from "../../../codebook/tree";
 import { itemTitle } from "../../../codebook/conditions";
 import { ItemForm } from "../ItemForm";
 import { EndItemFields } from "../itemForm/EndItemFields";
@@ -25,7 +26,7 @@ import { getItemKey, STUDY_END_KEY } from "../designTree/utils";
 import { HelpButton } from "../../../help/HelpButton";
 import { ITEM_TYPES } from "../designTree/itemTypes";
 import { SegmentedToggle } from "./SegmentedToggle";
-import { shareSources } from "../../../design/assignment";
+import { shareSources, type LoopUnitsContext } from "../../../design/assignment";
 import { ItemJsonEditor } from "./ItemJsonEditor";
 import { SessionPartJson } from "../session/SessionPartJson";
 import { SessionPreview } from "../session/SessionPreview";
@@ -197,8 +198,7 @@ function ItemEditForm({
         readOnly={readOnly}
         validationIssues={itemIssues}
         screenouts={item.type === "unit_loop" ? screenoutEnds(cleanItems) : undefined}
-        shareSources={item.type === "unit_loop" ? loopShareSources(cleanItems) : undefined}
-        agreementQuestions={item.type === "session" ? agreementQuestions(cleanItems) : undefined}
+        unitsContext={item.type === "unit_loop" ? loopUnitsContext(items, cleanItems, key) : undefined}
         onChange={(next) => draft.update(key, next)}
       />
     </fieldset>
@@ -227,24 +227,23 @@ export function PreviewPanel({ client, draft }: { client: ResearcherApi; draft: 
   );
 }
 
-/** What selects a session's units: the invitation's coder, and computed items linked to units. */
-function loopShareSources(items: readonly unknown[]) {
-  const { session, items: rest } = splitDesignItems(items);
+/**
+ * What a loop's Units settings need of the design (`LoopUnitsContext`): the
+ * coder unit assignment, what selects a session's units (its coder or link's
+ * set, computed items linked to units), and the loops before this one.
+ */
+function loopUnitsContext(items: readonly DesignItem[], cleanItems: readonly unknown[], key: string): LoopUnitsContext {
+  const { session, items: rest } = splitDesignItems(cleanItems);
   const random = [...collectQuestions(rest as DesignItem[]).questions]
     .filter(([, v]) => v.type === "random")
     .map(([name, v]) => ({ name, units: (v as { units?: string }).units }));
-  return shareSources(session.invite, random);
-}
-
-/** The unit loops' questions whose answers coders can agree on (a crowd's agreement rule). */
-function agreementQuestions(items: TopLevelItem[]): string[] {
-  const names = new Set<string>();
-  for (const loop of items) {
-    if (loop.type !== "unit_loop") continue;
-    for (const q of flattenTree(loop.children as TopLevelItem[]))
-      if (q.type === "question" && supportsAgreement(q.variable)) names.add(q.name);
-  }
-  return [...names];
+  const loops = unitLoops(items);
+  const at = loops.findIndex((l) => getItemKey(l.loop as DesignItem) === key);
+  return {
+    invite: inviteOf(sessionItem(cleanItems)),
+    sources: shareSources(session.invite, random),
+    earlier: loops.slice(0, Math.max(0, at)).map((l) => ({ number: Number(l.key), title: loopTitle(l.loop, l.key) })),
+  };
 }
 
 /**

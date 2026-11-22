@@ -184,13 +184,21 @@ export function splitIntoSets<T>(
   return out;
 }
 
+/** How many units a special set gets: a number, or a fraction of all units. */
+export interface SpecialAmount {
+  units?: number;
+  fraction?: number;
+}
+
 /**
  * Divides units over named coders (a coder distribution column,
- * docs/architecture.md §6): the overlap (`_overlap`) for everyone, then
- * every other unit to `perUnit` coders, each unit to the coders with the
- * fewest so far. With `keep`, units a coder already has (e.g. saw while
- * coding) stay theirs first, so redistributing loses nobody's work; such a
- * unit may end up with more coders than `perUnit`. Seeded: reproducible.
+ * docs/architecture.md §6): first the special units, practice
+ * (`_practice`) and gold (`_gold`) and the overlap (`_overlap`), for
+ * everyone; then every other unit to `perUnit` coders, each unit to the
+ * coders with the fewest so far. With `keep`, units a coder already has
+ * (e.g. saw while coding) stay theirs first, so redistributing loses
+ * nobody's work; such a unit may end up with more coders than `perUnit`.
+ * Seeded: reproducible.
  */
 export function distributeUnits(
   units: number[],
@@ -199,18 +207,24 @@ export function distributeUnits(
     perUnit?: number;
     overlapUnits?: number;
     overlapFraction?: number;
+    practice?: SpecialAmount;
+    gold?: SpecialAmount;
     seed?: number;
     /** Coder -> units to keep with them. */
     keep?: ReadonlyMap<string, Iterable<number>>;
   } = {},
 ): { sets: { name: string; units: number[] }[]; kept: number } {
-  const shuffled = seededShuffle(units, options.seed ?? 0);
-  const overlapCount = Math.min(
-    shuffled.length,
-    options.overlapUnits ?? Math.round((options.overlapFraction ?? 0) * shuffled.length),
-  );
-  const overlap = shuffled.slice(0, overlapCount);
-  const rest = shuffled.slice(overlapCount);
+  let left = seededShuffle(units, options.seed ?? 0);
+  const take = (amount: SpecialAmount | undefined) => {
+    const n = Math.min(left.length, amount?.units ?? Math.round((amount?.fraction ?? 0) * units.length));
+    const taken = left.slice(0, n);
+    left = left.slice(n);
+    return taken;
+  };
+  const practice = take(options.practice);
+  const gold = take(options.gold);
+  const overlap = take({ units: options.overlapUnits, fraction: options.overlapFraction });
+  const rest = left;
   const perUnit = Math.min(coders.length, Math.max(1, Math.floor(options.perUnit ?? 1)));
   const assigned = new Map<string, Set<number>>(coders.map((c) => [c, new Set()]));
   const coderCount = new Map<number, number>();
@@ -243,6 +257,8 @@ export function distributeUnits(
     units: [...assigned.get(name)!].sort((a, b) => order.get(a)! - order.get(b)!),
   }));
   if (overlap.length > 0) sets.push({ name: OVERLAP_SET, units: overlap });
+  if (practice.length > 0) sets.push({ name: PRACTICE_SET, units: practice });
+  if (gold.length > 0) sets.push({ name: GOLD_SET, units: gold });
   return { sets, kept };
 }
 

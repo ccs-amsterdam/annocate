@@ -11,7 +11,7 @@ import { loopShareColumns } from "./assignment.js";
 
 const loop = {
   type: "unit_loop",
-  units: { filter: { column: "parts", only: ["a"] }, overlap: "ignore" },
+  units: { subset: { column: "parts", sets: ["a"] }, overlap: "ignore" },
   layout: { template: "{{$unit.headline}} as {{$var.role.label}}" },
   children: [
     {
@@ -83,7 +83,7 @@ describe("set columns", () => {
     },
     {
       type: "unit_loop",
-      units: { filter: { column: "phase", except: ["pre"] } },
+      units: { subset: { column: "phase", sets: ["post"] } },
       layout: { template: "" },
       children: [],
     },

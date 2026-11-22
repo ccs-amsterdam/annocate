@@ -116,7 +116,7 @@ export function fieldUsage(items: readonly unknown[]): Map<string, FieldUse> {
       if (ref.ns === "unit") counts.set(ref.path[0], (counts.get(ref.path[0]) ?? 0) + 1);
     for (const [field, n] of counts) use(field, n > scriptCount(loop, field) ? "shown" : "sent");
     const units = loop.units;
-    if (units?.filter?.column) use(units.filter.column, "server");
+    if (units?.subset?.column) use(units.subset.column, "server");
     for (const q of units?.goldCheck?.questions ?? []) use(goldColumn(q), "server");
     for (const q of units?.practiceCheck?.questions ?? []) {
       use(practiceColumn(q), "server");
@@ -131,13 +131,13 @@ export function fieldUsage(items: readonly unknown[]): Map<string, FieldUse> {
 /**
  * The set columns a design names (docs/architecture.md §6): the coder
  * column, the columns computed items are linked to, and
- * loop filters' columns. They must be `set` fields of the units.
+ * loops' subset columns. They must be `set` fields of the units.
  */
 export function designSetColumns(items: readonly unknown[]): string[] {
   const columns = new Set<string>();
   const session = sessionItem(items);
   const invite = session?.invite;
-  if (invite?.mode === "coders" && invite.column) columns.add(invite.column);
+  if (invite?.column) columns.add(invite.column);
   const walk = (list: unknown) => {
     for (const raw of Array.isArray(list) ? list : []) {
       const it = raw as {
@@ -149,7 +149,7 @@ export function designSetColumns(items: readonly unknown[]): string[] {
       if (it?.type === "computed" && it.variable?.type === "random" && typeof it.variable.units === "string")
         columns.add(it.variable.units);
       if (it?.type === "unit_loop") {
-        const column = (it.units as { filter?: { column?: unknown } } | undefined)?.filter?.column;
+        const column = (it.units as { subset?: { column?: unknown } } | undefined)?.subset?.column;
         if (typeof column === "string") columns.add(column);
       }
       walk(it?.children);

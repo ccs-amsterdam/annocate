@@ -59,7 +59,7 @@ describe("validateDesignItems", () => {
     ]);
   });
 
-  it("checks a loop's units: a filter, special units placed, and the checks on practice and gold units", () => {
+  it("checks a loop's units: a subset, special units placed, and the checks on practice and gold units", () => {
     const loop = (units: object) => [
       {
         type: "unit_loop",
@@ -72,15 +72,12 @@ describe("validateDesignItems", () => {
     expect(messages(loop({}))).toEqual([]);
     expect(
       messages(
-        loop({ filter: { column: "phase", only: ["post"] }, own: false, overlap: "ignore", practice: "before" }),
+        loop({ subset: { column: "phase", sets: ["post"] }, coding: false, overlap: "ignore", practice: "before" }),
       ),
     ).toEqual([]);
     expect(messages(loop({ overlap: "first" }))).toEqual([expect.stringContaining("Invalid option")]);
-    expect(messages(loop({ filter: { column: "phase" } }))).toEqual(["A filter has either only or except values"]);
-    expect(messages(loop({ filter: { column: "phase", only: ["a"], except: ["b"] } }))).toEqual([
-      "A filter has either only or except values",
-    ]);
-    expect(messages(loop({ filter: { column: "_phase", except: ["_overlap"] } }))).toEqual([
+    expect(messages(loop({ subset: { column: "phase", sets: [] } }))).toEqual(["Choose at least one set"]);
+    expect(messages(loop({ subset: { column: "_phase", sets: ["a"] } }))).toEqual([
       expect.stringMatching(/group's name/),
     ]);
     expect(messages(loop({ mode: "all" }))).toEqual([]); // unknown keys are dropped
@@ -138,11 +135,13 @@ describe("the Session item", () => {
       name: "q",
       variable: {
         type: "confirm",
-        question: "Hi $session.group, $session.source, $session.coder",
+        question: "Hi $session.channel, $session.source, $session.coder, $session.group",
       },
     };
-    expect(messages([session({ urlParams: [{ name: "group" }] }), text])).toEqual([]);
-    expect(messages([text])).toEqual(["$session.group: no session parameter 'group' (declare it in the Session item)"]);
+    expect(messages([session({ urlParams: [{ name: "channel" }] }), text])).toEqual([]);
+    expect(messages([text])).toEqual([
+      "$session.channel: no session parameter 'channel' (declare it in the Session item)",
+    ]);
   });
 
   it("comes first, once; its URL parameters are named once, not built in, with one key each", () => {
@@ -160,7 +159,7 @@ describe("the Session item", () => {
       ]),
     ).toEqual(["Two URL parameters use the key 'PID'"]);
     expect(messages([session({ urlParams: [{ name: "source" }] })])).toContain(
-      "coder and source are built in: choose another name",
+      "coder, source and group are built in: choose another name",
     );
     expect(messages([session({ urlParams: [{ name: "x", values: [{ value: "a" }], default: "b" }] })])).toEqual([
       "The default 'b' is not one of the values",
@@ -170,30 +169,16 @@ describe("the Session item", () => {
     ]);
   });
 
-  it("checks the invitation: specific coders by a set column, or a crowd with a shared queue", () => {
+  it("checks the invitation: specific coders by a set column, or a crowd", () => {
     const loop = unitLoop("loop", [questionVar("q1", select(["a", "b"])), questionVar("c1")]);
-    const crowd = (share: object) => session({ invite: { mode: "crowd", share } });
     expect(messages([session({ invite: { mode: "coders", column: "coders", link: "per_coder" } }), loop])).toEqual([]);
     expect(messages([session({ invite: { mode: "coders", link: "per_coder" } })])).toContainEqual(
       expect.stringContaining("Invalid input"),
     );
-    expect(messages([crowd({ until: { agree: 2, on: "q1" }, codersPerUnit: { max: 4 } }), loop])).toEqual([]);
-    expect(messages([crowd({ until: { agree: 2, on: "nope" }, codersPerUnit: { max: 3 } }), loop])).toEqual([
-      "Agreement question 'nope' is not a question in a unit loop",
-    ]);
-    expect(messages([crowd({ until: { agree: 2, on: "c1" }, codersPerUnit: { max: 3 } }), loop])).toEqual([
-      `Agreement needs a question with one categorical answer (nominal without multiple answers, ordinal or swipe); "c1" is a confirm question`,
-    ]);
-    expect(messages([crowd({ until: { agree: 2, on: "q1" } }), loop])).toEqual([
-      expect.stringContaining("most coders per unit when coding until coders agree"),
-    ]);
-    expect(messages([crowd({ codersPerUnit: { min: 3, max: 2 } }), loop])).toEqual([
-      "The most coders per unit must be at least the coders (or agreeing coders) a unit needs",
-    ]);
-    expect(messages([crowd({ unitsPerCoder: { min: 5, max: 2 } }), loop])).toEqual([
-      "The minimum units per coder can't be more than the maximum",
-    ]);
-    // Without a unit loop the unit settings are kept, with a warning (an agreement question isn't checked)
+    expect(
+      messages([session({ invite: { mode: "crowd", column: "batch", maxCoders: 10, groupMaxCoders: { a: 5 } } })]),
+    ).toEqual([]);
+    // Without a unit loop the unit settings are kept, with a warning
     const warnings = (list: object[]) =>
       validateDesignItems(list as never)
         .filter((i) => i.warning)
@@ -201,12 +186,56 @@ describe("the Session item", () => {
     expect(warnings([session({ invite: { mode: "coders", column: "coders", link: "per_coder" } }), q])).toEqual([
       expect.stringContaining("no unit loop yet"),
     ]);
-    expect(messages([crowd({ until: { agree: 2, on: "nope" }, codersPerUnit: { max: 3 } }), q])).toEqual([
-      expect.stringContaining("no unit loop yet"),
-    ]);
     expect(messages([session({ invite: { mode: "crowd", coderParam: { param: "PID", optional: true } } }), q])).toEqual(
       [],
     );
+  });
+
+  it("checks a loop's units against the invitation: subset column, dividing, an earlier loop's units", () => {
+    const crowd = session({ invite: { mode: "crowd", column: "batch" } });
+    const coders = session({ invite: { mode: "coders", column: "coders", link: "per_coder" } });
+    let n = 0;
+    const loop = (units: object) => {
+      const [q, c] = n++ === 0 ? ["q1", "c1"] : [`q${n}`, `c${n}`];
+      return {
+        type: "unit_loop",
+        units,
+        layout: { template: "" },
+        children: [questionVar(q, select(["a", "b"])), questionVar(c)],
+      };
+    };
+    const divide = (divide: object) => ((n = 0), loop({ divide }));
+    expect(messages([crowd, divide({ until: { agree: 2, on: "q1" }, codersPerUnit: { max: 4 } })])).toEqual([]);
+    expect(messages([crowd, divide({ until: { agree: 2, on: "nope" }, codersPerUnit: { max: 3 } })])).toEqual([
+      "Agreement question 'nope' is not a question in this loop",
+    ]);
+    expect(messages([crowd, divide({ until: { agree: 2, on: "c1" }, codersPerUnit: { max: 3 } })])).toEqual([
+      `Agreement needs a question with one categorical answer (nominal without multiple answers, ordinal or swipe); "c1" is a confirm question`,
+    ]);
+    expect(messages([crowd, divide({ until: { agree: 2, on: "q1" } })])).toEqual([
+      expect.stringContaining("most coders per unit when coding until coders agree"),
+    ]);
+    expect(messages([crowd, divide({ codersPerUnit: { min: 3, max: 2 } })])).toEqual([
+      "The most coders per unit must be at least the coders (or agreeing coders) a unit needs",
+    ]);
+    expect(messages([crowd, divide({ unitsPerCoder: { min: 5, max: 2 } })])).toEqual([
+      "The minimum units per coder can't be more than the maximum",
+    ]);
+    expect(messages([coders, divide({ codersPerUnit: { min: 2 } })])).toEqual([
+      expect.stringContaining("Dividing units among coders is for a crowd"),
+    ]);
+    n = 0;
+    expect(messages([coders, loop({ subset: { column: "coders", sets: ["a"] } })])).toEqual([
+      expect.stringContaining("is the coder unit assignment's column"),
+    ]);
+    n = 0;
+    expect(messages([crowd, loop({}), loop({ sameAs: 1 })])).toEqual([]);
+    n = 0;
+    expect(messages([crowd, loop({ sameAs: 1 })])).toEqual(["A loop can only take the units of a loop before it"]);
+    n = 0;
+    expect(messages([crowd, loop({}), loop({ sameAs: 1, divide: {} })])).toEqual([
+      "Taking the units of an earlier loop, they aren't divided again: remove dividing",
+    ]);
   });
 });
 

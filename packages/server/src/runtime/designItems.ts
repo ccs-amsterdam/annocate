@@ -24,17 +24,16 @@ export interface LoopInfo {
   key: string;
   loop: UnitLoopItem;
   variables: Map<string, VariableType>;
-  /** How the loop hands out units: its settings with a crowd's shared queue (contracts `effectiveLoopUnits`). */
+  /** How the loop hands out units: its settings, for a crowd maybe a shared queue (contracts `effectiveLoopUnits`). */
   units: ResolvedLoopUnits;
 }
 
 export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
-  const invite = inviteOf(sessionItem(items));
-  const criteria = invite.mode === "crowd" ? invite.share : undefined;
+  const crowd = inviteOf(sessionItem(items)).mode === "crowd";
   return unitLoops(items).map(({ key, loop }) => {
     const variables = new Map<string, VariableType>();
     collectQuestions(loop.children as DesignItem[], variables);
-    return { key, loop, variables, units: effectiveLoopUnits(loop, criteria) };
+    return { key, loop, variables, units: effectiveLoopUnits(loop, crowd) };
   });
 }
 

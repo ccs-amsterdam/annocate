@@ -30,7 +30,6 @@ import {
   type ResultsUnit,
   type ResultsUnits,
   type CoderProgress,
-  type LinkWrite,
   type LinkResponse,
   type PreviewSession,
   type DeploymentResponse,
@@ -164,7 +163,6 @@ export interface ResearcherApi {
   /** The links (made from the deployed design version), active ones first. */
   listLinks(): Promise<LinkResponse[]>;
   /** A link's access settings: label, login, emails, max uses, coder id. */
-  updateLink(id: number, body: LinkWrite): Promise<LinkResponse>;
   /** No new coders from this link; coders who started keep working. */
   revokeLink(id: number): Promise<LinkResponse>;
   /** A revoked link takes new coders again. */
@@ -600,13 +598,6 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async listLinks(): Promise<LinkResponse[]> {
     return this.request(this.studyPath(researcherEndpoints.listLinks.path));
-  }
-
-  async updateLink(id: number, body: LinkWrite): Promise<LinkResponse> {
-    return this.request(this.studyPath(researcherEndpoints.updateLink.path, id), {
-      method: "PUT",
-      body: JSON.stringify(body),
-    });
   }
 
   async revokeLink(id: number): Promise<LinkResponse> {

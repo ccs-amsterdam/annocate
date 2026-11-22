@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { isEmailColumn, isSpecialSet, SPECIAL_SET_INFO } from "./setKinds";
 
-const column = (...names: string[]) => ({ name: "coder", sets: names.map((name) => ({ name, unitIds: [1] })) });
+const column = (...names: string[]) => ({
+  name: "coder",
+  sets: names.map((name) => ({ name, unitIds: [1], ordered: false })),
+});
 
 describe("set kinds", () => {
   it("mark a column of email addresses, special sets aside", () => {

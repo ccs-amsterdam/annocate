@@ -1,6 +1,6 @@
 import { listSetGroups } from "./sets.js";
 import {
-  loopShareColumns,
+  assignmentColumn,
   type CoderProgress,
   type StudyOverview,
   loginRequired,
@@ -62,50 +62,40 @@ type SpecialSet = keyof typeof SPECIAL_KINDS;
 
 /**
  * Per session, the deployed special units it finished, of how many (contracts
- * `CoderProgress.special`; docs/architecture.md §6): practice and gold units
- * of any set column are everyone's; the overlap is that of the coder column,
- * or (no coders) of the columns the session's values select units by.
- * Counted for sessions that were routed in a loop.
+ * `CoderProgress.special`; docs/architecture.md §6): those of the coder unit
+ * assignment's set column. Counted for sessions that were routed in a loop.
  */
 async function specialProgress(db: Db, studyId: number, deployedItems: unknown[] | null) {
-  const members = await db
-    .select({ grp: unitSets.grp, name: sql<SpecialSet>`${unitSets.name}`, unitId: unitSetMembers.unitId })
-    .from(unitSets)
-    .innerJoin(unitSetMembers, eq(unitSetMembers.setId, unitSets.id))
-    .where(
-      and(eq(unitSets.studyId, studyId), eq(unitSets.live, true), inArray(unitSets.name, Object.keys(SPECIAL_KINDS))),
-    );
-  const doneRows = await db
-    .selectDistinct({ sessionId: unitCodings.sessionId, unitId: unitCodings.unitId })
-    .from(unitCodings)
-    .where(
-      and(eq(unitCodings.studyId, studyId), anyOf(unitCodings.unitId, [...new Set(members.map((m) => m.unitId))])),
-    );
+  const column = deployedItems ? assignmentColumn(sessionItem(deployedItems)) : undefined;
+  const members = column
+    ? await db
+        .select({ name: sql<SpecialSet>`${unitSets.name}`, unitId: unitSetMembers.unitId })
+        .from(unitSets)
+        .innerJoin(unitSetMembers, eq(unitSetMembers.setId, unitSets.id))
+        .where(
+          and(
+            eq(unitSets.studyId, studyId),
+            eq(unitSets.live, true),
+            eq(unitSets.grp, column),
+            inArray(unitSets.name, Object.keys(SPECIAL_KINDS)),
+          ),
+        )
+    : [];
+  const doneRows = members.length
+    ? await db
+        .selectDistinct({ sessionId: unitCodings.sessionId, unitId: unitCodings.unitId })
+        .from(unitCodings)
+        .where(
+          and(eq(unitCodings.studyId, studyId), anyOf(unitCodings.unitId, [...new Set(members.map((m) => m.unitId))])),
+        )
+    : [];
   const done = new Map<number, Set<number>>();
   for (const r of doneRows) done.set(r.sessionId, (done.get(r.sessionId) ?? new Set()).add(r.unitId));
-  const shareColumns = deployedItems
-    ? [...new Map([...loopShareColumns(deployedItems).values()].flat().map((c) => [c.name, c.column]))]
-    : [];
-  return (sessionId: number, session: Record<string, string>, assignments: Record<string, unknown>) => {
+  return (sessionId: number, assignments: Record<string, unknown>) => {
     const out: CoderProgress["special"] = {};
     if (Object.keys(assignments ?? {}).length === 0) return out;
-    const selected = shareColumns.filter(([name]) => session?.[name] !== undefined);
-    // As the runtime (`shareOf`): the coder column's, when coders divide the units (a condition column's
-    // `_overlap` is in every condition: own units); else the session's columns, or (none) every column
-    const coderColumn = selected.find(([name]) => name === "coder")?.[1];
-    const overlapColumns = new Set(
-      coderColumn
-        ? [coderColumn]
-        : selected.length > 0
-          ? selected.map(([, column]) => column)
-          : members.map((m) => m.grp),
-    );
     for (const [name, kind] of Object.entries(SPECIAL_KINDS) as [SpecialSet, (typeof SPECIAL_KINDS)[SpecialSet]][]) {
-      const unitIds = new Set(
-        members
-          .filter((m) => m.name === name && (name !== "_overlap" || overlapColumns.has(m.grp)))
-          .map((m) => m.unitId),
-      );
+      const unitIds = new Set(members.filter((m) => m.name === name).map((m) => m.unitId));
       if (unitIds.size === 0) continue;
       out[kind] = { done: [...unitIds].filter((id) => done.get(sessionId)?.has(id)).length, total: unitIds.size };
     }
@@ -154,7 +144,7 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
     lastActive: activity.get(c.id)?.lastActive ?? null,
     answers: activity.get(c.id)?.answers ?? 0,
     finished: Object.fromEntries([...finished].map(([loop, perCoder]) => [loop, perCoder.get(c.id) ?? 0])),
-    special: special(c.id, c.session, c.assignments),
+    special: special(c.id, c.assignments),
     variables: values.get(c.id) ?? {},
     ended: c.ended,
     deletionRequest: c.deletionRequest,

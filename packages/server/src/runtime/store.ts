@@ -2,6 +2,7 @@ import type { DeviceDetails } from "../shared/devices.js";
 import {
   MAX_DISPLAY_CHANGES,
   inviteOf,
+  linkMaxCoders,
   type CodersInvite,
   type DeletionRequest,
   type DisplayEntry,
@@ -695,7 +696,7 @@ async function findOrCreateCoder(
   // known coder gets a *new* session, and only when asked for.
   const { coder, session } = sessionValues(
     request.sessionRules ?? { item: null, setsOf: () => [] },
-    { params, coder: link.coder },
+    params,
     request.urlParams ?? {},
     login?.email ?? null,
   );
@@ -709,14 +710,13 @@ async function findOrCreateCoder(
   await checkNewCoder(db, studyId);
   // A new session of a known coder is the same person: it doesn't use up the link.
   if (!coderHasSession) {
-    // Checked and counted in one statement, so concurrent coders can't overrun `max_uses`.
-    // The link's own limit, else a crowd's most coders (docs/architecture.md §5)
-    const maxCoders = invite.mode === "crowd" ? (invite.maxCoders ?? null) : null;
-    const maxUses = sql`COALESCE(${links.maxUses}, ${maxCoders}::int)`;
+    // Checked and counted in one statement, so concurrent coders can't overrun a crowd's most coders
+    // (per link, docs/architecture.md §5)
+    const maxCoders = linkMaxCoders(request.sessionRules?.item, link.params.group);
     const used = await db
       .update(links)
       .set({ uses: sql`${links.uses} + 1` })
-      .where(and(eq(links.id, link.id), or(sql`${maxUses} IS NULL`, lt(links.uses, maxUses))))
+      .where(and(eq(links.id, link.id), maxCoders === undefined ? undefined : lt(links.uses, maxCoders)))
       .returning({ id: links.id });
     if (used.length === 0) throw new HttpError(403, "This link has been used up", "link_used_up");
   }

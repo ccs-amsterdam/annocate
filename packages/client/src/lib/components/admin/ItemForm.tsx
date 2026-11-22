@@ -17,7 +17,7 @@ import { ConditionEditor } from "./ConditionEditor";
 import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
 import { Input } from "@/components/ui/input";
-import type { ShareSource } from "../../design/assignment";
+import type { LoopUnitsContext } from "../../design/assignment";
 import { VariableTypeForm } from "./VariableTypeForm";
 import { switchVariableType, VARIABLE_TYPE_OPTIONS_USER, VARIABLE_TYPE_OPTIONS_UNIT } from "../../design/answerTypes";
 import { TypeCardGrid, TypeHeader } from "./TypeCards";
@@ -56,13 +56,10 @@ export function ItemForm({
   readOnly = false,
   validationIssues = [],
   screenouts = [],
-  shareSources,
-  agreementQuestions,
+  unitsContext,
   onChange,
 }: {
   item: DesignItem;
-  /** For the Study entry: unit loop questions a crowd's agreement rule can use. */
-  agreementQuestions?: string[];
   /** For "Generate sets…" in a loop's form. */
   client?: ResearcherApi;
   /** The study's set groups (the units' set columns). */
@@ -81,8 +78,8 @@ export function ItemForm({
   validationIssues?: DesignIssue[];
   /** The design's screen-out end items (a loop's gold checks can end there). */
   screenouts?: string[];
-  /** For a unit loop: what selects a session's units (its coder, linked conditions). */
-  shareSources?: ShareSource[];
+  /** For a unit loop: the coder unit assignment, what selects a session's units, the loops before it. */
+  unitsContext?: LoopUnitsContext;
   onChange: (updated: DesignItem) => void;
 }) {
   const nameError = validationIssues.find((i) => i.path.includes("name"))?.message ?? null;
@@ -98,7 +95,6 @@ export function ItemForm({
           groups={groups}
           issues={validationIssues}
           client={client}
-          agreementQuestions={agreementQuestions}
           onChange={onChange}
         />
       ) : item.type === "show_if" || item.type === "unit_loop" ? (
@@ -216,7 +212,7 @@ export function ItemForm({
           coderQuestions={availableQuestions}
           screenouts={screenouts}
           validationIssues={validationIssues}
-          shareSources={shareSources}
+          unitsContext={unitsContext}
           readOnly={readOnly}
           onChange={(loop) => onChange(loop)}
         />

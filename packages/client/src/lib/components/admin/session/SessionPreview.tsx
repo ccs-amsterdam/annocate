@@ -57,6 +57,9 @@ function InvitePreview({ item, groups, base }: { item: SessionItem; groups: SetG
   const invite = inviteOf(item);
   if (invite.mode === "crowd") {
     const id = invite.coderParam;
+    const groupSets = invite.column
+      ? (groups.find((g) => g.name === invite.column)?.sets ?? []).map((s) => s.name).filter((n) => !n.startsWith("_"))
+      : [];
     return (
       <div>
         <Row label="Links">
@@ -70,14 +73,25 @@ function InvitePreview({ item, groups, base }: { item: SessionItem; groups: SetG
               : "Anonymous: a session per browser"}
         </Row>
         {invite.login && <Row label="Signing in">Coders sign in before they start</Row>}
-        <Row label="Units">
-          {invite.share
-            ? `Shared: handed out until ${invite.share.codersPerUnit?.min ?? 1} coder(s) per unit${
-                invite.share.codersPerUnit?.max ? `, at most ${invite.share.codersPerUnit.max}` : ""
-              }`
-            : "Every coder gets all units"}
-        </Row>
-        {invite.maxCoders !== undefined && <Row label="At most">{invite.maxCoders} coders</Row>}
+        {invite.column && (
+          <Row label="Set column">
+            {groupSets.length > 0
+              ? `A link per set of ${invite.column}: ${groupSets.slice(0, 8).join(", ")}${groupSets.length > 8 ? ", …" : ""}`
+              : `${invite.column}: its special units go to every coder`}
+          </Row>
+        )}
+        <Row label="Units">Divided among the coders or not: per unit loop (its Units settings)</Row>
+        {invite.maxCoders !== undefined && (
+          <Row label="Max. nr of coders">
+            {invite.maxCoders}
+            {groupSets.length > 0 ? " per link" : ""}
+          </Row>
+        )}
+        {Object.entries(invite.groupMaxCoders ?? {}).map(([group, n]) => (
+          <Row key={group} label={`Max. for ${group}`}>
+            {n} coders
+          </Row>
+        ))}
       </div>
     );
   }

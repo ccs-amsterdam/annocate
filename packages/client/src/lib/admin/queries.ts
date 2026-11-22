@@ -18,7 +18,6 @@ import type {
   CoderDeletion,
   DesignVersion,
   DesignWrite,
-  LinkWrite,
   LinkResponse,
   CoderProgress,
   DeleteCoders,
@@ -327,10 +326,6 @@ function useLinkMutation<T, V>(client: ResearcherApi, mutationFn: (vars: V) => P
     mutationFn,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.links(client.studyId) }),
   });
-}
-
-export function useUpdateLinkMutation(client: ResearcherApi) {
-  return useLinkMutation(client, ({ id, body }: { id: number; body: LinkWrite }) => client.updateLink(id, body));
 }
 
 export function useRevokeLinkMutation(client: ResearcherApi) {

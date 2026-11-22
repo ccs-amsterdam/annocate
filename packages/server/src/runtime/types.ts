@@ -52,6 +52,8 @@ export interface Unit {
 interface LoopAssignment {
   /** When the coder first asked for the loop's units (ms). */
   at: number;
+  /** A loop taking an earlier loop's units (contracts `sameAs`): the units this coder finished there, in order. */
+  units?: number[];
 }
 
 /** loop key (contracts `unitLoops`) -> when the coder reached it. */

@@ -92,6 +92,24 @@ describe("addToSets", () => {
 });
 
 describe("distributeUnits", () => {
+  it("takes practice, gold and overlap units apart first, then divides the rest; everyone codes everything", () => {
+    const units = Array.from({ length: 20 }, (_, i) => i + 1);
+    const { sets } = distributeUnits(units, ["a", "b"], {
+      practice: { units: 2 },
+      gold: { fraction: 0.1 },
+      overlapUnits: 3,
+      seed: 4,
+    });
+    const of = (name: string) => sets.find((s) => s.name === name)!.units;
+    expect([of("_practice").length, of("_gold").length, of("_overlap").length]).toEqual([2, 2, 3]);
+    const special = new Set([...of("_practice"), ...of("_gold"), ...of("_overlap")]);
+    expect(special.size).toBe(7);
+    expect([...of("a"), ...of("b")].sort((x, y) => x - y)).toEqual(units.filter((u) => !special.has(u)));
+    // As many coders per unit as coders: everyone codes everything
+    const all = distributeUnits(units, ["a", "b"], { perUnit: 2 }).sets;
+    expect(all.map((s) => s.units.length)).toEqual([20, 20]);
+  });
+
   const units = Array.from({ length: 12 }, (_, i) => i + 1);
   const sizes = (sets: { name: string; units: number[] }[]) => sets.map((s) => s.units.length);
 

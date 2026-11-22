@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
 import { SetGroupNameSchema } from "../sets.js";
-import { CriteriaSchema } from "./unitLoop.js";
 
 // How coders come to a study (the Study entry, docs/architecture.md §6-7):
 // the coder unit assignment (`invite`: specific coders with a link each or a
@@ -10,8 +9,11 @@ import { CriteriaSchema } from "./unitLoop.js";
 // return link). All are `$session.<name>` values, stored on the session
 // when it starts.
 
-/** Session values that can't be declared: the coder (who the coder is) and the `source` URL parameter. */
-export const RESERVED_SESSION_NAMES = ["coder", "source"] as const;
+/**
+ * Session values that can't be declared: the coder (who the coder is), the
+ * `source` URL parameter, and a crowd link's set (`group`).
+ */
+export const RESERVED_SESSION_NAMES = ["coder", "source", "group"] as const;
 
 /** The longest value a session parameter takes (coder ids are short; it also bounds a pattern match). */
 export const MAX_SESSION_VALUE = 256;
@@ -107,7 +109,7 @@ export const UrlParamSchema = z
     description: z.string().max(500).optional(),
   })
   .refine((p) => !(RESERVED_SESSION_NAMES as readonly string[]).includes(p.name), {
-    message: "coder and source are built in: choose another name",
+    message: "coder, source and group are built in: choose another name",
     path: ["name"],
   })
   .refine((p) => !(p.values && p.pattern), { message: "Give values or a pattern, not both", path: ["pattern"] });
@@ -147,17 +149,20 @@ export type CodersInvite = z.infer<typeof CodersInviteSchema>;
 /**
  * A crowd (docs/architecture.md §6.1): one link for everyone. Who the
  * coder is (`$session.coder`): from a URL parameter (`coderParam`), or with
- * `login` (coders must sign in) their email. `share`: the units are a shared
- * queue, handed out until done (without it, every coder gets all units; with
- * no unit loop it isn't used). `maxCoders`: the link takes at most this many
- * sessions.
+ * `login` (coders must sign in) their email. `column`: a set column for the
+ * special units (overlap, practice, gold); if it also has other sets, a
+ * link per set (`$session.group`), whose coders code that set. Whether the
+ * units are divided among the coders is each loop's (unitLoop.ts
+ * `divide`). `maxCoders`: a link takes at most this many sessions;
+ * `groupMaxCoders`: per set, instead.
  */
 export const CrowdInviteSchema = z.object({
   mode: z.literal("crowd"),
   coderParam: CoderParamSchema.optional(),
   login: z.boolean().optional(),
-  share: CriteriaSchema.optional(),
+  column: SetGroupNameSchema.optional(),
   maxCoders: z.number().int().positive().optional(),
+  groupMaxCoders: z.record(z.string().min(1).max(128), z.number().int().positive()).optional(),
 });
 export type CrowdInvite = z.infer<typeof CrowdInviteSchema>;
 
@@ -314,15 +319,33 @@ export function coderAccess(values: readonly string[]): "email" | "link" | "mixe
   return emails === values.length ? "email" : emails === 0 ? "link" : "mixed";
 }
 
-/** The session values that select a session's units: the coder (`coder`, by the coder column), as session name -> column. */
-export function sessionColumns(item: SessionItem | null): { name: string; column: string }[] {
+/**
+ * The session values that select a session's units, as session name ->
+ * column: the coder (`coder`, by the coder column), or a crowd link's set
+ * (`group`; `optional`: a crowd column with only special sets has none).
+ */
+export function sessionColumns(item: SessionItem | null): { name: string; column: string; optional?: boolean }[] {
   const invite = inviteOf(item);
-  return invite.mode === "coders" ? [{ name: "coder", column: invite.column }] : [];
+  if (invite.mode === "coders") return [{ name: "coder", column: invite.column }];
+  return invite.column ? [{ name: "group", column: invite.column, optional: true }] : [];
+}
+
+/** The set column of the coder unit assignment (its special units are the loops'), if any. */
+export function assignmentColumn(item: SessionItem | null | undefined): string | undefined {
+  return inviteOf(item).column;
+}
+
+/** The most sessions a link takes: a crowd's limit, per set if it has one there (`group`). */
+export function linkMaxCoders(item: SessionItem | null | undefined, group: string | undefined): number | undefined {
+  const invite = inviteOf(item);
+  if (invite.mode !== "crowd") return undefined;
+  return (group !== undefined ? invite.groupMaxCoders?.[group] : undefined) ?? invite.maxCoders;
 }
 
 /**
  * The links a design makes, each as its values (name -> value): a link per
- * coder (specific coders with a link each), else one link (no values).
+ * coder (specific coders with a link each), a link per set (a crowd whose
+ * column has sets besides the special ones), else one link (no values).
  * `setsOf` gives a set column's values (from the units, without reserved ones).
  */
 export function linkCombinations(
@@ -331,6 +354,10 @@ export function linkCombinations(
 ): Record<string, string>[] {
   const invite = inviteOf(item);
   if (invite.mode === "coders" && invite.link === "per_coder") return setsOf(invite.column).map((coder) => ({ coder }));
+  if (invite.mode === "crowd" && invite.column) {
+    const groups = setsOf(invite.column);
+    if (groups.length > 0) return groups.map((group) => ({ group }));
+  }
   return [{}];
 }
 

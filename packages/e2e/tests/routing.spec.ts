@@ -86,3 +86,24 @@ test("on a phone the editor shows one pane at a time: the tree, then an item wit
   await page.getByRole("button", { name: "Back to the items" }).click();
   await expect(tree).toBeVisible();
 });
+
+test("the headers hide when scrolling down a long page, and come back when scrolling up anywhere", async ({
+  page,
+  request,
+}) => {
+  const study = await api<{ id: number }>(request, "POST", "/study", { name: "Long units list" });
+  await api(request, "POST", `/study/${study.id}/units`, {
+    units: Array.from({ length: 80 }, (_, i) => ({ externalId: `u${i}`, data: { text: `text ${i}` } })),
+  });
+  await page.setViewportSize({ width: 1200, height: 700 });
+  await page.goto(`/research/studies/${study.id}/units`);
+  await expect(page.getByText("text 0", { exact: true })).toBeVisible();
+  const hidden = page.locator("[data-collapsed]");
+  await page.mouse.move(600, 500);
+  for (let i = 0; i < 6; i++) await page.mouse.wheel(0, 300);
+  await expect(hidden).toHaveCount(2);
+  // Up, over a part of the page that doesn't scroll
+  await page.mouse.move(5, 650);
+  await page.mouse.wheel(0, -120);
+  await expect(hidden).toHaveCount(0);
+});

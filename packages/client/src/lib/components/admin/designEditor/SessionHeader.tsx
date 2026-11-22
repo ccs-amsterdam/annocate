@@ -92,7 +92,7 @@ function inviteSummary(invite: Invite): string {
   const parts = ["crowd"];
   if (invite.coderParam) parts.push(`coder id from ?${invite.coderParam.param}`);
   if (invite.login) parts.push("signing in");
-  if (invite.share) parts.push("sharing units");
+  if (invite.column) parts.push(`special units from ${invite.column}`);
   return parts.join(", ");
 }
 

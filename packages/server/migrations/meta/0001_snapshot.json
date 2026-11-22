@@ -1234,12 +1234,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "coder": {
-          "name": "coder",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "params": {
           "name": "params",
           "type": "jsonb",
@@ -1253,12 +1247,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'[]'"
-        },
-        "max_uses": {
-          "name": "max_uses",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
         },
         "uses": {
           "name": "uses",

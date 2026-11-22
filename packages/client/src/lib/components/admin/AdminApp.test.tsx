@@ -46,7 +46,6 @@ const stubClient: ResearcherApi = {
   exportResults: () => Promise.reject(new Error("no export")),
   downloadExport: () => Promise.reject(new Error("no export")),
   listLinks: () => new Promise(() => {}),
-  updateLink: () => new Promise(() => {}),
   revokeLink: () => new Promise(() => {}),
   reopenLink: () => new Promise(() => {}),
   renewLinkSecret: () => new Promise(() => {}),
