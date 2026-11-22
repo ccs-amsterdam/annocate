@@ -44,6 +44,8 @@ export interface NavigationPhase {
   currentUnitIndex?: number;
   units?: NavigationUnitItem[];
   questions?: NavigationUnitQuestion[];
+  /** A loop's questions in the codebook (also those a condition may skip). */
+  questionCount?: number;
 }
 
 export interface StudyManagerNavigation {

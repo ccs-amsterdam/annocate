@@ -71,5 +71,13 @@ describe("responsive layouts", () => {
     const many = nominal(Array.from({ length: 30 }, (_, i) => `a fairly long category ${i}`));
     expect(resolveLayout(many)).toEqual({ layout: "dropdown", columns: 1 });
     expect(resolveLayout(many, { width: "narrow", keys: "filter" })).toEqual({ layout: "flex", columns: 1 });
+    // Ten short ones (they'd fit a grid): a dropdown too; nine still get buttons
+    const ten = nominal(Array.from({ length: 10 }, (_, i) => `c${i}`));
+    expect(resolveLayout(ten)).toEqual({ layout: "dropdown", columns: 1 });
+    expect(resolveLayout(ten, { width: "wide" })).toEqual({ layout: "dropdown", columns: 1 });
+    expect(resolveLayout(nominal(Array.from({ length: 9 }, (_, i) => `c${i}`)))).toEqual({
+      layout: "grid",
+      columns: 2,
+    });
   });
 });

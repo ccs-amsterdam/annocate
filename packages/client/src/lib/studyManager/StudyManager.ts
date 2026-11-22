@@ -1312,6 +1312,7 @@ export class StudyManager {
       if (step.type !== "unit_loop") return phase;
       const history = this.history(step);
       phase.unitCount = history.entries.length;
+      phase.questionCount = loopQuestionNames(step as CoderUnitLoopItem).length;
       phase.totalUnits = this.progress.get(this.keyOf(step))?.totalUnits ?? undefined;
       if (isCurrent && this.activeLoop) {
         phase.currentUnitIndex = history.index >= 0 ? history.index : 0;

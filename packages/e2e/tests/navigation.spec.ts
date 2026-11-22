@@ -195,6 +195,8 @@ test("the keyboard: arrows move between answers and Space chooses; Shift + arrow
   await page.keyboard.press("Shift+Enter"); // the confirm question: not answered yet, so nothing happens
   await page.getByRole("button", { name: "I confirm", exact: true }).click();
   await at(page, TEXTS[0], "Topic?");
+  // The unit's first question is numbered too (the loop has two), not just "1"
+  await expect(page.getByRole("button", { name: /Unit 1, question 1: open the units/ })).toHaveText("1 · 1");
 
   // Arrows focus an answer, then the next one; Space chooses the focused one
   await page.keyboard.press("ArrowRight");

@@ -57,7 +57,8 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
   if (layout === "buttons") {
     return (
       <div className="flex flex-col gap-1">
-        <div className="flex flex-wrap gap-1 [&>*]:grow [&>*]:basis-8">
+        {/* One row, equal widths: auto picks buttons for up to 11 values, which fit a small phone */}
+        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
           {values.map((n) => (
             <Button
               key={n}

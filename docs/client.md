@@ -230,9 +230,9 @@ shows what it picks and warns when a chosen layout doesn't fit.
 
 - Nominal and ordinal: `row`, `grid` (`columns`), `flex` (nominal), `compact`
   (ordinal: buttons show values, the selected one its label), `dropdown`.
-  Auto nominal: a row for 2-3 short labels, else 2 columns, 1 column, a
-  dropdown. Auto ordinal: a row for 2-3, else 1 column, else compact.
-- Numeric: `buttons` (auto up to 11 values), `slider`, `input` (open ranges).
+  Auto nominal: a row for 2-3 short labels, a dropdown from 10 options,
+  else 2 columns, 1 column, a dropdown. Auto ordinal: a row for 2-3, else 1 column, else compact.
+- Numeric: `buttons` (one row; auto up to 11 values), `slider`, `input` (open ranges).
 - Scale: `compact` (a row per item, default) or `grid`. Continue scrolls to
   the first unanswered item.
 

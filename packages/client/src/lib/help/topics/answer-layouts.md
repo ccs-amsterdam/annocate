@@ -41,9 +41,9 @@ The **Layout** list shows Auto's choice, e.g. _Auto (Grid, 2 columns)_.
 
 | Type            | Auto chooses                                                                                         |
 | --------------- | ---------------------------------------------------------------------------------------------------- |
-| Categories      | **Row** for up to three short options; else a **Grid** of 2 columns (up to 12 short labels) or 1 column (up to 6); else **Dropdown with filter** |
+| Categories      | **Row** for up to three short options; else a **Grid** of 2 columns (up to 9 short labels) or 1 column (up to 6); from 10 options, or when they don't fit, **Dropdown with filter** |
 | Ordered options | **Row** for up to three, a 1-column **Grid** for up to six, else **Compact**                          |
-| Number          | **Number input** without minimum or maximum; **Buttons** for up to 11 numbers; else **Slider**       |
+| Number          | **Number input** without minimum or maximum; **Buttons** in one row for up to 11 numbers; else **Slider**       |
 | Scale           | **Compact**                                                                                          |
 
 Swipe, confirm, mark text and relations have no layout setting.

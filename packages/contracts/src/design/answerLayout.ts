@@ -76,6 +76,9 @@ function categoricalLayout(variable: CategoricalType, context?: LayoutContext): 
     return { layout: "compact", columns: 1 };
   }
   if (fitsRow(labels, width)) return { layout: "row", columns: 1 };
+  // Ten or more: a dropdown with its filter box (typing to filter works on buttons)
+  if (labels.length >= 10)
+    return context?.keys === "filter" ? { layout: "flex", columns: 1 } : { layout: "dropdown", columns: 1 };
   if (context?.width === "wide" && fitsGrid(labels, 3, width)) return { layout: "grid", columns: 3 };
   if (fitsGrid(labels, 2, width)) return { layout: "grid", columns: 2 };
   if (fitsGrid(labels, 1, width)) return { layout: "grid", columns: 1 };

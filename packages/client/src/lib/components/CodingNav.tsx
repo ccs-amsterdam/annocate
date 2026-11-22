@@ -100,7 +100,7 @@ export function CodingNav({
   const menu = openMenu === "loop" && !inLoop ? null : openMenu;
   useMenuKeys(menu !== null);
 
-  // Where the coder is: "3", or in a loop "4 · 2" (unit 4, 2nd question; just "4" if the unit has one question)
+  // Where the coder is: "3", or in a loop "4 · 2" (unit 4, 2nd question; just "4" if the loop has one question)
   let position: string | null = null;
   let positionTitle = "";
   if (current?.type === "question") {
@@ -110,7 +110,8 @@ export function CodingNav({
   } else if (inLoop) {
     const { current: unit } = loopUnits(current, navigation);
     const q = (current.questions ?? []).findIndex((x) => x.isCurrent);
-    const several = (current.questions?.length ?? 0) > 1 && q >= 0;
+    // The loop's questions, not those reached so far: "4 · 1" from the unit's first question
+    const several = (current.questionCount ?? 0) > 1 && q >= 0;
     position = several ? `${unit} · ${q + 1}` : String(unit);
     positionTitle = several ? `Unit ${unit}, question ${q + 1}` : `Unit ${unit}`;
   }
