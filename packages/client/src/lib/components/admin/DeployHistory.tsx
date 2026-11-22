@@ -45,7 +45,9 @@ export function DeployHistory({ client, limit }: { client: ResearcherApi; limit?
         );
       })}
       {limit !== undefined && deploys.length > limit && (
-        <li className="px-2 text-xs text-muted-foreground">…and {deploys.length - limit} earlier, on the Deploy page.</li>
+        <li className="px-2 text-xs text-muted-foreground">
+          …and {deploys.length - limit} earlier, on the Deploy page.
+        </li>
       )}
     </ol>
   );
