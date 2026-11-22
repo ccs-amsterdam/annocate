@@ -45,7 +45,7 @@ export function StudyOverview({ client, onNavigate, onOpenDesign }: StudyOvervie
   const versions = describeVersions(designVersions, deployment?.designVersionId ?? null);
   const overview = overviewQuery.data;
   const openLinks = (linksQuery.data ?? []).filter(
-    (i) => !i.revokedAt && !i.retiredAt && (i.maxUses === undefined || i.uses < i.maxUses),
+    (link) => !link.revokedAt && !link.retiredAt && (link.maxUses === undefined || link.uses < link.maxUses),
   ).length;
 
   return (
@@ -163,6 +163,7 @@ export function StudySettingsPage({ client, onDeleted }: { client: ResearcherApi
   );
 }
 
+/** Whether coders can start: not deployed, live, or paused. */
 function LiveStatus({ live, active, since }: { live: boolean; active: boolean; since: Date | null }) {
   const [Icon, label, detail, className] = !live
     ? [CircleOff, "Not deployed", "Coders can't start yet", "text-muted-foreground"]
@@ -180,6 +181,7 @@ function LiveStatus({ live, active, since }: { live: boolean; active: boolean; s
   );
 }
 
+/** The live or draft design version, to open in the editor. */
 function VersionLink({
   icon: Icon,
   label,
@@ -221,6 +223,7 @@ function VersionLink({
   );
 }
 
+/** A number with a detail line, opening the tab it is about. */
 function StatTile({
   label,
   value,

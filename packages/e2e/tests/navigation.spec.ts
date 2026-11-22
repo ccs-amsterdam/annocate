@@ -50,8 +50,8 @@ async function at(page: Page, text: string, q: string): Promise<void> {
 
 const previous = (page: Page) => page.getByRole("button", { name: "Previous", exact: true }).click();
 const next = (page: Page) => page.getByRole("button", { name: "Next", exact: true }).click();
-/** An answer option's button ("1 politics": its shortcut and label). */
-const option = (page: Page, name: string) => page.getByRole("button", { name: new RegExp(`^\\d* ?${name}$`) });
+/** An answer option's button (its label: the key badge isn't part of the name). */
+const option = (page: Page, name: string) => page.getByRole("button", { name, exact: true });
 
 /** The coder's unit answers saved so far, per unit and question (one row each). */
 async function saved(request: Parameters<typeof api>[0], id: number): Promise<string[]> {

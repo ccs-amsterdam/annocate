@@ -10,13 +10,10 @@ import {
   topmostSelected,
   canMoveToRootEnd,
   deleteItem,
-  indentItem,
   insertItem,
   insertItemBefore,
-  moveItem,
   moveItemTo,
   moveToRootEnd,
-  outdentItem,
   updateItem,
 } from "./itemEdit";
 import { flattenTree, keyOf } from "../codebook/tree";
@@ -183,39 +180,6 @@ describe("itemEdit", () => {
       const items: TopLevelItem[] = [spanLoop, topQ];
       expect(canMoveItemTo(items, "span_q", "top_q", "before")).toBe(false);
       expect(canMoveItemTo(items, "span_q", "top_q", "after")).toBe(false);
-    });
-  });
-
-  describe("moveItem", () => {
-    it("moves an item up and down among siblings", () => {
-      const items: TopLevelItem[] = [cond("a"), cond("b"), cond("c")];
-      const up = moveItem(items, "b", "up");
-      expect(up.map(keyOf)).toEqual(["b", "a", "c"]);
-
-      const down = moveItem(items, "b", "down");
-      expect(down.map(keyOf)).toEqual(["a", "c", "b"]);
-    });
-
-    it("moves nested siblings within a parent", () => {
-      const items: TopLevelItem[] = [cond("root", [cond("c1"), cond("c2"), cond("c3")])];
-      const next = moveItem(items, "c2", "up");
-      expect(flattenTree(next).map(keyOf)).toEqual(["root", "c2", "c1", "c3"]);
-    });
-  });
-
-  describe("indentItem and outdentItem", () => {
-    it("indents an item into its previous sibling", () => {
-      const items: TopLevelItem[] = [cond("p1"), cond("p2")];
-      const next = indentItem(items, "p2");
-      expect(next).toHaveLength(1);
-      expect(keyOf(next[0])).toBe("p1");
-      expect(flattenTree(next).map(keyOf)).toEqual(["p1", "p2"]);
-    });
-
-    it("outdents a nested item to become sibling after its parent", () => {
-      const items: TopLevelItem[] = [cond("p1", [cond("child")]), cond("other")];
-      const next = outdentItem(items, "child");
-      expect(next.map(keyOf)).toEqual(["p1", "child", "other"]);
     });
   });
 

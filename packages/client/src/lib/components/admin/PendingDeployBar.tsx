@@ -1,19 +1,19 @@
 import { useState } from "react";
 import { designErrors, designItems, undeclaredFields, type TopLevelItem } from "@annotinder/contracts";
 import { Rocket } from "lucide-react";
-import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
+import type { ResearcherApi } from "../../api/httpResearcherApi";
 import {
   useDesignVersionQuery,
   useDesignVersionsQuery,
   useDeploymentQuery,
   usePendingChangesQuery,
-  usePublishMutation,
+  useConfirmedDeploy,
   useUpdateDesignVersionMutation,
 } from "../../admin/queries";
 import { describeVersions } from "../../design/versions";
 import { Button } from "@/components/ui/button";
 import { DeployDialog } from "./DeployDialog";
-import { describeUnitChanges } from "../../admin/unitChanges";
+import { describeUnitChanges, hasUnitChanges } from "../../admin/unitChanges";
 
 /**
  * Everything is a draft until deployed (docs/architecture.md §8.4): when a
@@ -39,14 +39,14 @@ export function PendingDeployBar({
     pending?.designVersionId !== null && pending?.designVersionId === versions.draftId ? versions.draftId : null;
   const draft = useDesignVersionQuery(client, draftId).data ?? null;
   const live = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data ?? null;
-  const publish = usePublishMutation(client);
+  const deploy = useConfirmedDeploy(client);
   const updateDesignVersion = useUpdateDesignVersionMutation(client);
   const [open, setOpen] = useState(false);
 
   // The versions are needed to number them (and not take a deployed study for a first deploy)
   if (!deployment || !pending || !designVersionsQuery.data) return null;
   const units = pending.units;
-  const unitsChanged = units.added > 0 || units.changed > 0 || units.removed > 0 || units.sets;
+  const unitsChanged = hasUnitChanges(units);
   // As the server checks it: no errors, and every unit field it uses declared
   const draftValid =
     draft !== null &&
@@ -85,14 +85,7 @@ export function PendingDeployBar({
                 body: { note: note || undefined, items: version.items, revision: version.revision },
               });
             }
-            const designVersionId = version?.id ?? deployment.designVersionId;
-            try {
-              return await publish.mutateAsync({ designVersionId, units: withUnits });
-            } catch (err) {
-              if (!(err instanceof ResearcherApiError && err.code === "confirm_links") || !confirm(err.reason))
-                throw err;
-              return publish.mutateAsync({ designVersionId, units: withUnits, confirmLinks: true });
-            }
+            return deploy({ designVersionId: version?.id ?? deployment.designVersionId, units: withUnits });
           }}
           onClose={() => setOpen(false)}
         />

@@ -22,10 +22,11 @@ import { DisplaySettings } from "./session/DisplaySettings";
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 
 /**
- * The design's Study entry (docs/architecture.md §6), in two parts: the
- * coder invitation (who codes, and how they get in) and the URL parameters
- * (values a link carries, e.g. from a panel: `$session.<name>`). The public
- * title is edited above the tree, the normal end in its "At the end" row.
+ * The design's Study entry (docs/architecture.md §6), in three parts: the
+ * coder invitation (who codes, and how they get in), the URL parameters
+ * (values a link carries, e.g. from a panel: `$session.<name>`) and the
+ * display. The public title is edited above the tree, the normal end in its
+ * "At the end" row.
  */
 export function SessionItemForm({
   item,
@@ -89,6 +90,7 @@ export function SessionItemForm({
   );
 }
 
+/** The URL parameters a link takes. */
 function UrlParamsSettings({
   params,
   issues,
@@ -134,6 +136,7 @@ function UrlParamsSettings({
 
 type ValuesKind = "any" | "list" | "pattern";
 
+/** One URL parameter: its name, URL key, values (any, a list or a pattern) and default. */
 function ParamEditor({
   param,
   issues,

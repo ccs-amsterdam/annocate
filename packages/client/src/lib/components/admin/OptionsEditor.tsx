@@ -27,7 +27,7 @@ export interface OptionsEditorProps<T extends Option> {
   swipe?: boolean;
   /** Options can be special (not applicable, don't know): categories, ordinal and scale questions. */
   specials?: boolean;
-  /** Extra columns per option, e.g. the weight of an `auto` option. */
+  /** Extra columns per option, e.g. the weight of a random condition's option. */
   extra?: (option: T, update: (patch: Partial<T>) => void) => React.ReactNode;
 }
 
@@ -51,9 +51,9 @@ export function OptionsEditor<T extends Option>({
 }: OptionsEditorProps<T>) {
   const ordinal = level === "ordinal";
   const [custom, setCustom] = useState(() => ordinal && !isSequence(options));
-  const auto = ordinal && !custom;
+  const valuesFollowOrder = ordinal && !custom;
   /** Changes to the list of options: renumbered while values follow the order. */
-  const commit = (next: T[]) => onChange(auto ? renumber(next) : next);
+  const commit = (next: T[]) => onChange(valuesFollowOrder ? renumber(next) : next);
   const update = (index: number, patch: Partial<T>) =>
     onChange(options.map((o, i) => (i === index ? { ...o, ...patch } : o)));
   // A moved option and the one it swapped places with slide past each other
@@ -179,15 +179,17 @@ export function OptionsEditor<T extends Option>({
                 placeholder="value"
                 type={ordinal ? "number" : "text"}
                 value={String(option.value)}
-                readOnly={auto}
-                tabIndex={auto ? -1 : undefined}
-                title={auto ? "Follows the order of the options (check Custom values to set it)" : undefined}
+                readOnly={valuesFollowOrder}
+                tabIndex={valuesFollowOrder ? -1 : undefined}
+                title={
+                  valuesFollowOrder ? "Follows the order of the options (check Custom values to set it)" : undefined
+                }
                 onChange={(e) =>
                   update(i, {
                     value: ordinal ? (e.target.value === "" ? 0 : Number(e.target.value)) : e.target.value,
                   } as Partial<T>)
                 }
-                className={`h-8 font-mono text-xs ${auto ? "bg-muted/40 text-muted-foreground" : ""}`}
+                className={`h-8 font-mono text-xs ${valuesFollowOrder ? "bg-muted/40 text-muted-foreground" : ""}`}
               />
               <Input
                 data-option-row={i}
@@ -271,7 +273,7 @@ function renumber<T extends Option>(options: T[]): T[] {
   return options.map((o) => ({ ...o, value: o.special ? SPECIAL_VALUES[o.special] : ++n }));
 }
 
-/** Where the "Custom values" box is for ordinal questions: that values can be numbers (the codes of an existing codebook). */
+/** For nominal questions (ordinal ones have "Custom values"): values can be numbers, e.g. an existing codebook's codes. */
 function NumericCodesHelp() {
   return (
     <Popover>

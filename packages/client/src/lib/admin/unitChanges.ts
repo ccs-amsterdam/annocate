@@ -1,5 +1,8 @@
 import type { UnitChanges } from "@annotinder/contracts";
 
+/** Whether deploying would change the units or their sets. */
+export const hasUnitChanges = (c: UnitChanges): boolean => c.added > 0 || c.changed > 0 || c.removed > 0 || c.sets;
+
 /** "3 added, 1 changed, sets changed": a unit change summary. */
 export function describeUnitChanges(c: UnitChanges): string {
   const parts = [

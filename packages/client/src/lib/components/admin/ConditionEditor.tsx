@@ -48,7 +48,7 @@ export interface ConditionEditorProps {
 }
 
 /**
- * Edits a condition (docs/client.md "References and conditions"). A
+ * Edits a condition (docs/client.md §5 "References and conditions"). A
  * condition is a script; the rules mode reads and writes the simple ones
  * (rows of helper calls, all joined by "and" or all by "or"). Anything else
  * is edited as a script, which uses the same helpers.
@@ -119,6 +119,7 @@ export function ConditionEditor({ condition, onChange, questions, loop, issues =
   );
 }
 
+/** The rules mode: a row per rule, joined by "and" or "or". */
 function RulesEditor({
   rules,
   targets,
@@ -159,8 +160,10 @@ function RulesEditor({
   );
 }
 
+/** A rule target as one select value: `question` or `question.item`. */
 const targetKey = (t: { question: string; item?: string }) => (t.item ? `${t.question}.${t.item}` : t.question);
 
+/** One rule: a question (or scale item), an operator and its values, with its problems below. */
 function RuleRowEditor({
   label,
   row,
@@ -316,6 +319,7 @@ function RuleRowEditor({
   );
 }
 
+/** The script mode: the script, its syntax error, and the references and helpers to insert. */
 function ScriptEditor({
   script,
   onChange,

@@ -19,10 +19,10 @@ import { useSetGroupsQuery, useUnitFieldsQuery } from "../../../admin/queries";
 import { enclosingLoop, flattenTree, isInsideUnitLoop, issueIsAbout, itemPath } from "../../../codebook/tree";
 import { itemTitle } from "../../../codebook/conditions";
 import { ItemForm } from "../ItemForm";
+import { EndItemFields } from "../itemForm/EndItemFields";
 import { Button } from "@/components/ui/button";
 import { ItemPreview } from "./ItemPreview";
 import { getItemKey, STUDY_END_KEY } from "../designTree/utils";
-import { EndItemFields } from "../ItemForm";
 import { HelpButton } from "../../../help/HelpButton";
 import { ITEM_TYPES } from "../designTree/itemTypes";
 import { SegmentedToggle } from "./SegmentedToggle";
@@ -140,6 +140,7 @@ function screenoutEnds(items: DesignItem[]): string[] {
   });
 }
 
+/** The selected item's form, with what it needs from the rest of the design. */
 function ItemEditForm({
   client,
   draft,
@@ -156,7 +157,7 @@ function ItemEditForm({
   const { items, cleanItems, validationIssues } = draft;
   const key = getItemKey(item);
 
-  const { unitVariableNames } = useMemo(() => variableNames(items), [items]);
+  const unitVariableNames = useMemo(() => unitQuestionNames(items), [items]);
   // What references may use at this item: the same rules as validation
   const available = useMemo(() => availableQuestions(cleanItems, itemPath(items, key) ?? []), [cleanItems, items, key]);
   const loop = enclosingLoop(items, item);
@@ -183,7 +184,6 @@ function ItemEditForm({
         }
         readOnly={readOnly}
         validationIssues={itemIssues}
-        isInsideLoop={isInsideUnitLoop(items, key)}
         screenouts={item.type === "unit_loop" ? screenoutEnds(cleanItems) : undefined}
         shareSources={item.type === "unit_loop" ? loopShareSources(cleanItems) : undefined}
         agreementQuestions={item.type === "session" ? agreementQuestions(cleanItems) : undefined}
@@ -193,13 +193,11 @@ function ItemEditForm({
   );
 }
 
-/** Names of unit-level questions (inside a loop), for references in forms. */
-function variableNames(items: TopLevelItem[]) {
-  const all = flattenTree(items);
-  const inLoop = (i: DesignItem) => isInsideUnitLoop(items, getItemKey(i));
-  return {
-    unitVariableNames: all.filter((i) => i.type === "question" && inLoop(i)).flatMap((i) => itemName(i) ?? []),
-  };
+/** The names of the questions inside unit loops (a relation's from and to). */
+function unitQuestionNames(items: TopLevelItem[]): string[] {
+  return flattenTree(items)
+    .filter((i) => i.type === "question" && isInsideUnitLoop(items, getItemKey(i)))
+    .flatMap((i) => itemName(i) ?? []);
 }
 
 /** The preview's own column on wide screens (DesignEditor). */

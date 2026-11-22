@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { designItems, redirectSettings, type StudyResponse } from "@annotinder/contracts";
-import type { ResearcherApi } from "../../api/httpResearcherApi";
+import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
 import {
   useDesignVersionQuery,
   useDesignVersionsQuery,
@@ -13,12 +13,12 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Download, Trash2 } from "lucide-react";
-import { ResearcherApiError } from "../../api/httpResearcherApi";
+import { downloadFile } from "../../admin/download";
 
 /**
- * Study settings (docs/client.md §7), shown at the bottom of the overview: edit
- * the study name, toggle archived status, keep finished sessions open,
- * export the whole study, or delete the study.
+ * Study settings (docs/client.md §7), on the Settings tab: the study's name,
+ * archived, keeping finished sessions open, panel return links, exporting
+ * the whole study, and deleting it.
  */
 export function StudySettings({ client, onDeleted }: { client: ResearcherApi; onDeleted?: () => void }) {
   const studyQuery = useStudyQuery(client);
@@ -33,6 +33,7 @@ export function StudySettings({ client, onDeleted }: { client: ResearcherApi; on
   return <StudyEditForm key={studyQuery.data.id} study={studyQuery.data} client={client} onDeleted={onDeleted} />;
 }
 
+/** For a study that doesn't exist (yet): make one. */
 function CreateStudyForm({ createStudy }: { createStudy: ReturnType<typeof useCreateStudyMutation> }) {
   const [name, setName] = useState("");
 
@@ -63,6 +64,7 @@ const setUrls = (urls: Record<string, string>) =>
       .sort(([a], [b]) => a.localeCompare(b)),
   );
 
+/** The settings form, the export, and deleting the study. */
 function StudyEditForm({
   study,
   client,
@@ -176,7 +178,6 @@ function StudyEditForm({
 
       <StudyExport client={client} />
 
-      {/* Danger Zone */}
       <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 shadow-sm">
         <h3 className="flex items-center gap-1 text-sm font-semibold text-destructive">
           Delete this study
@@ -244,12 +245,7 @@ function StudyExport({ client }: { client: ResearcherApi }) {
     setError(null);
     try {
       const { file, bytes } = await client.exportStudy();
-      const url = URL.createObjectURL(bytes);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = file;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadFile(bytes, file);
     } catch (e) {
       // A step-up login was offered (the client asks); other errors show
       if (!(e instanceof ResearcherApiError && e.code === "step_up_required"))

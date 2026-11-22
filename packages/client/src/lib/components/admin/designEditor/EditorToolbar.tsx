@@ -57,9 +57,8 @@ interface EditorToolbarProps {
   saving: boolean;
   onSave: () => void;
   /** Omit to hide the Deploy button. */
-  onPublish?: () => void;
+  onDeploy?: () => void;
   onOpenVersions?: () => void;
-  /** Downloads the codebook as a document (what coders see). */
   /** Download the codebook (what coders see, Markdown) or the design file (all of the design, JSON). */
   onExport?: (kind: "codebook" | "design") => void;
 }
@@ -84,14 +83,14 @@ export function EditorToolbar({
   onRevertAll,
   saving,
   onSave,
-  onPublish,
+  onDeploy,
   onOpenVersions,
   onExport,
   status,
 }: EditorToolbarProps) {
   const [exportOpen, setExportOpen] = useState(false);
   const readOnly = mode === "history";
-  const canPublish = !readOnly && valid && (dirty || mode === "draft");
+  const canDeploy = !readOnly && valid && (dirty || mode === "draft");
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-2">
@@ -198,7 +197,7 @@ export function EditorToolbar({
           <Button
             type="button"
             size="sm"
-            variant={onPublish ? "outline" : "default"}
+            variant={onDeploy ? "outline" : "default"}
             onClick={onSave}
             disabled={saving || !canSave}
             title={
@@ -215,16 +214,16 @@ export function EditorToolbar({
           </Button>
         )}
 
-        {onPublish && !readOnly && (
+        {onDeploy && !readOnly && (
           <Button
             type="button"
             size="sm"
-            onClick={onPublish}
-            disabled={!canPublish || saving}
+            onClick={onDeploy}
+            disabled={!canDeploy || saving}
             title={
               !valid
                 ? "Fix the issues before deploying"
-                : !canPublish
+                : !canDeploy
                   ? "This version is already live"
                   : "Deploy this version (and choose whether to deploy the draft units too): coders switch to it when they next save an answer"
             }

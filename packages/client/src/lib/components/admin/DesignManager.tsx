@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { DesignVersion } from "@annotinder/contracts";
-import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
+import type { ResearcherApi } from "../../api/httpResearcherApi";
 import {
   useDesignVersionsQuery,
   useDesignVersionQuery,
   useCreateDesignVersionMutation,
   useDeleteDesignVersionMutation,
   useDeploymentQuery,
-  usePublishMutation,
+  useConfirmedDeploy,
   useUpdateDesignVersionMutation,
 } from "../../admin/queries";
 import { describeVersions } from "../../design/versions";
@@ -60,7 +60,7 @@ export function DesignManager({
 
   // The version shown in the editor; null follows the current version (draft, else latest)
   // (undefined: the URL's version number, `initialVersion`, once the versions are known)
-  const [chosenId, setSelectedId] = useState<number | null | undefined>(
+  const [chosenId, setChosenId] = useState<number | null | undefined>(
     restore
       ? restore.designVersionId
       : initialVersionId !== null
@@ -90,12 +90,12 @@ export function DesignManager({
   // Bumped when the open version's content is replaced underneath the editor (restore)
   const [editorEpoch, setEditorEpoch] = useState(0);
   const [versionsDialogOpen, setVersionsDialogOpen] = useState(false);
-  const [toPublish, setToPublish] = useState<DesignVersion | null>(null);
+  const [toDeploy, setToDeploy] = useState<DesignVersion | null>(null);
 
   const createDesignVersion = useCreateDesignVersionMutation(client);
   const updateDesignVersion = useUpdateDesignVersionMutation(client);
   const deleteDesignVersion = useDeleteDesignVersionMutation(client);
-  const publish = usePublishMutation(client);
+  const deploy = useConfirmedDeploy(client);
 
   // Unsaved changes tracking
   const saveRef = useRef<SaveFn | null>(null);
@@ -145,7 +145,7 @@ export function DesignManager({
   const draftNumber = versions.draftId === null ? null : versions.numberOf(versions.draftId);
 
   function viewVersion(id: number) {
-    requestNavigation(() => setSelectedId(id === versions.currentId ? null : id));
+    requestNavigation(() => setChosenId(id === versions.currentId ? null : id));
   }
 
   /** Copies a version into the draft (replacing the draft's content, if there is one). */
@@ -162,10 +162,10 @@ export function DesignManager({
         const body = { items: source.items, session: source.session, public: source.public };
         if (versions.draftId !== null) {
           await updateDesignVersion.mutateAsync({ id: versions.draftId, body });
-          setSelectedId(null);
+          setChosenId(null);
         } else {
           const created = await createDesignVersion.mutateAsync(body);
-          setSelectedId(created.id);
+          setChosenId(created.id);
         }
         setIsDirty(false);
         setEditorEpoch((n) => n + 1);
@@ -192,7 +192,7 @@ export function DesignManager({
     setVersionsDialogOpen(false);
     clearBackup();
     setIsDirty(false);
-    setSelectedId(null);
+    setChosenId(null);
     setEditorEpoch((n) => n + 1);
   }
 
@@ -232,9 +232,9 @@ export function DesignManager({
           onOpenVersions={() => setVersionsDialogOpen(true)}
           onSaved={(saved) => {
             setIsDirty(false);
-            setSelectedId(saved.id);
+            setChosenId(saved.id);
           }}
-          onPublish={setToPublish}
+          onDeploy={setToDeploy}
           restore={pendingRestore && pendingRestore.designVersionId === openId ? pendingRestore : null}
           onRestored={() => setPendingRestore(null)}
           onReload={async () => {
@@ -257,11 +257,11 @@ export function DesignManager({
       />
 
       <DeployDialog
-        key={toPublish?.id ?? "closed"}
+        key={toDeploy?.id ?? "closed"}
         client={client}
-        open={toPublish !== null}
-        version={toPublish}
-        versionNumber={toPublish ? (versions.numberOf(toPublish.id) ?? designVersions.length + 1) : 0}
+        open={toDeploy !== null}
+        version={toDeploy}
+        versionNumber={toDeploy ? (versions.numberOf(toDeploy.id) ?? designVersions.length + 1) : 0}
         live={versions.liveId !== null ? (liveQuery.data ?? null) : null}
         liveNumber={liveNumber}
         onDeploy={async (version, note, units) => {
@@ -271,22 +271,14 @@ export function DesignManager({
               id: version.id,
               body: { note: note || undefined, items: version.items, revision: version.revision },
             });
-            setToPublish(updated);
+            setToDeploy(updated);
             setEditorEpoch((n) => n + 1);
           }
-          const designVersionId = version?.id ?? versions.liveId!;
-          let deployment;
-          try {
-            deployment = await publish.mutateAsync({ designVersionId, units });
-          } catch (err) {
-            // Many links (one per coder): deployed only when confirmed
-            if (!(err instanceof ResearcherApiError && err.code === "confirm_links") || !confirm(err.reason)) throw err;
-            deployment = await publish.mutateAsync({ designVersionId, units, confirmLinks: true });
-          }
-          if (version) setSelectedId(null);
+          const deployment = await deploy({ designVersionId: version?.id ?? versions.liveId!, units });
+          if (version) setChosenId(null);
           return deployment;
         }}
-        onClose={() => setToPublish(null)}
+        onClose={() => setToDeploy(null)}
       />
 
       <UnsavedChangesDialog

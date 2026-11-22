@@ -11,13 +11,7 @@ interface UnsavedChangesDialogProps {
   error?: string | null;
 }
 
-/**
- * Modal dialog warning the user about unsaved design changes before navigating away.
- * Provides 3 distinct actions:
- * - Cancel: stay on the current page, don't navigate.
- * - Discard changes: drop unsaved modifications and proceed.
- * - Save changes: save modifications and proceed.
- */
+/** Asks before leaving unsaved design edits: stay (Cancel), discard them, or save them, then go on. */
 export function UnsavedChangesDialog({
   open,
   onCancel,

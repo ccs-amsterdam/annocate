@@ -1,4 +1,5 @@
 import type { DesignItem } from "@annotinder/contracts";
+import { defaultRandomOptions } from "./answerTypes";
 
 /** A new item of a type, as the editor adds it. */
 export function defaultItemForType(type: DesignItem["type"], name: string): DesignItem {
@@ -14,7 +15,7 @@ export function defaultItemForType(type: DesignItem["type"], name: string): Desi
       return {
         type: "computed",
         name,
-        variable: { type: "random", draw: "random", options: [{ value: "control" }, { value: "experiment" }] },
+        variable: { type: "random", draw: "random", options: defaultRandomOptions() },
       };
     case "unit_loop":
       // Like a condition, a new loop starts empty: its questions are added in

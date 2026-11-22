@@ -10,6 +10,10 @@ import {
 
 // The answer types the editor offers, their names, and switching a question between them.
 
+/** A new random condition's values, until the researcher names their own. */
+export const defaultRandomOptions = () => [{ value: "control" }, { value: "experiment" }];
+
+/** The answer types of questions outside unit loops. */
 export const VARIABLE_TYPE_OPTIONS_USER: UserVariableType["type"][] = [
   "nominal",
   "ordinal",
@@ -19,6 +23,7 @@ export const VARIABLE_TYPE_OPTIONS_USER: UserVariableType["type"][] = [
   "confirm",
 ];
 
+/** The answer types of questions in a unit loop: also selecting text (span) and linking spans (relation). */
 export const VARIABLE_TYPE_OPTIONS_UNIT: UnitVariableType["type"][] = [
   "nominal",
   "ordinal",
@@ -44,7 +49,8 @@ export const VARIABLE_TYPE_LABELS: Record<AnyVariableType["type"], string> = {
   unspecified: "Not chosen yet",
 };
 
-function defaultVariableForAnyType(type: string): AnyVariableType {
+/** A new variable of an answer type, with example options. */
+function defaultVariable(type: string): AnyVariableType {
   switch (type) {
     case "nominal":
       return {
@@ -92,7 +98,7 @@ function defaultVariableForAnyType(type: string): AnyVariableType {
     case "confirm":
       return { type: "confirm", question: "" };
     case "random":
-      return { type: "random", draw: "random", options: [{ value: "control" }, { value: "experiment" }] };
+      return { type: "random", draw: "random", options: defaultRandomOptions() };
     case "span":
       return { type: "span", question: "", fields: [], options: [{ value: "label_1", label: "Label 1" }] };
     case "relation":
@@ -125,7 +131,7 @@ export function switchVariableType(current: AnyVariableType, type: AnyVariableTy
         : undefined;
     return { ...rest, type, layout, options: convertOptionsLevel(current.options, type) } as AnyVariableType;
   }
-  const next = defaultVariableForAnyType(type);
+  const next = defaultVariable(type);
   const { question } = current as { question?: string };
   if ("question" in next) Object.assign(next, { question: question ?? "" });
   return next;

@@ -91,13 +91,11 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      {/* Header */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1.5">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Studies</h1>
           <HelpButton topic="overview" label="Help: getting started" className="align-middle" />
         </div>
-        {/* Search & Filter Toolbar */}
         {studies.length > 0 && (
           <div className="relative w-full max-w-xs sm:ml-4">
             <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -133,7 +131,6 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
 
       {me && server && onMe && <ResearcherAccess server={server} me={me} onMe={onMe} />}
 
-      {/* Studies List */}
       {filteredStudies.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card p-12 text-center">
           <div className="rounded-full bg-primary/10 p-4 text-primary">
@@ -250,7 +247,7 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
         />
       )}
 
-      {/* Create Study Dialog Modal */}
+      {/* An empty study: just a name */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex animate-in items-center justify-center bg-black/50 p-4 backdrop-blur-sm fade-in">
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
@@ -297,7 +294,7 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
         </div>
       )}
 
-      {/* Delete Study Confirmation Modal */}
+      {/* Deleting a study: asks first */}
       {studyToDelete && (
         <div className="fixed inset-0 z-50 flex animate-in items-center justify-center bg-black/50 p-4 backdrop-blur-sm fade-in">
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">

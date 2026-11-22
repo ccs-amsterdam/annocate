@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useFlip } from "../../hooks/useFlip";
-import { CornerDownLeft, Move, Trash2, X } from "lucide-react";
-import type { DesignIssue, TopLevelItem } from "@annotinder/contracts";
+import { CornerDownLeft, Flag, Move, Trash2, X } from "lucide-react";
+import { sessionItem, type DesignIssue, type TopLevelItem } from "@annotinder/contracts";
 import {
   addPositions,
   canMoveAllTo,
@@ -18,8 +18,6 @@ import { AddItemMenu } from "./designTree/AddItemMenu";
 import { getItemKey, insertableTypesAt, questionNumbers, STUDY_END_KEY, type ItemType } from "./designTree/utils";
 import { TreeRow } from "./designTree/TreeRow";
 import { cn } from "cn";
-import { Flag } from "lucide-react";
-import { sessionItem } from "@annotinder/contracts";
 
 interface DesignTreeViewProps {
   items: TopLevelItem[];
@@ -47,8 +45,8 @@ interface DesignTreeViewProps {
  *   "move below this item" (asking where if ambiguous, like adding), on
  *   rows where all ticked items may go; nothing else in the tree changes.
  *
- * Components (see ./designTree):
- * - TreeList     recursive list of items
+ * Components (in ./designTree):
+ * - TreeList     the blocks, and the recursive list of items
  * - TreeItemRow  an item row: tick box, item, +
  * - TreeRow      shared fixed-height row layout + insertion line
  * - AddItemMenu  "+" button: where (if ambiguous), then item type; or where to move

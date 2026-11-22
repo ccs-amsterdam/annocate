@@ -6,22 +6,20 @@ import { Download, FileArchive } from "lucide-react";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useCodersQuery, useDeploymentQuery, useStudyQuery } from "../../admin/queries";
 import {
-  Labels,
   annotationsTable,
   codersTable,
   deletedCodersTable,
   devicesTable,
   displayChangesTable,
   timingsTable,
-  nestedQuestions,
-  numericCodeQuestions,
-  questionOrder,
-  readme,
   resetAnswersTable,
   toCsv,
   unitsTable,
   variablesTable,
 } from "../../admin/exportData";
+import { Labels, nestedQuestions, numericCodeQuestions, questionOrder } from "../../admin/exportAnswers";
+import { readme } from "../../admin/exportReadme";
+import { downloadFile } from "../../admin/download";
 import { Button } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../help/HelpButton";
@@ -40,14 +38,6 @@ async function allPages<T>(
     if (page.next === null) return rows;
     after = page.next;
   }
-}
-
-/** Saves bytes as a file. */
-function save(bytes: Uint8Array, filename: string, type: string) {
-  const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type }));
-  const link = Object.assign(document.createElement("a"), { href: url, download: filename });
-  link.click();
-  URL.revokeObjectURL(url);
 }
 
 /**
@@ -124,8 +114,8 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
       }
 
       const liveId = deployment?.designVersionId ?? null;
-      const order = questionOrder(liveId === null ? undefined : designVersions.get(liveId));
       const live = liveId === null ? undefined : designVersions.get(liveId);
+      const order = questionOrder(live);
       const nested = nestedQuestions(live);
       const numeric = numericCodeQuestions(live);
       const labels = withLabels ? new Labels(designVersions, liveId) : undefined;
@@ -154,7 +144,11 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
             }
           : {}),
       });
-      save(zip, `${name.replace(/[^\w-]+/g, "_")}_${now.toISOString().slice(0, 10)}.zip`, "application/zip");
+      downloadFile(
+        zip as BlobPart,
+        `${name.replace(/[^\w-]+/g, "_")}_${now.toISOString().slice(0, 10)}.zip`,
+        "application/zip",
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { designItems, type DesignVersion, type TopLevelItem } from "@annotinder/contracts";
-import { describeUnitChanges } from "../../admin/unitChanges";
+import { describeUnitChanges, hasUnitChanges } from "../../admin/unitChanges";
 import { AlertTriangle, Loader2, Rocket } from "lucide-react";
 import {
   Dialog,
@@ -58,20 +58,18 @@ export function DeployDialog({
 }: DeployDialogProps) {
   const [state, setState] = useState<
     | { step: "confirm" }
-    | { step: "publishing" }
+    | { step: "deploying" }
     | { step: "done"; warnings: string[] }
     | { step: "error"; message: string }
   >({ step: "confirm" });
   const pending = usePendingChangesQuery(client, open).data;
   const firstDeploy = liveNumber === null;
   const unitChanges = pending?.units ?? null;
-  const hasUnitChanges =
-    unitChanges !== null &&
-    (unitChanges.added > 0 || unitChanges.changed > 0 || unitChanges.removed > 0 || unitChanges.sets);
+  const unitsChanged = unitChanges !== null && hasUnitChanges(unitChanges);
   const [withDesign, setWithDesign] = useState(includeDesign || firstDeploy);
   const [withUnits, setWithUnits] = useState(true);
   const deployDesign = version !== null && (withDesign || firstDeploy);
-  const useUnits = firstDeploy || (hasUnitChanges && withUnits);
+  const deployUnits = firstDeploy || (unitsChanged && withUnits);
 
   const liveItems = live ? (designItems(live) as TopLevelItem[]) : [];
   const draftItems = version ? (designItems(version) as TopLevelItem[]) : [];
@@ -86,9 +84,9 @@ export function DeployDialog({
   }
 
   async function deploy() {
-    setState({ step: "publishing" });
+    setState({ step: "deploying" });
     try {
-      const result = await onDeploy(deployDesign ? version : null, note.trim(), useUnits);
+      const result = await onDeploy(deployDesign ? version : null, note.trim(), deployUnits);
       if (result.warnings?.length) setState({ step: "done", warnings: result.warnings });
       else close();
     } catch (e) {
@@ -96,9 +94,9 @@ export function DeployDialog({
     }
   }
 
-  const nothing = !deployDesign && !useUnits;
+  const nothing = !deployDesign && !deployUnits;
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && state.step !== "publishing" && close()}>
+    <Dialog open={open} onOpenChange={(o) => !o && state.step !== "deploying" && close()}>
       <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-lg">
         {state.step === "done" ? (
           <>
@@ -186,11 +184,11 @@ export function DeployDialog({
               </section>
 
               <section className="space-y-1 rounded-md border border-border p-3">
-                {firstDeploy || hasUnitChanges ? (
+                {firstDeploy || unitsChanged ? (
                   <label className="flex items-center gap-2 font-semibold text-foreground">
                     <input
                       type="checkbox"
-                      checked={useUnits}
+                      checked={deployUnits}
                       disabled={firstDeploy}
                       onChange={(e) => setWithUnits(e.target.checked)}
                     />
@@ -202,7 +200,7 @@ export function DeployDialog({
                 ) : (
                   <p className="font-semibold text-foreground">Units and sets: no changes</p>
                 )}
-                {hasUnitChanges && !useUnits && (
+                {unitsChanged && !deployUnits && (
                   <p className="text-xs text-muted-foreground">The units stay drafts, for a later deploy.</p>
                 )}
               </section>
@@ -235,14 +233,14 @@ export function DeployDialog({
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={close} disabled={state.step === "publishing"}>
+              <Button variant="outline" onClick={close} disabled={state.step === "deploying"}>
                 Cancel
               </Button>
               <Button
                 onClick={() => void deploy()}
-                disabled={state.step === "publishing" || nothing || (!firstDeploy && !pending)}
+                disabled={state.step === "deploying" || nothing || (!firstDeploy && !pending)}
               >
-                {state.step === "publishing" ? (
+                {state.step === "deploying" ? (
                   <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                 ) : (
                   <Rocket className="mr-1.5 h-4 w-4" />
@@ -264,6 +262,7 @@ const KIND_LABEL: Record<DesignChange["kind"], { label: string; className: strin
   moved: { label: "Moved", className: "bg-violet-500/15 text-violet-700 dark:text-violet-400" },
 };
 
+/** One changed item: added, removed, changed or moved, and where. */
 function ChangeLine({ change }: { change: DesignChange }) {
   const { label, className } = KIND_LABEL[change.kind];
   const where =

@@ -2,10 +2,9 @@ import type { DeploymentStatus } from "@annotinder/contracts";
 import { shareLabel } from "../../../design/assignment";
 
 /**
- * Progress per share of each loop (the units of a coder and conditions;
- * once coders are routed to it): complete
- * units (every routed coder finished them, or the saturation rule was met
- * for dynamic sources) out of all units.
+ * Progress per share of each loop (the units of a coder or condition, once
+ * coders reached it): complete units (every routed coder finished them, or
+ * the saturation rule was met for dynamic sources) out of all units.
  */
 export function LoopProgress({ status }: { status: DeploymentStatus }) {
   if (status.sources.length === 0) {

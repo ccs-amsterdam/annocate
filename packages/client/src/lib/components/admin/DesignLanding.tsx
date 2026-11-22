@@ -12,11 +12,10 @@ import {
 import { describeVersions } from "../../design/versions";
 
 /**
- * The Design section's start (docs/client.md §7): the two parts of a design,
- * the design (Editor) and the units, as two cards with what they hold
- * now. Picking one opens it; from there the sub tabs switch between them.
- * So a researcher sees both parts, instead of landing in the editor and
- * missing the units.
+ * The Design section's start (docs/client.md §7): its two parts, the design
+ * (Editor) and the units, as cards with what they hold now. Picking one
+ * opens it; sub tabs switch between them. So researchers see both parts,
+ * instead of landing in the editor and missing the units.
  */
 export function DesignLanding({
   client,
@@ -39,7 +38,6 @@ export function DesignLanding({
   const loops = current.data ? unitLoops(items).length : null;
   const units = unitsQuery.data?.length ?? null;
   const fields = fieldsQuery.data ?? [];
-  // Questions only: no units
 
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-4 py-2 sm:grid-cols-2">
@@ -67,46 +65,45 @@ export function DesignLanding({
           </Fact>
         )}
       </DesignCard>
-      {
-        <DesignCard
-          icon={<Layers className="h-6 w-6" />}
-          title="Units"
-          description="What coders code: texts, images or other material, uploaded as a table with a column per field."
-          action="Open the units"
-          onClick={() => onOpen("Units")}
-        >
-          <Fact label="Units">
-            {units === null ? (
-              "…"
-            ) : units === 0 ? (
-              <span className="text-muted-foreground">none yet: upload a file</span>
-            ) : (
-              units
-            )}
-          </Fact>
-          <Fact label="Columns">
-            {fields.length === 0 ? (
-              <span className="text-muted-foreground">none yet</span>
-            ) : (
-              <span className="flex flex-wrap gap-1">
-                {fields.map((f) => (
-                  <span
-                    key={f.name}
-                    className="rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px]"
-                    title={f.description}
-                  >
-                    {f.name} <span className="text-muted-foreground">{f.type}</span>
-                  </span>
-                ))}
-              </span>
-            )}
-          </Fact>
-        </DesignCard>
-      }
+      <DesignCard
+        icon={<Layers className="h-6 w-6" />}
+        title="Units"
+        description="What coders code: texts, images or other material, uploaded as a table with a column per field."
+        action="Open the units"
+        onClick={() => onOpen("Units")}
+      >
+        <Fact label="Units">
+          {units === null ? (
+            "…"
+          ) : units === 0 ? (
+            <span className="text-muted-foreground">none yet: upload a file</span>
+          ) : (
+            units
+          )}
+        </Fact>
+        <Fact label="Columns">
+          {fields.length === 0 ? (
+            <span className="text-muted-foreground">none yet</span>
+          ) : (
+            <span className="flex flex-wrap gap-1">
+              {fields.map((f) => (
+                <span
+                  key={f.name}
+                  className="rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px]"
+                  title={f.description}
+                >
+                  {f.name} <span className="text-muted-foreground">{f.type}</span>
+                </span>
+              ))}
+            </span>
+          )}
+        </Fact>
+      </DesignCard>
     </div>
   );
 }
 
+/** A card for one part: what it is, a few facts, and a button that opens it. */
 function DesignCard({
   icon,
   title,
@@ -142,6 +139,7 @@ function DesignCard({
   );
 }
 
+/** A labelled fact on a card. */
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[6.5rem_1fr] items-baseline gap-2">

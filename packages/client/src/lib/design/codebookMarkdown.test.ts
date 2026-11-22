@@ -5,7 +5,7 @@ import { codebookMarkdown } from "./codebookMarkdown";
 describe("codebookMarkdown", () => {
   it("writes what coders see, not how units are handed out", () => {
     const items = [
-      { type: "session", params: [{ name: "wave", kind: "url", values: { list: [{ value: "1" }] } }] },
+      { type: "session", urlParams: [{ name: "wave", values: [{ value: "1" }] }] },
       { type: "question", name: "age", variable: { type: "numeric", question: "How old are you?", min: 18, max: 99 } },
       {
         type: "unit_loop",
@@ -37,5 +37,12 @@ describe("codebookMarkdown", () => {
     expect(md).toContain("- `pol`: Politics");
     expect(md).toContain("## End: done (complete)");
     expect(md).not.toMatch(/wave|gold|balanced/);
+  });
+
+  it("describes a random condition as drawn, not asked", () => {
+    const items = [
+      { type: "computed", name: "framing", variable: { type: "random", draw: "random", options: [{ value: "a" }] } },
+    ] as unknown as TopLevelItem[];
+    expect(codebookMarkdown(items)).toContain("*Drawn at random, not asked*");
   });
 });

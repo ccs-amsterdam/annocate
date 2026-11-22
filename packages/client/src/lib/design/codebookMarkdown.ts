@@ -14,20 +14,21 @@ import {
 // Not the design's internals: who codes which units, sets, gold and
 // practice settings, the coder invitation.
 
-const TYPE: Record<string, string> = {
+/** How each answer type is described in the codebook. */
+const TYPE: Record<AnyVariableType["type"], string> = {
   nominal: "Choose an option",
   ordinal: "Choose a point on a scale",
   annotinder: "Swipe",
   numeric: "A number",
-  text: "Text",
   confirm: "Confirm",
   scale: "A scale per item",
   span: "Select spans in the text",
   relation: "Relations between spans",
-  auto: "Assigned, not asked",
+  random: "Drawn at random, not asked",
   unspecified: "Not specified yet",
 };
 
+/** A question's options, range, scale items or span fields, as list lines. */
 function optionLines(variable: AnyVariableType): string[] {
   const lines: string[] = [];
   if ("options" in variable && Array.isArray(variable.options)) {
@@ -54,6 +55,7 @@ function optionLines(variable: AnyVariableType): string[] {
   return lines;
 }
 
+/** A question (or computed item): heading, text, instruction, answer type and options. */
 function question(name: string, variable: AnyVariableType, depth: number, instruction?: string): string[] {
   const text =
     "question" in variable && typeof variable.question === "string" && variable.question ? variable.question : "";
@@ -69,6 +71,7 @@ function question(name: string, variable: AnyVariableType, depth: number, instru
 /** The loops' keys, as numbered in the whole codebook (for their titles). */
 type LoopKeys = Map<unknown, string>;
 
+/** The lines for a list of items, at heading `depth`. */
 function items(list: DesignItem[], depth: number, keys: LoopKeys): string[] {
   const out: string[] = [];
   for (const item of list) {
@@ -102,6 +105,7 @@ function items(list: DesignItem[], depth: number, keys: LoopKeys): string[] {
   return out;
 }
 
+/** A unit loop: its title, the fields coders see, and its items one level deeper. */
 function loop(item: UnitLoopItem, depth: number, keys: LoopKeys): string[] {
   const key = keys.get(item) ?? "1";
   const shown = [...fieldUsage([item])].filter(([, use]) => use === "shown").map(([f]) => `\`${f}\``);

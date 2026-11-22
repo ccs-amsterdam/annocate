@@ -74,7 +74,7 @@ export function DesignStatusBanner({
         title={openIsLive ? `v${openNumber} · live` : `v${openNumber} · deployed before`}
       >
         It can't be changed anymore, so your edits are saved as a new draft.
-        {openIsLive && ` Coders keep using v${openNumber} until you publish the draft.`}
+        {openIsLive && ` Coders keep using v${openNumber} until you deploy the draft.`}
       </Banner>
     );
   }

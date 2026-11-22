@@ -10,7 +10,6 @@ import {
   type EndItem,
   type InLoopQuestionItem,
 } from "@annotinder/contracts";
-import { cn } from "cn";
 import { UnitLoopForm } from "./UnitLoopForm";
 import { SessionItemForm } from "./SessionItemForm";
 import { HelpButton } from "../../help/HelpButton";
@@ -19,11 +18,12 @@ import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
 import { Input } from "@/components/ui/input";
 import type { ShareSource } from "../../design/assignment";
-import { Textarea } from "@/components/ui/textarea";
 import { VariableTypeForm } from "./VariableTypeForm";
 import { switchVariableType, VARIABLE_TYPE_OPTIONS_USER, VARIABLE_TYPE_OPTIONS_UNIT } from "../../design/answerTypes";
 import { TypeCardGrid, TypeHeader } from "./TypeCards";
 import { COMPUTED_TYPE_CARDS, answerTypeCards } from "./typeCardData";
+import { EndItemFields } from "./itemForm/EndItemFields";
+import { FocusSelect, InstructionFields } from "./itemForm/LoopQuestionFields";
 
 /** The help topic for each answer type. */
 const TYPE_HELP: Record<AnyVariableType["type"], string> = {
@@ -39,6 +39,11 @@ const TYPE_HELP: Record<AnyVariableType["type"], string> = {
   unspecified: "question-types",
 };
 
+/**
+ * The form of the item selected in the design editor's tree: its name (or
+ * label), and what its type needs: a question's answer type, a loop's
+ * units and layout, a condition, an end, or the Study entry.
+ */
 export function ItemForm({
   item,
   client,
@@ -51,7 +56,6 @@ export function ItemForm({
   loopNames,
   readOnly = false,
   validationIssues = [],
-  isInsideLoop = false,
   screenouts = [],
   shareSources,
   agreementQuestions,
@@ -62,15 +66,15 @@ export function ItemForm({
   agreementQuestions?: string[];
   /** For "Generate sets…" in a loop's form. */
   client?: ResearcherApi;
-  /** The study's set groups (loops' sets, session parameters with a group's sets). */
+  /** The study's set groups (the units' set columns). */
   groups: SetGroupResponse[];
-  /** The design's set-typed session parameters (name -> group). */
   /** The `$session` names (declared and built-in). */
   sessionValueNames?: string[];
+  /** The questions in unit loops (a relation's from and to). */
   unitVariableNames?: string[];
-  /** Questions references may use at this item (contracts `availableQuestions`): for conditions and branches. */
+  /** Questions references may use at this item (contracts `availableQuestions`): for conditions and balancing. */
   availableQuestions?: { name: string; variable: AnyVariableType }[];
-  /** The item is inside a unit loop (conditions may use `$unit`). */
+  /** The item is inside a unit loop: loop answer types, an instruction and focus; conditions may use `$unit`. */
   inLoop?: boolean;
   /** The study's unit fields (completions in a loop's template). */
   unitFields?: string[];
@@ -78,20 +82,16 @@ export function ItemForm({
   loopNames?: { shown: string[]; selectable: string[] };
   readOnly?: boolean;
   validationIssues?: DesignIssue[];
-  isInsideLoop?: boolean;
   /** The design's screen-out end items (a loop's gold checks can end there). */
   screenouts?: string[];
   /** For a unit loop: what selects a session's units (its coder, linked conditions). */
   shareSources?: ShareSource[];
   onChange: (updated: DesignItem) => void;
 }) {
-  const getFieldError = (field: string) => {
-    const issue = validationIssues.find((i) => i.path.includes(field));
-    return issue ? issue.message : null;
-  };
-
-  const nameError = getFieldError("name");
-  const answerCards = answerTypeCards(isInsideLoop ? VARIABLE_TYPE_OPTIONS_UNIT : VARIABLE_TYPE_OPTIONS_USER);
+  const nameError = validationIssues.find((i) => i.path.includes("name"))?.message ?? null;
+  const answerCards = answerTypeCards(inLoop ? VARIABLE_TYPE_OPTIONS_UNIT : VARIABLE_TYPE_OPTIONS_USER);
+  // What a random condition's balanced draw can balance within
+  const stratifyChoices = [...availableQuestions.map((q) => q.name), ...sessionValueNames.map((n) => `session.${n}`)];
 
   return (
     <div className="flex flex-col gap-4">
@@ -138,7 +138,6 @@ export function ItemForm({
         </div>
       )}
 
-      {/* Item-specific fields */}
       {item.type === "question" && (
         <>
           {item.variable.type === "unspecified" ? (
@@ -166,18 +165,15 @@ export function ItemForm({
           <VariableTypeForm
             variable={item.variable}
             unitVariableNames={unitVariableNames}
-            layoutFields={isInsideLoop ? loopNames?.selectable : undefined}
-            stratifyChoices={[
-              ...availableQuestions.map((q) => q.name),
-              ...sessionValueNames.map((n) => `session.${n}`),
-            ]}
+            layoutFields={inLoop ? loopNames?.selectable : undefined}
+            stratifyChoices={stratifyChoices}
             setColumns={groups.map((g) => g.name)}
             onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
           />
-          {isInsideLoop && "variable" in item && item.type === "question" && (
+          {inLoop && (
             <InstructionFields item={item as InLoopQuestionItem} onChange={(next) => onChange(next as DesignItem)} />
           )}
-          {isInsideLoop && loopNames && (
+          {inLoop && loopNames && (
             <FocusSelect
               variable={item.variable}
               loopIds={loopNames.shown}
@@ -205,10 +201,7 @@ export function ItemForm({
           <VariableTypeForm
             variable={item.variable}
             unitVariableNames={unitVariableNames}
-            stratifyChoices={[
-              ...availableQuestions.map((q) => q.name),
-              ...sessionValueNames.map((n) => `session.${n}`),
-            ]}
+            stratifyChoices={stratifyChoices}
             setColumns={groups.map((g) => g.name)}
             onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
           />
@@ -247,222 +240,6 @@ export function ItemForm({
             issues={issuesAt(validationIssues, "condition")}
           />
         </div>
-      )}
-    </div>
-  );
-}
-
-/** An `end` item: how the session ends, the message shown, and where the coder is sent. */
-/** An end item's outcome, message and redirect; `studyEnd`: the study's normal end (no outcome: complete). */
-export function EndItemFields({
-  item,
-  onChange,
-  issues,
-  studyEnd = false,
-}: {
-  item: EndItem;
-  onChange: (updated: DesignItem) => void;
-  issues: DesignIssue[];
-  studyEnd?: boolean;
-}) {
-  return (
-    <div className={studyEnd ? "flex flex-col gap-3" : "flex flex-col gap-3 border-t border-border/60 pt-4"}>
-      <div className={studyEnd ? "hidden" : "flex flex-col gap-1.5"}>
-        <span className="flex items-center gap-1.5">
-          <label className="text-xs font-semibold text-foreground">Outcome</label>
-          <HelpButton topic="end-items" label="Help: ending a session" />
-        </span>
-        <select
-          className="h-9 rounded-md border border-input bg-background px-3 text-xs"
-          value={item.outcome}
-          onChange={(e) => onChange({ ...item, outcome: e.target.value as EndItem["outcome"] })}
-        >
-          <option value="screenout">Screened out (not eligible)</option>
-          <option value="complete">Complete</option>
-        </select>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-foreground">Message (optional)</label>
-        <Textarea
-          value={item.message ?? ""}
-          rows={3}
-          onChange={(e) => onChange({ ...item, message: e.target.value || undefined })}
-          placeholder="Thank you for your time."
-        />
-        <IssueList issues={issuesAt(issues, "message")} />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-foreground">Then send coders to</label>
-        <select
-          aria-label="Redirect"
-          className="h-8 w-fit rounded-md border border-input bg-background px-2 text-xs"
-          value={item.redirectSetting !== undefined ? "setting" : item.redirectUrl !== undefined ? "url" : ""}
-          onChange={(e) => {
-            const next: EndItem = { ...item };
-            delete next.redirectUrl;
-            delete next.redirectSetting;
-            if (e.target.value === "url") next.redirectUrl = "";
-            // Separate settings by default: panels give a return link per outcome
-            if (e.target.value === "setting")
-              next.redirectSetting = item.outcome === "screenout" ? "panel_screenout" : "panel_return";
-            onChange(next);
-          }}
-        >
-          <option value="">Nowhere: they stay on the end screen</option>
-          <option value="setting">A panel's return link (set per run, in the study's Settings)</option>
-          <option value="url">This URL</option>
-        </select>
-        {item.redirectSetting !== undefined && (
-          <>
-            <Input
-              aria-label="Setting name"
-              value={item.redirectSetting}
-              onChange={(e) => onChange({ ...item, redirectSetting: e.target.value })}
-              placeholder="panel_complete"
-              className="w-60 font-mono text-xs"
-            />
-            <span className="text-[11px] text-muted-foreground">
-              The URL itself goes in the study&apos;s Settings, under this name: a panel gives each run its own links.
-            </span>
-          </>
-        )}
-        {item.redirectUrl !== undefined && (
-          <Input
-            value={item.redirectUrl}
-            onChange={(e) => onChange({ ...item, redirectUrl: e.target.value })}
-            placeholder="https://example.org/thanks?id=$var.pid.value"
-            className="font-mono text-xs"
-          />
-        )}
-        <IssueList issues={[...issuesAt(issues, "redirectUrl"), ...issuesAt(issues, "redirectSetting")]} />
-      </div>
-    </div>
-  );
-}
-
-/** "Focus on": the parts of the layout the question is about, by id (docs/client.md §3, "Focus"). */
-function FocusSelect({
-  variable,
-  loopIds,
-  onChange,
-}: {
-  variable: AnyVariableType;
-  loopIds: string[];
-  onChange: (variable: AnyVariableType) => void;
-}) {
-  const focus = ("focus" in variable ? variable.focus : undefined) ?? [];
-  const dim = "focusDim" in variable && variable.focusDim === true;
-  const ids = [...new Set([...loopIds, ...focus])];
-  const set = (next: { focus?: string[]; focusDim?: boolean }) => {
-    const updated = { ...variable, ...next } as AnyVariableType & { focus?: string[]; focusDim?: boolean };
-    if (!updated.focus?.length) delete updated.focus;
-    if (!updated.focusDim) delete updated.focusDim;
-    onChange(updated);
-  };
-  const toggle = (id: string) => set({ focus: focus.includes(id) ? focus.filter((f) => f !== id) : [...focus, id] });
-  const spanDefault = variable.type === "span" && focus.length === 0;
-  return (
-    <div className="flex flex-col gap-1.5">
-      <span className="flex items-center gap-1.5">
-        <span className="text-xs font-semibold text-foreground">Focus on (optional)</span>
-        <HelpButton topic="typed-blocks#ids" label="Help: ids in the layout" />
-      </span>
-      {ids.length === 0 ? (
-        <p className="text-[11px] text-muted-foreground">The layout shows no unit fields or named blocks yet.</p>
-      ) : (
-        <div className="flex flex-wrap gap-1">
-          {ids.map((id) => {
-            const shown = loopIds.includes(id);
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => toggle(id)}
-                aria-pressed={focus.includes(id)}
-                title={shown ? undefined : "The layout doesn't show this"}
-                className={cn(
-                  "cursor-pointer rounded border px-1.5 py-0.5 font-mono text-[11px]",
-                  !shown
-                    ? "border-destructive text-destructive"
-                    : focus.includes(id)
-                      ? "border-primary bg-primary/15 text-primary"
-                      : "border-border text-muted-foreground",
-                )}
-              >
-                {id}
-              </button>
-            );
-          })}
-        </div>
-      )}
-      <label className="flex w-fit items-center gap-2 text-xs">
-        <input
-          type="checkbox"
-          checked={dim}
-          disabled={focus.length === 0 && !spanDefault}
-          onChange={(e) => set({ focusDim: e.target.checked })}
-        />
-        Dim the rest of the unit
-      </label>
-      <p className="text-[11px] text-muted-foreground">
-        {spanDefault ? "By default the fields it selects in. " : ""}When this question comes up, the unit scrolls to the
-        first and highlights it.
-      </p>
-    </div>
-  );
-}
-
-/**
- * A loop question's instruction (docs/client.md §4 "Questions and
- * instructions"): how to apply the question to units, which coders open
- * from the question (? button or key) while coding; optionally it opens by
- * itself the first time, or on practice units.
- */
-function InstructionFields({
-  item,
-  onChange,
-}: {
-  item: InLoopQuestionItem;
-  onChange: (item: InLoopQuestionItem) => void;
-}) {
-  const set = (patch: Partial<Pick<InLoopQuestionItem, "instruction" | "instructionOpen">>) => {
-    const next = { ...item, ...patch };
-    if (!next.instruction) {
-      delete next.instruction;
-      delete next.instructionOpen;
-    }
-    if (!next.instructionOpen) delete next.instructionOpen;
-    onChange(next);
-  };
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="flex items-center gap-1.5 text-sm font-medium">
-        Instruction (optional)
-        <HelpButton topic="questions#instructions" label="Help: instructions" />
-      </label>
-      <Textarea
-        value={item.instruction ?? ""}
-        placeholder="How to apply the question to units, to look up while coding (markdown)"
-        onChange={(e) => set({ instruction: e.target.value || undefined })}
-      />
-      <span className="text-[11px] text-muted-foreground">
-        Coders open it with the ? button by the question, or the ? key; a dot points it out until they did.
-      </span>
-      {item.instruction && (
-        <label className="flex items-center gap-2 text-xs text-muted-foreground">
-          Also opens by itself
-          <select
-            className="h-7 rounded-md border border-input bg-background px-2 text-xs"
-            value={item.instructionOpen ?? ""}
-            onChange={(e) =>
-              set({ instructionOpen: (e.target.value || undefined) as InLoopQuestionItem["instructionOpen"] })
-            }
-          >
-            <option value="">No</option>
-            <option value="first">The first time a coder gets the question</option>
-            <option value="practice">On practice units</option>
-          </select>
-        </label>
       )}
     </div>
   );

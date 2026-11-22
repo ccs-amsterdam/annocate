@@ -263,49 +263,50 @@ export function distributionSets(
 }
 
 /** What stops the wizard at a step; empty: fine. */
-export function setupProblems(a: SetupAnswers): string[] {
+export function setupProblems(answers: SetupAnswers): string[] {
   const problems: string[] = [];
-  if (!a.name.trim()) problems.push("Give the study a name");
-  if (!a.parts.annotate && !a.parts.survey && !a.parts.experiment)
+  if (!answers.name.trim()) problems.push("Give the study a name");
+  if (!answers.parts.annotate && !answers.parts.survey && !answers.parts.experiment)
     problems.push("Choose at least one of annotate, survey or experiment");
-  const lists = questionLists(a.parts);
+  const lists = questionLists(answers.parts);
   const names = new Map<string, number>();
   const add = (name: string) => names.set(name, (names.get(name) ?? 0) + 1);
-  if (a.parts.experiment) {
-    if (!/^[a-zA-Z0-9_]{1,64}$/.test(a.experiment.name))
+  if (answers.parts.experiment) {
+    if (!/^[a-zA-Z0-9_]{1,64}$/.test(answers.experiment.name))
       problems.push("The condition's name: letters, digits and _ only");
-    add(a.experiment.name);
-    const conditions = a.experiment.conditions.map((c) => c.trim()).filter(Boolean);
+    add(answers.experiment.name);
+    const conditions = answers.experiment.conditions.map((c) => c.trim()).filter(Boolean);
     if (conditions.length < 2) problems.push("An experiment needs at least two conditions");
     if (new Set(conditions).size !== conditions.length) problems.push("Each condition once");
   }
   for (const list of lists) {
-    for (const q of parseQuestions(a.questions[list])) {
+    for (const q of parseQuestions(answers.questions[list])) {
       if (!q.name)
         problems.push(
-          `"${a.questions[list].find((l) => questionName(l) === q.name) ?? ""}" makes no name: use letters or digits`,
+          `"${answers.questions[list].find((l) => questionName(l) === q.name) ?? ""}" makes no name: use letters or digits`,
         );
       else add(q.name);
     }
   }
   const twice = [...names].filter(([, n]) => n > 1).map(([name]) => name);
   if (twice.length > 0) problems.push(`Each question once: ${twice.join(", ")}`);
-  if (a.parts.annotate && parseQuestions(a.questions.unit).length === 0)
+  if (answers.parts.annotate && parseQuestions(answers.questions.unit).length === 0)
     problems.push("Add at least one question about each unit");
-  if (!a.parts.annotate && parseQuestions(a.questions.before).length === 0) problems.push("Add at least one question");
-  if (a.parts.annotate) problems.push(...distributionProblems(a));
+  if (!answers.parts.annotate && parseQuestions(answers.questions.before).length === 0)
+    problems.push("Add at least one question");
+  if (answers.parts.annotate) problems.push(...distributionProblems(answers));
   // With units: something of each unit is shown
-  if (a.parts.annotate && a.units && placedFields(a.layout).length === 0)
+  if (answers.parts.annotate && answers.units && placedFields(answers.layout).length === 0)
     problems.push("Choose what coders see of each unit (How coders see a unit)");
   return problems;
 }
 
 /** What is wrong with who codes what. */
-export function distributionProblems(a: SetupAnswers): string[] {
-  const d = a.distribution;
+export function distributionProblems(answers: SetupAnswers): string[] {
+  const d = answers.distribution;
   const problems: string[] = [];
-  const n = a.units?.units.length ?? 0;
-  const needsUnits = (what: string) => !a.units && problems.push(`${what} needs the units now`);
+  const n = answers.units?.units.length ?? 0;
+  const needsUnits = (what: string) => !answers.units && problems.push(`${what} needs the units now`);
   if ("overlap" in d && d.overlap) {
     needsUnits("An overlap");
     if (d.overlap.value <= 0 || (d.overlap.by === "percent" && d.overlap.value > 100))
@@ -313,8 +314,8 @@ export function distributionProblems(a: SetupAnswers): string[] {
   }
   if (d.mode === "sets") {
     needsUnits("Assigning sets");
-    if (a.units && d.source === "split" && (d.sets < 1 || d.sets > n)) problems.push(`Between 1 and ${n} sets`);
-    if (a.units && d.source === "column" && !a.units.fields.some((f) => f.name === d.column))
+    if (answers.units && d.source === "split" && (d.sets < 1 || d.sets > n)) problems.push(`Between 1 and ${n} sets`);
+    if (answers.units && d.source === "column" && !answers.units.fields.some((f) => f.name === d.column))
       problems.push("Choose the column that holds each unit's set");
   }
   if (d.mode === "crowd") {
@@ -324,19 +325,15 @@ export function distributionProblems(a: SetupAnswers): string[] {
       problems.push(...parsed.error.issues.filter((i) => i.path.join(".") !== "until.on").map((i) => i.message));
   }
   if (d.mode === "groups") {
-    if (!a.parts.experiment) problems.push("Experimental groups need an experiment");
+    if (!answers.parts.experiment) problems.push("Experimental groups need an experiment");
     needsUnits("Experimental groups");
-    const empty = a.experiment.conditions.filter((c) => c.trim() && !d.values[c]?.length);
-    if (a.units && empty.length > 0) problems.push(`Choose the units of ${empty.join(", ")}`);
+    const empty = answers.experiment.conditions.filter((c) => c.trim() && !d.values[c]?.length);
+    if (answers.units && empty.length > 0) problems.push(`Choose the units of ${empty.join(", ")}`);
   }
   return problems;
 }
 
-/** The layout's template (the editor's Layout tab refines it). */
-function layoutTemplate(layout: SimpleLayout): string {
-  return simpleTemplate(layout);
-}
-
+/** A question as the wizard makes it: by name, its answer type to choose in the editor. */
 const unspecified = (q: SetupQuestion) => ({
   type: "question",
   name: q.name,
@@ -348,33 +345,33 @@ const unspecified = (q: SetupQuestion) => ({
  * their sets. Deploying makes the links (one, or one per set when sets
  * are handed out by link).
  */
-export function setupRecipe(a: SetupAnswers): RecipeInput {
-  const lists = questionLists(a.parts);
+export function setupRecipe(answers: SetupAnswers): RecipeInput {
+  const lists = questionLists(answers.parts);
   const items: unknown[] = [];
   let session: SessionSpec | undefined;
   const groups: NonNullable<RecipeInput["sets"]> = [];
-  const conditions = a.experiment.conditions.map((c) => c.trim()).filter(Boolean);
-  const linked = a.parts.annotate && a.distribution.mode === "groups";
-  if (a.parts.experiment) {
+  const conditions = answers.experiment.conditions.map((c) => c.trim()).filter(Boolean);
+  const linked = answers.parts.annotate && answers.distribution.mode === "groups";
+  if (answers.parts.experiment) {
     // The condition: a computed item, drawn when reached (first); linked to a column, it selects the
     // units (a set column named after it, a value per condition)
     items.push({
       type: "computed",
-      name: a.experiment.name,
+      name: answers.experiment.name,
       variable: {
         type: "random",
-        draw: a.experiment.assign,
+        draw: answers.experiment.assign,
         options: conditions.map((c) =>
           linked && setName(c) !== c ? { value: setName(c), label: c } : { value: linked ? setName(c) : c },
         ),
-        ...(linked ? { units: a.experiment.name } : {}),
+        ...(linked ? { units: answers.experiment.name } : {}),
       },
     });
   }
-  items.push(...parseQuestions(a.questions.before).map(unspecified));
-  if (a.parts.annotate) {
-    const d = a.distribution;
-    const { sets, overlap } = distributionSets(d, a.units);
+  items.push(...parseQuestions(answers.questions.before).map(unspecified));
+  if (answers.parts.annotate) {
+    const d = answers.distribution;
+    const { sets, overlap } = distributionSets(d, answers.units);
     const overlapSet = overlap.length > 0 ? [{ name: OVERLAP_SET, units: overlap }] : [];
     let units: object = {};
     switch (d.mode) {
@@ -394,12 +391,12 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
       case "groups":
         // A set column named after the condition, a value per condition: the condition (drawn before the loop) selects its units
         groups.push({
-          group: a.experiment.name,
+          group: answers.experiment.name,
           sets: conditions.map((condition) => {
             const values = d.values[condition] ?? [];
             return {
               name: setName(condition),
-              units: (a.units?.units ?? [])
+              units: (answers.units?.units ?? [])
                 .filter((u) => values.includes(valueOf(u, d.column)))
                 .map((u) => u.externalId),
             };
@@ -411,31 +408,31 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
     if (hasSetGroup(d))
       units = withChecks(
         units,
-        a.checks,
-        parseQuestions(a.questions.unit).map((q) => q.name),
+        answers.checks,
+        parseQuestions(answers.questions.unit).map((q) => q.name),
       );
     items.push({
       type: "unit_loop",
       label: "Units",
       // Absent: all the session's units, once
       ...(Object.keys(units).length > 0 ? { units } : {}),
-      ...(a.order === "random" ? { order: "random" } : {}),
-      layout: { template: layoutTemplate(a.layout) },
-      children: parseQuestions(a.questions.unit).map(unspecified),
+      ...(answers.order === "random" ? { order: "random" } : {}),
+      // The editor's Layout tab can refine it
+      layout: { template: simpleTemplate(answers.layout) },
+      children: parseQuestions(answers.questions.unit).map(unspecified),
     });
-    if (lists.includes("after")) items.push(...parseQuestions(a.questions.after).map(unspecified));
+    if (lists.includes("after")) items.push(...parseQuestions(answers.questions.after).map(unspecified));
   }
   // The title coders see, only when given
-  const title = a.publicTitle.trim();
-  const study: SessionSpec = session ?? {};
+  const title = answers.publicTitle.trim();
   return {
-    name: a.name.trim(),
-    units: (a.units?.units ?? []).map((u) => ({ id: u.externalId, data: u.data })),
+    name: answers.name.trim(),
+    units: (answers.units?.units ?? []).map((u) => ({ id: u.externalId, data: u.data })),
     sets: groups.map((g) => ({ ...g, sets: g.sets.filter((s) => s.units.length > 0) })),
     design: {
       note: "Made with the setup wizard",
       ...(title ? { public: { title } } : {}),
-      session: study,
+      session: session ?? {},
       items,
     },
   };

@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { TreePanel } from "./designEditor/TreePanel";
+import { downloadFile } from "../../admin/download";
 import { ItemPanel, PreviewPanel } from "./designEditor/ItemPanel";
 
 /**
@@ -47,7 +48,7 @@ interface DesignEditorProps {
   banner?: ReactNode;
   onSaved: (version: DesignVersion) => void;
   /** Shows a Deploy button; called with the saved version (unsaved changes are saved first). */
-  onPublish?: (version: DesignVersion) => void;
+  onDeploy?: (version: DesignVersion) => void;
   onDirtyChange?: (isDirty: boolean) => void;
   onOpenVersions?: () => void;
   /** Receives the editor's save function (and null on unmount). */
@@ -60,23 +61,23 @@ interface DesignEditorProps {
   onRestored?: () => void;
 }
 
-/**
- * Whole-document design editor (docs/client.md §7): holds one in-memory
- * copy of the items (`useDesignDraft`), edited purely client-side, and
- * saved in one `PUT`/`POST /design` call.
- *
- * Parts (see ./designEditor):
- * - useDesignDraft  items, selection, validation, unsaved changes, saving
- * - EditorToolbar     issue count, Visual/JSON toggle, Versions/Save/Deploy
- * - TreePanel         the item tree (left)
- * - ItemPanel         the selected item's form or preview (right)
- * - PreviewPanel      on wide screens, the live preview in a third column
- */
 /** Wide enough for the tree, the form and the preview side by side. */
 const WIDE_SCREEN = "(min-width: 1500px)";
 /** Phones: one pane at a time, the tree first; an item's form opens full width, with a way back. */
 const NARROW_SCREEN = "(max-width: 767px)";
 
+/**
+ * Whole-document design editor (docs/client.md §7): holds one in-memory
+ * copy of the items (`useDesignDraft`), edited in the browser and saved in
+ * one `PUT`/`POST /design` call.
+ *
+ * Parts (in ./designEditor):
+ * - useDesignDraft      items, selection, validation, unsaved changes, saving
+ * - EditorToolbar       issues, Visual/JSON toggle, Versions/Save/Deploy
+ * - TreePanel           the item tree (left)
+ * - ItemPanel           the selected item's form or preview (right)
+ * - PreviewPanel        on wide screens, the live preview in a third column
+ */
 export function DesignEditor({
   client,
   versionNumber,
@@ -84,7 +85,7 @@ export function DesignEditor({
   mode = "draft",
   banner,
   onSaved,
-  onPublish,
+  onDeploy,
   onDirtyChange,
   onOpenVersions,
   registerSave,
@@ -166,11 +167,11 @@ export function DesignEditor({
     return () => registerSave?.(null);
   });
 
-  async function publish() {
-    if (!onPublish) return;
+  async function deploy() {
+    if (!onDeploy) return;
     // A live version that wasn't changed can't be deployed again; anything unsaved is saved first
-    if (dirty || !version || version.immutable) onPublish(await draft.save());
-    else onPublish(version);
+    if (dirty || !version || version.immutable) onDeploy(await draft.save());
+    else onDeploy(version);
   }
 
   return (
@@ -195,21 +196,21 @@ export function DesignEditor({
         onRevertAll={draft.revertAll}
         saving={draft.saving}
         onSave={() => void draft.save().catch(() => {})}
-        onPublish={onPublish && (() => void publish().catch(() => {}))}
+        onDeploy={onDeploy && (() => void deploy().catch(() => {}))}
         onOpenVersions={onOpenVersions}
         onExport={async (kind) => {
           if (kind === "codebook") {
-            download(codebookMarkdown(draft.cleanItems, "Codebook", version?.note), "codebook.md", "text/markdown");
+            downloadFile(codebookMarkdown(draft.cleanItems, "Codebook", version?.note), "codebook.md", "text/markdown");
             return;
           }
           // The whole design as a design file (contracts version.ts), as edited now, with this server's release
-          const client_ = await client.getServerVersion().catch(() => ({ release: RELEASE, commit: "unknown" }));
+          const server = await client.getServerVersion().catch(() => ({ release: RELEASE, commit: "unknown" }));
           const { items, session, public: info } = splitDesignItems(draft.cleanItems);
           const file = designFile(
             { items, session, public: info, units: version?.units ?? { fields: [] }, note: version?.note ?? null },
-            { name: studyName ?? "design", version: versionNumber ?? null, client: client_ },
+            { name: studyName ?? "design", version: versionNumber ?? null, client: server },
           );
-          download(JSON.stringify(file, null, 2), "design.json", "application/json");
+          downloadFile(JSON.stringify(file, null, 2), "design.json", "application/json");
         }}
       />
 
@@ -268,14 +269,4 @@ export function DesignEditor({
       )}
     </div>
   );
-}
-
-/** Saves text as a file (a download). */
-function download(text: string, filename: string, type: string): void {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([text], { type }));
-  a.download = filename;
-  a.click();
-  // Revoked later: right away can cancel the download in some browsers
-  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
 }

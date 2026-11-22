@@ -9,10 +9,10 @@ import { useSessionTab, type SessionTab } from "../session/sessionTab";
 /**
  * Above the item tree: what the study is, rather than an item in it. The
  * public title (what coders see as the study's name), edited in place, and
- * the two parts of the session, each a button that opens it: the coder
- * invitations and the URL parameters. The design keeps both apart from its items
- * (`session`, `public`); the editor holds them as the Study entry
- * (contracts `designItems`), which the tree doesn't show.
+ * the parts of the session, each a button that opens it: the coder
+ * invitations, the URL parameters and the display. The design keeps these
+ * apart from its items (`session`, `public`); the editor holds them as the
+ * Study entry (contracts `designItems`), which the tree doesn't show.
  */
 export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnly: boolean }) {
   const [tab, setTab] = useSessionTab();
@@ -96,6 +96,7 @@ function inviteSummary(invite: Invite): string {
   return parts.join(", ");
 }
 
+/** A part of the session: its name and a summary; opens its form. */
 function HeaderButton({
   icon: Icon,
   label,

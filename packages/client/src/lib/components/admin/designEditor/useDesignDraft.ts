@@ -37,10 +37,11 @@ import { changedKeys, emptyHistory, recordChange, redo, revertItem, undo } from 
 import { ResearcherApiError } from "../../../api/httpResearcherApi";
 import { clearBackup, writeBackup, type DesignBackup } from "../../../design/localBackup";
 
-/** Unsaved edits are copied to the browser's storage this long after the last change. */
-const BACKUP_DELAY_MS = 1000;
 import { defaultItemForType } from "../../../design/newItem";
 import type { ItemType } from "../designTree/utils";
+
+/** Unsaved edits are copied to the browser's storage this long after the last change. */
+const BACKUP_DELAY_MS = 1000;
 
 interface UseDesignDraftOptions {
   client: ResearcherApi;
@@ -80,9 +81,9 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
   const cleanItems = useMemo(() => stripKeys(items), [items]);
   const serialized = useMemo(() => JSON.stringify(cleanItems), [cleanItems]);
   const savedSerialized = useMemo(() => JSON.stringify(stripKeys(saved)), [saved]);
-  // Errors and warnings. Drafts can be saved with errors; deploying needs none.
-  // Plus the unit fields it uses that the design doesn't declare (docs/architecture.md §8.4): the open
-  // version's fields, as the server checks them at deploy (a new design gets the study's current fields)
+  // Errors and warnings; drafts can be saved with errors, deploying needs none. Plus unit fields the
+  // design uses but doesn't declare (docs/architecture.md §8.4), against the open version's fields as the
+  // server checks them at deploy (a new design: the study's current fields)
   const studyFields = useUnitFieldsQuery(client).data;
   const declared = version ? version.units.fields : studyFields;
   const undeclared = useMemo(() => (declared ? undeclaredFields(cleanItems, declared) : []), [cleanItems, declared]);

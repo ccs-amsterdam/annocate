@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { AnnotationRow, CoderProgress, TopLevelItem } from "@annotinder/contracts";
+import { Labels, answerJson, answerText } from "./exportAnswers";
 import {
-  Labels,
   annotationsTable,
-  answerJson,
-  answerText,
   codersTable,
   resetAnswersTable,
   timingsTable,

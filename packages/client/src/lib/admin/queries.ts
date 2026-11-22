@@ -35,16 +35,12 @@ import type {
   SetGroupResponse,
   SetGroupWrite,
 } from "@annotinder/contracts";
-import type { ResearcherApi } from "../api/httpResearcherApi";
+import { ResearcherApiError, type ResearcherApi } from "../api/httpResearcherApi";
 
-/**
- * TanStack Query hooks wrapping `ResearcherApi` (docs/client.md §7), used
- * by the management UI components under `components/admin/*`. Each hook
- * takes the `ResearcherApi` instance explicitly rather than via context, so the
- * management UI stays usable as a plain library export without imposing a
- * particular provider structure on host apps beyond a `QueryClientProvider`
- * ancestor (see `AdminApp.tsx`, which supplies its own by default).
- */
+// TanStack Query hooks over `ResearcherApi` for the researcher UI
+// (docs/client.md §7). Each hook takes the API client as an argument, not
+// from context: only a `QueryClientProvider` is needed (AdminApp.tsx has one).
+// Query keys share prefixes, so invalidating a study's key refreshes all of it.
 
 const keys = {
   studies: ["admin", "studies"] as const,
@@ -60,7 +56,7 @@ const keys = {
   unitPages: (studyId?: number) => ["admin", "study", studyId ?? "current", "units", "page"] as const,
   sets: (studyId?: number) => ["admin", "study", studyId ?? "current", "sets"] as const,
   coders: (studyId?: number) => ["admin", "study", studyId ?? "current", "coders"] as const,
-  sessionDeletions: (studyId?: number) => ["admin", "study", studyId ?? "current", "coders", "deletions"] as const,
+  coderDeletions: (studyId?: number) => ["admin", "study", studyId ?? "current", "coders", "deletions"] as const,
   deployment: (studyId?: number) => ["admin", "study", studyId ?? "current", "deployment"] as const,
   deploymentStatus: (studyId?: number) => ["admin", "study", studyId ?? "current", "deployment", "status"] as const,
   pending: (studyId?: number) => ["admin", "study", studyId ?? "current", "deployment", "pending"] as const,
@@ -81,15 +77,20 @@ export function useStudyQuery(client: ResearcherApi, id?: number): UseQueryResul
   });
 }
 
-export function useCreateStudyMutation(client: ResearcherApi): UseMutationResult<StudyResponse, Error, StudyWrite> {
+/** Creating a study (from scratch, an example or a recipe): cache it, and refresh the study list. */
+function useNewStudyMutation<V>(mutationFn: (vars: V) => Promise<StudyResponse>) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: StudyWrite) => client.createStudy(body),
-    onSuccess: (study) => {
+    mutationFn,
+    onSuccess: (study: StudyResponse) => {
       queryClient.setQueryData(keys.study(study.id), study);
       void queryClient.invalidateQueries({ queryKey: keys.studies });
     },
   });
+}
+
+export function useCreateStudyMutation(client: ResearcherApi): UseMutationResult<StudyResponse, Error, StudyWrite> {
+  return useNewStudyMutation((body: StudyWrite) => client.createStudy(body));
 }
 
 /** The example studies (they don't change while the server runs). */
@@ -100,27 +101,13 @@ export function useExamplesQuery(client: ResearcherApi, enabled = true): UseQuer
 export function useCreateStudyFromExampleMutation(
   client: ResearcherApi,
 ): UseMutationResult<StudyResponse, Error, StudyFromExample> {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: StudyFromExample) => client.createStudyFromExample(body),
-    onSuccess: (study) => {
-      queryClient.setQueryData(keys.study(study.id), study);
-      void queryClient.invalidateQueries({ queryKey: keys.studies });
-    },
-  });
+  return useNewStudyMutation((body: StudyFromExample) => client.createStudyFromExample(body));
 }
 
 export function useCreateStudyFromRecipeMutation(
   client: ResearcherApi,
 ): UseMutationResult<StudyResponse, Error, RecipeInput> {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: RecipeInput) => client.createStudyFromRecipe(body),
-    onSuccess: (study) => {
-      queryClient.setQueryData(keys.study(study.id), study);
-      void queryClient.invalidateQueries({ queryKey: keys.studies });
-    },
-  });
+  return useNewStudyMutation((body: RecipeInput) => client.createStudyFromRecipe(body));
 }
 
 export function useUpdateStudyMutation(
@@ -306,7 +293,7 @@ export function useCodersQuery(client: ResearcherApi): UseQueryResult<CoderProgr
 
 /** The study's deletion log: coders whose data was deleted. */
 export function useCoderDeletionsQuery(client: ResearcherApi): UseQueryResult<CoderDeletion[]> {
-  return useQuery({ queryKey: keys.sessionDeletions(client.studyId), queryFn: () => client.listCoderDeletions() });
+  return useQuery({ queryKey: keys.coderDeletions(client.studyId), queryFn: () => client.listCoderDeletions() });
 }
 
 /** Delete coders' data, now or later (a deletion request); both refresh the coder list (and the counts on the overview). */
@@ -386,11 +373,6 @@ export function useDeploymentQuery(client: ResearcherApi): UseQueryResult<Deploy
   return useQuery({ queryKey: keys.deployment(client.studyId), queryFn: () => client.getDeployment() });
 }
 
-/**
- * Deploys a design version (`PUT /deployment`), keeping the study's
- * active/paused state. The deployed version becomes read only, so the
- * design versions are refetched too.
- */
 /** The study's users and their roles (ADMIN only: others get an error). */
 export function useStudyUsersQuery(client: ResearcherApi): UseQueryResult<StudyUserResponse[]> {
   const studyId = client.studyId!;
@@ -442,19 +424,21 @@ export function useUnitQuery(client: ResearcherApi, id: number | null): UseQuery
   });
 }
 
-/** What to deploy: a design version (the deployed one: keep it), and the draft units and sets (default) or not. */
-export interface DeployVars {
+/** What to deploy: a design version (the deployed one: keep it), and whether the draft units and sets too (default: not). */
+interface DeployVars {
   designVersionId: number;
   units?: boolean;
   confirmLinks?: boolean;
 }
 
 /**
- * Deploys (docs/architecture.md §8.4): a design version and the draft units. With
- * many links (contracts CONFIRM_LINKS) the server asks to confirm (409
- * `confirm_links`): deploy again with `confirmLinks`.
+ * Deploys (`PUT /deployment`, docs/architecture.md §8.4) a design version,
+ * and optionally the draft units, keeping the study's active/paused state.
+ * With many links (contracts CONFIRM_LINKS) the server asks to confirm (409
+ * `confirm_links`): deploy again with `confirmLinks`. The deployed version
+ * becomes read only, so the design versions are refetched too.
  */
-export function usePublishMutation(
+export function useDeployMutation(
   client: ResearcherApi,
 ): UseMutationResult<DeploymentResponse, Error, number | DeployVars> {
   const queryClient = useQueryClient();
@@ -486,4 +470,20 @@ export function usePublishMutation(
       return queryClient.invalidateQueries({ queryKey: keys.designVersions(client.studyId) });
     },
   });
+}
+
+/**
+ * Deploys like `useDeployMutation`; when the server asks to confirm many
+ * links (409 `confirm_links`), asks the researcher and deploys again.
+ */
+export function useConfirmedDeploy(client: ResearcherApi): (vars: DeployVars) => Promise<DeploymentResponse> {
+  const deploy = useDeployMutation(client);
+  return async (vars) => {
+    try {
+      return await deploy.mutateAsync(vars);
+    } catch (err) {
+      if (!(err instanceof ResearcherApiError && err.code === "confirm_links") || !confirm(err.reason)) throw err;
+      return deploy.mutateAsync({ ...vars, confirmLinks: true });
+    }
+  };
 }

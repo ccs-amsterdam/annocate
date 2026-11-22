@@ -44,6 +44,18 @@ export function itemsShapeError(raw: unknown): string | null {
   return null;
 }
 
+type Unnamed = "show_if" | "unit_loop";
+const unnamed = (type: unknown): type is Unnamed => type === "show_if" || type === "unit_loop";
+
+/**
+ * An item's identity for matching keys: its name, or for a condition or
+ * unit loop (no name) its place: the nth of its type in `parent`.
+ */
+function matchId(item: Record<string, unknown>, parent: string, counts: Record<Unnamed, number>): string | null {
+  if (unnamed(item.type)) return `${parent}/${item.type} ${counts[item.type]++}`;
+  return typeof item.name === "string" ? item.name : null;
+}
+
 /**
  * Gives items that come without editor keys (e.g. from text) the keys of the
  * items with the same name in `previous`, so they stay the same items:
@@ -51,20 +63,13 @@ export function itemsShapeError(raw: unknown): string | null {
  * no name: they match the one at the same place (the nth condition, or
  * loop, in the same parent).
  */
-type Unnamed = "show_if" | "unit_loop";
-const unnamed = (type: unknown): type is Unnamed => type === "show_if" || type === "unit_loop";
-
 export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLevelItem[] {
   const keys = new Map<string, string>();
   const index = (list: unknown[], parent: string) => {
     const counts = { show_if: 0, unit_loop: 0 };
     for (const raw of list) {
       const item = raw as Record<string, unknown>;
-      const id = unnamed(item.type)
-        ? `${parent}/${String(item.type)} ${counts[item.type as Unnamed]++}`
-        : typeof item.name === "string"
-          ? item.name
-          : null;
+      const id = matchId(item, parent, counts);
       const key = typeof item._key === "string" ? item._key : undefined;
       if (id && key && !keys.has(id)) keys.set(id, key);
       if (Array.isArray(item.children)) index(item.children, key ?? "?");
@@ -77,11 +82,7 @@ export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLe
     const counts = { show_if: 0, unit_loop: 0 };
     return list.map((raw) => {
       const item = { ...(raw as Record<string, unknown>) };
-      const id = unnamed(item.type)
-        ? `${parent}/${String(item.type)} ${counts[item.type as Unnamed]++}`
-        : typeof item.name === "string"
-          ? item.name
-          : null;
+      const id = matchId(item, parent, counts);
       const key = id ? keys.get(id) : undefined;
       if (!item._key && key && !used.has(key)) {
         item._key = key;
@@ -107,7 +108,7 @@ export function designShapeError(raw: unknown): string | null {
     design.session !== undefined &&
     (!design.session || typeof design.session !== "object" || Array.isArray(design.session))
   ) {
-    return '"session" must be an object, e.g. { "params": [] }';
+    return '"session" must be an object, e.g. { "urlParams": [] }';
   }
   if (
     design.public !== undefined &&

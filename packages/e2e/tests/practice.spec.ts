@@ -76,25 +76,25 @@ test("a practice question gives feedback when wrong, answered again until right;
   // The practice unit, answered wrongly: feedback with the question, and answering again until right
   await question(coder, "Topic?");
   await expect(coder.getByText("Practice text")).toBeVisible();
-  await coder.getByRole("button", { name: "2 other" }).click();
+  await coder.getByRole("button", { name: "other", exact: true }).click();
   await expect(coder.getByText("Not quite")).toBeVisible();
   await expect(coder.getByText("It is about an election.")).toBeVisible();
   await expect(coder.getByText("Practice text")).toBeVisible();
-  await coder.getByRole("button", { name: "1 politics" }).click();
+  await coder.getByRole("button", { name: "politics", exact: true }).click();
   await expect(coder.getByRole("status").filter({ hasText: "Correct" })).toBeVisible();
 
   // The second practice unit accepts either answer: a check, then on
   await expect(coder.getByText("Second practice")).toBeVisible();
-  await coder.getByRole("button", { name: "2 other" }).click();
+  await coder.getByRole("button", { name: "other", exact: true }).click();
   await expect(coder.getByRole("status").filter({ hasText: "Correct" })).toBeVisible();
 
   // Their own unit
   await expect(coder.getByText("Own text")).toBeVisible();
-  await coder.getByRole("button", { name: "1 politics" }).click();
+  await coder.getByRole("button", { name: "politics", exact: true }).click();
 
   // The gold unit looks like any other; a wrong answer ends the session here
   await expect(coder.getByText("Gold text")).toBeVisible();
-  await coder.getByRole("button", { name: "2 other" }).click();
+  await coder.getByRole("button", { name: "other", exact: true }).click();
   await expect(coder.getByText("Sorry, this study is over for you.")).toBeVisible();
 });
 

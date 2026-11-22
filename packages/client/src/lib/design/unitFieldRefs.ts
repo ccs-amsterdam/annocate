@@ -39,8 +39,8 @@ function conditionReferences(condition: Condition | undefined): Reference[] {
 /**
  * References to unit fields that don't exist: `$unit.x` anywhere in a unit
  * loop (layout template with its snippets, conditions, question texts), and
- * the `column` of span questions. Warnings, not
- * errors: units may still be uploaded after the design is written.
+ * the `unit.<field>` names span questions select in. Warnings, not errors:
+ * units may still be uploaded after the design is written.
  * Nothing to check while the study has no units (`fields` empty), unless
  * `always` (to locate the uses of fields the design doesn't declare).
  */

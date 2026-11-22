@@ -105,6 +105,7 @@ const TAB_HELP: Record<TabId, string> = {
 
 const defaultQueryClient = new QueryClient();
 
+/** The researcher UI (docs/client.md §7): the study list, a study's pages, and the server admin's page. */
 export function AdminApp({
   client,
   location,
@@ -234,6 +235,7 @@ function AdminAppInner({
   );
 }
 
+/** A study's pages: the header with its sections, and the page of the current tab. Navigation goes through the URL. */
 function StudyAdminView({
   banner,
   restore,
@@ -267,7 +269,6 @@ function StudyAdminView({
   const studyQuery = useStudyQuery(client);
   const allStudiesQuery = useStudiesQuery(rootClient);
   const study = studyQuery.data;
-  const groups = GROUPS;
 
   const [isDesignDirty, setIsDesignDirty] = useState(false);
   // Leaving the editor with unsaved edits (a tab, another study, the browser's back button): asked first
@@ -292,9 +293,6 @@ function StudyAdminView({
     }
   }
 
-  // Navigation goes through the URL; the guard asks first when the editor has unsaved edits
-  const requestNavigation = (action: () => void) => action();
-
   return (
     <div className="flex h-full flex-col overflow-hidden bg-page">
       {/* The study's header: back, which study, its sections; hides while scrolling down (useCollapsingChrome) */}
@@ -302,19 +300,16 @@ function StudyAdminView({
         <header className="border-b border-border bg-card/60 px-3 backdrop-blur-sm sm:px-4">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
             <div className="flex min-w-0 items-center gap-1">
-              <IconButton icon={ChevronLeft} label="All studies" onClick={() => requestNavigation(onBackToStudies)} />
+              <IconButton icon={ChevronLeft} label="All studies" onClick={onBackToStudies} />
               <select
                 aria-label="Study"
                 value={client.studyId}
-                onChange={(e) => {
-                  const newId = Number(e.target.value);
-                  requestNavigation(() => onSwitchStudy(newId));
-                }}
+                onChange={(e) => onSwitchStudy(Number(e.target.value))}
                 className="max-w-[16rem] truncate rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-input focus:border-input focus:ring-1 focus:ring-primary focus:outline-none"
               >
-                {allStudiesQuery.data?.map((j) => (
-                  <option key={j.id} value={j.id}>
-                    {j.name}
+                {allStudiesQuery.data?.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
                   </option>
                 ))}
               </select>
@@ -327,7 +322,7 @@ function StudyAdminView({
 
             {/* The sections */}
             <nav className="flex gap-0.5 overflow-x-auto" aria-label="Study">
-              {groups.map((g) => {
+              {GROUPS.map((g) => {
                 const Icon = g.icon;
                 const active = g.start === tab || g.pages.some((p) => p.id === tab);
                 return (
@@ -335,7 +330,7 @@ function StudyAdminView({
                     key={g.label}
                     type="button"
                     aria-current={active ? "page" : undefined}
-                    onClick={() => requestNavigation(() => onTabChange(g.start ?? g.pages[0].id))}
+                    onClick={() => onTabChange(g.start ?? g.pages[0].id)}
                     className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
                       active
                         ? "bg-wood/15 text-foreground ring-1 ring-wood/30 ring-inset"
@@ -354,7 +349,7 @@ function StudyAdminView({
               <Button
                 variant={tab === "Preview" ? "default" : "outline"}
                 size="sm"
-                onClick={() => requestNavigation(() => onTabChange("Preview"))}
+                onClick={() => onTabChange("Preview")}
                 className="h-8 gap-1.5 text-xs"
               >
                 <Play className="h-3.5 w-3.5 fill-current" />
@@ -364,7 +359,7 @@ function StudyAdminView({
           </div>
           {/* The active section's pages */}
           {(() => {
-            const group = groups.find((g) => g.pages.some((p) => p.id === tab));
+            const group = GROUPS.find((g) => g.pages.some((p) => p.id === tab));
             if (!group || group.pages.length < 2) return null;
             return (
               <nav className="-mb-px flex gap-1 overflow-x-auto" aria-label={group.label}>
@@ -376,7 +371,7 @@ function StudyAdminView({
                       key={p.id}
                       type="button"
                       aria-current={active ? "page" : undefined}
-                      onClick={() => requestNavigation(() => onTabChange(p.id))}
+                      onClick={() => onTabChange(p.id)}
                       className={`flex items-center gap-1.5 border-b-2 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
                         active
                           ? "border-primary text-foreground"
@@ -394,7 +389,6 @@ function StudyAdminView({
         </header>
       </CollapsibleHeader>
 
-      {/* Main Tab Content */}
       {/* The editor fills the height, its panes scroll on their own; other pages scroll as a whole */}
       <main
         className={
@@ -439,7 +433,7 @@ function StudyAdminView({
         {tab === "Preview" && <StudyPreview client={client} coderApiUrl={coderApiUrl} />}
       </main>
 
-      {/* Unsaved Changes Confirmation Modal */}
+      {/* Leaving the editor with unsaved edits: save, discard or stay */}
       <UnsavedChangesDialog
         open={leave.blocked}
         isSaving={savingDesign}
@@ -473,7 +467,7 @@ function BackupBanner({
   onDiscard: () => void;
 }) {
   const studies = useStudiesQuery(client);
-  const study = studies.data?.find((j) => j.id === backup.studyId);
+  const study = studies.data?.find((s) => s.id === backup.studyId);
   const when = new Date(backup.at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500 bg-amber-500/10 px-4 py-3 text-sm">

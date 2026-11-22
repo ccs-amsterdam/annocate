@@ -40,9 +40,8 @@ interface QuestionPreviewProps {
 }
 
 /**
- * Live interactive preview of a design item.
- * Displays real-time updates as the author edits the item's question prompt,
- * options, scale items, codes, colors, or unit layout.
+ * A live preview of a design item as coders see it (in a loop with its
+ * unit), following every edit; the question can be answered.
  */
 export function QuestionPreview({
   item,
@@ -75,7 +74,6 @@ export function QuestionPreview({
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-border/80 bg-muted/40 px-3.5 py-2">
         <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
           <Smartphone className="h-3.5 w-3.5 text-primary" />
@@ -90,10 +88,10 @@ export function QuestionPreview({
 
       {controls}
 
-      {/* Simulated Device Screen */}
+      {/* The coding screen */}
       <div className="flex-1 overflow-y-auto bg-background/50 p-4">
         <div className="mx-auto flex max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-md">
-          {/* Mock Document Area (if unit variable or loop) */}
+          {/* The unit (in a loop) */}
           {inLoop && (
             <div className="border-b border-border/60 bg-background p-4 text-sm">
               {spanVariable ? (
@@ -113,7 +111,6 @@ export function QuestionPreview({
             </div>
           )}
 
-          {/* Interactive Question Card */}
           {isVariable && (
             <div className="bg-card p-4">
               <div className="mb-2 flex items-center justify-between">
@@ -149,7 +146,6 @@ export function QuestionPreview({
             </div>
           )}
 
-          {/* Condition Preview */}
           {isCondition && (
             <div className="p-4 text-sm">
               <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">Condition Item</span>
