@@ -117,6 +117,23 @@ describe("results", () => {
     expect(coders.every((c) => c.unitIds.length === 10)).toBe(true);
   });
 
+  it("answer a repeated request with 304 while the study is unchanged", async () => {
+    const study = await example("swipe-sentiment");
+    const first = await app.request(`/api/study/${study}/results/answers`, { headers });
+    const etag = first.headers.get("etag")!;
+    expect(etag).toMatch(/^"answers-[0-9a-f]+"$/);
+    expect(first.headers.get("cache-control")).toBe("private, no-cache");
+    const again = await app.request(`/api/study/${study}/results/answers`, {
+      headers: { ...headers, "if-none-match": `W/${etag}` },
+    });
+    expect(again.status).toBe(304);
+    // Another view has its own tag
+    const agreement = await app.request(`/api/study/${study}/results/agreement`, {
+      headers: { ...headers, "if-none-match": etag },
+    });
+    expect(agreement.status).toBe(200);
+  });
+
   it("leave out answers a researcher reset", async () => {
     const study = await example("swipe-sentiment");
     await db.execute(sql`UPDATE annotation_values SET retired_at = now() WHERE study_id = ${study}`);

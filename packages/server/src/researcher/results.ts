@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   coderAgreement,
@@ -21,7 +21,7 @@ import { rows, type Db } from "../db/index.js";
 import { coderSessions, deployments, designVersions, units } from "../db/schema/index.js";
 import { HttpError } from "../shared/http.js";
 import { fileToken, LINK_SECONDS } from "../shared/files.js";
-import { ensureResultsExport } from "../shared/resultsExport.js";
+import { ensureResultsExport, exportStamp } from "../shared/resultsExport.js";
 import { unitVersionData } from "../db/sql.js";
 import { designVersionItems } from "../shared/designVersions.js";
 import { requireStudyUser } from "./auth.js";
@@ -359,22 +359,67 @@ async function resultCoders(db: Db, studyId: number): Promise<ResultCoder[]> {
   );
 }
 
+/** Results are reused this long even when the study changed meanwhile: a burst of refreshes runs a query once. */
+const REUSE_MS = 10_000;
+/** At most this many results kept (per study, view and stamp). */
+const MAX_CACHED = 500;
+
+/**
+ * The results views are summaries of all answers: heavy. Each response has
+ * an ETag from what the study holds (`exportStamp`, a few aggregates): a
+ * client asking again with it gets 304 while nothing changed. Computed
+ * results are kept per stamp, and reused for a few seconds even after a
+ * change, so refreshing repeatedly doesn't repeat the query.
+ */
+class ResultsCache {
+  private entries = new Map<string, { stamp: string; at: number; value: unknown }>();
+
+  async respond(c: Context<Env>, db: Db, view: string, compute: () => Promise<unknown>): Promise<Response> {
+    const studyId = c.get("studyId");
+    const key = `${studyId}/${view}`;
+    const now = Date.now();
+    let entry = this.entries.get(key);
+    // Within the reuse time the last result is served as it is (with its own stamp)
+    if (!entry || now - entry.at >= REUSE_MS) {
+      const stamp = await exportStamp(db, studyId);
+      if (!entry || entry.stamp !== stamp) {
+        entry = { stamp, at: now, value: await compute() };
+        this.entries.delete(key);
+        this.entries.set(key, entry);
+        if (this.entries.size > MAX_CACHED) this.entries.delete(this.entries.keys().next().value!);
+      } else entry.at = now;
+    }
+    const etag = `"${view.replace(/[^\w-]/g, "_")}-${entry.stamp}"`;
+    c.header("ETag", etag);
+    c.header("Cache-Control", "private, no-cache");
+    // Compression makes the ETag weak (W/"..."): compared without that
+    const asked = (c.req.header("if-none-match") ?? "").split(",").map((t) => t.trim().replace(/^W\//, ""));
+    if (asked.includes(etag)) return c.body(null, 304);
+    return c.json(entry.value);
+  }
+}
+
 export function results(server: Server): Hono<Env> {
   const app = new Hono<Env>();
-  app.get("/study/:studyId/results/answers", requireStudyUser(server, "READ"), async (c) =>
-    c.json({ questions: await answerCounts(server.db, c.get("studyId")) }),
+  const cache = new ResultsCache();
+  const { db } = server;
+  app.get("/study/:studyId/results/answers", requireStudyUser(server, "READ"), (c) =>
+    cache.respond(c, db, "answers", async () => ({ questions: await answerCounts(db, c.get("studyId")) })),
   );
-  app.get("/study/:studyId/results/agreement", requireStudyUser(server, "READ"), async (c) =>
-    c.json({ questions: await agreement(server.db, c.get("studyId")) }),
+  app.get("/study/:studyId/results/agreement", requireStudyUser(server, "READ"), (c) =>
+    cache.respond(c, db, "agreement", async () => ({ questions: await agreement(db, c.get("studyId")) })),
   );
-  app.get("/study/:studyId/results/units", requireStudyUser(server, "READ"), async (c) =>
-    c.json({ units: await resultUnits(server.db, c.get("studyId")) }),
+  app.get("/study/:studyId/results/units", requireStudyUser(server, "READ"), (c) =>
+    cache.respond(c, db, "units", async () => ({ units: await resultUnits(db, c.get("studyId")) })),
   );
   app.get("/study/:studyId/results/units/:unitId", requireStudyUser(server, "READ"), async (c) => {
     const unitId = Number(c.req.param("unitId"));
-    const found = Number.isInteger(unitId) && unitId > 0 ? await resultUnit(server.db, c.get("studyId"), unitId) : null;
-    if (!found) throw new HttpError(404, "Unit not found");
-    return c.json(found);
+    if (!Number.isInteger(unitId) || unitId <= 0) throw new HttpError(404, "Unit not found");
+    return cache.respond(c, db, `unit-${unitId}`, async () => {
+      const found = await resultUnit(db, c.get("studyId"), unitId);
+      if (!found) throw new HttpError(404, "Unit not found");
+      return found;
+    });
   });
   // The raw export (shared/resultsExport.ts): written or reused, then a download link
   app.post("/study/:studyId/results/export", requireStudyUser(server, "READ"), async (c) => {
@@ -386,8 +431,8 @@ export function results(server: Server): Hono<Env> {
       size,
     });
   });
-  app.get("/study/:studyId/results/coders", requireStudyUser(server, "READ"), async (c) =>
-    c.json({ coders: await resultCoders(server.db, c.get("studyId")) }),
+  app.get("/study/:studyId/results/coders", requireStudyUser(server, "READ"), (c) =>
+    cache.respond(c, db, "coders", async () => ({ coders: await resultCoders(db, c.get("studyId")) })),
   );
   return app;
 }
