@@ -70,6 +70,8 @@ export function useKeyTargets(
   const chosen = useKeyMapping();
   const mapping = chosen.kind === "filter" && !options.filterable ? numbersMapping : chosen;
   const [filter, setFilter] = useState("");
+  // Letters from the labels: what was typed of a key of more than one letter (he, hi)
+  const [typed, setTyped] = useState("");
   // After going back with the keyboard, the answer is focused, to change it at once
   const controller = useContext(KeyboardContext)?.controller;
   useEffect(() => {
@@ -99,6 +101,31 @@ export function useKeyTargets(
     (press) => {
       if (!groups || press.altKey || press.ctrlKey || press.metaKey) return false;
       const group = groups[active];
+      if (group && effectiveMapping(mapping, group).id === "letters") {
+        const keys = keysOf(mapping, group);
+        if (typed && (press.key === "Escape" || press.key === "Backspace")) {
+          setTyped(press.key === "Backspace" ? typed.slice(0, -1) : "");
+          return true;
+        }
+        if (press.key.length === 1 && !press.shiftKey) {
+          const key = press.key.toLowerCase();
+          // Go on with what was typed, else start again with this letter
+          for (const next of typed ? [typed + key, key] : [key]) {
+            const exact = keys.findIndex((k, i) => k === next && !group[i].disabled);
+            if (exact >= 0) {
+              setTyped("");
+              onChoose(active, exact);
+              return true;
+            }
+            if (keys.some((k) => k && k.length > next.length && k.startsWith(next))) {
+              setTyped(next);
+              return true;
+            }
+          }
+          setTyped("");
+        }
+        return chooseByKey(press);
+      }
       if (filtering(group) && group) {
         if (press.key === "Escape" && filter) setFilter("");
         else if (press.key === "Backspace" && filter) setFilter(filter.slice(0, -1));
@@ -126,7 +153,14 @@ export function useKeyTargets(
   return {
     keys: list.map((group) => keysOf(mapping, group)),
     filter: filtering(list[active]) ? filter : "",
-    matches: list.map((group, i) => (i === active && filtering(group) ? matchesOf(group) : group.map(() => true))),
+    // While typing a key of letters: the options it can still be
+    matches: list.map((group, i) =>
+      i === active && filtering(group)
+        ? matchesOf(group)
+        : i === active && typed
+          ? keysOf(mapping, group).map((k, j) => group[j].fixed !== undefined || !!k?.startsWith(typed))
+          : group.map(() => true),
+    ),
   };
 }
 

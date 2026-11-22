@@ -1,10 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useAnswerLayout } from "../../display/hooks";
 import { numericSteps, numericValueError } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { buildValues, initialValues } from "./answerValue";
-import { useKeyTargets } from "../../keyboard/hooks";
+import { useKeyScope, useKeyTargets } from "../../keyboard/hooks";
+import { PRIORITY } from "../../keyboard/controller";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 
 type NumericVariable = Extract<QuestionVariable, { type: "numeric" }>;
@@ -38,6 +39,18 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
   // Up to nine buttons: number keys choose them
   const targets = values.length && values.length <= 9 ? [values.map((n) => ({ label: String(n) }))] : null;
   useKeyTargets(targets, (_, i) => answer(values[i]));
+  // An input: typing a number starts it, without first going to the input (Tab)
+  const input = useRef<HTMLInputElement>(null);
+  useKeyScope(
+    (press) => {
+      if (press.altKey || press.ctrlKey || press.metaKey || !/^[0-9.,-]$/.test(press.key)) return false;
+      setText((t) => t + (press.key === "," ? "." : press.key));
+      input.current?.focus();
+      return true;
+    },
+    layout !== "buttons" && layout !== "slider",
+    { priority: PRIORITY.field },
+  );
 
   const labels = variable.labels ?? [];
 
@@ -108,6 +121,7 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
     >
       <div className="flex gap-2">
         <Input
+          ref={input}
           type="number"
           inputMode="decimal"
           className="h-10"

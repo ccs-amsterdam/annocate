@@ -61,16 +61,46 @@ export const numpadMapping: KeyMapping = {
   assign: (group) => group.map((t) => NUMPAD[t.pos!.row]?.[t.pos!.col] ?? null),
 };
 
-/** Letters in order of how easily touch typists reach them: the home row first. */
-const LETTERS = "asdfjklghqweruiopzxcvnmbty".split("");
+/** A label's letters and digits, lower case, without accents: what its key is cut from. */
+const keyText = (label: string) =>
+  label
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "");
 
-/** Home-row letters: a s d f j k l g h, then the rows above and below; up to 26 options (else numbers). */
+/**
+ * Each label's shortest start that no other label shares ("hello", "hi",
+ * "bye": he, hi, b); null for all of them when that's impossible (a label
+ * that is the start of another, or one without letters).
+ */
+export function labelKeys(labels: readonly string[]): string[] | null {
+  const texts = labels.map(keyText);
+  const keys: string[] = [];
+  for (const [i, text] of texts.entries()) {
+    if (!text) return null;
+    let key: string | null = null;
+    for (let n = 1; n <= text.length && key === null; n++) {
+      const start = text.slice(0, n);
+      if (texts.every((other, j) => j === i || !other.startsWith(start))) key = start;
+    }
+    if (key === null) return null;
+    keys.push(key);
+  }
+  return keys;
+}
+
+/**
+ * Letters from the labels: each option's shortest start that no other
+ * shares, typed to choose it (he, hi, b for hello, hi, bye). Groups where
+ * that's impossible (a label that is the start of another) use numbers.
+ */
 export const lettersMapping: KeyMapping = {
   id: "letters",
   name: "Letters",
-  description: "Home-row letters (a s d f j k l …), for touch typists",
-  supports: (group) => group.length <= LETTERS.length,
-  assign: (group) => group.map((_, i) => LETTERS[i]),
+  description: "The first letters of each label (he, hi, b for hello, hi, bye)",
+  supports: (group) => group.length > 0 && labelKeys(group.map((t) => t.label)) !== null,
+  assign: (group) => labelKeys(group.map((t) => t.label)) ?? group.map(() => null),
 };
 
 /**

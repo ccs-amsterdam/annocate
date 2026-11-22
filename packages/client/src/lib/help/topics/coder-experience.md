@@ -109,7 +109,7 @@ their browser):
 | ------------------ | ---------------------------------------------------------------------- |
 | **Numbers**        | **1** to **9**, in order (the default)                                 |
 | **Numpad**         | the numpad key where the button is; only in responsive studies         |
-| **Letters**        | home-row letters **a s d f j k l …**                                   |
+| **Letters**        | the first letters of each label (**he**, **hi**, **b** for hello, hi, bye) |
 | **Type to filter** | typing part of a label; **Enter** picks the first match, **Esc** clears |
 
 Where a choice can't work, numbers are used (letters: at most 26 options;

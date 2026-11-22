@@ -282,12 +282,12 @@ test("the coder chooses the keys for answers: letters, or typing to filter", asy
   await page.getByRole("button", { name: "I confirm", exact: true }).click();
   await at(page, TEXTS[0], "Topic?");
 
-  // Letters: a, s for the first two options (their badges too)
+  // Letters: the start of each label no other label shares (their badges too)
   await page.getByRole("button", { name: "Coder Settings" }).click();
   await page.getByLabel("Keys for answers").selectOption("letters");
   await page.keyboard.press("Escape");
-  await expect(page.locator("[data-key-target] kbd").first()).toHaveText("a");
-  await page.keyboard.press("s");
+  await expect(page.locator("[data-key-target] kbd").first()).toHaveText("p");
+  await page.keyboard.press("o");
   await at(page, TEXTS[0], "Tone?");
 
   // Type to filter: typed letters dim the others; Enter chooses the first match

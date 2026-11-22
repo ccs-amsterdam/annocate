@@ -102,11 +102,18 @@ describe("the other mappings", () => {
   });
 
   it("letters: the home row first; beyond 26 options numbers", async () => {
-    const { keysOf, lettersMapping } = await import("./mappings");
-    const options = (n: number) => Array.from({ length: n }, (_, i) => ({ label: `${i}` }));
-    expect(keysOf(lettersMapping, options(5))).toEqual(["a", "s", "d", "f", "j"]);
-    expect(keysOf(lettersMapping, [...options(2), { label: "n/a", fixed: "0" }])).toEqual(["a", "s", "0"]);
-    expect(keysOf(lettersMapping, options(27))[0]).toBe("1");
+    const { keysOf, lettersMapping, labelKeys } = await import("./mappings");
+    const labelled = (...labels: string[]) => labels.map((label) => ({ label }));
+    // Each label's shortest start no other label shares
+    expect(keysOf(lettersMapping, labelled("hello", "hi", "bye"))).toEqual(["he", "hi", "b"]);
+    expect(keysOf(lettersMapping, [...labelled("Positive", "Négatif"), { label: "n/a", fixed: "0" }])).toEqual([
+      "p",
+      "n",
+      "0",
+    ]);
+    // A label that starts another: numbers instead
+    expect(labelKeys(["no", "none"])).toBeNull();
+    expect(keysOf(lettersMapping, labelled("no", "none"))).toEqual(["1", "2"]);
   });
 
   it("type to filter: a word of the label starts with what was typed", async () => {
