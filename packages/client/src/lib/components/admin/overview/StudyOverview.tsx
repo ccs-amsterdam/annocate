@@ -24,7 +24,7 @@ type OverviewTarget = "Units" | "Links" | "Coders";
 interface StudyOverviewProps {
   client: ResearcherApi;
   onNavigate: (tab: OverviewTarget) => void;
-  /** Opens the Editor tab on this version. */
+  /** Opens the Design tab on this version. */
   onOpenDesign: (versionId: number) => void;
 }
 

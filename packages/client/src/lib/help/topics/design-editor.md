@@ -5,7 +5,7 @@ order: 1
 summary: The item tree, the item form, the preview, errors and warnings, saving, undo, reverting, backups and co-editors.
 ---
 
-**Design › Editor** is where you write the design. From top to bottom:
+**Design** is where you write the design. From top to bottom:
 
 - the **toolbar**: issue counts, **Visual** or **JSON**, undo and redo,
   **Revert**, **Export** (the design as a document, e.g. for an appendix),

@@ -20,8 +20,7 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
   const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "Expert coders")!;
 
   // Units, with a sets column: its name is the group
-  await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("button", { name: /Open the units/ }).click();
+  await page.getByRole("button", { name: "Units", exact: true }).click();
   await page.getByRole("button", { name: /Upload CSV/ }).click();
   await page.locator("input[type=file]").setInputFiles({
     name: "articles.csv",
@@ -84,8 +83,7 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
   await expect.poll(async () => (await answers(request, study.id)).length).toBe(2);
 
   // More units, without the sets column: added to the existing sets on request
-  await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("button", { name: /Open the units/ }).click();
+  await page.getByRole("button", { name: "Units", exact: true }).click();
   await page.getByRole("button", { name: /Upload CSV/ }).click();
   await page.locator("input[type=file]").setInputFiles({
     name: "more.csv",

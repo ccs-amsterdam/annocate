@@ -12,7 +12,6 @@ test("writing a design in the editor, as the help describes it, and saving it", 
   await page.goto("/research");
   await page.getByText("Editor test").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("button", { name: /Open the editor/ }).click();
 
   // A unit loop
   // (Form labels aren't tied to their fields yet: placeholders find them.)
@@ -71,7 +70,6 @@ test("a computed variable: a random condition linked to a set column", async ({ 
   await page.goto("/research");
   await page.getByText("Computed test").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("button", { name: /Open the editor/ }).click();
 
   // A Questions block (its first question), then a computed item in it
   await page.getByRole("button", { name: /Add block/ }).click();
@@ -99,7 +97,7 @@ test("a computed variable: a random condition linked to a set column", async ({ 
 
 test("blocks: questions and unit loops at the top level, in any order; the study's end", async ({ page, request }) => {
   const study = await api<StudyResponse>(request, "POST", "/study", { name: "Blocks test" });
-  await page.goto(`/research/studies/${study.id}/editor`);
+  await page.goto(`/research/studies/${study.id}/design`);
 
   // The top level holds blocks: a unit loop, or questions
   await page.getByRole("button", { name: /Add block/ }).click();

@@ -54,7 +54,7 @@ test("the coder invitations show the coders; a dialog makes the coders' column; 
     items: [loop()],
   });
 
-  await page.goto(`/research/studies/${study.id}/editor`);
+  await page.goto(`/research/studies/${study.id}/design`);
   await page.getByRole("button", { name: /^Coder invitations/ }).click();
   await expect(page.getByText("2 coders.", { exact: true })).toBeVisible();
 

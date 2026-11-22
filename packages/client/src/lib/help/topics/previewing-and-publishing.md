@@ -34,7 +34,7 @@ The banner under the toolbar says what you are looking at:
 | **v2 is live: coders are using it** | no draft; **Save as draft** makes your changes a new draft               |
 | **Viewing v1, an older version**    | read only                                                                |
 
-Leaving the **Editor** with unsaved changes asks to save or discard them.
+Leaving **Design** with unsaved changes asks to save or discard them.
 See also [Backups in your browser](design-editor.md#backups-in-your-browser).
 
 ## The versions dialog

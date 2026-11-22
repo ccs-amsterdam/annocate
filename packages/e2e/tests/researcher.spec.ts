@@ -105,8 +105,7 @@ test("your first study, as the help describes it: units, a design, deploy, a lin
   const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "News pilot")!;
 
   // 2. Upload the units
-  await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("button", { name: /Open the units/ }).click();
+  await page.getByRole("button", { name: "Units", exact: true }).click();
   await page.getByRole("button", { name: /Upload CSV/ }).click();
   await page.locator("input[type=file]").setInputFiles({
     name: "articles.csv",
@@ -148,7 +147,7 @@ test("your first study, as the help describes it: units, a design, deploy, a lin
       },
     ],
   });
-  await page.getByRole("button", { name: "Editor", exact: true }).click();
+  await page.getByRole("button", { name: "Design", exact: true }).click();
   await page.getByRole("button", { name: "Deploy…", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Deploy", exact: true }).click();
   await expect

@@ -21,7 +21,6 @@ import { CollapsibleHeader } from "../../hooks/useCollapsingChrome";
 import {
   ChevronLeft,
   LayoutDashboard,
-  BookOpen,
   Layers,
   Link2,
   Users,
@@ -38,7 +37,6 @@ import { clearBackup, readBackup, type DesignBackup } from "../../design/localBa
 import { HelpDialog } from "../../help/HelpDialog";
 import { PendingDeployBar } from "./PendingDeployBar";
 import { openHelp } from "../../help/helpStore";
-import { DesignLanding } from "./DesignLanding";
 import type { TabId } from "../../admin/tabs";
 
 /**
@@ -57,27 +55,18 @@ export type LeaveGuard = (when: boolean) => { blocked: boolean; proceed: () => v
 const noGuard: LeaveGuard = () => ({ blocked: false, proceed: () => {}, stay: () => {} });
 
 /**
- * The tabs, grouped: designing the study (design, units), deploying it
- * (links, coders), its results, and settings. A group with more than
- * one page shows them as sub tabs. A group with a `start` page opens there
- * (Design: cards for its pages), without sub tabs.
+ * The tabs, grouped: the overview, the design, the units, deploying the
+ * study (links, coders), its results, and settings. A group with more than
+ * one page shows them as sub tabs.
  */
 const GROUPS: {
   label: string;
   icon: typeof LayoutDashboard;
-  start?: TabId;
   pages: { id: TabId; label: string; icon: typeof LayoutDashboard }[];
 }[] = [
   { label: "Overview", icon: LayoutDashboard, pages: [{ id: "Overview", label: "Overview", icon: LayoutDashboard }] },
-  {
-    label: "Design",
-    icon: PencilRuler,
-    start: "Design",
-    pages: [
-      { id: "Editor", label: "Editor", icon: BookOpen },
-      { id: "Units", label: "Units", icon: Layers },
-    ],
-  },
+  { label: "Design", icon: PencilRuler, pages: [{ id: "Design", label: "Design", icon: PencilRuler }] },
+  { label: "Units", icon: Layers, pages: [{ id: "Units", label: "Units", icon: Layers }] },
   {
     label: "Deploy",
     icon: Send,
@@ -94,7 +83,6 @@ const GROUPS: {
 const TAB_HELP: Record<TabId, string> = {
   Overview: "overview",
   Design: "design-editor",
-  Editor: "design-editor",
   Units: "uploading-units",
   Links: "links",
   Coders: "coders-and-progress",
@@ -173,7 +161,7 @@ function AdminAppInner({
       client={client}
       backup={backup}
       onContinue={() => {
-        onNavigate({ page: "study", studyId: backup.studyId, tab: "Editor" });
+        onNavigate({ page: "study", studyId: backup.studyId, tab: "Design" });
         setRestore(backup);
         setBackup(null);
       }}
@@ -201,7 +189,7 @@ function AdminAppInner({
           <StudyList
             client={client}
             onSelectStudy={(id, open) =>
-              onNavigate({ page: "study", studyId: id, tab: open === "editor" ? "Editor" : "Overview" })
+              onNavigate({ page: "study", studyId: id, tab: open === "design" ? "Design" : "Overview" })
             }
             me={me}
             server={server}
@@ -224,7 +212,7 @@ function AdminAppInner({
       version={location.version}
       onTabChange={(tab) => onNavigate({ page: "study", studyId: location.studyId, tab })}
       onVersionChange={(version) =>
-        onNavigate({ page: "study", studyId: location.studyId, tab: "Editor", version }, { replace: true })
+        onNavigate({ page: "study", studyId: location.studyId, tab: "Design", version }, { replace: true })
       }
       onBackToStudies={() => onNavigate({ page: "studies" })}
       onSwitchStudy={(id) =>
@@ -272,7 +260,7 @@ function StudyAdminView({
 
   const [isDesignDirty, setIsDesignDirty] = useState(false);
   // Leaving the editor with unsaved edits (a tab, another study, the browser's back button): asked first
-  const leave = useLeaveGuard(isDesignDirty && tab === "Editor");
+  const leave = useLeaveGuard(isDesignDirty && tab === "Design");
   const saveDesign = useRef<SaveFn | null>(null);
   // A design version to open, from the overview; `n` remounts the manager on each request
   const [designTarget, setDesignTarget] = useState<{ id: number; n: number } | null>(null);
@@ -324,13 +312,13 @@ function StudyAdminView({
             <nav className="flex gap-0.5 overflow-x-auto" aria-label="Study">
               {GROUPS.map((g) => {
                 const Icon = g.icon;
-                const active = g.start === tab || g.pages.some((p) => p.id === tab);
+                const active = g.pages.some((p) => p.id === tab);
                 return (
                   <button
                     key={g.label}
                     type="button"
                     aria-current={active ? "page" : undefined}
-                    onClick={() => onTabChange(g.start ?? g.pages[0].id)}
+                    onClick={() => onTabChange(g.pages[0].id)}
                     className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
                       active
                         ? "bg-wood/15 text-foreground ring-1 ring-wood/30 ring-inset"
@@ -392,26 +380,26 @@ function StudyAdminView({
       {/* The editor fills the height, its panes scroll on their own; other pages scroll as a whole */}
       <main
         className={
-          tab === "Editor"
+          tab === "Design"
             ? "flex min-h-0 flex-1 flex-col overflow-hidden px-3 pt-2 pb-3 sm:px-4"
             : "min-h-0 flex-1 overflow-auto p-4 sm:p-6"
         }
       >
         {banner}
         {/* The editor has its own Deploy */}
-        {tab !== "Editor" && <PendingDeployBar client={client} />}
+        {tab !== "Design" && <PendingDeployBar client={client} />}
         {tab === "Overview" && (
           <StudyOverview
             client={client}
             onNavigate={onTabChange}
             onOpenDesign={(id) => {
               setDesignTarget((t) => ({ id, n: (t?.n ?? 0) + 1 }));
-              onTabChange("Editor");
+              onTabChange("Design");
             }}
           />
         )}
         {tab === "Settings" && <StudySettingsPage client={client} onDeleted={onBackToStudies} />}
-        {tab === "Editor" && (
+        {tab === "Design" && (
           <DesignManager
             key={`${designTarget?.n ?? 0}:${restore?.at ?? ""}`}
             initialVersionId={designTarget?.id ?? null}
@@ -425,7 +413,6 @@ function StudyAdminView({
             }}
           />
         )}
-        {tab === "Design" && <DesignLanding client={client} onOpen={(page) => onTabChange(page)} />}
         {tab === "Units" && <UnitsPage client={client} />}
         {tab === "Links" && <LinksPanel client={client} />}
         {tab === "Coders" && <CodersPanel client={client} />}

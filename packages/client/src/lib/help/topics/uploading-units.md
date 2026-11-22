@@ -6,7 +6,7 @@ summary: Upload the material to code from a CSV file - ids, fields and their typ
 ---
 
 **Units** are what coders code: articles, posts, survey answers, image
-links. Upload them as a CSV file on **Design › Units**. Each row is a
+links. Upload them as a CSV file on **Units**. Each row is a
 unit; the columns you choose become **fields**, shown in a design as
 `$unit.headline`. Uploaded units are drafts until you deploy.
 

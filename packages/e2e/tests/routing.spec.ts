@@ -24,8 +24,6 @@ test("a study's tabs are URLs: a reload stays; leaving unsaved edits asks first"
   await expect(page).toHaveURL(new RegExp(`/research/studies/${study.id}/overview$`));
   await page.getByRole("button", { name: "Design", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/research/studies/${study.id}/design$`));
-  await page.getByRole("button", { name: /Open the editor/ }).click();
-  await expect(page).toHaveURL(new RegExp(`/research/studies/${study.id}/editor$`));
   await page.reload();
   await expect(page.getByRole("button", { name: /Add block/ })).toBeVisible();
 
@@ -35,12 +33,12 @@ test("a study's tabs are URLs: a reload stays; leaving unsaved edits asks first"
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Unsaved Changes" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
-  await expect(page).toHaveURL(/\/editor$/);
+  await expect(page).toHaveURL(/\/design$/);
   await page.goBack();
   await expect(page.getByRole("heading", { name: "Unsaved Changes" })).toBeVisible();
   await page.getByRole("button", { name: "Discard changes" }).click();
-  // Back to the Design section's start, where the editor was opened
-  await expect(page).toHaveURL(new RegExp(`/research/studies/${study.id}/design$`));
+  // Back where the researcher came from
+  await expect(page).toHaveURL(new RegExp(`/research/studies/${study.id}/overview$`));
 });
 
 test("the coder home lists the studies this browser takes part in, to continue them", async ({ page, request }) => {
@@ -77,7 +75,7 @@ test("on a phone the editor shows one pane at a time: the tree, then an item wit
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const { study } = await fromExample(request, "simple-survey");
-  await page.goto(`/research/studies/${study.id}/editor`);
+  await page.goto(`/research/studies/${study.id}/design`);
   const tree = page.getByText(/^Items \(\d+\)$/);
   await expect(tree).toBeVisible();
   // The title above the tree; the session settings open their form, full width, without the tree

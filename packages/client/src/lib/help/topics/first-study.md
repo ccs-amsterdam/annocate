@@ -30,13 +30,13 @@ On the **Studies** page, click **Create new study** and choose:
   steps below.
 - **From an example**: a ready study to look around in.
 
-The study opens on **Overview**. The tabs: **Design** (**Editor**,
-**Units**), **Deploy** (**Links**, **Coders**), **Results** and
-**Settings**; **Preview** is at the top right.
+The study opens on **Overview**. The tabs: **Design**, **Units**,
+**Deploy** (**Links**, **Coders**), **Results** and **Settings**;
+**Preview** is at the top right.
 
 ## 2. Upload the units
 
-1. **Design › Units** → **Upload CSV** → **Choose a CSV file**.
+1. **Units** → **Upload CSV** → **Choose a CSV file**.
 2. Check that `id` has the type **unit id**, and click **Use column
    names** (`headline` and `text` become fields).
 3. Click **Upload 3 units**.
@@ -45,7 +45,7 @@ More: [Uploading units](uploading-units.md).
 
 ## 3. Write the questions
 
-Open **Design › Editor**. Left: the design as a tree of blocks. Right: the
+Open **Design**. Left: the design as a tree of blocks. Right: the
 form of what you select.
 
 1. Click **Add block** → **Unit loop**. A unit loop asks its questions for
@@ -105,13 +105,13 @@ For this study, keep **Crowd**. More: [Links](links.md#coder-invitations),
    it. A red issue count in the toolbar says what to fix first.
 2. Click **Preview** at the top right and code the study as a coder
    would. Nothing is stored.
-3. Change what reads badly in the **Editor**, save, and preview again.
+3. Change what reads badly on **Design**, save, and preview again.
 
 More: [Preview, save and deploy](previewing-and-publishing.md).
 
 ## 7. Deploy and share the link
 
-1. In the **Editor**, click **Deploy…** → **Deploy**.
+1. On **Design**, click **Deploy…** → **Deploy**.
 2. Open **Deploy › Links** and click **Copy link**.
 3. Send the link to your coders.
 

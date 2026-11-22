@@ -20,8 +20,7 @@ test("a practice question gives feedback when wrong, answered again until right;
   const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "Checked coders")!;
 
   // Units with a sets column and answer columns
-  await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("button", { name: /Open the units/ }).click();
+  await page.getByRole("button", { name: "Units", exact: true }).click();
   await page.getByRole("button", { name: /Upload CSV/ }).click();
   await page.locator("input[type=file]").setInputFiles({
     name: "units.csv",
@@ -134,7 +133,6 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
   await page.goto("/research");
   await page.getByText("Gold answers").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("button", { name: /Open the editor/ }).click();
   // The loop's Units tab
   await page.getByTitle("Units: which units coders get").click();
   await page.getByRole("button", { name: "Create gold values…" }).click();

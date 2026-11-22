@@ -28,8 +28,8 @@ import { HelpButton } from "../../help/HelpButton";
 
 interface StudyListProps {
   client: ResearcherApi;
-  /** `editor`: open the study on its Editor tab (after the setup wizard). */
-  onSelectStudy: (studyId: number, open?: "editor") => void;
+  /** `design`: open the study on its Design tab (after the setup wizard). */
+  onSelectStudy: (studyId: number, open?: "design") => void;
   /** Who is logged in (null: unknown, e.g. a host app without accounts): only researchers create studies. */
   me?: MeResponse | null;
   server?: ServerApi;
@@ -231,7 +231,7 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
           onClose={() => setShowImport(false)}
           onCreated={(study) => {
             setShowImport(false);
-            onSelectStudy(study.id, "editor");
+            onSelectStudy(study.id, "design");
           }}
         />
       )}
@@ -242,7 +242,7 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
           onClose={() => setShowWizard(false)}
           onCreated={(study) => {
             setShowWizard(false);
-            onSelectStudy(study.id, "editor");
+            onSelectStudy(study.id, "design");
           }}
         />
       )}

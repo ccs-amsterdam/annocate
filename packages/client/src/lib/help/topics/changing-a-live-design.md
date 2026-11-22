@@ -60,7 +60,7 @@ longer count: the units are unfinished again, also for the same coders.
 
 - **Deploy › Coders** → **Reset answers…**: all coders;
 - the reset icon in a coder's row: that coder;
-- **Design › Units**: select units → **Reset answers…**.
+- **Units**: select units → **Reset answers…**.
 
 Then choose the questions (a whole loop, or some). Only loop answers can
 be reset. To download them, tick **Include answers that were reset** on

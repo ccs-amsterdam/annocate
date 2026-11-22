@@ -418,8 +418,8 @@ memoization.
 
 ## 7. Admin UI
 
-`components/admin/AdminApp.tsx` is a tabbed shell: Overview, Design (Editor,
-Units), Deploy (Links, Coders), Results, Settings. It uses a `ResearcherApi`
+`components/admin/AdminApp.tsx` is a tabbed shell: Overview, Design, Units,
+Deploy (Links, Coders), Results, Settings. It uses a `ResearcherApi`
 (`api/httpResearcherApi.ts`).
 
 - **Login**: `account/ResearcherGate.tsx` shows a login screen unless logged

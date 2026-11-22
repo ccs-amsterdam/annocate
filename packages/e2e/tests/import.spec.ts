@@ -62,7 +62,7 @@ test("a design file makes a study with that design and no units; other files are
   });
   await expect(dialog.getByTestId("import-summary")).toContainText("No units");
   await dialog.getByRole("button", { name: "Create study" }).click();
-  await expect(page).toHaveURL(/\/research\/studies\/\d+\/editor/);
+  await expect(page).toHaveURL(/\/research\/studies\/\d+\/design/);
   const id = Number(/\/research\/studies\/(\d+)/.exec(page.url())![1]);
   const copy = await contents(request, id);
   expect(copy.units).toEqual([]);
@@ -96,7 +96,7 @@ test("a study export makes a copy of the study, with its coders and answers, und
   await expect(dialog.getByTestId("import-summary")).toContainText(/3 coders with 30 answers/);
   await dialog.getByLabel("Study name").fill("Sentiment, moved");
   await dialog.getByRole("button", { name: "Create study" }).click();
-  await expect(page).toHaveURL(/\/research\/studies\/\d+\/editor/);
+  await expect(page).toHaveURL(/\/research\/studies\/\d+\/design/);
   const copyId = Number(/\/research\/studies\/(\d+)/.exec(page.url())![1]);
   expect(copyId).not.toBe(study.id);
 
