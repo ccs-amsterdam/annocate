@@ -173,9 +173,8 @@ test("spans by keyboard: the arrows move over the words, Space selects from ther
   await page.goto(link);
   await question(page, "Select every person and organisation mentioned in the text.");
   await page.waitForTimeout(800);
+  // (Closing the keyboard menu gives the keys back to the question)
   await shortcutStyle(page, "Fast type");
-  // (The menu's button keeps focus when it closes: Space would open it again)
-  await page.locator("body").click({ position: { x: 1, y: 1 } });
   // "Mayor Anna de Wit met the board of the Harbour Company ...": the first arrow is on Mayor, the next on Anna
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowRight");

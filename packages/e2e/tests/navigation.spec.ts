@@ -555,3 +555,79 @@ test("a slider (auto from 7 values): Left / Right from the middle, End, Shift + 
   await page.keyboard.press("Shift+Enter");
   await expect.poll(async () => (await answers(request, created.id))[0]?.value.values?.[0]?.value).toBe(9);
 });
+
+/** A deployed study of one loop over two units (title and text), with these loop items. */
+async function loopStudy(
+  request: Parameters<typeof api>[0],
+  name: string,
+  children: object[],
+): Promise<{ id: number; link: string }> {
+  const created = await api<StudyResponse>(request, "POST", "/study", { name });
+  await api<UnitResponse[]>(request, "POST", `/study/${created.id}/units`, {
+    units: [
+      { externalId: "u1", data: { title: "Alpha beta", text: "Gamma delta" } },
+      { externalId: "u2", data: { title: "Epsilon", text: "Zeta" } },
+    ],
+  });
+  const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, {
+    items: [{ type: "unit_loop", children }],
+  });
+  await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
+  return { id: created.id, link: `/code/${created.id}?link=${link.secret}` };
+}
+
+test("layout items: before the first, a question without the unit; then the unit as each layout shows it", async ({
+  page,
+  request,
+}) => {
+  const { link } = await loopStudy(request, "Layout items", [
+    nominal("warmup", "Ready for this unit?", ["yes", "no"]),
+    { type: "layout", template: "# $unit.title" },
+    nominal("first", "About the title?", ["yes", "no"]),
+    { type: "layout", template: "# $unit.title\n\n$unit.text" },
+    nominal("second", "About the text?", ["yes", "no"]),
+  ]);
+  await page.goto(link);
+  await question(page, "Ready for this unit?");
+  await expect(page.getByText("Alpha beta")).toHaveCount(0);
+  await page.keyboard.press("1");
+  await question(page, "About the title?");
+  await expect(page.getByText("Alpha beta", { exact: true })).toBeVisible();
+  await expect(page.getByText("Gamma delta")).toHaveCount(0);
+  await page.keyboard.press("1");
+  await question(page, "About the text?");
+  await expect(page.getByText("Gamma delta", { exact: true })).toBeVisible();
+  // Back: the layout that question had
+  await page.keyboard.press("Shift+ArrowLeft");
+  await question(page, "About the title?");
+  await expect(page.getByText("Gamma delta")).toHaveCount(0);
+});
+
+test("spans by keyboard over two fields: the arrows go on from the title into the text", async ({ page, request }) => {
+  const { id, link } = await loopStudy(request, "Spans in two fields", [
+    { type: "layout", template: "# $unit.title\n\n$unit.text" },
+    {
+      type: "question",
+      name: "names",
+      variable: { type: "span", question: "Mark the names", fields: ["title", "text"], options: [{ value: "name" }] },
+    },
+  ]);
+  await page.goto(link);
+  await question(page, "Mark the names");
+  // Alpha, beta, then on into the text: Gamma
+  for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowRight");
+  await expect(page.locator("[data-cursor]").first()).toHaveText("Gamma");
+  // Space, Space: Gamma alone; then its label (focused) with Space
+  await page.keyboard.press("Space");
+  await page.keyboard.press("Space");
+  await expect(page.locator("[data-span-label]:focus")).toHaveText(/name/);
+  await page.keyboard.press("Space");
+  // And back into the title: its last word
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator("[data-cursor]").first()).toHaveText("beta");
+  await page.keyboard.press("Shift+Enter");
+  await expect.poll(async () => (await answers(request, id)).length).toBe(1);
+  const [row] = await answers(request, id);
+  expect(row.value.spans).toMatchObject([{ value: "name", field: "text", slices: [{ text: "Gamma" }] }]);
+});

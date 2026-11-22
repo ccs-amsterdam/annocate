@@ -36,6 +36,7 @@ export function SpanAnnotationProvider({
   const [pendingSpan, setPendingSpanState] = useState<PendingSpan | null>(initialPendingSpan ?? null);
   const [isViewingAllLabels, setIsViewingAllLabels] = useState(initialIsViewingAllLabels ?? false);
   const [focusedSpanId, setFocusedSpanId] = useState<string | null>(null);
+  const [cursor, setCursor] = useState<SpanAnnotationState["cursor"]>(null);
 
   // Another question or other initial values: start over. Adjusted while
   // rendering rather than in an effect, so there is no render with stale state.
@@ -106,8 +107,11 @@ export function SpanAnnotationProvider({
       setIsViewingAllLabels,
       focusedSpanId,
       setFocusedSpanId,
+      cursor,
+      setCursor,
     };
   }, [
+    cursor,
     sameFields,
     options,
     spans,

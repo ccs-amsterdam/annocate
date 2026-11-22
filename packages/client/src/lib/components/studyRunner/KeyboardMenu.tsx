@@ -40,7 +40,12 @@ export function KeyboardMenu() {
           <Keyboard className="h-4 w-4" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 space-y-3 p-3 shadow-lg">
+      <PopoverContent
+        align="end"
+        className="w-72 space-y-3 p-3 shadow-lg"
+        // Closed: the keys go back to the question, not to this button (Space would open it again)
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
         <h4 className="border-b border-border/80 pb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
           Keyboard shortcuts
         </h4>

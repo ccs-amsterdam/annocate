@@ -48,6 +48,13 @@ export interface SpanAnnotationState {
   /** A span being edited (e.g. opened from the list): highlighted and scrolled to in the text. */
   focusedSpanId: string | null;
   setFocusedSpanId: (id: string | null) => void;
+  /**
+   * Where the keyboard is (SelectableText): the field it works in (clicked
+   * last, else the first) and the word it is on there (null: none yet; -1:
+   * the last, when it came back from the next field).
+   */
+  cursor: { field: string; word: number | null } | null;
+  setCursor: (cursor: { field: string; word: number | null } | null) => void;
 }
 
 export const SpanAnnotationContext = createContext<SpanAnnotationState | null>(null);

@@ -89,10 +89,24 @@ function wordOnNextLine(root: Node, words: readonly [number, number][], from: nu
   return best;
 }
 
-/** Focuses a new selection's first label button (SpanAnswerField's, or the menu at the selection). */
-function focusLabels(): void {
-  const buttons = [...document.querySelectorAll<HTMLElement>("[data-span-label]")];
-  buttons.find((el) => el.getClientRects().length > 0)?.focus();
+/**
+ * Focuses a new selection's first label button (SpanAnswerField's, or the
+ * menu at the selection), and keeps it there for a few frames: the menu at
+ * a selection that just began is still being replaced (it measures its
+ * room, then mounts in a portal), which drops focus to the page. Stops when
+ * focus went anywhere else, or the labels are gone.
+ */
+function focusLabels(frames = 20, seen = false): void {
+  const active = document.activeElement;
+  const onPage = !active || active === document.body;
+  if (!onPage && !active?.hasAttribute("data-span-label")) return;
+  const first = [...document.querySelectorAll<HTMLElement>("[data-span-label]")].find(
+    (el) => el.getClientRects().length > 0,
+  );
+  // Labelled (or cancelled) since: done
+  if (!first && seen) return;
+  if (onPage && first) first.focus();
+  if (frames > 0) requestAnimationFrame(() => focusLabels(frames - 1, seen || !!first));
 }
 
 /**
@@ -104,7 +118,8 @@ function focusLabels(): void {
  * - A new selection waiting for its label: with gaps allowed, clicking or
  *   dragging toggles words; without, it moves the selection's end (its
  *   first word stays; clicks before it are ignored).
- * - The keyboard (in the question's first field): the arrows move a cursor
+ * - The keyboard (in the field clicked last, else the first; the arrows go
+ *   on into the question's next or previous field): the arrows move a cursor
  *   over the words (up and down: a line), Space starts a selection there,
  *   the arrows extend it, and Space again ends it; the label buttons then
  *   have focus (the arrows move between them, Space or Enter or their key
@@ -144,13 +159,19 @@ function SpanSelectableText({ text, field, inline = false }: { text: string; fie
   const pending = annotation?.pendingSpan ?? null;
   const options = annotation?.options ?? [];
 
-  // The keyboard: the word it is on, and while selecting the word the selection started at
+  // The keyboard: the field it works in (the context's cursor: clicked last, else the first),
+  // the word it is on, and while selecting the word the selection started at
   const words = useMemo(() => wordRanges(text), [text]);
-  const [cursor, setCursor] = useState<number | null>(null);
+  const keyboardField = annotation !== null && ctx !== null && own === (ctx.cursor?.field ?? ctx.fields[0]);
+  const word = keyboardField ? (ctx?.cursor?.word ?? null) : null;
+  const cursor =
+    word === null || words.length === 0 ? null : word < 0 ? words.length - 1 : Math.min(word, words.length - 1);
+  const setCursor = (next: number | null) => own !== undefined && ctx?.setCursor({ field: own, word: next });
   const [anchor, setAnchor] = useState<number | null>(null);
   // A selection that was cancelled or labelled ends the keyboard's selecting
   if (anchor !== null && !pending) setAnchor(null);
-  const keyboardField = annotation !== null && ctx !== null && own === ctx.fields[0];
+  // The other fields of the question, in order: the arrows go on into them
+  const fieldIndex = ctx && own !== undefined ? ctx.fields.indexOf(own) : -1;
 
   /** The menu of the spans on a clicked word (`SpanManageLabels`). */
   const openSpanMenu = useCallback(
@@ -261,6 +282,22 @@ function SpanSelectableText({ text, field, inline = false }: { text: string; fie
       if (pending && !selecting) return false;
       const direction: Direction | undefined = arrowDirection(press.key);
       if (direction) {
+        const forward = direction === "right" || direction === "down";
+        // At the first or last word (up and down: line), or in an empty text: on into the previous or next field
+        const neighbour = ctx?.fields[fieldIndex + (forward ? 1 : -1)];
+        if (!selecting && neighbour !== undefined) {
+          const horizontal = direction === "left" || direction === "right";
+          const atEdge =
+            words.length === 0 ||
+            (cursor !== null &&
+              (horizontal
+                ? cursor === (forward ? words.length - 1 : 0)
+                : !!containerRef.current && wordOnNextLine(containerRef.current, words, cursor, forward) === cursor));
+          if (atEdge) {
+            ctx?.setCursor({ field: neighbour, word: forward ? 0 : -1 });
+            return true;
+          }
+        }
         if (words.length === 0) return false;
         const at = cursor ?? -1;
         const next =
@@ -292,9 +329,9 @@ function SpanSelectableText({ text, field, inline = false }: { text: string; fie
             mode: "create",
           });
         } else {
-          // The selection is done: on to its label
+          // The selection is done: on to its label, once Space is up (released on a focused label, it would click it)
           setAnchor(null);
-          requestAnimationFrame(focusLabels);
+          window.addEventListener("keyup", () => requestAnimationFrame(() => focusLabels()), { once: true });
         }
         return true;
       }
@@ -308,7 +345,7 @@ function SpanSelectableText({ text, field, inline = false }: { text: string; fie
         return true;
       }
       if (press.key === "Escape" && cursor !== null && !pending) {
-        setCursor(null);
+        ctx?.setCursor(null);
         return true;
       }
       return false;
@@ -415,6 +452,12 @@ function SpanSelectableText({ text, field, inline = false }: { text: string; fie
       <Container
         ref={containerRef as React.Ref<HTMLDivElement & HTMLSpanElement>}
         tabIndex={annotation ? 0 : undefined}
+        // Clicked: the keyboard works in this field from now on
+        onMouseDown={
+          annotation && own !== undefined && ctx?.cursor?.field !== own
+            ? () => ctx?.setCursor({ field: own, word: null })
+            : undefined
+        }
         data-keys-own=""
         onKeyUp={annotation ? handleKeyUp : undefined}
         // The text being selected, the selection waiting for a label and the span being edited share one tint (wood)

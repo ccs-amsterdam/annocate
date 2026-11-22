@@ -302,7 +302,9 @@ shortcut style's keys work too. Vertical drags still scroll long units (`touch-a
   field. Word mode snaps to words; character mode takes the exact selection.
 - Spans may overlap. Clicking a span opens its labels; Backspace or Delete
   removes the last span.
-- The keyboard (`SelectableText`, in the question's first field): the
+- The keyboard (`SelectableText`, in the field clicked last, else the
+  first; the cursor is the span context's, and the arrows go on into the
+  next or previous field at the text's ends): the
   arrows move a word cursor (up/down by line, from where the words are on
   screen); Space starts a selection, the arrows extend it, Space ends it
   and focuses the first label button (`data-span-label`). Labels take the
