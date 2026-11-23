@@ -942,6 +942,21 @@ describe("practice and gold units (docs/architecture.md §6.2)", () => {
     practice: { retry, questions: { q1: { key: "B", message: "It is B." } } },
   });
 
+  it("an instruction that opens on practice units opens once: not again after a wrong answer", async () => {
+    let served = false;
+    const question = { ...unitVar("q1"), instruction: "Pick B.", instructionOpen: "practice" as const };
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session([unitLoop("main", [question])])),
+      getNextUnit: vi.fn(async () => (served ? null : ((served = true), practiceUnit(true)))),
+    });
+    const manager = new StudyManager(server, { timer: new QuestionTimer(() => 0) });
+    await manager.start();
+    expect(manager.getSnapshot().currentTexts?.openInstruction).toBe(true);
+    await manager.answer(A);
+    expect(manager.getSnapshot().practiceWrong).toMatchObject({ question: "q1" });
+    expect(manager.getSnapshot().currentTexts?.openInstruction).toBeUndefined();
+  });
+
   it("a wrong practice answer shows its feedback and the coder answers again; the tries are posted", async () => {
     const postUnitVariables = vi.fn(async () => ({}));
     let served = false;

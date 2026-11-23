@@ -1,12 +1,12 @@
 {
   "category": "Crowd coding",
   "title": "Practice and gold units",
-  "description": "Crowd coders sort made-up news headlines by topic and say whether they are clickbait. They start with 4 practice headlines that give feedback when an answer is wrong; 3 gold headlines with a known topic are spread among the 12 headlines, checked silently, and coders who get too many wrong are screened out. With example answers from 2 coders, one of whom got a gold headline wrong.",
+  "description": "Crowd coders sort made-up news headlines by topic and say whether they are clickbait. They start with 4 practice headlines that give feedback when an answer is wrong; the 12 headlines are divided among the crowd so that each is coded by two coders; 3 gold headlines with a known topic are spread among them, checked silently, and coders who get too many wrong are screened out. With example answers from 2 coders, one of whom got a gold headline wrong.",
   "tryThis": [
     "Open the link (Links page) in a private window and answer a practice headline wrongly: you see why, and answer again.",
     "Code on and get two gold headlines wrong in a row (the burglar, the unemployment figures, the swimming club): the study ends at the Screen-out block's end item.",
     "See the right answers in the units: the columns topic_practice, topic_practice_message and topic_gold, and the set column 'kind' with _practice and _gold (Units page). Coders never get these columns.",
-    "Open the unit loop on the Design page: practice units before the coding units, gold units spread throughout, and the health that ends a session.",
+    "Open the unit loop on the Design page: the headlines divided among coders (two per headline), practice units before them, gold units spread throughout, and the health that ends a session.",
     "See how each coder did on the special units in Results › Coders."
   ],
   "name": "Practice and gold units",
@@ -290,6 +290,12 @@
         "type": "unit_loop",
         "label": "Headlines",
         "units": {
+          "divide": {
+            "codersPerUnit": {
+              "min": 2,
+              "max": 2
+            }
+          },
           "practice": "before",
           "practiceCheck": {
             "questions": ["topic", "clickbait"]

@@ -692,7 +692,7 @@ export class StudyManager {
         : staticTemplate(expectedAnswerText(name, this.questions.get(name), key));
     // Shown again (the question stays): the field starts from the wrong answer
     this.syncCurrentUnitAnswers();
-    await this.publishLoopStep();
+    await this.publishLoopStep({ reopen: false });
     this.publish({ practiceWrong: { question: name, messages: [message], retry: unit.practice.retry } });
     return false;
   }
@@ -865,6 +865,7 @@ export class StudyManager {
     item: DesignItem | undefined,
     scope: ReferenceScope,
     snippets?: Record<string, string>,
+    reopen = true,
   ): Promise<QuestionTexts | null> {
     if (!item || !("variable" in item) || !("question" in item.variable)) return null;
     const { question } = item.variable;
@@ -880,12 +881,16 @@ export class StudyManager {
     return {
       question: questionText,
       instruction: instructionText,
-      ...(instructionText && this.opensInstruction(item) ? { openInstruction: true } : {}),
+      ...(instructionText && reopen && this.opensInstruction(item) ? { openInstruction: true } : {}),
     };
   }
 
-  /** Publishes the current step of the current unit, with the layout and texts rendered. */
-  private async publishLoopStep(): Promise<void> {
+  /**
+   * Publishes the current step of the current unit, with the layout and texts
+   * rendered. `reopen: false`: the question is shown again (a wrong practice
+   * answer), its instruction doesn't open by itself again.
+   */
+  private async publishLoopStep({ reopen = true }: { reopen?: boolean } = {}): Promise<void> {
     const loop = this.activeLoop;
     const unit = this.currentUnit;
     if (!loop || !unit) return;
@@ -909,7 +914,7 @@ export class StudyManager {
             )
           : null,
         // Texts may use any of the loop's snippets
-        this.questionTexts(step, scope, loopSnippets(loop.children)),
+        this.questionTexts(step, scope, loopSnippets(loop.children), reopen),
       ]);
       this.publish({
         phase: "unit_variable",

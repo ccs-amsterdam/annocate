@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   DesignItemsSchema,
   RecipeSchema,
+  designItems,
   VariableValueSchema,
   validateAnswer,
   validateDesignItems,
@@ -119,8 +120,10 @@ export interface FromExampleOptions {
 export async function createStudyFromExample(db: Db, id: string, options: FromExampleOptions): Promise<StudyRow> {
   const example = examples().get(id);
   if (!example) throw new HttpError(404, `No example '${id}'`);
-  const items = DesignItemsSchema.parse(example.design.items) as TopLevelItem[];
-  const issues = validateDesignItems(items);
+  // Checked with its Study entry: what depends on the invite (dividing units among a crowd) is checked as deployed
+  const withSession = DesignItemsSchema.parse(designItems(example.design)) as TopLevelItem[];
+  const items = withSession.filter((item) => item.type !== "session");
+  const issues = validateDesignItems(withSession);
   if (issues.length > 0) throw new Error(`examples/${id}.json: ${issues.map((i) => i.message).join("; ")}`);
 
   return db.transaction(async (tx) => {

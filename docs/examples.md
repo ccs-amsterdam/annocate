@@ -34,10 +34,11 @@ dismisses it.
 | --- | --- | --- |
 | Simple annotation | Sentiment by swiping | a swipe question; 20 units divided over 3 specific coders (a link each, `invite: { mode: "coders" }`) plus 5 overlap units; example answers that disagree on some overlap units |
 | Simple annotation | Labeling actors in texts | span annotation |
-| Surveys and experiments | A simple survey | survey question types, blocks with a condition (one holding an end item that screens out) |
+| Surveys and experiments | A simple survey | survey question types, labelled blocks with a condition (one holding an end item that screens out) |
 | Surveys and experiments | A simple experiment | a random condition (a computed item) choosing one of two versions of a text |
 | Surveys and experiments | Survey with annotations | survey questions, then a unit loop; both in one download |
-| Surveys and experiments | Experiment with annotations: a tour | the question types, a condition that changes layout and questions, a unit loop |
+| Surveys and experiments | Experiment with annotations: a tour | the question types, labelled blocks (one with else items), a condition that changes layout and questions, a unit loop |
+| Crowd coding | Practice and gold units | a crowd link; headlines divided so each is coded by two coders; practice units with feedback first, gold units spread among them, a screen-out when too many gold answers are wrong |
 
 **Example answers** are written when the study is made: a few coders
 ("Example coder 1..n") with fixed answers, so results look the same every
