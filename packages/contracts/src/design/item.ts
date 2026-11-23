@@ -6,6 +6,7 @@ import { outputText, parseTemplate, referenceValue, type ReferenceScope } from "
 import { UnitLoopDistributionShape } from "./unitLoop.js";
 import { SessionItemSchema, type SessionItem } from "./session.js";
 import { ComputedVariableSchema, UserVariableTypeSchema, UnitVariableTypeSchema } from "./variableTypes.js";
+import { forEachItem, itemLists } from "./walk.js";
 
 const ItemBaseSchema = z.object({
   name: SafeNameSchema,
@@ -97,20 +98,12 @@ export type ComputedItem = z.infer<typeof ComputedItemSchema>;
 /** The deployment settings end items send coders to (`redirectSetting`), by name. */
 export function redirectSettings(items: readonly unknown[]): string[] {
   const names = new Set<string>();
-  const walk = (list: unknown) => {
-    if (!Array.isArray(list)) return;
-    for (const raw of list) {
-      const item = raw as { type?: unknown; redirectSetting?: unknown; children?: unknown } | null;
-      if (!item || typeof item !== "object") continue;
-      if (item.type === "end" && typeof item.redirectSetting === "string") names.add(item.redirectSetting);
-      // The study's normal end (the Study entry's `end`)
-      const end = item.type === "session" ? (item as { end?: { redirectSetting?: unknown } }).end : undefined;
-      if (typeof end?.redirectSetting === "string") names.add(end.redirectSetting);
-      walk(item.children);
-      walk((item as { elseChildren?: unknown }).elseChildren);
-    }
-  };
-  walk(items);
+  forEachItem<{ type?: unknown; redirectSetting?: unknown; end?: { redirectSetting?: unknown } }>(items, (item) => {
+    if (item.type === "end" && typeof item.redirectSetting === "string") names.add(item.redirectSetting);
+    // The study's normal end (the Study entry's `end`)
+    const end = item.type === "session" ? item.end : undefined;
+    if (typeof end?.redirectSetting === "string") names.add(end.redirectSetting);
+  });
   return [...names];
 }
 
@@ -264,7 +257,7 @@ export type BlockItem = Extract<TopLevelItem | InLoopItem, { type: "block" }>;
 
 /** The items a block or loop holds: its children, and a block's else children after them. */
 export function innerItems(item: { children?: readonly unknown[]; elseChildren?: readonly unknown[] }): DesignItem[] {
-  return [...(item.children ?? []), ...(item.elseChildren ?? [])] as DesignItem[];
+  return itemLists(item).flatMap((l) => l.list);
 }
 
 /**
@@ -287,16 +280,10 @@ export function itemName(item: DesignItem): string | undefined {
  */
 export function unitLoops(items: readonly unknown[]): { key: string; loop: UnitLoopItem }[] {
   const loops: { key: string; loop: UnitLoopItem }[] = [];
-  const walk = (list: unknown) => {
-    if (!Array.isArray(list)) return;
-    for (const raw of list) {
-      const item = raw as Partial<DesignItem> | null;
-      if (!item || typeof item !== "object") continue;
-      if (item.type === "unit_loop") loops.push({ key: String(loops.length + 1), loop: item as UnitLoopItem });
-      else if (item.type === "block") walk(innerItems(item));
-    }
-  };
-  walk(items);
+  forEachItem(items, (item) => {
+    if (item.type === "unit_loop") loops.push({ key: String(loops.length + 1), loop: item as UnitLoopItem });
+    if (item.type !== "block") return "skip";
+  });
   return loops;
 }
 

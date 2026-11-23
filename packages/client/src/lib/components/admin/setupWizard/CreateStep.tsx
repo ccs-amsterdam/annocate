@@ -43,7 +43,7 @@ export function CreateStep({ answers, problems }: { answers: SetupAnswers; probl
     lines.push(
       answers.units
         ? `${answers.units.units.length} units, showing ${shown.join(", ") || "no fields yet"}.`
-        : "No units yet: upload them on the Units tab.",
+        : "No units yet: upload them on the Units page.",
     );
     lines.push(distributionSummary(d));
     lines.push(`${count("unit")} question(s) about each unit.`);
@@ -61,7 +61,7 @@ export function CreateStep({ answers, problems }: { answers: SetupAnswers; probl
       <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm text-foreground">
         <p className="font-medium">Next, in the design editor</p>
         <p className="mt-1 text-muted-foreground">
-          The study opens on its Design tab. Questions marked <em>to specify</em> need an answer type: select each one
+          The study opens on its Design page. Questions marked <em>to specify</em> need an answer type: select each one
           and choose it. Then save, preview, and deploy; coders can start once it is deployed.
         </p>
       </div>

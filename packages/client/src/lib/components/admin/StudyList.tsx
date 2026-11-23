@@ -28,7 +28,7 @@ import { HelpButton } from "../../help/HelpButton";
 
 interface StudyListProps {
   client: ResearcherApi;
-  /** `design`: open the study on its Design tab (after the setup wizard). */
+  /** `design`: open the study on its Design page (after the setup wizard). */
   onSelectStudy: (studyId: number, open?: "design") => void;
   /** Who is logged in (null: unknown, e.g. a host app without accounts): only researchers create studies. */
   me?: MeResponse | null;

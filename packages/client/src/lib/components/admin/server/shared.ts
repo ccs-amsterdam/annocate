@@ -3,7 +3,7 @@ import type { Limits } from "@annotinder/contracts";
 import type { ServerApi } from "../../../api/serverApi";
 import { ResearcherApiError } from "../../../api/httpResearcherApi";
 
-// Shared by the server admin's tabs (ServerAdmin.tsx).
+// Shared by the server admin's pages (ServerAdmin.tsx).
 
 export const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
 

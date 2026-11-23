@@ -13,7 +13,7 @@ import {
 import { formatWhen } from "../../../admin/format";
 import { coderName } from "./coderName";
 
-// Deleting coders' data (docs/coder-identity.md §8), from the Coders tab:
+// Deleting coders' data (docs/coder-identity.md §8), from Results › Coders:
 // finding coders by id or email, confirming, and the log of deleted coders.
 
 /**

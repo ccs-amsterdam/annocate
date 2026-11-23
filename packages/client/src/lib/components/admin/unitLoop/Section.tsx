@@ -1,7 +1,7 @@
 import { type ReactNode } from "react";
 import { HelpButton } from "../../../help/HelpButton";
 
-/** A titled part of a tab, with a line of help and a help topic. */
+/** A titled part of a page, with a line of help and a help topic. */
 export function Section({
   title,
   help,

@@ -17,7 +17,7 @@ import { formatWhen } from "../../../admin/format";
 import { LIMITS, limitText, selectClass, usePlans, useInvalidate } from "./shared";
 import { Table, ErrorLine } from "./ui";
 
-// The server admin's Users tab: accounts, their roles and limits, and adding users.
+// The server admin's Users page: accounts, their roles and limits, and adding users.
 
 export function UsersTab({ server, migrating }: { server: ServerApi; migrating: boolean }) {
   const [q, setQ] = useState("");

@@ -61,7 +61,7 @@ export function ExampleNotice({ client }: { client: ResearcherApi }) {
         </ul>
         <p className="mt-2 text-xs text-muted-foreground">
           It is an ordinary study: change anything. Example answers are from coders named &ldquo;Example coder&rdquo;;
-          delete them on the Coders tab before real coding starts.
+          delete them in Results › Coders before real coding starts.
         </p>
       </details>
     </section>

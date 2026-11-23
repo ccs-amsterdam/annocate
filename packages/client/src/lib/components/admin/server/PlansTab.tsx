@@ -8,7 +8,7 @@ import type { ServerApi } from "../../../api/serverApi";
 import { LIMITS, selectClass, usePlans, useInvalidate } from "./shared";
 import { Table, ErrorLine } from "./ui";
 
-// The server admin's Plans and Registration tabs: plans with their limits, and who may register.
+// The server admin's Plans and Registration pages: plans with their limits, and who may register.
 
 export function PlansTab({ server }: { server: ServerApi }) {
   const plans = usePlans(server);

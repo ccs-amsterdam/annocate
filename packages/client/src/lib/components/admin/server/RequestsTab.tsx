@@ -6,7 +6,7 @@ import { formatWhen } from "../../../admin/format";
 import { useInvalidate } from "./shared";
 import { ErrorLine } from "./ui";
 
-// The server admin's Requests tab: users asking to become a researcher.
+// The server admin's Requests page: users asking to become a researcher.
 
 export function RequestsTab({ server }: { server: ServerApi }) {
   const requests = useQuery({ queryKey: ["admin", "server", "requests"], queryFn: () => server.listRequests() });

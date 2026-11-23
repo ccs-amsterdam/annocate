@@ -1,4 +1,4 @@
-/** The study's pages. Preview is opened with the Preview Study button, not from the tabs. */
+/** The study's pages. Preview is opened with the Preview Study button, not from the study's navigation. */
 export type TabId = "Overview" | "Design" | "Units" | "Deploy" | "Links" | "Results" | "Settings" | "Preview";
 
 /** Each page's name in the URL (`/research/studies/<id>/<slug>`). */

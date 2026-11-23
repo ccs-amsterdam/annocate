@@ -108,7 +108,7 @@ export function ItemPanel({
                 {itemWarnings.map((w) => (
                   <li key={w.field} className="flex gap-1.5">
                     <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-                    {w.message}. Check the Units tab for the fields units have.
+                    {w.message}. Check the Units page for the fields units have.
                   </li>
                 ))}
               </ul>

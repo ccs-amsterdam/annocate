@@ -16,7 +16,7 @@ import { Download, Trash2 } from "lucide-react";
 import { downloadFile } from "../../admin/download";
 
 /**
- * Study settings (docs/client.md §7), on the Settings tab: the study's name,
+ * Study settings (docs/client.md §7), on the Settings page: the study's name,
  * archived, keeping finished sessions open, panel return links, exporting
  * the whole study, and deleting it.
  */
@@ -262,7 +262,7 @@ function StudyExport({ client }: { client: ResearcherApi }) {
         <InfoTip label="About the study export">
           One file with everything: units, design versions, links, coders and their answers. Import it with Create new
           study › From a file, on this or another AnnoTinder server (the same release or a newer one). It holds
-          coders&apos; data: keep it as safe as the study. For an analysis, use the download on the Results tab.
+          coders&apos; data: keep it as safe as the study. For an analysis, use the download on the Results page.
         </InfoTip>
       </h3>
       <p className="mt-1 text-xs text-muted-foreground">To back up the study, or move it to another server.</p>

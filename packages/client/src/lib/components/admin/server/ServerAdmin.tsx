@@ -17,7 +17,7 @@ type Tab = (typeof TABS)[number];
  * limits (invited by email until their first login), requests to become a
  * researcher, plans, registration and size settings, studies (suspend,
  * owner) and the log of admin actions. Admins don't see study data here.
- * Each tab is in its own file.
+ * Each of its pages is in its own file.
  */
 export function ServerAdmin({ server, onBack }: { server: ServerApi; onBack: () => void }) {
   const [tab, setTab] = useState<Tab>("Users");

@@ -55,9 +55,9 @@ export type LeaveGuard = (when: boolean) => { blocked: boolean; proceed: () => v
 const noGuard: LeaveGuard = () => ({ blocked: false, proceed: () => {}, stay: () => {} });
 
 /**
- * The tabs, grouped: the overview, the design, the units, deploying (with
+ * The pages, grouped: the overview, the design, the units, deploying (with
  * its history), the links, the results, and settings. A group with more
- * than one page shows them as sub tabs.
+ * than one page shows them in a second row.
  */
 const GROUPS: {
   label: string;
@@ -73,7 +73,7 @@ const GROUPS: {
   { label: "Settings", icon: Settings, pages: [{ id: "Settings", label: "Settings", icon: Settings }] },
 ];
 
-/** The help topic the Help button opens on each tab. */
+/** The help topic the Help button opens on each page. */
 const TAB_HELP: Record<TabId, string> = {
   Overview: "overview",
   Design: "design-editor",
@@ -217,7 +217,7 @@ function AdminAppInner({
   );
 }
 
-/** A study's pages: the header with its sections, and the page of the current tab. Navigation goes through the URL. */
+/** A study's pages: the header with its sections, and the current page. Navigation goes through the URL. */
 function StudyAdminView({
   banner,
   restore,
@@ -253,7 +253,7 @@ function StudyAdminView({
   const study = studyQuery.data;
 
   const [isDesignDirty, setIsDesignDirty] = useState(false);
-  // Leaving the editor with unsaved edits (a tab, another study, the browser's back button): asked first
+  // Leaving the editor with unsaved edits (another page, another study, the browser's back button): asked first
   const leave = useLeaveGuard(isDesignDirty && tab === "Design");
   const saveDesign = useRef<SaveFn | null>(null);
   // A design version to open, from the overview; `n` remounts the manager on each request

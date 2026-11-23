@@ -5,7 +5,7 @@ import { formatWhen } from "../../../admin/format";
 import { useInvalidate } from "./shared";
 import { Table, ErrorLine } from "./ui";
 
-// The server admin's Studies and Log tabs: every study (suspend, owner), and the log of admin actions.
+// The server admin's Studies and Log pages: every study (suspend, owner), and the log of admin actions.
 
 export function StudiesTab({ server }: { server: ServerApi }) {
   const studies = useQuery({ queryKey: ["admin", "server", "studies"], queryFn: () => server.listStudies() });

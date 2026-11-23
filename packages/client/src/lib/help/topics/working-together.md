@@ -7,7 +7,7 @@ summary: Give colleagues and student assistants access to a study, with a role t
 
 ## Who has access
 
-On the study's **Settings** tab, **Who has access** lists the study's
+On the study's **Settings** page, **Who has access** lists the study's
 people and roles (only admins of the study see it).
 
 - **Add** someone by email address and role. If they never logged in, they

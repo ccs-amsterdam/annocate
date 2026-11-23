@@ -47,7 +47,7 @@ const DESKTOP_PRESETS: DimensionPreset[] = [
 ];
 
 /**
- * The Preview tab: runs the study's latest design version (the draft, else
+ * The Preview page: runs the study's latest design version (the draft, else
  * the live one) in a device frame. The server runs it as a preview
  * deployment: coders and answers stay in its memory, nothing is stored.
  * Each preview session gets a fresh token, and with it a fresh coder.

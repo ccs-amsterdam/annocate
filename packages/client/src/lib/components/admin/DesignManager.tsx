@@ -35,7 +35,7 @@ interface DesignManagerProps {
 }
 
 /**
- * The Design tab (the design editor): one editor on the current version, a banner saying how it
+ * The Design page (the design editor): one editor on the current version, a banner saying how it
  * relates to what coders use, and the versions dialog.
  *
  * Versions (docs/client.md §7): coders get the *live* version

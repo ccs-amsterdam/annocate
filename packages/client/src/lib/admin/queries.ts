@@ -493,7 +493,7 @@ export function useConfirmedDeploy(client: ResearcherApi): (vars: DeployVars) =>
   };
 }
 
-/** How coders answered each question so far. Loaded once; the Results tab's Refresh asks again. */
+/** How coders answered each question so far. Loaded once; the Results page's Refresh asks again. */
 export function useResultsAnswersQuery(client: ResearcherApi): UseQueryResult<ResultsAnswers> {
   return useQuery({
     queryKey: keys.results(client.studyId, "answers"),

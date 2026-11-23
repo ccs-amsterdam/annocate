@@ -9,7 +9,7 @@ summary: Overview and Results › Coders - whether the study is live, how many c
 coder. Both refresh while open. For full data, download the
 [results](results.md).
 
-## The Overview tab
+## The Overview page
 
 ### Status
 

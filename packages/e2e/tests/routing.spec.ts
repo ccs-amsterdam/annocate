@@ -17,7 +17,7 @@ test("the welcome page leads to the researcher and coder sections", async ({ pag
   await expect(page.getByRole("button", { name: /Create new study/ })).toBeVisible();
 });
 
-test("a study's tabs are URLs: a reload stays; leaving unsaved edits asks first", async ({ page, request }) => {
+test("a study's pages are URLs: a reload stays; leaving unsaved edits asks first", async ({ page, request }) => {
   const study = await api<StudyResponse>(request, "POST", "/study", { name: "Routed study" });
   await page.goto("/research");
   await page.getByText("Routed study").click();
@@ -27,7 +27,7 @@ test("a study's tabs are URLs: a reload stays; leaving unsaved edits asks first"
   await page.reload();
   await expect(page.getByRole("button", { name: /Add item/ })).toBeVisible();
 
-  // An unsaved edit: going elsewhere (a tab, the browser's back button) asks first
+  // An unsaved edit: going elsewhere (another page, the browser's back button) asks first
   await page.getByRole("button", { name: /Add item/ }).click();
   await page.getByRole("button", { name: /^Question\b/ }).click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();

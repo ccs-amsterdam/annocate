@@ -152,7 +152,7 @@ export function ExperimentStep({ answers, set }: StepProps) {
 export function UnitsStep({ answers, set, onCsv }: StepProps & { onCsv: (result: CsvUnits | null) => void }) {
   return (
     <>
-      <Intro>Upload the units coders work on, or skip this and upload them later on the Units tab.</Intro>
+      <Intro>Upload the units coders work on, or skip this and upload them later on the Units page.</Intro>
       <div className="space-y-3 rounded-lg border border-border p-3">
         <CsvUnitsForm studyFields={NO_FIELDS} onResult={onCsv} />
       </div>

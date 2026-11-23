@@ -1,4 +1,5 @@
-import { unitLoops, type DesignItem, type UnitLoopItem } from "./item.js";
+import { unitLoops, type UnitLoopItem } from "./item.js";
+import { forEachItem } from "./walk.js";
 import { sessionItem } from "./session.js";
 import { goldColumn, practiceColumn, practiceMessageColumn } from "./unitLoop.js";
 import { extractReferences, type Reference } from "./references.js";
@@ -21,34 +22,29 @@ function loopReferences(loop: UnitLoopItem, spanFields?: (field: string) => void
   const addScript = (source: unknown) =>
     typeof source === "string" && refs.push(...extractReferences(source).references);
 
-  const walk = (list: unknown) => {
-    if (!Array.isArray(list)) return;
-    for (const raw of list) {
-      const item = raw as Partial<DesignItem> | null;
-      if (!item || typeof item !== "object") continue;
-      if (item.type === "block") {
-        addScript(item.condition?.script);
-        walk(item.children);
-        walk(item.elseChildren);
-      } else if (item.type === "layout") {
-        addTemplate(item.template, item.snippets ?? {});
-      } else if (item.type === "end") {
-        addTemplate(item.message);
-      } else if ("variable" in item && item.variable) {
-        const variable = item.variable as {
-          question?: unknown;
-          type?: string;
-          fields?: unknown;
-        };
-        addTemplate(variable.question);
-        addTemplate((item as { instruction?: unknown }).instruction);
-        if (spanFields && variable.type === "span" && Array.isArray(variable.fields)) {
-          for (const f of variable.fields) if (typeof f === "string") spanFields(f);
-        }
+  forEachItem(loop.children, (item) => {
+    if (item.type === "block") {
+      addScript(item.condition?.script);
+      return;
+    }
+    if (item.type === "layout") {
+      addTemplate(item.template, item.snippets ?? {});
+    } else if (item.type === "end") {
+      addTemplate(item.message);
+    } else if ("variable" in item && item.variable) {
+      const variable = item.variable as {
+        question?: unknown;
+        type?: string;
+        fields?: unknown;
+      };
+      addTemplate(variable.question);
+      addTemplate((item as { instruction?: unknown }).instruction);
+      if (spanFields && variable.type === "span" && Array.isArray(variable.fields)) {
+        for (const f of variable.fields) if (typeof f === "string") spanFields(f);
       }
     }
-  };
-  walk(loop.children);
+    return "skip";
+  });
   return refs;
 }
 
@@ -77,18 +73,11 @@ export function loopDependencies(items: readonly unknown[]): Map<string, string[
   const out = new Map<string, string[]>();
   for (const { key, loop } of unitLoops(items)) {
     const own = new Set<string>();
-    const collect = (list: unknown) => {
-      if (!Array.isArray(list)) return;
-      for (const raw of list) {
-        const item = raw as Partial<DesignItem> | null;
-        if (!item || typeof item !== "object") continue;
-        if (item.type === "block") {
-          collect(item.children);
-          collect(item.elseChildren);
-        } else if ("name" in item && typeof item.name === "string") own.add(item.name);
-      }
-    };
-    collect(loop.children);
+    forEachItem(loop.children, (item) => {
+      if (item.type === "block") return;
+      if ("name" in item && typeof item.name === "string") own.add(item.name);
+      return "skip";
+    });
     const names = new Set(
       loopReferences(loop).flatMap((r) => (r.ns === "var" && !own.has(r.path[0]) ? [r.path[0]] : [])),
     );
@@ -144,25 +133,14 @@ export function designSetColumns(items: readonly unknown[]): string[] {
   const session = sessionItem(items);
   const invite = session?.invite;
   if (invite?.column) columns.add(invite.column);
-  const walk = (list: unknown) => {
-    for (const raw of Array.isArray(list) ? list : []) {
-      const it = raw as {
-        type?: unknown;
-        variable?: { type?: unknown; units?: unknown };
-        children?: unknown;
-        units?: unknown;
-      } | null;
-      if (it?.type === "computed" && it.variable?.type === "random" && typeof it.variable.units === "string")
-        columns.add(it.variable.units);
-      if (it?.type === "unit_loop") {
-        const column = (it.units as { subset?: { column?: unknown } } | undefined)?.subset?.column;
-        if (typeof column === "string") columns.add(column);
-      }
-      walk(it?.children);
-      walk((it as { elseChildren?: unknown } | null)?.elseChildren);
+  forEachItem<{ type?: unknown; variable?: { type?: unknown; units?: unknown }; units?: unknown }>(items, (it) => {
+    if (it.type === "computed" && it.variable?.type === "random" && typeof it.variable.units === "string")
+      columns.add(it.variable.units);
+    if (it.type === "unit_loop") {
+      const column = (it.units as { subset?: { column?: unknown } } | undefined)?.subset?.column;
+      if (typeof column === "string") columns.add(column);
     }
-  };
-  walk(items);
+  });
   return [...columns];
 }
 
@@ -173,17 +151,10 @@ function scriptCount(loop: UnitLoopItem, field: string): number {
     for (const ref of extractReferences(String(script ?? "")).references)
       if (ref.ns === "unit" && ref.path[0] === field) n++;
   };
-  const walk = (list: unknown) => {
-    if (!Array.isArray(list)) return;
-    for (const raw of list) {
-      const item = raw as Partial<DesignItem> | null;
-      if (item?.type !== "block") continue;
-      count(item.condition?.script);
-      walk(item.children);
-      walk(item.elseChildren);
-    }
-  };
-  walk(loop.children);
+  forEachItem(loop.children, (item) => {
+    if (item.type !== "block") return "skip";
+    count(item.condition?.script);
+  });
   return n;
 }
 

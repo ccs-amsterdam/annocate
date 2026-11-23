@@ -4,14 +4,14 @@ Built: the four views (`docs/client.md` §7 "Results"). Not yet: filters by
 loop and design version, a histogram for numbers, gold scores per coder,
 spans drawn in the text (the Units view lists them).
 
-Today the Results tab only downloads a zip. A researcher who wants to know
+Today the Results page only downloads a zip. A researcher who wants to know
 whether coding goes well (an unclear question, a careless coder, low
 agreement) must download and analyse it elsewhere. A viewer in the app
 answers those questions while the study runs.
 
 ## Views
 
-New sub-tabs under Results, next to **Download**, built in this order:
+New views on the Results page, next to **Download**, built in this order:
 
 1. **Questions**: per question, how coders answered. Bars per option
    (special options apart), a histogram for numbers, a row of bars per scale

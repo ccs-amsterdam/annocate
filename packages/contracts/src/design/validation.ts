@@ -21,6 +21,7 @@ import {
   assignmentColumn,
 } from "./session.js";
 import { loopShareColumns } from "./assignment.js";
+import { forEachItem } from "./walk.js";
 import { expandSnippets, usesSnippets } from "./snippets.js";
 import {
   parseTemplateBlocks,
@@ -390,15 +391,9 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
 
   /** End items anywhere in the design: name -> outcome. */
   const endItems = new Map<string, unknown>();
-  const collectEnds = (list: unknown) => {
-    for (const raw of Array.isArray(list) ? list : []) {
-      const it = raw as { type?: unknown; name?: unknown; outcome?: unknown; children?: unknown } | null;
-      if (it?.type === "end" && typeof it.name === "string") endItems.set(it.name, it.outcome);
-      collectEnds(it?.children);
-      collectEnds((it as { elseChildren?: unknown } | null)?.elseChildren);
-    }
-  };
-  collectEnds(items);
+  forEachItem<{ type?: unknown; name?: unknown; outcome?: unknown }>(items, (it) => {
+    if (it.type === "end" && typeof it.name === "string") endItems.set(it.name, it.outcome);
+  });
 
   /**
    * A loop's practice and gold checks: questions of this loop with answers
@@ -844,16 +839,10 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       linked.push({ name: q.name, column: v.units });
   });
   const loopPaths = new Map<string, Path>();
-  const findLoops = (list: unknown, path: Path) =>
-    (Array.isArray(list) ? list : []).forEach((raw, i) => {
-      const it = raw as RawItem | null;
-      if (it?.type === "unit_loop") loopPaths.set(String(loopPaths.size + 1), [...path, i]);
-      else if (it?.type === "block") {
-        findLoops(it.children, [...path, i, "children"]);
-        findLoops((it as { elseChildren?: unknown }).elseChildren, [...path, i, "elseChildren"]);
-      }
-    });
-  findLoops(items, []);
+  forEachItem<RawItem>(items, (it, path) => {
+    if (it.type === "unit_loop") loopPaths.set(String(loopPaths.size + 1), path);
+    if (it.type !== "block") return "skip";
+  });
   for (const [key, columns] of shares) {
     for (const condition of linked) {
       if (columns.some((c) => c.name === condition.name)) continue;
@@ -929,21 +918,16 @@ export function collectQuestions(items: unknown): {
   const questions = new Map<string, AnyVariableType>();
   const loopOf = new Map<string, string | null>();
   let loops = 0;
-  const walk = (list: unknown, loop: string | null) => {
-    if (!Array.isArray(list)) return;
-    for (const raw of list) {
-      const item = raw as RawItem | null;
-      if (!item || typeof item !== "object") continue;
+  const walk = (list: unknown, loop: string | null) =>
+    forEachItem<RawItem>(list, (item) => {
+      if (item.type === "block") return;
       if (item.type === "unit_loop") walk(item.children, String(++loops));
-      else if (item.type === "block") {
-        walk(item.children, loop);
-        walk((item as { elseChildren?: unknown }).elseChildren, loop);
-      } else if (item.name && "variable" in item && item.variable && !questions.has(item.name)) {
+      else if (item.name && "variable" in item && item.variable && !questions.has(item.name)) {
         questions.set(item.name, item.variable as AnyVariableType);
         loopOf.set(item.name, loop);
       }
-    }
-  };
+      return "skip";
+    });
   walk(items, null);
   return { questions, loopOf };
 }
@@ -959,6 +943,7 @@ export function availableQuestions(items: unknown[], at: Path): { name: string; 
   const result: { name: string; variable: AnyVariableType }[] = [];
   const target = JSON.stringify(at);
   let found = false;
+  // Not forEachItem: it stops at the target (which may be a null item) and drops a passed loop's questions
   const walk = (list: unknown, path: Path): void => {
     if (!Array.isArray(list)) return;
     for (let i = 0; i < list.length && !found; i++) {
@@ -997,16 +982,15 @@ function forEachQuestion(
   path: Path,
   visit: (item: RawItem & { variable?: unknown }, path: Path) => void,
 ) {
-  if (!Array.isArray(list)) return;
-  list.forEach((raw, i) => {
-    const child = raw as RawItem | null;
-    if (!child || typeof child !== "object") return;
-    if (child.type === "block") {
-      forEachQuestion((child as { children?: unknown }).children, [...path, i, "children"], visit);
-      forEachQuestion((child as { elseChildren?: unknown }).elseChildren, [...path, i, "elseChildren"], visit);
-    } else if (child.type !== "unit_loop" && child.type !== "layout")
-      visit(child as RawItem & { variable?: unknown }, [...path, i]);
-  });
+  forEachItem<RawItem & { variable?: unknown }>(
+    list,
+    (child, at) => {
+      if (child.type === "block") return;
+      if (child.type !== "unit_loop" && child.type !== "layout") visit(child, at);
+      return "skip";
+    },
+    path,
+  );
 }
 
 /** The typed blocks of a template (`::: text|markdown|html|image`), anywhere in it. */

@@ -22,14 +22,14 @@ type OverviewTarget = "Units" | "Links" | "Coders";
 interface StudyOverviewProps {
   client: ResearcherApi;
   onNavigate: (tab: OverviewTarget) => void;
-  /** Opens the Design tab on this version. */
+  /** Opens the Design page on this version. */
   onOpenDesign: (versionId: number) => void;
 }
 
 /**
  * The study's front page (docs/client.md §7): whether it's live, which
  * design versions are live and in draft, units, coders, activity and
- * progress. The study's settings are on their own tab (`StudySettingsPage`).
+ * progress. The study's settings are on their own page (`StudySettingsPage`).
  */
 export function StudyOverview({ client, onNavigate, onOpenDesign }: StudyOverviewProps) {
   const overviewQuery = useOverviewQuery(client);
@@ -150,7 +150,7 @@ export function StudyOverview({ client, onNavigate, onOpenDesign }: StudyOvervie
   );
 }
 
-/** The study's Settings tab: who has access, and the study's settings (name, sessions, archive, delete). */
+/** The study's Settings page: who has access, and the study's settings (name, sessions, archive, delete). */
 export function StudySettingsPage({ client, onDeleted }: { client: ResearcherApi; onDeleted?: () => void }) {
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4">
@@ -224,7 +224,7 @@ function VersionLink({
   );
 }
 
-/** A number with a detail line, opening the tab it is about. */
+/** A number with a detail line, opening the page it is about. */
 function StatTile({
   label,
   value,

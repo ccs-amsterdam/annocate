@@ -11,7 +11,7 @@ How the web client (`packages/client`) works and why. Server side:
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/`                                | Welcome page (`pages/WelcomePage.tsx`)                                                                                                                |
 | `/research`                        | The researcher UI: the studies                                                                                                                        |
-| `/research/studies/<id>/<tab>`     | A study (`overview`, `editor`, `units`, `links`, `coders`, `results`, `settings`, `preview`); the editor takes `?version=<n>`                         |
+| `/research/studies/<id>/<page>`    | A study's page (`overview`, `design`, `units`, `deploy`, `links`, `results`, `settings`, `preview`); `design` takes `?version=<n>`                    |
 | `/research/admin`                  | The server admin page                                                                                                                                 |
 | `/code`                            | The coder home: studies on this device (`pages/CodeHomePage.tsx`)                                                                                     |
 | `/code/<deployment>?link=<secret>` | Coding (`pages/CodePage.tsx`), plus the link's URL parameters; `?transfer=<token>` continues on another device; without either, this device's session |
@@ -501,7 +501,7 @@ scope)` re-runs QuickJS only when the script or one of those values
 
 ## 7. Admin UI
 
-`components/admin/AdminApp.tsx` is a tabbed shell: Overview, Design, Units,
+`components/admin/AdminApp.tsx` is a shell with the study's pages: Overview, Design, Units,
 Deploy (with the deploy history), Links, Results, Settings. It uses a `ResearcherApi`
 (`api/httpResearcherApi.ts`).
 
@@ -512,7 +512,7 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   out. On a development server, development headers replace the login.
 - **Accounts**: only researchers create studies; `account/ResearcherAccess.tsx`
   handles requests to become one. Admins get the server admin page
-  (`server/ServerAdmin.tsx`, a tab per file in `server/`: warnings, users,
+  (`server/ServerAdmin.tsx`, a page per file in `server/`: warnings, users,
   plans, registration, studies, log; `docs/accounts.md`).
 - **From a file** (`ImportStudyDialog.tsx`): a study export (its manifest is
   read in the browser, then `POST /study/import`, with or without coders) or a

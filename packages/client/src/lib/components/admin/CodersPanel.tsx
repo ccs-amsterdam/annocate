@@ -18,7 +18,7 @@ function endedText(ended: CoderProgress["ended"]): string {
 }
 
 /**
- * The Coders tab (docs/client.md §7): per coder session the link, when it
+ * The Coders view on the Results page (docs/client.md §7): per coder session the link, when it
  * started and was last active, how it ended, and the units finished per
  * loop of the live design version. Requests to delete answers come first
  * (delete now, or later: then they stay marked on the row). Any coder's

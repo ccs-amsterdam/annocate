@@ -1459,7 +1459,7 @@ describe("practice and gold units", () => {
     const g2 = (await c.next())!;
     expect(await submit(g2.id, "positive")).toEqual({ end: "low_quality" }); // wrong again: health 0
     expect((await c.session()).ended).toMatchObject({ item: "low_quality", outcome: "screenout" });
-    // The Coders tab counts the special units each coder finished
+    // Results › Coders counts the special units each coder finished
     const coders = (await (await server.request("/api/study/1/coders", { headers: adminHeaders })).json()) as {
       ended: unknown;
       special: object;

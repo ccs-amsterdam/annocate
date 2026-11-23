@@ -30,7 +30,7 @@ On the **Studies** page, click **Create new study** and choose:
   steps below.
 - **From an example**: a ready study to look around in.
 
-The study opens on **Overview**. The tabs: **Design**, **Units**,
+The study opens on **Overview**. The other pages: **Design**, **Units**,
 **Deploy**, **Links**, **Results** (with **Coders**) and **Settings**;
 **Preview** is at the top right.
 

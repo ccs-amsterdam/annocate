@@ -19,7 +19,7 @@ import { RESULTS_VIEWS, useResultsView, type ResultsView } from "./resultsView";
 import { CodersPanel } from "../CodersPanel";
 
 /**
- * The Results tab (docs/client.md §7, "Results"): the answers so far (per
+ * The Results page (docs/client.md §7, "Results"): the answers so far (per
  * question, agreement, units by disagreement), the coders (their sessions,
  * time and agreement), and the download. Summaries load once, and again on
  * Refresh.

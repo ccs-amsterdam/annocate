@@ -90,4 +90,4 @@ JSON view (default `900`).
 - **Coders differ in how much they coded**: check per coder (`coder`
   column of the [results](results.md)).
 
-> Follow progress per loop on the **Overview** tab.
+> Follow progress per loop on the **Overview** page.

@@ -137,7 +137,7 @@ issues.
 - **Revert**: back to the last save, for one item (**Revert item**) or
   everything (**Revert all changes**).
 
-Leaving the tab with unsaved changes asks to **Save changes**, **Discard
+Leaving the **Design** page with unsaved changes asks to **Save changes**, **Discard
 changes** or **Cancel**.
 
 ## Backups in your browser
