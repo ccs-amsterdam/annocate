@@ -39,7 +39,6 @@
 
   --color-bar: var(--bar);
   --color-bar-foreground: var(--bar-foreground);
-  --color-loop: var(--loop);
   --color-wood: var(--wood);
   --color-wood-foreground: var(--wood-foreground);
   --color-ember: var(--ember);
@@ -169,9 +168,6 @@
     --bar: hsl(36 5% 16%);
     --bar-foreground: hsl(40 20% 98%);
 
-    /* Unit loops and their layouts in the design tree: apart from the text and the wood accent */
-    --loop: hsl(198 38% 34%);
-
     /* The accents */
     --wood: hsl(30 52% 35%);
     --wood-foreground: hsl(40 20% 98%);
@@ -232,8 +228,6 @@
 
     --bar: hsl(30 5% 13%);
     --bar-foreground: hsl(40 10% 92%);
-
-    --loop: hsl(198 38% 66%);
 
     --wood: hsl(31 45% 56%);
     --wood-foreground: hsl(30 6% 10%);
