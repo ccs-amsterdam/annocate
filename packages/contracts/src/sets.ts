@@ -1,48 +1,51 @@
 import { z } from "zod";
 import { IdSchema } from "./common.js";
 
-// Set groups (docs/architecture.md §6.3): a group is a
-// column of the units; each unit's cell names the set(s) it is in, e.g.
-// `s1`, `s1;s2`, or `s1#3;s2#1` (positions). The design refers to a group
-// by name, and to a set as `{ group, set }`. Names starting with `_` are
-// reserved for the special units (`_overlap`, `_practice`, `_gold`;
-// docs/architecture.md §6.2).
+// Unit columns with a role (docs/plans/unit-sets.md): a fixed name says
+// what the column does. The set columns (`coder_set`, `condition_set`,
+// `part_set`) name per unit the sets it is in, e.g. `anna`, `anna;bob`, or
+// `pre#3;post#1` (positions); `test_unit` says whether a unit is a test unit
+// (`overlap`, `practice` or `gold`; empty: a coding unit). They are stored
+// as sets (per value its units), not in the units' data. Any other column
+// is data.
 
-/** The set of a group whose units every coder of the group codes besides their own set. */
-export const OVERLAP_SET = "_overlap";
+/** Who codes which units (specific coders): coder names or email addresses. */
+export const CODER_SET = "coder_set";
+/** The units of each condition of the experiment that selects units. */
+export const CONDITION_SET = "condition_set";
+/** Parts of the study, e.g. `pre` and `post`: a unit loop shows one part. */
+export const PART_SET = "part_set";
+/** A unit's test type: overlap, practice or gold. */
+export const TEST_UNIT = "test_unit";
 
-/** Reserved set names (a leading `_`). */
-export const RESERVED_SETS = [OVERLAP_SET, "_practice", "_gold"] as const;
+/** The set columns: a unit can be in several of their sets. */
+export const SET_COLUMNS = [CODER_SET, CONDITION_SET, PART_SET] as const;
+/** Every column with a role, as stored (per value its units). */
+export const ROLE_COLUMNS = [...SET_COLUMNS, TEST_UNIT] as const;
+export const RoleColumnSchema = z.enum(ROLE_COLUMNS);
+export type RoleColumn = z.infer<typeof RoleColumnSchema>;
 
-/** Units with a known answer: coders are told when they are wrong (docs/architecture.md §6.2). */
-export const PRACTICE_SET = "_practice";
-/** Units with a known answer: coders are checked silently. */
-export const GOLD_SET = "_gold";
+/** Whether a column name is one with a role (reserved: never a data column). */
+export const isRoleColumn = (name: string): name is RoleColumn => (ROLE_COLUMNS as readonly string[]).includes(name);
 
-/** A group's name: like a field (letters, digits, `_`), not starting with `_`. */
-export const SetGroupNameSchema = z
-  .string()
-  .min(1)
-  .max(64)
-  .regex(/^[A-Za-z][A-Za-z0-9_]*$/, "A group's name is letters, digits and _, starting with a letter");
+/**
+ * The test unit types (`test_unit`): overlap units are coded by every coder
+ * (besides their own units); practice units tell coders when they are wrong;
+ * gold units check them silently (docs/architecture.md §6.2).
+ */
+export const TEST_UNIT_TYPES = ["overlap", "practice", "gold"] as const;
+export const TestUnitTypeSchema = z.enum(TEST_UNIT_TYPES);
+export type TestUnitType = z.infer<typeof TestUnitTypeSchema>;
 
-/** A set's name: no `;` or `#` (the cell format), and `_` only for reserved sets. */
+/** A set's name: no `;` or `#` (the cell format), and no spaces at its ends. */
 export const SetNameSchema = z
   .string()
   .min(1)
   .max(128)
-  .refine((s) => !/[;#]/.test(s) && s.trim() === s, "A set's name has no ; or #, and no spaces at its ends")
-  .refine(
-    (s) => !s.startsWith("_") || (RESERVED_SETS as readonly string[]).includes(s),
-    "Set names starting with _ are reserved (_overlap, _practice, _gold)",
-  );
-
-/** A set of a group, as the design refers to it. */
-export const SetRefSchema = z.object({ group: SetGroupNameSchema, set: SetNameSchema });
-export type SetRef = z.infer<typeof SetRefSchema>;
+  .refine((s) => !/[;#]/.test(s) && s.trim() === s, "A set's name has no ; or #, and no spaces at its ends");
 
 /**
- * One set of a group: its units in order. `ordered`: the order was given
+ * One set of a role column (a value): its units in order. `ordered`: the order was given
  * (positions); otherwise it is the units' order.
  */
 export const UnitSetSchema = z.object({
@@ -52,13 +55,30 @@ export const UnitSetSchema = z.object({
 });
 export type UnitSet = z.infer<typeof UnitSetSchema>;
 
-/** Body of `PUT /study/:studyId/sets/:group`: the group's sets (replacing what it had). */
+/** Body of `PUT /study/:studyId/sets/:column`: a role column's sets (replacing what it had). */
 export const SetGroupWriteSchema = z.object({ sets: z.array(UnitSetSchema) });
 export type SetGroupWrite = z.input<typeof SetGroupWriteSchema>;
 
-/** A group with its sets (`GET /study/:studyId/sets`). */
-export const SetGroupResponseSchema = z.object({ name: SetGroupNameSchema, sets: z.array(UnitSetSchema) });
+/** A role column with its sets (`GET /study/:studyId/sets`). */
+export const SetGroupResponseSchema = z.object({ name: RoleColumnSchema, sets: z.array(UnitSetSchema) });
 export type SetGroupResponse = z.infer<typeof SetGroupResponseSchema>;
+
+/**
+ * Why sets can't be a role column's, or null if they can: `test_unit` has
+ * only the test unit types as values, and one per unit.
+ */
+export function roleColumnProblem(column: RoleColumn, sets: readonly UnitSet[]): string | null {
+  if (column !== TEST_UNIT) return null;
+  const odd = sets.find((s) => !(TEST_UNIT_TYPES as readonly string[]).includes(s.name));
+  if (odd) return `'${odd.name}' is not a test unit type (${TEST_UNIT_TYPES.join(", ")})`;
+  const seen = new Set<number>();
+  for (const set of sets)
+    for (const id of set.unitIds) {
+      if (seen.has(id)) return "A unit has one test unit type at most";
+      seen.add(id);
+    }
+  return null;
+}
 
 /** One entry of a cell: a set, and the unit's position in it if given. */
 export interface SetCellEntry {
@@ -67,7 +87,7 @@ export interface SetCellEntry {
 }
 
 /**
- * Reads a cell of a set column: `s1`, `s1;s2`, `s1#3;s2#1`. Empty: in no
+ * Reads a cell of a role column: `s1`, `s1;s2`, `s1#3;s2#1`. Empty: in no
  * set. Returns an error message for a malformed entry.
  */
 export function parseSetCell(cell: string): SetCellEntry[] | { error: string } {
@@ -94,13 +114,13 @@ export function parseSetCell(cell: string): SetCellEntry[] | { error: string } {
   return entries;
 }
 
-/** Writes a cell of a set column (positions when the set is ordered). */
+/** Writes a cell of a role column (positions when the set is ordered). */
 export function formatSetCell(entries: SetCellEntry[]): string {
   return entries.map((e) => (e.position === undefined ? e.set : `${e.set}#${e.position}`)).join(";");
 }
 
 /**
- * The sets of a group from its column: per unit the cell (units in the
+ * The sets of a role column from its cells: per unit the cell (units in the
  * units' order). A set is ordered when any of its entries has a position:
  * by position, then the units' order.
  */
@@ -123,7 +143,7 @@ export function setsFromCells(cells: { unitId: number; cell: string }[]): UnitSe
   });
 }
 
-/** The cells of a group's column, by unit id (positions for ordered sets). */
+/** The cells of a role column, by unit id (positions for ordered sets). */
 export function cellsFromSets(sets: UnitSet[]): Map<number, string> {
   const entries = new Map<number, SetCellEntry[]>();
   for (const set of sets) {
@@ -136,94 +156,80 @@ export function cellsFromSets(sets: UnitSet[]): Map<number, string> {
 }
 
 /**
- * Divides units into `sets` sets (`s1` .. `sN`), after setting aside the
- * overlap (`_overlap`): a number of units, or a fraction of them. Seeded,
- * so it is reproducible; sets differ in size by at most one unit.
+ * Divides units into `sets` sets (`s1` .. `sN`), e.g. conditions or parts.
+ * Seeded, so it is reproducible; sets differ in size by at most one unit.
  */
 export function splitIntoSets<T>(
   units: T[],
   options: {
     sets: number;
-    overlapUnits?: number;
-    overlapFraction?: number;
     shuffle?: boolean;
     seed?: number;
     prefix?: string;
-    /** Each unit (but the overlap) goes to this many sets (e.g. coders per unit; default 1, at most `sets`). */
+    /** Each unit goes to this many sets (default 1, at most `sets`). */
     perUnit?: number;
   },
 ): { name: string; units: T[] }[] {
   const shuffled = options.shuffle === false ? [...units] : seededShuffle(units, options.seed ?? 0);
-  const overlapCount = Math.min(
-    shuffled.length,
-    options.overlapUnits ?? Math.round((options.overlapFraction ?? 0) * shuffled.length),
-  );
-  const overlap = shuffled.slice(0, overlapCount);
-  const rest = shuffled.slice(overlapCount);
   const n = Math.max(1, options.sets);
   const perUnit = Math.min(n, Math.max(1, Math.floor(options.perUnit ?? 1)));
+  const name = (p: number) => `${options.prefix ?? "s"}${p + 1}`;
   if (perUnit > 1) {
     // Unit i to sets i, i+1, ... (mod n): every set gets about as many
-    const out = Array.from({ length: n }, (_, p) => ({ name: `${options.prefix ?? "s"}${p + 1}`, units: [] as T[] }));
-    rest.forEach((unit, i) => {
+    const out = Array.from({ length: n }, (_, p) => ({ name: name(p), units: [] as T[] }));
+    shuffled.forEach((unit, i) => {
       for (let j = 0; j < perUnit; j++) out[(i + j) % n].units.push(unit);
     });
-    if (overlap.length > 0) out.push({ name: OVERLAP_SET, units: overlap });
     return out;
   }
-  const base = Math.floor(rest.length / n);
-  const extra = rest.length % n;
+  const base = Math.floor(shuffled.length / n);
+  const extra = shuffled.length % n;
   const out: { name: string; units: T[] }[] = [];
   let offset = 0;
   for (let p = 0; p < n; p++) {
     const size = base + (p < extra ? 1 : 0);
-    out.push({ name: `${options.prefix ?? "s"}${p + 1}`, units: rest.slice(offset, offset + size) });
+    out.push({ name: name(p), units: shuffled.slice(offset, offset + size) });
     offset += size;
   }
-  if (overlap.length > 0) out.push({ name: OVERLAP_SET, units: overlap });
   return out;
 }
 
-/** How many units a special set gets: a number, or a fraction of all units. */
-export interface SpecialAmount {
-  units?: number;
-  fraction?: number;
-}
-
 /**
- * Divides units over named coders (a coder distribution column,
- * docs/architecture.md §6): first the special units, practice
- * (`_practice`) and gold (`_gold`) and the overlap (`_overlap`), for
- * everyone; then every other unit to `perUnit` coders, each unit to the
- * coders with the fewest so far. With `keep`, units a coder already has
- * (e.g. saw while coding) stay theirs first, so redistributing loses
- * nobody's work; such a unit may end up with more coders than `perUnit`.
- * Seeded: reproducible.
+ * Divides units over named coders (`coder_set`, docs/plans/unit-sets.md):
+ * test units aside (`testUnits`, e.g. those of an existing `test_unit`
+ * column, and `newTestUnits`: this many units of each type, drawn now),
+ * every other unit to `perUnit` coders, each unit to the coders with the
+ * fewest so far. Test units are no coder's own: overlap, practice and gold
+ * units go to everyone. With `keep`, units a coder already has (e.g. saw
+ * while coding) stay theirs first, so redistributing loses nobody's work;
+ * such a unit may end up with more coders than `perUnit`. Seeded:
+ * reproducible. Returns the coders' sets and the test units drawn.
  */
 export function distributeUnits(
   units: number[],
   coders: string[],
   options: {
     perUnit?: number;
-    overlapUnits?: number;
-    overlapFraction?: number;
-    practice?: SpecialAmount;
-    gold?: SpecialAmount;
+    /** Units that are test units already: not given to coders. */
+    testUnits?: Iterable<number>;
+    /** Test units to draw from the other units, per type. */
+    newTestUnits?: Partial<Record<TestUnitType, number>>;
     seed?: number;
     /** Coder -> units to keep with them. */
     keep?: ReadonlyMap<string, Iterable<number>>;
   } = {},
-): { sets: { name: string; units: number[] }[]; kept: number } {
-  let left = seededShuffle(units, options.seed ?? 0);
-  const take = (amount: SpecialAmount | undefined) => {
-    const n = Math.min(left.length, amount?.units ?? Math.round((amount?.fraction ?? 0) * units.length));
+): { sets: { name: string; units: number[] }[]; testUnits: { name: TestUnitType; units: number[] }[]; kept: number } {
+  const tests = new Set(options.testUnits ?? []);
+  let left = seededShuffle(
+    units.filter((u) => !tests.has(u)),
+    options.seed ?? 0,
+  );
+  const testUnits = TEST_UNIT_TYPES.flatMap((name) => {
+    const n = Math.min(left.length, Math.max(0, Math.floor(options.newTestUnits?.[name] ?? 0)));
     const taken = left.slice(0, n);
     left = left.slice(n);
-    return taken;
-  };
-  const practice = take(options.practice);
-  const gold = take(options.gold);
-  const overlap = take({ units: options.overlapUnits, fraction: options.overlapFraction });
+    return taken.length > 0 ? [{ name, units: taken }] : [];
+  });
   const rest = left;
   const perUnit = Math.min(coders.length, Math.max(1, Math.floor(options.perUnit ?? 1)));
   const assigned = new Map<string, Set<number>>(coders.map((c) => [c, new Set()]));
@@ -256,10 +262,7 @@ export function distributeUnits(
     name,
     units: [...assigned.get(name)!].sort((a, b) => order.get(a)! - order.get(b)!),
   }));
-  if (overlap.length > 0) sets.push({ name: OVERLAP_SET, units: overlap });
-  if (practice.length > 0) sets.push({ name: PRACTICE_SET, units: practice });
-  if (gold.length > 0) sets.push({ name: GOLD_SET, units: gold });
-  return { sets, kept };
+  return { sets, testUnits, kept };
 }
 
 /** Deterministic shuffle (Mulberry32). */
@@ -280,31 +283,31 @@ export function seededShuffle<T>(array: T[], seed: number): T[] {
   return result;
 }
 
-/** The key the server and its tables use for a set: `group/set`. */
-export const setKey = (group: string, set: string) => `${group}/${set}`;
+/** The key the server and its tables use for a set: `column/set`. */
+export const setKey = (column: string, set: string) => `${column}/${set}`;
 
 /**
- * Adds new units to a group's sets (not `_overlap`), shuffled (seeded):
+ * Adds new units to a column's sets, shuffled (seeded):
  * `distribute` spreads them over the existing sets, smallest first, so the
  * sets stay about equal; `new` makes new sets the average size of the
  * existing ones, named on from the existing names (`s4`, `s5`, ... after
  * `s1` to `s3`). Ordered sets get the units at their end.
  */
 export function addToSets(sets: UnitSet[], unitIds: number[], mode: "distribute" | "new", seed = 0): UnitSet[] {
-  const own = sets.filter((s) => s.name !== OVERLAP_SET);
   const ids = seededShuffle(unitIds, seed);
   if (ids.length === 0) return sets;
-  if (mode === "distribute" && own.length > 0) {
+  if (mode === "distribute" && sets.length > 0) {
     const next = sets.map((s) => ({ ...s, unitIds: [...s.unitIds] }));
-    const targets = next.filter((s) => s.name !== OVERLAP_SET);
-    for (const id of ids) targets.reduce((a, b) => (b.unitIds.length < a.unitIds.length ? b : a)).unitIds.push(id);
+    for (const id of ids) next.reduce((a, b) => (b.unitIds.length < a.unitIds.length ? b : a)).unitIds.push(id);
     return next;
   }
   const average =
-    own.length > 0 ? Math.max(1, Math.round(own.reduce((n, s) => n + s.unitIds.length, 0) / own.length)) : ids.length;
+    sets.length > 0
+      ? Math.max(1, Math.round(sets.reduce((n, s) => n + s.unitIds.length, 0) / sets.length))
+      : ids.length;
   const count = Math.max(1, Math.round(ids.length / average));
   // Names on from the highest `<prefix><n>` (default `s`)
-  const numbered = own.map((s) => /^(.*?)(\d+)$/.exec(s.name)).filter((m): m is RegExpExecArray => m !== null);
+  const numbered = sets.map((s) => /^(.*?)(\d+)$/.exec(s.name)).filter((m): m is RegExpExecArray => m !== null);
   const prefix = numbered[0]?.[1] ?? "s";
   let n = Math.max(0, ...numbered.filter((m) => m[1] === prefix).map((m) => Number(m[2])));
   const names = new Set(sets.map((s) => s.name));

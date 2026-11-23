@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { UnitData, UnitDataValue } from "./common.js";
+import { TEST_UNIT, isRoleColumn } from "./sets.js";
 
 /**
  * A study's unit fields (docs/client.md §7, "Units"): every unit has the
@@ -9,12 +10,13 @@ import type { UnitData, UnitDataValue } from "./common.js";
  * so `{{$unit.count > 40}}` compares numbers. `null` is an empty value of
  * any type.
  *
- * A `set` field (docs/architecture.md §6) is a column whose cells name
- * the sets a unit is in (`anna`, `anna;bob`, `_overlap`, `_gold`): who or
- * which condition gets the unit. Its cells are stored as the set group of
- * the same name (sets.ts), not in the units' data.
+ * The columns with a role (sets.ts, docs/plans/unit-sets.md) have a type
+ * of their own: `set` for `coder_set`, `condition_set` and `part_set`
+ * (cells name the sets a unit is in: `anna`, `anna;bob`), `unit_type` for
+ * `test_unit` (`overlap`, `practice` or `gold`, or empty). Their cells are
+ * stored as sets (sets.ts), not in the units' data.
  */
-export const UnitFieldTypeSchema = z.enum(["text", "number", "boolean", "set"]);
+export const UnitFieldTypeSchema = z.enum(["text", "number", "boolean", "set", "unit_type"]);
 export type UnitFieldType = z.infer<typeof UnitFieldTypeSchema>;
 
 export const UnitFieldSchema = z.object({
@@ -30,7 +32,25 @@ export type UnitField = z.infer<typeof UnitFieldSchema>;
  * their types, the one specification of them. Uploads write it (new
  * columns are added); the design's `$unit` references must be declared.
  */
-export const UnitsSpecSchema = z.object({ fields: z.array(UnitFieldSchema).max(500) });
+export const UnitsSpecSchema = z.object({
+  fields: z
+    .array(UnitFieldSchema)
+    .max(500)
+    .superRefine((fields, ctx) =>
+      fields.forEach((f, i) => {
+        // A role is in the name: such a column has its role's type, and only it has that type
+        const wanted = isRoleColumn(f.name) ? roleColumnType(f.name) : null;
+        if (wanted ? f.type !== wanted : isSetType(f.type))
+          ctx.addIssue({
+            code: "custom",
+            path: [i, "type"],
+            message: wanted
+              ? `'${f.name}' is a column with a role: its type is ${wanted}`
+              : `Only the columns with a role (coder_set, condition_set, part_set, test_unit) are of type ${f.type}`,
+          });
+      }),
+    ),
+});
 export type UnitsSpec = z.infer<typeof UnitsSpecSchema>;
 
 /**
@@ -46,6 +66,7 @@ export function unitFieldNameError(name: string): string | null {
   if (!UNIT_FIELD_NAME.test(name)) return "only letters, digits and _, not starting with a digit";
   // `$unit._practice` and the like are AnnoTinder's (docs/architecture.md §6.2)
   if (name.startsWith("_")) return "names starting with _ are reserved";
+  if (isRoleColumn(name)) return "a column with a role: its cells are uploaded as sets";
   return null;
 }
 
@@ -69,13 +90,18 @@ export function toUnitFieldName(header: string, taken: ReadonlySet<string> = new
   return unique;
 }
 
+/** The column with the right answer to question `q` on practice and gold units (answerKey.ts). */
+export const answerColumn = (question: string) => `answer_${question}`;
+/** The column with the feedback on question `q`, shown on practice units when the answer is wrong. */
+export const feedbackColumn = (question: string) => `feedback_${question}`;
+
 /**
- * An answer column of gold or practice units (`<question>_gold`,
- * `<question>_practice`, `<question>_practice_message`; design/unitLoop.ts):
- * text, since a cell may hold alternatives (`a|b`) and ranges (`3..5`)
- * (answerKey.ts). It takes numbers and booleans too, whatever its type.
+ * An answer or feedback column (`answer_<q>`, `feedback_<q>`): text, since
+ * a cell may hold alternatives (`a|b`) and ranges (`3..5`) (answerKey.ts).
+ * It takes numbers and booleans too, whatever its type. Never shown to
+ * coders (validation).
  */
-export const isAnswerColumn = (name: string) => /_(gold|practice|practice_message)$/.test(name);
+export const isAnswerColumn = (name: string) => /^(answer|feedback)_./.test(name);
 
 /** The type of a stored value; null for an empty value (fits every type). */
 export function typeOfValue(value: UnitDataValue): UnitFieldType | null {
@@ -123,24 +149,30 @@ export function addedFields(units: UnitData[], fields: UnitField[]): { fields: U
   return added;
 }
 
-/** The set columns of the unit fields (`set` fields: set groups, not data). */
-export const setColumns = (fields: readonly UnitField[]) => fields.filter((f) => f.type === "set").map((f) => f.name);
+/** Whether a field type is a role column's: stored as sets, not data. */
+export const isSetType = (type: UnitFieldType) => type === "set" || type === "unit_type";
 
-/** Why a unit's data doesn't fit the study's fields, or null if it does: the same fields (set columns aside), with fitting values. */
+/** The type a role column has (`unit_type` for `test_unit`, else `set`). */
+export const roleColumnType = (name: string): UnitFieldType => (name === TEST_UNIT ? "unit_type" : "set");
+
+/** The role columns among the unit fields (stored as sets, not data). */
+export const setColumns = (fields: readonly UnitField[]) => fields.filter((f) => isSetType(f.type)).map((f) => f.name);
+
+/** Why a unit's data doesn't fit the study's fields, or null if it does: the same fields (role columns aside), with fitting values. */
 export function checkUnitData(data: UnitData, fields: UnitField[]): string | null {
   const known = new Map(fields.map((f) => [f.name, f.type]));
   for (const [name, value] of Object.entries(data)) {
     const type = known.get(name);
     if (type === undefined) return `Unknown field '${name}' (the fields are: ${fields.map((f) => f.name).join(", ")})`;
-    if (type === "set") {
-      if (value !== null) return `Field '${name}' is a set column: its cells are uploaded as sets`;
+    if (isSetType(type)) {
+      if (value !== null) return `Field '${name}' is a column with a role: its cells are uploaded as sets`;
       continue;
     }
     const actual = typeOfValue(value);
     if (actual !== null && actual !== type && !isAnswerColumn(name))
       return `Field '${name}' is ${type}, got ${actual} (${JSON.stringify(value)})`;
   }
-  const missing = fields.find((f) => f.type !== "set" && !(f.name in data));
+  const missing = fields.find((f) => !isSetType(f.type) && !(f.name in data));
   return missing ? `Missing field '${missing.name}'` : null;
 }
 
@@ -164,7 +196,7 @@ export function inferFieldType(values: string[]): UnitFieldType {
  * boolean, or null if empty. Text stays as is. Undefined if it doesn't parse.
  */
 export function parseFieldValue(raw: string, type: UnitFieldType): UnitDataValue | undefined {
-  if (type === "text" || type === "set") return raw;
+  if (type === "text" || isSetType(type)) return raw;
   const value = raw.trim();
   if (value === "") return null;
   if (type === "number") return NUMBER.test(value) ? Number(value) : undefined;

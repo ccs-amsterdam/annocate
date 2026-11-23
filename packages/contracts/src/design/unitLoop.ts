@@ -1,20 +1,22 @@
 import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
 import type { AnyVariableType } from "./variableTypes.js";
-import { SetGroupNameSchema } from "../sets.js";
+import { SetNameSchema } from "../sets.js";
 
-// How a unit_loop gets its units (docs/architecture.md §6.2). Who the
-// coders are is the study's coder unit assignment's (session.ts `invite`):
-// specific coders by a set column, or a crowd (optionally with a set column
-// too). A loop works within a coder's units: a subset (some sets of another
-// set column), the coding units yes or no, where the special units of the
-// assignment's column go (overlap, practice, gold: left out, before, after
-// or spread throughout), the checks on practice and gold units, and for a
-// crowd whether the units are divided among the coders (a shared queue) or
-// every coder codes all of them. A later loop can instead take the units
-// a coder got in the previous loop (`sameAsPrevious`). The design refers to set
-// columns and their values by name; which units are in them lives with the
-// units, so a design can be shared and reproduced without revealing them.
+// How a unit_loop gets its units (docs/architecture.md §6.2,
+// docs/plans/unit-sets.md). Who the coders are is the study's coder unit
+// assignment's (session.ts `invite`): specific coders by the units'
+// `coder_set`, or a crowd; an experiment can select units by
+// `condition_set`. A loop works within a coder's units: one part of the
+// study (`part`, a value of `part_set`), the coding units yes or no, where
+// the test units (`test_unit`: overlap, practice, gold) go (left out,
+// before, after or spread throughout), the checks on practice and gold
+// units, and for a crowd whether the units are divided among the coders (a
+// shared queue) or every coder codes all of them. A later loop can instead
+// take the units a coder got in the previous loop (`sameAsPrevious`). The
+// design refers to the columns' values by name; which units have them
+// lives with the units, so a design can be shared and reproduced without
+// revealing them.
 
 /**
  * Whether coders' answers to a question can be compared for an agreement
@@ -28,24 +30,24 @@ export function supportsAgreement(variable: AnyVariableType): boolean {
   );
 }
 
-/** The key for "every unit in the study" (the server's sets are keyed `group/set`, `setKey`). */
+/** The key for "every unit in the study" (the server's sets are keyed `column/set`, `setKey`). */
 export const ALL_UNITS_SET = "__all__";
 
 /**
- * The default rate of special units (placement `rate`, docs/architecture.md
+ * The default rate of test units (placement `rate`, docs/architecture.md
  * §6.2): about one per `every` own units, at random (seeded per coder: a
  * reload gives the same order) but never more than 2 x `every` apart, so it
  * works without knowing how many units a coder gets (a shared queue).
- * Special units left when the coder's own units run out come at the end.
+ * Test units left when the coder's own units run out come at the end.
  */
 export const DEFAULT_RATE = 10;
 
 /**
- * Where a loop puts special units (`_overlap`, `_practice`, `_gold` sets of
- * the coder unit assignment's column) among the coding units: left out
- * (`ignore`), `before` or `after` them, or `spread` evenly throughout them
- * (in a shared queue without a maximum of units per coder: about one in
- * ten, at random).
+ * Where a loop puts test units (`test_unit`: overlap, practice, gold) among
+ * the coding units: left out (`ignore`), `before` or `after` them, or
+ * `spread` evenly throughout them (in a shared queue without a maximum of
+ * units per coder: about one in ten, at random). A test unit with a part
+ * (`part_set`) is only in the loops of that part; without one, in every loop.
  */
 export const PlacementSchema = z.enum(["ignore", "before", "after", "spread"]);
 export type Placement = z.infer<typeof PlacementSchema>;
@@ -53,8 +55,8 @@ export type Placement = z.infer<typeof PlacementSchema>;
 /**
  * The checks on practice units (docs/architecture.md §6.2): for the
  * `questions` listed, a unit's right answer is in its column
- * `<question>_practice` (optional per unit), and its own feedback in
- * `<question>_practice_message` (optional). Checked in the browser as each
+ * `answer_<question>` (optional per unit), and its own feedback in
+ * `feedback_<question>` (optional). Checked in the browser as each
  * question is answered: a wrong answer shows the feedback, and the coder
  * answers again until right (`retry`, the default) or may go on. How many
  * tries it took is stored with the answer's timing.
@@ -70,7 +72,7 @@ export type PracticeCheck = z.infer<typeof PracticeCheckSchema>;
 
 /**
  * The checks on gold units (docs/architecture.md §6.2), silent: for each of
- * `questions`, the unit's column `<question>_gold` has the right answer.
+ * `questions`, the unit's column `answer_<question>` has the right answer.
  * With `health`: a score that starts at `start`, changes by `wrong` for a
  * wrong answer and by `right` for a right one (never above `start`); at 0 or
  * below the session ends at the end item `end` (a screen-out).
@@ -88,24 +90,8 @@ export const GoldCheckSchema = z.object({
 });
 export type GoldCheck = z.infer<typeof GoldCheckSchema>;
 
-/** The answer column of a checked question on gold and practice units (docs/architecture.md §6.2). */
-export const goldColumn = (question: string) => `${question}_gold`;
-export const practiceColumn = (question: string) => `${question}_practice`;
-export const practiceMessageColumn = (question: string) => `${question}_practice_message`;
-
 /** Answer types a gold or practice question can have: compared by value. */
 export const CHECKABLE_TYPES = ["nominal", "ordinal", "annotinder", "numeric", "confirm"] as const;
-
-/**
- * A loop's subset: only the coder's units in these sets of a set column
- * (not the coder unit assignment's column: that one says whose units they
- * are).
- */
-export const SubsetSchema = z.object({
-  column: SetGroupNameSchema,
-  sets: z.array(z.string().min(1).max(128)).min(1, "Choose at least one set").max(100),
-});
-export type Subset = z.infer<typeof SubsetSchema>;
 
 /**
  * Dividing a loop's units among a crowd's coders (`divide`): the loop's
@@ -115,7 +101,7 @@ export type Subset = z.infer<typeof SubsetSchema>;
  * question `until.on`; it is never handed out to more than
  * `codersPerUnit.max` coders (except to a coder below
  * `unitsPerCoder.min`). Each coder gets at most `unitsPerCoder.max` units
- * (besides the special ones).
+ * (besides the test units).
  */
 export const CriteriaSchema = z
   .object({
@@ -164,16 +150,17 @@ export const CriteriaSchema = z
 export type Criteria = z.infer<typeof CriteriaSchema>;
 
 /**
- * Which of a coder's units a loop includes (docs/architecture.md §6.2): a
- * subset of them (`subset`), the coding units or not (`coding`, default
- * yes), where the special units go (default `spread`), with the checks on
+ * Which of a coder's units a loop includes (docs/architecture.md §6.2): one
+ * part of the study (`part`: the units with this value in `part_set`;
+ * absent: every unit), the coding units or not (`coding`, default
+ * yes), where the test units go (default `spread`), with the checks on
  * practice and gold units; for a crowd, `divide`: the coding units are a
  * shared queue (else every coder codes all of them); `sameAsPrevious`: the
  * coding units are those the coder finished in the previous loop, in that
  * order (a third loop with it takes the second's, so the first's). Absent: all of them.
  */
 export const LoopUnitsSchema = z.object({
-  subset: SubsetSchema.optional(),
+  part: SetNameSchema.optional(),
   coding: z.boolean().optional(),
   overlap: PlacementSchema.optional(),
   practice: PlacementSchema.optional(),
@@ -185,18 +172,19 @@ export const LoopUnitsSchema = z.object({
 });
 export type LoopUnits = z.infer<typeof LoopUnitsSchema>;
 
-/** A loop's units settings (`{}` when absent: all the coder's units, special units spread throughout). */
+/** A loop's units settings (`{}` when absent: all the coder's units, test units spread throughout). */
 export const loopUnits = (loop: { units?: LoopUnits }): LoopUnits => loop.units ?? {};
 
 /**
  * How the server hands out a loop's units: the loop's settings (a crowd's
- * shared queue, `criteria`), and the special units' placements as the
+ * shared queue, `criteria`), and the test units' placements as the
  * distribution works with them (`first`, `last`, `spread`, or `rate`: about
  * one in `every`, for a shared queue without a maximum of units per coder).
  */
 export interface ResolvedLoopUnits {
-  subset?: Subset;
-  /** The coding units are included (else only special units). */
+  /** Only the units of this part (`part_set`). */
+  part?: string;
+  /** The coding units are included (else only test units). */
   own: boolean;
   criteria?: Criteria;
   /** The key of the previous loop, whose units (per coder) this loop takes. */
@@ -239,7 +227,7 @@ export function effectiveLoopUnits(loop: { units?: LoopUnits }, crowd: boolean, 
   const practice = place(u.practice);
   const gold = place(u.gold);
   return {
-    ...(u.subset ? { subset: u.subset } : {}),
+    ...(u.part ? { part: u.part } : {}),
     own: u.coding ?? true,
     ...(shared ? { criteria: shared } : {}),
     ...(previous !== undefined ? { sameAs: previous } : {}),
@@ -264,7 +252,7 @@ export function sharedDefaults(b: ResolvedLoopUnits) {
 
 /** Loop-level distribution settings, shared by `unit_loop` items. */
 export const UnitLoopDistributionShape = {
-  /** Which of the coder's units the loop includes, and where special units go. Absent: all of them. */
+  /** Which of the coder's units the loop includes, and where test units go. Absent: all of them. */
   units: LoopUnitsSchema.optional(),
   /** `random`: each coder gets the units (and the overlap units) in their own random order. Default `sequential`: the units' order. */
   order: z.enum(["sequential", "random"]).optional(),

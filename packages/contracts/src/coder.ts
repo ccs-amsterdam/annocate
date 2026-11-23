@@ -24,10 +24,9 @@ export const CoderProgressSchema = z.object({
   /** unit loop title (`loopTitle`) -> units this coder finished, for the loops of the live design version. */
   finished: z.record(z.string(), z.number().int().nonnegative()),
   /**
-   * Units of the deployed special sets (`_overlap`, `_gold`, `_practice`;
-   * docs/architecture.md §6.2) the coder finished, of how many: the
-   * special sets of the set groups the coder was routed to (empty before
-   * routing, or in loops without a group).
+   * Deployed test units (`test_unit`: overlap, gold, practice;
+   * docs/architecture.md §6.2) the coder finished, of how many (empty
+   * before the coder reached a loop).
    */
   special: z.partialRecord(
     z.enum(["overlap", "gold", "practice"]),

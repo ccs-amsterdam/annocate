@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
-import { SetGroupNameSchema } from "../sets.js";
 import {
   NominalOptionSchema,
   NominalOptionsSchema,
@@ -138,28 +137,32 @@ export const ConfirmTypeSchema = VariableBaseSchema.extend({
 });
 
 /**
- * An experiment's conditions and how they are drawn (an `experiment` item's
- * variable, item.ts): drawn rather than asked, on the server, once, and
- * never changed afterwards.
+ * An experiment's conditions and how they are assigned (an `experiment`
+ * item's variable, item.ts): on the server, once, when the coder reaches the
+ * item, and never changed afterwards.
  *
  * - `random`:    a (weighted) random draw from `options`
  * - `balanced`:  the option fewest coders have so far
+ * - `url_param`: the value of the URL parameter `param` (a URL parameter of
+ *   the Study entry, by name, whose values are the conditions); nothing is drawn
  */
 export const RandomVariableSchema = z
   .object({
     type: z.literal("random"),
-    draw: z.enum(["random", "balanced"]),
-    /** The possible values. Optional with `units`: then the column's values (its sets), whatever they are. */
+    draw: z.enum(["random", "balanced", "url_param"]),
+    /** With `url_param`: the URL parameter (its name in the Study entry) whose value is the condition. */
+    param: SafeNameSchema.optional(),
+    /** The possible values. Optional with `units`: then the values of `condition_set`, whatever they are. */
     options: z
       .array(NominalOptionSchema.extend({ weight: z.number().positive().optional() }))
       .min(1, "List at least one value")
       .optional(),
     /**
-     * A set column of the units (docs/architecture.md §6.1): the
-     * coder's value then selects their units, in the loops after this
-     * question (only the units whose cell holds it).
+     * Each condition gets its own units (docs/plans/unit-sets.md): those
+     * with the condition in the units' `condition_set`, in the loops after
+     * this item. At most one experiment selects units.
      */
-    units: SetGroupNameSchema.optional(),
+    units: z.boolean().optional(),
     /**
      * Balanced within groups (stratified): coders count only against coders
      * with the same answers to these earlier coder-level questions, or the
@@ -172,8 +175,16 @@ export const RandomVariableSchema = z
     if (!v.options && !v.units)
       ctx.addIssue({
         code: "custom",
-        message: "List the values, or link the variable to a set column of the units",
+        message: "List the values, or select units by the units' condition_set",
         path: ["options"],
+      });
+    if (v.draw === "url_param" && !v.param)
+      ctx.addIssue({ code: "custom", message: "Choose the URL parameter with the condition", path: ["param"] });
+    if (v.param && v.draw !== "url_param")
+      ctx.addIssue({
+        code: "custom",
+        message: "Only a condition from a URL parameter has a parameter",
+        path: ["param"],
       });
     if (v.stratify?.length && v.draw !== "balanced")
       ctx.addIssue({

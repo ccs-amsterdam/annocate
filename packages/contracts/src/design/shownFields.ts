@@ -1,7 +1,9 @@
 import { unitLoops, type UnitLoopItem } from "./item.js";
 import { forEachItem } from "./walk.js";
-import { sessionItem } from "./session.js";
-import { goldColumn, practiceColumn, practiceMessageColumn } from "./unitLoop.js";
+import { inviteOf, sessionItem } from "./session.js";
+import { selectsUnits } from "./assignment.js";
+import { CODER_SET, CONDITION_SET, PART_SET, isRoleColumn, type RoleColumn } from "../sets.js";
+import { answerColumn, feedbackColumn } from "../unitFields.js";
 import { extractReferences, type Reference } from "./references.js";
 import { expandSnippets } from "./snippets.js";
 import { loopSnippets } from "./layoutItems.js";
@@ -92,7 +94,9 @@ export function loopDependencies(items: readonly unknown[]): Map<string, string[
  *   or selected in by a span question: coders see it;
  * - `sent`: only in conditions the browser evaluates: sent to coders, not
  *   shown (anyone looking behind the scenes can see it);
- * - `server`: answer columns of gold and practice questions: never sent.
+ * - `server`: answer and feedback columns of checked questions, and the
+ *   columns with a role: never sent (practice answers and feedback come
+ *   with practice units only).
  * Fields not in the map aren't used.
  */
 export type FieldUse = "shown" | "sent" | "server";
@@ -111,11 +115,10 @@ export function fieldUsage(items: readonly unknown[]): Map<string, FieldUse> {
       if (ref.ns === "unit") counts.set(ref.path[0], (counts.get(ref.path[0]) ?? 0) + 1);
     for (const [field, n] of counts) use(field, n > scriptCount(loop, field) ? "shown" : "sent");
     const units = loop.units;
-    if (units?.subset?.column) use(units.subset.column, "server");
-    for (const q of units?.goldCheck?.questions ?? []) use(goldColumn(q), "server");
+    for (const q of units?.goldCheck?.questions ?? []) use(answerColumn(q), "server");
     for (const q of units?.practiceCheck?.questions ?? []) {
-      use(practiceColumn(q), "server");
-      use(practiceMessageColumn(q), "server");
+      use(answerColumn(q), "server");
+      use(feedbackColumn(q), "server");
     }
   }
   // The set columns the session's units come from
@@ -124,22 +127,17 @@ export function fieldUsage(items: readonly unknown[]): Map<string, FieldUse> {
 }
 
 /**
- * The set columns a design names (docs/architecture.md §6): the coder
- * column, the columns experiments are linked to, and
- * loops' subset columns. They must be `set` fields of the units.
+ * The set columns a design selects units by (docs/plans/unit-sets.md):
+ * `coder_set` for specific coders, `condition_set` for an experiment that
+ * selects units, `part_set` for loops that show a part.
  */
-export function designSetColumns(items: readonly unknown[]): string[] {
-  const columns = new Set<string>();
-  const session = sessionItem(items);
-  const invite = session?.invite;
-  if (invite?.column) columns.add(invite.column);
-  forEachItem<{ type?: unknown; variable?: { type?: unknown; units?: unknown }; units?: unknown }>(items, (it) => {
-    if (it.type === "experiment" && it.variable?.type === "random" && typeof it.variable.units === "string")
-      columns.add(it.variable.units);
-    if (it.type === "unit_loop") {
-      const column = (it.units as { subset?: { column?: unknown } } | undefined)?.subset?.column;
-      if (typeof column === "string") columns.add(column);
-    }
+export function designSetColumns(items: readonly unknown[]): RoleColumn[] {
+  const columns = new Set<RoleColumn>();
+  if (inviteOf(sessionItem(items)).mode === "coders") columns.add(CODER_SET);
+  forEachItem<{ type?: unknown; units?: unknown }>(items, (it) => {
+    if (selectsUnits(it)) columns.add(CONDITION_SET);
+    if (it.type === "unit_loop" && typeof (it.units as { part?: unknown } | undefined)?.part === "string")
+      columns.add(PART_SET);
   });
   return [...columns];
 }
@@ -159,18 +157,13 @@ function scriptCount(loop: UnitLoopItem, field: string): number {
 }
 
 /**
- * Unit fields the design uses but doesn't declare (`$unit.id`
- * and `_` names, which AnnoTinder provides, aside).
+ * Unit fields the design uses but doesn't declare (`$unit.id` and `_`
+ * names, which AnnoTinder provides, aside; and the columns with a role:
+ * deploying checks those against the units, sets.ts on the server).
  */
 export function undeclaredFields(items: readonly unknown[], declared: readonly { name: string }[]): string[] {
   const names = new Set(declared.map((f) => f.name));
-  return [...fieldUsage(items).keys()].filter((f) => !names.has(f) && f !== "id" && !f.startsWith("_"));
-}
-
-/** Columns the design selects units by (`designSetColumns`) that are declared, but not as `set` fields. */
-export function notSetColumns(
-  items: readonly unknown[],
-  declared: readonly { name: string; type: string }[],
-): string[] {
-  return designSetColumns(items).filter((c) => declared.some((f) => f.name === c && f.type !== "set"));
+  return [...fieldUsage(items).keys()].filter(
+    (f) => !names.has(f) && f !== "id" && !f.startsWith("_") && !isRoleColumn(f),
+  );
 }

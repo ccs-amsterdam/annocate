@@ -1,19 +1,15 @@
 import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
-import { SetGroupNameSchema } from "../sets.js";
 
 // How coders come to a study (the Study entry, docs/architecture.md §6-7):
-// the coder unit assignment (`invite`: specific coders with a link each or a
-// login, or a crowd with one link), and the URL parameters a link may
+// the coder unit assignment (`invite`: specific coders with a link each, a
+// login or names to pick, or a crowd with one link), and the URL parameters a link may
 // carry (context such as a distribution channel, or a panel's ids for its
 // return link). All are `$session.<name>` values, stored on the session
 // when it starts.
 
-/**
- * Session values that can't be declared: the coder (who the coder is), the
- * `source` URL parameter, and a crowd link's set (`group`).
- */
-export const RESERVED_SESSION_NAMES = ["coder", "source", "group"] as const;
+/** Session values that can't be declared: the coder (who the coder is), and the `source` URL parameter. */
+export const RESERVED_SESSION_NAMES = ["coder", "source"] as const;
 
 /** The longest value a session parameter takes (coder ids are short; it also bounds a pattern match). */
 export const MAX_SESSION_VALUE = 256;
@@ -109,7 +105,7 @@ export const UrlParamSchema = z
     description: z.string().max(500).optional(),
   })
   .refine((p) => !(RESERVED_SESSION_NAMES as readonly string[]).includes(p.name), {
-    message: "coder, source and group are built in: choose another name",
+    message: "coder and source are built in: choose another name",
     path: ["name"],
   })
   .refine((p) => !(p.values && p.pattern), { message: "Give values or a pattern, not both", path: ["pattern"] });
@@ -127,9 +123,10 @@ export const CoderParamSchema = z.object({
 export type CoderParam = z.infer<typeof CoderParamSchema>;
 
 /**
- * Specific coders (docs/architecture.md §6.1): the units are divided over
- * coders by a set column; each of its values is a coder (`$session.coder`,
- * also when the design has no unit loop: e.g. a survey of known experts).
+ * Specific coders (docs/architecture.md §6.1): who codes which units is the
+ * units' `coder_set` column; each of its values is a coder
+ * (`$session.coder`, also when the design has no unit loop: e.g. a survey
+ * of known experts). Overlap units (`test_unit`) are everyone's.
  * `link`: `per_coder`, a link each; `login`, one link where coders sign in
  * and get the units of their address (the column's values are all email
  * addresses); `pick_name`, one link where coders pick their name from the
@@ -137,33 +134,29 @@ export type CoderParam = z.infer<typeof CoderParamSchema>;
  * `nameDevices` (with `pick_name`): `first`, a name is the first device's
  * that picks it (others can't pick it again; the default); `any`, any device
  * that picks a name continues its session (e.g. a team sharing devices).
+ * Until the units have a `coder_set` column there are no coders: the draft
+ * saves, deploying can't.
  */
 export const CodersInviteSchema = z.object({
   mode: z.literal("coders"),
-  /** The set column saying who codes which units; absent while not chosen (a draft can be saved; deploying can't). */
-  column: SetGroupNameSchema.optional(),
   link: z.enum(["per_coder", "login", "pick_name"]),
   nameDevices: z.enum(["first", "any"]).optional(),
 });
 export type CodersInvite = z.infer<typeof CodersInviteSchema>;
 
 /**
- * A crowd (docs/architecture.md §6.1): one link for everyone. Who the
- * coder is (`$session.coder`): from a URL parameter (`coderParam`), or with
- * `login` (coders must sign in) their email. `column`: a set column for the
- * special units (overlap, practice, gold); if it also has other sets, a
- * link per set (`$session.group`), whose coders code that set. Whether the
- * units are divided among the coders is each loop's (unitLoop.ts
- * `divide`). `maxCoders`: a link takes at most this many sessions;
- * `groupMaxCoders`: per set, instead.
+ * A crowd (docs/architecture.md §6.1), also for surveys and survey
+ * experiments: one link for everyone. Who the coder is (`$session.coder`):
+ * from a URL parameter (`coderParam`), or with `login` (coders must sign
+ * in) their email. Whether the units are divided among the coders is each
+ * loop's (unitLoop.ts `divide`). `maxCoders`: the link takes at most this
+ * many sessions.
  */
 export const CrowdInviteSchema = z.object({
   mode: z.literal("crowd"),
   coderParam: CoderParamSchema.optional(),
   login: z.boolean().optional(),
-  column: SetGroupNameSchema.optional(),
   maxCoders: z.number().int().positive().optional(),
-  groupMaxCoders: z.record(z.string().min(1).max(128), z.number().int().positive()).optional(),
 });
 export type CrowdInvite = z.infer<typeof CrowdInviteSchema>;
 
@@ -313,53 +306,27 @@ export function sessionNames(items: readonly unknown[]): string[] {
 /** A simple email address check (coder values: all or none are addresses). */
 export const isEmail = (value: string) => /^[^\s@;#]+@[^\s@;#]+\.[^\s@;#]+$/.test(value);
 
-/** Whether a coder column's values are email addresses: `email` (all), `link` (none), `mixed`, or `none` (no values yet). */
+/** Whether the coders' (`coder_set`) values are email addresses: `email` (all), `link` (none), `mixed`, or `none` (no values yet). */
 export function coderAccess(values: readonly string[]): "email" | "link" | "mixed" | "none" {
   if (values.length === 0) return "none";
   const emails = values.filter(isEmail).length;
   return emails === values.length ? "email" : emails === 0 ? "link" : "mixed";
 }
 
-/**
- * The session values that select a session's units, as session name ->
- * column: the coder (`coder`, by the coder column), or a crowd link's set
- * (`group`; `optional`: a crowd column with only special sets has none).
- */
-export function sessionColumns(item: SessionItem | null): { name: string; column: string; optional?: boolean }[] {
+/** The most sessions a link takes: a crowd's limit. */
+export function linkMaxCoders(item: SessionItem | null | undefined): number | undefined {
   const invite = inviteOf(item);
-  if (invite.mode === "coders") return invite.column ? [{ name: "coder", column: invite.column }] : [];
-  return invite.column ? [{ name: "group", column: invite.column, optional: true }] : [];
-}
-
-/** The set column of the coder unit assignment (its special units are the loops'), if any. */
-export function assignmentColumn(item: SessionItem | null | undefined): string | undefined {
-  return inviteOf(item).column;
-}
-
-/** The most sessions a link takes: a crowd's limit, per set if it has one there (`group`). */
-export function linkMaxCoders(item: SessionItem | null | undefined, group: string | undefined): number | undefined {
-  const invite = inviteOf(item);
-  if (invite.mode !== "crowd") return undefined;
-  return (group !== undefined ? invite.groupMaxCoders?.[group] : undefined) ?? invite.maxCoders;
+  return invite.mode === "crowd" ? invite.maxCoders : undefined;
 }
 
 /**
  * The links a design makes, each as its values (name -> value): a link per
- * coder (specific coders with a link each), a link per set (a crowd whose
- * column has sets besides the special ones), else one link (no values).
- * `setsOf` gives a set column's values (from the units, without reserved ones).
+ * coder (specific coders with a link each; `coders`: the `coder_set`
+ * column's values), else one link (no values).
  */
-export function linkCombinations(
-  item: SessionItem | null,
-  setsOf: (group: string) => string[],
-): Record<string, string>[] {
+export function linkCombinations(item: SessionItem | null, coders: readonly string[]): Record<string, string>[] {
   const invite = inviteOf(item);
-  if (invite.mode === "coders" && invite.link === "per_coder")
-    return invite.column ? setsOf(invite.column).map((coder) => ({ coder })) : [];
-  if (invite.mode === "crowd" && invite.column) {
-    const groups = setsOf(invite.column);
-    if (groups.length > 0) return groups.map((group) => ({ group }));
-  }
+  if (invite.mode === "coders" && invite.link === "per_coder") return coders.map((coder) => ({ coder }));
   return [{}];
 }
 

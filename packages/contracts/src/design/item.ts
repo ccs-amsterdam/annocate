@@ -83,9 +83,10 @@ export const EndItemSchema = ItemBaseSchema.extend({
 export type EndItem = z.infer<typeof EndItemSchema>;
 
 /**
- * An experiment: each coder gets one of its conditions, drawn by the server
- * when the coder reaches it (at random, or balanced), never asked; with
- * `units`, linked to a set column of the units (each condition its units).
+ * An experiment: each coder gets one of its conditions, assigned by the
+ * server when the coder reaches it (at random, balanced, or a URL
+ * parameter's value), never asked; with `units`, each condition gets its
+ * own units (the units' `condition_set`).
  * Its `name` is the variable's name (`$var.<name>`); stored like an answer.
  * Coder level only (not inside a unit loop).
  */

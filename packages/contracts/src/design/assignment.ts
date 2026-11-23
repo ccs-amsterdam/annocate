@@ -1,45 +1,49 @@
-import { sessionColumns, sessionItem } from "./session.js";
+import { CODER_SET, CONDITION_SET } from "../sets.js";
+import { inviteOf, sessionItem } from "./session.js";
 import { forEachItem } from "./walk.js";
 
-// Who gets which units (docs/architecture.md §6): a session's units
-// are those whose cells hold its values, in every set column a value is
-// linked to (its share). The coder (specific coders' column) holds for
-// every loop; a random condition with `units` for the loops after it in
-// the flow.
+// Who gets which units (docs/architecture.md §6, docs/plans/unit-sets.md):
+// a session's units are those whose cells hold its values, in every set
+// column a value is linked to (its share). The coder (specific coders,
+// `coder_set`) holds for every loop; the condition of the experiment that
+// selects units (`condition_set`) for the loops after it in the flow.
 
-/** A value that selects units: `name` (`$session.coder`, or a random condition) and its set column. */
+/** A value that selects units: `name` (`$session.coder`, or an experiment's condition) and its set column. */
 export interface ShareColumn {
   name: string;
   column: string;
-  /** A random condition, drawn when reached; else a session value. */
+  /** An experiment's condition, assigned when reached; else a session value. */
   random?: boolean;
-  /** A session value a session may lack (a crowd link without a set): then the column doesn't select its units. */
-  optional?: boolean;
+}
+
+/** Whether an item is an experiment that selects units (`units: true`). */
+export function selectsUnits(item: unknown): item is { type: "experiment"; name: string } {
+  const it = item as { type?: unknown; name?: unknown; variable?: { type?: unknown; units?: unknown } } | null;
+  return (
+    it?.type === "experiment" &&
+    typeof it.name === "string" &&
+    it.variable?.type === "random" &&
+    it.variable.units === true
+  );
 }
 
 /**
  * Per loop (by key, as `unitLoops`), the session values that select its
- * units: the session's columns, and the random conditions linked to a
- * column that come before the loop (in the order of the flow).
+ * units: the coder (specific coders), and the experiment that selects
+ * units if it comes before the loop (in the order of the flow).
  */
 export function loopShareColumns(items: readonly unknown[]): Map<string, ShareColumn[]> {
-  const sessionShares: ShareColumn[] = sessionColumns(sessionItem(items));
+  const sessionShares: ShareColumn[] =
+    inviteOf(sessionItem(items)).mode === "coders" ? [{ name: "coder", column: CODER_SET }] : [];
   const randomShares: ShareColumn[] = [];
   const out = new Map<string, ShareColumn[]>();
   let loops = 0;
-  forEachItem<{ type?: unknown; name?: unknown; variable?: { type?: unknown; units?: unknown } }>(items, (it) => {
+  forEachItem<{ type?: unknown; name?: unknown }>(items, (it) => {
     if (it.type === "unit_loop") {
       loops++;
       out.set(String(loops), [...sessionShares, ...randomShares]);
-    } else if (
-      it.type === "experiment" &&
-      it.variable?.type === "random" &&
-      typeof it.variable.units === "string" &&
-      typeof it.name === "string"
-    ) {
-      if (!randomShares.some((r) => r.name === it.name))
-        randomShares.push({ name: it.name, column: it.variable.units, random: true });
-    }
+    } else if (selectsUnits(it) && !randomShares.some((r) => r.name === it.name))
+      randomShares.push({ name: it.name, column: CONDITION_SET, random: true });
     if (it.type !== "block") return "skip";
   });
   return out;

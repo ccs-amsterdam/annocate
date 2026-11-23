@@ -2,7 +2,7 @@ import { z } from "zod";
 import { DraftItemsSchema } from "./design/designVersion.js";
 import { PublicInfoSchema, SessionSpecSchema } from "./design/session.js";
 import { UnitDataSchema } from "./common.js";
-import { SetGroupNameSchema, SetNameSchema } from "./sets.js";
+import { RoleColumnSchema, SetNameSchema } from "./sets.js";
 import { UnitsSpecSchema } from "./unitFields.js";
 
 /**
@@ -18,11 +18,11 @@ export const RecipeSchema = z.object({
   name: z.string().min(1).max(256),
   /** Units: your id, and the fields (the first unit's fields are the study's, as with an upload). */
   units: z.array(z.object({ id: z.string().min(1), data: UnitDataSchema })).default([]),
-  /** Set columns (`set` unit fields), by the units' ids (a set's units in order; `ordered`: that order was given). */
+  /** The columns with a role (`coder_set`, `test_unit`, ...: stored as sets), by the units' ids (a set's units in order; `ordered`: that order was given). */
   sets: z
     .array(
       z.object({
-        group: SetGroupNameSchema,
+        group: RoleColumnSchema,
         sets: z.array(
           z.object({ name: SetNameSchema, units: z.array(z.string()), ordered: z.boolean().default(false) }),
         ),

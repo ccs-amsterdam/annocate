@@ -3,8 +3,8 @@ import {
   coderAccess,
   designItems,
   linkCombinations,
+  linkMaxCoders,
   loginRequired,
-  sessionColumns,
   sessionItem,
   splitDesignItems,
   type SessionItem,
@@ -51,8 +51,7 @@ describe("URL parameter patterns", () => {
 });
 
 describe("coder unit assignments and links", () => {
-  const setsOf = (group: string) =>
-    ({ coder: ["anna", "bob"], emails: ["a@x.org", "b@x.org"], mixed: ["anna", "b@x.org"] })[group] ?? [];
+  const coders = ["anna", "bob"];
   const item = (extra: Partial<SessionItem>): SessionItem => ({ type: "session", ...extra });
 
   it("tells email coders from named ones", () => {
@@ -63,23 +62,21 @@ describe("coder unit assignments and links", () => {
   });
 
   it("make a link per coder, or one link (a login, or a crowd)", () => {
-    expect(linkCombinations(null, setsOf)).toEqual([{}]);
-    expect(linkCombinations(item({ invite: { mode: "coders", column: "coder", link: "per_coder" } }), setsOf)).toEqual([
+    expect(linkCombinations(null, coders)).toEqual([{}]);
+    expect(linkCombinations(item({ invite: { mode: "coders", link: "per_coder" } }), coders)).toEqual([
       { coder: "anna" },
       { coder: "bob" },
     ]);
-    expect(linkCombinations(item({ invite: { mode: "coders", column: "emails", link: "login" } }), setsOf)).toEqual([
-      {},
-    ]);
-    expect(linkCombinations(item({ invite: { mode: "crowd" } }), setsOf)).toEqual([{}]);
+    expect(linkCombinations(item({ invite: { mode: "coders", link: "per_coder" } }), [])).toEqual([]);
+    expect(linkCombinations(item({ invite: { mode: "coders", link: "login" } }), coders)).toEqual([{}]);
+    expect(linkCombinations(item({ invite: { mode: "crowd" } }), coders)).toEqual([{}]);
   });
 
-  it("know which column selects a coder's units, and when coders sign in", () => {
-    const coders = item({ invite: { mode: "coders", column: "coder", link: "per_coder" } });
-    expect(sessionColumns(coders)).toEqual([{ name: "coder", column: "coder" }]);
-    expect(sessionColumns(item({}))).toEqual([]);
-    expect(loginRequired(coders)).toBe(false);
-    expect(loginRequired(item({ invite: { mode: "coders", column: "emails", link: "login" } }))).toBe(true);
+  it("know a crowd link's most coders, and when coders sign in", () => {
+    expect(linkMaxCoders(item({ invite: { mode: "crowd", maxCoders: 10 } }))).toBe(10);
+    expect(linkMaxCoders(item({ invite: { mode: "coders", link: "per_coder" } }))).toBeUndefined();
+    expect(loginRequired(item({ invite: { mode: "coders", link: "per_coder" } }))).toBe(false);
+    expect(loginRequired(item({ invite: { mode: "coders", link: "login" } }))).toBe(true);
     expect(loginRequired(item({ invite: { mode: "crowd", login: true } }))).toBe(true);
     expect(loginRequired(item({}))).toBe(false);
   });

@@ -86,9 +86,9 @@ export const coderEndpoints = {
   },
   /**
    * The coder reached an experiment (in the flow of the design): the
-   * server draws its condition now, once (random or balanced, counting only
-   * coders who reached it; stratified by the answers saved so far), and
-   * returns it. Reached again: the same value.
+   * server assigns its condition now, once (random or balanced, counting
+   * only coders who reached it; stratified by the answers saved so far; or
+   * the URL parameter's value), and returns it. Reached again: the same value.
    */
   assignCondition: {
     method: "POST",

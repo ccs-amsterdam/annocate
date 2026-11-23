@@ -57,7 +57,7 @@ import {
 /**
  * The researcher API (docs/api/researcher.md): called by the client's
  * researcher UI (`ResearcherApi`), and by scripts (R, Python) and other
- * systems. Studies, design versions, units, set groups, links, coder progress,
+ * systems. Studies, design versions, units, their columns with a role, links, coder progress,
  * deployment.
  *
  * Path params are written as `:param`. A server hosts any number of studies;
@@ -96,7 +96,7 @@ export const researcherEndpoints = {
     request: StudyFromExampleSchema,
     response: StudyResponseSchema,
   },
-  /** A new study from a recipe (the setup wizard): units, set groups, a design (a draft unless `publish`; deploying makes its links). */
+  /** A new study from a recipe (the setup wizard): units, their columns with a role, a design (a draft unless `publish`; deploying makes its links). */
   createStudyFromRecipe: {
     method: "POST",
     path: "/study/from-recipe",
@@ -172,7 +172,7 @@ export const researcherEndpoints = {
     request: UnitsSpecSchema,
     response: z.array(UnitFieldSchema),
   },
-  /** Query: `offset`, `limit` (max 200), and `group` with `set` (that set's units, in its order). */
+  /** Query: `offset`, `limit` (max 200), and `group` (a column with a role) with `set` (that set's units, in its order). */
   listUnitPage: { method: "GET", path: "/study/:studyId/units/page", request: z.void(), response: UnitPageSchema },
   getUnit: { method: "GET", path: "/study/:studyId/units/:id", request: z.void(), response: UnitResponseSchema },
   createUnits: {
@@ -183,14 +183,18 @@ export const researcherEndpoints = {
   },
   deleteUnit: { method: "DELETE", path: "/study/:studyId/units/:id", request: z.void(), response: z.void() },
 
-  /** The draft's set groups (docs/architecture.md §6.3), each with its sets in order; `?live=true`: the deployed ones. */
+  /** The draft's columns with a role (`coder_set`, `condition_set`, `part_set`, `test_unit`), each with its sets in order; `?live=true`: the deployed ones. */
   listSetGroups: {
     method: "GET",
     path: "/study/:studyId/sets",
     request: z.void(),
     response: z.array(SetGroupResponseSchema),
   },
-  /** Makes or replaces a group (its sets). Deployed, links follow (a link per coder of the coders' column). */
+  /**
+   * Makes or replaces a column with a role (`:group`: its name), its sets; it becomes a unit field of its type.
+   * `test_unit` takes only `overlap`, `practice` and `gold`, one per unit. Deployed, links follow (a link per coder
+   * of `coder_set`).
+   */
   putSetGroup: {
     method: "PUT",
     path: "/study/:studyId/sets/:group",

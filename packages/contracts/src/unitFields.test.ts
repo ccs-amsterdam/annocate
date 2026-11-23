@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  UnitsSpecSchema,
+  addedFields,
   checkUnitData,
+  isAnswerColumn,
   fieldsOfUnits,
   inferFieldType,
   parseFieldValue,
@@ -49,20 +52,39 @@ describe("unit fields", () => {
     expect(checkUnitData({ a: "1", b: "x" }, fields)).toMatch(/is number/);
     expect(checkUnitData({ a: 1 }, fields)).toMatch(/Missing field 'b'/);
     expect(checkUnitData({ a: 1, b: "x", c: 2 }, fields)).toMatch(/Unknown field 'c'/);
-    // Set columns are sets, not data: never given, never missing
-    const withSet = [...fields, { name: "coder", type: "set" as const }];
+    // Columns with a role are sets, not data: never given, never missing
+    const withSet = [
+      ...fields,
+      { name: "coder_set", type: "set" as const },
+      { name: "test_unit", type: "unit_type" as const },
+    ];
     expect(checkUnitData({ a: 1, b: "x" }, withSet)).toBeNull();
-    expect(checkUnitData({ a: 1, b: "x", coder: "anna" }, withSet)).toMatch(/is a set column/);
+    expect(checkUnitData({ a: 1, b: "x", coder_set: "anna" }, withSet)).toMatch(/is a column with a role/);
+    expect(checkUnitData({ a: 1, b: "x", test_unit: "gold" }, withSet)).toMatch(/is a column with a role/);
+    // and can't be added as data
+    expect(addedFields([{ a: 1, b: "x", part_set: "pre" }], fields)).toMatchObject({
+      error: expect.stringContaining("role"),
+    });
   });
 
   it("types answer columns as text, and lets them hold any value (cells like 3..5 or a|b)", () => {
-    expect(fieldsOfUnits([{ score_gold: 3 }, { score_gold: "3..5" }])).toEqual({
-      fields: [{ name: "score_gold", type: "text" }],
+    expect(fieldsOfUnits([{ answer_score: 3 }, { answer_score: "3..5" }])).toEqual({
+      fields: [{ name: "answer_score", type: "text" }],
     });
     // Also a column typed number before: an answer-key cell fits
-    const fields = [{ name: "score_practice", type: "number" as const }];
-    expect(checkUnitData({ score_practice: "3..5" }, fields)).toBeNull();
-    expect(checkUnitData({ score_practice: 4 }, [{ name: "score_practice", type: "text" as const }])).toBeNull();
+    const fields = [{ name: "answer_score", type: "number" as const }];
+    expect(checkUnitData({ answer_score: "3..5" }, fields)).toBeNull();
+    expect(checkUnitData({ feedback_score: 4 }, [{ name: "feedback_score", type: "text" as const }])).toBeNull();
+    expect(isAnswerColumn("answer_")).toBe(false);
+    expect(isAnswerColumn("score_answer")).toBe(false);
+  });
+
+  it("gives the columns with a role their type, and only them", () => {
+    expect(UnitsSpecSchema.safeParse({ fields: [{ name: "test_unit", type: "unit_type" }] }).success).toBe(true);
+    expect(UnitsSpecSchema.safeParse({ fields: [{ name: "coder_set", type: "set" }] }).success).toBe(true);
+    expect(UnitsSpecSchema.safeParse({ fields: [{ name: "test_unit", type: "set" }] }).success).toBe(false);
+    expect(UnitsSpecSchema.safeParse({ fields: [{ name: "coder_set", type: "text" }] }).success).toBe(false);
+    expect(UnitsSpecSchema.safeParse({ fields: [{ name: "coders", type: "set" }] }).success).toBe(false);
   });
 });
 

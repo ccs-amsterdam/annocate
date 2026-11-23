@@ -1,17 +1,10 @@
 import { describe, expect, it } from "vitest";
-import {
-  loopDependencies,
-  shownUnitFields,
-  fieldUsage,
-  undeclaredFields,
-  designSetColumns,
-  notSetColumns,
-} from "./shownFields.js";
+import { loopDependencies, shownUnitFields, fieldUsage, undeclaredFields, designSetColumns } from "./shownFields.js";
 import { loopShareColumns } from "./assignment.js";
 
 const loop = {
   type: "unit_loop",
-  units: { subset: { column: "parts", sets: ["a"] }, overlap: "ignore" },
+  units: { part: "a", overlap: "ignore" },
   children: [
     { type: "layout", template: "{{$unit.headline}} as {{$var.role.label}}" },
     {
@@ -44,7 +37,7 @@ describe("fieldUsage", () => {
     const items = [
       {
         type: "unit_loop",
-        units: { gold: "after", goldCheck: { questions: ["topic"] } },
+        units: { gold: "after", goldCheck: { questions: ["topic"] }, practiceCheck: { questions: ["topic"] } },
         children: [
           { type: "layout", template: "$unit.title" },
           {
@@ -66,47 +59,44 @@ describe("fieldUsage", () => {
       title: "shown",
       year: "sent",
       body: "shown",
-      topic_gold: "server",
+      answer_topic: "server",
+      feedback_topic: "server",
     });
-    expect(undeclaredFields(items, [{ name: "title" }])).toEqual(["body", "year", "topic_gold"]);
+    expect(undeclaredFields(items, [{ name: "title" }])).toEqual(["body", "year", "answer_topic", "feedback_topic"]);
   });
 });
 
 describe("set columns", () => {
   const items = [
-    { type: "session", invite: { mode: "coders", column: "coder", link: "per_coder" } },
+    { type: "session", invite: { mode: "coders", link: "per_coder" } },
     { type: "unit_loop", children: [{ type: "layout", template: "" }] },
     {
       type: "block",
       condition: { script: "true" },
-      children: [{ type: "experiment", name: "set", variable: { type: "random", draw: "balanced", units: "set" } }],
+      children: [{ type: "experiment", name: "set", variable: { type: "random", draw: "balanced", units: true } }],
     },
     {
       type: "unit_loop",
-      units: { subset: { column: "phase", sets: ["post"] } },
+      units: { part: "post" },
       children: [{ type: "layout", template: "" }],
     },
   ];
 
-  it("are the coder column, experiments' and filters' columns: used, and declared as set fields", () => {
-    expect(designSetColumns(items).sort()).toEqual(["coder", "phase", "set"]);
+  it("are coder_set (specific coders), condition_set (an experiment that selects units) and part_set (loop parts)", () => {
+    expect(designSetColumns(items).sort()).toEqual(["coder_set", "condition_set", "part_set"]);
     expect(Object.fromEntries(fieldUsage(items))).toEqual({
-      coder: "server",
-      phase: "server",
-      set: "server",
+      coder_set: "server",
+      condition_set: "server",
+      part_set: "server",
     });
-    expect(undeclaredFields(items, [{ name: "coder" }, { name: "set" }])).toEqual(["phase"]);
-    expect(
-      notSetColumns(items, [
-        { name: "coder", type: "set" },
-        { name: "set", type: "text" },
-      ]),
-    ).toEqual(["set"]);
+    // Deploying checks them against the units: never undeclared fields
+    expect(undeclaredFields(items, [])).toEqual([]);
+    expect(designSetColumns([{ type: "session", invite: { mode: "crowd" } }])).toEqual([]);
   });
 
-  it("select a loop's units: the coder's, and experiments before the loop", () => {
+  it("select a loop's units: the coder's, and the experiment before the loop", () => {
     const shares = loopShareColumns(items);
-    expect(shares.get("1")).toEqual([{ name: "coder", column: "coder" }]);
-    expect(shares.get("2")).toEqual([...shares.get("1")!, { name: "set", column: "set", random: true }]);
+    expect(shares.get("1")).toEqual([{ name: "coder", column: "coder_set" }]);
+    expect(shares.get("2")).toEqual([...shares.get("1")!, { name: "set", column: "condition_set", random: true }]);
   });
 });

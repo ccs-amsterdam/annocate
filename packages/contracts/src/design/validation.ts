@@ -3,24 +3,18 @@ import { layoutsByItem, loopSnippets } from "./layoutItems.js";
 import type { AnyVariableType } from "./variableTypes.js";
 import { sameValue } from "./options.js";
 import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
-import {
-  CHECKABLE_TYPES,
-  goldColumn,
-  practiceColumn,
-  practiceMessageColumn,
-  supportsAgreement,
-  type LoopUnits,
-} from "./unitLoop.js";
+import { CHECKABLE_TYPES, supportsAgreement, type LoopUnits } from "./unitLoop.js";
 import {
   RESERVED_SESSION_NAMES,
   STUDY_END_NAME,
-  sessionColumns,
+  inviteOf,
   sessionItem,
   sessionNames,
   type SessionItem,
-  assignmentColumn,
+  type UrlParam,
 } from "./session.js";
-import { loopShareColumns } from "./assignment.js";
+import { loopShareColumns, selectsUnits } from "./assignment.js";
+import { CONDITION_SET } from "../sets.js";
 import { forEachItem } from "./walk.js";
 import { expandSnippets, usesSnippets } from "./snippets.js";
 import {
@@ -164,13 +158,8 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   let loopAvailable = new Set<string>();
   /** `$session` names (declared URL parameters and the built-in ones). */
   const sessionNamed = new Set(sessionNames(items));
-  /** Set columns that select a session's units (the coders' column, then random conditions' as they are checked): column -> what. */
-  const linkedColumns = new Map(
-    sessionColumns(sessionItem(items)).map((c) => [
-      c.column,
-      c.name === "coder" ? "the coders" : `condition '${c.name}'`,
-    ]),
-  );
+  /** The experiment that selects units (`condition_set`), once found. */
+  let unitsExperiment: string | null = null;
 
   const seen = new Set<string>();
   const issue = (path: Path, message: string, warning = false) => {
@@ -428,19 +417,6 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           );
         }
       });
-      // The right answers must never reach coders: no layout or question may show their columns
-      const shown = JSON.stringify(loop.children);
-      for (const name of Array.isArray(settings.questions) ? (settings.questions as unknown[]) : []) {
-        if (typeof name !== "string") continue;
-        const columns = kind === "gold" ? [goldColumn(name)] : [practiceColumn(name), practiceMessageColumn(name)];
-        for (const column of columns) {
-          if (new RegExp(`\\$unit\\.${column}\\b`).test(shown))
-            issue(
-              [...path, `${kind}Check`],
-              `The answer column ${column} is shown to coders (in the layout or a question): it must stay hidden`,
-            );
-        }
-      }
       const end = settings.health?.end;
       if (typeof end === "string") {
         const found = endItems.get(end);
@@ -459,8 +435,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   }
 
   /**
-   * A loop's units against the coder unit assignment: a subset of another
-   * column than the assignment's; dividing only for a crowd, its agreement
+   * A loop's units against the coder unit assignment: dividing only for a crowd, its agreement
    * question one of this loop's with one categorical answer; an earlier
    * previous loop's units only with a previous loop, and then not divided again.
    */
@@ -473,12 +448,6 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     const units = raw && typeof raw === "object" ? raw : null;
     if (!units) return;
     const invite = sessionItem(items)?.invite;
-    const column = assignmentColumn(sessionItem(items));
-    if (units.subset?.column && units.subset.column === column)
-      issue(
-        [...path, "subset", "column"],
-        `'${column}' is the coder unit assignment's column: it already decides whose units are whose. Choose another column for a subset`,
-      );
     if (units.divide && invite?.mode !== "crowd")
       issue(
         [...path, "divide"],
@@ -507,6 +476,13 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   function checkLoop(item: RawItem, itemPath: Path, loopName: string): LoopContext {
     const loop = item as { units?: Partial<LoopUnits> | null; children?: unknown };
     const loopQuestions = questionNames(loop.children);
+    // The right answers and feedback must never reach coders (they'd be sent with every unit): no text may use them
+    const answers = new Set(JSON.stringify(loop.children ?? null).match(/\$unit\.(answer|feedback)_\w+/g) ?? []);
+    for (const ref of answers)
+      issue(
+        itemPath,
+        `The answer column ${ref.slice("$unit.".length)} is shown to coders (in the layout, a question or a condition): it must stay hidden`,
+      );
     checkUnitChecks(loop, itemPath, loopQuestions);
     checkLoopUnits(loop.units, [...itemPath, "units"], loopName, loopQuestions);
     return {
@@ -606,8 +582,6 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       if (p?.default !== undefined && p.values && !p.values.some((v) => v.value === p.default))
         issue([...itemPath, "urlParams", i, "default"], `The default '${p.default}' is not one of the values`);
     });
-    if (invite?.mode === "coders" && !invite.column)
-      issue([...itemPath, "invite", "column"], "Choose the column with the coders (or make one)");
     // Unit settings without a unit loop: kept, but not used (yet)
     const hasLoop = items.some((i) => (i as { type?: unknown } | null)?.type === "unit_loop");
     if (!hasLoop && invite?.mode === "coders")
@@ -618,28 +592,60 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       );
   }
 
-  /** An experiment: outside loops; a random one linked to a column selects units (one value per column); stratified on earlier answers or session values. */
+  /**
+   * An experiment: outside loops; one that selects units (`condition_set`)
+   * only with a crowd, and only one; a condition from a URL parameter of the
+   * Study entry, whose values are the conditions; stratified on earlier
+   * answers or session values.
+   */
   function checkExperiment(item: RawItem, itemPath: Path, inLoop: boolean, available: ReadonlySet<string>) {
     const variable = (item as { variable?: unknown }).variable as
-      { type?: unknown; units?: unknown; stratify?: unknown } | undefined;
+      | { type?: unknown; units?: unknown; stratify?: unknown; draw?: unknown; param?: unknown; options?: unknown }
+      | undefined;
     if (inLoop) return issue([...itemPath, "type"], `Experiment '${item.name}' can only be used outside a unit loop`);
     if (variable?.type !== "random") return;
-    const units = typeof variable.units === "string" ? variable.units : undefined;
-    if (
-      units &&
-      item.name &&
-      (sessionNamed.has(item.name) || (RESERVED_SESSION_NAMES as readonly string[]).includes(item.name))
-    ) {
-      issue([...itemPath, "name"], `Experiment '${item.name}' selects units: its name can't also be a session value`);
+    if (selectsUnits(item)) {
+      if (sessionNamed.has(item.name) || (RESERVED_SESSION_NAMES as readonly string[]).includes(item.name))
+        issue([...itemPath, "name"], `Experiment '${item.name}' selects units: its name can't also be a session value`);
+      if (inviteOf(sessionItem(items)).mode === "coders")
+        issue(
+          [...itemPath, "variable", "units"],
+          `Experiment '${item.name}' selects units by condition, but specific coders get the units of their coder set: invite a crowd`,
+        );
+      if (unitsExperiment !== null)
+        issue(
+          [...itemPath, "variable", "units"],
+          `Experiment '${unitsExperiment}' already selects units: only one experiment can select units`,
+        );
+      else unitsExperiment = item.name;
     }
-    if (units && linkedColumns.has(units)) {
-      issue(
-        [...itemPath, "variable", "units"],
-        `Column '${units}' already selects units for ${linkedColumns.get(units)}: use a column each`,
-      );
-    } else if (units && item.name) {
-      // Drawn independently, two values on one column would rarely leave a session any units
-      linkedColumns.set(units, `experiment '${item.name}'`);
+    // A condition from a URL parameter: the parameter's values are the conditions
+    if (variable.draw === "url_param" && typeof variable.param === "string") {
+      const at = [...itemPath, "variable", "param"];
+      const param = (sessionItem(items)?.urlParams ?? []).find((p) => p?.name === variable.param) as
+        UrlParam | undefined;
+      const options = Array.isArray(variable.options)
+        ? (variable.options as { value?: unknown }[]).map((o) => String(o?.value))
+        : null;
+      if (!param)
+        issue(at, `Experiment '${item.name}': no URL parameter '${variable.param}' (declare it in the Study entry)`);
+      else if (!param.values)
+        issue(
+          at,
+          `Experiment '${item.name}': list the values of URL parameter '${param.name}' (its values are the conditions)`,
+        );
+      else if (options) {
+        const values = param.values.map((v) => v.value);
+        const missing = values.filter((v) => !options.includes(v));
+        const unused = options.filter((v) => !values.includes(v));
+        if (missing.length > 0 || unused.length > 0)
+          issue(
+            at,
+            `Experiment '${item.name}': the values of URL parameter '${param.name}' must be its conditions` +
+              (missing.length > 0 ? ` (not a condition: ${missing.join(", ")})` : "") +
+              (unused.length > 0 ? ` (not a value: ${unused.join(", ")})` : ""),
+          );
+      }
     }
     // Groups for a balanced draw: answers given before it, or session values
     for (const name of Array.isArray(variable.stratify) ? (variable.stratify as string[]) : []) {
@@ -828,13 +834,12 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   const studyEnd = studyIndex >= 0 ? (items[studyIndex] as { end?: EndTexts }).end : undefined;
   if (studyEnd) checkEndTexts(studyEnd, [studyIndex, "end"], null, coderAvailable);
 
-  // An experiment linked to a column selects units in the loops after it only
+  // An experiment that selects units does so in the loops after it only
   const shares = loopShareColumns(items);
-  const linked: { name: string; column: string }[] = [];
-  forEachQuestion(items, [], (q) => {
-    const v = q.variable as { type?: unknown; units?: unknown } | undefined;
-    if (q.type === "experiment" && v?.type === "random" && typeof v.units === "string" && q.name)
-      linked.push({ name: q.name, column: v.units });
+  const linked: { name: string }[] = [];
+  forEachItem<RawItem>(items, (it) => {
+    if (selectsUnits(it)) linked.push({ name: it.name });
+    if (it.type !== "block") return "skip";
   });
   const loopPaths = new Map<string, Path>();
   forEachItem<RawItem>(items, (it, path) => {
@@ -846,7 +851,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       if (columns.some((c) => c.name === condition.name)) continue;
       issue(
         [...(loopPaths.get(key) ?? []), "units"],
-        `${loopTitles.get(key)} comes before experiment '${condition.name}': its units aren't selected by its column '${condition.column}'`,
+        `${loopTitles.get(key)} comes before experiment '${condition.name}': its units aren't selected by ${CONDITION_SET}`,
         true,
       );
     }

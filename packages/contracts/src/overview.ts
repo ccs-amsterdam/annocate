@@ -6,7 +6,7 @@ import { z } from "zod";
  */
 export const StudyOverviewSchema = z.object({
   units: z.number().int().nonnegative(),
-  /** The set groups, with their sets' sizes. */
+  /** The columns with a role (`coder_set`, `test_unit`, ...), with their sets' sizes. */
   groups: z.array(
     z.object({
       name: z.string(),

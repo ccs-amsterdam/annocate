@@ -61,7 +61,7 @@ describe("validateDesignItems", () => {
     ]);
   });
 
-  it("checks a loop's units: a subset, special units placed, and the checks on practice and gold units", () => {
+  it("checks a loop's units: a part, test units placed, and the checks on practice and gold units", () => {
     const loop = (units: object) => [
       {
         type: "unit_loop",
@@ -71,31 +71,24 @@ describe("validateDesignItems", () => {
       },
     ];
     expect(messages(loop({}))).toEqual([]);
-    expect(
-      messages(
-        loop({ subset: { column: "phase", sets: ["post"] }, coding: false, overlap: "ignore", practice: "before" }),
-      ),
-    ).toEqual([]);
+    expect(messages(loop({ part: "post", coding: false, overlap: "ignore", practice: "before" }))).toEqual([]);
     expect(messages(loop({ overlap: "first" }))).toEqual([expect.stringContaining("Invalid option")]);
-    expect(messages(loop({ subset: { column: "phase", sets: [] } }))).toEqual(["Choose at least one set"]);
-    expect(messages(loop({ subset: { column: "_phase", sets: ["a"] } }))).toEqual([
-      expect.stringMatching(/group's name/),
-    ]);
+    expect(messages(loop({ part: "a;b" }))).toEqual([expect.stringContaining("no ; or #")]);
     expect(messages(loop({ mode: "all" }))).toEqual([]); // unknown keys are dropped
     // Branches are gone: a list of settings is not a loop's units
     expect(DesignItemsSchema.safeParse(loop([{}] as unknown as object)).success).toBe(false);
   });
 
-  it("checks experiments: outside loops, linked to a set column, a column each", () => {
+  it("checks experiments: outside loops; one selects units, with a crowd", () => {
     const random = (extra: object, name = "set") => ({
       type: "experiment",
       name,
       variable: { type: "random", draw: "balanced", ...extra },
     });
     const loop = unitLoop("loop", [questionVar("q1")]);
-    expect(messages([random({ units: "set" }), loop])).toEqual([]);
+    expect(messages([random({ units: true }), loop])).toEqual([]);
     expect(messages([random({ options: [{ value: "a" }] }), loop])).toEqual([]);
-    expect(messages([random({})])).toEqual(["List the values, or link the variable to a set column of the units"]);
+    expect(messages([random({})])).toEqual(["List the values, or select units by the units' condition_set"]);
     // Usable as $var.<name> after it
     const after = { ...loop, condition: { script: `$var.set.is("a")` } };
     expect(messages([random({ options: [{ value: "a" }, { value: "b" }] }), after])).toEqual([]);
@@ -109,20 +102,54 @@ describe("validateDesignItems", () => {
       ]),
     ).toContain("Experiment 'inner' can only be used outside a unit loop");
     // A loop before it doesn't use it: a warning
-    expect(validateDesignItems([loop, random({ units: "set" })])).toEqual([
+    expect(validateDesignItems([loop, random({ units: true })])).toEqual([
       expect.objectContaining({ warning: true, message: expect.stringContaining("comes before experiment 'set'") }),
     ]);
-    const session = { type: "session", invite: { mode: "coders", column: "set", link: "per_coder" } };
-    expect(messages([session, random({ units: "set" })])).toContain(
-      "Column 'set' already selects units for the coders: use a column each",
-    );
+    // Conditions with their own units only for a crowd: specific coders get their coder set
+    const session = { type: "session", invite: { mode: "coders", link: "per_coder" } };
+    expect(messages([session, random({ units: true }), loop])).toEqual([
+      expect.stringContaining("Experiment 'set' selects units by condition, but specific coders"),
+    ]);
     const param = { type: "session", urlParams: [{ name: "set" }] };
-    expect(messages([param, random({ units: "other" })])).toEqual([
+    expect(messages([param, random({ units: true })])).toEqual([
       "Experiment 'set' selects units: its name can't also be a session value",
     ]);
-    expect(messages([random({ units: "set" }), random({ units: "set" }, "other")])).toEqual([
-      "Column 'set' already selects units for experiment 'set': use a column each",
+    expect(messages([random({ units: true }), random({ units: true }, "other")])).toEqual([
+      "Experiment 'set' already selects units: only one experiment can select units",
     ]);
+    // One that doesn't select units can sit next to it
+    expect(messages([random({ units: true }), random({ options: [{ value: "a" }] }, "other")])).toEqual([]);
+  });
+
+  it("checks a condition from a URL parameter: declared, its values the conditions", () => {
+    const experiment = (variable: object) => ({
+      type: "experiment",
+      name: "arm",
+      variable: { type: "random", draw: "url_param", param: "arm_param", ...variable },
+    });
+    const study = (values?: string[]) => ({
+      type: "session",
+      urlParams: [{ name: "arm_param", ...(values ? { values: values.map((value) => ({ value })) } : {}) }],
+    });
+    const ab = { options: [{ value: "a" }, { value: "b" }] };
+    expect(messages([study(["a", "b"]), experiment(ab)])).toEqual([]);
+    expect(messages([study(["a", "b"]), experiment({ units: true })])).toEqual([]);
+    expect(messages([experiment(ab)])).toEqual([
+      "Experiment 'arm': no URL parameter 'arm_param' (declare it in the Study entry)",
+    ]);
+    expect(messages([study(), experiment(ab)])).toEqual([
+      "Experiment 'arm': list the values of URL parameter 'arm_param' (its values are the conditions)",
+    ]);
+    expect(messages([study(["a", "c"]), experiment(ab)])).toEqual([
+      "Experiment 'arm': the values of URL parameter 'arm_param' must be its conditions (not a condition: c) (not a value: b)",
+    ]);
+    // A parameter only with url_param, and url_param needs one
+    expect(messages([study(["a", "b"]), experiment({ ...ab, param: undefined })])).toEqual([
+      "Choose the URL parameter with the condition",
+    ]);
+    expect(
+      messages([{ type: "experiment", name: "x", variable: { type: "random", draw: "random", param: "p", ...ab } }]),
+    ).toEqual(["Only a condition from a URL parameter has a parameter"]);
   });
 });
 
@@ -130,12 +157,10 @@ describe("the Session item", () => {
   const session = (extra: object) => ({ type: "session", ...extra });
   const q = questionVar("q1");
 
-  it("specific coders without a column: a draft can be saved, deploying asks for the column", () => {
+  it("specific coders: who codes which units is the units' coder_set (checked when deploying)", () => {
     const invite = { mode: "coders", link: "per_coder" };
     expect(DesignWriteSchema.safeParse({ items: [], session: { invite } }).success).toBe(true);
-    expect(messages([session({ invite }), unitLoop("loop", [q], "$unit.text")])).toEqual([
-      "Choose the column with the coders (or make one)",
-    ]);
+    expect(messages([session({ invite }), unitLoop("loop", [q], "$unit.text")])).toEqual([]);
   });
 
   it("declares $session names (its URL parameters and the built-in ones); others are refused", () => {
@@ -144,12 +169,16 @@ describe("the Session item", () => {
       name: "q",
       variable: {
         type: "confirm",
-        question: "Hi $session.channel, $session.source, $session.coder, $session.group",
+        question: "Hi $session.channel, $session.source, $session.coder",
       },
     };
     expect(messages([session({ urlParams: [{ name: "channel" }] }), text])).toEqual([]);
     expect(messages([text])).toEqual([
       "$session.channel: no session parameter 'channel' (declare it in the Session item)",
+    ]);
+    // A crowd link's set is gone
+    expect(messages([{ ...text, variable: { type: "confirm", question: "$session.group" } }])).toEqual([
+      "$session.group: no session parameter 'group' (declare it in the Session item)",
     ]);
   });
 
@@ -168,7 +197,7 @@ describe("the Session item", () => {
       ]),
     ).toEqual(["Two URL parameters use the key 'PID'"]);
     expect(messages([session({ urlParams: [{ name: "source" }] })])).toContain(
-      "coder, source and group are built in: choose another name",
+      "coder and source are built in: choose another name",
     );
     expect(messages([session({ urlParams: [{ name: "x", values: [{ value: "a" }], default: "b" }] })])).toEqual([
       "The default 'b' is not one of the values",
@@ -178,21 +207,16 @@ describe("the Session item", () => {
     ]);
   });
 
-  it("checks the invitation: specific coders by a set column, or a crowd", () => {
+  it("checks the invitation: specific coders, or a crowd", () => {
     const loop = unitLoop("loop", [questionVar("q1", select(["a", "b"])), questionVar("c1")]);
-    expect(messages([session({ invite: { mode: "coders", column: "coders", link: "per_coder" } }), loop])).toEqual([]);
-    expect(messages([session({ invite: { mode: "coders", link: "per_coder" } })])).toContain(
-      "Choose the column with the coders (or make one)",
-    );
-    expect(
-      messages([session({ invite: { mode: "crowd", column: "batch", maxCoders: 10, groupMaxCoders: { a: 5 } } })]),
-    ).toEqual([]);
+    expect(messages([session({ invite: { mode: "coders", link: "per_coder" } }), loop])).toEqual([]);
+    expect(messages([session({ invite: { mode: "crowd", maxCoders: 10 } })])).toEqual([]);
     // Without a unit loop the unit settings are kept, with a warning
     const warnings = (list: object[]) =>
       validateDesignItems(list as never)
         .filter((i) => i.warning)
         .map((i) => i.message);
-    expect(warnings([session({ invite: { mode: "coders", column: "coders", link: "per_coder" } }), q])).toEqual([
+    expect(warnings([session({ invite: { mode: "coders", link: "per_coder" } }), q])).toEqual([
       expect.stringContaining("no unit loop yet"),
     ]);
     expect(messages([session({ invite: { mode: "crowd", coderParam: { param: "PID", optional: true } } }), q])).toEqual(
@@ -200,9 +224,9 @@ describe("the Session item", () => {
     );
   });
 
-  it("checks a loop's units against the invitation: subset column, dividing, an earlier loop's units", () => {
-    const crowd = session({ invite: { mode: "crowd", column: "batch" } });
-    const coders = session({ invite: { mode: "coders", column: "coders", link: "per_coder" } });
+  it("checks a loop's units against the invitation: dividing, an earlier loop's units", () => {
+    const crowd = session({ invite: { mode: "crowd" } });
+    const coders = session({ invite: { mode: "coders", link: "per_coder" } });
     let n = 0;
     const loop = (units: object) => {
       const [q, c] = n++ === 0 ? ["q1", "c1"] : [`q${n}`, `c${n}`];
@@ -233,9 +257,10 @@ describe("the Session item", () => {
       expect.stringContaining("Dividing units among coders is for a crowd"),
     ]);
     n = 0;
-    expect(messages([coders, loop({ subset: { column: "coders", sets: ["a"] } })])).toEqual([
-      expect.stringContaining("is the coder unit assignment's column"),
-    ]);
+    // A part of the coder's units, divided or not
+    expect(messages([coders, loop({ part: "pre" })])).toEqual([]);
+    n = 0;
+    expect(messages([crowd, loop({ part: "pre", divide: {} })])).toEqual([]);
     n = 0;
     expect(messages([crowd, loop({}), loop({ sameAsPrevious: true })])).toEqual([]);
     n = 0;
@@ -773,11 +798,15 @@ describe("practice and gold units", () => {
     );
   });
 
-  it("keep the answer columns hidden from coders", () => {
-    const shown = loop({ goldCheck: { questions: ["sentiment"] } }, "$unit.text $unit.sentiment_gold");
+  it("keep the answer and feedback columns hidden from coders, checked or not", () => {
+    const shown = loop({ goldCheck: { questions: ["sentiment"] } }, "$unit.text $unit.answer_sentiment");
     expect(messages([shown])).toEqual(
-      expect.arrayContaining([expect.stringContaining("sentiment_gold is shown to coders")]),
+      expect.arrayContaining([expect.stringContaining("answer_sentiment is shown to coders")]),
     );
+    expect(messages([loop({}, "$unit.text {{$unit.feedback_other}}")])).toEqual(
+      expect.arrayContaining([expect.stringContaining("feedback_other is shown to coders")]),
+    );
+    expect(messages([loop({}, "$unit.text $unit.answers")]).filter((m) => m.includes("shown to coders"))).toEqual([]);
   });
 });
 

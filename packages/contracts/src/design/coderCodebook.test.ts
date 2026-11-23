@@ -5,7 +5,7 @@ import { toCoderItems } from "./coderCodebook.js";
 describe("the coder codebook", () => {
   it("leaves out how units are handed out, the Session item, and how experiments are drawn", () => {
     const items = [
-      { type: "session", invite: { mode: "coders", column: "coder", link: "per_coder" } },
+      { type: "session", invite: { mode: "crowd" } },
       {
         type: "experiment",
         name: "condition",
@@ -13,7 +13,7 @@ describe("the coder codebook", () => {
           type: "random",
           draw: "balanced",
           stratify: ["session.wave"],
-          units: "framing",
+          units: true,
           options: [{ value: "a", label: "A", weight: 2 }],
         },
       },
@@ -26,7 +26,7 @@ describe("the coder codebook", () => {
             label: "Main",
             order: "random",
             units: {
-              subset: { column: "g", sets: ["queue"] },
+              part: "pre",
               criteria: { codersPerUnit: { min: 2, max: 2 } },
               overlap: { placement: "last" },
             },
@@ -58,9 +58,9 @@ describe("the coder codebook", () => {
     ]);
   });
 
-  it("gives an experiment with a column's free values no options", () => {
+  it("gives an experiment with condition_set's free values no options, and leaves out its URL parameter", () => {
     const items = [
-      { type: "experiment", name: "set", variable: { type: "random", draw: "random", units: "set" } },
+      { type: "experiment", name: "set", variable: { type: "random", draw: "url_param", param: "arm", units: true } },
     ] as TopLevelItem[];
     expect(toCoderItems(items)).toEqual([
       { type: "experiment", name: "set", variable: { type: "random", options: [] } },

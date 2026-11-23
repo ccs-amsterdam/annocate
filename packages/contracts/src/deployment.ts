@@ -93,7 +93,7 @@ export const ResetAnnotationsSchema = z.object({
 });
 export type ResetAnnotations = z.infer<typeof ResetAnnotationsSchema>;
 
-/** Progress of one source (a set, as `group/set`, or `__all__`) of one unit_loop. */
+/** Progress of one source (a share of a loop's units, or a test unit type) of one unit_loop. */
 export const SourceStatusSchema = z.object({
   loop: z.string(),
   set: z.string(),

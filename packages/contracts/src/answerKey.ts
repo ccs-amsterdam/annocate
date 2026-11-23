@@ -1,6 +1,6 @@
 /**
  * Right answers of gold and practice units (docs/architecture.md §6.2):
- * the cell of a unit's answer column (`<question>_gold`, `<question>_practice`).
+ * the cell of a unit's answer column (`answer_<question>`, unitFields.ts).
  *
  * | Cell                | Right when the answer is                      |
  * | ------------------- | --------------------------------------------- |
