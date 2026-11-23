@@ -158,7 +158,7 @@ describe("StudyManager error-handling, rollback, and retry contract", () => {
         name: "group",
         variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }] },
       },
-      { type: "block", condition: { script: `$var.group.is("a")` }, children: [confirm("shown_to_a")] },
+      { type: "branch", condition: { script: `$var.group.is("a")` }, children: [confirm("shown_to_a")] },
       confirm("everyone"),
     ] as TopLevelItem[];
     const server = makeFlakyServer({
@@ -180,7 +180,7 @@ describe("StudyManager error-handling, rollback, and retry contract", () => {
     };
     const items = [
       role,
-      { type: "block", condition: { script: `$var.role.is("a")` }, children: [confirm("followup")] },
+      { type: "branch", condition: { script: `$var.role.is("a")` }, children: [confirm("followup")] },
       confirm("last"),
     ] as TopLevelItem[];
     const posted: Record<string, VariableValue>[] = [];
@@ -209,7 +209,7 @@ describe("StudyManager error-handling, rollback, and retry contract", () => {
     } as InLoopItem;
     const loop = unitLoop("loop", [
       unitVar("q1"),
-      { type: "block", condition: { script: `$var.q1.is("A")` }, children: [unitVar("q2")] } as InLoopItem,
+      { type: "branch", condition: { script: `$var.q1.is("A")` }, children: [unitVar("q2")] } as InLoopItem,
       q3,
     ]);
     const server = makeFlakyServer({
@@ -512,7 +512,7 @@ describe("resuming a session", () => {
 
 describe("submitting a finished unit", () => {
   it("posts every question of the loop, with skip for those a condition hid", async () => {
-    const hidden = { type: "block", condition: { script: "false" }, children: [unitVar("q2")] } as InLoopItem;
+    const hidden = { type: "branch", condition: { script: "false" }, children: [unitVar("q2")] } as InLoopItem;
     const postUnitVariables = vi.fn(async () => {});
     let served = false;
     const server = makeFlakyServer({
@@ -582,7 +582,7 @@ describe("rendering templates", () => {
 });
 
 describe("layout items", () => {
-  it("show the unit from where the coder passes them: none before the first, the one in a block whose condition holds", async () => {
+  it("show the unit from where the coder passes them: none before the first, the one in a branch whose condition holds", async () => {
     const confirm = (name: string) => ({ type: "question", name, variable: { type: "confirm", question: `${name}?` } });
     const items = [
       {
@@ -592,7 +592,7 @@ describe("layout items", () => {
           { type: "layout", template: "Title: $unit.title" },
           confirm("read"),
           {
-            type: "block",
+            type: "branch",
             condition: { script: "$unit.title == 'Long'" },
             children: [{ type: "layout", template: "Full: $unit.text" }],
           },
@@ -619,7 +619,7 @@ describe("layout items", () => {
     await manager.answer(done);
     expect(manager.getSnapshot().currentUnitTemplate?.markdown).toContain("Title:");
     await manager.answer(done);
-    // The block's condition holds for this unit: its layout from there on
+    // The branch's condition holds for this unit: its layout from there on
     expect(itemName(manager.getSnapshot().currentItem!)).toBe("judge");
     expect(manager.getSnapshot().currentUnitTemplate?.markdown).toContain("Full:");
     // Back: the layout that question had
@@ -717,7 +717,7 @@ describe("end items", () => {
   const items = [
     pid,
     consent,
-    { type: "block", condition: { script: `$var.consent.is("no")` }, children: [stop] },
+    { type: "branch", condition: { script: `$var.consent.is("no")` }, children: [stop] },
     confirm("after"),
   ] as TopLevelItem[];
   const variables = { pid: { done: true, skip: false, values: [{ value: "a b" }] } };
@@ -783,7 +783,7 @@ describe("end items", () => {
     const loop = unitLoop("loop", [
       unitVar("q1"),
       {
-        type: "block",
+        type: "branch",
         condition: { script: `$var.q1.is("B")` },
         children: [{ type: "end", name: "fail", outcome: "screenout" }],
       },
@@ -809,7 +809,7 @@ describe("end items", () => {
     const loop = unitLoop("loop", [
       unitVar("q1"),
       {
-        type: "block",
+        type: "branch",
         condition: { script: `$var.q1.is("B")` },
         children: [{ type: "end", name: "fail", outcome: "screenout", message: "You chose $var.q1.value" }],
       },
@@ -910,7 +910,7 @@ describe("experiments", () => {
       name: "condition",
       variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }], stratify: ["gender"] },
     };
-    const onlyB = { type: "block", condition: { script: `$var.condition.is("b")` }, children: [confirm("seen_b")] };
+    const onlyB = { type: "branch", condition: { script: `$var.condition.is("b")` }, children: [confirm("seen_b")] };
     const server = makeFlakyServer({
       getSession: vi.fn(async () => session([gender, condition, onlyB, confirm("last")] as TopLevelItem[])),
       postCoderVariables: vi.fn(async () => {

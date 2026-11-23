@@ -13,8 +13,8 @@ const CARD = "my-1 rounded-lg border border-border py-0.5";
 /** The coder-level items' cards: a faint tint of the questions' colour, set apart from the loops. */
 const CODER_SECTION = "bg-secondary/5";
 const LOOP_CARD = "bg-muted/30";
-/** A block, at any level: its items one step in. */
-const BLOCK = "my-0.5";
+/** A branch, at any level: its items one step in. */
+const BRANCH = "my-0.5";
 /** One step in: a child's checkbox under its parent's icon, its icon where the parent's name starts. */
 const INDENT = "pl-6";
 
@@ -23,7 +23,7 @@ const INDENT = "pl-6";
  * before, between and after loops together in a tinted card (a section,
  * only in the tree). The Study entry is shown above the tree.
  */
-export function BlockList({ items }: { items: TopLevelItem[] }) {
+export function SectionList({ items }: { items: TopLevelItem[] }) {
   const sections: { key: string; loop: boolean; items: TopLevelItem[] }[] = [];
   for (const item of items) {
     if (item.type === "session") continue;
@@ -55,7 +55,7 @@ interface TreeListProps {
   parent: TreeNode;
 }
 
-/** Renders a block's or loop's items (recursing into nested blocks). */
+/** Renders a branch's or loop's items (recursing into nested branches). */
 export function TreeList({ nodes, parent }: TreeListProps) {
   const end: TreePosition = { into: getItemKey(parent) };
   return (
@@ -69,9 +69,9 @@ export function TreeList({ nodes, parent }: TreeListProps) {
 }
 
 /**
- * An item. A unit loop is a card holding its row and its items; a block its
- * row with its items one step in; a block's else items an "Else" group at
- * the end of the block (only once it has items), as far in as the others.
+ * An item. A unit loop is a card holding its row and its items; a branch its
+ * row with its items one step in; a branch's else items an "Else" group at
+ * the end of the branch (only once it has items), as far in as the others.
  */
 function TreeNodeView({ item, card = false }: { item: TreeNode; card?: boolean }) {
   const children = childrenOf(item);
@@ -82,7 +82,7 @@ function TreeNodeView({ item, card = false }: { item: TreeNode; card?: boolean }
     return (
       <div data-flip-key={getItemKey(item)} className="mt-0.5">
         <TreeItemRow item={item} />
-        {/* As far in as the block's other items: the Else row above them says enough */}
+        {/* As far in as the branch's other items: the Else row above them says enough */}
         <TreeList nodes={children} parent={item} />
       </div>
     );
@@ -104,7 +104,10 @@ function TreeNodeView({ item, card = false }: { item: TreeNode; card?: boolean }
       <PreviewLine position={before} />
       <div
         data-flip-key={getItemKey(item)}
-        className={cn(card ? cn(CARD, LOOP_CARD) : BLOCK, ITEM_TYPES[item.type as keyof typeof ITEM_TYPES]?.blockClass)}
+        className={cn(
+          card ? cn(CARD, LOOP_CARD) : BRANCH,
+          ITEM_TYPES[item.type as keyof typeof ITEM_TYPES]?.containerClass,
+        )}
       >
         <TreeItemRow item={item} />
         <div className={INDENT}>

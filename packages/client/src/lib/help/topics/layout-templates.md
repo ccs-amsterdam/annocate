@@ -45,10 +45,10 @@ next layout item.
   without one, are asked without the unit. This is on purpose, e.g. for a
   short question at the start of every unit (its text can still use
   `$unit.headline`), or for units that are only a series of questions.
-- **In a block**: a layout in a block with a condition applies only when
-  the block is shown; otherwise what applied before. After the block,
+- **In a branch**: a layout in a branch applies only when the branch's
+  items are shown; otherwise what applied before. After the branch,
   either may apply. E.g. a layout experiment: a default layout first, then
-  a block _if condition is B_ with layout B, then the questions for both.
+  a branch _if condition is B_ with layout B, then the questions for both.
 - **Snippets** belong to a layout (see [Snippets](snippets.md)). Question
   texts, instructions and end messages in the loop can use the snippets of
   all its layouts.

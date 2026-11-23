@@ -44,7 +44,7 @@ settings and transfer menus, and the loading, error and pick-a-name screens
 (`SessionNotices.tsx`).
 
 - **Steps.** It computes the visible steps from the codebook: top-level
-  items, then loop questions, with conditions (of blocks, which show
+  items, then loop questions, with conditions (of branches, which show
   their children or else their `elseChildren`, and of loops: a loop whose
   condition fails is left out) evaluated in document
   order (§5). Answers of questions a condition now hides count as unanswered, and
@@ -114,10 +114,10 @@ layout item (contracts `layoutItems.ts`):
 - **Before any layout item** (or with none) questions show no unit. On
   purpose: a short question at the start of every unit (its text may still
   use `$unit.x`), or units that are only a series of questions.
-- **In a block with a condition** a layout item applies only when the block
-  is shown; else items get what applied before the block. After the block
+- **In a branch** a layout item applies only when the branch's items are
+  shown; else items get what applied before the branch. After the branch
   either may apply (`followLayouts` gives the candidates, `null` for none).
-  E.g. a layout experiment: a default layout, then a block "if condition = B"
+  E.g. a layout experiment: a default layout, then a branch "if condition = B"
   with layout B, then the shared questions.
 - **Snippets** are per layout; question texts, instructions and end messages
   in the loop may use those of all the loop's layouts (`loopSnippets`).
@@ -209,7 +209,7 @@ Pandoc's fenced divs.
 ```
 
 - `if` / `else if` / `else`: the first branch whose condition holds (the
-  same scripts as blocks' conditions).
+  same scripts as branches' conditions).
 - `from <question>`: shows from that question of the loop on; consecutive
   `from` fences form a chain of which the last reached stage shows. Loops
   only.
@@ -324,7 +324,7 @@ shortcut style's keys work too. Vertical drags still scroll long units (`touch-a
 
 ### End items
 
-An `end` item ends the session when reached, usually inside a block with a condition (not at the top level):
+An `end` item ends the session when reached, in a branch (not at the top level):
 `outcome` `screenout` or `complete`, an optional `message` (a template) and
 `redirectUrl` (e.g. a panel's return link; `$var` values URL-encoded).
 `StudyManager` calls `POST /end` (in a loop after saving the unit) and shows
@@ -474,8 +474,8 @@ condition:
   TypeScript (`parseSimpleCondition`, `evaluateSimpleCondition`).
 - **Advanced**: anything else, run in QuickJS.
 
-A block's condition hides its children when false (absent: always
-shown), showing its `elseChildren` instead, if any. A unit loop's condition decides whether the coder gets the loop at
+A branch's condition (required) hides its children when false, showing
+its `elseChildren` instead, if any. A unit loop's condition decides whether the coder gets the loop at
 all; it can only use coder-level answers before the loop, not `$unit`.
 
 **Validation** (`validateDesignItems`) walks the design in order and checks
@@ -542,21 +542,22 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   7. **Check and create**: a summary; the design is created as a draft.
      The questions before and after the loop go at the top level.
 - **Tree** (`DesignTreeView.tsx`, `designTree/`): the top level holds
-  questions, experiments, `block`s and unit loops; validation refuses an
-  end item there ("An end item goes in a block") and a loop inside a block.
-  A block has an optional `label`, `condition`, `children` and
-  `elseChildren` (only with a condition). The coder-level items before,
+  questions, experiments, `branch`es and unit loops; validation refuses an
+  end item there ("An end item goes in a branch") and a loop inside a
+  branch. A branch has a `condition` (required: a new one's script is
+  empty, which validation flags until set), an optional `label`,
+  `children` and optional `elseChildren`. The coder-level items before,
   between and after loops are grouped in a lightly tinted card (only in the
-  tree); each loop is its own card; a block lines up with the items around
+  tree); each loop is its own card; a branch lines up with the items around
   it, its items one step in; its else items follow under an "Else" row, as
-  far in as the others. A block's row shows its label
-  and/or "if <condition>", else "Block"; questions aren't numbered. With a
-  condition (and no else items yet) its row has an else button that opens
+  far in as the others. A branch's row shows its label
+  and/or "if <condition>", else "Branch"; questions aren't numbered. Without
+  else items yet its row has an else button that opens
   the usual add menu, headed "If not, then…", and adds the chosen item as
-  the first else item; the Else part shows only when it has items. "Add item" adds a question, experiment, block
-  ("Block (if/else)", starting empty) or unit loop; a row's + adds items
-  allowed there (`insertableTypesAt`): in a block question, experiment,
-  block, end; in a loop question, layout ("Layout"), block,
+  the first else item; the Else part shows only when it has items. "Add item" adds a question, experiment, branch
+  ("Branch", starting empty) or unit loop; a row's + adds items
+  allowed there (`insertableTypesAt`): in a branch question, experiment,
+  branch, end; in a loop question, layout ("Layout"), branch,
   end. A layout item's row shows "Layout", or "Layout – <label>",
   in the loop's colour. Above the tree the
   Study entry (§4), below it the **At the end** button, styled like the
@@ -567,7 +568,7 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
     (`ItemJsonEditor.tsx`) or as a preview (`ItemPreview.tsx`: a loop with the
     study's units, a picker for the question on screen, answer pickers for
     `::: if`). On screens at least 1500 px wide the preview is a third column.
-    Blocks, loops and layout items have no name; loops show their label or
+    Branches, loops and layout items have no name; loops show their label or
     "Unit loop", layout items "Layout" (with their label: "Layout – <label>"). Moving and deleting work on ticked items from the toolbar; where a
     place is ambiguous (the end of a container) the menu asks where.
   - **JSON**: the whole design (`DesignJsonEditor.tsx`), in Monaco (loaded
@@ -589,7 +590,7 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
     change, and offered back after the browser was closed.
 
 - **Unit loops** (`UnitLoopForm.tsx`): besides its label and condition
-  (`ItemForm.tsx`, as for blocks), the loop's form holds, open, "Units and
+  (`ItemForm.tsx`, as for branches), the loop's form holds, open, "Units and
   coders" (`unitLoop/UnitsEditor.tsx`): what a coder gets, the previous loop's units
   (`sameAsPrevious`), the **Part** (a value of `part_set`; without a part
   set, "Make a part set…"), for a crowd who codes each unit (everyone codes
@@ -633,8 +634,9 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   (`OptionsEditor.tsx`: label, value, colour, order; ordinal values renumber
   unless "Custom values"), `multiple`, a layout select whose `auto` entry
   names its choice, numeric range, step and labels. Switching nominal ↔
-  ordinal keeps the options. A block's or loop's condition
-  ("Only show these questions if…", "Only give coders this loop if…") uses
+  ordinal keeps the options. A branch's or loop's condition
+  ("Only show these items if…", always there for a branch; for a loop
+  optional, "Only give coders this loop if…") uses
   `ConditionEditor.tsx`:
   **Rules | Script** over the same script. Rules are a flat list joined by
   all "and" or all "or" (`design/conditionRules.ts`); a row that no longer

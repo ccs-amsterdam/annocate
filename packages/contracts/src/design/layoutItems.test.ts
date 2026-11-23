@@ -21,13 +21,13 @@ describe("layout items", () => {
     layout("A"),
     question("second"),
     {
-      type: "block",
+      type: "branch",
       condition: { script: "true" },
       children: [layout("B"), question("inB")],
       elseChildren: [question("inElse")],
     },
     question("after"),
-    { type: "block", children: [layout("C")] },
+    layout("C"),
     question("last"),
   ];
 
@@ -37,11 +37,10 @@ describe("layout items", () => {
     expect(labels(by.get("first"))).toEqual([null]);
     expect(labels(by.get("second"))).toEqual(["A"]);
     expect(labels(by.get("inB"))).toEqual(["B"]);
-    // The else items: what applied before the block
+    // The else items: what applied before the branch
     expect(labels(by.get("inElse"))).toEqual(["A"]);
-    // After a block with a condition: either branch's
+    // After a branch: its items' or its else items'
     expect(labels(by.get("after"))).toEqual(["B", "A"]);
-    // A block without a condition always applies
     expect(labels(by.get("last"))).toEqual(["C"]);
     expect(loopLayouts(children).map((l) => l.label)).toEqual(["A", "B", "C"]);
     expect(previewLayout(children, "after")?.label).toBe("A");
@@ -77,7 +76,7 @@ describe("layout items", () => {
           type: "unit_loop",
           children: [
             layout("Full"),
-            { type: "block", condition: { script: "$unit.id > 1" }, children: [layout("Short", "$unit.title")] },
+            { type: "branch", condition: { script: "$unit.id > 1" }, children: [layout("Short", "$unit.title")] },
             span,
           ],
         },

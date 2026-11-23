@@ -642,7 +642,7 @@ export class DeploymentRuntime {
     // A panel return link from the deployment settings counts too
     const end = found ? resolveRedirects([found], this.spec.redirectUrls)[0] : null;
     const source = `${end?.message ?? ""}\n${end?.redirectUrl ?? ""}`;
-    // Every `$var.x` / `$unit.x` written anywhere in them (texts, scripts, block conditions).
+    // Every `$var.x` / `$unit.x` written anywhere in them (texts, scripts, branch conditions).
     const names = (ns: string) =>
       new Set([...source.matchAll(new RegExp(`\\$${ns}\\.([A-Za-z0-9_]+)`, "g"))].map((m) => m[1]));
     const pick = <T>(values: Record<string, T>, wanted: Set<string>) =>

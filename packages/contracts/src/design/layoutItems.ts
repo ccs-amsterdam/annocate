@@ -3,7 +3,7 @@ import type { LayoutItem } from "./item.js";
 // Which layout items apply where in a unit loop (docs/client.md §3 "Layout
 // items"): a question shows the unit with the last layout item the coder
 // passed, following the flow; before any, no unit. Statically, a point can
-// have several candidates (layouts in blocks with a condition): `null`
+// have several candidates (layouts in branches): `null`
 // among them means "possibly none".
 
 /** The layouts that may apply at a point: layout items, and `null` for none. */
@@ -19,9 +19,9 @@ interface RawNode {
 
 /**
  * Follows a loop's items in order, calling `visit` with each item (not
- * blocks) and the layouts that may apply there; returns those after the
- * list. A block with a condition: its items or its else items (none: what
- * applied before), so after it either's result may apply.
+ * branches) and the layouts that may apply there; returns those after the
+ * list. A branch: its items or its else items (none: what applied before),
+ * so after it either's result may apply.
  */
 export function followLayouts(
   list: unknown,
@@ -33,10 +33,9 @@ export function followLayouts(
   for (const raw of list) {
     const item = raw as RawNode | null;
     if (!item || typeof item !== "object") continue;
-    if (item.type === "block") {
+    if (item.type === "branch") {
       const shown = followLayouts(item.children, visit, current);
-      if (!item.condition) current = shown;
-      else current = new Set([...shown, ...followLayouts(item.elseChildren, visit, current)]);
+      current = new Set([...shown, ...followLayouts(item.elseChildren, visit, current)]);
       continue;
     }
     visit(item, current);
@@ -45,7 +44,7 @@ export function followLayouts(
   return current;
 }
 
-/** The layout items of a loop (also in blocks), in order. */
+/** The layout items of a loop (also in branches), in order. */
 export function loopLayouts(children: unknown): LayoutItem[] {
   const found: LayoutItem[] = [];
   followLayouts(children, (item) => {
@@ -65,7 +64,7 @@ export function layoutsByItem(children: unknown): Map<string, (LayoutItem | null
 
 /**
  * The layout to preview a named item with: the last layout item before it
- * (one in a block counts), else none. Where the flow may show another, the
+ * (one in a branch counts), else none. Where the flow may show another, the
  * coder sees that one; the preview picks one.
  */
 export function previewLayout(children: unknown, name: string): LayoutItem | null {

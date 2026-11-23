@@ -7,7 +7,8 @@ describe("forEachItem", () => {
     null,
     "junk",
     {
-      type: "block",
+      type: "branch",
+      condition: { script: "true" },
       children: [{ type: "question", name: "b" }],
       elseChildren: [{ type: "end", name: "c", children: [{ type: "question", name: "hidden" }] }],
     },
@@ -21,7 +22,7 @@ describe("forEachItem", () => {
     });
     expect(seen).toEqual([
       ["a", [0]],
-      ["block", [3]],
+      ["branch", [3]],
       ["b", [3, "children", 0]],
       ["c", [3, "elseChildren", 0]],
       ["hidden", [3, "elseChildren", 0, "children", 0]],
@@ -38,7 +39,7 @@ describe("forEachItem", () => {
       (item, path) => {
         if (item.name) names.push(item.name);
         paths.push(path);
-        if (item.type !== "block") return "skip";
+        if (item.type !== "branch") return "skip";
       },
       ["root"],
     );

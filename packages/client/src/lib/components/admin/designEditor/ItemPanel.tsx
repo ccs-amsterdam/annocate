@@ -172,7 +172,7 @@ function ItemEditForm({
   // What references may use at this item: the same rules as validation
   const available = useMemo(() => availableQuestions(cleanItems, itemPath(items, key) ?? []), [cleanItems, items, key]);
   const loop = enclosingLoop(items, item);
-  // The loop as saved: its layout items follow the flow there (blocks' else items as elseChildren)
+  // The loop as saved: its layout items follow the flow there (branches' else items as elseChildren)
   const saved = useMemo(() => (loop ? savedLoop(items, cleanItems, loop) : undefined), [items, cleanItems, loop]);
   const name = itemName(item);
   const itemIssues = useMemo(

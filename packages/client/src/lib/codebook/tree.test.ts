@@ -29,12 +29,12 @@ function confirm(name: string): TopLevelQuestionItem {
   return { name, type: "question", variable: { type: "confirm", question: "?" } };
 }
 
-function topCondition(name: string, condition: Condition, children: TopLevelItem[]): TopLevelItem {
-  return { _key: name, type: "block", condition, children } as TopLevelItem;
+function topBranch(name: string, condition: Condition, children: TopLevelItem[]): TopLevelItem {
+  return { _key: name, type: "branch", condition, children } as TopLevelItem;
 }
 
-function inLoopCondition(name: string, condition: Condition, children: InLoopItem[]): InLoopItem {
-  return { _key: name, type: "block", condition, children } as InLoopItem;
+function inLoopBranch(name: string, condition: Condition, children: InLoopItem[]): InLoopItem {
+  return { _key: name, type: "branch", condition, children } as InLoopItem;
 }
 
 function unitVar(name: string): InLoopQuestionItem {
@@ -55,14 +55,14 @@ const code = (c: string): VariableValue => ({ done: true, skip: false, values: [
 describe("tree utilities", () => {
   const loopNode = unitLoop("main_loop", [
     unitVar("sentiment"),
-    inLoopCondition("inner_gate", { script: `$var.sentiment.is("A")` }, [unitVar("followup")]),
-    inLoopCondition("unit_gate", { script: "$unit.n > 1" }, [unitVar("long")]),
+    inLoopBranch("inner_gate", { script: `$var.sentiment.is("A")` }, [unitVar("followup")]),
+    inLoopBranch("unit_gate", { script: "$unit.n > 1" }, [unitVar("long")]),
   ]);
 
   const items: TopLevelItem[] = [
     confirm("consent"),
-    topCondition("gate", { script: "$var.consent.answered" }, [confirm("gated_question")]),
-    topCondition("second", { script: "$var.gated_question.answered" }, [confirm("deeper")]),
+    topBranch("gate", { script: "$var.consent.answered" }, [confirm("gated_question")]),
+    topBranch("second", { script: "$var.gated_question.answered" }, [confirm("deeper")]),
     loopNode,
   ];
   const ctx = { questions: collectQuestions(items).questions };

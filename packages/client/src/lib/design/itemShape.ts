@@ -1,10 +1,10 @@
 import type { TopLevelItem } from "@annotinder/contracts";
 
 // What the visual editor needs of items edited as text (the JSON views):
-// a known type, a name (except conditions and unit loops), and for questions a variable with a type. Everything
+// a known type, a name (except branches and unit loops), and for questions a variable with a type. Everything
 // else is left to validation, whose messages the editor shows.
 
-const ITEM_TYPES = ["question", "experiment", "unit_loop", "block", "end"];
+const ITEM_TYPES = ["question", "experiment", "unit_loop", "branch", "end"];
 
 /** Why a parsed value isn't an item the editor can show; null if it is. With `children`, they are checked too. */
 export function itemShapeError(raw: unknown, { children }: { children: boolean }): string | null {
@@ -14,7 +14,7 @@ export function itemShapeError(raw: unknown, { children }: { children: boolean }
   const label = typeof item.name === "string" && item.name ? `'${item.name}'` : "An item";
   if (typeof item.type !== "string" || !ITEM_TYPES.includes(item.type))
     return `${label}: type must be one of ${ITEM_TYPES.join(", ")}`;
-  if (item.type !== "block" && item.type !== "unit_loop" && typeof item.name !== "string")
+  if (item.type !== "branch" && item.type !== "unit_loop" && typeof item.name !== "string")
     return `${label} needs a name`;
   const isQuestion = item.type === "question" || item.type === "experiment";
   const variable = item.variable as { type?: unknown } | undefined;
@@ -44,11 +44,11 @@ export function itemsShapeError(raw: unknown): string | null {
   return null;
 }
 
-type Unnamed = "block" | "unit_loop";
-const unnamed = (type: unknown): type is Unnamed => type === "block" || type === "unit_loop";
+type Unnamed = "branch" | "unit_loop";
+const unnamed = (type: unknown): type is Unnamed => type === "branch" || type === "unit_loop";
 
 /**
- * An item's identity for matching keys: its name, or for a condition or
+ * An item's identity for matching keys: its name, or for a branch or
  * unit loop (no name) its place: the nth of its type in `parent`.
  */
 function matchId(item: Record<string, unknown>, parent: string, counts: Record<Unnamed, number>): string | null {
@@ -59,14 +59,14 @@ function matchId(item: Record<string, unknown>, parent: string, counts: Record<U
 /**
  * Gives items that come without editor keys (e.g. from text) the keys of the
  * items with the same name in `previous`, so they stay the same items:
- * selected, and compared with the last save. Conditions and unit loops have
- * no name: they match the one at the same place (the nth condition, or
+ * selected, and compared with the last save. Branches and unit loops have
+ * no name: they match the one at the same place (the nth branch, or
  * loop, in the same parent).
  */
 export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLevelItem[] {
   const keys = new Map<string, string>();
   const index = (list: unknown[], parent: string) => {
-    const counts = { block: 0, unit_loop: 0 };
+    const counts = { branch: 0, unit_loop: 0 };
     for (const raw of list) {
       const item = raw as Record<string, unknown>;
       const id = matchId(item, parent, counts);
@@ -79,7 +79,7 @@ export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLe
 
   const used = new Set<string>();
   const walk = (list: unknown[], parent: string): unknown[] => {
-    const counts = { block: 0, unit_loop: 0 };
+    const counts = { branch: 0, unit_loop: 0 };
     return list.map((raw) => {
       const item = { ...(raw as Record<string, unknown>) };
       const id = matchId(item, parent, counts);

@@ -26,11 +26,11 @@ function unitLoop(
   const layout: InLoopItem[] = template || snippets ? [{ type: "layout", template, snippets }] : [];
   return { type: "unit_loop", label: name, children: [...layout, ...children] };
 }
-function topCondition(name: string, children: TopLevelItem[], condition: Condition = { script: "true" }): TopLevelItem {
-  return { type: "block", label: name, condition, children };
+function topBranch(name: string, children: TopLevelItem[], condition: Condition = { script: "true" }): TopLevelItem {
+  return { type: "branch", label: name, condition, children };
 }
-function inLoopCondition(name: string, children: InLoopItem[], condition: Condition = { script: "true" }): InLoopItem {
-  return { type: "block", label: name, condition, children };
+function inLoopBranch(name: string, children: InLoopItem[], condition: Condition = { script: "true" }): InLoopItem {
+  return { type: "branch", label: name, condition, children };
 }
 const select = (values: string[], extra: object = {}) => ({
   type: "nominal",
@@ -278,7 +278,7 @@ describe("validateDesignItems (more)", () => {
   it("allows questions and condition items outside a unit_loop", () => {
     const items: TopLevelItem[] = [
       questionVar("consent"),
-      topCondition("gate", [questionVar("followup")]),
+      topBranch("gate", [questionVar("followup")]),
       unitLoop("loop", [questionVar("q1")]),
     ];
     expect(validateDesignItems(items)).toEqual([]);
@@ -322,7 +322,7 @@ describe("validateDesignItems (more)", () => {
   });
 
   it("allows condition items nested inside a unit_loop", () => {
-    const items: TopLevelItem[] = [unitLoop("loop", [inLoopCondition("gate", [questionVar("q1")])])];
+    const items: TopLevelItem[] = [unitLoop("loop", [inLoopBranch("gate", [questionVar("q1")])])];
     expect(validateDesignItems(items)).toEqual([]);
     expect(() => DesignItemsSchema.parse(items)).not.toThrow();
   });
@@ -395,7 +395,7 @@ describe("reference validation", () => {
       role,
       topics,
       interest,
-      topCondition(
+      topBranch(
         "c1",
         [
           questionVar("why", {
@@ -411,7 +411,7 @@ describe("reference validation", () => {
         "loop",
         [
           questionVar("rel", select(["yes", "no"], { question: "Is [[subject]] in **$unit.headline**?" })),
-          inLoopCondition("c2", [questionVar("q2")], {
+          inLoopBranch("c2", [questionVar("q2")], {
             script: "$var.rel.value === 'yes' && $var.why.answered && $unit.n > 3",
           }),
           questionVar("q3", { ...confirmVariable, question: "{{ $var.q2.answered ? 'again' : '' }}" }),
@@ -430,19 +430,19 @@ describe("reference validation", () => {
       "$sesion is unknown: values are $var, $unit and $session",
       "$var.age.foo: unknown property; use .value, .label, .values, .labels, .texts, .answered, .items or a method",
     ]);
-    expect(messages([topCondition("c", [questionVar("q")], { script: "$vars.age > 1 && '$x' !== ''" })])).toEqual([
+    expect(messages([topBranch("c", [questionVar("q")], { script: "$vars.age > 1 && '$x' !== ''" })])).toEqual([
       "$vars is unknown: values are $var, $unit and $session",
     ]);
   });
 
   it("rejects forward references, self references and refs into a condition's own children", () => {
     expect(
-      messages([topCondition("c", [questionVar("q")], { script: "$var.later.answered" }), role, questionVar("later")]),
+      messages([topBranch("c", [questionVar("q")], { script: "$var.later.answered" }), role, questionVar("later")]),
     ).toEqual(["$var.later.answered: 'later' is asked after this point"]);
     expect(messages([questionVar("q", { ...confirmVariable, question: "{{ $var.q.answered }}" })])).toEqual([
       "$var.q.answered: a question can't refer to itself",
     ]);
-    expect(messages([topCondition("c", [questionVar("inner")], { script: "$var.inner.answered" })])).toEqual([
+    expect(messages([topBranch("c", [questionVar("inner")], { script: "$var.inner.answered" })])).toEqual([
       "$var.inner.answered: 'inner' is inside this condition",
     ]);
   });
@@ -450,7 +450,7 @@ describe("reference validation", () => {
   it("rejects refs into another loop, and $unit and snippets outside a loop", () => {
     const items = [
       unitLoop("a", [questionVar("qa")]),
-      unitLoop("b", [inLoopCondition("c", [questionVar("qb")], { script: "$var.qa.answered" })]),
+      unitLoop("b", [inLoopBranch("c", [questionVar("qb")], { script: "$var.qa.answered" })]),
       questionVar("after", { ...confirmVariable, question: "$unit.headline and [[x]]" }),
     ];
     expect(messages(items)).toEqual([
@@ -470,7 +470,7 @@ describe("reference validation", () => {
         topics,
         interest,
         questionVar("c", confirmVariable),
-        topCondition("x", [questionVar("q")], { script }),
+        topBranch("x", [questionVar("q")], { script }),
       ]);
     expect(check("$var.role.texts")).toEqual([
       `$var.role.texts: "role" is a nominal question, which has no .texts; use .value, .label or .answered`,
@@ -495,7 +495,7 @@ describe("reference validation", () => {
 
   it("checks the arguments of helpers in simple conditions", () => {
     const check = (script: string) =>
-      messages([role, topics, edu, age, interest, topCondition("x", [questionVar("q")], { script })]);
+      messages([role, topics, edu, age, interest, topBranch("x", [questionVar("q")], { script })]);
     expect(check(`$var.role.isAny("student", "prof")`)).toEqual([
       `"prof" is not an answer option of "role" ("student", "researcher")`,
     ]);
@@ -503,7 +503,7 @@ describe("reference validation", () => {
     expect(check(`$var.edu.gte(4)`)).toEqual([`4 is not an answer option of "edu" (1, 2, 3)`]);
     // Numeric codes: `is(2)` for the value "2" (but not "02")
     const codes = questionVar("codes", select(["1", "2"]));
-    const checkCodes = (script: string) => messages([codes, topCondition("x", [questionVar("q")], { script })]);
+    const checkCodes = (script: string) => messages([codes, topBranch("x", [questionVar("q")], { script })]);
     expect(checkCodes(`$var.codes.is(2)`)).toEqual([]);
     expect(checkCodes(`$var.codes.isAny(1, "2")`)).toEqual([]);
     expect(checkCodes(`$var.codes.is(3)`)).toEqual([`3 is not an answer option of "codes" ("1", "2")`]);
@@ -517,7 +517,7 @@ describe("reference validation", () => {
   });
 
   it("flags unknown properties", () => {
-    expect(messages([role, topCondition("x", [questionVar("q")], { script: "$var.role.code === 'a'" })])).toEqual([
+    expect(messages([role, topBranch("x", [questionVar("q")], { script: "$var.role.code === 'a'" })])).toEqual([
       "$var.role.code: unknown property; use .value, .label, .values, .labels, .texts, .answered, .items or a method",
     ]);
   });
@@ -587,7 +587,7 @@ describe("reference validation", () => {
       group,
       unitLoop("l", [questionVar("q"), child], "x", { cond: "$var.group.is('a')" }),
     ];
-    expect(messages(withSnippet(inLoopCondition("c", [questionVar("r")], { script: "[[cond]]" })))).toEqual([
+    expect(messages(withSnippet(inLoopBranch("c", [questionVar("r")], { script: "[[cond]]" })))).toEqual([
       expect.stringContaining("Snippets ([[name]]) can only be used"),
     ]);
     expect(
@@ -631,37 +631,40 @@ describe("reference validation", () => {
   });
 });
 
-describe("blocks", () => {
+describe("branches", () => {
   it("anything at the top level but end items; a loop only there, with an optional condition", () => {
     const q = questionVar("q1");
     const loop = unitLoop("loop", [questionVar("u1")]);
     const end = { type: "end", name: "stop", outcome: "screenout" };
     expect(validateDesignItems([q, loop])).toEqual([]);
     expect(validateDesignItems([q, end]).map((i) => i.message)).toEqual([
-      "An end item goes in a block (e.g. one with a condition)",
+      "An end item goes in a branch (shown only if a condition holds)",
     ]);
     expect(
-      validateDesignItems([q, { type: "block", condition: { script: "$var.q1.answered" }, children: [end] }]),
+      validateDesignItems([q, { type: "branch", condition: { script: "$var.q1.answered" }, children: [end] }]),
     ).toEqual([]);
-    // A label, a condition, both or neither
-    expect(validateDesignItems([{ type: "block", label: "Intro", children: [q] }])).toEqual([]);
-    expect(validateDesignItems([{ type: "block", children: [loop] }]).map((i) => i.message)).toEqual([
-      "A unit loop goes at the top level, not inside a block (give the loop a condition instead)",
+    // A condition is required; the label is optional
+    const always = { script: "true" };
+    expect(validateDesignItems([{ type: "branch", label: "Intro", condition: always, children: [q] }])).toEqual([]);
+    expect(validateDesignItems([{ type: "branch", label: "Intro", children: [q] }]).map((i) => i.message)).toEqual([
+      "A branch needs a condition: when its items are shown",
     ]);
+    expect(validateDesignItems([{ type: "branch", condition: { script: "" }, children: [q] }])).toMatchObject([
+      { path: [0, "condition", "script"], message: "The script is empty" },
+    ]);
+    expect(DesignItemsSchema.safeParse([{ type: "branch", children: [q] }]).success).toBe(false);
+    expect(
+      validateDesignItems([{ type: "branch", condition: always, children: [loop] }]).map((i) => i.message),
+    ).toEqual(["A unit loop goes at the top level, not inside a branch (give the loop a condition instead)"]);
     // A loop's condition: on coder-level answers before it, never $unit
     expect(validateDesignItems([q, { ...loop, condition: { script: "$var.q1.answered" } }])).toEqual([]);
     expect(validateDesignItems([q, { ...loop, condition: { script: "$unit.text == 'a'" } }]).length).toBeGreaterThan(0);
   });
 
-  it("else items: shown when the condition doesn't hold, so only with a condition", () => {
+  it("else items: shown when the condition doesn't hold", () => {
     const q = questionVar("q1", select(["a", "b"]));
-    const ifA = { type: "block", condition: { script: `$var.q1.is("a")` }, children: [questionVar("x")] };
+    const ifA = { type: "branch", condition: { script: `$var.q1.is("a")` }, children: [questionVar("x")] };
     expect(validateDesignItems([q, { ...ifA, elseChildren: [questionVar("y")] }])).toEqual([]);
-    expect(
-      validateDesignItems([q, { type: "block", children: [questionVar("x")], elseChildren: [questionVar("y")] }]).map(
-        (i) => i.message,
-      ),
-    ).toEqual(["Else items are shown when the condition doesn't hold: give the block a condition"]);
     // Their names are checked like any other
     expect(validateDesignItems([q, { ...ifA, elseChildren: [questionVar("x")] }]).map((i) => i.message)).toEqual([
       "Duplicate name 'x'",
@@ -721,7 +724,7 @@ describe("end items", () => {
     const items = [
       { type: "session", urlParams: [{ name: "pid" }] },
       questionVar("consent", select(["yes", "no"])),
-      topCondition(
+      topBranch(
         "gate",
         [end({ message: "Thanks, $session.pid", redirectUrl: "https://panel.example/end?id=$session.pid" })] as never,
         {
@@ -729,7 +732,7 @@ describe("end items", () => {
         },
       ),
       unitLoop("l", [
-        inLoopCondition("check", [end({ name: "fail", outcome: "complete" }) as never], { script: "$unit.x > 1" }),
+        inLoopBranch("check", [end({ name: "fail", outcome: "complete" }) as never], { script: "$unit.x > 1" }),
       ]),
     ];
     expect(validateDesignItems(items)).toEqual([]);
@@ -737,17 +740,17 @@ describe("end items", () => {
   });
 
   it("checks the redirect URL", () => {
-    // End items go in a block
-    const inBlock = (extra: object) => ({ type: "block", children: [end(extra)] });
-    expect(messages([inBlock({ redirectUrl: "panel.example/end" })])).toEqual([
+    // End items go in a branch
+    const inBranch = (extra: object) => ({ type: "branch", condition: { script: "true" }, children: [end(extra)] });
+    expect(messages([inBranch({ redirectUrl: "panel.example/end" })])).toEqual([
       "The redirect URL must start with https:// (or http://)",
     ]);
-    expect(messages([inBlock({ redirectUrl: "https://x/{{ 1 }}" })])).toEqual([
+    expect(messages([inBranch({ redirectUrl: "https://x/{{ 1 }}" })])).toEqual([
       "Redirect URLs can only use $var and $session references, not {{ }}",
     ]);
-    expect(() => DesignItemsSchema.parse([inBlock({ outcome: "done" })])).toThrow();
+    expect(() => DesignItemsSchema.parse([inBranch({ outcome: "done" })])).toThrow();
     // The session's values (the coder, required URL parameters) fit a panel's return link
-    expect(messages([inBlock({ redirectUrl: "https://panel.example/end?id=$session.coder" })])).toEqual([]);
+    expect(messages([inBranch({ redirectUrl: "https://panel.example/end?id=$session.coder" })])).toEqual([]);
   });
 });
 
@@ -755,7 +758,7 @@ describe("availableQuestions", () => {
   it("lists earlier questions, in a loop including its earlier questions", () => {
     const items = [
       questionVar("a"),
-      unitLoop("l", [questionVar("b"), inLoopCondition("c", [questionVar("d")]), questionVar("e")]),
+      unitLoop("l", [questionVar("b"), inLoopBranch("c", [questionVar("d")]), questionVar("e")]),
       unitLoop("m", [questionVar("f")]),
     ];
     const names = (at: (string | number)[]) => availableQuestions(items, at).map((q) => q.name);
@@ -776,8 +779,12 @@ describe("practice and gold units", () => {
       questionVar("note", { type: "unspecified" }),
     ],
   });
-  // An end item, in a block
-  const end = { type: "block", children: [{ type: "end", name: "low_quality", outcome: "screenout" }] };
+  // An end item, in a branch
+  const end = {
+    type: "branch",
+    condition: { script: "true" },
+    children: [{ type: "end", name: "low_quality", outcome: "screenout" }],
+  };
 
   it("check loop questions with a value to compare, and a screen-out end item", () => {
     const ok = loop({

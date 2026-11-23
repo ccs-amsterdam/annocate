@@ -61,7 +61,7 @@ export function QuestionPreview({
   const isVariable = item.type === "question";
   const isExperiment = item.type === "experiment";
   const isLoop = item.type === "unit_loop";
-  const isCondition = item.type === "block";
+  const isCondition = item.type === "branch";
   const isLayout = item.type === "layout";
   // The unit shows in a loop, with the layout that applies (none: the question alone)
   const showsUnit = layout !== null && (isLoop || isLayout || (isVariable && !!parentLoop));

@@ -32,30 +32,29 @@ The tree lists the **items**, in the order coders meet them:
 
 - a **Question** or **Experiment** (see
   [Experiments](random-condition.md)), asked or drawn once per coder;
-- a **Block (if/else)**: items grouped, with an optional label and
-  condition (see [Blocks and conditions](conditions.md));
+- a **Branch**: items only some coders get, if a condition holds (else
+  its else items; see [Branches and conditions](conditions.md));
 - a **Unit loop**: questions asked for every unit (see
   [Unit loops](unit-loops.md)).
 
-Blocks and loops can have a condition, so only some coders get them. An
-[end item](end-items.md) goes in a block (e.g. one with a condition), not
-at the top level.
+A loop can have a condition too, so only some coders get it. An
+[end item](end-items.md) goes in a branch, not at the top level.
 
 **Add item** above the tree adds a **Question**, **Experiment**,
-**Block (if/else)** or **Unit loop** **At the end** or **At the start**. A
-new block starts empty.
+**Branch** or **Unit loop** **At the end** or **At the start**. A new
+branch starts empty, without a condition: set one in its form.
 
 ## The tree
 
 The items before, between and after unit loops are grouped in a lightly
-tinted card; each unit loop is its own card. A block lines up with the
+tinted card; each unit loop is its own card. A branch lines up with the
 items around it, its items one step in; its else items follow under an
 **Else** row, as far in as its other items.
 
 Each item shows an icon for its type (a question: its answer type). A loop
-shows its label and which units it hands out. A block shows its label
-and/or its condition (_if age < 18_); without either it says **Block**. A
-block with a condition has an **Add else items** button on its row, which
+shows its label and which units it hands out. A branch shows its label
+and/or its condition (_if age < 18_); without either it says **Branch**. A
+branch has an **Add else items** button on its row, which
 opens the add menu (_If not, then…_); its **Else** part shows under its
 items once it has items.
 
@@ -72,17 +71,17 @@ for an issue (hover to read it).
    loop), choose **Where?**: **After tone**, **After News articles**, ...
    A line in the tree shows the place.
 3. Choose the type: at the top level **Question**, **Experiment**,
-   **Block (if/else)** or **Unit loop**; in a block **Question**,
-   **Experiment**, **Block (if/else)** or **End**; in a loop
-   **Question**, **Layout**, **Block (if/else)** or **End**.
+   **Branch** or **Unit loop**; in a branch **Question**,
+   **Experiment**, **Branch** or **End**; in a loop **Question**,
+   **Layout**, **Branch** or **End**.
 
-The new item goes below the row (for a loop or block: at the top inside
+The new item goes below the row (for a loop or branch: at the top inside
 it). New questions are `question_1`, ... and need an answer type; new end
-items start as **Screened out**. Loops can't be nested or put in a block.
+items start as **Screened out**. Loops can't be nested or put in a branch.
 
 ## Moving and deleting
 
-Tick the box in front of items (it appears on hover); a loop or block
+Tick the box in front of items (it appears on hover); a loop or branch
 takes its contents along. Then:
 
 - **Delete**: after asking once.

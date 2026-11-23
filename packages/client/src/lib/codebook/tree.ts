@@ -8,7 +8,7 @@ import {
   type InLoopItem,
   type UnitData,
   type UnitLoopItem,
-  type BlockItem,
+  type BranchItem,
   type LayoutItem,
   type VariableValue,
 } from "@annotinder/contracts";
@@ -16,26 +16,26 @@ import { evaluateCondition } from "./conditions";
 import type { ExpressionCache } from "./expressionCache";
 
 // Helpers over the tree of design items (items with `children`: unit
-// loops and blocks, which may have `elseChildren`), shared by the coding
-// runtime and the editor. The editor holds a block's else items as a
-// stand-in container after the block's own items (`ELSE`, itemEdit.ts
+// loops and branches, which may have `elseChildren`), shared by the coding
+// runtime and the editor. The editor holds a branch's else items as a
+// stand-in container after the branch's own items (`ELSE`, itemEdit.ts
 // `ensureKeys`); paths stay as saved (`elseChildren`).
 
-/** The type of the editor's stand-in for a block's else items. */
+/** The type of the editor's stand-in for a branch's else items. */
 export const ELSE = "else";
 
-/** Whether an item is the editor's stand-in for a block's else items. */
+/** Whether an item is the editor's stand-in for a branch's else items. */
 export const isElse = (item: unknown): boolean => (item as { type?: unknown } | null)?.type === ELSE;
 
-/** An item's own list (loops, blocks, the else stand-in; in the editor with the stand-in last), else null. */
+/** An item's own list (loops, branches, the else stand-in; in the editor with the stand-in last), else null. */
 export function childrenOf(item: unknown): (TopLevelItem | InLoopItem)[] | null {
   const children = (item as { children?: unknown } | null)?.children;
   return Array.isArray(children) ? (children as (TopLevelItem | InLoopItem)[]) : null;
 }
 
-/** The items inside a block (its items and else items) or the editor's else stand-in; null for other items. */
-export function blockInner(item: DesignItem): DesignItem[] | null {
-  if (item.type !== "block" && !isElse(item)) return null;
+/** The items inside a branch (its items and else items) or the editor's else stand-in; null for other items. */
+export function branchInner(item: DesignItem): DesignItem[] | null {
+  if (item.type !== "branch" && !isElse(item)) return null;
   return itemLists(item).flatMap((l) => l.list);
 }
 
@@ -70,11 +70,11 @@ export function findItem(items: (TopLevelItem | InLoopItem)[], identifier: strin
 export function findParent(
   items: (TopLevelItem | InLoopItem)[],
   identifier: string,
-): (UnitLoopItem | BlockItem) | null {
+): (UnitLoopItem | BranchItem) | null {
   for (const item of items) {
     for (const { list } of itemLists(item)) {
       if (list.some((child) => keyOf(child) === identifier || itemName(child) === identifier)) {
-        return item as UnitLoopItem | BlockItem;
+        return item as UnitLoopItem | BranchItem;
       }
       const found = findParent(list, identifier);
       if (found) return found;
@@ -85,14 +85,14 @@ export function findParent(
 
 /**
  * The path of an item (by name or _key), as in validation issues (on the
- * saved items): `[1, "children", 0]`, a block's else item `[1, "elseChildren", 0]`.
+ * saved items): `[1, "children", 0]`, a branch's else item `[1, "elseChildren", 0]`.
  */
 export function itemPath(items: (TopLevelItem | InLoopItem)[], identifier: string): (string | number)[] | null {
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     if (keyOf(item) === identifier || itemName(item) === identifier) return [i];
     for (const { key, list } of itemLists(item)) {
-      // The editor's else stand-in: its items are the block's elseChildren
+      // The editor's else stand-in: its items are the branch's elseChildren
       const stand = list.find(isElse) as { children: (TopLevelItem | InLoopItem)[] } | undefined;
       const inner = itemPath(
         list.filter((c) => !isElse(c)),
@@ -167,7 +167,7 @@ export function issueIsAbout(
   return Boolean(name) && issue.message.includes(`'${name}'`);
 }
 
-/** The unit loop around the item with this name or `_key` (also through conditions), if any. */
+/** The unit loop around the item with this name or `_key` (also through branches), if any. */
 function loopAround(items: TopLevelItem[], identifier: string): UnitLoopItem | undefined {
   let parent = findParent(items, identifier);
   while (parent) {
@@ -177,7 +177,7 @@ function loopAround(items: TopLevelItem[], identifier: string): UnitLoopItem | u
   return undefined;
 }
 
-/** Whether the item with this name or `_key` is inside a unit loop (also through conditions). */
+/** Whether the item with this name or `_key` is inside a unit loop (also through branches). */
 export function isInsideUnitLoop(items: TopLevelItem[], identifier: string): boolean {
   return loopAround(items, identifier) !== undefined;
 }
@@ -225,12 +225,12 @@ async function walkSteps(
     },
   };
   for (const node of nodes) {
-    if (node.type === "block") {
+    if (node.type === "branch") {
       const scope = buildScope(ctx.questions, visible, unit?.data, ctx.session);
-      // Its items if the condition holds (none: always), else its else items
-      const holds = await evaluateCondition(node.condition, scope, ctx.cache, `condition:${node.condition?.script}`);
-      const branch = holds ? node.children : (node.elseChildren ?? []);
-      if (await walkSteps(branch as typeof nodes, answers, visible, ctx, unit, out, layout)) return true;
+      // Its items if the condition holds, else its else items
+      const holds = await evaluateCondition(node.condition, scope, ctx.cache, `condition:${node.condition.script}`);
+      const shown = holds ? node.children : (node.elseChildren ?? []);
+      if (await walkSteps(shown as typeof nodes, answers, visible, ctx, unit, out, layout)) return true;
     } else if (node.type === "layout") {
       // How the unit is shown from here on (not a step)
       layout.current = node;
@@ -279,7 +279,7 @@ export async function computeLoopSteps(
   return out;
 }
 
-/** The unit loop the item is in (through conditions), if any. */
+/** The unit loop the item is in (through branches), if any. */
 export function enclosingLoop(items: TopLevelItem[], item: DesignItem): UnitLoopItem | undefined {
   return loopAround(items, keyOf(item) || itemName(item) || "");
 }

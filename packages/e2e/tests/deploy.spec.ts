@@ -81,7 +81,7 @@ test("the design's unit fields: how the design uses each, removing an unused one
         children: [
           { type: "layout", template: "$unit.text" },
           {
-            type: "block",
+            type: "branch",
             condition: { script: "$unit.year > 2000" },
             children: [
               {

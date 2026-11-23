@@ -14,7 +14,7 @@ item** ends the session earlier, for coders who:
 - must be sent back to an online panel (see
   [Online panels and crowd coding](online-panels.md)).
 
-Put it inside a [block with a condition](conditions.md), so only some
+Put it inside a [branch](conditions.md), so only some
 coders reach it (an end item can't stand on its own at the top level):
 
 ```text
@@ -75,12 +75,12 @@ https://panel.example/return?status=complete&id=$session.coder&group=$var.group.
 
 ## Typical uses
 
-- **Consent refused**: _"Do you agree to take part?"_, then a block
+- **Consent refused**: _"Do you agree to take part?"_, then a branch
   if _consent is "no"_ with a screened-out end item.
-- **Not eligible**: screening questions first, then a block with a
+- **Not eligible**: screening questions first, then a branch with a
   condition (**Any rule may hold**) around a screened-out end item.
 - **Failed attention check**: _"Choose 'Somewhat disagree'"_, then a
-  block if _check is not "somewhat_disagree"_. In a loop, the unit's answers are
+  branch if _check is not "somewhat_disagree"_. In a loop, the unit's answers are
   saved first.
 - **Back to the panel**: **At the end** sends coders to the completion
   link; end items in screening conditions to the screenout link.
@@ -88,5 +88,5 @@ https://panel.example/return?status=complete&id=$session.coder&group=$var.group.
 > Panels have rules about screening out and attention checks (e.g.
 > whether to pay). Check them first.
 
-End items go in a block (in a loop or not) and need a unique name. One after a loop is
+End items go in a branch (in a loop or not) and need a unique name. One after a loop is
 reached once the coder finished that loop.

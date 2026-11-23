@@ -52,19 +52,17 @@ which, so a broken link shows in your first test.
 Use [end items](end-items.md), one per return link:
 
 ```text
-About you
-  Consent                 categories: yes, no
-  if consent is "no"
-    └ End: no_consent     screened out → panel's "no consent" link
-  Age                     number
-  if age < 18
-    └ End: too_young      screened out → panel's screenout link
+Consent                   categories: yes, no
+if consent is "no"
+  └ End: no_consent       screened out → panel's "no consent" link
+Age                       number
+if age < 18
+  └ End: too_young        screened out → panel's screenout link
 Unit loop                 10 news articles
-Wrap-up
-  End: done               complete → panel's completion link
+At the end                complete → panel's completion link
 ```
 
-In each end item, **Then send coders to** → _A panel's return link_, with a
+In each end item (and **At the end**), **Then send coders to** → _A panel's return link_, with a
 name (e.g. `panel_complete`). Put the actual links in the study's
 **Settings** under **Panel return links**: they apply at once, without
 deploying, and each run fills in its own. (A fixed link can go in the end
@@ -75,7 +73,7 @@ https://panel.example/complete?id=$session.coder&study=$session.study
 https://app.prolific.com/submissions/complete?cc=C1A2B3C4
 ```
 
-> End the design with an end item **Complete**, or finishing coders see
+> Give **At the end** the completion link, or finishing coders see
 > AnnoTinder's own closing screen and aren't sent back.
 
 The outcome is in the `ended` column of `coders.csv`, to check against the
@@ -83,10 +81,10 @@ panel.
 
 ## Screening and attention checks
 
-- **Screening**: screening questions first, each followed by a questions
-  block with a condition and a screened-out end item. Pre-screen on the panel where you can.
-- **Attention checks**: a question with one right answer and a questions
-  block with a condition on other answers.
+- **Screening**: screening questions first, each followed by a branch
+  with a condition and a screened-out end item. Pre-screen on the panel where you can.
+- **Attention checks**: a question with one right answer and a branch
+  with a condition on other answers.
 
 > Follow the panel's rules on screening out and rejecting (e.g. whether
 > screened-out participants are paid).
@@ -94,7 +92,7 @@ panel.
 ## Experimental conditions
 
 Add an [experiment](random-condition.md) and show different material
-with [conditions](conditions.md) on blocks or loops, or
+with [conditions](conditions.md) on branches or loops, or
 `::: if`. See
 [Experimental conditions](experimental-conditions.md).
 

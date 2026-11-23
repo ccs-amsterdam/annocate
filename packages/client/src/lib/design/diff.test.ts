@@ -34,11 +34,11 @@ describe("diffDesigns", () => {
     expect(diffDesigns(before, after)).toEqual([{ kind: "changed", name: "b", type: "question", parent: "l" }]);
   });
 
-  it("compares a block's else items as items of their own", () => {
-    const block = (children: unknown[], elseChildren: unknown[]) =>
-      ({ type: "block", label: "c", condition: { script: "true" }, children, elseChildren }) as TopLevelItem;
-    const before = [block([question("a")], [question("b"), question("gone")])];
-    const after = [block([question("a"), question("b")], [question("new")])];
+  it("compares a branch's else items as items of their own", () => {
+    const branch = (children: unknown[], elseChildren: unknown[]) =>
+      ({ type: "branch", label: "c", condition: { script: "true" }, children, elseChildren }) as TopLevelItem;
+    const before = [branch([question("a")], [question("b"), question("gone")])];
+    const after = [branch([question("a"), question("b")], [question("new")])];
     expect(diffDesigns(before, after)).toEqual([
       { kind: "removed", name: "gone", type: "question", parent: "c" },
       { kind: "moved", name: "b", type: "question", parent: "c" },

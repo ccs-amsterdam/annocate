@@ -22,7 +22,7 @@ import { flattenTree, keyOf } from "../codebook/tree";
 function cond(key: string, children: DesignItem[] = []): TopLevelItem {
   return {
     _key: key,
-    type: "block",
+    type: "branch",
     condition: { script: "true" },
     children: children as TopLevelItem[],
   } as TopLevelItem;
@@ -184,7 +184,7 @@ describe("itemEdit", () => {
     it("updates item properties while preserving children", () => {
       const items: TopLevelItem[] = [cond("p1", [cond("child")])];
       const next = updateItem(items, "p1", {
-        type: "block",
+        type: "branch",
         label: "relabeled",
         condition: { script: "$var.x.value > 1" },
       } as unknown as TopLevelItem);
@@ -245,32 +245,32 @@ describe("itemEdit", () => {
   });
 });
 
-describe("a block's else items in the editor", () => {
-  it("are a stand-in container after the block's items, and saved back as elseChildren", async () => {
+describe("a branch's else items in the editor", () => {
+  it("are a stand-in container after the branch's items, and saved back as elseChildren", async () => {
     const { ensureKeys, stripKeys } = await import("./itemEdit");
     const { itemPath, itemAtPath, findItem } = await import("../codebook/tree");
     const saved = [
       {
-        type: "block",
+        type: "branch",
         condition: { script: "true" },
         children: [{ type: "question", name: "a", variable: { type: "confirm", question: "?" } }],
         elseChildren: [{ type: "question", name: "b", variable: { type: "confirm", question: "?" } }],
       },
     ] as unknown as TopLevelItem[];
     const editing = ensureKeys(saved);
-    const block = editing[0] as unknown as {
+    const branch = editing[0] as unknown as {
       children: { type: string; children?: unknown[] }[];
       elseChildren?: unknown;
     };
-    expect(block.elseChildren).toBeUndefined();
-    expect(block.children.map((c) => c.type)).toEqual(["question", "else"]);
+    expect(branch.elseChildren).toBeUndefined();
+    expect(branch.children.map((c) => c.type)).toEqual(["question", "else"]);
     expect(stripKeys(editing)).toEqual(saved);
     // Paths stay as saved: validation issues find the item
     expect(itemPath(editing, "b")).toEqual([0, "elseChildren", 0]);
     expect(itemAtPath(editing, [0, "elseChildren", 0])).toBe(findItem(editing, "b"));
     expect(itemAtPath(editing, [0, "children", 0])).toBe(findItem(editing, "a"));
     // An emptied else part is dropped
-    block.children[1].children = [];
+    branch.children[1].children = [];
     expect((stripKeys(editing)[0] as { elseChildren?: unknown }).elseChildren).toBeUndefined();
   });
 });

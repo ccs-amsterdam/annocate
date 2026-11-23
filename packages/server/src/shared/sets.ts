@@ -219,7 +219,7 @@ export async function assignmentChecks(
   const experiments: { name: string; variable: Extract<DesignItem, { type: "experiment" }>["variable"] }[] = [];
   forEachItem<DesignItem>(items, (it) => {
     if (selectsUnits(it) && it.type === "experiment") experiments.push(it);
-    if (it.type !== "block") return "skip";
+    if (it.type !== "branch") return "skip";
   });
   for (const { name, variable } of experiments) {
     const title = `Experiment '${name}'`;

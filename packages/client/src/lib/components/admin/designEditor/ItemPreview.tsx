@@ -23,9 +23,9 @@ import type { DesignDraft } from "./useDesignDraft";
 
 const selectClass = "h-7 rounded-md border border-input bg-background px-1.5 text-xs";
 
-/** A loop's questions in order (through conditions). */
+/** A loop's questions in order (through branches). */
 function loopQuestionNames(loop: UnitLoopItem): string[] {
-  return flattenTree(loop.children).flatMap((i) => (i.type !== "block" && "name" in i ? [i.name] : []));
+  return flattenTree(loop.children).flatMap((i) => (i.type !== "branch" && "name" in i ? [i.name] : []));
 }
 
 /** The questions a template refers to, in its values and in its blocks' conditions. */

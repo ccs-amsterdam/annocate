@@ -111,10 +111,7 @@ describe("studies from a recipe", () => {
     { id: "b", data: { text: "two" } },
   ];
   const items = [
-    {
-      type: "block",
-      children: [{ type: "experiment", name: "condition", variable: { type: "random", draw: "random", units: true } }],
-    },
+    { type: "experiment", name: "condition", variable: { type: "random", draw: "random", units: true } },
     {
       type: "unit_loop",
       children: [

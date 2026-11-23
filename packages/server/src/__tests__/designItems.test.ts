@@ -3,10 +3,10 @@ import type { DesignItem } from "@annotinder/contracts";
 import { findEndItem } from "../runtime/designItems.js";
 
 describe("findEndItem", () => {
-  it("finds end items in a block's else items too", () => {
+  it("finds end items in a branch's else items too", () => {
     const items = [
       {
-        type: "block",
+        type: "branch",
         condition: { script: "$var.age.gte(18)" },
         children: [{ type: "end", name: "adult", outcome: "complete" }],
         elseChildren: [{ type: "end", name: "minor", outcome: "screenout" }],

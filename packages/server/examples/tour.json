@@ -1,11 +1,11 @@
 {
   "category": "Surveys and experiments",
   "title": "Experiment with annotations: a tour",
-  "description": "A tour of AnnoTinder's question types and features: survey questions, a random experiment that changes the layout and the questions, blocks with a condition (each with a label, one with else items), and a unit loop with swiping, choices, span annotation and a slider.",
+  "description": "A tour of AnnoTinder's question types and features: survey questions, a random experiment that changes the layout and the questions, branches with a condition (each with a label, one with else items), and a unit loop with swiping, choices, span annotation and a slider.",
   "tryThis": [
     "Open the link (Links page) in a private window, and code as a coder would.",
-    "Open the design (Design page) to see how each feature is set up. Blocks carry a label, shown in the editor: \"Screen-out: under 16\", \"Experiment group\", \"Experts only\".",
-    "Code twice, as a beginner and as an expert, to see the conditions at work: the \"Experiment group\" block asks the control group its else question instead."
+    "Open the design (Design page) to see how each feature is set up. Branches carry a label, shown in the editor: \"Screen-out: under 16\", \"Experiment group\", \"Experts only\".",
+    "Code twice, as a beginner and as an expert, to see the conditions at work: the \"Experiment group\" branch asks the control group its else question instead."
   ],
   "name": "Demo: a tour of AnnoTinder",
   "publish": true,
@@ -75,7 +75,7 @@
         }
       },
       {
-        "type": "block",
+        "type": "branch",
         "label": "Screen-out: under 16",
         "condition": {
           "script": "$var.age.lt(16)"
@@ -166,7 +166,7 @@
         }
       },
       {
-        "type": "block",
+        "type": "branch",
         "label": "Experiment group",
         "condition": {
           "script": "$var.group.is(\"experiment\")"
@@ -177,7 +177,7 @@
             "name": "experiment_check",
             "variable": {
               "type": "nominal",
-              "question": "You were randomly assigned to the experiment group, so only you (and others in this group) see this question. Did you know codebooks can contain experiments?\n\nA random condition assigned you to a group at random. A block with a condition then shows this question only to the experiment group. In the editor, the block has a label, \"Experiment group\", so you can see at a glance what it is for.",
+              "question": "You were randomly assigned to the experiment group, so only you (and others in this group) see this question. Did you know codebooks can contain experiments?\n\nA random condition assigned you to a group at random. A branch with a condition then shows this question only to the experiment group. In the editor, the branch has a label, \"Experiment group\", so you can see at a glance what it is for.",
               "options": [
                 {
                   "value": "yes",
@@ -197,7 +197,7 @@
             "name": "control_check",
             "variable": {
               "type": "nominal",
-              "question": "You were randomly assigned to the control group: coders in the experiment group get a different question here. Did you expect a demo to put you in an experiment?\n\nThe block \"Experiment group\" shows its items to the experiment group, and its else items, like this question, to everyone else.",
+              "question": "You were randomly assigned to the control group: coders in the experiment group get a different question here. Did you expect a demo to put you in an experiment?\n\nThe branch \"Experiment group\" shows its items to the experiment group, and its else items, like this question, to everyone else.",
               "options": [
                 {
                   "value": "yes",
@@ -388,7 +388,7 @@
             "instruction": "A span question: select words in the headline or the text (or use the arrow keys and Space) and give them a label. You can label as many spans as you like."
           },
           {
-            "type": "block",
+            "type": "branch",
             "label": "Experts only",
             "condition": {
               "script": "$var.experience.is(3)"
@@ -436,7 +436,7 @@
             ]
           },
           {
-            "type": "block",
+            "type": "branch",
             "label": "Interested in technology",
             "condition": {
               "script": "$var.interest.items.technology.gte(4)"

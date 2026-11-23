@@ -78,62 +78,56 @@
         }
       },
       {
-        "type": "block",
-        "label": "About you",
-        "children": [
-          {
-            "type": "question",
-            "name": "age_group",
-            "variable": {
-              "type": "nominal",
-              "question": "How old are you?",
-              "options": [
-                {
-                  "value": "18-29",
-                  "label": "18 to 29"
-                },
-                {
-                  "value": "30-49",
-                  "label": "30 to 49"
-                },
-                {
-                  "value": "50-64",
-                  "label": "50 to 64"
-                },
-                {
-                  "value": "65+",
-                  "label": "65 or older"
-                }
-              ]
+        "type": "question",
+        "name": "age_group",
+        "variable": {
+          "type": "nominal",
+          "question": "How old are you?",
+          "options": [
+            {
+              "value": "18-29",
+              "label": "18 to 29"
+            },
+            {
+              "value": "30-49",
+              "label": "30 to 49"
+            },
+            {
+              "value": "50-64",
+              "label": "50 to 64"
+            },
+            {
+              "value": "65+",
+              "label": "65 or older"
             }
-          },
-          {
-            "type": "question",
-            "name": "interest",
-            "variable": {
-              "type": "ordinal",
-              "question": "How interested are you in politics?",
-              "options": [
-                {
-                  "value": 1,
-                  "label": "Not at all"
-                },
-                {
-                  "value": 2,
-                  "label": "A little"
-                },
-                {
-                  "value": 3,
-                  "label": "Quite"
-                },
-                {
-                  "value": 4,
-                  "label": "Very"
-                }
-              ]
+          ]
+        }
+      },
+      {
+        "type": "question",
+        "name": "interest",
+        "variable": {
+          "type": "ordinal",
+          "question": "How interested are you in politics?",
+          "options": [
+            {
+              "value": 1,
+              "label": "Not at all"
+            },
+            {
+              "value": 2,
+              "label": "A little"
+            },
+            {
+              "value": 3,
+              "label": "Quite"
+            },
+            {
+              "value": 4,
+              "label": "Very"
             }
-          }
-        ]
+          ]
+        }
       },
       {
         "type": "unit_loop",

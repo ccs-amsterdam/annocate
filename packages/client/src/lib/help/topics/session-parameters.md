@@ -54,5 +54,5 @@ A value typed into a link isn't random: draw conditions with an
 [experiment](experimental-conditions.md). An experiment can still take its
 condition from a URL parameter with a list of values (**Assigned: From a
 URL parameter**), e.g. when a panel assigns the groups. A URL parameter
-can also steer the design directly, e.g. a `language` in a block's
+can also steer the design directly, e.g. a `language` in a branch's
 condition.

@@ -82,11 +82,11 @@ export function collectCoderVariables(items: TopLevelItem[]): Map<string, AnyVar
   return variables;
 }
 
-/** The variables of these items (also inside conditions, not inside unit loops), by name. */
+/** The variables of these items (also inside branches, not inside unit loops), by name. */
 // Like contracts' `collectQuestions` without loops, but a repeated name's last item wins (names are unique once valid)
 function collectQuestions(items: DesignItem[], into: Map<string, AnyVariableType>) {
   forEachItem<DesignItem>(items, (item) => {
-    if (item.type === "block") return;
+    if (item.type === "branch") return;
     if (item.type !== "unit_loop" && item.type !== "end" && item.type !== "session" && item.type !== "layout")
       into.set(item.name, item.variable);
     return "skip";

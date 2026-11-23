@@ -182,11 +182,11 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
     setSelected(item._key);
   }
 
-  /** A block's else items begin: its else part (codebook/tree.ts `ELSE`) with a first item of `type`, selected. */
-  function addElse(blockKey: string, type: ItemType) {
+  /** A branch's else items begin: its else part (codebook/tree.ts `ELSE`) with a first item of `type`, selected. */
+  function addElse(branchKey: string, type: ItemType) {
     const first = createItem(type);
     const stand = { type: ELSE, _key: generateKey(), children: [first] } as unknown as DesignItem;
-    setItems(ensureKeys(insertAtPosition(items, { into: blockKey }, stand)));
+    setItems(ensureKeys(insertAtPosition(items, { into: branchKey }, stand)));
     setSelected(first._key);
   }
 

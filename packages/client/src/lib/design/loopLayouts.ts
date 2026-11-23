@@ -11,7 +11,7 @@ import {
 import { itemAtPath, itemPath, keyOf } from "../codebook/tree";
 
 // The layout items of a loop in the editor (contracts layoutItems.ts). The
-// editor holds a block's else items as a trailing child (codebook/tree.ts
+// editor holds a branch's else items as a trailing child (codebook/tree.ts
 // `ELSE`): the flow is followed in the loop as it is saved.
 
 /** A loop as it is saved (else items as `elseChildren`), found by the editor's loop. */

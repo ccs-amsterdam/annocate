@@ -24,8 +24,8 @@ export interface DesignTreeState {
   /** Where a row's + can add (after it; more than one where that is ambiguous). */
   addPositions: (key: string) => TreePosition[];
   addAt: (position: TreePosition, type: ItemType) => void;
-  /** A block's else items begin (with a first question). */
-  addElse: (blockKey: string, type: ItemType) => void;
+  /** A branch's else items begin (with a first question). */
+  addElse: (branchKey: string, type: ItemType) => void;
 
   /** While moving the ticked items: whether, and moving them to, a position. */
   moving: boolean;

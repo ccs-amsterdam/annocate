@@ -1,17 +1,18 @@
 ---
-title: Blocks and conditions
+title: Branches and conditions
 section: Editor
 order: 4
-summary: Group items in blocks, and show a block (or its else items) or a unit loop only when earlier answers (or the unit) say so.
+summary: Show items (a branch, or its else items) or a unit loop only when earlier answers (or the unit) say so.
 ---
 
-A **block** holds items, and optionally a **label** (e.g.
-_Demographics_) and a **condition**. Without a condition it is always
-shown; with one, only when the condition holds. Otherwise the coder gets
-its **else items**, if it has any, or skips to what comes after it.
+A **branch** holds items that only some coders get: it has a
+**condition**, and its items are shown only when the condition holds.
+Otherwise the coder gets its **else items**, if it has any, or skips to
+what comes after it. An optional **label** (e.g. _Screen-out_) names it in
+the tree.
 
-A block works the same at the top level, inside another block or inside a
-unit loop:
+A branch works the same at the top level, inside another branch or inside
+a unit loop:
 
 ```text
 Unit loop
@@ -24,29 +25,29 @@ Unit loop
   Tone                    asked for every unit
 ```
 
-## Adding a block
+## Adding a branch
 
-1. At the top level: **Add item** above the tree → **Block (if/else)**.
-   Inside a block or loop: click **+** and choose **Block (if/else)** (see
+1. At the top level: **Add item** above the tree → **Branch**. Inside a
+   branch or loop: click **+** and choose **Branch** (see
    [The design editor](design-editor.md#adding-items)).
-2. Optionally fill in **Label (optional)**, e.g. _Demographics_ (shown
-   in the tree).
-3. To make it conditional, tick **Only show these questions if…** and set
-   the rules.
-4. Add items inside it, or move existing ones in. A new block starts
+2. Set its condition under **Only show these items if…**: a new branch
+   has none yet, and the editor flags it until it does.
+3. Optionally fill in **Label (optional)**, e.g. _Screen-out_ (shown in
+   the tree).
+4. Add items inside it, or move existing ones in. A new branch starts
    empty.
 
-It can hold questions, experiments (outside loops), other blocks,
+It can hold questions, experiments (outside loops), other branches,
 [end items](end-items.md) and, in a loop,
-[layout items](layout-templates.md#layout-items). A unit loop can't go inside a block: give
+[layout items](layout-templates.md#layout-items). A unit loop can't go inside a branch: give
 the loop a condition instead (see [Loop conditions](#loop-conditions)).
 
 ## Else items
 
-A block with a condition can also have items shown when the condition
-doesn't hold. Click **Add else items** on the block's row and choose the
-first item in the menu (_If not, then…_): this adds an **Else** part, under
-the block's items. Only a block with a condition can have else items.
+A branch can also have items shown when its condition doesn't hold. Click
+**Add else items** on the branch's row and choose the first item in the
+menu (_If not, then…_): this adds an **Else** part, under the branch's
+items.
 
 ## Loop conditions
 
@@ -130,7 +131,7 @@ questions.
 ## Conditions in a layout or text
 
 To show part of a layout or text only in some cases, write a `::: if`
-block; no block item needed:
+block; no branch needed:
 
 ```example
 answers:

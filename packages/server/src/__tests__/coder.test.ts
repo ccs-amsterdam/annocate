@@ -381,7 +381,7 @@ const crowd = (divide?: object, extra: object = {}) =>
   sessionItem({ invite: { mode: "crowd", ...extra }, ...(divide ? { [DIVIDE]: divide } : {}) });
 const DIVIDE = "__divide";
 
-/** The items with a crowd's `divide` (`crowd`) in every unit loop without its own; top-level end items in a block. */
+/** The items with a crowd's `divide` (`crowd`) in every unit loop without its own; top-level end items in a branch. */
 function withDivide(items: object[]): object[] {
   const session = items.find((i) => (i as { type?: string }).type === "session") as Record<string, unknown> | undefined;
   const divide = session?.[DIVIDE];
@@ -392,7 +392,7 @@ function withDivide(items: object[]): object[] {
       void _divide;
       return rest;
     }
-    if (it.type === "end") return { type: "block", children: [it] };
+    if (it.type === "end") return { type: "branch", condition: { script: "true" }, children: [it] };
     if (it.type === "unit_loop" && divide && !it.units?.divide && !it.units?.sameAsPrevious)
       return { ...it, units: { ...it.units, divide } };
     return it;
@@ -2328,7 +2328,7 @@ describe("deployment settings", () => {
     });
     type Item = { type: string; redirectUrl?: string; children?: Item[] };
     const items = (await coder("first").session()).codebook.items as Item[];
-    const served = items.flatMap((i) => (i.type === "block" ? (i.children ?? []) : [i])).find((i) => i.type === "end");
+    const served = items.flatMap((i) => (i.type === "branch" ? (i.children ?? []) : [i])).find((i) => i.type === "end");
     expect(served?.redirectUrl).toBe("https://panel.example/done?id=$session.coder");
     // maxUses 1: the demo link took "first"; a second new coder is refused
     const second = await send("second", "/session", {}, { "x-link-secret": "demo-secret" });

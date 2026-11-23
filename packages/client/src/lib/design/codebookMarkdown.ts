@@ -76,14 +76,11 @@ function items(list: DesignItem[], depth: number, keys: LoopKeys): string[] {
   const out: string[] = [];
   for (const item of list) {
     if (item.type === "session") continue;
-    if (item.type === "block") {
+    if (item.type === "branch") {
       const label = item.label ? `${item.label}: ` : "";
       out.push(
-        ...(item.condition
-          ? [`*Only if ${label}\`${item.condition.script}\`*`, ""]
-          : label
-            ? [`*${item.label}*`, ""]
-            : []),
+        `*Only if ${label}\`${item.condition.script}\`*`,
+        "",
         ...items((item.children ?? []) as DesignItem[], depth, keys),
         ...(item.elseChildren?.length
           ? ["*Otherwise:*", "", ...items(item.elseChildren as DesignItem[], depth, keys)]

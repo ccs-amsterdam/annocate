@@ -13,7 +13,7 @@ const loop = {
       variable: { type: "nominal", question: "Topic of {{$unit.text}}?", options: [{ value: "a" }] },
     },
     {
-      type: "block",
+      type: "branch",
       condition: { script: "$var.topic.is('a') && $var.age.gt(18) && $var.group.is('a') && $var.slot.is('1')" },
       children: [
         { type: "question", name: "tone", variable: { type: "nominal", question: "Tone?", options: [{ value: "x" }] } },
@@ -41,7 +41,7 @@ describe("fieldUsage", () => {
         children: [
           { type: "layout", template: "$unit.title" },
           {
-            type: "block",
+            type: "branch",
             condition: { script: "$unit.year > 2000" },
             children: [
               {
@@ -72,7 +72,7 @@ describe("set columns", () => {
     { type: "session", invite: { mode: "coders", link: "per_coder" } },
     { type: "unit_loop", children: [{ type: "layout", template: "" }] },
     {
-      type: "block",
+      type: "branch",
       condition: { script: "true" },
       children: [{ type: "experiment", name: "set", variable: { type: "random", draw: "balanced", units: true } }],
     },

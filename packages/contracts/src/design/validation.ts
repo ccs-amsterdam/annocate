@@ -672,13 +672,13 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
         checkSession(item, itemPath, index, currentPath.length > 0);
         return;
       }
-      // End items go in a block (e.g. with a condition); a unit loop only at the top level
+      // End items go in a branch; a unit loop only at the top level
       if (currentPath.length === 0 && item.type === "end")
-        issue([...itemPath, "type"], "An end item goes in a block (e.g. one with a condition)");
+        issue([...itemPath, "type"], "An end item goes in a branch (shown only if a condition holds)");
       if (currentPath.length > 0 && item.type === "unit_loop" && !loop)
         issue(
           [...itemPath, "type"],
-          "A unit loop goes at the top level, not inside a block (give the loop a condition instead)",
+          "A unit loop goes at the top level, not inside a branch (give the loop a condition instead)",
         );
       if (item.type === "layout") {
         if (loop) checkLayoutItem(item, itemPath, loop);
@@ -686,8 +686,8 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
         return;
       }
 
-      // Check name validity and uniqueness (conditions have no name)
-      if (item.type === "block" || item.type === "unit_loop") {
+      // Check name validity and uniqueness (branches and loops have no name)
+      if (item.type === "branch" || item.type === "unit_loop") {
         // Nothing refers to them by name (a loop is identified by its position).
       } else if (!item.name || item.name.trim() === "") {
         issue([...itemPath, "name"], "Item name cannot be empty");
@@ -789,7 +789,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           walk(item.children, [...itemPath, "children"], context);
           loopAvailable = new Set();
         }
-      } else if (item.type === "block") {
+      } else if (item.type === "branch") {
         checkCondition(item.condition, {
           path: [...itemPath, "condition"],
           loop: loop?.name ?? null,
@@ -798,20 +798,13 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           inside: questionNames(item.children),
         });
         if (!item.children || item.children.length === 0) {
-          issue([...itemPath, "children"], "A block must have at least one item");
+          issue([...itemPath, "children"], "A branch must have at least one item");
         } else {
           walk(item.children, [...itemPath, "children"], loop);
         }
-        // Else items: shown when the condition doesn't hold, so only with a condition
+        // Else items: shown when the condition doesn't hold
         const otherwise = (item as { elseChildren?: unknown }).elseChildren;
-        if (Array.isArray(otherwise)) {
-          if (!item.condition)
-            issue(
-              [...itemPath, "elseChildren"],
-              "Else items are shown when the condition doesn't hold: give the block a condition",
-            );
-          walk(otherwise, [...itemPath, "elseChildren"], loop);
-        }
+        if (Array.isArray(otherwise)) walk(otherwise, [...itemPath, "elseChildren"], loop);
       } else if (item.type === "end") {
         checkEndTexts(item as EndTexts, itemPath, loop?.name ?? null, available);
       } else if (item.type === "question") {
@@ -839,12 +832,12 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   const linked: { name: string }[] = [];
   forEachItem<RawItem>(items, (it) => {
     if (selectsUnits(it)) linked.push({ name: it.name });
-    if (it.type !== "block") return "skip";
+    if (it.type !== "branch") return "skip";
   });
   const loopPaths = new Map<string, Path>();
   forEachItem<RawItem>(items, (it, path) => {
     if (it.type === "unit_loop") loopPaths.set(String(loopPaths.size + 1), path);
-    if (it.type !== "block") return "skip";
+    if (it.type !== "branch") return "skip";
   });
   for (const [key, columns] of shares) {
     for (const condition of linked) {
@@ -923,7 +916,7 @@ export function collectQuestions(items: unknown): {
   let loops = 0;
   const walk = (list: unknown, loop: string | null) =>
     forEachItem<RawItem>(list, (item) => {
-      if (item.type === "block") return;
+      if (item.type === "branch") return;
       if (item.type === "unit_loop") walk(item.children, String(++loops));
       else if (item.name && "variable" in item && item.variable && !questions.has(item.name)) {
         questions.set(item.name, item.variable as AnyVariableType);
@@ -939,7 +932,7 @@ export function collectQuestions(items: unknown): {
  * The questions a reference may use at an item, by the same rules as
  * validation: coder-level questions before it, and in a loop the loop's
  * earlier questions. `at` is the item's path (as in validation issues); for
- * a condition this excludes its own children, for a unit loop (its units
+ * a branch (its condition) this excludes its own children, for a unit loop (its units
  * settings and layout) its questions. Used by the admin editor's reference picker.
  */
 export function availableQuestions(items: unknown[], at: Path): { name: string; variable: AnyVariableType }[] {
@@ -962,7 +955,7 @@ export function availableQuestions(items: unknown[], at: Path): { name: string; 
         walk(item.children, [...itemPath, "children"]);
         if (found) return;
         result.splice(before);
-      } else if (item.type === "block") {
+      } else if (item.type === "branch") {
         walk(item.children, [...itemPath, "children"]);
         walk((item as { elseChildren?: unknown }).elseChildren, [...itemPath, "elseChildren"]);
       } else if (item.name && "variable" in item && item.variable) {
@@ -979,7 +972,7 @@ function questionNames(list: unknown, into = new Set<string>()): Set<string> {
   return into;
 }
 
-/** Visits every item of a list, also inside conditions but not inside unit loops (questions, experiments and end items). */
+/** Visits every item of a list, also inside branches but not inside unit loops (questions, experiments and end items). */
 function forEachQuestion(
   list: unknown,
   path: Path,
@@ -988,7 +981,7 @@ function forEachQuestion(
   forEachItem<RawItem & { variable?: unknown }>(
     list,
     (child, at) => {
-      if (child.type === "block") return;
+      if (child.type === "branch") return;
       if (child.type !== "unit_loop" && child.type !== "layout") visit(child, at);
       return "skip";
     },

@@ -48,7 +48,7 @@ describe("changes since the last save", () => {
     },
     {
       _key: "c",
-      type: "block",
+      type: "branch",
       condition: { script: "true" },
       children: [{ _key: "b", type: "question", name: "q2", variable: { type: "confirm", question: "?" } }],
     },

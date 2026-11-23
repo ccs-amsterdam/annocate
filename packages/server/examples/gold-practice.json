@@ -4,7 +4,7 @@
   "description": "Crowd coders sort made-up news headlines by topic and say whether they are clickbait. They start with 4 practice headlines that give feedback when an answer is wrong; the 12 headlines are divided among the crowd so that each is coded by two coders; 3 gold headlines with a known topic are spread among them, checked silently, and coders who get too many wrong are screened out. With example answers from 2 coders, one of whom got a gold headline wrong.",
   "tryThis": [
     "Open the link (Links page) in a private window and answer a practice headline wrongly: you see why, and answer again.",
-    "Code on and get two gold headlines wrong in a row (the burglar, the unemployment figures, the swimming club): the study ends at the Screen-out block's end item.",
+    "Code on and get two gold headlines wrong in a row (the burglar, the unemployment figures, the swimming club): the study ends at the Screen-out branch's end item.",
     "See the right answers in the units: the columns answer_topic, feedback_topic, answer_clickbait and feedback_clickbait, and the column test_set with practice and gold (Units page). Coders never get these columns.",
     "Open the unit loop on the Design page: the headlines divided among coders (two per headline), practice units before them, gold units spread throughout, and the health that ends a session.",
     "See how each coder did on the test units in Results › Coders."
@@ -252,7 +252,7 @@
         }
       },
       {
-        "type": "block",
+        "type": "branch",
         "label": "Screen-out",
         "condition": {
           "script": "$var.consent.is('no')"
@@ -357,58 +357,52 @@
         ]
       },
       {
-        "type": "block",
-        "label": "Your feedback",
-        "children": [
-          {
-            "type": "question",
-            "name": "difficulty",
-            "variable": {
-              "type": "ordinal",
-              "question": "How hard was it to sort the headlines?",
-              "options": [
-                {
-                  "value": 1,
-                  "label": "Very easy"
-                },
-                {
-                  "value": 2,
-                  "label": "Easy"
-                },
-                {
-                  "value": 3,
-                  "label": "Hard"
-                },
-                {
-                  "value": 4,
-                  "label": "Very hard"
-                }
-              ]
+        "type": "question",
+        "name": "difficulty",
+        "variable": {
+          "type": "ordinal",
+          "question": "How hard was it to sort the headlines?",
+          "options": [
+            {
+              "value": 1,
+              "label": "Very easy"
+            },
+            {
+              "value": 2,
+              "label": "Easy"
+            },
+            {
+              "value": 3,
+              "label": "Hard"
+            },
+            {
+              "value": 4,
+              "label": "Very hard"
             }
-          },
-          {
-            "type": "question",
-            "name": "practice_helped",
-            "variable": {
-              "type": "nominal",
-              "question": "Did the practice headlines help you understand the task?",
-              "options": [
-                {
-                  "value": "yes",
-                  "label": "Yes"
-                },
-                {
-                  "value": "somewhat",
-                  "label": "Somewhat"
-                },
-                {
-                  "value": "no",
-                  "label": "No"
-                }
-              ]
+          ]
+        }
+      },
+      {
+        "type": "question",
+        "name": "practice_helped",
+        "variable": {
+          "type": "nominal",
+          "question": "Did the practice headlines help you understand the task?",
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes"
+            },
+            {
+              "value": "somewhat",
+              "label": "Somewhat"
+            },
+            {
+              "value": "no",
+              "label": "No"
             }
-          }
-        ]
+          ]
+        }
       }
     ]
   },

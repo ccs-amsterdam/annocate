@@ -8,7 +8,7 @@ import {
   HelpCircle,
   ListOrdered,
   Link2,
-  ListChecks,
+  GitBranch,
   LogOut,
   FileStack,
   FlaskConical,
@@ -35,26 +35,24 @@ interface ItemTypeInfo {
   color: string;
   /** The name's classes in the tree (font, weight, colour). */
   nameClass: string;
-  /** Extra classes on the card wrapping a container (a loop, a block) and its children. */
-  blockClass?: string;
+  /** Extra classes on the card wrapping a container (a loop, a branch) and its children. */
+  containerClass?: string;
 }
 
 export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
-  block: {
-    label: "Block (if/else)",
-    description:
-      "Items together, with an optional label (e.g. Demographics); with a condition, only shown if it holds, else its else items",
-    icon: ListChecks,
+  branch: {
+    label: "Branch",
+    description: "Items only some coders get: if a condition holds (else the else items)",
+    icon: GitBranch,
     color: "text-secondary-dark",
     nameClass: "font-medium",
-    blockClass: "",
   },
   question: {
     label: "Question",
     description: "Prompt coder for an answer",
     icon: HelpCircle,
     color: "text-[var(--iconcolor,var(--color-muted-foreground))]",
-    // Questions are named like variables (topic, age): apart from loops, layouts and blocks
+    // Questions are named like variables (topic, age): apart from loops, layouts and branches
     nameClass: "font-mono text-[13px] font-normal text-foreground/75",
   },
   experiment: {
@@ -70,7 +68,7 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     icon: FileStack,
     color: "text-loop",
     nameClass: "font-semibold text-loop",
-    blockClass: "[--iconcolor:var(--color-loop)]",
+    containerClass: "[--iconcolor:var(--color-loop)]",
   },
   layout: {
     label: "Layout",

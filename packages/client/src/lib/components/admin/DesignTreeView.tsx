@@ -13,7 +13,7 @@ import {
 import { issueIsAbout } from "../../codebook/tree";
 import { Button } from "@/components/ui/button";
 import { DesignTreeProvider, type DesignTreeState } from "./designTree/context";
-import { BlockList } from "./designTree/TreeList";
+import { SectionList } from "./designTree/TreeList";
 import { AddItemMenu } from "./designTree/AddItemMenu";
 import { getItemKey, insertableTypesAt, STUDY_END_KEY, type ItemType } from "./designTree/utils";
 import { cn } from "cn";
@@ -23,8 +23,8 @@ interface DesignTreeViewProps {
   selected: string | null;
   onSelect: (identifier: string) => void;
   onAdd: (position: TreePosition, type: ItemType) => void;
-  /** A block's else items begin (with a first question). */
-  onAddElse: (blockKey: string, type: ItemType) => void;
+  /** A branch's else items begin (with a first question). */
+  onAddElse: (branchKey: string, type: ItemType) => void;
   /** Deletes items (asking first); returns whether they were deleted. */
   onDelete: (keys: string[]) => boolean;
   onMove: (keys: string[], position: TreePosition) => void;
@@ -40,14 +40,14 @@ interface DesignTreeViewProps {
  *
  * - Adding: each row has a + (on hover) that adds below it. Where "below"
  *   is ambiguous (the last item of a loop: inside or after the loop; an
- *   empty loop or condition: inside or after it) its menu asks where first.
+ *   empty loop or branch: inside or after it) its menu asks where first.
  * - Moving and deleting: tick items (a container brings its children),
  *   then Move or Delete in the toolbar. While moving, each row's + becomes
  *   "move below this item" (asking where if ambiguous, like adding), on
  *   rows where all ticked items may go; nothing else in the tree changes.
  *
  * Components (in ./designTree):
- * - TreeList     the blocks, and the recursive list of items
+ * - TreeList     the top level's sections, and the recursive list of items
  * - TreeItemRow  an item row: tick box, item, +
  * - TreeRow      shared fixed-height row layout + insertion line
  * - AddItemMenu  "+" button: where (if ambiguous), then item type; or where to move
@@ -189,10 +189,10 @@ export function DesignTreeView({
       <div ref={list} className="flex flex-col p-1 pb-3">
         {shown.length === 0 && !readOnly && (
           <p className="px-2 py-3 text-sm text-muted-foreground">
-            No blocks yet: add a unit loop (coders code units) or questions above.
+            No items yet: add a unit loop (coders code units) or questions above.
           </p>
         )}
-        <BlockList items={items} />
+        <SectionList items={items} />
         <StudyEndRow items={items} selected={selected === STUDY_END_KEY} onSelect={() => onSelect(STUDY_END_KEY)} />
       </div>
     </DesignTreeProvider>

@@ -11,7 +11,7 @@ import {
   type UnitLayout,
 } from "@annotinder/contracts";
 import { type AnswerKeyQuestion } from "../units/AnswerKeyDialog";
-import { blockInner } from "../../../codebook/tree";
+import { branchInner } from "../../../codebook/tree";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 
 // Shared by the unit loop form's parts: classes, the loop's questions, number fields, the test units' summary.
@@ -20,22 +20,22 @@ export const selectClass = "h-8 rounded-md border border-input bg-background px-
 
 export const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 
-/** The names of a loop's questions, in order (through conditions). */
+/** The names of a loop's questions, in order (through branches). */
 export function questionNames(items: DesignItem[]): string[] {
-  return items.flatMap((i) => (blockInner(i) ? questionNames(blockInner(i)!) : "name" in i ? [i.name] : []));
+  return items.flatMap((i) => (branchInner(i) ? questionNames(branchInner(i)!) : "name" in i ? [i.name] : []));
 }
 
-/** A loop's questions with their answer types (through conditions). */
+/** A loop's questions with their answer types (through branches). */
 export function questionsOf(items: DesignItem[]): { name: string; variable: AnyVariableType }[] {
   return items.flatMap((i) =>
-    blockInner(i) ? questionsOf(blockInner(i)!) : "variable" in i ? [{ name: i.name, variable: i.variable }] : [],
+    branchInner(i) ? questionsOf(branchInner(i)!) : "variable" in i ? [{ name: i.name, variable: i.variable }] : [],
   );
 }
 
 /** The loop's questions that gold and practice units can check (compared by value). */
 export function checkableQuestions(items: DesignItem[]): AnswerKeyQuestion[] {
   return items.flatMap((i): AnswerKeyQuestion[] => {
-    if (blockInner(i)) return checkableQuestions(blockInner(i)!);
+    if (branchInner(i)) return checkableQuestions(branchInner(i)!);
     return "variable" in i && (CHECKABLE_TYPES as readonly string[]).includes(i.variable.type)
       ? [{ name: i.name, variable: i.variable }]
       : [];
@@ -45,7 +45,7 @@ export function checkableQuestions(items: DesignItem[]): AnswerKeyQuestion[] {
 /** The questions of a loop an agreement rule can use: one categorical answer (contracts `supportsAgreement`). */
 export function agreeableQuestions(items: DesignItem[]): string[] {
   return items.flatMap((i): string[] => {
-    if (blockInner(i)) return agreeableQuestions(blockInner(i)!);
+    if (branchInner(i)) return agreeableQuestions(branchInner(i)!);
     return i.type === "question" && supportsAgreement(i.variable) ? [i.name] : [];
   });
 }

@@ -80,7 +80,7 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
     <AddItemMenu key="add" options={options} onAdd={tree.addAt} onPreview={tree.setPreview} />
   );
 
-  // A block's else items: their own row, "Else", with the + to add inside (not selected, moved or ticked itself)
+  // A branch's else items: their own row, "Else", with the + to add inside (not selected, moved or ticked itself)
   if (isElse(item))
     return (
       <TreeRow actions={action} dimActions={!tree.moving}>
@@ -88,12 +88,11 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
         <span className="pl-1 text-xs font-medium text-muted-foreground italic">Else</span>
       </TreeRow>
     );
-  // A block with a condition and no else items yet: a button to begin them
+  // A branch with no else items yet: a button to begin them
   const canAddElse =
     !tree.readOnly &&
     !tree.moving &&
-    item.type === "block" &&
-    item.condition !== undefined &&
+    item.type === "branch" &&
     !(childrenOf(item) ?? []).some((c) => isElse(c) && (childrenOf(c) ?? []).length > 0);
 
   return (
@@ -174,16 +173,17 @@ function ItemLabel({
   issue: string | null;
   changed?: boolean;
 }) {
-  // A block's or loop's condition, next to its label (e.g. "Social media use · if use_social is true")
-  const condition = item.type === "block" || item.type === "unit_loop" ? item.condition : undefined;
+  // A branch's or loop's condition, next to its label (e.g. "Social media use · if use_social is true"); not yet set: none
+  const condition =
+    (item.type === "branch" || item.type === "unit_loop") && item.condition?.script.trim() ? item.condition : undefined;
   return (
     <>
       <ItemIcon item={item} />
-      {item.type === "block" ? (
-        // Blocks have no name: their label, else "Block" when there's no condition either
+      {item.type === "branch" ? (
+        // Branches have no name: their label, else "Branch" when there's no condition yet either
         (item.label?.trim() || !condition) && (
-          <span className={cn("truncate px-1.5 py-0.5", ITEM_TYPES.block.nameClass, selected && "font-semibold")}>
-            {item.label?.trim() || "Block"}
+          <span className={cn("truncate px-1.5 py-0.5", ITEM_TYPES.branch.nameClass, selected && "font-semibold")}>
+            {item.label?.trim() || "Branch"}
           </span>
         )
       ) : (

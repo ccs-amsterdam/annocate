@@ -11,7 +11,7 @@ import type { ExpressionCache } from "./expressionCache";
 
 /**
  * Evaluates a condition (docs/client.md §5 "References and conditions"), e.g.
- * a block's: a simple condition (helper calls, `.answered`, `&&`,
+ * a branch's: a simple condition (helper calls, `.answered`, `&&`,
  * `||`, `!`) directly, shared with the contracts package; any other script
  * in the QuickJS sandbox (truthy = holds). A failing script counts as false.
  */
@@ -21,7 +21,7 @@ export async function evaluateCondition(
   cache?: ExpressionCache,
   key = "condition",
 ): Promise<boolean> {
-  // A block or loop without a condition is always shown
+  // A loop without a condition is always shown
   if (!condition) return true;
   const simple = parseSimpleCondition(condition.script);
   if (simple) return evaluateSimpleCondition(simple, scope);
@@ -98,15 +98,15 @@ function readableCondition(condition: SimpleCondition, nested = false): string {
 }
 
 /**
- * How an item is called in the editor: its name; for a block (which has
- * none) its label, or else its condition, or "Block"; for a unit loop its
+ * How an item is called in the editor: its name; for a branch (which has
+ * none) its label, or else its condition, or "Branch"; for a unit loop its
  * label, or "Unit loop"; for a layout "Layout", with its label after it.
  */
 export function itemTitle(item: DesignItem): string {
-  // The editor's stand-in for a block's else items (codebook/tree.ts `ELSE`)
+  // The editor's stand-in for a branch's else items (codebook/tree.ts `ELSE`)
   if ((item as { type: string }).type === "else") return "Else";
-  if (item.type === "block")
-    return item.label?.trim() || (item.condition ? `if ${describeCondition(item.condition)}` : "Block");
+  if (item.type === "branch")
+    return item.label?.trim() || (item.condition?.script.trim() ? `if ${describeCondition(item.condition)}` : "Branch");
   if (item.type === "unit_loop") return item.label?.trim() || "Unit loop";
   if (item.type === "session") return "Study entry";
   // "Layout" always, so a labelled one still reads as a layout

@@ -141,7 +141,7 @@ never which unit ids or which people.
 
 | Layer | Contains | Reproducible? |
 | --- | --- | --- |
-| Design | questions, experiments, blocks (items, optionally a label and a condition with else items; end items only in a block), unit loops (optionally a condition; a part, placements of test units, checks, a crowd's distribution criteria), the session (coder unit assignment, URL parameters, the normal end). Refers to role columns' values (a part, conditions) by name, to coders only via `$session` values | yes |
+| Design | questions, experiments, branches (items only some coders get: a condition, optionally a label and else items; end items only in a branch), unit loops (optionally a condition; a part, placements of test units, checks, a crowd's distribution criteria), the session (coder unit assignment, URL parameters, the normal end). Refers to role columns' values (a part, conditions) by name, to coders only via `$session` values | yes |
 | Role columns | the units' `coder_set`, `condition_set`, `part_set` and `test_set`: per value, its units in order | data |
 | Links | made from the coder unit assignment (one, or one per coder of `coder_set`), with their secrets and uses | no (server only) |
 

@@ -29,15 +29,15 @@ New here? Follow [Your first study](first-study.md).
 A design is a list of items:
 
 - **Questions** asked once per coder (consent, background questions,
-  instructions), on their own or grouped in a **block**, optionally with
-  a label such as _Demographics_.
+  instructions).
 - **Unit loops**: questions asked for every unit a coder gets. The loop
   also says how a unit is shown and which units a coder gets. See
   [Unit loops](unit-loops.md).
 
-Inside a block or loop you add **questions** (see
-[Question types](question-types.md)), **blocks** with a condition (see
-[Blocks and conditions](conditions.md)) and **end items** (see
+In a loop and around it you add **questions** (see
+[Question types](question-types.md)), **branches**: items only some coders
+get, if a condition holds (see [Branches and conditions](conditions.md)),
+and, in a branch, **end items** (see
 [Ending a session](end-items.md)). A loop can have a condition too. Above
 the tree, **Coder unit assignments**
 say who codes and how they get in, **URL parameters** what a link carries,

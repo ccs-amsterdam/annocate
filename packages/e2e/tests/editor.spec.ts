@@ -101,14 +101,14 @@ test("an experiment: balanced conditions, each with its own units (condition_set
   expect((items[0] as { variable: { options?: unknown } }).variable.options).toBeUndefined();
 });
 
-test("blocks: a label and a condition, else items; questions and loops at the top level; the study's end", async ({
+test("branches: a label and a condition, else items; questions and loops at the top level; the study's end", async ({
   page,
   request,
 }) => {
-  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Blocks test" });
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Branches test" });
   await page.goto(`/research/studies/${study.id}/design`);
 
-  // A question at the top level, then a unit loop: no end item there (they go in a block)
+  // A question at the top level, then a unit loop: no end item there (they go in a branch)
   await page.getByRole("button", { name: /Add item/ }).click();
   await expect(page.getByRole("button", { name: /^End/ })).toHaveCount(0);
   await page.getByRole("button", { name: /^Question\b/ }).click();
@@ -117,13 +117,14 @@ test("blocks: a label and a condition, else items; questions and loops at the to
   await page.getByRole("button", { name: "At the end", exact: true }).first().click();
   await page.getByRole("button", { name: /^Unit loop/ }).click();
 
-  // A block after the loop, with a label and a condition (a new block starts empty)
+  // A branch after the loop, with a label and a condition (a new branch's is empty until set)
   await page.getByRole("button", { name: /Add item/ }).click();
   await page.getByRole("button", { name: "At the end", exact: true }).first().click();
-  await page.getByRole("button", { name: /^Block/ }).click();
-  await page.getByPlaceholder("e.g. Demographics").fill("Adults");
-  await page.getByRole("checkbox", { name: /Only show these questions if/ }).check();
-  // Else items: begun from the block's row, with the usual menu (its header says what it adds)
+  await page.getByRole("button", { name: /^Branch/ }).click();
+  await page.getByPlaceholder("e.g. Screen-out").fill("Adults");
+  await page.getByRole("button", { name: "Script", exact: true }).click();
+  await page.getByPlaceholder(`$var.topics.has("sports") && $var.age.gte(18)`).fill("true");
+  // Else items: begun from the branch's row, with the usual menu (its header says what it adds)
   await page.getByRole("button", { name: /Add else items/ }).click();
   await expect(page.getByText("If not, then…")).toBeVisible();
   await page.getByRole("button", { name: /^Question/ }).click();
@@ -149,7 +150,7 @@ test("blocks: a label and a condition, else items; questions and loops at the to
   expect(version.items).toMatchObject([
     { type: "question", name: "age" },
     { type: "unit_loop" },
-    { type: "block", label: "Adults", condition: { script: "true" }, elseChildren: [{ name: "guardian" }] },
+    { type: "branch", label: "Adults", condition: { script: "true" }, elseChildren: [{ name: "guardian" }] },
   ]);
 });
 

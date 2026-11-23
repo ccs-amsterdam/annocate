@@ -27,9 +27,9 @@ export function defaultItemForType(type: DesignItem["type"], name: string): Desi
     case "layout":
       // The simple form starts empty: the researcher places the unit's fields
       return { type: "layout", template: "" };
-    case "block":
-      // Without a label or a condition: always shown (its form sets them)
-      return { type: "block", children: [] } as DesignItem;
+    case "branch":
+      // The condition is set in its form: empty until then (validation flags it)
+      return { type: "branch", condition: { script: "" }, children: [] } as DesignItem;
     case "end":
       return { type: "end", name, outcome: "screenout" };
     case "session":

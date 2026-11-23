@@ -29,9 +29,9 @@ export type CoderTopLevelItem =
   | CoderUnitLoopItem
   | EndItem
   | {
-      type: "block";
+      type: "branch";
       label?: string;
-      condition?: Condition;
+      condition: Condition;
       children: CoderTopLevelItem[];
       elseChildren?: CoderTopLevelItem[];
     };
@@ -62,11 +62,11 @@ function coderItems(items: readonly TopLevelItem[]): CoderTopLevelItem[] {
     switch (item.type) {
       case "session":
         return [];
-      case "block": {
-        const { elseChildren, ...block } = item;
+      case "branch": {
+        const { elseChildren, ...branch } = item;
         return [
           {
-            ...block,
+            ...branch,
             children: coderItems(item.children),
             ...(elseChildren ? { elseChildren: coderItems(elseChildren) } : {}),
           },

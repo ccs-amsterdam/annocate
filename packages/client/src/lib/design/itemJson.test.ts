@@ -34,6 +34,6 @@ describe("item JSON", () => {
     expect(error("[1, 2]")).toMatch(/must be an object/);
     expect(error('{ "name": "x", "type": "nope" }')).toMatch(/type must be one of/);
     expect(error('{ "name": "x", "type": "question" }')).toBe(`'x': a question needs a "variable" with a "type"`);
-    expect(error('{ "name": "x", "type": "block", "children": [] }')).toMatch(/children are edited/);
+    expect(error('{ "name": "x", "type": "branch", "children": [] }')).toMatch(/children are edited/);
   });
 });

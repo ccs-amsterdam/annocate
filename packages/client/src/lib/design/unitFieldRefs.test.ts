@@ -10,7 +10,7 @@ const items = [
       { type: "layout", template: "# {{$unit.headline}}\n\n$unit.body" },
       { type: "question", name: "q1", variable: { type: "confirm", question: "Is {{$unit.topic}} right?" } },
       {
-        type: "block",
+        type: "branch",
         condition: { script: "$unit.source === 'x'" },
         children: [
           { type: "question", name: "q2", variable: { type: "confirm", question: "'$unit.quoted' $unit.body" } },
@@ -69,7 +69,7 @@ describe("pathOfItem", () => {
     expect(pathOfItem(items, "nope")).toBeNull();
     const withElse = [
       {
-        type: "block",
+        type: "branch",
         condition: { script: "true" },
         children: [items[0]],
         elseChildren: [{ type: "end", name: "e" }],

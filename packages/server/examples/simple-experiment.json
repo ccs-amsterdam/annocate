@@ -53,102 +53,96 @@
         }
       },
       {
-        "type": "block",
-        "label": "Questions about the article",
-        "children": [
-          {
-            "type": "question",
-            "name": "support",
-            "variable": {
-              "type": "ordinal",
-              "question": "Do you support building the wind farm?",
-              "options": [
-                {
-                  "value": 1,
-                  "label": "Strongly oppose"
-                },
-                {
-                  "value": 2,
-                  "label": "Oppose"
-                },
-                {
-                  "value": 3,
-                  "label": "Neutral"
-                },
-                {
-                  "value": 4,
-                  "label": "Support"
-                },
-                {
-                  "value": 5,
-                  "label": "Strongly support"
-                }
-              ]
+        "type": "question",
+        "name": "support",
+        "variable": {
+          "type": "ordinal",
+          "question": "Do you support building the wind farm?",
+          "options": [
+            {
+              "value": 1,
+              "label": "Strongly oppose"
+            },
+            {
+              "value": 2,
+              "label": "Oppose"
+            },
+            {
+              "value": 3,
+              "label": "Neutral"
+            },
+            {
+              "value": 4,
+              "label": "Support"
+            },
+            {
+              "value": 5,
+              "label": "Strongly support"
             }
-          },
-          {
-            "type": "question",
-            "name": "emotions",
-            "variable": {
-              "type": "scale",
-              "question": "How did the article make you feel?",
-              "items": [
-                {
-                  "name": "hopeful",
-                  "label": "Hopeful"
-                },
-                {
-                  "name": "worried",
-                  "label": "Worried"
-                },
-                {
-                  "name": "angry",
-                  "label": "Angry"
-                }
-              ],
-              "options": [
-                {
-                  "value": 1,
-                  "label": "not at all"
-                },
-                {
-                  "value": 2,
-                  "label": "a little"
-                },
-                {
-                  "value": 3,
-                  "label": "quite"
-                },
-                {
-                  "value": 4,
-                  "label": "very"
-                }
-              ]
+          ]
+        }
+      },
+      {
+        "type": "question",
+        "name": "emotions",
+        "variable": {
+          "type": "scale",
+          "question": "How did the article make you feel?",
+          "items": [
+            {
+              "name": "hopeful",
+              "label": "Hopeful"
+            },
+            {
+              "name": "worried",
+              "label": "Worried"
+            },
+            {
+              "name": "angry",
+              "label": "Angry"
             }
-          },
-          {
-            "type": "question",
-            "name": "manipulation_check",
-            "variable": {
-              "type": "nominal",
-              "question": "What was the article mostly about?",
-              "options": [
-                {
-                  "value": "costs_jobs",
-                  "label": "Costs and jobs"
-                },
-                {
-                  "value": "fishermen",
-                  "label": "A fisherman's worries"
-                },
-                {
-                  "value": "dont_know",
-                  "label": "I don't remember"
-                }
-              ]
+          ],
+          "options": [
+            {
+              "value": 1,
+              "label": "not at all"
+            },
+            {
+              "value": 2,
+              "label": "a little"
+            },
+            {
+              "value": 3,
+              "label": "quite"
+            },
+            {
+              "value": 4,
+              "label": "very"
             }
-          }
-        ]
+          ]
+        }
+      },
+      {
+        "type": "question",
+        "name": "manipulation_check",
+        "variable": {
+          "type": "nominal",
+          "question": "What was the article mostly about?",
+          "options": [
+            {
+              "value": "costs_jobs",
+              "label": "Costs and jobs"
+            },
+            {
+              "value": "fishermen",
+              "label": "A fisherman's worries"
+            },
+            {
+              "value": "dont_know",
+              "label": "I don't remember"
+            }
+          ]
+        }
       }
     ]
   },

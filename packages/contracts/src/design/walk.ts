@@ -4,13 +4,13 @@ import type { DesignItem } from "./item.js";
 // the tree. They often get raw input (a design not validated yet, or being
 // validated), so the walk tolerates anything: non-arrays, null items.
 
-/** Where an item is, as in validation issues: `[1, "children", 0]`, a block's else item `[1, "elseChildren", 0]`. */
+/** Where an item is, as in validation issues: `[1, "children", 0]`, a branch's else item `[1, "elseChildren", 0]`. */
 export type ItemPath = (string | number)[];
 
 /** The lists an item can hold. */
 export type ItemListKey = "children" | "elseChildren";
 
-/** The lists an item holds (as saved): its `children`, and a block's `elseChildren` after them; non-arrays left out. */
+/** The lists an item holds (as saved): its `children`, and a branch's `elseChildren` after them; non-arrays left out. */
 export function itemLists(item: unknown): { key: ItemListKey; list: DesignItem[] }[] {
   const it = item as { children?: unknown; elseChildren?: unknown } | null;
   const out: { key: ItemListKey; list: DesignItem[] }[] = [];
@@ -21,9 +21,9 @@ export function itemLists(item: unknown): { key: ItemListKey; list: DesignItem[]
 
 /**
  * Visits every item of a list in document order, each before the items it
- * holds (`children`, then a block's `elseChildren`), with its path below
+ * holds (`children`, then a branch's `elseChildren`), with its path below
  * `path`. Anything that isn't an object is passed over. The visitor returns
- * `"skip"` to not go into an item: most helpers only go into blocks.
+ * `"skip"` to not go into an item: most helpers only go into branches.
  */
 export function forEachItem<T = Partial<DesignItem>>(
   list: unknown,

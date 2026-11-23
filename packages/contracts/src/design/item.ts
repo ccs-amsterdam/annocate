@@ -13,15 +13,18 @@ const ItemBaseSchema = z.object({
 });
 
 /**
- * Blocks have no name (nothing refers to them): an optional label, for the
- * researcher (e.g. "Demographics"), shown in the editor.
+ * Branches have no name (nothing refers to them): an optional label, for
+ * the researcher (e.g. "Screen-out"), shown in the editor.
  */
-const BlockLabelSchema = z.string().optional().describe("Shown in the editor, e.g. Demographics");
+const BranchLabelSchema = z.string().optional().describe("Shown in the editor, e.g. Screen-out");
 
-/** A block's or loop's condition: absent, always shown. */
-const BlockConditionSchema = ConditionSchema.optional().describe(
-  "Shown only if this holds: a script over earlier answers ($var), and in a loop $unit",
-);
+/** A branch's condition (required): its items are shown only if it holds (else its else items). */
+const BranchConditionSchema = z
+  .object(ConditionSchema.shape, {
+    error: (iss) => (iss.input === undefined ? "A branch needs a condition: when its items are shown" : undefined),
+  })
+  .strict()
+  .describe("Shown only if this holds: a script over earlier answers ($var), and in a loop $unit");
 
 /**
  * A question item appearing at the top level of a design.
@@ -144,7 +147,7 @@ export function fillRedirectUrl(url: string, scope: ReferenceScope): string {
  * How a unit is shown (docs/client.md §3), from where the coder passes it
  * on: the questions after it show the unit with this layout, until the
  * next layout item. Before any (or with none), questions show no unit.
- * In a block with a condition, it applies only when the block is shown.
+ * In a branch, it applies only when the branch's items are shown.
  * Layout items have no name; the label is for the editor.
  */
 export const LayoutItemSchema = UnitLayoutSchema.extend({
@@ -158,38 +161,38 @@ export type LayoutItem = z.infer<typeof LayoutItemSchema>;
  * - Question items (can include span, relation, categorical, etc.)
  * - Layout items (how the unit is shown from there on)
  * - End items
- * - Blocks (whose children can only be in-loop items)
+ * - Branches (whose children can only be in-loop items)
  */
 export type InLoopItem =
   | InLoopQuestionItem
   | LayoutItem
   | EndItem
   | {
-      type: "block";
+      type: "branch";
       label?: string;
-      condition?: Condition;
+      condition: Condition;
       children: InLoopItem[];
       elseChildren?: InLoopItem[];
     };
 
-export const InLoopBlockItemSchema: z.ZodType<Extract<InLoopItem, { type: "block" }>> = z.lazy(() =>
+export const InLoopBranchItemSchema: z.ZodType<Extract<InLoopItem, { type: "branch" }>> = z.lazy(() =>
   z.object({
-    type: z.literal("block"),
-    label: BlockLabelSchema,
-    condition: BlockConditionSchema,
-    children: z.array(InLoopItemSchema).min(1, "A block must have at least one item"),
+    type: z.literal("branch"),
+    label: BranchLabelSchema,
+    condition: BranchConditionSchema,
+    children: z.array(InLoopItemSchema).min(1, "A branch must have at least one item"),
     elseChildren: z.array(InLoopItemSchema).min(1).optional().describe("Shown instead when the condition doesn't hold"),
   }),
 );
 
 export const InLoopItemSchema: z.ZodType<InLoopItem> = z.lazy(() =>
-  z.union([InLoopQuestionItemSchema, LayoutItemSchema, EndItemSchema, InLoopBlockItemSchema]),
+  z.union([InLoopQuestionItemSchema, LayoutItemSchema, EndItemSchema, InLoopBranchItemSchema]),
 );
 
 /**
  * A `for unit in ...` loop. Which of the coder's units it includes is
  * described by `units` (unitLoop.ts) and `order`. Children can only be
- * in-loop items (questions, layouts, end items, blocks): no nested loops.
+ * in-loop items (questions, layouts, end items, branches): no nested loops.
  * With a `condition`, coders only get the loop if it holds.
  */
 export const UnitLoopItemSchema = z.object({
@@ -205,8 +208,8 @@ export const UnitLoopItemSchema = z.object({
 export type UnitLoopItem = z.infer<typeof UnitLoopItemSchema>;
 
 /**
- * Items outside unit loops: questions, experiments, blocks, unit loops
- * (only at the top level), end items (only in a block) and the Study entry
+ * Items outside unit loops: questions, experiments, branches, unit loops
+ * (only at the top level), end items (only in a branch) and the Study entry
  * (first: `session.ts`). validation.ts checks where each may be.
  */
 export type TopLevelItem =
@@ -216,24 +219,24 @@ export type TopLevelItem =
   | EndItem
   | SessionItem
   | {
-      type: "block";
+      type: "branch";
       label?: string;
-      condition?: Condition;
+      condition: Condition;
       children: TopLevelItem[];
       elseChildren?: TopLevelItem[];
     };
 
 /**
- * A block: items together, for the researcher (an optional label) and to
- * show them only if a condition holds (`condition`), with `elseChildren`
- * shown instead when it doesn't.
+ * A branch: items only some coders get, shown only if its `condition`
+ * holds, with `elseChildren` shown instead when it doesn't. The label is
+ * for the researcher.
  */
-export const TopLevelBlockItemSchema: z.ZodType<Extract<TopLevelItem, { type: "block" }>> = z.lazy(() =>
+export const TopLevelBranchItemSchema: z.ZodType<Extract<TopLevelItem, { type: "branch" }>> = z.lazy(() =>
   z.object({
-    type: z.literal("block"),
-    label: BlockLabelSchema,
-    condition: BlockConditionSchema,
-    children: z.array(TopLevelItemSchema).min(1, "A block must have at least one item"),
+    type: z.literal("branch"),
+    label: BranchLabelSchema,
+    condition: BranchConditionSchema,
+    children: z.array(TopLevelItemSchema).min(1, "A branch must have at least one item"),
     elseChildren: z
       .array(TopLevelItemSchema)
       .min(1)
@@ -249,14 +252,14 @@ export const TopLevelItemSchema: z.ZodType<TopLevelItem> = z.lazy(() =>
     UnitLoopItemSchema,
     EndItemSchema,
     SessionItemSchema,
-    TopLevelBlockItemSchema,
+    TopLevelBranchItemSchema,
   ]),
 );
 
-/** Any block (outside or inside a loop). */
-export type BlockItem = Extract<TopLevelItem | InLoopItem, { type: "block" }>;
+/** Any branch (outside or inside a loop). */
+export type BranchItem = Extract<TopLevelItem | InLoopItem, { type: "branch" }>;
 
-/** The items a block or loop holds: its children, and a block's else children after them. */
+/** The items a branch or loop holds: its children, and a branch's else children after them. */
 export function innerItems(item: { children?: readonly unknown[]; elseChildren?: readonly unknown[] }): DesignItem[] {
   return itemLists(item).flatMap((l) => l.list);
 }
@@ -266,9 +269,9 @@ export function innerItems(item: { children?: readonly unknown[]; elseChildren?:
  */
 export type DesignItem = TopLevelItem | InLoopItem;
 
-/** An item's name; blocks, unit loops, layouts and the Study entry have none. */
+/** An item's name; branches, unit loops, layouts and the Study entry have none. */
 export function itemName(item: DesignItem): string | undefined {
-  return item.type === "block" || item.type === "unit_loop" || item.type === "session" || item.type === "layout"
+  return item.type === "branch" || item.type === "unit_loop" || item.type === "session" || item.type === "layout"
     ? undefined
     : item.name;
 }
@@ -283,7 +286,7 @@ export function unitLoops(items: readonly unknown[]): { key: string; loop: UnitL
   const loops: { key: string; loop: UnitLoopItem }[] = [];
   forEachItem(items, (item) => {
     if (item.type === "unit_loop") loops.push({ key: String(loops.length + 1), loop: item as UnitLoopItem });
-    if (item.type !== "block") return "skip";
+    if (item.type !== "branch") return "skip";
   });
   return loops;
 }

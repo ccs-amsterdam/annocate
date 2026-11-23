@@ -1,7 +1,7 @@
 import type { QuestionAnswers } from "@annotinder/contracts";
 import type { DesignLabels } from "./designLabels";
 
-/** Per question, how coders answered so far (docs/plans/results-viewer.md, "Questions"), grouped by block. */
+/** Per question, how coders answered so far (docs/plans/results-viewer.md, "Questions"), grouped by loop. */
 export function QuestionsView({ questions, labels }: { questions: QuestionAnswers[]; labels: DesignLabels }) {
   if (questions.length === 0) return <p className="text-sm text-muted-foreground">No questions deployed yet.</p>;
   const loops = [...new Set(questions.map((q) => q.loop))];

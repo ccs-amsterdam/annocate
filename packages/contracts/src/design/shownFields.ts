@@ -25,7 +25,7 @@ function loopReferences(loop: UnitLoopItem, spanFields?: (field: string) => void
     typeof source === "string" && refs.push(...extractReferences(source).references);
 
   forEachItem(loop.children, (item) => {
-    if (item.type === "block") {
+    if (item.type === "branch") {
       addScript(item.condition?.script);
       return;
     }
@@ -76,7 +76,7 @@ export function loopDependencies(items: readonly unknown[]): Map<string, string[
   for (const { key, loop } of unitLoops(items)) {
     const own = new Set<string>();
     forEachItem(loop.children, (item) => {
-      if (item.type === "block") return;
+      if (item.type === "branch") return;
       if ("name" in item && typeof item.name === "string") own.add(item.name);
       return "skip";
     });
@@ -152,7 +152,7 @@ function scriptCount(loop: UnitLoopItem, field: string): number {
       if (ref.ns === "unit" && ref.path[0] === field) n++;
   };
   forEachItem(loop.children, (item) => {
-    if (item.type !== "block") return "skip";
+    if (item.type !== "branch") return "skip";
     count(item.condition?.script);
   });
   return n;

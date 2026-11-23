@@ -18,7 +18,7 @@ describe("the coder codebook", () => {
         },
       },
       {
-        type: "block",
+        type: "branch",
         condition: { script: "true" },
         children: [
           {
@@ -41,7 +41,7 @@ describe("the coder codebook", () => {
     expect(toCoderItems(items)).toEqual([
       { type: "experiment", name: "condition", variable: { type: "random", options: [{ value: "a", label: "A" }] } },
       {
-        type: "block",
+        type: "branch",
         condition: { script: "true" },
         children: [
           {

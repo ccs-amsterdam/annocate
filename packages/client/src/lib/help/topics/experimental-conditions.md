@@ -25,9 +25,9 @@ does this), or later, after screening or to balance on earlier answers.
 ## Using a condition
 
 `$var.framing.is("treatment")` as the condition of a
-[block or unit loop](conditions.md), a `::: if` in a layout, or
+[branch or unit loop](conditions.md), a `::: if` in a layout, or
 an end item's return link. For a whole other layout per condition, put a
-layout item in a block (see [Layout items](layout-templates.md#layout-items)).
+layout item in a branch (see [Layout items](layout-templates.md#layout-items)).
 
 ## Giving each condition its own units
 

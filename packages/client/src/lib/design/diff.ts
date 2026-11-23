@@ -30,27 +30,27 @@ interface Located {
 
 /**
  * Identity -> item and container, for every item in the tree. Items are
- * identified by name; conditions and unit loops have none, so by place:
- * the nth condition (or loop) in their container.
+ * identified by name; branches, unit loops and layouts have none, so by
+ * place: the nth branch (or loop, or layout) in their container.
  */
 function locate(
   items: (TopLevelItem | InLoopItem)[],
   container: { id: string; title: string } | null = null,
   out = new Map<string, Located>(),
 ) {
-  const counts = { block: 0, unit_loop: 0, layout: 0 };
+  const counts = { branch: 0, unit_loop: 0, layout: 0 };
   for (const item of items) {
     const parentId = container?.id ?? "";
     const id =
-      item.type === "block" || item.type === "unit_loop" || item.type === "layout"
+      item.type === "branch" || item.type === "unit_loop" || item.type === "layout"
         ? `${parentId}/${item.type} ${counts[item.type]++}`
         : item.type === "session"
           ? "/session"
           : item.name;
     out.set(id, { item, parent: container?.title ?? null, parentId });
     if ("children" in item && Array.isArray(item.children)) locate(item.children, { id, title: itemTitle(item) }, out);
-    // A block's else items: a container of their own (moving an item in or out of them is a move)
-    if (item.type === "block" && item.elseChildren)
+    // A branch's else items: a container of their own (moving an item in or out of them is a move)
+    if (item.type === "branch" && item.elseChildren)
       locate(item.elseChildren, { id: `${id}/else`, title: itemTitle(item) }, out);
   }
   return out;
@@ -66,7 +66,7 @@ function ownContent(item: DesignItem): string {
 
 /**
  * What changed between two design versions, item by item (items are matched by
- * name, which is unique in a design; conditions by place). In document order: removed items in
+ * name, which is unique in a design; branches by place). In document order: removed items in
  * the order of `before`, then the rest in the order of `after`.
  */
 export function diffDesigns(

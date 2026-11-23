@@ -46,7 +46,7 @@ const TYPE_HELP: Record<AnyVariableType["type"], string> = {
 /**
  * The form of the item selected in the design editor's tree: its name (or
  * label), and what its type needs: a question's answer type, a loop's
- * units, a layout, a condition, an end, or the Study entry.
+ * units, a layout, a branch's condition, an end, or the Study entry.
  */
 export function ItemForm({
   item,
@@ -109,14 +109,14 @@ export function ItemForm({
             client={client}
             onChange={onChange}
           />
-        ) : item.type === "block" || item.type === "unit_loop" || item.type === "layout" ? (
-          // Blocks, unit loops and layouts have no name: an optional label shows in the tree (and for loops in exports).
+        ) : item.type === "branch" || item.type === "unit_loop" || item.type === "layout" ? (
+          // Branches, unit loops and layouts have no name: an optional label shows in the tree (and for loops in exports).
           <div className="flex flex-col gap-1.5">
             <span className="flex items-center gap-1.5">
               <label className="text-xs font-semibold text-foreground">Label (optional)</label>
               <HelpButton
                 topic={
-                  item.type === "block" ? "conditions" : item.type === "layout" ? "layout-templates" : "unit-loops"
+                  item.type === "branch" ? "conditions" : item.type === "layout" ? "layout-templates" : "unit-loops"
                 }
                 label="Help"
               />
@@ -125,8 +125,8 @@ export function ItemForm({
               value={item.label ?? ""}
               onChange={(e) => onChange({ ...item, label: e.target.value || undefined })}
               placeholder={
-                item.type === "block"
-                  ? "e.g. Demographics"
+                item.type === "branch"
+                  ? "e.g. Screen-out"
                   : item.type === "layout"
                     ? "e.g. With the full text"
                     : "e.g. News items"
@@ -248,8 +248,25 @@ export function ItemForm({
 
         {item.type === "end" && <EndItemFields item={item as EndItem} onChange={onChange} issues={validationIssues} />}
 
-        {(item.type === "block" || item.type === "unit_loop") && (
-          // A block's or loop's condition: optional (absent: always shown)
+        {item.type === "branch" && (
+          // A branch's condition: required (a new branch's is empty until set; validation says so)
+          <div className="flex flex-col gap-1.5 border-t border-border/60 pt-4">
+            <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
+              Only show these items if…
+              <HelpButton topic="conditions" label="Help: conditions" />
+            </span>
+            <ConditionEditor
+              condition={item.condition ?? { script: "" }}
+              onChange={(condition) => onChange({ ...item, condition })}
+              questions={availableQuestions}
+              loop={inLoop}
+              issues={issuesAt(validationIssues, "condition")}
+            />
+          </div>
+        )}
+
+        {item.type === "unit_loop" && (
+          // A loop's condition: optional (absent: coders always get the loop)
           <div className="flex flex-col gap-1.5 border-t border-border/60 pt-4">
             <label className="flex items-center gap-2 text-xs font-semibold text-foreground">
               <input
@@ -261,7 +278,7 @@ export function ItemForm({
                   onChange(next);
                 }}
               />
-              {item.type === "block" ? "Only show these questions if…" : "Only give coders this loop if…"}
+              Only give coders this loop if…
               <HelpButton topic="conditions" label="Help: conditions" />
             </label>
             {item.condition && (

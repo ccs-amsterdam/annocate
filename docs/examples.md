@@ -35,10 +35,10 @@ dismisses it.
 | --- | --- | --- |
 | Simple annotation | Sentiment by swiping | a swipe question; 20 units divided over 3 specific coders (`coder_set`, a link each, `invite: { mode: "coders", link: "per_coder" }`) plus 5 overlap units (`test_set`); example answers that disagree on some overlap units |
 | Simple annotation | Labeling actors in texts | span annotation |
-| Surveys and experiments | A simple survey | survey question types, labelled blocks with a condition (one holding an end item that screens out) |
+| Surveys and experiments | A simple survey | survey question types, labelled branches (one holding an end item that screens out) |
 | Surveys and experiments | A simple experiment | an experiment whose condition chooses one of two versions of a text |
 | Surveys and experiments | Survey with annotations | survey questions, then a unit loop; both in one download |
-| Surveys and experiments | Experiment with annotations: a tour | the question types, labelled blocks (one with else items), a condition that changes layout and questions, a unit loop |
+| Surveys and experiments | Experiment with annotations: a tour | the question types, labelled branches (one with else items), a condition that changes layout and questions, a unit loop |
 | Crowd coding | Practice and gold units | one link; headlines divided so each is coded by two coders; practice units (`test_set`, right answers and feedback in `answer_<q>` / `feedback_<q>`) with feedback first, gold units spread among them, a screen-out when too many gold answers are wrong |
 
 **Example answers** are written when the study is made: a few coders

@@ -44,7 +44,7 @@ export function loopShareColumns(items: readonly unknown[]): Map<string, ShareCo
       out.set(String(loops), [...sessionShares, ...randomShares]);
     } else if (selectsUnits(it) && !randomShares.some((r) => r.name === it.name))
       randomShares.push({ name: it.name, column: CONDITION_SET, random: true });
-    if (it.type !== "block") return "skip";
+    if (it.type !== "branch") return "skip";
   });
   return out;
 }

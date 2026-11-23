@@ -7,7 +7,8 @@ describe("release and design files", () => {
       {
         items: [
           {
-            type: "block",
+            type: "branch",
+            condition: { script: "true" },
             children: [{ type: "question", name: "q", variable: { type: "confirm", question: "Ok?" } }],
           },
         ],

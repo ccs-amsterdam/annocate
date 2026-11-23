@@ -9,13 +9,17 @@ export const DEV_HEADERS = {
 };
 
 export async function api<T>(request: APIRequestContext, method: string, path: string, data?: unknown): Promise<T> {
-  // A design's top-level end items go in a block
+  // A design's top-level end items go in a branch
   const items = (data as { items?: unknown })?.items;
   const body =
     method === "POST" && /\/design$/.test(path) && Array.isArray(items)
       ? {
           ...(data as object),
-          items: items.map((i) => ((i as { type?: string }).type === "end" ? { type: "block", children: [i] } : i)),
+          items: items.map((i) =>
+            (i as { type?: string }).type === "end"
+              ? { type: "branch", condition: { script: "true" }, children: [i] }
+              : i,
+          ),
         }
       : data;
   const res = await request.fetch(`/api${path}`, {

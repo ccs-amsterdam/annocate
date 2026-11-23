@@ -11,14 +11,14 @@ import { flattenTree } from "../codebook/tree";
 
 // Lookups in the coder codebook that StudyManager needs.
 
-/** The questions of a loop (also inside conditions) by name. */
+/** The questions of a loop (also inside branches) by name. */
 export function loopVariables(loop: CoderUnitLoopItem): Map<string, AnyVariableType> {
   return new Map(
     flattenTree(loop.children).flatMap((item) => (item.type === "question" ? [[item.name, item.variable]] : [])),
   );
 }
 
-/** A loop's question names in codebook order (also inside conditions), for `::: from` blocks in its layout. */
+/** A loop's question names in codebook order (also inside branches), for `::: from` blocks in its layout. */
 export function loopQuestionNames(loop: CoderUnitLoopItem): string[] {
   return flattenTree(loop.children).flatMap((item) => (item.type === "question" ? [item.name] : []));
 }

@@ -23,7 +23,7 @@ This post was liked $unit.likes times and shared $unit.shares times:
 
 - `{{ }}` in a loop's layout items, question and instruction texts, and end item
   messages;
-- a block's or loop's condition in **Script** mode (see
+- a branch's or loop's condition in **Script** mode (see
   [Conditions](conditions.md#script-mode));
 - a `::: if` block (see [Showing parts conditionally](template-blocks.md)).
 

@@ -4,7 +4,7 @@ import {
   type TopLevelItem,
   type InLoopItem,
   type UnitLoopItem,
-  type BlockItem,
+  type BranchItem,
 } from "@annotinder/contracts";
 import { ELSE, childrenOf, findItem, findParent, flattenTree, isInsideUnitLoop, keyOf } from "../codebook/tree";
 
@@ -48,7 +48,7 @@ export function generateKey(): string {
 }
 
 /**
- * The items, with an editor key on every item that has none. A block's
+ * The items, with an editor key on every item that has none. A branch's
  * else items (`elseChildren`) become a stand-in container after its own
  * items (codebook/tree.ts `ELSE`), so the tree edits them like any list.
  */
@@ -67,7 +67,7 @@ export function ensureKeys<T extends TopLevelItem[] | InLoopItem[]>(items: T): T
   return withKeys(asNodes(items)) as unknown as T;
 }
 
-/** The items without their editor keys (as saved): the else stand-in back as the block's `elseChildren`. */
+/** The items without their editor keys (as saved): the else stand-in back as the branch's `elseChildren`. */
 export function stripKeys<T extends TopLevelItem[] | InLoopItem[]>(items: T): T {
   const withoutKeys = (nodes: Node[]): Node[] =>
     nodes.map((node) => {
@@ -196,13 +196,13 @@ export function canMoveItemTo(
   if (isDescendant(sourceItem, targetItem)) return false;
 
   // Determine target container (parent)
-  let targetParent: (UnitLoopItem | BlockItem) | null;
+  let targetParent: (UnitLoopItem | BranchItem) | null;
   if (position === "inside") {
     // Target must be a container with children
-    if (targetItem.type !== "unit_loop" && targetItem.type !== "block") {
+    if (targetItem.type !== "unit_loop" && targetItem.type !== "branch") {
       return false;
     }
-    targetParent = targetItem as UnitLoopItem | BlockItem;
+    targetParent = targetItem as UnitLoopItem | BranchItem;
   } else {
     // Destination parent is target's parent
     targetParent = findParent(items, targetKey || itemName(targetItem) || "");
@@ -220,7 +220,7 @@ export function canMoveItemTo(
     // Loops cannot be inside another loop
     if (isTargetInLoop) return false;
     if (position === "inside" && targetItem.type === "unit_loop") return false;
-  } else if (sourceItem.type === "block") {
+  } else if (sourceItem.type === "branch") {
     const sourceDescendants = flattenTree(childrenOf(sourceItem) ?? []);
     const hasInLoopOnly = sourceDescendants.some(isLoopOnlyQuestion);
     const hasTopOnly = sourceDescendants.some((d) => d.type === "unit_loop" || d.type === "experiment");
@@ -238,7 +238,7 @@ export function canMoveToRootEnd(items: TopLevelItem[], sourceIdentifier: string
   if (!sourceItem) return false;
   if (items[items.length - 1] === sourceItem) return false;
   if (isLoopOnlyQuestion(sourceItem)) return false;
-  if (sourceItem.type === "block" && flattenTree(childrenOf(sourceItem) ?? []).some(isLoopOnlyQuestion)) return false;
+  if (sourceItem.type === "branch" && flattenTree(childrenOf(sourceItem) ?? []).some(isLoopOnlyQuestion)) return false;
   return true;
 }
 

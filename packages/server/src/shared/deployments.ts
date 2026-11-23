@@ -136,7 +136,7 @@ export async function loopVariables(db: Db, studyId: number, designVersionId: nu
   const parsed = row ? DesignItemsSchema.safeParse(designVersionItems(row)) : null;
   if (!parsed?.success) return loops;
   const questions = (items: DesignItem[]): string[] =>
-    items.flatMap((i) => (i.type === "block" ? questions(innerItems(i)) : "variable" in i ? [i.name] : []));
+    items.flatMap((i) => (i.type === "branch" ? questions(innerItems(i)) : "variable" in i ? [i.name] : []));
   for (const { key, loop } of unitLoops(parsed.data)) {
     const title = loopTitle(loop, key);
     loops.set(loops.has(title) ? `${title} (${key})` : title, questions(loop.children as DesignItem[]));

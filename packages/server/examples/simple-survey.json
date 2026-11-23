@@ -1,10 +1,10 @@
 {
   "category": "Surveys and experiments",
   "title": "A simple survey",
-  "description": "A short survey about news use: question types for surveys, a block with a condition that only asks a follow-up to some coders, and an end item that screens out coders under 18. No units. With example answers from 3 coders.",
+  "description": "A short survey about news use: question types for surveys, a branch with a condition that only asks a follow-up to some coders, and an end item that screens out coders under 18. No units. With example answers from 3 coders.",
   "tryThis": [
     "Open the link in a private window, and fill in the survey once as someone under 18.",
-    "Look at the conditions and the end item in the design (Design page): each block has a label that says what it is for, such as \"Screen-out: under 18\".",
+    "Look at the branches and the end item in the design (Design page): each branch has a label that says what it is for, such as \"Screen-out: under 18\".",
     "Download the results: survey answers are in coders.csv."
   ],
   "name": "A simple survey",
@@ -40,7 +40,7 @@
         }
       },
       {
-        "type": "block",
+        "type": "branch",
         "label": "Screen-out: under 18",
         "condition": {
           "script": "$var.age.lt(18)"
@@ -112,7 +112,7 @@
         }
       },
       {
-        "type": "block",
+        "type": "branch",
         "label": "Follow-up: social media users",
         "condition": {
           "script": "$var.sources.has('social')"
