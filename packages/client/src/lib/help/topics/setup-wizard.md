@@ -23,13 +23,17 @@ changed there afterwards.
    - **Everyone codes everything**;
    - **Assign sets**: units divided into sets, one per coder, each with
      their own link (coders `coder_1`, `coder_2`, ... or a column's
-     values). See [Giving each coder their own units](own-units.md);
+     values; the units' `coder_set`). See
+     [Giving each coder their own units](own-units.md);
    - **Crowd coding**: units shared until enough coders coded (or agree
      on) each. See [Shared queues](shared-queues.md);
-   - **Experimental groups**: each condition gets its own units. See
+   - **Experimental groups**: each condition gets its own units (the
+     units' `condition_set`, by a column's values). See
      [Experimental conditions](experimental-conditions.md).
 
-   Optionally with an [overlap](overlap.md) that every coder codes.
+   Optionally with a number of [overlap](overlap.md) units that every
+   coder codes (`test_unit`). With sets by a column, its values
+   `overlap`, `practice` and `gold` make test units.
 
 5. **How coders see a unit**: which field is the title, byline and body.
 6. **Questions**: their names, one per line: before the units, about each
@@ -37,7 +41,7 @@ changed there afterwards.
    **gold** or **practice** units check (see
    [Overlap, gold and practice units](special-units.md)).
 
-It then makes the units, their [set column](sets.md) and a design draft:
+It then makes the units, their [role columns](sets.md) and a design draft:
 the questions before and after the units around the unit loop.
 Deploying makes the links (one, or one per coder).
 

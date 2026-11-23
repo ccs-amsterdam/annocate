@@ -16,33 +16,32 @@ Open **Coder unit assignments** above the item tree and choose:
 | Invitation          | Who codes                                         | Links                                                     |
 | ------------------- | ------------------------------------------------- | --------------------------------------------------------- |
 | **Specific coders** | coders you know, each with their own units        | a link per coder, or one link to pick a name or sign in   |
-| **Crowd** (default) | anyone with the link (a panel, a newsletter)      | one link, or a link per set of its set column             |
+| **One link** (default) | anyone with the link (a panel, a newsletter; a survey, an experiment, a crowd) | one link                     |
 
-**Specific coders**: choose the **coder distribution column** (a set
-column naming a coder per unit, or **Create new coder distribution…**).
-Then how they get in:
+**Specific coders**: the units' **coder set** (`coder_set`) names the
+coder(s) of each unit; **Create coder set…** makes one. Then how they get
+in:
 
 - **A link per coder**: send each coder theirs;
-- **One link: coders pick their name from the column**: a name stays on
+- **One link: coders pick their name from the coder set**: a name stays on
   the first device that picks it, or (for a team sharing devices) any
   device continues it. Everyone with the link sees the names;
-- **One link: coders sign in with the email address in the column**.
+- **One link: coders sign in with the email address in the coder set**.
 
 See [Giving each coder their own units](own-units.md).
 
-**Crowd**: one link, optionally with:
+**One link**, optionally with:
 
 - **Coder id from a URL parameter**, e.g. a panel's `PROLIFIC_PID` (see
   [Coder ids](#coder-ids));
 - **Coders sign in**: you see their email address (see [Login](#login));
-- **Set column**: special units for every coder (**Create special
-  units…**); if the column also has other sets, a link per set, whose
-  coders code that set (`$session.group`);
-- **Max. nr of coders**: the sample size, per link (with a link per set,
-  also per set; see [Max. nr of coders](#max-nr-of-coders)).
+- **Max. nr of coders**: the sample size (see
+  [Max. nr of coders](#max-nr-of-coders)).
 
-Whether a crowd's units are divided among the coders is set per unit loop
-(see [Shared queues](shared-queues.md)).
+Whether its units are divided among the coders is set per unit loop
+(see [Shared queues](shared-queues.md)). Groups that should get other
+links or units: an [experiment](experimental-conditions.md), optionally
+with its condition from a URL parameter.
 
 Unit settings only matter once the design has a unit loop; specific
 coders without units is fine (e.g. a survey of experts, a link each).
@@ -50,7 +49,7 @@ coders without units is fine (e.g. a survey of experts, a link each).
 ## When links change
 
 Deploying a different invitation makes the links it needs and **retires**
-the rest. A new coder in the column gets a link when the sets are
+the rest. A new coder in the coder set gets a link when the units are
 deployed; a removed coder's link is retired; a returning coder gets the
 same link again. Retired links show _"This link is no longer active"_;
 coders who started keep working. More than 500 links asks to confirm; at
@@ -64,10 +63,10 @@ A **coder id** says who the coder is, in the **Coder** column and the
 
 | Invitation                        | Coder id                                  |
 | --------------------------------- | ----------------------------------------- |
-| Specific coders                   | their value in the coders' column         |
-| Crowd                             | none (anonymous; a number)                |
-| Crowd, coder id from URL parameter | the parameter's value                    |
-| Crowd with sign-in                | their email address                       |
+| Specific coders                   | their value in the coder set              |
+| One link                          | none (anonymous; a number)                |
+| One link, coder id from URL parameter | the parameter's value                 |
+| One link with sign-in             | their email address                       |
 
 **Coder id from a URL parameter**: name the **URL parameter**, optionally
 a **Pattern** (e.g. `[0-9]{6}`), and whether it is **Required** (default:
@@ -94,18 +93,16 @@ the link there continues it. **Continue on another device** moves it (see
 
 ## Max. nr of coders
 
-A crowd's **Max. nr of coders** (in the design) is the most sessions a
-link starts; after that it is _used up_ for new coders, and started
-coders continue. With a link per set, each link has this maximum, or its
-own set's if you give one. To change it, change the design and deploy
-again.
+One link's **Max. nr of coders** (in the design) is the most sessions it
+starts; after that it is _used up_ for new coders, and started coders
+continue. To change it, change the design and deploy again.
 
 ## The list of links
 
 | Column      | Shows                                                    |
 | ----------- | -------------------------------------------------------- |
-| **Label**   | the link's values (the coder or set), or "Open link"     |
-| **For**     | the coder or set, or everyone                            |
+| **Label**   | the link's coder, or "Open link"                         |
+| **For**     | the coder, or everyone                                   |
 | **Link**    | **Copy link**, with placeholders for required parameters |
 | **Uses**    | coders started (and the maximum)                         |
 | **Status**  | _open_, _used up_, _revoked_ or _retired_                |
@@ -122,9 +119,9 @@ Coders sign in with the server's login. They can **always** sign in (via
 Whether they **must**, and whether you see their address, depends on the
 invitation:
 
-- **Specific coders, sign in**: their address must be in the column
+- **Specific coders, sign in**: their address must be in the coder set
   (others see _"This email address has no access to this study"_);
-- **Crowd with Coders sign in**: they sign in before starting;
+- **One link with Coders sign in**: they sign in before starting;
 - **otherwise**: optional, and you don't see their address.
 
 Where sign-in is required, the address is stored (`email` in the

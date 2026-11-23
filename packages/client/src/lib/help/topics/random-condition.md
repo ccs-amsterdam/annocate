@@ -2,11 +2,12 @@
 title: Experiments
 section: Question types
 order: 7
-summary: An item that assigns each coder one of its conditions when they reach it, without asking - drawn at random or balanced, optionally with its own units per condition.
+summary: An item that assigns each coder one of its conditions when they reach it, without asking - drawn at random or balanced, or from a URL parameter, optionally with its own units per condition.
 ---
 
 An **experiment** gives every coder one of its **conditions** when they
-reach it, without asking: drawn at random or balanced. Use the condition
+reach it, without asking: drawn at random or balanced, or taken from a URL
+parameter of the link. Use the condition
 like any answer, to show different questions or texts, or to give each
 condition its own units (see
 [Experimental conditions](experimental-conditions.md)).
@@ -20,20 +21,21 @@ labels). It can't go inside a unit loop.
 Put it first to assign the condition at the start, or after screening or
 background questions to assign later.
 
-## Drawn
+## Assigned
 
-| Drawn                                       | The coder gets                                                              |
+| Assigned                                    | The coder gets                                                              |
 | ------------------------------------------- | --------------------------------------------------------------------------- |
-| **Random**                                  | a condition at random; **weights** 2 and 1 give about two thirds and one third |
+| **At random**                               | a condition at random; **weights** 2 and 1 give about two thirds and one third |
 | **Balanced (the value fewest coders have)** | the condition fewest coders have so far; ties at random |
+| **From a URL parameter**                    | their link's value of a [URL parameter](session-parameters.md) whose values are the conditions; nothing is drawn |
 
-**Random** is what most experiments assume, but group sizes vary (with 40
+**At random** is what most experiments assume, but group sizes vary (with 40
 coders, 25/15 is quite possible). **Balanced** keeps groups equal; it
 counts everyone who reached it, also those who stopped later.
 
 ## Balanced within groups
 
-Under **Balance within groups of**, choose earlier questions or
+With **Balanced**, under **Balance within groups of**, choose earlier questions or
 [URL parameters](session-parameters.md): with `gender`, the conditions are
 balanced among women and among men; with `session.wave`, per wave. Those
 questions must come before it, outside loops.
@@ -48,9 +50,11 @@ reach it afterwards.
 
 ### URL parameter
 
-A value from the link (`?wave=2`) is a [URL parameter](session-parameters.md),
-not an experiment: `$session.wave`. It isn't random, so don't use it
-for experimental conditions.
+A value from the link (`?wave=2`) is a [URL parameter](session-parameters.md):
+`$session.wave`. To make it the experiment's condition (e.g. a panel that
+assigns the groups and sends each its own link), list its values (the
+conditions) in the Study entry and choose **Assigned: From a URL
+parameter**. It isn't random: the randomisation is then the panel's.
 
 ## Using the condition
 
@@ -75,10 +79,11 @@ answers:
 $unit.text
 ```
 
-- **Units**: under **Linked to units**, choose a set column. Loops after it
-  give each coder the units with their condition (and `_overlap` units).
-  With **All values in the column**, the column's values are the
-  conditions (e.g. 100 sets, drawn balanced). See
+- **Units**: tick **Each condition gets its own units (condition_set)**.
+  Loops after it give each coder the units with their condition in the
+  units' `condition_set` (and the test units). With **The conditions are
+  condition_set's values**, its values are the conditions (e.g. 100 sets,
+  drawn balanced). See
   [Experimental conditions](experimental-conditions.md).
 
 The conditions are in `coders.csv` (see [Downloading results](results.md)).

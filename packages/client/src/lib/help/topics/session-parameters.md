@@ -41,7 +41,6 @@ value filled in.
 | ----------------- | ------------------------------------------------------------------ |
 | `$session.source` | the `?source=` of any link: where a coder came from; never required |
 | `$session.coder`  | the coder id (see [Links](links.md#coder-ids))                     |
-| `$session.group`  | a crowd link's set, with a link per set (see [Links](links.md))    |
 
 ## Public title
 
@@ -51,6 +50,9 @@ study's own name stays private. Without one: "Untitled study".
 
 ## Experiments
 
-A value typed into a link isn't random: draw conditions with a
-[experiment](experimental-conditions.md). A URL parameter can still
-steer the design, e.g. a `language` in a block's condition.
+A value typed into a link isn't random: draw conditions with an
+[experiment](experimental-conditions.md). An experiment can still take its
+condition from a URL parameter with a list of values (**Assigned: From a
+URL parameter**), e.g. when a panel assigns the groups. A URL parameter
+can also steer the design directly, e.g. a `language` in a block's
+condition.

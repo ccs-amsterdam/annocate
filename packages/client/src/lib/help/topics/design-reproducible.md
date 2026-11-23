@@ -15,27 +15,27 @@ and coders.
 | Layer           | Holds                                                                                 | Shared?                          |
 | --------------- | ------------------------------------------------------------------------------------- | -------------------------------- |
 | **Design**      | questions, conditions, layouts, distribution rules, coder unit assignments, URL parameters | yes: the instrument              |
-| **Set columns** | which coder or condition each unit is for                                             | as data, if you may share units  |
+| **Role columns** | which coder, condition or part each unit is for, and the test units                  | as data, if you may share units  |
 | **Links**       | made from the coder unit assignments, with their secrets and uses                     | no: about your coders            |
 
 ## The design names, but never binds
 
-The design may name a set (`gold`), a coders' column (`coders`), or a
-condition linked to a column (`framing`), but never contains a unit id,
+The design may name a part (`post`) or conditions (`control`), and use
+the units' coder set or condition set, but never contains a unit id,
 coder id, email address or link. So the same design runs on next year's
 news, a replication runs it with other coders, and a shared design reveals
 nothing about your coders.
 
 ## Sets are lists, not rules
 
-A set is a stored list of units, not a rule (**Fill a set column** draws
-it once and stores the result). Uploading more units never changes it, and
+A set is a stored list of units, not a rule (**Create coder set…** or
+**Make a part or condition set** draws it once and stores the result). Uploading more units never changes it, and
 the list is the record of who got what. Loops over **All units** do
 include new units once deployed.
 
 ## Links hold who may take part
 
-Who the coders are (the coders' column) and the links with their secrets
+Who the coders are (the coder set) and the links with their secrets
 stay on the server, outside the design (see [Links](links.md)).
 
 ## Sharing a design
@@ -43,8 +43,8 @@ stay on the server, outside the design (see [Links](links.md)).
 Copy the whole **JSON** view of the editor (or use **Export**) and paste it
 into another study's JSON view, or use the
 [researcher API](researcher-api.md). The other study needs units with the
-fields the design uses (the Units page lists them) and set columns with
-the names it uses; deploying checks this.
+fields the design uses (the Units page lists them) and the role columns
+it uses (a coder set, a condition set, a part set); deploying checks this.
 
 ## What to archive with a study
 

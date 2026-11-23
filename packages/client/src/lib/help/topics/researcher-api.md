@@ -45,7 +45,7 @@ curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/a
 | List or create studies                       | `GET /study`, `POST /study` with `{ "name": ... }`              |
 | Upload units (max 200 per request)           | `POST /study/<id>/units`                                        |
 | List fields                                  | `GET /study/<id>/units/fields`                                  |
-| List, replace or delete set columns          | `GET /study/<id>/sets`; `PUT`, `DELETE /study/<id>/sets/<column>` |
+| List, replace or delete role columns         | `GET /study/<id>/sets`; `PUT`, `DELETE /study/<id>/sets/<column>` |
 | Save a design version                        | `POST /study/<id>/design` with `{ "items": [...], "note": ... }` |
 | Deploy (makes the links)                     | `PUT /study/<id>/deployment` with `{ "designVersionId": ..., "units": true }` |
 | What deploying would change; versions        | `GET /study/<id>/deployment/pending`, `.../deployment/versions` |
@@ -101,14 +101,15 @@ for (batch in split(units, ceiling(seq_along(units) / 200))) {
 }
 ```
 
-`PUT /study/<id>/sets/<column>` replaces a whole [set column](sets.md):
-each value is a name with AnnoTinder's unit ids (`id` from
+`PUT /study/<id>/sets/<column>` replaces a whole [role column](sets.md)
+(`coder_set`, `condition_set`, `part_set` or `test_unit`): each value is a
+name with AnnoTinder's unit ids (`id` from
 `GET /study/<id>/units`); `"ordered": true` keeps that order.
 
 ```r
 uploaded <- api(sprintf("study/%d/units", study)) |> req_perform() |> resp_body_json()
 ids <- sapply(uploaded, \(u) u$id)
-api(sprintf("study/%d/sets/pilot", study)) |>
+api(sprintf("study/%d/sets/part_set", study)) |>
   req_method("PUT") |>
   req_body_json(list(sets = list(list(name = "pilot", unitIds = as.list(head(ids, 50)))))) |>
   req_perform()

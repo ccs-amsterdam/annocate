@@ -57,12 +57,16 @@ The type is suggested from the values. Values that don't fit block the
 upload (_3 values aren't numbers ('n/a', '3,5')_). Use `number` to
 calculate or compare; ids with leading zeros (`007`) should be `text`.
 
-### Set columns
+### Role columns
 
-Give a column the type **set** to make it a [set column](sets.md): who or
-which group each unit is for (`anna`, `anna;bob`, `anna#3`, `_overlap`,
-`_practice`, `_gold`). See
-[A sets column in your CSV](sets.md#a-sets-column-in-your-csv).
+Columns named `coder_set`, `condition_set`, `part_set` or `test_unit` are
+those [columns with a role](sets.md), not fields: who codes each unit
+(`anna`, `anna;bob`, `anna#3`), each condition's or part's units, and the
+test units (`overlap`, `practice`, `gold`). Their **Type** is **column with
+a role**; any column can be made one. Right answers for practice and gold
+units go in `answer_<question>` (and feedback in `feedback_<question>`),
+see [Overlap, gold and practice units](special-units.md). See
+[Role columns in your CSV](sets.md#role-columns-in-your-csv).
 
 ## Uploading more units later
 
@@ -97,6 +101,6 @@ coded units can't be deleted (a lock shows).
 Only the fields the design uses (layout, texts, conditions). Metadata such
 as dates or weights stays on the server.
 
-Next: [set columns](sets.md), [handing out units](unit-distribution.md),
+Next: [coder, condition and part sets](sets.md), [handing out units](unit-distribution.md),
 [layout templates](layout-templates.md). Scripts can upload too: see
 [Scripts and the researcher API](researcher-api.md).

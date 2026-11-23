@@ -27,7 +27,7 @@ coder. Both refresh while open. For full data, download the
 
 | Tile                 | Number                                     | Below it                                  |
 | -------------------- | ------------------------------------------ | ----------------------------------------- |
-| **Units**            | units in the study                         | set columns                               |
+| **Units**            | units in the study                         | coder, condition and part sets            |
 | **Coders started**   | coders who answered a question             | all who opened a link; active in 24 hours |
 | **Finished codings** | units finished, per coder                  | all answers, and the last one             |
 | **Active links**     | links not revoked, retired or used up      | all links                                 |

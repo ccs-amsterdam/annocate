@@ -9,11 +9,11 @@ With **crowd coding**, coders draw from one queue. Each unit is handed out
 until it is **done**: a number of coders coded it, or agreed on it. You
 don't need to know how many coders will come; those who do more code more.
 
-With a **Crowd** in **Coder unit assignments**, select a unit loop and
+With **One link** in **Coder unit assignments**, select a unit loop and
 choose **Divide units among coders** under **Units and
 coders** (the default is **Everyone codes everything**). The rules are
-set per loop, and each loop has its own queue of its units (per link with
-a link per set, and per condition if conditions are linked to units, see
+set per loop, and each loop has its own queue of its units (per condition
+if an experiment gives each condition its own units, see
 [Handing out units](unit-distribution.md)). A loop that takes the units
 each coder got in the previous loop isn't divided again.
 

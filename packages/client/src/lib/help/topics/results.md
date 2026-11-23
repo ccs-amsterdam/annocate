@@ -102,14 +102,14 @@ has two):
 | `display`                                    | keys, width (in [responsive](answer-layouts.md#fixed-or-responsive) studies) and theme, e.g. `numbers, narrow; numpad, wide` |
 | `session.<name>`                             | URL parameters and `source`                                        |
 | `finished_loop<n>`                           | units finished per loop, by its position (see `variables.csv`)     |
-| `overlap_finished`, `gold_finished`, `practice_finished` | special units finished (see [Overlap, gold and practice units](special-units.md)) |
+| `overlap_finished`, `gold_finished`, `practice_finished` | test units finished (see [Overlap, gold and practice units](special-units.md)) |
 | one column per question                      | answers outside loops and [experiments](random-condition.md)       |
 
 ## units.csv
 
 A row per **unit version** that was coded: `unit_version_id`, `unit_id`,
-`hash`, `deployed`, every field, and each [set column](sets.md) (or
-`<name>_set`). A unit replaced after coding (see
+`hash`, `deployed`, every field, and each [role column](sets.md)
+(`coder_set`, `condition_set`, `part_set`, `test_unit`). A unit replaced after coding (see
 [Uploading units](uploading-units.md#replacing-units)) has a row per
 version: join on `unit_version_id` to know which text an answer is about.
 

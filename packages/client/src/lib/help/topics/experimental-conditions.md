@@ -7,16 +7,17 @@ summary: Experiments - how coders get a condition, using it in the design, and g
 
 A **condition** (such as `control` or `treatment`) is assigned by an
 [experiment](random-condition.md) item when the coder reaches it.
-Everyone uses the same link; the draw decides the condition.
+Everyone uses the same link (**One link**); the draw, or the link's URL
+parameter, decides the condition.
 
 ## Adding an experiment
 
 1. Outside a loop: **+** → **Experiment**.
 2. **Item Name**, e.g. `framing` (used as `$var.framing`).
-3. **Options**: the conditions, or **All values in the column** when
-   linked to units (below).
-4. **Drawn**: **Balanced** (equal groups) or **Random** (independent, as
-   most experiments assume; optionally weighted).
+3. **Assigned**: **Balanced** (equal groups), **At random** (independent,
+   as most experiments assume; optionally weighted), or **From a URL
+   parameter** (e.g. a panel that sends each group its own link).
+4. **Options**: the conditions, unless they come from the units (below).
 
 Put it first to assign at the start (the [guided setup](setup-wizard.md)
 does this), or later, after screening or to balance on earlier answers.
@@ -30,19 +31,31 @@ layout item in a block (see [Layout items](layout-templates.md#layout-items)).
 
 ## Giving each condition its own units
 
-1. Add a set column, say `framing`, with each unit's condition (see
-   [Set columns](sets.md)).
-2. Under **Linked to units**, choose that column. Loops after the
-   experiment give each coder the units with their condition, plus
-   `_overlap` units.
+1. Give the units a **condition set**: a column `condition_set` with each
+   unit's condition (see [Coder, condition and part sets](sets.md)), or
+   **Make a condition set…** in the experiment's form.
+2. Tick **Each condition gets its own units (condition_set)**. Loops after
+   the experiment give each coder the units with their condition, plus the
+   test units.
 
-With fixed options, deploying checks that every condition occurs in the
-column. With **All values in the column**, the column's values are the
-conditions, e.g. 100 sets drawn balanced for a multilevel design.
+With fixed options, deploying checks that every condition has units in
+`condition_set`. With **The conditions are condition_set's values**, its
+values are the conditions, e.g. 100 sets drawn balanced for a multilevel
+design.
+
+One experiment at most gives its conditions their own units, and only
+with **One link** (specific coders get the units of their coder set).
+
+## Conditions from a URL parameter
+
+Declare a [URL parameter](session-parameters.md) with a list of values
+(the conditions), e.g. `arm` with `control` and `treatment`. In the
+experiment, **Assigned: From a URL parameter** and choose it. A coder's
+condition is their link's value (`?arm=treatment`); nothing is drawn.
 
 ## Two factors
 
-One experiment per factor, each with its own column: `framing` (control,
-treatment) and `valence` (positive, neutral, negative). A coder gets the
-units matching all their conditions (and their own units, with
-[specific coders](own-units.md)). Two clean columns in the results.
+One experiment per factor: `framing` (control, treatment) and `valence`
+(positive, neutral, negative), each its own column in the results. Only
+one of them can select units; for units per combination, make one
+experiment with the combinations as conditions (`control_positive`, ...).

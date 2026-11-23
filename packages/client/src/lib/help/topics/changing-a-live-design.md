@@ -29,7 +29,7 @@ overwritten. Two rules explain the effects:
 | **Units settings** of a loop changed     | coded units stay the coder's                                    | new rules                 |
 
 Units and sets you change are drafts until deployed (see
-[Set columns](sets.md)). The deploy dialog warns about removed values and
+[Coder, condition and part sets](sets.md)). The deploy dialog warns about removed values and
 changed types; afterwards it says how many codings became unfinished.
 
 ### Units that become unfinished again

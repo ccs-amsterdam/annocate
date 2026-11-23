@@ -2,23 +2,25 @@
 title: Overlap: units every coder codes
 section: Units and distribution
 order: 6
-summary: Overlap units that every coder codes besides their own set - for intercoder reliability and gold units.
+summary: Overlap units that every coder codes besides their own units - for intercoder reliability.
 ---
 
-An **overlap** is a set of units every coder codes, besides their own:
-when coders divide the work, it gives units all of them coded, for
-intercoder reliability. It is the value `_overlap` in the set column of
-the **Coder unit assignments** (the coders' column, or a crowd's set
-column; see [Sets](sets.md)). For only some coders, write `anna;bob`.
+**Overlap units** are units every coder codes, besides their own: when
+coders divide the work, they give units all of them coded, for
+intercoder reliability. They are the units with `overlap` in the units'
+`test_unit` column (see [Coder, condition and part sets](sets.md)). For
+only some coders, write `anna;bob` in `coder_set` instead.
 
 ## Setting it up
 
-1. Mark the overlap: **Create new coder distribution…** (specific coders)
-   or **Create special units…** (a crowd) in **Coder unit assignments**
-   (or **Fill a set column** on **Units**) with an overlap of e.g. 10%,
-   or write `_overlap` in your CSV.
+1. Mark the overlap units: in **Coder unit assignments**, **Create coder
+   set…** (or **Update coder set…**) with **Redistribute test units** and a
+   number of **Overlap units**; or write `overlap` in a `test_unit` column
+   of your CSV; or put selected units in `overlap` on **Units**.
 2. Select the loop: the **Overlap units** row shows the count;
    choose where they go.
+
+In the [guided setup](setup-wizard.md), the overlap is a number of units.
 
 ## Placement
 
@@ -56,6 +58,6 @@ honest place to measure reliability.
 
 ## Gold units
 
-Units with a known answer: mark them `_gold`; answers are checked and
+Units with a known answer: `gold` in `test_unit`; answers are checked and
 coders who fail can be stopped. See
 [Overlap, gold and practice units](special-units.md).
