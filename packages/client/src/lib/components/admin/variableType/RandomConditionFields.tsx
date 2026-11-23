@@ -127,8 +127,8 @@ export function RandomConditionFields({
           />
           Each condition gets its own units (condition_set)
           <InfoTip label="About conditions with units">
-            The coder&apos;s condition also selects their units in the loops after this item: only units with it in
-            the units&apos; <span className="font-mono">condition_set</span> (and test units). One experiment at most
+            The coder&apos;s condition also selects their units in the loops after this item: only units with it in the
+            units&apos; <span className="font-mono">condition_set</span> (and test units). One experiment at most
             selects units, and only with one link (not with specific coders).
           </InfoTip>
         </label>

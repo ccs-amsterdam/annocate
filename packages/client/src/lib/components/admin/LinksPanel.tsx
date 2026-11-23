@@ -51,8 +51,7 @@ export function LinksPanel({ client }: LinksPanelProps) {
     return urlParams.length ? `${url}${url.includes("?") ? "&" : "?"}${urlParams.join("&")}` : url;
   };
   // Coders signing in with their email address: only those addresses may code.
-  const coderValues =
-    invite.mode === "coders" && invite.link === "login" ? columnValues(groups, CODER_SET) : [];
+  const coderValues = invite.mode === "coders" && invite.link === "login" ? columnValues(groups, CODER_SET) : [];
   const emailCoders = coderValues.length > 0;
 
   const links = linksQuery.data ?? [];
@@ -66,8 +65,9 @@ export function LinksPanel({ client }: LinksPanelProps) {
           Links
           <InfoTip label="About links">
             Deploying the design makes its links: one, or with specific coders who get a link each, one per coder in the
-            units&apos; coder set (<span className="font-mono">coder_set</span>). Links of coders who are gone are retired. Here you set who may use a link. Revoking
-            stops new coders from joining with it; coders who already started keep working.
+            units&apos; coder set (<span className="font-mono">coder_set</span>). Links of coders who are gone are
+            retired. Here you set who may use a link. Revoking stops new coders from joining with it; coders who already
+            started keep working.
           </InfoTip>
           <HelpButton topic="links" label="Help: links" />
         </h2>
@@ -80,9 +80,9 @@ export function LinksPanel({ client }: LinksPanelProps) {
         )}
         {emailCoders && (
           <div className="rounded-md border border-amber-500 bg-amber-500/10 p-2.5 text-xs">
-            The coders (<span className="font-mono">coder_set</span>) are email addresses, so there is one
-            link: coders sign in and get their own units. Other email addresses get &quot;This email address has no
-            access to this study&quot;.
+            The coders (<span className="font-mono">coder_set</span>) are email addresses, so there is one link: coders
+            sign in and get their own units. Other email addresses get &quot;This email address has no access to this
+            study&quot;.
             <details className="mt-1">
               <summary className="cursor-pointer">The {coderValues.length} coders</summary>
               <span className="font-mono">{coderValues.join(", ")}</span>

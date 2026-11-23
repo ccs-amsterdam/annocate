@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
-import { CODER_SET, inviteOf, urlParamKey, type SessionItem, type SetGroupResponse, type UrlParam } from "@annotinder/contracts";
+import {
+  CODER_SET,
+  inviteOf,
+  urlParamKey,
+  type SessionItem,
+  type SetGroupResponse,
+  type UrlParam,
+} from "@annotinder/contracts";
 import type { SessionTab } from "./sessionTab";
 
 /** A link as coders get it (the secret is made when deploying). */
@@ -71,9 +78,7 @@ function InvitePreview({ item, groups, base }: { item: SessionItem; groups: SetG
         </Row>
         {invite.login && <Row label="Signing in">Coders sign in before they start</Row>}
         <Row label="Units">Divided among the coders or not: per unit loop (its Units settings)</Row>
-        {invite.maxCoders !== undefined && (
-          <Row label="Max. nr of coders">{invite.maxCoders}</Row>
-        )}
+        {invite.maxCoders !== undefined && <Row label="Max. nr of coders">{invite.maxCoders}</Row>}
       </div>
     );
   }
