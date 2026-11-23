@@ -1,6 +1,6 @@
 import { useEffect, useState, type DragEvent, type ReactNode } from "react";
 import { buildScope, type UnitFieldType } from "@annotinder/contracts";
-import { ChevronDown, ChevronUp, Hash, Plus, Tags, ToggleLeft, Type, X } from "lucide-react";
+import { ChevronDown, ChevronUp, FlaskConical, Hash, Plus, Tags, ToggleLeft, Type, X } from "lucide-react";
 import { cn } from "cn";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -25,7 +25,13 @@ import { UnitFields } from "../UnitFields";
 /** Drag data: a field's name. */
 const DRAG_TYPE = "application/x-annotinder-field";
 
-const TYPE_ICON: Record<UnitFieldType, typeof Type> = { text: Type, number: Hash, boolean: ToggleLeft, set: Tags };
+const TYPE_ICON: Record<UnitFieldType, typeof Type> = {
+  text: Type,
+  number: Hash,
+  boolean: ToggleLeft,
+  set: Tags,
+  unit_type: FlaskConical,
+};
 
 /** Drop handlers for a place: highlights while a field is over it. */
 function useDrop(onDrop: (field: string) => void) {

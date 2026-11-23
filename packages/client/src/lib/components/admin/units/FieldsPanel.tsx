@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import {
   fieldUsage,
+  isRoleColumn,
+  isSetType,
   undeclaredFields,
   type FieldUse,
   type TopLevelItem,
@@ -13,6 +15,7 @@ import { useDesignVersionQuery, useDesignVersionsQuery, useUnitFieldsMutation } 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldBadge } from "./FieldBadge";
+import { ROLE_INFO, roleLabel } from "../../../admin/setKinds";
 
 const USE_LABEL: Record<FieldUse | "none", { label: string; title: string; className: string }> = {
   shown: {
@@ -93,13 +96,13 @@ export function FieldsPanel({ client, fields }: { client: ResearcherApi; fields:
                   <tr key={f.name} className="border-t border-border">
                     <td className="px-2 py-1 font-mono">{f.name}</td>
                     <td className="px-2 py-1">
-                      {f.type === "set" ? (
-                        // A set column is made by uploading sets; it can't become another type here
+                      {isSetType(f.type) ? (
+                        // A column with a role: its type follows from its name
                         <span
                           className="inline-flex h-7 items-center px-1.5"
-                          title="A set column: its values are sets of units, made by an upload with a sets column"
+                          title={isRoleColumn(f.name) ? `${f.name}: ${ROLE_INFO[f.name]}` : undefined}
                         >
-                          set
+                          {roleLabel(f.name)}
                         </span>
                       ) : (
                         <select

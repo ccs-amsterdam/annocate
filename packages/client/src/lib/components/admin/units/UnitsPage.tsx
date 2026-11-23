@@ -1,5 +1,15 @@
 import { useMemo, useState } from "react";
-import { formatSetCell, type SetGroupResponse, type UnitField, type UnitResponse } from "@annotinder/contracts";
+import {
+  ROLE_COLUMNS,
+  TEST_UNIT,
+  formatSetCell,
+  isSetType,
+  type RoleColumn,
+  type SetGroupResponse,
+  type TestUnitType,
+  type UnitField,
+  type UnitResponse,
+} from "@annotinder/contracts";
 import { ChevronLeft, ChevronRight, Lock, Mail, RotateCcw, Sparkles, Trash2, Upload, Scissors } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import {
@@ -17,24 +27,27 @@ import { ResetAnswersDialog, type ResetScope } from "../ResetAnswersDialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "cn";
 import { FieldsPanel } from "./FieldsPanel";
-import { EMAIL_COLUMN_INFO, SPECIAL_SET_INFO, isEmailColumn, isSpecialSet } from "../../../admin/setKinds";
+import { EMAIL_COLUMN_INFO, ROLE_INFO, ROLE_LABELS, TEST_UNIT_INFO, isEmailColumn } from "../../../admin/setKinds";
 import { UploadUnits } from "./UploadUnits";
 import { SplitIntoSets } from "./SplitIntoSets";
 import { HelpButton } from "../../../help/HelpButton";
 
 const PAGE_SIZE = 50;
 
-/** A set of a group being shown. */
+/** A set (value) of a column with a role being shown. */
 interface ShownSet {
-  group: string;
+  group: RoleColumn;
   set: string;
 }
 
+const isTestUnitType = (group: string, set: string): set is TestUnitType => group === TEST_UNIT && set in TEST_UNIT_INFO;
+
 /**
- * Units and their sets in one place (docs/client.md §7): a table of units
- * with a column per field and a column per set group (its cell: the
- * unit's sets, as in a sets column of a CSV). Pick a set to see its units
- * in its order; select units to put them in a set, or split units into sets.
+ * Units and their columns with a role in one place (docs/client.md §7,
+ * docs/plans/unit-sets.md): a table of units with a column per field and
+ * per role column (coder set, condition set, part set, test unit; its cell
+ * as in a CSV). Pick a value to see its units in its order; select units to
+ * put them in a set, or split units into a part or condition set.
  */
 export function UnitsPage({ client }: { client: ResearcherApi }) {
   const fieldsQuery = useUnitFieldsQuery(client);
@@ -134,8 +147,8 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
       <UnitTable
         client={client}
         units={pageQuery.data?.units ?? []}
-        // Set columns show as their own columns (their cells), not again as fields
-        fields={fields.filter((f) => f.type !== "set")}
+        // Role columns show as their own columns (their cells), not again as fields
+        fields={fields.filter((f) => !isSetType(f.type))}
         groups={groups.map((g) => g.name)}
         cells={cells}
         selected={selected}
@@ -193,7 +206,7 @@ function SetsBar({
         <div className="ml-auto flex gap-1.5">
           <Button size="sm" variant="outline" onClick={onSplit} className="gap-1.5" disabled={allCount === 0}>
             <Scissors className="h-3.5 w-3.5" />
-            Fill a set column
+            Make a part or condition set
           </Button>
           <HelpButton topic="sets" label="Help: sets" />
         </div>
@@ -201,24 +214,24 @@ function SetsBar({
       {groups.map((g) => (
         <div key={g.name} className="flex flex-wrap items-center gap-1.5">
           <span
-            className="flex w-28 items-center gap-1 truncate font-mono text-xs font-semibold"
-            title={isEmailColumn(g) ? `${g.name}: ${EMAIL_COLUMN_INFO}` : `Set column ${g.name}`}
+            className="flex w-28 items-center gap-1 truncate text-xs font-semibold"
+            title={`${g.name}: ${isEmailColumn(g) ? EMAIL_COLUMN_INFO : ROLE_INFO[g.name]}`}
           >
             {isEmailColumn(g) && <Mail className="h-3.5 w-3.5 shrink-0 text-primary" aria-label="Email addresses" />}
-            <span className="truncate">{g.name}</span>
+            <span className="truncate">{ROLE_LABELS[g.name]}</span>
           </span>
           {g.sets.map((set) => (
             <button
               key={set.name}
               type="button"
-              title={SPECIAL_SET_INFO[set.name]}
+              title={isTestUnitType(g.name, set.name) ? TEST_UNIT_INFO[set.name] : undefined}
               className={cn(
                 chip(current?.group === g.name && current.set === set.name),
-                isSpecialSet(set.name) && "border-dashed italic",
+                g.name === TEST_UNIT && "border-dashed italic",
               )}
               onClick={() => onSelect({ group: g.name, set: set.name })}
             >
-              {isSpecialSet(set.name) && <Sparkles className="mr-0.5 inline h-3 w-3 text-ember" aria-hidden="true" />}
+              {g.name === TEST_UNIT && <Sparkles className="mr-0.5 inline h-3 w-3 text-ember" aria-hidden="true" />}
               <span className="font-mono">{set.name}</span>{" "}
               <span className="text-muted-foreground">{set.unitIds.length}</span>
             </button>
@@ -226,11 +239,11 @@ function SetsBar({
           <Button
             size="icon-sm"
             variant="ghost"
-            title={`Delete column ${g.name} (its units stay)`}
+            title={`Delete ${g.name} (its units stay)`}
             aria-label={`Delete column ${g.name}`}
             disabled={deleteGroup.isPending}
             onClick={() => {
-              if (!confirm(`Delete set column "${g.name}"? Its units stay.`)) return;
+              if (!confirm(`Delete the ${ROLE_LABELS[g.name].toLowerCase()} (${g.name})? Its units stay.`)) return;
               deleteGroup.mutate(g.name, { onSuccess: () => current?.group === g.name && onSelect(null) });
             }}
           >
@@ -240,7 +253,7 @@ function SetsBar({
       ))}
       {current && (
         <p className="text-xs text-muted-foreground">
-          Showing the units with {current.set} in column {current.group}, in their order.
+          Showing the units with {current.set} in {current.group}, in their order.
         </p>
       )}
       {deleteGroup.isError && <p className="text-sm text-destructive">{deleteGroup.error.message}</p>}
@@ -264,13 +277,16 @@ function SelectionBar({
 }) {
   const putGroup = usePutSetGroupMutation(client);
   const [resetting, setResetting] = useState<ResetScope | null>(null);
-  const [group, setGroup] = useState(current?.group ?? groups[0]?.name ?? "sets");
+  const [group, setGroup] = useState<RoleColumn>(current?.group ?? groups[0]?.name ?? TEST_UNIT);
   const [setName, setSetName] = useState("");
   const sets = groups.find((g) => g.name === group)?.sets ?? [];
 
   /** The group's sets with `change` applied to one set (made if new). */
-  const changed = (groupName: string, name: string, change: (ids: number[]) => number[]) => {
-    const existing = groups.find((g) => g.name === groupName)?.sets ?? [];
+  const changed = (groupName: RoleColumn, name: string, change: (ids: number[]) => number[]) => {
+    // A unit has one test unit type: putting it in one takes it out of the others
+    const existing = (groups.find((g) => g.name === groupName)?.sets ?? []).map((s) =>
+      groupName === TEST_UNIT && s.name !== name ? { ...s, unitIds: s.unitIds.filter((id) => !selected.has(id)) } : s,
+    );
     const has = existing.some((s) => s.name === name);
     const next = has
       ? existing.map((s) => (s.name === name ? { ...s, unitIds: change(s.unitIds) } : s))
@@ -298,28 +314,31 @@ function SelectionBar({
           aria-label="Set"
           list="unitpage-sets"
           className="h-9 w-32 rounded-md border border-input bg-background px-2 font-mono text-xs"
-          placeholder="e.g. s1 or _overlap"
+          placeholder={group === TEST_UNIT ? "e.g. gold" : "e.g. anna or pre"}
           value={setName}
           onChange={(e) => setSetName(e.target.value)}
         />
         <datalist id="unitpage-sets">
-          {sets.map((s) => (
-            <option key={s.name} value={s.name} />
+          {(group === TEST_UNIT
+            ? ["overlap", "practice", "gold"]
+            : sets.map((s) => s.name)
+          ).map((name) => (
+            <option key={name} value={name} />
           ))}
         </datalist>
-        of group
-        <input
+        of
+        <select
           aria-label="Group"
-          list="unitpage-groups"
-          className="h-9 w-28 rounded-md border border-input bg-background px-2 font-mono text-xs"
+          className="h-9 rounded-md border border-input bg-background px-2 font-mono text-xs"
           value={group}
-          onChange={(e) => setGroup(e.target.value)}
-        />
-        <datalist id="unitpage-groups">
-          {groups.map((g) => (
-            <option key={g.name} value={g.name} />
+          onChange={(e) => setGroup(e.target.value as RoleColumn)}
+        >
+          {ROLE_COLUMNS.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
           ))}
-        </datalist>
+        </select>
         <Button size="sm" onClick={putIn} disabled={!setName.trim() || !group || putGroup.isPending}>
           Put in
         </Button>
@@ -373,8 +392,8 @@ function UnitTable({
   client: ResearcherApi;
   units: UnitResponse[];
   fields: UnitField[];
-  /** The set groups: a column each. */
-  groups: string[];
+  /** The role columns: a column each. */
+  groups: RoleColumn[];
   /** group -> unit id -> the unit's sets in it (a cell as in a CSV). */
   cells: Map<string, Map<number, string>>;
   selected: Set<number>;
@@ -417,7 +436,7 @@ function UnitTable({
             </th>
             <th className="p-2 font-medium">id</th>
             {groups.map((g) => (
-              <th key={g} className="p-2 font-medium" title="Set group">
+              <th key={g} className="p-2 font-medium" title={`${ROLE_LABELS[g]}: ${ROLE_INFO[g]}`}>
                 <span className="font-mono">{g}</span>
               </th>
             ))}
@@ -436,11 +455,7 @@ function UnitTable({
               // Practice units: a faint leaf tint
               className={cn(
                 "border-b align-top last:border-0",
-                groups.some((g) =>
-                  (cells.get(g)?.get(unit.id) ?? "")
-                    .split(";")
-                    .some((cell) => cell.split("#")[0].trim() === "_practice"),
-                ) && "bg-leaf/10",
+                (cells.get(TEST_UNIT)?.get(unit.id) ?? "").split("#")[0].trim() === "practice" && "bg-leaf/10",
               )}
             >
               <td className="p-2">

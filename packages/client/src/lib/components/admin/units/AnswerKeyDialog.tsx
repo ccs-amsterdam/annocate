@@ -22,10 +22,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-// "Create gold values" (docs/architecture.md §6.2): goes through a
-// group's gold or practice units with the loop's layout, and writes the right
-// answers (and practice messages) into their answer columns (contracts
-// answerKey.ts for the cells).
+// "Right answers" (docs/architecture.md §6.2): goes through the gold or
+// practice units (`test_unit`) with the loop's layout, and writes the right
+// answers (`answer_<q>`) and practice feedback (`feedback_<q>`) into their
+// columns (contracts answerKey.ts for the cells).
 
 export interface AnswerKeyQuestion {
   name: string;
@@ -262,14 +262,14 @@ export function AnswerKeyDialog({
         <DialogHeader>
           <DialogTitle>Right answers of the {what} units</DialogTitle>
           <DialogDescription>
-            Group {group}, set {set}:{" "}
+            The units marked {set} in test_unit:{" "}
             {units ? `${ready} of ${units.length} have answers for every checked question` : "loading…"}. Coders never
             see these columns.
           </DialogDescription>
         </DialogHeader>
         {units && units.length === 0 && (
           <p className="text-sm">
-            No units in column {group} are marked {set} yet: mark them on the Units page.
+            No units are marked {set} in test_unit yet: mark them on the Units page.
           </p>
         )}
         {unit && (

@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
 import {
-  OVERLAP_SET,
-  SetGroupNameSchema,
+  ROLE_COLUMNS,
+  TEST_UNIT,
   addToSets,
+  isRoleColumn,
   parseSetCell,
+  roleColumnProblem,
   setsFromCells,
+  type RoleColumn,
   type UnitField,
   type UnitFieldType,
 } from "@annotinder/contracts";
@@ -28,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldBadge } from "./FieldBadge";
+import { ROLE_LABELS } from "../../../admin/setKinds";
 import { HelpButton } from "../../../help/HelpButton";
 
 const BATCH = 200; // the most units per POST /units
@@ -39,13 +43,13 @@ interface Csv {
   rows: string[][];
 }
 
-/** A sets column (docs/architecture.md §6.3): the group it makes, and per unit (by id) its cell. */
+/** A column with a role (docs/plans/unit-sets.md): which one, and per unit (by id) its cell. */
 interface CsvSetGroup {
-  group: string;
+  group: RoleColumn;
   cells: { externalId: string; cell: string }[];
 }
 
-/** What a CSV makes: the units, and the set groups of its sets columns. */
+/** What a CSV makes: the units, and its columns with a role. */
 export type CsvUpload = CsvUnits & { setGroups: CsvSetGroup[] };
 
 /**
@@ -81,9 +85,9 @@ export function UploadUnits({
   const replaced = result ? result.units.filter((u) => byId.has(u.externalId)) : [];
   const coded = replaced.filter((u) => byId.get(u.externalId)!.coded);
   const added = result ? result.units.filter((u) => !byId.has(u.externalId)) : [];
-  // Groups with sets the new units could join: those the file doesn't set itself
+  // Set columns the new units could join: those the file doesn't set itself (not test_unit: test units are chosen)
   const otherGroups = groups.filter(
-    (g) => !result?.setGroups.some((s) => s.group === g.name) && g.sets.some((s) => s.name !== OVERLAP_SET),
+    (g) => g.name !== TEST_UNIT && !result?.setGroups.some((s) => s.group === g.name) && g.sets.length > 0,
   );
 
   async function upload() {
@@ -96,7 +100,7 @@ export function UploadUnits({
         units: result.units.slice(i, i + BATCH),
       });
     }
-    // Sets columns: each replaces its group, by the units' ids
+    // Role columns: each replaces what the column had, by the units' ids
     const chosen = otherGroups.filter((g) => addTo[g.name]);
     if (result.setGroups.length > 0 || (chosen.length > 0 && added.length > 0)) {
       const ids = new Map((await client.listUnits()).map((u) => [u.externalId, u.id]));
@@ -151,18 +155,20 @@ export function UploadUnits({
             {added.length === 1 ? "it" : "them"} to the sets of:
           </p>
           {otherGroups.map((g) => {
-            const own = g.sets.filter((s) => s.name !== OVERLAP_SET);
+            const own = g.sets;
             const average = Math.max(1, Math.round(own.reduce((n, s) => n + s.unitIds.length, 0) / own.length));
             return (
               <label key={g.name} className="flex flex-wrap items-center gap-2 pl-2">
-                <span className="font-mono text-xs font-semibold">{g.name}</span>
+                <span className="text-xs font-semibold">
+                  {ROLE_LABELS[g.name]} <span className="font-mono font-normal">({g.name})</span>
+                </span>
                 <select
-                  aria-label={`New units in group ${g.name}`}
+                  aria-label={`New units in ${g.name}`}
                   className={selectClass}
                   value={addTo[g.name] ?? ""}
                   onChange={(e) => setAddTo({ ...addTo, [g.name]: e.target.value as "" | "distribute" | "new" })}
                 >
-                  <option value="">Not in this group</option>
+                  <option value="">Not in it</option>
                   <option value="distribute">Distribute over its {own.length} sets</option>
                   <option value="new">
                     New sets of about {average} units ({Math.max(1, Math.round(added.length / average))} new set
@@ -173,8 +179,8 @@ export function UploadUnits({
             );
           })}
           <p className="text-[11px] text-muted-foreground">
-            Shuffled first. Distributing fills the smallest sets first; new sets are named on (e.g. s5 after s4). The
-            overlap stays as it is. New sets get their own link if the design makes a link per set.
+            Shuffled first. Distributing fills the smallest sets first; new sets are named on (e.g. s5 after s4). Test
+            units stay as they are. New coders get their own link if the design makes a link per coder.
           </p>
         </div>
       )}
@@ -213,15 +219,15 @@ export function CsvUnitsForm({
   onResult,
 }: {
   studyFields: UnitField[];
-  /** Offer the "sets" column type (a set group per column). */
+  /** Offer the columns with a role (coder_set, condition_set, part_set, test_unit). */
   allowSets?: boolean;
   onResult: (result: CsvUpload | null) => void;
 }) {
   const [csv, setCsv] = useState<Csv | null>(null);
   const [idColumn, setIdColumn] = useState(0);
   const [mapping, setMapping] = useState<ColumnMapping[]>([]);
-  // Sets columns: column -> the group's name
-  const [setColumns, setSetColumns] = useState<Record<number, string>>({});
+  // Columns with a role: column -> the role column it is
+  const [setColumns, setSetColumns] = useState<Record<number, RoleColumn>>({});
   const [fileError, setFileError] = useState<string | null>(null);
   const result = useMemo((): CsvUpload | null => {
     if (!csv) return null;
@@ -236,16 +242,20 @@ export function CsvUnitsForm({
     const units = csvToUnits(csv.headers, csv.rows, idColumn, mapping, studyFields);
     const errors = [...units.errors];
     const setGroups = Object.entries(setColumns).map(([column, group]) => {
-      if (!SetGroupNameSchema.safeParse(group).success)
-        errors.push(`Group name "${group}": letters, digits and _, starting with a letter`);
       const cells = csv.rows.map((r) => ({ externalId: (r[idColumn] ?? "").trim(), cell: r[Number(column)] ?? "" }));
       const bad = cells.map((c) => parseSetCell(c.cell)).find((p) => "error" in p);
       if (bad && "error" in bad) errors.push(`Column ${csv.headers[Number(column)]}: ${bad.error}`);
+      else {
+        // test_unit: only overlap, practice or gold, one per unit
+        const sets = setsFromCells(cells.map((c, i) => ({ unitId: i, cell: c.cell })));
+        const problem = "error" in sets ? sets.error : roleColumnProblem(group, sets);
+        if (problem) errors.push(`Column ${csv.headers[Number(column)]}: ${problem}`);
+      }
       return { group, cells };
     });
     const groups = setGroups.map((g) => g.group);
     const twice = groups.find((g, i) => groups.indexOf(g) !== i);
-    if (twice) errors.push(`Two sets columns make group ${twice}`);
+    if (twice) errors.push(`Two columns are uploaded as ${twice}`);
     return { ...units, errors, setGroups };
   }, [csv, idColumn, mapping, studyFields, setColumns]);
   useEffect(() => onResult(result), [result, onResult]);
@@ -258,13 +268,18 @@ export function CsvUnitsForm({
       return;
     }
     setCsv({ name: file.name, ...parsed });
-    setSetColumns({});
     const id = parsed.headers.findIndex((h) => /^(id|externalid|external_id)$/i.test(h.trim()));
     const idAt = Math.max(0, id);
+    // Columns named like a column with a role are that column
+    const roles: Record<number, RoleColumn> = {};
+    parsed.headers.forEach((h, i) => {
+      if (allowSets && i !== idAt && isRoleColumn(h.trim())) roles[i] = h.trim() as RoleColumn;
+    });
+    setSetColumns(roles);
     setIdColumn(idAt);
     setMapping(
       initialMapping(parsed.headers, parsed.rows, studyFields).map((m) =>
-        m.column === idAt ? { ...m, field: "" } : m,
+        m.column === idAt || m.column in roles ? { ...m, field: "" } : m,
       ),
     );
   }
@@ -308,7 +323,13 @@ export function CsvUnitsForm({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setMapping(assignAllColumns(csv.headers, csv.rows, mapping, studyFields, idColumn))}
+              onClick={() =>
+                setMapping(
+                  assignAllColumns(csv.headers, csv.rows, mapping, studyFields, idColumn).map((m) =>
+                    m.column in setColumns ? { ...m, field: "" } : m,
+                  ),
+                )
+              }
             >
               <Wand2 className="mr-1 h-3.5 w-3.5" /> Use column names
             </Button>
@@ -379,11 +400,11 @@ export function CsvUnitsForm({
           {allowSets && (
             <>
               {" "}
-              A <strong>set</strong> column says who or which group codes a unit: each cell holds one or more values,
-              e.g. <code>anna</code> or <code>anna;bob</code> (both), <code>_overlap</code> (everyone),{" "}
-              <code>_gold</code> or <code>_practice</code> (gold or practice units), optionally with a position (
-              <code>anna#3</code>). Use it for coders or for conditions (session settings). It replaces the
-              column&apos;s values.
+              Columns with a role: <code>coder_set</code> (who codes a unit: <code>anna</code> or{" "}
+              <code>anna;bob</code>), <code>condition_set</code> (the experiment&apos;s conditions),{" "}
+              <code>part_set</code> (e.g. <code>pre</code>, <code>post</code>), optionally with a position (
+              <code>anna#3</code>); and <code>test_unit</code> (<code>overlap</code>, <code>practice</code> or{" "}
+              <code>gold</code>). A column with such a name is one; uploading it replaces what it had.
             </>
           )}
         </p>
@@ -490,15 +511,15 @@ function ColumnRow({
   /** The study's field this column is uploaded as, if it exists. */
   existing: UnitField | undefined;
   isId: boolean;
-  /** For a sets column: the group it makes. */
-  group: string | undefined;
+  /** For a column with a role: which one. */
+  group: RoleColumn | undefined;
   allowSets: boolean;
   problem: string | null;
   onChange: (next: Partial<ColumnMapping>) => void;
   /** This column is (or is no longer) the units' ids. */
   onId: (isId: boolean) => void;
-  /** This column is a sets column making this group (null: no longer). */
-  onGroup: (group: string | null) => void;
+  /** This column is this column with a role (null: no longer). */
+  onGroup: (group: RoleColumn | null) => void;
 }) {
   const isSets = group !== undefined;
   const uploaded = mapping.field !== "" || isSets;
@@ -516,15 +537,18 @@ function ColumnRow({
             each unit&apos;s id
           </span>
         ) : isSets ? (
-          <span className="flex items-center gap-1 text-xs">
-            group
-            <Input
-              aria-label={`Group of ${header}`}
-              className="h-8 w-36 font-mono text-xs"
-              value={group}
-              onChange={(e) => onGroup(e.target.value.trim())}
-            />
-          </span>
+          <select
+            aria-label={`Role of ${header}`}
+            className={`${selectClass} font-mono`}
+            value={group}
+            onChange={(e) => onGroup(e.target.value as RoleColumn)}
+          >
+            {ROLE_COLUMNS.map((c) => (
+              <option key={c} value={c}>
+                {c} ({ROLE_LABELS[c].toLowerCase()})
+              </option>
+            ))}
+          </select>
         ) : (
           <Input
             list="unit-field-names"
@@ -551,14 +575,16 @@ function ColumnRow({
             onChange={(e) => {
               if (e.target.value === "id") return onId(true);
               if (isId) onId(false);
-              if (e.target.value === "sets")
-                return onGroup(header.replace(/[^A-Za-z0-9_]+/g, "_").replace(/^[^A-Za-z]+/, "") || "sets");
+              if (e.target.value === "sets") {
+                const name = header.trim();
+                return onGroup(isRoleColumn(name) ? name : "coder_set");
+              }
               if (isSets) onGroup(null);
               onChange({ type: e.target.value as UnitFieldType });
             }}
           >
             <option value="id">unit id</option>
-            {allowSets && <option value="sets">set (who or which group codes it)</option>}
+            {allowSets && <option value="sets">column with a role</option>}
             {TYPES.map((t) => (
               <option key={t} value={t}>
                 {t}
