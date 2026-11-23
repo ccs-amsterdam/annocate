@@ -9,7 +9,7 @@ Two things decide which units a coder gets:
 
 1. **The coder's units**, for the whole study: all units, their own
    (specific coders), or their link's set (a crowd with a link per set),
-   and those of their linked random conditions.
+   and those of their experiments linked to units.
 2. **Each unit loop** selects from those: all by default, or a subset,
    with special units (overlap, practice, gold) placed among them.
 
@@ -21,7 +21,7 @@ Two things decide which units a coder gets:
 | a **Crowd** with a set column of only special units   | all units outside the special sets                                     |
 | a **Crowd** with a link per set                       | their link's set (units without a value aren't coded)                  |
 | **Specific coders** in Coder unit assignments              | their own units (see [Giving each coder their own units](own-units.md)) |
-| a random condition **linked to units**                | their condition's units (see [Experimental conditions](experimental-conditions.md)) |
+| an experiment **linked to units**                     | their condition's units (see [Experimental conditions](experimental-conditions.md)) |
 | both                                                  | units matching both                                                    |
 
 The special units (`_overlap`, `_practice`, `_gold`) of the coder unit

@@ -14,7 +14,7 @@ Each value is a **set**. The design uses them for:
 - a **Crowd's set column** (Coder unit assignments): its special units for
   every coder, and with other values a link per value, whose coders code
   that set;
-- a **random condition linked to units**: each condition its units (see
+- an **experiment linked to units**: each condition its units (see
   [Experimental conditions](experimental-conditions.md));
 - a **loop's subset**: e.g. a pre-test and a post-test loop (see
   [Handing out units](unit-distribution.md)).

@@ -19,7 +19,7 @@ stays stable.
 ## Values are data, labels are for people
 
 Answers are stored as values. The results, conditions
-(`$var.topic.is("politics")`) and random conditions all use values; labels
+(`$var.topic.is("politics")`) and experiments all use values; labels
 are what coders see and what `$var.topic.label` shows. So you can reword or
 fix labels without touching the data, and choose values for analysis.
 

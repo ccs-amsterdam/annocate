@@ -114,7 +114,7 @@ secret.
    design), per-loop progress and the coder's variables (so client-side
    conditions can use drawn values).
 3. **`GET /loop/:loop/next?count=k`** works out the coder's units from their
-   session values (§6), drawing any linked computed variable the loop needs,
+   session values (§6), drawing any linked experiment's condition the loop needs,
    and marks the loop as reached (`coder_sessions.assignments`, for
    progress). It picks the next k units (unfinished first); in a shared queue
    it leases them; it records the versions shown (`unit_serves`). The client
@@ -141,12 +141,12 @@ never which unit ids or which people.
 
 | Layer | Contains | Reproducible? |
 | --- | --- | --- |
-| Design | questions, computed items, blocks (items, optionally a label and a condition with else items; end items only in a block), unit loops (optionally a condition; subsets, placements, a crowd's distribution criteria), the session (coder unit assignment, URL parameters, the normal end). Refers to set columns and values by name, to coders only via `$session` values | yes |
+| Design | questions, experiments, blocks (items, optionally a label and a condition with else items; end items only in a block), unit loops (optionally a condition; subsets, placements, a crowd's distribution criteria), the session (coder unit assignment, URL parameters, the normal end). Refers to set columns and values by name, to coders only via `$session` values | yes |
 | Set columns | per column, named sets of units in order (e.g. column `coders`: `anna`, `bob`, `_overlap`) | data |
 | Links | made from the coder unit assignment (one, one per coder, or one per set of a crowd's column), with their secrets and uses | no (server only) |
 
 One idea, *who is this session for*, decides a session's units: the coder
-column (or a crowd link's set) and the random conditions linked to a
+column (or a crowd link's set) and the experiments linked to a
 column. Loops only select and place units within those, and for a crowd
 divide them. "Three links for my three coders, with some
 overlap" is then one setting and one column.
@@ -208,12 +208,11 @@ session is asked first (409 `coder_has_session`, `coder-identity.md` §4).
 **Without a unit loop** the unit settings are kept but unused (validation
 warns); links still follow the invitation, e.g. a survey of known experts.
 
-**Computed variables** (`type: "computed"`, §7) are drawn when reached; with
-`units` they also select units for the loops after them. They are the
-design's experimental conditions.
+**Experiments** (`type: "experiment"`, §7) assign a condition when reached;
+with `units` they also select units for the loops after them.
 
 A session's units are those whose cell holds the session's value in every
-linked column (its coder or link's set, each linked random condition), plus
+linked column (its coder or link's set, each linked experiment), plus
 each column's `_overlap`. Without linked columns: all units (minus a crowd
 column's practice and gold units).
 
@@ -333,23 +332,24 @@ contracts `sets.ts`).
 
 - errors: a column the design names that isn't a set column; sign-in coders
   (`link: "login"`) whose values aren't all email addresses; a linked
-  computed item's fixed values missing from its column;
+  experiment's fixed values missing from its column;
 - warnings: a column without values; units no session gets; column values a
-  computed item doesn't list; the overlap, practice and gold checks.
+  linked experiment doesn't list; the overlap, practice and gold checks.
 
 ## 7. Coder variables, URL parameters and links
 
-**Computed variables** (`type: "computed"`, variable type `random`) are drawn,
-never asked, never changed. They are drawn when the coder *reaches* them: the
-client saves the answers so far, calls `POST /variables/computed/:name` and
-goes on with the value. Coders screened out before one don't count.
+**Experiments** (`type: "experiment"`, variable type `random`) give each
+coder one of their conditions: drawn, never asked, never changed. The
+condition is drawn when the coder *reaches* the experiment: the client saves
+the answers so far, calls `POST /experiment/:name` and goes on with the
+condition. Coders screened out before one don't count.
 
 - `draw: "random"`: a weighted draw from `options`.
-- `draw: "balanced"`: the value fewest coders have so far (ties at random),
+- `draw: "balanced"`: the condition fewest coders have so far (ties at random),
   under a lock per variable (§3). With `stratify` (earlier coder-level
   questions, `session.<name>` values) balanced within groups.
-- With `units`, the value also selects the coder's units in later loops
-  (`options` optional: then the column's values). A linked condition not yet
+- With `units`, the condition also selects the coder's units in later loops
+  (`options` optional: then the column's values). A linked experiment not yet
   reached when a loop needs it is drawn then.
 
 The client can't overwrite drawn values.
@@ -385,8 +385,8 @@ session:
 All are `$session.<name>`, stored on the session when it starts. Built in:
 `$session.source` (an optional `?source=` on any link), `$session.coder`
 and `$session.group` (a crowd link's set); `coder`, `source` and `group` are
-reserved. Experimental conditions are computed
-items, never session values.
+reserved. Experimental conditions come from
+experiments, never session values.
 
 **Links** (on the server, never in the design) are made by deploying
 (contracts `linkCombinations`): one, for `link: "per_coder"` one per coder
@@ -535,7 +535,7 @@ transaction.
 | `server/src/shared/` | queries shared by the APIs |
 | `server/src/db/` | `schema/`, `index.ts` (open and migrate), `sql.ts` |
 | `server/src/runtime/registry.ts` | `Deployments`: one runtime per deployment, loaded lazily; revisions, status, preview tokens |
-| `server/src/runtime/runtime.ts` | `DeploymentRuntime`: a coder's units, distribution under locks, computed variables |
+| `server/src/runtime/runtime.ts` | `DeploymentRuntime`: a coder's units, distribution under locks, experiments' conditions |
 | `server/src/runtime/store.ts` | `Store` and `DbStore` |
 | `server/src/runtime/preview.ts` | previews: tokens, `PreviewStore` in memory |
 | `server/src/runtime/distribution.ts` | `UnitPool` (fixed or shared queue), `pickNext`, `Codings` |

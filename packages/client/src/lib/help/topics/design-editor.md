@@ -30,8 +30,8 @@ summary: The item tree, the item form, the preview, errors and warnings, saving,
 
 The tree lists the **items**, in the order coders meet them:
 
-- a **Question** or **Computed variable** (such as a
-  [random condition](random-condition.md)), asked or drawn once per coder;
+- a **Question** or **Experiment** (see
+  [Experiments](random-condition.md)), asked or drawn once per coder;
 - a **Block (if/else)**: items grouped, with an optional label and
   condition (see [Blocks and conditions](conditions.md));
 - a **Unit loop**: questions asked for every unit (see
@@ -41,7 +41,7 @@ Blocks and loops can have a condition, so only some coders get them. An
 [end item](end-items.md) goes in a block (e.g. one with a condition), not
 at the top level.
 
-**Add item** above the tree adds a **Question**, **Computed variable**,
+**Add item** above the tree adds a **Question**, **Experiment**,
 **Block (if/else)** or **Unit loop** **At the end** or **At the start**. A
 new block starts empty.
 
@@ -71,9 +71,9 @@ for an issue (hover to read it).
 2. Where there is more than one place (e.g. below the last item of a
    loop), choose **Where?**: **After tone**, **After News articles**, ...
    A line in the tree shows the place.
-3. Choose the type: at the top level **Question**, **Computed variable**,
+3. Choose the type: at the top level **Question**, **Experiment**,
    **Block (if/else)** or **Unit loop**; in a block **Question**,
-   **Computed variable**, **Block (if/else)** or **End**; in a loop
+   **Experiment**, **Block (if/else)** or **End**; in a loop
    **Question**, **Unit layout**, **Block (if/else)** or **End**.
 
 The new item goes below the row (for a loop or block: at the top inside

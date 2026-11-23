@@ -103,7 +103,7 @@ has two):
 | `session.<name>`                             | URL parameters and `source`                                        |
 | `finished_loop<n>`                           | units finished per loop, by its position (see `variables.csv`)     |
 | `overlap_finished`, `gold_finished`, `practice_finished` | special units finished (see [Overlap, gold and practice units](special-units.md)) |
-| one column per question                      | answers outside loops and [random conditions](random-condition.md) |
+| one column per question                      | answers outside loops and [experiments](random-condition.md)       |
 
 ## units.csv
 

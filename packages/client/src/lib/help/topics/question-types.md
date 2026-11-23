@@ -21,8 +21,8 @@ coders answer and what is stored, and so your measurement level.
 | [Mark text](span.md) (loops only)             | select words and label them         | the text and its position | entities, quotes, frames                  |
 | [Relations](relation.md) (loops only)         | link two marked passages            | pairs with a label        | who criticizes whom                       |
 
-A [random condition](random-condition.md) is not a question but a
-**Computed variable** (outside unit loops): drawn, never asked.
+An [experiment](random-condition.md) is not a question but an item of
+its own (outside unit loops): its condition is drawn, never asked.
 
 Questions from **Guided setup** start **to specify**: you can save, but
 not preview or deploy, until each has a type.

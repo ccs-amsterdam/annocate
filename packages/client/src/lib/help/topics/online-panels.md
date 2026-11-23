@@ -93,7 +93,7 @@ panel.
 
 ## Experimental conditions
 
-Draw a [random condition](random-condition.md) and show different material
+Add an [experiment](random-condition.md) and show different material
 with [conditions](conditions.md) on blocks or loops, or
 `::: if`. See
 [Experimental conditions](experimental-conditions.md).

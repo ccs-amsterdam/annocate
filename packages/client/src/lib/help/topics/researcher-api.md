@@ -117,7 +117,7 @@ api(sprintf("study/%d/sets/pilot", study)) |>
 ## Downloading answers
 
 `GET /study/<id>/annotations` gives a row per coder, question and unit
-(`unitId` `null` outside loops; `assigned: true` for random conditions),
+(`unitId` `null` outside loops; `assigned: true` for experiments),
 up to `limit` (max 10000) per page. Pass `next` as `after` until it is
 `null`:
 

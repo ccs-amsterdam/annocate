@@ -54,8 +54,8 @@ settings and transfer menus, and the loading, error and pick-a-name screens
   texts ahead (`currentUnitTemplate`, `currentTexts`), because evaluation is
   async and rendering isn't. `currentUnitVariables` gives the current unit's
   answers so far (relation questions need sibling spans).
-- **Computed variables** without a value are invisible steps: save the
-  answers so far, then ask the server (`computeVariable`).
+- **Experiments** without a condition are invisible steps: save the
+  answers so far, then ask the server (`assignCondition`).
 - **Units in batches** of 5 (`UNIT_BATCH`), a queue per loop refilled in the
   background when 2 are left.
 - **Saving in the background.** Answers go into an outbox, posted one at a
@@ -432,7 +432,7 @@ redirect links (`design/references.ts`).
 | Reference                               | Meaning                                                                            | Questions                                         |
 | --------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------- |
 | `$unit.<field>`                         | a unit field (inside a loop)                                                       |                                                   |
-| `$var.<q>.value`, `.label`              | the answer; `null` when unanswered                                                 | single nominal, ordinal, numeric, swipe, computed |
+| `$var.<q>.value`, `.label`              | the answer; `null` when unanswered                                                 | single nominal, ordinal, numeric, swipe, experiment |
 | `$var.<q>.values`, `.labels`            | the answers; `[]` when unanswered                                                  | nominal `multiple`, span, relation                |
 | `$var.<q>.texts`                        | the selected texts                                                                 | span                                              |
 | `$var.<q>.values`                       | all items' values, in order                                                        | scale                                             |
@@ -451,7 +451,7 @@ unanswered.
 
 | Question                          | Methods                                           |
 | --------------------------------- | ------------------------------------------------- |
-| single (nominal, swipe, computed) | `is(v)`, `isAny(v1, v2, ...)`                     |
+| single (nominal, swipe, experiment) | `is(v)`, `isAny(v1, v2, ...)`                     |
 | ordinal, scale items              | also `gt`, `gte`, `lt`, `lte`                     |
 | nominal `multiple`                | `has(v)`, `hasAny(...)`, `hasAll(...)`, `count()` |
 | numeric                           | `eq`, `gt`, `gte`, `lt`, `lte`, `between(a, b)`   |
@@ -524,13 +524,13 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   opens the study in the editor; there is no way back into the wizard. Steps:
   1. **What do you want to do?** Name; annotate units, ask questions, or
      experiment.
-  2. **The experiment**: a condition's name and values, balanced or random (a
-     computed item, first in the design).
+  2. **The experiment**: a condition's name and values, balanced or random (an
+     experiment, first in the design).
   3. **Units**: the CSV upload (or later), and the order.
   4. **Who codes what**: everyone everything (a crowd); sets per coder, each
      with a link (`per_coder`); crowd coding (the loop's `units.divide`, and
      a crowd column `coders` for an overlap or gold/practice checks); or
-     experimental groups (a computed item linked to a column).
+     experimental groups (an experiment linked to a column).
   5. **How coders see a unit**: the layout sketch (`LayoutDesigner.tsx`:
      title, byline, body), with a preview.
   6. **Questions**: names, one per line, before, per unit and after. They get
@@ -539,7 +539,7 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   7. **Check and create**: a summary; the design is created as a draft.
      The questions before and after the loop go at the top level.
 - **Tree** (`DesignTreeView.tsx`, `designTree/`): the top level holds
-  questions, computed items, `block`s and unit loops; validation refuses an
+  questions, experiments, `block`s and unit loops; validation refuses an
   end item there ("An end item goes in a block") and a loop inside a block.
   A block has an optional `label`, `condition`, `children` and
   `elseChildren` (only with a condition). The coder-level items before,
@@ -550,10 +550,10 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   and/or "if <condition>", else "Block"; questions aren't numbered. With a
   condition (and no else items yet) its row has an else button that opens
   the usual add menu, headed "If not, then…", and adds the chosen item as
-  the first else item; the Else part shows only when it has items. "Add item" adds a question, computed variable, block
+  the first else item; the Else part shows only when it has items. "Add item" adds a question, experiment, block
   ("Block (if/else)", starting empty) or unit loop; a row's + adds items
-  allowed there (`insertableTypesAt`): in a block question, computed
-  variable, block, end; in a loop question, layout ("Unit layout"), block,
+  allowed there (`insertableTypesAt`): in a block question, experiment,
+  block, end; in a loop question, layout ("Unit layout"), block,
   end. A layout item's row shows its label or "Unit layout". Above the tree the
   Study entry (§4), below it the **At the end** button, styled like the
   Study entry's buttons.

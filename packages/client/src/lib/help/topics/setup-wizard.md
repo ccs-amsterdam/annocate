@@ -15,7 +15,7 @@ changed there afterwards.
    units**, **Ask questions** (a survey) and **Experiment** (coders get a
    condition).
 2. **The experiment**: the condition's name, its values, and balanced or
-   random assignment. It becomes a [random condition](random-condition.md)
+   random assignment. It becomes an [experiment](random-condition.md)
    at the start of the design.
 3. **Units**: a CSV file (see [Uploading units](uploading-units.md)), or
    none yet.

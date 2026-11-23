@@ -52,5 +52,5 @@ study's own name stays private. Without one: "Untitled study".
 ## Experiments
 
 A value typed into a link isn't random: draw conditions with a
-[random condition](experimental-conditions.md). A URL parameter can still
+[experiment](experimental-conditions.md). A URL parameter can still
 steer the design, e.g. a `language` in a block's condition.

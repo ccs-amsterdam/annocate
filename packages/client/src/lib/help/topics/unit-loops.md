@@ -36,7 +36,7 @@ Each is answered per unit: a row per unit and coder in
 `annotations.csv`. Inside a loop, texts and conditions can also use the
 unit's data (`$unit.headline`) and earlier answers for the same unit.
 [Mark text](span.md) and [relations](relation.md) only work in loops;
-[random conditions](random-condition.md) only outside.
+[experiments](random-condition.md) only outside.
 
 A loop's answers stay in the loop: another loop can't use them. Loops
 can't be nested.

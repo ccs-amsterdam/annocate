@@ -130,7 +130,7 @@ and true/false as written, lists with commas, `null` as nothing.
 - One expression: no `let`, `if` or `for` (use `? :`, `.map()`,
   `.filter()`). No `}}` inside.
 - Scripts only rerun when a value they use changes: don't use
-  `Math.random()`; use a [random condition](random-condition.md).
+  `Math.random()`; use an [experiment](random-condition.md).
 
 In **Script** mode syntax errors show as you type. In `{{ }}` only the `$`
 names are checked, so try the result in the preview.

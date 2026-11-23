@@ -74,8 +74,8 @@ To do on the server (the guide's steps):
 
 - **R and Python clients** follow the researcher API's names: `study`
   (not job), `links`, `design` (design versions), everything under
-  `/api`, computed variables (`POST /variables/computed/:name` in the
-  coder API).
+  `/api`, experiments (`POST /experiment/:name`, `assignCondition`, in
+  the coder API).
 - **Answer keys**: the "Create gold values" dialog has no input for a
   range (`3..5`); ranges are typed in the cell.
 - **Accessibility**: the researcher UI has about 55 form labels not linked

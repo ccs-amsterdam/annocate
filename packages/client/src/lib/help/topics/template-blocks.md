@@ -36,7 +36,7 @@ $unit.text
 ```
 
 Switch `group` above the result to see each group's version: with a
-[random condition](random-condition.md), this is a survey experiment.
+[experiment](random-condition.md) item, this is a survey experiment.
 
 ### Else if and else
 

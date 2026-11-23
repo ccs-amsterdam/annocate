@@ -333,9 +333,9 @@ A design version is `{ public, session, units, items }`: `public` what
 coders see about the study (`{ title }`, or null), `session` how a coder's
 session starts (the coder unit assignment `invite`, URL parameters `urlParams`,
 the normal end `end`; `{}` without), `units.fields` the declared unit
-fields, `items` the top-level questions, computed items, blocks and unit loops
+fields, `items` the top-level questions, experiments, blocks and unit loops
 (blocks and loops holding questions, end items and nested blocks; blocks
-also computed items). On `PUT`,
+also experiments). On `PUT`,
 a left-out `session`, `public` or `units` is kept; `public: null` removes it.
 
 ### updateDesignVersion
@@ -454,7 +454,7 @@ otherwise).
 ### deleteSetGroup
 
 `DELETE /study/:studyId/sets/:group` → 204. 409 while the deployed or latest
-design uses the column (the coder unit assignment's column, a computed item
+design uses the column (the coder unit assignment's column, an experiment
 linked to units, or a loop's subset).
 
 Filling a column (values given or `s1..sN`, plus `_overlap`) is done by the client
@@ -513,7 +513,7 @@ loop of the live design version, `special`: the units of the deployed
 `_overlap`, `_gold` and `_practice` sets of the coder unit assignment's
 column they finished, of how many (for
 the kinds the study has), `variables`: their coder-level values
-(answers outside unit loops, and computed variables), `session`: their
+(answers outside unit loops, and experiments' conditions), `session`: their
 `$session` values (URL parameters, `source`, the coder, a crowd link's set
 `group`), `email` only where
 the coder unit assignment requires sign-in, `ended`: how the
@@ -580,8 +580,8 @@ or pause/resume with `active`. Units and sets are drafts until deployed
    drafts may be saved with issues, coders only get valid designs), and
    check it against the set columns (400 `assignment_invalid` with the
    errors: a column the design names that isn't a set column, coders who
-   sign in whose values aren't all email addresses, a linked computed
-   item's fixed values missing from its column; `shared/sets.ts`
+   sign in whose values aren't all email addresses, a linked
+   experiment's fixed values missing from its column; `shared/sets.ts`
    `assignmentChecks`);
 2. with `units`: new versions of the units the draft changed (versions
    they replace that no answer points to are deleted), and the draft's
@@ -606,7 +606,7 @@ study is paused) until it is resumed.
 
 Return `warnings` the researcher should see, e.g. a loop that gained
 questions, which makes units coders finished unfinished again, a column
-without values, units no session gets, column values a linked computed item
+without values, units no session gets, column values a linked experiment
 doesn't list, special units a loop places but the assignment's column
 doesn't have, or an
 end item's redirect setting without a URL.

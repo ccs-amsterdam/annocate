@@ -28,13 +28,13 @@ is open.
   that it fits the design.
 - **Agreement-based saturation** on encrypted variables: impossible.
 - **Settings on answers**: a coder's units depend on session values and
-  computed variables, which the server sets, so they stay possible. Loop
+  experiments' conditions, which the server sets, so they stay possible. Loop
   settings that depend on coder answers (`question-loops.md` §5) would
   need those answers in plain text.
 - **Show if leaks**: a plain `skip` on a hidden question reveals the
   condition's outcome; the whole answer, `skip` included, would have to be
   encrypted.
-- **Server-set values stay plain**: computed variables, session values
+- **Server-set values stay plain**: experiments' conditions, session values
   (link and URL parameters, conditions).
 - **Metadata stays visible**: which units, timing, answer lengths.
 - **Resuming**: the session and the key would travel together (a transfer

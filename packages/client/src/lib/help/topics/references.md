@@ -45,7 +45,7 @@ unknown field gets a warning (you may upload units later).
 
 | Question                                                         | Properties                                              |
 | ---------------------------------------------------------------- | ------------------------------------------------------- |
-| Categories (one answer), ordered, number, swipe, random condition | `.value`, `.label`                                      |
+| Categories (one answer), ordered, number, swipe, experiment       | `.value`, `.label`                                      |
 | Categories with multiple answers                                 | `.values`, `.labels`                                    |
 | Mark text (span)                                                 | `.values`, `.labels`, `.texts`                          |
 | Relation                                                         | `.values`, `.labels`                                    |
