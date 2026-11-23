@@ -139,8 +139,8 @@ function CodersForm({
           Coder set
           <InfoTip label="About the coder set">
             The units&apos; column <span className="font-mono">coder_set</span> says who codes each unit (
-            <span className="font-mono">anna</span>, <span className="font-mono">anna;bob</span> for both). Test units
-            (<span className="font-mono">test_unit</span>: overlap, practice, gold) go to everyone. Make it here, or on
+            <span className="font-mono">anna</span>, <span className="font-mono">anna;bob</span> for both). Test units (
+            <span className="font-mono">test_set</span>: overlap, practice, gold) go to everyone. Make it here, or on
             the Units page.
           </InfoTip>
         </span>
@@ -210,8 +210,7 @@ function CodersForm({
         </label>
         {invite.link === "login" && known && coders.kind !== "emails" && coders.kind !== "none" && (
           <p className="pl-6 text-[11px] text-destructive">
-            Signing in needs email addresses: the coder set has{" "}
-            {coders.notEmails.slice(0, 3).join(", ")}
+            Signing in needs email addresses: the coder set has {coders.notEmails.slice(0, 3).join(", ")}
             {coders.notEmails.length > 3 ? ", …" : ""}.
           </p>
         )}
@@ -315,9 +314,7 @@ function CrowdForm({ invite, onChange }: { invite: CrowdInvite; onChange: (invit
             value={invite.maxCoders ?? ""}
             onChange={(e) => set("maxCoders", count(e.target.value))}
           />
-          <InfoTip label="About the most coders">
-            The link starts at most this many sessions (the sample size).
-          </InfoTip>
+          <InfoTip label="About the most coders">The link starts at most this many sessions (the sample size).</InfoTip>
         </label>
       </div>
       <p className="text-[11px] text-muted-foreground">

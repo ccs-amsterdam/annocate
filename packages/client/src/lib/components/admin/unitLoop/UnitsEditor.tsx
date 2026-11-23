@@ -1,12 +1,12 @@
 import {
   CODER_SET,
   PART_SET,
-  TEST_UNIT,
+  TEST_SET,
   type Criteria,
   type DesignIssue,
   type SetGroupResponse,
   type LoopUnits,
-  type TestUnitType,
+  type TestSetType,
 } from "@annotinder/contracts";
 import { cn } from "cn";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,7 @@ import { GoldChecks, PlacementRow, PracticeChecks } from "./SpecialUnits";
 // coder's units (who the coders are is the coder unit assignment's): an
 // earlier loop's units or one part of the study (`part_set`), for a crowd
 // whether they are divided among the coders, and the coding and test units
-// (`test_unit`: where they go); with the checks on practice and gold units.
+// (`test_set`: where they go); with the checks on practice and gold units.
 
 /** A loop's units: which units, dividing them, the coding and test units and their checks. */
 export function UnitsEditor({
@@ -53,8 +53,8 @@ export function UnitsEditor({
   onChange: (units: LoopUnits) => void;
 }) {
   const { invite, earlier } = context;
-  const tests = groups.find((g) => g.name === TEST_UNIT);
-  const count = (type: TestUnitType) => tests?.sets.find((s) => s.name === type)?.unitIds.length ?? 0;
+  const tests = groups.find((g) => g.name === TEST_SET);
+  const count = (type: TestSetType) => tests?.sets.find((s) => s.name === type)?.unitIds.length ?? 0;
   const set = <K extends keyof LoopUnits>(key: K, value: LoopUnits[K] | undefined) => {
     const next = { ...settings, [key]: value };
     if (value === undefined) delete next[key];
@@ -108,7 +108,7 @@ export function UnitsEditor({
         <h3 className="flex items-center gap-1 text-xs font-semibold">
           Coding and test units
           <span className="font-normal text-muted-foreground">
-            (test units: the units&apos; <span className="font-mono">test_unit</span>)
+            (test units: the units&apos; <span className="font-mono">test_set</span>)
           </span>
         </h3>
         <div className="grid w-fit grid-cols-[auto_2.5rem_auto] items-center gap-x-3 gap-y-1.5">
@@ -152,7 +152,7 @@ export function UnitsEditor({
         <p className="text-[11px] text-muted-foreground">
           {tests
             ? "Spread throughout a divided crowd's units without a maximum of units per coder: about one in ten."
-            : "The units have no test units (test_unit) yet: mark them on the Units page, or with the coder set dialog."}
+            : "The units have no test units (test_set) yet: mark them on the Units page, or with the coder set dialog."}
         </p>
       </section>
       {shows("practice", settings.practiceCheck) && (

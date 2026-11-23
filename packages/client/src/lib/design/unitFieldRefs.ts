@@ -10,6 +10,7 @@ import {
   type Reference,
   type TopLevelItem,
   type UnitField,
+  UNIT_BUILTINS,
 } from "@annotinder/contracts";
 import { itemTitle } from "../codebook/conditions";
 import { blockInner, isElse } from "../codebook/tree";
@@ -49,8 +50,8 @@ function conditionReferences(condition: Condition | undefined): Reference[] {
  */
 export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[], always = false): UnitFieldWarning[] {
   if (fields.length === 0 && !always) return [];
-  // `$unit.id` is each unit's id (also without a field called id)
-  const known = new Set([...fields.map((f) => f.name), "id"]);
+  // `$unit.id` and `$unit.test_set` are each unit's (also without such fields)
+  const known = new Set([...fields.map((f) => f.name), ...UNIT_BUILTINS]);
   const warnings: UnitFieldWarning[] = [];
   const seen = new Set<string>();
   const warn = (item: string, field: string, message: string) => {

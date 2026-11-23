@@ -2,10 +2,10 @@ import {
   CODER_SET,
   CONDITION_SET,
   CriteriaSchema,
-  TEST_UNIT,
-  TEST_UNIT_TYPES,
+  TEST_SET,
+  TEST_SET_TYPES,
   seededShuffle,
-  type TestUnitType,
+  type TestSetType,
   type Criteria,
   type RecipeInput,
   type SessionSpec,
@@ -36,7 +36,7 @@ interface SetupExperiment {
   assign: "random" | "balanced";
 }
 
-/** Overlap units (`test_unit` overlap): this many units every coder codes besides their own, for checking agreement. */
+/** Overlap units (`test_set` overlap): this many units every coder codes besides their own, for checking agreement. */
 export type SetupOverlap = number | null;
 
 /** Who codes what (annotation), each with its own settings. */
@@ -175,8 +175,8 @@ export function parseQuestions(lines: string[]): SetupQuestion[] {
 /** A set's name from a column's value: no `;` or `#`. */
 const setName = (value: string) => value.trim().replace(/[;#]+/g, "_").slice(0, 128) || "empty";
 
-const isTestUnitType = (value: string): value is TestUnitType =>
-  (TEST_UNIT_TYPES as readonly string[]).includes(value.trim());
+const isTestSetType = (value: string): value is TestSetType =>
+  (TEST_SET_TYPES as readonly string[]).includes(value.trim());
 
 /** Whether a distribution has coders or a crowd's queue: then gold and practice units can be mixed in. */
 export const hasSetGroup = (d: SetupDistribution) => d.mode === "sets" || d.mode === "crowd";
@@ -208,21 +208,21 @@ export function overlapCount(overlap: SetupOverlap, n: number): number {
 
 /**
  * The coders' sets a distribution makes (`coder_set`), and its test units
- * (`test_unit`): the overlap drawn at random (fixed seed) and taken out of
+ * (`test_set`): the overlap drawn at random (fixed seed) and taken out of
  * the sets, and with sets by a column, its values `overlap`, `practice` and
  * `gold`.
  */
 export function distributionSets(
   d: SetupDistribution,
   units: SetupUnits | null,
-): { sets: { name: string; units: string[] }[]; overlap: string[]; tests: { name: TestUnitType; units: string[] }[] } {
+): { sets: { name: string; units: string[] }[]; overlap: string[]; tests: { name: TestSetType; units: string[] }[] } {
   const all = units?.units ?? [];
   // A column's test units (its values overlap, practice, gold) aren't drawn for the overlap, nor anyone's
-  const marked = new Map<string, TestUnitType>(
+  const marked = new Map<string, TestSetType>(
     d.mode === "sets" && d.source === "column"
       ? all.flatMap((u) => {
           const value = valueOf(u, d.column).trim();
-          return isTestUnitType(value) ? [[u.externalId, value] as [string, TestUnitType]] : [];
+          return isTestSetType(value) ? [[u.externalId, value] as [string, TestSetType]] : [];
         })
       : [],
   );
@@ -230,7 +230,7 @@ export function distributionSets(
   const overlapIds = "overlap" in d ? seededShuffle(drawable, 1).slice(0, overlapCount(d.overlap, all.length)) : [];
   const inOverlap = new Set(overlapIds);
   const rest = all.filter((u) => !inOverlap.has(u.externalId) && !marked.has(u.externalId));
-  const tests = TEST_UNIT_TYPES.map((name) => ({
+  const tests = TEST_SET_TYPES.map((name) => ({
     name,
     units: [
       ...(name === "overlap" ? overlapIds : []),
@@ -342,7 +342,7 @@ const unspecified = (q: SetupQuestion) => ({
 
 /**
  * The recipe for `POST /study/from-recipe`: a draft design, the units and
- * their columns with a role (`coder_set`, `condition_set`, `test_unit`).
+ * their columns with a role (`coder_set`, `condition_set`, `test_set`).
  * Deploying makes the links (one, or one per coder).
  */
 export function setupRecipe(answers: SetupAnswers): RecipeInput {
@@ -373,7 +373,7 @@ export function setupRecipe(answers: SetupAnswers): RecipeInput {
     const d = answers.distribution;
     const { sets, tests } = distributionSets(d, answers.units);
     // Test units: overlap (everyone's), and a column's practice and gold units; more can be marked on the Units page
-    if (tests.length > 0) groups.push({ group: TEST_UNIT, sets: tests });
+    if (tests.length > 0) groups.push({ group: TEST_SET, sets: tests });
     let units: object = {};
     switch (d.mode) {
       case "all":

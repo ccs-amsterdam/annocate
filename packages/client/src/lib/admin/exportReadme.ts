@@ -36,7 +36,7 @@ units.csv        The units as deployed, a row per version: a unit replaced
                  are for your analysis. Join annotations on unit_version_id.
                  A column per column with a role (coder_set,
                  condition_set, part_set: e.g. anna or anna;bob, #n its
-                 position in an ordered set; test_unit: overlap,
+                 position in an ordered set; test_set: overlap,
                  practice or gold).
 variables.csv    Per design version (design_version), question and option: the question text,
                  the stored value, its label, and special (not_applicable,

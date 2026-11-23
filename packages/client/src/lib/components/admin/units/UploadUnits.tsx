@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
 import {
   ROLE_COLUMNS,
-  TEST_UNIT,
+  TEST_SET,
   addToSets,
   isRoleColumn,
   parseSetCell,
@@ -85,9 +85,9 @@ export function UploadUnits({
   const replaced = result ? result.units.filter((u) => byId.has(u.externalId)) : [];
   const coded = replaced.filter((u) => byId.get(u.externalId)!.coded);
   const added = result ? result.units.filter((u) => !byId.has(u.externalId)) : [];
-  // Set columns the new units could join: those the file doesn't set itself (not test_unit: test units are chosen)
+  // Set columns the new units could join: those the file doesn't set itself (not test_set: test units are chosen)
   const otherGroups = groups.filter(
-    (g) => g.name !== TEST_UNIT && !result?.setGroups.some((s) => s.group === g.name) && g.sets.length > 0,
+    (g) => g.name !== TEST_SET && !result?.setGroups.some((s) => s.group === g.name) && g.sets.length > 0,
   );
 
   async function upload() {
@@ -219,7 +219,7 @@ export function CsvUnitsForm({
   onResult,
 }: {
   studyFields: UnitField[];
-  /** Offer the columns with a role (coder_set, condition_set, part_set, test_unit). */
+  /** Offer the columns with a role (coder_set, condition_set, part_set, test_set). */
   allowSets?: boolean;
   onResult: (result: CsvUpload | null) => void;
 }) {
@@ -246,7 +246,7 @@ export function CsvUnitsForm({
       const bad = cells.map((c) => parseSetCell(c.cell)).find((p) => "error" in p);
       if (bad && "error" in bad) errors.push(`Column ${csv.headers[Number(column)]}: ${bad.error}`);
       else {
-        // test_unit: only overlap, practice or gold, one per unit
+        // test_set: only overlap, practice or gold, one per unit
         const sets = setsFromCells(cells.map((c, i) => ({ unitId: i, cell: c.cell })));
         const problem = "error" in sets ? sets.error : roleColumnProblem(group, sets);
         if (problem) errors.push(`Column ${csv.headers[Number(column)]}: ${problem}`);
@@ -400,11 +400,11 @@ export function CsvUnitsForm({
           {allowSets && (
             <>
               {" "}
-              Columns with a role: <code>coder_set</code> (who codes a unit: <code>anna</code> or{" "}
-              <code>anna;bob</code>), <code>condition_set</code> (the experiment&apos;s conditions),{" "}
-              <code>part_set</code> (e.g. <code>pre</code>, <code>post</code>), optionally with a position (
-              <code>anna#3</code>); and <code>test_unit</code> (<code>overlap</code>, <code>practice</code> or{" "}
-              <code>gold</code>). A column with such a name is one; uploading it replaces what it had.
+              Columns with a role: <code>coder_set</code> (who codes a unit: <code>anna</code> or <code>anna;bob</code>
+              ), <code>condition_set</code> (the experiment&apos;s conditions), <code>part_set</code> (e.g.{" "}
+              <code>pre</code>, <code>post</code>), optionally with a position (<code>anna#3</code>); and{" "}
+              <code>test_set</code> (<code>overlap</code>, <code>practice</code> or <code>gold</code>). A column with
+              such a name is one; uploading it replaces what it had.
             </>
           )}
         </p>

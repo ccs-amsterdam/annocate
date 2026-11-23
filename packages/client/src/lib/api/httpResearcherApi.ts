@@ -146,7 +146,7 @@ export interface ResearcherApi {
   createUnits(body: UnitsCreateBody): Promise<UnitResponse[]>;
   deleteUnit(id: number): Promise<void>;
 
-  /** The columns with a role (coder_set, condition_set, part_set, test_unit), each with its sets. */
+  /** The columns with a role (coder_set, condition_set, part_set, test_set), each with its sets. */
   listSetGroups(live?: boolean): Promise<SetGroupResponse[]>;
   /** Makes or replaces a column with a role; deployed, the links follow (a link per coder of coder_set). */
   putSetGroup(group: string, body: SetGroupWrite): Promise<SetGroupResponse>;

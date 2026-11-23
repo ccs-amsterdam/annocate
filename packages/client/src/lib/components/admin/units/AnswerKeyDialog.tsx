@@ -6,6 +6,7 @@ import {
   formatAnswerKey,
   isAnswerColumn,
   parseAnswerKey,
+  TEST_SET,
   unitScopeData,
   type AnswerAlternative,
   type AnyVariableType,
@@ -23,7 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // "Right answers" (docs/architecture.md §6.2): goes through the gold or
-// practice units (`test_unit`) with the loop's layout, and writes the right
+// practice units (`test_set`) with the loop's layout, and writes the right
 // answers (`answer_<q>`) and practice feedback (`feedback_<q>`) into their
 // columns (contracts answerKey.ts for the cells).
 
@@ -211,7 +212,9 @@ export function AnswerKeyDialog({
   useEffect(() => {
     if (!unit) return;
     let cancelled = false;
-    renderTemplate(layout.template, buildScope(questionMap, {}, unitScopeData(unit)), undefined, "answer-key", {
+    // As coders see it: `$unit.test_set` is the set the dialog goes through
+    const data = { ...unitScopeData(unit), ...(group === TEST_SET ? { test_set: set } : {}) };
+    renderTemplate(layout.template, buildScope(questionMap, {}, data), undefined, "answer-key", {
       snippets: layout.snippets,
     }).then(
       (r) => !cancelled && setRendered(r),
@@ -220,7 +223,7 @@ export function AnswerKeyDialog({
     return () => {
       cancelled = true;
     };
-  }, [unit, layout, questionMap]);
+  }, [unit, layout, questionMap, group, set]);
 
   const cell = (u: UnitResponse, col: string) => edits[u.id]?.[col] ?? cellText(u.data[col]);
   const setCell = (u: UnitResponse, col: string, value: string) =>
@@ -262,15 +265,13 @@ export function AnswerKeyDialog({
         <DialogHeader>
           <DialogTitle>Right answers of the {what} units</DialogTitle>
           <DialogDescription>
-            The units marked {set} in test_unit:{" "}
+            The units marked {set} in test_set:{" "}
             {units ? `${ready} of ${units.length} have answers for every checked question` : "loading…"}. Coders never
             see these columns.
           </DialogDescription>
         </DialogHeader>
         {units && units.length === 0 && (
-          <p className="text-sm">
-            No units are marked {set} in test_unit yet: mark them on the Units page.
-          </p>
+          <p className="text-sm">No units are marked {set} in test_set yet: mark them on the Units page.</p>
         )}
         {unit && (
           <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">

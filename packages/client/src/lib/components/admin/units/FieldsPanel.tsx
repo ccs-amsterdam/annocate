@@ -31,7 +31,8 @@ const USE_LABEL: Record<FieldUse | "none", { label: string; title: string; class
   },
   server: {
     label: "server only",
-    title: "An answer column of gold or practice questions: never sent to coders",
+    title:
+      "An answer column of gold or practice questions, or a column with a role the design uses (the test set in every unit loop): read on the server, never sent to coders",
     className: "bg-sky-500/15 text-sky-700 dark:text-sky-400",
   },
   none: {

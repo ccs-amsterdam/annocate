@@ -7,6 +7,7 @@ import {
   type DesignIssue,
   type LayoutItem,
   type UnitLayout,
+  UNIT_BUILTINS,
 } from "@annotinder/contracts";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -45,8 +46,8 @@ export function LayoutForm({
   // `::: if` in the layout may use coder-level questions, and (inside `::: from`) the loop's own.
   const conditionQuestions = [...coderQuestions, ...questionsOf(loopItems)];
   const names = {
-    // `$unit.id` is each unit's id (unless a field is called id)
-    fields: unitFields.includes("id") ? unitFields : [...unitFields, "id"],
+    // `$unit.id` and `$unit.test_set` are each unit's (unless fields have these names)
+    fields: [...new Set([...unitFields, ...UNIT_BUILTINS])],
     snippets: snippets.map(([n]) => n),
     questions: conditionQuestions.map((q) => q.name),
     loopQuestions,

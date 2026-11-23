@@ -45,6 +45,17 @@ describe("unknownUnitFields", () => {
     ]);
   });
 
+  it("knows $unit.id and $unit.test_set, which every unit has", () => {
+    const loop = [
+      {
+        type: "unit_loop",
+        label: "loop",
+        children: [{ type: "layout", template: '::: if $unit.test_set === "practice"\nPractice\n:::\n\n$unit.id' }],
+      },
+    ] as unknown as TopLevelItem[];
+    expect(unknownUnitFields(loop, [{ name: "headline", type: "text" }], true)).toEqual([]);
+  });
+
   it("checks nothing while the study has no units, unless asked to (to locate undeclared fields)", () => {
     expect(unknownUnitFields(items, [])).toEqual([]);
     expect(unknownUnitFields(items, [], true).map((w) => w.field)).toContain("topic");

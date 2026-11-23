@@ -937,7 +937,7 @@ describe("practice and gold units (docs/architecture.md §6.2)", () => {
   const practiceUnit = (retry: boolean): CoderUnitResponse => ({
     id: 7,
     externalId: "p1",
-    data: { _practice: true },
+    data: { test_set: "practice" },
     variables: {},
     practice: { retry, questions: { q1: { key: "B", message: "It is B." } } },
   });

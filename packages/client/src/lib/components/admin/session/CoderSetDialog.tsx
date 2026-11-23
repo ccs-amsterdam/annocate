@@ -1,12 +1,12 @@
 import { useState } from "react";
 import {
   CODER_SET,
-  TEST_UNIT,
-  TEST_UNIT_TYPES,
+  TEST_SET,
+  TEST_SET_TYPES,
   distributeUnits,
   isEmail,
   type SetGroupResponse,
-  type TestUnitType,
+  type TestSetType,
 } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import {
@@ -19,26 +19,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InfoTip } from "@/components/ui/info-tip";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { TEST_LABELS, assignWithoutValue, testSetsOf, unitsWithoutValue } from "../../../admin/setKinds";
+import { AssignModeChoice, type AssignMode } from "../units/AssignMode";
 
 type Who = "names" | "emails" | "count";
-
-const TEST_LABELS: Record<TestUnitType, string> = {
-  overlap: "Overlap units",
-  practice: "Practice units",
-  gold: "Gold units",
-};
 
 /**
  * Makes or updates the units' `coder_set` (who codes which units, specific
  * coders; docs/plans/unit-sets.md): every unit goes to one or more coders
  * (`coders per unit`), or every coder codes everything; coders are named,
  * their email addresses (they sign in), or numbered (`coder_1` ...). Test
- * units (`test_unit`: overlap, practice, gold) are everyone's, not divided:
- * an existing `test_unit` column is kept; with "Redistribute test units",
+ * units (`test_set`: overlap, practice, gold) are everyone's, not divided:
+ * an existing `test_set` column is kept; with "Redistribute test units",
  * that many units of each type are drawn anew. With "keep", units a coder
  * was already shown or answered stay theirs first, so dividing again loses
  * no work. The units are shuffled first (seeded); the Units page shows and
- * edits the columns. Replacing the coder set asks first.
+ * edits the columns. Replacing the coder set asks first; or it keeps the
+ * coder set and gives the units without a coder (not test units) to its
+ * coders.
  */
 export function CoderSetDialog({
   client,
@@ -56,10 +54,13 @@ export function CoderSetDialog({
   const unitIds = (unitsQuery.data ?? []).map((u) => u.id);
   const seen = useCoderUnitsQuery(client).data?.coders ?? [];
   const existing = groups.find((g) => g.name === CODER_SET);
-  const existingTests = groups.find((g) => g.name === TEST_UNIT);
+  const existingTests = groups.find((g) => g.name === TEST_SET);
   const currentTests = Object.fromEntries(
-    TEST_UNIT_TYPES.map((t) => [t, existingTests?.sets.find((s) => s.name === t)?.unitIds.length ?? 0]),
-  ) as Record<TestUnitType, number>;
+    TEST_SET_TYPES.map((t) => [t, existingTests?.sets.find((s) => s.name === t)?.unitIds.length ?? 0]),
+  ) as Record<TestSetType, number>;
+  const [mode, setMode] = useState<AssignMode>("anew");
+  const empty = existing ? unitsWithoutValue(unitIds, groups, CODER_SET) : [];
+  const assigning = existing !== undefined && mode === "empty";
   const [keep, setKeep] = useState(true);
   const [confirming, setConfirming] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -69,14 +70,18 @@ export function CoderSetDialog({
   const [everyone, setEveryone] = useState(false);
   const [perUnit, setPerUnit] = useState(1);
   const [redistribute, setRedistribute] = useState(false);
-  const [testCounts, setTestCounts] = useState<Record<TestUnitType, number>>(currentTests);
+  const [testCounts, setTestCounts] = useState<Record<TestSetType, number>>(currentTests);
   const [seed] = useState(() => Math.floor(Math.random() * 1_000_000));
 
   const listed = text
     .split(/[\n,;]+/)
     .map((n) => n.trim())
     .filter(Boolean);
-  const names = who === "count" ? Array.from({ length: count }, (_, i) => `coder_${i + 1}`) : listed;
+  const names = assigning
+    ? existing.sets.map((s) => s.name)
+    : who === "count"
+      ? Array.from({ length: count }, (_, i) => `coder_${i + 1}`)
+      : listed;
   const notEmails = who === "emails" ? names.filter((n) => !isEmail(n)) : [];
   const twice = names.find((n, j) => names.findIndex((m) => m.toLowerCase() === n.toLowerCase()) !== j);
 
@@ -94,11 +99,17 @@ export function CoderSetDialog({
         })
       : { sets: [], testUnits: [], kept: 0 };
   const shownTests = redistribute ? testCounts : currentTests;
-  const tests = TEST_UNIT_TYPES.filter((t) => shownTests[t] > 0).map((t) => `${shownTests[t]} ${t}`);
+  const tests = TEST_SET_TYPES.filter((t) => shownTests[t] > 0).map((t) => `${shownTests[t]} ${t}`);
   const perCoder = sets.map((s) => s.units.length);
-  const testTotal = TEST_UNIT_TYPES.reduce((n, t) => n + testCounts[t], 0);
-  const problem =
-    names.length === 0
+  const testTotal = TEST_SET_TYPES.reduce((n, t) => n + testCounts[t], 0);
+  const assigned = assigning
+    ? assignWithoutValue(CODER_SET, existing.sets, empty, { perUnit: everyone ? names.length : perUnit, seed })
+    : [];
+  const problem = assigning
+    ? empty.length === 0
+      ? "Every unit has a coder or is a test unit."
+      : null
+    : names.length === 0
       ? "Give at least one coder."
       : twice
         ? `${twice} is listed twice.`
@@ -115,15 +126,12 @@ export function CoderSetDialog({
     try {
       await putGroup.mutateAsync({
         group: CODER_SET,
-        body: { sets: sets.map((s) => ({ name: s.name, unitIds: s.units, ordered: false })) },
+        body: { sets: assigning ? assigned : sets.map((s) => ({ name: s.name, unitIds: s.units, ordered: false })) },
       });
-      if (redistribute) {
+      if (redistribute && !assigning) {
         if (testUnits.length > 0)
-          await putGroup.mutateAsync({
-            group: TEST_UNIT,
-            body: { sets: testUnits.map((s) => ({ name: s.name, unitIds: s.units, ordered: false })) },
-          });
-        else if (existingTests) await deleteGroup.mutateAsync(TEST_UNIT);
+          await putGroup.mutateAsync({ group: TEST_SET, body: { sets: testSetsOf(testUnits) } });
+        else if (existingTests) await deleteGroup.mutateAsync(TEST_SET);
       }
       onDone({ emails: who === "emails" });
     } catch {
@@ -144,22 +152,25 @@ export function CoderSetDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3 text-sm">
-          <fieldset className="flex flex-col gap-1">
-            <legend className="mb-1 text-xs font-semibold">Coders</legend>
-            {(
-              [
-                ["names", "Names, each with their own link"],
-                ["emails", "Email addresses: coders sign in, one link for all"],
-                ["count", "A number of coders (coder_1, coder_2, …), each with their own link"],
-              ] as [Who, string][]
-            ).map(([value, label]) => (
-              <label key={value} className="flex items-center gap-2 text-xs">
-                <input type="radio" name="who" checked={who === value} onChange={() => setWho(value)} />
-                {label}
-              </label>
-            ))}
-          </fieldset>
-          {who === "count" ? (
+          {existing && <AssignModeChoice label="coder set" mode={mode} empty={empty.length} onChange={setMode} />}
+          {!assigning && (
+            <fieldset className="flex flex-col gap-1">
+              <legend className="mb-1 text-xs font-semibold">Coders</legend>
+              {(
+                [
+                  ["names", "Names, each with their own link"],
+                  ["emails", "Email addresses: coders sign in, one link for all"],
+                  ["count", "A number of coders (coder_1, coder_2, …), each with their own link"],
+                ] as [Who, string][]
+              ).map(([value, label]) => (
+                <label key={value} className="flex items-center gap-2 text-xs">
+                  <input type="radio" name="who" checked={who === value} onChange={() => setWho(value)} />
+                  {label}
+                </label>
+              ))}
+            </fieldset>
+          )}
+          {assigning ? null : who === "count" ? (
             <label className="flex items-center gap-2 text-xs font-semibold">
               Number of coders
               <Input
@@ -207,64 +218,71 @@ export function CoderSetDialog({
               )}
             </div>
           </div>
-          <section className="flex flex-col gap-2 rounded-md border border-border p-3">
-            <h3 className="flex items-center gap-1 text-xs font-semibold">
-              Test units
-              <InfoTip label="About test units">
-                Units every coder gets, besides their own (the units&apos; <span className="font-mono">test_unit</span>
-                ). Overlap units are for comparing coders (agreement). Practice and gold units are meant to train or
-                test coders on the &quot;correct&quot; answers for these units: practice units give feedback, gold
-                units are checked without coders noticing.
-              </InfoTip>
-            </h3>
-            {TEST_UNIT_TYPES.map((type) => (
-              <label key={type} className="flex items-center gap-2 text-xs">
-                <span className="w-32 font-semibold">{TEST_LABELS[type]}</span>
-                <Input
-                  type="number"
-                  aria-label={TEST_LABELS[type]}
-                  min={0}
-                  disabled={!redistribute}
-                  className="h-8 w-20 text-xs"
-                  value={redistribute ? testCounts[type] : currentTests[type]}
-                  onChange={(e) =>
-                    setTestCounts({ ...testCounts, [type]: Math.max(0, Math.floor(Number(e.target.value))) })
-                  }
+          {!assigning && (
+            <section className="flex flex-col gap-2 rounded-md border border-border p-3">
+              <h3 className="flex items-center gap-1 text-xs font-semibold">
+                Test units
+                <InfoTip label="About test units">
+                  Units every coder gets, besides their own (the units&apos; <span className="font-mono">test_set</span>
+                  ). Overlap units are for comparing coders (agreement). Practice and gold units are meant to train or
+                  test coders on the &quot;correct&quot; answers for these units: practice units give feedback, gold
+                  units are checked without coders noticing.
+                </InfoTip>
+              </h3>
+              {TEST_SET_TYPES.map((type) => (
+                <label key={type} className="flex items-center gap-2 text-xs">
+                  <span className="w-32 font-semibold">{TEST_LABELS[type]}</span>
+                  <Input
+                    type="number"
+                    aria-label={TEST_LABELS[type]}
+                    min={0}
+                    disabled={!redistribute}
+                    className="h-8 w-20 text-xs"
+                    value={redistribute ? testCounts[type] : currentTests[type]}
+                    onChange={(e) =>
+                      setTestCounts({ ...testCounts, [type]: Math.max(0, Math.floor(Number(e.target.value))) })
+                    }
+                  />
+                  units
+                </label>
+              ))}
+              <label className="flex items-start gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={redistribute}
+                  onChange={(e) => {
+                    setRedistribute(e.target.checked);
+                    setTestCounts(currentTests);
+                  }}
                 />
-                units
-              </label>
-            ))}
-            <label className="flex items-start gap-2 text-xs">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={redistribute}
-                onChange={(e) => {
-                  setRedistribute(e.target.checked);
-                  setTestCounts(currentTests);
-                }}
-              />
-              <span>
-                Redistribute test units
-                <span className="block text-muted-foreground">
-                  {redistribute
-                    ? "Draws this many units of each type anew (at random), replacing the current test units."
-                    : existingTests
-                      ? "The current test units stay; the coders divide the other units."
-                      : "No test units yet: switch this on to draw some."}
+                <span>
+                  Redistribute test units
+                  <span className="block text-muted-foreground">
+                    {redistribute
+                      ? "Draws this many units of each type anew (at random), replacing the current test units."
+                      : existingTests
+                        ? "The current test units stay; the coders divide the other units."
+                        : "No test units yet: switch this on to draw some."}
+                  </span>
                 </span>
-              </span>
-            </label>
-            {redistribute && testCounts.practice + testCounts.gold > 0 && (
-              <p className="rounded-md bg-amber-500/10 p-2 text-[11px] text-amber-800 dark:text-amber-300">
-                Practice and gold units need their correct answers: for each question to check, a column of the units
-                named <span className="font-mono">answer_&lt;question&gt;</span>. Add them to your units file and
-                upload it again, or write them in the unit loop&apos;s Units settings (Create gold values). Then choose
-                the questions to check there.
-              </p>
-            )}
-          </section>
-          {!problem && (
+              </label>
+              {redistribute && testCounts.practice + testCounts.gold > 0 && (
+                <p className="rounded-md bg-amber-500/10 p-2 text-[11px] text-amber-800 dark:text-amber-300">
+                  Practice and gold units need their correct answers: for each question to check, a column of the units
+                  named <span className="font-mono">answer_&lt;question&gt;</span>. Add them to your units file and
+                  upload it again, or write them in the unit loop&apos;s Units settings (Create gold values). Then
+                  choose the questions to check there.
+                </p>
+              )}
+            </section>
+          )}
+          {!problem && assigning && (
+            <p className="text-xs text-muted-foreground">
+              {`Gives the ${empty.length} unit${empty.length === 1 ? "" : "s"} without a coder to the ${names.length} coder${names.length === 1 ? "" : "s"} (${names.slice(0, 5).join(", ")}${names.length > 5 ? ", …" : ""}), those with the fewest units first. Current assignments stay.`}
+            </p>
+          )}
+          {!problem && !assigning && (
             <p className="text-xs text-muted-foreground">
               {`${names.length} coder${names.length === 1 ? "" : "s"}, each with ${everyone ? "" : "about "}${Math.round(
                 perCoder.reduce((a, b) => a + b, 0) / Math.max(1, perCoder.length),
@@ -272,7 +290,7 @@ export function CoderSetDialog({
               Units are shuffled first.
             </p>
           )}
-          {keepMap.size > 0 && (
+          {keepMap.size > 0 && !assigning && (
             <label className="flex items-start gap-2 text-xs">
               <input type="checkbox" className="mt-0.5" checked={keep} onChange={(e) => setKeep(e.target.checked)} />
               <span>
@@ -292,16 +310,22 @@ export function CoderSetDialog({
             <Button variant="outline" onClick={() => onDone(null)}>
               Cancel
             </Button>
-            {confirming && existing && (
+            {confirming && existing && !assigning && (
               <span className="mr-auto self-center text-xs text-amber-700 dark:text-amber-400">
                 The coder set exists ({existing.sets.length} coders): overwrite it?
               </span>
             )}
             <Button
               disabled={problem !== null || saving}
-              onClick={() => (existing && !confirming ? setConfirming(true) : void save())}
+              onClick={() => (existing && !assigning && !confirming ? setConfirming(true) : void save())}
             >
-              {saving ? "Making…" : confirming && existing ? "Overwrite" : "Make the coder set"}
+              {saving
+                ? "Making…"
+                : assigning
+                  ? `Assign ${empty.length} unit${empty.length === 1 ? "" : "s"}`
+                  : confirming && existing
+                    ? "Overwrite"
+                    : "Make the coder set"}
             </Button>
           </div>
         </div>

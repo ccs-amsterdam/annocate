@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  TEST_UNIT,
+  TEST_SET,
   answerColumn,
   feedbackColumn,
   type GoldCheck,
@@ -13,7 +13,7 @@ import { HelpButton } from "../../../help/HelpButton";
 import { AnswerKeyDialog, type AnswerKeyQuestion } from "../units/AnswerKeyDialog";
 import { selectClass, labelClass, type AnswerKeyContext } from "./helpers";
 
-// The test units of a unit loop (`test_unit`: overlap, practice, gold):
+// The test units of a unit loop (`test_set`: overlap, practice, gold):
 // where they go among the coder's own units, and the checks on practice and
 // gold units (right answers in `answer_<q>`, feedback in `feedback_<q>`).
 
@@ -41,7 +41,7 @@ export function PlacementRow({
         {label}
         {help && <HelpButton topic={help} label={`Help: ${label.toLowerCase()}`} />}
       </span>
-      <span className="text-right font-mono text-[11px] text-muted-foreground" title="Units of this type in test_unit">
+      <span className="text-right font-mono text-[11px] text-muted-foreground" title="Units of this type in test_set">
         {count}
       </span>
       <select
@@ -151,7 +151,8 @@ export function PracticeChecks({
           />
           <span className="text-[11px] font-normal text-muted-foreground">
             May use $unit and $var. A unit&apos;s own message, per question, goes in the column{" "}
-            <code>{feedbackColumn("question")}</code>. $unit._practice tells a layout it shows a practice unit.
+            <code>{feedbackColumn("question")}</code>. $unit.test_set is &quot;practice&quot; on practice units (for a
+            note in the layout).
           </span>
         </label>
       )}
@@ -178,7 +179,7 @@ export function PracticeChecks({
       {answerKey && questions.length > 0 && (
         <RightAnswersButton
           context={answerKey}
-          group={TEST_UNIT}
+          group={TEST_SET}
           set="practice"
           what="practice"
           questions={checkable.filter((q) => questions.includes(q.name))}
@@ -298,7 +299,7 @@ export function GoldChecks({
       {answerKey && questions.length > 0 && (
         <RightAnswersButton
           context={answerKey}
-          group={TEST_UNIT}
+          group={TEST_SET}
           set="gold"
           what="gold"
           questions={checkable.filter((q) => questions.includes(q.name))}

@@ -96,7 +96,7 @@ describe("setup wizard recipes", () => {
       coder_3: 2,
     });
     // The overlap: test units, by count
-    expect(tests.group).toBe("test_unit");
+    expect(tests.group).toBe("test_set");
     expect(tests.sets.map((s) => [s.name, s.units.length])).toEqual([["overlap", 2]]);
     // Every unit once
     expect(new Set([...coders.sets, ...tests.sets].flatMap((s) => s.units)).size).toBe(10);
@@ -139,7 +139,7 @@ describe("setup wizard recipes", () => {
       checks: { gold: ["topic"], practice: ["topic", "nope"] },
     });
     expect(recipe.sets![0]).toEqual({
-      group: "test_unit",
+      group: "test_set",
       sets: [
         { name: "practice", units: ["u1"] },
         { name: "gold", units: ["u0"] },
@@ -172,7 +172,7 @@ describe("setup wizard recipes", () => {
       divide: { until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 }, unitsPerCoder: { min: 2, max: 5 } },
     });
     // The overlap: everyone's test units
-    expect(setupRecipe(a).sets![0].group).toBe("test_unit");
+    expect(setupRecipe(a).sets![0].group).toBe("test_set");
     expect(setupRecipe(a).sets![0].sets.map((s) => [s.name, s.units.length])).toEqual([["overlap", 2]]);
   });
 
@@ -191,7 +191,7 @@ describe("setup wizard recipes", () => {
       distribution: { mode: "crowd", shared: { codersPerUnit: { min: 2, max: 2 } }, overlap: null },
       checks: { gold: ["topic"], practice: [] },
     });
-    // Gold units are marked in test_unit (on the Units page)
+    // Gold units are marked in test_set (on the Units page)
     expect(setupRecipe(a).sets).toEqual([]);
     expect(setupRecipe(a).design.session).toEqual({ invite: { mode: "crowd" } });
     expect(loopOf(a).units).toEqual({

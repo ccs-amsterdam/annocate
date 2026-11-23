@@ -68,7 +68,7 @@ export function ItemForm({
   item: DesignItem;
   /** For the forms that ask the server (the Study entry's, a loop's right answers); absent: read only. */
   client?: ResearcherApi;
-  /** The units' columns with a role (coder_set, condition_set, part_set, test_unit). */
+  /** The units' columns with a role (coder_set, condition_set, part_set, test_set). */
   groups: SetGroupResponse[];
   /** The `$session` names (declared and built-in). */
   sessionValueNames?: string[];

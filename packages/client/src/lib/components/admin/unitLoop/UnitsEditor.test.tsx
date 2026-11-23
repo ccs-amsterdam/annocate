@@ -5,7 +5,7 @@ import { UnitsEditor } from "./UnitsEditor";
 
 const set = (name: string, unitIds: number[]) => ({ name, unitIds, ordered: false });
 const groups: SetGroupResponse[] = [
-  { name: "test_unit", sets: [set("overlap", [1]), set("gold", [2, 3])] },
+  { name: "test_set", sets: [set("overlap", [1]), set("gold", [2, 3])] },
   { name: "part_set", sets: [set("pre", [4]), set("post", [5])] },
 ];
 
@@ -51,7 +51,7 @@ describe("a loop's Units settings", () => {
   it("without a part set or test units: says so", () => {
     const html = render({}, { mode: "crowd" }, [], []);
     expect(html).toContain("The units have no part set (part_set) yet.");
-    expect(html).toContain("The units have no test units (test_unit) yet");
+    expect(html).toContain("The units have no test units (test_set) yet");
   });
 
   it("a loop can take the previous loop's units: then no part or dividing", () => {

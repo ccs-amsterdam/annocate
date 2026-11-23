@@ -849,7 +849,7 @@ export class StudyManager {
   private opensInstruction(item: DesignItem): boolean {
     const open = "instructionOpen" in item ? item.instructionOpen : undefined;
     if (!open || !this.activeLoop || !this.currentUnit) return false;
-    if (open === "practice") return this.currentUnit.data?._practice === true;
+    if (open === "practice") return this.currentUnit.data?.test_set === "practice";
     const key = `${this.keyOf(this.activeLoop)}/${"name" in item ? item.name : ""}`;
     const unitId = this.currentUnit.id;
     const shownOn = this.instructionShownOn.get(key);
