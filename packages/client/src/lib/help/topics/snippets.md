@@ -30,7 +30,7 @@ $unit.text
 
 ## Making a snippet
 
-Select the loop's **Unit layout** item; below the template (in
+Select the loop's **Layout** item; below the template (in
 **Advanced**):
 
 1. Click **+ Snippet**.

@@ -127,7 +127,7 @@ layout item (contracts `layoutItems.ts`):
   show the unit"). A layout item outside a loop is an error.
 - **Runtime**: `computeLoopSteps` (`codebook/tree.ts`) records the layout per
   step; `StudyManager.publishLoopStep` renders that layout, or none.
-- **Editor**: a new loop starts with one layout item ("Unit layout"). The
+- **Editor**: a new loop starts with one layout item ("Layout"). The
   preview of a question uses the last layout before it (`previewLayout`), of
   a loop its first; so do "Right answers…" and the Results' unit view.
 
@@ -556,8 +556,9 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   the first else item; the Else part shows only when it has items. "Add item" adds a question, experiment, block
   ("Block (if/else)", starting empty) or unit loop; a row's + adds items
   allowed there (`insertableTypesAt`): in a block question, experiment,
-  block, end; in a loop question, layout ("Unit layout"), block,
-  end. A layout item's row shows its label or "Unit layout". Above the tree the
+  block, end; in a loop question, layout ("Layout"), block,
+  end. A layout item's row shows "Layout", or "Layout – <label>",
+  in the loop's colour. Above the tree the
   Study entry (§4), below it the **At the end** button, styled like the
   Study entry's buttons.
 - **Design editor**: edits the whole design in memory, validated with
@@ -567,7 +568,7 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
     study's units, a picker for the question on screen, answer pickers for
     `::: if`). On screens at least 1500 px wide the preview is a third column.
     Blocks, loops and layout items have no name; loops show their label or
-    "Unit loop", layout items theirs or "Unit layout". Moving and deleting work on ticked items from the toolbar; where a
+    "Unit loop", layout items "Layout" (with their label: "Layout – <label>"). Moving and deleting work on ticked items from the toolbar; where a
     place is ambiguous (the end of a container) the menu asks where.
   - **JSON**: the whole design (`DesignJsonEditor.tsx`), in Monaco (loaded
     with the editor) with completion and checks from the design's JSON Schema

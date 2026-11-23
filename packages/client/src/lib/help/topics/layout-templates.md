@@ -5,7 +5,7 @@ order: 2
 summary: How a unit is shown to coders - a layout item in the loop, one markdown text with the unit's data filled in.
 ---
 
-A **Unit layout** item in a unit loop sets what coders see of each unit,
+A **Layout** item in a unit loop sets what coders see of each unit,
 above the questions after it. A new loop starts with one; select it in the
 tree to edit it.
 
@@ -35,11 +35,11 @@ The examples in the help are live: edit the template and see the result.
 
 ## Layout items
 
-A layout is an item in the loop, shown in the tree as **Unit layout** (or
-its **Label**). It shows the unit for the questions after it, until the
+A layout is an item in the loop, shown in the tree as **Layout** (with
+its **Label**: _Layout – Headline_). It shows the unit for the questions after it, until the
 next layout item.
 
-- **Several layouts**: add one with **+** → **Unit layout** in the loop,
+- **Several layouts**: add one with **+** → **Layout** in the loop,
   e.g. only the headline for the first question, then the whole article.
 - **No layout**: questions before the first layout item, or in a loop
   without one, are asked without the unit. This is on purpose, e.g. for a

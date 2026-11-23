@@ -60,9 +60,10 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     blockClass: "[--iconcolor:var(--color-primary-dark)]",
   },
   layout: {
-    label: "Unit layout",
-    description: "How the unit is shown from here on (none: questions without the unit)",
+    label: "Layout",
+    description: "How the unit is shown to the questions after it",
     icon: LayoutTemplate,
+    // The loop's colour: a layout belongs to its loop
     color: "text-primary-dark",
   },
   session: {

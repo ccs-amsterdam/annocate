@@ -544,7 +544,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     for (const layout of layouts) {
       const names = loop.layoutNames.get(layout);
       if (!names) continue;
-      const which = layouts.length > 1 ? ` '${layout.label?.trim() || "Unit layout"}'` : "";
+      const which = layouts.length > 1 ? ` '${layout.label?.trim() || "Layout"}'` : "";
       for (const id of focus)
         if (!names.shown.has(id))
           issue([...itemPath, "variable", "focus"], `'${id}' is not shown in the layout${which}${idHint(id)}`);

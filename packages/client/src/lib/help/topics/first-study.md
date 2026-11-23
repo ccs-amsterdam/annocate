@@ -67,7 +67,7 @@ More: [The design editor](design-editor.md), [Questions](questions.md),
 
 ## 4. Show the units
 
-Select the loop's **Unit layout** item (the first item in the loop).
+Select the loop's **Layout** item (the first item in the loop).
 Click **Title** and choose `headline`, then **Body** and choose `text`:
 
 ```example

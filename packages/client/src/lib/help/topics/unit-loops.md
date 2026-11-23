@@ -14,13 +14,13 @@ Questions asked once per coder go before or after the loop.
 1. Click **Add item** above the tree → **Unit loop**.
 2. Optionally give it a **Label**, e.g. _News items_ (shown in the tree,
    the coders' menu and the `loop` column of `variables.csv`).
-3. A new loop starts with a **Unit layout** item: select it to set how
+3. A new loop starts with a **Layout** item: select it to set how
    units are shown.
 4. Add questions with **+** → **Inside** the loop.
 
 ## How units are shown
 
-A **Unit layout** item shows the unit for the questions after it, until
+A **Layout** item shows the unit for the questions after it, until
 the next layout item. A loop can have several, or none: questions before
 any layout are asked without the unit. See
 [Layout templates](layout-templates.md#layout-items).

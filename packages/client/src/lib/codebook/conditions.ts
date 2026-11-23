@@ -100,7 +100,7 @@ function readableCondition(condition: SimpleCondition, nested = false): string {
 /**
  * How an item is called in the editor: its name; for a block (which has
  * none) its label, or else its condition, or "Block"; for a unit loop its
- * label, or "Unit loop".
+ * label, or "Unit loop"; for a layout "Layout", with its label after it.
  */
 export function itemTitle(item: DesignItem): string {
   // The editor's stand-in for a block's else items (codebook/tree.ts `ELSE`)
@@ -109,6 +109,7 @@ export function itemTitle(item: DesignItem): string {
     return item.label?.trim() || (item.condition ? `if ${describeCondition(item.condition)}` : "Block");
   if (item.type === "unit_loop") return item.label?.trim() || "Unit loop";
   if (item.type === "session") return "Study entry";
-  if (item.type === "layout") return item.label?.trim() || "Unit layout";
+  // "Layout" always, so a labelled one still reads as a layout
+  if (item.type === "layout") return item.label?.trim() ? `Layout – ${item.label.trim()}` : "Layout";
   return item.name;
 }

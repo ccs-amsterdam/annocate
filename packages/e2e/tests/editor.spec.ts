@@ -21,12 +21,12 @@ test("writing a design in the editor, as the help describes it, and saving it", 
   // A new loop hands out all the session's units, once: nothing to specify
   await expect(page.getByText("to specify")).toHaveCount(0);
 
-  // A new loop starts with its unit layout (the first item in it)
-  await expect(page.getByRole("button", { name: "Unit layout" })).toBeVisible();
+  // A new loop starts with its layout (the first item in it)
+  await expect(page.getByRole("button", { name: /^Layout/ })).toBeVisible();
   // The first question, after the layout: the layout row's "+", then where, then what
   // (the session parameters are above the tree, not a row: the loop is the first row)
   await page.getByRole("button", { name: "Add an item below" }).nth(1).click();
-  await page.getByRole("button", { name: "After Unit layout" }).click();
+  await page.getByRole("button", { name: "After Layout" }).click();
   await page
     .getByRole("button", { name: /^Question/ })
     .first()

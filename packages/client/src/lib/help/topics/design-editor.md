@@ -74,7 +74,7 @@ for an issue (hover to read it).
 3. Choose the type: at the top level **Question**, **Experiment**,
    **Block (if/else)** or **Unit loop**; in a block **Question**,
    **Experiment**, **Block (if/else)** or **End**; in a loop
-   **Question**, **Unit layout**, **Block (if/else)** or **End**.
+   **Question**, **Layout**, **Block (if/else)** or **End**.
 
 The new item goes below the row (for a loop or block: at the top inside
 it). New questions are `question_1`, ... and need an answer type; new end
