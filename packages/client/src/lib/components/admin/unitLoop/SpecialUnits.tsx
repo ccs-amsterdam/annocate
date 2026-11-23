@@ -1,27 +1,137 @@
 import { useState } from "react";
 import {
+  CODER_SET,
   TEST_SET,
   answerColumn,
   feedbackColumn,
   type GoldCheck,
+  type Invite,
+  type LoopUnits,
   type Placement,
   type PracticeCheck,
+  type SetGroupResponse,
+  type TestSetType,
 } from "@annotinder/contracts";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { HelpButton } from "../../../help/HelpButton";
 import { AnswerKeyDialog, type AnswerKeyQuestion } from "../units/AnswerKeyDialog";
-import { selectClass, labelClass, type AnswerKeyContext } from "./helpers";
+import { selectClass, labelClass, testCount, type AnswerKeyContext } from "./helpers";
 
 // The test units of a unit loop (`test_set`: overlap, practice, gold):
 // where they go among the coder's own units, and the checks on practice and
 // gold units (right answers in `answer_<q>`, feedback in `feedback_<q>`).
 
 /**
+ * A loop's coding and test units: whether the coding units are included,
+ * where each type of test unit goes, and the checks on practice and gold units.
+ */
+export function TestUnitsEditor({
+  units: settings,
+  groups,
+  invite,
+  checkable,
+  answerKey,
+  screenouts,
+  onChange,
+}: {
+  units: LoopUnits;
+  groups: SetGroupResponse[];
+  invite: Invite;
+  checkable: AnswerKeyQuestion[];
+  answerKey?: AnswerKeyContext;
+  /** The design's end items with outcome `screenout`: where gold checks can end a session. */
+  screenouts: string[];
+  onChange: (units: LoopUnits) => void;
+}) {
+  const tests = groups.find((g) => g.name === TEST_SET);
+  const count = (type: TestSetType) => testCount(groups, type);
+  const set = <K extends keyof LoopUnits>(key: K, value: LoopUnits[K] | undefined) => {
+    const next = { ...settings, [key]: value };
+    if (value === undefined) delete next[key];
+    onChange(next);
+  };
+  const shows = (kind: "practice" | "gold", check: unknown) =>
+    settings[kind] !== "ignore" && (count(kind) > 0 || check !== undefined);
+  // Specific coders: the units in the coder set; otherwise all units (test units aside)
+  const coders = invite.mode === "coders" ? groups.find((g) => g.name === CODER_SET) : undefined;
+  const codingCount = coders ? new Set(coders.sets.flatMap((s) => s.unitIds)).size : null;
+  return (
+    <>
+      <p className="text-[11px] text-muted-foreground">
+        {tests ? (
+          <>
+            Where the units&apos; test units (<span className="font-mono">test_set</span>) go among the coding units.
+            Spread throughout a divided crowd&apos;s units without a maximum of units per coder: about one in ten.
+          </>
+        ) : (
+          "The units have no test units (test_set) yet: mark them on the Units page, or with the coder set dialog."
+        )}
+      </p>
+      <div className="grid w-fit grid-cols-[auto_2.5rem_auto] items-center gap-x-3 gap-y-1.5">
+        <span className="text-xs font-semibold">Coding units</span>
+        <span
+          className="text-right font-mono text-[11px] text-muted-foreground"
+          title={coders ? "Units in the coder set" : "The units that aren't test units"}
+        >
+          {codingCount ?? "all"}
+        </span>
+        <select
+          className={`${selectClass} w-fit font-normal`}
+          aria-label="Coding units"
+          value={settings.coding === false ? "no" : "yes"}
+          onChange={(e) => set("coding", e.target.value === "no" ? false : undefined)}
+        >
+          <option value="yes">Include</option>
+          <option value="no">Leave out (only test units)</option>
+        </select>
+        <PlacementRow
+          label="Overlap units"
+          help="overlap"
+          count={count("overlap")}
+          value={settings.overlap}
+          onChange={(p) => set("overlap", p === "spread" ? undefined : p)}
+        />
+        <PlacementRow
+          label="Practice units"
+          count={count("practice")}
+          value={settings.practice}
+          onChange={(p) => set("practice", p === "spread" ? undefined : p)}
+        />
+        <PlacementRow
+          label="Gold units"
+          help="special-units"
+          count={count("gold")}
+          value={settings.gold}
+          onChange={(p) => set("gold", p === "spread" ? undefined : p)}
+        />
+      </div>
+      {shows("practice", settings.practiceCheck) && (
+        <PracticeChecks
+          check={settings.practiceCheck}
+          checkable={checkable}
+          answerKey={answerKey}
+          onChange={(check) => set("practiceCheck", check)}
+        />
+      )}
+      {shows("gold", settings.goldCheck) && (
+        <GoldChecks
+          check={settings.goldCheck}
+          checkable={checkable}
+          answerKey={answerKey}
+          screenouts={screenouts}
+          onChange={(check) => set("goldCheck", check)}
+        />
+      )}
+    </>
+  );
+}
+
+/**
  * Where a loop puts one type of test unit (contracts `PlacementSchema`):
  * a row with the number of such units and a select.
  */
-export function PlacementRow({
+function PlacementRow({
   label,
   help,
   count,
@@ -109,7 +219,7 @@ function CheckedQuestions({
  * questions checked, coders are told after answering when they were wrong
  * (docs/architecture.md §6.2).
  */
-export function PracticeChecks({
+function PracticeChecks({
   check,
   checkable,
   answerKey,
@@ -196,7 +306,7 @@ export function PracticeChecks({
  * health, too many wrong answers end the session at a screen-out
  * (docs/architecture.md §6.2).
  */
-export function GoldChecks({
+function GoldChecks({
   check,
   checkable,
   answerKey,

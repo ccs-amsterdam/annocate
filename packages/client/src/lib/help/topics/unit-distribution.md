@@ -49,12 +49,14 @@ until enough coders coded it (or agree). See [Shared queues](shared-queues.md).
 ## Overlap, practice and gold units
 
 Test units come from the units' `test_set`. Each type has a row in the
-loop's form: **Spread throughout** (default), **Before coding units**,
-**After coding units** or **Leave out** (not available when the units have
+loop's form, under **Test units** (folded): **Spread throughout**
+(default), **Before coding units**, **After coding units** or **Leave out** (not available when the units have
 none). See [Overlap](overlap.md) and
 [Overlap, gold and practice units](special-units.md).
 
 ## Order
+
+Under **Order** (folded) in the loop's form:
 
 | Order                                   | Coders get                                       |
 | --------------------------------------- | ------------------------------------------------ |

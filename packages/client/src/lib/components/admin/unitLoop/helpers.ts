@@ -1,15 +1,20 @@
 import {
   supportsAgreement,
   CHECKABLE_TYPES,
+  TEST_SET,
   type AnyVariableType,
   type DesignItem,
+  type LoopUnits,
+  type Placement,
+  type SetGroupResponse,
+  type TestSetType,
   type UnitLayout,
 } from "@annotinder/contracts";
 import { type AnswerKeyQuestion } from "../units/AnswerKeyDialog";
 import { blockInner } from "../../../codebook/tree";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 
-// Shared by the unit loop form's parts: classes, the loop's questions, number fields.
+// Shared by the unit loop form's parts: classes, the loop's questions, number fields, the test units' summary.
 
 export const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
 
@@ -57,4 +62,38 @@ export const numberOrUndefined = (v: string) => (v === "" ? undefined : Number(v
 export function range(min: number | undefined, max: number | undefined) {
   const out = { ...(min !== undefined ? { min } : {}), ...(max !== undefined ? { max } : {}) };
   return Object.keys(out).length ? out : undefined;
+}
+
+const PLACEMENT_WORDS: Record<Placement, string> = {
+  spread: "spread",
+  before: "before",
+  after: "after",
+  ignore: "left out",
+};
+
+/** How many test units of a type the units have. */
+export function testCount(groups: SetGroupResponse[], type: TestSetType): number {
+  return groups.find((g) => g.name === TEST_SET)?.sets.find((s) => s.name === type)?.unitIds.length ?? 0;
+}
+
+/**
+ * The test units settings in a line, for the folded section's header: e.g.
+ * "practice before · gold spread · checks: topic".
+ */
+export function testUnitsSummary(settings: LoopUnits, groups: SetGroupResponse[]): string {
+  const types = (["overlap", "practice", "gold"] as const).filter((type) => testCount(groups, type) > 0);
+  if (types.length === 0) return "None in the units";
+  const kept = (kind: "practice" | "gold") => settings[kind] !== "ignore";
+  const checked = new Set([
+    ...(kept("practice") ? (settings.practiceCheck?.questions ?? []) : []),
+    ...(kept("gold") ? (settings.goldCheck?.questions ?? []) : []),
+  ]);
+  return [
+    settings.coding === false && "only test units",
+    ...types.map((type) => `${type} ${PLACEMENT_WORDS[settings[type] ?? "spread"]}`),
+    checked.size > 0 && `checks: ${[...checked].join(", ")}`,
+    kept("gold") && settings.goldCheck?.health && "health",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }

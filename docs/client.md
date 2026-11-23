@@ -589,14 +589,16 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
     change, and offered back after the browser was closed.
 
 - **Unit loops** (`UnitLoopForm.tsx`): besides its label and condition
-  (`ItemForm.tsx`, as for blocks), the loop's form holds its units
-  settings (`unitLoop/UnitsEditor.tsx`): what a coder gets, the previous loop's units
+  (`ItemForm.tsx`, as for blocks), the loop's form holds, open, "Units and
+  coders" (`unitLoop/UnitsEditor.tsx`): what a coder gets, the previous loop's units
   (`sameAsPrevious`), the **Part** (a value of `part_set`; without a part
-  set, "Make a part set…"), for a crowd "Units and coders" (everyone codes
-  everything, or divide the units: the distribution criteria), the coding
-  units and the test units (`test_set`: overlap, practice, gold) with their
-  placement, the checks (right answers in `answer_<q>`, "Create gold
-  values…"), and the order (`architecture.md` §6.2).
+  set, "Make a part set…"), for a crowd who codes each unit (everyone codes
+  everything, or divide the units: the distribution criteria). Folded below
+  (`FoldedSection` in `unitLoop/Section.tsx`: a button with `aria-expanded`,
+  closed its header sums the settings up, an error opens it): "Test units"
+  (`unitLoop/SpecialUnits.tsx`: the coding units and the test units, `test_set`:
+  overlap, practice, gold, with their placement, the checks: right answers in
+  `answer_<q>`, "Create gold values…") and "Order" (`architecture.md` §6.2).
 - **Experiments** (`variableType/RandomConditionFields.tsx`): assigned at
   random, balanced or from a URL parameter (one with values, from the Study
   entry); "Each condition gets its own units (condition_set)" (`units:

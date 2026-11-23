@@ -9,14 +9,15 @@ import {
 import { issuesAt } from "./issues";
 import { type LoopUnitsContext } from "../../design/assignment";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { selectClass, checkableQuestions, agreeableQuestions } from "./unitLoop/helpers";
-import { Section } from "./unitLoop/Section";
+import { selectClass, checkableQuestions, agreeableQuestions, testUnitsSummary } from "./unitLoop/helpers";
+import { FoldedSection, Section } from "./unitLoop/Section";
 import { UnitsEditor } from "./unitLoop/UnitsEditor";
+import { TestUnitsEditor } from "./unitLoop/SpecialUnits";
 
 /**
  * Edits a unit_loop: which units coders get (contracts unitLoop.ts: the
- * loop's `units` settings), and the order. How units are shown is up to
- * the layout items in the loop.
+ * loop's `units` settings), its test units, and the order. How units are
+ * shown is up to the layout items in the loop.
  */
 export function UnitLoopForm({
   loop,
@@ -45,32 +46,60 @@ export function UnitLoopForm({
     if (Object.keys(units).length === 0) delete next.units;
     onChange(next);
   };
+  const units = loop.units ?? {};
+  const unitsIssues = issuesAt(validationIssues, "units");
+  // The checks' issues go with the test units; the rest (part, dividing) with the units
+  const testIssues = [...issuesAt(unitsIssues, "practiceCheck"), ...issuesAt(unitsIssues, "goldCheck")];
+  const order = loop.order ?? "sequential";
   return (
-    <div className="flex flex-col gap-5">
-      <UnitsEditor
-        units={loop.units ?? {}}
-        groups={groups}
-        checkable={checkableQuestions(loop.children as DesignItem[])}
-        agreeable={agreeableQuestions(loop.children as DesignItem[])}
-        // Right answers are given with the units as the loop's first layout shows them
-        answerKey={client ? { client, layout: loopLayouts(loop.children)[0] ?? { template: "" } } : undefined}
-        screenouts={screenouts}
-        context={unitsContext}
-        client={client}
-        issues={issuesAt(validationIssues, "units")}
-        onChange={setUnits}
-      />
+    <div className="flex flex-col gap-4">
+      {/* What is set for every loop open; the rarely changed settings folded, with their summary */}
+      <Section title="Units and coders" topic="unit-distribution">
+        <UnitsEditor
+          units={units}
+          groups={groups}
+          agreeable={agreeableQuestions(loop.children as DesignItem[])}
+          context={unitsContext}
+          client={client}
+          issues={unitsIssues.filter((issue) => !testIssues.includes(issue))}
+          onChange={setUnits}
+        />
+      </Section>
 
-      <Section title="Order" topic="unit-distribution#order">
+      <FoldedSection
+        title="Test units"
+        topic="special-units"
+        summary={testUnitsSummary(units, groups)}
+        issues={testIssues}
+      >
+        <TestUnitsEditor
+          units={units}
+          groups={groups}
+          invite={unitsContext.invite}
+          checkable={checkableQuestions(loop.children as DesignItem[])}
+          // Right answers are given with the units as the loop's first layout shows them
+          answerKey={client ? { client, layout: loopLayouts(loop.children)[0] ?? { template: "" } } : undefined}
+          screenouts={screenouts}
+          onChange={setUnits}
+        />
+      </FoldedSection>
+
+      <FoldedSection
+        title="Order"
+        topic="unit-distribution#order"
+        summary={order === "random" ? "Random" : "In set order"}
+        issues={issuesAt(validationIssues, "order")}
+      >
         <select
+          aria-label="Order"
           className={`${selectClass} w-fit`}
-          value={loop.order ?? "sequential"}
+          value={order}
           onChange={(e) => onChange({ ...loop, order: e.target.value as UnitLoopItem["order"] })}
         >
           <option value="sequential">In set order</option>
           <option value="random">Random (each coder their own order)</option>
         </select>
-      </Section>
+      </FoldedSection>
     </div>
   );
 }

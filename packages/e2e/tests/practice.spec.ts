@@ -136,6 +136,10 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
     .getByRole("button", { name: /^Unit loop/ })
     .first()
     .click();
+  // The checks are in the folded Test units section: its header sums them up
+  const tests = page.getByRole("button", { name: /^Test units/ });
+  await expect(tests).toContainText("gold after · checks: topic");
+  await tests.click();
   await page.getByRole("button", { name: "Create gold values…" }).click();
 
   const dialog = page.getByRole("dialog");

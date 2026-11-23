@@ -11,7 +11,8 @@ unit). They are everyone's: every coder gets them besides their own units
 (`coder_set` and `condition_set` don't select them). A test unit with a
 part (`part_set`) is only in the loops of that part.
 
-Every loop mixes them in with each coder's units; the loop's form has a
+Every loop mixes them in with each coder's units; the loop's form has,
+under **Test units** (folded; closed, it sums up the settings), a
 row for each type with **Spread throughout** (default), **Before coding
 units**, **After coding units** or **Leave out** (see
 [Overlap](overlap.md#placement)). A row is disabled when the units have
@@ -51,8 +52,8 @@ get the answer and feedback columns (_server only_).
   **Redistribute test units** they are drawn anew.
 - **Single units**: select units on **Units** → **Put in** `gold`,
   `practice` or `overlap` of `test_set`.
-- **Right answers**: in the loop's form, under **Gold units** or
-  **Practice units**, tick the questions and click **Create gold values…**
+- **Right answers**: in the loop's form, open **Test units**; under **Gold
+  units** or **Practice units**, tick the questions and click **Create gold values…**
   or **Write practice answers…**: step through the units (shown with the
   loop's first layout) and pick the right answer (and feedback). They are
   written to `answer_<question>` (and `feedback_<question>`). Drafts until

@@ -1,12 +1,9 @@
 import {
-  CODER_SET,
   PART_SET,
-  TEST_SET,
   type Criteria,
   type DesignIssue,
   type SetGroupResponse,
   type LoopUnits,
-  type TestSetType,
 } from "@annotinder/contracts";
 import { cn } from "cn";
 import { Input } from "@/components/ui/input";
@@ -15,25 +12,20 @@ import { IssueList } from "../IssueList";
 import { HelpButton } from "../../../help/HelpButton";
 import { shareSummary, type LoopUnitsContext } from "../../../design/assignment";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { type AnswerKeyQuestion } from "../units/AnswerKeyDialog";
 import { MakeSetColumnButton } from "../units/SplitIntoSets";
-import { selectClass, labelClass, type AnswerKeyContext, numberOrUndefined, range } from "./helpers";
-import { GoldChecks, PlacementRow, PracticeChecks } from "./SpecialUnits";
+import { selectClass, labelClass, numberOrUndefined, range } from "./helpers";
 
 // A unit loop's units settings (contracts `LoopUnitsSchema`), within the
 // coder's units (who the coders are is the coder unit assignment's): an
-// earlier loop's units or one part of the study (`part_set`), for a crowd
-// whether they are divided among the coders, and the coding and test units
-// (`test_set`: where they go); with the checks on practice and gold units.
+// earlier loop's units or one part of the study (`part_set`), and for a
+// crowd whether they are divided among the coders. The test units are
+// SpecialUnits.tsx's.
 
-/** A loop's units: which units, dividing them, the coding and test units and their checks. */
+/** A loop's units and coders: which units, and dividing them among a crowd. */
 export function UnitsEditor({
   units: settings,
   groups,
-  checkable,
   agreeable,
-  answerKey,
-  screenouts,
   context,
   issues,
   client,
@@ -41,20 +33,15 @@ export function UnitsEditor({
 }: {
   units: LoopUnits;
   context: LoopUnitsContext;
-  answerKey?: AnswerKeyContext;
   groups: SetGroupResponse[];
-  checkable: AnswerKeyQuestion[];
   /** The loop's questions an agreement rule can use. */
   agreeable: string[];
-  screenouts: string[];
   issues: DesignIssue[];
   /** To make a part set (absent: not offered). */
   client?: ResearcherApi;
   onChange: (units: LoopUnits) => void;
 }) {
   const { invite, earlier } = context;
-  const tests = groups.find((g) => g.name === TEST_SET);
-  const count = (type: TestSetType) => tests?.sets.find((s) => s.name === type)?.unitIds.length ?? 0;
   const set = <K extends keyof LoopUnits>(key: K, value: LoopUnits[K] | undefined) => {
     const next = { ...settings, [key]: value };
     if (value === undefined) delete next[key];
@@ -62,17 +49,9 @@ export function UnitsEditor({
   };
   const sameAs = settings.sameAsPrevious ? true : undefined;
   const previous = earlier[earlier.length - 1];
-  const shows = (kind: "practice" | "gold", check: unknown) =>
-    settings[kind] !== "ignore" && (count(kind) > 0 || check !== undefined);
-  // Specific coders: the units in the coder set; otherwise all units (test units aside)
-  const coders = invite.mode === "coders" ? groups.find((g) => g.name === CODER_SET) : undefined;
-  const codingCount = coders ? new Set(coders.sets.flatMap((s) => s.unitIds)).size : null;
   return (
     <div className="flex flex-col gap-4">
-      <p className="flex items-center gap-1 text-xs">
-        <span>{shareSummary(context.sources, settings.part)}</span>
-        <HelpButton topic="unit-distribution" label="Help: unit distribution" />
-      </p>
+      <p className="text-xs">{shareSummary(context.sources, settings.part)}</p>
       {(previous || sameAs) && (
         <label className={labelClass}>
           Coding units
@@ -103,74 +82,6 @@ export function UnitsEditor({
       {/* For a crowd; shown for specific coders only to undo a leftover divide (an error there) */}
       {(invite.mode === "crowd" || settings.divide) && sameAs === undefined && (
         <Divide criteria={settings.divide} agreeable={agreeable} onChange={(divide) => set("divide", divide)} />
-      )}
-      <section className="flex flex-col gap-2">
-        <h3 className="flex items-center gap-1 text-xs font-semibold">
-          Coding and test units
-          <span className="font-normal text-muted-foreground">
-            (test units: the units&apos; <span className="font-mono">test_set</span>)
-          </span>
-        </h3>
-        <div className="grid w-fit grid-cols-[auto_2.5rem_auto] items-center gap-x-3 gap-y-1.5">
-          <span className="text-xs font-semibold">Coding units</span>
-          <span
-            className="text-right font-mono text-[11px] text-muted-foreground"
-            title={coders ? "Units in the coder set" : "The units that aren't test units"}
-          >
-            {codingCount ?? "all"}
-          </span>
-          <select
-            className={`${selectClass} w-fit font-normal`}
-            aria-label="Coding units"
-            value={settings.coding === false ? "no" : "yes"}
-            onChange={(e) => set("coding", e.target.value === "no" ? false : undefined)}
-          >
-            <option value="yes">Include</option>
-            <option value="no">Leave out (only test units)</option>
-          </select>
-          <PlacementRow
-            label="Overlap units"
-            help="overlap"
-            count={count("overlap")}
-            value={settings.overlap}
-            onChange={(p) => set("overlap", p === "spread" ? undefined : p)}
-          />
-          <PlacementRow
-            label="Practice units"
-            count={count("practice")}
-            value={settings.practice}
-            onChange={(p) => set("practice", p === "spread" ? undefined : p)}
-          />
-          <PlacementRow
-            label="Gold units"
-            help="special-units"
-            count={count("gold")}
-            value={settings.gold}
-            onChange={(p) => set("gold", p === "spread" ? undefined : p)}
-          />
-        </div>
-        <p className="text-[11px] text-muted-foreground">
-          {tests
-            ? "Spread throughout a divided crowd's units without a maximum of units per coder: about one in ten."
-            : "The units have no test units (test_set) yet: mark them on the Units page, or with the coder set dialog."}
-        </p>
-      </section>
-      {shows("practice", settings.practiceCheck) && (
-        <PracticeChecks
-          check={settings.practiceCheck}
-          checkable={checkable}
-          answerKey={answerKey}
-          onChange={(check) => set("practiceCheck", check)}
-        />
-      )}
-      {shows("gold", settings.goldCheck) && (
-        <GoldChecks
-          check={settings.goldCheck}
-          checkable={checkable}
-          answerKey={answerKey}
-          screenouts={screenouts}
-          onChange={(check) => set("goldCheck", check)}
-        />
       )}
       <IssueList issues={issues} />
     </div>
@@ -245,7 +156,7 @@ function Divide({
   return (
     <fieldset className="flex flex-col gap-1.5">
       <legend className="mb-1 flex items-center gap-1 text-xs font-semibold">
-        Units and coders
+        Who codes each unit
         <HelpButton topic="shared-queues" label="Help: dividing units" />
       </legend>
       <label className="flex items-center gap-2 text-xs">
