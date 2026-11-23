@@ -58,22 +58,23 @@ test("writing a design in the editor, as the help describes it, and saving it", 
   ]);
 });
 
-test("an experiment: a random condition linked to a set column", async ({ page, request }) => {
-  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Experiment test" });
+test("an experiment: balanced conditions, each with its own units (condition_set)", async ({ page, request }) => {
+  // (No "Experiment" in the name: the setup wizard's tests look for an Experiment button on the studies page)
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Conditions in the editor" });
   const units = await api<{ id: number; externalId: string }[]>(request, "POST", `/study/${study.id}/units`, {
     units: [
       { externalId: "u1", data: { text: "One" } },
       { externalId: "u2", data: { text: "Two" } },
     ],
   });
-  await api(request, "PUT", `/study/${study.id}/sets/framing`, {
+  await api(request, "PUT", `/study/${study.id}/sets/condition_set`, {
     sets: [
       { name: "control", unitIds: [units[0].id] },
       { name: "experiment", unitIds: [units[1].id] },
     ],
   });
   await page.goto("/research");
-  await page.getByText("Experiment test").click();
+  await page.getByText("Conditions in the editor").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
 
   // An experiment at the top level
@@ -81,7 +82,10 @@ test("an experiment: a random condition linked to a set column", async ({ page, 
   await page.getByRole("button", { name: /^Experiment/ }).click();
   await page.getByPlaceholder("e.g. sentiment, age").fill("framing");
   await expect(page.getByText("never shown to the coder")).toBeVisible();
-  await page.locator("select").filter({ hasText: "Not linked to units" }).selectOption("framing");
+  await page.getByLabel("Assigned").selectOption("balanced");
+  await page.getByRole("checkbox", { name: /Each condition gets its own units/ }).check();
+  await expect(page.getByText("condition_set has control (1), experiment (1).")).toBeVisible();
+  await page.getByRole("checkbox", { name: /The conditions are condition_set's values/ }).check();
 
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect
@@ -92,8 +96,9 @@ test("an experiment: a random condition linked to a set column", async ({ page, 
   const [saved] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
   const { items } = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${saved.id}`);
   expect(items).toMatchObject([
-    { type: "experiment", name: "framing", variable: { type: "random", units: "framing" } },
+    { type: "experiment", name: "framing", variable: { type: "random", draw: "balanced", units: true } },
   ]);
+  expect((items[0] as { variable: { options?: unknown } }).variable.options).toBeUndefined();
 });
 
 test("blocks: a label and a condition, else items; questions and loops at the top level; the study's end", async ({

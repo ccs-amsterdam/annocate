@@ -2,11 +2,16 @@ import { expect, test } from "./fixtures";
 import type { StudyResponse, SetGroupResponse } from "@annotinder/contracts";
 import { answers, api, question } from "./helpers";
 
-// Sets and links (docs/architecture.md §6): a sets column
-// in the CSV makes a set column; as the design's coder column it makes a link
-// per value (coder), and a coder gets their units, with the overlap.
+// Sets and links (docs/architecture.md §6, docs/plans/unit-sets.md): columns
+// of the CSV named like a role column (coder_set, test_unit) are that
+// column; with specific coders each coder_set value gets a link, and a coder
+// gets their units, with the overlap units (test_unit).
 
-test("a sets column makes a group; a link per set; a coder codes their link's set and the overlap", async ({
+type Groups = SetGroupResponse[];
+const counts = (groups: Groups, name: string) =>
+  groups.find((g) => g.name === name)?.sets.map((s) => [s.name, s.unitIds.length]);
+
+test("a coder_set column makes the coder set; a link per coder; a coder codes their units and the overlap units", async ({
   page,
   request,
   browser,
@@ -19,29 +24,29 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
   await expect(page.getByRole("button", { name: "Overview" })).toBeVisible();
   const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "Expert coders")!;
 
-  // Units, with a sets column: its name is the group
+  // Units, with role columns: their names say what they are
   await page.getByRole("button", { name: "Units", exact: true }).click();
   await page.getByRole("button", { name: /Upload CSV/ }).click();
   await page.locator("input[type=file]").setInputFiles({
     name: "articles.csv",
     mimeType: "text/csv",
-    buffer: Buffer.from("id,text,part\nu1,First text,s1\nu2,Second text,s2\nu3,Shared text,_overlap\n"),
+    buffer: Buffer.from(
+      "id,text,coder_set,test_unit\nu1,First text,s1,\nu2,Second text,s2,\nu3,Shared text,,overlap\n",
+    ),
   });
   await page.getByRole("button", { name: /Use column names/ }).click();
-  await page.getByLabel("Type of part").selectOption("sets");
   await page.getByRole("button", { name: /Upload 3 units/ }).click();
   await expect(page.getByRole("button", { name: /^s2 1$/ })).toBeVisible();
-  const [group] = await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`);
-  expect(group.name).toBe("part");
-  expect(group.sets.map((s) => [s.name, s.unitIds.length])).toEqual([
-    ["_overlap", 1],
+  const groups = await api<Groups>(request, "GET", `/study/${study.id}/sets`);
+  expect(counts(groups, "coder_set")).toEqual([
     ["s1", 1],
     ["s2", 1],
   ]);
+  expect(counts(groups, "test_unit")).toEqual([["overlap", 1]]);
 
-  // A design whose coders are the column's values: a link each, with the overlap first
+  // Specific coders: a link each, with the overlap units first
   const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
-    session: { invite: { mode: "coders", column: "part", link: "per_coder" } },
+    session: { invite: { mode: "coders", link: "per_coder" } },
     items: [
       {
         type: "unit_loop",
@@ -59,7 +64,7 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
   });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: codebook.id });
 
-  // The Links page lists a link per set
+  // The Links page lists a link per coder
   await page.getByRole("navigation", { name: "Study" }).getByRole("button", { name: "Deploy", exact: true }).click();
   await page.getByRole("button", { name: "Links", exact: true }).click();
   await expect(page.getByRole("cell", { name: "coder s1" })).toBeVisible();
@@ -82,7 +87,7 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
   await expect(coder.getByText(/completed|Thank you/i).first()).toBeVisible();
   await expect.poll(async () => (await answers(request, study.id)).length).toBe(2);
 
-  // More units, without the sets column: added to the existing sets on request
+  // More units, without the role columns: added to the coder set on request (the test units stay)
   await page.getByRole("button", { name: "Units", exact: true }).click();
   await page.getByRole("button", { name: /Upload CSV/ }).click();
   await page.locator("input[type=file]").setInputFiles({
@@ -90,18 +95,19 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
     mimeType: "text/csv",
     buffer: Buffer.from("id,text\nu4,Fourth text\nu5,Fifth text\n"),
   });
-  await page.getByLabel("New units in group part").selectOption("distribute");
+  await expect(page.getByLabel("New units in test_unit")).toHaveCount(0);
+  await page.getByLabel("New units in coder_set").selectOption("distribute");
   await page.getByRole("button", { name: /Upload 2 units/ }).click();
   await expect
-    .poll(async () =>
-      (await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`))[0].sets.map((s) => [
-        s.name,
-        s.unitIds.length,
-      ]),
-    )
+    .poll(async () => {
+      const after = await api<Groups>(request, "GET", `/study/${study.id}/sets`);
+      return [counts(after, "coder_set"), counts(after, "test_unit")];
+    })
     .toEqual([
-      ["_overlap", 1],
-      ["s1", 2],
-      ["s2", 2],
+      [
+        ["s1", 2],
+        ["s2", 2],
+      ],
+      [["overlap", 1]],
     ]);
 });

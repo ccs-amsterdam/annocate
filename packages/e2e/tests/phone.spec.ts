@@ -197,14 +197,14 @@ test("on a phone, a coder picks their name from the list", async ({ request, bro
       { externalId: "b1", data: { text: "Bob's text" } },
     ],
   });
-  await api(request, "PUT", `/study/${study.id}/sets/coder`, {
+  await api(request, "PUT", `/study/${study.id}/sets/coder_set`, {
     sets: [
       { name: "anna", unitIds: [units[0].id] },
       { name: "bob", unitIds: [units[1].id] },
     ],
   });
   const design = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
-    session: { invite: { mode: "coders", column: "coder", link: "pick_name" } },
+    session: { invite: { mode: "coders", link: "pick_name" } },
     items: [
       {
         type: "unit_loop",

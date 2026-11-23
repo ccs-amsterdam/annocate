@@ -19,27 +19,26 @@ test("a practice question gives feedback when wrong, answered again until right;
   await expect(page.getByRole("button", { name: "Overview" })).toBeVisible();
   const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "Checked coders")!;
 
-  // Units with a sets column and answer columns
+  // Units with a coder set, test units and answer columns (role columns: taken as such by their names)
   await page.getByRole("button", { name: "Units", exact: true }).click();
   await page.getByRole("button", { name: /Upload CSV/ }).click();
   await page.locator("input[type=file]").setInputFiles({
     name: "units.csv",
     mimeType: "text/csv",
     buffer: Buffer.from(
-      "id,text,part,topic_practice,topic_practice_message,topic_gold\n" +
-        "p1,Practice text,_practice,politics,It is about an election.,\n" +
-        "p2,Second practice,_practice,politics|other,,\n" +
+      "id,text,coder_set,test_unit,answer_topic,feedback_topic\n" +
+        "p1,Practice text,,practice,politics,It is about an election.\n" +
+        "p2,Second practice,,practice,politics|other,\n" +
         "u1,Own text,s1,,,\n" +
-        "g1,Gold text,_gold,,,politics\n",
+        "g1,Gold text,,gold,politics,\n",
     ),
   });
   await page.getByRole("button", { name: /Use column names/ }).click();
-  await page.getByLabel("Type of part").selectOption("sets");
   await page.getByRole("button", { name: /Upload 4 units/ }).click();
   await expect(page.getByRole("button", { name: /^s1 1$/ })).toBeVisible();
 
   const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
-    session: { invite: { mode: "coders", column: "part", link: "per_coder" } },
+    session: { invite: { mode: "coders", link: "per_coder" } },
     items: [
       {
         type: "unit_loop",
@@ -106,15 +105,12 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
     ],
   });
   const id = (externalId: string) => units.find((u) => u.externalId === externalId)!.id;
-  await api(request, "PUT", `/study/${study.id}/sets/part`, {
-    sets: [
-      { name: "s1", unitIds: [id("u1")] },
-      { name: "_gold", unitIds: [id("g1")] },
-    ],
+  await api(request, "PUT", `/study/${study.id}/sets/test_unit`, {
+    sets: [{ name: "gold", unitIds: [id("g1")] }],
   });
   await api(request, "POST", `/study/${study.id}/design`, {
-    // The gold units are those of the coder unit assignment's column
-    session: { invite: { mode: "crowd", column: "part" } },
+    // The gold units: test_unit's
+    session: { invite: { mode: "crowd" } },
     items: [
       {
         type: "unit_loop",
@@ -156,5 +152,5 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
     "GET",
     `/study/${study.id}/units/page?offset=0&limit=10`,
   );
-  expect(page1.units.find((u) => u.externalId === "g1")!.data.topic_gold).toBe("politics|other");
+  expect(page1.units.find((u) => u.externalId === "g1")!.data.answer_topic).toBe("politics|other");
 });

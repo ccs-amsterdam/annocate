@@ -9,7 +9,7 @@ import { coders, fromExample, question } from "./helpers";
 
 interface ExampleUnit {
   id: string;
-  data: { headline: string; topic_practice: string | null; topic_gold: string | null };
+  data: { headline: string; answer_topic?: string; answer_clickbait?: string };
 }
 const example = JSON.parse(
   readFileSync(new URL("../../server/examples/gold-practice.json", import.meta.url), "utf8"),
@@ -71,10 +71,10 @@ test("practice headlines give feedback until right; two wrong gold headlines scr
     await expect(page.getByRole("dialog")).toBeHidden();
     const set = kind(unit.id);
 
-    if (set === "_practice") {
+    if (set === "practice") {
       // The practice headlines come first, marked as such
       await expect(page.getByText("Practice headline.")).toBeVisible();
-      const right = unit.data.topic_practice!.split("|")[0];
+      const right = unit.data.answer_topic!.split("|")[0];
       if (practiced === 0) {
         // A wrong answer: the unit's own feedback, and the coder answers again
         await answer(right === "other" ? "Politics" : "Other");
@@ -86,17 +86,16 @@ test("practice headlines give feedback until right; two wrong gold headlines scr
       practiced++;
       // The clickbait question, answered right
       await question(page, "Is this headline clickbait?");
-      const clickbait = (unit.data as unknown as { clickbait_practice: string }).clickbait_practice;
-      await answer(clickbait === "yes" ? "Clickbait (swipe right)" : "No (swipe left)");
+      await answer(unit.data.answer_clickbait === "yes" ? "Clickbait (swipe right)" : "No (swipe left)");
     } else {
       expect(practiced).toBe(4);
       await expect(page.getByText("Practice headline.")).toHaveCount(0);
       // Gold headlines look like the others: answered wrongly here
-      const wrong = set === "_gold" && unit.data.topic_gold !== "culture" ? "Culture" : "Other";
-      await answer(set === "_gold" ? wrong : "Other");
+      const wrong = set === "gold" && unit.data.answer_topic !== "culture" ? "Culture" : "Other";
+      await answer(set === "gold" ? wrong : "Other");
       await question(page, "Is this headline clickbait?");
       await answer("No (swipe left)");
-      if (set === "_gold") goldWrong++;
+      if (set === "gold") goldWrong++;
     }
   }
   expect(goldWrong).toBe(2);

@@ -58,8 +58,10 @@ test("annotation with questions and an experiment: a set of units per condition,
   // The editor, with the questions to specify
   await expect(page.getByText("to specify")).toHaveCount(4);
   const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "Framing study")!;
-  const [group] = await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`);
-  expect(group.sets.map((s) => [s.name, s.unitIds.length])).toEqual([
+  const groups = await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`);
+  // The units of each condition: condition_set
+  expect(groups.map((g) => g.name)).toEqual(["condition_set"]);
+  expect(groups[0].sets.map((s) => [s.name, s.unitIds.length])).toEqual([
     ["control", 1],
     ["treatment", 2],
   ]);
@@ -71,10 +73,10 @@ test("annotation with questions and an experiment: a set of units per condition,
     children?: { name: string; variable: { type: string; question?: string } }[];
   }[];
   expect(items.map((i) => i.name ?? i.type)).toEqual(["condition", "age", "unit_loop", "comments"]);
-  // The experimental groups: an experiment (a random condition) linked to the condition's set column
+  // The experimental groups: an experiment (a random condition) that selects units (condition_set)
   expect(items[0]).toMatchObject({
     type: "experiment",
-    variable: { type: "random", draw: "balanced", units: "condition" },
+    variable: { type: "random", draw: "balanced", units: true },
   });
   // After the loop's layout item
   expect(items[2].children!.slice(1).map((c) => [c.name, c.variable])).toEqual([
@@ -106,7 +108,7 @@ test("a survey alone: questions by name, no units", async ({ page, request }) =>
   expect((await api<unknown[]>(request, "GET", `/study/${study.id}/links`)).length).toBe(0);
 });
 
-test("crowd coding with an overlap; the invitation and the loop's checks are set by the wizard", async ({
+test("crowd coding with overlap units (a count); the invitation and the loop's checks are set by the wizard", async ({
   page,
   request,
 }) => {
@@ -128,7 +130,6 @@ test("crowd coding with an overlap; the invitation and the loop's checks are set
   await page.getByLabel("Who codes which units").selectOption({ label: "Crowd coding" });
   await page.getByLabel("Coders per unit", { exact: true }).fill("2");
   await page.getByRole("checkbox", { name: /Overlap/ }).check();
-  await page.getByLabel("Overlap in").selectOption("units");
   await page.getByLabel("Overlap size").fill("2");
   await page.getByRole("button", { name: "Next" }).click();
   // The headline dragged to the title; the text chosen for the body from its menu
@@ -143,7 +144,7 @@ test("crowd coding with an overlap; the invitation and the loop's checks are set
   await page.getByLabel("Questions about each unit").fill("sentiment");
   // Gold units check the question silently; the units have no answer column yet
   await page.getByLabel("gold sentiment").check();
-  await expect(page.getByText("no sentiment_gold yet")).toBeVisible();
+  await expect(page.getByText("no answer_sentiment yet")).toBeVisible();
   await page.getByRole("button", { name: "Next" }).click();
   await page.getByRole("button", { name: "Create study" }).click();
   // The study's page opens once it is created
@@ -153,14 +154,16 @@ test("crowd coding with an overlap; the invitation and the loop's checks are set
   const [draft] = await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`);
   const version = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${draft.id}`);
   const [loop] = version.items as { units: unknown; children: { type: string; template?: string }[] }[];
-  // The loop divides its units among the crowd; the overlap and gold units (the crowd's column's) are spread (the default)
-  expect(version.session).toEqual({ invite: { mode: "crowd", column: "coders" } });
+  // The loop divides its units among the crowd; the overlap and gold units (test_unit's) are spread (the default)
+  expect(version.session).toEqual({ invite: { mode: "crowd" } });
   expect(loop.units).toEqual({
     divide: { codersPerUnit: { min: 2, max: 2 } },
     goldCheck: { questions: ["sentiment"] },
   });
   expect(loop.children[0]).toEqual({ type: "layout", template: "# $unit.headline\n\n$unit.text" });
-  const [group] = await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`);
-  // The overlap: everyone's, in a set column of its own (the queue is all units)
-  expect(group.sets.map((s) => [s.name, s.unitIds.length])).toEqual([["_overlap", 2]]);
+  const groups = await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`);
+  // The overlap: a number of test units, everyone's (the queue is all units)
+  expect(groups.map((g) => [g.name, g.sets.map((s) => [s.name, s.unitIds.length])])).toEqual([
+    ["test_unit", [["overlap", 2]]],
+  ]);
 });
