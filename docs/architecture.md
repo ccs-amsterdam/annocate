@@ -99,8 +99,8 @@ version. Other changes runtimes must see (study settings, resets) bump
 belongs to; an older one gets 409 `codebook_changed` and the client reloads
 the session (`api/coder.md`).
 
-**Links** are made by deploying: one, or one per coder of the invitation's
-column (§7). They open the client with the deployment id and the link's
+**Links** are made by deploying: one, or one per coder of the units'
+`coder_set` (§7). They open the client with the deployment id and the link's
 secret.
 
 **A coder session:**
@@ -114,7 +114,7 @@ secret.
    design), per-loop progress and the coder's variables (so client-side
    conditions can use drawn values).
 3. **`GET /loop/:loop/next?count=k`** works out the coder's units from their
-   session values (§6), drawing any linked experiment's condition the loop needs,
+   session values (§6), drawing the condition of an experiment that selects units if the loop needs it,
    and marks the loop as reached (`coder_sessions.assignments`, for
    progress). It picks the next k units (unfinished first); in a shared queue
    it leases them; it records the versions shown (`unit_serves`). The client
@@ -141,15 +141,30 @@ never which unit ids or which people.
 
 | Layer | Contains | Reproducible? |
 | --- | --- | --- |
-| Design | questions, experiments, blocks (items, optionally a label and a condition with else items; end items only in a block), unit loops (optionally a condition; subsets, placements, a crowd's distribution criteria), the session (coder unit assignment, URL parameters, the normal end). Refers to set columns and values by name, to coders only via `$session` values | yes |
-| Set columns | per column, named sets of units in order (e.g. column `coders`: `anna`, `bob`, `_overlap`) | data |
-| Links | made from the coder unit assignment (one, one per coder, or one per set of a crowd's column), with their secrets and uses | no (server only) |
+| Design | questions, experiments, blocks (items, optionally a label and a condition with else items; end items only in a block), unit loops (optionally a condition; a part, placements of test units, checks, a crowd's distribution criteria), the session (coder unit assignment, URL parameters, the normal end). Refers to role columns' values (a part, conditions) by name, to coders only via `$session` values | yes |
+| Role columns | the units' `coder_set`, `condition_set`, `part_set` and `test_unit`: per value, its units in order | data |
+| Links | made from the coder unit assignment (one, or one per coder of `coder_set`), with their secrets and uses | no (server only) |
 
-One idea, *who is this session for*, decides a session's units: the coder
-column (or a crowd link's set) and the experiments linked to a
-column. Loops only select and place units within those, and for a crowd
-divide them. "Three links for my three coders, with some
-overlap" is then one setting and one column.
+**Role columns** (`docs/plans/unit-sets.md`, contracts `sets.ts`). Four unit
+columns have a fixed name and meaning; any other column is data:
+
+| Column | Values | Used by |
+| --- | --- | --- |
+| `coder_set` | coder names or email addresses (`anna;bob`: several) | specific coders: who codes the unit |
+| `condition_set` | an experiment's conditions (several per unit) | the experiment that selects units |
+| `part_set` | parts of the study, e.g. `pre`, `post` (several per unit) | a loop shows one part |
+| `test_unit` | one of `overlap`, `practice`, `gold`, or empty (a coding unit) | where loops place test units, and their checks |
+
+Right answers of practice and gold units are in the unit columns
+`answer_<q>` (and practice feedback in `feedback_<q>`), one per question
+`q` (§6.2).
+
+One idea, *who is this session for*, decides a session's units: its coder
+(`coder_set`, specific coders) and the condition of the experiment that
+selects units (`condition_set`). Loops only select (a part) and place units
+within those, and for a crowd divide them. "Three links for my three
+coders, with some overlap" is then one setting and two columns
+(`coder_set`, and `test_unit` with a few `overlap` units).
 
 ### 6.1 A session's units
 
@@ -159,62 +174,58 @@ codes:
 
 ```yaml
 session:
-  invite: { mode: coders, column: coders, link: per_coder }   # or login, pick_name
+  invite: { mode: coders, link: per_coder }   # or login, pick_name
 ```
 
 ```yaml
 session:
   invite:
-    mode: crowd                                   # the default: { mode: crowd }
+    mode: crowd                                   # "One link"; the default: { mode: crowd }
     coderParam: { param: PROLIFIC_PID, pattern: "[0-9a-f]{24}" }   # optional: the coder id
     login: true                                   # optional: coders must sign in
-    column: coders                                # optional: special units; other sets: a link per set
-    maxCoders: 200                                # optional: a link's sample size
-    groupMaxCoders: { panel_a: 100 }              # optional: per set, instead
+    maxCoders: 200                                # optional: the link's sample size
 ```
 
-**Specific coders** (`mode: "coders"`): `column` is a set column whose values
-are the coders; a session gets its coder's units plus the column's
-`_overlap`. The column's `_overlap`, `_practice` and `_gold` are the
-special units (§6.2).
+**Specific coders** (`mode: "coders"`): the values of the units'
+`coder_set` are the coders; a session gets its coder's units plus the test
+units. Until the units have a `coder_set` there are no coders: the draft
+saves, deploying can't.
 
 | `link` | How coders get in |
 | --- | --- |
-| `per_coder` | a link per value; the link's coder (`links.params.coder`) is the session's. A link whose coder left the column: 403 `link_inactive` |
-| `login` | one link, sign-in required; the coder is the login's address (all values must be email addresses; others get 403 `email_not_allowed`) |
+| `per_coder` | a link per coder; the link's coder (`links.params.coder`) is the session's. A link whose coder left `coder_set`: 403 `link_inactive` |
+| `login` | one link, sign-in required; the coder is the login's address (all coders must be email addresses; others get 403 `email_not_allowed`) |
 | `pick_name` | one link; coders pick their name (`GET /names`, then `x-coder-name`; 409 `name_required` until they do). `nameDevices: "first"` (default): a name belongs to the first device that picks it (others: 409 `name_taken`); `"any"`: picking a name continues its session. Names are visible to anyone with the link |
 
-**A crowd** (`mode: "crowd"`): one link, or a link per set.
+**One link** (`mode: "crowd"`, also for surveys and survey experiments): one
+link for everyone.
 
 - `coderParam`: the coder id from a URL parameter, required (400
   `url_param_missing` / `url_param_invalid`) unless `optional: true`.
 - `login`: coders must sign in (401 `auth_required`); without a `coderParam`
   value the email is the coder id.
-- `column`: a set column for the special units (§6.2). With only special
-  sets: one link, and the coding units are all units outside them. With
-  other sets too: a link per set (`links.params.group`), stored as
-  `$session.group`; its coders code that set, and units without a value in
-  the column aren't coded. A link whose set left the column: 403
-  `link_inactive`.
-- `maxCoders`: a link starts at most this many sessions; `groupMaxCoders`
-  gives a set's link its own maximum (contracts `linkMaxCoders`).
+- `maxCoders`: the link starts at most this many sessions (contracts
+  `linkMaxCoders`).
 - Whether units are divided among the coders is each loop's (`divide`,
   §6.2). Without it every coder codes all their units.
 
-**Who the coder is** (`$session.coder`): the specific coder's value, a crowd's
-`coderParam` value, else the login's email where sign-in is required. A new device for a coder who already has a
-session is asked first (409 `coder_has_session`, `coder-identity.md` §4).
+**Who the coder is** (`$session.coder`): the specific coder's value, the
+`coderParam` value, else the login's email where sign-in is required. A new
+device for a coder who already has a session is asked first (409
+`coder_has_session`, `coder-identity.md` §4).
 
 **Without a unit loop** the unit settings are kept but unused (validation
 warns); links still follow the invitation, e.g. a survey of known experts.
 
 **Experiments** (`type: "experiment"`, §7) assign a condition when reached;
-with `units` they also select units for the loops after them.
+with `units: true` they also select units for the loops after it: those
+with the condition in `condition_set`. At most one experiment selects units,
+and only with one link (validation errors).
 
-A session's units are those whose cell holds the session's value in every
-linked column (its coder or link's set, each linked experiment), plus
-each column's `_overlap`. Without linked columns: all units (minus a crowd
-column's practice and gold units).
+A session's units are the units with its coder in `coder_set` (specific
+coders) and its condition in `condition_set` (an experiment that selects
+units), plus the test units: test units are everyone's, not selected by
+`coder_set` or `condition_set`. Without either: all units.
 
 Coders can always sign in (to keep their session across devices);
 researchers see emails only where the invitation requires sign-in
@@ -223,7 +234,7 @@ researchers see emails only where the invitation requires sign-in
 ### 6.2 Unit loops
 
 Defined in `contracts/src/design/unitLoop.ts`. A loop has one optional
-`units` object (absent: all the session's units, once, special units spread)
+`units` object (absent: all the session's units, once, test units spread)
 and works within the session's units:
 
 ```yaml
@@ -231,8 +242,8 @@ type: unit_loop
 label: News items        # optional: shown in the editor, progress and exports
 order: random            # sequential (default, the set's order) | random per coder
 units:
-  subset: { column: phase, sets: [post] }      # only these sets of a set column
-  coding: true                                 # the coding units (default); false: only special units
+  part: post                                   # only the units with this value in part_set
+  coding: true                                 # the coding units (default); false: only test units
   overlap: spread                              # ignore | before | after | spread (default)
   practice: before
   gold: spread
@@ -244,25 +255,25 @@ units:
     unitsPerCoder: { max: 100 }
 ```
 
-- **`subset`**: only the units in the given sets of a set column, e.g. a pre
-  and a post loop on a `phase` column. Not the coder unit assignment's
-  column (validation error).
-- **`coding: false`**: only the special units (e.g. a practice round).
+- **`part`**: only the units with this value in `part_set`, e.g. a pre and
+  a post loop. One part per loop; without one, all parts. A test unit with
+  a part is only in that part's loops; without one, in every loop.
+- **`coding: false`**: only the test units (e.g. a practice round).
 - **`sameAsPrevious: true`**: the units each coder finished in the previous
   loop, in that order; fixed when the coder reaches this loop (stored in
   their `assignments`). A third loop with it takes the second's (so the
-  first's). Not with `subset` or `divide`; a coder who skipped the previous
-  loop gets none.
+  first's). Not with `divide`; a coder who skipped the previous loop gets
+  none.
 - **Without `divide`** every coder codes all their units once.
 - **With `divide`** (only for a crowd; validation error otherwise), the
-  loop's units are a queue shared by sessions with the same units (those of
-  one link). `effectiveLoopUnits` resolves the loop's settings. `until.on`
-  must be a question of the loop.
+  loop's units are a queue shared by sessions with the same units.
+  `effectiveLoopUnits` resolves the loop's settings. `until.on` must be a
+  question of the loop.
   - A unit is **done** once `codersPerUnit.min` coders finished it, or
     `until.agree` coders gave the same answer to `until.on` (a single
     categorical question of the loop), or `codersPerUnit.max` coders finished
     it (`max` is required with `until`).
-  - `unitsPerCoder.max` caps units per coder (special units aside);
+  - `unitsPerCoder.max` caps units per coder (test units aside);
     `unitsPerCoder.min` lets the maximum give way while a coder has fewer.
   - **Open slots** are codings still needed (capped by `codersPerUnit.max`)
     minus active leases. Without open slots a coder gets any unit that isn't
@@ -273,25 +284,27 @@ units:
   - **`priority`**: `cover` (default) prefers least-coded units, `saturate`
     units closest to done.
 
-**Special units.** `_overlap`, `_practice` and `_gold` of the coder unit
-assignment's column (the coders' column, or a crowd's `column`; in other
-columns they are ordinary values, and without one there are none) are
-placed among the coder's coding units: `ignore`, `before`, `after`, or
-`spread` (default). Spreading
-needs the number of units a coder gets; in a shared queue without
-`unitsPerCoder.max` it becomes a rate: about one in ten, seeded per coder,
-never more than twenty apart (`DEFAULT_RATE`). A unit is in at most one
-special set.
+**Test units.** The units' `test_unit` (`overlap`, `practice`, `gold`; one
+per unit) are placed among the coder's coding units: `ignore`, `before`,
+`after`, or `spread` (default). Overlap units are coded by every coder (to
+compare coders); practice units give feedback; gold units are checked
+silently. Spreading needs the number of units a coder gets; in a shared
+queue without `unitsPerCoder.max` it becomes a rate: about one in ten,
+seeded per coder, never more than twenty apart (`DEFAULT_RATE`). Positions
+(`practice#2`) give practice units an order. A practice unit is served with
+`$unit._practice` (e.g. for a note in the layout).
 
 - **Answer columns.** For each checked question `q`, the right answer is in
-  unit column `q_gold` or `q_practice`, practice feedback in
-  `q_practice_message` (optional). Never served to coders. Cells (contracts
-  `answerKey.ts`): `positive` (exactly), `a;b` (together), `positive|neutral`
-  (any of), `3..5` (a range).
+  unit column `answer_<q>`, practice feedback in `feedback_<q>` (optional);
+  one column for practice and gold alike (the unit's test type says how it
+  is used). Never served to coders: a layout or script that uses
+  `$unit.answer_*` or `$unit.feedback_*` is a validation error. Cells
+  (contracts `answerKey.ts`): `positive` (exactly), `a;b` (together),
+  `positive|neutral` (any of), `3..5` (a range).
 - **Practice** (`practiceCheck`) is checked in the browser per question. A
-  wrong answer shows the unit's message, the loop's `message` or the expected
-  answer; the coder retries until right (`retry`, default) or goes on. Tries
-  are stored with the answer's timing.
+  wrong answer shows the unit's feedback, the loop's `message` or the
+  expected answer; the coder retries until right (`retry`, default) or goes
+  on. Tries are stored with the answer's timing.
 - **Gold** (`goldCheck`) is checked on the server; coders see nothing. With
   `health`, a score starts at `start` and changes by `wrong` and `right`
   (never above `start`); at 0 the session ends at end item `end` (a
@@ -314,27 +327,37 @@ branches (`plans/question-loops.md` §5).
 leases. Answers and "finished" are keyed by the loop's questions (§8.2). The
 optional `label` is for people.
 
-### 6.3 Set columns are explicit
+### 6.3 Role columns are stored lists
 
 Sets are stored lists, not recipes, so adding units never changes an
-existing distribution. A **set column** is a unit field of type `set`
-(`units.fields`), stored as a set group (`unit_sets`, `unit_set_members`,
-draft and `live`). Each unit's cell names its values: `anna`, `anna;bob`,
-`anna#3` (with a position), `_overlap`, `_practice`, `_gold`. Sets aren't
-unit data: changing them makes no new unit version. Writing a set column
-(`PUT /study/:studyId/sets/:column`) declares it in the draft design.
+existing distribution. A role column is a unit field (`units.fields`; type
+`set`, `test_unit` type `unit_type`), stored as a set group (`unit_sets`,
+`unit_set_members`, draft and `live`). Each unit's cell names its values:
+`anna`, `anna;bob`, `anna#3` (with a position); `test_unit` one of
+`overlap`, `practice`, `gold`. Sets aren't unit data: changing them makes no
+new unit version. Only the role columns can be written
+(`PUT /study/:studyId/sets/:group`, `group` one of `coder_set`,
+`condition_set`, `part_set`, `test_unit`); an upload can't give them as
+data.
 
-"Fill a set column" in the UI shuffles the units with a seed, sets aside an
-overlap, and divides the rest over the given values (`splitIntoSets`,
-contracts `sets.ts`).
+The coder set dialog makes `coder_set` (`distributeUnits`, contracts
+`sets.ts`): it shuffles the units with a seed, keeps the existing test
+units (or draws a number of each type anew), and divides the rest over the
+coders. The Units page's split tooling makes `condition_set` or `part_set`
+(`splitIntoSets`).
 
-**Deploy checks:**
+**Deploy checks** (server `shared/sets.ts`, `assignmentChecks`):
 
-- errors: a column the design names that isn't a set column; sign-in coders
-  (`link: "login"`) whose values aren't all email addresses; a linked
-  experiment's fixed values missing from its column;
-- warnings: a column without values; units no session gets; column values a
-  linked experiment doesn't list; the overlap, practice and gold checks.
+- errors: specific coders without `coder_set` values; sign-in coders
+  (`link: "login"`) whose values aren't all email addresses; an experiment
+  that selects units without `condition_set`, or with listed conditions it
+  has no units for;
+- warnings: conditions of `condition_set` the experiment doesn't list; a
+  loop's part `part_set` doesn't have; a part no loop shows (when every loop
+  has a part); units no coder gets (not test units, and without a coder, a
+  condition, or a part a loop shows); loops that check practice or gold
+  units without such units, or without right answers (or with answers that
+  can never be right).
 
 ## 7. Coder variables, URL parameters and links
 
@@ -348,9 +371,14 @@ condition. Coders screened out before one don't count.
 - `draw: "balanced"`: the condition fewest coders have so far (ties at random),
   under a lock per variable (§3). With `stratify` (earlier coder-level
   questions, `session.<name>` values) balanced within groups.
-- With `units`, the condition also selects the coder's units in later loops
-  (`options` optional: then the column's values). A linked experiment not yet
-  reached when a loop needs it is drawn then.
+- `draw: "url_param"`: the value of a URL parameter of the Study entry
+  (`param`: its name, i.e. `$session.<param>`), which must list `values`:
+  they are the conditions (with `options`, the same values). Nothing is
+  drawn; weights and `stratify` don't apply.
+- With `units: true`, the condition also selects the coder's units in later
+  loops: those with it in `condition_set` (`options` optional: then
+  `condition_set`'s values). At most one experiment selects units, only with
+  one link. Not yet reached when a loop needs it, it is assigned then.
 
 The client can't overwrite drawn values.
 
@@ -383,18 +411,15 @@ session:
   `url_param_missing`; not fitting: 400 `url_param_invalid`.
 
 All are `$session.<name>`, stored on the session when it starts. Built in:
-`$session.source` (an optional `?source=` on any link), `$session.coder`
-and `$session.group` (a crowd link's set); `coder`, `source` and `group` are
-reserved. Experimental conditions come from
+`$session.source` (an optional `?source=` on any link) and
+`$session.coder`; `coder` and `source` are reserved. Experimental conditions come from
 experiments, never session values.
 
 **Links** (on the server, never in the design) are made by deploying
-(contracts `linkCombinations`): one, for `link: "per_coder"` one per coder
-(`params: { coder }`), or for a crowd column with sets besides the special
-ones one per set (`params: { group }`; above 500 deploying needs
-`confirmLinks`, at most 2000),
-keyed by their values so a link keeps its secret across versions. Changes to
-set columns sync them. A link no longer made is **retired** (403
+(contracts `linkCombinations`): one, or for `link: "per_coder"` one per
+coder of `coder_set` (`params: { coder }`; above 500 deploying needs
+`confirmLinks`, at most 2000), keyed by their values so a link keeps its
+secret across versions. Changes to `coder_set` sync them. A link no longer made is **retired** (403
 `link_inactive` for new coders; started coders go on), never deleted. A
 revoked link stays revoked through a redeploy until reopened. A link has no
 settings of its own: its label is its values (or "Open link"), its
@@ -522,10 +547,10 @@ transaction.
 
 | Where | What |
 | --- | --- |
-| `contracts/src/design/unitLoop.ts` | a loop's `units`: subset, placements, practice and gold checks, distribution criteria, `sameAsPrevious` |
+| `contracts/src/design/unitLoop.ts` | a loop's `units`: part, placements of test units, practice and gold checks, distribution criteria, `sameAsPrevious` |
 | `contracts/src/design/session.ts` | the Study entry: coder unit assignment, URL parameters, normal end, display |
 | `contracts/src/design/references.ts`, `condition.ts` | `$unit`/`$var`/`$session` references, templates, conditions, helpers |
-| `contracts/src/sets.ts` | set columns, `splitIntoSets` |
+| `contracts/src/sets.ts` | role columns (`coder_set`, `condition_set`, `part_set`, `test_unit`), `distributeUnits`, `splitIntoSets` |
 | `contracts/src/deployment.ts` | deployment, reset, status and preview schemas |
 | `contracts/src/endpoints/` | the API registries ([docs/api](api/README.md)) |
 | `server/src/app.ts` | the Hono app: all APIs under `/api`, plus the built client (`ANNOTINDER_CLIENT_DIR`) |
@@ -579,7 +604,7 @@ against a mock provider.
     For very large queues: a per-unit summary kept up to date on submit.
     Researcher status is computed on demand.
 12. **Unit cache** for the researcher UI (IndexedDB).
-13. **Sample size targets**: coders per set column value or per condition,
+13. **Sample size targets**: coders per condition,
     shown on the Links page.
 14. **Planned** (`plans/`): question loops and value branches, the design
     viewer, templates and an examples library, encrypting answers.

@@ -39,7 +39,7 @@ Request headers:
 | Header | When | What |
 |---|---|---|
 | `x-annotinder: 1` | always | CSRF: cross-site forms can't send it |
-| `x-link-secret` | from the URL (`/code/<deployment>?link=<secret>`) | starts a session on first use. Without a link or with an unknown one: 404 `link_not_found`; revoked: 403 `link_revoked`; at its maximum: 403 `link_used_up`; retired (its coder or set left the column): 403 `link_inactive`. Started sessions go on |
+| `x-link-secret` | from the URL (`/code/<deployment>?link=<secret>`) | starts a session on first use. Without a link or with an unknown one: 404 `link_not_found`; revoked: 403 `link_revoked`; at its maximum: 403 `link_used_up`; retired (its coder left `coder_set`): 403 `link_inactive`. Started sessions go on |
 | `x-url-params` | the page's other query parameters | the declared URL parameters (`urlParams`), a crowd's coder id parameter (`coderParam`) and `source`, stored as `$session` values (at most 256 characters; missing or invalid: 400 `url_param_missing` / `url_param_invalid`). The crowd's coder id is part of the device key, so a device keeps a session per coder id |
 | `x-new-session: 1` | first request only | start another session for a coder id that already has one (after 409 `coder_has_session`) |
 | `x-coder-name` | `pick_name` links | the picked name, URL-encoded ([getNames](#getnames)) |
@@ -71,11 +71,11 @@ and its `version`, per-loop progress and the coder's
 variables (including experiments' conditions), and `ended` if the
 session ended at an `end` item. The coder codebook has only what coding
 needs: unit loops keep their layout items, questions and order, without their
-`units` (the server works out the units: no subsets, placements or
+`units` (the server works out the units: no parts, placements or
 checks); no Study entry, no researcher notes, and experiments only with
 their options (an invisible step: the client asks `assignCondition`). Creates
 the session on first use, with its `$session` values: the coder
-(`coder`: who the coder is, `coder-identity.md` §2), a crowd link's set (`group`), the URL parameters and `source`.
+(`coder`: who the coder is, `coder-identity.md` §2), the URL parameters and `source`.
 `login`: the email of the login the session belongs to, or null;
 `canLogIn`: the link offers a login the coder hasn't used. `frozen`: the
 coder-level answers that can't change any more, because the coder coded
@@ -120,11 +120,10 @@ shared queue each is leased to the coder (a lease they hold is renewed).
 Empty: the coder is done with the loop. 409 while the study is paused
 (`active: false`).
 
-A loop can add the **practice** and **gold** units of the coder unit
-assignment's column (`docs/architecture.md` §6.2) among the coder's own,
-like the overlap.
-Their answer columns (`<question>_practice`, `<question>_practice_message`,
-`<question>_gold`) are not in the unit's data. A practice unit's data has
+A loop can add the **test units** (the units' `test_unit`: overlap,
+practice, gold; `docs/architecture.md` §6.2) among the coder's own.
+Their answer columns (`answer_<question>`, `feedback_<question>`) are not in
+the unit's data. A practice unit's data has
 `_practice: true` (layouts and texts can use `$unit._practice`), and the
 unit has `practice: { retry, message?, questions: { <question>: { key,
 message? } } }`: the answer cells and feedback, so the client checks each
@@ -133,9 +132,10 @@ feedback, and with `retry` asks again until right. Gold and overlap units
 look like any other; gold cells never leave the server.
 
 The server works out the units from the session's values: the session's
-units (its coder or crowd link's set, and linked experiments; a linked
-experiment the coder has no condition for yet is drawn now), within
-the loop's subset and placements, and a crowd loop's shared queue
+units (its coder's in `coder_set`, and the condition's in `condition_set`
+of the experiment that selects units; one the coder has no condition for
+yet is assigned now), plus the test units, within the loop's part and
+placements, and a crowd loop's shared queue
 (`units.divide`), or the units the coder finished in the previous loop
 (`units.sameAsPrevious`; `architecture.md` §6.2). A session without a value it needs gets 409 `not_assigned`; a
 session whose values select no units gets none in the loop.
@@ -186,8 +186,10 @@ returns it; reached again, the same value. `draw: "random"` draws by
 weight; `"balanced"` takes the option the fewest coders who reached it
 have (a tie broken at random), under a lock, counting with `stratify` only coders with the same
 answers to those questions (as saved: the client saves its answers first)
-and the same `session.<name>` values. An experiment linked to units without
-`options` draws from its column's values (409 while the column has none).
+and the same `session.<name>` values. `"url_param"` takes the session's
+URL parameter `param` (409 if it isn't one of the conditions). An
+experiment that selects units (`units: true`) without `options` draws from
+`condition_set`'s values (409 while it has none).
 404 for a name that is no experiment.
 
 ### endSession

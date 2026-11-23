@@ -46,7 +46,7 @@ To do on the server (the guide's steps):
 6. **The smoke test with an API key**, and one full study (steps 8 and 9).
 7. **Backups:** add the VM to the nightly backup of `/opt`, and run the
    restore test once (step 10).
-8. **Email coders, by hand.** Use a design whose coder column holds email
+8. **Email coders, by hand.** Use a design whose coder set (`coder_set`) holds email
    addresses, with one link and sign-in required. Each coder gets the units
    of their own address; any other address gets 403 `email_not_allowed`.
    The e2e tests don't cover this.
@@ -92,7 +92,7 @@ Known limitations, documented rather than fixed:
 
 - A link's settings are cached by the server for up to 60 seconds.
 - A session that started from a link without a coder value, before the
-  coder column had values, gets 409 `not_assigned`.
+  coder set had values, gets 409 `not_assigned`.
 - A unit that a re-upload moves to another coder stays open to the coder
   who coded it (the other coder gets it too).
 - A long-running development server's dev user hits the default plan's

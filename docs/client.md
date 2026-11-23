@@ -394,19 +394,19 @@ the public title and has a button per part (**Coder unit assignments**, **URL
 parameters**, **Display**) that opens that part alone (`SessionItemForm.tsx`,
 the open part in `session/sessionTab.ts`); its JSON is that part only
 (`SessionPartJson.tsx`) and its preview shows what it means for coders
-(`SessionPreview.tsx`: the links, what a link must carry, the screen). The
-coders form selects the coder distribution column and how coders get in;
-"Create new coder distribution…" / "Create or update coder distribution…"
-(`session/CoderSetDialog.tsx`) makes or replaces the column, after asking
-(names, email addresses or a number of coders; coders per unit or
-everyone codes everything; the column name; overlap units, and optionally
-practice and gold units). It keeps the units coders were already shown or
-answered with them by default (`GET /coders/units`, contracts
-`distributeUnits`). The crowd form has the coder id URL parameter, "Coders
-sign in", an optional set column for special units ("Create special units…"
-makes one with the same dialog: special units only; other sets give a link
-per set), and "Max. nr of coders" (per link, and per set with a link per
-set). **At the end**, a button below the tree, edits the normal end
+(`SessionPreview.tsx`: the links, what a link must carry, the screen). Two modes:
+**Specific coders** and **One link** (`session/InvitationSettings.tsx`). The
+specific coders form shows the units' coder set (`coder_set`: how many
+coders, or that one is required) and how coders get in (disabled until
+there is a coder set). "Create coder set…" / "Update coder set…"
+(`session/CoderSetDialog.tsx`) makes or replaces `coder_set`, after asking
+(names, email addresses or a number of coders; coders per unit or everyone
+codes everything). Its test units: the current ones (counts per type from
+`test_unit`) are kept and shown disabled; with "Redistribute test units"
+that many overlap, practice and gold units are drawn anew. It keeps the
+units coders were already shown or answered with them by default
+(`GET /coders/units`, contracts `distributeUnits`). The One link form has
+the coder id URL parameter, "Coders sign in" and "Max. nr of coders". **At the end**, a button below the tree, edits the normal end
 (`session.end`).
 
 ## 5. Scripting sandbox: QuickJS
@@ -527,10 +527,12 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   2. **The experiment**: a condition's name and values, balanced or random (an
      experiment, first in the design).
   3. **Units**: the CSV upload (or later), and the order.
-  4. **Who codes what**: everyone everything (a crowd); sets per coder, each
-     with a link (`per_coder`); crowd coding (the loop's `units.divide`, and
-     a crowd column `coders` for an overlap or gold/practice checks); or
-     experimental groups (an experiment linked to a column).
+  4. **Who codes what**: everyone everything (one link); sets per coder, each
+     with a link (`per_coder`, `coder_set`); crowd coding (one link, the
+     loop's `units.divide`); or experimental groups (the experiment selects
+     units, `condition_set` by a column's values). Overlap units are a count
+     (`test_unit` overlap); a column with the values overlap, practice and
+     gold gives test units too.
   5. **How coders see a unit**: the layout sketch (`LayoutDesigner.tsx`:
      title, byline, body), with a preview.
   6. **Questions**: names, one per line, before, per unit and after. They get
@@ -587,10 +589,17 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
 - **Unit loops** (`UnitLoopForm.tsx`): besides its label and condition
   (`ItemForm.tsx`, as for blocks), the loop's form holds its units
   settings (`unitLoop/UnitsEditor.tsx`): what a coder gets, the previous loop's units
-  (`sameAsPrevious`), the subset, for a crowd "Units and coders" (everyone codes
+  (`sameAsPrevious`), the **Part** (a value of `part_set`; without a part
+  set, "Make a part set…"), for a crowd "Units and coders" (everyone codes
   everything, or divide the units: the distribution criteria), the coding
-  units and the assignment column's overlap/practice/gold with placement,
-  the checks, and the order (`architecture.md` §6.2).
+  units and the test units (`test_unit`: overlap, practice, gold) with their
+  placement, the checks (right answers in `answer_<q>`, "Create gold
+  values…"), and the order (`architecture.md` §6.2).
+- **Experiments** (`variableType/RandomConditionFields.tsx`): assigned at
+  random, balanced or from a URL parameter (one with values, from the Study
+  entry); "Each condition gets its own units (condition_set)" (`units:
+  true`; "Make a condition set…" without one), optionally with
+  `condition_set`'s values as the conditions.
 - **Layout items** (`unitLoop/LayoutForm.tsx`, opened by selecting the
   item): a simple form (title, byline, body) or **Advanced**: the template in Monaco
   (`jsonEditor/MonacoTemplate.tsx`) with highlighting and completions after
@@ -629,13 +638,16 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   a cheat sheet and a syntax check.
 - **Units** (`units/`): CSV upload (`UploadUnits.tsx`, own parser
   `admin/csv.ts`): pick the id column, which columns to upload as which field,
-  and their types (inferred and checked), or type **set** for a set column.
-  A paged table of units; pick a column value to see its units in order;
-  "Fill a set column" (`SplitIntoSets.tsx`); put selected units in a value,
+  and their types (inferred and checked); columns named like a role column
+  (`coder_set`, `condition_set`, `part_set`, `test_unit`) are that column.
+  The role columns with their labels (Coder set, Condition set, Part set,
+  Test unit); a paged table of units; pick a value to see its units in
+  order; "Make a part or condition set" (`SplitIntoSets.tsx`); put selected
+  units in a value,
   remove them, or reset their answers. A coded unit is replaced only by
   uploading it again, after a warning.
 - **Overview** (`overview/`): live/paused/unpublished, live and draft
-  versions, counts, set columns, answers per day, progress per loop, the
+  versions, counts, role columns, answers per day, progress per loop, the
   last five deploys; pausing and resuming (`LiveControls.tsx`) is on the
   Deploy page.
 - **Settings** (`StudySettingsPage`): the team (`TeamSettings.tsx`, at least

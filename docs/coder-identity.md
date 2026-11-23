@@ -22,7 +22,7 @@ quitting and deleting data (§8), closing sessions (§9) and response times
 | **Coder session** (`sessionId`) | One coder's run through a study: answers, progress. Everything is keyed by it | `coder_sessions` |
 | **Device id** | A random secret the server gives a browser once, for all studies, in the httpOnly cookie `annotinder_device`. Never stored by the server | the browser |
 | **Device key** | SHA-256 of device id, deployment and the crowd's coder id from the URL (if any): the device's key to its session in one study. Only this is stored, so a device's sessions in different studies can't be linked. One per device of a session | `session_devices` |
-| **Coder id** (`coder`) | Who the coder is: `$session.coder`, the results' `coder` column. Specific coders: their value in the coders' column. A crowd: the `coderParam` URL value (e.g. `PROLIFIC_PID`), else the login's email where sign-in is required. A label, never a credential | `coder_sessions.coder` |
+| **Coder id** (`coder`) | Who the coder is: `$session.coder`, the results' `coder` column. Specific coders: their value in the units' `coder_set`. A crowd: the `coderParam` URL value (e.g. `PROLIFIC_PID`), else the login's email where sign-in is required. A label, never a credential | `coder_sessions.coder` |
 | **Linked email** | A verified address from a login (§5), linked to the session once, to continue on other devices | `coder_sessions.email` |
 | **Transfer link** | A one-time link (15 minutes) that adds another device to the session | `transfers` (token hash only) |
 
@@ -31,9 +31,8 @@ one person group them by coder id or email in analysis.
 
 ## 3. Links
 
-Links are made by deploying: one, one per coder for specific coders with a
-link each, or one per set of a crowd's column (`$session.group`,
-`architecture.md` §7). A link no longer part of the design is
+Links are made by deploying: one, or one per coder for specific coders with
+a link each (`architecture.md` §7). A link no longer part of the design is
 retired (403 `link_inactive` for new sessions; started sessions go on). A
 revoked link (403 `link_revoked`) can be reopened. The coder unit assignment
 (`architecture.md` §6.1) decides how a session starts:
@@ -42,13 +41,13 @@ revoked link (403 `link_revoked`) can be reopened. The coder unit assignment
 | --- | --- | --- |
 | specific coders, `per_coder` | optional | the link's coder |
 | specific coders, `pick_name` | optional | the picked name (`nameDevices: "first"`: the first device's; `"any"`: picking it continues its session) |
-| specific coders, `login` | required; only the column's addresses (403 `email_not_allowed`) | the login's address |
-| crowd | optional | none, or `coderParam` (`?<param>=…`, required unless `optional: true`) |
-| crowd with `login: true` | required (401 `auth_required`) | the login's email, unless the URL gives one |
+| specific coders, `login` | required; only the coder set's addresses (403 `email_not_allowed`) | the login's address |
+| one link (crowd) | optional | none, or `coderParam` (`?<param>=…`, required unless `optional: true`) |
+| one link with `login: true` | required (401 `auth_required`) | the login's email, unless the URL gives one |
 
 Coders can always log in, to resume elsewhere. Where sign-in is optional,
-researchers don't see the email (contracts `loginRequired`). A crowd's
-`maxCoders` (or for a set's link its `groupMaxCoders`) caps a link's
+researchers don't see the email (contracts `loginRequired`). One link's
+`maxCoders` caps its
 sessions (403 `link_used_up`; the link's `maxUses`).
 
 **Duplicate coder ids are allowed**: a coder who can't reach their first
@@ -135,7 +134,7 @@ out doesn't affect coding. Code: `coder.ts`, `DeploymentRuntime.resolveCoder`,
   device without a session in this study. Never while coding, never in
   previews.
 - **Required**: without a login 401 `auth_required`; the client offers the
-  login and comes back to the same page. Addresses not in the column get 403
+  login and comes back to the same page. Addresses not in the coder set get 403
   `email_not_allowed`.
 - **Optional**: `GET /session` says `canLogIn`; logging in links the email.
 - **Another device**: logging in on a device without a session in this study
