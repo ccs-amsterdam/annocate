@@ -4,7 +4,7 @@
   "description": "A survey experiment: each coder is randomly assigned to one of two versions of a news article (a random condition), reads it, and answers the same questions. With example answers from 4 coders.",
   "tryThis": [
     "Open the link in a private window a few times: you get either version at random.",
-    "Look at the random condition and the article text in the design (Design tab): the text shows a different paragraph per condition.",
+    "Look at the random condition and the article text in the design (Design page): the text shows a different paragraph per condition.",
     "Download the results: the condition is a column in coders.csv, next to the answers."
   ],
   "name": "A simple experiment",
@@ -53,96 +53,102 @@
         }
       },
       {
-        "type": "question",
-        "name": "support",
-        "variable": {
-          "type": "ordinal",
-          "question": "Do you support building the wind farm?",
-          "options": [
-            {
-              "value": 1,
-              "label": "Strongly oppose"
-            },
-            {
-              "value": 2,
-              "label": "Oppose"
-            },
-            {
-              "value": 3,
-              "label": "Neutral"
-            },
-            {
-              "value": 4,
-              "label": "Support"
-            },
-            {
-              "value": 5,
-              "label": "Strongly support"
+        "type": "block",
+        "label": "Questions about the article",
+        "children": [
+          {
+            "type": "question",
+            "name": "support",
+            "variable": {
+              "type": "ordinal",
+              "question": "Do you support building the wind farm?",
+              "options": [
+                {
+                  "value": 1,
+                  "label": "Strongly oppose"
+                },
+                {
+                  "value": 2,
+                  "label": "Oppose"
+                },
+                {
+                  "value": 3,
+                  "label": "Neutral"
+                },
+                {
+                  "value": 4,
+                  "label": "Support"
+                },
+                {
+                  "value": 5,
+                  "label": "Strongly support"
+                }
+              ]
             }
-          ]
-        }
-      },
-      {
-        "type": "question",
-        "name": "emotions",
-        "variable": {
-          "type": "scale",
-          "question": "How did the article make you feel?",
-          "items": [
-            {
-              "name": "hopeful",
-              "label": "Hopeful"
-            },
-            {
-              "name": "worried",
-              "label": "Worried"
-            },
-            {
-              "name": "angry",
-              "label": "Angry"
+          },
+          {
+            "type": "question",
+            "name": "emotions",
+            "variable": {
+              "type": "scale",
+              "question": "How did the article make you feel?",
+              "items": [
+                {
+                  "name": "hopeful",
+                  "label": "Hopeful"
+                },
+                {
+                  "name": "worried",
+                  "label": "Worried"
+                },
+                {
+                  "name": "angry",
+                  "label": "Angry"
+                }
+              ],
+              "options": [
+                {
+                  "value": 1,
+                  "label": "not at all"
+                },
+                {
+                  "value": 2,
+                  "label": "a little"
+                },
+                {
+                  "value": 3,
+                  "label": "quite"
+                },
+                {
+                  "value": 4,
+                  "label": "very"
+                }
+              ]
             }
-          ],
-          "options": [
-            {
-              "value": 1,
-              "label": "not at all"
-            },
-            {
-              "value": 2,
-              "label": "a little"
-            },
-            {
-              "value": 3,
-              "label": "quite"
-            },
-            {
-              "value": 4,
-              "label": "very"
+          },
+          {
+            "type": "question",
+            "name": "manipulation_check",
+            "variable": {
+              "type": "nominal",
+              "question": "What was the article mostly about?",
+              "options": [
+                {
+                  "value": "costs_jobs",
+                  "label": "Costs and jobs"
+                },
+                {
+                  "value": "fishermen",
+                  "label": "A fisherman's worries"
+                },
+                {
+                  "value": "dont_know",
+                  "label": "I don't remember"
+                }
+              ]
             }
-          ]
-        }
-      },
-      {
-        "type": "question",
-        "name": "manipulation_check",
-        "variable": {
-          "type": "nominal",
-          "question": "What was the article mostly about?",
-          "options": [
-            {
-              "value": "costs_jobs",
-              "label": "Costs and jobs"
-            },
-            {
-              "value": "fishermen",
-              "label": "A fisherman's worries"
-            },
-            {
-              "value": "dont_know",
-              "label": "I don't remember"
-            }
-          ]
-        }
+          }
+        ]
       }
     ]
   },

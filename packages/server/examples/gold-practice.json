@@ -1,0 +1,553 @@
+{
+  "category": "Crowd coding",
+  "title": "Practice and gold units",
+  "description": "Crowd coders sort made-up news headlines by topic and say whether they are clickbait. They start with 4 practice headlines that give feedback when an answer is wrong; 3 gold headlines with a known topic are spread among the 12 headlines, checked silently, and coders who get too many wrong are screened out. With example answers from 2 coders, one of whom got a gold headline wrong.",
+  "tryThis": [
+    "Open the link (Links page) in a private window and answer a practice headline wrongly: you see why, and answer again.",
+    "Code on and get two gold headlines wrong in a row (the burglar, the unemployment figures, the swimming club): the study ends at the Screen-out block's end item.",
+    "See the right answers in the units: the columns topic_practice, topic_practice_message and topic_gold, and the set column 'kind' with _practice and _gold (Units page). Coders never get these columns.",
+    "Open the unit loop on the Design page: practice units before the coding units, gold units spread throughout, and the health that ends a session.",
+    "See how each coder did on the special units in Results › Coders."
+  ],
+  "name": "Practice and gold units",
+  "publish": true,
+  "units": [
+    {
+      "id": "practice-1",
+      "data": {
+        "headline": "Council votes to raise parking fees in the city centre",
+        "topic_practice": "politics",
+        "topic_practice_message": "A decision of the city council is politics, even when it is about money.",
+        "clickbait_practice": "no",
+        "clickbait_practice_message": "The headline says plainly what happened: not clickbait.",
+        "topic_gold": null
+      }
+    },
+    {
+      "id": "practice-2",
+      "data": {
+        "headline": "Bakery chain opens twenty new shops and hires 300 staff",
+        "topic_practice": "economy",
+        "topic_practice_message": "Companies, jobs and prices are economy.",
+        "clickbait_practice": "no",
+        "clickbait_practice_message": "It tells you the news itself: not clickbait.",
+        "topic_gold": null
+      }
+    },
+    {
+      "id": "practice-3",
+      "data": {
+        "headline": "This striker's goal celebration left the whole stadium speechless",
+        "topic_practice": "sports",
+        "topic_practice_message": "It is about a football match: sports.",
+        "clickbait_practice": "yes",
+        "clickbait_practice_message": "It teases ('left the whole stadium speechless') without telling you what happened: clickbait.",
+        "topic_gold": null
+      }
+    },
+    {
+      "id": "practice-4",
+      "data": {
+        "headline": "Theatre festival cancelled after the province cuts its budget",
+        "topic_practice": "culture|politics",
+        "topic_practice_message": "Culture and politics are both right here: the festival is culture, the budget cut is politics.",
+        "clickbait_practice": "no",
+        "clickbait_practice_message": "It says what happened and why: not clickbait.",
+        "topic_gold": null
+      }
+    },
+    {
+      "id": "headline-01",
+      "data": {
+        "headline": "Mayor and opposition clash over plans for a new ring road",
+        "topic_practice": null,
+        "topic_practice_message": null,
+        "clickbait_practice": null,
+        "clickbait_practice_message": null,
+        "topic_gold": null
+      }
+    },
+    {
+      "id": "headline-02",
+      "data": {
+        "headline": "Shoe factory to close at the end of the year",
+        "topic_practice": null,
+        "topic_practice_message": null,
+        "clickbait_practice": null,
+        "clickbait_practice_message": null,
+        "topic_gold": null
+      }
+    },
+    {
+      "id": "headline-03",
+      "data": {
+        "headline": "Woman, 34, charged with stealing bicycles from the station",
+        "topic_practice": null,
+        "topic_practice_message": null,
+        "clickbait_practice": null,
+        "clickbait_practice_message": null,
+        "topic_gold": null
+      }
+    },
+    {
+      "id": "headline-04",
+      "data": {
+        "headline": "Nine things every cyclist in town needs to know before Monday",
+        "topic_practice": null,
+        "topic_practice_message": null,
+        "clickbait_practice": null,
+        "clickbait_practice_message": null,
+        "topic_gold": null
+      }
+    },
+    {
+      "id": "gold-1",
+      "data": {
+        "headline": "Burglar caught after leaving his phone at the scene",
+        "topic_practice": null,
+        "topic_practice_message": null,
+        "clickbait_practice": null,
+        "clickbait_practice_message": null,
+        "topic_gold": "crime"
+      }
+    },
+    {
+      "id": "headline-05",
+      "data": {
+        "headline": "Ice hockey team signs a goalkeeper from Finland",
+        "topic_practice": null,
+        "topic_practice_message": null,
+        "clickbait_practice": null,
+        "clickbait_practice_message": null,
+        "topic_gold": null
+      }
+    },
+    {
+      "id": "headline-06",
+      "data": {
+        "headline": "City museum opens an exhibition of children's drawings",
+        "topic_practice": null,
+        "topic_practice_message": null,
+        "clickbait_practice": null,
+        "clickbait_practice_message": null,
+        "topic_gold": null
+      }
+    },
+    {
+      "id": "headline-07",
+      "data": {
+        "headline": "What happened next at the town hall meeting will surprise you",
+        "topic_practice": null,
+        "topic_practice_message": null,
+        "clickbait_practice": null,
+        "clickbait_practice_message": null,
+        "topic_gold": null
+      }
+    },
+    {
+      "id": "headline-08",
+      "data": {
+        "headline": "Rents in the old harbour district rise by twelve percent",
+        "topic_practice": null,
+        "topic_practice_message": null,
+        "clickbait_practice": null,
+        "clickbait_practice_message": null,
+        "topic_gold": null
+      }
+    },
+    {
+      "id": "gold-2",
+      "data": {
+        "headline": "Unemployment in the region falls to its lowest level in ten years",
+        "topic_practice": null,
+        "topic_practice_message": null,
+        "clickbait_practice": null,
+        "clickbait_practice_message": null,
+        "topic_gold": "economy"
+      }
+    },
+    {
+      "id": "headline-09",
+      "data": {
+        "headline": "Province approves money for three new primary schools",
+        "topic_practice": null,
+        "topic_practice_message": null,
+        "clickbait_practice": null,
+        "clickbait_practice_message": null,
+        "topic_gold": null
+      }
+    },
+    {
+      "id": "headline-10",
+      "data": {
+        "headline": "Heat wave expected to last until the weekend",
+        "topic_practice": null,
+        "topic_practice_message": null,
+        "clickbait_practice": null,
+        "clickbait_practice_message": null,
+        "topic_gold": null
+      }
+    },
+    {
+      "id": "headline-11",
+      "data": {
+        "headline": "Fans storm the pitch after a last-minute winner",
+        "topic_practice": null,
+        "topic_practice_message": null,
+        "clickbait_practice": null,
+        "clickbait_practice_message": null,
+        "topic_gold": null
+      }
+    },
+    {
+      "id": "headline-12",
+      "data": {
+        "headline": "Jazz festival moves to the park after record ticket sales",
+        "topic_practice": null,
+        "topic_practice_message": null,
+        "clickbait_practice": null,
+        "clickbait_practice_message": null,
+        "topic_gold": null
+      }
+    },
+    {
+      "id": "gold-3",
+      "data": {
+        "headline": "Local swimming club wins the national relay championship",
+        "topic_practice": null,
+        "topic_practice_message": null,
+        "clickbait_practice": null,
+        "clickbait_practice_message": null,
+        "topic_gold": "sports"
+      }
+    }
+  ],
+  "sets": [
+    {
+      "group": "kind",
+      "sets": [
+        {
+          "name": "_practice",
+          "units": ["practice-1", "practice-2", "practice-3", "practice-4"],
+          "ordered": true
+        },
+        {
+          "name": "_gold",
+          "units": ["gold-1", "gold-2", "gold-3"]
+        }
+      ]
+    }
+  ],
+  "design": {
+    "note": "Example: practice and gold units",
+    "public": {
+      "title": "Sorting news headlines"
+    },
+    "session": {
+      "invite": {
+        "mode": "crowd",
+        "column": "kind"
+      },
+      "end": {
+        "message": "Thank you! Your answers have been saved."
+      }
+    },
+    "items": [
+      {
+        "type": "question",
+        "name": "consent",
+        "variable": {
+          "type": "nominal",
+          "question": "In this study you sort short local news headlines by topic and say whether they are clickbait. The headlines are made up for this example.\n\nYou start with **four practice headlines**: when an answer is wrong, you are told why and answer again. Some later headlines have a known answer, to check the quality of the work: if you get too many of those wrong, the study ends early.\n\nDo you want to take part?",
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes, start"
+            },
+            {
+              "value": "no",
+              "label": "No"
+            }
+          ]
+        }
+      },
+      {
+        "type": "block",
+        "label": "Screen-out",
+        "condition": {
+          "script": "$var.consent.is('no')"
+        },
+        "children": [
+          {
+            "type": "end",
+            "name": "screened_out",
+            "outcome": "screenout",
+            "message": "Thank you for your interest. This is where the study ends for you."
+          }
+        ]
+      },
+      {
+        "type": "unit_loop",
+        "label": "Headlines",
+        "units": {
+          "practice": "before",
+          "practiceCheck": {
+            "questions": ["topic", "clickbait"]
+          },
+          "gold": "spread",
+          "goldCheck": {
+            "questions": ["topic"],
+            "health": {
+              "start": 2,
+              "wrong": -1,
+              "right": 1,
+              "end": "screened_out"
+            }
+          }
+        },
+        "children": [
+          {
+            "type": "layout",
+            "label": "The headline",
+            "template": "::: if $unit._practice\n> **Practice headline.** If an answer is wrong, you'll see why and can answer again.\n:::\n\n# $unit.headline"
+          },
+          {
+            "type": "question",
+            "name": "topic",
+            "variable": {
+              "type": "nominal",
+              "question": "What is this headline mainly about?",
+              "options": [
+                {
+                  "value": "politics",
+                  "label": "Politics"
+                },
+                {
+                  "value": "economy",
+                  "label": "Economy"
+                },
+                {
+                  "value": "crime",
+                  "label": "Crime"
+                },
+                {
+                  "value": "sports",
+                  "label": "Sports"
+                },
+                {
+                  "value": "culture",
+                  "label": "Culture"
+                },
+                {
+                  "value": "other",
+                  "label": "Other"
+                }
+              ]
+            },
+            "instruction": "- **Politics**: governments, councils, parties, elections, laws and public budgets.\n- **Economy**: companies, jobs, prices and incomes.\n- **Crime**: crimes, the police and the courts.\n- **Sports**: matches, clubs and athletes.\n- **Culture**: art, music, theatre, film and museums.\n- **Other**: anything else, such as the weather.\n\nChoose what the headline is *mainly* about.",
+            "instructionOpen": "practice"
+          },
+          {
+            "type": "question",
+            "name": "clickbait",
+            "variable": {
+              "type": "annotinder",
+              "question": "Is this headline clickbait?",
+              "options": [
+                {
+                  "value": "no",
+                  "label": "No",
+                  "color": "#22c55e"
+                },
+                {
+                  "value": "yes",
+                  "label": "Clickbait",
+                  "color": "#f97316"
+                }
+              ]
+            },
+            "instruction": "Clickbait teases instead of telling: it holds back what happened ('will surprise you', 'nine things you need to know') to make you click. Swipe left for no, right for clickbait."
+          }
+        ]
+      },
+      {
+        "type": "block",
+        "label": "Your feedback",
+        "children": [
+          {
+            "type": "question",
+            "name": "difficulty",
+            "variable": {
+              "type": "ordinal",
+              "question": "How hard was it to sort the headlines?",
+              "options": [
+                {
+                  "value": 1,
+                  "label": "Very easy"
+                },
+                {
+                  "value": 2,
+                  "label": "Easy"
+                },
+                {
+                  "value": 3,
+                  "label": "Hard"
+                },
+                {
+                  "value": 4,
+                  "label": "Very hard"
+                }
+              ]
+            }
+          },
+          {
+            "type": "question",
+            "name": "practice_helped",
+            "variable": {
+              "type": "nominal",
+              "question": "Did the practice headlines help you understand the task?",
+              "options": [
+                {
+                  "value": "yes",
+                  "label": "Yes"
+                },
+                {
+                  "value": "somewhat",
+                  "label": "Somewhat"
+                },
+                {
+                  "value": "no",
+                  "label": "No"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "answers": [
+    {
+      "variables": {
+        "consent": "yes",
+        "difficulty": 2,
+        "practice_helped": "yes"
+      },
+      "units": {
+        "practice-1": {
+          "topic": "politics",
+          "clickbait": "no"
+        },
+        "practice-2": {
+          "topic": "economy",
+          "clickbait": "no"
+        },
+        "practice-3": {
+          "topic": "sports",
+          "clickbait": "yes"
+        },
+        "practice-4": {
+          "topic": "culture",
+          "clickbait": "no"
+        },
+        "gold-1": {
+          "topic": "crime",
+          "clickbait": "no"
+        },
+        "gold-2": {
+          "topic": "economy",
+          "clickbait": "no"
+        },
+        "gold-3": {
+          "topic": "sports",
+          "clickbait": "no"
+        },
+        "headline-01": {
+          "topic": "politics",
+          "clickbait": "no"
+        },
+        "headline-02": {
+          "topic": "economy",
+          "clickbait": "no"
+        },
+        "headline-03": {
+          "topic": "crime",
+          "clickbait": "no"
+        },
+        "headline-04": {
+          "topic": "other",
+          "clickbait": "yes"
+        },
+        "headline-05": {
+          "topic": "sports",
+          "clickbait": "no"
+        },
+        "headline-06": {
+          "topic": "culture",
+          "clickbait": "no"
+        }
+      }
+    },
+    {
+      "variables": {
+        "consent": "yes",
+        "difficulty": 3,
+        "practice_helped": "somewhat"
+      },
+      "units": {
+        "practice-1": {
+          "topic": "politics",
+          "clickbait": "no"
+        },
+        "practice-2": {
+          "topic": "economy",
+          "clickbait": "no"
+        },
+        "practice-3": {
+          "topic": "sports",
+          "clickbait": "yes"
+        },
+        "practice-4": {
+          "topic": "culture",
+          "clickbait": "no"
+        },
+        "gold-1": {
+          "topic": "crime",
+          "clickbait": "no"
+        },
+        "gold-2": {
+          "topic": "politics",
+          "clickbait": "no"
+        },
+        "gold-3": {
+          "topic": "sports",
+          "clickbait": "no"
+        },
+        "headline-07": {
+          "topic": "politics",
+          "clickbait": "yes"
+        },
+        "headline-08": {
+          "topic": "economy",
+          "clickbait": "no"
+        },
+        "headline-09": {
+          "topic": "politics",
+          "clickbait": "no"
+        },
+        "headline-10": {
+          "topic": "other",
+          "clickbait": "yes"
+        },
+        "headline-11": {
+          "topic": "sports",
+          "clickbait": "no"
+        },
+        "headline-12": {
+          "topic": "culture",
+          "clickbait": "no"
+        }
+      }
+    }
+  ]
+}

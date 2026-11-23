@@ -35,6 +35,7 @@ describe("example studies", () => {
     const examples = ExampleSummarySchema.array().parse(await (await researcher("/api/examples")).json());
     expect(examples.map((e) => e.id).sort()).toEqual([
       "actor-spans",
+      "gold-practice",
       "simple-experiment",
       "simple-survey",
       "survey-annotations",

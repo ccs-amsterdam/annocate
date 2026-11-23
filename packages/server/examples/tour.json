@@ -1,11 +1,11 @@
 {
   "category": "Surveys and experiments",
   "title": "Experiment with annotations: a tour",
-  "description": "A tour of AnnoTinder's question types and features: survey questions, a random experiment that changes the layout and the questions, blocks with a condition, and a unit loop with swiping, choices, span annotation and a slider.",
+  "description": "A tour of AnnoTinder's question types and features: survey questions, a random experiment that changes the layout and the questions, blocks with a condition (each with a label, one with else items), and a unit loop with swiping, choices, span annotation and a slider.",
   "tryThis": [
-    "Open the link (Links tab) in a private window, and code as a coder would.",
-    "Open the design (Design tab) to see how each feature is set up.",
-    "Code twice, as a beginner and as an expert, to see the conditions at work."
+    "Open the link (Links page) in a private window, and code as a coder would.",
+    "Open the design (Design page) to see how each feature is set up. Blocks carry a label, shown in the editor: \"Screen-out: under 16\", \"Experiment group\", \"Experts only\".",
+    "Code twice, as a beginner and as an expert, to see the conditions at work: the \"Experiment group\" block asks the control group its else question instead."
   ],
   "name": "Demo: a tour of AnnoTinder",
   "publish": true,
@@ -76,6 +76,7 @@
       },
       {
         "type": "block",
+        "label": "Screen-out: under 16",
         "condition": {
           "script": "$var.age.lt(16)"
         },
@@ -166,6 +167,7 @@
       },
       {
         "type": "block",
+        "label": "Experiment group",
         "condition": {
           "script": "$var.group.is(\"experiment\")"
         },
@@ -175,7 +177,27 @@
             "name": "experiment_check",
             "variable": {
               "type": "nominal",
-              "question": "You were randomly assigned to the experiment group, so only you (and others in this group) see this question. Did you know codebooks can contain experiments?\n\nA random condition assigned you to a group at random. A block with a condition then shows this question only to the experiment group.",
+              "question": "You were randomly assigned to the experiment group, so only you (and others in this group) see this question. Did you know codebooks can contain experiments?\n\nA random condition assigned you to a group at random. A block with a condition then shows this question only to the experiment group. In the editor, the block has a label, \"Experiment group\", so you can see at a glance what it is for.",
+              "options": [
+                {
+                  "value": "yes",
+                  "label": "Yes"
+                },
+                {
+                  "value": "no",
+                  "label": "No"
+                }
+              ]
+            }
+          }
+        ],
+        "elseChildren": [
+          {
+            "type": "question",
+            "name": "control_check",
+            "variable": {
+              "type": "nominal",
+              "question": "You were randomly assigned to the control group: coders in the experiment group get a different question here. Did you expect a demo to put you in an experiment?\n\nThe block \"Experiment group\" shows its items to the experiment group, and its else items, like this question, to everyone else.",
               "options": [
                 {
                   "value": "yes",
@@ -367,6 +389,7 @@
           },
           {
             "type": "block",
+            "label": "Experts only",
             "condition": {
               "script": "$var.experience.is(3)"
             },
@@ -414,6 +437,7 @@
           },
           {
             "type": "block",
+            "label": "Interested in technology",
             "condition": {
               "script": "$var.interest.items.technology.gte(4)"
             },
