@@ -120,16 +120,18 @@ shared queue each is leased to the coder (a lease they hold is renewed).
 Empty: the coder is done with the loop. 409 while the study is paused
 (`active: false`).
 
-A loop can add the **test units** (the units' `test_unit`: overlap,
+A loop can add the **test units** (the units' `test_set`: overlap,
 practice, gold; `docs/architecture.md` §6.2) among the coder's own.
 Their answer columns (`answer_<question>`, `feedback_<question>`) are not in
-the unit's data. A practice unit's data has
-`_practice: true` (layouts and texts can use `$unit._practice`), and the
-unit has `practice: { retry, message?, questions: { <question>: { key,
+the unit's data. The unit's data has
+`test_set`, its test set (`practice`, `overlap`, `gold`; null for a coding
+unit), when the design uses `$unit.test_set`, and always on practice units.
+A practice unit has `practice: { retry, message?, questions: { <question>: { key,
 message? } } }`: the answer cells and feedback, so the client checks each
 practice question as it is answered (contracts `answerKey.ts`), shows the
 feedback, and with `retry` asks again until right. Gold and overlap units
-look like any other; gold cells never leave the server.
+look like any other (unless the design uses `$unit.test_set`); gold cells
+never leave the server.
 
 The server works out the units from the session's values: the session's
 units (its coder's in `coder_set`, and the condition's in `condition_set`

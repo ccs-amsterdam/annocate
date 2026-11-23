@@ -59,7 +59,7 @@ calculate or compare; ids with leading zeros (`007`) should be `text`.
 
 ### Role columns
 
-Columns named `coder_set`, `condition_set`, `part_set` or `test_unit` are
+Columns named `coder_set`, `condition_set`, `part_set` or `test_set` are
 those [columns with a role](sets.md), not fields: who codes each unit
 (`anna`, `anna;bob`, `anna#3`), each condition's or part's units, and the
 test units (`overlap`, `practice`, `gold`). Their **Type** is **column with
@@ -74,7 +74,9 @@ All units share the study's fields. A column named like an existing field
 keeps its type; new columns become new fields (empty for earlier units).
 
 The fields are listed at the top of **Units**; **Details** shows how the
-design uses each (_shown_, _sent, not shown_, _server only_, _not used_).
+design uses each (_shown_, _sent, not shown_, _server only_, _not used_;
+the test set is used by every unit loop, the coder, condition and part
+sets when the design selects units by them).
 Unused fields can be removed; a field the design uses but no upload
 brought can be declared there.
 

@@ -102,7 +102,7 @@ for (batch in split(units, ceiling(seq_along(units) / 200))) {
 ```
 
 `PUT /study/<id>/sets/<column>` replaces a whole [role column](sets.md)
-(`coder_set`, `condition_set`, `part_set` or `test_unit`): each value is a
+(`coder_set`, `condition_set`, `part_set` or `test_set`): each value is a
 name with AnnoTinder's unit ids (`id` from
 `GET /study/<id>/units`); `"ordered": true` keeps that order.
 

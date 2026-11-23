@@ -401,8 +401,9 @@ coders, or that one is required) and how coders get in (disabled until
 there is a coder set). "Create coder set…" / "Update coder set…"
 (`session/CoderSetDialog.tsx`) makes or replaces `coder_set`, after asking
 (names, email addresses or a number of coders; coders per unit or everyone
-codes everything). Its test units: the current ones (counts per type from
-`test_unit`) are kept and shown disabled; with "Redistribute test units"
+codes everything), or gives the units without a coder (not test units) to
+its coders and keeps the rest. Its test units: the current ones (counts per type from
+`test_set`) are kept and shown disabled; with "Redistribute test units"
 that many overlap, practice and gold units are drawn anew. It keeps the
 units coders were already shown or answered with them by default
 (`GET /coders/units`, contracts `distributeUnits`). The One link form has
@@ -531,7 +532,7 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
      with a link (`per_coder`, `coder_set`); crowd coding (one link, the
      loop's `units.divide`); or experimental groups (the experiment selects
      units, `condition_set` by a column's values). Overlap units are a count
-     (`test_unit` overlap); a column with the values overlap, practice and
+     (`test_set` overlap); a column with the values overlap, practice and
      gold gives test units too.
   5. **How coders see a unit**: the layout sketch (`LayoutDesigner.tsx`:
      title, byline, body), with a preview.
@@ -592,7 +593,7 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   (`sameAsPrevious`), the **Part** (a value of `part_set`; without a part
   set, "Make a part set…"), for a crowd "Units and coders" (everyone codes
   everything, or divide the units: the distribution criteria), the coding
-  units and the test units (`test_unit`: overlap, practice, gold) with their
+  units and the test units (`test_set`: overlap, practice, gold) with their
   placement, the checks (right answers in `answer_<q>`, "Create gold
   values…"), and the order (`architecture.md` §6.2).
 - **Experiments** (`variableType/RandomConditionFields.tsx`): assigned at
@@ -639,11 +640,17 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
 - **Units** (`units/`): CSV upload (`UploadUnits.tsx`, own parser
   `admin/csv.ts`): pick the id column, which columns to upload as which field,
   and their types (inferred and checked); columns named like a role column
-  (`coder_set`, `condition_set`, `part_set`, `test_unit`) are that column.
+  (`coder_set`, `condition_set`, `part_set`, `test_set`) are that column.
   The role columns with their labels (Coder set, Condition set, Part set,
-  Test unit); a paged table of units; pick a value to see its units in
-  order; "Make a part or condition set" (`SplitIntoSets.tsx`); put selected
-  units in a value,
+  Test set); a paged table of units, the role columns tinted and headed by
+  their label; pick a value to see its units in order; "Create special
+  set…", a menu of the role columns: the coder set dialog, a split into a
+  part or condition set (`SplitIntoSets.tsx`), a test set
+  (`TestSetDialog.tsx`: counts per type, drawn at random, practice units
+  ordered). An existing column is overwritten after asking, or (coder,
+  part, condition set) its units without a value that aren't test units
+  get one and the rest stays (`AssignMode.tsx`, `admin/setKinds.ts`
+  `assignWithoutValue`); put selected units in a value,
   remove them, or reset their answers. A coded unit is replaced only by
   uploading it again, after a warning.
 - **Overview** (`overview/`): live/paused/unpublished, live and draft

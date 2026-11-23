@@ -142,7 +142,7 @@ never which unit ids or which people.
 | Layer | Contains | Reproducible? |
 | --- | --- | --- |
 | Design | questions, experiments, blocks (items, optionally a label and a condition with else items; end items only in a block), unit loops (optionally a condition; a part, placements of test units, checks, a crowd's distribution criteria), the session (coder unit assignment, URL parameters, the normal end). Refers to role columns' values (a part, conditions) by name, to coders only via `$session` values | yes |
-| Role columns | the units' `coder_set`, `condition_set`, `part_set` and `test_unit`: per value, its units in order | data |
+| Role columns | the units' `coder_set`, `condition_set`, `part_set` and `test_set`: per value, its units in order | data |
 | Links | made from the coder unit assignment (one, or one per coder of `coder_set`), with their secrets and uses | no (server only) |
 
 **Role columns** (`docs/plans/unit-sets.md`, contracts `sets.ts`). Four unit
@@ -153,7 +153,7 @@ columns have a fixed name and meaning; any other column is data:
 | `coder_set` | coder names or email addresses (`anna;bob`: several) | specific coders: who codes the unit |
 | `condition_set` | an experiment's conditions (several per unit) | the experiment that selects units |
 | `part_set` | parts of the study, e.g. `pre`, `post` (several per unit) | a loop shows one part |
-| `test_unit` | one of `overlap`, `practice`, `gold`, or empty (a coding unit) | where loops place test units, and their checks |
+| `test_set` | one of `overlap`, `practice`, `gold`, or empty (a coding unit) | where loops place test units, and their checks |
 
 Right answers of practice and gold units are in the unit columns
 `answer_<q>` (and practice feedback in `feedback_<q>`), one per question
@@ -164,7 +164,7 @@ One idea, *who is this session for*, decides a session's units: its coder
 selects units (`condition_set`). Loops only select (a part) and place units
 within those, and for a crowd divide them. "Three links for my three
 coders, with some overlap" is then one setting and two columns
-(`coder_set`, and `test_unit` with a few `overlap` units).
+(`coder_set`, and `test_set` with a few `overlap` units).
 
 ### 6.1 A session's units
 
@@ -284,15 +284,16 @@ units:
   - **`priority`**: `cover` (default) prefers least-coded units, `saturate`
     units closest to done.
 
-**Test units.** The units' `test_unit` (`overlap`, `practice`, `gold`; one
+**Test units.** The units' `test_set` (`overlap`, `practice`, `gold`; one
 per unit) are placed among the coder's coding units: `ignore`, `before`,
 `after`, or `spread` (default). Overlap units are coded by every coder (to
 compare coders); practice units give feedback; gold units are checked
 silently. Spreading needs the number of units a coder gets; in a shared
 queue without `unitsPerCoder.max` it becomes a rate: about one in ten,
 seeded per coder, never more than twenty apart (`DEFAULT_RATE`). Positions
-(`practice#2`) give practice units an order. A practice unit is served with
-`$unit._practice` (e.g. for a note in the layout).
+(`practice#2`) give practice units an order. `$unit.test_set` is a unit's
+test set (null for a coding unit), e.g. for a note on practice units in the
+layout: sent when the design uses it, and always with practice units.
 
 - **Answer columns.** For each checked question `q`, the right answer is in
   unit column `answer_<q>`, practice feedback in `feedback_<q>` (optional);
@@ -331,13 +332,13 @@ optional `label` is for people.
 
 Sets are stored lists, not recipes, so adding units never changes an
 existing distribution. A role column is a unit field (`units.fields`; type
-`set`, `test_unit` type `unit_type`), stored as a set group (`unit_sets`,
+`set`, `test_set` type `unit_type`), stored as a set group (`unit_sets`,
 `unit_set_members`, draft and `live`). Each unit's cell names its values:
-`anna`, `anna;bob`, `anna#3` (with a position); `test_unit` one of
+`anna`, `anna;bob`, `anna#3` (with a position); `test_set` one of
 `overlap`, `practice`, `gold`. Sets aren't unit data: changing them makes no
 new unit version. Only the role columns can be written
 (`PUT /study/:studyId/sets/:group`, `group` one of `coder_set`,
-`condition_set`, `part_set`, `test_unit`); an upload can't give them as
+`condition_set`, `part_set`, `test_set`); an upload can't give them as
 data.
 
 The coder set dialog makes `coder_set` (`distributeUnits`, contracts
@@ -550,7 +551,7 @@ transaction.
 | `contracts/src/design/unitLoop.ts` | a loop's `units`: part, placements of test units, practice and gold checks, distribution criteria, `sameAsPrevious` |
 | `contracts/src/design/session.ts` | the Study entry: coder unit assignment, URL parameters, normal end, display |
 | `contracts/src/design/references.ts`, `condition.ts` | `$unit`/`$var`/`$session` references, templates, conditions, helpers |
-| `contracts/src/sets.ts` | role columns (`coder_set`, `condition_set`, `part_set`, `test_unit`), `distributeUnits`, `splitIntoSets` |
+| `contracts/src/sets.ts` | role columns (`coder_set`, `condition_set`, `part_set`, `test_set`), `distributeUnits`, `splitIntoSets` |
 | `contracts/src/deployment.ts` | deployment, reset, status and preview schemas |
 | `contracts/src/endpoints/` | the API registries ([docs/api](api/README.md)) |
 | `server/src/app.ts` | the Hono app: all APIs under `/api`, plus the built client (`ANNOTINDER_CLIENT_DIR`) |

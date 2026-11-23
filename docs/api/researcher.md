@@ -230,7 +230,7 @@ recipe (`contracts/src/recipe.ts`), as the setup wizard writes one, like
 - `units` (`{ id, data }`; the first unit's fields become the study's) and
   `sets`: role columns by the units' ids (`[{ group, sets: [{ name, units,
   ordered? }] }]`, `group` one of `coder_set`, `condition_set`, `part_set`,
-  `test_unit`);
+  `test_set`);
 - `design` (`{ note?, public?, session?, units?, items }`): the first version, saved as a draft that
   may have issues (e.g. questions without an answer type yet). With
   `publish: true` it is deployed, and must then pass validation. `units`:
@@ -368,7 +368,7 @@ have no value for them. New field names are letters, digits and `_`, not
 starting with a digit (`UNIT_FIELD_NAME`), so designs can refer to them
 as `$unit.<name>`. Deleting all units resets the fields. Clients infer the
 types of CSV columns (`inferFieldType`) and send typed values. The role
-columns (`coder_set`, `condition_set`, `part_set`, `test_unit`) aren't
+columns (`coder_set`, `condition_set`, `part_set`, `test_set`) aren't
 unit data: the client's CSV upload writes them with
 [putSetGroup](#putsetgroup).
 
@@ -433,11 +433,11 @@ unit resets the fields.
 (`docs/architecture.md` §6, `docs/plans/unit-sets.md`): `coder_set` (who
 codes a unit, specific coders), `condition_set` (the conditions of the
 experiment that selects units), `part_set` (a loop shows one part) and
-`test_unit` (`overlap`, `practice` or `gold`). Their values are named sets
+`test_set` (`overlap`, `practice` or `gold`). Their values are named sets
 of units (tables `unit_sets`, `unit_set_members`). The endpoints call a
 column a *group* and its values *sets*. Values are at most 128 characters,
 without `;` or `#`. A unit can have several values of a `*_set` column, and
-one `test_unit` type at most. Sets are not part of the unit's data
+one `test_set` type at most. Sets are not part of the unit's data
 (changing them is no new unit version). They are drafts: coders and links get them when they are
 deployed with `units: true`.
 
@@ -451,9 +451,9 @@ draft's sets; `?live=true`: the deployed ones (what coders and links get).
 
 `PUT /study/:studyId/sets/:group` (`{ sets: [{ name, unitIds, ordered? }] }`)
 → `SetGroupResponseSchema`. Makes or replaces the whole column, and
-declares it in the draft as a unit field (type `set`; `test_unit`:
+declares it in the draft as a unit field (type `set`; `test_set`:
 `unit_type`; 409 if a field of another type has the name). `group` must be
-a role column (400 otherwise); `test_unit` takes only `overlap`,
+a role column (400 otherwise); `test_set` takes only `overlap`,
 `practice` and `gold`, one per unit (400). The unit ids in order: the order coders get
 them in, for loops in set order. Only the study's own units (400
 otherwise).
@@ -515,7 +515,7 @@ coders who already started keep working.
 `GET /study/:studyId/coders` → `CoderProgressSchema[]`: per coder session
 (`id`) the link, the coder id (`coder`), started, last active, live answers, finished units per
 loop of the live design version, `special`: the deployed test units
-(`test_unit`: `overlap`, `gold`, `practice`) they finished, of how many (for
+(`test_set`: `overlap`, `gold`, `practice`) they finished, of how many (for
 the kinds the study has), `variables`: their coder-level values
 (answers outside unit loops, and experiments' conditions), `session`: their
 `$session` values (URL parameters, `source`, the coder), `email` only where

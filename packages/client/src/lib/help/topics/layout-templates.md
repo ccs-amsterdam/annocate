@@ -63,6 +63,7 @@ layout before it is an error.
 | ------------------ | --------------------------------------------------------------- |
 | `$unit.headline`   | the unit's field `headline`                                     |
 | `$unit.id`         | the unit's id                                                   |
+| `$unit.test_set`   | `practice`, `overlap` or `gold` on [test units](special-units.md); empty on coding units |
 | `$var.topic.label` | an earlier answer (see [Referring to answers and unit data](references.md)) |
 | `{{ ... }}`        | a small script (see [Scripts](scripts.md))                      |
 

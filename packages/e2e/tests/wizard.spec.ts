@@ -154,7 +154,7 @@ test("crowd coding with overlap units (a count); the invitation and the loop's c
   const [draft] = await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`);
   const version = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${draft.id}`);
   const [loop] = version.items as { units: unknown; children: { type: string; template?: string }[] }[];
-  // The loop divides its units among the crowd; the overlap and gold units (test_unit's) are spread (the default)
+  // The loop divides its units among the crowd; the overlap and gold units (test_set's) are spread (the default)
   expect(version.session).toEqual({ invite: { mode: "crowd" } });
   expect(loop.units).toEqual({
     divide: { codersPerUnit: { min: 2, max: 2 } },
@@ -164,6 +164,6 @@ test("crowd coding with overlap units (a count); the invitation and the loop's c
   const groups = await api<SetGroupResponse[]>(request, "GET", `/study/${study.id}/sets`);
   // The overlap: a number of test units, everyone's (the queue is all units)
   expect(groups.map((g) => [g.name, g.sets.map((s) => [s.name, s.unitIds.length])])).toEqual([
-    ["test_unit", [["overlap", 2]]],
+    ["test_set", [["overlap", 2]]],
   ]);
 });

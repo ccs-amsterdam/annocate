@@ -22,7 +22,7 @@ Two things decide which units a coder gets:
 | **Specific coders** in Coder unit assignments         | the units with their name in `coder_set` (see [Giving each coder their own units](own-units.md)) |
 | an experiment where **each condition gets its own units** | the units with their condition in `condition_set` (see [Experimental conditions](experimental-conditions.md)) |
 
-Test units (`test_unit`) are for everyone, besides these. The loop's form
+Test units (`test_set`) are for everyone, besides these. The loop's form
 sums up what a coder gets.
 
 ## A loop's units
@@ -48,7 +48,7 @@ until enough coders coded it (or agree). See [Shared queues](shared-queues.md).
 
 ## Overlap, practice and gold units
 
-Test units come from the units' `test_unit`. Each type has a row in the
+Test units come from the units' `test_set`. Each type has a row in the
 loop's form: **Spread throughout** (default), **Before coding units**,
 **After coding units** or **Leave out** (not available when the units have
 none). See [Overlap](overlap.md) and

@@ -32,7 +32,7 @@ changed there afterwards.
      [Experimental conditions](experimental-conditions.md).
 
    Optionally with a number of [overlap](overlap.md) units that every
-   coder codes (`test_unit`). With sets by a column, its values
+   coder codes (`test_set`). With sets by a column, its values
    `overlap`, `practice` and `gold` make test units.
 
 5. **How coders see a unit**: which field is the title, byline and body.

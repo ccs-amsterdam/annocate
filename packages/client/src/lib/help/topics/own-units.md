@@ -17,7 +17,7 @@ for reliability.
    names (default), email addresses or a number of coders (`coder_1`,
    ...), and **Coders per unit** (**Divide the units** with a number, or
    **Everyone codes everything**). The units are shuffled and divided.
-   **Test units**: the current ones (from `test_unit`) are kept; switch on
+   **Test units**: the current ones (from `test_set`) are kept; switch on
    **Redistribute test units** to draw a number of overlap (and practice
    or gold) units anew.
 3. Choose **A link per coder** and **Deploy**.
@@ -46,7 +46,7 @@ devices, but you don't see their address.
 | Unit                       | Coded by     |
 | -------------------------- | ------------ |
 | `coder_set` is `anna;bob`  | Anna and Bob |
-| `test_unit` is `overlap`   | every coder  |
+| `test_set` is `overlap`   | every coder  |
 
 Overlap units are spread throughout each coder's units by default (see
 [Overlap](overlap.md)).

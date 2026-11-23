@@ -29,7 +29,7 @@ nothing about your coders.
 ## Sets are lists, not rules
 
 A set is a stored list of units, not a rule (**Create coder set…** or
-**Make a part or condition set** draws it once and stores the result). Uploading more units never changes it, and
+**Create special set…** draws it once and stores the result). Uploading more units never changes it, and
 the list is the record of who got what. Loops over **All units** do
 include new units once deployed.
 

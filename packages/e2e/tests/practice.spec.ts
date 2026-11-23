@@ -26,7 +26,7 @@ test("a practice question gives feedback when wrong, answered again until right;
     name: "units.csv",
     mimeType: "text/csv",
     buffer: Buffer.from(
-      "id,text,coder_set,test_unit,answer_topic,feedback_topic\n" +
+      "id,text,coder_set,test_set,answer_topic,feedback_topic\n" +
         "p1,Practice text,,practice,politics,It is about an election.\n" +
         "p2,Second practice,,practice,politics|other,\n" +
         "u1,Own text,s1,,,\n" +
@@ -105,11 +105,11 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
     ],
   });
   const id = (externalId: string) => units.find((u) => u.externalId === externalId)!.id;
-  await api(request, "PUT", `/study/${study.id}/sets/test_unit`, {
+  await api(request, "PUT", `/study/${study.id}/sets/test_set`, {
     sets: [{ name: "gold", unitIds: [id("g1")] }],
   });
   await api(request, "POST", `/study/${study.id}/design`, {
-    // The gold units: test_unit's
+    // The gold units: test_set's
     session: { invite: { mode: "crowd" } },
     items: [
       {

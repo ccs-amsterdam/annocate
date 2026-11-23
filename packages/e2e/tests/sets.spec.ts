@@ -3,9 +3,9 @@ import type { StudyResponse, SetGroupResponse } from "@annotinder/contracts";
 import { answers, api, question } from "./helpers";
 
 // Sets and links (docs/architecture.md §6, docs/plans/unit-sets.md): columns
-// of the CSV named like a role column (coder_set, test_unit) are that
+// of the CSV named like a role column (coder_set, test_set) are that
 // column; with specific coders each coder_set value gets a link, and a coder
-// gets their units, with the overlap units (test_unit).
+// gets their units, with the overlap units (test_set).
 
 type Groups = SetGroupResponse[];
 const counts = (groups: Groups, name: string) =>
@@ -30,9 +30,7 @@ test("a coder_set column makes the coder set; a link per coder; a coder codes th
   await page.locator("input[type=file]").setInputFiles({
     name: "articles.csv",
     mimeType: "text/csv",
-    buffer: Buffer.from(
-      "id,text,coder_set,test_unit\nu1,First text,s1,\nu2,Second text,s2,\nu3,Shared text,,overlap\n",
-    ),
+    buffer: Buffer.from("id,text,coder_set,test_set\nu1,First text,s1,\nu2,Second text,s2,\nu3,Shared text,,overlap\n"),
   });
   await page.getByRole("button", { name: /Use column names/ }).click();
   await page.getByRole("button", { name: /Upload 3 units/ }).click();
@@ -42,7 +40,7 @@ test("a coder_set column makes the coder set; a link per coder; a coder codes th
     ["s1", 1],
     ["s2", 1],
   ]);
-  expect(counts(groups, "test_unit")).toEqual([["overlap", 1]]);
+  expect(counts(groups, "test_set")).toEqual([["overlap", 1]]);
 
   // Specific coders: a link each, with the overlap units first
   const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
@@ -95,13 +93,13 @@ test("a coder_set column makes the coder set; a link per coder; a coder codes th
     mimeType: "text/csv",
     buffer: Buffer.from("id,text\nu4,Fourth text\nu5,Fifth text\n"),
   });
-  await expect(page.getByLabel("New units in test_unit")).toHaveCount(0);
+  await expect(page.getByLabel("New units in test_set")).toHaveCount(0);
   await page.getByLabel("New units in coder_set").selectOption("distribute");
   await page.getByRole("button", { name: /Upload 2 units/ }).click();
   await expect
     .poll(async () => {
       const after = await api<Groups>(request, "GET", `/study/${study.id}/sets`);
-      return [counts(after, "coder_set"), counts(after, "test_unit")];
+      return [counts(after, "coder_set"), counts(after, "test_set")];
     })
     .toEqual([
       [

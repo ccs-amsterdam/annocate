@@ -5,7 +5,7 @@ order: 7
 summary: Test units - every coder codes them (overlap), their known answer is checked silently (gold) or with feedback (practice) - written in your CSV, or made in AnnoTinder.
 ---
 
-**Test units** are the units with a value in the units' `test_unit`
+**Test units** are the units with a value in the units' `test_set`
 column: `overlap`, `practice` or `gold` (one per unit; empty: a coding
 unit). They are everyone's: every coder gets them besides their own units
 (`coder_set` and `condition_set` don't select them). A test unit with a
@@ -17,7 +17,7 @@ units**, **After coding units** or **Leave out** (see
 [Overlap](overlap.md#placement)). A row is disabled when the units have
 none of that type.
 
-| `test_unit` | Its units                                          | Coders notice                    |
+| `test_set` | Its units                                          | Coders notice                    |
 | ----------- | -------------------------------------------------- | -------------------------------- |
 | `overlap`   | coded by every coder, for reliability              | nothing                          |
 | `gold`      | known answer, checked silently                     | nothing, unless they fail        |
@@ -25,12 +25,12 @@ none of that type.
 
 ## Write them in your units
 
-A `test_unit` column in your CSV, plus a column with the right answer per
+A `test_set` column in your CSV, plus a column with the right answer per
 checked question, `answer_<question>` (for practice and gold units alike),
 and optional feedback on practice units in `feedback_<question>`:
 
 ```text
-id,text,coder_set,test_unit,answer_sentiment,feedback_sentiment
+id,text,coder_set,test_set,answer_sentiment,feedback_sentiment
 a1,The minister resigned.,anna,,,
 a2,Prices fell again.,bob,,,
 a3,The team won the cup.,,overlap,,
@@ -43,12 +43,14 @@ get the answer and feedback columns (_server only_).
 
 ## Or make them in AnnoTinder
 
-- **A number of test units**: **Create coder set…** / **Update coder
-  set…** (Specific coders, in **Coder unit assignments**) shows the current
-  test units; with **Redistribute test units**, give a number of overlap,
-  practice and gold units and they are drawn anew (at random).
+- **A number of test units**: **Create special set…** → **Test set** on
+  **Units**: give a number of overlap, practice and gold units and they are
+  drawn at random (an existing test set is overwritten, after asking). Or
+  **Create coder set…** / **Update coder set…** (Specific coders, in
+  **Coder unit assignments**), which shows the current test units; with
+  **Redistribute test units** they are drawn anew.
 - **Single units**: select units on **Units** → **Put in** `gold`,
-  `practice` or `overlap` of `test_unit`.
+  `practice` or `overlap` of `test_set`.
 - **Right answers**: in the loop's form, under **Gold units** or
   **Practice units**, tick the questions and click **Create gold values…**
   or **Write practice answers…**: step through the units (shown with the
@@ -77,8 +79,11 @@ loop's **Message when wrong**, else the expected answer, and the coder
 answers again (untick **Answer again until right** to let them go on).
 Tries are in `timings.csv` (`practice_tries`).
 
-`$unit._practice` is true on practice units (`::: if $unit._practice`). A
-question's [instructions](questions.md#instructions) can open by
+`$unit.test_set` is a unit's test set: `"practice"` on practice units
+(`::: if $unit.test_set === "practice"`), `"overlap"` or `"gold"` on
+those, and empty on coding units. When a design uses it, it comes with
+every unit, so a coder looking behind the scenes can tell gold units apart.
+A question's [instructions](questions.md#instructions) can open by
 themselves on practice units. Practice answers reach the browser; gold
 answers never do.
 

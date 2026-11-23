@@ -110,3 +110,17 @@ test("practice headlines give feedback until right; two wrong gold headlines scr
     gold: { done: 2 },
   });
 });
+
+test("the example's layout marks practice headlines with $unit.test_set, a unit's own value", async ({
+  page,
+  request,
+}) => {
+  const { study } = await fromExample(request, "gold-practice");
+  await page.goto(`/research/studies/${study.id}/design`);
+  await page.getByRole("button", { name: "The headline" }).click();
+  // The editor knows it (as $unit.id): no warning once the unit fields are in
+  await page.waitForLoadState("networkidle");
+  const warnings = page.getByRole("button", { name: /\d+ warnings?/ });
+  if ((await warnings.count()) > 0) await warnings.click();
+  await expect(page.getByText(/is not a unit field/)).toHaveCount(0);
+});

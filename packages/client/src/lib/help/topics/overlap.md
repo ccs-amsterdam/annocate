@@ -8,14 +8,14 @@ summary: Overlap units that every coder codes besides their own units - for inte
 **Overlap units** are units every coder codes, besides their own: when
 coders divide the work, they give units all of them coded, for
 intercoder reliability. They are the units with `overlap` in the units'
-`test_unit` column (see [Coder, condition and part sets](sets.md)). For
+`test_set` column (see [Coder, condition and part sets](sets.md)). For
 only some coders, write `anna;bob` in `coder_set` instead.
 
 ## Setting it up
 
 1. Mark the overlap units: in **Coder unit assignments**, **Create coder
    set…** (or **Update coder set…**) with **Redistribute test units** and a
-   number of **Overlap units**; or write `overlap` in a `test_unit` column
+   number of **Overlap units**; or write `overlap` in a `test_set` column
    of your CSV; or put selected units in `overlap` on **Units**.
 2. Select the loop: the **Overlap units** row shows the count;
    choose where they go.
@@ -58,6 +58,6 @@ honest place to measure reliability.
 
 ## Gold units
 
-Units with a known answer: `gold` in `test_unit`; answers are checked and
+Units with a known answer: `gold` in `test_set`; answers are checked and
 coders who fail can be stopped. See
 [Overlap, gold and practice units](special-units.md).

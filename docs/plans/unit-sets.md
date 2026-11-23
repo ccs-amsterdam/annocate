@@ -13,12 +13,12 @@ compatibility; examples, tests and docs move to the new format.
 | `coder_set`     | coder names or email addresses (`anna;bob`)    | several  | specific coders only                      |
 | `condition_set` | an experiment's conditions                     | several  | the experiment that selects units         |
 | `part_set`      | parts of the study, e.g. `pre`, `post`         | several  | a unit loop shows one part                |
-| `test_unit`     | `overlap`, `practice` or `gold` (empty: a coding unit) | one | the loops' placement and checks of test units |
+| `test_set`     | `overlap`, `practice` or `gold` (empty: a coding unit) | one | the loops' placement and checks of test units |
 | `answer_<q>`    | the right answer to question `q` (alternatives `a\|b`, ranges `3..5`) | – | practice and gold checks |
 | `feedback_<q>`  | feedback on question `q`, shown on practice units | –     | practice checks                           |
 
 - The `*_set` columns are set columns (`;`-separated values, as now).
-  `test_unit` is a column of its own type ("unit type"): one value of
+  `test_set` is a column of its own type ("unit type"): one value of
   `overlap | practice | gold`, or empty. No underscores in values any more.
 - These names are reserved: a column with such a name is that role's
   column (uploads, the Units page, validation). Any other column is data.
@@ -70,7 +70,7 @@ compatibility; examples, tests and docs move to the new format.
   values.
 - Placement of test units (`overlap`, `practice`, `gold`: ignore / before /
   after / spread) and the checks (`practiceCheck`, `goldCheck` with health)
-  stay, reading `test_unit`, `answer_<q>`, `feedback_<q>`.
+  stay, reading `test_set`, `answer_<q>`, `feedback_<q>`.
 - `divide` (crowd only), `sameAsPrevious`, `coding`, order: unchanged.
 
 ## Validation and warnings
@@ -93,9 +93,9 @@ compatibility; examples, tests and docs move to the new format.
 ## Units page and the coder set dialog
 
 - The Units page shows the role columns with their meaning (labels:
-  "Coder set", "Condition set", "Part set", "Test unit").
+  "Coder set", "Condition set", "Part set", "Test set").
 - The coder set dialog (making or updating `coder_set`):
-  - keeps an existing `test_unit` column by default;
+  - keeps an existing `test_set` column by default;
   - no percentages for generating test units any more;
   - shows the current test units (counts per type) disabled, editable only
     with "Redistribute test units" switched on.
@@ -109,7 +109,7 @@ compatibility; examples, tests and docs move to the new format.
 
 ## Settled in the implementation (contracts and server)
 
-- `test_unit` is stored like the set columns (per value its units:
+- `test_set` is stored like the set columns (per value its units:
   `overlap`, `practice`, `gold`), with field type `unit_type`; a unit has
   one value at most; positions (`practice#2`) give practice units an order.
   The role columns' types follow from their names (`UnitsSpecSchema`);
@@ -139,3 +139,22 @@ compatibility; examples, tests and docs move to the new format.
   more (for `condition_set` / `part_set`).
 - Kept names: the recipe's `sets[].group`, the endpoints' `/sets/:group` and
   `?group=` of the units page now name a role column.
+
+## Changed after review (2026-11-23)
+
+- `test_unit` is now `test_set` (label "Test set"), like the other `*_set`
+  columns: a unit is in at most one test set. Its field type stays
+  `unit_type`; the constants are `TEST_SET`, `TEST_SET_TYPES`.
+- `$unit.test_set` is built in, like `$unit.id`: the unit's test set
+  (`practice`, `overlap`, `gold`; null for a coding unit). Validation and
+  the editor's completions know it; the server sends it when the design
+  uses it, and always with practice units (instructions open on them).
+  `$unit._practice` and the `_`-name reservation for fields are gone.
+- Field usage (Units › Details): the test set is used by every unit loop.
+- The Units page: role columns tinted, headed by their label; "Create
+  special set…" opens the coder set dialog, the split into a condition or
+  part set, or a test set form (counts per type, drawn at random, practice
+  units ordered). An existing column is overwritten after asking, or (not
+  the test set) "Assign units without a value, keep the rest": units with
+  no value that aren't test units get one (coders: `distributeUnits`
+  keeping the coders' units; condition and part sets: `addToSets`).

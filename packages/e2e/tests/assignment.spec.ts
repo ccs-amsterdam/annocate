@@ -54,7 +54,7 @@ async function studyWithColumn(
   return (await studyWithSets(request, name, Object.keys(cells), { [column]: cells })).study;
 }
 
-type Groups = { name: string; sets: { name: string; unitIds: number[] }[] }[];
+type Groups = { name: string; sets: { name: string; unitIds: number[]; ordered?: boolean }[] }[];
 
 test("the coder unit assignments show the coders; a dialog makes or updates the coder set, keeping the test units; a link per coder", async ({
   page,
@@ -62,7 +62,7 @@ test("the coder unit assignments show the coders; a dialog makes or updates the 
 }) => {
   const { study, units } = await studyWithSets(request, "Two coders", ["Anna's text", "Bob's text", "Shared text"], {
     coder_set: { "Anna's text": "anna", "Bob's text": "bob" },
-    test_unit: { "Shared text": "overlap" },
+    test_set: { "Shared text": "overlap" },
   });
   await api(request, "POST", `/study/${study.id}/design`, {
     session: { invite: { mode: "coders", link: "per_coder" } },
@@ -97,7 +97,7 @@ test("the coder unit assignments show the coders; a dialog makes or updates the 
   // The overlap unit is still the test unit, and in no coder's set
   const groups = await api<Groups>(request, "GET", `/study/${study.id}/sets`);
   const shared = units.find((u) => u.data.text === "Shared text")!.id;
-  expect(groups.find((g) => g.name === "test_unit")!.sets).toMatchObject([{ name: "overlap", unitIds: [shared] }]);
+  expect(groups.find((g) => g.name === "test_set")!.sets).toMatchObject([{ name: "overlap", unitIds: [shared] }]);
   const coderSet = groups.find((g) => g.name === "coder_set")!;
   expect(coderSet.sets.map((s) => s.name).sort()).toEqual(["carla", "dave", "emma"]);
   expect(coderSet.sets.flatMap((s) => s.unitIds)).not.toContain(shared);
@@ -137,7 +137,7 @@ test("the coder set dialog draws test units anew when redistributing them", asyn
   await expect(page.getByText("2 coders.", { exact: true })).toBeVisible();
 
   const groups = await api<Groups>(request, "GET", `/study/${study.id}/sets`);
-  const tests = groups.find((g) => g.name === "test_unit")!.sets;
+  const tests = groups.find((g) => g.name === "test_set")!.sets;
   expect(tests.map((s) => [s.name, s.unitIds.length]).sort()).toEqual([
     ["gold", 1],
     ["overlap", 2],
@@ -293,19 +293,20 @@ test("uploading units with role columns makes them, shown with their values", as
     name: "units.csv",
     mimeType: "text/csv",
     buffer: Buffer.from(
-      "id,text,coder_set,test_unit\nu1,First,anna,\nu2,Second,bob,\nu3,Third,anna;bob,\nu4,Fourth,,overlap\n",
+      "id,text,coder_set,test_set\nu1,First,anna,\nu2,Second,bob,\nu3,Third,anna;bob,\nu4,Fourth,,overlap\n",
     ),
   });
   // Columns named like a role column are that column
   await expect(page.getByLabel("Role of coder_set")).toHaveValue("coder_set");
-  await expect(page.getByLabel("Role of test_unit")).toHaveValue("test_unit");
+  await expect(page.getByLabel("Role of test_set")).toHaveValue("test_set");
   await page.getByRole("button", { name: /Use column names/ }).click();
   await page.getByRole("button", { name: /Upload 4 units/ }).click();
   await expect(page.getByRole("button", { name: /^anna 2$/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /^bob 2$/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /^overlap 1$/ })).toBeVisible();
-  // The table has the role column once (its cells), not again as a field
-  await expect(page.getByRole("cell", { name: "coder_set", exact: true })).toHaveCount(1);
+  // The table has the role column once (its cells, under its label), not again as a field
+  await expect(page.getByRole("cell", { name: "Coder set", exact: true })).toHaveCount(1);
+  await expect(page.getByRole("cell", { name: "coder_set", exact: true })).toHaveCount(0);
   await expect(page.getByRole("cell", { name: "anna;bob" })).toBeVisible();
 });
 
@@ -415,4 +416,76 @@ test("specific coders without a coder set: how coders get in waits for one, and 
   await page.reload();
   await page.getByRole("button", { name: /^Coder unit assignments/ }).click();
   await expect(page.getByText(/A coder set is required/)).toBeVisible();
+});
+
+test("the Units page creates special sets: a part set anew (asking first), units without a value assigned, a test set", async ({
+  page,
+  request,
+}) => {
+  const texts = ["One", "Two", "Three", "Four", "Five", "Six"];
+  const { study, units } = await studyWithSets(request, "Special sets", texts, {
+    coder_set: { One: "anna", Two: "bob" },
+    part_set: { One: "pre" },
+    test_set: { Six: "overlap" },
+  });
+  const id = (text: string) => units.find((u) => u.data.text === text)!.id;
+  const sets = async (column: string) =>
+    (await api<Groups>(request, "GET", `/study/${study.id}/sets`)).find((g) => g.name === column)?.sets ?? [];
+  await page.goto(`/research/studies/${study.id}/units`);
+  const create = async (label: string) => {
+    await page.getByRole("button", { name: "Create special set…" }).click();
+    await page.getByRole("menuitem", { name: new RegExp(`^${label}`) }).click();
+  };
+
+  // A part set exists: making it anew asks before overwriting
+  await create("Part set");
+  await expect(page.getByText("The units have a part set")).toBeVisible();
+  await expect(page.getByText("4 units have no value and aren't test units.")).toBeVisible();
+  await page.getByLabel("Names").fill("pre\npost");
+  await page.getByRole("button", { name: "Make the part set with 2 values" }).click();
+  await expect(page.getByText("The part set exists (pre): overwrite it?")).toBeVisible();
+  await page.getByRole("button", { name: "Overwrite" }).click();
+  await expect
+    .poll(async () => (await sets("part_set")).map((s) => [s.name, s.unitIds.length]).sort())
+    .toEqual([
+      ["post", 3],
+      ["pre", 3],
+    ]);
+
+  // Now every unit has a part: nothing to assign
+  await create("Part set");
+  await expect(page.getByLabel(/Assign units without a value/)).toBeDisabled();
+  await expect(page.getByText(/Every unit has a value or is a test unit/)).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  // The coder set keeps anna's and bob's units; the three units without a coder (not the overlap unit) are divided
+  await create("Coder set");
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("3 units have no value and aren't test units.")).toBeVisible();
+  await dialog.getByLabel(/Assign units without a value/).check();
+  await expect(dialog.getByLabel(/Names \(one per line\)/)).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Assign 3 units" }).click();
+  await expect(dialog).toBeHidden();
+  await expect
+    .poll(async () => {
+      const coders = await sets("coder_set");
+      return [coders.map((s) => s.unitIds[0]), coders.flatMap((s) => s.unitIds).sort((a, b) => a - b)];
+    })
+    .toEqual([[id("One"), id("Two")], ["One", "Two", "Three", "Four", "Five"].map(id).sort((a, b) => a - b)]);
+
+  // A test set exists: drawn anew after asking; practice units in order
+  await create("Test set");
+  await expect(dialog.getByLabel("Overlap units")).toHaveValue("1");
+  await dialog.getByLabel("Practice units").fill("2");
+  await dialog.getByRole("button", { name: "Make the test set" }).click();
+  await expect(dialog.getByText(/The test set exists \(1 overlap\): overwrite it\?/)).toBeVisible();
+  await dialog.getByRole("button", { name: "Overwrite" }).click();
+  await expect(dialog).toBeHidden();
+  await expect
+    .poll(async () => (await sets("test_set")).map((s) => [s.name, s.unitIds.length, s.ordered]).sort())
+    .toEqual([
+      ["overlap", 1, false],
+      ["practice", 2, true],
+    ]);
+  await expect(page.getByRole("cell", { name: "practice#2" })).toBeVisible();
 });

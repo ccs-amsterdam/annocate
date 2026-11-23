@@ -109,7 +109,7 @@ has two):
 
 A row per **unit version** that was coded: `unit_version_id`, `unit_id`,
 `hash`, `deployed`, every field, and each [role column](sets.md)
-(`coder_set`, `condition_set`, `part_set`, `test_unit`). A unit replaced after coding (see
+(`coder_set`, `condition_set`, `part_set`, `test_set`). A unit replaced after coding (see
 [Uploading units](uploading-units.md#replacing-units)) has a row per
 version: join on `unit_version_id` to know which text an answer is about.
 
