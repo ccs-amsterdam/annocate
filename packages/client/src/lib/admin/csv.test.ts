@@ -113,7 +113,7 @@ describe("columnTypes", () => {
   it("types columns by their values, answer columns as text", () => {
     expect(
       columnTypes(
-        ["n", "n_gold", "n_practice"],
+        ["n", "answer_n", "feedback_n"],
         [
           ["1", "2", "3"],
           ["4", "5", "6"],

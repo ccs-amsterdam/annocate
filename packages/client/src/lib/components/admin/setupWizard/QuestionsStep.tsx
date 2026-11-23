@@ -80,9 +80,10 @@ function ChecksSection({ answers, set }: StepProps) {
       <legend className="px-1 text-sm font-medium text-foreground">Units with a known answer (optional)</legend>
       <p className="text-xs text-muted-foreground">
         <strong>Gold</strong> units check coders silently; <strong>practice</strong> units tell them when they were
-        wrong. They are the units in the sets <code>_gold</code> and <code>_practice</code> (a sets column with those
-        values, or later on the Units page), with the right answer in a column per question. You can write the answers
-        later with <strong>Create gold values</strong> in the unit loop&apos;s settings.
+        wrong. They are the units marked <code>gold</code> or <code>practice</code> in the units&apos;{" "}
+        <code>test_unit</code> column (uploaded with the units, or marked later on the Units page), with the right
+        answer in a column <code>answer_&lt;question&gt;</code>. You can write the answers later with{" "}
+        <strong>Create gold values</strong> in the unit loop&apos;s settings.
       </p>
       <table className="w-fit text-left text-xs">
         <thead className="text-muted-foreground">
@@ -97,7 +98,7 @@ function ChecksSection({ answers, set }: StepProps) {
             <tr key={q}>
               <td className="pr-4 font-mono">{q}</td>
               {(["gold", "practice"] as const).map((kind) => {
-                const column = `${q}_${kind}`;
+                const column = `answer_${q}`;
                 const checked = answers.checks[kind].includes(q);
                 return (
                   <td key={kind} className="pr-4">

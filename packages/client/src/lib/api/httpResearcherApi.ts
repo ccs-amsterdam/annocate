@@ -119,7 +119,7 @@ export interface ResearcherApi {
   listExamples(): Promise<ExampleSummary[]>;
   /** A new study from an example: units, a deployed design version, a link and example answers. */
   createStudyFromExample(body: StudyFromExample): Promise<StudyResponse>;
-  /** A new study from a recipe (the setup wizard): units, set groups, a design (a draft unless `publish`; deploying makes its links). */
+  /** A new study from a recipe (the setup wizard): units, their columns with a role, a design (a draft unless `publish`; deploying makes its links). */
   createStudyFromRecipe(body: RecipeInput): Promise<StudyResponse>;
   /** The study export (coders and answers included), with its file name. Sensitive: may ask for a step-up login. */
   exportStudy(): Promise<{ file: string; bytes: Blob }>;
@@ -140,17 +140,17 @@ export interface ResearcherApi {
   /** The study's unit fields (set by the first upload); empty without units. */
   getUnitFields(): Promise<UnitField[]>;
   putUnitFields(fields: UnitField[]): Promise<UnitField[]>;
-  /** A page of units with data: all units, or one set's (of a group) in its order. */
+  /** A page of units with data: all units, or one set's (a value of a column with a role) in its order. */
   listUnitPage(query: { offset: number; limit: number; group?: string; set?: string }): Promise<UnitPage>;
   getUnit(id: number): Promise<UnitResponse>;
   createUnits(body: UnitsCreateBody): Promise<UnitResponse[]>;
   deleteUnit(id: number): Promise<void>;
 
-  /** The set groups (docs/architecture.md §6.3). */
+  /** The columns with a role (coder_set, condition_set, part_set, test_unit), each with its sets. */
   listSetGroups(live?: boolean): Promise<SetGroupResponse[]>;
-  /** Makes or replaces a group; links with the group's sets follow. */
+  /** Makes or replaces a column with a role; deployed, the links follow (a link per coder of coder_set). */
   putSetGroup(group: string, body: SetGroupWrite): Promise<SetGroupResponse>;
-  /** Refused (409) while the design uses the group. */
+  /** Refused (409) while the design uses the column. */
   deleteSetGroup(group: string): Promise<void>;
 
   listCoders(): Promise<CoderProgress[]>;

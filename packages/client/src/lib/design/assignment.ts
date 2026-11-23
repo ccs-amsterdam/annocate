@@ -1,13 +1,21 @@
-import { ALL_UNITS_SET, RESERVED_SETS, type Invite, type SetGroupResponse } from "@annotinder/contracts";
+import {
+  ALL_UNITS_SET,
+  CODER_SET,
+  CONDITION_SET,
+  type Invite,
+  type RoleColumn,
+  type SetGroupResponse,
+} from "@annotinder/contracts";
+import { roleLabel } from "../admin/setKinds";
 
-// Who gets which units (docs/architecture.md §6), as the editor shows
-// it: the coder unit assignment's coders and the experiments linked to a set
-// column, checked against the draft units' set columns.
+// Who gets which units (docs/architecture.md §6, docs/plans/unit-sets.md),
+// as the editor shows it: specific coders by the units' `coder_set`, and the
+// experiment that selects units by `condition_set`, checked against the
+// draft units' columns with a role.
 
-/** A set column's values (its sets), without the special ones (`_overlap`, `_gold`, `_practice`). */
+/** A role column's values (its sets). */
 export function columnValues(groups: readonly SetGroupResponse[], column: string): string[] {
-  const special = new Set<string>(RESERVED_SETS);
-  return (groups.find((g) => g.name === column)?.sets ?? []).map((s) => s.name).filter((n) => !special.has(n));
+  return (groups.find((g) => g.name === column)?.sets ?? []).map((s) => s.name);
 }
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -30,24 +38,24 @@ export function coderSummary(values: readonly string[]): CoderSummary {
   return { kind: "mixed", count: values.length, notEmails: values.filter((v) => !EMAIL.test(v)) };
 }
 
-/** What selects a session's units: its coder and the conditions linked to a set column. */
+/** What selects a session's units: its coder, and the experiment that selects units. */
 export interface ShareSource {
   /** How the editor names it, e.g. "coder" or "framing". */
   label: string;
-  column: string;
-  /** Drawn in the flow (a random condition), not at the start. */
+  column: RoleColumn;
+  /** Assigned in the flow (an experiment's condition), not at the start. */
   inFlow?: boolean;
 }
 
-/** The share's sources: the invitation's coders (or a crowd link's set), and the experiments linked to units. */
+/** The share's sources: specific coders (`coder_set`), and the experiment that selects units (`condition_set`). */
 export function shareSources(
   invite: Invite | undefined,
-  randomConditions: readonly { name: string; units?: string }[] = [],
+  experiments: readonly { name: string; units?: boolean }[] = [],
 ): ShareSource[] {
   const out: ShareSource[] = [];
-  if (invite?.mode === "coders" && invite.column) out.push({ label: "coder", column: invite.column });
-  if (invite?.mode === "crowd" && invite.column) out.push({ label: "link's set", column: invite.column });
-  for (const c of randomConditions) if (c.units) out.push({ label: c.name, column: c.units, inFlow: true });
+  if (invite?.mode === "coders") out.push({ label: "coder", column: CODER_SET });
+  const selecting = experiments.find((c) => c.units);
+  if (selecting) out.push({ label: selecting.name, column: CONDITION_SET, inFlow: true });
   return out;
 }
 
@@ -55,27 +63,26 @@ export function shareSources(
 export interface LoopUnitsContext {
   /** The coder unit assignment. */
   invite: Invite;
-  /** What selects a session's units (its coder or link's set, linked conditions). */
+  /** What selects a session's units (its coder, the experiment's condition). */
   sources: ShareSource[];
   /** The loops before this one (their number, from 1), whose units this loop can take. */
   earlier: { number: number; title: string }[];
 }
 
-/** A loop's units in one line: whose they are, and the loop's subset. */
-export function shareSummary(sources: readonly ShareSource[], subset?: { column: string; sets: string[] }): string {
+/** A loop's units in one line: whose they are, and the loop's part. */
+export function shareSummary(sources: readonly ShareSource[], part?: string): string {
   const whose =
     sources.length === 0
       ? "A session gets all units"
       : `A session gets the units of its ${sources.map((s) => s.label).join(" × ")}`;
-  if (!subset) return `${whose}.`;
-  const values = subset.sets.map((v) => `“${v}”`).join(", ");
-  return `${whose}; this loop only those in ${values || "(choose sets)"} of ${subset.column}.`;
+  if (part === undefined) return `${whose}.`;
+  return `${whose}; this loop only those of part “${part}”.`;
 }
 
 /**
- * A share's key from the server's progress (`coder=anna,framing=control |
- * phase post | overlap before`) as people read it: "anna · framing control,
- * only post".
+ * A share's key from the server's progress (`coder_set=anna,condition_set=control
+ * | part post | overlap before`) as people read it: "anna · condition
+ * control, only post".
  */
 export function shareLabel(key: string): string {
   if (key === ALL_UNITS_SET) return "all units";
@@ -83,13 +90,19 @@ export function shareLabel(key: string): string {
   const who =
     values === "all"
       ? "all units"
-      : values.startsWith("as ")
+      : values.includes(" as ")
         ? "each coder's units of the previous loop"
         : values
             .split(",")
             .map((pair) => pair.split("="))
-            .map(([column, value]) => (column === "coder" ? value : `${column} ${value}`))
+            .map(([column, value]) =>
+              column === CODER_SET
+                ? value
+                : column === CONDITION_SET
+                  ? `condition ${value}`
+                  : `${roleLabel(column)} ${value}`,
+            )
             .join(" · ");
-  const subset = rest.find((r) => !r.startsWith("overlap "));
-  return subset ? `${who}, only ${subset.replace(/^\S+ /, "")}` : who;
+  const part = rest.find((r) => r.startsWith("part "));
+  return part ? `${who}, only ${part.slice("part ".length)}` : who;
 }

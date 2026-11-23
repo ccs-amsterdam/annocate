@@ -8,7 +8,6 @@ import {
   setupProblems,
   setupRecipe,
   type SetupAnswers,
-  WIZARD_GROUP,
 } from "./setupRecipe";
 
 const setupUnits = {
@@ -65,7 +64,7 @@ describe("setup wizard recipes", () => {
       publicTitle: "News",
       distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null },
     });
-    expect(setupRecipe(links).design.session).toMatchObject({ invite: { mode: "coders", column: "coders" } });
+    expect(setupRecipe(links).design.session).toMatchObject({ invite: { mode: "coders" } });
     expect(setupRecipe(links).design.public).toEqual({ title: "News" });
   });
 
@@ -83,22 +82,26 @@ describe("setup wizard recipes", () => {
       distribution: {
         ...defaultDistribution("sets"),
         sets: 3,
-        overlap: { by: "percent", value: 20 },
+        overlap: 2,
       } as SetupAnswers["distribution"],
     });
     expect(setupProblems(a)).toEqual([]);
     expect(otherIssues(a)).toEqual([]);
     const recipe = setupRecipe(a);
-    const [group] = recipe.sets!;
-    expect(group.group).toBe("coders");
-    const sizes = Object.fromEntries(group.sets.map((s) => [s.name, s.units.length]));
-    expect(sizes).toEqual({ coder_1: 3, coder_2: 3, coder_3: 2, _overlap: 2 });
-    // Every unit once
-    expect(new Set(group.sets.flatMap((s) => s.units)).size).toBe(10);
-    // The sets are the coders, a link each; the overlap spread (the default)
-    expect(setupRecipe(a).design.session).toEqual({
-      invite: { mode: "coders", column: "coders", link: "per_coder" },
+    const [tests, coders] = recipe.sets!;
+    expect(coders.group).toBe("coder_set");
+    expect(Object.fromEntries(coders.sets.map((s) => [s.name, s.units.length]))).toEqual({
+      coder_1: 3,
+      coder_2: 3,
+      coder_3: 2,
     });
+    // The overlap: test units, by count
+    expect(tests.group).toBe("test_unit");
+    expect(tests.sets.map((s) => [s.name, s.units.length])).toEqual([["overlap", 2]]);
+    // Every unit once
+    expect(new Set([...coders.sets, ...tests.sets].flatMap((s) => s.units)).size).toBe(10);
+    // The sets are the coders, a link each; the overlap spread (the default)
+    expect(setupRecipe(a).design.session).toEqual({ invite: { mode: "coders", link: "per_coder" } });
     expect(loopOf(a).units).toBeUndefined();
   });
 
@@ -114,19 +117,20 @@ describe("setup wizard recipes", () => {
       ["c", 2],
     ]);
     // The links: the sets are the coders, a link each
-    expect(recipe.design.session).toEqual({ invite: { mode: "coders", column: "coders", link: "per_coder" } });
+    expect(recipe.sets![0].group).toBe("coder_set");
+    expect(recipe.design.session).toEqual({ invite: { mode: "coders", link: "per_coder" } });
     expect(loopOf(a).units).toBeUndefined();
   });
 
-  it("gold and practice checks on per-unit questions, with a sets column keeping _gold and _practice", () => {
+  it("gold and practice checks on per-unit questions, with a column's gold and practice units as test units", () => {
     const a = setup({
       distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null },
     });
     const units = a.units!.units.map((u, i) =>
       i === 0
-        ? { ...u, data: { ...u.data, group: "_gold" } }
+        ? { ...u, data: { ...u.data, group: "gold" } }
         : i === 1
-          ? { ...u, data: { ...u.data, group: "_practice" } }
+          ? { ...u, data: { ...u.data, group: "practice" } }
           : u,
     );
     const recipe = setupRecipe({
@@ -134,9 +138,14 @@ describe("setup wizard recipes", () => {
       units: { ...a.units!, units },
       checks: { gold: ["topic"], practice: ["topic", "nope"] },
     });
-    const names = recipe.sets![0].sets.map((s) => s.name);
-    expect(names).toContain("_gold");
-    expect(names).toContain("_practice");
+    expect(recipe.sets![0]).toEqual({
+      group: "test_unit",
+      sets: [
+        { name: "practice", units: ["u1"] },
+        { name: "gold", units: ["u0"] },
+      ],
+    });
+    expect(recipe.sets![1].sets.flatMap((s) => s.units)).not.toContain("u0");
     expect(
       loopOf({ ...a, units: { ...a.units!, units }, checks: { gold: ["topic"], practice: ["topic", "nope"] } }).units,
     ).toEqual({
@@ -152,23 +161,19 @@ describe("setup wizard recipes", () => {
       distribution: {
         mode: "crowd",
         shared: { until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 }, unitsPerCoder: { min: 2, max: 5 } },
-        overlap: { by: "units", value: 2 },
+        overlap: 2,
       },
     });
     expect(setupProblems(a)).toEqual([]);
     // The agreement question needs a categorical type: reported until it is specified
     expect(otherIssues(a).map((i) => i.message)).toEqual([expect.stringContaining("sentiment")]);
-    expect(setupRecipe(a).design.session).toEqual({
-      invite: {
-        mode: "crowd",
-        column: WIZARD_GROUP,
-      },
-    });
+    expect(setupRecipe(a).design.session).toEqual({ invite: { mode: "crowd" } });
     expect(loopOf(a).units).toEqual({
       divide: { until: { agree: 2, on: "sentiment" }, codersPerUnit: { max: 3 }, unitsPerCoder: { min: 2, max: 5 } },
     });
-    // The overlap: everyone's, in a column of its own
-    expect(setupRecipe(a).sets![0].sets.map((s) => [s.name, s.units.length])).toEqual([["_overlap", 2]]);
+    // The overlap: everyone's test units
+    expect(setupRecipe(a).sets![0].group).toBe("test_unit");
+    expect(setupRecipe(a).sets![0].sets.map((s) => [s.name, s.units.length])).toEqual([["overlap", 2]]);
   });
 
   it("crowd coding without overlap: a queue over all units", () => {
@@ -186,17 +191,17 @@ describe("setup wizard recipes", () => {
       distribution: { mode: "crowd", shared: { codersPerUnit: { min: 2, max: 2 } }, overlap: null },
       checks: { gold: ["topic"], practice: [] },
     });
-    // Gold units come from the crowd's column's _gold (added on the Units page)
+    // Gold units are marked in test_unit (on the Units page)
     expect(setupRecipe(a).sets).toEqual([]);
-    expect(setupRecipe(a).design.session).toEqual({ invite: { mode: "crowd", column: WIZARD_GROUP } });
+    expect(setupRecipe(a).design.session).toEqual({ invite: { mode: "crowd" } });
     expect(loopOf(a).units).toEqual({
       divide: { codersPerUnit: { min: 2, max: 2 } },
       goldCheck: { questions: ["topic"] },
     });
   });
 
-  it("sets from a column: values with the same set name are one set; special units stay out of the overlap", () => {
-    const names = ["a;b", "a#b", "_gold", "_gold", "_overlap", "c", "c", "c", "c", "c"];
+  it("sets from a column: values with the same set name are one set; test units stay out of the overlap", () => {
+    const names = ["a;b", "a#b", "gold", "gold", "overlap", "c", "c", "c", "c", "c"];
     const units = {
       ...setupUnits,
       units: setupUnits.units.map((u, i) => ({ ...u, data: { ...u.data, group: names[i] } })),
@@ -208,19 +213,20 @@ describe("setup wizard recipes", () => {
         source: "column",
         sets: 0,
         column: "group",
-        overlap: { by: "units", value: 2 },
+        overlap: 2,
       },
     });
-    const sets = Object.fromEntries(setupRecipe(a).sets![0].sets.map((s) => [s.name, s.units]));
-    expect(Object.keys(sets).sort()).toEqual(["_gold", "_overlap", "a_b", "c"].sort());
-    expect(sets._gold).toEqual(["u2", "u3"]);
-    // The column's _overlap unit and the two drawn ones
-    expect(sets._overlap).toHaveLength(3);
-    expect(sets._overlap).toContain("u4");
-    expect(sets._overlap).not.toContain("u2");
+    const [tests, coders] = setupRecipe(a).sets!;
+    expect(coders.sets.map((s) => s.name).sort()).toEqual(["a_b", "c"]);
+    const sets = Object.fromEntries(tests.sets.map((s) => [s.name, s.units]));
+    expect(sets.gold).toEqual(["u2", "u3"]);
+    // The two drawn overlap units and the column's
+    expect(sets.overlap).toHaveLength(3);
+    expect(sets.overlap).toContain("u4");
+    expect(sets.overlap).not.toContain("u2");
   });
 
-  it("experimental groups, annotating only: the condition first (an experiment), linked to a set column with a value per condition", () => {
+  it("experimental groups, annotating only: the condition first (an experiment), its units by condition_set", () => {
     const a = setup({
       parts: { annotate: true, survey: false, experiment: true },
       distribution: { mode: "groups", column: "group", values: { control: ["a"], treatment: ["b", "c"] } },
@@ -229,6 +235,7 @@ describe("setup wizard recipes", () => {
     expect(setupProblems(a)).toEqual([]);
     expect(otherIssues(a)).toEqual([]);
     const recipe = setupRecipe(a);
+    expect(recipe.sets![0].group).toBe("condition_set");
     expect(recipe.sets![0].sets.map((s) => [s.name, s.units.length])).toEqual([
       ["control", 4],
       ["treatment", 6],
@@ -236,7 +243,7 @@ describe("setup wizard recipes", () => {
     // The condition, then the loop
     expect((recipe.design.items as { type: string }[]).map((i) => i.type)).toEqual(["experiment", "unit_loop"]);
     expect(recipe.design.items[0]).toMatchObject({
-      variable: { type: "random", draw: "balanced", units: "condition" },
+      variable: { type: "random", draw: "balanced", units: true },
     });
     expect(recipe.design.session).toEqual({});
     expect(loopOf(a).units).toBeUndefined();
@@ -253,11 +260,11 @@ describe("setup wizard recipes", () => {
     const recipe = setupRecipe(a);
     const items = recipe.design.items as { name?: string; type: string }[];
     expect(items.map((i) => i.name ?? i.type)).toEqual(["condition", "age", "unit_loop", "any_comments"]);
-    // The condition selects its units: an experiment linked to a set column named after it
-    expect(recipe.sets![0].group).toBe("condition");
-    expect((recipe.design.items as { type: string; variable?: { units?: string } }[])[0]).toMatchObject({
+    // The condition selects its units: condition_set
+    expect(recipe.sets![0].group).toBe("condition_set");
+    expect(recipe.design.items[0]).toMatchObject({
       type: "experiment",
-      variable: { type: "random", units: "condition" },
+      variable: { type: "random", units: true },
     });
   });
 

@@ -1,19 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { SetGroupResponse } from "@annotinder/contracts";
-import { coderSummary, columnValues } from "./assignment";
+import { coderSummary, columnValues, shareLabel, shareSources, shareSummary } from "./assignment";
 
-const group = (name: string, sets: string[]): SetGroupResponse =>
-  ({ name, sets: sets.map((s) => ({ name: s, unitIds: [], ordered: false })) }) as SetGroupResponse;
-const groups = [
-  group("coder", ["anna", "bob", "_overlap"]),
-  group("framing", ["control", "experiment", "_gold"]),
-  group("set", []),
-];
+const group = (name: SetGroupResponse["name"], sets: string[]): SetGroupResponse => ({
+  name,
+  sets: sets.map((s) => ({ name: s, unitIds: [], ordered: false })),
+});
+const groups = [group("coder_set", ["anna", "bob"]), group("condition_set", ["control", "experiment"])];
 
 describe("who gets which units, in the editor", () => {
-  it("a column's values leave out the special sets", () => {
-    expect(columnValues(groups, "coder")).toEqual(["anna", "bob"]);
-    expect(columnValues(groups, "nope")).toEqual([]);
+  it("a column's values", () => {
+    expect(columnValues(groups, "coder_set")).toEqual(["anna", "bob"]);
+    expect(columnValues(groups, "part_set")).toEqual([]);
   });
 
   it("coders: all emails (one sign-in link), names (a link each), or a mix (an error)", () => {
@@ -25,22 +23,22 @@ describe("who gets which units, in the editor", () => {
 });
 
 describe("share summaries", () => {
-  it("say whose units a loop hands out, with its filter", async () => {
-    const { shareSources, shareSummary, shareLabel } = await import("./assignment");
-    const sources = shareSources({ mode: "coders", column: "coder", link: "per_coder" }, [
-      { name: "framing", units: "framing" },
+  it("say whose units a loop hands out, with its part", () => {
+    const sources = shareSources({ mode: "coders", link: "per_coder" }, [
+      { name: "framing", units: true },
       { name: "lang" },
     ]);
     expect(sources.map((s) => s.label)).toEqual(["coder", "framing"]);
-    expect(sources[1].inFlow).toBe(true);
+    expect(sources[1]).toMatchObject({ column: "condition_set", inFlow: true });
     expect(shareSources({ mode: "crowd" })).toEqual([]);
     expect(shareSummary([], undefined)).toBe("A session gets all units.");
-    expect(shareSummary(sources.slice(0, 2), { column: "phase", sets: ["post"] })).toBe(
-      "A session gets the units of its coder × framing; this loop only those in “post” of phase.",
+    expect(shareSummary(sources, "post")).toBe(
+      "A session gets the units of its coder × framing; this loop only those of part “post”.",
     );
-    expect(shareLabel("coder=anna,framing=control | phase post | overlap before")).toBe(
-      "anna · framing control, only post",
+    expect(shareLabel("coder_set=anna,condition_set=control | part post | overlap before")).toBe(
+      "anna · condition control, only post",
     );
     expect(shareLabel("all")).toBe("all units");
+    expect(shareLabel("session 12 as 1")).toBe("each coder's units of the previous loop");
   });
 });

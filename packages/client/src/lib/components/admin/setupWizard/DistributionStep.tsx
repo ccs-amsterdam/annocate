@@ -189,7 +189,7 @@ export function DistributionStep({ answers, set }: StepProps) {
   );
 }
 
-/** Overlap units: none, a number, or a percentage of the units. */
+/** Overlap units (test units every coder codes): none, or a number of units. */
 function OverlapInput({
   overlap,
   units,
@@ -205,30 +205,25 @@ function OverlapInput({
         <input
           type="checkbox"
           checked={overlap !== null}
-          onChange={(e) => onChange(e.target.checked ? { by: "percent", value: 10 } : null)}
+          onChange={(e) => onChange(e.target.checked ? Math.max(1, Math.round(units / 10)) : null)}
         />
         Overlap: units every coder codes (to compare coders)
       </label>
-      {overlap && (
+      {overlap !== null && (
         <>
           <input
             aria-label="Overlap size"
             type="number"
             min={1}
+            max={units || undefined}
             className={numberInput}
-            value={overlap.value}
-            onChange={(e) => onChange({ ...overlap, value: Number(e.target.value) })}
+            value={overlap}
+            onChange={(e) => onChange(Number(e.target.value))}
           />
-          <select
-            aria-label="Overlap in"
-            className={smallSelect}
-            value={overlap.by}
-            onChange={(e) => onChange({ ...overlap, by: e.target.value as "units" | "percent" })}
-          >
-            <option value="percent">% of the units</option>
-            <option value="units">units</option>
-          </select>
-          {units > 0 && <span className="text-xs text-muted-foreground">({overlapCount(overlap, units)} units)</span>}
+          units
+          {units > 0 && overlapCount(overlap, units) < overlap && (
+            <span className="text-xs text-muted-foreground">(at most {units})</span>
+          )}
         </>
       )}
     </div>

@@ -272,7 +272,7 @@ function useSetGroupMutation<T, V>(client: ResearcherApi, mutationFn: (vars: V) 
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: keys.sets(client.studyId) }),
-        // A new set column is also a unit field (declared on the latest design version)
+        // A new column with a role is also a unit field (declared on the latest design version)
         queryClient.invalidateQueries({ queryKey: keys.unitFields(client.studyId) }),
         queryClient.invalidateQueries({ queryKey: keys.pending(client.studyId) }),
         queryClient.invalidateQueries({ queryKey: keys.overview(client.studyId) }),

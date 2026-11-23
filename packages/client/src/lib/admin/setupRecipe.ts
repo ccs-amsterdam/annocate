@@ -1,8 +1,11 @@
 import {
+  CODER_SET,
+  CONDITION_SET,
   CriteriaSchema,
-  OVERLAP_SET,
-  RESERVED_SETS,
+  TEST_UNIT,
+  TEST_UNIT_TYPES,
   seededShuffle,
+  type TestUnitType,
   type Criteria,
   type RecipeInput,
   type SessionSpec,
@@ -33,16 +36,17 @@ interface SetupExperiment {
   assign: "random" | "balanced";
 }
 
-/** Units every coder codes besides their own, for checking agreement: a number of units, or a percentage of all units. */
-export type SetupOverlap = { by: "units" | "percent"; value: number } | null;
+/** Overlap units (`test_unit` overlap): this many units every coder codes besides their own, for checking agreement. */
+export type SetupOverlap = number | null;
 
 /** Who codes what (annotation), each with its own settings. */
 export type SetupDistribution =
   /** Every coder codes every unit. */
   | { mode: "all" }
   /**
-   * The units in sets, each a coder's (a link each): `split` into `sets`
-   * sets (`coder_1` ...), or one set per value of `column`.
+   * The units in sets, each a coder's (`coder_set`, a link each): `split`
+   * into `sets` sets (`coder_1` ...), or one set per value of `column`
+   * (values `overlap`, `practice` and `gold` make test units).
    */
   | {
       mode: "sets";
@@ -57,7 +61,7 @@ export type SetupDistribution =
    * and optionally overlap units.
    */
   | { mode: "crowd"; shared: Criteria; overlap: SetupOverlap }
-  /** A set per experimental condition: the units whose `column` has one of the condition's values. */
+  /** A set per experimental condition (`condition_set`): the units whose `column` has one of the condition's values. */
   | { mode: "groups"; column: string; values: Record<string, string[]> };
 
 export const DISTRIBUTIONS: { mode: SetupDistribution["mode"]; label: string; help: string }[] = [
@@ -168,16 +172,13 @@ export function parseQuestions(lines: string[]): SetupQuestion[] {
     });
 }
 
-/** The set column the wizard puts its sets in: the coders. */
-export const WIZARD_GROUP = "coders";
+/** A set's name from a column's value: no `;` or `#`. */
+const setName = (value: string) => value.trim().replace(/[;#]+/g, "_").slice(0, 128) || "empty";
 
-/** A set's name from a column's value: no `;` or `#`, and no leading `_` (reserved). */
-const setName = (value: string) =>
-  (RESERVED_SETS as readonly string[]).includes(value.trim())
-    ? value.trim()
-    : value.trim().replace(/[;#]+/g, "_").replace(/^_+/, "").slice(0, 128) || "empty";
+const isTestUnitType = (value: string): value is TestUnitType =>
+  (TEST_UNIT_TYPES as readonly string[]).includes(value.trim());
 
-/** Whether a distribution puts the units in sets of a group: then gold and practice units can be mixed in. */
+/** Whether a distribution has coders or a crowd's queue: then gold and practice units can be mixed in. */
 export const hasSetGroup = (d: SetupDistribution) => d.mode === "sets" || d.mode === "crowd";
 
 /** A loop's units settings with the gold and practice checks the wizard asked for, on questions that are per-unit questions. */
@@ -202,34 +203,41 @@ export function columnValues(units: SetupUnits | null, column: string): string[]
 
 /** How many units an overlap takes of `n`. */
 export function overlapCount(overlap: SetupOverlap, n: number): number {
-  if (!overlap) return 0;
-  return Math.min(
-    n,
-    overlap.by === "units" ? Math.max(0, Math.round(overlap.value)) : Math.round((overlap.value / 100) * n),
-  );
+  return overlap ? Math.min(n, Math.max(0, Math.round(overlap))) : 0;
 }
 
 /**
- * The sets a distribution makes (of the wizard's group), and the overlap
- * units (if any): drawn at random (fixed seed) and taken out of the sets.
+ * The coders' sets a distribution makes (`coder_set`), and its test units
+ * (`test_unit`): the overlap drawn at random (fixed seed) and taken out of
+ * the sets, and with sets by a column, its values `overlap`, `practice` and
+ * `gold`.
  */
 export function distributionSets(
   d: SetupDistribution,
   units: SetupUnits | null,
-): { sets: { name: string; units: string[] }[]; overlap: string[] } {
-  const ids = (units?.units ?? []).map((u) => u.externalId);
-  // Units a column already puts in a special set (_gold, _practice, _overlap) aren't drawn for the overlap
-  const special = new Set(
+): { sets: { name: string; units: string[] }[]; overlap: string[]; tests: { name: TestUnitType; units: string[] }[] } {
+  const all = units?.units ?? [];
+  // A column's test units (its values overlap, practice, gold) aren't drawn for the overlap, nor anyone's
+  const marked = new Map<string, TestUnitType>(
     d.mode === "sets" && d.source === "column"
-      ? (units?.units ?? [])
-          .filter((u) => (RESERVED_SETS as readonly string[]).includes(valueOf(u, d.column).trim()))
-          .map((u) => u.externalId)
+      ? all.flatMap((u) => {
+          const value = valueOf(u, d.column).trim();
+          return isTestUnitType(value) ? [[u.externalId, value] as [string, TestUnitType]] : [];
+        })
       : [],
   );
-  const drawable = ids.filter((id) => !special.has(id));
-  const overlapIds = "overlap" in d ? seededShuffle(drawable, 1).slice(0, overlapCount(d.overlap, ids.length)) : [];
+  const drawable = all.map((u) => u.externalId).filter((id) => !marked.has(id));
+  const overlapIds = "overlap" in d ? seededShuffle(drawable, 1).slice(0, overlapCount(d.overlap, all.length)) : [];
   const inOverlap = new Set(overlapIds);
-  const rest = (units?.units ?? []).filter((u) => !inOverlap.has(u.externalId));
+  const rest = all.filter((u) => !inOverlap.has(u.externalId) && !marked.has(u.externalId));
+  const tests = TEST_UNIT_TYPES.map((name) => ({
+    name,
+    units: [
+      ...(name === "overlap" ? overlapIds : []),
+      ...[...marked].filter(([, type]) => type === name).map(([id]) => id),
+    ],
+  })).filter((t) => t.units.length > 0);
+  const overlap = tests.find((t) => t.name === "overlap")?.units ?? [];
   if (d.mode === "sets") {
     if (d.source === "column") {
       // By set name: values that make the same name (e.g. "a;b" and "a#b") are one set
@@ -238,10 +246,7 @@ export function distributionSets(
         const name = setName(valueOf(u, d.column));
         byName.set(name, [...(byName.get(name) ?? []), u.externalId]);
       }
-      // A column's _overlap units join the drawn overlap
-      const overlap = [...overlapIds, ...(byName.get(OVERLAP_SET) ?? [])];
-      byName.delete(OVERLAP_SET);
-      return { sets: [...byName].map(([name, units]) => ({ name, units })), overlap };
+      return { sets: [...byName].map(([name, units]) => ({ name, units })), overlap, tests };
     }
     const n = Math.max(1, d.sets);
     const shuffled = seededShuffle(
@@ -252,14 +257,10 @@ export function distributionSets(
       name: `coder_${i + 1}`,
       units: shuffled.filter((_, j) => j % n === i),
     }));
-    return { sets, overlap: overlapIds };
+    return { sets, overlap, tests };
   }
-  if (d.mode === "crowd")
-    return {
-      sets: overlapIds.length > 0 ? [{ name: "queue", units: rest.map((u) => u.externalId) }] : [],
-      overlap: overlapIds,
-    };
-  return { sets: [], overlap: [] };
+  if (d.mode === "crowd") return { sets: [], overlap, tests };
+  return { sets: [], overlap: [], tests: [] };
 }
 
 /** What stops the wizard at a step; empty: fine. */
@@ -307,10 +308,9 @@ export function distributionProblems(answers: SetupAnswers): string[] {
   const problems: string[] = [];
   const n = answers.units?.units.length ?? 0;
   const needsUnits = (what: string) => !answers.units && problems.push(`${what} needs the units now`);
-  if ("overlap" in d && d.overlap) {
+  if ("overlap" in d && d.overlap !== null) {
     needsUnits("An overlap");
-    if (d.overlap.value <= 0 || (d.overlap.by === "percent" && d.overlap.value > 100))
-      problems.push("The overlap: a number of units, or a percentage up to 100");
+    if (!(d.overlap >= 1)) problems.push("The overlap: a number of units, at least 1");
   }
   if (d.mode === "sets") {
     needsUnits("Assigning sets");
@@ -342,8 +342,8 @@ const unspecified = (q: SetupQuestion) => ({
 
 /**
  * The recipe for `POST /study/from-recipe`: a draft design, the units and
- * their sets. Deploying makes the links (one, or one per set when sets
- * are handed out by link).
+ * their columns with a role (`coder_set`, `condition_set`, `test_unit`).
+ * Deploying makes the links (one, or one per coder).
  */
 export function setupRecipe(answers: SetupAnswers): RecipeInput {
   const lists = questionLists(answers.parts);
@@ -353,8 +353,8 @@ export function setupRecipe(answers: SetupAnswers): RecipeInput {
   const conditions = answers.experiment.conditions.map((c) => c.trim()).filter(Boolean);
   const linked = answers.parts.annotate && answers.distribution.mode === "groups";
   if (answers.parts.experiment) {
-    // The condition: an experiment, drawn when reached (first); linked to a column, it selects the
-    // units (a set column named after it, a value per condition)
+    // The condition: an experiment, drawn when reached (first); with groups, each condition gets
+    // its own units (condition_set, a value per condition)
     items.push({
       type: "experiment",
       name: answers.experiment.name,
@@ -364,43 +364,34 @@ export function setupRecipe(answers: SetupAnswers): RecipeInput {
         options: conditions.map((c) =>
           linked && setName(c) !== c ? { value: setName(c), label: c } : { value: linked ? setName(c) : c },
         ),
-        ...(linked ? { units: answers.experiment.name } : {}),
+        ...(linked ? { units: true } : {}),
       },
     });
   }
   items.push(...parseQuestions(answers.questions.before).map(unspecified));
   if (answers.parts.annotate) {
     const d = answers.distribution;
-    const { sets, overlap } = distributionSets(d, answers.units);
-    const overlapSet = overlap.length > 0 ? [{ name: OVERLAP_SET, units: overlap }] : [];
+    const { sets, tests } = distributionSets(d, answers.units);
+    // Test units: overlap (everyone's), and a column's practice and gold units; more can be marked on the Units page
+    if (tests.length > 0) groups.push({ group: TEST_UNIT, sets: tests });
     let units: object = {};
     switch (d.mode) {
       case "all":
         break;
       case "sets":
         // The sets are the coders, a link each; the overlap spread through their units (the default)
-        groups.push({ group: WIZARD_GROUP, sets: [...sets, ...overlapSet] });
-        session = { invite: { mode: "coders", column: WIZARD_GROUP, link: "per_coder" } };
+        groups.push({ group: CODER_SET, sets });
+        session = { invite: { mode: "coders", link: "per_coder" } };
         break;
       case "crowd":
-        // The overlap: everyone's (the crowd's column, with only special units; also where gold and
-        // practice units go, marked on the Units page)
-        if (overlap.length > 0) groups.push({ group: WIZARD_GROUP, sets: overlapSet });
-        session = {
-          invite: {
-            mode: "crowd",
-            ...(overlap.length > 0 || answers.checks.gold.length + answers.checks.practice.length > 0
-              ? { column: WIZARD_GROUP }
-              : {}),
-          },
-        };
+        session = { invite: { mode: "crowd" } };
         // The loop divides its units among the coders (overlap spread, about one in ten without a maximum per coder)
         units = { divide: d.shared };
         break;
       case "groups":
-        // A set column named after the condition, a value per condition: the condition (drawn before the loop) selects its units
+        // condition_set, a value per condition: the condition (drawn before the loop) selects its units
         groups.push({
-          group: answers.experiment.name,
+          group: CONDITION_SET,
           sets: conditions.map((condition) => {
             const values = d.values[condition] ?? [];
             return {
@@ -413,7 +404,7 @@ export function setupRecipe(answers: SetupAnswers): RecipeInput {
         });
         break;
     }
-    // Gold and practice checks on the special units (assign sets, crowd coding)
+    // Gold and practice checks on the test units (assign sets, crowd coding)
     if (hasSetGroup(d))
       units = withChecks(
         units,
