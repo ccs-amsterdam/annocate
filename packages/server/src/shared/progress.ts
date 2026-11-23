@@ -1,7 +1,9 @@
 import { listSetGroups } from "./sets.js";
 import {
-  assignmentColumn,
+  TEST_UNIT,
+  TEST_UNIT_TYPES,
   type CoderProgress,
+  type TestUnitType,
   type StudyOverview,
   loginRequired,
   sessionItem,
@@ -57,27 +59,23 @@ async function finishedPerLoop(db: Db, studyId: number): Promise<Map<string, Map
   return result;
 }
 
-const SPECIAL_KINDS = { _overlap: "overlap", _gold: "gold", _practice: "practice" } as const;
-type SpecialSet = keyof typeof SPECIAL_KINDS;
-
 /**
- * Per session, the deployed special units it finished, of how many (contracts
- * `CoderProgress.special`; docs/architecture.md §6): those of the coder unit
- * assignment's set column. Counted for sessions that were routed in a loop.
+ * Per session, the deployed test units it finished, of how many (contracts
+ * `CoderProgress.special`; docs/architecture.md §6): those of `test_unit`.
+ * Counted for sessions that were routed in a loop.
  */
-async function specialProgress(db: Db, studyId: number, deployedItems: unknown[] | null) {
-  const column = deployedItems ? assignmentColumn(sessionItem(deployedItems)) : undefined;
-  const members = column
+async function specialProgress(db: Db, studyId: number, deployed: boolean) {
+  const members = deployed
     ? await db
-        .select({ name: sql<SpecialSet>`${unitSets.name}`, unitId: unitSetMembers.unitId })
+        .select({ name: sql<TestUnitType>`${unitSets.name}`, unitId: unitSetMembers.unitId })
         .from(unitSets)
         .innerJoin(unitSetMembers, eq(unitSetMembers.setId, unitSets.id))
         .where(
           and(
             eq(unitSets.studyId, studyId),
             eq(unitSets.live, true),
-            eq(unitSets.grp, column),
-            inArray(unitSets.name, Object.keys(SPECIAL_KINDS)),
+            eq(unitSets.grp, TEST_UNIT),
+            inArray(unitSets.name, [...TEST_UNIT_TYPES]),
           ),
         )
     : [];
@@ -94,8 +92,8 @@ async function specialProgress(db: Db, studyId: number, deployedItems: unknown[]
   return (sessionId: number, assignments: Record<string, unknown>) => {
     const out: CoderProgress["special"] = {};
     if (Object.keys(assignments ?? {}).length === 0) return out;
-    for (const [name, kind] of Object.entries(SPECIAL_KINDS) as [SpecialSet, (typeof SPECIAL_KINDS)[SpecialSet]][]) {
-      const unitIds = new Set(members.filter((m) => m.name === name).map((m) => m.unitId));
+    for (const kind of TEST_UNIT_TYPES) {
+      const unitIds = new Set(members.filter((m) => m.name === kind).map((m) => m.unitId));
       if (unitIds.size === 0) continue;
       out[kind] = { done: [...unitIds].filter((id) => done.get(sessionId)?.has(id)).length, total: unitIds.size };
     }
@@ -132,7 +130,7 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
   const deployedItems = deployed ? designVersionItems(deployed) : null;
   // Coders' emails only where the study requires sign-in: elsewhere coders sign in for themselves (other devices)
   const showEmails = deployedItems ? loginRequired(sessionItem(deployedItems)) : false;
-  const special = await specialProgress(db, studyId, deployedItems);
+  const special = await specialProgress(db, studyId, deployedItems !== null);
 
   return coders.map(({ coder: c, linkLabel }) => ({
     id: c.id,

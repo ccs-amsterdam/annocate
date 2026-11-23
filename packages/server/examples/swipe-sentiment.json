@@ -5,7 +5,7 @@
   "tryThis": [
     "Download the results (Results page) to see what the example coders' answers look like: the coder column says who coded what.",
     "Open a coder's link (Links page) in a private window: you get that coder's 5 units, with the 5 overlap units spread in between.",
-    "See who codes what: the set column 'coder' on the Units page, and 'Specific coders' with a link per coder in the Study entry (Design page)."
+    "See who codes what: the columns coder_set and test_unit (overlap) on the Units page, and 'Specific coders' with a link per coder in the Study entry (Design page)."
   ],
   "name": "Sentiment by swiping",
   "publish": true,
@@ -133,7 +133,7 @@
   ],
   "sets": [
     {
-      "group": "coder",
+      "group": "coder_set",
       "sets": [
         {
           "name": "anna",
@@ -146,9 +146,14 @@
         {
           "name": "carla",
           "units": ["news-16", "news-17", "news-18", "news-19", "news-20"]
-        },
+        }
+      ]
+    },
+    {
+      "group": "test_unit",
+      "sets": [
         {
-          "name": "_overlap",
+          "name": "overlap",
           "units": ["news-01", "news-02", "news-03", "news-04", "news-05"]
         }
       ]
@@ -162,7 +167,6 @@
     "session": {
       "invite": {
         "mode": "coders",
-        "column": "coder",
         "link": "per_coder"
       }
     },

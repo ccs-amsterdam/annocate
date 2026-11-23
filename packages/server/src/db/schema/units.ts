@@ -119,7 +119,7 @@ export const unitVersionFields = pgTable(
   ],
 );
 
-/** Sets of units in set groups (grp: a `set` column), the draft's and the deployed ones (live); no history. */
+/** Sets of units of the columns with a role (grp: `coder_set`, `condition_set`, `part_set`, `test_unit`), the draft's and the deployed ones (live); no history. */
 export const unitSets = pgTable(
   "unit_sets",
   {

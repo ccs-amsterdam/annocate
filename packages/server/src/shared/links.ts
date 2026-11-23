@@ -1,12 +1,12 @@
 import { randomBytes } from "node:crypto";
 import {
+  CODER_SET,
   CONFIRM_LINKS,
   MAX_LINKS,
   DesignItemsSchema,
   linkCombinations,
   linkKey,
   linkMaxCoders,
-  sessionColumns,
   sessionItem,
   type DesignItem,
   type LinkResponse,
@@ -24,7 +24,7 @@ export type LinkRow = typeof linksTable.$inferSelect;
 
 /** A link for the researcher; `session`: the deployed design's Study entry (the most sessions a link starts). */
 export function toLinkResponse(row: LinkRow, session: SessionItem | null): LinkResponse {
-  const maxUses = linkMaxCoders(session, row.params.group);
+  const maxUses = linkMaxCoders(session);
   return {
     id: row.id,
     studyId: row.studyId,
@@ -40,14 +40,11 @@ export function toLinkResponse(row: LinkRow, session: SessionItem | null): LinkR
 }
 
 /**
- * The links a design makes with the deployed set columns (`live`) or the
- * draft's: one per coder (specific coders with a link each), else one.
+ * The links a design makes with the deployed coders (`coder_set`, `live`)
+ * or the draft's: one per coder (specific coders with a link each), else one.
  */
 async function linksOf(db: Db, studyId: number, items: DesignItem[], live: boolean): Promise<Record<string, string>[]> {
-  const session = sessionItem(items);
-  const sets = new Map<string, string[]>();
-  for (const { column } of sessionColumns(session)) sets.set(column, await groupSets(db, studyId, column, live));
-  return linkCombinations(session, (group) => sets.get(group) ?? []);
+  return linkCombinations(sessionItem(items), await groupSets(db, studyId, CODER_SET, live));
 }
 
 /**

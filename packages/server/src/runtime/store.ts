@@ -695,7 +695,7 @@ async function findOrCreateCoder(
   // A coder id is a label, never a credential: a new device for a
   // known coder gets a *new* session, and only when asked for.
   const { coder, session } = sessionValues(
-    request.sessionRules ?? { item: null, setsOf: () => [] },
+    request.sessionRules ?? { item: null, coders: [] },
     params,
     request.urlParams ?? {},
     login?.email ?? null,
@@ -712,7 +712,7 @@ async function findOrCreateCoder(
   if (!coderHasSession) {
     // Checked and counted in one statement, so concurrent coders can't overrun a crowd's most coders
     // (per link, docs/architecture.md §5)
-    const maxCoders = linkMaxCoders(request.sessionRules?.item, link.params.group);
+    const maxCoders = linkMaxCoders(request.sessionRules?.item);
     const used = await db
       .update(links)
       .set({ uses: sql`${links.uses} + 1` })
@@ -741,7 +741,7 @@ async function pickName(
   invite: CodersInvite,
 ): Promise<{ name: string } | { taken: CoderRow }> {
   const name = request.pickedName;
-  if (!name || !invite.column || !request.sessionRules!.setsOf(invite.column).includes(name))
+  if (!name || !request.sessionRules!.coders.includes(name))
     throw new HttpError(409, "Pick your name to start", "name_required");
   await advisoryLock(db, `pick_name:${studyId}:${name}`);
   const [taken] = await db

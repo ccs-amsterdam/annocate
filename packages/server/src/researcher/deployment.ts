@@ -54,8 +54,8 @@ export function deployment(server: Server): Hono<Env> {
     // The units it runs: the drafts (`units`, and always the first time), or the deployed ones.
     const deployed = (await db.$count(deployments, eq(deployments.studyId, studyId))) > 0;
     const live = !parsed.data.units && deployed;
-    // Who gets which units: the set columns it names, the coders' and random conditions' values (docs/architecture.md §6.3)
-    const checks = await assignmentChecks(db, studyId, items, fields, live);
+    // Who gets which units: the columns with a role (docs/plans/unit-sets.md)
+    const checks = await assignmentChecks(db, studyId, items, live);
     if (checks.errors.length > 0) return c.json({ error: checks.errors.join(" "), code: "assignment_invalid" }, 400);
     // Links follow the design's coder unit assignment (docs/architecture.md §7).
     await checkLinkCount(db, studyId, items, parsed.data.confirmLinks ?? false, live);

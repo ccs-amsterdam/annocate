@@ -205,21 +205,21 @@ describe("units: fields and pages", () => {
         Array.from({ length: 5 }, (_, i) => ({ externalId: `u${i}`, data: { i } })),
       ),
     )) as { id: number }[];
-    const put = await app.request(`/api/study/${study.id}/sets/batch`, {
+    const put = await app.request(`/api/study/${study.id}/sets/part_set`, {
       method: "PUT",
       headers: adminHeaders,
       body: JSON.stringify({
         sets: [
           { name: "set", unitIds: [units[4].id, units[0].id, units[2].id], ordered: true },
-          { name: "_overlap", unitIds: [units[1].id] },
+          { name: "other", unitIds: [units[1].id] },
         ],
       }),
     });
     expect(put.status).toBe(200);
     expect(await json(put)).toEqual({
-      name: "batch",
+      name: "part_set",
       sets: [
-        { name: "_overlap", unitIds: [units[1].id], ordered: false },
+        { name: "other", unitIds: [units[1].id], ordered: false },
         { name: "set", unitIds: [units[4].id, units[0].id, units[2].id], ordered: true },
       ],
     });
@@ -229,28 +229,28 @@ describe("units: fields and pages", () => {
     const all = await page("offset=1&limit=2");
     expect(all.total).toBe(5);
     expect(all.units.map((u: { externalId: string }) => u.externalId)).toEqual(["u1", "u2"]);
-    const set = await page("group=batch&set=set&offset=1&limit=5");
+    const set = await page("group=part_set&set=set&offset=1&limit=5");
     expect(set.total).toBe(3);
     expect(set.units.map((u: { externalId: string }) => u.externalId)).toEqual(["u0", "u2"]);
     expect(
       (await json(await app.request(`/api/study/${study.id}/overview`, { headers: adminHeaders }))).groups,
     ).toEqual([
       {
-        name: "batch",
+        name: "part_set",
         sets: [
-          { name: "_overlap", units: 1 },
+          { name: "other", units: 1 },
           { name: "set", units: 3 },
         ],
       },
     ]);
     // Deleted: gone (no codebook uses it)
     expect(
-      (await app.request(`/api/study/${study.id}/sets/batch`, { method: "DELETE", headers: adminHeaders })).status,
+      (await app.request(`/api/study/${study.id}/sets/part_set`, { method: "DELETE", headers: adminHeaders })).status,
     ).toBe(204);
     expect(await json(await app.request(`/api/study/${study.id}/sets`, { headers: adminHeaders }))).toEqual([]);
   });
 
-  it("keeps sets to the study's own units, with valid names", async () => {
+  it("keeps sets to the study's own units, in the columns with a role, with valid names", async () => {
     const study = await createStudy();
     const other = await createStudy("Other");
     const [mine] = await json(await upload(study.id, [{ externalId: "u1", data: { n: 1 } }]));
@@ -261,18 +261,36 @@ describe("units: fields and pages", () => {
         headers: adminHeaders,
         body: JSON.stringify({ sets }),
       });
-    expect((await put("g", [{ name: "s", unitIds: [mine.id, theirs.id] }])).status).toBe(400);
-    expect((await put("g", [{ name: "_other", unitIds: [mine.id] }])).status).toBe(400);
+    expect((await put("part_set", [{ name: "s", unitIds: [mine.id, theirs.id] }])).status).toBe(400);
+    expect((await put("part_set", [{ name: "a;b", unitIds: [mine.id] }])).status).toBe(400);
     expect(
       (
-        await put("g", [
+        await put("part_set", [
           { name: "s", unitIds: [mine.id] },
           { name: "s", unitIds: [] },
         ])
       ).status,
     ).toBe(400);
-    expect((await put("_g", [{ name: "s", unitIds: [mine.id] }])).status).toBe(400);
-    expect((await put("g", [{ name: "s", unitIds: [mine.id] }])).status).toBe(200);
+    // Only the columns with a role; test_unit takes the test unit types, one per unit
+    expect((await put("batch", [{ name: "s", unitIds: [mine.id] }])).status).toBe(400);
+    expect((await put("test_unit", [{ name: "_gold", unitIds: [mine.id] }])).status).toBe(400);
+    expect(
+      (
+        await put("test_unit", [
+          { name: "gold", unitIds: [mine.id] },
+          { name: "practice", unitIds: [mine.id] },
+        ])
+      ).status,
+    ).toBe(400);
+    expect((await put("part_set", [{ name: "s", unitIds: [mine.id] }])).status).toBe(200);
+    expect((await put("test_unit", [{ name: "gold", unitIds: [mine.id] }])).status).toBe(200);
+    const fields = await json(await app.request(`/api/study/${study.id}/units/fields`, { headers: adminHeaders }));
+    expect(fields).toEqual(
+      expect.arrayContaining([
+        { name: "part_set", type: "set" },
+        { name: "test_unit", type: "unit_type" },
+      ]),
+    );
   });
 });
 
@@ -371,16 +389,16 @@ describe("annotations: finished counts and resets", () => {
 describe("links, coder progress and overview", () => {
   const value = (code: string): VariableValue => ({ done: true, skip: false, values: [{ value: code }] });
 
-  /** Sets the coders of the set column `batch` (one empty set each). */
+  /** Sets the coders of `coder_set` (one empty set each). */
   const setCoders = async (studyId: number, names: string[]) => {
-    const res = await app.request(`/api/study/${studyId}/sets/batch`, {
+    const res = await app.request(`/api/study/${studyId}/sets/coder_set`, {
       method: "PUT",
       headers: adminHeaders,
       body: JSON.stringify({ sets: names.map((name) => ({ name, unitIds: [] })) }),
     });
     expect(res.status, await res.clone().text()).toBe(200);
   };
-  const coders = { type: "session", invite: { mode: "coders", column: "batch", link: "per_coder" } };
+  const coders = { type: "session", invite: { mode: "coders", link: "per_coder" } };
 
   async function setup(names?: string[]) {
     const session = names ? coders : undefined;

@@ -4,6 +4,8 @@ import {
   addedFields,
   designItems,
   checkUnitData,
+  isSetType,
+  roleColumnType,
   type DesignItem,
   type Recipe,
   type UnitData,
@@ -20,8 +22,8 @@ import { checkLinkCount, syncLinks } from "./links.js";
 import { assignmentChecks, putSetGroup } from "./sets.js";
 import { saveUnits } from "./units.js";
 
-// Recipes (contracts recipe.ts, docs/examples.md): a new study's units, set
-// groups and first design version in one document; deploying it makes its
+// Recipes (contracts recipe.ts, docs/examples.md): a new study's units, its
+// columns with a role and first design version in one document; deploying it makes its
 // links (shared/links.ts `syncLinks`). Example studies and the setup wizard
 // both make studies through here.
 
@@ -49,8 +51,8 @@ const invalid = (message: string) => new HttpError(400, message, "recipe_invalid
 
 /**
  * Saves a recipe's units, checked against the declared fields (a design
- * file's) and those the units add. Returns the data fields (not set
- * columns) and the units' database ids by their ids in the recipe.
+ * file's) and those the units add. Returns the data fields (not columns
+ * with a role) and the units' database ids by their ids in the recipe.
  */
 async function saveRecipeUnits(
   tx: Db,
@@ -59,7 +61,7 @@ async function saveRecipeUnits(
   declared: UnitField[],
 ): Promise<{ dataFields: UnitField[]; unitIds: Map<string, number> }> {
   const unitIds = new Map<string, number>();
-  const dataFields = declared.filter((f) => f.type !== "set");
+  const dataFields = declared.filter((f) => !isSetType(f.type));
   if (recipe.units.length === 0) return { dataFields, unitIds };
   const ids = recipe.units.map((u) => u.id);
   const twice = ids.find((id, i) => ids.indexOf(id) !== i);
@@ -81,8 +83,8 @@ async function saveRecipeUnits(
 }
 
 /**
- * Saves a recipe's set groups. Returns the set columns as fields of type
- * set: the declared ones (with their descriptions), then the others.
+ * Saves a recipe's columns with a role (as sets). Returns them as fields of
+ * their type: the declared ones (with their descriptions), then the others.
  */
 async function saveRecipeSets(
   tx: Db,
@@ -99,10 +101,10 @@ async function saveRecipeSets(
   };
   const groups = recipe.sets.map((g) => g.group);
   const twice = groups.find((g, i) => groups.indexOf(g) !== i);
-  if (twice !== undefined) throw invalid(`Group '${twice}' is defined twice`);
+  if (twice !== undefined) throw invalid(`Column '${twice}' is defined twice`);
   for (const group of recipe.sets) {
     if (dataFields.some((f) => f.name === group.group))
-      throw invalid(`'${group.group}' is a field of the units and a set column`);
+      throw invalid(`'${group.group}' is a field of the units and a column with a role`);
     await putSetGroup(
       tx,
       studyId,
@@ -111,12 +113,12 @@ async function saveRecipeSets(
       { declare: false },
     );
   }
-  const declaredSets = declared.filter((f) => f.type === "set");
+  const declaredSets = declared.filter((f) => isSetType(f.type));
   return [
     ...declaredSets,
     ...groups
       .filter((name) => !declaredSets.some((f) => f.name === name))
-      .map((name) => ({ name, type: "set" as const })),
+      .map((name) => ({ name, type: roleColumnType(name) })),
   ];
 }
 
@@ -171,7 +173,7 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
   let firstLink: number | null = null;
   if (recipe.publish) {
     await putDeployment(tx, study.id, { designVersionId, active: true, units: true });
-    const checks = await assignmentChecks(tx, study.id, designItems(recipe.design) as DesignItem[], fields, true);
+    const checks = await assignmentChecks(tx, study.id, designItems(recipe.design) as DesignItem[], true);
     if (checks.errors.length > 0) throw invalid(checks.errors.join(" "));
     await checkLinkCount(tx, study.id, designItems(recipe.design) as DesignItem[], true, true);
     await syncLinks(tx, study.id, { secrets: options.secrets });

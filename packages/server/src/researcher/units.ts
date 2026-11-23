@@ -4,6 +4,7 @@ import {
   addedFields,
   checkUnitData,
   fieldUsage,
+  isSetType,
   type UnitData,
   type UnitField,
 } from "@annotinder/contracts";
@@ -80,8 +81,8 @@ export function units(server: Server): Hono<Env> {
     const upload = await uploadFields(db, studyId, declared, parsed.data.units);
     if ("error" in upload) return c.json({ error: upload.error }, 400);
     const { fields } = upload;
-    // Set columns aren't data (their cells are sets): an empty one given is left out
-    const setFields = new Set(fields.filter((f) => f.type === "set").map((f) => f.name));
+    // Columns with a role aren't data (their cells are sets): an empty one given is left out
+    const setFields = new Set(fields.filter((f) => isSetType(f.type)).map((f) => f.name));
     const units = parsed.data.units.map((u) => ({
       ...u,
       data: Object.fromEntries(

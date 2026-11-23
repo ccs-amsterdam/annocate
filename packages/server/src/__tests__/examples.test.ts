@@ -113,9 +113,7 @@ describe("studies from a recipe", () => {
   const items = [
     {
       type: "block",
-      children: [
-        { type: "experiment", name: "condition", variable: { type: "random", draw: "random", units: "condition" } },
-      ],
+      children: [{ type: "experiment", name: "condition", variable: { type: "random", draw: "random", units: true } }],
     },
     {
       type: "unit_loop",
@@ -130,7 +128,7 @@ describe("studies from a recipe", () => {
     units,
     sets: [
       {
-        group: "condition",
+        group: "condition_set",
         sets: [
           { name: "x", units: ["a"] },
           { name: "y", units: ["b"] },
@@ -142,7 +140,7 @@ describe("studies from a recipe", () => {
   const post = (body: object) => researcher("/api/study/from-recipe", { method: "POST", body: JSON.stringify(body) });
   const studyCount = async () => (await query<{ n: number }>(db, "SELECT count(*)::int AS n FROM studies"))[0].n;
 
-  it("makes the units, set groups and a draft design; deploying makes its links", async () => {
+  it("makes the units, columns with a role and a draft design; deploying makes its links", async () => {
     const res = await post(recipe);
     expect(res.status).toBe(201);
     const study = StudyResponseSchema.parse(await res.json());
@@ -153,7 +151,7 @@ describe("studies from a recipe", () => {
     }[];
     expect(groups.map((g) => [g.name, g.sets.map((s) => [s.name, s.unitIds.length])])).toEqual([
       [
-        "condition",
+        "condition_set",
         [
           ["x", 1],
           ["y", 1],
@@ -163,7 +161,7 @@ describe("studies from a recipe", () => {
     // A draft with a question to specify: saved, not deployed
     const designVersions = (await (await researcher(`/api/study/${study.id}/design`)).json()) as { items: unknown[] }[];
     expect(designVersions).toHaveLength(1);
-    // Its set columns are unit fields of type set
+    // Its columns with a role are unit fields of their type
     const [{ units: spec }] = await query<{ units: { fields: unknown[] } }>(
       db,
       "SELECT units FROM design_versions WHERE study_id = $1",
@@ -171,7 +169,7 @@ describe("studies from a recipe", () => {
     );
     expect(spec.fields).toEqual([
       { name: "text", type: "text" },
-      { name: "condition", type: "set" },
+      { name: "condition_set", type: "set" },
     ]);
     expect(await (await researcher(`/api/study/${study.id}/deployment`)).json()).toBeNull();
     expect(((await (await researcher(`/api/study/${study.id}/links`)).json()) as unknown[]).length).toBe(0);
@@ -196,9 +194,11 @@ describe("studies from a recipe", () => {
       error: expect.stringContaining("no answer type yet"),
     });
     expect((await post({ ...recipe, units: [...units, { id: "a", data: { text: "again" } }] })).status).toBe(400);
-    expect((await post({ ...recipe, sets: [{ group: "g", sets: [{ name: "s", units: ["nope"] }] }] })).status).toBe(
-      400,
-    );
+    expect(
+      (await post({ ...recipe, sets: [{ group: "part_set", sets: [{ name: "s", units: ["nope"] }] }] })).status,
+    ).toBe(400);
+    // Only the columns with a role
+    expect((await post({ ...recipe, sets: [{ group: "g", sets: [{ name: "s", units: ["a"] }] }] })).status).toBe(400);
     expect(await studyCount()).toBe(0);
   });
 
@@ -213,7 +213,7 @@ describe("studies from a recipe", () => {
         items,
         units: {
           fields: [
-            { name: "condition", type: "set", description: "The experimental condition" },
+            { name: "condition_set", type: "set", description: "The experimental condition" },
             { name: "picture", type: "text", description: "Where the picture is" },
             { name: "text", type: "text", description: "The article" },
           ],
@@ -229,7 +229,7 @@ describe("studies from a recipe", () => {
     );
     // Declared ones in their order, then a field only the units have
     expect(spec.fields).toEqual([
-      { name: "condition", type: "set", description: "The experimental condition" },
+      { name: "condition_set", type: "set", description: "The experimental condition" },
       { name: "picture", type: "text", description: "Where the picture is" },
       { name: "text", type: "text", description: "The article" },
       { name: "extra", type: "number" },

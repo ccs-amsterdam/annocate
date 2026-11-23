@@ -5,9 +5,9 @@
   "tryThis": [
     "Open the link (Links page) in a private window and answer a practice headline wrongly: you see why, and answer again.",
     "Code on and get two gold headlines wrong in a row (the burglar, the unemployment figures, the swimming club): the study ends at the Screen-out block's end item.",
-    "See the right answers in the units: the columns topic_practice, topic_practice_message and topic_gold, and the set column 'kind' with _practice and _gold (Units page). Coders never get these columns.",
+    "See the right answers in the units: the columns answer_topic, feedback_topic, answer_clickbait and feedback_clickbait, and the column test_unit with practice and gold (Units page). Coders never get these columns.",
     "Open the unit loop on the Design page: the headlines divided among coders (two per headline), practice units before them, gold units spread throughout, and the health that ends a session.",
-    "See how each coder did on the special units in Results › Coders."
+    "See how each coder did on the test units in Results › Coders."
   ],
   "name": "Practice and gold units",
   "publish": true,
@@ -16,223 +16,204 @@
       "id": "practice-1",
       "data": {
         "headline": "Council votes to raise parking fees in the city centre",
-        "topic_practice": "politics",
-        "topic_practice_message": "A decision of the city council is politics, even when it is about money.",
-        "clickbait_practice": "no",
-        "clickbait_practice_message": "The headline says plainly what happened: not clickbait.",
-        "topic_gold": null
+        "answer_topic": "politics",
+        "feedback_topic": "A decision of the city council is politics, even when it is about money.",
+        "answer_clickbait": "no",
+        "feedback_clickbait": "The headline says plainly what happened: not clickbait."
       }
     },
     {
       "id": "practice-2",
       "data": {
         "headline": "Bakery chain opens twenty new shops and hires 300 staff",
-        "topic_practice": "economy",
-        "topic_practice_message": "Companies, jobs and prices are economy.",
-        "clickbait_practice": "no",
-        "clickbait_practice_message": "It tells you the news itself: not clickbait.",
-        "topic_gold": null
+        "answer_topic": "economy",
+        "feedback_topic": "Companies, jobs and prices are economy.",
+        "answer_clickbait": "no",
+        "feedback_clickbait": "It tells you the news itself: not clickbait."
       }
     },
     {
       "id": "practice-3",
       "data": {
         "headline": "This striker's goal celebration left the whole stadium speechless",
-        "topic_practice": "sports",
-        "topic_practice_message": "It is about a football match: sports.",
-        "clickbait_practice": "yes",
-        "clickbait_practice_message": "It teases ('left the whole stadium speechless') without telling you what happened: clickbait.",
-        "topic_gold": null
+        "answer_topic": "sports",
+        "feedback_topic": "It is about a football match: sports.",
+        "answer_clickbait": "yes",
+        "feedback_clickbait": "It teases ('left the whole stadium speechless') without telling you what happened: clickbait."
       }
     },
     {
       "id": "practice-4",
       "data": {
         "headline": "Theatre festival cancelled after the province cuts its budget",
-        "topic_practice": "culture|politics",
-        "topic_practice_message": "Culture and politics are both right here: the festival is culture, the budget cut is politics.",
-        "clickbait_practice": "no",
-        "clickbait_practice_message": "It says what happened and why: not clickbait.",
-        "topic_gold": null
+        "answer_topic": "culture|politics",
+        "feedback_topic": "Culture and politics are both right here: the festival is culture, the budget cut is politics.",
+        "answer_clickbait": "no",
+        "feedback_clickbait": "It says what happened and why: not clickbait."
       }
     },
     {
       "id": "headline-01",
       "data": {
         "headline": "Mayor and opposition clash over plans for a new ring road",
-        "topic_practice": null,
-        "topic_practice_message": null,
-        "clickbait_practice": null,
-        "clickbait_practice_message": null,
-        "topic_gold": null
+        "answer_topic": null,
+        "feedback_topic": null,
+        "answer_clickbait": null,
+        "feedback_clickbait": null
       }
     },
     {
       "id": "headline-02",
       "data": {
         "headline": "Shoe factory to close at the end of the year",
-        "topic_practice": null,
-        "topic_practice_message": null,
-        "clickbait_practice": null,
-        "clickbait_practice_message": null,
-        "topic_gold": null
+        "answer_topic": null,
+        "feedback_topic": null,
+        "answer_clickbait": null,
+        "feedback_clickbait": null
       }
     },
     {
       "id": "headline-03",
       "data": {
         "headline": "Woman, 34, charged with stealing bicycles from the station",
-        "topic_practice": null,
-        "topic_practice_message": null,
-        "clickbait_practice": null,
-        "clickbait_practice_message": null,
-        "topic_gold": null
+        "answer_topic": null,
+        "feedback_topic": null,
+        "answer_clickbait": null,
+        "feedback_clickbait": null
       }
     },
     {
       "id": "headline-04",
       "data": {
         "headline": "Nine things every cyclist in town needs to know before Monday",
-        "topic_practice": null,
-        "topic_practice_message": null,
-        "clickbait_practice": null,
-        "clickbait_practice_message": null,
-        "topic_gold": null
+        "answer_topic": null,
+        "feedback_topic": null,
+        "answer_clickbait": null,
+        "feedback_clickbait": null
       }
     },
     {
       "id": "gold-1",
       "data": {
         "headline": "Burglar caught after leaving his phone at the scene",
-        "topic_practice": null,
-        "topic_practice_message": null,
-        "clickbait_practice": null,
-        "clickbait_practice_message": null,
-        "topic_gold": "crime"
+        "answer_topic": "crime",
+        "feedback_topic": null,
+        "answer_clickbait": null,
+        "feedback_clickbait": null
       }
     },
     {
       "id": "headline-05",
       "data": {
         "headline": "Ice hockey team signs a goalkeeper from Finland",
-        "topic_practice": null,
-        "topic_practice_message": null,
-        "clickbait_practice": null,
-        "clickbait_practice_message": null,
-        "topic_gold": null
+        "answer_topic": null,
+        "feedback_topic": null,
+        "answer_clickbait": null,
+        "feedback_clickbait": null
       }
     },
     {
       "id": "headline-06",
       "data": {
         "headline": "City museum opens an exhibition of children's drawings",
-        "topic_practice": null,
-        "topic_practice_message": null,
-        "clickbait_practice": null,
-        "clickbait_practice_message": null,
-        "topic_gold": null
+        "answer_topic": null,
+        "feedback_topic": null,
+        "answer_clickbait": null,
+        "feedback_clickbait": null
       }
     },
     {
       "id": "headline-07",
       "data": {
         "headline": "What happened next at the town hall meeting will surprise you",
-        "topic_practice": null,
-        "topic_practice_message": null,
-        "clickbait_practice": null,
-        "clickbait_practice_message": null,
-        "topic_gold": null
+        "answer_topic": null,
+        "feedback_topic": null,
+        "answer_clickbait": null,
+        "feedback_clickbait": null
       }
     },
     {
       "id": "headline-08",
       "data": {
         "headline": "Rents in the old harbour district rise by twelve percent",
-        "topic_practice": null,
-        "topic_practice_message": null,
-        "clickbait_practice": null,
-        "clickbait_practice_message": null,
-        "topic_gold": null
+        "answer_topic": null,
+        "feedback_topic": null,
+        "answer_clickbait": null,
+        "feedback_clickbait": null
       }
     },
     {
       "id": "gold-2",
       "data": {
         "headline": "Unemployment in the region falls to its lowest level in ten years",
-        "topic_practice": null,
-        "topic_practice_message": null,
-        "clickbait_practice": null,
-        "clickbait_practice_message": null,
-        "topic_gold": "economy"
+        "answer_topic": "economy",
+        "feedback_topic": null,
+        "answer_clickbait": null,
+        "feedback_clickbait": null
       }
     },
     {
       "id": "headline-09",
       "data": {
         "headline": "Province approves money for three new primary schools",
-        "topic_practice": null,
-        "topic_practice_message": null,
-        "clickbait_practice": null,
-        "clickbait_practice_message": null,
-        "topic_gold": null
+        "answer_topic": null,
+        "feedback_topic": null,
+        "answer_clickbait": null,
+        "feedback_clickbait": null
       }
     },
     {
       "id": "headline-10",
       "data": {
         "headline": "Heat wave expected to last until the weekend",
-        "topic_practice": null,
-        "topic_practice_message": null,
-        "clickbait_practice": null,
-        "clickbait_practice_message": null,
-        "topic_gold": null
+        "answer_topic": null,
+        "feedback_topic": null,
+        "answer_clickbait": null,
+        "feedback_clickbait": null
       }
     },
     {
       "id": "headline-11",
       "data": {
         "headline": "Fans storm the pitch after a last-minute winner",
-        "topic_practice": null,
-        "topic_practice_message": null,
-        "clickbait_practice": null,
-        "clickbait_practice_message": null,
-        "topic_gold": null
+        "answer_topic": null,
+        "feedback_topic": null,
+        "answer_clickbait": null,
+        "feedback_clickbait": null
       }
     },
     {
       "id": "headline-12",
       "data": {
         "headline": "Jazz festival moves to the park after record ticket sales",
-        "topic_practice": null,
-        "topic_practice_message": null,
-        "clickbait_practice": null,
-        "clickbait_practice_message": null,
-        "topic_gold": null
+        "answer_topic": null,
+        "feedback_topic": null,
+        "answer_clickbait": null,
+        "feedback_clickbait": null
       }
     },
     {
       "id": "gold-3",
       "data": {
         "headline": "Local swimming club wins the national relay championship",
-        "topic_practice": null,
-        "topic_practice_message": null,
-        "clickbait_practice": null,
-        "clickbait_practice_message": null,
-        "topic_gold": "sports"
+        "answer_topic": "sports",
+        "feedback_topic": null,
+        "answer_clickbait": null,
+        "feedback_clickbait": null
       }
     }
   ],
   "sets": [
     {
-      "group": "kind",
+      "group": "test_unit",
       "sets": [
         {
-          "name": "_practice",
+          "name": "practice",
           "units": ["practice-1", "practice-2", "practice-3", "practice-4"],
           "ordered": true
         },
         {
-          "name": "_gold",
+          "name": "gold",
           "units": ["gold-1", "gold-2", "gold-3"]
         }
       ]
@@ -245,8 +226,7 @@
     },
     "session": {
       "invite": {
-        "mode": "crowd",
-        "column": "kind"
+        "mode": "crowd"
       },
       "end": {
         "message": "Thank you! Your answers have been saved."

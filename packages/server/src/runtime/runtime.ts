@@ -4,21 +4,20 @@ import {
   type UnitData,
   type AnyVariableType,
   ALL_UNITS_SET,
-  OVERLAP_SET,
-  PRACTICE_SET,
-  GOLD_SET,
+  CODER_SET,
+  CONDITION_SET,
+  PART_SET,
+  TEST_UNIT,
   loopShareColumns,
   type ShareColumn,
   loopDependencies,
   loopTitle,
   sessionItem,
-  assignmentColumn,
   setKey,
   sharedDefaults,
   collectQuestions,
-  goldColumn,
-  practiceColumn,
-  practiceMessageColumn,
+  answerColumn,
+  feedbackColumn,
   parseAnswerKey,
   answerMatchesKey,
   type SubmitUnitResponse,
@@ -93,13 +92,15 @@ export const DEFAULT_RUNTIME_OPTIONS: RuntimeOptions = {
 export type { Coder };
 
 /**
- * A coder's units in a loop (docs/architecture.md §6): those whose
- * cells hold the session's values in every set column a value is linked to
- * (`_overlap` cells: in every share), within the loop's subset; or for a
- * loop taking an earlier loop's units, the units the coder finished there.
- * Shared by every coder with the same values: `key` names it (the pool of a
- * shared queue, its leases, a row of the status). The special units come
- * apart: the overlap (when the loop places it), practice and gold.
+ * A coder's units in a loop (docs/architecture.md §6,
+ * docs/plans/unit-sets.md): those whose cells hold the session's values in
+ * every set column a value is linked to (the coder's `coder_set`, the
+ * condition's `condition_set`), within the loop's part (`part_set`); or for
+ * a loop taking an earlier loop's units, the units the coder finished
+ * there. Shared by every coder with the same values: `key` names it (the
+ * pool of a shared queue, its leases, a row of the status). The test units
+ * (`test_unit`) come apart, for everyone: overlap, practice and gold (those
+ * with a part only in that part's loops).
  */
 interface Share {
   key: string;
@@ -123,19 +124,19 @@ const PLACEMENTS = { first: "before", last: "after", spread: "spread", rate: "ra
 interface Routed {
   units: ResolvedLoopUnits;
   main: UnitPool;
-  /** The special sets' pools besides the coder's own units: practice, overlap, gold (in that order of precedence). */
+  /** The test units' pools besides the coder's own units: practice, overlap, gold (in that order of precedence). */
   extras: OverlapPlacement[];
 }
 
-/** The special units a loop can mix in, in order of precedence when several are due. */
+/** The test units a loop can mix in, in order of precedence when several are due. */
 const SPECIAL = [
-  { set: PRACTICE_SET, units: (s: Share) => s.practice, settings: (u: ResolvedLoopUnits) => u.practice },
+  { set: "practice", units: (s: Share) => s.practice, settings: (u: ResolvedLoopUnits) => u.practice },
   {
-    set: OVERLAP_SET,
+    set: "overlap",
     units: (s: Share) => s.overlap,
     settings: (u: ResolvedLoopUnits) => (u.overlap?.placement === "disabled" ? undefined : u.overlap),
   },
-  { set: GOLD_SET, units: (s: Share) => s.gold, settings: (u: ResolvedLoopUnits) => u.gold },
+  { set: "gold", units: (s: Share) => s.gold, settings: (u: ResolvedLoopUnits) => u.gold },
 ] as const;
 
 type RandomVariable = Extract<AnyVariableType, { type: "random" }>;
@@ -203,15 +204,12 @@ export class DeploymentRuntime {
   /** Loop key -> the coder-level questions it depends on (`loopDependencies`), frozen once a coder coded a unit there. */
   private dependencies = new Map<string, string[]>();
   private randomVariables: [string, RandomVariable][] = [];
-  /** Set key (`group/set`, and `__all__`) -> its units in order. */
+  /** Set key (`column/set`, and `__all__`) -> its units in order. */
   private sets = new Map<string, number[]>();
-  /** Set column -> its values (sets, without reserved ones). */
+  /** Column with a role -> its values (sets). */
   private groups = new Map<string, string[]>();
-  /** Every set column (with only reserved sets too): where practice and gold units come from. */
   /** Loop key -> the session values that select its units (contracts `loopShareColumns`). */
   private shareColumns = new Map<string, ShareColumn[]>();
-  /** The coder unit assignment's set column: its special units (overlap, practice, gold) are the loops'. */
-  private assignment: string | undefined;
   /** Shares computed from the current sets, by key. */
   private shares = new Map<string, Share>();
   /** The codebook's questions, by name (practice feedback, texts). */
@@ -292,7 +290,6 @@ export class DeploymentRuntime {
       (e): e is [string, RandomVariable] => e[1].type === "random",
     );
     this.shareColumns = loopShareColumns(items);
-    this.assignment = assignmentColumn(sessionItem(items));
     this.applySets(spec);
     this.shownFields = shownUnitFields(items);
     this.questions = collectQuestions(items).questions;
@@ -312,20 +309,19 @@ export class DeploymentRuntime {
       const at = name.indexOf("/");
       if (at < 0) continue;
       const [group, set] = [name.slice(0, at), name.slice(at + 1)];
-      if (set.startsWith("_")) continue;
       if (!this.groups.has(group)) this.groups.set(group, []);
       this.groups.get(group)!.push(set);
     }
   }
 
-  /** What the codebook asks of a new session (its Study entry), and the set columns' values. */
+  /** What the codebook asks of a new session (its Study entry), and the coders. */
   private get sessionRules(): SessionRules {
     const items = this.spec.design.items as TopLevelItem[];
-    return { item: sessionItem(items), setsOf: (group) => this.groups.get(group) ?? [] };
+    return { item: sessionItem(items), coders: this.groups.get(CODER_SET) ?? [] };
   }
 
   /**
-   * A pick-your-name link's names: the coders' column's values, and which
+   * A pick-your-name link's names: the coders (`coder_set`), and which
    * are taken (where a name is the first device's that picks it).
    */
   async pickNames(): Promise<PickNamesResponse> {
@@ -335,7 +331,7 @@ export class DeploymentRuntime {
     const taken = new Set<string>();
     if ((invite.nameDevices ?? "first") === "first")
       for (const coder of await this.store.listCoders()) if (coder.session.coder) taken.add(coder.session.coder);
-    const names = invite.column ? (this.groups.get(invite.column) ?? []) : [];
+    const names = this.groups.get(CODER_SET) ?? [];
     return { names: names.map((name) => ({ name, taken: taken.has(name) })) };
   }
 
@@ -410,20 +406,21 @@ export class DeploymentRuntime {
 
   /**
    * The coder reached an experiment (a random variable): its value, assigned now if the
-   * coder has none yet (random, or balanced: the option the fewest coders
+   * coder has none yet (random; balanced: the option the fewest coders
    * who reached it have, under a lock; with `stratify`, only among coders
-   * with the same answers to those questions, or session values). Once
+   * with the same answers to those questions, or session values; or the
+   * session's URL parameter `param`, which must be a condition). Once
    * assigned it never changes. Coders who never reach it (screened out
-   * before) don't count. A variable linked to a set column (`units`) draws
-   * from its values unless it lists options, and its value is added to the
-   * session's values: it selects the units of the loops after it.
+   * before) don't count. An experiment that selects units (`units`) draws
+   * from `condition_set`'s values unless it lists options, and its value is
+   * added to the session's values: it selects the units of the loops after it.
    */
   async assignCondition(coder: Coder, name: string): Promise<VariableValue> {
     this.assertOpen(coder);
     const variable = this.randomVariables.find(([n]) => n === name)?.[1];
     if (!variable) throw new HttpError(404, `No experiment '${name}'`);
     const options =
-      variable.options ?? (variable.units ? (this.groups.get(variable.units) ?? []).map((value) => ({ value })) : []);
+      variable.options ?? (variable.units ? (this.groups.get(CONDITION_SET) ?? []).map((value) => ({ value })) : []);
     if (options.length === 0) throw new HttpError(409, `Experiment '${name}' has no values yet`);
     // Linked to units: the value goes into the session values, once (a session value never changes, so
     // the coder's units don't either); the session's value is the variable's
@@ -438,6 +435,10 @@ export class DeploymentRuntime {
     if (stored) return linked(stored.value);
     // Already in the session (e.g. its answers were reset): the same value again, not a new draw
     const kept = variable.units ? coder.session[name] : undefined;
+    // From a URL parameter: nothing is drawn, but the value must be a condition
+    const given = variable.draw === "url_param" ? coder.session[variable.param ?? ""] : undefined;
+    if (variable.draw === "url_param" && kept === undefined && !options.some((o) => o.value === given))
+      throw new HttpError(409, `Experiment '${name}': the link's ${variable.param} is not one of its conditions`);
     const put = (store: Store, value: VariableValue) =>
       store.putCoderValues({
         sessionId: coder.sessionId,
@@ -445,12 +446,12 @@ export class DeploymentRuntime {
         assigned: true,
         designVersionId: this.spec.design.id,
       });
-    if (variable.draw === "random" || kept !== undefined) {
+    if (variable.draw !== "balanced" || kept !== undefined) {
       // Under the coder's own lock: two requests of this coder at once draw once (the first write wins)
       const value = await this.store.locked(`condition/${name}/${coder.sessionId}`, async (store) => {
         const again = (await store.coderValues(coder.sessionId))[name];
         if (again) return again.value;
-        const value = singleValue(kept ?? this.drawWeighted(options));
+        const value = singleValue(kept ?? given ?? this.drawWeighted(options));
         await put(store, value);
         return value;
       });
@@ -729,8 +730,8 @@ export class DeploymentRuntime {
 
   /**
    * The share of a coder in a loop: from their session values (the coder,
-   * a crowd link's set, values linked to a set column), or null while one
-   * of them has no value (an experiment not reached yet, a coder without a
+   * an experiment's condition that selects units), or null while one of
+   * them has no value (an experiment not reached yet, a coder without a
    * coder value). Cached by key, until the sets change (not an earlier
    * loop's units: those are the coder's own).
    */
@@ -739,59 +740,52 @@ export class DeploymentRuntime {
     const values: [string, string][] = [];
     for (const c of columns) {
       const value = coder.session[c.name];
-      if (value === undefined) {
-        if (c.optional) continue;
-        return null;
-      }
+      if (value === undefined) return null;
       values.push([c.column, value]);
     }
-    const { subset, sameAs } = settings;
+    const { part, sameAs } = settings;
     // An earlier loop's units: the coder's own (fixed when they reach this loop, `route`), not cached
     const earlier = sameAs !== undefined ? coder.assignments[loop]?.units : undefined;
-    // Everything the units depend on: the values, the subset, and the overlap's settings (its count, how it's picked)
+    // Everything the units depend on: the values, the part, and the overlap's settings (its count, how it's picked)
     const key =
       (sameAs !== undefined
         ? `session ${coder.sessionId} as ${sameAs}`
         : values.map(([column, value]) => `${column}=${value}`).join(",") || "all") +
-      (subset ? ` | ${subset.column} ${subset.sets.join(",")}` : "") +
+      (part !== undefined ? ` | part ${part}` : "") +
       (settings.overlap && !["spread", "rate"].includes(settings.overlap.placement)
         ? ` | overlap ${settings.overlap.placement}`
         : "");
     const cached = sameAs === undefined ? this.shares.get(key) : undefined;
     if (cached) return cached;
 
-    // The special units are the assignment column's
-    const column = this.assignment;
-    const special = (set: string) => (column ? this.unitsOf(setKey(column, set)) : []);
-    const practiceOrGold = new Set([...special(PRACTICE_SET), ...special(GOLD_SET)]);
+    // The loop's part: its units; test units without a part are in every part
+    const inPart = new Set(part !== undefined ? this.unitsOf(setKey(PART_SET, part)) : []);
+    const withPart = new Set(
+      part !== undefined ? (this.groups.get(PART_SET) ?? []).flatMap((p) => this.unitsOf(setKey(PART_SET, p))) : [],
+    );
+    const tests = (type: string) =>
+      this.unitsOf(setKey(TEST_UNIT, type)).filter((id) => part === undefined || inPart.has(id) || !withPart.has(id));
+    const testUnits = new Set(
+      (this.groups.get(TEST_UNIT) ?? []).flatMap((type) => this.unitsOf(setKey(TEST_UNIT, type))),
+    );
     let units: number[];
     if (sameAs !== undefined) units = earlier ?? [];
     else if (values.length === 0) units = this.unitsOf(ALL_UNITS_SET);
     else {
-      // In every column: the value's units, and the column's overlap
-      const [first, ...rest] = values.map(([column, value]) => [
-        ...this.unitsOf(setKey(column, value)),
-        ...this.unitsOf(setKey(column, OVERLAP_SET)),
-      ]);
+      // In every column: the value's units
+      const [first, ...rest] = values.map(([column, value]) => this.unitsOf(setKey(column, value)));
       const others = rest.map((list) => new Set(list));
       units = [...new Set(first)].filter((id) => others.every((o) => o.has(id)));
     }
-    units = units.filter((id) => !practiceOrGold.has(id));
-    if (subset) {
-      const listed = new Set(subset.sets.flatMap((set) => this.unitsOf(setKey(subset.column, set))));
-      units = units.filter((id) => listed.has(id));
-    }
-    // The overlap apart when the loop places it (or leaves it out); a condition column's `_overlap` is
-    // just in every condition: the coder's own units
-    const overlapAll = new Set(special(OVERLAP_SET));
-    const overlap = settings.overlap ? units.filter((id) => overlapAll.has(id)) : [];
-    const own = settings.overlap ? units.filter((id) => !overlapAll.has(id)) : units;
+    if (part !== undefined) units = units.filter((id) => inPart.has(id));
+    const overlap = tests("overlap");
     const share: Share = {
       key,
-      own,
-      overlap,
-      practice: special(PRACTICE_SET),
-      gold: special(GOLD_SET),
+      own: units.filter((id) => !testUnits.has(id)),
+      // Taking an earlier loop's units: the overlap units among them
+      overlap: sameAs !== undefined ? units.filter((id) => overlap.includes(id)) : overlap,
+      practice: tests("practice"),
+      gold: tests("gold"),
       ...(sameAs !== undefined && earlier === undefined ? { pending: true } : {}),
     };
     if (sameAs === undefined) this.shares.set(key, share);
@@ -799,7 +793,7 @@ export class DeploymentRuntime {
   }
 
   /**
-   * A route's special units (docs/architecture.md §6.2): its practice,
+   * A route's test units (docs/architecture.md §6.2): its practice,
    * overlap and gold units, for those the loop places.
    */
   private specialUnits(route: Route): {
@@ -819,17 +813,17 @@ export class DeploymentRuntime {
     });
   }
 
-  /** The units of one special set of a route (empty if it doesn't place it). */
+  /** The units of one test unit type of a route (empty if it doesn't place it). */
   private specialSet(route: Route, set: string): number[] {
     return this.specialUnits(route).find((s) => s.set === `${route.share.key}/${set}`)?.units ?? [];
   }
 
-  /** The coder's own units of a route, without the special units. */
+  /** The coder's own units of a route, without the test units. */
   private ownUnits(route: Route): number[] {
     return route.units.own ? route.share.own : [];
   }
 
-  /** All units of a route (own and special units). */
+  /** All units of a route (own and test units). */
   private routeUnits(route: Route | null): Set<number> {
     return new Set(route ? [...this.ownUnits(route), ...this.specialUnits(route).flatMap((s) => s.units)] : []);
   }
@@ -848,7 +842,7 @@ export class DeploymentRuntime {
   private pools(route: Route, codings: Codings, leases: Lease[]): Routed {
     const { units, share } = route;
     const main = new UnitPool(share.key, this.ownUnits(route), sharedDefaults(units), codings);
-    // Every lease of the loop: shares overlap (`_overlap`, `a;b`), and a unit leased in one share is taken in all
+    // Every lease of the loop: shares overlap (`a;b`), and a unit leased in one share is taken in all
     main.loadLeases(leases.map((l) => ({ ...l, expires: new Date(l.expires).getTime() })));
     const extras = this.specialUnits(route).map((s): OverlapPlacement => ({
       pool: new UnitPool(s.set, s.units, null, codings),
@@ -871,11 +865,10 @@ export class DeploymentRuntime {
   }
 
   /**
-   * A coder enters a loop: the experiments linked to a set column that
-   * select its units and that the coder hasn't reached (e.g. they were
-   * hidden) are drawn now. Marks the coder as having reached the loop
+   * A coder enters a loop: the experiment that selects its units, if the
+   * coder hasn't reached it (e.g. it was hidden), is drawn now. Marks the coder as having reached the loop
    * (`coder_sessions.assignments`, for the progress counts). A session without a
-   * value it needs (a coder from a link made before the coder column had
+   * value it needs (a coder from a link made before `coder_set` had
    * values) gets 409 `not_assigned`.
    */
   private async route(coder: Coder, info: LoopInfo): Promise<Route> {
@@ -936,7 +929,7 @@ export class DeploymentRuntime {
 
   /**
    * Picks from a shared queue under its lock (one lock for the whole loop,
-   * since shares overlap: `_overlap`, `a;b`). Requests that arrive while the
+   * since shares overlap: `a;b`). Requests that arrive while the
    * lock is busy are picked together in its next turn: one read of the
    * codings serves them all, which is what limits a busy queue.
    */
@@ -1126,8 +1119,8 @@ export class DeploymentRuntime {
     if (!route) return {};
     const response: SubmitUnitResponse = {};
     const { gold } = route.units;
-    if (gold?.health && this.specialSet(route, GOLD_SET).includes(unitId)) {
-      const health = await this.goldHealth(coder, info.key, gold, this.specialSet(route, GOLD_SET));
+    if (gold?.health && this.specialSet(route, "gold").includes(unitId)) {
+      const health = await this.goldHealth(coder, info.key, gold, this.specialSet(route, "gold"));
       if (health <= 0) {
         await this.endSession(coder, gold.health.end);
         response.end = gold.health.end;
@@ -1174,13 +1167,13 @@ export class DeploymentRuntime {
     answers: Record<string, VariableValue>,
   ): CoderUnitResponse {
     const base = { id: unit.id, externalId: unit.externalId, variables: answers };
-    if (!route || !this.specialSet(route, PRACTICE_SET).includes(unit.id)) return { ...base, data: shown };
+    if (!route || !this.specialSet(route, "practice").includes(unit.id)) return { ...base, data: shown };
     const practice = route.units.practice;
     const questions: NonNullable<CoderUnitResponse["practice"]>["questions"] = {};
     for (const name of practice?.questions ?? []) {
-      const key = String(unit.data[practiceColumn(name)] ?? "").trim();
+      const key = String(unit.data[answerColumn(name)] ?? "").trim();
       if (!parseAnswerKey(key)) continue;
-      const message = String(unit.data[practiceMessageColumn(name)] ?? "").trim();
+      const message = String(unit.data[feedbackColumn(name)] ?? "").trim();
       questions[name] = { key, ...(message ? { message } : {}) };
     }
     const checks =
@@ -1219,7 +1212,7 @@ export class DeploymentRuntime {
       if (!unit) continue;
       const answers = await this.store.unitAnswers(coder.sessionId, coding.unitId);
       for (const name of gold.questions ?? []) {
-        const expected = parseAnswerKey(unit.data[goldColumn(name)]);
+        const expected = parseAnswerKey(unit.data[answerColumn(name)]);
         if (expected === null) continue;
         value = answerMatchesKey(answers[name], expected)
           ? Math.min(health.start, value + (health.right ?? 0))
@@ -1265,7 +1258,7 @@ export class DeploymentRuntime {
       const loopLeases = leases
         .filter((l) => l.loop === loop)
         .map((l) => ({ ...l, expires: new Date(l.expires).getTime() }));
-      // Shares overlap (`_overlap`, `a;b`): a unit is listed once, in the first row that has it
+      // Shares overlap (`a;b`, test units): a unit is listed once, in the first row that has it
       const listed = new Set<number>();
       const pools: { pool: UnitPool; coders: number[] }[] = [];
       for (const { set, rule, unitIds, coders } of found.values()) {
