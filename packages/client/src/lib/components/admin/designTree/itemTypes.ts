@@ -66,17 +66,17 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     label: "Unit loop",
     description: "Loop over units (all, or a set)",
     icon: FileStack,
-    color: "text-loop",
-    nameClass: "font-semibold text-loop",
-    containerClass: "[--iconcolor:var(--color-loop)]",
+    color: "text-leaf",
+    nameClass: "font-semibold text-wood",
+    containerClass: "[--iconcolor:var(--color-leaf)]",
   },
   layout: {
     label: "Layout",
     description: "How the unit is shown to the questions after it",
     icon: LayoutTemplate,
     // The loop's colour: a layout belongs to its loop
-    color: "text-loop",
-    nameClass: "italic text-loop",
+    color: "text-leaf ",
+    nameClass: "text-wood ",
   },
   session: {
     label: "Session",
