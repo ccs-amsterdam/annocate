@@ -16,6 +16,8 @@ import { StudyOverview, StudySettingsPage } from "./overview/StudyOverview";
 import { StudyPreview } from "./StudyPreview";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Button } from "@/components/ui/button";
+import { LogoSmoke } from "@/components/Logo";
+import { ResearcherApiError } from "../../api/httpResearcherApi";
 import { IconButton } from "@/components/ui/icon-button";
 import { CollapsibleHeader } from "../../hooks/useCollapsingChrome";
 import {
@@ -261,6 +263,15 @@ function StudyAdminView({
   const [savingDesign, setSavingDesign] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Nothing of a study shows before it is known: loading, then the study, or why there is none
+  if (studyQuery.isPending)
+    return (
+      <div className="flex h-full items-center justify-center bg-page p-8">
+        <LogoSmoke label="Loading study…" />
+      </div>
+    );
+  if (!study) return <NoStudy error={studyQuery.error} onBack={onBackToStudies} />;
+
   async function saveAndNavigate() {
     setSavingDesign(true);
     setSaveError(null);
@@ -477,6 +488,28 @@ function BackupBanner({
         </Button>
         <Button size="sm" onClick={onContinue}>
           Continue editing
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** A study that doesn't exist (or the researcher can't open): why, and the way back to the studies. */
+function NoStudy({ error, onBack }: { error: Error | null; onBack: () => void }) {
+  const status = error instanceof ResearcherApiError ? error.status : null;
+  const message =
+    error === null
+      ? "This study doesn't exist (any more)."
+      : status === 403
+        ? "You don't have access to this study."
+        : `The study couldn't be loaded: ${error instanceof ResearcherApiError ? error.reason : error.message}`;
+  return (
+    <div className="flex h-full items-center justify-center bg-page p-8">
+      <div role="alert" className="flex max-w-sm flex-col items-center gap-3 text-center">
+        <p className="text-base font-semibold text-foreground">Study not found</p>
+        <p className="text-sm text-muted-foreground">{message}</p>
+        <Button type="button" variant="outline" onClick={onBack}>
+          Back to your studies
         </Button>
       </div>
     </div>

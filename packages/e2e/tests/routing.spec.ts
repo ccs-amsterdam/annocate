@@ -17,6 +17,14 @@ test("the welcome page leads to the researcher and coder sections", async ({ pag
   await expect(page.getByRole("button", { name: /Create new study/ })).toBeVisible();
 });
 
+test("a study that doesn't exist: an error page with the way back, no study pages", async ({ page }) => {
+  await page.goto("/research/studies/999999/design");
+  await expect(page.getByRole("alert")).toContainText("Study not found");
+  await expect(page.getByRole("button", { name: "Design", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Back to your studies" }).click();
+  await expect(page).toHaveURL(/\/research$/);
+});
+
 test("a study's pages are URLs: a reload stays; leaving unsaved edits asks first", async ({ page, request }) => {
   const study = await api<StudyResponse>(request, "POST", "/study", { name: "Routed study" });
   await page.goto("/research");

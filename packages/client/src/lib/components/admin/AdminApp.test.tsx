@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { QueryClient } from "@tanstack/react-query";
 import { AdminApp } from "./AdminApp";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 
@@ -78,9 +79,18 @@ describe("AdminApp", () => {
     expect(html).toContain("Loading studies");
   });
 
-  it("renders a selected study view without throwing", () => {
+  it("shows a study's pages once the study is known; until then the loading screen", () => {
+    const location = { page: "study", studyId: 1, tab: "Overview" } as const;
+    const loading = renderToStaticMarkup(
+      <AdminApp client={stubClient} location={location} onNavigate={() => {}} queryClient={new QueryClient()} />,
+    );
+    expect(loading).toContain("Loading study");
+    expect(loading).not.toContain("Deploy");
+    // The study in the cache (as after the study list or a fetch)
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["admin", "study", 1], { id: 1, name: "A study", archived: false });
     const html = renderToStaticMarkup(
-      <AdminApp client={stubClient} location={{ page: "study", studyId: 1, tab: "Overview" }} onNavigate={() => {}} />,
+      <AdminApp client={stubClient} location={location} onNavigate={() => {}} queryClient={queryClient} />,
     );
     expect(html).toContain("Design");
     expect(html).toContain("Deploy");

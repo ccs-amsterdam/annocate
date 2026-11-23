@@ -81,6 +81,8 @@ export function useStudyQuery(client: ResearcherApi, id?: number): UseQueryResul
   return useQuery({
     queryKey: keys.study(targetId),
     queryFn: () => client.getStudy(targetId),
+    // No access (or another refusal) won't change by asking again: only a server or network error is retried
+    retry: (count, err) => count < 2 && !(err instanceof ResearcherApiError && err.status < 500),
   });
 }
 
