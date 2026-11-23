@@ -75,7 +75,7 @@ export function codingsSignature(loops: Iterable<LoopInfo>): string {
   );
 }
 
-/** Coder-level (non-unit) variables: questions and computed items outside any unit_loop. */
+/** Coder-level (non-unit) variables: questions and experiments outside any unit_loop. */
 export function collectCoderVariables(items: TopLevelItem[]): Map<string, AnyVariableType> {
   const variables = new Map<string, AnyVariableType>();
   collectQuestions(items, variables);

@@ -22,11 +22,11 @@ describe("the tree's blocks", () => {
 
   it("offers blocks between blocks, and items in them", () => {
     // At the top level: anything but an end item (that goes in a block)
-    expect(insertableTypesAt(design, { into: null })).toEqual(["question", "computed", "block", "unit_loop"]);
-    expect(insertableTypesAt(design, { after: "L1" })).toEqual(["question", "computed", "block", "unit_loop"]);
-    expect(insertableTypesAt(design, { before: "B1" })).toEqual(["question", "computed", "block", "unit_loop"]);
-    expect(insertableTypesAt(design, { after: "a" })).toEqual(["question", "computed", "block", "end"]);
-    expect(insertableTypesAt(design, { into: "B2" })).toEqual(["question", "computed", "block", "end"]);
+    expect(insertableTypesAt(design, { into: null })).toEqual(["question", "experiment", "block", "unit_loop"]);
+    expect(insertableTypesAt(design, { after: "L1" })).toEqual(["question", "experiment", "block", "unit_loop"]);
+    expect(insertableTypesAt(design, { before: "B1" })).toEqual(["question", "experiment", "block", "unit_loop"]);
+    expect(insertableTypesAt(design, { after: "a" })).toEqual(["question", "experiment", "block", "end"]);
+    expect(insertableTypesAt(design, { into: "B2" })).toEqual(["question", "experiment", "block", "end"]);
     expect(insertableTypesAt(design, { into: "L1" })).toEqual(["question", "layout", "block", "end"]);
   });
 });

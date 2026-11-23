@@ -59,7 +59,7 @@ export function QuestionPreview({
   const [answerState, setAnswerState] = useState<{ value: VariableValue } | null>(null);
 
   const isVariable = item.type === "question";
-  const isComputed = item.type === "computed";
+  const isExperiment = item.type === "experiment";
   const isLoop = item.type === "unit_loop";
   const isCondition = item.type === "block";
   const isLayout = item.type === "layout";
@@ -136,10 +136,10 @@ export function QuestionPreview({
             </div>
           )}
 
-          {/* Computed items are drawn, never asked */}
-          {isComputed && (
+          {/* Experiments are drawn, never asked */}
+          {isExperiment && (
             <div className="p-4 text-sm">
-              <span className="text-xs font-semibold text-primary">Random condition</span>
+              <span className="text-xs font-semibold text-primary">Experiment</span>
               <p className="mt-1 text-xs text-muted-foreground">
                 Coders never see this item. The server draws its value when a coder reaches it; use it as
                 <code className="mx-1 rounded bg-muted px-1 font-mono">$var.{item.name}</code> in conditions and texts.

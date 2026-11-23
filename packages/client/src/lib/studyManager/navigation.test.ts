@@ -587,12 +587,12 @@ describe("end items and quitting", () => {
   });
 });
 
-describe("computed items", () => {
-  it("are computed when reached, never shown, and passed going back", async () => {
+describe("experiments", () => {
+  it("are drawn when reached, never shown, and passed going back", async () => {
     const items = [
       confirm("intro"),
       {
-        type: "computed",
+        type: "experiment",
         name: "group",
         variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }] },
       },
@@ -603,11 +603,11 @@ describe("computed items", () => {
     const m = await started(server);
     await m.answer(yes);
     expect(where(m)).toBe("q:for_a");
-    expect(server.calls).toContain("computeVariable:group");
+    expect(server.calls).toContain("assignCondition:group");
     await m.goBack();
     expect(where(m)).toBe("q:intro");
     await m.answer(yes);
     expect(where(m)).toBe("q:for_a");
-    expect(server.calls.filter((c) => c === "computeVariable:group")).toHaveLength(1);
+    expect(server.calls.filter((c) => c === "assignCondition:group")).toHaveLength(1);
   });
 });

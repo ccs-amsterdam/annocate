@@ -21,7 +21,7 @@
       "id": "unit-2",
       "data": {
         "headline": "Experiments inside codebooks: AnnoTinder adds conditions and random groups",
-        "text": "A new version of AnnoTinder lets researchers build experiments directly into a codebook. A random condition assigns each coder to a control or experiment group, and conditions show or hide questions depending on earlier answers. Communication scholar Maria Jansen of the Northbridge Media Institute called the feature a cheap way to test how instructions affect coding quality."
+        "text": "A new version of AnnoTinder lets researchers build experiments directly into a codebook. An experiment item assigns each coder to a control or experiment group, and conditions show or hide questions depending on earlier answers. Communication scholar Maria Jansen of the Northbridge Media Institute called the feature a cheap way to test how instructions affect coding quality."
       }
     },
     {
@@ -48,7 +48,7 @@
         }
       },
       {
-        "type": "computed",
+        "type": "experiment",
         "name": "group",
         "variable": {
           "type": "random",

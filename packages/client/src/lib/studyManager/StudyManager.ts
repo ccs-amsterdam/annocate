@@ -257,7 +257,7 @@ export class StudyManager {
       this.dependencies = loopDependencies(this.items);
       this.frozen = new Set(session.frozen ?? []);
       this.questions = collectQuestions(this.items).questions;
-      // The coder-level answers so far (computed values included), so conditions can use them
+      // The coder-level answers so far (drawn conditions included), so conditions can use them
       for (const [name, value] of Object.entries(session.variables ?? {})) {
         this.userVariableValues[name] = value;
       }
@@ -1116,7 +1116,7 @@ export class StudyManager {
 
   // --- Moving on after an answer ---
 
-  /** The next top-level step: skips answered questions while resuming, asks the server for computed values. */
+  /** The next top-level step: skips answered questions while resuming, asks the server for experiments' conditions. */
   private async advanceTop(): Promise<void> {
     await this.refreshTopSteps();
     this.topIndex += 1;
@@ -1146,11 +1146,11 @@ export class StudyManager {
       return;
     }
 
-    // A computed item without a value: an invisible step. The server computes
+    // An experiment without a value: an invisible step. The server computes
     // it now (the answers it may balance on saved first), and the flow goes on with it.
-    if (next.type === "computed") {
+    if (next.type === "experiment") {
       await this.outbox.flush();
-      this.userVariableValues[next.name] = await this.coderApi.computeVariable(next.name);
+      this.userVariableValues[next.name] = await this.coderApi.assignCondition(next.name);
       this.topIndex -= 1;
       await this.advanceTop();
       return;

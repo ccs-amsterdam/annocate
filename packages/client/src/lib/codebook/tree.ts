@@ -195,7 +195,7 @@ export interface Steps {
   /** The items to show, in order. */
   steps: DesignItem[];
   /**
-   * Answers of questions that are currently shown (or computed items reached).
+   * Answers of questions that are currently shown (or experiments reached).
    * Answers of questions a condition hides count as unanswered: a stale
    * answer to a hidden question never decides what comes next.
    */
@@ -244,9 +244,9 @@ async function walkSteps(
       return true;
     } else if (node.type !== "session") {
       if (answers[node.name] !== undefined) visible[node.name] = answers[node.name];
-      // Computed items are never asked: computed by the server when the coder
+      // Experiments are never asked: drawn by the server when the coder
       // reaches them (an invisible step until then, StudyManager asks for the value).
-      if (node.type !== "computed" || answers[node.name] === undefined) steps.push(node);
+      if (node.type !== "experiment" || answers[node.name] === undefined) steps.push(node);
     }
   }
   return false;

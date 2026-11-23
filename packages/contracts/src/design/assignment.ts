@@ -32,7 +32,7 @@ export function loopShareColumns(items: readonly unknown[]): Map<string, ShareCo
       loops++;
       out.set(String(loops), [...sessionShares, ...randomShares]);
     } else if (
-      it.type === "computed" &&
+      it.type === "experiment" &&
       it.variable?.type === "random" &&
       typeof it.variable.units === "string" &&
       typeof it.name === "string"

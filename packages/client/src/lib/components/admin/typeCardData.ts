@@ -1,9 +1,8 @@
 import type { LucideIcon } from "lucide-react";
-import { Shuffle } from "lucide-react";
 import type { AnyVariableType } from "@annotinder/contracts";
 import { ANSWER_TYPE_ICONS } from "./designTree/itemTypes";
 
-/** A kind to choose from: an answer type of a question, or what a computed variable computes. */
+/** A kind to choose from: an answer type of a question, or what an experiment computes. */
 export interface TypeCard<T extends string> {
   type: T;
   label: string;
@@ -30,13 +29,3 @@ export function answerTypeCards(types: readonly string[]): TypeCard<AnswerType>[
     .filter((type): type is AnswerType => type in ANSWER_TYPE_TEXT)
     .map((type) => ({ type, ...ANSWER_TYPE_TEXT[type], icon: ANSWER_TYPE_ICONS[type] }));
 }
-
-/** What a computed variable can compute (a formula comes later). */
-export const COMPUTED_TYPE_CARDS: TypeCard<"random">[] = [
-  {
-    type: "random",
-    label: "Random condition",
-    description: "Drawn at random or balanced, e.g. an experimental group",
-    icon: Shuffle,
-  },
-];

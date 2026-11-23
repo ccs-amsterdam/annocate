@@ -125,7 +125,7 @@ export function fieldUsage(items: readonly unknown[]): Map<string, FieldUse> {
 
 /**
  * The set columns a design names (docs/architecture.md §6): the coder
- * column, the columns computed items are linked to, and
+ * column, the columns experiments are linked to, and
  * loops' subset columns. They must be `set` fields of the units.
  */
 export function designSetColumns(items: readonly unknown[]): string[] {
@@ -134,7 +134,7 @@ export function designSetColumns(items: readonly unknown[]): string[] {
   const invite = session?.invite;
   if (invite?.column) columns.add(invite.column);
   forEachItem<{ type?: unknown; variable?: { type?: unknown; units?: unknown }; units?: unknown }>(items, (it) => {
-    if (it.type === "computed" && it.variable?.type === "random" && typeof it.variable.units === "string")
+    if (it.type === "experiment" && it.variable?.type === "random" && typeof it.variable.units === "string")
       columns.add(it.variable.units);
     if (it.type === "unit_loop") {
       const column = (it.units as { subset?: { column?: unknown } } | undefined)?.subset?.column;

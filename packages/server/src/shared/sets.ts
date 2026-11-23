@@ -221,7 +221,7 @@ export async function assignmentChecks(
   const { questions } = collectQuestions(items);
   const linked = [...questions].flatMap(([name, v]) =>
     v.type === "random" && v.units
-      ? [{ name: `Computed item '${name}'`, column: v.units, values: v.options ? v.options.map((o) => o.value) : null }]
+      ? [{ name: `Experiment '${name}'`, column: v.units, values: v.options ? v.options.map((o) => o.value) : null }]
       : [],
   );
   for (const { name, column, values } of linked) {

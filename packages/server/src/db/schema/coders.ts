@@ -100,7 +100,7 @@ export const transfers = pgTable("transfers", {
  * answer (outside unit loops). Reset answers are retired (retired_at), never
  * deleted; only live rows count, and only those are unique. With the design
  * version and unit version the coder answered under, the device, the
- * browser's timing; assigned: set by the server (computed variables);
+ * browser's timing; assigned: set by the server (experiments);
  * frozen: units were coded with it, so it can't change.
  */
 export const annotationValues = pgTable(

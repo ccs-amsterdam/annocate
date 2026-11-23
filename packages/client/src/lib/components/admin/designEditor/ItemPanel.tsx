@@ -229,7 +229,7 @@ export function PreviewPanel({ client, draft }: { client: ResearcherApi; draft: 
 /**
  * What a loop's Units settings need of the design (`LoopUnitsContext`): the
  * coder unit assignment, what selects a session's units (its coder or link's
- * set, computed items linked to units), and the loops before this one.
+ * set, experiments linked to units), and the loops before this one.
  */
 function loopUnitsContext(items: readonly DesignItem[], cleanItems: readonly unknown[], key: string): LoopUnitsContext {
   const { session, items: rest } = splitDesignItems(cleanItems);

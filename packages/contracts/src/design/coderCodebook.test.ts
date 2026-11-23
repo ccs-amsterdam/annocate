@@ -3,11 +3,11 @@ import type { TopLevelItem } from "./item.js";
 import { toCoderItems } from "./coderCodebook.js";
 
 describe("the coder codebook", () => {
-  it("leaves out how units are handed out, the Session item, and how computed values are drawn", () => {
+  it("leaves out how units are handed out, the Session item, and how experiments are drawn", () => {
     const items = [
       { type: "session", invite: { mode: "coders", column: "coder", link: "per_coder" } },
       {
-        type: "computed",
+        type: "experiment",
         name: "condition",
         variable: {
           type: "random",
@@ -39,7 +39,7 @@ describe("the coder codebook", () => {
       },
     ] as TopLevelItem[];
     expect(toCoderItems(items)).toEqual([
-      { type: "computed", name: "condition", variable: { type: "random", options: [{ value: "a", label: "A" }] } },
+      { type: "experiment", name: "condition", variable: { type: "random", options: [{ value: "a", label: "A" }] } },
       {
         type: "block",
         condition: { script: "true" },
@@ -58,10 +58,12 @@ describe("the coder codebook", () => {
     ]);
   });
 
-  it("gives a random computed item with a column's free values no options", () => {
+  it("gives an experiment with a column's free values no options", () => {
     const items = [
-      { type: "computed", name: "set", variable: { type: "random", draw: "random", units: "set" } },
+      { type: "experiment", name: "set", variable: { type: "random", draw: "random", units: "set" } },
     ] as TopLevelItem[];
-    expect(toCoderItems(items)).toEqual([{ type: "computed", name: "set", variable: { type: "random", options: [] } }]);
+    expect(toCoderItems(items)).toEqual([
+      { type: "experiment", name: "set", variable: { type: "random", options: [] } },
+    ]);
   });
 });

@@ -20,7 +20,7 @@ export interface FakeCoderServerOptions {
   items: TopLevelItem[];
   /** Units per loop key (`"1"`, `"2"`, … in codebook order; contracts `unitLoops`). */
   units?: Record<string, FakeUnit[]>;
-  /** Values `computeVariable` gives, by name (default: the first option). */
+  /** Values `assignCondition` gives, by name (default: the first option). */
   computed?: Record<string, VariableValue>;
   /** Whether the coder can go back after finishing (`reopen`); default yes. */
   reopen?: boolean;
@@ -137,8 +137,8 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
       Object.assign(server.coder, variables);
     },
 
-    async computeVariable(name: string) {
-      server.calls.push(`computeVariable:${name}`);
+    async assignCondition(name: string) {
+      server.calls.push(`assignCondition:${name}`);
       check();
       const value = options.computed?.[name] ?? ({ done: true, values: [{ value: "a" }] } as VariableValue);
       server.coder[name] = value;

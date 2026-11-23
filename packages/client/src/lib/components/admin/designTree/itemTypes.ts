@@ -11,6 +11,7 @@ import {
   ListChecks,
   LogOut,
   FileStack,
+  FlaskConical,
   LayoutTemplate,
   Shuffle,
   Spline,
@@ -45,10 +46,10 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     icon: HelpCircle,
     color: "text-[var(--iconcolor,var(--color-muted-foreground))]",
   },
-  computed: {
-    label: "Computed variable",
-    description: "A value AnnoTinder works out when coders reach it, never asked (e.g. a random condition)",
-    icon: Shuffle,
+  experiment: {
+    label: "Experiment",
+    description: "Each coder gets one of its conditions, drawn at random or balanced (never asked)",
+    icon: FlaskConical,
     color: "text-[var(--iconcolor,var(--color-muted-foreground))]",
   },
   unit_loop: {

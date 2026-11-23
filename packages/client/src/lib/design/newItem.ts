@@ -11,9 +11,9 @@ export function defaultItemForType(type: DesignItem["type"], name: string): Desi
         // The answer type is chosen in the form ("to specify" until then).
         variable: { type: "unspecified" },
       } as DesignItem;
-    case "computed":
+    case "experiment":
       return {
-        type: "computed",
+        type: "experiment",
         name,
         variable: { type: "random", draw: "random", options: defaultRandomOptions() },
       };

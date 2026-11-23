@@ -55,7 +55,7 @@ function optionLines(variable: AnyVariableType): string[] {
   return lines;
 }
 
-/** A question (or computed item): heading, text, instruction, answer type and options. */
+/** A question (or experiment): heading, text, instruction, answer type and options. */
 function question(name: string, variable: AnyVariableType, depth: number, instruction?: string): string[] {
   const text =
     "question" in variable && typeof variable.question === "string" && variable.question ? variable.question : "";

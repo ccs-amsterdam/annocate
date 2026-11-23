@@ -98,7 +98,7 @@ test("a random condition linked to units: balanced, each session codes its value
   });
   const design = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
     items: [
-      { type: "computed", name: "framing", variable: { type: "random", draw: "balanced", units: "framing" } },
+      { type: "experiment", name: "framing", variable: { type: "random", draw: "balanced", units: "framing" } },
       loop(),
     ],
   });

@@ -39,7 +39,7 @@ export const AnnotationRowSchema = z.object({
   unitVersionId: IdSchema.nullable(),
   /** The device the answer was (last) given on (`listDevices`); null in previews and for devices that were deleted. */
   deviceId: IdSchema.nullable(),
-  /** Set by the server, not answered: a random condition's draw (`computed` items). */
+  /** Set by the server, not answered: a random condition's draw (experiments). */
   assigned: z.boolean(),
   /** How long the coder took on the question, as their browser measured it; null for assigned values and previews. */
   timing: AnswerTimingSchema.nullable(),

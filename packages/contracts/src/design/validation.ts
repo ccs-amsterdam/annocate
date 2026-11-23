@@ -616,12 +616,11 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       );
   }
 
-  /** A computed item: outside loops; a random one linked to a column selects units (one value per column); stratified on earlier answers or session values. */
-  function checkComputed(item: RawItem, itemPath: Path, inLoop: boolean, available: ReadonlySet<string>) {
+  /** An experiment: outside loops; a random one linked to a column selects units (one value per column); stratified on earlier answers or session values. */
+  function checkExperiment(item: RawItem, itemPath: Path, inLoop: boolean, available: ReadonlySet<string>) {
     const variable = (item as { variable?: unknown }).variable as
       { type?: unknown; units?: unknown; stratify?: unknown } | undefined;
-    if (inLoop)
-      return issue([...itemPath, "type"], `Computed item '${item.name}' can only be used outside a unit loop`);
+    if (inLoop) return issue([...itemPath, "type"], `Experiment '${item.name}' can only be used outside a unit loop`);
     if (variable?.type !== "random") return;
     const units = typeof variable.units === "string" ? variable.units : undefined;
     if (
@@ -629,10 +628,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       item.name &&
       (sessionNamed.has(item.name) || (RESERVED_SESSION_NAMES as readonly string[]).includes(item.name))
     ) {
-      issue(
-        [...itemPath, "name"],
-        `Computed item '${item.name}' selects units: its name can't also be a session value`,
-      );
+      issue([...itemPath, "name"], `Experiment '${item.name}' selects units: its name can't also be a session value`);
     }
     if (units && linkedColumns.has(units)) {
       issue(
@@ -641,7 +637,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       );
     } else if (units && item.name) {
       // Drawn independently, two values on one column would rarely leave a session any units
-      linkedColumns.set(units, `computed item '${item.name}'`);
+      linkedColumns.set(units, `experiment '${item.name}'`);
     }
     // Groups for a balanced draw: answers given before it, or session values
     for (const name of Array.isArray(variable.stratify) ? (variable.stratify as string[]) : []) {
@@ -649,7 +645,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       if (!known)
         issue(
           [...itemPath, "variable", "stratify"],
-          `Computed item '${item.name}': balanced within '${name}', which is not a question before it or a session value (session.<name>)`,
+          `Experiment '${item.name}': balanced within '${name}', which is not a question before it or a session value (session.<name>)`,
         );
     }
   }
@@ -697,8 +693,8 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
         else seenNames.set(item.name, itemPath);
       }
 
-      if (item.type === "computed") {
-        checkComputed(item, itemPath, loop !== null, available);
+      if (item.type === "experiment") {
+        checkExperiment(item, itemPath, loop !== null, available);
         if (item.name && !loop) coderAvailable.add(item.name);
       }
 
@@ -830,12 +826,12 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   const studyEnd = studyIndex >= 0 ? (items[studyIndex] as { end?: EndTexts }).end : undefined;
   if (studyEnd) checkEndTexts(studyEnd, [studyIndex, "end"], null, coderAvailable);
 
-  // A computed value linked to a column selects units in the loops after it only
+  // An experiment linked to a column selects units in the loops after it only
   const shares = loopShareColumns(items);
   const linked: { name: string; column: string }[] = [];
   forEachQuestion(items, [], (q) => {
     const v = q.variable as { type?: unknown; units?: unknown } | undefined;
-    if (q.type === "computed" && v?.type === "random" && typeof v.units === "string" && q.name)
+    if (q.type === "experiment" && v?.type === "random" && typeof v.units === "string" && q.name)
       linked.push({ name: q.name, column: v.units });
   });
   const loopPaths = new Map<string, Path>();
@@ -848,7 +844,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       if (columns.some((c) => c.name === condition.name)) continue;
       issue(
         [...(loopPaths.get(key) ?? []), "units"],
-        `${loopTitles.get(key)} comes before computed item '${condition.name}': its units aren't selected by its column '${condition.column}'`,
+        `${loopTitles.get(key)} comes before experiment '${condition.name}': its units aren't selected by its column '${condition.column}'`,
         true,
       );
     }
@@ -976,7 +972,7 @@ function questionNames(list: unknown, into = new Set<string>()): Set<string> {
   return into;
 }
 
-/** Visits every item of a list, also inside conditions but not inside unit loops (questions, and computed and end items). */
+/** Visits every item of a list, also inside conditions but not inside unit loops (questions, experiments and end items). */
 function forEachQuestion(
   list: unknown,
   path: Path,

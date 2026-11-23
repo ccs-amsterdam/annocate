@@ -408,7 +408,7 @@ export class DeploymentRuntime {
   }
 
   /**
-   * The coder reached a computed item (a random variable): its value, assigned now if the
+   * The coder reached an experiment (a random variable): its value, assigned now if the
    * coder has none yet (random, or balanced: the option the fewest coders
    * who reached it have, under a lock; with `stratify`, only among coders
    * with the same answers to those questions, or session values). Once
@@ -417,13 +417,13 @@ export class DeploymentRuntime {
    * from its values unless it lists options, and its value is added to the
    * session's values: it selects the units of the loops after it.
    */
-  async computeVariable(coder: Coder, name: string): Promise<VariableValue> {
+  async assignCondition(coder: Coder, name: string): Promise<VariableValue> {
     this.assertOpen(coder);
     const variable = this.randomVariables.find(([n]) => n === name)?.[1];
-    if (!variable) throw new HttpError(404, `No computed item '${name}'`);
+    if (!variable) throw new HttpError(404, `No experiment '${name}'`);
     const options =
       variable.options ?? (variable.units ? (this.groups.get(variable.units) ?? []).map((value) => ({ value })) : []);
-    if (options.length === 0) throw new HttpError(409, `Computed item '${name}' has no values yet`);
+    if (options.length === 0) throw new HttpError(409, `Experiment '${name}' has no values yet`);
     // Linked to units: the value goes into the session values, once (a session value never changes, so
     // the coder's units don't either); the session's value is the variable's
     const linked = async (value: VariableValue): Promise<VariableValue> => {
@@ -729,7 +729,7 @@ export class DeploymentRuntime {
   /**
    * The share of a coder in a loop: from their session values (the coder,
    * a crowd link's set, values linked to a set column), or null while one
-   * of them has no value (a computed item not reached yet, a coder without a
+   * of them has no value (an experiment not reached yet, a coder without a
    * coder value). Cached by key, until the sets change (not an earlier
    * loop's units: those are the coder's own).
    */
@@ -870,7 +870,7 @@ export class DeploymentRuntime {
   }
 
   /**
-   * A coder enters a loop: the computed items linked to a set column that
+   * A coder enters a loop: the experiments linked to a set column that
    * select its units and that the coder hasn't reached (e.g. they were
    * hidden) are drawn now. Marks the coder as having reached the loop
    * (`coder_sessions.assignments`, for the progress counts). A session without a
@@ -879,7 +879,7 @@ export class DeploymentRuntime {
    */
   private async route(coder: Coder, info: LoopInfo): Promise<Route> {
     for (const column of this.shareColumns.get(info.key) ?? []) {
-      if (column.random && coder.session[column.name] === undefined) await this.computeVariable(coder, column.name);
+      if (column.random && coder.session[column.name] === undefined) await this.assignCondition(coder, column.name);
     }
     const route = this.routeOf(coder, info);
     if (!route)

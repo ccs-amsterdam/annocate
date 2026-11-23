@@ -67,7 +67,7 @@ function makeFlakyServer({
     postCoderVariables: vi.fn(async () => {
       calls.postCoderVariables = (calls.postCoderVariables ?? 0) + 1;
     }),
-    computeVariable: vi.fn(async () => ({ done: true, skip: false, values: [{ value: "a" }] })),
+    assignCondition: vi.fn(async () => ({ done: true, skip: false, values: [{ value: "a" }] })),
     quitSession: vi.fn(async () => {
       calls.quitSession = (calls.quitSession ?? 0) + 1;
     }),
@@ -151,10 +151,10 @@ describe("StudyManager error-handling, rollback, and retry contract", () => {
     expect(manager.getSnapshot().phase).toBe("finished");
   });
 
-  it("skips computed items that have a value, and uses it in conditions", async () => {
+  it("skips experiments that have a value, and uses it in conditions", async () => {
     const items = [
       {
-        type: "computed",
+        type: "experiment",
         name: "group",
         variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }] },
       },
@@ -706,7 +706,7 @@ describe("end items", () => {
     name: "consent",
     variable: { type: "nominal", question: "?", options: [{ value: "yes" }, { value: "no" }] },
   };
-  const pid = { type: "computed", name: "pid", variable: { type: "random", draw: "url_param", urlParam: "pid" } };
+  const pid = { type: "experiment", name: "pid", variable: { type: "random", draw: "url_param", urlParam: "pid" } };
   const stop = {
     type: "end",
     name: "stop",
@@ -897,8 +897,8 @@ describe("saving in the background", () => {
   });
 });
 
-describe("computed items", () => {
-  it("are invisible steps: computed by the server when reached, after earlier answers are saved; conditions then use the value", async () => {
+describe("experiments", () => {
+  it("are invisible steps: drawn by the server when reached, after earlier answers are saved; conditions then use the value", async () => {
     const order: string[] = [];
     const gender = {
       type: "question",
@@ -906,7 +906,7 @@ describe("computed items", () => {
       variable: { type: "nominal", question: "Gender?", options: [{ value: "f" }, { value: "m" }] },
     };
     const condition = {
-      type: "computed",
+      type: "experiment",
       name: "condition",
       variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }], stratify: ["gender"] },
     };
@@ -916,7 +916,7 @@ describe("computed items", () => {
       postCoderVariables: vi.fn(async () => {
         order.push("save");
       }),
-      computeVariable: vi.fn(async (name: string) => {
+      assignCondition: vi.fn(async (name: string) => {
         order.push(`assign ${name}`);
         return { done: true, skip: false, values: [{ value: "b" }] };
       }),

@@ -190,8 +190,8 @@ export function coderApi(server: Server): Hono {
     );
   });
 
-  session.post("/variables/computed/:name", async (c) =>
-    c.json({ value: await c.get("runtime").computeVariable(c.get("coder"), c.req.param("name")) }),
+  session.post("/experiment/:name", async (c) =>
+    c.json({ value: await c.get("runtime").assignCondition(c.get("coder"), c.req.param("name")) }),
   );
 
   session.post("/end", async (c) => {

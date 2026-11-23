@@ -13,7 +13,7 @@ test("annotation with questions and an experiment: a set of units per condition,
   await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /Guided setup/ }).click();
   await page.getByLabel("Study name").fill("Framing study");
-  // Annotate is on; add questions and the experiment (with questions, the condition is a computed item before them)
+  // Annotate is on; add questions and the experiment (with questions, the condition is an experiment before them)
   await page.getByRole("button", { name: /Ask questions/ }).click();
   await page.getByRole("button", { name: /Experiment/ }).click();
   await page.getByRole("button", { name: "Next" }).click();
@@ -71,9 +71,9 @@ test("annotation with questions and an experiment: a set of units per condition,
     children?: { name: string; variable: { type: string; question?: string } }[];
   }[];
   expect(items.map((i) => i.name ?? i.type)).toEqual(["condition", "age", "unit_loop", "comments"]);
-  // The experimental groups: a computed item (a random condition) linked to the condition's set column
+  // The experimental groups: an experiment (a random condition) linked to the condition's set column
   expect(items[0]).toMatchObject({
-    type: "computed",
+    type: "experiment",
     variable: { type: "random", draw: "balanced", units: "condition" },
   });
   // After the loop's layout item

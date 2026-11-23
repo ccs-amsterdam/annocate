@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { IdSchema } from "../common.js";
 import type { Condition } from "./condition.js";
-import type { ComputedItem, EndItem, InLoopItem, TopLevelItem, TopLevelQuestionItem, UnitLoopItem } from "./item.js";
+import type { ExperimentItem, EndItem, InLoopItem, TopLevelItem, TopLevelQuestionItem, UnitLoopItem } from "./item.js";
 import type { RandomVariable } from "./variableTypes.js";
 import { DisplaySchema, STUDY_END_NAME, type SessionItem } from "./session.js";
 
@@ -10,22 +10,22 @@ import { DisplaySchema, STUDY_END_NAME, type SessionItem } from "./session.js";
 // their layout items, questions and order (the server works out the units).
 // Left out: how units are handed out (the loop's `units`: filters,
 // criteria, overlap, practice and gold settings), the Study entry (its
-// values come with the session), and how computed values are made (draw,
+// values come with the session), and how experiments' conditions are drawn (draw,
 // weights, groups to balance within, linked columns).
 
-/** A random computed variable as coders get it: its options (for labels; none for a column's free values). */
+/** An experiment's variable as coders get it: its options (for labels; none for a column's free values). */
 export type CoderRandomVariable = Pick<RandomVariable, "type"> & {
   options: Omit<NonNullable<RandomVariable["options"]>[number], "weight">[];
 };
 
-/** A computed item as coders get it: an invisible step that asks the server for its value. */
-export type CoderComputedItem = Omit<ComputedItem, "variable"> & { variable: CoderRandomVariable };
+/** An experiment as coders get it: an invisible step that asks the server for its value. */
+export type CoderExperimentItem = Omit<ExperimentItem, "variable"> & { variable: CoderRandomVariable };
 
 export type CoderUnitLoopItem = Omit<UnitLoopItem, "units">;
 
 export type CoderTopLevelItem =
   | TopLevelQuestionItem
-  | CoderComputedItem
+  | CoderExperimentItem
   | CoderUnitLoopItem
   | EndItem
   | {
@@ -77,7 +77,7 @@ function coderItems(items: readonly TopLevelItem[]): CoderTopLevelItem[] {
         delete (loop as Partial<UnitLoopItem>).units;
         return [loop];
       }
-      case "computed": {
+      case "experiment": {
         const options = (item.variable.options ?? []).map((o) => {
           const option = { ...o };
           delete option.weight;

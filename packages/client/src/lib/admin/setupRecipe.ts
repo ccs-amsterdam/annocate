@@ -25,7 +25,7 @@ export interface SetupParts {
 }
 
 interface SetupExperiment {
-  /** The condition's name (a computed item, drawn at random). */
+  /** The condition's name (an experiment, drawn at random). */
   name: string;
   /** The conditions' values. */
   conditions: string[];
@@ -353,10 +353,10 @@ export function setupRecipe(answers: SetupAnswers): RecipeInput {
   const conditions = answers.experiment.conditions.map((c) => c.trim()).filter(Boolean);
   const linked = answers.parts.annotate && answers.distribution.mode === "groups";
   if (answers.parts.experiment) {
-    // The condition: a computed item, drawn when reached (first); linked to a column, it selects the
+    // The condition: an experiment, drawn when reached (first); linked to a column, it selects the
     // units (a set column named after it, a value per condition)
     items.push({
-      type: "computed",
+      type: "experiment",
       name: answers.experiment.name,
       variable: {
         type: "random",

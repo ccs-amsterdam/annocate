@@ -363,9 +363,9 @@ async function link() {
   return secret;
 }
 
-/** The coder reached a computed item: its value. */
+/** The coder reached an experiment: its value. */
 async function reach(c: ReturnType<typeof coder>, name: string) {
-  const res = await c.call(`/variables/computed/${name}`, { method: "POST" });
+  const res = await c.call(`/experiment/${name}`, { method: "POST" });
   expect(res.status).toBe(200);
   return ((await res.json()) as { value: VariableValue }).value.values;
 }
@@ -793,8 +793,8 @@ describe("coders", () => {
   });
 });
 
-describe("computed items linked to a column", () => {
-  const part = { type: "computed", name: "part", variable: { type: "random", draw: "balanced", units: "parts" } };
+describe("experiments linked to a column", () => {
+  const part = { type: "experiment", name: "part", variable: { type: "random", draw: "balanced", units: "parts" } };
 
   it("draw from the column's values when reached, or when a loop after them needs them", async () => {
     await createSet("p1", ["unit-1"], "parts");
@@ -843,7 +843,7 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     await createSet("a", ["unit-1", "unit-2"], "framing");
     await createSet("b", ["unit-1", "unit-3"], "framing");
     const framing = {
-      type: "computed",
+      type: "experiment",
       name: "framing",
       variable: { type: "random", draw: "balanced", units: "framing" },
     };
@@ -907,10 +907,10 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     expect((await c.call("/loop/2/next?branch=3")).status).toBe(200);
   });
 
-  it("a computed value drawn twice at once has one value, in the answers and the session", async () => {
+  it("a condition drawn twice at once has one value, in the answers and the session", async () => {
     await createSet("p1", ["unit-1"], "parts");
     await createSet("p2", ["unit-2"], "parts");
-    const part = { type: "computed", name: "part", variable: { type: "random", draw: "random", units: "parts" } };
+    const part = { type: "experiment", name: "part", variable: { type: "random", draw: "random", units: "parts" } };
     await redeploy({}, [part]);
     // Routing draws p1 (random() = 0); just after it found no value, another request of this coder drew p2
     let between: ((store: Store) => Promise<void>) | null = null;
@@ -973,12 +973,12 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     expect(bobs).toContain("unit-1");
   });
 
-  it("with coders, the overlap of a computed item's column is in every share, not an overlap to place", async () => {
+  it("with coders, the overlap of an experiment's column is in every share, not an overlap to place", async () => {
     await createSet("anna", ["unit-1", "unit-2"], "coder");
     await createSet("a", ["unit-3"], "framing");
     await createSet("_overlap", ["unit-1", "unit-2"], "framing");
     const framing = {
-      type: "computed",
+      type: "experiment",
       name: "framing",
       variable: { type: "random", draw: "balanced", units: "framing" },
     };
@@ -1071,12 +1071,12 @@ describe("loop subsets and the overlap", () => {
 
 describe("routing by session values", () => {
   const condition = {
-    type: "computed",
+    type: "experiment",
     name: "condition",
     variable: { type: "random", draw: "balanced", options: [{ value: "s1" }, { value: "s2" }], units: "g" },
   };
 
-  it("a computed value linked to a column selects the units; it can't be overwritten, and stays across restarts", async () => {
+  it("an experiment linked to a column selects the units; it can't be overwritten, and stays across restarts", async () => {
     await createSet("s1", ["unit-1"]);
     await createSet("s2", ["unit-2"]);
     await redeploy({}, [condition]);
@@ -1084,7 +1084,7 @@ describe("routing by session values", () => {
     expect(await reach(carol, "condition")).toEqual([{ value: "s1" }]);
     const first = await carol.next();
     expect(first!.externalId).toBe("unit-1");
-    // the client can't overwrite computed values
+    // the client can't overwrite drawn conditions
     const tamper = await carol.call("/variables/coder", {
       method: "POST",
       body: JSON.stringify({ variables: { condition: { done: true, values: [{ value: "s2" }] } } }),
@@ -1476,7 +1476,7 @@ describe("auto questions", () => {
 
   it("are assigned when reached, once; coders who never reach them don't count", async () => {
     const condition = {
-      type: "computed",
+      type: "experiment",
       name: "condition",
       variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }] },
     };
@@ -1488,7 +1488,7 @@ describe("auto questions", () => {
     expect(await reach(coder("first", null), "condition")).toEqual([{ value: "a" }]); // the same, reached again
     expect(await reach(coder("second"), "condition")).toEqual([{ value: "b" }]);
     expect(await reach(early, "condition")).toEqual([{ value: "a" }]);
-    expect((await coder("x").call("/variables/computed/nope", { method: "POST" })).status).toBe(404);
+    expect((await coder("x").call("/experiment/nope", { method: "POST" })).status).toBe(404);
   });
 
   it("balance within groups of earlier answers or session values (stratified)", async () => {
@@ -1498,7 +1498,7 @@ describe("auto questions", () => {
       variable: { type: "nominal", question: "Gender?", options: [{ value: "f" }, { value: "m" }] },
     };
     const condition = {
-      type: "computed",
+      type: "experiment",
       name: "condition",
       variable: {
         type: "random",
@@ -1539,12 +1539,12 @@ describe("auto questions", () => {
 
 describe("balanced draws", () => {
   it("break a tie at random", async () => {
-    const computed = {
-      type: "computed",
+    const experiment = {
+      type: "experiment",
       name: "arm",
       variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }, { value: "c" }] },
     };
-    await redeploy({}, [computed]);
+    await redeploy({}, [experiment]);
     // random() near 1: the last of the tied values; then only the values with the fewest are candidates
     server = restart({ random: () => 0.99 });
     expect(await reach(coder("x1"), "arm")).toEqual([{ value: "c" }]);
@@ -1558,7 +1558,7 @@ describe("balanced draws", () => {
 describe("coder-level answers", () => {
   it("are answer rows without a unit, one per question, assigned values marked; only changed answers are written", async () => {
     const group = {
-      type: "computed",
+      type: "experiment",
       name: "group",
       variable: { type: "random", draw: "random", options: [{ value: "a" }, { value: "b" }] },
     };
@@ -1571,7 +1571,7 @@ describe("coder-level answers", () => {
     await redeploy({}, [group, age, city]);
     const c = coder("surveyed");
     await c.session();
-    expect((await c.call("/variables/computed/group", { method: "POST" })).status).toBe(200);
+    expect((await c.call("/experiment/group", { method: "POST" })).status).toBe(200);
     const post = (variables: object) =>
       c.call("/variables/coder", { method: "POST", body: JSON.stringify({ variables }) });
     const value = (v: string | number) => ({ done: true, skip: false, values: [{ value: v }] });

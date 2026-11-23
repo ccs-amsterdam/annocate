@@ -5,7 +5,7 @@ import { UnitLayoutSchema } from "./layout.js";
 import { outputText, parseTemplate, referenceValue, type ReferenceScope } from "./references.js";
 import { UnitLoopDistributionShape } from "./unitLoop.js";
 import { SessionItemSchema, type SessionItem } from "./session.js";
-import { ComputedVariableSchema, UserVariableTypeSchema, UnitVariableTypeSchema } from "./variableTypes.js";
+import { RandomVariableSchema, UserVariableTypeSchema, UnitVariableTypeSchema } from "./variableTypes.js";
 import { forEachItem, itemLists } from "./walk.js";
 
 const ItemBaseSchema = z.object({
@@ -83,17 +83,17 @@ export const EndItemSchema = ItemBaseSchema.extend({
 export type EndItem = z.infer<typeof EndItemSchema>;
 
 /**
- * A computed variable: a value the study works out itself, not asked. Its
- * `name` is the variable's name (`$var.<name>`); stored like an answer.
- * `variable.type`: `random` (a random condition, drawn by the server when
- * the coder reaches it; optionally linked to a set column of the units).
+ * An experiment: each coder gets one of its conditions, drawn by the server
+ * when the coder reaches it (at random, or balanced), never asked; with
+ * `units`, linked to a set column of the units (each condition its units).
+ * Its `name` is the variable's name (`$var.<name>`); stored like an answer.
  * Coder level only (not inside a unit loop).
  */
-export const ComputedItemSchema = ItemBaseSchema.extend({
-  type: z.literal("computed"),
-  variable: ComputedVariableSchema,
+export const ExperimentItemSchema = ItemBaseSchema.extend({
+  type: z.literal("experiment"),
+  variable: RandomVariableSchema,
 });
-export type ComputedItem = z.infer<typeof ComputedItemSchema>;
+export type ExperimentItem = z.infer<typeof ExperimentItemSchema>;
 
 /** The deployment settings end items send coders to (`redirectSetting`), by name. */
 export function redirectSettings(items: readonly unknown[]): string[] {
@@ -204,13 +204,13 @@ export const UnitLoopItemSchema = z.object({
 export type UnitLoopItem = z.infer<typeof UnitLoopItemSchema>;
 
 /**
- * Items outside unit loops: questions, computed items, blocks, unit loops
+ * Items outside unit loops: questions, experiments, blocks, unit loops
  * (only at the top level), end items (only in a block) and the Study entry
  * (first: `session.ts`). validation.ts checks where each may be.
  */
 export type TopLevelItem =
   | TopLevelQuestionItem
-  | ComputedItem
+  | ExperimentItem
   | UnitLoopItem
   | EndItem
   | SessionItem
@@ -244,7 +244,7 @@ export const TopLevelBlockItemSchema: z.ZodType<Extract<TopLevelItem, { type: "b
 export const TopLevelItemSchema: z.ZodType<TopLevelItem> = z.lazy(() =>
   z.union([
     TopLevelQuestionItemSchema,
-    ComputedItemSchema,
+    ExperimentItemSchema,
     UnitLoopItemSchema,
     EndItemSchema,
     SessionItemSchema,

@@ -58,8 +58,8 @@ test("writing a design in the editor, as the help describes it, and saving it", 
   ]);
 });
 
-test("a computed variable: a random condition linked to a set column", async ({ page, request }) => {
-  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Computed test" });
+test("an experiment: a random condition linked to a set column", async ({ page, request }) => {
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Experiment test" });
   const units = await api<{ id: number; externalId: string }[]>(request, "POST", `/study/${study.id}/units`, {
     units: [
       { externalId: "u1", data: { text: "One" } },
@@ -73,14 +73,13 @@ test("a computed variable: a random condition linked to a set column", async ({ 
     ],
   });
   await page.goto("/research");
-  await page.getByText("Computed test").click();
+  await page.getByText("Experiment test").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
 
-  // A computed item at the top level
+  // An experiment at the top level
   await page.getByRole("button", { name: /Add item/ }).click();
-  await page.getByRole("button", { name: /^Computed variable/ }).click();
+  await page.getByRole("button", { name: /^Experiment/ }).click();
   await page.getByPlaceholder("e.g. sentiment, age").fill("framing");
-  await expect(page.getByText("Random condition", { exact: true })).toBeVisible();
   await expect(page.getByText("never shown to the coder")).toBeVisible();
   await page.locator("select").filter({ hasText: "Not linked to units" }).selectOption("framing");
 
@@ -92,7 +91,9 @@ test("a computed variable: a random condition linked to a set column", async ({ 
     .toBe(1);
   const [saved] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
   const { items } = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${saved.id}`);
-  expect(items).toMatchObject([{ type: "computed", name: "framing", variable: { type: "random", units: "framing" } }]);
+  expect(items).toMatchObject([
+    { type: "experiment", name: "framing", variable: { type: "random", units: "framing" } },
+  ]);
 });
 
 test("blocks: a label and a condition, else items; questions and loops at the top level; the study's end", async ({

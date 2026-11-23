@@ -24,15 +24,15 @@ function placeOf(items: readonly TopLevelItem[], position: TreePosition): "loop"
 
 /**
  * Item types that can be created at a position: in a loop its items; in a
- * block questions, computed items, nested blocks and ends; at the top level
+ * block questions, experiments, nested blocks and ends; at the top level
  * the same with unit loops instead of ends.
  */
 export function insertableTypesAt(items: TopLevelItem[], position: TreePosition): ItemType[] {
   const place = placeOf(items, position);
   if (place === "loop") return ["question", "layout", "block", "end"];
-  if (place === "block") return ["question", "computed", "block", "end"];
+  if (place === "block") return ["question", "experiment", "block", "end"];
   // (The Study entry is always there, first: never added)
-  return ["question", "computed", "block", "unit_loop"];
+  return ["question", "experiment", "block", "unit_loop"];
 }
 
 /** The key of the "At the end" row: the study's normal end (the Study entry's `end`), not an item. */

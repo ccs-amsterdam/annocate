@@ -8,7 +8,7 @@ import { ToggleChip } from "./ToggleChip";
 type RandomVariable = Extract<AnyVariableType, { type: "random" }>;
 
 /**
- * A random condition (a computed item): how it is drawn, whether it is
+ * An experiment's conditions: how they are drawn, whether it is
  * linked to a set column of the units (then it also selects the coder's
  * units), what a balanced draw balances within, and its values.
  */
@@ -28,7 +28,7 @@ export function RandomConditionFields({
       <div className="flex flex-col gap-1">
         <label className="flex items-center gap-1 text-sm font-medium">
           Drawn
-          <InfoTip label="About random conditions">
+          <InfoTip label="About experiments">
             Assigned when a coder reaches this item, so earlier questions can come first (coders screened out before
             don&apos;t count). Use it as <span className="font-mono">$var.name</span>. Linked to a set column of the
             units, it also selects the coder&apos;s units.

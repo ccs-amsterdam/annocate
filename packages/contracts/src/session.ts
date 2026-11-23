@@ -121,7 +121,7 @@ export const SessionResponseSchema = z.object({
   progress: z.array(SetProgressSchema),
   /**
    * The coder's coder-level variables so far, including drawn random
-   * conditions (`computed` items), so conditions in the client can use them.
+   * conditions (experiments), so conditions in the client can use them.
    */
   variables: z.record(z.string(), VariableValueSchema).default({}),
   /**

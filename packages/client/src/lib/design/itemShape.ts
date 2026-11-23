@@ -4,7 +4,7 @@ import type { TopLevelItem } from "@annotinder/contracts";
 // a known type, a name (except conditions and unit loops), and for questions a variable with a type. Everything
 // else is left to validation, whose messages the editor shows.
 
-const ITEM_TYPES = ["question", "computed", "unit_loop", "block", "end"];
+const ITEM_TYPES = ["question", "experiment", "unit_loop", "block", "end"];
 
 /** Why a parsed value isn't an item the editor can show; null if it is. With `children`, they are checked too. */
 export function itemShapeError(raw: unknown, { children }: { children: boolean }): string | null {
@@ -16,7 +16,7 @@ export function itemShapeError(raw: unknown, { children }: { children: boolean }
     return `${label}: type must be one of ${ITEM_TYPES.join(", ")}`;
   if (item.type !== "block" && item.type !== "unit_loop" && typeof item.name !== "string")
     return `${label} needs a name`;
-  const isQuestion = item.type === "question" || item.type === "computed";
+  const isQuestion = item.type === "question" || item.type === "experiment";
   const variable = item.variable as { type?: unknown } | undefined;
   if (isQuestion && (!variable || typeof variable !== "object" || typeof variable.type !== "string")) {
     return `${label}: a question needs a "variable" with a "type"`;

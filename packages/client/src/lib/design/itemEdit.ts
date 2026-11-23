@@ -174,7 +174,7 @@ export function deleteItem(items: TopLevelItem[], identifier: string): TopLevelI
 
 /**
  * Whether an item may move before, after or into another: not into
- * itself, a loop not in a loop, computed items not in a loop, span and
+ * itself, a loop not in a loop, experiments not in a loop, span and
  * relation questions only in a loop.
  */
 export function canMoveItemTo(
@@ -212,7 +212,7 @@ export function canMoveItemTo(
     targetParent !== null &&
     (targetParent.type === "unit_loop" || isInsideUnitLoop(items, keyOf(targetParent) || itemName(targetParent) || ""));
 
-  if (sourceItem.type === "computed") {
+  if (sourceItem.type === "experiment") {
     if (isTargetInLoop) return false;
   } else if (sourceItem.type === "question") {
     if (!isTargetInLoop && isLoopOnlyQuestion(sourceItem)) return false;
@@ -223,7 +223,7 @@ export function canMoveItemTo(
   } else if (sourceItem.type === "block") {
     const sourceDescendants = flattenTree(childrenOf(sourceItem) ?? []);
     const hasInLoopOnly = sourceDescendants.some(isLoopOnlyQuestion);
-    const hasTopOnly = sourceDescendants.some((d) => d.type === "unit_loop" || d.type === "computed");
+    const hasTopOnly = sourceDescendants.some((d) => d.type === "unit_loop" || d.type === "experiment");
 
     if (isTargetInLoop && hasTopOnly) return false;
     if (!isTargetInLoop && hasInLoopOnly) return false;

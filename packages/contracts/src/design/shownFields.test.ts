@@ -79,7 +79,7 @@ describe("set columns", () => {
     {
       type: "block",
       condition: { script: "true" },
-      children: [{ type: "computed", name: "set", variable: { type: "random", draw: "balanced", units: "set" } }],
+      children: [{ type: "experiment", name: "set", variable: { type: "random", draw: "balanced", units: "set" } }],
     },
     {
       type: "unit_loop",
@@ -88,7 +88,7 @@ describe("set columns", () => {
     },
   ];
 
-  it("are the coder column, computed items' and filters' columns: used, and declared as set fields", () => {
+  it("are the coder column, experiments' and filters' columns: used, and declared as set fields", () => {
     expect(designSetColumns(items).sort()).toEqual(["coder", "phase", "set"]);
     expect(Object.fromEntries(fieldUsage(items))).toEqual({
       coder: "server",
@@ -104,7 +104,7 @@ describe("set columns", () => {
     ).toEqual(["set"]);
   });
 
-  it("select a loop's units: the coder's, and computed items before the loop", () => {
+  it("select a loop's units: the coder's, and experiments before the loop", () => {
     const shares = loopShareColumns(items);
     expect(shares.get("1")).toEqual([{ name: "coder", column: "coder" }]);
     expect(shares.get("2")).toEqual([...shares.get("1")!, { name: "set", column: "set", random: true }]);

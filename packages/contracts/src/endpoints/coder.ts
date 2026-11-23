@@ -85,14 +85,14 @@ export const coderEndpoints = {
     response: z.void(),
   },
   /**
-   * The coder reached a computed item (in the flow of the design): the
-   * server computes its value now, once (random or balanced, counting only
+   * The coder reached an experiment (in the flow of the design): the
+   * server draws its condition now, once (random or balanced, counting only
    * coders who reached it; stratified by the answers saved so far), and
    * returns it. Reached again: the same value.
    */
-  computeVariable: {
+  assignCondition: {
     method: "POST",
-    path: "/variables/computed/:name",
+    path: "/experiment/:name",
     request: z.void(),
     response: z.object({ value: VariableValueSchema }),
   },

@@ -138,9 +138,9 @@ export const ConfirmTypeSchema = VariableBaseSchema.extend({
 });
 
 /**
- * A random condition (a `computed` item's variable, item.ts): drawn rather
- * than asked, on the server, once, and never changed afterwards: the
- * design's experimental conditions.
+ * An experiment's conditions and how they are drawn (an `experiment` item's
+ * variable, item.ts): drawn rather than asked, on the server, once, and
+ * never changed afterwards.
  *
  * - `random`:    a (weighted) random draw from `options`
  * - `balanced`:  the option fewest coders have so far
@@ -186,10 +186,6 @@ export const RandomVariableSchema = z
     );
   });
 export type RandomVariable = z.infer<typeof RandomVariableSchema>;
-
-/** What a `computed` item computes (item.ts): a random condition (later also a formula). */
-export const ComputedVariableSchema = z.discriminatedUnion("type", [RandomVariableSchema]);
-export type ComputedVariable = z.infer<typeof ComputedVariableSchema>;
 
 // ---- annotation-in-unit answer types (only valid inside a unit loop) ----
 
@@ -275,5 +271,5 @@ export const UnitVariableTypeSchema = z.discriminatedUnion("type", [
 ]);
 export type UnitVariableType = z.infer<typeof UnitVariableTypeSchema>;
 
-/** Any variable an item produces: a question's answer type, or a computed item's (`computed`). */
-export type AnyVariableType = UnitVariableType | UserVariableType | ComputedVariable;
+/** Any variable an item produces: a question's answer type, or an experiment's conditions (`random`). */
+export type AnyVariableType = UnitVariableType | UserVariableType | RandomVariable;

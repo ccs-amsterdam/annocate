@@ -114,7 +114,7 @@ describe("studies from a recipe", () => {
     {
       type: "block",
       children: [
-        { type: "computed", name: "condition", variable: { type: "random", draw: "random", units: "condition" } },
+        { type: "experiment", name: "condition", variable: { type: "random", draw: "random", units: "condition" } },
       ],
     },
     {

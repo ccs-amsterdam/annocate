@@ -220,7 +220,7 @@ describe("setup wizard recipes", () => {
     expect(sets._overlap).not.toContain("u2");
   });
 
-  it("experimental groups, annotating only: the condition first (a computed item), linked to a set column with a value per condition", () => {
+  it("experimental groups, annotating only: the condition first (an experiment), linked to a set column with a value per condition", () => {
     const a = setup({
       parts: { annotate: true, survey: false, experiment: true },
       distribution: { mode: "groups", column: "group", values: { control: ["a"], treatment: ["b", "c"] } },
@@ -234,7 +234,7 @@ describe("setup wizard recipes", () => {
       ["treatment", 6],
     ]);
     // The condition, then the loop
-    expect((recipe.design.items as { type: string }[]).map((i) => i.type)).toEqual(["computed", "unit_loop"]);
+    expect((recipe.design.items as { type: string }[]).map((i) => i.type)).toEqual(["experiment", "unit_loop"]);
     expect(recipe.design.items[0]).toMatchObject({
       variable: { type: "random", draw: "balanced", units: "condition" },
     });
@@ -242,7 +242,7 @@ describe("setup wizard recipes", () => {
     expect(loopOf(a).units).toBeUndefined();
   });
 
-  it("experimental groups with a survey: the condition first (a computed item), questions before and after", () => {
+  it("experimental groups with a survey: the condition first (an experiment), questions before and after", () => {
     const a = setup({
       parts: { annotate: true, survey: true, experiment: true },
       distribution: { mode: "groups", column: "group", values: { control: ["a"], treatment: ["b", "c"] } },
@@ -253,10 +253,10 @@ describe("setup wizard recipes", () => {
     const recipe = setupRecipe(a);
     const items = recipe.design.items as { name?: string; type: string }[];
     expect(items.map((i) => i.name ?? i.type)).toEqual(["condition", "age", "unit_loop", "any_comments"]);
-    // The condition selects its units: a computed item linked to a set column named after it
+    // The condition selects its units: an experiment linked to a set column named after it
     expect(recipe.sets![0].group).toBe("condition");
     expect((recipe.design.items as { type: string; variable?: { units?: string } }[])[0]).toMatchObject({
-      type: "computed",
+      type: "experiment",
       variable: { type: "random", units: "condition" },
     });
   });

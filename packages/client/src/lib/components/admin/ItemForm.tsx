@@ -24,7 +24,7 @@ import type { LoopUnitsContext } from "../../design/assignment";
 import { VariableTypeForm } from "./VariableTypeForm";
 import { switchVariableType, VARIABLE_TYPE_OPTIONS_USER, VARIABLE_TYPE_OPTIONS_UNIT } from "../../design/answerTypes";
 import { TypeCardGrid, TypeHeader } from "./TypeCards";
-import { COMPUTED_TYPE_CARDS, answerTypeCards } from "./typeCardData";
+import { answerTypeCards } from "./typeCardData";
 import { EndItemFields } from "./itemForm/EndItemFields";
 import { FocusSelect, InstructionFields } from "./itemForm/LoopQuestionFields";
 
@@ -134,7 +134,9 @@ export function ItemForm({
             <span className="flex items-center gap-1.5">
               <label className="text-xs font-semibold text-foreground">Item Name</label>
               <HelpButton
-                topic={item.type === "end" ? "end-items" : item.type === "computed" ? "random-condition" : "questions"}
+                topic={
+                  item.type === "end" ? "end-items" : item.type === "experiment" ? "random-condition" : "questions"
+                }
                 label="Help"
               />
             </span>
@@ -201,16 +203,11 @@ export function ItemForm({
           </>
         )}
 
-        {item.type === "computed" && (
+        {item.type === "experiment" && (
           <>
-            <TypeHeader
-              cards={COMPUTED_TYPE_CARDS}
-              value={item.variable.type}
-              onPick={(type) => onChange({ ...item, variable: switchVariableType(item.variable, type) } as DesignItem)}
-              help={<HelpButton topic="random-condition" label="Help: random conditions" />}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Worked out when the coder reaches this point; never shown to the coder.
+            <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              Each coder gets one condition, drawn when they reach this point; never shown to the coder.
+              <HelpButton topic="random-condition" label="Help: experiments" />
             </p>
             <VariableTypeForm
               variable={item.variable}

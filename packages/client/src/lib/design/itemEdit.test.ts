@@ -146,9 +146,9 @@ describe("itemEdit", () => {
       ],
     };
 
-    it("prevents moving a computed item inside a loop", () => {
+    it("prevents moving an experiment inside a loop", () => {
       const autoQ: TopLevelItem = {
-        type: "computed",
+        type: "experiment",
         name: "auto_q",
         variable: { type: "random", draw: "random", options: [{ value: "a" }] },
       };

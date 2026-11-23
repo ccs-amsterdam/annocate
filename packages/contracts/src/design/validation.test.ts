@@ -86,9 +86,9 @@ describe("validateDesignItems", () => {
     expect(DesignItemsSchema.safeParse(loop([{}] as unknown as object)).success).toBe(false);
   });
 
-  it("checks computed items: outside loops, linked to a set column, a column each", () => {
+  it("checks experiments: outside loops, linked to a set column, a column each", () => {
     const random = (extra: object, name = "set") => ({
-      type: "computed",
+      type: "experiment",
       name,
       variable: { type: "random", draw: "balanced", ...extra },
     });
@@ -107,10 +107,10 @@ describe("validateDesignItems", () => {
       messages([
         unitLoop("loop", [questionVar("q1"), random({ options: [{ value: "a" }] }, "inner") as unknown as InLoopItem]),
       ]),
-    ).toContain("Computed item 'inner' can only be used outside a unit loop");
+    ).toContain("Experiment 'inner' can only be used outside a unit loop");
     // A loop before it doesn't use it: a warning
     expect(validateDesignItems([loop, random({ units: "set" })])).toEqual([
-      expect.objectContaining({ warning: true, message: expect.stringContaining("comes before computed item 'set'") }),
+      expect.objectContaining({ warning: true, message: expect.stringContaining("comes before experiment 'set'") }),
     ]);
     const session = { type: "session", invite: { mode: "coders", column: "set", link: "per_coder" } };
     expect(messages([session, random({ units: "set" })])).toContain(
@@ -118,10 +118,10 @@ describe("validateDesignItems", () => {
     );
     const param = { type: "session", urlParams: [{ name: "set" }] };
     expect(messages([param, random({ units: "other" })])).toEqual([
-      "Computed item 'set' selects units: its name can't also be a session value",
+      "Experiment 'set' selects units: its name can't also be a session value",
     ]);
     expect(messages([random({ units: "set" }), random({ units: "set" }, "other")])).toEqual([
-      "Column 'set' already selects units for computed item 'set': use a column each",
+      "Column 'set' already selects units for experiment 'set': use a column each",
     ]);
   });
 });

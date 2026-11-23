@@ -33,7 +33,7 @@ export const CoderProgressSchema = z.object({
     z.enum(["overlap", "gold", "practice"]),
     z.object({ done: z.number().int().nonnegative(), total: z.number().int().nonnegative() }),
   ),
-  /** Coder-level values: answers outside unit loops, and drawn random conditions (`computed` items). */
+  /** Coder-level values: answers outside unit loops, and drawn random conditions (experiments). */
   variables: z.record(z.string(), VariableValueSchema),
   /** Set if the coder's session ended at an `end` item (screened out or complete), or they quit. */
   ended: SessionEndSchema.nullable(),
