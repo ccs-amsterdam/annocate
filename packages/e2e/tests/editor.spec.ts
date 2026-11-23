@@ -129,7 +129,7 @@ test("branches: a label and a condition, else items; questions and loops at the 
   await expect(page.getByText("If not, then…")).toBeVisible();
   await page.getByRole("button", { name: /^Question/ }).click();
   await page.getByPlaceholder("e.g. sentiment, age").fill("guardian");
-  await expect(page.getByText("Else", { exact: true })).toBeVisible();
+  await expect(page.getByText("otherwise", { exact: true })).toBeVisible();
 
   // The study's normal end: a button below the tree, with a message
   await page

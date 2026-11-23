@@ -47,6 +47,8 @@
   --color-leaf: var(--leaf);
   --color-leaf-foreground: var(--leaf-foreground);
   --color-leaf-strong: var(--leaf-strong);
+  --color-twig: var(--twig);
+  --color-paper: var(--paper);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -178,6 +180,9 @@
     --leaf: hsl(101 14% 51%);
     --leaf-foreground: hsl(30 6% 10%);
     --leaf-strong: hsl(101 17% 38%);
+    /* The design tree: its lines (a lighter wood) and a unit loop's card */
+    --twig: hsl(30 41% 44%);
+    --paper: hsl(40 54% 97%);
 
     --chart-1: hsl(30 52% 35%);
     --chart-2: hsl(36 5% 30%);
@@ -236,6 +241,8 @@
     --leaf: hsl(97 19% 65%);
     --leaf-foreground: hsl(30 6% 10%);
     --leaf-strong: hsl(97 19% 65%);
+    --twig: hsl(31 30% 42%);
+    --paper: hsl(32 9% 14%);
 
     --chart-1: hsl(31 45% 56%);
     --chart-2: hsl(40 8% 80%);
@@ -403,6 +410,64 @@
   .template-markdown td {
     border: 1px solid var(--border);
     padding: 0.25em 0.5em;
+  }
+}
+
+/* The design tree's lines (designTree/TreeRow.tsx `Rails`): a column per
+   level of each row, the main line on the left. `pass`: a line through;
+   `tee`: a line through with a twig to the item; `end`: the last twig,
+   bent; `root`: a line from the row's middle down (where a line begins);
+   `node`: a line through, with a knot on it. `--twig-y`: the twig's height
+   (default the row's middle). */
+@layer components {
+  .tree-rail {
+    position: relative;
+    width: 22px;
+    flex: none;
+    align-self: stretch;
+  }
+  .tree-rail-pass::before,
+  .tree-rail-tee::before,
+  .tree-rail-node::before,
+  .tree-rail-root::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 10px;
+    border-left: 1.6px solid var(--twig);
+  }
+  .tree-rail-root::before {
+    top: 50%;
+  }
+  .tree-rail-tee::after {
+    content: "";
+    position: absolute;
+    top: var(--twig-y, 50%);
+    left: 10px;
+    width: 12px;
+    border-top: 1.6px solid var(--twig);
+  }
+  .tree-rail-end::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 10px;
+    width: 12px;
+    height: var(--twig-y, 50%);
+    border-bottom: 1.6px solid var(--twig);
+    border-left: 1.6px solid var(--twig);
+    border-bottom-left-radius: 7px;
+  }
+  /* A knot on the line: centred on it */
+  .tree-knot {
+    position: absolute;
+    top: 50%;
+    left: 10.8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translate(-50%, -50%);
   }
 }
 

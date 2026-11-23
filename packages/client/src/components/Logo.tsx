@@ -65,6 +65,19 @@ export function Logo({
 }
 
 /**
+ * The logo's leaf alone, lying flat, in `currentColor` with a faint midrib:
+ * a question in the design tree, at the end of its twig.
+ */
+export function Leaf({ className }: { className?: string }) {
+  return (
+    <svg viewBox="-1 -4 13 8" width={20} height={12} className={className} fill="currentColor" aria-hidden>
+      <path d={LEAF} />
+      <path d="M0.84 0L8.93 0" stroke="var(--leaf-foreground)" strokeWidth={0.9} opacity={0.35} />
+    </svg>
+  );
+}
+
+/**
  * The logo with smoke rising, and an optional label under it: loading screens
  * and the welcome page, where the logo is the centre of attention (not the
  * header). The smoke stands still when the system asks for reduced motion.

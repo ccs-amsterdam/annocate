@@ -1,10 +1,11 @@
 import { Globe, Link2, Monitor, Users, type LucideIcon } from "lucide-react";
-import { inviteOf, sessionItem, type Invite, type SessionItem } from "@annotinder/contracts";
+import { inviteOf, sessionItem, type SessionItem } from "@annotinder/contracts";
 import { cn } from "cn";
 import { InfoTip } from "@/components/ui/info-tip";
 import { getItemKey } from "../designTree/utils";
 import type { DesignDraft } from "./useDesignDraft";
 import { useSessionTab, type SessionTab } from "../session/sessionTab";
+import { inviteSummary } from "../session/inviteSummary";
 
 /**
  * Above the item tree: what the study is, rather than an item in it. The
@@ -83,16 +84,6 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
       </div>
     </div>
   );
-}
-
-/** The invitation in a few words. */
-function inviteSummary(invite: Invite): string {
-  if (invite.mode === "coders")
-    return `specific coders, ${invite.link === "login" ? "signing in" : invite.link === "pick_name" ? "picking their name" : "a link each"}`;
-  const parts = ["one link"];
-  if (invite.coderParam) parts.push(`coder id from ?${invite.coderParam.param}`);
-  if (invite.login) parts.push("signing in");
-  return parts.join(", ");
 }
 
 /** A part of the session: its name and a summary; opens its form. */

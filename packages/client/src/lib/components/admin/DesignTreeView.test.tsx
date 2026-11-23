@@ -7,6 +7,7 @@ import { ensureKeys } from "../../design/itemEdit";
 describe("DesignTreeView", () => {
   // As in the editor: every item has a key (a loop has no name).
   const dummyItems: TopLevelItem[] = ensureKeys([
+    { type: "session" },
     {
       type: "question",
       name: "consent",
@@ -16,7 +17,7 @@ describe("DesignTreeView", () => {
       type: "unit_loop",
       label: "main_loop",
       children: [
-        { type: "layout", template: "text" },
+        { type: "layout", template: "$unit.text" },
         {
           type: "question",
           name: "sentiment",
@@ -45,6 +46,11 @@ describe("DesignTreeView", () => {
     // consent, the loop, its layout and sentiment
     expect(html.match(/Add an item below/g)).toHaveLength(4);
     expect(html).toContain('aria-label="Select consent"');
+    // The main line from Start to the study's end; a question's answer type, a layout's fields
+    expect(html).toContain(">Start<");
+    expect(html).toContain("At the end");
+    expect(html).toContain(">confirm<");
+    expect(html).toMatch(/>text<\/span>/);
     // How to edit is behind the tree's info icon (TreePanel), not a line above the items
     expect(html).not.toContain("tick items to move or delete");
   });

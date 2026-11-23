@@ -25,6 +25,11 @@ export function savedLoop(
   return found?.type === "unit_loop" ? found : undefined;
 }
 
+/** What a layout shows (contracts `templateNames`), its snippets put in. */
+export function layoutNames(layout: LayoutItem): { shown: string[]; selectable: string[] } {
+  return templateNames(expandSnippets(layout.template ?? "", layout.snippets).source);
+}
+
 /**
  * What the layouts that may apply to a loop item show ("Show field", what
  * span questions can select in): all of them together. Without a name (a
@@ -35,7 +40,7 @@ export function shownByLayouts(loop: UnitLoopItem, name: string): { shown: strin
   const shown = new Set<string>();
   const selectable = new Set<string>();
   for (const layout of layouts) {
-    const names = templateNames(expandSnippets(layout.template, layout.snippets).source);
+    const names = layoutNames(layout);
     names.shown.forEach((n) => shown.add(n));
     names.selectable.forEach((n) => selectable.add(n));
   }

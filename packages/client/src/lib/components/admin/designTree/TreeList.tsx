@@ -1,49 +1,30 @@
 import { cn } from "cn";
-import type { TopLevelItem } from "@annotinder/contracts";
+import type { TopLevelItem, UnitLoopItem } from "@annotinder/contracts";
 import type { TreePosition } from "../../../design/itemEdit";
 import { childrenOf, isElse } from "../../../codebook/tree";
 import { TreeItemRow } from "./TreeItemRow";
 import { ITEM_TYPES } from "./itemTypes";
-import { InsertionLine } from "./TreeRow";
+import { InsertionLine, Rails, type Rail } from "./TreeRow";
 import { samePosition, useDesignTree } from "./context";
 import { getItemKey, type TreeNode } from "./utils";
 
-/** A unit loop, and each run of coder-level items between loops: a light card. */
-const CARD = "my-1 rounded-lg border border-border py-0.5";
-/** The coder-level items' cards: a faint tint of the questions' colour, set apart from the loops. */
-const CODER_SECTION = "bg-secondary/5";
-const LOOP_CARD = "bg-muted/30";
-/** A branch, at any level: its items one step in. */
-const BRANCH = "my-0.5";
-/** One step in: a child's checkbox under its parent's icon, its icon where the parent's name starts. */
-const INDENT = "pl-6";
+/** The last twig of a level, else one with the line running on. */
+type Twig = "tee" | "end";
 
 /**
- * The design's top level: each unit loop a card, and the coder-level items
- * before, between and after loops together in a tinted card (a section,
- * only in the tree). The Study entry is shown above the tree.
+ * The design's main line, from the Start row to the "At the end" row (both
+ * DesignTreeView's): each item hangs off it with a twig, a unit loop is a
+ * card it runs through. The Study entry is the Start row, not an item here.
  */
-export function SectionList({ items }: { items: TopLevelItem[] }) {
-  const sections: { key: string; loop: boolean; items: TopLevelItem[] }[] = [];
-  for (const item of items) {
-    if (item.type === "session") continue;
-    const last = sections.at(-1);
-    if (item.type !== "unit_loop" && last && !last.loop) last.items.push(item);
-    else sections.push({ key: getItemKey(item), loop: item.type === "unit_loop", items: [item] });
-  }
+export function MainLine({ items }: { items: TopLevelItem[] }) {
   return (
     <div className="flex flex-col">
-      {sections.map((section) =>
-        section.loop ? (
-          <TreeNodeView key={section.key} item={section.items[0]} card />
-        ) : (
-          <div key={section.key} className={cn(CARD, CODER_SECTION)}>
-            {section.items.map((item) => (
-              <TreeNodeView key={getItemKey(item)} item={item} />
-            ))}
-          </div>
-        ),
-      )}
+      {items
+        .filter((item) => item.type !== "session")
+        .map((item) => (
+          // The line runs on to the "At the end" row: no last twig here
+          <TreeNodeView key={getItemKey(item)} item={item} lines={[]} twig="tee" />
+        ))}
       <PreviewLine position={{ into: null }} />
     </div>
   );
@@ -53,69 +34,120 @@ interface TreeListProps {
   nodes: TreeNode[];
   /** Container owning this list. */
   parent: TreeNode;
+  /** The lines of the levels around it. */
+  lines: Rail[];
 }
 
-/** Renders a branch's or loop's items (recursing into nested branches). */
-export function TreeList({ nodes, parent }: TreeListProps) {
-  const end: TreePosition = { into: getItemKey(parent) };
+/** A branch's items (recursing into nested branches), forking off its line; the last one's twig ends it. */
+function TreeList({ nodes, parent, lines }: TreeListProps) {
+  // Else items show only once there are some (begun from the branch's row)
+  const shown = nodes.filter((node) => !isElse(node) || (childrenOf(node) ?? []).length > 0);
   return (
     <div className="flex flex-col">
-      {nodes.map((node) => (
-        <TreeNodeView key={getItemKey(node)} item={node} />
+      {shown.map((node, i) => (
+        <TreeNodeView key={getItemKey(node)} item={node} lines={lines} twig={i === shown.length - 1 ? "end" : "tee"} />
       ))}
-      <PreviewLine position={end} />
+      <PreviewLine position={{ into: getItemKey(parent) }} />
     </div>
   );
 }
 
+/** The lines below a twig: the level's line runs on past it, unless this was its last twig. */
+const inner = (lines: Rail[], twig: Twig): Rail[] => [...lines, twig === "end" ? "none" : "pass"];
+
 /**
- * An item. A unit loop is a card holding its row and its items; a branch its
- * row with its items one step in; a branch's else items an "Else" group at
- * the end of the branch (only once it has items), as far in as the others.
+ * An item, on its twig. A branch's items fork off one level in, and its
+ * else items, "otherwise", once more; a unit loop is a card (LoopCard).
  */
-function TreeNodeView({ item, card = false }: { item: TreeNode; card?: boolean }) {
+function TreeNodeView({ item, lines, twig }: { item: TreeNode; lines: Rail[]; twig: Twig }) {
   const children = childrenOf(item);
   const after: TreePosition = { after: getItemKey(item) };
   const before: TreePosition = { before: getItemKey(item) };
   if (isElse(item)) {
-    if (!children?.length) return null;
     return (
-      <div data-flip-key={getItemKey(item)} className="mt-0.5">
-        <TreeItemRow item={item} />
-        {/* As far in as the branch's other items: the Else row above them says enough */}
-        <TreeList nodes={children} parent={item} />
+      <div data-flip-key={getItemKey(item)}>
+        <TreeItemRow item={item} rails={[...lines, twig]} />
+        <TreeList nodes={children ?? []} parent={item} lines={inner(lines, twig)} />
       </div>
     );
   }
-  if (!children) {
-    return (
-      <>
-        <PreviewLine position={before} />
-        {/* data-flip-key: glides to its new place when moved (useFlip in DesignTreeView) */}
-        <div data-flip-key={getItemKey(item)}>
-          <TreeItemRow item={item} />
-        </div>
-        <PreviewLine position={after} />
-      </>
-    );
-  }
+  // A layout in its loop is a knot on the loop's line
+  const rails: Rail[] = item.type === "layout" && lines.length === 0 ? ["node"] : [...lines, twig];
   return (
     <>
       <PreviewLine position={before} />
-      <div
-        data-flip-key={getItemKey(item)}
-        className={cn(
-          card ? cn(CARD, LOOP_CARD) : BRANCH,
-          ITEM_TYPES[item.type as keyof typeof ITEM_TYPES]?.containerClass,
+      {/* data-flip-key: glides to its new place when moved (useFlip in DesignTreeView) */}
+      <div data-flip-key={getItemKey(item)}>
+        {item.type === "unit_loop" ? (
+          <LoopCard loop={item} lines={lines} />
+        ) : (
+          <>
+            <TreeItemRow item={item} rails={rails} />
+            {children && <TreeList nodes={children} parent={item} lines={inner(lines, twig)} />}
+          </>
         )}
-      >
-        <TreeItemRow item={item} />
-        <div className={INDENT}>
-          <TreeList nodes={children} parent={item} />
-        </div>
       </div>
       <PreviewLine position={after} />
     </>
+  );
+}
+
+/**
+ * A unit loop: a card the main line runs into at the top and out of at the
+ * bottom, its own items on it (layouts knots, the rest on twigs), not
+ * indented. With a condition only some coders get it: the card forks off
+ * and the main line runs on past it.
+ */
+function LoopCard({ loop, lines }: { loop: UnitLoopItem; lines: Rail[] }) {
+  const forked = !!loop.condition?.script.trim();
+  const children = (childrenOf(loop) ?? []) as TreeNode[];
+  const card = (
+    <div
+      className={cn(
+        "flex min-w-0 flex-1 flex-col",
+        ITEM_TYPES.unit_loop.containerClass,
+        // On the main line: its rows' lines where the main line is (the border and padding outside them)
+        !forked && "-mx-1 px-[2.5px]",
+      )}
+    >
+      <TreeItemRow item={loop} rails={[forked ? "root" : "node"]} />
+      {children.map((child, i) => (
+        <TreeNodeView
+          key={getItemKey(child)}
+          item={child}
+          lines={[]}
+          // Forked, the loop's line ends at its last item; else it runs out of the card
+          twig={forked && i === children.length - 1 ? "end" : "tee"}
+        />
+      ))}
+      <PreviewLine position={{ into: getItemKey(loop) }} />
+      {forked ? <div className="h-2" /> : <RailGap lines={["pass"]} />}
+    </div>
+  );
+  return (
+    <>
+      <RailGap lines={[...lines, "pass"]} />
+      {forked ? (
+        <div className="flex pl-2">
+          <Rails rails={lines} />
+          {/* The twig into the card's first row (its border, and half the 40px row, down) */}
+          <span aria-hidden className="tree-rail tree-rail-tee [--twig-y:21.5px]" />
+          {card}
+        </div>
+      ) : (
+        card
+      )}
+      <RailGap lines={[...lines, "pass"]} />
+    </>
+  );
+}
+
+/** A little room above and below a loop's card, the lines running through it. */
+function RailGap({ lines }: { lines: Rail[] }) {
+  return (
+    <div className="flex h-2.5 px-2">
+      <Rails rails={lines} />
+    </div>
   );
 }
 

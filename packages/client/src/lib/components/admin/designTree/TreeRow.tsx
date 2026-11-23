@@ -1,57 +1,68 @@
-import type { ComponentProps, MouseEvent, ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "cn";
 
+/**
+ * A row's column at one level of the tree (index.css `.tree-rail-*`): the
+ * main line on the left, a branch's line one column in. `none`: no line
+ * (below the last twig of a level).
+ */
+export type Rail = "pass" | "tee" | "end" | "root" | "node" | "none";
+
+/** The lines of a row, a column per level; `knot` sits on the last column's line. */
+export function Rails({ rails, knot }: { rails: Rail[]; knot?: ReactNode }) {
+  return rails.map((rail, i) => (
+    <span key={i} aria-hidden className={`tree-rail tree-rail-${rail}`}>
+      {i === rails.length - 1 && knot}
+    </span>
+  ));
+}
+
+/** A knot on the line: a small box with an icon (a loop's, a layout's, the start's). */
+export function Knot({
+  icon: Icon,
+  className,
+  iconClass,
+}: {
+  icon: LucideIcon;
+  className?: string;
+  iconClass?: string;
+}) {
+  return (
+    <span className={cn("tree-knot h-[18px] w-[18px]", className)}>
+      <Icon className={cn("h-[11px] w-[11px]", iconClass)} strokeWidth={2.6} />
+    </span>
+  );
+}
+
 interface TreeRowProps {
-  /** normal = 30px, compact = 20px (used for the end rows of container lists). */
-  size?: "normal" | "compact";
+  /** The lines on the left, a column per level. */
+  rails?: Rail[];
+  knot?: ReactNode;
   /** Left-hand content (label, "Move here" button, ...). */
   children?: ReactNode;
   /** Right-hand action buttons. */
   actions?: ReactNode;
   /** When true, actions are dimmed until the row is hovered. */
   dimActions?: boolean;
-  /** Draws a line on the top edge of the row: "something will be inserted here". */
-  showInsertionLine?: boolean;
   className?: string;
-  onClick?: (e: MouseEvent) => void;
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
 }
 
 /**
- * Layout primitive shared by every row in the tree (items and list-end rows),
- * so all rows of a size have the same height and action column. Rows never
- * change size, so nothing shifts on hover or when entering move mode.
+ * Layout primitive shared by every row in the tree, so all rows have the
+ * same height and action column, and the lines of rows above and below
+ * meet. Rows never change size, so nothing shifts on hover or when
+ * entering move mode.
  */
-export function TreeRow({
-  size = "normal",
-  children,
-  actions,
-  dimActions = false,
-  showInsertionLine = false,
-  className,
-  onClick,
-  onMouseEnter,
-  onMouseLeave,
-}: TreeRowProps) {
+export function TreeRow({ rails = [], knot, children, actions, dimActions = false, className }: TreeRowProps) {
   return (
-    <div
-      className={cn(
-        "group relative flex items-center justify-between gap-2 rounded px-2 text-sm transition-colors",
-        size === "compact" ? "h-5" : "h-[30px]",
-        className,
-      )}
-      onClick={onClick}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-    >
-      {showInsertionLine && <InsertionLine />}
+    <div className={cn("group relative flex h-8 items-center rounded px-2 text-sm transition-colors", className)}>
+      <Rails rails={rails} knot={knot} />
       <div className="flex min-w-0 flex-1 items-center gap-1">{children}</div>
       {actions && (
         <div
           className={cn(
-            "flex shrink-0 items-center gap-0.5 transition-opacity",
+            "ml-1 flex shrink-0 items-center gap-0.5 transition-opacity",
             dimActions && "opacity-30 group-hover:opacity-100 focus-within:opacity-100 has-[[data-open]]:opacity-100",
           )}
         >

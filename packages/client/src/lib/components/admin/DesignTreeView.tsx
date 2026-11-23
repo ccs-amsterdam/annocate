@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useFlip } from "../../hooks/useFlip";
-import { CornerDownLeft, Flag, Move, Trash2, X } from "lucide-react";
-import { sessionItem, type DesignIssue, type TopLevelItem } from "@annotinder/contracts";
+import { AlertCircle, CornerDownLeft, Flag, Move, Trash2, X } from "lucide-react";
+import { inviteOf, sessionItem, type DesignIssue, type DesignItem, type TopLevelItem } from "@annotinder/contracts";
 import {
   addPositions,
   canMoveAllTo,
@@ -12,8 +12,12 @@ import {
 } from "../../design/itemEdit";
 import { issueIsAbout } from "../../codebook/tree";
 import { Button } from "@/components/ui/button";
-import { DesignTreeProvider, type DesignTreeState } from "./designTree/context";
-import { SectionList } from "./designTree/TreeList";
+import { DesignTreeProvider, useDesignTree, type DesignTreeState } from "./designTree/context";
+import { MainLine } from "./designTree/TreeList";
+import { Knot, Rails, TreeRow } from "./designTree/TreeRow";
+import { ITEM_TYPES } from "./designTree/itemTypes";
+import { inviteSummary } from "./session/inviteSummary";
+import { useSessionTab } from "./session/sessionTab";
 import { AddItemMenu } from "./designTree/AddItemMenu";
 import { getItemKey, insertableTypesAt, STUDY_END_KEY, type ItemType } from "./designTree/utils";
 import { cn } from "cn";
@@ -46,10 +50,15 @@ interface DesignTreeViewProps {
  *   "move below this item" (asking where if ambiguous, like adding), on
  *   rows where all ticked items may go; nothing else in the tree changes.
  *
+ * The tree is drawn as one: a main line from the Start row (the Study
+ * entry) to the "At the end" row, the items hanging off it on twigs, a
+ * branch's items forking off once more, a unit loop a card on the line.
+ *
  * Components (in ./designTree):
- * - TreeList     the top level's sections, and the recursive list of items
- * - TreeItemRow  an item row: tick box, item, +
- * - TreeRow      shared fixed-height row layout + insertion line
+ * - TreeList     the main line, a branch's list of items, a loop's card
+ * - TreeItemRow  an item row: item, tick box, +
+ * - TreeRow      shared fixed-height row layout: the lines (rails), insertion line
+ * - itemTypes    how each item type looks (classes to tune)
  * - AddItemMenu  "+" button: where (if ambiguous), then item type; or where to move
  */
 export function DesignTreeView({
@@ -127,7 +136,7 @@ export function DesignTreeView({
   };
 
   const end: TreePosition = { into: null };
-  // The Study entry (always first) is shown above the tree (SessionHeader), not in it
+  // The Study entry (always first) is the Start row, not an item
   const shown = items.filter((item) => item.type !== "session");
   const top: TreePosition | null = shown.length > 0 ? { before: getItemKey(shown[0]) } : null;
   const count = ticked.length === 1 ? "1 item" : `${ticked.length} items`;
@@ -186,13 +195,17 @@ export function DesignTreeView({
           )}
         </div>
       )}
-      <div ref={list} className="flex flex-col p-1 pb-3">
+      <div ref={list} className="flex flex-col px-1.5 pt-1 pb-3">
+        <StartRow items={items} selected={selected} onSelect={onSelect} />
         {shown.length === 0 && !readOnly && (
-          <p className="px-2 py-3 text-sm text-muted-foreground">
-            No items yet: add a unit loop (coders code units) or questions above.
-          </p>
+          <div className="flex px-2">
+            <Rails rails={["pass"]} />
+            <p className="py-2 pl-1 text-sm text-muted-foreground">
+              No items yet: add a unit loop (coders code units) or questions above.
+            </p>
+          </div>
         )}
-        <SectionList items={items} />
+        <MainLine items={items} />
         <StudyEndRow items={items} selected={selected === STUDY_END_KEY} onSelect={() => onSelect(STUDY_END_KEY)} />
       </div>
     </DesignTreeProvider>
@@ -200,9 +213,64 @@ export function DesignTreeView({
 }
 
 /**
+ * The top of the main line, where coders come in: the Study entry (who
+ * codes and how they get in; the buttons above the tree open its other
+ * parts). Opens it on who codes.
+ */
+function StartRow({
+  items,
+  selected,
+  onSelect,
+}: {
+  items: TopLevelItem[];
+  selected: string | null;
+  onSelect: (key: string) => void;
+}) {
+  const tree = useDesignTree();
+  const [, setTab] = useSessionTab();
+  const session = sessionItem(items);
+  if (!session) return null;
+  const key = getItemKey(session as DesignItem);
+  const { icon, color, knotClass, nameClass } = ITEM_TYPES.session;
+  const issue = tree.getIssue(session as DesignItem);
+  return (
+    <TreeRow rails={["root"]} knot={<Knot icon={icon} className={cn("h-5 w-5", knotClass)} iconClass={color} />}>
+      <button
+        type="button"
+        title="Where coders come in: who codes, and how they get in. Open to edit"
+        onClick={() => {
+          setTab("invite");
+          onSelect(key);
+        }}
+        className={cn(
+          "flex min-w-0 flex-1 cursor-pointer items-center gap-1 self-stretch rounded pl-1 text-left",
+          selected === key ? "bg-wood/15" : "hover:bg-muted/40",
+        )}
+      >
+        <span className={nameClass}>Start</span>
+        <span className="truncate px-1 text-[11px] text-muted-foreground">{inviteSummary(inviteOf(session))}</span>
+        {tree.isChanged(session as DesignItem) && (
+          <span
+            title="Unsaved changes"
+            aria-label="Unsaved changes"
+            className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"
+          />
+        )}
+        {issue && (
+          <span title={issue} className="shrink-0 text-destructive">
+            <AlertCircle className="h-3.5 w-3.5" />
+          </span>
+        )}
+      </button>
+    </TreeRow>
+  );
+}
+
+/**
  * The study's normal end (the Study entry's `end`), always the tree's last
- * row: what coders see when they get through the whole design, and where
- * they are sent. End items in the tree are for ending early.
+ * row, where the main line ends: what coders see when they get through the
+ * whole design, and where they are sent. End items in the tree are for
+ * ending early.
  */
 function StudyEndRow({
   items,
@@ -221,22 +289,21 @@ function StudyEndRow({
       : end?.message
         ? "a message"
         : "the default thank-you";
-  // Like the Study entry's buttons above the tree: the study's own end, not an item
   return (
-    <div className="mt-3 px-2">
+    <TreeRow rails={["end"]}>
       <button
         type="button"
         onClick={onSelect}
         title="What coders see when they get through the whole design, and where they are sent"
         className={cn(
-          "inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1 rounded-md border border-border px-1.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:border-wood/50 hover:text-foreground",
-          selected && "bg-wood/15 text-foreground",
+          "flex min-w-0 flex-1 cursor-pointer items-center gap-1 self-stretch rounded pl-0.5 text-left",
+          selected ? "bg-wood/15" : "hover:bg-muted/40",
         )}
       >
-        <Flag className="h-3.5 w-3.5 shrink-0" />
-        <span className="shrink-0">At the end</span>
-        <span className="truncate font-normal text-muted-foreground">· {summary}</span>
+        <Flag className="h-4 w-4 shrink-0 text-wood" />
+        <span className="shrink-0 px-1 font-medium">At the end</span>
+        <span className="truncate text-[11px] text-muted-foreground">· {summary}</span>
       </button>
-    </div>
+    </TreeRow>
   );
 }
