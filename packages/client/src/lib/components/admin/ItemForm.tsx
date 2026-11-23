@@ -10,6 +10,7 @@ import {
   type EndItem,
   type InLoopQuestionItem,
   type LayoutItem,
+  type UrlParam,
 } from "@annotinder/contracts";
 import { UnitLoopForm } from "./UnitLoopForm";
 import { LayoutForm } from "./unitLoop/LayoutForm";
@@ -61,12 +62,13 @@ export function ItemForm({
   validationIssues = [],
   screenouts = [],
   unitsContext,
+  urlParams = [],
   onChange,
 }: {
   item: DesignItem;
   /** For the forms that ask the server (the Study entry's, a loop's right answers); absent: read only. */
   client?: ResearcherApi;
-  /** The study's set groups (the units' set columns). */
+  /** The units' columns with a role (coder_set, condition_set, part_set, test_unit). */
   groups: SetGroupResponse[];
   /** The `$session` names (declared and built-in). */
   sessionValueNames?: string[];
@@ -86,6 +88,8 @@ export function ItemForm({
   screenouts?: string[];
   /** For a unit loop: the coder unit assignment, what selects a session's units, the loops before it. */
   unitsContext?: LoopUnitsContext;
+  /** The Study entry's URL parameters (an experiment can take its condition from one). */
+  urlParams?: UrlParam[];
   onChange: (updated: DesignItem) => void;
 }) {
   const nameError = validationIssues.find((i) => i.path.includes("name"))?.message ?? null;
@@ -183,7 +187,6 @@ export function ItemForm({
               )}
               layoutFields={inLoop ? loopNames?.selectable : undefined}
               stratifyChoices={stratifyChoices}
-              setColumns={groups.map((g) => g.name)}
               onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
             />
             {inLoop && (
@@ -212,7 +215,7 @@ export function ItemForm({
             <VariableTypeForm
               variable={item.variable}
               stratifyChoices={stratifyChoices}
-              setColumns={groups.map((g) => g.name)}
+              experiment={{ groups, urlParams, client }}
               onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
             />
             <IssueList issues={issuesAt(validationIssues, "variable")} />

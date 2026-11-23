@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  CODER_SET,
   designItems,
   inviteOf,
   sessionItem,
@@ -14,6 +15,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { codeLinkUrl } from "../../session/coderSession";
 import { LinkTable } from "./links/LinkTable";
 import { LinksPerValue } from "./links/LinksPerValue";
+import { columnValues } from "../../design/assignment";
 
 interface LinksPanelProps {
   client: ResearcherApi;
@@ -49,10 +51,8 @@ export function LinksPanel({ client }: LinksPanelProps) {
     return urlParams.length ? `${url}${url.includes("?") ? "&" : "?"}${urlParams.join("&")}` : url;
   };
   // Coders signing in with their email address: only those addresses may code.
-  const coderColumn = invite.mode === "coders" && invite.link === "login" ? invite.column : undefined;
-  const coderValues = coderColumn
-    ? (groups.find((g) => g.name === coderColumn)?.sets ?? []).map((s) => s.name).filter((n) => !n.startsWith("_"))
-    : [];
+  const coderValues =
+    invite.mode === "coders" && invite.link === "login" ? columnValues(groups, CODER_SET) : [];
   const emailCoders = coderValues.length > 0;
 
   const links = linksQuery.data ?? [];
@@ -66,7 +66,7 @@ export function LinksPanel({ client }: LinksPanelProps) {
           Links
           <InfoTip label="About links">
             Deploying the design makes its links: one, or with specific coders who get a link each, one per coder in the
-            coders&apos; column. Links of coders who are gone are retired. Here you set who may use a link. Revoking
+            units&apos; coder set (<span className="font-mono">coder_set</span>). Links of coders who are gone are retired. Here you set who may use a link. Revoking
             stops new coders from joining with it; coders who already started keep working.
           </InfoTip>
           <HelpButton topic="links" label="Help: links" />
@@ -80,7 +80,7 @@ export function LinksPanel({ client }: LinksPanelProps) {
         )}
         {emailCoders && (
           <div className="rounded-md border border-amber-500 bg-amber-500/10 p-2.5 text-xs">
-            The coders (column <span className="font-mono">{coderColumn}</span>) are email addresses, so there is one
+            The coders (<span className="font-mono">coder_set</span>) are email addresses, so there is one
             link: coders sign in and get their own units. Other email addresses get &quot;This email address has no
             access to this study&quot;.
             <details className="mt-1">
@@ -94,7 +94,7 @@ export function LinksPanel({ client }: LinksPanelProps) {
         ) : active.length === 0 ? (
           <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
             {deployment
-              ? "The deployed design makes no links right now (a coders' column without coders?)."
+              ? "The deployed design makes no links right now (specific coders without a coder set?)."
               : "Deploy the design to get its links."}
           </p>
         ) : (

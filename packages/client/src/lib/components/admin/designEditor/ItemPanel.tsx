@@ -198,6 +198,7 @@ function ItemEditForm({
         validationIssues={itemIssues}
         screenouts={item.type === "unit_loop" ? screenoutEnds(cleanItems) : undefined}
         unitsContext={item.type === "unit_loop" ? loopUnitsContext(items, cleanItems, key) : undefined}
+        urlParams={sessionItem(cleanItems)?.urlParams}
         onChange={(next) => draft.update(key, next)}
       />
     </fieldset>
@@ -228,14 +229,14 @@ export function PreviewPanel({ client, draft }: { client: ResearcherApi; draft: 
 
 /**
  * What a loop's Units settings need of the design (`LoopUnitsContext`): the
- * coder unit assignment, what selects a session's units (its coder or link's
- * set, experiments linked to units), and the loops before this one.
+ * coder unit assignment, what selects a session's units (its coder, the
+ * experiment that selects units), and the loops before this one.
  */
 function loopUnitsContext(items: readonly DesignItem[], cleanItems: readonly unknown[], key: string): LoopUnitsContext {
   const { session, items: rest } = splitDesignItems(cleanItems);
   const random = [...collectQuestions(rest as DesignItem[]).questions]
     .filter(([, v]) => v.type === "random")
-    .map(([name, v]) => ({ name, units: (v as { units?: string }).units }));
+    .map(([name, v]) => ({ name, units: (v as { units?: boolean }).units === true }));
   const loops = unitLoops(items);
   const at = loops.findIndex((l) => getItemKey(l.loop as DesignItem) === key);
   return {

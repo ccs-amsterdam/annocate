@@ -6,7 +6,7 @@ import { QuestionField } from "./variableType/QuestionField";
 import { LayoutSelect } from "./variableType/LayoutSelect";
 import { CategoricalFields } from "./variableType/CategoricalFields";
 import { NumericFields } from "./variableType/NumericFields";
-import { RandomConditionFields } from "./variableType/RandomConditionFields";
+import { RandomConditionFields, type ExperimentContext } from "./variableType/RandomConditionFields";
 import { SpanFieldsPicker } from "./variableType/SpanFields";
 import { RelationRules, type SpanQuestion } from "./variableType/RelationRules";
 
@@ -22,7 +22,7 @@ export function VariableTypeForm({
   spanQuestions = [],
   layoutFields,
   stratifyChoices = [],
-  setColumns = [],
+  experiment,
 }: {
   variable: AnyVariableType;
   onChange: (next: AnyVariableType) => void;
@@ -32,8 +32,8 @@ export function VariableTypeForm({
   layoutFields?: string[];
   /** For a random condition: what a balanced draw can balance within (earlier questions, `session.<name>`). */
   stratifyChoices?: string[];
-  /** For a random condition: the units' set columns it can be linked to. */
-  setColumns?: string[];
+  /** For an experiment: the units' role columns, the URL parameters, the API (to make a condition set). */
+  experiment?: ExperimentContext;
 }) {
   switch (variable.type) {
     case "nominal":
@@ -115,7 +115,7 @@ export function VariableTypeForm({
         <RandomConditionFields
           variable={variable}
           stratifyChoices={stratifyChoices}
-          setColumns={setColumns}
+          experiment={experiment}
           onChange={onChange}
         />
       );

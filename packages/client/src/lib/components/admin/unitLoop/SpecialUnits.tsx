@@ -1,14 +1,11 @@
 import { useState } from "react";
 import {
-  GOLD_SET,
-  PRACTICE_SET,
-  goldColumn,
-  practiceColumn,
-  practiceMessageColumn,
+  TEST_UNIT,
+  answerColumn,
+  feedbackColumn,
   type GoldCheck,
   type Placement,
   type PracticeCheck,
-  type SetGroupResponse,
 } from "@annotinder/contracts";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,11 +13,12 @@ import { HelpButton } from "../../../help/HelpButton";
 import { AnswerKeyDialog, type AnswerKeyQuestion } from "../units/AnswerKeyDialog";
 import { selectClass, labelClass, type AnswerKeyContext } from "./helpers";
 
-// The special units of a unit loop (overlap, practice, gold): where they go
-// among the coder's own units, and the checks on practice and gold units.
+// The test units of a unit loop (`test_unit`: overlap, practice, gold):
+// where they go among the coder's own units, and the checks on practice and
+// gold units (right answers in `answer_<q>`, feedback in `feedback_<q>`).
 
 /**
- * Where a loop puts one kind of special unit (contracts `PlacementSchema`):
+ * Where a loop puts one type of test unit (contracts `PlacementSchema`):
  * a row with the number of such units and a select.
  */
 export function PlacementRow({
@@ -32,7 +30,7 @@ export function PlacementRow({
 }: {
   label: string;
   help?: string;
-  /** How many units of this kind the column has (none: the setting is disabled). */
+  /** How many test units of this type the units have (none: the setting is disabled). */
   count: number;
   value: Placement | undefined;
   onChange: (placement: Placement) => void;
@@ -43,14 +41,14 @@ export function PlacementRow({
         {label}
         {help && <HelpButton topic={help} label={`Help: ${label.toLowerCase()}`} />}
       </span>
-      <span className="text-right font-mono text-[11px] text-muted-foreground" title="Units marked so in the column">
+      <span className="text-right font-mono text-[11px] text-muted-foreground" title="Units of this type in test_unit">
         {count}
       </span>
       <select
         className={`${selectClass} w-fit font-normal`}
         aria-label={label}
         disabled={count === 0}
-        title={count === 0 ? "The column has none of these units" : undefined}
+        title={count === 0 ? "The units have none of these test units" : undefined}
         value={value ?? "spread"}
         onChange={(e) => onChange(e.target.value as Placement)}
       >
@@ -113,13 +111,11 @@ function CheckedQuestions({
  */
 export function PracticeChecks({
   check,
-  group,
   checkable,
   answerKey,
   onChange,
 }: {
   check: PracticeCheck | undefined;
-  group: SetGroupResponse | undefined;
   checkable: AnswerKeyQuestion[];
   answerKey?: AnswerKeyContext;
   onChange: (check: PracticeCheck | undefined) => void;
@@ -133,7 +129,7 @@ export function PracticeChecks({
       <CheckedQuestions
         checkable={checkable}
         value={questions}
-        column={practiceColumn}
+        column={answerColumn}
         onChange={(list) => {
           const next: PracticeCheck = { ...practice, questions: list };
           if (list.length === 0) delete next.questions;
@@ -155,7 +151,7 @@ export function PracticeChecks({
           />
           <span className="text-[11px] font-normal text-muted-foreground">
             May use $unit and $var. A unit&apos;s own message, per question, goes in the column{" "}
-            <code>{practiceMessageColumn("question")}</code>. $unit._practice tells a layout it shows a practice unit.
+            <code>{feedbackColumn("question")}</code>. $unit._practice tells a layout it shows a practice unit.
           </span>
         </label>
       )}
@@ -179,15 +175,15 @@ export function PracticeChecks({
           </span>
         </label>
       )}
-      {answerKey && group && questions.length > 0 && (
+      {answerKey && questions.length > 0 && (
         <RightAnswersButton
           context={answerKey}
-          group={group.name}
-          set={PRACTICE_SET}
+          group={TEST_UNIT}
+          set="practice"
           what="practice"
           questions={checkable.filter((q) => questions.includes(q.name))}
-          column={practiceColumn}
-          messageColumn={practiceMessageColumn}
+          column={answerColumn}
+          messageColumn={feedbackColumn}
         />
       )}
     </div>
@@ -201,14 +197,12 @@ export function PracticeChecks({
  */
 export function GoldChecks({
   check,
-  group,
   checkable,
   answerKey,
   screenouts,
   onChange,
 }: {
   check: GoldCheck | undefined;
-  group: SetGroupResponse | undefined;
   checkable: AnswerKeyQuestion[];
   answerKey?: AnswerKeyContext;
   screenouts: string[];
@@ -224,7 +218,7 @@ export function GoldChecks({
       <CheckedQuestions
         checkable={checkable}
         value={questions}
-        column={goldColumn}
+        column={answerColumn}
         onChange={(list) => onChange(list.length > 0 ? { ...check, questions: list } : undefined)}
       />
       {check && (
@@ -301,21 +295,21 @@ export function GoldChecks({
           {Math.ceil(health.start / -health.wrong) - 1} gold units wrong in a row; the next one ends their session.
         </p>
       )}
-      {answerKey && group && questions.length > 0 && (
+      {answerKey && questions.length > 0 && (
         <RightAnswersButton
           context={answerKey}
-          group={group.name}
-          set={GOLD_SET}
+          group={TEST_UNIT}
+          set="gold"
           what="gold"
           questions={checkable.filter((q) => questions.includes(q.name))}
-          column={goldColumn}
+          column={answerColumn}
         />
       )}
     </div>
   );
 }
 
-/** Opens the answer-key dialog: the right answers of a group's gold or practice units. */
+/** Opens the answer-key dialog: the right answers of the gold or practice units. */
 function RightAnswersButton({
   context,
   ...props

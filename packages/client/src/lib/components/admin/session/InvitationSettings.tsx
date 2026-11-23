@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Globe, Users } from "lucide-react";
 import {
+  CODER_SET,
   DEFAULT_INVITE,
   type CrowdInvite,
   type DesignIssue,
@@ -23,12 +24,12 @@ const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 
 /**
  * Who codes, and how they get in (the Study entry's `invite`,
- * docs/architecture.md §6): specific coders (the values of a set column of
- * the units, each with their own units; a link each, or one link where they
- * sign in with their email address), or a crowd (one link for anyone: an
- * optional coder id from the URL, optional sign-in, optionally a set column
- * for special units and a link per set). Whether a crowd divides the units
- * is each unit loop's.
+ * docs/architecture.md §6, docs/plans/unit-sets.md): specific coders (the
+ * values of the units' `coder_set`, each with their own units; a link each,
+ * one link where they pick their name, or one where they sign in with their
+ * email address), or one link (for anyone: a survey, an experiment, or a
+ * crowd; an optional coder id from the URL, optional sign-in, a maximum of
+ * coders). Whether one link's coders divide the units is each unit loop's.
  */
 export function InvitationSettings({
   invite = DEFAULT_INVITE,
@@ -40,7 +41,7 @@ export function InvitationSettings({
   invite?: Invite;
   groups: SetGroupResponse[];
   issues: DesignIssue[];
-  /** To make a coders' column (absent: read only). */
+  /** To make the coder set (absent: read only). */
   client?: ResearcherApi;
   onChange: (invite: Invite) => void;
 }) {
@@ -52,7 +53,6 @@ export function InvitationSettings({
     const back = memory[mode];
     if (back) onChange(back);
     else if (mode === "crowd") onChange({ mode: "crowd" });
-    // No column chosen yet: the researcher picks one, or makes one
     else onChange({ mode: "coders", link: "per_coder" });
   };
 
@@ -69,15 +69,15 @@ export function InvitationSettings({
         <ModeCard
           active={invite.mode === "crowd"}
           icon={Globe}
-          title="Crowd"
-          text="One link for anyone, e.g. from a panel"
+          title="One link"
+          text="One link for anyone: a survey, an experiment, or a crowd"
           onClick={() => setMode("crowd")}
         />
       </div>
       {invite.mode === "coders" ? (
         <CodersForm invite={invite} groups={groups} client={client} onChange={onChange} />
       ) : (
-        <CrowdForm invite={invite} groups={groups} client={client} onChange={onChange} />
+        <CrowdForm invite={invite} onChange={onChange} />
       )}
       <IssueList issues={issuesAt(issues, "invite")} />
     </div>
@@ -129,69 +129,42 @@ function CodersForm({
   onChange: (invite: Invite) => void;
 }) {
   const [making, setMaking] = useState(false);
-  const columns = groups.map((g) => g.name);
-  const known = invite.column !== undefined && columns.includes(invite.column);
-  const coders = coderSummary(invite.column ? columnValues(groups, invite.column) : []);
-  // Without a column (none chosen, or unselected) the rest waits for one
-  const setColumn = (column: string) => {
-    const next = { ...invite };
-    if (column) next.column = column;
-    else delete next.column;
-    onChange(next);
-  };
+  // The coders: the units' coder set
+  const known = groups.some((g) => g.name === CODER_SET);
+  const coders = coderSummary(columnValues(groups, CODER_SET));
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-end gap-2">
-        <label className={labelClass}>
-          <span className="flex items-center gap-1">
-            Select coder distribution column
-            <InfoTip label="About the coder distribution">
-              A set column of the units says who codes each unit (<span className="font-mono">anna</span>,{" "}
-              <span className="font-mono">anna;bob</span> for both, <span className="font-mono">_overlap</span> for
-              everyone). Make one here, or on the Units page.
-            </InfoTip>
-          </span>
-          <select
-            className={cn(selectClass, "font-mono")}
-            value={invite.column ?? ""}
-            onChange={(e) => setColumn(e.target.value)}
-          >
-            <option value="">-- none --</option>
-            {invite.column && !known && <option value={invite.column}>{invite.column} (no such column)</option>}
-            {columns.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="flex items-center gap-1 text-xs font-semibold">
+          Coder set
+          <InfoTip label="About the coder set">
+            The units&apos; column <span className="font-mono">coder_set</span> says who codes each unit (
+            <span className="font-mono">anna</span>, <span className="font-mono">anna;bob</span> for both). Test units
+            (<span className="font-mono">test_unit</span>: overlap, practice, gold) go to everyone. Make it here, or on
+            the Units page.
+          </InfoTip>
+        </span>
         {client && (
           <Button type="button" variant="outline" size="sm" className="h-8" onClick={() => setMaking(true)}>
-            {known ? "Create or update coder distribution…" : "Create new coder distribution…"}
+            {known ? "Update coder set…" : "Create coder set…"}
           </Button>
         )}
         <HelpButton topic="sets" label="Help: dividing units" />
       </div>
       {!known ? (
-        invite.column ? (
-          <p className="text-[11px] text-destructive">The units have no column &quot;{invite.column}&quot;.</p>
-        ) : (
-          <p className="text-[11px] text-amber-700 dark:text-amber-400">
-            A coder distribution column is required: it says who codes which units. Select one, or create one.
-          </p>
-        )
-      ) : coders.kind === "none" ? (
         <p className="text-[11px] text-amber-700 dark:text-amber-400">
-          Column &quot;{invite.column}&quot; has no coders yet.
+          A coder set is required: it says who codes which units. Create one here, or on the Units page.
         </p>
+      ) : coders.kind === "none" ? (
+        <p className="text-[11px] text-amber-700 dark:text-amber-400">The coder set has no coders yet.</p>
       ) : (
         <p className="text-[11px] text-muted-foreground">
           {coders.count} coder{coders.count === 1 ? "" : "s"}
           {coders.kind === "emails" ? " (email addresses)" : coders.kind === "mixed" ? " (names and emails)" : ""}.
         </p>
       )}
-      {/* Disabled until there is a column: the links and names come from it */}
-      <fieldset className="flex flex-col gap-1 disabled:opacity-50" disabled={!invite.column}>
+      {/* Disabled until there is a coder set: the links and names come from it */}
+      <fieldset className="flex flex-col gap-1 disabled:opacity-50" disabled={!known}>
         <legend className="mb-1 text-xs font-semibold">How coders get in</legend>
         <label className="flex items-center gap-2 text-xs">
           <input
@@ -207,7 +180,7 @@ function CodersForm({
             checked={invite.link === "pick_name"}
             onChange={() => onChange({ ...invite, link: "pick_name" })}
           />
-          One link: coders pick their name from the column
+          One link: coders pick their name from the coder set
         </label>
         {invite.link === "pick_name" && (
           <div className="flex flex-col gap-1 pl-6">
@@ -233,11 +206,11 @@ function CodersForm({
             checked={invite.link === "login"}
             onChange={() => onChange({ ...invite, link: "login", nameDevices: undefined })}
           />
-          One link: coders sign in with the email address in the column
+          One link: coders sign in with the email address in the coder set
         </label>
         {invite.link === "login" && known && coders.kind !== "emails" && coders.kind !== "none" && (
           <p className="pl-6 text-[11px] text-destructive">
-            Signing in needs email addresses: column &quot;{invite.column}&quot; has{" "}
+            Signing in needs email addresses: the coder set has{" "}
             {coders.notEmails.slice(0, 3).join(", ")}
             {coders.notEmails.length > 3 ? ", …" : ""}.
           </p>
@@ -250,11 +223,10 @@ function CodersForm({
       {making && client && (
         <CoderSetDialog
           client={client}
-          column={known && invite.column ? invite.column : newColumnName(columns)}
           groups={groups}
           onDone={(result) => {
             setMaking(false);
-            if (result) onChange({ ...invite, column: result.column, link: result.emails ? "login" : invite.link });
+            if (result) onChange({ ...invite, link: result.emails ? "login" : invite.link });
           }}
         />
       )}
@@ -262,27 +234,12 @@ function CodersForm({
   );
 }
 
-function CrowdForm({
-  invite,
-  groups,
-  client,
-  onChange,
-}: {
-  invite: CrowdInvite;
-  groups: SetGroupResponse[];
-  client?: ResearcherApi;
-  onChange: (invite: Invite) => void;
-}) {
-  const [making, setMaking] = useState(false);
+function CrowdForm({ invite, onChange }: { invite: CrowdInvite; onChange: (invite: Invite) => void }) {
   const set = <K extends keyof CrowdInvite>(key: K, value: CrowdInvite[K] | undefined) => {
     const next = { ...invite, [key]: value };
     if (value === undefined) delete next[key];
     onChange(next);
   };
-  const columns = groups.map((g) => g.name);
-  const known = invite.column !== undefined && columns.includes(invite.column);
-  // A link per set of the column (besides the special ones)
-  const linkSets = invite.column ? columnValues(groups, invite.column) : [];
   const count = (value: string) => (value === "" ? undefined : Math.max(1, Number(value)));
   return (
     <section className="flex flex-col gap-4">
@@ -348,57 +305,8 @@ function CrowdForm({
         </label>
       </div>
       <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-end gap-2">
-          <label className={labelClass}>
-            <span className="flex items-center gap-1">
-              Set column (optional)
-              <InfoTip label="About a crowd's set column">
-                A set column of the units with special units for every coder: overlap units (to compare coders), and
-                practice and gold units (to train or test them). If it also has other sets, each set gets its own link,
-                whose coders code that set (e.g. a group per panel).
-              </InfoTip>
-            </span>
-            <select
-              className={cn(selectClass, "font-mono")}
-              value={invite.column ?? ""}
-              onChange={(e) => {
-                const next = { ...invite, column: e.target.value || undefined };
-                if (!next.column) {
-                  delete next.column;
-                  delete next.groupMaxCoders;
-                }
-                onChange(next);
-              }}
-            >
-              <option value="">None: all units</option>
-              {invite.column && !known && <option value={invite.column}>{invite.column} (no such column)</option>}
-              {columns.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </label>
-          {client && (
-            <Button type="button" variant="outline" size="sm" className="h-8" onClick={() => setMaking(true)}>
-              {known ? "Update special units…" : "Create special units…"}
-            </Button>
-          )}
-        </div>
-        {invite.column && !known && (
-          <p className="text-[11px] text-destructive">The units have no column &quot;{invite.column}&quot;.</p>
-        )}
-        {known && (
-          <p className="text-[11px] text-muted-foreground">
-            {linkSets.length > 0
-              ? `A link per set: ${linkSets.slice(0, 6).join(", ")}${linkSets.length > 6 ? ", …" : ""}. Units without a value in ${invite.column} aren't coded.`
-              : `One link; ${invite.column}'s special units go to every coder, the other units are the crowd's.`}
-          </p>
-        )}
-      </div>
-      <div className="flex flex-col gap-2">
         <label className="flex items-center gap-2 text-xs font-semibold">
-          Max. nr of coders{linkSets.length > 0 ? " per link" : ""}
+          Max. nr of coders
           <Input
             type="number"
             min={1}
@@ -408,61 +316,16 @@ function CrowdForm({
             onChange={(e) => set("maxCoders", count(e.target.value))}
           />
           <InfoTip label="About the most coders">
-            A link starts at most this many sessions (the sample size). With a link per set, you can set it per link
-            below.
+            The link starts at most this many sessions (the sample size).
           </InfoTip>
         </label>
-        {linkSets.length > 0 && (
-          <div className="grid w-fit grid-cols-[auto_6rem] items-center gap-x-3 gap-y-1 pl-4">
-            {linkSets.map((group) => (
-              <label key={group} className="contents text-xs">
-                <span className="font-mono">{group}</span>
-                <Input
-                  type="number"
-                  min={1}
-                  aria-label={`Max. nr of coders: ${group}`}
-                  className="h-7 text-xs"
-                  placeholder={invite.maxCoders === undefined ? "no limit" : String(invite.maxCoders)}
-                  value={invite.groupMaxCoders?.[group] ?? ""}
-                  onChange={(e) => {
-                    const limits = { ...invite.groupMaxCoders };
-                    const n = count(e.target.value);
-                    if (n === undefined) delete limits[group];
-                    else limits[group] = n;
-                    set("groupMaxCoders", Object.keys(limits).length > 0 ? limits : undefined);
-                  }}
-                />
-              </label>
-            ))}
-          </div>
-        )}
       </div>
       <p className="text-[11px] text-muted-foreground">
         Whether the units are divided among the coders, or every coder codes all of them, is set per unit loop (its
         Units settings).
       </p>
-      {making && client && (
-        <CoderSetDialog
-          client={client}
-          crowd
-          column={known ? invite.column! : newColumnName(columns, "special")}
-          groups={groups}
-          onDone={(result) => {
-            setMaking(false);
-            if (result) onChange({ ...invite, column: result.column });
-          }}
-        />
-      )}
     </section>
   );
-}
-
-/** A name for a new column: `coder` (or `base`), or `coder_2`, ... if taken. */
-function newColumnName(columns: string[], base = "coder"): string {
-  if (!columns.includes(base)) return base;
-  let n = 2;
-  while (columns.includes(`${base}_${n}`)) n++;
-  return `${base}_${n}`;
 }
 
 /** Per study: the settings last used in each mode, to come back to after switching (kept while the page is open). */

@@ -75,7 +75,7 @@ function LinkRow({ client, link, url }: { client: ResearcherApi; link: LinkRespo
             <div className="flex flex-wrap gap-1">
               {carried.map(([k, v]) => (
                 <span key={k} className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[11px]">
-                  {k === "group" ? "set" : k} <strong className="font-mono">{v}</strong>
+                  {k} <strong className="font-mono">{v}</strong>
                 </span>
               ))}
             </div>

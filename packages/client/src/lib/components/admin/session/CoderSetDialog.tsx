@@ -1,16 +1,20 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import {
-  GOLD_SET,
-  OVERLAP_SET,
-  PRACTICE_SET,
-  SetGroupNameSchema,
+  CODER_SET,
+  TEST_UNIT,
+  TEST_UNIT_TYPES,
   distributeUnits,
   isEmail,
   type SetGroupResponse,
-  type SpecialAmount,
+  type TestUnitType,
 } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useCoderUnitsQuery, usePutSetGroupMutation, useUnitsQuery } from "../../../admin/queries";
+import {
+  useCoderUnitsQuery,
+  useDeleteSetGroupMutation,
+  usePutSetGroupMutation,
+  useUnitsQuery,
+} from "../../../admin/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -18,95 +22,83 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 
 type Who = "names" | "emails" | "count";
 
-/** A number of special units: a count or a percentage of the units. */
-interface Amount {
-  value: number;
-  percent: boolean;
-}
-const toAmount = (a: Amount): SpecialAmount => (a.percent ? { fraction: a.value / 100 } : { units: a.value });
+const TEST_LABELS: Record<TestUnitType, string> = {
+  overlap: "Overlap units",
+  practice: "Practice units",
+  gold: "Gold units",
+};
 
 /**
- * Makes or updates the set column of the coder unit assignment
- * (docs/architecture.md §6). For specific coders: every unit goes to one or
- * more coders (`coders per unit`), or every coder codes everything; coders
- * are named, their email addresses (they sign in), or numbered (`coder_1`
- * ...). For a crowd: only the special units. Special units for every coder:
- * the overlap (e.g. to compare coders), and optionally practice and gold
- * units (trained or tested on their right answers). With "keep", units a
- * coder was already shown or answered stay theirs first, so dividing again
- * loses no work. The units are shuffled first (seeded); the server stores
- * the column, which the Units page shows and edits like any other.
- * Replacing a column asks first.
+ * Makes or updates the units' `coder_set` (who codes which units, specific
+ * coders; docs/plans/unit-sets.md): every unit goes to one or more coders
+ * (`coders per unit`), or every coder codes everything; coders are named,
+ * their email addresses (they sign in), or numbered (`coder_1` ...). Test
+ * units (`test_unit`: overlap, practice, gold) are everyone's, not divided:
+ * an existing `test_unit` column is kept; with "Redistribute test units",
+ * that many units of each type are drawn anew. With "keep", units a coder
+ * was already shown or answered stay theirs first, so dividing again loses
+ * no work. The units are shuffled first (seeded); the Units page shows and
+ * edits the columns. Replacing the coder set asks first.
  */
 export function CoderSetDialog({
   client,
-  column: initialColumn,
   groups,
-  crowd = false,
   onDone,
 }: {
   client: ResearcherApi;
-  /** The column to fill (a new one, or one to replace). */
-  column: string;
   groups: SetGroupResponse[];
-  /** For a crowd: only special units, no coders. */
-  crowd?: boolean;
-  /** Done: the column made (null: cancelled), and whether its coders are email addresses. */
-  onDone: (result: { column: string; emails: boolean } | null) => void;
+  /** Done (null: cancelled), and whether the coders are email addresses. */
+  onDone: (result: { emails: boolean } | null) => void;
 }) {
   const unitsQuery = useUnitsQuery(client);
   const putGroup = usePutSetGroupMutation(client);
+  const deleteGroup = useDeleteSetGroupMutation(client);
   const unitIds = (unitsQuery.data ?? []).map((u) => u.id);
   const seen = useCoderUnitsQuery(client).data?.coders ?? [];
+  const existing = groups.find((g) => g.name === CODER_SET);
+  const existingTests = groups.find((g) => g.name === TEST_UNIT);
+  const currentTests = Object.fromEntries(
+    TEST_UNIT_TYPES.map((t) => [t, existingTests?.sets.find((s) => s.name === t)?.unitIds.length ?? 0]),
+  ) as Record<TestUnitType, number>;
   const [keep, setKeep] = useState(true);
   const [confirming, setConfirming] = useState(false);
-  const [column, setColumn] = useState(initialColumn);
+  const [saving, setSaving] = useState(false);
   const [who, setWho] = useState<Who>("names");
   const [count, setCount] = useState(3);
   const [text, setText] = useState("");
   const [everyone, setEveryone] = useState(false);
   const [perUnit, setPerUnit] = useState(1);
-  const [overlap, setOverlap] = useState<Amount>({ value: 0, percent: true });
-  const [practice, setPractice] = useState<Amount | null>(null);
-  const [gold, setGold] = useState<Amount | null>(null);
+  const [redistribute, setRedistribute] = useState(false);
+  const [testCounts, setTestCounts] = useState<Record<TestUnitType, number>>(currentTests);
   const [seed] = useState(() => Math.floor(Math.random() * 1_000_000));
 
   const listed = text
     .split(/[\n,;]+/)
     .map((n) => n.trim())
     .filter(Boolean);
-  const names = crowd ? [] : who === "count" ? Array.from({ length: count }, (_, i) => `coder_${i + 1}`) : listed;
+  const names = who === "count" ? Array.from({ length: count }, (_, i) => `coder_${i + 1}`) : listed;
   const notEmails = who === "emails" ? names.filter((n) => !isEmail(n)) : [];
   const twice = names.find((n, j) => names.findIndex((m) => m.toLowerCase() === n.toLowerCase()) !== j);
-  const validName = SetGroupNameSchema.safeParse(column).success;
-  const existing = groups.find((g) => g.name === column);
 
-  // Units coders of these names already saw (also under another column's name: the coder id is what counts)
+  // Units coders of these names already saw (the coder id is what counts)
   const keepMap = new Map(seen.filter((c) => names.includes(c.coder)).map((c) => [c.coder, c.unitIds]));
-  const overlapOption = overlap.percent ? { overlapFraction: overlap.value / 100 } : { overlapUnits: overlap.value };
-  const { sets, kept } =
-    names.length > 0 || crowd
+  const { sets, testUnits, kept } =
+    names.length > 0
       ? distributeUnits(unitIds, names, {
           perUnit: everyone ? names.length : perUnit,
           seed,
-          ...overlapOption,
-          ...(practice ? { practice: toAmount(practice) } : {}),
-          ...(gold ? { gold: toAmount(gold) } : {}),
+          ...(redistribute
+            ? { newTestUnits: testCounts }
+            : { testUnits: existingTests?.sets.flatMap((s) => s.unitIds) ?? [] }),
           keep: keep ? keepMap : undefined,
         })
-      : { sets: [], kept: 0 };
-  const sizeOf = (set: string) => sets.find((s) => s.name === set)?.units.length ?? 0;
-  const special = [
-    [OVERLAP_SET, "overlap"],
-    [PRACTICE_SET, "practice"],
-    [GOLD_SET, "gold"],
-  ]
-    .filter(([set]) => sizeOf(set) > 0)
-    .map(([set, label]) => `${sizeOf(set)} ${label}`);
-  const perCoder = sets.filter((s) => !s.name.startsWith("_")).map((s) => s.units.length);
-  const problem = !validName
-    ? "A column's name is letters, digits and _, starting with a letter."
-    : !crowd && names.length === 0
+      : { sets: [], testUnits: [], kept: 0 };
+  const shownTests = redistribute ? testCounts : currentTests;
+  const tests = TEST_UNIT_TYPES.filter((t) => shownTests[t] > 0).map((t) => `${shownTests[t]} ${t}`);
+  const perCoder = sets.map((s) => s.units.length);
+  const testTotal = TEST_UNIT_TYPES.reduce((n, t) => n + testCounts[t], 0);
+  const problem =
+    names.length === 0
       ? "Give at least one coder."
       : twice
         ? `${twice} is listed twice.`
@@ -114,151 +106,169 @@ export function CoderSetDialog({
           ? `Not an email address: ${notEmails.slice(0, 3).join(", ")}${notEmails.length > 3 ? ", …" : ""}`
           : unitIds.length === 0
             ? "The study has no units yet: upload them first."
-            : crowd && special.length === 0
-              ? "Choose some special units: a crowd's column only holds those."
+            : redistribute && testTotal >= unitIds.length
+              ? `There are ${unitIds.length} units: leave some for the coders.`
               : null;
+
+  async function save() {
+    setSaving(true);
+    try {
+      await putGroup.mutateAsync({
+        group: CODER_SET,
+        body: { sets: sets.map((s) => ({ name: s.name, unitIds: s.units, ordered: false })) },
+      });
+      if (redistribute) {
+        if (testUnits.length > 0)
+          await putGroup.mutateAsync({
+            group: TEST_UNIT,
+            body: { sets: testUnits.map((s) => ({ name: s.name, unitIds: s.units, ordered: false })) },
+          });
+        else if (existingTests) await deleteGroup.mutateAsync(TEST_UNIT);
+      }
+      onDone({ emails: who === "emails" });
+    } catch {
+      // Shown below (the mutation's error)
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <Dialog open onOpenChange={(open) => !open && onDone(null)}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>
-            {crowd
-              ? existing
-                ? "Update the special units"
-                : "New column with special units"
-              : existing
-                ? "Update the coder distribution"
-                : "New coder distribution"}
-          </DialogTitle>
+          <DialogTitle>{existing ? "Update the coder set" : "New coder set"}</DialogTitle>
           <DialogDescription>
-            {crowd
-              ? `Marks some of the ${unitIds.length} units as special units for every coder, as a set column of the units. The crowd divides or codes the rest.`
-              : `Divides the ${unitIds.length} units over your coders, as a set column of the units.`}{" "}
-            You can edit it later on the Units page.
+            Divides the {unitIds.length} units over your coders, as the units&apos; coder set (
+            <span className="font-mono">coder_set</span>). You can edit it later on the Units page.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3 text-sm">
-          {!crowd && (
-            <>
-              <fieldset className="flex flex-col gap-1">
-                <legend className="mb-1 text-xs font-semibold">Coders</legend>
-                {(
-                  [
-                    ["names", "Names, each with their own link"],
-                    ["emails", "Email addresses: coders sign in, one link for all"],
-                    ["count", "A number of coders (coder_1, coder_2, …), each with their own link"],
-                  ] as [Who, string][]
-                ).map(([value, label]) => (
-                  <label key={value} className="flex items-center gap-2 text-xs">
-                    <input type="radio" name="who" checked={who === value} onChange={() => setWho(value)} />
-                    {label}
-                  </label>
-                ))}
-              </fieldset>
-              {who === "count" ? (
-                <label className="flex items-center gap-2 text-xs font-semibold">
-                  Number of coders
-                  <Input
-                    type="number"
-                    min={1}
-                    max={500}
-                    className="h-8 w-20 text-xs font-normal"
-                    value={count}
-                    onChange={(e) => setCount(Math.min(500, Math.max(1, Number(e.target.value))))}
-                  />
-                </label>
-              ) : (
-                <label className="flex flex-col gap-1 text-xs font-semibold">
-                  {who === "emails" ? "Email addresses" : "Names"} (one per line)
-                  <textarea
-                    className="min-h-20 rounded-md border border-input bg-background px-2 py-1 font-mono text-xs font-normal"
-                    value={text}
-                    placeholder={who === "emails" ? "anna@uni.nl\nbob@uni.nl" : "anna\nbob\ncarla"}
-                    onChange={(e) => setText(e.target.value)}
-                  />
-                </label>
-              )}
-            </>
-          )}
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            {!crowd ? (
-              <div className="flex flex-col gap-1 text-xs font-semibold">
-                Coders per unit
-                <div className="flex items-center gap-2">
-                  <select
-                    aria-label="How the units go to coders"
-                    className="h-8 rounded-md border border-input bg-background px-2 text-xs font-normal"
-                    value={everyone ? "everyone" : "divide"}
-                    onChange={(e) => setEveryone(e.target.value === "everyone")}
-                  >
-                    <option value="divide">Divide the units</option>
-                    <option value="everyone">Everyone codes everything</option>
-                  </select>
-                  {!everyone && (
-                    <Input
-                      type="number"
-                      aria-label="Coders per unit"
-                      min={1}
-                      max={Math.max(1, names.length)}
-                      className="h-8 w-20 text-xs font-normal"
-                      value={perUnit}
-                      onChange={(e) => setPerUnit(Math.max(1, Number(e.target.value)))}
-                    />
-                  )}
-                </div>
-              </div>
-            ) : (
-              <span />
-            )}
-            <label className="flex flex-col gap-1 text-xs font-semibold">
-              Column name
+          <fieldset className="flex flex-col gap-1">
+            <legend className="mb-1 text-xs font-semibold">Coders</legend>
+            {(
+              [
+                ["names", "Names, each with their own link"],
+                ["emails", "Email addresses: coders sign in, one link for all"],
+                ["count", "A number of coders (coder_1, coder_2, …), each with their own link"],
+              ] as [Who, string][]
+            ).map(([value, label]) => (
+              <label key={value} className="flex items-center gap-2 text-xs">
+                <input type="radio" name="who" checked={who === value} onChange={() => setWho(value)} />
+                {label}
+              </label>
+            ))}
+          </fieldset>
+          {who === "count" ? (
+            <label className="flex items-center gap-2 text-xs font-semibold">
+              Number of coders
               <Input
-                className="h-8 w-32 font-mono text-xs font-normal"
-                value={column}
-                onChange={(e) => {
-                  setColumn(e.target.value);
-                  setConfirming(false);
-                }}
+                type="number"
+                min={1}
+                max={500}
+                className="h-8 w-20 text-xs font-normal"
+                value={count}
+                onChange={(e) => setCount(Math.min(500, Math.max(1, Number(e.target.value))))}
               />
             </label>
+          ) : (
+            <label className="flex flex-col gap-1 text-xs font-semibold">
+              {who === "emails" ? "Email addresses" : "Names"} (one per line)
+              <textarea
+                className="min-h-20 rounded-md border border-input bg-background px-2 py-1 font-mono text-xs font-normal"
+                value={text}
+                placeholder={who === "emails" ? "anna@uni.nl\nbob@uni.nl" : "anna\nbob\ncarla"}
+                onChange={(e) => setText(e.target.value)}
+              />
+            </label>
+          )}
+          <div className="flex flex-col gap-1 text-xs font-semibold">
+            Coders per unit
+            <div className="flex items-center gap-2">
+              <select
+                aria-label="How the units go to coders"
+                className="h-8 rounded-md border border-input bg-background px-2 text-xs font-normal"
+                value={everyone ? "everyone" : "divide"}
+                onChange={(e) => setEveryone(e.target.value === "everyone")}
+              >
+                <option value="divide">Divide the units</option>
+                <option value="everyone">Everyone codes everything</option>
+              </select>
+              {!everyone && (
+                <Input
+                  type="number"
+                  aria-label="Coders per unit"
+                  min={1}
+                  max={Math.max(1, names.length)}
+                  className="h-8 w-20 text-xs font-normal"
+                  value={perUnit}
+                  onChange={(e) => setPerUnit(Math.max(1, Number(e.target.value)))}
+                />
+              )}
+            </div>
           </div>
           <section className="flex flex-col gap-2 rounded-md border border-border p-3">
             <h3 className="flex items-center gap-1 text-xs font-semibold">
-              Special units
-              <InfoTip label="About special units">
-                Units every coder gets, besides their own. Overlap units are for comparing coders (agreement). Practice
-                and gold units work just like overlap units, but are meant to train or test coders on the
-                &quot;correct&quot; answers for these units: practice units give feedback, gold units are checked
-                without coders noticing.
+              Test units
+              <InfoTip label="About test units">
+                Units every coder gets, besides their own (the units&apos; <span className="font-mono">test_unit</span>
+                ). Overlap units are for comparing coders (agreement). Practice and gold units are meant to train or
+                test coders on the &quot;correct&quot; answers for these units: practice units give feedback, gold
+                units are checked without coders noticing.
               </InfoTip>
             </h3>
-            <AmountRow label="Overlap units" amount={overlap} onChange={setOverlap} />
-            <ToggleAmount label="Practice units" amount={practice} onChange={setPractice} />
-            <ToggleAmount label="Gold units" amount={gold} onChange={setGold} />
-            {(practice || gold) && (
+            {TEST_UNIT_TYPES.map((type) => (
+              <label key={type} className="flex items-center gap-2 text-xs">
+                <span className="w-32 font-semibold">{TEST_LABELS[type]}</span>
+                <Input
+                  type="number"
+                  aria-label={TEST_LABELS[type]}
+                  min={0}
+                  disabled={!redistribute}
+                  className="h-8 w-20 text-xs"
+                  value={redistribute ? testCounts[type] : currentTests[type]}
+                  onChange={(e) =>
+                    setTestCounts({ ...testCounts, [type]: Math.max(0, Math.floor(Number(e.target.value))) })
+                  }
+                />
+                units
+              </label>
+            ))}
+            <label className="flex items-start gap-2 text-xs">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={redistribute}
+                onChange={(e) => {
+                  setRedistribute(e.target.checked);
+                  setTestCounts(currentTests);
+                }}
+              />
+              <span>
+                Redistribute test units
+                <span className="block text-muted-foreground">
+                  {redistribute
+                    ? "Draws this many units of each type anew (at random), replacing the current test units."
+                    : existingTests
+                      ? "The current test units stay; the coders divide the other units."
+                      : "No test units yet: switch this on to draw some."}
+                </span>
+              </span>
+            </label>
+            {redistribute && testCounts.practice + testCounts.gold > 0 && (
               <p className="rounded-md bg-amber-500/10 p-2 text-[11px] text-amber-800 dark:text-amber-300">
-                {practice && gold
-                  ? "Practice and gold units need"
-                  : practice
-                    ? "Practice units need"
-                    : "Gold units need"}{" "}
-                their correct answers: for each question to check, a column of the units named{" "}
-                {practice && <span className="font-mono">&lt;question&gt;_practice</span>}
-                {practice && gold && " or "}
-                {gold && <span className="font-mono">&lt;question&gt;_gold</span>}. Add them to your units file and
-                upload it again, or fill them in on the Units page (Right answers). Then choose the questions to check
-                in the unit loop&apos;s Units settings.
+                Practice and gold units need their correct answers: for each question to check, a column of the units
+                named <span className="font-mono">answer_&lt;question&gt;</span>. Add them to your units file and
+                upload it again, or write them in the unit loop&apos;s Units settings (Create gold values). Then choose
+                the questions to check there.
               </p>
             )}
           </section>
           {!problem && (
             <p className="text-xs text-muted-foreground">
-              {crowd
-                ? `Special units: ${special.join(", ")}.`
-                : `${names.length} coder${names.length === 1 ? "" : "s"}, each with ${everyone ? "" : "about "}${Math.round(
-                    perCoder.reduce((a, b) => a + b, 0) / Math.max(1, perCoder.length),
-                  )} units${special.length > 0 ? `, plus ${special.join(", ")} units for everyone` : ""}.`}{" "}
+              {`${names.length} coder${names.length === 1 ? "" : "s"}, each with ${everyone ? "" : "about "}${Math.round(
+                perCoder.reduce((a, b) => a + b, 0) / Math.max(1, perCoder.length),
+              )} units${tests.length > 0 ? `, plus ${tests.join(", ")} test units for everyone` : ""}.`}{" "}
               Units are shuffled first.
             </p>
           )}
@@ -277,99 +287,25 @@ export function CoderSetDialog({
           )}
           {problem && <p className="text-xs text-destructive">{problem}</p>}
           {putGroup.isError && <p className="text-xs text-destructive">{putGroup.error.message}</p>}
+          {deleteGroup.isError && <p className="text-xs text-destructive">{deleteGroup.error.message}</p>}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onDone(null)}>
               Cancel
             </Button>
             {confirming && existing && (
               <span className="mr-auto self-center text-xs text-amber-700 dark:text-amber-400">
-                Column {column} exists ({existing.sets.length} values): overwrite it?
+                The coder set exists ({existing.sets.length} coders): overwrite it?
               </span>
             )}
             <Button
-              disabled={problem !== null || putGroup.isPending}
-              onClick={() =>
-                existing && !confirming
-                  ? setConfirming(true)
-                  : putGroup.mutate(
-                      {
-                        group: column,
-                        body: { sets: sets.map((s) => ({ name: s.name, unitIds: s.units, ordered: false })) },
-                      },
-                      { onSuccess: () => onDone({ column, emails: who === "emails" && !crowd }) },
-                    )
-              }
+              disabled={problem !== null || saving}
+              onClick={() => (existing && !confirming ? setConfirming(true) : void save())}
             >
-              {putGroup.isPending ? "Making…" : confirming && existing ? "Overwrite" : "Make the column"}
+              {saving ? "Making…" : confirming && existing ? "Overwrite" : "Make the coder set"}
             </Button>
           </div>
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/** A number of special units: a count, or a percentage of the units. */
-function AmountRow({
-  label,
-  lead,
-  amount,
-  onChange,
-}: {
-  label: string;
-  /** Before the label (a toggle's checkbox; else its room, so the rows line up). */
-  lead?: ReactNode;
-  amount: Amount;
-  onChange: (a: Amount) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2 text-xs">
-      <span className="flex w-32 items-center gap-2 font-semibold">
-        {lead ?? <span className="w-[13px]" />}
-        {label}
-      </span>
-      <Input
-        type="number"
-        aria-label={label}
-        min={0}
-        className="h-8 w-20 text-xs"
-        value={amount.value}
-        onChange={(e) => onChange({ ...amount, value: Math.max(0, Number(e.target.value)) })}
-      />
-      <select
-        aria-label={`${label}: unit`}
-        className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-        value={amount.percent ? "pct" : "n"}
-        onChange={(e) => onChange({ ...amount, percent: e.target.value === "pct" })}
-      >
-        <option value="pct">%</option>
-        <option value="n">units</option>
-      </select>
-    </div>
-  );
-}
-
-/** Practice or gold units: off, or a number of them. */
-function ToggleAmount({
-  label,
-  amount,
-  onChange,
-}: {
-  label: string;
-  amount: Amount | null;
-  onChange: (a: Amount | null) => void;
-}) {
-  return amount ? (
-    <AmountRow
-      label={label}
-      lead={<input type="checkbox" aria-label={label} checked onChange={() => onChange(null)} />}
-      amount={amount}
-      onChange={onChange}
-    />
-  ) : (
-    <label className="flex items-center gap-2 text-xs font-semibold">
-      <input type="checkbox" checked={false} onChange={() => onChange({ value: 5, percent: false })} />
-      {label}
-    </label>
   );
 }

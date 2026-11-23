@@ -5,6 +5,7 @@ import {
   itemName,
   loopLayouts,
   parseTemplateBlocks,
+  PART_SET,
   templateReferences,
   type AnyVariableType,
   type DesignItem,
@@ -74,12 +75,12 @@ export function ItemPreview({ client, draft, item }: { client: ResearcherApi; dr
   const order = loop ? loopQuestionNames(loop) : [];
 
   const [unitIndex, setUnitIndex] = useState(0);
-  // Units from a set: by default the loop's own (the first set of its subset, if any)
+  // Units from a set: by default the loop's own (its part, if any)
   const sets = (useSetGroupsQuery(client).data ?? []).flatMap((g) =>
     g.sets.map((set) => ({ group: g.name, set: set.name, key: `${g.name}/${set.name}` })),
   );
   const branch = loop?.units;
-  const loopSet = branch?.subset?.sets.length ? `${branch.subset.column}/${branch.subset.sets[0]}` : null;
+  const loopSet = branch?.part !== undefined ? `${PART_SET}/${branch.part}` : null;
   const [chosenSet, setChosenSet] = useState<string | null | undefined>(undefined);
   const setKey = chosenSet === undefined ? (sets.some((s) => s.key === loopSet) ? loopSet : null) : chosenSet;
   const chosen = sets.find((s) => s.key === setKey);

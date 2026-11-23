@@ -1,31 +1,32 @@
-import { cn } from "cn";
 import {
-  GOLD_SET,
-  OVERLAP_SET,
-  PRACTICE_SET,
+  CODER_SET,
+  PART_SET,
+  TEST_UNIT,
   type Criteria,
   type DesignIssue,
   type SetGroupResponse,
   type LoopUnits,
-  type Subset,
+  type TestUnitType,
 } from "@annotinder/contracts";
+import { cn } from "cn";
 import { Input } from "@/components/ui/input";
 import { InfoTip } from "@/components/ui/info-tip";
 import { IssueList } from "../IssueList";
 import { HelpButton } from "../../../help/HelpButton";
-import { columnValues, shareSummary, type LoopUnitsContext } from "../../../design/assignment";
+import { shareSummary, type LoopUnitsContext } from "../../../design/assignment";
+import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { type AnswerKeyQuestion } from "../units/AnswerKeyDialog";
+import { MakeSetColumnButton } from "../units/SplitIntoSets";
 import { selectClass, labelClass, type AnswerKeyContext, numberOrUndefined, range } from "./helpers";
 import { GoldChecks, PlacementRow, PracticeChecks } from "./SpecialUnits";
 
 // A unit loop's units settings (contracts `LoopUnitsSchema`), within the
 // coder's units (who the coders are is the coder unit assignment's): an
-// earlier loop's units or a subset (some sets of a set column), for a crowd
-// whether they are divided among the coders, and the coding and special
-// units of the assignment's column (where they go); with the checks on
-// practice and gold units.
+// earlier loop's units or one part of the study (`part_set`), for a crowd
+// whether they are divided among the coders, and the coding and test units
+// (`test_unit`: where they go); with the checks on practice and gold units.
 
-/** A loop's units: which units, dividing them, the coding and special units and their checks. */
+/** A loop's units: which units, dividing them, the coding and test units and their checks. */
 export function UnitsEditor({
   units: settings,
   groups,
@@ -35,6 +36,7 @@ export function UnitsEditor({
   screenouts,
   context,
   issues,
+  client,
   onChange,
 }: {
   units: LoopUnits;
@@ -46,11 +48,13 @@ export function UnitsEditor({
   agreeable: string[];
   screenouts: string[];
   issues: DesignIssue[];
+  /** To make a part set (absent: not offered). */
+  client?: ResearcherApi;
   onChange: (units: LoopUnits) => void;
 }) {
   const { invite, earlier } = context;
-  const column = invite.column ? groups.find((g) => g.name === invite.column) : undefined;
-  const count = (set: string) => column?.sets.find((s) => s.name === set)?.unitIds.length ?? 0;
+  const tests = groups.find((g) => g.name === TEST_UNIT);
+  const count = (type: TestUnitType) => tests?.sets.find((s) => s.name === type)?.unitIds.length ?? 0;
   const set = <K extends keyof LoopUnits>(key: K, value: LoopUnits[K] | undefined) => {
     const next = { ...settings, [key]: value };
     if (value === undefined) delete next[key];
@@ -58,15 +62,15 @@ export function UnitsEditor({
   };
   const sameAs = settings.sameAsPrevious ? true : undefined;
   const previous = earlier[earlier.length - 1];
-  const shows = (kind: "practice" | "gold", set: string, check: unknown) =>
-    settings[kind] !== "ignore" && (count(set) > 0 || check !== undefined);
-  const codingCount = column
-    ? new Set(column.sets.filter((s) => !s.name.startsWith("_")).flatMap((s) => s.unitIds)).size
-    : 0;
+  const shows = (kind: "practice" | "gold", check: unknown) =>
+    settings[kind] !== "ignore" && (count(kind) > 0 || check !== undefined);
+  // Specific coders: the units in the coder set; otherwise all units (test units aside)
+  const coders = invite.mode === "coders" ? groups.find((g) => g.name === CODER_SET) : undefined;
+  const codingCount = coders ? new Set(coders.sets.flatMap((s) => s.unitIds)).size : null;
   return (
     <div className="flex flex-col gap-4">
       <p className="flex items-center gap-1 text-xs">
-        <span>{shareSummary(context.sources, settings.subset)}</span>
+        <span>{shareSummary(context.sources, settings.part)}</span>
         <HelpButton topic="unit-distribution" label="Help: unit distribution" />
       </p>
       {(previous || sameAs) && (
@@ -80,7 +84,7 @@ export function UnitsEditor({
               if (e.target.value !== "previous") delete next.sameAsPrevious;
               else {
                 // The previous loop's units: not selected or divided again here
-                delete next.subset;
+                delete next.part;
                 delete next.divide;
               }
               onChange(next);
@@ -94,90 +98,74 @@ export function UnitsEditor({
         </label>
       )}
       {sameAs === undefined && (
-        <SubsetEditor
-          groups={groups}
-          assignmentColumn={invite.column}
-          subset={settings.subset}
-          onChange={(subset) => set("subset", subset)}
-        />
+        <PartEditor groups={groups} part={settings.part} client={client} onChange={(part) => set("part", part)} />
       )}
       {/* For a crowd; shown for specific coders only to undo a leftover divide (an error there) */}
       {(invite.mode === "crowd" || settings.divide) && sameAs === undefined && (
         <Divide criteria={settings.divide} agreeable={agreeable} onChange={(divide) => set("divide", divide)} />
       )}
-      {!invite.column ? (
+      <section className="flex flex-col gap-2">
+        <h3 className="flex items-center gap-1 text-xs font-semibold">
+          Coding and test units
+          <span className="font-normal text-muted-foreground">
+            (test units: the units&apos; <span className="font-mono">test_unit</span>)
+          </span>
+        </h3>
+        <div className="grid w-fit grid-cols-[auto_2.5rem_auto] items-center gap-x-3 gap-y-1.5">
+          <span className="text-xs font-semibold">Coding units</span>
+          <span
+            className="text-right font-mono text-[11px] text-muted-foreground"
+            title={coders ? "Units in the coder set" : "The units that aren't test units"}
+          >
+            {codingCount ?? "all"}
+          </span>
+          <select
+            className={`${selectClass} w-fit font-normal`}
+            aria-label="Coding units"
+            value={settings.coding === false ? "no" : "yes"}
+            onChange={(e) => set("coding", e.target.value === "no" ? false : undefined)}
+          >
+            <option value="yes">Include</option>
+            <option value="no">Leave out (only test units)</option>
+          </select>
+          <PlacementRow
+            label="Overlap units"
+            help="overlap"
+            count={count("overlap")}
+            value={settings.overlap}
+            onChange={(p) => set("overlap", p === "spread" ? undefined : p)}
+          />
+          <PlacementRow
+            label="Practice units"
+            count={count("practice")}
+            value={settings.practice}
+            onChange={(p) => set("practice", p === "spread" ? undefined : p)}
+          />
+          <PlacementRow
+            label="Gold units"
+            help="special-units"
+            count={count("gold")}
+            value={settings.gold}
+            onChange={(p) => set("gold", p === "spread" ? undefined : p)}
+          />
+        </div>
         <p className="text-[11px] text-muted-foreground">
-          Special units (overlap, practice and gold) come from the set column of the coder unit assignment, which has
-          none{invite.mode === "crowd" ? " (optional for a crowd)" : ""}. Set it in the Study entry&apos;s{" "}
-          <strong>Coder unit assignments</strong>.
+          {tests
+            ? "Spread throughout a divided crowd's units without a maximum of units per coder: about one in ten."
+            : "The units have no test units (test_unit) yet: mark them on the Units page, or with the coder set dialog."}
         </p>
-      ) : (
-        <section className="flex flex-col gap-2">
-          <h3 className="flex items-center gap-1 text-xs font-semibold">
-            Coding and special units
-            <span className="font-normal text-muted-foreground">
-              of column <span className="font-mono">{invite.column}</span> (Coder unit assignments)
-            </span>
-          </h3>
-          {!column && (
-            <p className="text-[11px] text-destructive">The units have no column &quot;{invite.column}&quot; yet.</p>
-          )}
-          <div className="grid w-fit grid-cols-[auto_2.5rem_auto] items-center gap-x-3 gap-y-1.5">
-            <span className="text-xs font-semibold">Coding units</span>
-            <span
-              className="text-right font-mono text-[11px] text-muted-foreground"
-              title="Units with another value than a special one"
-            >
-              {invite.mode === "crowd" && codingCount === 0 ? "all" : codingCount}
-            </span>
-            <select
-              className={`${selectClass} w-fit font-normal`}
-              aria-label="Coding units"
-              value={settings.coding === false ? "no" : "yes"}
-              onChange={(e) => set("coding", e.target.value === "no" ? false : undefined)}
-            >
-              <option value="yes">Include</option>
-              <option value="no">Leave out (only special units)</option>
-            </select>
-            <PlacementRow
-              label="Overlap units"
-              help="overlap"
-              count={count(OVERLAP_SET)}
-              value={settings.overlap}
-              onChange={(p) => set("overlap", p === "spread" ? undefined : p)}
-            />
-            <PlacementRow
-              label="Practice units"
-              count={count(PRACTICE_SET)}
-              value={settings.practice}
-              onChange={(p) => set("practice", p === "spread" ? undefined : p)}
-            />
-            <PlacementRow
-              label="Gold units"
-              help="special-units"
-              count={count(GOLD_SET)}
-              value={settings.gold}
-              onChange={(p) => set("gold", p === "spread" ? undefined : p)}
-            />
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            Spread throughout a divided crowd&apos;s units without a maximum of units per coder: about one in ten.
-          </p>
-        </section>
-      )}
-      {column && shows("practice", PRACTICE_SET, settings.practiceCheck) && (
+      </section>
+      {shows("practice", settings.practiceCheck) && (
         <PracticeChecks
           check={settings.practiceCheck}
-          group={column}
           checkable={checkable}
           answerKey={answerKey}
           onChange={(check) => set("practiceCheck", check)}
         />
       )}
-      {column && shows("gold", GOLD_SET, settings.goldCheck) && (
+      {shows("gold", settings.goldCheck) && (
         <GoldChecks
           check={settings.goldCheck}
-          group={column}
           checkable={checkable}
           answerKey={answerKey}
           screenouts={screenouts}
@@ -190,80 +178,55 @@ export function UnitsEditor({
 }
 
 /**
- * A loop's subset: a set column (not the coder unit assignment's) and the
- * sets of it to include; none, all the coder's units.
+ * A loop's part (`units.part`): one value of the units' `part_set`; none,
+ * all units. Without a part set, an offer to make one.
  */
-function SubsetEditor({
+function PartEditor({
   groups,
-  assignmentColumn,
-  subset,
+  part,
+  client,
   onChange,
 }: {
   groups: SetGroupResponse[];
-  assignmentColumn: string | undefined;
-  subset: Subset | undefined;
-  onChange: (subset: Subset | undefined) => void;
+  part: string | undefined;
+  client?: ResearcherApi;
+  onChange: (part: string | undefined) => void;
 }) {
-  const column = groups.find((g) => g.name === subset?.column);
-  const chosen = subset?.sets ?? [];
+  const parts = groups.find((g) => g.name === PART_SET);
+  const known = part === undefined || parts?.sets.some((s) => s.name === part);
   return (
-    <div className="flex flex-wrap items-start gap-3">
+    <div className="flex flex-wrap items-end gap-3">
       <label className={labelClass}>
         <span className="flex items-center gap-1">
-          Select unit subset(s)
-          <InfoTip label="About subsets">
-            Code only some of the coder&apos;s units in this loop: those in the chosen sets of a set column (e.g. a{" "}
-            <span className="font-mono">phase</span> column with <span className="font-mono">pre</span> and{" "}
-            <span className="font-mono">post</span>). The coder unit assignment&apos;s column can&apos;t be used: it
-            already says whose units are whose.
+          Part
+          <InfoTip label="About parts">
+            Code only one part of the units in this loop: those with this value in the units&apos;{" "}
+            <span className="font-mono">part_set</span> (e.g. <span className="font-mono">pre</span> and{" "}
+            <span className="font-mono">post</span>, a loop each). Test units without a part are in every loop.
           </InfoTip>
         </span>
         <select
-          className={cn(selectClass, "w-fit font-normal", subset && !column && "border-destructive")}
-          value={subset?.column ?? ""}
-          onChange={(e) => (e.target.value ? onChange({ column: e.target.value, sets: [] }) : onChange(undefined))}
+          aria-label="Part"
+          className={cn(selectClass, "w-fit font-normal", !known && "border-destructive")}
+          value={part ?? ""}
+          onChange={(e) => onChange(e.target.value || undefined)}
         >
-          <option value="">All the coder&apos;s units</option>
-          {subset && !column && <option value={subset.column}>{subset.column} (no such column)</option>}
-          {groups.map((g) => (
-            <option key={g.name} value={g.name} disabled={g.name === assignmentColumn}>
-              {g.name}
-              {g.name === assignmentColumn ? " (coder unit assignment)" : ""}
+          <option value="">All units</option>
+          {part !== undefined && !known && <option value={part}>{part} (not in part_set)</option>}
+          {(parts?.sets ?? []).map((s) => (
+            <option key={s.name} value={s.name}>
+              {s.name} ({s.unitIds.length})
             </option>
           ))}
         </select>
       </label>
-      {subset && column && (
-        <div className={labelClass}>
-          Sets to include
-          <div className="flex flex-wrap gap-1" role="group" aria-label="Sets to include">
-            {columnValues(groups, subset.column).map((value) => {
-              const on = chosen.includes(value);
-              const units = column.sets.find((s) => s.name === value)?.unitIds.length ?? 0;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() =>
-                    onChange({
-                      column: subset.column,
-                      sets: on ? chosen.filter((v) => v !== value) : [...chosen, value],
-                    })
-                  }
-                  className={cn(
-                    "cursor-pointer rounded-full border px-2 py-0.5 text-[11px] font-normal",
-                    on
-                      ? "border-wood bg-wood/15 text-foreground"
-                      : "border-border text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {value} <span className="text-muted-foreground">{units}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      {!parts && client && (
+        <MakeSetColumnButton client={client} column={PART_SET} groups={groups}>
+          Make a part set…
+        </MakeSetColumnButton>
+      )}
+      {!parts && (
+        <span className="pb-2 text-[11px] text-muted-foreground">The units have no part set (part_set) yet.</span>
       )}
     </div>
   );
@@ -297,8 +260,7 @@ function Divide({
         />
         Divide units among coders
         <InfoTip label="About dividing units">
-          The units are handed out until each has enough coders: coders get the units that still need them. Coders of a
-          link per set divide that set.
+          The units are handed out until each has enough coders: coders get the units that still need them.
         </InfoTip>
       </label>
       {criteria && (

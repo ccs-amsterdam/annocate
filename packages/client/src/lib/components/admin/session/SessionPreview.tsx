@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { inviteOf, urlParamKey, type SessionItem, type SetGroupResponse, type UrlParam } from "@annotinder/contracts";
+import { CODER_SET, inviteOf, urlParamKey, type SessionItem, type SetGroupResponse, type UrlParam } from "@annotinder/contracts";
 import type { SessionTab } from "./sessionTab";
 
 /** A link as coders get it (the secret is made when deploying). */
@@ -57,9 +57,6 @@ function InvitePreview({ item, groups, base }: { item: SessionItem; groups: SetG
   const invite = inviteOf(item);
   if (invite.mode === "crowd") {
     const id = invite.coderParam;
-    const groupSets = invite.column
-      ? (groups.find((g) => g.name === invite.column)?.sets ?? []).map((s) => s.name).filter((n) => !n.startsWith("_"))
-      : [];
     return (
       <div>
         <Row label="Links">
@@ -73,37 +70,22 @@ function InvitePreview({ item, groups, base }: { item: SessionItem; groups: SetG
               : "Anonymous: a session per browser"}
         </Row>
         {invite.login && <Row label="Signing in">Coders sign in before they start</Row>}
-        {invite.column && (
-          <Row label="Set column">
-            {groupSets.length > 0
-              ? `A link per set of ${invite.column}: ${groupSets.slice(0, 8).join(", ")}${groupSets.length > 8 ? ", …" : ""}`
-              : `${invite.column}: its special units go to every coder`}
-          </Row>
-        )}
         <Row label="Units">Divided among the coders or not: per unit loop (its Units settings)</Row>
         {invite.maxCoders !== undefined && (
-          <Row label="Max. nr of coders">
-            {invite.maxCoders}
-            {groupSets.length > 0 ? " per link" : ""}
-          </Row>
+          <Row label="Max. nr of coders">{invite.maxCoders}</Row>
         )}
-        {Object.entries(invite.groupMaxCoders ?? {}).map(([group, n]) => (
-          <Row key={group} label={`Max. for ${group}`}>
-            {n} coders
-          </Row>
-        ))}
       </div>
     );
   }
-  const column = groups.find((g) => g.name === invite.column);
-  const names = column?.sets.map((s) => s.name).filter((n) => !n.startsWith("_")) ?? [];
+  const column = groups.find((g) => g.name === CODER_SET);
+  const names = column?.sets.map((s) => s.name) ?? [];
   return (
     <div>
       <Row label="Coders">
         {column ? (
-          `${names.length} in the column ${invite.column}`
+          `${names.length} in the coder set (coder_set)`
         ) : (
-          <span className="text-destructive">No column {invite.column} yet</span>
+          <span className="text-destructive">No coder set yet</span>
         )}
       </Row>
       <Row label="Links">

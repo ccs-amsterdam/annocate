@@ -88,11 +88,10 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
 /** The invitation in a few words. */
 function inviteSummary(invite: Invite): string {
   if (invite.mode === "coders")
-    return `coders in ${invite.column}, ${invite.link === "login" ? "signing in" : invite.link === "pick_name" ? "picking their name" : "a link each"}`;
-  const parts = ["crowd"];
+    return `specific coders, ${invite.link === "login" ? "signing in" : invite.link === "pick_name" ? "picking their name" : "a link each"}`;
+  const parts = ["one link"];
   if (invite.coderParam) parts.push(`coder id from ?${invite.coderParam.param}`);
   if (invite.login) parts.push("signing in");
-  if (invite.column) parts.push(`special units from ${invite.column}`);
   return parts.join(", ");
 }
 

@@ -56,6 +56,7 @@ export function UnitLoopForm({
         answerKey={client ? { client, layout: loopLayouts(loop.children)[0] ?? { template: "" } } : undefined}
         screenouts={screenouts}
         context={unitsContext}
+        client={client}
         issues={issuesAt(validationIssues, "units")}
         onChange={setUnits}
       />
