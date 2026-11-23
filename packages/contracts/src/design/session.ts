@@ -126,7 +126,7 @@ export type CoderParam = z.infer<typeof CoderParamSchema>;
  * Specific coders (docs/architecture.md §6.1): who codes which units is the
  * units' `coder_set` column; each of its values is a coder
  * (`$session.coder`, also when the design has no unit loop: e.g. a survey
- * of known experts). Overlap units (`test_unit`) are everyone's.
+ * of known experts). Overlap units (`test_set`) are everyone's.
  * `link`: `per_coder`, a link each; `login`, one link where coders sign in
  * and get the units of their address (the column's values are all email
  * addresses); `pick_name`, one link where coders pick their name from the

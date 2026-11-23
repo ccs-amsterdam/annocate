@@ -2,8 +2,8 @@ import { unitLoops, type UnitLoopItem } from "./item.js";
 import { forEachItem } from "./walk.js";
 import { inviteOf, sessionItem } from "./session.js";
 import { selectsUnits } from "./assignment.js";
-import { CODER_SET, CONDITION_SET, PART_SET, isRoleColumn, type RoleColumn } from "../sets.js";
-import { answerColumn, feedbackColumn } from "../unitFields.js";
+import { CODER_SET, CONDITION_SET, PART_SET, TEST_SET, isRoleColumn, type RoleColumn } from "../sets.js";
+import { UNIT_BUILTINS, answerColumn, feedbackColumn } from "../unitFields.js";
 import { extractReferences, type Reference } from "./references.js";
 import { expandSnippets } from "./snippets.js";
 import { loopSnippets } from "./layoutItems.js";
@@ -96,7 +96,8 @@ export function loopDependencies(items: readonly unknown[]): Map<string, string[
  *   shown (anyone looking behind the scenes can see it);
  * - `server`: answer and feedback columns of checked questions, and the
  *   columns with a role: never sent (practice answers and feedback come
- *   with practice units only).
+ *   with practice units only). The test set is used by every unit loop (it
+ *   places test units); the set columns by what selects units by them.
  * Fields not in the map aren't used.
  */
 export type FieldUse = "shown" | "sent" | "server";
@@ -109,6 +110,7 @@ export function fieldUsage(items: readonly unknown[]): Map<string, FieldUse> {
     if (!now || rank[how] > rank[now]) usage.set(field, how);
   };
   for (const { loop } of unitLoops(items)) {
+    use(TEST_SET, "server");
     // A field referred to more often than in the loop's scripts is in a text coders see
     const counts = new Map<string, number>();
     for (const ref of loopReferences(loop, (f) => use(f, "shown")))
@@ -157,13 +159,11 @@ function scriptCount(loop: UnitLoopItem, field: string): number {
 }
 
 /**
- * Unit fields the design uses but doesn't declare (`$unit.id` and `_`
- * names, which AnnoTinder provides, aside; and the columns with a role:
- * deploying checks those against the units, sets.ts on the server).
+ * Unit fields the design uses but doesn't declare (`$unit.id` and
+ * `$unit.test_set`, which AnnoTinder provides, aside; and the columns with a
+ * role: deploying checks those against the units, sets.ts on the server).
  */
 export function undeclaredFields(items: readonly unknown[], declared: readonly { name: string }[]): string[] {
   const names = new Set(declared.map((f) => f.name));
-  return [...fieldUsage(items).keys()].filter(
-    (f) => !names.has(f) && f !== "id" && !f.startsWith("_") && !isRoleColumn(f),
-  );
+  return [...fieldUsage(items).keys()].filter((f) => !names.has(f) && !UNIT_BUILTINS.includes(f) && !isRoleColumn(f));
 }

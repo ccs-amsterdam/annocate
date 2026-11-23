@@ -9,7 +9,7 @@ import { SetNameSchema } from "../sets.js";
 // `coder_set`, or a crowd; an experiment can select units by
 // `condition_set`. A loop works within a coder's units: one part of the
 // study (`part`, a value of `part_set`), the coding units yes or no, where
-// the test units (`test_unit`: overlap, practice, gold) go (left out,
+// the test units (`test_set`: overlap, practice, gold) go (left out,
 // before, after or spread throughout), the checks on practice and gold
 // units, and for a crowd whether the units are divided among the coders (a
 // shared queue) or every coder codes all of them. A later loop can instead
@@ -43,7 +43,7 @@ export const ALL_UNITS_SET = "__all__";
 export const DEFAULT_RATE = 10;
 
 /**
- * Where a loop puts test units (`test_unit`: overlap, practice, gold) among
+ * Where a loop puts test units (`test_set`: overlap, practice, gold) among
  * the coding units: left out (`ignore`), `before` or `after` them, or
  * `spread` evenly throughout them (in a shared queue without a maximum of
  * units per coder: about one in ten, at random). A test unit with a part

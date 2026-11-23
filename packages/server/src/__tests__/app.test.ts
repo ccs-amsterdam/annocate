@@ -271,24 +271,24 @@ describe("units: fields and pages", () => {
         ])
       ).status,
     ).toBe(400);
-    // Only the columns with a role; test_unit takes the test unit types, one per unit
+    // Only the columns with a role; test_set takes the test unit types, one per unit
     expect((await put("batch", [{ name: "s", unitIds: [mine.id] }])).status).toBe(400);
-    expect((await put("test_unit", [{ name: "_gold", unitIds: [mine.id] }])).status).toBe(400);
+    expect((await put("test_set", [{ name: "_gold", unitIds: [mine.id] }])).status).toBe(400);
     expect(
       (
-        await put("test_unit", [
+        await put("test_set", [
           { name: "gold", unitIds: [mine.id] },
           { name: "practice", unitIds: [mine.id] },
         ])
       ).status,
     ).toBe(400);
     expect((await put("part_set", [{ name: "s", unitIds: [mine.id] }])).status).toBe(200);
-    expect((await put("test_unit", [{ name: "gold", unitIds: [mine.id] }])).status).toBe(200);
+    expect((await put("test_set", [{ name: "gold", unitIds: [mine.id] }])).status).toBe(200);
     const fields = await json(await app.request(`/api/study/${study.id}/units/fields`, { headers: adminHeaders }));
     expect(fields).toEqual(
       expect.arrayContaining([
         { name: "part_set", type: "set" },
-        { name: "test_unit", type: "unit_type" },
+        { name: "test_set", type: "unit_type" },
       ]),
     );
   });

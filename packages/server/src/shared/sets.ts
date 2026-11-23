@@ -3,7 +3,7 @@ import {
   CODER_SET,
   CONDITION_SET,
   PART_SET,
-  TEST_UNIT,
+  TEST_SET,
   coderAccess,
   inviteOf,
   sessionItem,
@@ -22,7 +22,7 @@ import {
   forEachItem,
   type DesignItem,
   type SetGroupResponse,
-  type TestUnitType,
+  type TestSetType,
   type UnitSet,
 } from "@annotinder/contracts";
 import { and, asc, eq, sql } from "drizzle-orm";
@@ -33,7 +33,7 @@ import { HttpError } from "./http.js";
 import { getUnitFields, lockUnits, servedUnits, setUnitFields, unitIds } from "./units.js";
 
 // The columns with a role (docs/plans/unit-sets.md: `coder_set`,
-// `condition_set`, `part_set`, `test_unit`), stored as sets
+// `condition_set`, `part_set`, `test_set`), stored as sets
 // (`unit_sets`: column (`grp`), value (`name`)) and their units
 // (`unit_set_members`), with an optional position. A set is in position
 // order if its units have positions, else in the units' order. Two copies
@@ -88,7 +88,7 @@ export async function groupSets(db: Db, studyId: number, group: string, live = f
 /**
  * Makes or replaces a column with a role of the draft: its sets' units, in
  * order (positions for ordered sets). Units must be the draft's;
- * `test_unit` takes only the test unit types, one per unit. The column is a
+ * `test_set` takes only the test sets, one per unit. The column is a
  * unit field of its type in the draft design (`declare`, the default).
  */
 export async function putSetGroup(
@@ -101,7 +101,7 @@ export async function putSetGroup(
   await lockUnits(db, studyId, "write");
   const column = RoleColumnSchema.safeParse(group);
   if (!column.success)
-    throw new HttpError(400, `'${group}' is not a column with a role (coder_set, condition_set, part_set, test_unit)`);
+    throw new HttpError(400, `'${group}' is not a column with a role (coder_set, condition_set, part_set, test_set)`);
   const problem = roleColumnProblem(column.data, sets);
   if (problem) throw new HttpError(400, `${group}: ${problem}`);
   if (options.declare !== false) {
@@ -258,7 +258,7 @@ export async function assignmentChecks(
       if (!loops.some((l) => l.units.part === part)) warnings.push(`Part '${part}' isn't shown by any loop.`);
 
   // Units no coder gets: test units aside, those without a coder or condition, or a part a loop shows
-  const tests = placed(TEST_UNIT);
+  const tests = placed(TEST_SET);
   const selections: { label: string; units: Set<number> }[] = [];
   if (invite.mode === "coders" && coders.length > 0) selections.push({ label: "coder", units: placed(CODER_SET) });
   if (experiments.length > 0 && conditions.length > 0)
@@ -305,11 +305,11 @@ async function answerKeyWarnings(
     for (const [type, check] of [
       ["practice", units.practice === "ignore" ? undefined : units.practiceCheck],
       ["gold", units.gold === "ignore" ? undefined : units.goldCheck],
-    ] as [TestUnitType, { questions?: string[] } | undefined][]) {
+    ] as [TestSetType, { questions?: string[] } | undefined][]) {
       if (!check) continue;
-      const ids = inLoop(unitsIn(TEST_UNIT, type));
+      const ids = inLoop(unitsIn(TEST_SET, type));
       if (ids.length === 0) {
-        warnings.push(`Loop '${title}': it checks ${type} units, but it has none (${TEST_UNIT} '${type}').`);
+        warnings.push(`Loop '${title}': it checks ${type} units, but it has none (${TEST_SET} '${type}').`);
         continue;
       }
       const rows = (await servedUnits(db, studyId, live, ids)).sort((a, b) => a.id - b.id);

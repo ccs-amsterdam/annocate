@@ -4,7 +4,7 @@ import { IdSchema } from "./common.js";
 // Unit columns with a role (docs/plans/unit-sets.md): a fixed name says
 // what the column does. The set columns (`coder_set`, `condition_set`,
 // `part_set`) name per unit the sets it is in, e.g. `anna`, `anna;bob`, or
-// `pre#3;post#1` (positions); `test_unit` says whether a unit is a test unit
+// `pre#3;post#1` (positions); `test_set` says whether a unit is a test unit
 // (`overlap`, `practice` or `gold`; empty: a coding unit). They are stored
 // as sets (per value its units), not in the units' data. Any other column
 // is data.
@@ -16,12 +16,12 @@ export const CONDITION_SET = "condition_set";
 /** Parts of the study, e.g. `pre` and `post`: a unit loop shows one part. */
 export const PART_SET = "part_set";
 /** A unit's test type: overlap, practice or gold. */
-export const TEST_UNIT = "test_unit";
+export const TEST_SET = "test_set";
 
 /** The set columns: a unit can be in several of their sets. */
 export const SET_COLUMNS = [CODER_SET, CONDITION_SET, PART_SET] as const;
 /** Every column with a role, as stored (per value its units). */
-export const ROLE_COLUMNS = [...SET_COLUMNS, TEST_UNIT] as const;
+export const ROLE_COLUMNS = [...SET_COLUMNS, TEST_SET] as const;
 export const RoleColumnSchema = z.enum(ROLE_COLUMNS);
 export type RoleColumn = z.infer<typeof RoleColumnSchema>;
 
@@ -29,13 +29,13 @@ export type RoleColumn = z.infer<typeof RoleColumnSchema>;
 export const isRoleColumn = (name: string): name is RoleColumn => (ROLE_COLUMNS as readonly string[]).includes(name);
 
 /**
- * The test unit types (`test_unit`): overlap units are coded by every coder
+ * The test sets (`test_set` values): overlap units are coded by every coder
  * (besides their own units); practice units tell coders when they are wrong;
  * gold units check them silently (docs/architecture.md §6.2).
  */
-export const TEST_UNIT_TYPES = ["overlap", "practice", "gold"] as const;
-export const TestUnitTypeSchema = z.enum(TEST_UNIT_TYPES);
-export type TestUnitType = z.infer<typeof TestUnitTypeSchema>;
+export const TEST_SET_TYPES = ["overlap", "practice", "gold"] as const;
+export const TestSetTypeSchema = z.enum(TEST_SET_TYPES);
+export type TestSetType = z.infer<typeof TestSetTypeSchema>;
 
 /** A set's name: no `;` or `#` (the cell format), and no spaces at its ends. */
 export const SetNameSchema = z
@@ -64,17 +64,17 @@ export const SetGroupResponseSchema = z.object({ name: RoleColumnSchema, sets: z
 export type SetGroupResponse = z.infer<typeof SetGroupResponseSchema>;
 
 /**
- * Why sets can't be a role column's, or null if they can: `test_unit` has
- * only the test unit types as values, and one per unit.
+ * Why sets can't be a role column's, or null if they can: `test_set` has
+ * only the test sets as values, and one per unit.
  */
 export function roleColumnProblem(column: RoleColumn, sets: readonly UnitSet[]): string | null {
-  if (column !== TEST_UNIT) return null;
-  const odd = sets.find((s) => !(TEST_UNIT_TYPES as readonly string[]).includes(s.name));
-  if (odd) return `'${odd.name}' is not a test unit type (${TEST_UNIT_TYPES.join(", ")})`;
+  if (column !== TEST_SET) return null;
+  const odd = sets.find((s) => !(TEST_SET_TYPES as readonly string[]).includes(s.name));
+  if (odd) return `'${odd.name}' is not a test set (${TEST_SET_TYPES.join(", ")})`;
   const seen = new Set<number>();
   for (const set of sets)
     for (const id of set.unitIds) {
-      if (seen.has(id)) return "A unit has one test unit type at most";
+      if (seen.has(id)) return "A unit is in one test set at most";
       seen.add(id);
     }
   return null;
@@ -196,7 +196,7 @@ export function splitIntoSets<T>(
 
 /**
  * Divides units over named coders (`coder_set`, docs/plans/unit-sets.md):
- * test units aside (`testUnits`, e.g. those of an existing `test_unit`
+ * test units aside (`testUnits`, e.g. those of an existing `test_set`
  * column, and `newTestUnits`: this many units of each type, drawn now),
  * every other unit to `perUnit` coders, each unit to the coders with the
  * fewest so far. Test units are no coder's own: overlap, practice and gold
@@ -213,18 +213,18 @@ export function distributeUnits(
     /** Units that are test units already: not given to coders. */
     testUnits?: Iterable<number>;
     /** Test units to draw from the other units, per type. */
-    newTestUnits?: Partial<Record<TestUnitType, number>>;
+    newTestUnits?: Partial<Record<TestSetType, number>>;
     seed?: number;
     /** Coder -> units to keep with them. */
     keep?: ReadonlyMap<string, Iterable<number>>;
   } = {},
-): { sets: { name: string; units: number[] }[]; testUnits: { name: TestUnitType; units: number[] }[]; kept: number } {
+): { sets: { name: string; units: number[] }[]; testUnits: { name: TestSetType; units: number[] }[]; kept: number } {
   const tests = new Set(options.testUnits ?? []);
   let left = seededShuffle(
     units.filter((u) => !tests.has(u)),
     options.seed ?? 0,
   );
-  const testUnits = TEST_UNIT_TYPES.flatMap((name) => {
+  const testUnits = TEST_SET_TYPES.flatMap((name) => {
     const n = Math.min(left.length, Math.max(0, Math.floor(options.newTestUnits?.[name] ?? 0)));
     const taken = left.slice(0, n);
     left = left.slice(n);

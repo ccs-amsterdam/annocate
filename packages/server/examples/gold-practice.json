@@ -5,7 +5,7 @@
   "tryThis": [
     "Open the link (Links page) in a private window and answer a practice headline wrongly: you see why, and answer again.",
     "Code on and get two gold headlines wrong in a row (the burglar, the unemployment figures, the swimming club): the study ends at the Screen-out block's end item.",
-    "See the right answers in the units: the columns answer_topic, feedback_topic, answer_clickbait and feedback_clickbait, and the column test_unit with practice and gold (Units page). Coders never get these columns.",
+    "See the right answers in the units: the columns answer_topic, feedback_topic, answer_clickbait and feedback_clickbait, and the column test_set with practice and gold (Units page). Coders never get these columns.",
     "Open the unit loop on the Design page: the headlines divided among coders (two per headline), practice units before them, gold units spread throughout, and the health that ends a session.",
     "See how each coder did on the test units in Results › Coders."
   ],
@@ -205,7 +205,7 @@
   ],
   "sets": [
     {
-      "group": "test_unit",
+      "group": "test_set",
       "sets": [
         {
           "name": "practice",
@@ -295,7 +295,7 @@
           {
             "type": "layout",
             "label": "The headline",
-            "template": "::: if $unit._practice\n> **Practice headline.** If an answer is wrong, you'll see why and can answer again.\n:::\n\n# $unit.headline"
+            "template": "::: if $unit.test_set === \"practice\"\n> **Practice headline.** If an answer is wrong, you'll see why and can answer again.\n:::\n\n# $unit.headline"
           },
           {
             "type": "question",

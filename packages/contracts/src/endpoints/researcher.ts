@@ -183,7 +183,7 @@ export const researcherEndpoints = {
   },
   deleteUnit: { method: "DELETE", path: "/study/:studyId/units/:id", request: z.void(), response: z.void() },
 
-  /** The draft's columns with a role (`coder_set`, `condition_set`, `part_set`, `test_unit`), each with its sets in order; `?live=true`: the deployed ones. */
+  /** The draft's columns with a role (`coder_set`, `condition_set`, `part_set`, `test_set`), each with its sets in order; `?live=true`: the deployed ones. */
   listSetGroups: {
     method: "GET",
     path: "/study/:studyId/sets",
@@ -192,7 +192,7 @@ export const researcherEndpoints = {
   },
   /**
    * Makes or replaces a column with a role (`:group`: its name), its sets; it becomes a unit field of its type.
-   * `test_unit` takes only `overlap`, `practice` and `gold`, one per unit. Deployed, links follow (a link per coder
+   * `test_set` takes only `overlap`, `practice` and `gold`, one per unit. Deployed, links follow (a link per coder
    * of `coder_set`).
    */
   putSetGroup: {

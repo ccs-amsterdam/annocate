@@ -151,11 +151,11 @@ describe("distributeUnits", () => {
 });
 
 describe("roleColumnProblem", () => {
-  it("takes only the test unit types in test_unit, one per unit; set columns any values", () => {
+  it("takes only the test sets in test_set, one per unit; set columns any values", () => {
     const set = (name: string, unitIds: number[]) => ({ name, unitIds, ordered: false });
-    expect(roleColumnProblem("test_unit", [set("practice", [1, 2]), set("gold", [3])])).toBeNull();
-    expect(roleColumnProblem("test_unit", [set("_gold", [1])])).toContain("not a test unit type");
-    expect(roleColumnProblem("test_unit", [set("practice", [1]), set("gold", [1])])).toContain("one test unit type");
+    expect(roleColumnProblem("test_set", [set("practice", [1, 2]), set("gold", [3])])).toBeNull();
+    expect(roleColumnProblem("test_set", [set("_gold", [1])])).toContain("not a test set");
+    expect(roleColumnProblem("test_set", [set("practice", [1]), set("gold", [1])])).toContain("one test set at most");
     expect(roleColumnProblem("part_set", [set("pre", [1]), set("post", [1])])).toBeNull();
   });
 });

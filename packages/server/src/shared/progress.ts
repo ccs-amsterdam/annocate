@@ -1,9 +1,9 @@
 import { listSetGroups } from "./sets.js";
 import {
-  TEST_UNIT,
-  TEST_UNIT_TYPES,
+  TEST_SET,
+  TEST_SET_TYPES,
   type CoderProgress,
-  type TestUnitType,
+  type TestSetType,
   type StudyOverview,
   loginRequired,
   sessionItem,
@@ -61,21 +61,21 @@ async function finishedPerLoop(db: Db, studyId: number): Promise<Map<string, Map
 
 /**
  * Per session, the deployed test units it finished, of how many (contracts
- * `CoderProgress.special`; docs/architecture.md §6): those of `test_unit`.
+ * `CoderProgress.special`; docs/architecture.md §6): those of `test_set`.
  * Counted for sessions that were routed in a loop.
  */
 async function specialProgress(db: Db, studyId: number, deployed: boolean) {
   const members = deployed
     ? await db
-        .select({ name: sql<TestUnitType>`${unitSets.name}`, unitId: unitSetMembers.unitId })
+        .select({ name: sql<TestSetType>`${unitSets.name}`, unitId: unitSetMembers.unitId })
         .from(unitSets)
         .innerJoin(unitSetMembers, eq(unitSetMembers.setId, unitSets.id))
         .where(
           and(
             eq(unitSets.studyId, studyId),
             eq(unitSets.live, true),
-            eq(unitSets.grp, TEST_UNIT),
-            inArray(unitSets.name, [...TEST_UNIT_TYPES]),
+            eq(unitSets.grp, TEST_SET),
+            inArray(unitSets.name, [...TEST_SET_TYPES]),
           ),
         )
     : [];
@@ -92,7 +92,7 @@ async function specialProgress(db: Db, studyId: number, deployed: boolean) {
   return (sessionId: number, assignments: Record<string, unknown>) => {
     const out: CoderProgress["special"] = {};
     if (Object.keys(assignments ?? {}).length === 0) return out;
-    for (const kind of TEST_UNIT_TYPES) {
+    for (const kind of TEST_SET_TYPES) {
       const unitIds = new Set(members.filter((m) => m.name === kind).map((m) => m.unitId));
       if (unitIds.size === 0) continue;
       out[kind] = { done: [...unitIds].filter((id) => done.get(sessionId)?.has(id)).length, total: unitIds.size };

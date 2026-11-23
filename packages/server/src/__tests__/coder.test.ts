@@ -595,7 +595,7 @@ describe("coders", () => {
   it("by link: a link per coder, who gets the units whose coder_set holds them, and the overlap units", async () => {
     await createSet("anna", ["unit-1"], "coder_set");
     await createSet("bob", ["unit-2", "unit-1"], "coder_set"); // unit-1: anna;bob
-    await createSet("overlap", ["unit-3"], "test_unit");
+    await createSet("overlap", ["unit-3"], "test_set");
     const deployed = await redeploy({ units: { overlap: "before" } }, [coders]);
     expect(deployed.links).toBe(2);
     const byCoder = Object.fromEntries(
@@ -884,7 +884,7 @@ describe("assignment edge cases (review of the unit assignment)", () => {
   });
 
   it("loops with the same columns and part but another overlap count each get their own", async () => {
-    await createSet("overlap", ["unit-1", "unit-2", "unit-3"], "test_unit");
+    await createSet("overlap", ["unit-1", "unit-2", "unit-3"], "test_set");
     const first = {
       type: "unit_loop",
       label: "first",
@@ -1034,7 +1034,7 @@ describe("loop parts and the overlap", () => {
 
   it("hands out the overlap before, after or spread through the coder's own units, or not at all", async () => {
     await createSet("s1", ["unit-1", "unit-2"], "coder_set");
-    await createSet("overlap", ["unit-2", "unit-3"], "test_unit");
+    await createSet("overlap", ["unit-2", "unit-3"], "test_set");
     await redeploy({ units: { overlap: "before" } }, [coders]);
     // unit-2 is overlap, not own: once, as overlap
     expect(await order("first")).toEqual(["unit-2", "unit-3", "unit-1"]);
@@ -1052,7 +1052,7 @@ describe("loop parts and the overlap", () => {
   });
 
   it("a crowd's overlap units: the queue divides the rest, every coder gets the overlap", async () => {
-    await createSet("overlap", ["unit-3"], "test_unit");
+    await createSet("overlap", ["unit-3"], "test_set");
     await redeploy({ units: { overlap: "after" } }, [crowd({ codersPerUnit: { min: 1, max: 1 } })]);
     expect(await order("first-coder")).toEqual(["unit-1", "unit-2", "unit-3"]);
     // The queue is done; the overlap is everyone's
@@ -1071,7 +1071,7 @@ describe("loop parts and the overlap", () => {
     await createSet("pre", ["unit-1", "unit-4"], "part_set");
     await createSet("post", ["unit-2", "unit-3", "unit-5"], "part_set");
     // unit-4 is a pre overlap unit; unit-5 a post one, unit-6 an overlap unit of every part
-    await createSet("overlap", ["unit-4", "unit-5", "unit-6"], "test_unit");
+    await createSet("overlap", ["unit-4", "unit-5", "unit-6"], "test_set");
     await redeploy({ units: { part: "post", overlap: "after" } });
     expect(await order("post")).toEqual(["unit-2", "unit-3", "unit-5", "unit-6"]);
     await redeploy({ units: { part: "pre", overlap: "after" } });
@@ -1429,8 +1429,8 @@ describe("practice and gold units", () => {
     expect(upload.status, await upload.clone().text()).toBe(201);
     // Test units without a part are in the loop's part too
     await createSet("s1", ["unit-1"], "part_set");
-    await createSet("practice", ["p1"], "test_unit");
-    await createSet("gold", ["g1", "g2"], "test_unit");
+    await createSet("practice", ["p1"], "test_set");
+    await createSet("gold", ["g1", "g2"], "test_set");
     const end = { type: "end", name: "low_quality", outcome: "screenout", message: "Thank you" };
     await redeploy(
       {
@@ -1453,7 +1453,7 @@ describe("practice and gold units", () => {
     // The practice unit first, marked as such; its answer columns are never served
     const practice = (await c.next())!;
     expect(practice.externalId).toBe("p1");
-    expect(practice.data).toMatchObject({ _practice: true });
+    expect(practice.data).toMatchObject({ test_set: "practice" });
     expect(practice.data).not.toHaveProperty("answer_sentiment");
     expect(practice.data).not.toHaveProperty("feedback_sentiment");
     // Its checks come along, for the browser (retry by default); the server doesn't check practice
@@ -1465,10 +1465,11 @@ describe("practice and gold units", () => {
     // Then their own unit, then the gold units: nothing tells them they are gold
     const own = (await c.next())!;
     expect(own.externalId).toBe("unit-1");
-    expect(own.data).not.toHaveProperty("_practice");
+    expect(own.data).not.toHaveProperty("test_set");
     expect(await submit(own.id, "positive")).toEqual({});
     const g1 = (await c.next())!;
     expect(g1.data).not.toHaveProperty("answer_sentiment");
+    expect(g1.data).not.toHaveProperty("test_set");
     expect(await submit(g1.id, "positive")).toEqual({}); // wrong: health 1
     const g2 = (await c.next())!;
     expect(await submit(g2.id, "positive")).toEqual({ end: "low_quality" }); // wrong again: health 0
@@ -1482,6 +1483,19 @@ describe("practice and gold units", () => {
       practice: { done: 1, total: 1 },
       gold: { done: 2, total: 2 },
     });
+
+    // A design that uses `$unit.test_set` gets it with every unit (null for a coding unit)
+    await redeploy(
+      { units: { part: "s1", practice: "before", gold: "after" }, layout: { template: "$unit.test_set" } },
+      [crowd()],
+    );
+    const d = coder("designer");
+    const types: unknown[] = [];
+    for (let unit = await d.next(); unit; unit = await d.next()) {
+      types.push(unit.data.test_set);
+      expect((await d.submit(unit.id, sentiment("neutral"))).status).toBe(200);
+    }
+    expect(types).toEqual(["practice", null, "gold", "gold"]);
   });
 });
 
@@ -2484,9 +2498,9 @@ describe("columns with a role", () => {
 
   it("are unit fields of their type in the draft design: made with their sets, gone with them; never in uploads", async () => {
     await createSet("anna", ["unit-1"], "coder_set");
-    await createSet("gold", ["unit-2"], "test_unit");
+    await createSet("gold", ["unit-2"], "test_set");
     expect(await draftFields()).toContainEqual({ name: "coder_set", type: "set" });
-    expect(await draftFields()).toContainEqual({ name: "test_unit", type: "unit_type" });
+    expect(await draftFields()).toContainEqual({ name: "test_set", type: "unit_type" });
     // An upload doesn't give set columns as data
     const { data } = await draftUnit((await unitByExternalId("unit-1")).id);
     const upload = await server.request("/api/study/1/units", {
@@ -2832,13 +2846,13 @@ describe("deploy checks of the columns with a role", () => {
     expect(await deploy([loop({ part: "pre" }, "a"), loop({}, "b")])).toEqual([]);
     // A test unit needs no part
     await createSet("post", ["unit-2", "unit-3"], "part_set");
-    await createSet("overlap", ["unit-3"], "test_unit");
+    await createSet("overlap", ["unit-3"], "test_set");
     expect(await deploy([loop({ part: "pre" }, "a"), loop({ part: "post" }, "b")])).toEqual([]);
   });
 
   it("warn about units in no coder set; an experiment that selects units needs condition_set", async () => {
     await createSet("anna", ["unit-1"], "coder_set");
-    await createSet("overlap", ["unit-2"], "test_unit");
+    await createSet("overlap", ["unit-2"], "test_set");
     expect(await deploy([codersInvite(), loop({})])).toEqual([
       "1 unit is in no coder set and isn't a test unit: no coder gets it.",
     ]);
@@ -2870,8 +2884,8 @@ describe("deploy checks of the columns with a role", () => {
     });
     expect(upload.status, await upload.clone().text()).toBe(201);
     const checked = loop({ gold: "after", goldCheck: { questions: ["sentiment_main"] } });
-    expect(await deploy([checked])).toEqual(["Loop 'main': it checks gold units, but it has none (test_unit 'gold')."]);
-    await createSet("gold", ["unit-1", "g1"], "test_unit");
+    expect(await deploy([checked])).toEqual(["Loop 'main': it checks gold units, but it has none (test_set 'gold')."]);
+    await createSet("gold", ["unit-1", "g1"], "test_set");
     expect(await deploy([checked])).toEqual([
       "Loop 'main': answer_sentiment_main has answers that don't fit 'sentiment_main' (g1: nope (not an option)): those can never be right.",
       "Loop 'main': 1 gold unit has no right answer for 'sentiment_main' in column answer_sentiment_main (unit-1): they aren't checked.",
@@ -2891,8 +2905,8 @@ describe("test units per coder", () => {
     });
     expect(upload.status, await upload.clone().text()).toBe(201);
     await createSet("s1", ["unit-1"], "coder_set");
-    await createSet("overlap", ["unit-2"], "test_unit");
-    await createSet("gold", ["g1"], "test_unit");
+    await createSet("overlap", ["unit-2"], "test_set");
+    await createSet("gold", ["g1"], "test_set");
     await redeploy({ units: { overlap: "after", gold: "after", goldCheck: { questions: ["sentiment"] } } }, [
       codersInvite(),
     ]);

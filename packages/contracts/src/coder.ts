@@ -24,7 +24,7 @@ export const CoderProgressSchema = z.object({
   /** unit loop title (`loopTitle`) -> units this coder finished, for the loops of the live design version. */
   finished: z.record(z.string(), z.number().int().nonnegative()),
   /**
-   * Deployed test units (`test_unit`: overlap, gold, practice;
+   * Deployed test units (`test_set`: overlap, gold, practice;
    * docs/architecture.md §6.2) the coder finished, of how many (empty
    * before the coder reached a loop).
    */

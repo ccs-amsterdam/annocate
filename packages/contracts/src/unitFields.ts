@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { UnitData, UnitDataValue } from "./common.js";
-import { TEST_UNIT, isRoleColumn } from "./sets.js";
+import { TEST_SET, isRoleColumn } from "./sets.js";
 
 /**
  * A study's unit fields (docs/client.md §7, "Units"): every unit has the
@@ -13,7 +13,7 @@ import { TEST_UNIT, isRoleColumn } from "./sets.js";
  * The columns with a role (sets.ts, docs/plans/unit-sets.md) have a type
  * of their own: `set` for `coder_set`, `condition_set` and `part_set`
  * (cells name the sets a unit is in: `anna`, `anna;bob`), `unit_type` for
- * `test_unit` (`overlap`, `practice` or `gold`, or empty). Their cells are
+ * `test_set` (`overlap`, `practice` or `gold`, or empty). Their cells are
  * stored as sets (sets.ts), not in the units' data.
  */
 export const UnitFieldTypeSchema = z.enum(["text", "number", "boolean", "set", "unit_type"]);
@@ -46,7 +46,7 @@ export const UnitsSpecSchema = z.object({
             path: [i, "type"],
             message: wanted
               ? `'${f.name}' is a column with a role: its type is ${wanted}`
-              : `Only the columns with a role (coder_set, condition_set, part_set, test_unit) are of type ${f.type}`,
+              : `Only the columns with a role (coder_set, condition_set, part_set, test_set) are of type ${f.type}`,
           });
       }),
     ),
@@ -64,8 +64,6 @@ export const UNIT_FIELD_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 export function unitFieldNameError(name: string): string | null {
   if (name.length > 64) return "at most 64 characters";
   if (!UNIT_FIELD_NAME.test(name)) return "only letters, digits and _, not starting with a digit";
-  // `$unit._practice` and the like are AnnoTinder's (docs/architecture.md §6.2)
-  if (name.startsWith("_")) return "names starting with _ are reserved";
   if (isRoleColumn(name)) return "a column with a role: its cells are uploaded as sets";
   return null;
 }
@@ -89,6 +87,13 @@ export function toUnitFieldName(header: string, taken: ReadonlySet<string> = new
   for (let n = 2; taken.has(unique); n++) unique = `${name}_${n}`;
   return unique;
 }
+
+/**
+ * What `$unit` has besides the units' fields: `id`, the unit's id (unless a
+ * field is called id), and `test_set`, its test set (`overlap`, `practice`
+ * or `gold`; null for a coding unit).
+ */
+export const UNIT_BUILTINS: readonly string[] = ["id", TEST_SET];
 
 /** The column with the right answer to question `q` on practice and gold units (answerKey.ts). */
 export const answerColumn = (question: string) => `answer_${question}`;
@@ -152,8 +157,8 @@ export function addedFields(units: UnitData[], fields: UnitField[]): { fields: U
 /** Whether a field type is a role column's: stored as sets, not data. */
 export const isSetType = (type: UnitFieldType) => type === "set" || type === "unit_type";
 
-/** The type a role column has (`unit_type` for `test_unit`, else `set`). */
-export const roleColumnType = (name: string): UnitFieldType => (name === TEST_UNIT ? "unit_type" : "set");
+/** The type a role column has (`unit_type` for `test_set`, else `set`). */
+export const roleColumnType = (name: string): UnitFieldType => (name === TEST_SET ? "unit_type" : "set");
 
 /** The role columns among the unit fields (stored as sets, not data). */
 export const setColumns = (fields: readonly UnitField[]) => fields.filter((f) => isSetType(f.type)).map((f) => f.name);

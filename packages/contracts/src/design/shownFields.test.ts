@@ -61,6 +61,7 @@ describe("fieldUsage", () => {
       body: "shown",
       answer_topic: "server",
       feedback_topic: "server",
+      test_set: "server",
     });
     expect(undeclaredFields(items, [{ name: "title" }])).toEqual(["body", "year", "answer_topic", "feedback_topic"]);
   });
@@ -88,10 +89,24 @@ describe("set columns", () => {
       coder_set: "server",
       condition_set: "server",
       part_set: "server",
+      test_set: "server",
     });
     // Deploying checks them against the units: never undeclared fields
     expect(undeclaredFields(items, [])).toEqual([]);
     expect(designSetColumns([{ type: "session", invite: { mode: "crowd" } }])).toEqual([]);
+  });
+
+  it("use the test set in every unit loop, and only role columns the design selects by", () => {
+    const loop = { type: "unit_loop", children: [{ type: "layout", template: "" }] };
+    // No loop: a survey uses no unit columns
+    expect(fieldUsage([{ type: "session", invite: { mode: "crowd" } }]).size).toBe(0);
+    expect(Object.fromEntries(fieldUsage([{ type: "session", invite: { mode: "crowd" } }, loop]))).toEqual({
+      test_set: "server",
+    });
+    // `$unit.test_set` in a layout: sent with the units
+    const shown = { ...loop, children: [{ type: "layout", template: "{{$unit.test_set}}" }] };
+    expect(fieldUsage([shown]).get("test_set")).toBe("shown");
+    expect(undeclaredFields([shown], [])).toEqual([]);
   });
 
   it("select a loop's units: the coder's, and the experiment before the loop", () => {

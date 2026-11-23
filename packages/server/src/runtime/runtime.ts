@@ -7,7 +7,7 @@ import {
   CODER_SET,
   CONDITION_SET,
   PART_SET,
-  TEST_UNIT,
+  TEST_SET,
   loopShareColumns,
   type ShareColumn,
   loopDependencies,
@@ -21,6 +21,7 @@ import {
   parseAnswerKey,
   answerMatchesKey,
   type SubmitUnitResponse,
+  type TestSetType,
   toCoderItems,
   DEFAULT_RATE,
   resolveRedirects,
@@ -99,7 +100,7 @@ export type { Coder };
  * a loop taking an earlier loop's units, the units the coder finished
  * there. Shared by every coder with the same values: `key` names it (the
  * pool of a shared queue, its leases, a row of the status). The test units
- * (`test_unit`) come apart, for everyone: overlap, practice and gold (those
+ * (`test_set`) come apart, for everyone: overlap, practice and gold (those
  * with a part only in that part's loops).
  */
 interface Share {
@@ -764,9 +765,9 @@ export class DeploymentRuntime {
       part !== undefined ? (this.groups.get(PART_SET) ?? []).flatMap((p) => this.unitsOf(setKey(PART_SET, p))) : [],
     );
     const tests = (type: string) =>
-      this.unitsOf(setKey(TEST_UNIT, type)).filter((id) => part === undefined || inPart.has(id) || !withPart.has(id));
+      this.unitsOf(setKey(TEST_SET, type)).filter((id) => part === undefined || inPart.has(id) || !withPart.has(id));
     const testUnits = new Set(
-      (this.groups.get(TEST_UNIT) ?? []).flatMap((type) => this.unitsOf(setKey(TEST_UNIT, type))),
+      (this.groups.get(TEST_SET) ?? []).flatMap((type) => this.unitsOf(setKey(TEST_SET, type))),
     );
     let units: number[];
     if (sameAs !== undefined) units = earlier ?? [];
@@ -798,6 +799,7 @@ export class DeploymentRuntime {
    */
   private specialUnits(route: Route): {
     set: string;
+    type: TestSetType;
     units: number[];
     placement: "first" | "last" | "spread" | "rate";
     every?: number;
@@ -808,7 +810,16 @@ export class DeploymentRuntime {
       if (!s || s.placement === "disabled") return [];
       const list = units(route.share);
       return list.length > 0
-        ? [{ set: `${route.share.key}/${set}`, units: list, placement: s.placement, every: s.every, rest: s.rest }]
+        ? [
+            {
+              set: `${route.share.key}/${set}`,
+              type: set,
+              units: list,
+              placement: s.placement,
+              every: s.every,
+              rest: s.rest,
+            },
+          ]
         : [];
     });
   }
@@ -1155,9 +1166,11 @@ export class DeploymentRuntime {
   }
 
   /**
-   * A unit as the coder gets it. A practice unit is marked (`$unit._practice`)
-   * and comes with its checks: the answer cells of the loop's practice
-   * questions and their feedback, checked in the browser (docs/architecture.md §6.2).
+   * A unit as the coder gets it. `$unit.test_set` is the test set the loop
+   * places it in (null for a coding unit): sent when the design uses it, and
+   * always on practice units (instructions can open on them). A practice unit
+   * comes with its checks: the answer cells of the loop's practice questions
+   * and their feedback, checked in the browser (docs/architecture.md §6.2).
    * Gold cells never leave the server.
    */
   private coderUnit(
@@ -1167,7 +1180,10 @@ export class DeploymentRuntime {
     answers: Record<string, VariableValue>,
   ): CoderUnitResponse {
     const base = { id: unit.id, externalId: unit.externalId, variables: answers };
-    if (!route || !this.specialSet(route, "practice").includes(unit.id)) return { ...base, data: shown };
+    const testSet = (route && this.specialUnits(route).find((s) => s.units.includes(unit.id))?.type) ?? null;
+    const data =
+      testSet === "practice" || this.shownFields.includes(TEST_SET) ? { ...shown, test_set: testSet } : shown;
+    if (!route || testSet !== "practice") return { ...base, data };
     const practice = route.units.practice;
     const questions: NonNullable<CoderUnitResponse["practice"]>["questions"] = {};
     for (const name of practice?.questions ?? []) {
@@ -1186,7 +1202,7 @@ export class DeploymentRuntime {
             },
           }
         : {};
-    return { ...base, data: { ...shown, _practice: true }, ...checks };
+    return { ...base, data, ...checks };
   }
 
   /**

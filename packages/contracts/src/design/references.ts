@@ -743,9 +743,13 @@ export function buildScope(
   return { $unit: { ...(unit ?? {}) }, $var, $session: { ...(session ?? {}) } };
 }
 
-/** A unit as `$unit`: its fields, and `id`, its id (unless it has a field called `id`). */
+/**
+ * A unit as `$unit`: its fields, `id`, its id (unless it has a field called
+ * `id`), and `test_set`, its test set (null for a coding unit; the server
+ * sends it with the unit, unitFields.ts UNIT_BUILTINS).
+ */
 export function unitScopeData(unit: { externalId: string; data: Record<string, unknown> }): Record<string, unknown> {
-  return { id: unit.externalId, ...unit.data };
+  return { id: unit.externalId, test_set: null, ...unit.data };
 }
 
 /** The label of a value: the option's label, a numeric break-point label, or the value as text. */
