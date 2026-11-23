@@ -1,12 +1,12 @@
 import { cn } from "cn";
 import type { TopLevelItem } from "@annotinder/contracts";
 import type { TreePosition } from "../../../design/itemEdit";
-import { isElse } from "../../../codebook/tree";
+import { childrenOf, isElse } from "../../../codebook/tree";
 import { TreeItemRow } from "./TreeItemRow";
 import { ITEM_TYPES } from "./itemTypes";
 import { InsertionLine } from "./TreeRow";
 import { samePosition, useDesignTree } from "./context";
-import { getChildren, getItemKey, type TreeNode } from "./utils";
+import { getItemKey, type TreeNode } from "./utils";
 
 /** A unit loop, and each run of coder-level items between loops: a light card. */
 const CARD = "my-1 rounded-lg border border-border py-0.5";
@@ -74,7 +74,7 @@ export function TreeList({ nodes, parent }: TreeListProps) {
  * the end of the block (only once it has items), as far in as the others.
  */
 function TreeNodeView({ item, card = false }: { item: TreeNode; card?: boolean }) {
-  const children = getChildren(item);
+  const children = childrenOf(item);
   const after: TreePosition = { after: getItemKey(item) };
   const before: TreePosition = { before: getItemKey(item) };
   if (isElse(item)) {

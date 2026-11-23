@@ -5,12 +5,12 @@ import { useDesignTree } from "./context";
 import { ITEM_TYPES, itemIcon } from "./itemTypes";
 import { AddItemMenu, type AddOption } from "./AddItemMenu";
 import { TreeRow } from "./TreeRow";
-import { getChildren, getItemKey, insertableTypesAt, type TreeNode } from "./utils";
+import { getItemKey, insertableTypesAt, type TreeNode } from "./utils";
 import { parseSimpleCondition, type TopLevelItem, type UnitLoopItem } from "@annotinder/contracts";
 import { describeCondition, itemTitle } from "../../../codebook/conditions";
 import type { TreePosition } from "../../../design/itemEdit";
 import { VARIABLE_TYPE_LABELS } from "../../../design/answerTypes";
-import { findItem, findParent, isElse, loopUnitsSummary } from "../../../codebook/tree";
+import { childrenOf, findItem, findParent, isElse, loopUnitsSummary } from "../../../codebook/tree";
 
 /** How an item is called in menus: its title, a condition by its condition, a loop by its position. */
 function rowTitle(item: TreeNode): string {
@@ -94,7 +94,7 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
     !tree.moving &&
     item.type === "block" &&
     item.condition !== undefined &&
-    !(getChildren(item) ?? []).some((c) => isElse(c) && (getChildren(c) ?? []).length > 0);
+    !(childrenOf(item) ?? []).some((c) => isElse(c) && (childrenOf(c) ?? []).length > 0);
 
   return (
     <TreeRow

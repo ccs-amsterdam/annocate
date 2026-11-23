@@ -1,5 +1,6 @@
 import {
   buildScope,
+  itemLists,
   itemName,
   type AnyVariableType,
   type DesignItem,
@@ -26,20 +27,16 @@ export const ELSE = "else";
 /** Whether an item is the editor's stand-in for a block's else items. */
 export const isElse = (item: unknown): boolean => (item as { type?: unknown } | null)?.type === ELSE;
 
-/** The lists an item holds: `children`, and a block's `elseChildren` (as saved). */
-function listsOf(item: unknown): { key: "children" | "elseChildren"; list: (TopLevelItem | InLoopItem)[] }[] {
-  const it = item as { children?: unknown; elseChildren?: unknown };
-  const out: { key: "children" | "elseChildren"; list: (TopLevelItem | InLoopItem)[] }[] = [];
-  if (Array.isArray(it.children)) out.push({ key: "children", list: it.children as (TopLevelItem | InLoopItem)[] });
-  if (Array.isArray(it.elseChildren))
-    out.push({ key: "elseChildren", list: it.elseChildren as (TopLevelItem | InLoopItem)[] });
-  return out;
+/** An item's own list (loops, blocks, the else stand-in; in the editor with the stand-in last), else null. */
+export function childrenOf(item: unknown): (TopLevelItem | InLoopItem)[] | null {
+  const children = (item as { children?: unknown } | null)?.children;
+  return Array.isArray(children) ? (children as (TopLevelItem | InLoopItem)[]) : null;
 }
 
 /** The items inside a block (its items and else items) or the editor's else stand-in; null for other items. */
 export function blockInner(item: DesignItem): DesignItem[] | null {
   if (item.type !== "block" && !isElse(item)) return null;
-  return listsOf(item).flatMap((l) => l.list) as DesignItem[];
+  return itemLists(item).flatMap((l) => l.list);
 }
 
 /** Flattens all items in the tree into a single array in document order. */
@@ -47,7 +44,7 @@ export function flattenTree(items: (TopLevelItem | InLoopItem)[]): DesignItem[] 
   const result: DesignItem[] = [];
   for (const item of items) {
     result.push(item);
-    for (const { list } of listsOf(item)) result.push(...flattenTree(list));
+    for (const { list } of itemLists(item)) result.push(...flattenTree(list));
   }
   return result;
 }
@@ -61,7 +58,7 @@ export function keyOf(item: DesignItem | TopLevelItem | InLoopItem): string | un
 export function findItem(items: (TopLevelItem | InLoopItem)[], identifier: string): DesignItem | null {
   for (const item of items) {
     if (keyOf(item) === identifier || itemName(item) === identifier) return item;
-    for (const { list } of listsOf(item)) {
+    for (const { list } of itemLists(item)) {
       const found = findItem(list, identifier);
       if (found) return found;
     }
@@ -75,7 +72,7 @@ export function findParent(
   identifier: string,
 ): (UnitLoopItem | BlockItem) | null {
   for (const item of items) {
-    for (const { list } of listsOf(item)) {
+    for (const { list } of itemLists(item)) {
       if (list.some((child) => keyOf(child) === identifier || itemName(child) === identifier)) {
         return item as UnitLoopItem | BlockItem;
       }
@@ -94,7 +91,7 @@ export function itemPath(items: (TopLevelItem | InLoopItem)[], identifier: strin
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     if (keyOf(item) === identifier || itemName(item) === identifier) return [i];
-    for (const { key, list } of listsOf(item)) {
+    for (const { key, list } of itemLists(item)) {
       // The editor's else stand-in: its items are the block's elseChildren
       const stand = list.find(isElse) as { children: (TopLevelItem | InLoopItem)[] } | undefined;
       const inner = itemPath(

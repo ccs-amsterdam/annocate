@@ -6,7 +6,7 @@ import {
   type UnitLoopItem,
   type BlockItem,
 } from "@annotinder/contracts";
-import { ELSE, findItem, findParent, flattenTree, isInsideUnitLoop, keyOf } from "../codebook/tree";
+import { ELSE, childrenOf, findItem, findParent, flattenTree, isInsideUnitLoop, keyOf } from "../codebook/tree";
 
 // Pure edits of the design tree for the editor: keys, inserting, moving and
 // deleting items. Items are found by their editor `_key`, or by name.
@@ -30,11 +30,6 @@ const asNodes = (items: (TopLevelItem | InLoopItem | DesignItem)[]) => items as 
 const asItems = (nodes: Node[]) => nodes as unknown as TopLevelItem[];
 const hasChildren = (node: Node): node is Node & { children: Node[] } => Array.isArray(node.children);
 
-/** An item's children (loops and conditions), else none. */
-function childrenOf(item: DesignItem | TopLevelItem | InLoopItem): (TopLevelItem | InLoopItem)[] {
-  return "children" in item && Array.isArray(item.children) ? (item.children as (TopLevelItem | InLoopItem)[]) : [];
-}
-
 /** Span and relation questions can only be in a unit loop (they select in the unit). */
 const isLoopOnlyQuestion = (item: DesignItem | TopLevelItem | InLoopItem) =>
   item.type === "question" && (item.variable?.type === "span" || item.variable?.type === "relation");
@@ -42,7 +37,7 @@ const isLoopOnlyQuestion = (item: DesignItem | TopLevelItem | InLoopItem) =>
 /** Whether `target` is inside `source` (an item can't move into itself). */
 function isDescendant(source: DesignItem, target: DesignItem): boolean {
   const targetKey = keyOf(target);
-  return flattenTree(childrenOf(source)).some((d) => d === target || (targetKey && keyOf(d) === targetKey));
+  return flattenTree(childrenOf(source) ?? []).some((d) => d === target || (targetKey && keyOf(d) === targetKey));
 }
 
 let keySeed = 0;
@@ -226,7 +221,7 @@ export function canMoveItemTo(
     if (isTargetInLoop) return false;
     if (position === "inside" && targetItem.type === "unit_loop") return false;
   } else if (sourceItem.type === "block") {
-    const sourceDescendants = flattenTree(childrenOf(sourceItem));
+    const sourceDescendants = flattenTree(childrenOf(sourceItem) ?? []);
     const hasInLoopOnly = sourceDescendants.some(isLoopOnlyQuestion);
     const hasTopOnly = sourceDescendants.some((d) => d.type === "unit_loop" || d.type === "computed");
 
@@ -243,7 +238,7 @@ export function canMoveToRootEnd(items: TopLevelItem[], sourceIdentifier: string
   if (!sourceItem) return false;
   if (items[items.length - 1] === sourceItem) return false;
   if (isLoopOnlyQuestion(sourceItem)) return false;
-  if (sourceItem.type === "block" && flattenTree(childrenOf(sourceItem)).some(isLoopOnlyQuestion)) return false;
+  if (sourceItem.type === "block" && flattenTree(childrenOf(sourceItem) ?? []).some(isLoopOnlyQuestion)) return false;
   return true;
 }
 
@@ -347,7 +342,7 @@ export function updateItem(items: TopLevelItem[], identifier: string, updated: D
   function updateInNodes(nodes: Node[]): Node[] {
     return nodes.map((node) => {
       if (node._key === identifier || node.name === identifier) {
-        const children = "children" in updated ? asNodes(childrenOf(updated)) : node.children;
+        const children = "children" in updated ? asNodes(childrenOf(updated) ?? []) : node.children;
 
         return {
           ...node,
@@ -434,7 +429,7 @@ export function topmostSelected(items: TopLevelItem[], keys: ReadonlySet<string>
   const walk = (nodes: (TopLevelItem | InLoopItem)[]) => {
     for (const node of nodes) {
       if (keys.has(idOf(node))) result.push(idOf(node));
-      else walk(childrenOf(node));
+      else walk(childrenOf(node) ?? []);
     }
   };
   walk(items);
@@ -475,7 +470,7 @@ export function canMoveAllTo(items: TopLevelItem[], sources: string[], position:
 
 /** The order and nesting of the items, by key: what a move changes. */
 function shape(items: (TopLevelItem | InLoopItem)[]): string {
-  return items.map((i) => `${idOf(i)}(${shape(childrenOf(i))})`).join(",");
+  return items.map((i) => `${idOf(i)}(${shape(childrenOf(i) ?? [])})`).join(",");
 }
 
 /** Whether moving items to a position changes anything (right after themselves it does not). */

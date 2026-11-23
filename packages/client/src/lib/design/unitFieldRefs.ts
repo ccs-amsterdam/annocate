@@ -2,6 +2,7 @@ import {
   allTemplateReferences,
   expandSnippets,
   extractReferences,
+  itemLists,
   loopSnippets,
   templateReferences,
   type Condition,
@@ -18,9 +19,8 @@ export function pathOfItem(items: (TopLevelItem | InLoopItem)[], title: string):
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     if (itemTitle(item) === title || ("name" in item && item.name === title)) return [i];
-    for (const key of ["children", "elseChildren"] as const) {
-      const list = (item as { children?: unknown; elseChildren?: unknown })[key];
-      const inner = Array.isArray(list) ? pathOfItem(list as InLoopItem[], title) : null;
+    for (const { key, list } of itemLists(item)) {
+      const inner = pathOfItem(list, title);
       if (inner) return [i, key, ...inner];
     }
   }

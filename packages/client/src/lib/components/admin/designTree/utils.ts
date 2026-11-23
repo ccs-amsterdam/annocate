@@ -10,11 +10,6 @@ export function getItemKey(item: DesignItem): string {
   return (item as { _key?: string })._key || itemName(item) || "";
 }
 
-export function getChildren(item: TreeNode): TreeNode[] | null {
-  if ("children" in item && Array.isArray(item.children)) return item.children as TreeNode[];
-  return null;
-}
-
 /**
  * Where a position is: in a unit loop, in a block (outside loops), or at
  * the top level (where unit loops can go too).
