@@ -22,11 +22,19 @@ import {
 import type { AnyVariableType } from "@annotinder/contracts";
 import type { ItemType, TreeNode } from "./utils";
 
+// How each item type looks in the design tree. To tune the look, change the
+// classes here: `color` is the icon's, `nameClass` the item's name's (font,
+// weight, colour; a selected item is bold on top of it). The loop colour
+// (`text-loop`) is a theme token, `--loop` in index.css (light and dark).
+
 interface ItemTypeInfo {
   label: string;
   description: string;
   icon: LucideIcon;
+  /** The icon's classes (its colour). */
   color: string;
+  /** The name's classes in the tree (font, weight, colour). */
+  nameClass: string;
   /** Extra classes on the card wrapping a container (a loop, a block) and its children. */
   blockClass?: string;
 }
@@ -38,6 +46,7 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
       "Items together, with an optional label (e.g. Demographics); with a condition, only shown if it holds, else its else items",
     icon: ListChecks,
     color: "text-secondary-dark",
+    nameClass: "font-medium",
     blockClass: "",
   },
   question: {
@@ -45,38 +54,45 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     description: "Prompt coder for an answer",
     icon: HelpCircle,
     color: "text-[var(--iconcolor,var(--color-muted-foreground))]",
+    // Questions are named like variables (topic, age): apart from loops, layouts and blocks
+    nameClass: "font-mono text-[13px] font-normal text-foreground/75",
   },
   experiment: {
     label: "Experiment",
     description: "Each coder gets one of its conditions, drawn at random or balanced (never asked)",
     icon: FlaskConical,
     color: "text-[var(--iconcolor,var(--color-muted-foreground))]",
+    nameClass: "font-mono text-[13px] font-normal text-foreground/75",
   },
   unit_loop: {
     label: "Unit loop",
     description: "Loop over units (all, or a set)",
     icon: FileStack,
-    color: "text-primary-dark",
-    blockClass: "[--iconcolor:var(--color-primary-dark)]",
+    color: "text-loop",
+    nameClass: "font-semibold text-loop",
+    blockClass: "[--iconcolor:var(--color-loop)]",
   },
   layout: {
     label: "Layout",
     description: "How the unit is shown to the questions after it",
     icon: LayoutTemplate,
     // The loop's colour: a layout belongs to its loop
-    color: "text-primary-dark",
+    color: "text-loop",
+    nameClass: "italic text-loop",
   },
   session: {
     label: "Session",
     description: "Coder unit assignments and URL parameters",
     icon: Link2,
     color: "text-muted-foreground",
+    nameClass: "font-medium",
   },
   end: {
     label: "End",
     description: "End the session (screen out or complete)",
     icon: LogOut,
     color: "text-destructive",
+    nameClass: "font-mono text-[13px] font-normal text-foreground/75",
   },
 };
 

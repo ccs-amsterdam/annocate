@@ -182,12 +182,12 @@ function ItemLabel({
       {item.type === "block" ? (
         // Blocks have no name: their label, else "Block" when there's no condition either
         (item.label?.trim() || !condition) && (
-          <span className={cn("truncate px-1.5 py-0.5", selected ? "font-semibold" : "font-medium")}>
+          <span className={cn("truncate px-1.5 py-0.5", ITEM_TYPES.block.nameClass, selected && "font-semibold")}>
             {item.label?.trim() || "Block"}
           </span>
         )
       ) : (
-        <span className={cn("truncate px-1.5 py-0.5", selected ? "font-semibold" : "font-medium")}>
+        <span className={cn("truncate px-1.5 py-0.5", ITEM_TYPES[item.type].nameClass, selected && "font-semibold")}>
           {item.type === "unit_loop"
             ? treeLoopTitle(item)
             : itemTitle(item) || <em className="font-normal text-muted-foreground">(unnamed)</em>}
