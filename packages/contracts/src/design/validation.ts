@@ -606,6 +606,8 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       if (p?.default !== undefined && p.values && !p.values.some((v) => v.value === p.default))
         issue([...itemPath, "urlParams", i, "default"], `The default '${p.default}' is not one of the values`);
     });
+    if (invite?.mode === "coders" && !invite.column)
+      issue([...itemPath, "invite", "column"], "Choose the column with the coders (or make one)");
     // Unit settings without a unit loop: kept, but not used (yet)
     const hasLoop = items.some((i) => (i as { type?: unknown } | null)?.type === "unit_loop");
     if (!hasLoop && invite?.mode === "coders")

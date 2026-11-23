@@ -45,7 +45,7 @@ export function shareSources(
   randomConditions: readonly { name: string; units?: string }[] = [],
 ): ShareSource[] {
   const out: ShareSource[] = [];
-  if (invite?.mode === "coders") out.push({ label: "coder", column: invite.column });
+  if (invite?.mode === "coders" && invite.column) out.push({ label: "coder", column: invite.column });
   if (invite?.mode === "crowd" && invite.column) out.push({ label: "link's set", column: invite.column });
   for (const c of randomConditions) if (c.units) out.push({ label: c.name, column: c.units, inFlow: true });
   return out;

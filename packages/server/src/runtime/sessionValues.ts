@@ -68,7 +68,7 @@ export function sessionValues(
   const invite = inviteOf(rules.item);
   if (invite.mode === "coders") {
     // The coder: the login's email, or the link's
-    const values = rules.setsOf(invite.column);
+    const values = invite.column ? rules.setsOf(invite.column) : [];
     let coder: string | undefined;
     if (invite.link === "login") {
       const lower = email!.toLowerCase();
@@ -115,7 +115,7 @@ export function previewSessionValues(rules: SessionRules, urlParams: Record<stri
   }
   const invite = inviteOf(rules.item);
   if (invite.mode === "coders") {
-    const coder = given("coder") ?? rules.setsOf(invite.column)[0];
+    const coder = given("coder") ?? (invite.column ? rules.setsOf(invite.column)[0] : undefined);
     if (coder !== undefined) session.coder = coder;
   } else {
     const coder = invite.coderParam ? given(invite.coderParam.param) : undefined;

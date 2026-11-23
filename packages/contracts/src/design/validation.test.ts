@@ -7,7 +7,7 @@ import {
   type InLoopQuestionItem,
 } from "./item.js";
 import { availableQuestions, validateDesignItems } from "./validation.js";
-import { DesignItemsSchema } from "./designVersion.js";
+import { DesignItemsSchema, DesignWriteSchema } from "./designVersion.js";
 import type { Condition } from "./condition.js";
 
 const confirmVariable = { type: "confirm" as const, question: "Confirm?" };
@@ -130,6 +130,14 @@ describe("the Session item", () => {
   const session = (extra: object) => ({ type: "session", ...extra });
   const q = questionVar("q1");
 
+  it("specific coders without a column: a draft can be saved, deploying asks for the column", () => {
+    const invite = { mode: "coders", link: "per_coder" };
+    expect(DesignWriteSchema.safeParse({ items: [], session: { invite } }).success).toBe(true);
+    expect(messages([session({ invite }), unitLoop("loop", [q], "$unit.text")])).toEqual([
+      "Choose the column with the coders (or make one)",
+    ]);
+  });
+
   it("declares $session names (its URL parameters and the built-in ones); others are refused", () => {
     const text = {
       type: "question",
@@ -173,8 +181,8 @@ describe("the Session item", () => {
   it("checks the invitation: specific coders by a set column, or a crowd", () => {
     const loop = unitLoop("loop", [questionVar("q1", select(["a", "b"])), questionVar("c1")]);
     expect(messages([session({ invite: { mode: "coders", column: "coders", link: "per_coder" } }), loop])).toEqual([]);
-    expect(messages([session({ invite: { mode: "coders", link: "per_coder" } })])).toContainEqual(
-      expect.stringContaining("Invalid input"),
+    expect(messages([session({ invite: { mode: "coders", link: "per_coder" } })])).toContain(
+      "Choose the column with the coders (or make one)",
     );
     expect(
       messages([session({ invite: { mode: "crowd", column: "batch", maxCoders: 10, groupMaxCoders: { a: 5 } } })]),

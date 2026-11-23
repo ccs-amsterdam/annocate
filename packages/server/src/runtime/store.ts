@@ -741,7 +741,7 @@ async function pickName(
   invite: CodersInvite,
 ): Promise<{ name: string } | { taken: CoderRow }> {
   const name = request.pickedName;
-  if (!name || !request.sessionRules!.setsOf(invite.column).includes(name))
+  if (!name || !invite.column || !request.sessionRules!.setsOf(invite.column).includes(name))
     throw new HttpError(409, "Pick your name to start", "name_required");
   await advisoryLock(db, `pick_name:${studyId}:${name}`);
   const [taken] = await db

@@ -77,8 +77,8 @@ test("the coder unit assignments show the coders; a dialog makes or updates the 
   await expect(page.getByText("3 coders.", { exact: true })).toBeVisible();
 
   // Deployed: a link per coder on the Links page
-  // Saved in the editor, deployed on the Deploy page
-  await page.getByRole("button", { name: /^Save/ }).click();
+  // (The design itself is as saved, the same column and link: nothing to save; the units changed)
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
   await expect(page.getByText(/not deployed/)).toBeVisible();
   await page.getByRole("navigation", { name: "Study" }).getByRole("button", { name: "Deploy", exact: true }).click();
   await page.getByRole("main").getByRole("button", { name: "Deploy", exact: true }).click();
@@ -262,4 +262,27 @@ test("dividing units again keeps the units coders already saw", async ({ page, r
   const annaUnit = units.find((u) => u.externalId === "u1")!.id;
   const column = groups.find((g) => g.name === "coder")!;
   expect(column.sets.find((s) => s.name === "anna")!.unitIds).toContain(annaUnit);
+});
+
+test("specific coders: the column can be unselected; the links wait for one, and the draft still saves", async ({
+  page,
+  request,
+}) => {
+  const study = await studyWithColumn(request, "No column yet", "coder", { "Anna's text": "anna" });
+  await api(request, "POST", `/study/${study.id}/design`, {
+    session: { invite: { mode: "coders", column: "coder", link: "per_coder" } },
+    items: [loop()],
+  });
+  await page.goto(`/research/studies/${study.id}/design`);
+  await page.getByRole("button", { name: /^Coder unit assignments/ }).click();
+  // The only column, unselected
+  await page.locator("select").filter({ hasText: "-- none --" }).selectOption("");
+  await expect(page.getByText(/A coder distribution column is required/)).toBeVisible();
+  await expect(page.getByLabel(/A link per coder/)).toBeDisabled();
+  // Saved as a draft without the column: after a reload, still without one
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  await page.reload();
+  await page.getByRole("button", { name: /^Coder unit assignments/ }).click();
+  await expect(page.getByText(/A coder distribution column is required/)).toBeVisible();
 });

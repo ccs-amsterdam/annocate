@@ -140,7 +140,8 @@ export type CoderParam = z.infer<typeof CoderParamSchema>;
  */
 export const CodersInviteSchema = z.object({
   mode: z.literal("coders"),
-  column: z.string().min(1, "Choose the column with the coders (or make one)").pipe(SetGroupNameSchema),
+  /** The set column saying who codes which units; absent while not chosen (a draft can be saved; deploying can't). */
+  column: SetGroupNameSchema.optional(),
   link: z.enum(["per_coder", "login", "pick_name"]),
   nameDevices: z.enum(["first", "any"]).optional(),
 });
@@ -326,7 +327,7 @@ export function coderAccess(values: readonly string[]): "email" | "link" | "mixe
  */
 export function sessionColumns(item: SessionItem | null): { name: string; column: string; optional?: boolean }[] {
   const invite = inviteOf(item);
-  if (invite.mode === "coders") return [{ name: "coder", column: invite.column }];
+  if (invite.mode === "coders") return invite.column ? [{ name: "coder", column: invite.column }] : [];
   return invite.column ? [{ name: "group", column: invite.column, optional: true }] : [];
 }
 
@@ -353,7 +354,8 @@ export function linkCombinations(
   setsOf: (group: string) => string[],
 ): Record<string, string>[] {
   const invite = inviteOf(item);
-  if (invite.mode === "coders" && invite.link === "per_coder") return setsOf(invite.column).map((coder) => ({ coder }));
+  if (invite.mode === "coders" && invite.link === "per_coder")
+    return invite.column ? setsOf(invite.column).map((coder) => ({ coder })) : [];
   if (invite.mode === "crowd" && invite.column) {
     const groups = setsOf(invite.column);
     if (groups.length > 0) return groups.map((group) => ({ group }));

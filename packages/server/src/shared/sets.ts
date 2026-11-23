@@ -210,7 +210,7 @@ export async function assignmentChecks(
 
   const session = sessionItem(items);
   const invite = inviteOf(session);
-  if (invite.mode === "coders" && invite.link === "login") {
+  if (invite.mode === "coders" && invite.link === "login" && invite.column) {
     const access = coderAccess(valuesOf(invite.column));
     if (access === "mixed" || access === "link")
       errors.push(

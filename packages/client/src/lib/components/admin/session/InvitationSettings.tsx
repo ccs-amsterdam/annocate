@@ -53,7 +53,7 @@ export function InvitationSettings({
     if (back) onChange(back);
     else if (mode === "crowd") onChange({ mode: "crowd" });
     // No column chosen yet: the researcher picks one, or makes one
-    else onChange({ mode: "coders", column: "", link: "per_coder" });
+    else onChange({ mode: "coders", link: "per_coder" });
   };
 
   return (
@@ -130,8 +130,15 @@ function CodersForm({
 }) {
   const [making, setMaking] = useState(false);
   const columns = groups.map((g) => g.name);
-  const known = columns.includes(invite.column);
-  const coders = coderSummary(columnValues(groups, invite.column));
+  const known = invite.column !== undefined && columns.includes(invite.column);
+  const coders = coderSummary(invite.column ? columnValues(groups, invite.column) : []);
+  // Without a column (none chosen, or unselected) the rest waits for one
+  const setColumn = (column: string) => {
+    const next = { ...invite };
+    if (column) next.column = column;
+    else delete next.column;
+    onChange(next);
+  };
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end gap-2">
@@ -146,10 +153,10 @@ function CodersForm({
           </span>
           <select
             className={cn(selectClass, "font-mono")}
-            value={invite.column}
-            onChange={(e) => onChange({ ...invite, column: e.target.value })}
+            value={invite.column ?? ""}
+            onChange={(e) => setColumn(e.target.value)}
           >
-            {!invite.column && <option value="">-- select --</option>}
+            <option value="">-- none --</option>
             {invite.column && !known && <option value={invite.column}>{invite.column} (no such column)</option>}
             {columns.map((c) => (
               <option key={c} value={c}>
@@ -168,7 +175,11 @@ function CodersForm({
       {!known ? (
         invite.column ? (
           <p className="text-[11px] text-destructive">The units have no column &quot;{invite.column}&quot;.</p>
-        ) : null
+        ) : (
+          <p className="text-[11px] text-amber-700 dark:text-amber-400">
+            A coder distribution column is required: it says who codes which units. Select one, or create one.
+          </p>
+        )
       ) : coders.kind === "none" ? (
         <p className="text-[11px] text-amber-700 dark:text-amber-400">
           Column &quot;{invite.column}&quot; has no coders yet.
@@ -179,13 +190,14 @@ function CodersForm({
           {coders.kind === "emails" ? " (email addresses)" : coders.kind === "mixed" ? " (names and emails)" : ""}.
         </p>
       )}
-      <fieldset className="flex flex-col gap-1">
+      {/* Disabled until there is a column: the links and names come from it */}
+      <fieldset className="flex flex-col gap-1 disabled:opacity-50" disabled={!invite.column}>
         <legend className="mb-1 text-xs font-semibold">How coders get in</legend>
         <label className="flex items-center gap-2 text-xs">
           <input
             type="radio"
             checked={invite.link === "per_coder"}
-            onChange={() => onChange({ mode: "coders", column: invite.column, link: "per_coder" })}
+            onChange={() => onChange({ ...invite, link: "per_coder", nameDevices: undefined })}
           />
           A link per coder (deploying makes them; send each coder theirs)
         </label>
@@ -193,7 +205,7 @@ function CodersForm({
           <input
             type="radio"
             checked={invite.link === "pick_name"}
-            onChange={() => onChange({ mode: "coders", column: invite.column, link: "pick_name" })}
+            onChange={() => onChange({ ...invite, link: "pick_name" })}
           />
           One link: coders pick their name from the column
         </label>
@@ -219,7 +231,7 @@ function CodersForm({
           <input
             type="radio"
             checked={invite.link === "login"}
-            onChange={() => onChange({ mode: "coders", column: invite.column, link: "login" })}
+            onChange={() => onChange({ ...invite, link: "login", nameDevices: undefined })}
           />
           One link: coders sign in with the email address in the column
         </label>
@@ -238,7 +250,7 @@ function CodersForm({
       {making && client && (
         <CoderSetDialog
           client={client}
-          column={known ? invite.column : newColumnName(columns)}
+          column={known && invite.column ? invite.column : newColumnName(columns)}
           groups={groups}
           onDone={(result) => {
             setMaking(false);

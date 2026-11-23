@@ -335,7 +335,8 @@ export class DeploymentRuntime {
     const taken = new Set<string>();
     if ((invite.nameDevices ?? "first") === "first")
       for (const coder of await this.store.listCoders()) if (coder.session.coder) taken.add(coder.session.coder);
-    return { names: (this.groups.get(invite.column) ?? []).map((name) => ({ name, taken: taken.has(name) })) };
+    const names = invite.column ? (this.groups.get(invite.column) ?? []) : [];
+    return { names: names.map((name) => ({ name, taken: taken.has(name) })) };
   }
 
   /** The URL parameter with a crowd's coder id, if any: part of a device's session key. */
