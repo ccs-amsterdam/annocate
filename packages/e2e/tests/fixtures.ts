@@ -20,7 +20,7 @@ export const test = base.extend<{ cspViolations: string[] }>({
       browser.newContext = async (...args) => {
         const context = await newContext(...args);
         watch(context, violations);
-        await context.addInitScript(() => localStorage.setItem("annotinder_answer_keys", "true"));
+        await context.addInitScript(() => localStorage.setItem("annotinder:answer-keys", "true"));
         return context;
       };
       await use(violations);
@@ -32,7 +32,7 @@ export const test = base.extend<{ cspViolations: string[] }>({
   context: async ({ context, cspViolations }, use) => {
     watch(context, cspViolations);
     // The tests answer with keys: turned on, as a coder would (off by default)
-    await context.addInitScript(() => localStorage.setItem("annotinder_answer_keys", "true"));
+    await context.addInitScript(() => localStorage.setItem("annotinder:answer-keys", "true"));
     await use(context);
   },
 });

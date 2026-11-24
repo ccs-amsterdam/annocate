@@ -230,7 +230,7 @@ test("answer keys are off until the coder turns them on; a study can turn them o
   page,
   request,
 }) => {
-  await page.addInitScript(() => localStorage.setItem("annotinder_answer_keys", "false"));
+  await page.addInitScript(() => localStorage.setItem("annotinder:answer-keys", "false"));
   const { id, link } = await study(request);
   await page.goto(link);
   await page.getByRole("button", { name: "I confirm", exact: true }).click();
