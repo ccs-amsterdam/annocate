@@ -60,13 +60,13 @@ layout before it is an error.
 
 ## Values
 
-| Write              | Filled in                                                       |
-| ------------------ | --------------------------------------------------------------- |
-| `$unit.headline`   | the unit's field `headline`                                     |
-| `$unit.id`         | the unit's id                                                   |
+| Write              | Filled in                                                                                |
+| ------------------ | ---------------------------------------------------------------------------------------- |
+| `$unit.headline`   | the unit's field `headline`                                                              |
+| `$unit.id`         | the unit's id                                                                            |
 | `$unit.test_set`   | `practice`, `overlap` or `gold` on [test units](special-units.md); empty on coding units |
-| `$var.topic.label` | an earlier answer (see [Referring to answers and unit data](references.md)) |
-| `{{ ... }}`        | a small script (see [Scripts](scripts.md))                      |
+| `$var.topic.label` | an earlier answer (see [Referring to answers and unit data](references.md))              |
+| `{{ ... }}`        | a small script (see [Scripts](scripts.md))                                               |
 
 Type `$` for a list of what you can use. Unknown fields get a warning.
 Empty values show nothing; `\$unit.headline` shows the text itself.
@@ -98,11 +98,11 @@ $unit.text
 
 ## Suffixes: showing a value as something else
 
-| Suffix       | Shows the value as                                     |
-| ------------ | ------------------------------------------------------ |
-| `::text`     | plain text (the default)                               |
-| `::markdown` | markdown                                               |
-| `::image`    | an image from the URL in the value                     |
+| Suffix       | Shows the value as                                      |
+| ------------ | ------------------------------------------------------- |
+| `::text`     | plain text (the default)                                |
+| `::markdown` | markdown                                                |
+| `::image`    | an image from the URL in the value                      |
 | `::html`     | HTML, in a safe frame (see [HTML in a layout](html.md)) |
 
 ```example

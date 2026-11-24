@@ -17,11 +17,11 @@ Relations have a direction: name them to read _from … to_.
 
 **Rules** say which relations coders can make. A rule has:
 
-| Part      | Says                                                                 |
-| --------- | -------------------------------------------------------------------- |
+| Part      | Says                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------ |
 | **From**  | a [span question](span.md) earlier in the loop, and which of its labels (none chosen: any) |
-| **To**    | the same or another span question, and which labels                   |
-| **Types** | which kinds of relation this rule allows (none chosen: all)           |
+| **To**    | the same or another span question, and which labels                                        |
+| **Types** | which kinds of relation this rule allows (none chosen: all)                                |
 
 For example, _persons and organisations criticize each other_ is one rule
 (actors → actors, type _criticizes_); _organisations employ persons_ is

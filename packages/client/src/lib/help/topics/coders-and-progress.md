@@ -13,24 +13,24 @@ coder. Both refresh while open. For full data, download the
 
 ### Status
 
-| Shows            | Meaning                                                                            |
-| ---------------- | ---------------------------------------------------------------------------------- |
-| **Not deployed** | coders can't start yet                                                             |
-| **Live**         | coders can work                                                                    |
-| **Paused**       | nothing new starts; coders save what is open and continue after **Resume**         |
-| **Live version** | the version coders get; click to open it                                           |
-| **Draft**        | changes not deployed yet                                                           |
+| Shows            | Meaning                                                                    |
+| ---------------- | -------------------------------------------------------------------------- |
+| **Not deployed** | coders can't start yet                                                     |
+| **Live**         | coders can work                                                            |
+| **Paused**       | nothing new starts; coders save what is open and continue after **Resume** |
+| **Live version** | the version coders get; click to open it                                   |
+| **Draft**        | changes not deployed yet                                                   |
 
 **Pause** and **Resume** are on the **Deploy** page, with deploying.
 
 ### Numbers
 
-| Tile                 | Number                                     | Below it                                  |
-| -------------------- | ------------------------------------------ | ----------------------------------------- |
-| **Units**            | units in the study                         | coder, condition and part sets            |
-| **Coders started**   | coders who answered a question             | all who opened a link; active in 24 hours |
-| **Finished codings** | units finished, per coder                  | all answers, and the last one             |
-| **Active links**     | links not revoked, retired or used up      | all links                                 |
+| Tile                 | Number                                | Below it                                  |
+| -------------------- | ------------------------------------- | ----------------------------------------- |
+| **Units**            | units in the study                    | coder, condition and part sets            |
+| **Coders started**   | coders who answered a question        | all who opened a link; active in 24 hours |
+| **Finished codings** | units finished, per coder             | all answers, and the last one             |
+| **Active links**     | links not revoked, retired or used up | all links                                 |
 
 ### Answers per day
 
@@ -49,14 +49,14 @@ units out of all, and coders given units.
 
 ## The Coders view
 
-| Column              | Shows                                                          |
-| ------------------- | -------------------------------------------------------------- |
-| **Coder**           | the coder id, or a number                                      |
-| **Link**            | the link's label                                               |
-| **Started**         | first opened the link                                          |
-| **Last active**     | last answer                                                    |
-| **Answers**         | all answers, skipped ones included                             |
-| **Finished in …**   | per loop, units with every question answered                   |
+| Column            | Shows                                        |
+| ----------------- | -------------------------------------------- |
+| **Coder**         | the coder id, or a number                    |
+| **Link**          | the link's label                             |
+| **Started**       | first opened the link                        |
+| **Last active**   | last answer                                  |
+| **Answers**       | all answers, skipped ones included           |
+| **Finished in …** | per loop, units with every question answered |
 
 Give loops a label to make this readable. **Ended**: _Complete_ or
 _Screened out_ at an [end item](end-items.md), or _Quit_.

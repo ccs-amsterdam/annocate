@@ -23,10 +23,10 @@ background questions to assign later.
 
 ## Assigned
 
-| Assigned                                    | The coder gets                                                              |
-| ------------------------------------------- | --------------------------------------------------------------------------- |
-| **At random**                               | a condition at random; **weights** 2 and 1 give about two thirds and one third |
-| **Balanced (the value fewest coders have)** | the condition fewest coders have so far; ties at random |
+| Assigned                                    | The coder gets                                                                                                   |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **At random**                               | a condition at random; **weights** 2 and 1 give about two thirds and one third                                   |
+| **Balanced (the value fewest coders have)** | the condition fewest coders have so far; ties at random                                                          |
 | **From a URL parameter**                    | their link's value of a [URL parameter](session-parameters.md) whose values are the conditions; nothing is drawn |
 
 **At random** is what most experiments assume, but group sizes vary (with 40

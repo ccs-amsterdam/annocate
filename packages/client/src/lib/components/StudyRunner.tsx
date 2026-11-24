@@ -12,6 +12,8 @@ import { CoderSettingsProvider } from "../context/CoderSettingsContext";
 import { KeyboardProvider } from "../keyboard/KeyboardProvider";
 import { useBaseKeys } from "../keyboard/hooks";
 import { DisplayContext } from "../display/context";
+import { AnswerKeysContext } from "../keyboard/context";
+import { useCoderSettings } from "../context/coderSettings";
 import { Question } from "./Question";
 import { UnitFields } from "./UnitFields";
 import { DockedAnswerPane } from "./DockedAnswerPane";
@@ -164,6 +166,7 @@ function CodingScreen({
   const { manager, snapshot } = useStudyManager(coderApi);
   const [navDirection, setNavDirection] = useNavDirection(snapshot.navigation);
   const [display, screen] = useCodingDisplay(snapshot, coderApi);
+  const { answerKeys: coderAnswerKeys } = useCoderSettings();
 
   const goBack = () => {
     setNavDirection("previous");
@@ -173,7 +176,7 @@ function CodingScreen({
     setNavDirection("next");
     void manager.goForward();
   };
-  // The keys that work whatever the mapping: arrows, Shift + arrows, Shift + Enter
+  // The keys that work whatever the mapping: arrows, Ctrl + arrows, Ctrl + Enter
   useBaseKeys({
     canGoBack: snapshot.navigation.canGoBack,
     canGoForward: snapshot.navigation.canGoForward,
@@ -243,6 +246,9 @@ function CodingScreen({
 
   const item = snapshot.currentItem;
   const inUnit = snapshot.phase === "unit_variable";
+  // Answer shortcuts: the coder's choice, where the study allows them (its display setting)
+  const allowed = snapshot.display.answerKeys?.[inUnit ? "unitQuestions" : "coderQuestions"] !== false;
+  const answerKeys = coderAnswerKeys && allowed;
   const hasUnitLayout = Boolean(
     inUnit && snapshot.currentUnit && snapshot.currentUnitLayout && snapshot.currentUnitTemplate,
   );
@@ -300,125 +306,127 @@ function CodingScreen({
 
   return (
     <DisplayContext.Provider value={display}>
-      {/* A container: the layout follows the coding area's width, not the window's (a phone-sized preview on a desktop) */}
-      <div ref={screen} className="@container flex h-full w-full flex-col overflow-hidden bg-background">
-        {correctFlash && (
-          <div role="status" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
-            <div className="flex animate-in items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-lg font-semibold text-white shadow-lg zoom-in-90 fade-in">
-              <CircleCheck className="h-6 w-6" /> Correct
+      <AnswerKeysContext.Provider value={answerKeys}>
+        {/* A container: the layout follows the coding area's width, not the window's (a phone-sized preview on a desktop) */}
+        <div ref={screen} className="@container flex h-full w-full flex-col overflow-hidden bg-background">
+          {correctFlash && (
+            <div role="status" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
+              <div className="flex animate-in items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-lg font-semibold text-white shadow-lg zoom-in-90 fade-in">
+                <CircleCheck className="h-6 w-6" /> Correct
+              </div>
             </div>
-          </div>
-        )}
-        <KeyChoiceFlash />
-        <CodingTopBar
-          snapshot={snapshot}
-          manager={manager}
-          coderApi={coderApi}
-          transferUrl={transferUrl ?? defaultTransferUrl}
-          preview={preview}
-          onBack={goBack}
-          onForward={goForward}
-        />
-        {snapshot.newUnits && (
-          <div
-            role="status"
-            className="flex items-center justify-center gap-2 border-b border-border bg-primary/10 px-4 py-1.5 text-sm text-foreground"
-          >
-            <Sparkles className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-            <span>{snapshot.newUnits}</span>
-            <button
-              type="button"
-              aria-label="Dismiss"
-              onClick={() => manager.dismissNewUnits()}
-              className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+          <KeyChoiceFlash />
+          <CodingTopBar
+            snapshot={snapshot}
+            manager={manager}
+            coderApi={coderApi}
+            transferUrl={transferUrl ?? defaultTransferUrl}
+            preview={preview}
+            onBack={goBack}
+            onForward={goForward}
+          />
+          {snapshot.newUnits && (
+            <div
+              role="status"
+              className="flex items-center justify-center gap-2 border-b border-border bg-primary/10 px-4 py-1.5 text-sm text-foreground"
             >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
+              <Sparkles className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+              <span>{snapshot.newUnits}</span>
+              <button
+                type="button"
+                aria-label="Dismiss"
+                onClick={() => manager.dismissNewUnits()}
+                className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
 
-        {hasUnitLayout ? (
-          <SpanAnnotationProvider
-            key={`unit-${snapshot.currentUnit!.id}`}
-            fields={spanVariable?.fields ?? []}
-            options={spanVariable?.options ?? []}
-            defaultSelectionMode={spanVariable?.selectionMode ?? "word"}
-            allowGaps={spanVariable?.gaps ?? false}
-            initialSpans={spanVariable ? snapshot.currentUnitVariables?.[item.name]?.spans : undefined}
-            variableName={item.name}
-          >
-            <MaybeRelations
-              key={`relations-${snapshot.currentUnit!.id}-${item.name}`}
-              variable={relationVariable}
-              loopVariables={snapshot.currentLoopVariables}
-              unitVariables={snapshot.currentUnitVariables ?? undefined}
-              initialRelations={relationVariable ? snapshot.currentUnitVariables?.[item.name]?.relations : undefined}
+          {hasUnitLayout ? (
+            <SpanAnnotationProvider
+              key={`unit-${snapshot.currentUnit!.id}`}
+              fields={spanVariable?.fields ?? []}
+              options={spanVariable?.options ?? []}
+              defaultSelectionMode={spanVariable?.selectionMode ?? "word"}
+              allowGaps={spanVariable?.gaps ?? false}
+              initialSpans={spanVariable ? snapshot.currentUnitVariables?.[item.name]?.spans : undefined}
+              variableName={item.name}
             >
-              {/* A size container: the answer pane's max height is a share of this area (cqh). On a tall
+              <MaybeRelations
+                key={`relations-${snapshot.currentUnit!.id}-${item.name}`}
+                variable={relationVariable}
+                loopVariables={snapshot.currentLoopVariables}
+                unitVariables={snapshot.currentUnitVariables ?? undefined}
+                initialRelations={relationVariable ? snapshot.currentUnitVariables?.[item.name]?.relations : undefined}
+              >
+                {/* A size container: the answer pane's max height is a share of this area (cqh). On a tall
               desktop screen it has a max height and is centred, so the answers stay near the unit. */}
-              {withSwipe(
-                <div className="flex min-h-0 flex-1 flex-col @5xl:p-6">
-                  <SwipeSurface className="[container-type:size] relative flex w-full flex-1 flex-col overflow-hidden @5xl:mx-auto @5xl:my-auto @5xl:max-h-[56rem] @5xl:max-w-3xl @5xl:rounded-2xl @5xl:border @5xl:border-border @5xl:bg-card @5xl:shadow-sm">
-                    {/* The unit, scrolling. Stable gutter: a scrollbar appearing doesn't move the text. */}
-                    <div className="min-h-[100px] flex-1 subtle-scrollbar [scrollbar-gutter:stable] overflow-x-hidden overflow-y-auto p-3 sm:p-5">
-                      <div
-                        key={unitAnimationKey}
-                        ref={unitContentRef}
-                        className={`relative mx-auto max-w-2xl ${relationVariable ? "pt-12" : ""} ${unitSlideClass}`}
-                        onAnimationEnd={() => setUnitSlideClass("")}
-                      >
-                        {relationVariable && <RelationArrows containerRef={unitContentRef} />}
-                        {swipeVariable ? (
-                          // The unit moves when swiped; on a card only if the question asks for one (no layout jump otherwise)
-                          <SwipeCard
-                            key={questionKey}
-                            className={
-                              swipeVariable.card
-                                ? "rounded-2xl border border-border bg-card p-4 shadow-md sm:p-5"
-                                : "rounded-2xl bg-background"
-                            }
-                          >
+                {withSwipe(
+                  <div className="flex min-h-0 flex-1 flex-col @5xl:p-6">
+                    <SwipeSurface className="[container-type:size] relative flex w-full flex-1 flex-col overflow-hidden @5xl:mx-auto @5xl:my-auto @5xl:max-h-[56rem] @5xl:max-w-3xl @5xl:rounded-2xl @5xl:border @5xl:border-border @5xl:bg-card @5xl:shadow-sm">
+                      {/* The unit, scrolling. Stable gutter: a scrollbar appearing doesn't move the text. */}
+                      <div className="min-h-[100px] flex-1 subtle-scrollbar [scrollbar-gutter:stable] overflow-x-hidden overflow-y-auto p-3 sm:p-5">
+                        <div
+                          key={unitAnimationKey}
+                          ref={unitContentRef}
+                          className={`relative mx-auto max-w-2xl ${relationVariable ? "pt-12" : ""} ${unitSlideClass}`}
+                          onAnimationEnd={() => setUnitSlideClass("")}
+                        >
+                          {relationVariable && <RelationArrows containerRef={unitContentRef} />}
+                          {swipeVariable ? (
+                            // The unit moves when swiped; on a card only if the question asks for one (no layout jump otherwise)
+                            <SwipeCard
+                              key={questionKey}
+                              className={
+                                swipeVariable.card
+                                  ? "rounded-2xl border border-border bg-card p-4 shadow-md sm:p-5"
+                                  : "rounded-2xl bg-background"
+                              }
+                            >
+                              <UnitFields
+                                layout={snapshot.currentUnitLayout!}
+                                rendered={snapshot.currentUnitTemplate!}
+                                focus={focus}
+                                focusDim={focusDim}
+                              />
+                            </SwipeCard>
+                          ) : (
                             <UnitFields
                               layout={snapshot.currentUnitLayout!}
                               rendered={snapshot.currentUnitTemplate!}
                               focus={focus}
                               focusDim={focusDim}
                             />
-                          </SwipeCard>
-                        ) : (
-                          <UnitFields
-                            layout={snapshot.currentUnitLayout!}
-                            rendered={snapshot.currentUnitTemplate!}
-                            focus={focus}
-                            focusDim={focusDim}
-                          />
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    <DockedAnswerPane>
-                      <div key={questionKey} className={slideClass}>
-                        {questionElement}
-                      </div>
-                    </DockedAnswerPane>
-                  </SwipeSurface>
-                </div>,
-              )}
-            </MaybeRelations>
-          </SpanAnnotationProvider>
-        ) : (
-          // A question without a unit (coder-level): a card in the middle
-          withSwipe(
-            <SwipeSurface className="flex flex-1 items-center justify-center overflow-x-hidden overflow-y-auto p-4 sm:p-8">
-              <div key={questionKey} className={`mx-auto w-full max-w-xl ${slideClass}`}>
-                <SwipeCard className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-8">
-                  {questionElement}
-                </SwipeCard>
-              </div>
-            </SwipeSurface>,
-          )
-        )}
-      </div>
+                      <DockedAnswerPane>
+                        <div key={questionKey} className={slideClass}>
+                          {questionElement}
+                        </div>
+                      </DockedAnswerPane>
+                    </SwipeSurface>
+                  </div>,
+                )}
+              </MaybeRelations>
+            </SpanAnnotationProvider>
+          ) : (
+            // A question without a unit (coder-level): a card in the middle
+            withSwipe(
+              <SwipeSurface className="flex flex-1 items-center justify-center overflow-x-hidden overflow-y-auto p-4 sm:p-8">
+                <div key={questionKey} className={`mx-auto w-full max-w-xl ${slideClass}`}>
+                  <SwipeCard className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-8">
+                    {questionElement}
+                  </SwipeCard>
+                </div>
+              </SwipeSurface>,
+            )
+          )}
+        </div>
+      </AnswerKeysContext.Provider>
     </DisplayContext.Provider>
   );
 }

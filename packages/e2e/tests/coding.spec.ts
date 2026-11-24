@@ -193,9 +193,9 @@ test("spans by keyboard: the arrows move over the words, Space selects from ther
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("Space");
   await page.keyboard.press("o");
-  // Shift + Enter: Done
+  // Ctrl + Enter: Done
   await expect(page.getByRole("button", { name: /Done \(2\)/ })).toBeVisible();
-  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.press("Control+Enter");
   await expect
     .poll(async () => (await answers(request, study.id)).filter((x) => !examples.includes(x.sessionId)).length)
     .toBe(1);

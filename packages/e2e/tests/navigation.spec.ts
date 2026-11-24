@@ -16,27 +16,28 @@ const nominal = (name: string, text: string, options: string[]) => ({
   variable: { type: "nominal", question: text, options: options.map((value) => ({ value })) },
 });
 
+/** The study's design: a question, a loop over the units with two questions, a last question. */
+const studyItems = () => [
+  { type: "question", name: "ready", variable: { type: "confirm", question: "Ready to start?" } },
+  {
+    type: "unit_loop",
+    label: "Texts",
+    children: [
+      { type: "layout", template: "$unit.text" },
+      nominal("topic", "Topic?", ["politics", "other"]),
+      nominal("tone", "Tone?", ["positive", "negative"]),
+    ],
+  },
+  { type: "question", name: "done", variable: { type: "confirm", question: "All done?" } },
+];
+
 /** A deployed study: a question, a loop over three units with two questions each, a last question. */
 async function study(request: Parameters<typeof api>[0]): Promise<{ id: number; link: string }> {
   const created = await api<StudyResponse>(request, "POST", "/study", { name: "Navigation" });
   await api<UnitResponse[]>(request, "POST", `/study/${created.id}/units`, {
     units: TEXTS.map((text, i) => ({ externalId: `u${i + 1}`, data: { text } })),
   });
-  const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, {
-    items: [
-      { type: "question", name: "ready", variable: { type: "confirm", question: "Ready to start?" } },
-      {
-        type: "unit_loop",
-        label: "Texts",
-        children: [
-          { type: "layout", template: "$unit.text" },
-          nominal("topic", "Topic?", ["politics", "other"]),
-          nominal("tone", "Tone?", ["positive", "negative"]),
-        ],
-      },
-      { type: "question", name: "done", variable: { type: "confirm", question: "All done?" } },
-    ],
-  });
+  const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, { items: studyItems() });
   await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
   const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
   return { id: created.id, link: `/code/${created.id}?link=${link.secret}` };
@@ -186,13 +187,13 @@ test("a double click, or a key held down, answers one question; the next isn't s
   await at(page, TEXTS[1], "Tone?");
 });
 
-test("the keyboard: arrows move between answers and Space chooses; Shift + arrows go back and forth, Shift + Enter continues", async ({
+test("the keyboard: arrows move between answers and Space chooses; Ctrl + arrows go back and forth, Ctrl + Enter continues", async ({
   page,
   request,
 }) => {
   const { link } = await study(request);
   await page.goto(link);
-  await page.keyboard.press("Shift+Enter"); // the confirm question: not answered yet, so nothing happens
+  await page.keyboard.press("Control+Enter"); // the confirm question: not answered yet, so nothing happens
   await page.getByRole("button", { name: "I confirm", exact: true }).click();
   await at(page, TEXTS[0], "Topic?");
   // The unit's first question is numbered too (the loop has two), not just "1"
@@ -206,8 +207,8 @@ test("the keyboard: arrows move between answers and Space chooses; Shift + arrow
   await page.keyboard.press(" ");
   await at(page, TEXTS[0], "Tone?");
 
-  // Shift + Left: back to the previous question, its answer focused to change it at once (kept, not cleared)
-  await page.keyboard.press("Shift+ArrowLeft");
+  // Ctrl + Left: back to the previous question, its answer focused to change it at once (kept, not cleared)
+  await page.keyboard.press("Control+ArrowLeft");
   await at(page, TEXTS[0], "Topic?");
   await expect(option(page, "other")).toHaveAttribute("aria-pressed", "true");
   await expect(option(page, "other")).toBeFocused();
@@ -215,13 +216,48 @@ test("the keyboard: arrows move between answers and Space chooses; Shift + arrow
   // Backspace no longer goes back (it could while deleting typed text)
   await page.keyboard.press("Backspace");
   await at(page, TEXTS[0], "Topic?");
-  // Shift + Right: next (the question was answered); Shift + Left: previous
-  await page.keyboard.press("Shift+ArrowRight");
+  // Ctrl + Right: next (the question was answered); Ctrl + Left: previous
+  await page.keyboard.press("Control+ArrowRight");
   await at(page, TEXTS[0], "Tone?");
-  await page.keyboard.press("Shift+ArrowLeft");
+  await page.keyboard.press("Control+ArrowLeft");
   await at(page, TEXTS[0], "Topic?");
-  // Shift + Enter continues an answered question
-  await page.keyboard.press("Shift+Enter");
+  // Ctrl + Enter continues an answered question
+  await page.keyboard.press("Control+Enter");
+  await at(page, TEXTS[0], "Tone?");
+});
+
+test("answer keys are off until the coder turns them on; a study can turn them off for its unit questions", async ({
+  page,
+  request,
+}) => {
+  await page.addInitScript(() => localStorage.setItem("annotinder_answer_keys", "false"));
+  const { id, link } = await study(request);
+  await page.goto(link);
+  await page.getByRole("button", { name: "I confirm", exact: true }).click();
+  await at(page, TEXTS[0], "Topic?");
+  // Off: no badges, and a number answers nothing; the arrows and Space still do
+  await page.keyboard.press("1");
+  await at(page, TEXTS[0], "Topic?");
+  await page.getByRole("button", { name: "Keyboard shortcuts" }).click();
+  await page.getByRole("switch", { name: "Answer with keys" }).click();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("1");
+  await at(page, TEXTS[0], "Tone?");
+
+  // The study turns them off for questions about units: the coder's choice doesn't count there
+  const next = await api<{ id: number }>(request, "POST", `/study/${id}/design`, {
+    items: studyItems(),
+    session: { display: { answerKeys: { unitQuestions: false } } },
+  });
+  await api(request, "PUT", `/study/${id}/deployment`, { designVersionId: next.id });
+  await page.reload();
+  await at(page, TEXTS[0], "Tone?");
+  // (This test's start turns them off on every load: on again)
+  await page.getByRole("button", { name: "Keyboard shortcuts" }).click();
+  await page.getByRole("switch", { name: "Answer with keys" }).click();
+  await expect(page.getByText("This study answers these questions by clicking only.")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("1");
   await at(page, TEXTS[0], "Tone?");
 });
 
@@ -274,7 +310,7 @@ test("special options: apart from the others, chosen with 0 and . in every quest
   await expect(page.locator("[data-special=not_applicable]")).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("1");
   await expect(page.locator("[data-special=not_applicable]")).toHaveAttribute("aria-pressed", "false");
-  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.press("Control+Enter");
   await expect.poll(async () => (await answers(request, created.id)).length).toBe(2);
   const saved = await answers(request, created.id);
   const values = (name: string) =>
@@ -442,7 +478,7 @@ test("an instruction: behind the ? button or key, a dot until read; it can open 
   await expect(page.getByText("The topic with")).toHaveCount(0);
   const button = page.getByRole("button", { name: "Instruction" });
   await expect(button.getByLabel("Not read yet")).toBeVisible();
-  await page.keyboard.press("?");
+  await page.keyboard.press("Control+Space");
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("most words")).toBeVisible();
   // While open, answer keys don't reach the question
@@ -521,7 +557,7 @@ test("a dropdown: the arrows open it to browse; typing opens it with the filter"
   await expect.poll(async () => (await answers(request, created.id))[0]?.value.values?.[0]?.value).toBe("Germany");
 });
 
-test("a slider (auto from 7 values): Left / Right from the middle, End, Shift + Enter continues", async ({
+test("a slider (auto from 7 values): Left / Right from the middle, End, Ctrl + Enter continues", async ({
   page,
   request,
 }) => {
@@ -538,8 +574,8 @@ test("a slider (auto from 7 values): Left / Right from the middle, End, Shift + 
   await question(page, "Score?");
   const slider = page.getByRole("slider", { name: "Value" });
   await expect(slider).toBeVisible();
-  // Not answered yet: Shift + Enter does nothing
-  await page.keyboard.press("Shift+Enter");
+  // Not answered yet: Ctrl + Enter does nothing
+  await page.keyboard.press("Control+Enter");
   await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeDisabled();
   // From the middle (5): Right twice is 7, Left once 6
   await page.keyboard.press("ArrowRight");
@@ -552,7 +588,7 @@ test("a slider (auto from 7 values): Left / Right from the middle, End, Shift + 
   await slider.focus();
   await page.keyboard.press("ArrowLeft");
   await expect(slider).toHaveValue("9");
-  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.press("Control+Enter");
   await expect.poll(async () => (await answers(request, created.id))[0]?.value.values?.[0]?.value).toBe(9);
 });
 
@@ -599,7 +635,7 @@ test("layout items: before the first, a question without the unit; then the unit
   await question(page, "About the text?");
   await expect(page.getByText("Gamma delta", { exact: true })).toBeVisible();
   // Back: the layout that question had
-  await page.keyboard.press("Shift+ArrowLeft");
+  await page.keyboard.press("Control+ArrowLeft");
   await question(page, "About the title?");
   await expect(page.getByText("Gamma delta")).toHaveCount(0);
 });
@@ -626,7 +662,7 @@ test("spans by keyboard over two fields: the arrows go on from the title into th
   // And back into the title: its last word
   await page.keyboard.press("ArrowLeft");
   await expect(page.locator("[data-cursor]").first()).toHaveText("beta");
-  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.press("Control+Enter");
   await expect.poll(async () => (await answers(request, id)).length).toBe(1);
   const [row] = await answers(request, id);
   expect(row.value.spans).toMatchObject([{ value: "name", field: "text", slices: [{ text: "Gamma" }] }]);

@@ -39,28 +39,28 @@ light or dark.
 
 The **Layout** list shows Auto's choice, e.g. _Auto (Grid, 2 columns)_.
 
-| Type            | Auto chooses                                                                                         |
-| --------------- | ---------------------------------------------------------------------------------------------------- |
+| Type            | Auto chooses                                                                                                                                                                        |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Categories      | **Row** for up to three short options; else a **Grid** of 2 columns (up to 9 short labels) or 1 column (up to 6); from 10 options, or when they don't fit, **Dropdown with filter** |
-| Ordered options | **Row** for up to three, a 1-column **Grid** for up to six, else **Compact**                          |
-| Number          | **Number input** without minimum or maximum; **Buttons** for up to 6 numbers; else **Slider**       |
-| Scale           | **Compact**                                                                                          |
+| Ordered options | **Row** for up to three, a 1-column **Grid** for up to six, else **Compact**                                                                                                        |
+| Number          | **Number input** without minimum or maximum; **Buttons** for up to 6 numbers; else **Slider**                                                                                       |
+| Scale           | **Compact**                                                                                                                                                                         |
 
 Swipe, confirm, mark text and relations have no layout setting.
 
 ## The layouts
 
-| Layout                      | For                  | Shows                                                        |
-| --------------------------- | -------------------- | ------------------------------------------------------------ |
-| **Row (one row)**           | categories, ordered  | options side by side, equally wide                           |
-| **Grid (columns)**          | categories, ordered  | buttons in 1 to 4 **Columns**                                |
-| **Flex (buttons wrap)**     | categories           | buttons as wide as their label, wrapping                     |
-| **Compact**                 | ordered, scale       | small buttons with values; the chosen one shows its label    |
-| **Dropdown with filter**    | categories, ordered  | a list; coders type to filter                                |
-| **Buttons (one per value)** | number               | a button per number                                          |
-| **Slider**                  | number               | a slider and **Continue**                                    |
-| **Number input**            | number               | a box and **Continue**                                       |
-| **Grid (columns)**          | scale                | a table: items as rows, options as columns                   |
+| Layout                      | For                 | Shows                                                     |
+| --------------------------- | ------------------- | --------------------------------------------------------- |
+| **Row (one row)**           | categories, ordered | options side by side, equally wide                        |
+| **Grid (columns)**          | categories, ordered | buttons in 1 to 4 **Columns**                             |
+| **Flex (buttons wrap)**     | categories          | buttons as wide as their label, wrapping                  |
+| **Compact**                 | ordered, scale      | small buttons with values; the chosen one shows its label |
+| **Dropdown with filter**    | categories, ordered | a list; coders type to filter                             |
+| **Buttons (one per value)** | number              | a button per number                                       |
+| **Slider**                  | number              | a slider and **Continue**                                 |
+| **Number input**            | number              | a box and **Continue**                                    |
+| **Grid (columns)**          | scale               | a table: items as rows, options as columns                |
 
 More per type: [categories](nominal-and-ordinal.md#how-the-options-are-laid-out),
 [numbers](numeric.md#layouts), [scales](scale.md#compact-or-grid).

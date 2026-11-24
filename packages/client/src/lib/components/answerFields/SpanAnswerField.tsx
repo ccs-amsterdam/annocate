@@ -1,3 +1,4 @@
+import { COMMAND_BADGES, isContinue } from "../../keyboard/commands";
 import { optionLabel } from "@annotinder/contracts";
 import { PRIORITY } from "../../keyboard/controller";
 import { useKeyScope, useKeyTargets } from "../../keyboard/hooks";
@@ -100,10 +101,10 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
   );
 
   const done = () => onAnswer({ done: true, skip: false, spans: annotation?.spans ?? [] });
-  // Shift + Enter: Done, when nothing is being selected or edited
+  // Ctrl + Enter: Done, when nothing is being selected or edited
   useKeyScope(
     (press) => {
-      if (press.key !== "Enter" || !press.shiftKey || pending || viewingAllLabels) return false;
+      if (!isContinue(press) || pending || viewingAllLabels) return false;
       done();
       return true;
     },
@@ -277,7 +278,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
               onClick={done}
             >
               Done ({annotation?.spans.length ?? 0})
-              <ShortcutBadge shortcut="⇧↵" />
+              <ShortcutBadge shortcut={COMMAND_BADGES.continue} />
             </Button>
           </div>
         </div>

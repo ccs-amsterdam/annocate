@@ -40,19 +40,19 @@ curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/a
 
 ## What scripts can do
 
-| Task                                         | Request                                                         |
-| -------------------------------------------- | --------------------------------------------------------------- |
-| List or create studies                       | `GET /study`, `POST /study` with `{ "name": ... }`              |
-| Upload units (max 200 per request)           | `POST /study/<id>/units`                                        |
-| List fields                                  | `GET /study/<id>/units/fields`                                  |
-| List, replace or delete role columns         | `GET /study/<id>/sets`; `PUT`, `DELETE /study/<id>/sets/<column>` |
-| Save a design version                        | `POST /study/<id>/design` with `{ "items": [...], "note": ... }` |
-| Deploy (makes the links)                     | `PUT /study/<id>/deployment` with `{ "designVersionId": ..., "units": true }` |
-| What deploying would change; versions        | `GET /study/<id>/deployment/pending`, `.../deployment/versions` |
-| List links, change one                       | `GET /study/<id>/links`; `PUT /study/<id>/links/<link id>`      |
-| Coders, with answers outside loops           | `GET /study/<id>/coders`                                        |
-| Answers, a page at a time                    | `GET /study/<id>/annotations`                                   |
-| Units as coders saw them                     | `GET /study/<id>/unit-versions`                                 |
+| Task                                  | Request                                                                       |
+| ------------------------------------- | ----------------------------------------------------------------------------- |
+| List or create studies                | `GET /study`, `POST /study` with `{ "name": ... }`                            |
+| Upload units (max 200 per request)    | `POST /study/<id>/units`                                                      |
+| List fields                           | `GET /study/<id>/units/fields`                                                |
+| List, replace or delete role columns  | `GET /study/<id>/sets`; `PUT`, `DELETE /study/<id>/sets/<column>`             |
+| Save a design version                 | `POST /study/<id>/design` with `{ "items": [...], "note": ... }`              |
+| Deploy (makes the links)              | `PUT /study/<id>/deployment` with `{ "designVersionId": ..., "units": true }` |
+| What deploying would change; versions | `GET /study/<id>/deployment/pending`, `.../deployment/versions`               |
+| List links, change one                | `GET /study/<id>/links`; `PUT /study/<id>/links/<link id>`                    |
+| Coders, with answers outside loops    | `GET /study/<id>/coders`                                                      |
+| Answers, a page at a time             | `GET /study/<id>/annotations`                                                 |
+| Units as coders saw them              | `GET /study/<id>/unit-versions`                                               |
 
 Rights follow your study role: reading needs any role, changing (and
 links, coders) a role that may edit, deploying admin. A design version is

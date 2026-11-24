@@ -8,11 +8,11 @@ summary: Use a unit's data ($unit), earlier answers ($var) and session values ($
 A **reference** is replaced with a value while the coder works: a field of
 the unit on screen, an earlier answer, or a value of the session.
 
-| Write              | Gives                                         |
-| ------------------ | --------------------------------------------- |
-| `$unit.headline`   | the field `headline` of the unit on screen    |
-| `$var.topic.label` | the coder's answer to the question `topic`    |
-| `$session.coder`   | a value of the coder's session                |
+| Write              | Gives                                      |
+| ------------------ | ------------------------------------------ |
+| `$unit.headline`   | the field `headline` of the unit on screen |
+| `$var.topic.label` | the coder's answer to the question `topic` |
+| `$session.coder`   | a value of the coder's session             |
 
 ```example
 unit:
@@ -43,14 +43,14 @@ unknown field gets a warning (you may upload units later).
 
 `$var.<question>.<property>`:
 
-| Question                                                         | Properties                                              |
-| ---------------------------------------------------------------- | ------------------------------------------------------- |
-| Categories (one answer), ordered, number, swipe, experiment       | `.value`, `.label`                                      |
-| Categories with multiple answers                                 | `.values`, `.labels`                                    |
-| Mark text (span)                                                 | `.values`, `.labels`, `.texts`                          |
-| Relation                                                         | `.values`, `.labels`                                    |
-| Scale                                                            | `.values`, `.items.<item>.value`, `.items.<item>.label` |
-| Confirm                                                          | only `.answered`                                        |
+| Question                                                    | Properties                                              |
+| ----------------------------------------------------------- | ------------------------------------------------------- |
+| Categories (one answer), ordered, number, swipe, experiment | `.value`, `.label`                                      |
+| Categories with multiple answers                            | `.values`, `.labels`                                    |
+| Mark text (span)                                            | `.values`, `.labels`, `.texts`                          |
+| Relation                                                    | `.values`, `.labels`                                    |
+| Scale                                                       | `.values`, `.items.<item>.value`, `.items.<item>.label` |
+| Confirm                                                     | only `.answered`                                        |
 
 Every question has `.answered`: false if not answered or skipped by a
 [condition](conditions.md). Using a property a question doesn't have is an
@@ -76,24 +76,24 @@ A [scale](scale.md) item: `$var.trust.items.media.value`.
 
 ## The session: $session
 
-| Reference         | Gives                                                                     |
-| ----------------- | ------------------------------------------------------------------------- |
-| `$session.coder`  | the coder id: from the coders' column, the URL, or a sign-in email        |
-| `$session.source` | the link's `?source=`                                                     |
-| `$session.<name>` | a URL parameter of the design, e.g. a wave                                |
+| Reference         | Gives                                                              |
+| ----------------- | ------------------------------------------------------------------ |
+| `$session.coder`  | the coder id: from the coders' column, the URL, or a sign-in email |
+| `$session.source` | the link's `?source=`                                              |
+| `$session.<name>` | a URL parameter of the design, e.g. a wave                         |
 
 See [URL parameters](session-parameters.md).
 
 ## Where references work
 
-| Where                           | `$unit`   | `$var` | `$session` | `{{ }}` |
-| ------------------------------- | --------- | ------ | ---------- | ------- |
-| A loop's layout items           | yes       | yes    | yes        | yes     |
-| Question and instruction texts  | in a loop | yes    | yes        | yes     |
-| Conditions (blocks, `::: if`)   | in a loop | yes    | yes        | yes     |
-| A unit loop's condition         | no        | yes    | yes        | yes     |
-| End item messages               | in a loop | yes    | yes        | yes     |
-| End item redirect links         | no        | yes    | yes        | no      |
+| Where                          | `$unit`   | `$var` | `$session` | `{{ }}` |
+| ------------------------------ | --------- | ------ | ---------- | ------- |
+| A loop's layout items          | yes       | yes    | yes        | yes     |
+| Question and instruction texts | in a loop | yes    | yes        | yes     |
+| Conditions (blocks, `::: if`)  | in a loop | yes    | yes        | yes     |
+| A unit loop's condition        | no        | yes    | yes        | yes     |
+| End item messages              | in a loop | yes    | yes        | yes     |
+| End item redirect links        | no        | yes    | yes        | no      |
 
 In redirect links values are URL-encoded. Inside `{{ }}` references are
 JavaScript values (see [Scripts](scripts.md)).
@@ -117,17 +117,17 @@ the name. To write a literal `$unit.headline`, type `\$unit.headline`.
 
 ## When a reference is wrong
 
-| Message (shortened)                                  | Fix                                                     |
-| ---------------------------------------------------- | ------------------------------------------------------- |
-| `'topc' is not a question`                           | a typo, or renamed or deleted                           |
-| `'topic' is asked after this point`                  | move the question earlier                               |
-| `'sentiment' is answered in this loop; use it inside ::: from topics` | use it in a `::: from` block         |
-| `a question can't refer to itself`                   | refer to it from a later question                       |
-| `'tone' is a question of another unit loop`          | loop answers stay in their loop                         |
-| `$unit.text can only be used inside a unit loop`     | there is no unit outside a loop                         |
-| `which has no .value; use .values, ...`              | use a property this question has                        |
-| `$var.topic needs a property`                        | add `.value`, `.label`, ...                             |
-| `$var.topic.is(...) can only be used inside {{ }}`   | helpers work in scripts and conditions                  |
-| `$unit.headlne is not a unit field` (warning)        | a typo, or the units lack this column                   |
+| Message (shortened)                                                   | Fix                                    |
+| --------------------------------------------------------------------- | -------------------------------------- |
+| `'topc' is not a question`                                            | a typo, or renamed or deleted          |
+| `'topic' is asked after this point`                                   | move the question earlier              |
+| `'sentiment' is answered in this loop; use it inside ::: from topics` | use it in a `::: from` block           |
+| `a question can't refer to itself`                                    | refer to it from a later question      |
+| `'tone' is a question of another unit loop`                           | loop answers stay in their loop        |
+| `$unit.text can only be used inside a unit loop`                      | there is no unit outside a loop        |
+| `which has no .value; use .values, ...`                               | use a property this question has       |
+| `$var.topic needs a property`                                         | add `.value`, `.label`, ...            |
+| `$var.topic.is(...) can only be used inside {{ }}`                    | helpers work in scripts and conditions |
+| `$unit.headlne is not a unit field` (warning)                         | a typo, or the units lack this column  |
 
 In a layout, type `$` for a list of what you can use here.

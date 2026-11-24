@@ -12,11 +12,11 @@ and coders.
 
 ## Three layers
 
-| Layer           | Holds                                                                                 | Shared?                          |
-| --------------- | ------------------------------------------------------------------------------------- | -------------------------------- |
-| **Design**      | questions, conditions, layouts, distribution rules, who codes, URL parameters | yes: the instrument              |
-| **Role columns** | which coder, condition or part each unit is for, and the test units                  | as data, if you may share units  |
-| **Links**       | made from the who codes, with their secrets and uses                     | no: about your coders            |
+| Layer            | Holds                                                                         | Shared?                         |
+| ---------------- | ----------------------------------------------------------------------------- | ------------------------------- |
+| **Design**       | questions, conditions, layouts, distribution rules, who codes, URL parameters | yes: the instrument             |
+| **Role columns** | which coder, condition or part each unit is for, and the test units           | as data, if you may share units |
+| **Links**        | made from the who codes, with their secrets and uses                          | no: about your coders           |
 
 ## The design names, but never binds
 

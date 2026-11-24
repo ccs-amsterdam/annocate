@@ -1,3 +1,4 @@
+import { COMMAND_BADGES, isHelp } from "../keyboard/commands";
 import { useEffect, useState } from "react";
 import { HelpCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -54,10 +55,10 @@ export function QuestionInstruction({
       setSeen(true);
     }
   };
-  // The ? key opens it; while open, keys don't reach the question behind it (Esc closes)
+  // Ctrl + Space opens it; while open, keys don't reach the question behind it (Esc closes)
   useKeyScope(
     (press) => {
-      if (press.key !== "?" || press.ctrlKey || press.metaKey || press.altKey) return false;
+      if (!isHelp(press)) return false;
       setOpen(true);
       return true;
     },
@@ -70,9 +71,9 @@ export function QuestionInstruction({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        title="Instruction (?)"
+        title="Instruction (Ctrl + Space)"
         aria-label={seen ? "Instruction" : "Instruction, not read yet"}
-        aria-keyshortcuts="?"
+        aria-keyshortcuts="Control+Space"
         className="relative inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
         <HelpCircle className="size-5" />
@@ -82,7 +83,7 @@ export function QuestionInstruction({
             aria-label="Not read yet"
           />
         )}
-        <ShortcutBadge shortcut="?" position="top-left" />
+        <ShortcutBadge shortcut={COMMAND_BADGES.help} position="top-left" />
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">

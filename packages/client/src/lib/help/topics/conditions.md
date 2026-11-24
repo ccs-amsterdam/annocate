@@ -61,14 +61,14 @@ With **Rules** selected, each row is a question, an operator and a value.
 (and) or **Any rule may hold** (or). Only questions answered before the
 condition are listed, and values come from their options.
 
-| Question                                     | Operators                                                 |
-| -------------------------------------------- | --------------------------------------------------------- |
-| Categories (one answer), swipe, random       | is, is not, is one of, is none of                         |
-| Ordered options, a scale item                | the same, and >, ≥, <, ≤                                  |
-| Number                                       | =, ≠, >, ≥, <, ≤, between                                 |
-| Categories with multiple answers             | has, doesn't have, has any of, has none of, has all of, count ≥, count ≤ |
-| Mark text, relation                          | has, doesn't have, count ≥, count ≤                       |
-| Confirm, a whole scale                       | is answered, is not answered                              |
+| Question                               | Operators                                                                |
+| -------------------------------------- | ------------------------------------------------------------------------ |
+| Categories (one answer), swipe, random | is, is not, is one of, is none of                                        |
+| Ordered options, a scale item          | the same, and >, ≥, <, ≤                                                 |
+| Number                                 | =, ≠, >, ≥, <, ≤, between                                                |
+| Categories with multiple answers       | has, doesn't have, has any of, has none of, has all of, count ≥, count ≤ |
+| Mark text, relation                    | has, doesn't have, count ≥, count ≤                                      |
+| Confirm, a whole scale                 | is answered, is not answered                                             |
 
 Every question also has **is answered** / **is not answered**.
 
@@ -95,16 +95,16 @@ click one to add it. See also [Scripts](scripts.md).
 
 ## Helper methods
 
-| Method                | Works on                                       | Holds when the answer ...       |
-| --------------------- | ---------------------------------------------- | ------------------------------- |
-| `is(v)`, `isAny(...)` | one answer (categories, ordered, swipe, random, scale item) | is `v` / one of them |
-| `gt(n)`, `gte(n)`     | ordered, number, scale item                    | is above (or equal to) `n`      |
-| `lt(n)`, `lte(n)`     | ordered, number, scale item                    | is below (or equal to) `n`      |
-| `eq(n)`               | number                                         | equals `n`                      |
-| `between(a, b)`       | number                                         | is from `a` to `b`, inclusive   |
-| `has(v)`              | multiple answers, span, relation               | includes `v`                    |
-| `hasAny(...)`, `hasAll(...)` | multiple answers                        | includes one / all of them      |
-| `count()`             | multiple answers, span, relation               | the number of answers           |
+| Method                       | Works on                                                    | Holds when the answer ...     |
+| ---------------------------- | ----------------------------------------------------------- | ----------------------------- |
+| `is(v)`, `isAny(...)`        | one answer (categories, ordered, swipe, random, scale item) | is `v` / one of them          |
+| `gt(n)`, `gte(n)`            | ordered, number, scale item                                 | is above (or equal to) `n`    |
+| `lt(n)`, `lte(n)`            | ordered, number, scale item                                 | is below (or equal to) `n`    |
+| `eq(n)`                      | number                                                      | equals `n`                    |
+| `between(a, b)`              | number                                                      | is from `a` to `b`, inclusive |
+| `has(v)`                     | multiple answers, span, relation                            | includes `v`                  |
+| `hasAny(...)`, `hasAll(...)` | multiple answers                                            | includes one / all of them    |
+| `count()`                    | multiple answers, span, relation                            | the number of answers         |
 
 - Helpers compare **values**, not labels: `is("human_interest")`. See
   [Values and labels](references.md#values-and-labels).

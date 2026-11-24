@@ -19,12 +19,12 @@ put together first, then shown as one thing. A block can also get a
 
 ## The four types
 
-| Block          | Shows its content as                                    |
-| -------------- | ------------------------------------------------------- |
-| `::: text`     | plain text, line breaks kept                            |
-| `::: markdown` | markdown, also markdown inside the values               |
-| `::: html`     | HTML in a safe frame (see [HTML in a layout](html.md))  |
-| `::: image`    | an image; the content is its URL                        |
+| Block          | Shows its content as                                   |
+| -------------- | ------------------------------------------------------ |
+| `::: text`     | plain text, line breaks kept                           |
+| `::: markdown` | markdown, also markdown inside the values              |
+| `::: html`     | HTML in a safe frame (see [HTML in a layout](html.md)) |
+| `::: image`    | an image; the content is its URL                       |
 
 `$unit.body::markdown` is short for a markdown block around `$unit.body`.
 
@@ -94,12 +94,12 @@ https://upload.wikimedia.org/wikipedia/commons/thumb/$unit.file
 
 Parts of a layout get **ids** that questions can refer to:
 
-| The layout shows                       | Id              |
-| -------------------------------------- | --------------- |
-| `$unit.headline` (also with a suffix)  | `unit.headline` |
-| `$var.topic.label`                     | `var.topic`     |
-| a named block: `::: html scores`       | `scores`        |
-| a script `{{ ... }}`                   | none (put it in a named block) |
+| The layout shows                      | Id                             |
+| ------------------------------------- | ------------------------------ |
+| `$unit.headline` (also with a suffix) | `unit.headline`                |
+| `$var.topic.label`                    | `var.topic`                    |
+| a named block: `::: html scores`      | `scores`                       |
+| a script `{{ ... }}`                  | none (put it in a named block) |
 
 The name follows the type (`::: markdown intro`): letters, digits and
 `_`, unique in the layout. Values inside a block have no id of their own.

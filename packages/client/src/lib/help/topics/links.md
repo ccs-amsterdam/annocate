@@ -14,9 +14,9 @@ Deploying makes the links: you don't create them by hand. The design's
 Open **Who codes** above the item tree and choose (a new design asks
 first; it can't be deployed without a choice):
 
-| Who codes            | For                                                                             | Links                                                   |
-| -------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| **Expert coders**  | coders you know, each with their own units (content analysis, trained coders)   | a link per coder, or one link to pick a name or sign in |
+| Who codes            | For                                                                              | Links                                                   |
+| -------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **Expert coders**    | coders you know, each with their own units (content analysis, trained coders)    | a link per coder, or one link to pick a name or sign in |
 | **Crowd (one link)** | anyone with the link (a panel, a newsletter; annotation at scale, an experiment) | one link                                                |
 
 **Expert coders**: the units' **coder set** (`coder_set`) names the
@@ -62,12 +62,12 @@ A **coder id** says who the coder is, in the **Coder** column and the
 `coder` column of the results, to link to your other data. In the design:
 `$session.coder`.
 
-| Invitation                        | Coder id                                  |
-| --------------------------------- | ----------------------------------------- |
-| Expert coders                   | their value in the coder set              |
-| One link                          | none (anonymous; a number)                |
-| One link, coder id from URL parameter | the parameter's value                 |
-| One link with sign-in             | their email address                       |
+| Invitation                            | Coder id                     |
+| ------------------------------------- | ---------------------------- |
+| Expert coders                         | their value in the coder set |
+| One link                              | none (anonymous; a number)   |
+| One link, coder id from URL parameter | the parameter's value        |
+| One link with sign-in                 | their email address          |
 
 **Coder id from a URL parameter**: name the **URL parameter**, optionally
 a **Pattern** (e.g. `[0-9]{6}`), and whether it is **Required** (default:
@@ -100,13 +100,13 @@ continue. To change it, change the design and deploy again.
 
 ## The list of links
 
-| Column      | Shows                                                    |
-| ----------- | -------------------------------------------------------- |
-| **Label**   | the link's coder, or "Open link"                         |
-| **For**     | the coder, or everyone                                   |
-| **Link**    | **Copy link**, with placeholders for required parameters |
-| **Uses**    | coders started (and the maximum)                         |
-| **Status**  | _open_, _used up_, _revoked_ or _retired_                |
+| Column     | Shows                                                    |
+| ---------- | -------------------------------------------------------- |
+| **Label**  | the link's coder, or "Open link"                         |
+| **For**    | the coder, or everyone                                   |
+| **Link**   | **Copy link**, with placeholders for required parameters |
+| **Uses**   | coders started (and the maximum)                         |
+| **Status** | _open_, _used up_, _revoked_ or _retired_                |
 
 A link has no settings of its own: they come from the design. **Revoke**
 stops new sessions (started coders keep working); **Reopen** undoes it.

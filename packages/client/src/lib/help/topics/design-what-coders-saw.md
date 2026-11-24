@@ -43,13 +43,13 @@ cost of coders' time. See
 
 ## In your download
 
-| File                | Records                                                              |
-| ------------------- | -------------------------------------------------------------------- |
-| `annotations.csv`   | `unit_version_id`, `design_version`, `first_answer`, `last_change`   |
-| `units.csv`         | each unit version with answers; join on `unit_version_id`            |
-| `variables.csv`     | each version's questions, options, labels; join on `design_version`  |
-| `designs/v<n>.json` | each design version whole, with the AnnoTinder release               |
-| `devices.csv`, `display_changes.csv` | each coder's devices, keys, screen width and theme  |
+| File                                 | Records                                                             |
+| ------------------------------------ | ------------------------------------------------------------------- |
+| `annotations.csv`                    | `unit_version_id`, `design_version`, `first_answer`, `last_change`  |
+| `units.csv`                          | each unit version with answers; join on `unit_version_id`           |
+| `variables.csv`                      | each version's questions, options, labels; join on `design_version` |
+| `designs/v<n>.json`                  | each design version whole, with the AnnoTinder release              |
+| `devices.csv`, `display_changes.csv` | each coder's devices, keys, screen width and theme                  |
 
 `_label` columns show what the coder saw. See
 [Downloading results](results.md).

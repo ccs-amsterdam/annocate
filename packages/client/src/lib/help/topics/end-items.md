@@ -33,11 +33,11 @@ At the end                "Thank you!", back to the panel
 Click **+** where the session should end and choose **End** (see
 [Adding items](design-editor.md#adding-items)).
 
-| Field                   | Does                                                                     |
-| ----------------------- | ------------------------------------------------------------------------ |
-| **Item Name**           | e.g. `too_young`; stored with the session                                |
-| **Outcome**             | **Screened out (not eligible)** or **Complete**                          |
-| **Message (optional)**  | the last screen's text: markdown and references (`$var.group.label`)     |
+| Field                   | Does                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| **Item Name**           | e.g. `too_young`; stored with the session                                       |
+| **Outcome**             | **Screened out (not eligible)** or **Complete**                                 |
+| **Message (optional)**  | the last screen's text: markdown and references (`$var.group.label`)            |
 | **Then send coders to** | nowhere, **This URL**, or a panel's return link set in the study's **Settings** |
 
 ## Screened out or complete
@@ -47,10 +47,10 @@ The outcome is in the `ended` column of `coders.csv` (time in
 empty `ended`; to mark completes, e.g. for payment, end with an end item
 **Complete**.
 
-| Outcome          | For                                         | Heading          |
-| ---------------- | ------------------------------------------- | ---------------- |
-| **Screened out** | no consent, not eligible, failed a check     | _Thank you_      |
-| **Complete**     | did what was asked                          | _Study Complete!_ |
+| Outcome          | For                                      | Heading           |
+| ---------------- | ---------------------------------------- | ----------------- |
+| **Screened out** | no consent, not eligible, failed a check | _Thank you_       |
+| **Complete**     | did what was asked                       | _Study Complete!_ |
 
 ## What the coder sees
 

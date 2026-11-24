@@ -1,3 +1,4 @@
+import { COMMAND_BADGES } from "../../keyboard/commands";
 import { useRef, useState } from "react";
 import { useAnswerLayout } from "../../display/hooks";
 import { SPECIAL_KEYS, optionLabel, ordinaryOptions, specialOptions, type Option } from "@annotinder/contracts";
@@ -50,7 +51,7 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
     onAnswer(buildValues(items.map((item) => ({ item: item.name, value: selected[item.name] }))));
   }
 
-  // The keyboard answers the first unanswered item; Shift + Enter continues.
+  // The keyboard answers the first unanswered item; Ctrl + Enter continues.
   const keyed = columns.map((o) => ({
     label: optionLabel(o),
     ...(o.special ? { fixed: SPECIAL_KEYS[o.special] } : {}),
@@ -155,8 +156,8 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
         aria-label={done ? "Continue" : `${nAnswered} of ${items.length} answered`}
       >
         {done ? <Play className="size-4" /> : `${nAnswered} / ${items.length}`}
-        {/* Shift + Enter continues once every item is answered */}
-        {done && <ShortcutBadge shortcut="⇧↵" />}
+        {/* Ctrl + Enter continues once every item is answered */}
+        {done && <ShortcutBadge shortcut={COMMAND_BADGES.continue} />}
       </Button>
     </div>
   );

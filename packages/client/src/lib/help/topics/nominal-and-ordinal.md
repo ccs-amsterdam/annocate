@@ -12,10 +12,10 @@ summary: Questions where coders pick from a list of options - with or without an
 
 ## Options
 
-| Column             | What it is                                              |
-| ------------------ | ------------------------------------------------------- |
-| **Label (shown)**  | what coders see, e.g. _Human interest_                  |
-| **Value (stored)** | what is saved and exported, e.g. `human_interest`       |
+| Column             | What it is                                                     |
+| ------------------ | -------------------------------------------------------------- |
+| **Label (shown)**  | what coders see, e.g. _Human interest_                         |
+| **Value (stored)** | what is saved and exported, e.g. `human_interest`              |
 | **Color**          | optional: a swatch opens a palette, **Any colour** or **None** |
 
 **+ Add option** adds one; the arrows move it, the cross removes it. Coders
@@ -84,13 +84,13 @@ in the results; in references they are a list (`$var.topics.values`,
 
 ## How the options are laid out
 
-| Layout                   | Categories | Ordered | Shows                                          |
-| ------------------------ | ---------- | ------- | ---------------------------------------------- |
-| **Row (one row)**        | yes        | yes     | buttons side by side                           |
-| **Grid (columns)**       | yes        | yes     | buttons in 1 to 4 **Columns**                  |
-| **Flex (buttons wrap)**  | yes        |         | buttons that wrap                              |
+| Layout                   | Categories | Ordered | Shows                                           |
+| ------------------------ | ---------- | ------- | ----------------------------------------------- |
+| **Row (one row)**        | yes        | yes     | buttons side by side                            |
+| **Grid (columns)**       | yes        | yes     | buttons in 1 to 4 **Columns**                   |
+| **Flex (buttons wrap)**  | yes        |         | buttons that wrap                               |
 | **Compact**              |            | yes     | small buttons with the values, end labels above |
-| **Dropdown with filter** | yes        | yes     | a list; coders type to filter                  |
+| **Dropdown with filter** | yes        | yes     | a list; coders type to filter                   |
 
 **Auto** shows its choice, e.g. _Auto (Grid, 2 columns)_. See
 [How answers are laid out](answer-layouts.md).

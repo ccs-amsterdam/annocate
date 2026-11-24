@@ -23,11 +23,11 @@ people and roles (only admins of the study see it).
 
 ## Roles
 
-| Role      | Can                                                                                                          |
-| --------- | ------------------------------------------------------------------------------------------------------------ |
-| **Read**  | see the study and progress, download results                                                                 |
-| **Write** | also edit and save the design draft, preview, upload units, make sets, manage links                         |
-| **Admin** | also deploy, pause, reset answers, delete coders' data, rename, export or delete the study, manage access    |
+| Role      | Can                                                                                                       |
+| --------- | --------------------------------------------------------------------------------------------------------- |
+| **Read**  | see the study and progress, download results                                                              |
+| **Write** | also edit and save the design draft, preview, upload units, make sets, manage links                       |
+| **Admin** | also deploy, pause, reset answers, delete coders' data, rename, export or delete the study, manage access |
 
 Give the smallest role that works. Coders are not on this list: they come
 in through a [link](links.md).

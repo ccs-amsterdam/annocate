@@ -86,11 +86,11 @@ the question show (`unit.headline`, or a named block, see
 
 ## Where a question goes
 
-| Where                       | Asked                         | Results                                     |
-| --------------------------- | ----------------------------- | ------------------------------------------- |
-| Outside a unit loop         | once per coder                | `coders.csv`: a row per coder               |
-| A unit loop                 | once per unit                 | `annotations.csv`: a row per unit and coder |
-| In a branch                 | only when the condition holds | as above; empty when skipped                |
+| Where               | Asked                         | Results                                     |
+| ------------------- | ----------------------------- | ------------------------------------------- |
+| Outside a unit loop | once per coder                | `coders.csv`: a row per coder               |
+| A unit loop         | once per unit                 | `annotations.csv`: a row per unit and coder |
+| In a branch         | only when the condition holds | as above; empty when skipped                |
 
 Texts, layouts and conditions can only use earlier answers, and a loop's
 answers can't be used in another loop.

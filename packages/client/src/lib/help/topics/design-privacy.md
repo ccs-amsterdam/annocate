@@ -13,15 +13,15 @@ account, and nothing is shared outside the study.
 
 On the AnnoTinder server you use:
 
-| What                | Includes                                                                                       |
-| ------------------- | ---------------------------------------------------------------------------------------------- |
-| **Units**           | your upload, and each unit as coders saw it                                                    |
-| **Design versions** | every saved and deployed version                                                               |
-| **Links**           | label, the values it carries (a coder or set), uses                                            |
-| **Coders**          | per session: link, coder id, answers outside loops, URL parameters the design reads, units given, start, how it ended |
-| **Devices and display** | kind of device, browser, operating system; shortcut style, screen width, theme          |
-| **Answers**         | per unit and question, with times, design version and unit version                             |
-| **Response times**  | per question, measured in the browser; per unit, when the server handed it out. Always recorded: mention it to coders if it matters |
+| What                    | Includes                                                                                                                            |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Units**               | your upload, and each unit as coders saw it                                                                                         |
+| **Design versions**     | every saved and deployed version                                                                                                    |
+| **Links**               | label, the values it carries (a coder or set), uses                                                                                 |
+| **Coders**              | per session: link, coder id, answers outside loops, URL parameters the design reads, units given, start, how it ended               |
+| **Devices and display** | kind of device, browser, operating system; shortcut style, screen width, theme                                                      |
+| **Answers**             | per unit and question, with times, design version and unit version                                                                  |
+| **Response times**      | per question, measured in the browser; per unit, when the server handed it out. Always recorded: mention it to coders if it matters |
 
 Not stored: coders' names, email addresses (unless they
 [sign in](links.md#login) where required), IP addresses, other device

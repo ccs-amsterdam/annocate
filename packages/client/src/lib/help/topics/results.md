@@ -11,18 +11,18 @@ click **Download**: everything answered so far, as a zip. Download as often
 as you like, also while coding runs. **Download settings** (folded) has the
 label columns, reset answers, and the raw export.
 
-| File                  | A row per                    | Holds                                                      |
-| --------------------- | ---------------------------- | ---------------------------------------------------------- |
-| `annotations.csv`     | unit and coder               | answers to loop questions                                  |
-| `coders.csv`          | coder session                | who, how far, and answers outside loops                    |
-| `units.csv`           | unit version                 | the units as coders saw them                               |
-| `variables.csv`       | design version, question, option | the codebook: values and labels                        |
-| `designs/v<n>.json`   | design version               | the whole design, with the AnnoTinder release it ran on    |
-| `devices.csv`         | device                       | kind, browser, operating system                            |
-| `display_changes.csv` | display change               | shortcut style, screen width, theme                      |
-| `timings.csv`         | answer                       | time per question                                          |
-| `deleted_coders.csv`  | deleted session              | to delete them from earlier downloads too                  |
-| `README.txt`          |                              | what the columns mean                                      |
+| File                  | A row per                        | Holds                                                   |
+| --------------------- | -------------------------------- | ------------------------------------------------------- |
+| `annotations.csv`     | unit and coder                   | answers to loop questions                               |
+| `coders.csv`          | coder session                    | who, how far, and answers outside loops                 |
+| `units.csv`           | unit version                     | the units as coders saw them                            |
+| `variables.csv`       | design version, question, option | the codebook: values and labels                         |
+| `designs/v<n>.json`   | design version                   | the whole design, with the AnnoTinder release it ran on |
+| `devices.csv`         | device                           | kind, browser, operating system                         |
+| `display_changes.csv` | display change                   | shortcut style, screen width, theme                     |
+| `timings.csv`         | answer                           | time per question                                       |
+| `deleted_coders.csv`  | deleted session                  | to delete them from earlier downloads too               |
+| `README.txt`          |                                  | what the columns mean                                   |
 
 Files are UTF-8; times are UTC (`2026-10-27T14:05:00.000Z`). As Excel, each
 table is a sheet of the same name in `results.xlsx`; its text cells are
@@ -61,16 +61,16 @@ for the latest); Results opens on **Questions**:
 
 A row per unit a coder coded:
 
-| Column                        | Meaning                                                                 |
-| ----------------------------- | ----------------------------------------------------------------------- |
-| `unit_id`                     | your unit id                                                            |
-| `unit_version_id`             | the version the coder saw (see `units.csv`)                             |
-| `session_id`, `coder`, `link` | the session, coder id and link label                                    |
-| `first_answer`, `last_change` | first answer and last change for this unit                              |
-| `design_version`              | the version first answered under                                        |
-| `device_id`                   | the device (see `devices.csv`)                                          |
-| `unit_ms_client`, `unit_ms_server` | time on the unit, by the browser and by the server                 |
-| one column per question       | the answers (a [scale](scale.md): one per item, `trust.police`)         |
+| Column                             | Meaning                                                         |
+| ---------------------------------- | --------------------------------------------------------------- |
+| `unit_id`                          | your unit id                                                    |
+| `unit_version_id`                  | the version the coder saw (see `units.csv`)                     |
+| `session_id`, `coder`, `link`      | the session, coder id and link label                            |
+| `first_answer`, `last_change`      | first answer and last change for this unit                      |
+| `design_version`                   | the version first answered under                                |
+| `device_id`                        | the device (see `devices.csv`)                                  |
+| `unit_ms_client`, `unit_ms_server` | time on the unit, by the browser and by the server              |
+| one column per question            | the answers (a [scale](scale.md): one per item, `trust.police`) |
 
 ### How answers are written
 
@@ -93,17 +93,17 @@ See [Values and labels](design-values-and-labels.md).
 A row per session (`session_id`; a coder who restarted on another device
 has two):
 
-| Column                                       | Meaning                                                            |
-| -------------------------------------------- | ------------------------------------------------------------------ |
-| `session_id`, `coder`, `email`, `link`       | who (`email` only with required [sign-in](links.md#login))         |
-| `started`, `last_active`                     | start and last answer                                              |
-| `ended`, `ended_at`                          | `complete`, `screenout` ([end items](end-items.md)) or `quit`      |
-| `deletion_requested`                         | when they asked for deletion (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)) |
-| `display`                                    | keys, width (in [responsive](answer-layouts.md#fixed-or-responsive) studies) and theme, e.g. `numbers, narrow; numpad, wide` |
-| `session.<name>`                             | URL parameters and `source`                                        |
-| `finished_loop<n>`                           | units finished per loop, by its position (see `variables.csv`)     |
-| `overlap_finished`, `gold_finished`, `practice_finished` | test units finished (see [Overlap, gold and practice units](special-units.md)) |
-| one column per question                      | answers outside loops and [experiments](random-condition.md)       |
+| Column                                                   | Meaning                                                                                                                      |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `session_id`, `coder`, `email`, `link`                   | who (`email` only with required [sign-in](links.md#login))                                                                   |
+| `started`, `last_active`                                 | start and last answer                                                                                                        |
+| `ended`, `ended_at`                                      | `complete`, `screenout` ([end items](end-items.md)) or `quit`                                                                |
+| `deletion_requested`                                     | when they asked for deletion (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data))                  |
+| `display`                                                | keys, width (in [responsive](answer-layouts.md#fixed-or-responsive) studies) and theme, e.g. `numbers, narrow; numpad, wide` |
+| `session.<name>`                                         | URL parameters and `source`                                                                                                  |
+| `finished_loop<n>`                                       | units finished per loop, by its position (see `variables.csv`)                                                               |
+| `overlap_finished`, `gold_finished`, `practice_finished` | test units finished (see [Overlap, gold and practice units](special-units.md))                                               |
+| one column per question                                  | answers outside loops and [experiments](random-condition.md)                                                                 |
 
 ## units.csv
 
@@ -128,16 +128,16 @@ it.
 
 Per answer, in milliseconds:
 
-| Column                            | Meaning                                                    |
-| --------------------------------- | ---------------------------------------------------------- |
-| `unit_id`, `session_id`, `coder`, `variable` | which answer                                    |
-| `first_ms`                        | on screen until the first answer                           |
-| `total_ms`                        | on screen over all visits                                  |
-| `hidden_ms`                       | page hidden meanwhile (not in `total_ms`)                  |
-| `edits`                           | how often the answer changed                               |
-| `practice_tries`                  | tries on a practice unit                                   |
-| `server_ms`                       | the server's own measure                                   |
-| `exceeds_server`                  | `true` if the browser claims more time than the server saw |
+| Column                                       | Meaning                                                    |
+| -------------------------------------------- | ---------------------------------------------------------- |
+| `unit_id`, `session_id`, `coder`, `variable` | which answer                                               |
+| `first_ms`                                   | on screen until the first answer                           |
+| `total_ms`                                   | on screen over all visits                                  |
+| `hidden_ms`                                  | page hidden meanwhile (not in `total_ms`)                  |
+| `edits`                                      | how often the answer changed                               |
+| `practice_tries`                             | tries on a practice unit                                   |
+| `server_ms`                                  | the server's own measure                                   |
+| `exceeds_server`                             | `true` if the browser claims more time than the server saw |
 
 Browsers can be tampered with, the server can't: `exceeds_server` flags
 that.
@@ -191,14 +191,14 @@ d = (annotations
 
 ## Joining the files
 
-| To add                                 | Join on                                               |
-| -------------------------------------- | ----------------------------------------------------- |
-| coder details and background answers   | `session_id`                                          |
-| the unit as the coder saw it           | `unit_version_id`                                     |
-| the device                             | `device_id`                                           |
-| response times                         | `unit_id`, `session_id`, `variable` in `timings.csv`  |
-| labels of a design version             | `design_version`, `variable` (and `value`)            |
-| your own data                          | `unit_id`                                             |
+| To add                               | Join on                                              |
+| ------------------------------------ | ---------------------------------------------------- |
+| coder details and background answers | `session_id`                                         |
+| the unit as the coder saw it         | `unit_version_id`                                    |
+| the device                           | `device_id`                                          |
+| response times                       | `unit_id`, `session_id`, `variable` in `timings.csv` |
+| labels of a design version           | `design_version`, `variable` (and `value`)           |
+| your own data                        | `unit_id`                                            |
 
 ## Reset answers and scripts
 

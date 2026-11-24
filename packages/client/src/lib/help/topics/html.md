@@ -52,12 +52,12 @@ width. A named block (`::: html scores`) can be a question's **Focus on**
 
 ## What the sandbox doesn't allow
 
-| In the HTML                         | In the frame                                      |
-| ----------------------------------- | ------------------------------------------------- |
-| `<script>`, `onclick="..."`         | don't run                                         |
-| images from the web                 | don't load (only `data:` URLs); use `$unit.photo::image` outside |
-| stylesheets and fonts from the web  | don't load; use `<style>` and `style="..."`       |
-| forms, buttons, links               | can't send anything or leave the coding screen    |
+| In the HTML                        | In the frame                                                     |
+| ---------------------------------- | ---------------------------------------------------------------- |
+| `<script>`, `onclick="..."`        | don't run                                                        |
+| images from the web                | don't load (only `data:` URLs); use `$unit.photo::image` outside |
+| stylesheets and fonts from the web | don't load; use `<style>` and `style="..."`                      |
+| forms, buttons, links              | can't send anything or leave the coding screen                   |
 
 ## How the frame looks
 

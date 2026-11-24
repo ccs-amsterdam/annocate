@@ -22,12 +22,12 @@ only some coders, write `anna;bob` in `coder_set` instead.
 
 ## Placement
 
-| Placed                          | Coders get                               |
-| ------------------------------- | ---------------------------------------- |
-| **Spread throughout** (default) | overlap units evenly among their own     |
-| **Before coding units**         | overlap first                            |
-| **After coding units**          | overlap last                             |
-| **Leave out**                   | none in this loop                        |
+| Placed                          | Coders get                           |
+| ------------------------------- | ------------------------------------ |
+| **Spread throughout** (default) | overlap units evenly among their own |
+| **Before coding units**         | overlap first                        |
+| **After coding units**          | overlap last                         |
+| **Leave out**                   | none in this loop                    |
 
 Spread: 100 own units and 4 overlap gives one after every 20. In a
 [shared queue](shared-queues.md) (a divided crowd) without a maximum of units per coder,

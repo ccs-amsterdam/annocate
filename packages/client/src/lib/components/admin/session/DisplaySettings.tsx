@@ -58,6 +58,32 @@ export function DisplaySettings({
           Fix it when the units need one background, e.g. images or colours made for light or dark.
         </span>
       </label>
+      <fieldset className="flex flex-col gap-1 text-xs">
+        <legend className="mb-1 text-xs font-semibold">Answering with keys</legend>
+        {(
+          [
+            ["coderQuestions", "Questions about the coder (outside unit loops)"],
+            ["unitQuestions", "Questions about units"],
+          ] as const
+        ).map(([key, label]) => (
+          <label key={key} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={display.answerKeys?.[key] !== false}
+              onChange={(e) => {
+                const next = { ...display.answerKeys, [key]: e.target.checked ? undefined : false };
+                if (next[key] === undefined) delete next[key];
+                set("answerKeys", Object.keys(next).length > 0 ? next : undefined);
+              }}
+            />
+            {label}
+          </label>
+        ))}
+        <span className="text-[11px] font-normal text-muted-foreground">
+          Coders who turn on answer shortcuts can choose answers with keys here. Untick where that could affect the
+          answers, e.g. a survey that must be read; moving with the arrows and the Ctrl commands still work.
+        </span>
+      </fieldset>
     </section>
   );
 }

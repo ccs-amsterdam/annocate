@@ -11,10 +11,10 @@ categories, use [ordered options](nominal-and-ordinal.md).
 
 ## Range and steps
 
-| Setting     | Does                                     |
-| ----------- | ---------------------------------------- |
-| **Minimum** | lowest number (empty: no limit)          |
-| **Maximum** | highest number (empty: no limit)         |
+| Setting     | Does                                                                                           |
+| ----------- | ---------------------------------------------------------------------------------------------- |
+| **Minimum** | lowest number (empty: no limit)                                                                |
+| **Maximum** | highest number (empty: no limit)                                                               |
 | **Steps**   | **Whole numbers** (default), **One decimal**, **Two decimals**, or **Custom** (e.g. 5, or 0.5) |
 
 Steps count from the minimum: minimum 1, steps 2 allows 1, 3, 5, ... A new
@@ -29,11 +29,11 @@ label for an exact match, else the number.
 
 ## Layouts
 
-| Layout                      | Coders see                               | Needs              |
-| --------------------------- | ---------------------------------------- | ------------------ |
-| **Buttons (one per value)** | a button per number; one click answers   | minimum and maximum |
-| **Slider**                  | a slider and **Continue**                | minimum and maximum |
-| **Number input**            | a box and **Continue**                   | nothing            |
+| Layout                      | Coders see                             | Needs               |
+| --------------------------- | -------------------------------------- | ------------------- |
+| **Buttons (one per value)** | a button per number; one click answers | minimum and maximum |
+| **Slider**                  | a slider and **Continue**              | minimum and maximum |
+| **Number input**            | a box and **Continue**                 | nothing             |
 
 **Auto**: a number input without a minimum or maximum, buttons for up to
 6 numbers, else a slider.
@@ -43,7 +43,7 @@ label for an exact match, else the number.
   work with up to nine buttons.
 - **Slider** starts without a value (**Continue** stays disabled until
   moved). Keys: **←** **→** move it (from the middle), **Home** / **End**
-  go to the ends, **Shift + Enter** continues. Coders tend to stay near the
+  go to the ends, **Ctrl + Enter** continues. Coders tend to stay near the
   start, and fine positions are hard on phones.
 - **Number input** refuses numbers outside the range or between steps.
   Use it for counts and age.

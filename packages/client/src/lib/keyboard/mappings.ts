@@ -29,7 +29,15 @@ export interface KeyMapping {
   assign(group: readonly KeyTarget[]): (string | null)[];
 }
 
-export type MappingId = "numbers" | "numpad" | "letters" | "filter";
+export type MappingId = "numbers" | "numpad" | "letters" | "filter" | "none";
+
+/** No keys on answers (answer shortcuts off): not one of the coder's styles. */
+export const noKeysMapping: KeyMapping = {
+  id: "none",
+  name: "None",
+  description: "No keys choose answers",
+  assign: (group) => group.map(() => null),
+};
 
 /** Number keys: 1 to 9 for the first nine options. */
 export const numbersMapping: KeyMapping = {
@@ -145,6 +153,7 @@ export function labelMatches(label: string, typed: string): boolean {
 
 /** The key of each target of a group: its fixed key, else the mapping's (which assigns the others in order). */
 export function keysOf(mapping: KeyMapping, group: readonly KeyTarget[]): (string | null)[] {
+  if (mapping.id === "none") return group.map(() => null);
   const free = group.filter((t) => t.fixed === undefined);
   const assigned = effectiveMapping(mapping, group).assign(free);
   let i = 0;

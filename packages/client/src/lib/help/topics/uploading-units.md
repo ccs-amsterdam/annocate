@@ -47,11 +47,11 @@ Field names: letters, digits and `_`, not starting with a digit, at most
 
 ### Types
 
-| Type      | Values            | Example                       |
-| --------- | ----------------- | ----------------------------- |
-| `text`    | anything          | headlines, texts, image links |
-| `number`  | numbers (`.` decimal) | `128`, `-3.5`             |
-| `boolean` | `true` or `false` | whether a post was deleted    |
+| Type      | Values                | Example                       |
+| --------- | --------------------- | ----------------------------- |
+| `text`    | anything              | headlines, texts, image links |
+| `number`  | numbers (`.` decimal) | `128`, `-3.5`                 |
+| `boolean` | `true` or `false`     | whether a post was deleted    |
 
 The type is suggested from the values. Values that don't fit block the
 upload (_3 values aren't numbers ('n/a', '3,5')_). Use `number` to

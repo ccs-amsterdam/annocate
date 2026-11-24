@@ -10,16 +10,16 @@ coders answer and what is stored, and so your measurement level.
 
 ## All types
 
-| Answer type                                   | Coders...                           | Stored as                 | Use for                                   |
-| --------------------------------------------- | ----------------------------------- | ------------------------- | ----------------------------------------- |
-| [Categories](nominal-and-ordinal.md) (nominal) | pick one option, or several         | text, e.g. `economy`      | topics, actors, genres, yes/no            |
-| [Ordered options](nominal-and-ordinal.md) (ordinal) | pick one of ordered options    | numbers 1, 2, 3, ...      | tone, intensity, agreement                |
-| [Number](numeric.md)                          | give a number                       | a number                  | counts, age, a 0-100 thermometer          |
-| [Scale](scale.md)                             | rate several items on one set of options | a number per item     | a Likert battery                          |
-| [Swipe](swipe.md)                             | swipe the unit left, right (or up)  | text                      | fast yes/no judgements on phones          |
-| [Confirm](confirm.md)                         | click one button                    | that it was clicked       | instructions, "I have read the text"      |
-| [Mark text](span.md) (loops only)             | select words and label them         | the text and its position | entities, quotes, frames                  |
-| [Relations](relation.md) (loops only)         | link two marked passages            | pairs with a label        | who criticizes whom                       |
+| Answer type                                         | Coders...                                | Stored as                 | Use for                              |
+| --------------------------------------------------- | ---------------------------------------- | ------------------------- | ------------------------------------ |
+| [Categories](nominal-and-ordinal.md) (nominal)      | pick one option, or several              | text, e.g. `economy`      | topics, actors, genres, yes/no       |
+| [Ordered options](nominal-and-ordinal.md) (ordinal) | pick one of ordered options              | numbers 1, 2, 3, ...      | tone, intensity, agreement           |
+| [Number](numeric.md)                                | give a number                            | a number                  | counts, age, a 0-100 thermometer     |
+| [Scale](scale.md)                                   | rate several items on one set of options | a number per item         | a Likert battery                     |
+| [Swipe](swipe.md)                                   | swipe the unit left, right (or up)       | text                      | fast yes/no judgements on phones     |
+| [Confirm](confirm.md)                               | click one button                         | that it was clicked       | instructions, "I have read the text" |
+| [Mark text](span.md) (loops only)                   | select words and label them              | the text and its position | entities, quotes, frames             |
+| [Relations](relation.md) (loops only)               | link two marked passages                 | pairs with a label        | who criticizes whom                  |
 
 An [experiment](random-condition.md) is not a question but an item of
 its own (outside unit loops): its condition is drawn, never asked.
@@ -29,11 +29,11 @@ deploy, until it has a type.
 
 ## Measurement levels
 
-| Level          | Types                                | Statistics                                    |
-| -------------- | ------------------------------------ | --------------------------------------------- |
-| Nominal        | Categories, Swipe, Mark text, Relations | frequencies, crosstabs, alpha (nominal)    |
-| Ordinal        | Ordered options, Scale               | medians, rank correlations, alpha (ordinal)   |
-| Interval/ratio | Number                               | means, regression, alpha (interval)           |
+| Level          | Types                                   | Statistics                                  |
+| -------------- | --------------------------------------- | ------------------------------------------- |
+| Nominal        | Categories, Swipe, Mark text, Relations | frequencies, crosstabs, alpha (nominal)     |
+| Ordinal        | Ordered options, Scale                  | medians, rank correlations, alpha (ordinal) |
+| Interval/ratio | Number                                  | means, regression, alpha (interval)         |
 
 - Categories without an order are nominal: values are text, so nobody
   averages topic codes.

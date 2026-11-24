@@ -1,13 +1,15 @@
 import { showKeyChoice } from "./keyChoice";
+import { isBack, isContinue, isForward } from "./commands";
 import { useContext, useEffect, useRef, useState } from "react";
 import { PRIORITY, type KeyHandler, type KeyPress, type ScopeOptions } from "./controller";
-import { KeyboardContext } from "./context";
+import { AnswerKeysContext, KeyboardContext } from "./context";
 import { useDisplay } from "../display/context";
 import { arrowDirection, focusChosen, focusKeepsArrows, moveFocus } from "./focus";
 import {
   effectiveMapping,
   keysOf,
   labelMatches,
+  noKeysMapping,
   numbersMapping,
   targetForKey,
   type KeyMapping,
@@ -16,7 +18,9 @@ import {
 
 /** The coder's keyboard mapping (numbers without a provider; the numpad only in responsive designs). */
 export function useKeyMapping(): KeyMapping {
-  const mapping = useContext(KeyboardContext)?.mapping ?? numbersMapping;
+  const answerKeys = useContext(AnswerKeysContext);
+  const chosen = useContext(KeyboardContext)?.mapping ?? numbersMapping;
+  const mapping = answerKeys ? chosen : noKeysMapping;
   const display = useDisplay();
   return mapping.id === "numpad" && display.layouts !== "responsive" ? numbersMapping : mapping;
 }
@@ -41,7 +45,7 @@ export function useKeyScope(handler: KeyHandler, active = true, options: ScopeOp
 export interface KeyTargetOptions {
   /** The group keys choose in (a scale's item); default the first, -1: none. */
   activeGroup?: number;
-  /** Shift + Enter: e.g. continue with several answers. */
+  /** Ctrl + Enter: e.g. continue with several answers. */
   onEnter?: () => void;
   /** The field shows what was typed and dims what doesn't match: type-to-filter works (else numbers). */
   filterable?: boolean;
@@ -95,11 +99,6 @@ export function useKeyTargets(
     group.map((t) => t.fixed !== undefined || labelMatches(t.label, filter));
   const chooseByKey = (press: KeyPress): boolean => {
     if (!groups || press.onControl) return false;
-    // Shift + Enter continues (as the Continue button); plain Enter is for the focused button
-    if (press.key === "Enter" && press.shiftKey && options.onEnter) {
-      options.onEnter();
-      return true;
-    }
     if (press.shiftKey) return false;
     const group = groups[active];
     if (!group) return false;
@@ -110,6 +109,11 @@ export function useKeyTargets(
   };
   useKeyScope(
     (press) => {
+      // Ctrl + Enter continues (as the Continue button); plain Enter is for the focused button
+      if (groups && isContinue(press) && options.onEnter) {
+        options.onEnter();
+        return true;
+      }
       if (!groups || press.altKey || press.ctrlKey || press.metaKey) return false;
       const group = groups[active];
       if (group && effectiveMapping(mapping, group).id === "letters") {
@@ -148,7 +152,6 @@ export function useKeyTargets(
         } else if (
           press.key.length === 1 &&
           press.key !== " " &&
-          press.key !== "?" &&
           (filter || targetForKey(mapping, group, press.key) < 0)
         )
           setFilter(filter + press.key);
@@ -195,24 +198,27 @@ export interface BaseKeys {
 /**
  * The keys that work whatever the mapping (docs/client.md §4 "Keyboard"),
  * below the fields' own: arrows move focus between the answer targets
- * (Space or Enter then chooses the focused one), Shift + Left / Right go to
- * the previous / next question (back with the answer focused), Shift + Enter
- * continues when the question was answered.
+ * (Space or Enter then chooses the focused one), Ctrl + Left / Right go to
+ * the previous / next question (back with the answer focused), Ctrl + Enter
+ * continues when the question was answered (keyboard/commands.ts).
  */
 export function useBaseKeys(nav: BaseKeys): void {
   const controller = useContext(KeyboardContext)?.controller;
   useKeyScope(
     (press) => {
-      if (press.altKey || press.ctrlKey || press.metaKey || press.onControl) return false;
-      if (press.shiftKey) {
-        if (press.key === "ArrowLeft" && nav.canGoBack) {
-          // With the answer focused, to change it at once (it isn't cleared)
-          controller?.requestFocus();
-          nav.onBack();
-        } else if ((press.key === "ArrowRight" || press.key === "Enter") && nav.canGoForward) nav.onForward();
-        else return false;
+      if (isBack(press)) {
+        if (!nav.canGoBack) return false;
+        // With the answer focused, to change it at once (it isn't cleared)
+        controller?.requestFocus();
+        nav.onBack();
         return true;
       }
+      if (isForward(press) || isContinue(press)) {
+        if (!nav.canGoForward) return false;
+        nav.onForward();
+        return true;
+      }
+      if (press.altKey || press.ctrlKey || press.metaKey || press.shiftKey || press.onControl) return false;
       const direction = arrowDirection(press.key);
       if (direction) return !focusKeepsArrows() && moveFocus(direction);
       return false;

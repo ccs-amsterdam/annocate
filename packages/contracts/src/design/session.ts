@@ -209,6 +209,13 @@ export const STUDY_END_NAME = "_end";
 export const DisplaySchema = z.object({
   layouts: z.enum(["fixed", "responsive"]).optional(),
   theme: z.enum(["coder", "light", "dark"]).optional(),
+  /**
+   * Where coders may choose answers with keys (their answer shortcuts, which
+   * they turn on themselves): `false` turns them off for the questions about
+   * the coder (outside unit loops) or the questions about units. Absent:
+   * allowed. Moving, Space / Enter and the Ctrl commands always work.
+   */
+  answerKeys: z.object({ coderQuestions: z.boolean().optional(), unitQuestions: z.boolean().optional() }).optional(),
 });
 export type Display = z.infer<typeof DisplaySchema>;
 

@@ -34,10 +34,16 @@ export function CoderSettingsProvider({ children }: { children: React.ReactNode 
     return !window.matchMedia?.("(hover: none) and (pointer: coarse)").matches;
   });
   const [keyMapping, setKeyMappingState] = useState<string>(() => read("annotinder_key_mapping") ?? "numbers");
+  // Answer shortcuts: off until the coder turns them on (stray keys don't answer)
+  const [answerKeys, setAnswerKeysState] = useState<boolean>(() => read("annotinder_answer_keys") === "true");
 
   function setShowShortcuts(s: boolean) {
     setShowShortcutsState(s);
     write("annocate_show_shortcuts", String(s));
+  }
+  function setAnswerKeys(on: boolean) {
+    setAnswerKeysState(on);
+    write("annotinder_answer_keys", String(on));
   }
   function setKeyMapping(id: string) {
     setKeyMappingState(id);
@@ -53,6 +59,8 @@ export function CoderSettingsProvider({ children }: { children: React.ReactNode 
         lockTheme,
         showShortcuts,
         setShowShortcuts,
+        answerKeys,
+        setAnswerKeys,
         keyMapping,
         setKeyMapping,
       }}

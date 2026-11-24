@@ -1,3 +1,4 @@
+import { COMMAND_BADGES, isContinue } from "../../keyboard/commands";
 import { useCallback, useRef, useState } from "react";
 import { useAnswerLayout } from "../../display/hooks";
 import { numericSteps, numericValueError } from "@annotinder/contracts";
@@ -58,18 +59,18 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
     { priority: PRIORITY.field },
   );
 
-  // A slider: Left / Right step the value (from the middle at first), Home / End go to the ends, Shift + Enter continues
+  // A slider: Left / Right step the value (from the middle at first), Home / End go to the ends, Ctrl + Enter continues
   const round = (n: number) => Number(n.toFixed(decimals(step)));
   useKeyScope(
     (press) => {
-      if (press.altKey || press.ctrlKey || press.metaKey) return false;
-      const min = variable.min!;
-      const max = variable.max!;
-      if (press.shiftKey) {
-        if (press.key !== "Enter" || value === null) return false;
+      if (isContinue(press)) {
+        if (value === null) return false;
         answer(value);
         return true;
       }
+      if (press.altKey || press.ctrlKey || press.metaKey || press.shiftKey) return false;
+      const min = variable.min!;
+      const max = variable.max!;
       const from = value ?? min + Math.floor((max - min) / 2 / step) * step;
       const next =
         press.key === "ArrowLeft"
@@ -146,7 +147,7 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
           onClick={() => value !== null && answer(value)}
         >
           Continue
-          {value !== null && <ShortcutBadge shortcut="⇧↵" />}
+          {value !== null && <ShortcutBadge shortcut={COMMAND_BADGES.continue} />}
         </Button>
       </div>
     );

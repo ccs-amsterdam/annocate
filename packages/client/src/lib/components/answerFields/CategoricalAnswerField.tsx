@@ -1,3 +1,4 @@
+import { COMMAND_BADGES } from "../../keyboard/commands";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAnswerLayout } from "../../display/hooks";
 import {
@@ -84,7 +85,7 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
           ),
         ];
   const keyboard = useKeyTargets(targets, (_, index) => pick(shown[index]), {
-    // Several answers: Shift + Enter continues (as the Continue button)
+    // Several answers: Ctrl + Enter continues (as the Continue button)
     onEnter: multiple ? submit : undefined,
     filterable: true,
   });
@@ -147,7 +148,7 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
         // The arrows reach it too, below the options
         <Button type="button" className="relative h-10" data-key-target="" disabled={!selected.length} onClick={submit}>
           Continue{selected.length ? ` (${selected.length})` : ""}
-          <ShortcutBadge shortcut="⇧↵" />
+          <ShortcutBadge shortcut={COMMAND_BADGES.continue} />
         </Button>
       )}
     </div>
@@ -182,7 +183,7 @@ function OptionsDropdown({ options, selected, multiple, onPick }: OptionsDropdow
         setOpen(true);
         return true;
       }
-      if (press.key.length === 1 && press.key !== " " && press.key !== "?") {
+      if (press.key.length === 1 && press.key !== " ") {
         setSearch(press.key);
         setOpen(true);
         return true;

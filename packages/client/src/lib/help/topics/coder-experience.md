@@ -35,15 +35,15 @@ several answers, sliders, numbers and scales have **Continue**. See
 
 ## The top bar
 
-| Element                | Does                                                          |
-| ---------------------- | ------------------------------------------------------------- |
-| Menu (three lines)     | the questions and loops reached; click one to go there        |
-| `3`                    | the 3rd question                                              |
+| Element                | Does                                                              |
+| ---------------------- | ----------------------------------------------------------------- |
+| Menu (three lines)     | the questions and loops reached; click one to go there            |
+| `3`                    | the 3rd question                                                  |
 | Stack icon and `4 · 2` | unit 4, its 2nd question (`4` with one question); the loop's menu |
-| **<** and **>**        | back and forward                                              |
-| Monitor-and-phone icon | **Continue on another device**                                |
-| Keyboard               | **Keyboard shortcuts**: the shortcuts, shortcut style, badges |
-| Gear                   | **Settings**: light or dark                                   |
+| **<** and **>**        | back and forward                                                  |
+| Monitor-and-phone icon | **Continue on another device**                                    |
+| Keyboard               | **Keyboard shortcuts**: the shortcuts, shortcut style, badges     |
+| Gear                   | **Settings**: light or dark                                       |
 
 The loop's menu shows **Unit 12 of 40**, with buttons for the first,
 previous, next and furthest unit, and a number pad to go to a unit.
@@ -99,10 +99,13 @@ session** (empty).
 | ----------------------- | -------------------------------------------------------- |
 | **←** **→** **↑** **↓** | move between answer buttons                              |
 | **Space** / **Enter**   | choose the focused button                                |
-| **Shift + Enter**       | continue, once answered (not while typing in a text box) |
-| **Shift + ←** / **→**   | previous or next question (back focuses its answer)      |
+| **Ctrl + Enter**        | continue, once answered (also while typing in a text box) |
+| **Ctrl + ←** / **→**    | previous or next question (back focuses its answer)      |
+| **Ctrl + Space**        | open the question's instructions                         |
 | **0** / **.**           | the special options: not applicable, don't know          |
-| **?**                   | open the question's instructions                         |
+
+The Ctrl keys are commands: they work whatever the shortcut style, also
+while typing. On a Mac, **Option + ←** / **→** works too.
 
 Swipe questions use the arrows to swipe (the shortcut style's keys work
 too). In span questions the arrows move over the words (**↑** **↓**: a
@@ -110,10 +113,18 @@ line); **Space** starts a selection, the arrows extend it, and **Space**
 again ends it. The labels then have focus: the arrows move between them,
 **Space** or the label's key chooses one, **Esc** cancels. **Enter** on a
 labelled word opens its spans, **Backspace** removes the last span, and
-**Shift + Enter** is **Done**.
+**Ctrl + Enter** is **Done**.
 
-The keyboard icon in the top bar lists these shortcuts, and coders choose
-their **Shortcut style** there (remembered in their browser):
+Choosing answers with keys (numbers, letters, **0** / **.** for the
+special options) is off until a coder turns on **Answer with keys** under
+the keyboard icon in the top bar, so stray keys answer nothing; the moving
+keys and the Ctrl commands above always work. A study can keep answers to
+clicking for its questions about the coder or about units (the Study
+entry's **Display**: **Answering with keys**), where keys could affect the
+answers.
+
+The keyboard icon lists these shortcuts, and coders choose their
+**Shortcut style** there (remembered in their browser):
 
 | Shortcut style     | Choose an option with                                                                   |
 | ------------------ | --------------------------------------------------------------------------------------- |

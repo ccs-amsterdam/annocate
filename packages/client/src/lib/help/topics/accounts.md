@@ -8,10 +8,10 @@ summary: Users, researchers and admins; how to become a researcher; the limits o
 Your role on the server (below) is separate from your role in a study
 (see [Working together](working-together.md)).
 
-| Role           | Can                                                                        |
-| -------------- | -------------------------------------------------------------------------- |
-| **User**       | code, and work on studies where a researcher gave them a role              |
-| **Researcher** | also create studies; they count against your limits                        |
+| Role           | Can                                                                          |
+| -------------- | ---------------------------------------------------------------------------- |
+| **User**       | code, and work on studies where a researcher gave them a role                |
+| **Researcher** | also create studies; they count against your limits                          |
 | **Admin**      | also manage users, limits and registration ([Server admin](server-admin.md)) |
 
 Coders need no account, unless the invitation asks them to

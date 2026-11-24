@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
+import { AnswerKeysContext } from "../../keyboard/context";
 import { Check, ChevronDown, Keyboard } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "cn";
@@ -9,10 +10,10 @@ import { MAPPINGS, mappingById } from "../../keyboard/mappings";
 /** The shortcuts every question has, whatever the shortcut style. */
 const DEFAULT_SHORTCUTS: [string, string][] = [
   ["← → ↑ ↓", "Move between answer options, or swipe"],
-  ["Shift + ←", "Previous question"],
-  ["Shift + →", "Next question (when possible)"],
-  ["Shift + Enter", "Continue / done (not in a text box)"],
-  ["0  /  .", "Not applicable  /  Don't know (when offered)"],
+  ["Ctrl + ←", "Previous question"],
+  ["Ctrl + →", "Next question (when possible)"],
+  ["Ctrl + Enter", "Continue / done"],
+  ["Ctrl + Space", "The question's instruction (when it has one)"],
   ["Typing", "Depends on the question: a number, a search"],
 ];
 
@@ -22,7 +23,9 @@ const DEFAULT_SHORTCUTS: [string, string][] = [
  * keys choose answers), and the shortcut badges on answer options.
  */
 export function KeyboardMenu() {
-  const { showShortcuts, setShowShortcuts, keyMapping, setKeyMapping } = useCoderSettings();
+  const { showShortcuts, setShowShortcuts, answerKeys, setAnswerKeys, keyMapping, setKeyMapping } = useCoderSettings();
+  // Turned on, but the study turned them off for this question
+  const allowedHere = useContext(AnswerKeysContext);
   // The numpad needs layouts that adapt (a responsive study)
   const numpadAllowed = useDisplay().layouts === "responsive";
   const shown = mappingById(keyMapping === "numpad" && !numpadAllowed ? "numbers" : keyMapping);
@@ -59,81 +62,104 @@ export function KeyboardMenu() {
           ))}
         </dl>
 
-        <div className="space-y-1 border-t border-border/60 pt-2">
-          <span id="shortcut-style" className="block text-xs font-medium text-foreground">
-            Shortcut style
-          </span>
-          {/* A list that shows each style's description when open; closed, only the chosen style's name */}
-          <Popover open={choosing} onOpenChange={setChoosing}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                id="shortcut-style-value"
-                aria-labelledby="shortcut-style shortcut-style-value"
-                className="flex h-8 w-full cursor-pointer items-center justify-between rounded-md border border-input bg-background px-2 text-xs"
-              >
-                {shown.name}
-                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-64 p-1" role="listbox" aria-label="Shortcut style">
-              {MAPPINGS.map((m) => {
-                const disabled = m.id === "numpad" && !numpadAllowed;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    role="option"
-                    aria-selected={m.id === shown.id}
-                    disabled={disabled}
-                    onClick={() => {
-                      setKeyMapping(m.id);
-                      setChoosing(false);
-                    }}
-                    className={cn(
-                      "flex w-full cursor-pointer items-start gap-2 rounded px-2 py-1.5 text-left hover:bg-muted disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent",
-                      m.id === shown.id && "bg-muted/60",
-                    )}
-                  >
-                    <Check
-                      className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", m.id === shown.id ? "opacity-100" : "opacity-0")}
-                    />
-                    <span className="flex flex-col">
-                      <span className="text-xs font-medium">{m.name}</span>
-                      <span className="text-[11px] text-muted-foreground">
-                        {m.description}
-                        {disabled ? " (not in this study)" : ""}
+        <Switch id="toggle-answer-keys" label="Answer with keys" on={answerKeys} onChange={setAnswerKeys} />
+        {answerKeys && !allowedHere && (
+          <p className="text-[11px] text-muted-foreground">This study answers these questions by clicking only.</p>
+        )}
+        {answerKeys && (
+          <div className="space-y-1 border-t border-border/60 pt-2">
+            <span id="shortcut-style" className="block text-xs font-medium text-foreground">
+              Shortcut style
+            </span>
+            {/* A list that shows each style's description when open; closed, only the chosen style's name */}
+            <Popover open={choosing} onOpenChange={setChoosing}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  id="shortcut-style-value"
+                  aria-labelledby="shortcut-style shortcut-style-value"
+                  className="flex h-8 w-full cursor-pointer items-center justify-between rounded-md border border-input bg-background px-2 text-xs"
+                >
+                  {shown.name}
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-64 p-1" role="listbox" aria-label="Shortcut style">
+                {MAPPINGS.map((m) => {
+                  const disabled = m.id === "numpad" && !numpadAllowed;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      role="option"
+                      aria-selected={m.id === shown.id}
+                      disabled={disabled}
+                      onClick={() => {
+                        setKeyMapping(m.id);
+                        setChoosing(false);
+                      }}
+                      className={cn(
+                        "flex w-full cursor-pointer items-start gap-2 rounded px-2 py-1.5 text-left hover:bg-muted disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent",
+                        m.id === shown.id && "bg-muted/60",
+                      )}
+                    >
+                      <Check
+                        className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", m.id === shown.id ? "opacity-100" : "opacity-0")}
+                      />
+                      <span className="flex flex-col">
+                        <span className="text-xs font-medium">{m.name}</span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {m.description}
+                          {disabled ? " (not in this study)" : ""}
+                        </span>
                       </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </PopoverContent>
-          </Popover>
-        </div>
+                    </button>
+                  );
+                })}
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
 
-        <div className="flex items-center justify-between border-t border-border/60 pt-2">
-          <label htmlFor="toggle-shortcuts" className="cursor-pointer text-xs font-medium text-foreground">
-            Show shortcut badges
-          </label>
-          <button
-            id="toggle-shortcuts"
-            type="button"
-            role="switch"
-            aria-checked={showShortcuts}
-            onClick={() => setShowShortcuts(!showShortcuts)}
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none ${
-              showShortcuts ? "bg-primary" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition-transform ${
-                showShortcuts ? "translate-x-4" : "translate-x-0"
-              }`}
-            />
-          </button>
-        </div>
+        <Switch id="toggle-shortcuts" label="Show shortcut badges" on={showShortcuts} onChange={setShowShortcuts} />
       </PopoverContent>
     </Popover>
+  );
+}
+
+/** An on / off switch with its label. */
+function Switch({
+  id,
+  label,
+  on,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  on: boolean;
+  onChange: (on: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between border-t border-border/60 pt-2">
+      <label htmlFor={id} className="cursor-pointer text-xs font-medium text-foreground">
+        {label}
+      </label>
+      <button
+        id={id}
+        type="button"
+        role="switch"
+        aria-checked={on}
+        onClick={() => onChange(!on)}
+        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none ${
+          on ? "bg-primary" : "bg-muted"
+        }`}
+      >
+        <span
+          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition-transform ${
+            on ? "translate-x-4" : "translate-x-0"
+          }`}
+        />
+      </button>
+    </div>
   );
 }

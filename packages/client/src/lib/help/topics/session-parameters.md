@@ -15,13 +15,13 @@ when the session starts (coders can come back without them) and are in
 
 Click **URL parameters** above the item tree → **+ URL parameter**:
 
-| Setting           | What it is                                                     |
-| ----------------- | -------------------------------------------------------------- |
-| **Name**          | the name in the design: `$session.<name>`                      |
-| **In the URL as** | the key in the link, e.g. `STUDY_ID` (default: the name)        |
+| Setting           | What it is                                                                                         |
+| ----------------- | -------------------------------------------------------------------------------------------------- |
+| **Name**          | the name in the design: `$session.<name>`                                                          |
+| **In the URL as** | the key in the link, e.g. `STUDY_ID` (default: the name)                                           |
 | **Values**        | **Any value** (up to 256 characters), **From a list**, or **Matching a pattern** (e.g. `[0-9]{6}`) |
-| **Default**       | used when the link has none; without one it is required        |
-| **Description**   | a note for you and colleagues                                  |
+| **Default**       | used when the link has none; without one it is required                                            |
+| **Description**   | a note for you and colleagues                                                                      |
 
 ## Required parameters
 
@@ -37,10 +37,10 @@ value filled in.
 
 ## Built-in values
 
-| Value             | What it is                                                         |
-| ----------------- | ------------------------------------------------------------------ |
+| Value             | What it is                                                          |
+| ----------------- | ------------------------------------------------------------------- |
 | `$session.source` | the `?source=` of any link: where a coder came from; never required |
-| `$session.coder`  | the coder id (see [Links](links.md#coder-ids))                     |
+| `$session.coder`  | the coder id (see [Links](links.md#coder-ids))                      |
 
 ## Public title
 

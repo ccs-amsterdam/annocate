@@ -189,14 +189,14 @@ more colons.
 
 ## When something is wrong
 
-| Message                                                  | Fix                                                |
-| -------------------------------------------------------- | -------------------------------------------------- |
-| _::: if is not closed (end it with :::)_                 | add a closing fence with the same colons           |
-| _This ::: closes a block opened with 4 colons: use ::::_ | match the colons                                   |
-| _::: closes nothing: no block is open_                   | remove it, or add the opening fence                |
-| _::: else must follow a ::: if (with as many colons)_    | put it in an `::: if` block                        |
+| Message                                                  | Fix                                                                               |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| _::: if is not closed (end it with :::)_                 | add a closing fence with the same colons                                          |
+| _This ::: closes a block opened with 4 colons: use ::::_ | match the colons                                                                  |
+| _::: closes nothing: no block is open_                   | remove it, or add the opening fence                                               |
+| _::: else must follow a ::: if (with as many colons)_    | put it in an `::: if` block                                                       |
 | _Unknown block "when"_                                   | use `if`, `else if`, `else`, `from`, `style`, `text`, `markdown`, `html`, `image` |
-| _::: if needs a condition_                               | write the condition                                |
+| _::: if needs a condition_                               | write the condition                                                               |
 
 ## In question texts
 

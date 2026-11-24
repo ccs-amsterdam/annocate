@@ -43,9 +43,9 @@ devices, but you don't see their address.
 
 ## Overlap
 
-| Unit                       | Coded by     |
-| -------------------------- | ------------ |
-| `coder_set` is `anna;bob`  | Anna and Bob |
+| Unit                      | Coded by     |
+| ------------------------- | ------------ |
+| `coder_set` is `anna;bob` | Anna and Bob |
 | `test_set` is `overlap`   | every coder  |
 
 Overlap units are spread throughout each coder's units by default (see

@@ -19,11 +19,11 @@ each coder got in the previous loop isn't divided again.
 
 ## The settings
 
-|                             | at least                                                  | at most                                 |
-| --------------------------- | --------------------------------------------------------- | --------------------------------------- |
-| **Units per coder**         | every coder gets this many (see [below](#a-minimum-per-coder)) | a coder never gets more            |
-| **Coders per unit**         | a unit is done after this many coders                     | extra codings allowed up to this        |
-| _or_ **Agreement per unit** | done once this many agree on the chosen question          | never more coders than this             |
+|                             | at least                                                       | at most                          |
+| --------------------------- | -------------------------------------------------------------- | -------------------------------- |
+| **Units per coder**         | every coder gets this many (see [below](#a-minimum-per-coder)) | a coder never gets more          |
+| **Coders per unit**         | a unit is done after this many coders                          | extra codings allowed up to this |
+| _or_ **Agreement per unit** | done once this many agree on the chosen question               | never more coders than this      |
 
 ## When a unit is done
 

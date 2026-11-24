@@ -15,18 +15,18 @@ overwritten. Two rules explain the effects:
 
 ## What each change does
 
-| Change                                   | Units already finished                                         | Units to come             |
-| ---------------------------------------- | -------------------------------------------------------------- | ------------------------- |
-| **Question added** to a loop             | unfinished again: coders get them back and answer only the new question | asked             |
-| **Question added** outside a loop        | asked once coders switch to the new version                     | asked                     |
-| **Question removed**                     | answers stay in the data                                        | not asked                 |
-| **Option value** removed or changed      | stay finished; old answers no longer fit (answer again on going back) | current options      |
-| **Option label** changed                 | nothing changes                                                 | new label                 |
-| **Answer type** changed                  | as a removed value                                              | new type                  |
-| **Question renamed**                     | as removing it and adding a new one                             | asked under the new name  |
-| **Text, instruction or layout** changed  | stay finished                                                   | new text                  |
-| **Conditions or order** changed          | stay finished                                                   | new design                |
-| **Units settings** of a loop changed     | coded units stay the coder's                                    | new rules                 |
+| Change                                  | Units already finished                                                  | Units to come            |
+| --------------------------------------- | ----------------------------------------------------------------------- | ------------------------ |
+| **Question added** to a loop            | unfinished again: coders get them back and answer only the new question | asked                    |
+| **Question added** outside a loop       | asked once coders switch to the new version                             | asked                    |
+| **Question removed**                    | answers stay in the data                                                | not asked                |
+| **Option value** removed or changed     | stay finished; old answers no longer fit (answer again on going back)   | current options          |
+| **Option label** changed                | nothing changes                                                         | new label                |
+| **Answer type** changed                 | as a removed value                                                      | new type                 |
+| **Question renamed**                    | as removing it and adding a new one                                     | asked under the new name |
+| **Text, instruction or layout** changed | stay finished                                                           | new text                 |
+| **Conditions or order** changed         | stay finished                                                           | new design               |
+| **Units settings** of a loop changed    | coded units stay the coder's                                            | new rules                |
 
 Units and sets you change are drafts until deployed (see
 [Coder, condition and part sets](sets.md)). The deploy dialog warns about removed values and

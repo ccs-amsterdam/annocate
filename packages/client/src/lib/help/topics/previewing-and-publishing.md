@@ -7,11 +7,11 @@ summary: Drafts and deployed design versions, saving, the versions dialog, previ
 
 You edit a draft; coders only see your changes once you deploy.
 
-| Stage           | Who sees it                          | How            |
-| --------------- | ------------------------------------ | -------------- |
-| Unsaved changes | only you, in this browser            | editing        |
-| Draft           | you, your co-editors, and **Preview** | **Save**       |
-| Live version    | coders                               | **Deploy**         |
+| Stage           | Who sees it                           | How        |
+| --------------- | ------------------------------------- | ---------- |
+| Unsaved changes | only you, in this browser             | editing    |
+| Draft           | you, your co-editors, and **Preview** | **Save**   |
+| Live version    | coders                                | **Deploy** |
 
 Every saved version gets a number (v1, v2, ...). Deployed versions never
 change, so every answer stays linked to the version it was given under.
@@ -27,12 +27,12 @@ issues. Preview and deploy need a design without issues.
 
 The banner under the toolbar says what you are looking at:
 
-| Banner                                 | Means                                                                 |
-| -------------------------------------- | --------------------------------------------------------------------- |
-| **New design**                         | nothing saved yet; the first save makes v1                            |
-| **Draft v3 · not deployed**            | you edit the draft; coders use the live version until you deploy      |
-| **v2 · live**                          | no draft; **Save as draft** makes your changes a new draft            |
-| **Viewing v1 · older version · read only** | read only; **Restore as draft** copies it into the draft          |
+| Banner                                     | Means                                                            |
+| ------------------------------------------ | ---------------------------------------------------------------- |
+| **New design**                             | nothing saved yet; the first save makes v1                       |
+| **Draft v3 · not deployed**                | you edit the draft; coders use the live version until you deploy |
+| **v2 · live**                              | no draft; **Save as draft** makes your changes a new draft       |
+| **Viewing v1 · older version · read only** | read only; **Restore as draft** copies it into the draft         |
 
 Leaving **Design** with unsaved changes asks to save or discard them.
 See also [Backups in your browser](design-editor.md#backups-in-your-browser).
@@ -42,11 +42,11 @@ See also [Backups in your browser](design-editor.md#backups-in-your-browser).
 **Versions** in the toolbar lists every version, tagged **Live**,
 **Draft** (at most one), **In editor** or **Has issues**.
 
-| Button               | Does                                                             |
-| -------------------- | ---------------------------------------------------------------- |
-| **Edit** / **View**  | open the draft to edit, or another version to read               |
+| Button               | Does                                                              |
+| -------------------- | ----------------------------------------------------------------- |
+| **Edit** / **View**  | open the draft to edit, or another version to read                |
 | **Restore as draft** | copy an older version into the draft (replacing it, after asking) |
-| **Delete draft**     | delete the draft for all editors; can't be undone                |
+| **Delete draft**     | delete the draft for all editors; can't be undone                 |
 
 To go back to an earlier version: restore it as draft, then deploy.
 

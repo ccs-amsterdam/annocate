@@ -1,3 +1,4 @@
+import { COMMAND_BADGES } from "../keyboard/commands";
 import { useState } from "react";
 import { PRIORITY } from "../keyboard/controller";
 import { useKeyScope } from "../keyboard/hooks";
@@ -187,10 +188,10 @@ export function CodingNav({
           className="relative h-7 w-7 cursor-pointer text-bar-foreground hover:bg-bar-foreground/15 disabled:opacity-30"
           disabled={!navigation.canGoBack}
           onClick={onBack}
-          title="Previous (Shift + ←)"
+          title="Previous (Ctrl + ←)"
           aria-label="Previous"
         >
-          <ShortcutBadge shortcut="⇧←" position="top-right" />
+          <ShortcutBadge shortcut={COMMAND_BADGES.back} position="top-right" />
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <Button
@@ -200,10 +201,10 @@ export function CodingNav({
           className="relative h-7 w-7 cursor-pointer text-bar-foreground hover:bg-bar-foreground/15 disabled:opacity-30"
           disabled={!navigation.canGoForward}
           onClick={onForward}
-          title="Next (Shift + →)"
+          title="Next (Ctrl + →)"
           aria-label="Next"
         >
-          <ShortcutBadge shortcut="⇧→" position="top-right" />
+          <ShortcutBadge shortcut={COMMAND_BADGES.forward} position="top-right" />
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>

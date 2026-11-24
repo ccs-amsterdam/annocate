@@ -9,12 +9,12 @@ Every option has a **label** (shown) and a **value** (stored), as SPSS and
 Stata value labels or R factors. The wording can improve while the data
 stays stable.
 
-|                               | Label                 | Value                           |
-| ----------------------------- | --------------------- | ------------------------------- |
-| For                           | people                | data: storage, conditions, analysis |
-| Example (categories)          | Human interest story  | `human_interest`                |
-| Example (ordered)             | Somewhat negative     | `2`                             |
-| Safe to change during coding? | yes                   | no                              |
+|                               | Label                | Value                               |
+| ----------------------------- | -------------------- | ----------------------------------- |
+| For                           | people               | data: storage, conditions, analysis |
+| Example (categories)          | Human interest story | `human_interest`                    |
+| Example (ordered)             | Somewhat negative    | `2`                                 |
+| Safe to change during coding? | yes                  | no                                  |
 
 ## Values are data, labels are for people
 
@@ -58,11 +58,11 @@ the same effect.
 
 ## The deploy warnings
 
-| Warning                                                                                           | Means                         |
-| ------------------------------------------------------------------------------------------------- | ----------------------------- |
-| _'topic' no longer has the value "eco": earlier answers with it no longer fit._                   | value changed or removed      |
-| _'tone' changed from nominal to ordinal: earlier answers no longer fit._                          | type changed                  |
-| _'tone': the value 3 was "Agree" and is now "Neutral": earlier answers 3 will read as "Neutral"._ | an option got another value   |
+| Warning                                                                                           | Means                       |
+| ------------------------------------------------------------------------------------------------- | --------------------------- |
+| _'topic' no longer has the value "eco": earlier answers with it no longer fit._                   | value changed or removed    |
+| _'tone' changed from nominal to ordinal: earlier answers no longer fit._                          | type changed                |
+| _'tone': the value 3 was "Agree" and is now "Neutral": earlier answers 3 will read as "Neutral"._ | an option got another value |
 
 See also [Changing a design while coding runs](changing-a-live-design.md).
 

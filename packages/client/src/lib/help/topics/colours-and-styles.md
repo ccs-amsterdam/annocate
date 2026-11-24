@@ -39,16 +39,16 @@ not inside `::: text`, `::: html` or `::: image` (see
 
 ### Useful properties
 
-| Property                     | Example                           |
-| ---------------------------- | --------------------------------- |
-| `font-size`                  | `font-size: 120%`                 |
-| `font-weight`, `font-style`  | `font-weight: 700`, `font-style: italic` |
-| `font-family`                | `font-family: Georgia, serif`     |
-| `color`, `background`        | `color: darkred`, `background: #fff8e1` |
-| `border`, `border-radius`    | `border: 1px solid var(--border)`, `border-radius: 8px` |
-| `padding`, `margin-top`      | `padding: 0.75em 1em`             |
-| `text-align`, `max-width`    | `text-align: center`, `max-width: 30em` |
-| `opacity`, `gap`             | `opacity: 0.7`, `gap: 0.5em`      |
+| Property                    | Example                                                 |
+| --------------------------- | ------------------------------------------------------- |
+| `font-size`                 | `font-size: 120%`                                       |
+| `font-weight`, `font-style` | `font-weight: 700`, `font-style: italic`                |
+| `font-family`               | `font-family: Georgia, serif`                           |
+| `color`, `background`       | `color: darkred`, `background: #fff8e1`                 |
+| `border`, `border-radius`   | `border: 1px solid var(--border)`, `border-radius: 8px` |
+| `padding`, `margin-top`     | `padding: 0.75em 1em`                                   |
+| `text-align`, `max-width`   | `text-align: center`, `max-width: 30em`                 |
+| `opacity`, `gap`            | `opacity: 0.7`, `gap: 0.5em`                            |
 
 Use `%` or `em` rather than `px`, so proportions hold on every screen.
 
@@ -90,15 +90,15 @@ unit:
 Named colours (`darkred`, `#fff8e1`) stay the same in light and dark mode
 and may be hard to read in one. These follow the theme:
 
-| Write                     | Colour                     |
-| ------------------------- | -------------------------- |
-| `var(--foreground)`       | normal text                |
-| `var(--muted-foreground)` | grey, secondary text       |
-| `var(--background)`       | page background            |
-| `var(--muted)`            | soft background            |
-| `var(--border)`           | lines and borders          |
-| `var(--primary)`          | accent colour              |
-| `var(--destructive)`      | red, for warnings          |
+| Write                     | Colour               |
+| ------------------------- | -------------------- |
+| `var(--foreground)`       | normal text          |
+| `var(--muted-foreground)` | grey, secondary text |
+| `var(--background)`       | page background      |
+| `var(--muted)`            | soft background      |
+| `var(--border)`           | lines and borders    |
+| `var(--primary)`          | accent colour        |
+| `var(--destructive)`      | red, for warnings    |
 
 ### What isn't possible
 

@@ -16,10 +16,10 @@ Two things decide which units a coder gets:
 
 ## The coder's units
 
-| The design says                                       | A coder gets                                                           |
-| ----------------------------------------------------- | ---------------------------------------------------------------------- |
-| **Crowd (one link)**                            | all units                                                              |
-| **Expert coders** in Who codes         | the units with their name in `coder_set` (see [Giving each coder their own units](own-units.md)) |
+| The design says                                           | A coder gets                                                                                                  |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Crowd (one link)**                                      | all units                                                                                                     |
+| **Expert coders** in Who codes                            | the units with their name in `coder_set` (see [Giving each coder their own units](own-units.md))              |
 | an experiment where **each condition gets its own units** | the units with their condition in `condition_set` (see [Experimental conditions](experimental-conditions.md)) |
 
 Test units (`test_set`) are for everyone, besides these. The loop's form
@@ -58,10 +58,10 @@ none). See [Overlap](overlap.md) and
 
 Under **Order** (folded) in the loop's form:
 
-| Order                                   | Coders get                                       |
-| --------------------------------------- | ------------------------------------------------ |
+| Order                                   | Coders get                                          |
+| --------------------------------------- | --------------------------------------------------- |
 | **In set order**                        | the set's order (or upload order), the same for all |
-| **Random (each coder their own order)** | their own random order, kept across reloads      |
+| **Random (each coder their own order)** | their own random order, kept across reloads         |
 
 **Random** is safer for most content analysis: fatigue and learning
 average out. **In set order** when order matters (a thread, easy to

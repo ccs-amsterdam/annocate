@@ -18,11 +18,11 @@ units**, **After coding units** or **Leave out** (see
 [Overlap](overlap.md#placement)). A row is disabled when the units have
 none of that type.
 
-| `test_set` | Its units                                          | Coders notice                    |
-| ----------- | -------------------------------------------------- | -------------------------------- |
-| `overlap`   | coded by every coder, for reliability              | nothing                          |
-| `gold`      | known answer, checked silently                     | nothing, unless they fail        |
-| `practice`  | known answer, coders told when wrong               | feedback, answer again           |
+| `test_set` | Its units                             | Coders notice             |
+| ---------- | ------------------------------------- | ------------------------- |
+| `overlap`  | coded by every coder, for reliability | nothing                   |
+| `gold`     | known answer, checked silently        | nothing, unless they fail |
+| `practice` | known answer, coders told when wrong  | feedback, answer again    |
 
 ## Write them in your units
 
@@ -61,11 +61,11 @@ get the answer and feedback columns (_server only_).
 
 ## Right answers
 
-| Cell                | Right when the answer is            |
-| ------------------- | ----------------------------------- |
-| `positive`          | this option                         |
+| Cell                | Right when the answer is                |
+| ------------------- | --------------------------------------- |
+| `positive`          | this option                             |
 | `a;b`               | exactly these options (several answers) |
-| `positive\|neutral` | any of them                         |
+| `positive\|neutral` | any of them                             |
 | `3..5`              | a number (or ordered value) from 3 to 5 |
 
 Empty: not checked. Deploying warns about test units without answers and
