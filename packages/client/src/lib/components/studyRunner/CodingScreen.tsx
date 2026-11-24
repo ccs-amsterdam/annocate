@@ -55,6 +55,7 @@ export function CodingScreen(props: CodingScreenProps) {
           error={snapshot.error}
           errorCode={snapshot.errorCode}
           onRetry={() => void manager.retry()}
+          onBackToUnit={snapshot.refusedUnit ? () => void manager.backToRefusedUnit() : undefined}
           onStartNewSession={props.onStartNewSession}
           baseUrl={props.baseUrl}
           linkSecret={props.linkSecret}

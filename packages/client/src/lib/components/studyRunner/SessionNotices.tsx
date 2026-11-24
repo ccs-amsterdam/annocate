@@ -13,6 +13,8 @@ interface SessionErrorProps {
   error: string | null;
   errorCode: string | null;
   onRetry: () => void;
+  /** The server refused a finished unit's answers: back to that unit, to answer again. Not offered without. */
+  onBackToUnit?: () => void;
   onStartNewSession: () => void;
   baseUrl: string;
   linkSecret?: string;
@@ -41,10 +43,10 @@ const ERROR_NOTICES: Partial<Record<string, ComponentType<SessionErrorProps>>> =
 export function SessionErrorScreen(props: SessionErrorProps) {
   const Notice = ERROR_NOTICES[props.errorCode ?? ""];
   if (Notice) return <Notice {...props} />;
-  return <UnknownError error={props.error} onRetry={props.onRetry} />;
+  return <UnknownError error={props.error} onRetry={props.onRetry} onBackToUnit={props.onBackToUnit} />;
 }
 
-function UnknownError({ error, onRetry }: Pick<SessionErrorProps, "error" | "onRetry">) {
+function UnknownError({ error, onRetry, onBackToUnit }: Pick<SessionErrorProps, "error" | "onRetry" | "onBackToUnit">) {
   return (
     <div className="flex h-full min-h-[300px] items-center justify-center p-6">
       <div className="mx-auto flex max-w-md flex-col items-center rounded-2xl border border-destructive/20 bg-card p-6 text-center shadow-lg">
@@ -53,9 +55,16 @@ function UnknownError({ error, onRetry }: Pick<SessionErrorProps, "error" | "onR
         </div>
         <h3 className="mt-3 text-lg font-semibold text-foreground">Something went wrong</h3>
         <p className="mt-1 text-sm text-muted-foreground">{error}</p>
-        <Button type="button" className="mt-5" onClick={onRetry}>
-          Retry
-        </Button>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          {onBackToUnit && (
+            <Button type="button" variant="outline" onClick={onBackToUnit}>
+              Go back to the unit
+            </Button>
+          )}
+          <Button type="button" onClick={onRetry}>
+            Retry
+          </Button>
+        </div>
       </div>
     </div>
   );
