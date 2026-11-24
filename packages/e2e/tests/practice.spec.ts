@@ -25,6 +25,7 @@ test("a practice question gives feedback when wrong, answered again until right;
     items: [
       {
         type: "unit_loop",
+        id: "loop_1",
         units: {
           practice: "before",
           practiceCheck: { questions: ["topic"] },
@@ -115,6 +116,7 @@ test("the right answers of gold units, written in the loop editor", async ({ pag
     items: [
       {
         type: "unit_loop",
+        id: "loop_1",
         name: "articles",
         units: { gold: "after", goldCheck: { questions: ["topic"] } },
         children: [

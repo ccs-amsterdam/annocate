@@ -11,6 +11,7 @@ const design = {
   items: [
     {
       type: "unit_loop",
+      id: "loop_1",
       children: [
         { type: "layout", template: "$unit.text" },
         { type: "question", name: "tone", variable: { type: "confirm", question: "?" } },

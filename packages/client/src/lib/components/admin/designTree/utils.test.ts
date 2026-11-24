@@ -17,6 +17,7 @@ const branch = (key: string, ...children: object[]) => ({
 });
 const loop = (key: string) => ({
   type: "unit_loop",
+  id: "loop_1",
   _key: key,
   children: [question(`${key}_q`)],
 });

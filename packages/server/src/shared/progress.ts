@@ -22,7 +22,7 @@ import {
   unitSets,
   units,
 } from "../db/schema/index.js";
-import { getDeployment, loopVariables } from "./deployments.js";
+import { getDeployment, loopQuestions } from "./deployments.js";
 import { coderValues } from "./coders.js";
 
 const DAY_MS = 24 * 60 * 60_000;
@@ -31,15 +31,22 @@ const DAY_MS = 24 * 60 * 60_000;
 const given = (studyId: number) => and(eq(a.studyId, studyId), isNull(a.retiredAt), eq(a.assigned, false));
 const ACTIVITY_DAYS = 30;
 
+/** A loop of the live design version, with per session id the units finished in it. */
+interface LoopFinished {
+  loop: string;
+  title: string;
+  perCoder: Map<number, number>;
+}
+
 /**
- * Session id -> units finished, per loop of the live design version: every question
+ * Units finished per coder, for each loop of the live design version: every question
  * of the loop has a live answer (the rule of `listFinished`).
  */
-async function finishedPerLoop(db: Db, studyId: number): Promise<Map<string, Map<number, number>>> {
-  const result = new Map<string, Map<number, number>>();
+async function finishedPerLoop(db: Db, studyId: number): Promise<LoopFinished[]> {
+  const result: LoopFinished[] = [];
   const deployment = await getDeployment(db, studyId);
   if (!deployment) return result;
-  for (const [loop, questions] of await loopVariables(db, studyId, deployment.designVersionId)) {
+  for (const { loop, title, variables: questions } of await loopQuestions(db, studyId, deployment.designVersionId)) {
     const variables = [...new Set(questions)];
     if (variables.length === 0) continue;
     // (unit, coder) pairs with a live answer to every question of the loop
@@ -54,7 +61,7 @@ async function finishedPerLoop(db: Db, studyId: number): Promise<Map<string, Map
       .select({ sessionId: finished.sessionId, n: count() })
       .from(finished)
       .groupBy(finished.sessionId);
-    result.set(loop, new Map(rows.map((r) => [r.sessionId, r.n])));
+    result.push({ loop, title, perCoder: new Map(rows.map((r) => [r.sessionId, r.n])) });
   }
   return result;
 }
@@ -141,7 +148,7 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
     started: c.created,
     lastActive: activity.get(c.id)?.lastActive ?? null,
     answers: activity.get(c.id)?.answers ?? 0,
-    finished: Object.fromEntries([...finished].map(([loop, perCoder]) => [loop, perCoder.get(c.id) ?? 0])),
+    finished: finished.map(({ loop, title, perCoder }) => ({ loop, title, units: perCoder.get(c.id) ?? 0 })),
     special: special(c.id, c.assignments),
     variables: values.get(c.id) ?? {},
     ended: c.ended,
@@ -171,7 +178,7 @@ export async function studyOverview(db: Db, studyId: number, now = new Date()): 
     .where(given(studyId));
 
   let codings = 0;
-  for (const perCoder of (await finishedPerLoop(db, studyId)).values()) for (const n of perCoder.values()) codings += n;
+  for (const { perCoder } of await finishedPerLoop(db, studyId)) for (const n of perCoder.values()) codings += n;
 
   return {
     units: await db.$count(units, and(eq(units.studyId, studyId), eq(units.inDraft, true))),

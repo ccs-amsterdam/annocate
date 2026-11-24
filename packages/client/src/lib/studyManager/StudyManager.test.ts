@@ -20,7 +20,7 @@ function confirm(name: string): TopLevelQuestionItem {
 }
 
 function unitLoop(name: string, children: InLoopItem[]): UnitLoopItem {
-  return { label: name, type: "unit_loop", children: [{ type: "layout", template: "" }, ...children] };
+  return { label: name, type: "unit_loop", id: "loop_1", children: [{ type: "layout", template: "" }, ...children] };
 }
 
 function unitVar(name: string): InLoopQuestionItem {
@@ -276,7 +276,7 @@ describe("StudyManager error-handling, rollback, and retry contract", () => {
   it("asks the server for the next unit by loop name", async () => {
     let unitsServed = 0;
     const getNextUnit = vi.fn(async (loop: string) => {
-      expect(loop).toBe("1");
+      expect(loop).toBe("loop_1");
       unitsServed += 1;
       return unitsServed === 1 ? unit(10) : null;
     });
@@ -288,7 +288,7 @@ describe("StudyManager error-handling, rollback, and retry contract", () => {
     });
     const manager = new StudyManager(server);
     await manager.start();
-    expect(getNextUnit).toHaveBeenCalledWith("1");
+    expect(getNextUnit).toHaveBeenCalledWith("loop_1");
     expect(manager.getSnapshot().phase).toBe("unit_variable");
     expect(manager.getSnapshot().currentUnit?.id).toBe(10);
   });
@@ -533,7 +533,7 @@ describe("resuming a session", () => {
               ],
             ),
             variables: opts.variables ?? { consent: { done: true, skip: false } },
-            progress: [{ set: "1", doneUnitIds: [10, 11], totalUnits: 5 }],
+            progress: [{ set: "loop_1", doneUnitIds: [10, 11], totalUnits: 5 }],
           }) as SessionResponse,
       ),
       getNextUnit: vi.fn(async () => {
@@ -560,7 +560,7 @@ describe("resuming a session", () => {
     expect(snap.navigation.canGoBack).toBe(true);
 
     await manager.goBack(); // to the last question of unit 11, loaded on demand
-    expect(getLoopUnit).toHaveBeenCalledWith("1", 11);
+    expect(getLoopUnit).toHaveBeenCalledWith("loop_1", 11);
     expect(manager.getSnapshot().currentUnit?.id).toBe(11);
     expect(itemName(manager.getSnapshot().currentItem!)).toBe("q2");
   });
@@ -607,7 +607,7 @@ describe("submitting a finished unit", () => {
     expect(postUnitVariables).toHaveBeenCalledWith(
       5,
       { q1: { done: true, skip: false }, q2: { done: true, skip: true } },
-      "1",
+      "loop_1",
       {
         q1: { firstMs: 2500, totalMs: 2500, hiddenMs: 0, edits: 1 },
       },
@@ -625,6 +625,7 @@ describe("rendering templates", () => {
       },
       {
         type: "unit_loop",
+        id: "loop_1",
         label: "main",
         children: [
           { type: "layout", template: "# $unit.title\n\n[[intro]] $unit.title", snippets: { intro: "Hello" } },
@@ -664,6 +665,7 @@ describe("layout items", () => {
     const items = [
       {
         type: "unit_loop",
+        id: "loop_1",
         children: [
           confirm("warmup"),
           { type: "layout", template: "Title: $unit.title" },
@@ -713,7 +715,7 @@ describe("a new design version while coding", () => {
       async () =>
         ({
           ...session([unitLoop("loop", [unitVar("q1")])]),
-          progress: [{ set: "1", doneUnitIds: [10], totalUnits: 2 }],
+          progress: [{ set: "loop_1", doneUnitIds: [10], totalUnits: 2 }],
         }) as SessionResponse,
     );
     const server = makeFlakyServer({
@@ -919,6 +921,7 @@ describe("frozen answers", () => {
     const loop: UnitLoopItem = {
       label: "main",
       type: "unit_loop",
+      id: "loop_1",
       children: [{ type: "layout", template: "As {{$var.role.label}}" }, unitVar("q1")],
     };
     let served = 0;
@@ -1054,7 +1057,9 @@ describe("practice and gold units (docs/architecture.md §6.2)", () => {
     await manager.answer(B);
     expect(manager.getSnapshot().practiceWrong).toBeNull();
     expect(manager.getSnapshot().practiceRight).toBe(1);
-    expect(postUnitVariables).toHaveBeenCalledWith(7, { q1: B }, "1", { q1: expect.objectContaining({ tries: 2 }) });
+    expect(postUnitVariables).toHaveBeenCalledWith(7, { q1: B }, "loop_1", {
+      q1: expect.objectContaining({ tries: 2 }),
+    });
   });
 
   it("without retry, the coder may go on with a wrong answer", async () => {
@@ -1070,7 +1075,9 @@ describe("practice and gold units (docs/architecture.md §6.2)", () => {
     await manager.answer(A);
     expect(manager.getSnapshot().practiceWrong).toMatchObject({ retry: false });
     await manager.continueAfterPractice();
-    expect(postUnitVariables).toHaveBeenCalledWith(7, { q1: A }, "1", { q1: expect.objectContaining({ tries: 1 }) });
+    expect(postUnitVariables).toHaveBeenCalledWith(7, { q1: A }, "loop_1", {
+      q1: expect.objectContaining({ tries: 1 }),
+    });
   });
 
   it("gold checks ending the session: the ending shows at once, and what follows isn't saved or shown as an error", async () => {
@@ -1132,7 +1139,7 @@ describe("a draft of the unit on screen (browser storage)", () => {
     await second.start();
     expect(second.getSnapshot().currentItem).toMatchObject({ name: "q2" });
     await second.answer(A);
-    expect(server.postUnitVariables).toHaveBeenCalledWith(3, { q1: A, q2: A }, "1", expect.anything());
+    expect(server.postUnitVariables).toHaveBeenCalledWith(3, { q1: A, q2: A }, "loop_1", expect.anything());
     expect(localStorage.getItem("annotinder:unit-drafts:42")).toBeNull();
   });
 });

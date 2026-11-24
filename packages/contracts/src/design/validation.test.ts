@@ -21,10 +21,11 @@ function unitLoop(
   children: InLoopItem[],
   template = "",
   snippets?: Record<string, string>,
+  id = "loop_1",
 ): TopLevelItem {
   // A layout item first, when there is a template
   const layout: InLoopItem[] = template || snippets ? [{ type: "layout", template, snippets }] : [];
-  return { type: "unit_loop", label: name, children: [...layout, ...children] };
+  return { type: "unit_loop", id, label: name, children: [...layout, ...children] };
 }
 function topBranch(name: string, children: TopLevelItem[], condition: Condition = { script: "true" }): TopLevelItem {
   return { type: "branch", label: name, condition, children };
@@ -65,6 +66,7 @@ describe("validateDesignItems", () => {
     const loop = (units: object) => [
       {
         type: "unit_loop",
+        id: "loop_1",
         label: "loop",
         units,
         children: [{ type: "layout", template: "" }, questionVar("q1", select(["a", "b"]))],
@@ -232,6 +234,7 @@ describe("the Session item", () => {
       const [q, c] = n++ === 0 ? ["q1", "c1"] : [`q${n}`, `c${n}`];
       return {
         type: "unit_loop",
+        id: `loop_${n}`,
         units,
         children: [{ type: "layout", template: "" }, questionVar(q, select(["a", "b"])), questionVar(c)],
       };
@@ -338,6 +341,7 @@ describe("validateDesignItems (more)", () => {
     const items = [
       {
         type: "unit_loop",
+        id: "loop_1",
         label: "empty_loop",
         children: [],
       },
@@ -349,11 +353,13 @@ describe("validateDesignItems (more)", () => {
     const items = [
       {
         type: "unit_loop",
+        id: "loop_1",
         label: "outer",
         children: [
           { type: "layout", template: "" },
           {
             type: "unit_loop",
+            id: "loop_2",
             label: "inner",
             children: [{ type: "layout", template: "" }, questionVar("q1")],
           },
@@ -450,7 +456,7 @@ describe("reference validation", () => {
   it("rejects refs into another loop, and $unit and snippets outside a loop", () => {
     const items = [
       unitLoop("a", [questionVar("qa")]),
-      unitLoop("b", [inLoopBranch("c", [questionVar("qb")], { script: "$var.qa.answered" })]),
+      unitLoop("b", [inLoopBranch("c", [questionVar("qb")], { script: "$var.qa.answered" })], "", undefined, "loop_2"),
       questionVar("after", { ...confirmVariable, question: "$unit.headline and [[x]]" }),
     ];
     expect(messages(items)).toEqual([
@@ -772,6 +778,7 @@ describe("availableQuestions", () => {
 describe("practice and gold units", () => {
   const loop = (units: object, template = "$unit.text") => ({
     type: "unit_loop",
+    id: "loop_1",
     units: { overlap: "spread", ...units },
     children: [
       { type: "layout", template },
@@ -821,6 +828,7 @@ describe("instructions", () => {
   it("are for questions in unit loops, on the question item; at the top level the schema refuses them", () => {
     const loop = {
       type: "unit_loop",
+      id: "loop_1",
       children: [
         { type: "layout", template: "$unit.text" },
         {

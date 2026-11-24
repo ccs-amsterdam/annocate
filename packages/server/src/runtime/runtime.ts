@@ -1325,7 +1325,7 @@ export class DeploymentRuntime {
       }
       for (const { pool, coders } of pools) {
         sources.push({
-          loop: loopTitle(info.loop, loop),
+          loop: loopTitle(info.loop),
           set: pool.set,
           ...pool.status(now, coders),
           coders: coders.length,

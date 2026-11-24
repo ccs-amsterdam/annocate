@@ -11,12 +11,7 @@ const groups: SetGroupResponse[] = [
   { name: "part_set", sets: [set("pre", [4]), set("post", [5])] },
 ];
 
-function render(
-  units: LoopUnits,
-  invite: Invite,
-  earlier: { number: number; title: string }[] = [],
-  withGroups = groups,
-) {
+function render(units: LoopUnits, invite: Invite, earlier: { title: string }[] = [], withGroups = groups) {
   return renderToStaticMarkup(
     <UnitsEditor
       units={units}
@@ -85,7 +80,7 @@ describe("a loop's Units settings", () => {
   });
 
   it("a loop can take the previous loop's units: then no part or dividing", () => {
-    const html = render({ sameAsPrevious: true }, { mode: "crowd" }, [{ number: 1, title: "First pass" }]);
+    const html = render({ sameAsPrevious: true }, { mode: "crowd" }, [{ title: "First pass" }]);
     expect(html).toContain(
       '<option value="previous" selected="">The units each coder got in the previous loop (First pass)</option>',
     );

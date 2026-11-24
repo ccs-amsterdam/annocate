@@ -17,8 +17,10 @@ import {
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "../db/index.js";
 import {
+  coderSessions,
   deployments,
   deploymentVersions as deploymentVersionsTable,
+  unitCodings,
   designVersions,
   studies,
 } from "../db/schema/index.js";
@@ -64,12 +66,14 @@ async function designVersion(db: Db, studyId: number, id?: number) {
  * the first deploy) or the deployed ones. A new deployment version when the design version
  * or the units change (docs/architecture.md §8.4), recorded with what
  * changed. Freezes the design version. Warns when a loop gains questions while
- * coders already finished units in it: those units count as unfinished
- * again (docs/architecture.md §8.2).
+ * coders already finished units in it (those units count as unfinished
+ * again, docs/architecture.md §8.2), and when a loop coders worked in is gone.
  */
 export async function putDeployment(db: Db, studyId: number, body: DeploymentWrite): Promise<DeploymentResponse> {
   const previous = await deploymentRow(db, studyId);
-  const warnings = previous ? await reopenWarnings(db, studyId, previous.designVersionId, body.designVersionId) : [];
+  const warnings = previous
+    ? await designChangeWarnings(db, studyId, previous.designVersionId, body.designVersionId)
+    : [];
   const units = !previous || body.units ? await unitChanges(db, studyId) : null;
   const newUnits = units !== null && (!previous || anyUnitChanges(units));
   const changes: DeploymentChanges = {
@@ -140,51 +144,98 @@ export async function deploymentVersions(db: Db, studyId: number): Promise<Deplo
   }));
 }
 
-/**
- * Loop title (contracts `loopTitle`, made unique) -> names of its questions
- * (through conditions), from a stored design version. Titles are for people:
- * progress per loop and warnings.
- */
-export async function loopVariables(db: Db, studyId: number, designVersionId: number): Promise<Map<string, string[]>> {
-  const row = await designVersion(db, studyId, designVersionId);
-  const loops = new Map<string, string[]>();
-  const parsed = row ? DesignItemsSchema.safeParse(designVersionItems(row)) : null;
-  if (!parsed?.success) return loops;
-  const questions = (items: DesignItem[]): string[] =>
-    items.flatMap((i) => (i.type === "branch" ? questions(innerItems(i)) : "variable" in i ? [i.name] : []));
-  for (const { key, loop } of unitLoops(parsed.data)) {
-    const title = loopTitle(loop, key);
-    loops.set(loops.has(title) ? `${title} (${key})` : title, questions(loop.children as DesignItem[]));
-  }
-  return loops;
+/** A unit loop of a stored design version: its id, how people call it (contracts `loopTitle`), and its questions. */
+export interface LoopQuestions {
+  loop: string;
+  title: string;
+  /** The names of the loop's questions (also those inside branches). */
+  variables: string[];
 }
 
-/** For each loop that gained questions while coders had finished units in it: a warning (those units reopen). */
-async function reopenWarnings(
+/** The unit loops of a stored design version, in design order (none if the version doesn't parse). */
+export async function loopQuestions(db: Db, studyId: number, designVersionId: number): Promise<LoopQuestions[]> {
+  const row = await designVersion(db, studyId, designVersionId);
+  const parsed = row ? DesignItemsSchema.safeParse(designVersionItems(row)) : null;
+  if (!parsed?.success) return [];
+  const questions = (items: DesignItem[]): string[] =>
+    items.flatMap((i) => (i.type === "branch" ? questions(innerItems(i)) : "variable" in i ? [i.name] : []));
+  return unitLoops(parsed.data).map(({ key, loop }) => ({
+    loop: key,
+    title: loopTitle(loop),
+    variables: questions(loop.children as DesignItem[]),
+  }));
+}
+
+/**
+ * What changing the design version does to coders' work, as warnings: a loop
+ * that gained questions (finished units reopen), and a loop that is gone
+ * while coders worked in it.
+ */
+async function designChangeWarnings(
   db: Db,
   studyId: number,
   previousDesignVersionId: number,
   designVersionId: number,
 ): Promise<string[]> {
   if (previousDesignVersionId === designVersionId) return [];
-  const before = await loopVariables(db, studyId, previousDesignVersionId);
-  const after = await loopVariables(db, studyId, designVersionId);
+  const before = await loopQuestions(db, studyId, previousDesignVersionId);
+  const after = await loopQuestions(db, studyId, designVersionId);
+  return [
+    ...(await removedLoopWarnings(db, studyId, before, after)),
+    ...(await reopenWarnings(db, studyId, before, after)),
+  ];
+}
+
+/** For each loop of the previous version that the new one doesn't have, while coders worked in it: a warning. */
+async function removedLoopWarnings(
+  db: Db,
+  studyId: number,
+  before: LoopQuestions[],
+  after: LoopQuestions[],
+): Promise<string[]> {
   const warnings: string[] = [];
-  for (const [loop, variables] of after) {
-    // The same loop in the previous version: same title, or else the one sharing most questions.
-    const previous =
-      before.get(loop) ??
-      [...before.values()].sort(
-        (a, b) => b.filter((v) => variables.includes(v)).length - a.filter((v) => variables.includes(v)).length,
-      )[0];
-    if (!previous || !previous.some((v) => variables.includes(v))) continue;
+  for (const removed of before.filter((b) => !after.some((a) => a.loop === b.loop))) {
+    const [worked] = await db
+      .select({
+        coders: sql<number>`count(DISTINCT ${unitCodings.sessionId})::int`,
+        units: sql<number>`count(*)::int`,
+      })
+      .from(unitCodings)
+      .where(and(eq(unitCodings.studyId, studyId), eq(unitCodings.loopKey, removed.loop)));
+    const reached = await db.$count(
+      coderSessions,
+      and(eq(coderSessions.studyId, studyId), sql`${coderSessions.assignments} ? ${removed.loop}`),
+    );
+    if (reached === 0 && !worked?.units) continue;
+    warnings.push(
+      `Loop '${removed.title}' (${removed.loop}) is no longer in the design: ${plural(reached, "coder")} reached it ` +
+        `(${plural(worked?.units ?? 0, "finished unit coding")}). Their answers are kept, but coders no longer get ` +
+        `this loop. To continue it, put the loop back with its id.`,
+    );
+  }
+  return warnings;
+}
+
+const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+
+/** For each loop that gained questions while coders had finished units in it: a warning (those units reopen). */
+async function reopenWarnings(
+  db: Db,
+  studyId: number,
+  before: LoopQuestions[],
+  after: LoopQuestions[],
+): Promise<string[]> {
+  const warnings: string[] = [];
+  for (const { loop, title, variables } of after) {
+    const previous = before.find((b) => b.loop === loop)?.variables;
+    if (!previous) continue;
     const added = variables.filter((v) => !previous.includes(v));
     if (added.length === 0) continue;
     const finished = (await listFinished(db, studyId, { loops: [{ level: "unit", loop, variables: previous }] }))
       .length;
     if (finished > 0) {
       warnings.push(
-        `Loop '${loop}' gained questions (${added.join(", ")}): ${finished} finished unit codings ` +
+        `Loop '${title}' gained questions (${added.join(", ")}): ${finished} finished unit codings ` +
           `will be unfinished again, and coders get these units back to answer the new questions.`,
       );
     }

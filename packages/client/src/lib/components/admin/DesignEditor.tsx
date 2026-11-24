@@ -10,7 +10,14 @@ import {
   type DesignVersionMeta,
 } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useDeploymentQuery, useDesignVersionQuery, useStudyQuery, useUnitFieldsQuery } from "../../admin/queries";
+import { finishedPerLoop } from "../../design/loops";
+import {
+  useCodersQuery,
+  useDeploymentQuery,
+  useDesignVersionQuery,
+  useStudyQuery,
+  useUnitFieldsQuery,
+} from "../../admin/queries";
 import { DeployedValuesContext, deployedOptionValues } from "../../design/deployedValues";
 import { designItems } from "@annotinder/contracts";
 import { unknownUnitFields } from "../../design/unitFieldRefs";
@@ -103,11 +110,24 @@ export function DesignEditor({
   initialSelect,
 }: DesignEditorProps) {
   const readOnly = mode === "history";
-  const draft = useDesignDraft({ client, version, readOnly, onSaved, restore, newerDraft });
   // The deployed design's answer values: label edits don't change them (OptionsEditor)
   const deployment = useDeploymentQuery(client).data ?? null;
   const deployed = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data ?? null;
-  const deployedValues = useMemo(() => deployedOptionValues(deployed ? designItems(deployed) : null), [deployed]);
+  const deployedItems = useMemo(() => (deployed ? designItems(deployed) : null), [deployed]);
+  const deployedValues = useMemo(() => deployedOptionValues(deployedItems), [deployedItems]);
+  // The units coders finished per loop: deleting a loop they worked in asks first
+  const coders = useCodersQuery(client, { enabled: deployment !== null && !readOnly, poll: false }).data;
+  const loopProgress = useMemo(() => finishedPerLoop(coders ?? []), [coders]);
+  const draft = useDesignDraft({
+    client,
+    version,
+    readOnly,
+    onSaved,
+    restore,
+    newerDraft,
+    deployedItems,
+    loopProgress,
+  });
   const wideScreen = useMediaQuery(WIDE_SCREEN);
   const narrowScreen = useMediaQuery(NARROW_SCREEN);
   const wide = wideLayout || wideScreen;

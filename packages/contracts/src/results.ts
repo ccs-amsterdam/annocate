@@ -13,7 +13,7 @@ export const QuestionAnswersSchema = z.object({
   question: z.string(),
   /** A scale's item; null otherwise. */
   item: z.string().nullable(),
-  /** The unit loop's key (contracts `unitLoops`); null for questions outside loops. */
+  /** The unit loop's id (contracts `unitLoops`); null for questions outside loops. */
   loop: z.string().nullable(),
   /** The answer type (`nominal`, `ordinal`, ...). */
   type: z.string(),

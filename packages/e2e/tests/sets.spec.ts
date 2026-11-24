@@ -48,6 +48,7 @@ test("a coder_set column makes the coder set; a link per coder; a coder codes th
     items: [
       {
         type: "unit_loop",
+        id: "loop_1",
         units: { overlap: "before" },
         children: [
           { type: "layout", template: "$unit.text" },

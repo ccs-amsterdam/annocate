@@ -37,6 +37,7 @@ const items = [
   },
   {
     type: "unit_loop",
+    id: "loop_1",
     label: "Headlines",
     units: {},
     children: [

@@ -61,7 +61,7 @@ describe("results", () => {
 
     const swipe = await answers(await example("swipe-sentiment"));
     const [sentiment] = swipe.questions;
-    expect(sentiment).toMatchObject({ question: "sentiment", loop: "1", answered: 30 });
+    expect(sentiment).toMatchObject({ question: "sentiment", loop: "loop_1", answered: 30 });
     expect(sentiment.counts.reduce((sum, c) => sum + c.count, 0)).toBe(30);
   });
 
@@ -89,7 +89,7 @@ describe("results", () => {
     const study = await example("swipe-sentiment");
     const { units } = await get(`/study/${study}/results/units`, ResultsUnitsSchema);
     expect(units).toHaveLength(5);
-    expect(units.every((u) => u.coders === 3 && u.loop === "1")).toBe(true);
+    expect(units.every((u) => u.coders === 3 && u.loop === "loop_1")).toBe(true);
     const sorted = [...units].sort((a, b) => b.disagreement - a.disagreement);
     expect(units.map((u) => u.disagreement)).toEqual(sorted.map((u) => u.disagreement));
     // Three coders: all the same (0), two of three alike (2/3 of pairs differ), or all different (1)

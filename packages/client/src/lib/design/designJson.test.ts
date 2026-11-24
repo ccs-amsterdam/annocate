@@ -17,6 +17,7 @@ const design = {
     { type: "question", name: "consent", variable: { type: "confirm", question: "Do you agree?" } },
     {
       type: "unit_loop",
+      id: "loop_1",
       children: [
         { type: "layout", template: "$unit.text" },
         {

@@ -12,7 +12,7 @@ describe("forEachItem", () => {
       children: [{ type: "question", name: "b" }],
       elseChildren: [{ type: "end", name: "c", children: [{ type: "question", name: "hidden" }] }],
     },
-    { type: "unit_loop", children: [{ type: "question", name: "d" }] },
+    { type: "unit_loop", id: "loop_1", children: [{ type: "question", name: "d" }] },
   ];
 
   it("visits every object item in document order, with its path, children before else items", () => {

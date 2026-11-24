@@ -268,7 +268,7 @@ function loopUnitsContext(items: readonly DesignItem[], cleanItems: readonly unk
   return {
     invite: inviteOf(sessionItem(cleanItems)),
     sources: shareSources(session.invite, random),
-    earlier: loops.slice(0, Math.max(0, at)).map((l) => ({ number: Number(l.key), title: loopTitle(l.loop, l.key) })),
+    earlier: loops.slice(0, Math.max(0, at)).map((l) => ({ title: loopTitle(l.loop) })),
   };
 }
 

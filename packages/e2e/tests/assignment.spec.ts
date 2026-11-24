@@ -9,6 +9,7 @@ import { api, question } from "./helpers";
 
 const loop = (overlap?: unknown) => ({
   type: "unit_loop",
+  id: "loop_1",
   units: overlap ? { overlap } : {},
   children: [
     { type: "layout", template: "$unit.text" },
@@ -230,6 +231,7 @@ test("two loops each show one part: first the pre units, then the post units", a
   });
   const filtered = (part: string, name: string, text: string) => ({
     ...loop(),
+    id: part === "pre" ? "loop_1" : "loop_2",
     label: name,
     units: { part },
     children: [

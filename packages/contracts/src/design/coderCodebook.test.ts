@@ -23,6 +23,7 @@ describe("the coder codebook", () => {
         children: [
           {
             type: "unit_loop",
+            id: "loop_1",
             label: "Main",
             order: "random",
             units: {
@@ -46,6 +47,7 @@ describe("the coder codebook", () => {
         children: [
           {
             type: "unit_loop",
+            id: "loop_1",
             label: "Main",
             order: "random",
             children: [

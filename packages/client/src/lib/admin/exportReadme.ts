@@ -37,7 +37,8 @@ coders.csv       A row per coder session (session_id): the coder (their name
                  quit), when they asked for their answers to be deleted
                  (deletion_requested; not done yet), their session values
                  (session.<name>: URL parameters and source),
-                 units finished per loop, and their answers outside unit
+                 units finished per loop (finished_<loop id>, e.g.
+                 finished_loop_1), and their answers outside unit
                  loops (random conditions included).
 units.csv        The units as deployed, a row per version: a unit replaced
                  after it was coded has a row per version (deployed: when).
@@ -47,7 +48,9 @@ units.csv        The units as deployed, a row per version: a unit replaced
                  condition_set, part_set: e.g. anna or anna;bob, #n its
                  position in an ordered set; test_set: overlap,
                  practice or gold).
-variables.csv    Per design version (design_version), question and option: the question text,
+variables.csv    Per design version (design_version), question and option: the
+                 unit loop it is in (loop: the loop's id, the same in every
+                 design version; loop_label; empty outside loops), the question text,
                  the stored value, its label, and special (not_applicable,
                  dont_know: a special answer, outside the options or range;
                  its value is its code, empty if it has none).

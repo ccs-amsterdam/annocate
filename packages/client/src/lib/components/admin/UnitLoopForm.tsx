@@ -49,6 +49,13 @@ export function UnitLoopForm({
   const order = loop.order ?? "sequential";
   return (
     <div className="flex flex-col gap-4">
+      {/* The loop's id: how results, exports and the API refer to it. Not a name: it can't be changed */}
+      <p
+        className="text-xs text-muted-foreground"
+        title="Identifies this loop in results, exports and the API, in every version of the design. It can't be changed."
+      >
+        Loop id: <span className="font-mono">{loop.id}</span>
+      </p>
       {/* What is set for every loop open; the rarely changed settings folded, with their summary */}
       <Section title="Units and coders" topic="unit-distribution">
         <UnitsEditor

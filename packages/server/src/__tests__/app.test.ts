@@ -116,6 +116,7 @@ describe("codebook routes", () => {
     const validItems: DesignItem[] = [
       {
         type: "unit_loop",
+        id: "loop_1",
         label: "loop",
         units: {},
         children: [
@@ -209,7 +210,7 @@ describe("units: fields and pages", () => {
     expect(refused.status).toBe(400);
     expect((await json(refused)).error).toContain("answer_ and feedback_ are reserved");
     const question = { type: "question", name: "topic", variable: { type: "confirm", question: "?" } };
-    const loop = { type: "unit_loop", children: [{ type: "layout", template: "" }, question] };
+    const loop = { type: "unit_loop", id: "loop_1", children: [{ type: "layout", template: "" }, question] };
     await app.request(`/api/study/${study.id}/design`, {
       method: "POST",
       headers: adminHeaders,
@@ -382,7 +383,7 @@ async function status(call: Promise<unknown>): Promise<number> {
 /** Deploys a design with one loop (and the study's units); its design version's id. */
 async function deployConfirmLoop(studyId: number): Promise<number> {
   const question = { type: "question", name: "q", variable: { type: "confirm", question: "?" } };
-  const loop = { type: "unit_loop", children: [{ type: "layout", template: "" }, question] };
+  const loop = { type: "unit_loop", id: "loop_1", children: [{ type: "layout", template: "" }, question] };
   const version = await json(
     await app.request(`/api/study/${studyId}/design`, {
       method: "POST",
@@ -515,6 +516,7 @@ describe("links, coder progress and overview", () => {
     const question = (name: string) => ({ type: "question", name, variable: { type: "confirm", question: "?" } });
     const loop = {
       type: "unit_loop",
+      id: "loop_1",
       label: "l",
       units: {},
       children: [{ type: "layout", template: "" }, question("q1"), question("q2")],
@@ -619,9 +621,17 @@ describe("links, coder progress and overview", () => {
     await put(coderA.sessionId, units[1].id, { q1: value("x") });
 
     const coders = await get("/coders");
-    expect(coders[0]).toMatchObject({ linkLabel: "batch 1", answers: 3, finished: { l: 1 } });
+    expect(coders[0]).toMatchObject({
+      linkLabel: "batch 1",
+      answers: 3,
+      finished: [{ loop: "loop_1", title: "l", units: 1 }],
+    });
     expect(coders[0].lastActive).not.toBeNull();
-    expect(coders[1]).toMatchObject({ answers: 0, lastActive: null, finished: { l: 0 } });
+    expect(coders[1]).toMatchObject({
+      answers: 0,
+      lastActive: null,
+      finished: [{ loop: "loop_1", title: "l", units: 0 }],
+    });
 
     const overview = await get("/overview");
     expect(overview).toMatchObject({

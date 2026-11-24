@@ -20,6 +20,7 @@ describe("codebook lookups", () => {
 
     const loop = {
       type: "unit_loop",
+      id: "loop_1",
       children: [
         confirm("a"),
         { type: "branch", condition: { script: "true" }, children: [confirm("b")], elseChildren: [confirm("c")] },

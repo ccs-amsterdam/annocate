@@ -19,8 +19,13 @@ const pickQ = (name: string, options = ["A", "B"]): InLoopItem => ({
   type: "question",
   variable: { type: "nominal", question: name, options: options.map((value) => ({ value })) },
 });
-const loop = (label: string, children: InLoopItem[]): TopLevelItem =>
-  ({ label, type: "unit_loop", children: [{ type: "layout", template: "" }, ...children] }) as TopLevelItem;
+const loop = (label: string, children: InLoopItem[], id = "loop_1"): TopLevelItem =>
+  ({
+    label,
+    type: "unit_loop",
+    id,
+    children: [{ type: "layout", template: "" }, ...children],
+  }) as TopLevelItem;
 const units = (...ids: number[]): FakeUnit[] => ids.map((id) => ({ id }));
 
 const yes = { done: true } as unknown as VariableValue;
@@ -90,7 +95,7 @@ beforeEach(() => storage.clear());
 
 describe("going back and forward", () => {
   beforeEach(() => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2, 3) } });
   });
 
   it("goes through the study in order, saving each unit once", async () => {
@@ -106,11 +111,11 @@ describe("going back and forward", () => {
     await m.answer(yes);
     expect(where(m)).toBe("finished");
     expect(server.calls.filter((c) => c.startsWith("postUnitVariables"))).toEqual([
-      "postUnitVariables:1/1",
-      "postUnitVariables:1/2",
-      "postUnitVariables:1/3",
+      "postUnitVariables:loop_1/1",
+      "postUnitVariables:loop_1/2",
+      "postUnitVariables:loop_1/3",
     ]);
-    expect(picked(server.answers.get("1/1")!.q2)).toBe("B");
+    expect(picked(server.answers.get("loop_1/1")!.q2)).toBe("B");
     expect(server.ended?.outcome).toBe("complete");
   });
 
@@ -158,7 +163,7 @@ describe("going back and forward", () => {
     await m.goForward();
     expect(where(m)).toBe("1:q2");
     await answerUntil(m, "q:outro");
-    expect(server.done.get("1")).toEqual([1, 2, 3]);
+    expect(server.done.get("loop_1")).toEqual([1, 2, 3]);
   });
 
   it("answering the question before the loop again goes back to the unfinished unit", async () => {
@@ -173,7 +178,7 @@ describe("going back and forward", () => {
     expect(where(m)).toBe("2:q2");
     expect(m.getSnapshot().currentUnitVariables?.q1).toBeDefined();
     await answerUntil(m, "q:outro");
-    expect(server.done.get("1")).toEqual([1, 2, 3]);
+    expect(server.done.get("loop_1")).toEqual([1, 2, 3]);
   });
 
   it("one step back from the question after the loop is the last unit's last question", async () => {
@@ -209,7 +214,7 @@ describe("going back and forward", () => {
     await m.answer(pick("B"));
     // The next unit in the coder's history, then on to where they were
     expect(where(m)).toBe("2:q1");
-    expect(picked(server.answers.get("1/1")!.q1)).toBe("B");
+    expect(picked(server.answers.get("loop_1/1")!.q1)).toBe("B");
     await m.goForward();
     await m.goForward();
     expect(where(m)).toBe("3:q1");
@@ -277,7 +282,7 @@ describe("conditions while navigating", () => {
         } as InLoopItem,
       ]),
     ];
-    server = fakeCoderServer({ items, units: { "1": units(1, 2) } });
+    server = fakeCoderServer({ items, units: { loop_1: units(1, 2) } });
     const m = await started(server);
     await m.answer(pick("yes"));
     expect(where(m)).toBe("1:topic");
@@ -288,7 +293,7 @@ describe("conditions while navigating", () => {
     expect(where(m)).toBe("1:relevant");
     await m.answer(pick("no"));
     expect(where(m)).toBe("2:relevant");
-    expect(server.answers.get("1/1")!.topic).toEqual({ done: true, skip: true });
+    expect(server.answers.get("loop_1/1")!.topic).toEqual({ done: true, skip: true });
     // Back from unit 2: unit 1's last shown question is now `relevant`
     await m.goBack();
     expect(where(m)).toBe("1:relevant");
@@ -321,7 +326,7 @@ describe("conditions while navigating", () => {
 
 describe("loops without units, and several loops", () => {
   it("a loop that has no units for the coder is passed, also going back", async () => {
-    server = fakeCoderServer({ items: basic(), units: { "1": [] } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: [] } });
     const m = await started(server);
     await m.answer(yes);
     expect(where(m)).toBe("q:outro");
@@ -332,8 +337,8 @@ describe("loops without units, and several loops", () => {
   });
 
   it("back from the first unit of a second loop goes to the last unit of the first", async () => {
-    const items = [loop("First", [pickQ("a")]), loop("Second", [pickQ("b")])];
-    server = fakeCoderServer({ items, units: { "1": units(1, 2), "2": units(10, 11) } });
+    const items = [loop("First", [pickQ("a")]), loop("Second", [pickQ("b")], "loop_2")];
+    server = fakeCoderServer({ items, units: { loop_1: units(1, 2), loop_2: units(10, 11) } });
     const m = await started(server);
     await answerUntil(m, "10:b");
     await m.goBack();
@@ -341,13 +346,13 @@ describe("loops without units, and several loops", () => {
     await m.goForward();
     expect(where(m)).toBe("10:b");
     await answerUntil(m, "finished");
-    expect(server.done.get("2")).toEqual([10, 11]);
+    expect(server.done.get("loop_2")).toEqual([10, 11]);
   });
 });
 
 describe("reloads and the end", () => {
   beforeEach(() => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2, 3) } });
   });
 
   it("a reload mid-loop continues at the unfinished unit; finished units can be visited with their answers", async () => {
@@ -368,7 +373,7 @@ describe("reloads and the end", () => {
     await m.goForward();
     expect(where(m)).toBe("2:q1");
     await answerUntil(m, "q:outro");
-    expect(server.done.get("1")).toEqual([1, 2, 3]);
+    expect(server.done.get("loop_1")).toEqual([1, 2, 3]);
   });
 
   it("a reload keeps the coder's unit answers given so far (the browser's draft)", async () => {
@@ -390,7 +395,7 @@ describe("reloads and the end", () => {
     await first.answer(pick("B"));
     expect(where(first)).toBe("2:q1");
     const m = await started(server);
-    expect(picked(server.answers.get("1/1")!.q2)).toBe("B");
+    expect(picked(server.answers.get("loop_1/1")!.q2)).toBe("B");
     expect(where(m)).toBe("2:q2");
     await m.goBack();
     expect(shown(m)).toBe("A");
@@ -430,19 +435,19 @@ describe("an end item", () => {
       ]),
       confirm("outro"),
     ];
-    server = fakeCoderServer({ items, units: { "1": units(1, 2) } });
+    server = fakeCoderServer({ items, units: { loop_1: units(1, 2) } });
     const m = await started(server);
     await m.answer(pick("yes"));
     await m.answer(pick("no"));
     expect(where(m)).toBe("finished");
-    expect(server.ended).toMatchObject({ item: "stop", unit: { loop: "1", id: 2 } });
-    expect(server.done.get("1")).toEqual([1, 2]);
+    expect(server.ended).toMatchObject({ item: "stop", unit: { loop: "loop_1", id: 2 } });
+    expect(server.done.get("loop_1")).toEqual([1, 2]);
   });
 });
 
 describe("quick repeated input (double clicks, fast swipes)", () => {
   beforeEach(() => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2, 3) } });
   });
 
   it("a double click on an answer answers the question once", async () => {
@@ -477,7 +482,7 @@ describe("practice units while navigating", () => {
   it("a wrong answer shows feedback with the question; with retry, only the right answer goes on", async () => {
     server = fakeCoderServer({
       items: [loop("Coding", [pickQ("q1"), pickQ("q2")])],
-      units: { "1": [{ id: 1, practice: practice(true) }, { id: 2 }] },
+      units: { loop_1: [{ id: 1, practice: practice(true) }, { id: 2 }] },
     });
     const m = await started(server);
     await m.answer(pick("B"));
@@ -498,7 +503,7 @@ describe("practice units while navigating", () => {
   it("a wrong answer isn't an answer: next and the menu don't pass the question", async () => {
     server = fakeCoderServer({
       items: [loop("Coding", [pickQ("q1"), pickQ("q2")])],
-      units: { "1": [{ id: 1 }, { id: 2, practice: practice(true) }, { id: 3 }] },
+      units: { loop_1: [{ id: 1 }, { id: 2, practice: practice(true) }, { id: 3 }] },
     });
     const m = await started(server);
     await answerUntil(m, "2:q1");
@@ -523,13 +528,13 @@ describe("practice units while navigating", () => {
     expect(where(m)).toBe("2:q2");
     await m.answer(pick("A"));
     await settle();
-    expect(picked(server.answers.get("1/2")!.q1)).toBe("A");
+    expect(picked(server.answers.get("loop_1/2")!.q1)).toBe("A");
   });
 
   it("without retry, next doesn't go on either: the coder goes on from the feedback", async () => {
     server = fakeCoderServer({
       items: [loop("Coding", [pickQ("q1"), pickQ("q2")])],
-      units: { "1": [{ id: 1, practice: practice(false) }, { id: 2 }] },
+      units: { loop_1: [{ id: 1, practice: practice(false) }, { id: 2 }] },
     });
     const m = await started(server);
     await m.answer(pick("B"));
@@ -544,7 +549,7 @@ describe("practice units while navigating", () => {
   it("without retry, the coder may go on with the wrong answer", async () => {
     server = fakeCoderServer({
       items: [loop("Coding", [pickQ("q1"), pickQ("q2")])],
-      units: { "1": [{ id: 1, practice: practice(false) }, { id: 2 }] },
+      units: { loop_1: [{ id: 1, practice: practice(false) }, { id: 2 }] },
     });
     const m = await started(server);
     await m.answer(pick("B"));
@@ -552,13 +557,13 @@ describe("practice units while navigating", () => {
     await m.continueAfterPractice();
     expect(where(m)).toBe("1:q2");
     await m.answer(pick("A"));
-    expect(picked(server.answers.get("1/1")!.q1)).toBe("B");
+    expect(picked(server.answers.get("loop_1/1")!.q1)).toBe("B");
   });
 });
 
 describe("a new design version while coding", () => {
   it("mid-unit: the session loads again, and the coder continues on the same unit with their answers", async () => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2) } });
     const m = await started(server);
     await m.answer(yes);
     await m.answer(pick("B"));
@@ -573,11 +578,11 @@ describe("a new design version while coding", () => {
     expect(where(m)).toBe("1:q1");
     expect(shown(m)).toBe("B");
     await answerUntil(m, "q:outro");
-    expect(Object.keys(server.answers.get("1/1")!).sort()).toEqual(["q1", "q2", "q3"]);
+    expect(Object.keys(server.answers.get("loop_1/1")!).sort()).toEqual(["q1", "q2", "q3"]);
   });
 
   it("a removed question: its answer is dropped; the unsaved unit comes again with the rest", async () => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2) } });
     const m = await started(server);
     await m.answer(yes);
     await m.answer(pick("A"));
@@ -589,7 +594,7 @@ describe("a new design version while coding", () => {
     expect(shown(m)).toBe("A");
     await m.answer(pick("A"));
     expect(where(m)).toBe("2:q2");
-    expect(Object.keys(server.answers.get("1/1")!)).toEqual(["q2"]);
+    expect(Object.keys(server.answers.get("loop_1/1")!)).toEqual(["q2"]);
   });
 });
 
@@ -597,7 +602,7 @@ describe("a new design version while a finished unit is changed", () => {
   const withTitle = () => [confirm("intro"), loop("Coding (new)", [pickQ("q1"), pickQ("q2")]), confirm("outro")];
 
   it("the change is saved under the new version, and the coder continues where they were", async () => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2, 3) } });
     const m = await started(server);
     await answerUntil(m, "2:q1");
     await m.goBack();
@@ -607,12 +612,12 @@ describe("a new design version while a finished unit is changed", () => {
     await idle(m);
     expect(where(m)).toBe("2:q1");
     await settle();
-    expect(picked(server.answers.get("1/1")!.q2)).toBe("B");
-    expect(picked(server.answers.get("1/1")!.q1)).toBe("A");
+    expect(picked(server.answers.get("loop_1/1")!.q2)).toBe("B");
+    expect(picked(server.answers.get("loop_1/1")!.q1)).toBe("A");
   });
 
   it("the unit the coder is halfway keeps its answers, also without the browser's draft", async () => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2, 3) } });
     const m = await started(server);
     await answerUntil(m, "2:q2");
     for (let i = 0; i < 3; i++) await m.goBack();
@@ -623,7 +628,7 @@ describe("a new design version while a finished unit is changed", () => {
     await idle(m);
     expect(where(m)).toBe("2:q2");
     await settle();
-    expect(picked(server.answers.get("1/1")!.q1)).toBe("B");
+    expect(picked(server.answers.get("loop_1/1")!.q1)).toBe("B");
     await m.goBack();
     expect(shown(m)).toBe("A");
     // Going back to the changed unit shows the change, not what the server had before
@@ -677,7 +682,7 @@ describe("answers that build on a span (relations, options from spans)", () => {
   const errors = (m: StudyManager) => m.getSnapshot().error;
 
   it("a finished unit: removing a span a relation uses saves the unit without the relation, which is asked again", async () => {
-    server = fakeCoderServer({ items: [loop("Coding", [people, links])], units: { "1": texts(1, 2) } });
+    server = fakeCoderServer({ items: [loop("Coding", [people, links])], units: { loop_1: texts(1, 2) } });
     const m = await started(server);
     await m.answer(spans(ann, bob));
     await m.answer(knows);
@@ -690,15 +695,15 @@ describe("answers that build on a span (relations, options from spans)", () => {
     expect(errors(m)).toBeNull();
     expect(where(m)).toBe("1:links");
     expect(m.getSnapshot().currentUnitVariables?.links).toBeUndefined();
-    expect(server.answers.get("1/1")).toMatchObject({ people: { spans: [ann] }, links: { skip: true } });
+    expect(server.answers.get("loop_1/1")).toMatchObject({ people: { spans: [ann] }, links: { skip: true } });
     await m.answer({ done: true, relations: [] } as unknown as VariableValue);
     await settle();
     expect(where(m)).toBe("2:people");
-    expect(server.answers.get("1/1")!.links).toEqual({ done: true, relations: [] });
+    expect(server.answers.get("loop_1/1")!.links).toEqual({ done: true, relations: [] });
   });
 
   it("a unit the coder is in: the relation is asked again before the unit is saved", async () => {
-    server = fakeCoderServer({ items: [loop("Coding", [people, links, pickQ("q3")])], units: { "1": texts(1) } });
+    server = fakeCoderServer({ items: [loop("Coding", [people, links, pickQ("q3")])], units: { loop_1: texts(1) } });
     const m = await started(server);
     await m.answer(spans(ann, bob));
     await m.answer(knows);
@@ -714,16 +719,16 @@ describe("answers that build on a span (relations, options from spans)", () => {
     await m.answer(pick("A"));
     await settle();
     expect(errors(m)).toBeNull();
-    expect(server.done.get("1")).toEqual([1]);
+    expect(server.done.get("loop_1")).toEqual([1]);
   });
 
   it("an answer that is a span (options from spans) is asked again when the span is removed", async () => {
-    server = fakeCoderServer({ items: [loop("Coding", [people, main])], units: { "1": texts(1, 2) } });
+    server = fakeCoderServer({ items: [loop("Coding", [people, main])], units: { loop_1: texts(1, 2) } });
     const m = await started(server);
     await m.answer(spans(ann, bob));
     await m.answer(pick("s2"));
     expect(where(m)).toBe("2:people");
-    expect(picked(server.answers.get("1/1")!.main)).toBe("s2");
+    expect(picked(server.answers.get("loop_1/1")!.main)).toBe("s2");
     await m.goBack();
     await m.goBack();
     await m.answer(spans(ann));
@@ -733,11 +738,11 @@ describe("answers that build on a span (relations, options from spans)", () => {
     expect(shown(m)).toBeUndefined();
     await m.answer(pick("s1"));
     await settle();
-    expect(picked(server.answers.get("1/1")!.main)).toBe("s1");
+    expect(picked(server.answers.get("loop_1/1")!.main)).toBe("s1");
   });
 
   it("a reload: an answer whose span is gone is asked again", async () => {
-    server = fakeCoderServer({ items: [loop("Coding", [people, links, pickQ("q3")])], units: { "1": texts(1) } });
+    server = fakeCoderServer({ items: [loop("Coding", [people, links, pickQ("q3")])], units: { loop_1: texts(1) } });
     const first = await started(server);
     await first.answer(spans(ann, bob));
     await first.answer(knows);
@@ -790,25 +795,25 @@ describe("answers the server refuses", () => {
   });
 
   it("a unit the server refuses (400): the coder can go back to it, answer again, and it is saved", async () => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2, 3) } });
     const m = await started(server);
     await answerUntil(m, "1:q2");
     server.fail("postUnitVariables");
     await m.answer(pick("A"));
     await settle();
-    expect(m.getSnapshot()).toMatchObject({ phase: "error", refusedUnit: { loop: "1", unitId: 1 } });
+    expect(m.getSnapshot()).toMatchObject({ phase: "error", refusedUnit: { loop: "loop_1", unitId: 1 } });
     await m.backToRefusedUnit();
     expect(where(m)).toBe("1:q2");
     expect(m.getSnapshot().unsaved).toBe(0);
     await m.answer(pick("B"));
     await settle();
     expect(where(m)).toBe("2:q1");
-    expect(picked(server.answers.get("1/1")!.q2)).toBe("B");
-    expect(server.done.get("1")).toEqual([1]);
+    expect(picked(server.answers.get("loop_1/1")!.q2)).toBe("B");
+    expect(server.done.get("loop_1")).toEqual([1]);
   });
 
   it("a refused unit: retry sends it again; an error that isn't a refused unit offers no unit", async () => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2, 3) } });
     const m = await started(server);
     server.fail("getNextUnits");
     await m.answer(yes);
@@ -818,11 +823,11 @@ describe("answers the server refuses", () => {
     server.fail("postUnitVariables");
     await m.answer(pick("A"));
     await settle();
-    expect(m.getSnapshot().refusedUnit).toEqual({ loop: "1", unitId: 1 });
+    expect(m.getSnapshot().refusedUnit).toEqual({ loop: "loop_1", unitId: 1 });
     await m.retry();
     await settle();
     expect(where(m)).toBe("2:q1");
-    expect(server.done.get("1")).toEqual([1]);
+    expect(server.done.get("loop_1")).toEqual([1]);
   });
 });
 
@@ -846,7 +851,7 @@ describe("finished units that weren't sent when the page closed", () => {
     return m;
   };
   beforeEach(() => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2, 3) } });
     online = false;
   });
 
@@ -854,11 +859,11 @@ describe("finished units that weren't sent when the page closed", () => {
     const first = await visit();
     await answerUntil(first, "3:q1");
     expect(first.getSnapshot()).toMatchObject({ unsaved: 2, unsavedUnits: 2 });
-    expect(server.done.get("1")).toBeUndefined();
+    expect(server.done.get("loop_1")).toBeUndefined();
 
     const m = await started(server);
-    expect(server.done.get("1")).toEqual([1, 2]);
-    expect(picked(server.answers.get("1/2")!.q2)).toBe("A");
+    expect(server.done.get("loop_1")).toEqual([1, 2]);
+    expect(picked(server.answers.get("loop_1/2")!.q2)).toBe("A");
     expect(where(m)).toBe("3:q1");
     expect(m.getSnapshot().unsaved).toBe(0);
     await m.goBack();
@@ -880,7 +885,7 @@ describe("finished units that weren't sent when the page closed", () => {
     expect(shown(m)).toBe("A");
     await m.answer(pick("B"));
     await settle();
-    expect(picked(server.answers.get("1/1")!.q2)).toBe("B");
+    expect(picked(server.answers.get("loop_1/1")!.q2)).toBe("B");
     expect(where(m)).toBe("2:q1");
   });
 
@@ -893,13 +898,13 @@ describe("finished units that weren't sent when the page closed", () => {
     expect(m.getSnapshot().phase).toBe("error");
     await m.retry();
     expect(where(m)).toBe("2:q1");
-    expect(server.done.get("1")).toEqual([1]);
+    expect(server.done.get("loop_1")).toEqual([1]);
   });
 });
 
 describe("a coding screen that is gone (dispose)", () => {
   it("stops trying to save; starting again goes on with the same session", async () => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2, 3) } });
     let online = false;
     let attempts = 0;
     const m = new StudyManager(
@@ -920,14 +925,14 @@ describe("a coding screen that is gone (dispose)", () => {
     const tried = attempts;
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(attempts).toBe(tried);
-    expect(server.done.get("1")).toBeUndefined();
+    expect(server.done.get("loop_1")).toBeUndefined();
 
     // (React StrictMode: the screen is mounted again)
     online = true;
     await m.start();
     await settle();
     await settle();
-    expect(server.done.get("1")).toEqual([1]);
+    expect(server.done.get("loop_1")).toEqual([1]);
     expect(where(m)).toBe("2:q1");
     expect(server.calls.filter((c) => c === "getSession")).toHaveLength(1);
   });
@@ -936,7 +941,7 @@ describe("a coding screen that is gone (dispose)", () => {
 describe("the server ends the session (gold checks) while the coder goes on", () => {
   it("the ending comes after the step the coder was taking, which is taken whole", async () => {
     const end = { type: "end", name: "low_quality" } as TopLevelItem;
-    server = fakeCoderServer({ items: [loop("Coding", [pickQ("q1")]), end], units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: [loop("Coding", [pickQ("q1")]), end], units: { loop_1: units(1, 2, 3) } });
     const m = new StudyManager(
       {
         ...server,
@@ -962,7 +967,7 @@ describe("the server ends the session (gold checks) while the coder goes on", ()
 
 describe("preview navigation (free)", () => {
   it("next goes ahead without answers, and a unit far ahead can be opened", async () => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2, 3) } });
     const m = await started(server);
     expect(m.canGoForward(true)).toBe(true);
     await m.goForward(true);
@@ -991,7 +996,7 @@ describe("end items and quitting", () => {
   ];
 
   it("reopening after an end in a loop lands on that unit's last question", async () => {
-    server = fakeCoderServer({ items: items(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: items(), units: { loop_1: units(1, 2, 3) } });
     const m = await started(server);
     await m.answer(pick("yes"));
     await m.answer(pick("no"));
@@ -1003,7 +1008,7 @@ describe("end items and quitting", () => {
   });
 
   it("quitting ends the session where the coder is; the end stays after a reload", async () => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2) } });
     const m = await started(server);
     await m.answer(yes);
     await m.quit(false);
@@ -1099,7 +1104,7 @@ describe("a failed request, and retry", () => {
   });
 
   it("an end item in a loop: retry ends the session on that unit, not on the next", async () => {
-    server = fakeCoderServer({ items: endInLoop(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: endInLoop(), units: { loop_1: units(1, 2, 3) } });
     const m = await started(server);
     await m.answer(pick("yes"));
     server.fail("endSession");
@@ -1107,13 +1112,13 @@ describe("a failed request, and retry", () => {
     expect(m.getSnapshot().phase).toBe("error");
     await m.retry();
     expect(where(m)).toBe("finished");
-    expect(server.ended).toMatchObject({ item: "stop", unit: { loop: "1", id: 2 } });
-    expect(count("postUnitVariables:1/2")).toBe(1);
-    expect(server.done.get("1")).toEqual([1, 2]);
+    expect(server.ended).toMatchObject({ item: "stop", unit: { loop: "loop_1", id: 2 } });
+    expect(count("postUnitVariables:loop_1/2")).toBe(1);
+    expect(server.done.get("loop_1")).toEqual([1, 2]);
   });
 
   it("the first units of a loop: retry enters the loop", async () => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2, 3) } });
     const m = await started(server);
     server.fail("getNextUnits");
     await m.answer(yes);
@@ -1126,18 +1131,18 @@ describe("a failed request, and retry", () => {
   });
 
   it("the next unit after a finished one: retry gets it, and the finished unit is saved once", async () => {
-    server = fakeCoderServer({ items: [loop("Coding", [pickQ("q1")])], units: { "1": units(1, 2) } });
+    server = fakeCoderServer({ items: [loop("Coding", [pickQ("q1")])], units: { loop_1: units(1, 2) } });
     const m = await startedUnitByUnit();
     server.fail("getNextUnits");
     await m.answer(pick("A"));
     expect(m.getSnapshot().phase).toBe("error");
     await m.retry();
     expect(where(m)).toBe("2:q1");
-    expect(count("postUnitVariables:1/1")).toBe(1);
+    expect(count("postUnitVariables:loop_1/1")).toBe(1);
   });
 
   it("going back to a unit of an earlier visit: retry goes back, from where the coder was", async () => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2, 3) } });
     await answerUntil(await started(server), "2:q2");
     const m = await started(server);
     await m.goBack();
@@ -1147,13 +1152,13 @@ describe("a failed request, and retry", () => {
     expect(m.getSnapshot().phase).toBe("error");
     await m.retry();
     expect(where(m)).toBe("1:q2");
-    expect(count("getLoopUnit:1/1")).toBe(2);
+    expect(count("getLoopUnit:loop_1/1")).toBe(2);
     await m.goForward();
     expect(where(m)).toBe("2:q1");
   });
 
   it("jumping to a unit of an earlier visit: retry jumps", async () => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2, 3) } });
     await answerUntil(await started(server), "2:q2");
     const m = await started(server);
     server.fail("getLoopUnit");
@@ -1165,7 +1170,7 @@ describe("a failed request, and retry", () => {
   });
 
   it("jumping to a loop: the coder stays where they were, and retry jumps", async () => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2, 3) } });
     await answerUntil(await started(server), "q:outro");
     const m = await started(server);
     expect(where(m)).toBe("q:outro");
@@ -1181,7 +1186,7 @@ describe("a failed request, and retry", () => {
   });
 
   it("a request that fails again can be retried again", async () => {
-    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2, 3) } });
     const m = await started(server);
     server.fail("getNextUnits");
     await m.answer(yes);

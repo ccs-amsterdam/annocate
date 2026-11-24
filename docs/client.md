@@ -134,6 +134,7 @@ layout item (contracts `layoutItems.ts`):
 ```json
 {
   "type": "unit_loop",
+  "id": "loop_1",
   "label": "News items",
   "children": [
     { "type": "layout", "template": "# $unit.headline\n\n$unit.text" },

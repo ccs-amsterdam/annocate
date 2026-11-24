@@ -51,7 +51,7 @@ function outbox({ retryMs = 0, sessionId = 1 }: { retryMs?: number; sessionId?: 
 }
 
 const post = (unitId: number, value = "A"): UnitPost => ({
-  loop: "1",
+  loop: "loop_1",
   unitId,
   answers: { q1: { done: true, values: [{ value }] } as unknown as VariableValue },
   timings: { q1: { firstMs: 10, totalMs: 10, hiddenMs: 0, edits: 0 } },

@@ -140,6 +140,7 @@ test("your first study, as the help describes it: units, a design, deploy, a lin
     items: [
       {
         type: "unit_loop",
+        id: "loop_1",
         label: "News articles",
         children: [
           { type: "layout", template: "# $unit.headline\n\n$unit.text" },

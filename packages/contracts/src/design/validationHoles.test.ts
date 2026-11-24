@@ -14,6 +14,7 @@ const nominal = { type: "nominal", question: "?", options: [{ value: "a" }, { va
 const question = (name: string, variable: object = confirm) => ({ type: "question", name, variable });
 const loop = (children: object[], extra: object = {}, layout: object = { template: "$unit.text" }) => ({
   type: "unit_loop",
+  id: "loop_1",
   ...extra,
   children: [{ type: "layout", ...layout }, ...children],
 });
@@ -67,7 +68,7 @@ describe("design validation: what a stored design can't hold", () => {
       loop([question("topic", nominal)], { condition: { script: '$var.role.is("a")' } }),
     ];
     expect(messages(items)).toEqual([]);
-    expect(loopDependencies(items)).toEqual(new Map([["1", ["role"]]]));
+    expect(loopDependencies(items)).toEqual(new Map([["loop_1", ["role"]]]));
   });
 
   it("5. a URL parameter's default fits its pattern; a highlight's fields are shown by its layout", () => {
@@ -176,6 +177,7 @@ describe("design validation: what a stored design can't hold", () => {
       },
       {
         type: "unit_loop",
+        id: "loop_1",
         label: "Main",
         children: [
           { type: "layout", label: "With the full text", template: "$unit.text" },
@@ -204,7 +206,7 @@ describe("design validation: what a stored design can't hold", () => {
       variable: { type: "random", options: [{ value: "t", label: "Gain frame", color: "red" }] },
     });
     // A loop's label is in the coder's navigation menu
-    expect(sent[3]).toMatchObject({ type: "unit_loop", label: "Main" });
+    expect(sent[3]).toMatchObject({ type: "unit_loop", id: "loop_1", label: "Main" });
     expect(items[2]).toMatchObject({ label: "Screen-out" });
   });
 

@@ -108,8 +108,8 @@ login. Continuing one on a new device logs in there (`coder-identity.md`
 
 `GET /loop/:loop/next?count=<k>` → `NextUnitsResponseSchema` (`{ units }`)
 
-`:loop` is the loop's position in the design version the coder runs
-(contracts `unitLoops`: `1`, `2`, ...); loops have no name. The same goes for
+`:loop` is the loop's `id` in the design (`loop_1`, `loop_2`, ...; contracts
+`unitLoops`): the same loop in every version of the design. The same goes for
 `loop` in `POST /variables/unit` and `set` in the session's `progress`.
 
 The server picks the coder's next `count` units (default 1, at most

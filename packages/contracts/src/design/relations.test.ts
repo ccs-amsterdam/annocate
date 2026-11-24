@@ -66,7 +66,7 @@ describe("relation question validation", () => {
     variable: { type: "relation", question: "?", options: [{ value: "attacks" }], rules },
   });
   const loop = (children: unknown[]) => [
-    { type: "unit_loop", children: [{ type: "layout", template: "$unit.text" }, ...children] },
+    { type: "unit_loop", id: "loop_1", children: [{ type: "layout", template: "$unit.text" }, ...children] },
   ];
   const messages = (items: unknown[]) => validateDesignItems(items).map((i) => i.message);
 

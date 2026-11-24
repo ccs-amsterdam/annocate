@@ -58,22 +58,23 @@ describe("layout items", () => {
   it("are optional, go only in a unit loop, and show what questions after them focus or select in", () => {
     const messages = (items: unknown[]) => validateDesignItems(items).map((i) => i.message);
     // No layout: questions show no unit
-    expect(messages([{ type: "unit_loop", children: [question("q")] }])).toEqual([]);
+    expect(messages([{ type: "unit_loop", id: "loop_1", children: [question("q")] }])).toEqual([]);
     expect(messages([layout("Top")])).toContain("A layout shows a unit: it goes in a unit loop");
     const span = {
       type: "question",
       name: "spans",
       variable: { type: "span", question: "?", fields: ["text"], options: [{ value: "x" }] },
     };
-    expect(messages([{ type: "unit_loop", children: [span] }])).toEqual([
+    expect(messages([{ type: "unit_loop", id: "loop_2", children: [span] }])).toEqual([
       "Span question 'spans' selects text in the unit, but no layout comes before it to show the unit",
     ]);
-    expect(messages([{ type: "unit_loop", children: [layout("A"), span] }])).toEqual([]);
+    expect(messages([{ type: "unit_loop", id: "loop_3", children: [layout("A"), span] }])).toEqual([]);
     // Every layout that may apply must show it
     expect(
       messages([
         {
           type: "unit_loop",
+          id: "loop_4",
           children: [
             layout("Full"),
             { type: "branch", condition: { script: "$unit.id > 1" }, children: [layout("Short", "$unit.title")] },

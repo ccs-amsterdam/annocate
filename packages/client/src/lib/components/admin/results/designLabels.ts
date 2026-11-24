@@ -37,7 +37,7 @@ export function useDesignLabels(client: ResearcherApi): DesignLabels {
     const items = (design?.items ?? []) as TopLevelItem[];
     const { questions, loopOf } = collectQuestions(items);
     const designLoops = unitLoops(items);
-    const loops = new Map(designLoops.map(({ key, loop }) => [key, loopTitle(loop, key)]));
+    const loops = new Map(designLoops.map(({ key, loop }) => [key, loopTitle(loop)]));
     const layouts = new Map(
       designLoops.map(({ key, loop }) => [key, loopLayouts(loop.children)[0] ?? { template: "" }]),
     );

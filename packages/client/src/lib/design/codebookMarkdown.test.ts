@@ -9,6 +9,7 @@ describe("codebookMarkdown", () => {
       { type: "question", name: "age", variable: { type: "numeric", question: "How old are you?", min: 18, max: 99 } },
       {
         type: "unit_loop",
+        id: "loop_1",
         label: "articles",
         units: { gold: { placement: "last", questions: ["topic"] } },
         children: [

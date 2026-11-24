@@ -325,10 +325,18 @@ values, not per-group loop settings (those would duplicate a loop's
 questions under the same names). Per-group settings belong with value
 branches (`plans/question-loops.md` §5).
 
-**Loops have no name.** Within a design version a loop is its position
-(`unitLoops`: `"1"`, `"2"`, ...): in `/loop/:loop/...`, progress, queues and
-leases. Answers and "finished" are keyed by the loop's questions (§8.2). The
-optional `label` is for people.
+**A loop has an id, not a name.** Every `unit_loop` has an `id` (`loop_1`,
+`loop_2`, ...): the loop's key (`unitLoops`) in `/loop/:loop/...`, progress,
+queues, leases, results and exports, in every version of the design. A new
+loop gets the next number never used in the design (`nextLoopId`), so the
+number says nothing about the loop's place, and a deleted loop's id is not
+given to another loop. Whoever creates the loop gives it the id (the editor
+does; a script must too): a loop without one is a validation error, the
+server never fills it in. The id is never changed; the optional `label` is
+for people. "The previous loop" (`units.sameAsPrevious`) is the loop before
+it in the design. Deploying a design without a loop that coders reached
+gives a warning. Answers and "finished" are keyed by the loop's questions
+(§8.2).
 
 ### 6.3 Role columns are stored lists
 

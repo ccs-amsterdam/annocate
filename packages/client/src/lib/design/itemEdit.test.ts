@@ -119,6 +119,7 @@ describe("itemEdit", () => {
     it("prevents moving span question to root end (outside loop)", () => {
       const loop: TopLevelItem = {
         type: "unit_loop",
+        id: "loop_1",
         ...{ _key: "loop" },
         children: [
           {
@@ -136,6 +137,7 @@ describe("itemEdit", () => {
   describe("canMoveItemTo question restrictions", () => {
     const loop: TopLevelItem = {
       type: "unit_loop",
+      id: "loop_2",
       ...{ _key: "loop" },
       children: [
         {
@@ -160,6 +162,7 @@ describe("itemEdit", () => {
     it("prevents moving question with span outside loop", () => {
       const spanLoop: TopLevelItem = {
         type: "unit_loop",
+        id: "loop_1",
         ...{ _key: "loop" },
         children: [
           {
@@ -215,6 +218,7 @@ describe("itemEdit", () => {
       {
         _key: "loop",
         type: "unit_loop",
+        id: "loop_1",
         children: [cond("c", [q("x")])],
       } as unknown as TopLevelItem,
       q("b") as TopLevelItem,

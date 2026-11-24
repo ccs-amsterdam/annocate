@@ -29,8 +29,8 @@ export function CodersTable({
   onReset: (coder: CoderProgress) => void;
   onDelete: (coder: CoderProgress) => void;
 }) {
-  // Loops of the live design version (every coder has the same keys)
-  const loops = Object.keys(coders[0]?.finished ?? {});
+  // Loops of the live design version (the same for every coder)
+  const loops = (coders[0]?.finished ?? []).map(({ loop, title }) => ({ loop, title }));
   // The special sets the study has (overlap, gold, practice): units of them each coder finished
   const specials = SPECIAL_KINDS.filter((kind) => coders.some((c) => c.special?.[kind]));
   return (
@@ -44,9 +44,9 @@ export function CodersTable({
             <th className="p-2 font-medium">Last active</th>
             <th className="p-2 text-right font-medium">Answers</th>
             <th className="p-2 font-medium">Ended</th>
-            {loops.map((loop) => (
-              <th key={loop} className="p-2 text-right font-medium">
-                Finished in <span className="font-mono">{loop}</span>
+            {loops.map(({ loop, title }) => (
+              <th key={loop} className="p-2 text-right font-medium" title={`Unit loop ${loop}`}>
+                Finished in <span className="font-mono">{title}</span>
               </th>
             ))}
             {specials.map((kind) => (
@@ -88,7 +88,7 @@ function CoderSessionRow({
   onDelete,
 }: {
   coder: CoderProgress;
-  loops: string[];
+  loops: { loop: string; title: string }[];
   specials: SpecialKind[];
   onReset: () => void;
   onDelete: () => void;
@@ -119,9 +119,9 @@ function CoderSessionRow({
           </span>
         )}
       </td>
-      {loops.map((loop) => (
+      {loops.map(({ loop }) => (
         <td key={loop} className="p-2 text-right tabular-nums">
-          {coder.finished[loop] ?? 0}
+          {coder.finished.find((f) => f.loop === loop)?.units ?? 0}
         </td>
       ))}
       {specials.map((kind) => (

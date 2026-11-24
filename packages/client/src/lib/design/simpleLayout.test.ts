@@ -16,6 +16,7 @@ describe("simple layouts", () => {
     const template = simpleTemplate({ title: "headline", byline: "source", body: ["text"] });
     const loop = {
       type: "unit_loop",
+      id: "loop_1",
       children: [
         { type: "layout", template },
         { type: "question", name: "q", variable: { type: "confirm", question: "?" } },

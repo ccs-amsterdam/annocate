@@ -54,6 +54,7 @@ const layout = {
 const loop = {
   _key: "l",
   type: "unit_loop",
+  id: "loop_1",
   condition: { script: "true" },
   units: { part: "a" },
   children: [layout, question],

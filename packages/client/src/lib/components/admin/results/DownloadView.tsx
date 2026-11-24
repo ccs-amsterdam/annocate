@@ -27,7 +27,7 @@ export function DownloadView({ client }: { client: ResearcherApi }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const finished = (coders.data ?? []).reduce((n, c) => n + Object.values(c.finished).reduce((a, b) => a + b, 0), 0);
+  const finished = (coders.data ?? []).reduce((n, c) => n + c.finished.reduce((sum, loop) => sum + loop.units, 0), 0);
   const name = study?.name ?? `study ${client.studyId}`;
 
   /** The study's raw export, from the server (written now, or reused if nothing changed). */

@@ -100,6 +100,7 @@ async function setUpStudy(key: string): Promise<{ studyId: number; unitIds: numb
         items: [
           {
             type: "unit_loop",
+            id: "loop_1",
             label: "loop",
             units: {},
             children: [{ type: "layout", template: "" }, question("q")],
@@ -127,14 +128,14 @@ async function code(studyId: number, linkSecret: string, answer: string): Promis
     return res;
   };
   for (;;) {
-    const unit = ((await (await send("/loop/1/next")).json()) as { units: { id: number }[] }).units[0];
+    const unit = ((await (await send("/loop/loop_1/next")).json()) as { units: { id: number }[] }).units[0];
     if (!unit) return;
     const variables = { q: { done: true, values: [{ value: answer }] } };
     expect(
       (
         await send("/variables/unit", {
           method: "POST",
-          body: JSON.stringify({ unitId: unit.id, loop: "1", variables }),
+          body: JSON.stringify({ unitId: unit.id, loop: "loop_1", variables }),
         })
       ).status,
     ).toBe(200);
@@ -235,7 +236,10 @@ describe("downloading annotations", () => {
 
     // Coder-level values and progress come with the coders.
     const coders = (await call(key, "listCoders", { studyId })).data;
-    expect(coders.map((c) => c.finished.loop)).toEqual([2, 2]);
+    expect(coders.map((c) => c.finished)).toEqual([
+      [{ loop: "loop_1", title: "loop", units: 2 }],
+      [{ loop: "loop_1", title: "loop", units: 2 }],
+    ]);
     expect(coders[0].variables).toEqual({});
   });
 

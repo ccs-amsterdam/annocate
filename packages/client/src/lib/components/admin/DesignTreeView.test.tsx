@@ -15,6 +15,7 @@ describe("DesignTreeView", () => {
     },
     {
       type: "unit_loop",
+      id: "loop_1",
       label: "main_loop",
       children: [
         { type: "layout", template: "$unit.text" },

@@ -11,19 +11,22 @@ describe("item shape", () => {
     ).toBe(`'x': a question needs a "variable" with a "type"`);
     // Layout items, without a name
     expect(
-      itemsShapeError([{ type: "unit_loop", units: {}, children: [{ type: "layout", template: "$unit.text" }] }]),
+      itemsShapeError([
+        { type: "unit_loop", id: "loop_1", units: {}, children: [{ type: "layout", template: "$unit.text" }] },
+      ]),
     ).toBeNull();
   });
 
   it("keeps the keys of items with the same name", () => {
     const before = [
       { _key: "k1", name: "a", type: "end" },
-      { _key: "k2", name: "loop", type: "unit_loop", children: [{ _key: "k3", name: "b", type: "end" }] },
+      { _key: "k2", name: "loop", type: "unit_loop", id: "loop_1", children: [{ _key: "k3", name: "b", type: "end" }] },
     ];
     const next = [
       {
         name: "loop",
         type: "unit_loop",
+        id: "loop_2",
         children: [
           { name: "b", type: "end" },
           { name: "new", type: "end" },
@@ -65,6 +68,7 @@ describe("item shape", () => {
     const loop = (key: string | undefined, children: object[]) => ({
       ...(key ? { _key: key } : {}),
       type: "unit_loop",
+      id: "loop_1",
       children,
     });
     const before = [

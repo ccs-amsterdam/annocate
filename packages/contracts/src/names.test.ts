@@ -19,6 +19,7 @@ const confirm: AnyVariableType = { type: "confirm", question: "?" };
 const question = (name: string, variable: object = confirm) => ({ type: "question", name, variable });
 const loop = (children: object[], layout: object = { template: "" }) => ({
   type: "unit_loop",
+  id: "loop_1",
   children: [{ type: "layout", ...layout }, ...children],
 });
 const messages = (items: unknown[]) => validateDesignItems(items).map((i) => i.message);

@@ -16,7 +16,7 @@ import {
 } from "./session.js";
 import { loopShareColumns, selectsUnits } from "./assignment.js";
 import { CONDITION_SET } from "../sets.js";
-import { forEachItem } from "./walk.js";
+import { forEachItem, loopKey } from "./walk.js";
 import { expandSnippets, usesSnippets } from "./snippets.js";
 import {
   parseTemplateBlocks,
@@ -183,7 +183,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   const issues: DesignIssue[] = [];
   const { questions, loopOf } = collectQuestions(items);
   /** Loop key -> how messages call it. */
-  const loopTitles = new Map(unitLoops(items).map(({ key, loop }) => [key, loopTitle(loop, key)]));
+  const loopTitles = new Map(unitLoops(items).map(({ key, loop }) => [key, loopTitle(loop)]));
   let loopCount = 0;
   const seenNames = new Map<string, Path>();
   /** Span questions seen so far: name -> their loop and option values (what relation rules can name). */
@@ -480,7 +480,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   function checkLoopUnits(
     raw: Partial<LoopUnits> | null | undefined,
     path: Path,
-    loopName: string,
+    isFirstLoop: boolean,
     loopQuestions: ReadonlySet<string>,
   ) {
     const units = raw && typeof raw === "object" ? raw : null;
@@ -492,7 +492,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
         "Dividing units among coders is for a crowd: expert coders get the units of their set (Who codes)",
       );
     if (units.sameAsPrevious) {
-      if (Number(loopName) <= 1) issue([...path, "sameAsPrevious"], "There is no previous loop to take the units of");
+      if (isFirstLoop) issue([...path, "sameAsPrevious"], "There is no previous loop to take the units of");
       if (units.divide)
         issue([...path, "divide"], "Taking the units of the previous loop, they aren't divided again: remove dividing");
     }
@@ -511,7 +511,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   }
 
   /** A loop's units settings; what its walk needs to check layouts and the questions after them. */
-  function checkLoop(item: RawItem, itemPath: Path, loopName: string): LoopContext {
+  function checkLoop(item: RawItem, itemPath: Path, loopName: string, isFirstLoop: boolean): LoopContext {
     const loop = item as { units?: Partial<LoopUnits> | null; children?: unknown };
     const loopQuestions = questionNames(loop.children);
     // The right answers and feedback must never reach coders (they'd be sent with every unit): no text may use them
@@ -535,7 +535,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       "text",
     );
     checkUnitChecks(loop, itemPath, loopQuestions);
-    checkLoopUnits(loop.units, [...itemPath, "units"], loopName, loopQuestions);
+    checkLoopUnits(loop.units, [...itemPath, "units"], isFirstLoop, loopQuestions);
     return {
       name: loopName,
       snippets: loopSnippets(loop.children),
@@ -753,7 +753,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
 
       // Check name validity and uniqueness (branches and loops have no name)
       if (item.type === "branch" || item.type === "unit_loop") {
-        // Nothing refers to them by name (a loop is identified by its position).
+        // Nothing refers to them by name (a loop is identified by its id).
       } else if (!item.name || item.name.trim() === "") {
         issue([...itemPath, "name"], "Item name cannot be empty");
       } else {
@@ -849,9 +849,9 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
 
       // Check structural rules
       if (item.type === "unit_loop") {
-        const key = String(++loopCount);
+        const isFirstLoop = loopCount++ === 0;
         if (loop) issue([...itemPath, "type"], "A unit loop cannot be inside another unit loop");
-        const context = checkLoop(item, itemPath, key);
+        const context = checkLoop(item, itemPath, loopKey(item), isFirstLoop);
         // Whether coders get the loop: decided before it, on coder-level answers
         checkCondition((item as { condition?: Condition }).condition, {
           path: [...itemPath, "condition"],
@@ -912,7 +912,13 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   });
   const loopPaths = new Map<string, Path>();
   forEachItem<RawItem>(items, (it, path) => {
-    if (it.type === "unit_loop") loopPaths.set(String(loopPaths.size + 1), path);
+    if (it.type === "unit_loop") {
+      const key = loopKey(it);
+      // An id is one loop's: results and coders' progress are kept by it
+      if (key && loopPaths.has(key))
+        issue([...path, "id"], `Another unit loop has the id '${key}' too: give this loop a new id`);
+      else loopPaths.set(key, path);
+    }
     if (it.type !== "branch") return "skip";
   });
   for (const [key, columns] of shares) {
@@ -1006,11 +1012,10 @@ export function collectQuestions(items: unknown): {
 } {
   const questions = new Map<string, AnyVariableType>();
   const loopOf = new Map<string, string | null>();
-  let loops = 0;
   const walk = (list: unknown, loop: string | null) =>
     forEachItem<RawItem>(list, (item) => {
       if (item.type === "branch") return;
-      if (item.type === "unit_loop") walk(item.children, String(++loops));
+      if (item.type === "unit_loop") walk(item.children, loopKey(item));
       else if (item.name && "variable" in item && item.variable && !questions.has(item.name)) {
         questions.set(item.name, item.variable as AnyVariableType);
         loopOf.set(item.name, loop);

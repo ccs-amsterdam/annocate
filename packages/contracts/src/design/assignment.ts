@@ -1,6 +1,6 @@
 import { CODER_SET, CONDITION_SET } from "../sets.js";
 import { inviteOf, sessionItem } from "./session.js";
-import { forEachItem } from "./walk.js";
+import { forEachItem, loopKey } from "./walk.js";
 
 // Who gets which units (docs/architecture.md §6, docs/plans/unit-sets.md):
 // a session's units are those whose cells hold its values, in every set
@@ -37,12 +37,9 @@ export function loopShareColumns(items: readonly unknown[]): Map<string, ShareCo
     inviteOf(sessionItem(items))?.mode === "coders" ? [{ name: "coder", column: CODER_SET }] : [];
   const randomShares: ShareColumn[] = [];
   const out = new Map<string, ShareColumn[]>();
-  let loops = 0;
-  forEachItem<{ type?: unknown; name?: unknown }>(items, (it) => {
-    if (it.type === "unit_loop") {
-      loops++;
-      out.set(String(loops), [...sessionShares, ...randomShares]);
-    } else if (selectsUnits(it) && !randomShares.some((r) => r.name === it.name))
+  forEachItem<{ type?: unknown; name?: unknown; id?: unknown }>(items, (it) => {
+    if (it.type === "unit_loop") out.set(loopKey(it), [...sessionShares, ...randomShares]);
+    else if (selectsUnits(it) && !randomShares.some((r) => r.name === it.name))
       randomShares.push({ name: it.name, column: CONDITION_SET, random: true });
     if (it.type !== "branch") return "skip";
   });

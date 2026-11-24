@@ -6,7 +6,7 @@ import { outputText, parseTemplate, referenceValue, type ReferenceScope } from "
 import { UnitLoopDistributionShape } from "./unitLoop.js";
 import { SessionItemSchema, type SessionItem } from "./session.js";
 import { RandomVariableSchema, UserVariableTypeSchema, UnitVariableTypeSchema } from "./variableTypes.js";
-import { forEachItem, itemLists } from "./walk.js";
+import { forEachItem, itemLists, loopKey } from "./walk.js";
 
 const ItemBaseSchema = z.strictObject({
   name: SafeNameSchema,
@@ -197,6 +197,38 @@ export const InLoopItemSchema: z.ZodType<InLoopItem> = z.lazy(() =>
   z.union([InLoopQuestionItemSchema, LayoutItemSchema, EndItemSchema, InLoopBranchItemSchema]),
 );
 
+/** The grammar of a loop's id: `loop_1`, `loop_2`, … */
+const LOOP_ID = /^loop_([1-9][0-9]{0,8})$/;
+const LOOP_ID_MESSAGE =
+  "A unit loop needs an id of its own: loop_1, loop_2, … (a new loop gets the next number never used)";
+
+/**
+ * A unit loop's id (`loop_1`, `loop_2`, …): how the coder API, coders'
+ * progress, results and exports refer to the loop, in every version of the
+ * design. Whoever creates the loop gives it the next number never used in
+ * the design (`nextLoopId`), so the number says nothing about the loop's
+ * place, and an id is never used again for another loop. It is not a name:
+ * it is never changed. A loop without one is a validation error.
+ */
+export const LoopIdSchema = z
+  .string({ error: LOOP_ID_MESSAGE })
+  .regex(LOOP_ID, LOOP_ID_MESSAGE)
+  .describe("Identifies the loop in every version of the design: loop_<number>, never changed or reused");
+
+/**
+ * The id for a new loop: `loop_<n>`, one above the highest number among
+ * `usedIds` (the ids of the design's loops and, where known, of its earlier
+ * versions: a deleted loop's id isn't given to another loop).
+ */
+export function nextLoopId(usedIds: Iterable<string>): string {
+  let highest = 0;
+  for (const id of usedIds) {
+    const number = Number(LOOP_ID.exec(id)?.[1] ?? 0);
+    if (number > highest) highest = number;
+  }
+  return `loop_${highest + 1}`;
+}
+
 /**
  * A `for unit in ...` loop. Which of the coder's units it includes is
  * described by `units` (unitLoop.ts) and `order`. Children can only be
@@ -205,7 +237,8 @@ export const InLoopItemSchema: z.ZodType<InLoopItem> = z.lazy(() =>
  */
 export const UnitLoopItemSchema = z.strictObject({
   type: z.literal("unit_loop"),
-  /** Shown in the editor and in exports; the loop has no name (it is identified by its position, see `unitLoops`). */
+  id: LoopIdSchema,
+  /** Shown in the editor and in exports; the loop has no name (it is identified by its `id`). */
   label: z.string().optional().describe("Shown in the editor and in exports"),
   condition: ConditionSchema.optional().describe(
     "Coders get the loop only if this holds: a script over earlier answers ($var)",
@@ -285,21 +318,25 @@ export function itemName(item: DesignItem): string | undefined {
 }
 
 /**
- * The unit loops of a design in document order, with their key: their
- * position (`"1"`, `"2"`, ...). The key identifies a loop within one
- * design version (the coder API's `/loop/:loop`, progress, distribution
- * state).
+ * The unit loops of a design in document order, with their key: the loop's
+ * `id`. The key identifies the loop in every version of the design (the
+ * coder API's `/loop/:loop`, progress, distribution state, results).
  */
 export function unitLoops(items: readonly unknown[]): { key: string; loop: UnitLoopItem }[] {
   const loops: { key: string; loop: UnitLoopItem }[] = [];
   forEachItem(items, (item) => {
-    if (item.type === "unit_loop") loops.push({ key: String(loops.length + 1), loop: item as UnitLoopItem });
+    if (item.type === "unit_loop") loops.push({ key: loopKey(item), loop: item as UnitLoopItem });
     if (item.type !== "branch") return "skip";
   });
   return loops;
 }
 
-/** How a loop is called in the editor, progress and exports: its label, or "Unit loop <key>". */
-export function loopTitle(loop: { label?: string }, key: string): string {
-  return loop.label?.trim() || `Unit loop ${key}`;
+/** The ids of a design's unit loops. */
+export function loopIds(items: readonly unknown[]): string[] {
+  return unitLoops(items).flatMap(({ key }) => (key ? [key] : []));
+}
+
+/** How a loop is called in the editor, progress and exports: its label, or else its id. */
+export function loopTitle(loop: { label?: string; id?: unknown }): string {
+  return loop.label?.trim() || loopKey(loop) || "Unit loop";
 }

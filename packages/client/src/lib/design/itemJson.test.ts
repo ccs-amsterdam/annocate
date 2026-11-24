@@ -6,6 +6,7 @@ import { updateItem } from "./itemEdit";
 const loop = {
   _key: "k1",
   type: "unit_loop",
+  id: "loop_1",
   label: "loop",
   children: [
     { type: "layout", template: "$unit.text" },

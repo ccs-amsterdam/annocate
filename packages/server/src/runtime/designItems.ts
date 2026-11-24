@@ -18,7 +18,7 @@ import {
 // Lookups on the design items.
 
 export interface LoopInfo {
-  /** The loop's position in the design (contracts `unitLoops`): how the coder API and distribution state refer to it. */
+  /** The loop's id (contracts `unitLoops`): how the coder API and distribution state refer to it. */
   key: string;
   loop: UnitLoopItem;
   variables: Map<string, AnyVariableType>;
@@ -28,10 +28,12 @@ export interface LoopInfo {
 
 export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
   const crowd = runtimeInvite(sessionItem(items)).mode === "crowd";
-  return unitLoops(items).map(({ key, loop }) => {
+  return unitLoops(items).map(({ key, loop }, position, loops) => {
     const variables = new Map<string, AnyVariableType>();
     collectQuestions(loop.children as DesignItem[], variables);
-    return { key, loop, variables, units: effectiveLoopUnits(loop, crowd, key) };
+    // "The previous loop" is the one before it in the design
+    const previousKey = loops[position - 1]?.key;
+    return { key, loop, variables, units: effectiveLoopUnits(loop, crowd, previousKey) };
   });
 }
 

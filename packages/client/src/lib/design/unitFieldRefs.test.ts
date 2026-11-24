@@ -5,6 +5,7 @@ import { pathOfItem, unknownUnitFields } from "./unitFieldRefs";
 const items = [
   {
     type: "unit_loop",
+    id: "loop_1",
     label: "loop",
     children: [
       { type: "layout", template: "# {{$unit.headline}}\n\n$unit.body" },
@@ -49,6 +50,7 @@ describe("unknownUnitFields", () => {
     const loop = [
       {
         type: "unit_loop",
+        id: "loop_1",
         label: "loop",
         children: [{ type: "layout", template: '::: if $unit.test_set === "practice"\nPractice\n:::\n\n$unit.id' }],
       },

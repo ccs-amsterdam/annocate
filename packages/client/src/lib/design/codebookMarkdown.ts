@@ -1,7 +1,6 @@
 import {
   fieldUsage,
   specialLabel,
-  unitLoops,
   loopTitle,
   type AnyVariableType,
   type DesignItem,
@@ -75,11 +74,8 @@ function question(name: string, variable: AnyVariableType, depth: number, instru
   return out;
 }
 
-/** The loops' keys, as numbered in the whole codebook (for their titles). */
-type LoopKeys = Map<unknown, string>;
-
 /** The lines for a list of items, at heading `depth`. */
-function items(list: DesignItem[], depth: number, keys: LoopKeys): string[] {
+function items(list: DesignItem[], depth: number): string[] {
   const out: string[] = [];
   for (const item of list) {
     if (item.type === "session") continue;
@@ -88,10 +84,8 @@ function items(list: DesignItem[], depth: number, keys: LoopKeys): string[] {
       out.push(
         `*Only if ${label}\`${item.condition.script}\`*`,
         "",
-        ...items((item.children ?? []) as DesignItem[], depth, keys),
-        ...(item.elseChildren?.length
-          ? ["*Otherwise:*", "", ...items(item.elseChildren as DesignItem[], depth, keys)]
-          : []),
+        ...items((item.children ?? []) as DesignItem[], depth),
+        ...(item.elseChildren?.length ? ["*Otherwise:*", "", ...items(item.elseChildren as DesignItem[], depth)] : []),
       );
     } else if (item.type === "end") {
       out.push(
@@ -100,7 +94,7 @@ function items(list: DesignItem[], depth: number, keys: LoopKeys): string[] {
         ...(item.message ? [item.message, ""] : []),
       );
     } else if (item.type === "unit_loop") {
-      out.push(...loop(item as UnitLoopItem, depth, keys));
+      out.push(...loop(item as UnitLoopItem, depth));
     } else if ("variable" in item) {
       out.push(
         ...question(
@@ -116,25 +110,19 @@ function items(list: DesignItem[], depth: number, keys: LoopKeys): string[] {
 }
 
 /** A unit loop: its title, the fields coders see, and its items one level deeper. */
-function loop(item: UnitLoopItem, depth: number, keys: LoopKeys): string[] {
-  const key = keys.get(item) ?? "1";
+function loop(item: UnitLoopItem, depth: number): string[] {
   const shown = [...fieldUsage([item])].filter(([, use]) => use === "shown").map(([f]) => `\`${f}\``);
   return [
-    `${"#".repeat(depth)} For each unit: ${loopTitle(item, key)}`,
+    `${"#".repeat(depth)} For each unit: ${loopTitle(item)}`,
     "",
     ...(shown.length > 0 ? [`Coders see the unit's ${shown.join(", ")}.`, ""] : []),
-    ...items((item.children ?? []) as DesignItem[], depth + 1, keys),
+    ...items((item.children ?? []) as DesignItem[], depth + 1),
   ];
 }
 
 /** The codebook (its items, the session among them or not) as Markdown. */
 export function codebookMarkdown(list: readonly TopLevelItem[], title = "Codebook", note?: string | null): string {
-  const out = [
-    `# ${title}`,
-    "",
-    ...(note ? [note, ""] : []),
-    ...items(list as DesignItem[], 2, new Map(unitLoops(list).map(({ loop, key }) => [loop, key]))),
-  ];
+  const out = [`# ${title}`, "", ...(note ? [note, ""] : []), ...items(list as DesignItem[], 2)];
   return (
     out
       .join("\n")

@@ -7,6 +7,7 @@ const question = (name: string, question = "?") =>
 const loop = (name: string, children: unknown[]) =>
   ({
     type: "unit_loop",
+    id: "loop_1",
     label: name,
     children: [{ type: "layout", template: "text" }, ...children],
   }) as TopLevelItem;

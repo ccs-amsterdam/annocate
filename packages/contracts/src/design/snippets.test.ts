@@ -24,6 +24,7 @@ function timed<T>(run: () => T): T {
 
 const loopWith = (template: string, snippets: Record<string, string>) => ({
   type: "unit_loop",
+  id: "loop_1",
   children: [
     { type: "layout", template, snippets },
     { type: "question", name: "q", variable: { type: "confirm", question: "[[s0]]" } },

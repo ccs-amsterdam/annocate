@@ -340,6 +340,20 @@ fields, `items` the top-level questions, experiments, branches and unit loops
 branches also experiments). On `PUT`,
 a left-out `session`, `public` or `units` is kept; `public: null` removes it.
 
+**Unit loops have an `id`** (`loop_1`, `loop_2`, ...; required, unique in
+the design). Coders' progress, results and exports refer to a loop by it, so
+a client that writes designs (R, Python) must:
+
+- keep the ids of the loops it received, also when it moves, relabels or
+  changes a loop;
+- give a new loop a new id: `loop_<n>` with a number not used before in the
+  design (one above the highest in the design and, if it has them, in the
+  study's earlier design versions). Never reuse the id of a deleted loop.
+
+The server never fills in an id: a loop without one is a validation issue
+(the draft saves with `valid: false`, deploying is refused). Deploying a
+design that lacks a loop coders reached succeeds with a warning.
+
 ### updateDesignVersion
 
 `PUT /study/:studyId/design/:id` → `DesignVersionSchema`. Full replace of
@@ -514,8 +528,8 @@ coders who already started keep working.
 ### listCoders
 
 `GET /study/:studyId/coders` → `CoderProgressSchema[]`: per coder session
-(`id`) the link, the coder id (`coder`), started, last active, live answers, finished units per
-loop of the live design version, `special`: the deployed test units
+(`id`) the link, the coder id (`coder`), started, last active, live answers, `finished`: per
+loop of the live design version (in design order) `{ loop, title, units }` (the loop's id, its label or else its id, the units finished), `special`: the deployed test units
 (`test_set`: `overlap`, `gold`, `practice`) they finished, of how many (for
 the kinds the study has), `variables`: their coder-level values
 (answers outside unit loops, and experiments' conditions), `session`: their

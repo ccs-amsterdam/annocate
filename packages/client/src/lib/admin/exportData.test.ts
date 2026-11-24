@@ -43,7 +43,7 @@ const coder = (id: number, extra: Partial<CoderProgress> = {}): CoderProgress =>
   started: at,
   lastActive: at,
   answers: 0,
-  finished: { main: 1 },
+  finished: [{ loop: "loop_1", title: "main", units: 1 }],
   special: {},
   variables: {},
   ended: null,
@@ -192,7 +192,7 @@ describe("data download", () => {
       "ended_at",
       "deletion_requested",
       "display",
-      "finished_loop1",
+      "finished_loop_1",
       "age",
     ]);
     expect(table.rows[0]).toEqual([
@@ -222,12 +222,17 @@ describe("data download", () => {
     });
   });
 
-  it("names the finished columns of unit loops by their position, in the design's order (labels can repeat)", () => {
-    const table = codersTable([coder(1, { finished: { "News items": 1, "News items (2)": 2, "Unit loop 3": 3 } })]);
+  it("names the finished columns of unit loops by their id, in the design's order (labels can repeat)", () => {
+    const finished = [
+      { loop: "loop_4", title: "News items", units: 1 },
+      { loop: "loop_1", title: "News items", units: 2 },
+      { loop: "loop_3", title: "loop_3", units: 3 },
+    ];
+    const table = codersTable([coder(1, { finished })]);
     expect(table.headers.filter((h) => h.startsWith("finished_"))).toEqual([
-      "finished_loop1",
-      "finished_loop2",
-      "finished_loop3",
+      "finished_loop_4",
+      "finished_loop_1",
+      "finished_loop_3",
     ]);
     expect(table.rows[0].slice(-3)).toEqual(["1", "2", "3"]);
   });
@@ -260,6 +265,7 @@ describe("data download", () => {
       [
         {
           type: "unit_loop",
+          id: "loop_1",
           children: [
             { type: "layout", template: "" },
             {
@@ -299,9 +305,14 @@ describe("data download", () => {
     expect(mixed.rows[0][mixed.headers.indexOf("sentiment_label")]).toBe("Positive");
 
     expect(variablesTable(new Map([[2, version("Good")]])).rows).toEqual([
-      ["2", "1", "Unit loop 1", "sentiment", "nominal", "?", "pos", "Good", ""],
-      ["2", "1", "Unit loop 1", "sentiment", "nominal", "?", "neg", "neg", ""],
+      ["2", "loop_1", "", "sentiment", "nominal", "?", "pos", "Good", ""],
+      ["2", "loop_1", "", "sentiment", "nominal", "?", "neg", "neg", ""],
     ]);
+    // The loop by its id and its label
+    const labelled = version("Good").map((item) => (item.type === "unit_loop" ? { ...item, label: "News" } : item));
+    const variables = variablesTable(new Map([[2, labelled]]));
+    expect(variables.headers.slice(0, 4)).toEqual(["design_version", "loop", "loop_label", "variable"]);
+    expect(variables.rows[0].slice(0, 4)).toEqual(["2", "loop_1", "News", "sentiment"]);
   });
 
   it("writes a special answer as its code, missing without one, with a _special column and its label", () => {

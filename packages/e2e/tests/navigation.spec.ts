@@ -21,6 +21,7 @@ const studyItems = () => [
   { type: "question", name: "ready", variable: { type: "confirm", question: "Ready to start?" } },
   {
     type: "unit_loop",
+    id: "loop_1",
     label: "Texts",
     children: [
       { type: "layout", template: "$unit.text" },
@@ -276,6 +277,7 @@ test("special answers: under the answers, chosen with the leader key / and 8 or 
     items: [
       {
         type: "unit_loop",
+        id: "loop_1",
         children: [
           { type: "layout", template: "$unit.text" },
           { type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options, specials } },
@@ -384,6 +386,7 @@ test("display: the numpad only in a responsive study (three columns, 7 8 9 at th
       items: [
         {
           type: "unit_loop",
+          id: "loop_1",
           children: [
             { type: "layout", template: "$unit.text" },
             nominal("topic", "Topic?", ["politics", "economy", "sports", "other"]),
@@ -433,6 +436,7 @@ test("display: each coder's keys and screen are recorded when they change; quick
     items: [
       {
         type: "unit_loop",
+        id: "loop_1",
         children: [{ type: "layout", template: "$unit.text" }, nominal("topic", "Topic?", ["politics", "other"])],
       },
     ],
@@ -479,6 +483,7 @@ test("an instruction: behind the ? button or key, a dot until read; it can open 
       },
       {
         type: "unit_loop",
+        id: "loop_1",
         children: [
           { type: "layout", template: "$unit.text" },
           { ...nominal("topic", "Topic?", ["politics", "other"]), instruction: "The topic with **most words**." },
@@ -631,7 +636,7 @@ async function loopStudy(
     ],
   });
   const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, {
-    items: [{ type: "unit_loop", children }],
+    items: [{ type: "unit_loop", id: "loop_1", children }],
   });
   await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
   const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);

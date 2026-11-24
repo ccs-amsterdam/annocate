@@ -243,7 +243,7 @@ export async function assignmentChecks(
   }
 
   // Parts: every loop's part in part_set; a part no loop shows (a loop without a part shows them all)
-  const loops = unitLoops(items).map(({ key, loop }) => ({ title: loopTitle(loop, key), units: loopUnits(loop) }));
+  const loops = unitLoops(items).map(({ loop }) => ({ title: loopTitle(loop), units: loopUnits(loop) }));
   const parts = valuesOf(PART_SET);
   for (const { title, units } of loops)
     if (units.part !== undefined && !parts.includes(units.part))
@@ -295,8 +295,8 @@ async function answerKeyWarnings(
 ): Promise<string[]> {
   const warnings: string[] = [];
   const { questions } = collectQuestions(items);
-  for (const { key, loop } of unitLoops(items)) {
-    const title = loopTitle(loop, key);
+  for (const { loop } of unitLoops(items)) {
+    const title = loopTitle(loop);
     const units = loopUnits(loop);
     // A test unit with a part is only in that part's loops
     const part = new Set(units.part === undefined ? [] : unitsIn(PART_SET, units.part));

@@ -48,7 +48,7 @@ export function ResetAnswersDialog({
     const { loopOf } = collectQuestions(items);
     return unitLoops(items).map(({ key, loop }) => ({
       key,
-      title: loopTitle(loop, key),
+      title: loopTitle(loop),
       questions: [...loopOf].filter(([, l]) => l === key).map(([name]) => name),
     }));
   }, [version]);

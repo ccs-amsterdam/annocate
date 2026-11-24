@@ -202,12 +202,17 @@ export interface ResolvedPlacement {
 /**
  * A loop's units as the server hands them out (`ResolvedLoopUnits`): its
  * settings; `crowd`: the coders are a crowd (only then are units divided).
- * Taking the previous loop's units, the units aren't divided again. `key`:
- * the loop's (contracts `unitLoops`).
+ * Taking the previous loop's units, the units aren't divided again.
+ * `previousKey`: the key of the loop before this one in the design, if any
+ * (contracts `unitLoops`).
  */
-export function effectiveLoopUnits(loop: { units?: LoopUnits }, crowd: boolean, key: string): ResolvedLoopUnits {
+export function effectiveLoopUnits(
+  loop: { units?: LoopUnits },
+  crowd: boolean,
+  previousKey: string | undefined,
+): ResolvedLoopUnits {
   const u = loopUnits(loop);
-  const previous = u.sameAsPrevious && Number(key) > 1 ? String(Number(key) - 1) : undefined;
+  const previous = u.sameAsPrevious ? previousKey : undefined;
   const shared = crowd && previous === undefined ? u.divide : undefined;
   const place = (p: Placement | undefined): ResolvedPlacement => {
     switch (p ?? "spread") {

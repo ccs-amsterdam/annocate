@@ -225,6 +225,7 @@ test("an ::html field shows in its sandboxed frame, sized by its script, within 
       items: [
         {
           type: "unit_loop",
+          id: "loop_1",
           children: [
             { type: "layout", template: "$unit.table::html" },
             { type: "question", name: "ok", variable: { type: "confirm", question: "Seen it?" } },
@@ -328,6 +329,7 @@ test("options from data: each unit's own list of topics, among the question's ow
     items: [
       {
         type: "unit_loop",
+        id: "loop_1",
         children: [
           { type: "layout", template: "$unit.text" },
           {

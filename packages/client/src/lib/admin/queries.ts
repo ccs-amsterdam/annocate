@@ -293,11 +293,16 @@ export function useDeleteSetGroupMutation(client: ResearcherApi): UseMutationRes
   return useSetGroupMutation(client, (group: string) => client.deleteSetGroup(group));
 }
 
-export function useCodersQuery(client: ResearcherApi): UseQueryResult<CoderProgress[]> {
+/** The study's coders with their progress; kept up to date (every 10 seconds) unless `poll` is false. */
+export function useCodersQuery(
+  client: ResearcherApi,
+  { enabled = true, poll = true }: { enabled?: boolean; poll?: boolean } = {},
+): UseQueryResult<CoderProgress[]> {
   return useQuery({
     queryKey: keys.coders(client.studyId),
     queryFn: () => client.listCoders(),
-    refetchInterval: 10_000,
+    refetchInterval: poll ? 10_000 : false,
+    enabled,
   });
 }
 

@@ -50,6 +50,7 @@ test("writing a design in the editor, as the help describes it, and saving it", 
   expect(items).toMatchObject([
     {
       type: "unit_loop",
+      id: "loop_1",
       label: "News articles",
       children: [
         { type: "layout", template: "" },
@@ -157,7 +158,7 @@ test("branches: a label and a condition, else items; questions and loops at the 
   expect(version.session).toMatchObject({ end: { message: "Thanks for coding!" } });
   expect(version.items).toMatchObject([
     { type: "question", name: "age" },
-    { type: "unit_loop" },
+    { type: "unit_loop", id: "loop_1" },
     { type: "branch", label: "Adults", condition: { script: "true" }, elseChildren: [{ name: "guardian" }] },
   ]);
 });

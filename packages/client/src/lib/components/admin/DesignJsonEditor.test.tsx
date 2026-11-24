@@ -10,6 +10,7 @@ describe("DesignJsonEditor", () => {
     { type: "question", name: "consent", variable: { type: "confirm", question: "Do you agree?" } },
     {
       type: "unit_loop",
+      id: "loop_1",
       label: "loop",
       children: [
         { type: "layout", template: "# $unit.headline\n\n$unit.text", snippets: { intro: "Hi" } },

@@ -29,7 +29,7 @@ export interface FakeUnit {
 export interface FakeCoderServerOptions {
   /** The design's items (as coders get them). */
   items: TopLevelItem[];
-  /** Units per loop key (`"1"`, `"2"`, … in codebook order; contracts `unitLoops`). */
+  /** Units per loop key (the loop's id: `loop_1`, …; contracts `unitLoops`). */
   units?: Record<string, FakeUnit[]>;
   /** Values `assignCondition` gives, by name (default: the first option). */
   computed?: Record<string, VariableValue>;

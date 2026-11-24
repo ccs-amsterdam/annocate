@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   undeclaredFields,
   validateDesignItems,
@@ -45,6 +45,7 @@ import {
 } from "../../../design/draft";
 
 import { defaultItemForType } from "../../../design/newItem";
+import { deletedLoopWarning, newLoopId, rememberLoopIds } from "../../../design/loops";
 import { withOptional } from "../../../design/itemSettings";
 import type { ItemType } from "../designTree/utils";
 
@@ -61,6 +62,10 @@ interface UseDesignDraftOptions {
   restore?: DesignBackup | null;
   /** A draft someone else made while this version was edited: saving asks before it replaces that one. */
   newerDraft?: DesignVersionMeta | null;
+  /** The deployed design's items, if any: its loops' ids aren't given to new loops, also once deleted here. */
+  deployedItems?: readonly TopLevelItem[] | null;
+  /** Unit loops (by id) coders finished units in, with how many: deleting one asks first. */
+  loopProgress?: ReadonlyMap<string, number>;
 }
 
 /**
@@ -72,7 +77,16 @@ interface UseDesignDraftOptions {
  * State is initialised from `version` once: mount the editor with a `key`
  * per version (DesignManager does) to start over for another version.
  */
-export function useDesignDraft({ client, version, readOnly, onSaved, restore, newerDraft }: UseDesignDraftOptions) {
+export function useDesignDraft({
+  client,
+  version,
+  readOnly,
+  onSaved,
+  restore,
+  newerDraft,
+  deployedItems,
+  loopProgress,
+}: UseDesignDraftOptions) {
   // The items, the items as last saved, the revision the edits are based on, undo steps (design/draft.ts)
   const [draft, setDraft] = useState(() => openDraft(startDraft(version, restore)));
   const { items, saved, revision, history, conflict } = draft;
@@ -157,9 +171,15 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore, ne
     setItems(saved);
   }
 
+  // Loop ids this editor has seen (also of loops deleted since): a new loop never gets one of them
+  const seenLoopIds = useRef(new Set<string>());
+
   function createItem(type: ItemType) {
     const name = getUniqueItemName(items, type);
-    return { ...defaultItemForType(type, name), _key: generateKey() };
+    // A new loop's id: the next one not used in this design as far as the editor knows it
+    const loopId =
+      type === "unit_loop" ? newLoopId(seenLoopIds.current, [items, saved, deployedItems ?? []]) : undefined;
+    return { ...defaultItemForType(type, name, loopId), _key: generateKey() };
   }
 
   function insertAt(position: TreePosition, type: ItemType) {
@@ -182,8 +202,10 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore, ne
     const keys = requested.filter((key) => findItem(items, key)?.type !== "session");
     if (keys.length === 0) return false;
     const what = keys.length === 1 ? "this item" : `these ${keys.length} items`;
-    if (!confirm(`Delete ${what} and everything inside?`)) return false;
     const next = deleteItems(items, keys);
+    const warning = deletedLoopWarning(items, next, loopProgress);
+    if (!confirm(`Delete ${what} and everything inside?${warning ? `\n\n${warning}` : ""}`)) return false;
+    rememberLoopIds(seenLoopIds.current, [items]);
     setItems(next);
     if (selected !== null && !findItem(next, selected)) setSelected(null);
     return true;

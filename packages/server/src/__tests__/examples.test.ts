@@ -73,7 +73,7 @@ describe("example studies", () => {
       expect(coders.every((c) => answered.has(c.id))).toBe(true);
       // Their finished units count (every question of the loop answered)
       const units = page.annotations.filter((a) => a.unitId !== null).length;
-      if (units > 0) expect(coders.some((c) => Object.values(c.finished).some((n) => n > 0))).toBe(true);
+      if (units > 0) expect(coders.some((c) => c.finished.some((loop) => loop.units > 0))).toBe(true);
       // Given over several past days, never in the future
       if (units > 0) {
         const days = new Set(
@@ -122,6 +122,7 @@ describe("studies from a recipe", () => {
     { type: "experiment", name: "condition", variable: { type: "random", draw: "random", units: true } },
     {
       type: "unit_loop",
+      id: "loop_1",
       children: [
         { type: "layout", template: "$unit.text" },
         { type: "question", name: "topic", variable: { type: "unspecified" } },

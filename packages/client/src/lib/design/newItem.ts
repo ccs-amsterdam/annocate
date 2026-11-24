@@ -1,8 +1,11 @@
 import type { DesignItem } from "@annotinder/contracts";
 import { defaultRandomOptions } from "./answerTypes";
 
-/** A new item of a type, as the editor adds it. */
-export function defaultItemForType(type: DesignItem["type"], name: string): DesignItem {
+/**
+ * A new item of a type, as the editor adds it. A unit loop gets `loopId`:
+ * the next id never used in the design (contracts `nextLoopId`).
+ */
+export function defaultItemForType(type: DesignItem["type"], name: string, loopId = "loop_1"): DesignItem {
   switch (type) {
     case "question":
       return {
@@ -22,6 +25,7 @@ export function defaultItemForType(type: DesignItem["type"], name: string): Desi
       // tree. By default it hands out all the session's units, once (its form changes that).
       return {
         type: "unit_loop",
+        id: loopId,
         children: [{ type: "layout", template: "" }],
       } as DesignItem;
     case "layout":

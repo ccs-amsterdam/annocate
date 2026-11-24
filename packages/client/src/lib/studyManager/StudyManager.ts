@@ -151,7 +151,7 @@ export class StudyManager {
 
   /** The coder codebook (contracts `CoderCodebook`): only what coding needs. */
   private items: CoderTopLevelItem[] = [];
-  /** Each unit loop's key (its position, contracts `unitLoops`): how the coder API and progress refer to it. */
+  /** Each unit loop's key (its id, contracts `unitLoops`): how the coder API and progress refer to it. */
   private loopKeys = new Map<CoderUnitLoopItem, string>();
   /** Every question in the codebook, for building `$var` scopes. */
   private questions = new Map<string, AnyVariableType>();

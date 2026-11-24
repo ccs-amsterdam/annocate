@@ -25,6 +25,11 @@ export function itemLists(item: unknown): { key: ItemListKey; list: DesignItem[]
  * `path`. Anything that isn't an object is passed over. The visitor returns
  * `"skip"` to not go into an item: most helpers only go into branches.
  */
+/** A unit loop's key: its `id` (`""` in a draft whose loop has none yet: a validation error). */
+export function loopKey(loop: { id?: unknown }): string {
+  return typeof loop.id === "string" ? loop.id : "";
+}
+
 export function forEachItem<T = Partial<DesignItem>>(
   list: unknown,
   visit: (item: T, path: ItemPath) => void | "skip",

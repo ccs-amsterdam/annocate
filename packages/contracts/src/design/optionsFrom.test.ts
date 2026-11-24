@@ -55,7 +55,12 @@ describe("options from data", () => {
         .success,
     ).toBe(true);
     const loop = (children: object[]) => [
-      { type: "unit_loop", units: {}, children: [{ type: "layout", template: "$unit.text" }, ...children] },
+      {
+        type: "unit_loop",
+        id: "loop_1",
+        units: {},
+        children: [{ type: "layout", template: "$unit.text" }, ...children],
+      },
     ];
     const spanQ = {
       type: "question",

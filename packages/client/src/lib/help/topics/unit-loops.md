@@ -13,10 +13,23 @@ Questions asked once per coder go before or after the loop.
 
 1. Click **Add item** above the tree → **Unit loop**.
 2. Optionally give it a **Label**, e.g. _News items_ (shown in the tree,
-   the coders' menu and the `loop` column of `variables.csv`).
+   the coders' menu and the `loop_label` column of `variables.csv`).
 3. A new loop starts with a **Layout** item: select it to set how
    units are shown.
 4. Add questions with **+** → **Inside** the loop.
+
+## The loop's id
+
+Every loop has an id (`loop_1`, `loop_2`, …), shown small in its form. It
+is how results and exports refer to the loop (`finished_loop_1` in
+`coders.csv`, the `loop` column of `variables.csv`), and it stays the same
+when you move or relabel the loop. You can't change it. A new loop gets the
+next number never used in the design, so the number says nothing about the
+order of the loops, and a deleted loop's id isn't used again.
+
+Deleting a loop that coders already worked in asks first: once deployed,
+coders no longer get that loop (their answers are kept). Deploying warns
+about it too.
 
 ## How units are shown
 

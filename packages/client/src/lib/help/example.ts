@@ -108,6 +108,7 @@ export function exampleDesign(data: HelpExampleData): unknown[] {
       .map(([name, alternatives]) => question(name, exampleQuestion(alternatives))),
     {
       type: "unit_loop",
+      id: "loop_1",
       children: [
         { type: "layout", template: data.template, ...(data.snippets ? { snippets: data.snippets } : {}) },
         ...(data.steps.length

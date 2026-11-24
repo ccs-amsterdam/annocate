@@ -122,12 +122,12 @@ function coder(name: string, linkSecret: string | null = "demo-secret", app = ()
     send(name, path, init, device.linkSecret ? { "x-link-secret": device.linkSecret } : {}, app);
   return {
     session: async () => (await call("/session")).json() as Promise<SessionResponse>,
-    next: async (loop = "1") => {
+    next: async (loop = "loop_1") => {
       const res = await call(`/loop/${loop}/next`);
       expect(res.status).toBe(200);
       return ((await res.json()) as { units: CoderUnitResponse[] }).units[0] ?? null;
     },
-    batch: async (count: number, loop = "1") => {
+    batch: async (count: number, loop = "loop_1") => {
       const res = await call(`/loop/${loop}/next?count=${count}`);
       expect(res.status).toBe(200);
       return ((await res.json()) as { units: CoderUnitResponse[] }).units;
@@ -201,7 +201,7 @@ describe("coder flow", () => {
     expect((await dbAnnotations())[0].variables.sentiment.values).toEqual([{ value: "positive" }]);
 
     expect((await c.next())?.externalId).toBe("unit-2");
-    expect((await c.session()).progress).toEqual([{ set: "1", doneUnitIds: [first!.id], totalUnits: 3 }]);
+    expect((await c.session()).progress).toEqual([{ set: "loop_1", doneUnitIds: [first!.id], totalUnits: 3 }]);
   });
 
   it("rejects invalid annotations without writing them", async () => {
@@ -269,6 +269,12 @@ const sentimentQuestion = {
   },
 };
 
+/** The main loop's id in `redeploy`: the first of loop_1, loop_2, … that the other items' loops don't have. */
+function mainLoopId(extraItems: object[]): string {
+  const taken = new Set(JSON.stringify(extraItems).match(/loop_\d+/g) ?? []);
+  for (let n = 1; ; n++) if (!taken.has(`loop_${n}`)) return `loop_${n}`;
+}
+
 /**
  * Creates a design with the given unit_loop settings (by default with one
  * question, `sentiment`) and deploys it as a new version. Returns the
@@ -290,6 +296,7 @@ async function redeploy(
             ...extraItems,
             {
               type: "unit_loop",
+              id: mainLoopId(extraItems),
               label: "main_loop",
               units: {},
               // `layout`: the loop's layout item (first)
@@ -450,6 +457,7 @@ describe("shared queues", () => {
   it("divide each loop's units by its own rules: two coders per unit, or until two agree", async () => {
     const other = {
       type: "unit_loop",
+      id: "loop_1",
       label: "other",
       units: { divide: { codersPerUnit: { min: 2, max: 2 }, priority: "saturate" } },
       children: [
@@ -465,12 +473,12 @@ describe("shared queues", () => {
     const first: number[] = [];
     for (const key of ["a", "b"]) {
       const c = coder(key);
-      const unit = await c.next("1");
+      const unit = await c.next("loop_1");
       first.push(unit!.id);
-      expect((await c.submit(unit!.id, { other: { done: true } }, "1")).status).toBe(200);
+      expect((await c.submit(unit!.id, { other: { done: true } }, "loop_1")).status).toBe(200);
     }
     expect(new Set(first).size).toBe(1);
-    expect((await coder("c").next("1"))!.id).not.toBe(first[0]);
+    expect((await coder("c").next("loop_1"))!.id).not.toBe(first[0]);
     // Loop 2: two coders who disagree don't finish a unit
     const second: number[] = [];
     for (const [key, code] of [
@@ -478,17 +486,18 @@ describe("shared queues", () => {
       ["b", "negative"],
     ]) {
       const c = coder(key);
-      const unit = await c.next("2");
+      const unit = await c.next("loop_2");
       second.push(unit!.id);
-      expect((await c.submit(unit!.id, sentiment(code), "2")).status).toBe(200);
+      expect((await c.submit(unit!.id, sentiment(code), "loop_2")).status).toBe(200);
     }
     expect(new Set(second).size).toBe(1);
-    expect((await coder("c").next("2"))!.id).toBe(second[0]);
+    expect((await coder("c").next("loop_2"))!.id).toBe(second[0]);
   });
 
   it("a loop can take the units each coder got in the previous loop, in that order", async () => {
     const first = {
       type: "unit_loop",
+      id: "loop_1",
       label: "first",
       units: { divide: { codersPerUnit: { min: 1, max: 1 }, unitsPerCoder: { max: 2 } } },
       children: [
@@ -499,28 +508,105 @@ describe("shared queues", () => {
     await redeploy({ units: { sameAsPrevious: true } }, [crowd(), first]);
     const a = coder("a");
     const got: number[] = [];
-    for (let unit = await a.next("1"); unit; unit = await a.next("1")) {
+    for (let unit = await a.next("loop_1"); unit; unit = await a.next("loop_1")) {
       got.push(unit.id);
-      expect((await a.submit(unit.id, { other: { done: true } }, "1")).status).toBe(200);
+      expect((await a.submit(unit.id, { other: { done: true } }, "loop_1")).status).toBe(200);
     }
     expect(got).toHaveLength(2);
     const again: number[] = [];
-    for (let unit = await a.next("2"); unit; unit = await a.next("2")) {
+    for (let unit = await a.next("loop_2"); unit; unit = await a.next("loop_2")) {
       again.push(unit.id);
-      expect((await a.submit(unit.id, sentiment("neutral"), "2")).status).toBe(200);
+      expect((await a.submit(unit.id, sentiment("neutral"), "loop_2")).status).toBe(200);
     }
     expect(again).toEqual(got);
     // Another coder got other units in loop 1, and gets those again
     const b = coder("b");
-    const bFirst = await b.next("1");
+    const bFirst = await b.next("loop_1");
     expect(got).not.toContain(bFirst!.id);
-    expect((await b.submit(bFirst!.id, { other: { done: true } }, "1")).status).toBe(200);
-    expect((await b.next("2"))!.id).toBe(bFirst!.id);
+    expect((await b.submit(bFirst!.id, { other: { done: true } }, "loop_1")).status).toBe(200);
+    expect((await b.next("loop_2"))!.id).toBe(bFirst!.id);
     // The status: one row for the loop, whatever the number of coders
     const status = (await (
       await server.request("/api/study/1/deployment/status", { headers: adminHeaders })
     ).json()) as DeploymentStatus;
-    expect(status.sources.filter((s) => s.loop === "main_loop").map((s) => [s.set, s.coders])).toEqual([["as 1", 2]]);
+    expect(status.sources.filter((s) => s.loop === "main_loop").map((s) => [s.set, s.coders])).toEqual([
+      ["as loop_1", 2],
+    ]);
+  });
+
+  it("a loop inserted before another leaves the coders, their units and their progress in their own loop", async () => {
+    await redeploy({}, [crowd({ codersPerUnit: { min: 1, max: 1 } })]);
+    const a = coder("a");
+    const held = await a.next("loop_1");
+
+    // A new version with a new loop (a new id) before the one the coder is in
+    const intro = {
+      type: "unit_loop",
+      id: "loop_2",
+      label: "intro",
+      units: {},
+      children: [
+        { type: "layout", template: "" },
+        { type: "question", name: "other", variable: { type: "confirm", question: "?" } },
+      ],
+    };
+    await redeploy({}, [crowd({ codersPerUnit: { min: 1, max: 1 } }), intro]);
+
+    // The unit a holds in the main loop is still theirs: another coder gets the next one
+    expect((await coder("b").next("loop_1"))!.id).not.toBe(held!.id);
+    expect((await a.next("loop_1"))!.id).toBe(held!.id);
+    // And a is counted in the main loop, not in the new one
+    const status = (await (
+      await server.request("/api/study/1/deployment/status", { headers: adminHeaders })
+    ).json()) as DeploymentStatus;
+    expect(status.sources.filter((s) => s.loop === "intro").map((s) => s.coders)).toEqual([]);
+    expect(status.sources.filter((s) => s.loop === "main_loop").map((s) => s.coders)).toEqual([2]);
+    expect((await a.session()).progress.map((p) => p.set)).toEqual(["loop_2", "loop_1"]);
+  });
+
+  it("a loop without an id is never given one: the draft saves with the issue, deploying is refused", async () => {
+    const loop = { type: "unit_loop", children: [{ type: "layout", template: "" }, sentimentQuestion] };
+    const res = await server.request("/api/study/1/design", {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify(chosen(splitDesignItems([loop]))),
+    });
+    expect(res.status).toBe(201);
+    const saved = (await res.json()) as { id: number; valid: boolean; items: object[] };
+    expect(saved.valid).toBe(false);
+    expect(saved.items).toEqual([loop]);
+    const deploy = await server.request("/api/study/1/deployment", {
+      method: "PUT",
+      headers: adminHeaders,
+      body: JSON.stringify({ designVersionId: saved.id, units: true }),
+    });
+    expect(deploy.status).toBe(400);
+  });
+
+  it("deploying a design without a loop that coders worked in warns about it", async () => {
+    const other = {
+      type: "unit_loop",
+      id: "loop_2",
+      label: "second",
+      units: {},
+      children: [
+        { type: "layout", template: "" },
+        { type: "question", name: "other", variable: { type: "confirm", question: "?" } },
+      ],
+    };
+    await redeploy({}, [crowd(), other]);
+    const a = coder("a");
+    const unit = await a.next("loop_1");
+    expect((await a.submit(unit!.id, sentiment("neutral"), "loop_1")).status).toBe(200);
+
+    // The main loop (loop_1) replaced by a new loop, with a new id
+    const deployed = await redeploy({ id: "loop_3", label: "new" }, [crowd(), other]);
+    expect(deployed.warnings).toEqual([
+      "Loop 'main_loop' (loop_1) is no longer in the design: 1 coder reached it (1 finished unit coding). " +
+        "Their answers are kept, but coders no longer get this loop. To continue it, put the loop back with its id.",
+    ]);
+    // A loop nobody reached goes without a warning
+    expect((await redeploy({ id: "loop_3", label: "new" }, [crowd()])).warnings ?? []).toEqual([]);
   });
 
   it("refuse annotations for units that were not handed to the coder", async () => {
@@ -569,7 +655,7 @@ describe("shared queues under concurrency", () => {
         sessionId,
         variables: { sentiment: { done: true, skip: false, values: [{ value: "neutral" }] } },
         designVersionId: (await store.getDeployment()).design.id,
-        codings: [{ loop: "1", agreement: {} }],
+        codings: [{ loop: "loop_1", agreement: {} }],
       });
     const unitB = await coder("b").next();
     expect(between).toBeNull();
@@ -591,7 +677,7 @@ describe("shared queues under concurrency", () => {
 describe("coders", () => {
   const coders = codersInvite();
   /** The units a coder gets, finishing each. */
-  const order = async (c: ReturnType<typeof coder>, loop = "1") => {
+  const order = async (c: ReturnType<typeof coder>, loop = "loop_1") => {
     const seen: string[] = [];
     for (let u = await c.next(loop); u; u = await c.next(loop)) {
       seen.push(u.externalId);
@@ -730,7 +816,12 @@ describe("coders", () => {
         chosen(
           splitDesignItems([
             codersInvite("login"),
-            { type: "unit_loop", units: {}, children: [{ type: "layout", template: "" }, sentimentQuestion] },
+            {
+              type: "unit_loop",
+              id: "loop_1",
+              units: {},
+              children: [{ type: "layout", template: "" }, sentimentQuestion],
+            },
           ]),
         ),
       ),
@@ -766,7 +857,12 @@ describe("coders", () => {
         chosen(
           splitDesignItems([
             codersInvite(),
-            { type: "unit_loop", units: {}, children: [{ type: "layout", template: "" }, sentimentQuestion] },
+            {
+              type: "unit_loop",
+              id: "loop_1",
+              units: {},
+              children: [{ type: "layout", template: "" }, sentimentQuestion],
+            },
           ]),
         ),
       ),
@@ -905,6 +1001,7 @@ describe("experiments that select units", () => {
     await createSet("p1", ["unit-1"], "condition_set");
     const loopBefore = {
       type: "unit_loop",
+      id: "loop_1",
       label: "before",
       units: {},
       children: [
@@ -914,9 +1011,9 @@ describe("experiments that select units", () => {
     };
     await redeploy({}, [loopBefore, part]);
     const a = coder("a");
-    const first = (await a.batch(10, "1")).map((u) => u.externalId);
+    const first = (await a.batch(10, "loop_1")).map((u) => u.externalId);
     expect(first.length).toBeGreaterThan(1);
-    expect((await a.batch(10, "2")).map((u) => u.externalId)).toEqual(["unit-1"]);
+    expect((await a.batch(10, "loop_2")).map((u) => u.externalId)).toEqual(["unit-1"]);
   });
 });
 
@@ -957,6 +1054,7 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     await createSet("overlap", ["unit-1", "unit-2", "unit-3"], "test_set");
     const first = {
       type: "unit_loop",
+      id: "loop_1",
       label: "first",
       units: { overlap: "ignore" },
       children: [
@@ -967,14 +1065,15 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     await redeploy({ units: { overlap: "before" } }, [crowd(), first]);
     const c = coder("c");
     // Loop 2 first: the order in which a server computes them doesn't matter
-    const second = (await c.batch(20, "2")).length;
-    const one = (await c.batch(20, "1")).length;
+    const second = (await c.batch(20, "loop_2")).length;
+    const one = (await c.batch(20, "loop_1")).length;
     expect(second - one).toBe(3);
   });
 
   it("hands out the same unfinished unit again, and marks each loop the coder reached", async () => {
     const before = {
       type: "unit_loop",
+      id: "loop_1",
       label: "before",
       units: {},
       children: [
@@ -984,18 +1083,18 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     };
     await redeploy({ units: { overlap: "ignore" } }, [before]);
     const c = coder("c");
-    const first = await c.next("2");
-    expect((await c.next("2"))!.id).toBe(first!.id);
-    expect(await c.next("1")).not.toBeNull();
+    const first = await c.next("loop_2");
+    expect((await c.next("loop_2"))!.id).toBe(first!.id);
+    expect(await c.next("loop_1")).not.toBeNull();
     const { sessionId } = await c.session();
     const [stored] = await query<{ assignments: Record<string, unknown> }>(
       db,
       "SELECT assignments FROM coder_sessions WHERE id = $1",
       [sessionId],
     );
-    expect(stored.assignments).toEqual({ "1": { at: expect.any(Number) }, "2": { at: expect.any(Number) } });
+    expect(stored.assignments).toEqual({ loop_1: { at: expect.any(Number) }, loop_2: { at: expect.any(Number) } });
     // The units follow from the session: no branch to choose (an old client's `branch` is ignored)
-    expect((await c.call("/loop/2/next?branch=3")).status).toBe(200);
+    expect((await c.call("/loop/loop_2/next?branch=3")).status).toBe(200);
   });
 
   it("a condition drawn twice at once has one value, in the answers and the session", async () => {
@@ -1057,7 +1156,7 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     await createSet("anna", ["unit-3"], "coder_set");
     await createSet("bob", ["unit-2", "unit-1"], "coder_set");
     await deployDrafts();
-    expect((await anna.call(`/loop/1/units/${unit1!.id}`)).status).toBe(200);
+    expect((await anna.call(`/loop/loop_1/units/${unit1!.id}`)).status).toBe(200);
     expect((await anna.submit(unit1!.id, sentiment("negative"))).status).toBe(200);
     // It stays in anna's progress, next to her new unit
     expect((await anna.session()).progress[0]).toMatchObject({ doneUnitIds: [unit1!.id], totalUnits: 2 });
@@ -1083,7 +1182,7 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     await early.session();
     await createSet("anna", ["unit-1"], "coder_set");
     await redeploy({}, [codersInvite()]);
-    const res = await early.call("/loop/1/next");
+    const res = await early.call("/loop/loop_1/next");
     expect(res.status).toBe(409);
     expect(await res.json()).toMatchObject({ code: "not_assigned" });
   });
@@ -1199,13 +1298,18 @@ describe("routing by session values", () => {
     expect((await b.submit(coded.id, sentiment("positive"))).status).toBe(200);
     // Another loop in front: this one is loop 2 now, and has another label
     const warmUp = { type: "question", name: "warm_up", variable: { type: "confirm", question: "?" } };
-    const before = { type: "unit_loop", label: "warm-up", children: [{ type: "layout", template: "" }, warmUp] };
+    const before = {
+      type: "unit_loop",
+      id: "loop_1",
+      label: "warm-up",
+      children: [{ type: "layout", template: "" }, warmUp],
+    };
     await redeploy({ label: "renamed" }, [condition, before]);
-    expect((await b.next("2"))!.externalId).toBe("unit-3");
+    expect((await b.next("loop_2"))!.externalId).toBe("unit-3");
     // A part that leaves out what b coded: b can still go back to it and change the answer
     await createSet("late", ["unit-3"], "part_set");
     await redeploy({ units: { part: "late" } }, [condition]);
-    expect((await b.call(`/loop/1/units/${coded.id}`)).status).toBe(200);
+    expect((await b.call(`/loop/loop_1/units/${coded.id}`)).status).toBe(200);
     expect((await b.submit(coded.id, sentiment("negative"))).status).toBe(200);
     expect((await b.next())!.externalId).toBe("unit-3");
   });
@@ -1402,8 +1506,9 @@ describe("quitting and deleting a coder's data", () => {
   it("lets a coder quit and ask for deletion; the researcher deletes later, then now, and the deletion is logged", async () => {
     await redeploy({}, [crowd(undefined, { coderParam: { param: "participant" } })]);
     const link = { "x-link-secret": "demo-secret", "x-url-params": "participant=P77" };
-    const unit = ((await (await send("quitter", "/loop/1/next", {}, link)).json()) as { units: CoderUnitResponse[] })
-      .units[0];
+    const unit = (
+      (await (await send("quitter", "/loop/loop_1/next", {}, link)).json()) as { units: CoderUnitResponse[] }
+    ).units[0];
     expect(
       (
         await send(
@@ -1425,7 +1530,7 @@ describe("quitting and deleting a coder's data", () => {
     const session = (await (await send("quitter", "/session", {}, link)).json()) as SessionResponse;
     expect(session.ended).toMatchObject({ outcome: "quit" });
     expect(session.deletionRequest).toMatchObject({ at: expect.any(String) });
-    expect((await send("quitter", "/loop/1/next", {}, link)).status).toBe(409);
+    expect((await send("quitter", "/loop/loop_1/next", {}, link)).status).toBe(409);
 
     const listed = async () =>
       ((await (await server.request("/api/study/1/coders", { headers: adminHeaders })).json()) as CoderProgress[]).find(
@@ -1775,7 +1880,7 @@ describe("pausing a study", () => {
     expect((await c.submit(first.id, demo("neutral"))).status).toBe(200);
     expect((await c.submit(second.id, demo("neutral"))).status).toBe(200);
     // No new units, no new sessions
-    const next = await c.call("/loop/1/next");
+    const next = await c.call("/loop/loop_1/next");
     expect(next.status).toBe(409);
     expect(await next.json()).toMatchObject({ code: "study_paused" });
     const newcomer = await coder("newcomer").call("/session");
@@ -2035,12 +2140,12 @@ describe("resuming and codebook updates", () => {
     const c = coder("res");
     const first = await c.next();
     await c.submit(first!.id, demo("positive"));
-    const again = await c.call(`/loop/1/units/${first!.id}`);
+    const again = await c.call(`/loop/loop_1/units/${first!.id}`);
     expect(again.status).toBe(200);
     expect(((await again.json()) as CoderUnitResponse).variables.sentiment.values).toEqual([{ value: "positive" }]);
 
     const unit3 = (await unitByExternalId("unit-3")).id;
-    expect((await c.call(`/loop/1/units/${unit3}`)).status).toBe(404);
+    expect((await c.call(`/loop/loop_1/units/${unit3}`)).status).toBe(404);
   });
 
   it("keeps answers to questions a design update removed, and tags the design version", async () => {
@@ -2202,21 +2307,22 @@ describe("finished units follow the current codebook", () => {
   it("tracks a unit separately in each loop it appears in", async () => {
     const second = {
       type: "unit_loop",
+      id: "loop_1",
       label: "second_loop",
       units: {},
       children: [{ type: "layout", template: "" }, relevance],
     };
     await redeploy(fixedMain, [second]);
     const c = coder("two");
-    // Loops are numbered by position: second_loop (first in the design) is 1, main_loop 2.
-    const unit = await c.next("2");
-    expect((await c.submit(unit!.id, sentiment("neutral"), "2")).status).toBe(200);
+    // second_loop (first in the design) is loop_1, main_loop loop_2.
+    const unit = await c.next("loop_2");
+    expect((await c.submit(unit!.id, sentiment("neutral"), "loop_2")).status).toBe(200);
 
     // finished in main_loop, not in second_loop
-    expect((await c.next("2"))!.id).not.toBe(unit!.id);
-    expect((await c.next("1"))!.id).toBe(unit!.id);
+    expect((await c.next("loop_2"))!.id).not.toBe(unit!.id);
+    expect((await c.next("loop_1"))!.id).toBe(unit!.id);
     const progress = Object.fromEntries((await c.session()).progress.map((p) => [p.set, p.doneUnitIds]));
-    expect(progress).toEqual({ 1: [], 2: [unit!.id] });
+    expect(progress).toEqual({ loop_1: [], loop_2: [unit!.id] });
   });
 });
 
@@ -2236,7 +2342,8 @@ describe("state in the database, not in memory", () => {
         })
       ).status,
     ).toBe(201);
-    const back = async () => ((await (await c.call(`/loop/1/units/${unit.id}`)).json()) as CoderUnitResponse).data.text;
+    const back = async () =>
+      ((await (await c.call(`/loop/loop_1/units/${unit.id}`)).json()) as CoderUnitResponse).data.text;
     expect(await back()).toBe(data.text);
     await deployDrafts();
     expect(await back()).toBe("fixed");
@@ -2265,7 +2372,7 @@ describe("state in the database, not in memory", () => {
       body: JSON.stringify({ designVersionId: deployment.designVersionId, active: false }),
     });
     server = first;
-    expect((await c.call("/loop/1/next")).status).toBe(409);
+    expect((await c.call("/loop/loop_1/next")).status).toBe(409);
   });
 
   it("hands out a shared queue's units once, also when two processes are asked at the same time", async () => {
@@ -2552,6 +2659,7 @@ describe("unit fields in the design", () => {
         items: [
           {
             type: "unit_loop",
+            id: "loop_1",
             units: {},
             children: [{ type: "layout", template: "$unit.nowhere" }, sentimentQuestion],
           },
@@ -2636,6 +2744,7 @@ describe("researcher preview", () => {
         items: [
           {
             type: "unit_loop",
+            id: "loop_1",
             label: note,
             children: [{ type: "layout", template: "" }, sentimentQuestion],
             units: {},
@@ -2684,7 +2793,7 @@ describe("researcher preview", () => {
     const before = await coders();
     const { deploymentId, token } = await openPreview();
     const call = previewer(deploymentId, token);
-    const unit = ((await (await call("/loop/1/next")).json()) as { units: CoderUnitResponse[] }).units[0];
+    const unit = ((await (await call("/loop/loop_1/next")).json()) as { units: CoderUnitResponse[] }).units[0];
     const submit = await call("/variables/unit", {
       method: "POST",
       body: JSON.stringify({ unitId: unit.id, variables: sentiment("neutral") }),
@@ -2716,7 +2825,7 @@ describe("end items", () => {
     expect(await end.json()).toEqual({ reopen: null }); // no going back after a screenout
     expect((await c.session()).ended).toMatchObject({ item: "screen_out_young", outcome: "screenout" });
 
-    const next = await c.call("/loop/1/next");
+    const next = await c.call("/loop/loop_1/next");
     expect(next.status).toBe(409);
     expect(await next.json()).toMatchObject({ code: "session_ended" });
     const answers = await c.call("/variables/coder", { method: "POST", body: JSON.stringify({ variables: {} }) });
@@ -2764,21 +2873,21 @@ describe("end items", () => {
     await c.submit(unit!.id, sentiment("neutral"));
     const bogus = await c.call("/end", {
       method: "POST",
-      body: JSON.stringify({ item: "done_here", unit: { loop: "1", id: 999999 } }),
+      body: JSON.stringify({ item: "done_here", unit: { loop: "loop_1", id: 999999 } }),
     });
     expect(bogus.status).toBe(400);
     const end = await c.call("/end", {
       method: "POST",
-      body: JSON.stringify({ item: "done_here", unit: { loop: "1", id: unit!.id } }),
+      body: JSON.stringify({ item: "done_here", unit: { loop: "loop_1", id: unit!.id } }),
     });
     expect(await end.json()).toEqual({ reopen: { until: expect.any(String) } });
     const session = await c.session();
-    expect(session.ended).toMatchObject({ unit: { loop: "1", id: unit!.id } });
+    expect(session.ended).toMatchObject({ unit: { loop: "loop_1", id: unit!.id } });
     expect(session.endValues).toEqual({
       variables: {},
       unit: { data: { headline: expect.any(String) }, variables: { sentiment: expect.anything() } },
     });
-    expect((await c.call(`/loop/1/units/${unit!.id}`)).status).toBe(409);
+    expect((await c.call(`/loop/loop_1/units/${unit!.id}`)).status).toBe(409);
   });
 
   it("finishing without an end item ends the session too; the coder can go back for a day", async () => {
@@ -2821,7 +2930,7 @@ describe("end items", () => {
     await c.submit(unit!.id, sentiment("neutral"));
     await c.call("/end", { method: "POST", body: "{}" });
     expect((await c.session()).reopen).toEqual({ until: null });
-    expect((await c.call(`/loop/1/units/${unit!.id}`)).status).toBe(200);
+    expect((await c.call(`/loop/loop_1/units/${unit!.id}`)).status).toBe(200);
   });
 
   it("only for end items of the design", async () => {
@@ -2889,7 +2998,7 @@ describe("conditions from a URL parameter", () => {
           chosen(
             splitDesignItems([
               ...items,
-              { type: "unit_loop", children: [{ type: "layout", template: "" }, sentimentQuestion] },
+              { type: "unit_loop", id: "loop_1", children: [{ type: "layout", template: "" }, sentimentQuestion] },
             ]),
           ),
         ),
@@ -2919,6 +3028,8 @@ describe("conditions from a URL parameter", () => {
 describe("deploy checks of the columns with a role", () => {
   const loop = (units: object, label = "main") => ({
     type: "unit_loop",
+    // A second loop in a design is called b
+    id: label === "b" ? "loop_2" : "loop_1",
     label,
     units,
     children: [
@@ -3036,7 +3147,7 @@ describe("test units per coder", () => {
     const coders = (await (
       await server.request("/api/study/1/coders", { headers: adminHeaders })
     ).json()) as CoderProgress[];
-    const routed = coders.find((x) => x.finished.main_loop === 3)!;
+    const routed = coders.find((x) => x.finished.some((f) => f.title === "main_loop" && f.units === 3))!;
     expect(routed.special).toEqual({ overlap: { done: 1, total: 1 }, gold: { done: 1, total: 1 } });
     expect(coders.filter((x) => x.id !== routed.id).map((x) => x.special)).toEqual([{}]);
   });

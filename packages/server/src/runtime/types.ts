@@ -58,7 +58,7 @@ interface LoopAssignment {
   units?: number[];
 }
 
-/** loop key (contracts `unitLoops`) -> when the coder reached it. */
+/** loop key (the loop's id, contracts `unitLoops`) -> when the coder reached it. */
 export type CoderAssignments = Record<string, LoopAssignment>;
 
 /** A coder as the runtime sees it. No email or other identifying data. */

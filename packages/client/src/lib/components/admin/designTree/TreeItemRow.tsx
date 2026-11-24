@@ -13,7 +13,7 @@ import { layoutNames } from "../../../design/loopLayouts";
 import { Leaf } from "@/components/Logo";
 import { childrenOf, findItem, findParent, isElse, loopUnitsSummary } from "../../../codebook/tree";
 
-/** How an item is called in menus: its title, a condition by its condition, a loop by its position. */
+/** How an item is called in menus: its title, a condition by its condition, a loop by its label. */
 function rowTitle(item: TreeNode): string {
   if (item.type === "unit_loop") return treeLoopTitle(item);
   return itemTitle(item) || "(unnamed)";
@@ -285,7 +285,7 @@ function ItemKnot({ item }: { item: TreeNode }) {
 /**
  * A loop in the tree: its label, else just "Unit loop" (its sets show
  * next to it). Messages and exports, where loops must be told apart without
- * the tree, number them (contracts `loopTitle`).
+ * the tree, use the loop's id then (contracts `loopTitle`).
  */
 function treeLoopTitle(loop: UnitLoopItem): string {
   return loop.label?.trim() || "Unit loop";

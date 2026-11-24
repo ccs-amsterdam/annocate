@@ -65,8 +65,8 @@ export interface LoopUnitsContext {
   invite: Invite | null;
   /** What selects a session's units (its coder, the experiment's condition). */
   sources: ShareSource[];
-  /** The loops before this one (their number, from 1), whose units this loop can take. */
-  earlier: { number: number; title: string }[];
+  /** The loops before this one, in design order: the last is the one whose units this loop can take. */
+  earlier: { title: string }[];
 }
 
 /** A loop's units in one line: whose they are, and the loop's part. */

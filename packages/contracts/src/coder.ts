@@ -21,8 +21,16 @@ export const CoderProgressSchema = z.object({
   lastActive: z.coerce.date().nullable(),
   /** Live answers (unit-level variable values). */
   answers: z.number().int().nonnegative(),
-  /** unit loop title (`loopTitle`) -> units this coder finished, for the loops of the live design version. */
-  finished: z.record(z.string(), z.number().int().nonnegative()),
+  /** Per unit loop of the live design version (in design order): the units this coder finished in it. */
+  finished: z.array(
+    z.object({
+      /** The loop's id. */
+      loop: z.string(),
+      /** How the loop is called (`loopTitle`): its label, or else its id. */
+      title: z.string(),
+      units: z.number().int().nonnegative(),
+    }),
+  ),
   /**
    * Deployed test units (`test_set`: overlap, gold, practice;
    * docs/architecture.md §6.2) the coder finished, of how many (empty

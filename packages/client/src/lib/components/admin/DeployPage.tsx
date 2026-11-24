@@ -81,7 +81,7 @@ export function DeployPage({ client, onOpenDesign }: { client: ResearcherApi; on
             <CircleCheck className="h-4 w-4 text-emerald-600" /> Deployed
           </h2>
           {deployed.map((w, i) => (
-            <p key={i}className="flex gap-2 rounded-md bg-amber-500/10 p-2">
+            <p key={i} className="flex gap-2 rounded-md bg-amber-500/10 p-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               {w}
             </p>

@@ -4,6 +4,7 @@ import { loopShareColumns } from "./assignment.js";
 
 const loop = {
   type: "unit_loop",
+  id: "loop_1",
   units: { part: "a", overlap: "ignore" },
   children: [
     { type: "layout", template: "{{$unit.headline}} as {{$var.role.label}}" },
@@ -28,7 +29,7 @@ describe("what unit loops refer to", () => {
   });
 
   it("lists the coder-level questions a loop depends on: in its layout and conditions, not its own questions", () => {
-    expect(loopDependencies([loop]).get("1")?.sort()).toEqual(["age", "group", "role", "slot"]);
+    expect(loopDependencies([loop]).get("loop_1")?.sort()).toEqual(["age", "group", "role", "slot"]);
   });
 });
 
@@ -37,6 +38,7 @@ describe("fieldUsage", () => {
     const items = [
       {
         type: "unit_loop",
+        id: "loop_1",
         units: { gold: "after", goldCheck: { questions: ["topic"] }, practiceCheck: { questions: ["topic"] } },
         children: [
           { type: "layout", template: "$unit.title" },
@@ -70,7 +72,7 @@ describe("fieldUsage", () => {
 describe("set columns", () => {
   const items = [
     { type: "session", invite: { mode: "coders", link: "per_coder" } },
-    { type: "unit_loop", children: [{ type: "layout", template: "" }] },
+    { type: "unit_loop", id: "loop_1", children: [{ type: "layout", template: "" }] },
     {
       type: "branch",
       condition: { script: "true" },
@@ -78,6 +80,7 @@ describe("set columns", () => {
     },
     {
       type: "unit_loop",
+      id: "loop_2",
       units: { part: "post" },
       children: [{ type: "layout", template: "" }],
     },
@@ -97,7 +100,7 @@ describe("set columns", () => {
   });
 
   it("use the test set in every unit loop, and only role columns the design selects by", () => {
-    const loop = { type: "unit_loop", children: [{ type: "layout", template: "" }] };
+    const loop = { type: "unit_loop", id: "loop_1", children: [{ type: "layout", template: "" }] };
     // No loop: a survey uses no unit columns
     expect(fieldUsage([{ type: "session", invite: { mode: "crowd" } }]).size).toBe(0);
     expect(Object.fromEntries(fieldUsage([{ type: "session", invite: { mode: "crowd" } }, loop]))).toEqual({
@@ -111,7 +114,7 @@ describe("set columns", () => {
 
   it("select a loop's units: the coder's, and the experiment before the loop", () => {
     const shares = loopShareColumns(items);
-    expect(shares.get("1")).toEqual([{ name: "coder", column: "coder_set" }]);
-    expect(shares.get("2")).toEqual([...shares.get("1")!, { name: "set", column: "condition_set", random: true }]);
+    expect(shares.get("loop_1")).toEqual([{ name: "coder", column: "coder_set" }]);
+    expect(shares.get("loop_2")).toEqual([...shares.get("loop_1")!, { name: "set", column: "condition_set", random: true }]);
   });
 });

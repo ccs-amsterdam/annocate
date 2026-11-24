@@ -9,7 +9,7 @@ import { VariableValueSchema } from "./variableValue.js";
  * server (`GET /loop/:loop/next`).
  */
 export const SetProgressSchema = z.object({
-  /** The unit loop's key: its position in the design (`unitLoops`). */
+  /** The unit loop's id (`unitLoops`). */
   set: z.string(),
   doneUnitIds: z.array(IdSchema),
   /**
