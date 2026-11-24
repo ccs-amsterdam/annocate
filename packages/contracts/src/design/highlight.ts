@@ -12,7 +12,7 @@ import { z } from "zod";
 // Case and accents don't count. Words are runs of letters and digits.
 
 export const HighlightSchema = z
-  .object({
+  .strictObject({
     query: z.string().min(1).describe('Words to mark: climate energy (or), AND, "a phrase", "near words"~5, climat*'),
     color: z.string().optional().describe("A CSS colour name or hex code (default: yellow)."),
     fields: z

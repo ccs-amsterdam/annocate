@@ -13,7 +13,7 @@ import {
 import { SafeStyleSchema } from "./safeCss.js";
 
 // Shared question presentation fields.
-export const VariableBaseSchema = z.object({
+export const VariableBaseSchema = z.strictObject({
   question: z
     .string()
     .describe(
@@ -101,7 +101,7 @@ export const NumericTypeSchema = VariableBaseSchema.extend({
   max: z.number().optional(),
   step: z.number().positive().optional().describe("Default 1; 0.1 = one decimal, 5 = steps of five."),
   labels: z
-    .array(z.object({ value: z.number(), label: z.string() }))
+    .array(z.strictObject({ value: z.number(), label: z.string() }))
     .optional()
     .describe("Labels at break points, e.g. 0 'cold', 50 'neutral', 100 'warm'."),
   specials: SpecialAnswersSchema,
@@ -134,7 +134,7 @@ export const NumericTypeSchema = VariableBaseSchema.extend({
 });
 export type NumericType = z.infer<typeof NumericTypeSchema>;
 
-export const ScaleItemSchema = z.object({
+export const ScaleItemSchema = z.strictObject({
   name: SafeNameSchema.describe("Item name, referenced as $var.<question>.items.<item>."),
   label: z.string().max(128).optional(),
 });
@@ -206,7 +206,7 @@ export type TextType = z.infer<typeof TextTypeSchema>;
  *   the Study entry, by name, whose values are the conditions); nothing is drawn
  */
 export const RandomVariableSchema = z
-  .object({
+  .strictObject({
     type: z.literal("random"),
     draw: z.enum(["random", "balanced", "url_param"]),
     /** With `url_param`: the URL parameter (its name in the Study entry) whose value is the condition. */
@@ -275,7 +275,7 @@ export const SpanTypeSchema = VariableBaseSchema.extend({
 export type SpanType = z.infer<typeof SpanTypeSchema>;
 
 /** One end of a relation rule: spans of a span question (of the same loop), only those with `values` if given. */
-export const RelationEndSchema = z.object({
+export const RelationEndSchema = z.strictObject({
   variable: z.string().describe("The span question (in the same unit loop) whose spans this end can be"),
   /** Only spans with these values (default: all). */
   values: z.array(z.string()).optional(),
@@ -283,7 +283,7 @@ export const RelationEndSchema = z.object({
 export type RelationEnd = z.infer<typeof RelationEndSchema>;
 
 /** Which relations can go from which spans to which (docs/client.md §4 "Span and relation answers"). */
-export const RelationRuleSchema = z.object({
+export const RelationRuleSchema = z.strictObject({
   from: RelationEndSchema,
   to: RelationEndSchema,
   /** The relation types (option values) this rule allows; default all. */

@@ -8,7 +8,7 @@ import { SessionItemSchema, type SessionItem } from "./session.js";
 import { RandomVariableSchema, UserVariableTypeSchema, UnitVariableTypeSchema } from "./variableTypes.js";
 import { forEachItem, itemLists } from "./walk.js";
 
-const ItemBaseSchema = z.object({
+const ItemBaseSchema = z.strictObject({
   name: SafeNameSchema,
 });
 
@@ -184,7 +184,7 @@ export type InLoopItem =
     };
 
 export const InLoopBranchItemSchema: z.ZodType<Extract<InLoopItem, { type: "branch" }>> = z.lazy(() =>
-  z.object({
+  z.strictObject({
     type: z.literal("branch"),
     label: BranchLabelSchema,
     condition: BranchConditionSchema,
@@ -203,7 +203,7 @@ export const InLoopItemSchema: z.ZodType<InLoopItem> = z.lazy(() =>
  * in-loop items (questions, layouts, end items, branches): no nested loops.
  * With a `condition`, coders only get the loop if it holds.
  */
-export const UnitLoopItemSchema = z.object({
+export const UnitLoopItemSchema = z.strictObject({
   type: z.literal("unit_loop"),
   /** Shown in the editor and in exports; the loop has no name (it is identified by its position, see `unitLoops`). */
   label: z.string().optional().describe("Shown in the editor and in exports"),
@@ -240,7 +240,7 @@ export type TopLevelItem =
  * for the researcher.
  */
 export const TopLevelBranchItemSchema: z.ZodType<Extract<TopLevelItem, { type: "branch" }>> = z.lazy(() =>
-  z.object({
+  z.strictObject({
     type: z.literal("branch"),
     label: BranchLabelSchema,
     condition: BranchConditionSchema,

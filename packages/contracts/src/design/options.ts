@@ -24,7 +24,7 @@ export const SPECIAL_NAMES: Record<SpecialKind, string> = {
   dont_know: "Don't know",
 };
 
-export const SpecialAnswerSchema = z.object({
+export const SpecialAnswerSchema = z.strictObject({
   kind: SpecialKindSchema,
   label: z.string().optional().describe("What the coder sees (default: Not applicable / Don't know)."),
   value: z
@@ -67,7 +67,7 @@ export function specialCodeErrors(
   return errors;
 }
 
-export const OptionSchema = z.object({
+export const OptionSchema = z.strictObject({
   value: z
     .union([z.string(), z.number()])
     .describe("What is stored, compared and exported. Nominal: a string; ordinal: a number, rising in option order."),

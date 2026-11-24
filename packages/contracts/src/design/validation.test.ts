@@ -74,7 +74,7 @@ describe("validateDesignItems", () => {
     expect(messages(loop({ part: "post", coding: false, overlap: "ignore", practice: "before" }))).toEqual([]);
     expect(messages(loop({ overlap: "first" }))).toEqual([expect.stringContaining("Invalid option")]);
     expect(messages(loop({ part: "a;b" }))).toEqual([expect.stringContaining("no ; or #")]);
-    expect(messages(loop({ mode: "all" }))).toEqual([]); // unknown keys are dropped
+    expect(messages(loop({ mode: "all" }))).toEqual(['Unrecognized key: "mode"']);
     // Branches are gone: a list of settings is not a loop's units
     expect(DesignItemsSchema.safeParse(loop([{}] as unknown as object)).success).toBe(false);
   });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateDesignItems } from "./validation.js";
-import { DesignItemsSchema } from "./designVersion.js";
+import { DesignItemsSchema, DesignWriteSchema } from "./designVersion.js";
 import { fieldUsage, loopDependencies, shownUnitFields } from "./shownFields.js";
 import { buildScope } from "./references.js";
 import { toCoderItems } from "./coderCodebook.js";
@@ -229,6 +229,49 @@ describe("design validation: what a stored design can't hold", () => {
     expect(reservedColumnError("text", questions)).toBeNull();
     expect(reservedColumnError("answer_text", questions)).toContain("reserved");
     expect(reservedColumnError("feedback_x", questions)).toContain("'x' is not a question of the design");
+  });
+
+  it("a key the design format doesn't know is an issue that names it, wherever it is", () => {
+    const issues = (items: unknown[]) => validateDesignItems(items).map((i) => [i.path.join("."), i.message]);
+    const multiple = { type: "nominal", question: "?", options: [{ value: "a" }], multipel: true };
+    expect(issues([question("q", multiple)])).toEqual([["0.variable", 'Unrecognized key: "multipel"']]);
+    expect(issues([{ ...question("q"), meta: { note: "x" } }])).toEqual([["0", 'Unrecognized key: "meta"']]);
+    const unknown: [string, unknown[]][] = [
+      ["option", [question("q", { ...nominal, options: [{ value: "a", colour: "red" }] })]],
+      ["loop", [loop([question("q")], { ordr: "random" })]],
+      ["loop units", [loop([question("q")], { units: { practise: "before" } })]],
+      ["layout", [loop([question("q")], {}, { template: "", stile: {} })]],
+      ["session", [session({ invit: {} }), question("q")]],
+      ["invite", [session({ invite: { mode: "crowd", maxcoders: 3 } }), question("q")]],
+      ["URL parameter", [session({ urlParams: [{ name: "p", patern: "x" }] }), question("q")]],
+      [
+        "end",
+        [
+          {
+            type: "branch",
+            condition: { script: "true" },
+            children: [{ type: "end", name: "e", outcome: "complete", url: "x" }],
+          },
+        ],
+      ],
+      [
+        "experiment",
+        [
+          {
+            type: "experiment",
+            name: "e",
+            variable: { type: "random", draw: "random", options: [{ value: "a" }], wieght: 1 },
+          },
+        ],
+      ],
+    ];
+    for (const [what, items] of unknown) {
+      const found = issues(items).map(([, message]) => message);
+      expect([what, found.filter((m) => m.startsWith("Unrecognized key")).length]).toEqual([what, 1]);
+    }
+    // A draft with such an issue is still a list of items (it can be saved)
+    expect(DesignWriteSchema.safeParse({ items: [question("q", multiple)] }).success).toBe(true);
+    expect(DesignItemsSchema.safeParse([question("q", multiple)]).success).toBe(false);
   });
 
   it("11. an unknown type names the types there are", () => {

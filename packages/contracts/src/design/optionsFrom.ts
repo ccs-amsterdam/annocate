@@ -14,7 +14,7 @@ import { own } from "../common.js";
 //                   its text as the label and the span's id as the value
 
 export const OptionsFromSchema = z
-  .object({
+  .strictObject({
     from: z
       .string()
       .regex(/^\$(unit|var)\.[A-Za-z_][A-Za-z0-9_]*$/, "Options come from $unit.<list field> or $var.<span question>")

@@ -61,7 +61,7 @@ export type Placement = z.infer<typeof PlacementSchema>;
  * answers again until right (`retry`, the default) or may go on. How many
  * tries it took is stored with the answer's timing.
  */
-export const PracticeCheckSchema = z.object({
+export const PracticeCheckSchema = z.strictObject({
   questions: z.array(SafeNameSchema).max(20).optional(),
   /** Shown when an answer is wrong (unless the unit has its own message): a template that may use $var and $unit. Default: the expected answer. */
   message: z.string().max(2000).optional(),
@@ -77,10 +77,10 @@ export type PracticeCheck = z.infer<typeof PracticeCheckSchema>;
  * wrong answer and by `right` for a right one (never above `start`); at 0 or
  * below the session ends at the end item `end` (a screen-out).
  */
-export const GoldCheckSchema = z.object({
+export const GoldCheckSchema = z.strictObject({
   questions: z.array(SafeNameSchema).min(1, "Choose the questions gold units check").max(20),
   health: z
-    .object({
+    .strictObject({
       start: z.number().positive().max(1000),
       wrong: z.number().negative().min(-1000),
       right: z.number().min(0).max(1000).optional(),
@@ -104,13 +104,13 @@ export const CHECKABLE_TYPES = ["nominal", "ordinal", "annotinder", "numeric"] a
  * (besides the test units).
  */
 export const CriteriaSchema = z
-  .object({
+  .strictObject({
     codersPerUnit: z
-      .object({ min: z.number().int().min(1).optional(), max: z.number().int().min(1).optional() })
+      .strictObject({ min: z.number().int().min(1).optional(), max: z.number().int().min(1).optional() })
       .optional(),
-    until: z.object({ agree: z.number().int().min(2), on: SafeNameSchema }).optional(),
+    until: z.strictObject({ agree: z.number().int().min(2), on: SafeNameSchema }).optional(),
     unitsPerCoder: z
-      .object({ min: z.number().int().positive().optional(), max: z.number().int().positive().optional() })
+      .strictObject({ min: z.number().int().positive().optional(), max: z.number().int().positive().optional() })
       .optional(),
     /**
      * `cover`: prefer the least-coded units (every unit gets coded before any
@@ -159,7 +159,7 @@ export type Criteria = z.infer<typeof CriteriaSchema>;
  * coding units are those the coder finished in the previous loop, in that
  * order (a third loop with it takes the second's, so the first's). Absent: all of them.
  */
-export const LoopUnitsSchema = z.object({
+export const LoopUnitsSchema = z.strictObject({
   part: SetNameSchema.optional(),
   coding: z.boolean().optional(),
   overlap: PlacementSchema.optional(),

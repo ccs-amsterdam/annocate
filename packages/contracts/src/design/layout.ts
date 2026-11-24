@@ -13,7 +13,7 @@ export const MAX_SNIPPET_LENGTH = 20_000;
 // references.ts); they are plain text unless a suffix says otherwise, so a
 // value is never interpreted as markdown by accident. Attached to a
 // `unit_loop` design item.
-export const UnitLayoutSchema = z.object({
+export const UnitLayoutSchema = z.strictObject({
   template: z
     .string()
     .describe(

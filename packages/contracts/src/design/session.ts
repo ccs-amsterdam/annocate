@@ -40,11 +40,11 @@ export const UrlParamPatternSchema = z
  * `pattern`, or be one of `values`.
  */
 export const UrlParamSchema = z
-  .object({
+  .strictObject({
     name: SafeNameSchema,
     param: UrlParamNameSchema.optional(),
     values: z
-      .array(z.object({ value: z.string().min(1).max(MAX_SESSION_VALUE), label: z.string().optional() }))
+      .array(z.strictObject({ value: z.string().min(1).max(MAX_SESSION_VALUE), label: z.string().optional() }))
       .min(1, "List at least one value")
       .max(1000)
       .optional(),
@@ -64,7 +64,7 @@ export type UrlParam = z.infer<typeof UrlParamSchema>;
  * The coder's id from a URL parameter of the link (e.g. a panel's
  * `PROLIFIC_PID`): `$session.coder`. Required to start, unless `optional`.
  */
-export const CoderParamSchema = z.object({
+export const CoderParamSchema = z.strictObject({
   param: UrlParamNameSchema,
   pattern: UrlParamPatternSchema.optional(),
   optional: z.boolean().optional(),
@@ -86,7 +86,7 @@ export type CoderParam = z.infer<typeof CoderParamSchema>;
  * Until the units have a `coder_set` column there are no coders: the draft
  * saves, deploying can't.
  */
-export const CodersInviteSchema = z.object({
+export const CodersInviteSchema = z.strictObject({
   mode: z.literal("coders"),
   link: z.enum(["per_coder", "login", "pick_name"]),
   nameDevices: z.enum(["first", "any"]).optional(),
@@ -101,7 +101,7 @@ export type CodersInvite = z.infer<typeof CodersInviteSchema>;
  * loop's (unitLoop.ts `divide`). `maxCoders`: the link takes at most this
  * many sessions.
  */
-export const CrowdInviteSchema = z.object({
+export const CrowdInviteSchema = z.strictObject({
   mode: z.literal("crowd"),
   coderParam: CoderParamSchema.optional(),
   login: z.boolean().optional(),
@@ -119,7 +119,7 @@ export type Invite = z.infer<typeof InviteSchema>;
  * own name stays private (it may tell what the study is about). Room for a
  * description or a thumbnail later.
  */
-export const PublicInfoSchema = z.object({
+export const PublicInfoSchema = z.strictObject({
   /** The study's title, as coders see it. */
   title: z.string().trim().min(1).max(200),
 });
@@ -131,7 +131,7 @@ export type PublicInfo = z.infer<typeof PublicInfoSchema>;
  * panel's return link. End items in the design are for ending early. Coders
  * get it as an end item named `_end` after the last item (`toCoderItems`).
  */
-export const StudyEndSchema = z.object({
+export const StudyEndSchema = z.strictObject({
   message: z.string().optional().describe("Shown at the end: a markdown template like a question text."),
   redirectUrl: z
     .string()
@@ -155,7 +155,7 @@ export const STUDY_END_NAME = "_end";
  * coders choose light or dark; `light` / `dark` for everyone (e.g. images
  * made for one background).
  */
-export const DisplaySchema = z.object({
+export const DisplaySchema = z.strictObject({
   layouts: z.enum(["fixed", "responsive"]).optional(),
   theme: z.enum(["coder", "light", "dark"]).optional(),
   /**
@@ -164,7 +164,9 @@ export const DisplaySchema = z.object({
    * the coder (outside unit loops) or the questions about units. Absent:
    * allowed. Moving, Space / Enter and the Ctrl commands always work.
    */
-  answerKeys: z.object({ coderQuestions: z.boolean().optional(), unitQuestions: z.boolean().optional() }).optional(),
+  answerKeys: z
+    .strictObject({ coderQuestions: z.boolean().optional(), unitQuestions: z.boolean().optional() })
+    .optional(),
 });
 export type Display = z.infer<typeof DisplaySchema>;
 
@@ -175,7 +177,7 @@ export type Display = z.infer<typeof DisplaySchema>;
  * runtime and the editor work on it there; it is stored as the design's
  * `session` and `public` (`splitDesignItems`).
  */
-export const SessionItemSchema = z.object({
+export const SessionItemSchema = z.strictObject({
   type: z.literal("session"),
   label: z.string().optional(),
   /** How coders come to the study. Absent: a crowd with one open link. */
