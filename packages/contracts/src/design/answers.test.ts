@@ -3,6 +3,7 @@ import { validateAnswer } from "./answers.js";
 import { layoutWarning, resolveLayout } from "./answerLayout.js";
 import { convertOptionsLevel, valueFromLabel } from "./options.js";
 import type { AnyVariableType, NominalType, OrdinalType } from "./variableTypes.js";
+import { VariableValueSchema } from "../variableValue.js";
 
 const answer = (values: { value: string | number; item?: string }[]) => ({ done: true, skip: false, values });
 
@@ -160,6 +161,35 @@ describe("validateAnswer", () => {
       const relations = { done: true, skip: false, relations: [relation("r"), relation("r")] };
       expect(validateAnswer("q", links, relations)).toEqual([`'q': two relations have the id 'r'`]);
     });
+  });
+});
+
+describe("VariableValueSchema", () => {
+  const span = { id: "s1", field: "text", value: "person", slices: [{ offset: 0, length: 4, text: "Anna" }] };
+
+  it("refuses keys it doesn't know, at every level", () => {
+    expect(VariableValueSchema.safeParse({ done: true, skip: false, values: [{ value: "a" }] }).success).toBe(true);
+    expect(VariableValueSchema.safeParse({ done: true, extra: 1 }).success).toBe(false);
+    expect(VariableValueSchema.safeParse({ values: [{ value: "a", note: "x" }] }).success).toBe(false);
+    expect(VariableValueSchema.safeParse({ spans: [span] }).success).toBe(true);
+    expect(VariableValueSchema.safeParse({ spans: [{ ...span, color: "red" }] }).success).toBe(false);
+    expect(VariableValueSchema.safeParse({ spans: [{ ...span, slices: [{ ...span.slices[0], x: 1 }] }] }).success).toBe(
+      false,
+    );
+    const relation = { id: "r1", fromId: "s1", toId: "s2", value: "knows" };
+    expect(VariableValueSchema.safeParse({ relations: [relation] }).success).toBe(true);
+    expect(VariableValueSchema.safeParse({ relations: [{ ...relation, weight: 2 }] }).success).toBe(false);
+  });
+
+  it("takes span and relation ids of at most 64 letters, digits, _ and -", () => {
+    const withId = (id: string) => VariableValueSchema.safeParse({ spans: [{ ...span, id }] }).success;
+    for (const id of ["s1", "1732480000000-k3j9x", "a_b-C", "x".repeat(64)])
+      expect([id, withId(id)]).toEqual([id, true]);
+    for (const id of ["", "a b", "a.b", "é", "<script>", "x".repeat(65)]) expect([id, withId(id)]).toEqual([id, false]);
+  });
+
+  it("keeps done: false unless given", () => {
+    expect(VariableValueSchema.parse({})).toEqual({ done: false, skip: false });
   });
 });
 

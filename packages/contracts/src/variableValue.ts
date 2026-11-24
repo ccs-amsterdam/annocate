@@ -15,7 +15,7 @@ import { SpecialKindSchema } from "./design/options.js";
  * value if it has one, else without a value (missing).
  */
 export const ValueAnswerSchema = z
-  .object({
+  .strictObject({
     value: z.union([z.string(), z.number()]).optional(),
     /** The scale item this answer is for. */
     item: z.string().optional(),
@@ -30,7 +30,7 @@ export const MAX_COMMENT_LENGTH = 2000;
 const CommentSchema = z.string().max(MAX_COMMENT_LENGTH).optional();
 
 /** A single contiguous text fragment within a span answer. */
-export const SpanSliceSchema = z.object({
+export const SpanSliceSchema = z.strictObject({
   offset: z.number().int().nonnegative(),
   length: z.number().int().positive(),
   /**
@@ -45,7 +45,7 @@ export type SpanSlice = z.infer<typeof SpanSliceSchema>;
  * Answer entry for `span` variable types.
  * Supports both continuous spans (single slice) and discontinuous spans with gaps (multiple slices).
  */
-export const SpanAnswerSchema = z.object({
+export const SpanAnswerSchema = z.strictObject({
   id: ClientIdSchema,
   field: z.string(),
   value: z.string(),
@@ -55,7 +55,7 @@ export const SpanAnswerSchema = z.object({
 export type SpanAnswer = z.infer<typeof SpanAnswerSchema>;
 
 /** Answer entry for `relation` variable types -- links two span answers by their client id. */
-export const RelationAnswerSchema = z.object({
+export const RelationAnswerSchema = z.strictObject({
   id: ClientIdSchema,
   fromId: ClientIdSchema,
   toId: ClientIdSchema,
@@ -64,8 +64,19 @@ export const RelationAnswerSchema = z.object({
 });
 export type RelationAnswer = z.infer<typeof RelationAnswerSchema>;
 
-export const VariableValueSchema = z.object({
+/**
+ * A question's answer. Strict: a key the schema doesn't know is refused, so
+ * nothing unknown is stored with answers.
+ */
+export const VariableValueSchema = z.strictObject({
+  /**
+   * The coder is done with the question (sent by the client: true once the
+   * answer is given, false for an answer still being made, e.g. spans being
+   * selected). The server stores it and doesn't use it: a unit is finished
+   * when it is submitted, with an answer or `skip` for every question.
+   */
   done: z.boolean().default(false),
+  /** The question wasn't asked (a condition hid it): no answer. */
   skip: z.boolean().default(false),
   values: z.array(ValueAnswerSchema).optional(),
   spans: z.array(SpanAnswerSchema).optional(),

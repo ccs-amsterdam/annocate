@@ -48,7 +48,11 @@ export function own<T>(record: Readonly<Record<string, T>> | null | undefined, k
 export const IdSchema = z.number().int().positive();
 
 /** Coder-supplied client-side id (e.g. for span/relation annotations). cuid-like opaque string. */
-export const ClientIdSchema = z.string().min(1);
+export const ClientIdSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[A-Za-z0-9_-]+$/, "An id is letters, digits, _ and -");
 
 export const RoleSchema = z.enum(["ADMIN", "WRITE", "READ"] as const);
 export type Role = z.infer<typeof RoleSchema>;
