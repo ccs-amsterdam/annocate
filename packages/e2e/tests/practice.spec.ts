@@ -19,24 +19,7 @@ test("a practice question gives feedback when wrong, answered again until right;
   await expect(page.getByRole("button", { name: "Overview" })).toBeVisible();
   const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "Checked coders")!;
 
-  // Units with a coder set, test units and answer columns (role columns: taken as such by their names)
-  await page.getByRole("button", { name: "Units", exact: true }).click();
-  await page.getByRole("button", { name: /Upload CSV/ }).click();
-  await page.locator("input[type=file]").setInputFiles({
-    name: "units.csv",
-    mimeType: "text/csv",
-    buffer: Buffer.from(
-      "id,text,coder_set,test_set,answer_topic,feedback_topic\n" +
-        "p1,Practice text,,practice,politics,It is about an election.\n" +
-        "p2,Second practice,,practice,politics|other,\n" +
-        "u1,Own text,s1,,,\n" +
-        "g1,Gold text,,gold,politics,\n",
-    ),
-  });
-  await page.getByRole("button", { name: /Use column names/ }).click();
-  await page.getByRole("button", { name: /Upload 4 units/ }).click();
-  await expect(page.getByRole("button", { name: /^s1 1$/ })).toBeVisible();
-
+  // The design first: answer_ and feedback_ columns are for its questions
   const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
     session: { invite: { mode: "coders", link: "per_coder" } },
     items: [
@@ -60,6 +43,24 @@ test("a practice question gives feedback when wrong, answered again until right;
       { type: "end", name: "low_quality", outcome: "screenout", message: "Sorry, this study is over for you." },
     ],
   });
+  // Units with a coder set, test units and answer columns (role columns: taken as such by their names)
+  await page.getByRole("button", { name: "Units", exact: true }).click();
+  await page.getByRole("button", { name: /Upload CSV/ }).click();
+  await page.locator("input[type=file]").setInputFiles({
+    name: "units.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(
+      "id,text,coder_set,test_set,answer_topic,feedback_topic\n" +
+        "p1,Practice text,,practice,politics,It is about an election.\n" +
+        "p2,Second practice,,practice,politics|other,\n" +
+        "u1,Own text,s1,,,\n" +
+        "g1,Gold text,,gold,politics,\n",
+    ),
+  });
+  await page.getByRole("button", { name: /Use column names/ }).click();
+  await page.getByRole("button", { name: /Upload 4 units/ }).click();
+  await expect(page.getByRole("button", { name: /^s1 1$/ })).toBeVisible();
+
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: codebook.id });
   const links = await api<{ secret: string; params: Record<string, string> }[]>(
     request,

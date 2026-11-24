@@ -50,7 +50,7 @@ export function KeyboardMenu() {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-72 space-y-3 p-3 shadow-lg"
+        className="max-h-(--radix-popover-content-available-height) w-72 space-y-3 overflow-y-auto p-3 shadow-lg"
         // Closed: the keys go back to the question, not to this button (Space would open it again)
         onCloseAutoFocus={(e) => e.preventDefault()}
       >

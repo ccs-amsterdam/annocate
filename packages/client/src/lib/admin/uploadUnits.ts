@@ -1,3 +1,4 @@
+import { ResearcherApiError } from "../api/httpResearcherApi";
 import {
   addToSets,
   isRoleColumn,
@@ -145,7 +146,8 @@ export async function uploadUnits(
     await uploadSets(upload, api);
     return { uploaded, error: null };
   } catch (e) {
-    return { uploaded, error: e instanceof Error ? e.message : String(e) };
+    // The server's own words where it gave them
+    return { uploaded, error: e instanceof ResearcherApiError ? e.reason : e instanceof Error ? e.message : String(e) };
   }
 }
 
