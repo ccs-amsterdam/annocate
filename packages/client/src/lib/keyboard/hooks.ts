@@ -2,17 +2,17 @@ import { showKeyChoice } from "./keyChoice";
 import type { SpecialKind } from "@annotinder/contracts";
 import { isBack, isContinue, isForward, specialBadge, specialOfPress } from "./commands";
 import { useContext, useEffect, useRef, useState } from "react";
-import { PRIORITY, type KeyHandler, type KeyPress, type ScopeOptions } from "./controller";
+import { PRIORITY, type KeyHandler, type ScopeOptions } from "./controller";
 import { AnswerKeysContext, KeyboardContext } from "./context";
 import { useDisplay } from "../display/context";
 import { arrowDirection, focusChosen, focusKeepsArrows, moveFocus } from "./focus";
+import { chooseByKey, handleFilterKey, handleLettersKey, type KeyResult } from "./keyTargets";
 import {
   effectiveMapping,
   keysOf,
   labelMatches,
   noKeysMapping,
   numbersMapping,
-  targetForKey,
   type KeyMapping,
   type KeyTarget,
 } from "./mappings";
@@ -102,15 +102,11 @@ export function useKeyTargets(
   const filtering = (group: readonly KeyTarget[] | undefined) =>
     !!group && effectiveMapping(mapping, group).kind === "filter";
   const matchesOf = (group: readonly KeyTarget[]) => group.map((t) => labelMatches(t.label, filter));
-  const chooseByKey = (press: KeyPress): boolean => {
-    if (!groups || press.onControl) return false;
-    if (press.shiftKey) return false;
-    const group = groups[active];
-    if (!group) return false;
-    const index = targetForKey(mapping, group, press.key);
-    if (index < 0) return false;
-    choose(active, index, press.key);
-    return true;
+  const apply = (result: KeyResult): boolean => {
+    if (result.typed !== undefined) setTyped(result.typed);
+    if (result.filter !== undefined) setFilter(result.filter);
+    if (result.choose) choose(active, result.choose.index, result.choose.key);
+    return result.handled;
   };
   useKeyScope(
     (press) => {
@@ -121,65 +117,27 @@ export function useKeyTargets(
       }
       if (!groups || press.altKey || press.ctrlKey || press.metaKey) return false;
       const group = groups[active];
-      if (group && effectiveMapping(mapping, group).id === "letters") {
-        const keys = keysOf(mapping, group);
-        if (typed && (press.key === "Escape" || press.key === "Backspace")) {
-          setTyped(press.key === "Backspace" ? typed.slice(0, -1) : "");
-          return true;
-        }
-        if (press.key.length === 1 && !press.shiftKey) {
-          const key = press.key.toLowerCase();
-          // Go on with what was typed, else start again with this letter
-          for (const next of typed ? [typed + key, key] : [key]) {
-            const exact = keys.findIndex((k, i) => k === next && !group[i].disabled);
-            if (exact >= 0) {
-              setTyped("");
-              choose(active, exact, next);
-              return true;
-            }
-            if (keys.some((k) => k && k.length > next.length && k.startsWith(next))) {
-              setTyped(next);
-              return true;
-            }
-          }
-          setTyped("");
-        }
-        return chooseByKey(press);
-      }
-      if (filtering(group) && group) {
-        if (press.key === "Escape" && filter) setFilter("");
-        else if (press.key === "Backspace" && filter) setFilter(filter.slice(0, -1));
-        else if (press.key === "Enter" && filter) {
-          const first = matchesOf(group).findIndex((m, i) => m && !group[i].disabled);
-          if (first < 0) return true;
-          setFilter("");
-          choose(active, first, "Enter");
-        } else if (
-          press.key.length === 1 &&
-          press.key !== " " &&
-          (filter || targetForKey(mapping, group, press.key) < 0)
-        )
-          setFilter(filter + press.key);
-        else return chooseByKey(press);
-        return true;
-      }
-      return chooseByKey(press);
+      if (!group) return false;
+      const used = effectiveMapping(mapping, group);
+      if (used.id === "letters") return apply(handleLettersKey(press, mapping, group, typed));
+      if (used.kind === "filter") return apply(handleFilterKey(press, mapping, group, filter));
+      return apply(chooseByKey(press, mapping, group));
     },
     groups !== null,
     { priority: options.priority ?? PRIORITY.field },
   );
+  /** Whether each target of a group can still be meant by what was typed (all, in a group the keys don't work in). */
+  const matchesIn = (group: readonly KeyTarget[], index: number): boolean[] => {
+    if (index === active && filtering(group)) return matchesOf(group);
+    // While typing a key of letters: the options it can still be
+    if (index === active && typed) return keysOf(mapping, group).map((k) => !!k?.startsWith(typed));
+    return group.map(() => true);
+  };
   const list = groups ?? [];
   return {
     keys: list.map((group) => keysOf(mapping, group)),
     filter: filtering(list[active]) ? filter : "",
-    // While typing a key of letters: the options it can still be
-    matches: list.map((group, i) =>
-      i === active && filtering(group)
-        ? matchesOf(group)
-        : i === active && typed
-          ? keysOf(mapping, group).map((k) => !!k?.startsWith(typed))
-          : group.map(() => true),
-    ),
+    matches: list.map(matchesIn),
   };
 }
 

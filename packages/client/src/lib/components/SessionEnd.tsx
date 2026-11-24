@@ -62,22 +62,8 @@ export function SessionEnd({
         <div className="rounded-full bg-primary/10 p-4 text-primary">
           {screenout || quit ? <LogOut className="h-10 w-10" /> : <CheckCircle2 className="h-10 w-10" />}
         </div>
-        <h2 className="mt-4 text-xl font-bold tracking-tight text-foreground">
-          {quit ? "You quit this study" : screenout ? "Thank you" : "Study Complete!"}
-        </h2>
-        {quit ? (
-          <p className="mt-2 text-sm text-muted-foreground">Thank you for your time.</p>
-        ) : ending?.message ? (
-          <div className="template-markdown mt-2 text-sm text-muted-foreground">
-            <TemplateMarkdown rendered={ending.message} />
-          </div>
-        ) : (
-          <p className="mt-2 text-sm text-muted-foreground">
-            {screenout
-              ? "This is the end of the study for you."
-              : "You've completed all available units. Thank you for your contributions!"}
-          </p>
-        )}
+        <h2 className="mt-4 text-xl font-bold tracking-tight text-foreground">{endingTitle(ending, quit)}</h2>
+        <EndingText ending={ending} quit={quit} />
         {redirect && (
           <Button asChild className="mt-6">
             <a href={redirect}>{preview ? "Redirect (not followed in a preview)" : "Continue"}</a>
@@ -99,21 +85,19 @@ export function SessionEnd({
               ` (until ${new Date(reopen.until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})`}
           </button>
         )}
-        {deletionRequested ? (
+        {deletionRequested && (
           <p className="mt-6 text-xs text-muted-foreground">
             Your request to delete your answers was sent to the researchers.
           </p>
-        ) : (
-          onRequestDeletion &&
-          !preview && (
-            <button
-              type="button"
-              onClick={() => setAsking(true)}
-              className="mt-6 cursor-pointer text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-            >
-              Ask to delete my answers
-            </button>
-          )
+        )}
+        {!deletionRequested && onRequestDeletion && !preview && (
+          <button
+            type="button"
+            onClick={() => setAsking(true)}
+            className="mt-6 cursor-pointer text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            Ask to delete my answers
+          </button>
         )}
         {/* Done here: where to go next, unless a redirect takes the coder back (e.g. to a panel) */}
         {!redirect && !preview && (
@@ -136,4 +120,28 @@ export function SessionEnd({
       </div>
     </div>
   );
+}
+
+/** The end screen's title: how the session ended. */
+function endingTitle(ending: SessionEnding | null, quit: boolean): string {
+  if (quit) return "You quit this study";
+  return ending?.item.outcome === "screenout" ? "Thank you" : "Study Complete!";
+}
+
+/** What the end screen says: the `end` item's message, else a text for how the session ended. */
+function EndingText({ ending, quit }: { ending: SessionEnding | null; quit: boolean }) {
+  if (!quit && ending?.message) {
+    return (
+      <div className="template-markdown mt-2 text-sm text-muted-foreground">
+        <TemplateMarkdown rendered={ending.message} />
+      </div>
+    );
+  }
+  return <p className="mt-2 text-sm text-muted-foreground">{endingText(ending, quit)}</p>;
+}
+
+function endingText(ending: SessionEnding | null, quit: boolean): string {
+  if (quit) return "Thank you for your time.";
+  if (ending?.item.outcome === "screenout") return "This is the end of the study for you.";
+  return "You've completed all available units. Thank you for your contributions!";
 }

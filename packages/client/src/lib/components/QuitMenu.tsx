@@ -126,93 +126,127 @@ export function QuitDialog({
   return (
     <Dialog open={choice !== null} onOpenChange={(open) => !open && close()}>
       <DialogContent className="max-w-md">
-        {choice === "pause" && (
-          <>
-            <DialogHeader>
-              <DialogTitle>Stop for now</DialogTitle>
-              <DialogDescription>Your answers are saved as you go. You can simply close this page.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2 text-sm text-foreground">
-              {login ? (
-                <p>
-                  To continue later, open the same link again: on this device, or on another one by logging in as{" "}
-                  <strong>{login}</strong>. You continue where you left off.
-                </p>
-              ) : (
-                <p>
-                  To continue later, open the same link again <strong>on this device, in this browser</strong>: you
-                  continue where you left off. Your session is kept in this browser, so it is lost if you clear its
-                  cookies or use a private window.
-                </p>
-              )}
-              {canTransfer && (
-                <p>
-                  To continue on another device, use <strong>Continue on another device</strong> (the screen icon at the
-                  top) before you stop.
-                </p>
-              )}
-            </div>
-            <DialogFooter>
-              <Button onClick={close}>OK</Button>
-            </DialogFooter>
-          </>
-        )}
-        {choice === "quit" && (
-          <>
-            <DialogHeader>
-              <DialogTitle>Quit this study?</DialogTitle>
-              <DialogDescription>You won&apos;t be able to continue afterwards.</DialogDescription>
-            </DialogHeader>
-            <p className="text-sm text-foreground">
-              The answers you gave so far are kept, and the researchers can use them. Answers to the item you have open
-              now and didn&apos;t finish are not saved.
-            </p>
-            <DialogFooter>
-              <Button variant="outline" onClick={close}>
-                Cancel
-              </Button>
-              <Button variant="destructive" disabled={busy} onClick={() => void run(false)}>
-                Quit
-              </Button>
-            </DialogFooter>
-          </>
-        )}
+        {choice === "pause" && <PauseBody login={login} canTransfer={canTransfer} onClose={close} />}
+        {choice === "quit" && <QuitBody busy={busy} onCancel={close} onQuit={() => void run(false)} />}
         {choice === "delete" && (
-          <>
-            <DialogHeader>
-              <DialogTitle>Ask to delete your answers?</DialogTitle>
-              <DialogDescription>This ends your session, and you won&apos;t be able to continue.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2 text-sm text-foreground">
-              <p>
-                The researchers get a request to delete all your answers to this study. They decide on it: they may
-                already have downloaded the answers, or need them under the terms of the study (for instance when you
-                were paid for taking part).
-              </p>
-              <p>
-                If you want to follow up on your request, contact the researchers of this study, and tell them when you
-                sent it and the link you used.
-              </p>
-              <label className="flex flex-col gap-1 pt-1 text-xs font-medium">
-                Type &ldquo;{CONFIRM_WORD}&rdquo; to confirm
-                <Input value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
-              </label>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={close}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                disabled={busy || typed.trim().toLowerCase() !== CONFIRM_WORD}
-                onClick={() => void run(true)}
-              >
-                Quit and ask to delete
-              </Button>
-            </DialogFooter>
-          </>
+          <DeleteBody typed={typed} onType={setTyped} busy={busy} onCancel={close} onQuit={() => void run(true)} />
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Stop for now: how to continue later. */
+function PauseBody({
+  login,
+  canTransfer,
+  onClose,
+}: {
+  login: string | null;
+  canTransfer: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Stop for now</DialogTitle>
+        <DialogDescription>Your answers are saved as you go. You can simply close this page.</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-2 text-sm text-foreground">
+        {login ? (
+          <p>
+            To continue later, open the same link again: on this device, or on another one by logging in as{" "}
+            <strong>{login}</strong>. You continue where you left off.
+          </p>
+        ) : (
+          <p>
+            To continue later, open the same link again <strong>on this device, in this browser</strong>: you continue
+            where you left off. Your session is kept in this browser, so it is lost if you clear its cookies or use a
+            private window.
+          </p>
+        )}
+        {canTransfer && (
+          <p>
+            To continue on another device, use <strong>Continue on another device</strong> (the screen icon at the top)
+            before you stop.
+          </p>
+        )}
+      </div>
+      <DialogFooter>
+        <Button onClick={onClose}>OK</Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+interface ConfirmProps {
+  /** Quitting is being sent. */
+  busy: boolean;
+  onCancel: () => void;
+  onQuit: () => void;
+}
+
+/** Quit for good: the answers so far are kept. */
+function QuitBody({ busy, onCancel, onQuit }: ConfirmProps) {
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Quit this study?</DialogTitle>
+        <DialogDescription>You won&apos;t be able to continue afterwards.</DialogDescription>
+      </DialogHeader>
+      <p className="text-sm text-foreground">
+        The answers you gave so far are kept, and the researchers can use them. Answers to the item you have open now
+        and didn&apos;t finish are not saved.
+      </p>
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button variant="destructive" disabled={busy} onClick={onQuit}>
+          Quit
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+/** Quit and ask for deletion: confirmed by typing a word. */
+function DeleteBody({
+  typed,
+  onType,
+  busy,
+  onCancel,
+  onQuit,
+}: ConfirmProps & { typed: string; onType: (typed: string) => void }) {
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Ask to delete your answers?</DialogTitle>
+        <DialogDescription>This ends your session, and you won&apos;t be able to continue.</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-2 text-sm text-foreground">
+        <p>
+          The researchers get a request to delete all your answers to this study. They decide on it: they may already
+          have downloaded the answers, or need them under the terms of the study (for instance when you were paid for
+          taking part).
+        </p>
+        <p>
+          If you want to follow up on your request, contact the researchers of this study, and tell them when you sent
+          it and the link you used.
+        </p>
+        <label className="flex flex-col gap-1 pt-1 text-xs font-medium">
+          Type &ldquo;{CONFIRM_WORD}&rdquo; to confirm
+          <Input value={typed} onChange={(e) => onType(e.target.value)} autoComplete="off" />
+        </label>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button variant="destructive" disabled={busy || typed.trim().toLowerCase() !== CONFIRM_WORD} onClick={onQuit}>
+          Quit and ask to delete
+        </Button>
+      </DialogFooter>
+    </>
   );
 }
