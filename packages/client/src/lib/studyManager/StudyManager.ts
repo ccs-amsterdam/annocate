@@ -206,6 +206,8 @@ export class StudyManager {
   private practiceTries = new Map<number, Map<string, number>>();
   /** Practice questions answered right (or gone on from), by `<unitId>:<question>`: checked once. */
   private solvedPractice = new Set<string>();
+  /** Practice questions whose answer so far is wrong, by `<unitId>:<question>`: not answered yet (`isAnswered`). */
+  private wrongPractice = new Set<string>();
   /** The unit a loop question first came up on (its instruction opens by itself there with `instructionOpen: "first"`). */
   private instructionShownOn = new Map<string, number>();
 
@@ -456,6 +458,17 @@ export class StudyManager {
     return 0;
   }
 
+  /**
+   * Whether a question of the current unit is answered: the coder can go
+   * past it. A wrong answer to a practice question isn't one, until the coder
+   * answers right or goes on from the feedback (`continueAfterPractice`).
+   */
+  private isAnswered(step: DesignItem | undefined): boolean {
+    const name = step ? itemName(step) : undefined;
+    if (!name || this.unitVariableValues[name] === undefined) return false;
+    return !this.wrongPractice.has(`${this.currentUnit?.id}:${name}`);
+  }
+
   /** Whether a top-level question already has an answer that fits the current codebook. */
   private hasValidAnswer(item: DesignItem): boolean {
     if (!("variable" in item)) return false;
@@ -489,8 +502,7 @@ export class StudyManager {
       return this.topIndex < this.topSteps.length - 1;
     }
     if (inUnit) {
-      const currentItem = this.loopSteps[this.loopIndex];
-      const answered = !!currentItem && this.unitVariableValues[itemName(currentItem) ?? ""] !== undefined;
+      const answered = this.isAnswered(this.loopSteps[this.loopIndex]);
       if (this.loopIndex < this.loopSteps.length - 1) return answered;
       // The unit's last question: on to the next unit the coder has, once it is answered
       if (this.unitHistoryIndex < this.unitHistory.length - 1) return answered;
@@ -605,9 +617,7 @@ export class StudyManager {
   private async jumpToLoopStepNow(stepIndex: number, allowAhead = false): Promise<void> {
     if (!this.activeLoop || !this.currentUnit || stepIndex < 0 || stepIndex >= this.loopSteps.length) return;
     if (!allowAhead) {
-      const hasUnansweredEarlier = this.loopSteps
-        .slice(0, stepIndex)
-        .some((q) => this.unitVariableValues[itemName(q) ?? ""] === undefined);
+      const hasUnansweredEarlier = this.loopSteps.slice(0, stepIndex).some((q) => !this.isAnswered(q));
       if (hasUnansweredEarlier && stepIndex > this.loopIndex) return;
     }
     this.syncCurrentUnitAnswers();
@@ -776,9 +786,11 @@ export class StudyManager {
     this.practiceTries.set(unit.id, tries);
     if (answerMatchesKey(value, key)) {
       this.solvedPractice.add(solvedKey);
+      this.wrongPractice.delete(solvedKey);
       this.publish({ practiceWrong: null, practiceRight: this.snapshot.practiceRight + 1 });
       return true;
     }
+    this.wrongPractice.add(solvedKey);
     const scope = this.scope(this.unitVariableValues, unitScopeData(unit) as UnitData);
     const message = check.message
       ? staticTemplate(check.message)
@@ -788,15 +800,18 @@ export class StudyManager {
     // Shown again (the question stays): the field starts from the wrong answer
     this.syncCurrentUnitAnswers();
     await this.publishLoopStep({ reopen: false });
-    this.publish({ practiceWrong: { question: name, messages: [message], retry: unit.practice.retry } });
+    this.publish({
+      practiceWrong: { unitId: unit.id, question: name, messages: [message], retry: unit.practice.retry },
+    });
     return false;
   }
 
   /** A wrong practice answer without `retry`: the coder goes on with their answer. */
   async continueAfterPractice(): Promise<void> {
     const wrong = this.snapshot.practiceWrong;
-    if (!wrong || wrong.retry || !this.currentUnit) return;
-    this.solvedPractice.add(`${this.currentUnit.id}:${wrong.question}`);
+    if (!wrong || wrong.retry || this.currentUnit?.id !== wrong.unitId) return;
+    this.solvedPractice.add(`${wrong.unitId}:${wrong.question}`);
+    this.wrongPractice.delete(`${wrong.unitId}:${wrong.question}`);
     this.publish({ practiceWrong: null });
     await this.guarded(() => this.advanceUnit());
   }
@@ -1153,6 +1168,8 @@ export class StudyManager {
       currentTexts: texts,
       currentUnitVariables: { ...this.unitVariableValues },
       currentFrozen: false,
+      // (Feedback on a wrong practice answer is for the step it was given on: `checkPractice` shows it after this)
+      practiceWrong: null,
     });
   }
 
@@ -1168,6 +1185,7 @@ export class StudyManager {
       currentTexts: await this.questionTexts(item, this.scope(this.coderVisible)),
       currentUnitVariables: null,
       currentFrozen: "name" in item && this.frozen.has(item.name),
+      practiceWrong: null,
     });
   }
 
@@ -1317,6 +1335,7 @@ export class StudyManager {
       currentUnitTemplate: null,
       currentTexts: null,
       currentUnitVariables: null,
+      practiceWrong: null,
       ending,
       quit,
     });
@@ -1503,7 +1522,7 @@ export class StudyManager {
   private async openAtFirstOpenStep(index: number, atStart = false): Promise<void> {
     await this.openEntry(index);
     await this.refreshLoopSteps();
-    const firstOpen = this.loopSteps.findIndex((step) => this.unitVariableValues[itemName(step) ?? ""] === undefined);
+    const firstOpen = this.loopSteps.findIndex((step) => !this.isAnswered(step));
     this.loopIndex = atStart ? 0 : firstOpen === -1 ? this.lastQuestionIndex() : firstOpen;
     if (!this.loopSteps[this.loopIndex]) {
       // A unit without steps (conditions hide them all): move past it.
@@ -1595,7 +1614,7 @@ export class StudyManager {
    * `jumpToLoopStep` allows). Later ones may never show (conditions).
    */
   private reachedLoopQuestions(): NavigationUnitQuestion[] {
-    const firstOpen = this.loopSteps.findIndex((q) => this.unitVariableValues[itemName(q) ?? ""] === undefined);
+    const firstOpen = this.loopSteps.findIndex((q) => !this.isAnswered(q));
     const reached = Math.max(this.loopIndex, firstOpen === -1 ? this.loopSteps.length - 1 : firstOpen);
     return this.loopSteps.flatMap((q, i) =>
       q.type === "question" && i <= reached

@@ -111,9 +111,10 @@ export interface StudyManagerSnapshot {
   /**
    * A practice question answered wrongly (docs/architecture.md §6.2): the
    * feedback, shown with the question. With `retry` the coder answers again
-   * until right; without, they may go on (`continueAfterPractice`).
+   * until right; without, they may go on (`continueAfterPractice`). It is
+   * for one question of one unit, and goes when another step is shown.
    */
-  practiceWrong: { question: string; messages: RenderedTemplate[]; retry: boolean } | null;
+  practiceWrong: { unitId: number; question: string; messages: RenderedTemplate[]; retry: boolean } | null;
   /** Practice questions answered right so far: the coding screen flashes a check when it goes up. */
   practiceRight: number;
   /** The study's public title (the design's `public.title`), null without one. */

@@ -495,6 +495,52 @@ describe("practice units while navigating", () => {
     expect(where(m)).toBe("1:q2");
   });
 
+  it("a wrong answer isn't an answer: next and the menu don't pass the question", async () => {
+    server = fakeCoderServer({
+      items: [loop("Coding", [pickQ("q1"), pickQ("q2")])],
+      units: { "1": [{ id: 1 }, { id: 2, practice: practice(true) }, { id: 3 }] },
+    });
+    const m = await started(server);
+    await answerUntil(m, "2:q1");
+    await m.answer(pick("B"));
+    expect(m.getSnapshot().practiceWrong).toMatchObject({ unitId: 2, question: "q1" });
+    expect(m.getSnapshot().navigation.canGoForward).toBe(false);
+    await m.goForward();
+    await m.jumpToLoopStep(1);
+    expect(where(m)).toBe("2:q1");
+    // Another step: the feedback goes; back on the question, it still has to be answered
+    await m.goBack();
+    expect(where(m)).toBe("1:q2");
+    expect(m.getSnapshot().practiceWrong).toBeNull();
+    await m.goForward();
+    expect(where(m)).toBe("2:q1");
+    expect(m.getSnapshot().practiceWrong).toBeNull();
+    expect(m.getSnapshot().navigation.canGoForward).toBe(false);
+    expect(m.getSnapshot().navigation.phases[0].questions).toHaveLength(1);
+    await m.goForward();
+    expect(where(m)).toBe("2:q1");
+    await m.answer(pick("A"));
+    expect(where(m)).toBe("2:q2");
+    await m.answer(pick("A"));
+    await settle();
+    expect(picked(server.answers.get("1/2")!.q1)).toBe("A");
+  });
+
+  it("without retry, next doesn't go on either: the coder goes on from the feedback", async () => {
+    server = fakeCoderServer({
+      items: [loop("Coding", [pickQ("q1"), pickQ("q2")])],
+      units: { "1": [{ id: 1, practice: practice(false) }, { id: 2 }] },
+    });
+    const m = await started(server);
+    await m.answer(pick("B"));
+    await m.goForward();
+    expect(where(m)).toBe("1:q1");
+    await m.continueAfterPractice();
+    expect(where(m)).toBe("1:q2");
+    await m.goBack();
+    expect(m.getSnapshot().navigation.canGoForward).toBe(true);
+  });
+
   it("without retry, the coder may go on with the wrong answer", async () => {
     server = fakeCoderServer({
       items: [loop("Coding", [pickQ("q1"), pickQ("q2")])],
