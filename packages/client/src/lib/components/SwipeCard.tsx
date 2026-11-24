@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { optionLabel, SWIPE_DIRECTIONS, type NominalOption } from "@annotinder/contracts";
-import { SwipeContext, useSwipe, type SwipeDirection, type SwipeState } from "./swipe";
+import { startsSwipe, SwipeContext, useSwipe, type SwipeDirection, type SwipeState } from "./swipe";
 
 // Swipe answering (docs/client.md §4): the card (the unit, or the question
 // card outside a loop) is dragged left, right or up, from anywhere on the
@@ -64,15 +64,34 @@ function showOverlay(
   }
 }
 
+/** Timers that end with the component: `later` runs a function after a delay, unless it unmounted first. */
+function useTimers(): (run: () => void, ms: number) => void {
+  const timers = useRef(new Set<number>());
+  useEffect(() => {
+    const pending = timers.current;
+    return () => pending.forEach((timer) => window.clearTimeout(timer));
+  }, []);
+  return useCallback((run, ms) => {
+    const timer = window.setTimeout(() => {
+      timers.current.delete(timer);
+      run();
+    }, ms);
+    timers.current.add(timer);
+  }, []);
+}
+
 /**
  * Provides the swipe to the card and the answer field: wrap both. `onAnswer`
- * gets the option once the card has flown off.
+ * gets the option once the card has flown off, when `question` (its key) is
+ * still the one on screen.
  */
 export function SwipeProvider({
+  question,
   options,
   onAnswer,
   children,
 }: {
+  question: string;
   options: NominalOption[];
   onAnswer: (option: NominalOption) => void;
   children: ReactNode;
@@ -80,6 +99,11 @@ export function SwipeProvider({
   const card = useRef<HTMLDivElement | null>(null);
   const overlay = useRef<HTMLDivElement | null>(null);
   const flying = useRef(false);
+  const later = useTimers();
+  const onScreen = useRef(question);
+  useEffect(() => {
+    onScreen.current = question;
+  }, [question]);
 
   const flyOff = useCallback(
     (direction: SwipeDirection, from: { x: number; y: number } = { x: 0, y: 0 }) => {
@@ -102,25 +126,27 @@ export function SwipeProvider({
       el.style.transition = `transform ${FLY_MS}ms ease-in, opacity ${FLY_MS}ms ease-in`;
       el.style.transform = transformFor(to.x, to.y);
       el.style.opacity = "0";
-      window.setTimeout(() => {
+      later(() => {
         flying.current = false;
-        onAnswer(option);
+        // Answered another way meanwhile (a key): this answer is not the next question's
+        if (onScreen.current === question) onAnswer(option);
         // The label fades out as the next step comes in
-        window.setTimeout(() => showOverlay(overlay.current, undefined, null, 0), 250);
+        later(() => showOverlay(overlay.current, undefined, null, 0), 250);
         // The next step replaces the card (it is keyed per step); should the
         // same card stay (e.g. the answer failed), it comes back.
-        window.setTimeout(() => {
+        later(() => {
           el.style.transition = "none";
           el.style.transform = "";
           el.style.opacity = "";
         }, 1000);
       }, FLY_MS);
     },
-    [options, onAnswer],
+    [question, options, onAnswer, later],
   );
 
   const value = useMemo<SwipeState>(
     () => ({
+      question,
       options,
       swipe: flyOff,
       register: (c) => {
@@ -132,7 +158,7 @@ export function SwipeProvider({
       card: () => card.current,
       overlay: () => overlay.current,
     }),
-    [options, flyOff],
+    [question, options, flyOff],
   );
 
   return <SwipeContext.Provider value={value}>{children}</SwipeContext.Provider>;
@@ -161,6 +187,18 @@ export function SwipeCard({ children, className = "" }: { children: ReactNode; c
   );
 }
 
+/** A press on the surface that may become a swipe, for the question it began on. */
+interface Drag {
+  id: number;
+  question: string;
+  x0: number;
+  y0: number;
+  t0: number;
+  x: number;
+  y: number;
+  active: boolean;
+}
+
 /**
  * Where a swipe can start: the whole coding area, not only the card, so a
  * coder can swipe anywhere on the screen; the card moves. Vertical
@@ -175,9 +213,7 @@ export function SwipeSurface({ children, className = "" }: { children: ReactNode
     swipe?.registerOverlay(overlay.current);
     return () => swipe?.registerOverlay(null);
   }, [swipe]);
-  const drag = useRef<{ id: number; x0: number; y0: number; t0: number; x: number; y: number; active: boolean } | null>(
-    null,
-  );
+  const drag = useRef<Drag | null>(null);
   /** Whether an upward drag is a swipe (content at its bottom), which decides `touch-action`. */
   const [upAllowed, setUpAllowed] = useState(true);
   const hasUp = (swipe?.options.length ?? 0) >= 3;
@@ -205,13 +241,28 @@ export function SwipeSurface({ children, className = "" }: { children: ReactNode
     return y < 0 && hasUp && upAllowed ? "up" : null;
   };
 
+  /** The drag going on; one that began on another question is over (it doesn't move or answer this one). */
+  const currentDrag = (): Drag | null => {
+    if (drag.current && drag.current.question !== swipe.question) drag.current = null;
+    return drag.current;
+  };
+
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0 || drag.current) return;
-    drag.current = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: e.timeStamp, x: 0, y: 0, active: false };
+    if (e.button !== 0 || currentDrag() || !startsSwipe(e.target)) return;
+    drag.current = {
+      id: e.pointerId,
+      question: swipe.question,
+      x0: e.clientX,
+      y0: e.clientY,
+      t0: e.timeStamp,
+      x: 0,
+      y: 0,
+      active: false,
+    };
   };
 
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
-    const d = drag.current;
+    const d = currentDrag();
     const el = swipe.card();
     if (!d || d.id !== e.pointerId || !el) return;
     d.x = e.clientX - d.x0;
@@ -235,7 +286,7 @@ export function SwipeSurface({ children, className = "" }: { children: ReactNode
   };
 
   const end = (e: PointerEvent<HTMLDivElement>, cancelled: boolean) => {
-    const d = drag.current;
+    const d = currentDrag();
     const el = swipe.card();
     if (!d || d.id !== e.pointerId) return;
     drag.current = null;

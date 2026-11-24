@@ -149,6 +149,8 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
             value={current}
             aria-label="Value"
             onChange={(e) => setValue(Number(e.target.value))}
+            // A tap on the thumb changes nothing: it chooses the value shown (the middle, at first)
+            onClick={(e) => setValue(Number(e.currentTarget.value))}
           />
           <span className={`w-12 text-right font-mono text-sm ${value === null ? "text-muted-foreground" : ""}`}>
             {value ?? "–"}

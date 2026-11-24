@@ -4,6 +4,8 @@ import type { NominalOption, SWIPE_DIRECTIONS } from "@annotinder/contracts";
 export type SwipeDirection = (typeof SWIPE_DIRECTIONS)[number];
 
 export interface SwipeState {
+  /** The question the swipe answers (its key): a gesture or flight that outlasts it doesn't answer the next. */
+  question: string;
   options: NominalOption[];
   /** Flies the card off in a direction (from where a drag let go), then answers with its option. */
   swipe: (direction: SwipeDirection, from?: { x: number; y: number }) => void;
@@ -14,6 +16,15 @@ export interface SwipeState {
   /** The registered card and its overlay (dragged from the `SwipeSurface`). */
   card: () => HTMLDivElement | null;
   overlay: () => HTMLDivElement | null;
+}
+
+/**
+ * Whether a press may start a swipe: not on a part of the surface with a
+ * drag of its own (`data-no-swipe`: the answer pane's resize handle).
+ */
+export function startsSwipe(target: EventTarget | null): boolean {
+  const element = target as Partial<Pick<Element, "closest">> | null;
+  return !element?.closest?.("[data-no-swipe]");
 }
 
 export const SwipeContext = createContext<SwipeState | null>(null);

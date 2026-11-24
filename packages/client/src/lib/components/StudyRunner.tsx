@@ -301,6 +301,7 @@ function CodingScreen({
   const withSwipe = (content: ReactNode) =>
     swipeVariable ? (
       <SwipeProvider
+        question={questionKey}
         options={swipeVariable.options}
         onAnswer={(option) => handleAnswer(buildValues([{ value: option.value }]))}
       >

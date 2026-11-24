@@ -179,7 +179,7 @@ describe("Question dispatcher", () => {
   it("makes the card swipable, from anywhere on the surface, when a swipe question is active", () => {
     const options = [{ value: "no" }, { value: "yes" }];
     const html = renderToStaticMarkup(
-      <SwipeProvider options={options} onAnswer={onAnswer}>
+      <SwipeProvider question="q" options={options} onAnswer={onAnswer}>
         <SwipeSurface>
           <SwipeCard className="card">unit text</SwipeCard>
           <Question item={{ variable: { type: "annotinder", question: "?", options } }} onAnswer={onAnswer} />

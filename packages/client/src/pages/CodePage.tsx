@@ -28,7 +28,9 @@ export function CodePage({
     rememberStudy({ deployment, params: JSON.parse(paramsKey) as Record<string, string> });
   }, [deployment, paramsKey]);
   return (
-    <div className="h-screen overflow-hidden bg-background text-foreground">
+    // The visible height (dvh), so a phone browser's toolbar doesn't cover the answer buttons;
+    // the screen's height where the browser doesn't know dvh
+    <div className="h-screen overflow-hidden bg-background text-foreground supports-[height:100dvh]:h-dvh">
       <StudyRunner
         baseUrl={`${apiUrl}/d/${encodeURIComponent(deployment)}`}
         linkSecret={link}

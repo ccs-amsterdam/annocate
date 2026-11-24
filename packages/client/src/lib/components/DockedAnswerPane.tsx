@@ -119,9 +119,10 @@ export function DockedAnswerPane({ children }: { children: ReactNode }) {
         custom ? "max-h-[75cqh]" : "max-h-[50cqh]"
       } ${dragging ? "" : "transition-[height] duration-200 ease-out"}`}
     >
-      {/* Drag handle: a tall touch target. Dragging sets a custom height. */}
+      {/* Drag handle: a tall touch target. Dragging sets a custom height (and is no swipe: swipe.ts). */}
       <div
         ref={handleRef}
+        data-no-swipe=""
         onMouseDown={startDragging}
         onTouchStart={startDragging}
         onDoubleClick={custom ? resetToAuto : undefined}
