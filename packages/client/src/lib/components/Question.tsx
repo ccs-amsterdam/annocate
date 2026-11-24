@@ -15,6 +15,7 @@ import {
   UnsupportedAnswerField,
 } from "./answerFields";
 import { useSpanAnnotation } from "../context/spanAnnotation";
+import { useFocusAfterBack } from "../keyboard/hooks";
 import { staticTemplate, type RenderedTemplate } from "../codebook/renderTemplate";
 import { TemplateMarkdown } from "./TemplateMarkdown";
 import { QuestionInstruction } from "./QuestionInstruction";
@@ -71,6 +72,7 @@ function renderQuestionText(variable: QuestionItem["variable"], rendered?: Rende
 export function Question({ item, onAnswer: answer, unitVariables, initialValue, texts, onComment }: QuestionProps) {
   const { variable } = item;
   const spanAnnotation = useSpanAnnotation();
+  useFocusAfterBack();
   // A comment on the answer (`comments`); span and relation questions comment on each span or relation instead
   const commentable = Boolean(item.comments) && variable.type !== "span" && variable.type !== "relation";
   const [comment, setComment] = useState(initialValue?.comment ?? "");

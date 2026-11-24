@@ -50,12 +50,12 @@ export class KeyController {
     };
   }
 
-  /** The next question's field focuses its chosen target when it appears (after going back with the keyboard). */
+  /** The next question to come on screen focuses its chosen answer (after going back with the keyboard; `useFocusAfterBack`). */
   requestFocus(): void {
     this.focusRequested = true;
   }
 
-  /** Whether a field should focus its chosen target now (once). */
+  /** Whether the question that came on screen should focus its chosen answer (once). */
   takeFocusRequest(): boolean {
     const requested = this.focusRequested;
     this.focusRequested = false;

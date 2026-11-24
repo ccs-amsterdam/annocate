@@ -48,6 +48,24 @@ export function useMenuKeys(open: boolean): void {
   useKeyScope(() => false, open, { priority: PRIORITY.menu, exclusive: true });
 }
 
+/**
+ * After going back with the keyboard, the answer is focused, to change it at
+ * once (`useBaseKeys` asks for it). Called by the question when it comes on
+ * screen, whatever its answer field: the request never waits for a later
+ * question. A field without answer targets (a text box) has nothing to focus.
+ */
+export function useFocusAfterBack(): void {
+  const controller = useContext(KeyboardContext)?.controller;
+  useEffect(() => {
+    if (!controller) return;
+    // Taken once the question is painted (and not by an effect React runs twice in development)
+    const frame = requestAnimationFrame(() => {
+      if (controller.takeFocusRequest()) focusChosen();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [controller]);
+}
+
 export interface KeyTargetOptions {
   /** The group keys choose in (a scale's item); default the first, -1: none. */
   activeGroup?: number;
@@ -85,13 +103,6 @@ export function useKeyTargets(
   const [filter, setFilter] = useState("");
   // Letters from the labels: what was typed of a key of more than one letter (he, hi)
   const [typed, setTyped] = useState("");
-  // After going back with the keyboard, the answer is focused, to change it at once
-  const controller = useContext(KeyboardContext)?.controller;
-  useEffect(() => {
-    if (!controller?.takeFocusRequest()) return;
-    const frame = requestAnimationFrame(() => focusChosen());
-    return () => cancelAnimationFrame(frame);
-  }, [controller]);
   const active = options.activeGroup ?? 0;
   // A choice by key shows what it chose (KeyChoiceFlash)
   const choose = (group: number, index: number, key: string) => {
