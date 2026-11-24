@@ -128,7 +128,10 @@ export function createApp(db: Db, options: AppOptions = {}) {
   app.use("*", compress({ encoding: "gzip" }));
   const onError = (err: Error, c: Context) => {
     if (err instanceof HttpError)
-      return c.json({ error: err.issues ?? err.message, ...(err.code ? { code: err.code } : {}) }, err.status);
+      return c.json(
+        { error: err.message, ...(err.code ? { code: err.code } : {}), ...(err.issues ? { issues: err.issues } : {}) },
+        err.status,
+      );
     const pgCode = postgresCode(err);
     // Postgres: a malformed or out-of-range value in a parameter (e.g. a number in the query).
     if (pgCode === "22P02" || pgCode === "22003") return c.json({ error: "Invalid parameter" }, 400);

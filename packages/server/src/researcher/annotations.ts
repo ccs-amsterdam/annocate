@@ -17,6 +17,7 @@ import {
 } from "../db/schema/index.js";
 import { unitDataHash, unitVersionData } from "../db/sql.js";
 import { requireStudyUser } from "./auth.js";
+import { parseQuery } from "../shared/request.js";
 
 /**
  * Annotations, one row per unit, coder and variable, a page at a time in
@@ -28,9 +29,7 @@ export function annotations(server: Server): Hono<Env> {
   const app = new Hono<Env>();
 
   app.get("/study/:studyId/annotations", requireStudyUser(server, "READ"), async (c) => {
-    const parsed = AnnotationsQuerySchema.safeParse(c.req.query());
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
-    const { after, limit, retired } = parsed.data;
+    const { after, limit, retired } = parseQuery(c, AnnotationsQuerySchema);
     const rows = await db
       .select({
         id: a.id,
@@ -85,9 +84,7 @@ export function annotations(server: Server): Hono<Env> {
   // Unit versions (contracts UnitVersionSchema), oldest first: every answer
   // points to the version deployed when it was given (docs/architecture.md §8.4).
   app.get("/study/:studyId/unit-versions", requireStudyUser(server, "READ"), async (c) => {
-    const parsed = UnitVersionsQuerySchema.safeParse(c.req.query());
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
-    const { after, limit } = parsed.data;
+    const { after, limit } = parseQuery(c, UnitVersionsQuerySchema);
     const versions = db
       .select({
         id: unitVersions.id,

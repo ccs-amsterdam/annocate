@@ -46,7 +46,7 @@ export function coderApi(server: Server): Hono {
   // coder's link.
   app.post("/transfer/redeem", async (c) => {
     requireClientHeader(c);
-    const body = await parseJson(c, RedeemTransferSchema, "message");
+    const body = await parseJson(c, RedeemTransferSchema);
     const deploymentId = c.req.param("deployment")!;
     const runtime = await server.deployments.get(deploymentId);
     // A suspended or deleted study (stamp changed in another process) takes no new devices.
@@ -183,7 +183,7 @@ export function coderApi(server: Server): Hono {
   );
 
   session.post("/variables/unit", async (c) => {
-    const body = await parseJson(c, PostUnitVariablesSchema, "message");
+    const body = await parseJson(c, PostUnitVariablesSchema);
     return c.json(
       await c
         .get("runtime")
@@ -196,7 +196,7 @@ export function coderApi(server: Server): Hono {
   );
 
   session.post("/end", async (c) => {
-    const body = await parseJson(c, EndSessionSchema, "message");
+    const body = await parseJson(c, EndSessionSchema);
     return c.json(await c.get("runtime").endSession(c.get("coder"), body.item, body.unit));
   });
 
@@ -206,19 +206,19 @@ export function coderApi(server: Server): Hono {
   });
 
   session.post("/display", async (c) => {
-    const body = await parseJson(c, DisplayEntrySchema, "message");
+    const body = await parseJson(c, DisplayEntrySchema);
     await c.get("runtime").recordDisplay(c.get("coder"), body);
     return c.body(null, 204);
   });
 
   session.post("/quit", async (c) => {
-    const body = await parseJson(c, QuitSessionSchema, "message");
+    const body = await parseJson(c, QuitSessionSchema);
     await c.get("runtime").quitSession(c.get("coder"), body.requestDeletion);
     return c.body(null, 204);
   });
 
   session.post("/variables/coder", async (c) => {
-    const body = await parseJson(c, PostCoderVariablesSchema, "message");
+    const body = await parseJson(c, PostCoderVariablesSchema);
     await c.get("runtime").submitCoderVariables(c.get("coder"), body.variables, c.get("deviceId"), body.timings);
     return c.body(null, 204);
   });

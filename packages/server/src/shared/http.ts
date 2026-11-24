@@ -1,9 +1,15 @@
 import { DrizzleQueryError } from "drizzle-orm/errors";
 
+/** What a schema refused in a request: where (a path with dots, "" for the whole) and why. */
+export interface RequestIssue {
+  path: string;
+  message: string;
+}
+
 /**
- * An error that maps directly onto an HTTP response: `{ error, code? }`, where
- * `error` is the message, or the `issues` of a request body if given
- * (shared/request.ts).
+ * An error that maps directly onto an HTTP response, in the API's one error
+ * shape: `{ error: string, code?, issues? }` (`issues`: what a schema
+ * refused in the request, shared/request.ts).
  */
 export class HttpError extends Error {
   constructor(
@@ -11,7 +17,7 @@ export class HttpError extends Error {
     message: string,
     /** Machine-readable code the client handles specially (contracts `CoderErrorCode`). */
     readonly code?: string,
-    readonly issues?: object,
+    readonly issues?: RequestIssue[],
   ) {
     super(message);
   }

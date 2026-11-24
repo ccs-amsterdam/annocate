@@ -45,13 +45,20 @@ describe("bad input is a 400, never a 500", () => {
     expect(errors).not.toHaveBeenCalled();
   });
 
-  it("a body the schema refuses: the issues in the researcher API, a message in the admin API", async () => {
+  it("a body or query the schema refuses: one shape everywhere, a message with the issues", async () => {
     const study = await send("POST", "/study", JSON.stringify({ name: 3 }));
     expect(study.status).toBe(400);
-    expect(((await study.json()) as { error: { fieldErrors: object } }).error.fieldErrors).toHaveProperty("name");
-    const plan = await send("POST", "/admin/plans", JSON.stringify({ name: 3 }));
+    expect(await study.json()).toEqual({
+      error: "Invalid request body",
+      issues: [{ path: "name", message: expect.any(String) as string }],
+    });
+    const plan = await send("POST", "/admin/plans", JSON.stringify({ name: 3, limits: {} }));
     expect(plan.status).toBe(400);
-    expect(await plan.json()).toEqual({ error: "Invalid request body" });
+    expect(await plan.json()).toMatchObject({ error: "Invalid request body", issues: [{ path: "name" }] });
+    const studyId = await createStudy();
+    const query = await send("GET", `/study/${studyId}/annotations?limit=many`);
+    expect(query.status).toBe(400);
+    expect(await query.json()).toMatchObject({ error: "Invalid query parameters", issues: [{ path: "limit" }] });
   });
 
   it("an id in the path that is not a positive integer in range", async () => {

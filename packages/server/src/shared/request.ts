@@ -9,24 +9,23 @@ import { HttpError } from "./http.js";
 const MAX_ID = Number.MAX_SAFE_INTEGER;
 
 /**
- * What a body the schema refuses answers. The API has two shapes: the
- * researcher API sends the schema's issues (`{ error: { formErrors, fieldErrors } }`),
- * the coder and admin APIs only a message (`{ error: "Invalid request body" }`).
- */
-export type BodyErrors = "issues" | "message";
-
-/**
  * The request's JSON body, as `schema` reads it. 400 for a body that is not
- * JSON and for one the schema refuses.
+ * JSON and for one the schema refuses (with the schema's `issues`).
  */
-export async function parseJson<S extends z.ZodType>(
-  c: Context,
-  schema: S,
-  errors: BodyErrors = "issues",
-): Promise<z.output<S>> {
-  const parsed = schema.safeParse(await jsonBody(c));
-  if (parsed.success) return parsed.data;
-  throw new HttpError(400, "Invalid request body", undefined, errors === "issues" ? parsed.error.flatten() : undefined);
+export async function parseJson<S extends z.ZodType>(c: Context, schema: S): Promise<z.output<S>> {
+  return parsed(schema, await jsonBody(c), "Invalid request body");
+}
+
+/** The request's query parameters, as `schema` reads them. 400 (with `issues`) if it refuses them. */
+export function parseQuery<S extends z.ZodType>(c: Context, schema: S): z.output<S> {
+  return parsed(schema, c.req.query(), "Invalid query parameters");
+}
+
+function parsed<S extends z.ZodType>(schema: S, value: unknown, refused: string): z.output<S> {
+  const result = schema.safeParse(value);
+  if (result.success) return result.data;
+  const issues = result.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message }));
+  throw new HttpError(400, refused, undefined, issues);
 }
 
 async function jsonBody(c: Context): Promise<unknown> {
