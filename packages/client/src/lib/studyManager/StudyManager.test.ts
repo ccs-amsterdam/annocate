@@ -395,6 +395,31 @@ describe("StudyManager navigation, backwards navigation, and answer re-editing",
     expect(posted[101]).toHaveLength(2);
   });
 
+  it("saves a changed answer in a finished unit at once, also when the coder then leaves the unit", async () => {
+    let served = 0;
+    const posted: Record<number, Record<string, VariableValue>[]> = {};
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session([unitLoop("loop", [unitVar("first"), unitVar("second")])])),
+      getNextUnit: vi.fn(async () => (++served <= 2 ? unit(100 + served) : null)),
+      postUnitVariables: vi.fn(async (unitId, vars) => void (posted[unitId] ??= []).push(vars)),
+    });
+    const manager = new StudyManager(server);
+    await manager.start();
+    const value = (v: string): VariableValue => ({ done: true, skip: false, values: [{ value: v }] });
+    await manager.answer(value("A"));
+    await manager.answer(value("A"));
+    expect(manager.getSnapshot().currentUnit?.id).toBe(102);
+    // Back to unit 101's first question, change it, then go on to unit 102 without answering the second again
+    await manager.goBack();
+    await manager.goBack();
+    expect(itemName(manager.getSnapshot().currentItem!)).toBe("first");
+    await manager.answer(value("B"));
+    await manager.goForward();
+    expect(manager.getSnapshot().currentUnit?.id).toBe(102);
+    expect(posted[101].at(-1)?.first).toEqual({ ...value("B") });
+    expect(posted[101].at(-1)?.second).toEqual({ ...value("A") });
+  });
+
   it("supports jumping directly to previous units via jumpToUnit", async () => {
     let unitsServed = 0;
     const server = makeFlakyServer({

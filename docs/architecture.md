@@ -452,6 +452,12 @@ where they left off:
 Finished units are tracked by id, not position: positions shift when
 distribution is dynamic.
 
+**Changing a finished unit.** A coder who goes back to a finished unit and
+changes an answer (or a comment) has the unit saved again at once, not only
+when its last question is answered again: coders often change one answer
+and leave. A question the change now shows is saved as skipped until it is
+answered.
+
 ### 8.2 What happens when the design changes
 
 Answers are keyed by question name and always checked against the

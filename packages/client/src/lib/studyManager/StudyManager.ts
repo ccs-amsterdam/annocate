@@ -1218,6 +1218,10 @@ export class StudyManager {
     this.loopIndex += 1;
     const next = this.loopSteps[this.loopIndex];
     if (next && next.type !== "end") {
+      // A finished unit (gone back to): a changed answer is saved now. Coders who change an answer
+      // often leave the unit without answering the rest again; a question the change now shows is
+      // saved as skipped until they answer it.
+      if (this.unitHistory[this.unitHistoryIndex]?.done) this.saveFinishedUnit();
       await this.publishLoopStep();
       return;
     }
