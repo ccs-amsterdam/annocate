@@ -135,7 +135,7 @@ export async function deploymentVersions(db: Db, studyId: number): Promise<Deplo
     version: r.version,
     designVersionId: r.designVersionId,
     changes: r.changes,
-    client: r.clientRelease ? { release: r.clientRelease, commit: r.clientCommit ?? "unknown" } : null,
+    client: { release: r.clientRelease, commit: r.clientCommit },
     created: r.created,
   }));
 }

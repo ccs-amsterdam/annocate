@@ -317,6 +317,26 @@ async function status(call: Promise<unknown>): Promise<number> {
   }
 }
 
+/** Deploys a design with one loop (and the study's units); its design version's id. */
+async function deployConfirmLoop(studyId: number): Promise<number> {
+  const question = { type: "question", name: "q", variable: { type: "confirm", question: "?" } };
+  const loop = { type: "unit_loop", children: [{ type: "layout", template: "" }, question] };
+  const version = await json(
+    await app.request(`/api/study/${studyId}/design`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify(chosen(splitDesignItems([loop]))),
+    }),
+  );
+  const deployed = await app.request(`/api/study/${studyId}/deployment`, {
+    method: "PUT",
+    headers: adminHeaders,
+    body: JSON.stringify({ designVersionId: version.id, units: true }),
+  });
+  expect(deployed.status).toBe(200);
+  return version.id as number;
+}
+
 describe("annotations: finished counts and resets", () => {
   const value = (code: string): VariableValue => ({ done: true, skip: false, values: [{ value: code }] });
 
@@ -335,10 +355,12 @@ describe("annotations: finished counts and resets", () => {
         }),
       }),
     )) as { id: number }[];
+    // Deployed: answers name the design version and the unit version they were given under
+    const designVersionId = await deployConfirmLoop(study.id);
     await query(db, "INSERT INTO links (study_id, label, secret) VALUES ($1, 'x', 'annotations-link')", [study.id]);
     const { coder } = await store.resolveCoder({ coderKey: "k", linkSecret: "annotations-link" });
     const put = (unitId: number, variables: Record<string, VariableValue>) =>
-      store.putAnnotation({ unitId, sessionId: coder.sessionId, variables });
+      store.putAnnotation({ unitId, sessionId: coder.sessionId, variables, designVersionId });
     const finished = (variables: string[], values?: string[]) =>
       store.listFinished({ loops: [{ loop: "l", variables, values }] });
     return { study, units, coder, put, finished };
@@ -436,6 +458,7 @@ describe("links, coder progress and overview", () => {
       children: [{ type: "layout", template: "" }, question("q1"), question("q2")],
     };
     if (names) await setCoders(study.id, names);
+    let designVersionId = 0;
     const publish = async (items: object[], confirmLinks?: boolean) => {
       const codebook = await json(
         await app.request(`/api/study/${study.id}/design`, {
@@ -444,6 +467,7 @@ describe("links, coder progress and overview", () => {
           body: JSON.stringify(chosen(splitDesignItems(items))),
         }),
       );
+      designVersionId = codebook.id;
       return app.request(`/api/study/${study.id}/deployment`, {
         method: "PUT",
         headers: adminHeaders,
@@ -454,7 +478,7 @@ describe("links, coder progress and overview", () => {
     const resolve = async (coderKey: string, linkSecret: string) =>
       (await store.resolveCoder({ coderKey, linkSecret })).coder;
     const put = (sessionId: number, unitId: number, variables: Record<string, VariableValue>) =>
-      store.putAnnotation({ unitId, sessionId, variables });
+      store.putAnnotation({ unitId, sessionId, variables, designVersionId });
     const get = async (path: string) =>
       json(await app.request(`/api/study/${study.id}${path}`, { headers: adminHeaders }));
     return { study, units, loop, publish, resolve, put, get };

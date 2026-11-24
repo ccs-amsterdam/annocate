@@ -190,7 +190,7 @@ export async function saveUnits(
     await db.delete(unitDraft).where(eq(unitDraft.unitId, unitId));
     await db.execute(sql`
       INSERT INTO ${unitDraft} (unit_id, field_id, value_id)
-      SELECT ${unitId}::int, n.id, v.id FROM jsonb_each(${JSON.stringify(unit.data)}::jsonb) e
+      SELECT ${unitId}::bigint, n.id, v.id FROM jsonb_each(${JSON.stringify(unit.data)}::jsonb) e
       JOIN ${unitFieldNames} n ON n.study_id = ${studyId} AND n.name = e.key
       JOIN ${unitValues} v ON v.study_id = ${studyId} AND v.hash = ${unitValueHash(sql`e.value`)}`);
     ids.set(unit.externalId, unitId);

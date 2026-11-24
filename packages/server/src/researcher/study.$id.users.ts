@@ -60,8 +60,7 @@ export function studyUsers(server: Server): Hono<Env> {
   app.put("/study/:studyId/users", requireStudyUser(server, "ADMIN"), async (c) => {
     const body = await parseJson(c, StudyUsersWriteSchema);
     // The list replaces the study's users: it must keep someone who can manage them.
-    if (!body.users.some((u) => u.role === "ADMIN"))
-      return c.json({ error: "A study needs at least one ADMIN" }, 400);
+    if (!body.users.some((u) => u.role === "ADMIN")) return c.json({ error: "A study needs at least one ADMIN" }, 400);
 
     const users = body.users.map((u) => ({ ...u, email: u.email.trim().toLowerCase() }));
     const emails = users.map((u) => u.email);

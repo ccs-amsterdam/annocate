@@ -563,11 +563,12 @@ describe("shared queues under concurrency", () => {
     const a = coder("a");
     const unitA = (await a.next())!;
     const { sessionId } = await a.session();
-    between = (store) =>
+    between = async (store) =>
       store.putAnnotation({
         unitId: unitA.id,
         sessionId,
         variables: { sentiment: { done: true, skip: false, values: [{ value: "neutral" }] } },
+        designVersionId: (await store.getDeployment()).design.id,
         codings: [{ loop: "1", agreement: {} }],
       });
     const unitB = await coder("b").next();
@@ -1030,7 +1031,7 @@ describe("assignment edge cases (review of the unit assignment)", () => {
         sessionId,
         values: { part: { done: true, skip: false, values: [{ value: "p2" }] } },
         assigned: true,
-        designVersionId: null,
+        designVersionId: (await store.getDeployment()).design.id,
       });
       await store.setSessionValue(sessionId, "part", "p2");
     };

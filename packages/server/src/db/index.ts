@@ -25,6 +25,9 @@ export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 export type Database = Db & { close(): Promise<void> };
 
 const options = { schema, casing: "snake_case" } as const;
+/** Postgres type ids of BIGINT[] and INTEGER[] (pg names only the scalar types). */
+const INT8_ARRAY = 1016 as typeof pg.types.builtins.INT8;
+const INT4_ARRAY = 1007 as typeof pg.types.builtins.INT8;
 export const migrationsFolder = fileURLToPath(new URL("../../migrations/", import.meta.url));
 
 /** A PGlite database: in memory, or in a directory. */
@@ -37,8 +40,9 @@ export async function openPglite(dataDir?: string): Promise<Database> {
 
 /** A Postgres server, e.g. `postgres://user:pass@host/annotinder`. */
 export async function openPostgres(connectionString: string): Promise<Database> {
-  // BIGINT (COUNT(*), BIGINT ids) as number; ours stay far below 2^53.
+  // BIGINT (COUNT(*), BIGINT ids) as number, also in arrays (read as INTEGER[]); ours stay far below 2^53.
   pg.types.setTypeParser(pg.types.builtins.INT8, Number);
+  pg.types.setTypeParser(INT8_ARRAY, pg.types.getTypeParser(INT4_ARRAY));
   // PGPOOL_MAX: connections per server process (default 20).
   const pool = new pg.Pool({ connectionString, max: Number(process.env.PGPOOL_MAX ?? 20) });
   // Migrations on one connection, under a lock: server processes starting together apply them once.

@@ -1,8 +1,8 @@
 import { sql } from "drizzle-orm";
-import { bigint, boolean, index, integer, jsonb, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
+import { bigint, boolean, check, index, integer, jsonb, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
 import type { AnswerTiming, DeletionRequest, DisplayChange, SessionEnd, VariableValue } from "@annotinder/contracts";
 import type { CoderAssignments } from "../../runtime/types.js";
-import { timestamptz } from "./columns.js";
+import { bigId, timestamptz } from "./columns.js";
 import { designVersions, links, studies } from "./studies.js";
 import { units, unitVersions } from "./units.js";
 
@@ -19,11 +19,13 @@ import { units, unitVersions } from "./units.js";
 export const coderSessions = pgTable(
   "coder_sessions",
   {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    id: bigId().primaryKey().generatedAlwaysAsIdentity(),
     studyId: integer()
       .notNull()
       .references(() => studies.id, { onDelete: "cascade" }),
-    linkId: integer().references(() => links.id),
+    linkId: bigId()
+      .notNull()
+      .references(() => links.id),
     email: text(),
     coder: text(),
     session: jsonb().$type<Record<string, string>>().notNull().default({}),
@@ -39,6 +41,7 @@ export const coderSessions = pgTable(
   (t) => [
     index("coder_sessions_email").on(t.studyId, sql`lower(${t.email})`),
     index("coder_sessions_coder").on(t.studyId, t.coder),
+    index("coder_sessions_link").on(t.linkId),
   ],
 );
 
@@ -46,11 +49,11 @@ export const coderSessions = pgTable(
 export const sessionDevices = pgTable(
   "session_devices",
   {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    id: bigId().primaryKey().generatedAlwaysAsIdentity(),
     studyId: integer()
       .notNull()
       .references(() => studies.id, { onDelete: "cascade" }),
-    sessionId: integer()
+    sessionId: bigId()
       .notNull()
       .references(() => coderSessions.id, { onDelete: "cascade" }),
     keyHash: text().notNull().unique("session_devices_key_hash_key"),
@@ -74,7 +77,7 @@ export const sessionDeletions = pgTable(
     studyId: integer()
       .notNull()
       .references(() => studies.id, { onDelete: "cascade" }),
-    sessionId: integer().notNull(),
+    sessionId: bigId().notNull(),
     coder: text(),
     requestedAt: timestamptz(),
     deletedAt: timestamptz().notNull().defaultNow(),
@@ -90,7 +93,7 @@ export const transfers = pgTable("transfers", {
   studyId: integer()
     .notNull()
     .references(() => studies.id, { onDelete: "cascade" }),
-  sessionId: integer()
+  sessionId: bigId()
     .notNull()
     .references(() => coderSessions.id, { onDelete: "cascade" }),
   coder: text(),
@@ -101,7 +104,7 @@ export const transfers = pgTable("transfers", {
  * Answers: one row per (unit, coder, question); unit_id NULL: a coder-level
  * answer (outside unit loops). Reset answers are retired (retired_at), never
  * deleted; only live rows count, and only those are unique. With the design
- * version and unit version the coder answered under, the device, the
+ * version and (for a unit's answer) unit version the coder answered under, the device, the
  * browser's timing; assigned: set by the server (experiments);
  * frozen: units were coded with it, so it can't change.
  */
@@ -112,13 +115,15 @@ export const annotationValues = pgTable(
     studyId: integer()
       .notNull()
       .references(() => studies.id, { onDelete: "cascade" }),
-    sessionId: integer()
+    sessionId: bigId()
       .notNull()
       .references(() => coderSessions.id, { onDelete: "cascade" }),
-    unitId: integer().references(() => units.id),
-    unitVersionId: integer().references(() => unitVersions.id),
-    designVersionId: integer().references(() => designVersions.id),
-    deviceId: integer().references(() => sessionDevices.id, { onDelete: "set null" }),
+    unitId: bigId().references(() => units.id),
+    unitVersionId: bigId().references(() => unitVersions.id),
+    designVersionId: bigId()
+      .notNull()
+      .references(() => designVersions.id),
+    deviceId: bigId().references(() => sessionDevices.id, { onDelete: "set null" }),
     variable: text().notNull(),
     value: jsonb().$type<VariableValue>().notNull(),
     timing: jsonb().$type<AnswerTiming>(),
@@ -138,5 +143,11 @@ export const annotationValues = pgTable(
     uniqueIndex("annotation_values_coder_live")
       .on(t.sessionId, t.variable)
       .where(sql`${t.retiredAt} IS NULL AND ${t.unitId} IS NULL`),
+    index("annotation_values_study").on(t.studyId, t.id),
+    index("annotation_values_unit_version").on(t.unitVersionId),
+    index("annotation_values_design_version").on(t.designVersionId),
+    index("annotation_values_device").on(t.deviceId),
+    // An answer about a unit says which version of it the coder saw
+    check("annotation_values_unit_version_check", sql`${t.unitId} IS NULL OR ${t.unitVersionId} IS NOT NULL`),
   ],
 );

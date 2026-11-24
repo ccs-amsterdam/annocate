@@ -140,7 +140,7 @@ export async function putSetGroup(
     const positions = members.map((_, i) => (set.ordered ? i + 1 : null));
     await db.execute(sql`
       INSERT INTO ${unitSetMembers} (set_id, unit_id, position)
-      SELECT ${created!.id}, * FROM unnest(${sql.param(members)}::int[], ${sql.param(positions)}::int[])`);
+      SELECT ${created!.id}, * FROM unnest(${sql.param(members)}::bigint[], ${sql.param(positions)}::int[])`);
   }
 }
 

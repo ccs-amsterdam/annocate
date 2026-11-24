@@ -2,8 +2,11 @@ import type { Context } from "hono";
 import type { z } from "zod";
 import { HttpError } from "./http.js";
 
-/** The largest id the database holds (ids are Postgres integers). */
-const MAX_ID = 2 ** 31 - 1;
+/**
+ * The largest id a request can name: ids are Postgres BIGINTs read as
+ * numbers (an id beyond an INTEGER column's range is the database's 400).
+ */
+const MAX_ID = Number.MAX_SAFE_INTEGER;
 
 /**
  * What a body the schema refuses answers. The API has two shapes: the
@@ -34,7 +37,7 @@ async function jsonBody(c: Context): Promise<unknown> {
   }
 }
 
-/** The id in path parameter `name`. 400 unless it is a positive integer the database can hold. */
+/** The id in path parameter `name`. 400 unless it is a positive integer in range. */
 export function idParam(c: Context, name: string): number {
   const raw = c.req.param(name) ?? "";
   const id = /^[0-9]+$/.test(raw) ? Number(raw) : NaN;

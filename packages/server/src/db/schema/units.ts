@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { boolean, index, integer, jsonb, pgTable, primaryKey, text, unique } from "drizzle-orm/pg-core";
-import { bytea, timestamptz } from "./columns.js";
+import { bigId, bytea, timestamptz } from "./columns.js";
 import { studies } from "./studies.js";
 
 // Units (docs/architecture.md §8.4): a draft, versions made by deploys, sets.
@@ -24,7 +24,7 @@ export const unitFieldNames = pgTable(
 export const unitValues = pgTable(
   "unit_values",
   {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    id: bigId().primaryKey().generatedAlwaysAsIdentity(),
     studyId: integer()
       .notNull()
       .references(() => studies.id, { onDelete: "cascade" }),
@@ -42,7 +42,7 @@ export const unitValues = pgTable(
 export const units = pgTable(
   "units",
   {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    id: bigId().primaryKey().generatedAlwaysAsIdentity(),
     studyId: integer()
       .notNull()
       .references(() => studies.id, { onDelete: "cascade" }),
@@ -57,13 +57,13 @@ export const units = pgTable(
 export const unitDraft = pgTable(
   "unit_draft",
   {
-    unitId: integer()
+    unitId: bigId()
       .notNull()
       .references(() => units.id, { onDelete: "cascade" }),
     fieldId: integer()
       .notNull()
       .references(() => unitFieldNames.id, { onDelete: "cascade" }),
-    valueId: integer()
+    valueId: bigId()
       .notNull()
       .references(() => unitValues.id),
   },
@@ -81,11 +81,11 @@ export const unitDraft = pgTable(
 export const unitVersions = pgTable(
   "unit_versions",
   {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    id: bigId().primaryKey().generatedAlwaysAsIdentity(),
     studyId: integer()
       .notNull()
       .references(() => studies.id, { onDelete: "cascade" }),
-    unitId: integer()
+    unitId: bigId()
       .notNull()
       .references(() => units.id, { onDelete: "cascade" }),
     fromDeploy: integer().notNull(),
@@ -96,6 +96,10 @@ export const unitVersions = pgTable(
     index("unit_versions_current")
       .on(t.unitId)
       .where(sql`${t.toDeploy} IS NULL`),
+    // A study's current versions (what a deployment's coders get)
+    index("unit_versions_study_current")
+      .on(t.studyId)
+      .where(sql`${t.toDeploy} IS NULL`),
   ],
 );
 
@@ -103,13 +107,13 @@ export const unitVersions = pgTable(
 export const unitVersionFields = pgTable(
   "unit_version_fields",
   {
-    versionId: integer()
+    versionId: bigId()
       .notNull()
       .references(() => unitVersions.id, { onDelete: "cascade" }),
     fieldId: integer()
       .notNull()
       .references(() => unitFieldNames.id, { onDelete: "cascade" }),
-    valueId: integer()
+    valueId: bigId()
       .notNull()
       .references(() => unitValues.id),
   },
@@ -141,7 +145,7 @@ export const unitSetMembers = pgTable(
     setId: integer()
       .notNull()
       .references(() => unitSets.id, { onDelete: "cascade" }),
-    unitId: integer()
+    unitId: bigId()
       .notNull()
       .references(() => units.id, { onDelete: "cascade" }),
     position: integer(),

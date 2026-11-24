@@ -86,23 +86,24 @@ CREATE TABLE "users" (
 	"email_verified" boolean,
 	"has_mfa" boolean DEFAULT false NOT NULL,
 	"reactivated_at" timestamp with time zone,
-	"settings" jsonb DEFAULT '{}'::jsonb NOT NULL
+	"settings" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	CONSTRAINT "users_email_lower_check" CHECK ("users"."email" = lower("users"."email"))
 );
 --> statement-breakpoint
 CREATE TABLE "deployment_versions" (
 	"study_id" integer NOT NULL,
 	"version" integer NOT NULL,
-	"design_version_id" integer NOT NULL,
+	"design_version_id" bigint NOT NULL,
 	"changes" jsonb NOT NULL,
-	"client_release" text,
-	"client_commit" text,
+	"client_release" text NOT NULL,
+	"client_commit" text NOT NULL,
 	"created" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "deployment_versions_pkey" PRIMARY KEY("study_id","version")
 );
 --> statement-breakpoint
 CREATE TABLE "deployments" (
 	"study_id" integer PRIMARY KEY NOT NULL,
-	"design_version_id" integer NOT NULL,
+	"design_version_id" bigint NOT NULL,
 	"version" integer NOT NULL,
 	"active" boolean DEFAULT true NOT NULL,
 	"annotation_epoch" integer DEFAULT 0 NOT NULL,
@@ -113,7 +114,7 @@ CREATE TABLE "deployments" (
 );
 --> statement-breakpoint
 CREATE TABLE "design_versions" (
-	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "design_versions_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
+	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "design_versions_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
 	"study_id" integer NOT NULL,
 	"note" text,
 	"items" jsonb NOT NULL,
@@ -128,7 +129,7 @@ CREATE TABLE "design_versions" (
 );
 --> statement-breakpoint
 CREATE TABLE "links" (
-	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "links_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
+	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "links_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
 	"study_id" integer NOT NULL,
 	"label" text NOT NULL,
 	"secret" text NOT NULL,
@@ -154,9 +155,9 @@ CREATE TABLE "studies" (
 );
 --> statement-breakpoint
 CREATE TABLE "unit_draft" (
-	"unit_id" integer NOT NULL,
+	"unit_id" bigint NOT NULL,
 	"field_id" integer NOT NULL,
-	"value_id" integer NOT NULL,
+	"value_id" bigint NOT NULL,
 	CONSTRAINT "unit_draft_pkey" PRIMARY KEY("unit_id","field_id")
 );
 --> statement-breakpoint
@@ -169,7 +170,7 @@ CREATE TABLE "unit_field_names" (
 --> statement-breakpoint
 CREATE TABLE "unit_set_members" (
 	"set_id" integer NOT NULL,
-	"unit_id" integer NOT NULL,
+	"unit_id" bigint NOT NULL,
 	"position" integer,
 	CONSTRAINT "unit_set_members_pkey" PRIMARY KEY("set_id","unit_id")
 );
@@ -184,7 +185,7 @@ CREATE TABLE "unit_sets" (
 );
 --> statement-breakpoint
 CREATE TABLE "unit_values" (
-	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "unit_values_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
+	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "unit_values_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
 	"study_id" integer NOT NULL,
 	"hash" "bytea" NOT NULL,
 	"value" jsonb NOT NULL,
@@ -192,23 +193,23 @@ CREATE TABLE "unit_values" (
 );
 --> statement-breakpoint
 CREATE TABLE "unit_version_fields" (
-	"version_id" integer NOT NULL,
+	"version_id" bigint NOT NULL,
 	"field_id" integer NOT NULL,
-	"value_id" integer NOT NULL,
+	"value_id" bigint NOT NULL,
 	CONSTRAINT "unit_version_fields_pkey" PRIMARY KEY("version_id","field_id")
 );
 --> statement-breakpoint
 CREATE TABLE "unit_versions" (
-	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "unit_versions_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
+	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "unit_versions_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
 	"study_id" integer NOT NULL,
-	"unit_id" integer NOT NULL,
+	"unit_id" bigint NOT NULL,
 	"from_deploy" integer NOT NULL,
 	"to_deploy" integer,
 	"created" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "units" (
-	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "units_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
+	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "units_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
 	"study_id" integer NOT NULL,
 	"external_id" text NOT NULL,
 	"in_draft" boolean DEFAULT true NOT NULL,
@@ -219,11 +220,11 @@ CREATE TABLE "units" (
 CREATE TABLE "annotation_values" (
 	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "annotation_values_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
 	"study_id" integer NOT NULL,
-	"session_id" integer NOT NULL,
-	"unit_id" integer,
-	"unit_version_id" integer,
-	"design_version_id" integer,
-	"device_id" integer,
+	"session_id" bigint NOT NULL,
+	"unit_id" bigint,
+	"unit_version_id" bigint,
+	"design_version_id" bigint NOT NULL,
+	"device_id" bigint,
 	"variable" text NOT NULL,
 	"value" jsonb NOT NULL,
 	"timing" jsonb,
@@ -231,13 +232,14 @@ CREATE TABLE "annotation_values" (
 	"frozen" boolean DEFAULT false NOT NULL,
 	"created" timestamp with time zone NOT NULL,
 	"updated" timestamp with time zone NOT NULL,
-	"retired_at" timestamp with time zone
+	"retired_at" timestamp with time zone,
+	CONSTRAINT "annotation_values_unit_version_check" CHECK ("annotation_values"."unit_id" IS NULL OR "annotation_values"."unit_version_id" IS NOT NULL)
 );
 --> statement-breakpoint
 CREATE TABLE "coder_sessions" (
-	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "coder_sessions_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
+	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "coder_sessions_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
 	"study_id" integer NOT NULL,
-	"link_id" integer,
+	"link_id" bigint NOT NULL,
 	"email" text,
 	"coder" text,
 	"session" jsonb DEFAULT '{}'::jsonb NOT NULL,
@@ -252,7 +254,7 @@ CREATE TABLE "coder_sessions" (
 CREATE TABLE "session_deletions" (
 	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "session_deletions_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
 	"study_id" integer NOT NULL,
-	"session_id" integer NOT NULL,
+	"session_id" bigint NOT NULL,
 	"coder" text,
 	"requested_at" timestamp with time zone,
 	"deleted_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -261,9 +263,9 @@ CREATE TABLE "session_deletions" (
 );
 --> statement-breakpoint
 CREATE TABLE "session_devices" (
-	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "session_devices_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
+	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "session_devices_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
 	"study_id" integer NOT NULL,
-	"session_id" integer NOT NULL,
+	"session_id" bigint NOT NULL,
 	"key_hash" text NOT NULL,
 	"device_type" text,
 	"browser" text,
@@ -275,7 +277,7 @@ CREATE TABLE "session_devices" (
 CREATE TABLE "transfers" (
 	"token_hash" text PRIMARY KEY NOT NULL,
 	"study_id" integer NOT NULL,
-	"session_id" integer NOT NULL,
+	"session_id" bigint NOT NULL,
 	"coder" text,
 	"expires" timestamp with time zone NOT NULL
 );
@@ -283,8 +285,8 @@ CREATE TABLE "transfers" (
 CREATE TABLE "unit_codings" (
 	"study_id" integer NOT NULL,
 	"loop_key" text NOT NULL,
-	"unit_id" integer NOT NULL,
-	"session_id" integer NOT NULL,
+	"unit_id" bigint NOT NULL,
+	"session_id" bigint NOT NULL,
 	"agreement" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"created" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated" timestamp with time zone DEFAULT now() NOT NULL,
@@ -295,17 +297,17 @@ CREATE TABLE "unit_leases" (
 	"study_id" integer NOT NULL,
 	"loop_key" text NOT NULL,
 	"set_name" text NOT NULL,
-	"session_id" integer NOT NULL,
-	"unit_id" integer NOT NULL,
+	"session_id" bigint NOT NULL,
+	"unit_id" bigint NOT NULL,
 	"expires" timestamp with time zone NOT NULL,
 	CONSTRAINT "unit_leases_pkey" PRIMARY KEY("study_id","loop_key","set_name","session_id","unit_id")
 );
 --> statement-breakpoint
 CREATE TABLE "unit_serves" (
 	"study_id" integer NOT NULL,
-	"session_id" integer NOT NULL,
-	"unit_id" integer NOT NULL,
-	"unit_version_id" integer,
+	"session_id" bigint NOT NULL,
+	"unit_id" bigint NOT NULL,
+	"unit_version_id" bigint,
 	"first_served" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "unit_serves_pkey" PRIMARY KEY("session_id","unit_id")
 );
@@ -405,14 +407,25 @@ CREATE INDEX "unit_draft_value" ON "unit_draft" USING btree ("value_id");--> sta
 CREATE INDEX "unit_set_members_unit" ON "unit_set_members" USING btree ("unit_id");--> statement-breakpoint
 CREATE INDEX "unit_version_fields_value" ON "unit_version_fields" USING btree ("value_id");--> statement-breakpoint
 CREATE INDEX "unit_versions_current" ON "unit_versions" USING btree ("unit_id") WHERE "unit_versions"."to_deploy" IS NULL;--> statement-breakpoint
+CREATE INDEX "unit_versions_study_current" ON "unit_versions" USING btree ("study_id") WHERE "unit_versions"."to_deploy" IS NULL;--> statement-breakpoint
 CREATE INDEX "annotation_values_coder" ON "annotation_values" USING btree ("study_id","session_id","unit_id");--> statement-breakpoint
 CREATE INDEX "annotation_values_created" ON "annotation_values" USING btree ("study_id","created");--> statement-breakpoint
 CREATE INDEX "annotation_values_variable" ON "annotation_values" USING btree ("study_id","variable");--> statement-breakpoint
 CREATE UNIQUE INDEX "annotation_values_live" ON "annotation_values" USING btree ("unit_id","session_id","variable") WHERE "annotation_values"."retired_at" IS NULL;--> statement-breakpoint
 CREATE UNIQUE INDEX "annotation_values_coder_live" ON "annotation_values" USING btree ("session_id","variable") WHERE "annotation_values"."retired_at" IS NULL AND "annotation_values"."unit_id" IS NULL;--> statement-breakpoint
+CREATE INDEX "annotation_values_study" ON "annotation_values" USING btree ("study_id","id");--> statement-breakpoint
+CREATE INDEX "annotation_values_unit_version" ON "annotation_values" USING btree ("unit_version_id");--> statement-breakpoint
+CREATE INDEX "annotation_values_design_version" ON "annotation_values" USING btree ("design_version_id");--> statement-breakpoint
+CREATE INDEX "annotation_values_device" ON "annotation_values" USING btree ("device_id");--> statement-breakpoint
 CREATE INDEX "coder_sessions_email" ON "coder_sessions" USING btree ("study_id",lower("email"));--> statement-breakpoint
 CREATE INDEX "coder_sessions_coder" ON "coder_sessions" USING btree ("study_id","coder");--> statement-breakpoint
+CREATE INDEX "coder_sessions_link" ON "coder_sessions" USING btree ("link_id");--> statement-breakpoint
 CREATE INDEX "session_deletions_study" ON "session_deletions" USING btree ("study_id","deleted_at");--> statement-breakpoint
 CREATE INDEX "session_devices_session" ON "session_devices" USING btree ("session_id");--> statement-breakpoint
 CREATE INDEX "unit_codings_coder" ON "unit_codings" USING btree ("session_id","loop_key","created");--> statement-breakpoint
+CREATE INDEX "unit_codings_unit" ON "unit_codings" USING btree ("unit_id");--> statement-breakpoint
+CREATE INDEX "unit_leases_session" ON "unit_leases" USING btree ("session_id");--> statement-breakpoint
+CREATE INDEX "unit_leases_unit" ON "unit_leases" USING btree ("unit_id");--> statement-breakpoint
+CREATE INDEX "unit_serves_unit" ON "unit_serves" USING btree ("unit_id");--> statement-breakpoint
+CREATE INDEX "unit_serves_unit_version" ON "unit_serves" USING btree ("unit_version_id");--> statement-breakpoint
 CREATE INDEX "security_log_user" ON "security_log" USING btree ("user_id","at");

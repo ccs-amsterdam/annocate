@@ -497,8 +497,10 @@ export class DbStore implements Store {
             and(eq(unitVersions.unitId, write.unitId), isNull(unitVersions.toDeploy)),
           ),
         )
-        .orderBy(sql`${unitVersions.id} = ${write.unitVersionId ?? null}::int DESC NULLS LAST`)
+        .orderBy(sql`${unitVersions.id} = ${write.unitVersionId ?? null}::bigint DESC NULLS LAST`)
         .limit(1);
+      // Neither the version the coder saw nor a current one: a deploy took the unit out meanwhile
+      if (!version) throw new HttpError(409, "This unit is no longer part of the study", "unit_removed");
       for (const [variable, value] of Object.entries(write.variables)) {
         await tx
           .insert(a)
@@ -508,8 +510,8 @@ export class DbStore implements Store {
             sessionId: write.sessionId,
             variable,
             value,
-            designVersionId: write.designVersionId ?? null,
-            unitVersionId: version?.id ?? null,
+            designVersionId: write.designVersionId,
+            unitVersionId: version.id,
             deviceId: write.deviceId ?? null,
             timing: write.timings?.[variable] ?? null,
             created: sql`now()`,

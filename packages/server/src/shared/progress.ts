@@ -106,7 +106,7 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
   const coders = await db
     .select({ coder: coderSessions, linkLabel: links.label })
     .from(coderSessions)
-    .leftJoin(links, eq(links.id, coderSessions.linkId))
+    .innerJoin(links, eq(links.id, coderSessions.linkId))
     .where(eq(coderSessions.studyId, studyId))
     .orderBy(asc(coderSessions.id));
   const activity = new Map(

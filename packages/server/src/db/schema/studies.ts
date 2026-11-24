@@ -1,7 +1,7 @@
 import { boolean, index, integer, jsonb, pgTable, primaryKey, text } from "drizzle-orm/pg-core";
 import { DEFAULT_REOPEN_MINUTES, type DeploymentChanges } from "@annotinder/contracts";
 import { users } from "./accounts.js";
-import { timestamptz } from "./columns.js";
+import { bigId, timestamptz } from "./columns.js";
 
 // Studies: the design, its deployments, links. Almost everything belongs to
 // one study and goes with it (ON DELETE CASCADE).
@@ -33,7 +33,7 @@ export const studies = pgTable("studies", {
 export const designVersions = pgTable(
   "design_versions",
   {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    id: bigId().primaryKey().generatedAlwaysAsIdentity(),
     studyId: integer()
       .notNull()
       .references(() => studies.id, { onDelete: "cascade" }),
@@ -64,7 +64,7 @@ export const deployments = pgTable("deployments", {
   studyId: integer()
     .primaryKey()
     .references(() => studies.id, { onDelete: "cascade" }),
-  designVersionId: integer()
+  designVersionId: bigId()
     .notNull()
     .references(() => designVersions.id),
   version: integer().notNull(),
@@ -84,12 +84,12 @@ export const deploymentVersions = pgTable(
       .notNull()
       .references(() => studies.id, { onDelete: "cascade" }),
     version: integer().notNull(),
-    designVersionId: integer()
+    designVersionId: bigId()
       .notNull()
       .references(() => designVersions.id),
     changes: jsonb().$type<DeploymentChanges>().notNull(),
-    clientRelease: text(),
-    clientCommit: text(),
+    clientRelease: text().notNull(),
+    clientCommit: text().notNull(),
     created: timestamptz().notNull().defaultNow(),
   },
   (t) => [primaryKey({ name: "deployment_versions_pkey", columns: [t.studyId, t.version] })],
@@ -104,7 +104,7 @@ export const deploymentVersions = pgTable(
 export const links = pgTable(
   "links",
   {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    id: bigId().primaryKey().generatedAlwaysAsIdentity(),
     studyId: integer()
       .notNull()
       .references(() => studies.id, { onDelete: "cascade" }),

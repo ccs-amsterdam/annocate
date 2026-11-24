@@ -68,7 +68,7 @@ export async function putCoderValues(db: Db, studyId: number, write: CoderValues
         sessionId: write.sessionId,
         variable,
         value,
-        designVersionId: write.designVersionId ?? null,
+        designVersionId: write.designVersionId,
         deviceId: write.deviceId ?? null,
         assigned: write.assigned ?? false,
         timing: timing(variable),

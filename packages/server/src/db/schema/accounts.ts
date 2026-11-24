@@ -44,6 +44,8 @@ export const users = pgTable(
     uniqueIndex("users_shadow_email")
       .on(t.email)
       .where(sql`${t.registeredAt} IS NULL`),
+    // Addresses are compared as stored: always lowercase
+    check("users_email_lower_check", sql`${t.email} = lower(${t.email})`),
   ],
 );
 

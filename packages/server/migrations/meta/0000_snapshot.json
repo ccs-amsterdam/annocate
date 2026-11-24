@@ -1,5 +1,5 @@
 {
-  "id": "bc7089aa-2110-4db1-9479-608135ed69bf",
+  "id": "5059fee3-69df-4774-81de-3fd8dcbeb2cf",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -885,7 +885,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "users_email_lower_check": {
+          "name": "users_email_lower_check",
+          "value": "\"users\".\"email\" = lower(\"users\".\"email\")"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.deployment_versions": {
@@ -906,7 +911,7 @@
         },
         "design_version_id": {
           "name": "design_version_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
@@ -920,13 +925,13 @@
           "name": "client_release",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "client_commit": {
           "name": "client_commit",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "created": {
           "name": "created",
@@ -991,7 +996,7 @@
         },
         "design_version_id": {
           "name": "design_version_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
@@ -1082,7 +1087,7 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": true,
           "notNull": true,
           "identity": {
@@ -1092,7 +1097,7 @@
             "increment": "1",
             "startWith": "1",
             "minValue": "1",
-            "maxValue": "2147483647",
+            "maxValue": "9223372036854775807",
             "cache": "1",
             "cycle": false
           }
@@ -1214,7 +1219,7 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": true,
           "notNull": true,
           "identity": {
@@ -1224,7 +1229,7 @@
             "increment": "1",
             "startWith": "1",
             "minValue": "1",
-            "maxValue": "2147483647",
+            "maxValue": "9223372036854775807",
             "cache": "1",
             "cycle": false
           }
@@ -1442,7 +1447,7 @@
       "columns": {
         "unit_id": {
           "name": "unit_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
@@ -1454,7 +1459,7 @@
         },
         "value_id": {
           "name": "value_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         }
@@ -1608,7 +1613,7 @@
         },
         "unit_id": {
           "name": "unit_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
@@ -1763,7 +1768,7 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": true,
           "notNull": true,
           "identity": {
@@ -1773,7 +1778,7 @@
             "increment": "1",
             "startWith": "1",
             "minValue": "1",
-            "maxValue": "2147483647",
+            "maxValue": "9223372036854775807",
             "cache": "1",
             "cycle": false
           }
@@ -1834,7 +1839,7 @@
       "columns": {
         "version_id": {
           "name": "version_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
@@ -1846,7 +1851,7 @@
         },
         "value_id": {
           "name": "value_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         }
@@ -1929,7 +1934,7 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": true,
           "notNull": true,
           "identity": {
@@ -1939,7 +1944,7 @@
             "increment": "1",
             "startWith": "1",
             "minValue": "1",
-            "maxValue": "2147483647",
+            "maxValue": "9223372036854775807",
             "cache": "1",
             "cycle": false
           }
@@ -1952,7 +1957,7 @@
         },
         "unit_id": {
           "name": "unit_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
@@ -1982,6 +1987,22 @@
           "columns": [
             {
               "expression": "unit_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"unit_versions\".\"to_deploy\" IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "unit_versions_study_current": {
+          "name": "unit_versions_study_current",
+          "columns": [
+            {
+              "expression": "study_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2034,7 +2055,7 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": true,
           "notNull": true,
           "identity": {
@@ -2044,7 +2065,7 @@
             "increment": "1",
             "startWith": "1",
             "minValue": "1",
-            "maxValue": "2147483647",
+            "maxValue": "9223372036854775807",
             "cache": "1",
             "cycle": false
           }
@@ -2136,31 +2157,31 @@
         },
         "session_id": {
           "name": "session_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "unit_id": {
           "name": "unit_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": false
         },
         "unit_version_id": {
           "name": "unit_version_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": false
         },
         "design_version_id": {
           "name": "design_version_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "device_id": {
           "name": "device_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": false
         },
@@ -2334,6 +2355,72 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "annotation_values_study": {
+          "name": "annotation_values_study",
+          "columns": [
+            {
+              "expression": "study_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "annotation_values_unit_version": {
+          "name": "annotation_values_unit_version",
+          "columns": [
+            {
+              "expression": "unit_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "annotation_values_design_version": {
+          "name": "annotation_values_design_version",
+          "columns": [
+            {
+              "expression": "design_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "annotation_values_device": {
+          "name": "annotation_values_device",
+          "columns": [
+            {
+              "expression": "device_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -2419,7 +2506,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "annotation_values_unit_version_check": {
+          "name": "annotation_values_unit_version_check",
+          "value": "\"annotation_values\".\"unit_id\" IS NULL OR \"annotation_values\".\"unit_version_id\" IS NOT NULL"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.coder_sessions": {
@@ -2428,7 +2520,7 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": true,
           "notNull": true,
           "identity": {
@@ -2438,7 +2530,7 @@
             "increment": "1",
             "startWith": "1",
             "minValue": "1",
-            "maxValue": "2147483647",
+            "maxValue": "9223372036854775807",
             "cache": "1",
             "cycle": false
           }
@@ -2451,9 +2543,9 @@
         },
         "link_id": {
           "name": "link_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "email": {
           "name": "email",
@@ -2556,6 +2648,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "coder_sessions_link": {
+          "name": "coder_sessions_link",
+          "columns": [
+            {
+              "expression": "link_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -2621,7 +2728,7 @@
         },
         "session_id": {
           "name": "session_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
@@ -2707,7 +2814,7 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": true,
           "notNull": true,
           "identity": {
@@ -2717,7 +2824,7 @@
             "increment": "1",
             "startWith": "1",
             "minValue": "1",
-            "maxValue": "2147483647",
+            "maxValue": "9223372036854775807",
             "cache": "1",
             "cycle": false
           }
@@ -2730,7 +2837,7 @@
         },
         "session_id": {
           "name": "session_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
@@ -2843,7 +2950,7 @@
         },
         "session_id": {
           "name": "session_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
@@ -2913,13 +3020,13 @@
         },
         "unit_id": {
           "name": "unit_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "session_id": {
           "name": "session_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
@@ -2963,6 +3070,21 @@
             },
             {
               "expression": "created",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "unit_codings_unit": {
+          "name": "unit_codings_unit",
+          "columns": [
+            {
+              "expression": "unit_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3055,13 +3177,13 @@
         },
         "session_id": {
           "name": "session_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "unit_id": {
           "name": "unit_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
@@ -3072,7 +3194,38 @@
           "notNull": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "unit_leases_session": {
+          "name": "unit_leases_session",
+          "columns": [
+            {
+              "expression": "session_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "unit_leases_unit": {
+          "name": "unit_leases_unit",
+          "columns": [
+            {
+              "expression": "unit_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "unit_leases_study_id_studies_id_fk": {
           "name": "unit_leases_study_id_studies_id_fk",
@@ -3143,19 +3296,19 @@
         },
         "session_id": {
           "name": "session_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "unit_id": {
           "name": "unit_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "unit_version_id": {
           "name": "unit_version_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": false
         },
@@ -3167,7 +3320,38 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "unit_serves_unit": {
+          "name": "unit_serves_unit",
+          "columns": [
+            {
+              "expression": "unit_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "unit_serves_unit_version": {
+          "name": "unit_serves_unit_version",
+          "columns": [
+            {
+              "expression": "unit_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "unit_serves_study_id_studies_id_fk": {
           "name": "unit_serves_study_id_studies_id_fk",

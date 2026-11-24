@@ -142,7 +142,8 @@ export interface CoderValuesWrite {
   sessionId: number;
   values: Record<string, VariableValue>;
   assigned?: boolean;
-  designVersionId?: number | null;
+  /** The deployed codebook the value was given (or assigned) under. */
+  designVersionId: number;
   deviceId?: number | null;
   /**
    * How long the coder took per question, as their browser measured it (by
@@ -216,7 +217,7 @@ export interface AnnotationWrite {
   sessionId: number;
   variables: Record<string, VariableValue>;
   /** The deployed codebook the coder answered under. */
-  designVersionId?: number;
+  designVersionId: number;
   /** The unit version the coder saw (`Store.unitVersion`). */
   unitVersionId?: number;
   /** The device the answers were given on (`session_devices`). */

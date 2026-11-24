@@ -162,12 +162,14 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
       const link = links.find((l) => Object.entries(l.params).every(([name, value]) => coder.session[name] === value));
       if (Object.keys(coder.session).length > 0 && !link)
         throw new Error(`examples/${id}.json: no link for example coder ${i + 1}'s session`);
+      const linkId = link?.id ?? firstLink;
+      if (linkId === null) throw new Error(`examples/${id}.json: example coders need a deployed study (publish)`);
       const [made] = await tx
         .insert(coderSessions)
         .values({
           studyId: study.id,
           coder: `Example coder ${i + 1}`,
-          linkId: link?.id ?? firstLink,
+          linkId,
           session: coder.session,
           created: at(0),
           ended: { outcome: "complete", at: at(unitCount) },

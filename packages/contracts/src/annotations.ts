@@ -34,8 +34,8 @@ export const AnnotationRowSchema = z.object({
   variable: z.string(),
   value: VariableValueSchema,
   /** The design version the coder answered under. */
-  designVersionId: IdSchema.nullable(),
-  /** The unit as the coder saw it (`listUnitVersions`); null for answers from before versions were kept. */
+  designVersionId: IdSchema,
+  /** The unit as the coder saw it (`listUnitVersions`); null without a unit. */
   unitVersionId: IdSchema.nullable(),
   /** The device the answer was (last) given on (`listDevices`); null in previews and for devices that were deleted. */
   deviceId: IdSchema.nullable(),

@@ -12,11 +12,11 @@ export const CoderProgressSchema = z.object({
   email: z.string().email().optional(),
   /** The coder id (`$session.coder`), e.g. a panel's participant id; a label, never a key (docs/coder-identity.md). */
   coder: z.string().optional(),
-  /** The link the coder came in through; null for coders from before this was recorded. */
-  linkId: IdSchema.nullable(),
-  linkLabel: z.string().nullable(),
-  /** When the coder was created (first opened the link); null if unknown. */
-  started: z.coerce.date().nullable(),
+  /** The link the coder came in through. */
+  linkId: IdSchema,
+  linkLabel: z.string(),
+  /** When the coder was created (first opened the link). */
+  started: z.coerce.date(),
   /** Their latest answer; null if they haven't answered anything yet. */
   lastActive: z.coerce.date().nullable(),
   /** Live answers (unit-level variable values). */
@@ -104,8 +104,7 @@ export const LinkResponseSchema = z.object({
   secret: z.string(),
   /** Number of coders created from this link so far. */
   uses: z.number().int().nonnegative(),
-  /** Null for links from before this was recorded. */
-  created: z.coerce.date().nullable(),
+  created: z.coerce.date(),
   /**
    * Set once revoked (`POST /links/:id/revoke`): no new coders. Coders who
    * already started keep working. A link can only be deleted while unused.
