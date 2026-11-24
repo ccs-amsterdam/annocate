@@ -203,9 +203,7 @@ export function OptionsEditor<T extends Option>({
                 value={option.color}
                 onChange={(color) => update(i, { color } as Partial<T>)}
               />
-              {specials && (
-                <SpecialButton value={option.special} onChange={(special) => setSpecial(i, special)} />
-              )}
+              {specials && <SpecialButton value={option.special} onChange={(special) => setSpecial(i, special)} />}
               <span data-option-row={i} className="flex items-center">
                 {extra?.(option, (patch) => update(i, patch))}
                 <Button
