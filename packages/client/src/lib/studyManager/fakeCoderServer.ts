@@ -1,12 +1,23 @@
-import type { CoderUnitResponse, EndUnit, SessionResponse, TopLevelItem, VariableValue } from "@annotinder/contracts";
-import { unitLoops } from "@annotinder/contracts";
+import type {
+  AnyVariableType,
+  CoderUnitLoopItem,
+  CoderUnitResponse,
+  EndUnit,
+  SessionResponse,
+  TopLevelItem,
+  VariableValue,
+} from "@annotinder/contracts";
+import { collectQuestions, resolveVariable, unitLoops, validateVariables } from "@annotinder/contracts";
 import { CoderApiError, type CoderApi } from "../api/httpCoderApi";
+import { loopVariables } from "./items";
 
 // Tests only: an in-memory coder server with the real server's rules for
 // what the coding client sees (docs/api/coder.md): the next units are the
 // unfinished ones first, a finished unit can be fetched again with its
 // answers, a reloaded session knows its finished units and coder-level
 // answers, and an ended session shows its ending until it is reopened.
+// Posted answers are checked as the server checks them (contracts
+// `validateVariables`): a unit is complete, and every answer fits its question.
 
 export interface FakeUnit {
   id: number;
@@ -78,6 +89,22 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
     stale = false;
     throw new CoderApiError("A new version of the study was deployed", 409, "codebook_changed");
   };
+  /** Refuses answers the server refuses (400): unknown questions, values that don't fit. */
+  const validate = (types: Map<string, AnyVariableType>, variables: Record<string, VariableValue>) => {
+    const errors = validateVariables(types, variables);
+    if (errors.length > 0) throw new CoderApiError(errors.join("; "), 400);
+  };
+  /** A loop's questions for a unit, with options from data as the unit and its answers give them. */
+  const unitTypes = (loop: string, unit: FakeUnit | undefined, answers: Record<string, VariableValue>) => {
+    const item = unitLoops(items as never).find(({ key }) => key === loop)?.loop;
+    const types = item ? loopVariables(item as CoderUnitLoopItem) : new Map<string, AnyVariableType>();
+    const ctx = { unit: unit?.data, answers, questions: types };
+    return new Map([...types].map(([name, variable]) => [name, resolveVariable(variable, ctx)]));
+  };
+  const coderTypes = () => {
+    const { questions, loopOf } = collectQuestions(items);
+    return new Map([...questions].filter(([name]) => loopOf.get(name) === null));
+  };
   const server: FakeCoderServer = {
     coder: {},
     answers: new Map(),
@@ -138,6 +165,11 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
 
     async postUnitVariables(unitId: number, variables: Record<string, VariableValue>, loop = "1") {
       request(`postUnitVariables:${loop}/${unitId}`);
+      const unit = (units[loop] ?? []).find((u) => u.id === unitId);
+      const types = unitTypes(loop, unit, { ...server.answers.get(`${loop}/${unitId}`), ...variables });
+      const missing = [...types.keys()].filter((name) => !(name in variables));
+      if (missing.length > 0) throw new CoderApiError(`Unit not finished: no answer for ${missing.join(", ")}`, 400);
+      validate(types, variables);
       server.answers.set(`${loop}/${unitId}`, variables);
       const done = server.done.get(loop) ?? [];
       if (!done.includes(unitId)) server.done.set(loop, [...done, unitId]);
@@ -145,6 +177,7 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
 
     async postCoderVariables(variables: Record<string, VariableValue>) {
       request("postCoderVariables");
+      validate(coderTypes(), variables);
       Object.assign(server.coder, variables);
     },
 

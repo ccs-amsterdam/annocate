@@ -83,6 +83,12 @@ export interface StudyManagerSnapshot {
   error: string | null;
   /** Machine-readable error code from the server (e.g. `coder_has_session`), if any. */
   errorCode: string | null;
+  /**
+   * With phase `error`: the finished unit whose answers the server refused
+   * (400). Besides `retry()`, the coder can go back to it and answer again
+   * (`backToRefusedUnit()`).
+   */
+  refusedUnit: { loop: string; unitId: number } | null;
   /** With phase `finished`: the `end` item that ended the session, if one did. */
   ending: SessionEnding | null;
   /** With phase `finished`: the coder quit (`quit`). */

@@ -35,7 +35,7 @@ import { computeLoopSteps, computeTopLevelSteps, spanColumns, type StepContext }
 import { renderTemplate, staticTemplate } from "../codebook/renderTemplate";
 import type { QuestionTexts } from "../components/Question";
 import { QuestionTimer } from "./timing";
-import { errorCodeOf, errorFields } from "./errors";
+import { errorCodeOf, errorFields, isRefusal } from "./errors";
 import { currentAnswers, findEnd, loopQuestionNames, loopVariables } from "./items";
 import { stepLabel } from "./navigationLabels";
 import { Outbox, type OutboxItem } from "./outbox";
@@ -105,6 +105,7 @@ const INITIAL_SNAPSHOT: StudyManagerSnapshot = {
   currentUnitVariables: null,
   error: null,
   errorCode: null,
+  refusedUnit: null,
   ending: null,
   quit: false,
   deletionRequested: false,
@@ -152,6 +153,8 @@ export class StudyManager {
   private loopKeys = new Map<CoderUnitLoopItem, string>();
   /** Every question in the codebook, for building `$var` scopes. */
   private questions = new Map<string, AnyVariableType>();
+  /** The coder-level ones (experiments too): what a coder-level answer can be for. */
+  private coderQuestions = new Map<string, AnyVariableType>();
   /** Per loop key, the coder-level questions it depends on (frozen once a unit there is saved). */
   private dependencies = new Map<string, string[]>();
   /** The session's `$session` values (the coder id, the design's URL parameters). */
@@ -287,7 +290,9 @@ export class StudyManager {
       this.loopKeys = new Map(unitLoops(this.items).map(({ key, loop }) => [loop, key]));
       this.dependencies = loopDependencies(this.items);
       this.frozen = new Set(session.frozen ?? []);
-      this.questions = collectQuestions(this.items).questions;
+      const { questions, loopOf } = collectQuestions(this.items);
+      this.questions = questions;
+      this.coderQuestions = new Map([...questions].filter(([name]) => loopOf.get(name) === null));
       // The coder-level answers so far (drawn conditions included), so conditions can use them
       for (const [name, value] of Object.entries(session.variables ?? {})) {
         this.userVariableValues[name] = value;
@@ -431,18 +436,13 @@ export class StudyManager {
    */
   private async openEndedUnit(target: EndUnit): Promise<boolean> {
     await this.refreshTopSteps();
-    const index = this.topSteps.findIndex(
-      (step) => step.type === "unit_loop" && this.keyOf(step as CoderUnitLoopItem) === target.loop,
-    );
-    if (index < 0) return false;
-    const loop = this.topSteps[index] as CoderUnitLoopItem;
-    const entry = this.history(loop).entries.findIndex((e) => e.unitId === target.id);
-    if (entry < 0) return false;
-    this.topIndex = index;
-    this.reachTopStep(index);
+    const found = this.findUnit(target.loop, target.id);
+    if (!found) return false;
+    this.topIndex = found.topIndex;
+    this.reachTopStep(found.topIndex);
     this.leaveLoop();
-    this.activeLoop = loop;
-    await this.openEntry(entry);
+    this.activeLoop = found.loop;
+    await this.openEntry(found.entry);
     await this.refreshLoopSteps();
     this.loopIndex = this.lastQuestionIndex();
     this.resuming = false;
@@ -680,6 +680,7 @@ export class StudyManager {
         await this.retryFrom(() => this.advanceTop());
       } else {
         this.unitVariableValues[item.name] = value;
+        this.dropAnswersBuiltOn(item.name);
         this.writeDraft();
         if (!(await this.checkPractice(item.name, value))) return;
         await this.retryFrom(() => this.advanceUnit());
@@ -727,17 +728,33 @@ export class StudyManager {
   }
 
   /**
+   * The unit's other answers that no longer fit after this one changed (a
+   * relation to a span the coder removed, an option that was that span) are
+   * dropped: the coder is asked again, and until then they are saved as
+   * skipped. The server refuses a unit with such an answer.
+   */
+  private dropAnswersBuiltOn(changed: string): void {
+    const answers = this.unitVariableValues;
+    const fitting = currentAnswers(answers, loopVariables(this.activeLoop!), this.currentUnit?.data);
+    // (In place: these are the answers of the unit on screen, also after a failed operation)
+    for (const name of Object.keys(answers)) if (name !== changed && !(name in fitting)) delete answers[name];
+  }
+
+  /**
    * The coder-level answers to store: an answer to a question a condition
    * now hides (an earlier answer changed) is stored as `skip`, as in loops.
-   * The answer itself stays here, should the question show again.
+   * The answer itself stays here, should the question show again. Answers
+   * that don't fit the codebook any more (a new design version removed the
+   * question or the option) are left out: the server refuses a post with one.
    */
   private async postedCoderValues(): Promise<Record<string, VariableValue>> {
     const { visible } = await computeTopLevelSteps(this.stepItems, this.userVariableValues, this.stepContext);
+    const fitting = Object.entries(this.userVariableValues).filter(([name, value]) => {
+      const variable = this.coderQuestions.get(name);
+      return variable !== undefined && validateAnswer(name, variable, value).length === 0;
+    });
     return Object.fromEntries(
-      Object.entries(this.userVariableValues).map(([name, value]) => [
-        name,
-        name in visible ? value : { done: true, skip: true },
-      ]),
+      fitting.map(([name, value]) => [name, name in visible ? value : { done: true, skip: true }]),
     );
   }
 
@@ -813,7 +830,49 @@ export class StudyManager {
   private showError(err: unknown, repeat: () => Promise<void>): void {
     if (this.snapshot.phase !== "error") this.phaseBeforeError = this.snapshot.phase;
     this.lastFailedOperation = repeat;
-    this.publish({ phase: "error", ...errorFields(err) });
+    // A unit the server refused: the coder can also go back to it (`backToRefusedUnit`)
+    const refused = err === this.outbox.error && isRefusal(err) ? this.outbox.failed?.unit : undefined;
+    this.publish({
+      phase: "error",
+      ...errorFields(err),
+      refusedUnit: refused ? { loop: refused.loop, unitId: refused.unitId } : null,
+    });
+  }
+
+  /**
+   * After the server refused a finished unit (`refusedUnit`): back to that
+   * unit instead of sending the same again (`retry()`). It opens at its first
+   * question without an answer that fits, and is saved when the coder
+   * finishes it again.
+   */
+  async backToRefusedUnit(): Promise<void> {
+    const refused = this.snapshot.refusedUnit;
+    if (this.snapshot.phase !== "error" || !refused) return;
+    await this.guarded(async () => {
+      const found = this.findUnit(refused.loop, refused.unitId);
+      if (!found) return;
+      this.outbox.dropFailed();
+      this.lastFailedOperation = null;
+      this.topIndex = found.topIndex;
+      this.leaveLoop();
+      this.activeLoop = found.loop;
+      this.unitHistory[found.entry].done = false;
+      await this.openAtFirstOpenStep(found.entry);
+    });
+  }
+
+  /** Where a unit the coder has is: its loop's top-level step, and its place in the loop's history. */
+  private findUnit(
+    loopKey: string,
+    unitId: number,
+  ): { topIndex: number; loop: CoderUnitLoopItem; entry: number } | null {
+    const topIndex = this.topSteps.findIndex(
+      (step) => step.type === "unit_loop" && this.keyOf(step as CoderUnitLoopItem) === loopKey,
+    );
+    if (topIndex < 0) return null;
+    const loop = this.topSteps[topIndex] as CoderUnitLoopItem;
+    const entry = this.history(loop).entries.findIndex((e) => e.unitId === unitId);
+    return entry < 0 ? null : { topIndex, loop, entry };
   }
 
   /** Shows the step the coder is on again (after an error): the question, else what was there (the ending). */

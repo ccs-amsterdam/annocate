@@ -588,6 +588,198 @@ describe("a new design version while a finished unit is changed", () => {
   });
 });
 
+describe("answers that build on a span (relations, options from spans)", () => {
+  const span = (id: string, text: string) => ({
+    id,
+    field: "text",
+    value: "person",
+    slices: [{ offset: 0, length: text.length, text }],
+  });
+  const spans = (...list: ReturnType<typeof span>[]) => ({ done: true, spans: list }) as unknown as VariableValue;
+  const ann = span("s1", "Ann");
+  const bob = span("s2", "Bob");
+  const knows = {
+    done: true,
+    relations: [{ id: "r1", fromId: "s1", toId: "s2", value: "knows" }],
+  } as unknown as VariableValue;
+  const people: InLoopItem = {
+    name: "people",
+    type: "question",
+    variable: { type: "span", question: "people", fields: ["text"], options: [{ value: "person" }] },
+  };
+  const links: InLoopItem = {
+    name: "links",
+    type: "question",
+    variable: {
+      type: "relation",
+      question: "links",
+      options: [{ value: "knows" }],
+      rules: [{ from: { variable: "people" }, to: { variable: "people" } }],
+    },
+  };
+  const main: InLoopItem = {
+    name: "main",
+    type: "question",
+    variable: {
+      type: "nominal",
+      question: "main",
+      options: [{ value: "nobody" }],
+      optionsFrom: { from: "$var.people" },
+    },
+  };
+  const texts = (...ids: number[]): FakeUnit[] => ids.map((id) => ({ id, data: { text: "Ann met Bob" } }));
+  const errors = (m: StudyManager) => m.getSnapshot().error;
+
+  it("a finished unit: removing a span a relation uses saves the unit without the relation, which is asked again", async () => {
+    server = fakeCoderServer({ items: [loop("Coding", [people, links])], units: { "1": texts(1, 2) } });
+    const m = await started(server);
+    await m.answer(spans(ann, bob));
+    await m.answer(knows);
+    expect(where(m)).toBe("2:people");
+    await m.goBack();
+    await m.goBack();
+    expect(where(m)).toBe("1:people");
+    await m.answer(spans(ann));
+    await settle();
+    expect(errors(m)).toBeNull();
+    expect(where(m)).toBe("1:links");
+    expect(m.getSnapshot().currentUnitVariables?.links).toBeUndefined();
+    expect(server.answers.get("1/1")).toMatchObject({ people: { spans: [ann] }, links: { skip: true } });
+    await m.answer({ done: true, relations: [] } as unknown as VariableValue);
+    await settle();
+    expect(where(m)).toBe("2:people");
+    expect(server.answers.get("1/1")!.links).toEqual({ done: true, relations: [] });
+  });
+
+  it("a unit the coder is in: the relation is asked again before the unit is saved", async () => {
+    server = fakeCoderServer({ items: [loop("Coding", [people, links, pickQ("q3")])], units: { "1": texts(1) } });
+    const m = await started(server);
+    await m.answer(spans(ann, bob));
+    await m.answer(knows);
+    expect(where(m)).toBe("1:q3");
+    await m.goBack();
+    await m.goBack();
+    await m.answer(spans(bob));
+    expect(where(m)).toBe("1:links");
+    expect(m.getSnapshot().currentUnitVariables?.links).toBeUndefined();
+    // Not past the relation question until it is answered again
+    expect(m.getSnapshot().navigation.canGoForward).toBe(false);
+    await m.answer({ done: true, relations: [] } as unknown as VariableValue);
+    await m.answer(pick("A"));
+    await settle();
+    expect(errors(m)).toBeNull();
+    expect(server.done.get("1")).toEqual([1]);
+  });
+
+  it("an answer that is a span (options from spans) is asked again when the span is removed", async () => {
+    server = fakeCoderServer({ items: [loop("Coding", [people, main])], units: { "1": texts(1, 2) } });
+    const m = await started(server);
+    await m.answer(spans(ann, bob));
+    await m.answer(pick("s2"));
+    expect(where(m)).toBe("2:people");
+    expect(picked(server.answers.get("1/1")!.main)).toBe("s2");
+    await m.goBack();
+    await m.goBack();
+    await m.answer(spans(ann));
+    await settle();
+    expect(errors(m)).toBeNull();
+    expect(where(m)).toBe("1:main");
+    expect(shown(m)).toBeUndefined();
+    await m.answer(pick("s1"));
+    await settle();
+    expect(picked(server.answers.get("1/1")!.main)).toBe("s1");
+  });
+
+  it("a reload: an answer whose span is gone is asked again", async () => {
+    server = fakeCoderServer({ items: [loop("Coding", [people, links, pickQ("q3")])], units: { "1": texts(1) } });
+    const first = await started(server);
+    await first.answer(spans(ann, bob));
+    await first.answer(knows);
+    // The browser's draft, with a relation to a span that isn't there
+    const [key, draft] = [...storage][0];
+    storage.set(key, draft.replace('"toId":"s2"', '"toId":"gone"'));
+    const m = await started(server);
+    expect(where(m)).toBe("1:links");
+  });
+});
+
+describe("answers the server refuses", () => {
+  it("a coder-level answer to a question a new design version removed isn't posted any more", async () => {
+    server = fakeCoderServer({ items: [confirm("old"), confirm("c2"), confirm("c3")] });
+    const first = await started(server);
+    await first.answer(yes);
+    await settle();
+    server.redeploy([confirm("c2"), confirm("c3")]);
+    const m = await started(server);
+    expect(where(m)).toBe("q:c2");
+    await m.answer(yes);
+    await settle();
+    expect(where(m)).toBe("q:c3");
+    expect(server.coder.c2).toBeDefined();
+  });
+
+  it("a coder-level answer that no longer fits isn't posted with the others", async () => {
+    const role = (...values: string[]): TopLevelItem =>
+      ({
+        name: "role",
+        type: "question",
+        variable: { type: "nominal", question: "role", options: values.map((value) => ({ value })) },
+      }) as TopLevelItem;
+    server = fakeCoderServer({ items: [confirm("c1"), role("a", "b"), confirm("c3")] });
+    const first = await started(server);
+    await first.answer(yes);
+    await first.answer(pick("a"));
+    await settle();
+    server.redeploy([confirm("c1"), role("b", "c"), confirm("c3")]);
+    const m = await started(server);
+    expect(where(m)).toBe("q:role");
+    // The coder changes an earlier answer first: saved, without the answer that doesn't fit
+    await m.goBack();
+    await m.answer(yes);
+    await settle();
+    expect(where(m)).toBe("q:role");
+    await m.answer(pick("c"));
+    await settle();
+    expect(picked(server.coder.role)).toBe("c");
+  });
+
+  it("a unit the server refuses (400): the coder can go back to it, answer again, and it is saved", async () => {
+    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    const m = await started(server);
+    await answerUntil(m, "1:q2");
+    server.fail("postUnitVariables");
+    await m.answer(pick("A"));
+    await settle();
+    expect(m.getSnapshot()).toMatchObject({ phase: "error", refusedUnit: { loop: "1", unitId: 1 } });
+    await m.backToRefusedUnit();
+    expect(where(m)).toBe("1:q2");
+    expect(m.getSnapshot().unsaved).toBe(0);
+    await m.answer(pick("B"));
+    await settle();
+    expect(where(m)).toBe("2:q1");
+    expect(picked(server.answers.get("1/1")!.q2)).toBe("B");
+    expect(server.done.get("1")).toEqual([1]);
+  });
+
+  it("a refused unit: retry sends it again; an error that isn't a refused unit offers no unit", async () => {
+    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    const m = await started(server);
+    server.fail("getNextUnits");
+    await m.answer(yes);
+    expect(m.getSnapshot()).toMatchObject({ phase: "error", refusedUnit: null });
+    await m.retry();
+    await answerUntil(m, "1:q2");
+    server.fail("postUnitVariables");
+    await m.answer(pick("A"));
+    await settle();
+    expect(m.getSnapshot().refusedUnit).toEqual({ loop: "1", unitId: 1 });
+    await m.retry();
+    await settle();
+    expect(where(m)).toBe("2:q1");
+    expect(server.done.get("1")).toEqual([1]);
+  });
+});
+
 describe("preview navigation (free)", () => {
   it("next goes ahead without answers, and a unit far ahead can be opened", async () => {
     server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });

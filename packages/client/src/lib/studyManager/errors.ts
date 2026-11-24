@@ -5,6 +5,11 @@ export function isTransient(err: unknown): boolean {
   return typeof status === "number" && (status >= 500 || status === 408 || status === 429);
 }
 
+/** The server refused what was sent (400): sending the same again is refused again. */
+export function isRefusal(err: unknown): boolean {
+  return (err as { status?: unknown } | null)?.status === 400;
+}
+
 /** The server's machine-readable error code (e.g. `codebook_changed`), if any. */
 export function errorCodeOf(err: unknown): string | null {
   const code = (err as { code?: unknown } | null)?.code;

@@ -51,6 +51,20 @@ export class Outbox {
     while (this.items.length > 0) await this.drain();
   }
 
+  /** The item whose saving failed (`error`), if any. */
+  get failed(): OutboxItem | null {
+    return this.error === null ? null : (this.items[0] ?? null);
+  }
+
+  /** Gives up on the item whose saving failed: the items after it are saved. */
+  dropFailed(): void {
+    if (this.error === null) return;
+    this.items.shift();
+    this.error = null;
+    this.onChange({ unsaved: this.items.length });
+    if (this.items.length > 0) this.drain().catch(() => this.onError());
+  }
+
   /** Drops everything still waiting (and a failure), e.g. after a new design version. */
   clear(): void {
     this.items = [];
