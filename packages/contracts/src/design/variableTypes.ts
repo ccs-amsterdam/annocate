@@ -138,7 +138,7 @@ export const ScaleTypeSchema = VariableBaseSchema.extend({
       message: "Item names must be unique",
     }),
   options: OrdinalOptionsSchema,
-  specials: SpecialAnswersSchema.describe("Answers outside the scale, for each item (Ctrl + 1, 2, ...)."),
+  specials: SpecialAnswersSchema.describe("Answers outside the scale, for each item (keys / 8, / 9)."),
   layout: z.enum(SCALE_LAYOUTS).optional(),
 }).superRefine(checkSpecials(false));
 export type ScaleType = z.infer<typeof ScaleTypeSchema>;

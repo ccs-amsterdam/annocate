@@ -49,7 +49,7 @@ label for an exact match, else the number.
   Use it for counts and age.
 
 Tick **Don't know** or **Not applicable** under **Special answers** for a
-button under the number (**Ctrl + 1** / **2**). Without a code the answer
+button under the number (**/ 8** / **/ 9**). Without a code the answer
 is missing; a code (e.g. `-1`) must be outside the range. See
 [Special answers](nominal-and-ordinal.md#special-answers).
 

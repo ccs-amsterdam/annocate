@@ -12,7 +12,7 @@ import { z } from "zod";
  * Each kind at most once, with its own label ("Prefer not to say" is a
  * `dont_know`, "None of these" a `not_applicable`) and an optional code;
  * without a code the answer is missing (no value). Shown under the answers,
- * chosen with Ctrl + 1, 2, ... in the order given.
+ * chosen with the keys / 8 (dont_know) and / 9 (not_applicable).
  */
 export const SPECIAL_KINDS = ["not_applicable", "dont_know"] as const;
 export const SpecialKindSchema = z.enum(SPECIAL_KINDS);
@@ -40,7 +40,7 @@ export const SpecialAnswersSchema = z
     message: "A question has each special answer once",
   })
   .optional()
-  .describe("Answers outside the options or range: not_applicable, dont_know; chosen with Ctrl + 1, 2, ... in order.");
+  .describe("Answers outside the options or range: not_applicable, dont_know; keys / 8 and / 9.");
 
 /** What the coder sees for a special answer. */
 export const specialLabel = (special: SpecialAnswer): string => special.label ?? SPECIAL_NAMES[special.kind];

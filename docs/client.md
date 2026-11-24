@@ -254,8 +254,7 @@ Stata value labels:
 **Special answers** (`specials`, on nominal, ordinal, numeric and scale
 questions): `[{ kind, label?, value? }]`, each kind (`dont_know`,
 `not_applicable`) at most once. They aren't options: shown in a row under
-the answers (a scale: per item), chosen with Ctrl + 1, 2, ... in their
-order. The answer is `{ special: kind }`, with `value` only if the special
+the answers (a scale: per item), chosen with / 8 (don't know) and / 9 (not applicable). The answer is `{ special: kind }`, with `value` only if the special
 answer has a code (nominal: text; otherwise a number, not an option's value
 or, for numbers, inside min..max); without one the value is missing. With
 `multiple` it is the only answer. Results count it as a category of its own
@@ -393,8 +392,13 @@ are handled there once.
   the focused button, Ctrl + Left/Right go to the previous/next question
   (back focuses its answer), Ctrl + Enter continues an answered question
   (`keyboard/commands.ts`).
-- A question's special answers take Ctrl + 1, 2, ... in their order
-  (`useSpecialKeys`, badges `^1`, `^2`), only with answer keys on.
+- The leader key (`keyboard/leader.ts`): / on the main keyboard or the
+  numpad, then one key for a command, dispatched as the Ctrl press it
+  stands for: Enter continue, ← → or 4 6 back and forward, Space or 0 the
+  instruction, 8 / 9 the special answers (`useSpecialKeys`, badges `/8`,
+  `/9`; the survey codes for don't know). / again or Esc cancels; a hint
+  shows the commands meanwhile (`KeyChoiceFlash`). Commands always work,
+  whatever the answer keys setting.
 
 ### Study entry
 

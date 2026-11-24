@@ -261,7 +261,7 @@ test("answer keys are off until the coder turns them on; a study can turn them o
   await at(page, TEXTS[0], "Tone?");
 });
 
-test("special answers: under the answers, chosen with Ctrl + 1, 2 in their order, the only answer of several, per scale item", async ({
+test("special answers: under the answers, chosen with the leader key / and 8 or 9, the only answer of several, per scale item", async ({
   page,
   request,
 }) => {
@@ -303,24 +303,34 @@ test("special answers: under the answers, chosen with Ctrl + 1, 2 in their order
   const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
   await page.goto(`/code/${created.id}?link=${link.secret}`);
   await question(page, "Topic?");
-  // Their badges: ^1 and ^2 (the options are numbered 1, 2)
+  // Their badges: /8 and /9 (the options are numbered 1, 2)
   await expect(page.locator("[data-special]")).toHaveCount(2);
-  await expect(page.locator("[data-special=dont_know] kbd")).toHaveText("^1");
-  await expect(page.locator("[data-special=not_applicable] kbd")).toHaveText("^2");
-  await page.keyboard.press("Control+1");
+  await expect(page.locator("[data-special=dont_know] kbd")).toHaveText("/8");
+  await expect(page.locator("[data-special=not_applicable] kbd")).toHaveText("/9");
+  // The leader shows its commands; / again cancels
+  await page.keyboard.press("/");
+  await expect(page.getByRole("status").filter({ hasText: "don't know" })).toBeVisible();
+  await page.keyboard.press("/");
+  await expect(page.getByRole("status").filter({ hasText: "don't know" })).toBeHidden();
+  await page.keyboard.press("/");
+  await page.keyboard.press("8");
   await question(page, "Topics?");
   // Several answers: a special answer clears the others, and they clear it
   await page.keyboard.press("1");
   await page.keyboard.press("2");
-  await page.keyboard.press("Control+2");
+  await page.keyboard.press("/");
+  await page.keyboard.press("9");
   await expect(page.locator("[aria-pressed=true]")).toHaveCount(1);
   await expect(page.locator("[data-special=not_applicable]")).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("1");
   await expect(page.locator("[data-special=not_applicable]")).toHaveAttribute("aria-pressed", "false");
-  await page.keyboard.press("Control+Enter");
+  // / Enter is Ctrl + Enter
+  await page.keyboard.press("/");
+  await page.keyboard.press("Enter");
   // A scale: the keys answer the first unanswered item
   await question(page, "Trust?");
-  await page.keyboard.press("Control+1");
+  await page.keyboard.press("/");
+  await page.keyboard.press("8");
   await page.keyboard.press("3");
   await page.keyboard.press("Control+Enter");
   await expect.poll(async () => (await answers(request, created.id)).length).toBe(3);

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, type ReactNode } from "react";
 import { KeyController, inTextField } from "./controller";
-import { specialIndex } from "./commands";
+import { isLeader, leaderActive, leaderCommand, MODIFIER_KEYS, setLeader } from "./leader";
 import { KeyboardContext } from "./context";
 import { mappingById, type KeyMapping } from "./mappings";
 import { useCoderSettings } from "../context/coderSettings";
@@ -9,6 +9,9 @@ import { useCoderSettings } from "../context/coderSettings";
 function activates(target: EventTarget | null): boolean {
   return target instanceof Element && !!target.closest("button, [role=radio], [role=button], a[href]");
 }
+
+/** A number's box: typing there has no /, so the leader works in it. */
+const numberInput = (target: EventTarget | null) => target instanceof HTMLInputElement && target.type === "number";
 
 /**
  * The coding screen's keyboard (docs/client.md §4 "Keyboard"): listens once,
@@ -23,9 +26,23 @@ export function KeyboardProvider({ children, mapping: given }: { children: React
   const controller = useMemo(() => new KeyController(), []);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      // In a text box only a special answer's Ctrl + digit (a number question's own box)
       if (event.defaultPrevented || event.isComposing) return;
-      if (inTextField(event.target) && specialIndex(event) < 0) return;
+      // After the leader (/): the next key is a command, as its Ctrl press; / again or Esc cancels
+      if (leaderActive()) {
+        if (MODIFIER_KEYS.has(event.key)) return;
+        event.preventDefault();
+        setLeader(false);
+        const command = isLeader(event) || event.key === "Escape" ? null : leaderCommand(event);
+        if (command) controller.dispatch(command);
+        return;
+      }
+      // The leader: not while typing text (a number's box takes no /)
+      if (isLeader(event) && (!inTextField(event.target) || numberInput(event.target))) {
+        event.preventDefault();
+        setLeader(true);
+        return;
+      }
+      if (inTextField(event.target)) return;
       // Space and Enter on a focused button choose it (the browser clicks it), unless a scope needs them (typed filter)
       if ((event.key === " " || event.key === "Enter") && activates(event.target)) {
         const press = {
@@ -46,7 +63,10 @@ export function KeyboardProvider({ children, mapping: given }: { children: React
       if (controller.dispatch(event)) event.preventDefault();
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      setLeader(false);
+    };
   }, [controller]);
   const value = useMemo(() => ({ controller, mapping }), [controller, mapping]);
   return <KeyboardContext.Provider value={value}>{children}</KeyboardContext.Provider>;

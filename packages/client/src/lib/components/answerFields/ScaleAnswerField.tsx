@@ -55,7 +55,7 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
     onAnswer(buildValues(items.map((item) => ({ ...selected[item.name], item: item.name }))));
   }
 
-  // The keyboard answers the first unanswered item (Ctrl + 1, 2, ...: its special answers); Ctrl + Enter continues.
+  // The keyboard answers the first unanswered item (/ 8, / 9: its special answers); Ctrl + Enter continues.
   const keyed = points.map((o) => ({ label: optionLabel(o) }));
   const targets = items.map(() => keyed);
   const active = items.findIndex((item) => selected[item.name] === undefined);
@@ -65,8 +65,12 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
   });
   // The grid's special columns (a compact row has its own)
   const specialBadges = useSpecialKeys(
-    specials.map(specialLabel),
-    (i) => selectSpecial(items[active].name, specials[i]),
+    specials.map((s) => ({ kind: s.kind, label: specialLabel(s) })),
+    (kind) =>
+      selectSpecial(
+        items[active].name,
+        specials.find((s) => s.kind === kind)!,
+      ),
     layout === "grid" && active >= 0,
   );
 

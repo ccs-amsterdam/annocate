@@ -7,7 +7,7 @@ import { specialBadge } from "../../../keyboard/commands";
  * A question's special answers (docs/client.md §4): don't know and not
  * applicable, each on or off, with a label and an optional code (`text`:
  * nominal questions, whose codes are text). Without a code the answer is
- * missing. In the order they were turned on: Ctrl + 1, 2.
+ * missing. Coders' keys: / 8 don't know, / 9 not applicable.
  */
 export function SpecialAnswersFields({
   specials,
@@ -30,8 +30,6 @@ export function SpecialAnswersFields({
         return next;
       }),
     );
-  // The ones on, in their order (their keys), then the others
-  const rows = [...list.map((s) => s.kind), ...SPECIAL_KINDS.filter((k) => !list.some((s) => s.kind === k))];
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-1">
@@ -39,15 +37,14 @@ export function SpecialAnswersFields({
         <InfoTip label="About special answers">
           Answers outside the options, shown in a row under them: don&apos;t know and not applicable. The label is
           yours, e.g. &quot;Prefer not to say&quot; or &quot;None of these&quot;. Without a code the answer is stored as
-          missing (no value); with one, the code. Coders who answer with keys choose them with Ctrl + 1 and Ctrl + 2, in
-          this order. When coders can pick several options, a special answer is the only answer; on a scale every item
-          has them.
+          missing (no value); with one, the code. Coders can choose them with the keys / 8 (don&apos;t know) and / 9
+          (not applicable). When coders can pick several options, a special answer is the only answer; on a scale every
+          item has them.
         </InfoTip>
       </div>
       <div className="grid grid-cols-[auto_1fr_6rem_auto] items-center gap-1.5">
-        {rows.map((kind) => {
+        {SPECIAL_KINDS.map((kind) => {
           const special = list.find((s) => s.kind === kind);
-          const index = list.findIndex((s) => s.kind === kind);
           return (
             <div key={kind} className="contents">
               <label className="flex items-center gap-2 text-xs">
@@ -79,10 +76,10 @@ export function SpecialAnswersFields({
                 className="h-8 font-mono text-xs"
               />
               <kbd
-                className={`rounded border border-border px-1 font-mono text-[10px] text-muted-foreground ${index < 0 ? "invisible" : ""}`}
-                title="Its key, for coders who answer with keys"
+                className="rounded border border-border px-1 font-mono text-[10px] text-muted-foreground"
+                title="Its key for coders: / then 8 or 9"
               >
-                {specialBadge(Math.max(index, 0))}
+                {specialBadge(kind)}
               </kbd>
             </div>
           );

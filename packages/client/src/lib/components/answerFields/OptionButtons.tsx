@@ -76,8 +76,8 @@ export function SpecialButton({
 
 /**
  * A question's special answers, in a row under its answers: chosen with
- * Ctrl + 1, 2, ... (with answer keys on; `keys` false: not this row, e.g. a
- * scale item that keys don't answer now).
+ * / 8 and / 9 (`keys` false: not this row, e.g. a scale item that keys
+ * don't answer now).
  */
 export function SpecialAnswersRow({
   specials,
@@ -93,7 +93,11 @@ export function SpecialAnswersRow({
   className?: string;
 }) {
   const list = specials ?? [];
-  const badges = useSpecialKeys(list.map(specialLabel), (i) => onPick(list[i]), keys);
+  const badges = useSpecialKeys(
+    list.map((s) => ({ kind: s.kind, label: specialLabel(s) })),
+    (kind) => onPick(list.find((s) => s.kind === kind)!),
+    keys,
+  );
   if (list.length === 0) return null;
   return (
     <div className={className ?? "flex flex-wrap justify-end gap-1.5 border-t border-dashed border-border/70 pt-1.5"}>

@@ -59,19 +59,33 @@ describe("the numbers mapping", () => {
   });
 });
 
-describe("special answers' keys", () => {
-  it("are Ctrl + 1, 2, ... by the physical key, without Shift or Alt", async () => {
-    const { specialIndex, specialBadge } = await import("./commands");
-    const press = (key: string, more: object = {}) =>
-      ({ key, shiftKey: false, altKey: false, ctrlKey: true, metaKey: false, ...more }) as never;
-    expect(specialIndex(press("1"))).toBe(0);
-    expect(specialIndex(press("2", { code: "Digit2" }))).toBe(1);
-    // AZERTY: the 2 key types é
-    expect(specialIndex(press("é", { code: "Digit2" }))).toBe(1);
-    expect(specialIndex(press("1", { ctrlKey: false }))).toBe(-1);
-    expect(specialIndex(press("1", { shiftKey: true }))).toBe(-1);
-    expect(specialIndex(press("0"))).toBe(-1);
-    expect(specialBadge(0)).toBe("^1");
+describe("the leader key and special answers' keys", () => {
+  const press = (key: string, more: object = {}) =>
+    ({ key, shiftKey: false, altKey: false, ctrlKey: false, metaKey: false, ...more }) as never;
+
+  it("/ on either keyboard is the leader; the next key is a command, as its Ctrl press", async () => {
+    const { isLeader, leaderCommand } = await import("./leader");
+    expect(isLeader(press("/", { code: "Slash" }))).toBe(true);
+    expect(isLeader(press("/", { code: "NumpadDivide" }))).toBe(true);
+    // AZERTY: the key where / is on a US keyboard types something else, but it's the same key
+    expect(isLeader(press(":", { code: "Slash" }))).toBe(true);
+    expect(isLeader(press("/", { code: "Slash", ctrlKey: true }))).toBe(false);
+    expect(leaderCommand(press("Enter"))).toMatchObject({ key: "Enter", ctrlKey: true });
+    expect(leaderCommand(press("4", { code: "Numpad4" }))).toMatchObject({ key: "ArrowLeft", ctrlKey: true });
+    expect(leaderCommand(press("ArrowRight"))).toMatchObject({ key: "ArrowRight", ctrlKey: true });
+    expect(leaderCommand(press("0", { code: "Numpad0" }))).toMatchObject({ key: " ", ctrlKey: true });
+    expect(leaderCommand(press("x"))).toBeNull();
+  });
+
+  it("8 is don't know, 9 not applicable (after the leader, or with Ctrl)", async () => {
+    const { leaderCommand } = await import("./leader");
+    const { specialOfPress, specialBadge } = await import("./commands");
+    expect(specialOfPress(leaderCommand(press("8", { code: "Numpad8" }))!)).toBe("dont_know");
+    expect(specialOfPress(leaderCommand(press("9"))!)).toBe("not_applicable");
+    expect(specialOfPress(press("9", { ctrlKey: true, code: "Digit9" }))).toBe("not_applicable");
+    expect(specialOfPress(press("8"))).toBeNull();
+    expect(specialOfPress(press("7", { ctrlKey: true }))).toBeNull();
+    expect(specialBadge("dont_know")).toBe("/8");
   });
 });
 

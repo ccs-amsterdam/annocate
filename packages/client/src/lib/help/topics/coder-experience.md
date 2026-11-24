@@ -95,17 +95,21 @@ session** (empty).
 
 ## Keyboard shortcuts
 
-| Keys                    | Do                                                        |
-| ----------------------- | --------------------------------------------------------- |
-| **←** **→** **↑** **↓** | move between answer buttons                               |
-| **Space** / **Enter**   | choose the focused button                                 |
-| **Ctrl + Enter**        | continue, once answered (also while typing in a text box) |
-| **Ctrl + ←** / **→**    | previous or next question (back focuses its answer)       |
-| **Ctrl + Space**        | open the question's instructions                          |
-| **Ctrl + 1** / **2**    | a question's special answers (don't know, not applicable) |
+| Keys                    | Or after **/**                   | Do                                                        |
+| ----------------------- | -------------------------------- | --------------------------------------------------------- |
+| **←** **→** **↑** **↓** |                                  | move between answer buttons                               |
+| **Space** / **Enter**   |                                  | choose the focused button                                 |
+| **Ctrl + Enter**        | **/ Enter**                      | continue, once answered (also while typing in a text box) |
+| **Ctrl + ←** / **→**    | **/ ←** / **→**, **/ 4** / **6** | previous or next question (back focuses its answer)       |
+| **Ctrl + Space**        | **/ Space**, **/ 0**             | open the question's instructions                          |
+|                         | **/ 8**, **/ 9**                 | the special answers: don't know, not applicable           |
 
-The Ctrl keys are commands: they work whatever the shortcut style, also
-while typing. On a Mac, **Option + ←** / **→** works too.
+These are commands: they always work, whatever the shortcut style or
+**Answer with keys**. **/** is the leader key: press it, then the command
+(a hint shows them; **/** again or **Esc** cancels). It is on the numpad
+too, so every command works with one hand there. The Ctrl keys also work
+while typing; on a Mac, **Option + ←** / **→** works too. (8 and 9 follow
+the codes surveys use: 8 or 88 for don't know.)
 
 Swipe questions use the arrows to swipe (the shortcut style's keys work
 too). In span questions the arrows move over the words (**↑** **↓**: a
@@ -115,10 +119,9 @@ again ends it. The labels then have focus: the arrows move between them,
 labelled word opens its spans, **Backspace** removes the last span, and
 **Ctrl + Enter** is **Done**.
 
-Choosing answers with keys (numbers, letters, **Ctrl + 1** / **2** for
-the special answers) is off until a coder turns on **Answer with keys** under
+Choosing answers with keys (numbers, letters) is off until a coder turns on **Answer with keys** under
 the keyboard icon in the top bar, so stray keys answer nothing; the moving
-keys and the Ctrl commands above always work. A study can keep answers to
+keys and the commands above always work. A study can keep answers to
 clicking for its questions about the coder or about units (the Study
 entry's **Display**: **Answering with keys**), where keys could affect the
 answers.

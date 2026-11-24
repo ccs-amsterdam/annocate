@@ -1,5 +1,6 @@
 import { showKeyChoice } from "./keyChoice";
-import { isBack, isContinue, isForward, specialBadge, specialIndex } from "./commands";
+import type { SpecialKind } from "@annotinder/contracts";
+import { isBack, isContinue, isForward, specialBadge, specialOfPress } from "./commands";
 import { useContext, useEffect, useRef, useState } from "react";
 import { PRIORITY, type KeyHandler, type KeyPress, type ScopeOptions } from "./controller";
 import { AnswerKeysContext, KeyboardContext } from "./context";
@@ -188,28 +189,29 @@ export function useTargetKeys(group: readonly KeyTarget[]): (string | null)[] {
 }
 
 /**
- * A question's special answers for the keyboard (docs/client.md §4): Ctrl +
- * 1, 2, ... in the order the question lists them, with answer keys on (and
- * while `active`: a scale's item that keys answer). Returns their badges.
+ * A question's special answers for the keyboard (docs/client.md §4): / 8
+ * don't know, / 9 not applicable (or Ctrl + 8 / 9 where the browser lets
+ * them through). A command: it works whatever the answer keys setting, while
+ * `active` (a scale: the item keys answer). Returns their badges.
  */
 export function useSpecialKeys(
-  labels: readonly string[],
-  onChoose: (index: number) => void,
+  specials: readonly { kind: SpecialKind; label: string }[],
+  onChoose: (kind: SpecialKind) => void,
   active = true,
 ): (string | null)[] {
-  const on = useContext(AnswerKeysContext) && active;
   useKeyScope(
     (press) => {
-      const index = specialIndex(press);
-      if (index < 0 || index >= labels.length) return false;
-      showKeyChoice(specialBadge(index), labels[index]);
-      onChoose(index);
+      const kind = specialOfPress(press);
+      const special = kind && specials.find((s) => s.kind === kind);
+      if (!special) return false;
+      showKeyChoice(specialBadge(special.kind), special.label);
+      onChoose(special.kind);
       return true;
     },
-    on && labels.length > 0,
+    active && specials.length > 0,
     { priority: PRIORITY.field },
   );
-  return labels.map((_, i) => (on ? specialBadge(i) : null));
+  return specials.map((s) => (active ? specialBadge(s.kind) : null));
 }
 
 export interface BaseKeys {
