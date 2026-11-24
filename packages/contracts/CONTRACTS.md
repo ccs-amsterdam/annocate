@@ -38,7 +38,7 @@ in the server, not here.
   option order (`src/design/options.ts`). Types: `nominal`,
   `ordinal`, `numeric`, `scale`, `swipe`, `confirm`, `unspecified`
   (not chosen yet), and in loops `span` and `relation`; computed items have
-  the variable type `random` (`src/design/variableTypes.ts`); plus the `end` item
+  the variable type `experiment` (`src/design/variableTypes.ts`); plus the `end` item
   (`src/design/item.ts`). `resolveLayout` (`src/design/answerLayout.ts`)
   says how a question is laid out.
 - **References and conditions** (`docs/client.md` §5):

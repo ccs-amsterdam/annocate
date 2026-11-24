@@ -163,7 +163,7 @@ describe("design validation: what a stored design can't hold", () => {
     const experiment = (name: string, label: string) => ({
       type: "experiment",
       name,
-      variable: { type: "random", draw: "random", options: [{ value: "t", label, color: "red" }] },
+      variable: { type: "experiment", draw: "random", options: [{ value: "t", label, color: "red" }] },
     });
     const items = [
       experiment("arm", "Misinformation"),
@@ -197,13 +197,13 @@ describe("design validation: what a stored design can't hold", () => {
     expect(sent[0]).toEqual({
       type: "experiment",
       name: "arm",
-      variable: { type: "random", options: [{ value: "t", color: "red" }] },
+      variable: { type: "experiment", options: [{ value: "t", color: "red" }] },
     });
     // Shown with $var.frame.label: the labels are part of what coders see
     expect(sent[1]).toEqual({
       type: "experiment",
       name: "frame",
-      variable: { type: "random", options: [{ value: "t", label: "Gain frame", color: "red" }] },
+      variable: { type: "experiment", options: [{ value: "t", label: "Gain frame", color: "red" }] },
     });
     // A loop's label is in the coder's navigation menu
     expect(sent[3]).toMatchObject({ type: "unit_loop", id: "loop_1", label: "Main" });
@@ -262,7 +262,7 @@ describe("design validation: what a stored design can't hold", () => {
           {
             type: "experiment",
             name: "e",
-            variable: { type: "random", draw: "random", options: [{ value: "a" }], wieght: 1 },
+            variable: { type: "experiment", draw: "random", options: [{ value: "a" }], wieght: 1 },
           },
         ],
       ],

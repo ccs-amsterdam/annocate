@@ -51,7 +51,7 @@
         "type": "experiment",
         "name": "group",
         "variable": {
-          "type": "random",
+          "type": "experiment",
           "draw": "random",
           "options": [
             {

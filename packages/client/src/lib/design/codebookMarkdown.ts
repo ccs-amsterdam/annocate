@@ -25,7 +25,7 @@ const TYPE: Record<AnyVariableType["type"], string> = {
   scale: "A scale per item",
   span: "Select spans in the text",
   relation: "Relations between spans",
-  random: "Drawn at random, not asked",
+  experiment: "Drawn at random, not asked",
   unspecified: "Not specified yet",
 };
 

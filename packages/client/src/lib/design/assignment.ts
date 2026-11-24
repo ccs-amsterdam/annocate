@@ -50,11 +50,11 @@ export interface ShareSource {
 /** The share's sources: expert coders (`coder_set`), and the experiment that selects units (`condition_set`). */
 export function shareSources(
   invite: Invite | undefined,
-  experiments: readonly { name: string; units?: boolean }[] = [],
+  experiments: readonly { name: string; selectsUnits?: boolean }[] = [],
 ): ShareSource[] {
   const out: ShareSource[] = [];
   if (invite?.mode === "coders") out.push({ label: "coder", column: CODER_SET });
-  const selecting = experiments.find((c) => c.units);
+  const selecting = experiments.find((c) => c.selectsUnits);
   if (selecting) out.push({ label: selecting.name, column: CONDITION_SET, inFlow: true });
   return out;
 }

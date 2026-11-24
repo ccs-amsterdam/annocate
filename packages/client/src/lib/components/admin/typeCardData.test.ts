@@ -10,7 +10,7 @@ describe("type cards", () => {
     expect(outside).not.toContain("relation");
     expect(inside).toEqual(expect.arrayContaining(["span", "relation", "nominal"]));
     expect([...outside, ...inside]).not.toContain("unspecified");
-    expect([...outside, ...inside]).not.toContain("random");
+    expect([...outside, ...inside]).not.toContain("experiment");
     for (const card of answerTypeCards(VARIABLE_TYPE_OPTIONS_UNIT)) expect(card.label && card.description).toBeTruthy();
   });
 });

@@ -182,7 +182,7 @@ answer that didn't change gets its timing updated.
 
 `POST /experiment/:name` → `{ value }` (a `VariableValue`)
 
-The coder reached the experiment `name` (`variable.type: "random"`) in
+The coder reached the experiment `name` (`variable.type: "experiment"`) in
 the design's flow (the client evaluates conditions): the server draws its
 condition now, once, and
 returns it; reached again, the same value. `draw: "random"` draws by
@@ -191,7 +191,7 @@ have (a tie broken at random), under a lock, counting with `stratify` only coder
 answers to those questions (as saved: the client saves its answers first)
 and the same `session.<name>` values. `"url_param"` takes the session's
 URL parameter `param` (409 if it isn't one of the conditions). An
-experiment that selects units (`units: true`) without `options` draws from
+experiment that selects units (`selectsUnits: true`) without `options` draws from
 `condition_set`'s values (409 while it has none).
 404 for a name that is no experiment.
 

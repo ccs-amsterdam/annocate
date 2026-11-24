@@ -261,8 +261,8 @@ export function PreviewPanel({ client, draft }: { client: ResearcherApi; draft: 
 function loopUnitsContext(items: readonly DesignItem[], cleanItems: readonly unknown[], key: string): LoopUnitsContext {
   const { session, items: rest } = splitDesignItems(cleanItems);
   const random = [...collectQuestions(rest as DesignItem[]).questions]
-    .filter(([, v]) => v.type === "random")
-    .map(([name, v]) => ({ name, units: (v as { units?: boolean }).units === true }));
+    .filter(([, v]) => v.type === "experiment")
+    .map(([name, v]) => ({ name, selectsUnits: (v as { selectsUnits?: boolean }).selectsUnits === true }));
   const loops = unitLoops(items);
   const at = loops.findIndex((l) => getItemKey(l.loop as DesignItem) === key);
   return {

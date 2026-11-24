@@ -25,7 +25,7 @@ const TYPE_HELP: Record<AnyVariableType["type"], string> = {
   swipe: "swipe",
   confirm: "confirm",
   text: "open-answers",
-  random: "random-condition",
+  experiment: "random-condition",
   span: "span",
   relation: "relation",
   unspecified: "question-types",

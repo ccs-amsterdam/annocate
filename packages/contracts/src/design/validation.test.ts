@@ -85,10 +85,10 @@ describe("validateDesignItems", () => {
     const random = (extra: object, name = "set") => ({
       type: "experiment",
       name,
-      variable: { type: "random", draw: "balanced", ...extra },
+      variable: { type: "experiment", draw: "balanced", ...extra },
     });
     const loop = unitLoop("loop", [questionVar("q1")]);
-    expect(messages([random({ units: true }), loop])).toEqual([]);
+    expect(messages([random({ selectsUnits: true }), loop])).toEqual([]);
     expect(messages([random({ options: [{ value: "a" }] }), loop])).toEqual([]);
     expect(messages([random({})])).toEqual(["List the values, or select units by the units' condition_set"]);
     // Usable as $var.<name> after it
@@ -104,30 +104,30 @@ describe("validateDesignItems", () => {
       ]),
     ).toContain("Experiment 'inner' can only be used outside a unit loop");
     // A loop before it doesn't use it: a warning
-    expect(validateDesignItems([loop, random({ units: true })])).toEqual([
+    expect(validateDesignItems([loop, random({ selectsUnits: true })])).toEqual([
       expect.objectContaining({ warning: true, message: expect.stringContaining("comes before experiment 'set'") }),
     ]);
     // Conditions with their own units only for a crowd: expert coders get their coder set
     const session = { type: "session", invite: { mode: "coders", link: "per_coder" } };
-    expect(messages([session, random({ units: true }), loop])).toEqual([
+    expect(messages([session, random({ selectsUnits: true }), loop])).toEqual([
       expect.stringContaining("Experiment 'set' selects units by condition, but expert coders"),
     ]);
     const param = { type: "session", urlParams: [{ name: "set" }] };
-    expect(messages([param, random({ units: true })])).toEqual([
+    expect(messages([param, random({ selectsUnits: true })])).toEqual([
       "Experiment 'set' selects units: its name can't also be a session value",
     ]);
-    expect(messages([random({ units: true }), random({ units: true }, "other")])).toEqual([
+    expect(messages([random({ selectsUnits: true }), random({ selectsUnits: true }, "other")])).toEqual([
       "Experiment 'set' already selects units: only one experiment can select units",
     ]);
     // One that doesn't select units can sit next to it
-    expect(messages([random({ units: true }), random({ options: [{ value: "a" }] }, "other")])).toEqual([]);
+    expect(messages([random({ selectsUnits: true }), random({ options: [{ value: "a" }] }, "other")])).toEqual([]);
   });
 
   it("checks a condition from a URL parameter: declared, its values the conditions", () => {
     const experiment = (variable: object) => ({
       type: "experiment",
       name: "arm",
-      variable: { type: "random", draw: "url_param", param: "arm_param", ...variable },
+      variable: { type: "experiment", draw: "url_param", param: "arm_param", ...variable },
     });
     const study = (values?: string[]) => ({
       type: "session",
@@ -135,7 +135,7 @@ describe("validateDesignItems", () => {
     });
     const ab = { options: [{ value: "a" }, { value: "b" }] };
     expect(messages([study(["a", "b"]), experiment(ab)])).toEqual([]);
-    expect(messages([study(["a", "b"]), experiment({ units: true })])).toEqual([]);
+    expect(messages([study(["a", "b"]), experiment({ selectsUnits: true })])).toEqual([]);
     expect(messages([experiment(ab)])).toEqual([
       "Experiment 'arm': no URL parameter 'arm_param' (declare it in the Study entry)",
     ]);
@@ -150,7 +150,9 @@ describe("validateDesignItems", () => {
       "Choose the URL parameter with the condition",
     ]);
     expect(
-      messages([{ type: "experiment", name: "x", variable: { type: "random", draw: "random", param: "p", ...ab } }]),
+      messages([
+        { type: "experiment", name: "x", variable: { type: "experiment", draw: "random", param: "p", ...ab } },
+      ]),
     ).toEqual(["Only a condition from a URL parameter has a parameter"]);
   });
 });

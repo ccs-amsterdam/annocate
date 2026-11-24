@@ -182,7 +182,7 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
       for (const [name, value] of Object.entries(values))
         check(name, coderTypes.get(name) as AnyVariableType | undefined, value);
       // Random conditions are drawn by the server: stored as assigned values
-      const isRandom = (name: string) => coderTypes.get(name)?.type === "random";
+      const isRandom = (name: string) => coderTypes.get(name)?.type === "experiment";
       const assigned = Object.fromEntries(Object.entries(values).filter(([name]) => isRandom(name)));
       const answered = Object.fromEntries(Object.entries(values).filter(([name]) => !isRandom(name)));
       await putCoderValues(tx, study.id, { sessionId, values: assigned, assigned: true, designVersionId });

@@ -25,7 +25,7 @@ describe("who gets which units, in the editor", () => {
 describe("share summaries", () => {
   it("say whose units a loop hands out, with its part", () => {
     const sources = shareSources({ mode: "coders", link: "per_coder" }, [
-      { name: "framing", units: true },
+      { name: "framing", selectsUnits: true },
       { name: "lang" },
     ]);
     expect(sources.map((s) => s.label)).toEqual(["coder", "framing"]);

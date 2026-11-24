@@ -1027,7 +1027,7 @@ describe("experiments", () => {
       {
         type: "experiment",
         name: "group",
-        variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }] },
+        variable: { type: "experiment", draw: "balanced", options: [{ value: "a" }, { value: "b" }] },
       },
       { type: "branch", condition: { script: `$var.group.is("a")` }, children: [confirm("for_a")] },
       confirm("last"),
@@ -1074,7 +1074,7 @@ describe("a failed request, and retry", () => {
       {
         type: "experiment",
         name: "group",
-        variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }] },
+        variable: { type: "experiment", draw: "balanced", options: [{ value: "a" }, { value: "b" }] },
       },
       { type: "branch", condition: { script: `$var.group.is("a")` }, children: [confirm("for_a")] },
       confirm("last"),

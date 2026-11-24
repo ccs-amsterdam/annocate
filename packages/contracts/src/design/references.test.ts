@@ -125,7 +125,7 @@ const questions = new Map<string, AnyVariableType>([
   ],
   ["age", { type: "numeric", question: "?", labels: [{ value: 18, label: "adult" }] }],
   ["ok", { type: "confirm", question: "?" }],
-  ["slot", { type: "random", draw: "random", options: [{ value: "1" }] }],
+  ["slot", { type: "experiment", draw: "random", options: [{ value: "1" }] }],
   ["ents", { type: "span", question: "?", fields: ["text"], options: [{ value: "PER", label: "Person" }] }],
 ]);
 

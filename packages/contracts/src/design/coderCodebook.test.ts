@@ -10,10 +10,10 @@ describe("the coder codebook", () => {
         type: "experiment",
         name: "condition",
         variable: {
-          type: "random",
+          type: "experiment",
           draw: "balanced",
           stratify: ["session.wave"],
-          units: true,
+          selectsUnits: true,
           options: [{ value: "a", label: "A", weight: 2 }],
         },
       },
@@ -40,7 +40,7 @@ describe("the coder codebook", () => {
       },
     ] as TopLevelItem[];
     expect(toCoderItems(items)).toEqual([
-      { type: "experiment", name: "condition", variable: { type: "random", options: [{ value: "a" }] } },
+      { type: "experiment", name: "condition", variable: { type: "experiment", options: [{ value: "a" }] } },
       {
         type: "branch",
         condition: { script: "true" },
@@ -62,10 +62,14 @@ describe("the coder codebook", () => {
 
   it("gives an experiment with condition_set's free values no options, and leaves out its URL parameter", () => {
     const items = [
-      { type: "experiment", name: "set", variable: { type: "random", draw: "url_param", param: "arm", units: true } },
+      {
+        type: "experiment",
+        name: "set",
+        variable: { type: "experiment", draw: "url_param", param: "arm", selectsUnits: true },
+      },
     ] as TopLevelItem[];
     expect(toCoderItems(items)).toEqual([
-      { type: "experiment", name: "set", variable: { type: "random", options: [] } },
+      { type: "experiment", name: "set", variable: { type: "experiment", options: [] } },
     ]);
   });
 });

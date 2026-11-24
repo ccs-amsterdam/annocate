@@ -160,7 +160,7 @@ test("an experiment that selects units: balanced, each session codes its conditi
   const design = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
     session: { invite: { mode: "crowd" } },
     items: [
-      { type: "experiment", name: "framing", variable: { type: "random", draw: "balanced", units: true } },
+      { type: "experiment", name: "framing", variable: { type: "experiment", draw: "balanced", selectsUnits: true } },
       loop(),
     ],
   });
@@ -202,7 +202,7 @@ test("an experiment whose condition is a URL parameter's value selects that cond
       {
         type: "experiment",
         name: "framing",
-        variable: { type: "random", draw: "url_param", param: "framing_arm", units: true },
+        variable: { type: "experiment", draw: "url_param", param: "framing_arm", selectsUnits: true },
       },
       loop(),
     ],

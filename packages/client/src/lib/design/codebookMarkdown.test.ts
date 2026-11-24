@@ -42,7 +42,11 @@ describe("codebookMarkdown", () => {
 
   it("describes a random condition as drawn, not asked", () => {
     const items = [
-      { type: "experiment", name: "framing", variable: { type: "random", draw: "random", options: [{ value: "a" }] } },
+      {
+        type: "experiment",
+        name: "framing",
+        variable: { type: "experiment", draw: "random", options: [{ value: "a" }] },
+      },
     ] as unknown as TopLevelItem[];
     expect(codebookMarkdown(items)).toContain("*Drawn at random, not asked*");
   });

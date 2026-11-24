@@ -119,7 +119,7 @@ describe("studies from a recipe", () => {
     { id: "b", data: { text: "two" } },
   ];
   const items = [
-    { type: "experiment", name: "condition", variable: { type: "random", draw: "random", units: true } },
+    { type: "experiment", name: "condition", variable: { type: "experiment", draw: "random", selectsUnits: true } },
     {
       type: "unit_loop",
       id: "loop_1",

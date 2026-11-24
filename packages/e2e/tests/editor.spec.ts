@@ -98,7 +98,7 @@ test("an experiment: balanced conditions, each with its own units (condition_set
   const [saved] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
   const { items } = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${saved.id}`);
   expect(items).toMatchObject([
-    { type: "experiment", name: "framing", variable: { type: "random", draw: "balanced", units: true } },
+    { type: "experiment", name: "framing", variable: { type: "experiment", draw: "balanced", selectsUnits: true } },
   ]);
   expect((items[0] as { variable: { options?: unknown } }).variable.options).toBeUndefined();
 });

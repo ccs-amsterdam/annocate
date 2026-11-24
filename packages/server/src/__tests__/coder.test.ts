@@ -981,7 +981,11 @@ describe("coders", () => {
 });
 
 describe("experiments that select units", () => {
-  const part = { type: "experiment", name: "part", variable: { type: "random", draw: "balanced", units: true } };
+  const part = {
+    type: "experiment",
+    name: "part",
+    variable: { type: "experiment", draw: "balanced", selectsUnits: true },
+  };
 
   it("draw from condition_set's values when reached, or when a loop after them needs them", async () => {
     await createSet("p1", ["unit-1"], "condition_set");
@@ -1033,7 +1037,7 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     const framing = {
       type: "experiment",
       name: "framing",
-      variable: { type: "random", draw: "balanced", units: true },
+      variable: { type: "experiment", draw: "balanced", selectsUnits: true },
     };
     await redeploy({}, [crowd({ codersPerUnit: { max: 1 } }), framing]);
     const x = coder("x");
@@ -1100,7 +1104,11 @@ describe("assignment edge cases (review of the unit assignment)", () => {
   it("a condition drawn twice at once has one value, in the answers and the session", async () => {
     await createSet("p1", ["unit-1"], "condition_set");
     await createSet("p2", ["unit-2"], "condition_set");
-    const part = { type: "experiment", name: "part", variable: { type: "random", draw: "random", units: true } };
+    const part = {
+      type: "experiment",
+      name: "part",
+      variable: { type: "experiment", draw: "random", selectsUnits: true },
+    };
     await redeploy({}, [part]);
     // Routing draws p1 (random() = 0); just after it found no value, another request of this coder drew p2
     let between: ((store: Store) => Promise<void>) | null = null;
@@ -1257,7 +1265,7 @@ describe("routing by session values", () => {
   const condition = {
     type: "experiment",
     name: "condition",
-    variable: { type: "random", draw: "balanced", options: [{ value: "s1" }, { value: "s2" }], units: true },
+    variable: { type: "experiment", draw: "balanced", options: [{ value: "s1" }, { value: "s2" }], selectsUnits: true },
   };
 
   it("an experiment that selects units: it can't be overwritten, and stays across restarts", async () => {
@@ -1683,7 +1691,7 @@ describe("auto questions", () => {
     const condition = {
       type: "experiment",
       name: "condition",
-      variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }] },
+      variable: { type: "experiment", draw: "balanced", options: [{ value: "a" }, { value: "b" }] },
     };
     await redeploy({}, [condition]);
     // Loading the session assigns nothing: a coder screened out before the question doesn't count
@@ -1706,7 +1714,7 @@ describe("auto questions", () => {
       type: "experiment",
       name: "condition",
       variable: {
-        type: "random",
+        type: "experiment",
         draw: "balanced",
         options: [{ value: "a" }, { value: "b" }],
         stratify: ["gender", "session.wave"],
@@ -1783,7 +1791,7 @@ describe("balanced draws", () => {
     const experiment = {
       type: "experiment",
       name: "arm",
-      variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }, { value: "c" }] },
+      variable: { type: "experiment", draw: "balanced", options: [{ value: "a" }, { value: "b" }, { value: "c" }] },
     };
     await redeploy({}, [experiment]);
     // random() near 1: the last of the tied values; then only the values with the fewest are candidates
@@ -1801,7 +1809,7 @@ describe("coder-level answers", () => {
     const group = {
       type: "experiment",
       name: "group",
-      variable: { type: "random", draw: "random", options: [{ value: "a" }, { value: "b" }] },
+      variable: { type: "experiment", draw: "random", options: [{ value: "a" }, { value: "b" }] },
     };
     const age = { type: "question", name: "age", variable: { type: "numeric", question: "Age?" } };
     const city = {
@@ -2969,7 +2977,7 @@ describe("conditions from a URL parameter", () => {
   const experiment = (extra: object) => ({
     type: "experiment",
     name: "condition",
-    variable: { type: "random", draw: "url_param", param: "arm", ...extra },
+    variable: { type: "experiment", draw: "url_param", param: "arm", ...extra },
   });
   const start = async (device: string, arm: string) => {
     await send(device, "/session", {}, { "x-link-secret": "demo-secret", "x-url-params": `arm=${arm}` });
@@ -2979,7 +2987,7 @@ describe("conditions from a URL parameter", () => {
   it("are the parameter's value, nothing drawn; with units, the condition's units", async () => {
     await createSet("a", ["unit-1"], "condition_set");
     await createSet("b", ["unit-2", "unit-3"], "condition_set");
-    await redeploy({}, [study, experiment({ units: true })]);
+    await redeploy({}, [study, experiment({ selectsUnits: true })]);
     const b = await start("b-coder", "b");
     expect(await reach(b, "condition")).toEqual([{ value: "b" }]);
     expect((await b.batch(10)).map((u) => u.externalId)).toEqual(["unit-2", "unit-3"]);
@@ -3017,7 +3025,7 @@ describe("conditions from a URL parameter", () => {
     expect(designed.body.error).toContain("issues");
     // condition_set lacks b, one of the parameter's values
     await createSet("a", ["unit-1"], "condition_set");
-    const deployed = await deploy([study, experiment({ units: true })]);
+    const deployed = await deploy([study, experiment({ selectsUnits: true })]);
     expect(deployed).toMatchObject({
       status: 400,
       body: { error: expect.stringContaining("condition_set has no units for 'b'") },
@@ -3081,7 +3089,7 @@ describe("deploy checks of the columns with a role", () => {
     const experiment = {
       type: "experiment",
       name: "framing",
-      variable: { type: "random", draw: "balanced", units: true },
+      variable: { type: "experiment", draw: "balanced", selectsUnits: true },
     };
     expect(await deploy([crowd(), experiment, loop({})])).toEqual({
       error:

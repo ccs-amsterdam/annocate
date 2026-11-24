@@ -33,7 +33,7 @@
         "type": "experiment",
         "name": "condition",
         "variable": {
-          "type": "random",
+          "type": "experiment",
           "draw": "random",
           "options": [
             {

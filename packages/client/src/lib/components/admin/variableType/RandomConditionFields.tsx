@@ -7,7 +7,7 @@ import { OptionsEditor } from "../OptionsEditor";
 import { MakeSetColumnButton } from "../units/SplitIntoSets";
 import { ToggleChip } from "./ToggleChip";
 
-type RandomVariable = Extract<AnyVariableType, { type: "random" }>;
+type ExperimentVariable = Extract<AnyVariableType, { type: "experiment" }>;
 
 /** What an experiment's form needs of the study: the units' role columns, the Study entry's URL parameters. */
 export interface ExperimentContext {
@@ -18,13 +18,13 @@ export interface ExperimentContext {
 }
 
 interface FieldsProps {
-  variable: RandomVariable;
+  variable: ExperimentVariable;
   experiment: ExperimentContext;
   onChange: (next: AnyVariableType) => void;
 }
 
 /** A URL parameter's values as the conditions (the labels the conditions have are kept). */
-function paramOptions(v: RandomVariable, param: UrlParam | undefined) {
+function paramOptions(v: ExperimentVariable, param: UrlParam | undefined) {
   return (param?.values ?? []).map((pv) => {
     const old = v.options?.find((o) => String(o.value) === pv.value);
     return { value: pv.value, ...(old?.label ? { label: old.label } : pv.label ? { label: pv.label } : {}) };
@@ -32,14 +32,14 @@ function paramOptions(v: RandomVariable, param: UrlParam | undefined) {
 }
 
 /** The conditions to list when they must be: the URL parameter's values, else two to start with. */
-function listedOptions(v: RandomVariable, experiment: ExperimentContext) {
+function listedOptions(v: ExperimentVariable, experiment: ExperimentContext) {
   const param = experiment.urlParams.find((p) => p.name === v.param);
   return param?.values?.length ? paramOptions(v, param) : defaultRandomOptions();
 }
 
 /** The variable taking its condition from a URL parameter (none: `param` removed): its values are the conditions. */
-function withParam(v: RandomVariable, name: string | undefined, experiment: ExperimentContext): RandomVariable {
-  const next: RandomVariable = { ...v, param: name };
+function withParam(v: ExperimentVariable, name: string | undefined, experiment: ExperimentContext): ExperimentVariable {
+  const next: ExperimentVariable = { ...v, param: name };
   if (!name) delete next.param;
   const chosen = experiment.urlParams.find((p) => p.name === name);
   if (next.options && chosen?.values?.length) next.options = paramOptions(v, chosen);
@@ -47,8 +47,12 @@ function withParam(v: RandomVariable, name: string | undefined, experiment: Expe
 }
 
 /** The variable assigned another way: what only the other ways have is removed. */
-function withDraw(v: RandomVariable, draw: RandomVariable["draw"], experiment: ExperimentContext): RandomVariable {
-  const next: RandomVariable = { ...v, draw };
+function withDraw(
+  v: ExperimentVariable,
+  draw: ExperimentVariable["draw"],
+  experiment: ExperimentContext,
+): ExperimentVariable {
+  const next: ExperimentVariable = { ...v, draw };
   if (draw === "url_param") {
     // The parameter it had, else the first that lists values (none: to choose)
     const withValues = experiment.urlParams.filter((p) => p.values && p.values.length > 0);
@@ -63,7 +67,7 @@ function withDraw(v: RandomVariable, draw: RandomVariable["draw"], experiment: E
 /**
  * An experiment's conditions: how they are assigned (at random, balanced,
  * or a URL parameter's value), whether each condition gets its own units
- * (`units`: the units' `condition_set`), what a balanced draw balances
+ * (`selectsUnits`: the units' `condition_set`), what a balanced draw balances
  * within, and its values.
  */
 export function RandomConditionFields({
@@ -72,7 +76,7 @@ export function RandomConditionFields({
   experiment = { groups: [], urlParams: [] },
   onChange,
 }: {
-  variable: RandomVariable;
+  variable: ExperimentVariable;
   stratifyChoices: string[];
   experiment?: ExperimentContext;
   onChange: (next: AnyVariableType) => void;
@@ -126,7 +130,7 @@ function AssignedSelect({ variable: v, experiment, onChange }: FieldsProps) {
         aria-label="Assigned"
         className="h-10 rounded-md border border-input bg-background px-3 text-sm"
         value={v.draw}
-        onChange={(e) => onChange(withDraw(v, e.target.value as RandomVariable["draw"], experiment))}
+        onChange={(e) => onChange(withDraw(v, e.target.value as ExperimentVariable["draw"], experiment))}
       >
         <option value="random">At random</option>
         <option value="balanced">Balanced (the value fewest coders have)</option>
@@ -176,16 +180,16 @@ function ParamSelect({ variable: v, experiment, onChange }: FieldsProps) {
 function ConditionUnitsFields({ variable: v, experiment, onChange }: FieldsProps) {
   const conditionSet = experiment.groups.find((g) => g.name === CONDITION_SET);
   const setUnits = (units: boolean) => {
-    const next: RandomVariable = { ...v, units: true };
+    const next: ExperimentVariable = { ...v, selectsUnits: true };
     if (!units) {
-      delete next.units;
+      delete next.selectsUnits;
       // Without units the values must be listed
       if (!next.options) next.options = listedOptions(v, experiment);
     }
     onChange(next);
   };
   const setFromSet = (fromSet: boolean) => {
-    const next: RandomVariable = { ...v };
+    const next: ExperimentVariable = { ...v };
     if (fromSet) delete next.options;
     else next.options = listedOptions(v, experiment);
     onChange(next);
@@ -193,7 +197,7 @@ function ConditionUnitsFields({ variable: v, experiment, onChange }: FieldsProps
   return (
     <div className="flex flex-col gap-1">
       <label className="flex items-center gap-2 text-sm font-medium">
-        <input type="checkbox" checked={v.units === true} onChange={(e) => setUnits(e.target.checked)} />
+        <input type="checkbox" checked={v.selectsUnits === true} onChange={(e) => setUnits(e.target.checked)} />
         Each condition gets its own units (condition_set)
         <InfoTip label="About conditions with units">
           The coder&apos;s condition also selects their units in the loops after this item: only units with it in the
@@ -201,7 +205,7 @@ function ConditionUnitsFields({ variable: v, experiment, onChange }: FieldsProps
           units, and only with one link (not with expert coders).
         </InfoTip>
       </label>
-      {v.units === true && conditionSet && (
+      {v.selectsUnits === true && conditionSet && (
         <>
           <p className="text-xs text-muted-foreground">
             condition_set has {conditionSet.sets.map((s) => `${s.name} (${s.unitIds.length})`).join(", ")}.
@@ -212,7 +216,7 @@ function ConditionUnitsFields({ variable: v, experiment, onChange }: FieldsProps
           </label>
         </>
       )}
-      {v.units === true && !conditionSet && (
+      {v.selectsUnits === true && !conditionSet && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-amber-700 dark:text-amber-400">The units have no condition set yet.</span>
           {experiment.client && (
@@ -232,14 +236,14 @@ function StratifyFields({
   choices,
   onChange,
 }: {
-  variable: RandomVariable;
+  variable: ExperimentVariable;
   choices: string[];
   onChange: (next: AnyVariableType) => void;
 }) {
   const chosen = v.stratify ?? [];
   const toggle = (name: string) => {
     const stratify = chosen.includes(name) ? chosen.filter((n) => n !== name) : [...chosen, name];
-    const next: RandomVariable = { ...v, stratify };
+    const next: ExperimentVariable = { ...v, stratify };
     if (stratify.length === 0) delete next.stratify;
     onChange(next);
   };

@@ -18,7 +18,7 @@ export function defaultItemForType(type: DesignItem["type"], name: string, loopI
       return {
         type: "experiment",
         name,
-        variable: { type: "random", draw: "random", options: defaultRandomOptions() },
+        variable: { type: "experiment", draw: "random", options: defaultRandomOptions() },
       };
     case "unit_loop":
       // A new loop starts with a layout item, its questions are added in the

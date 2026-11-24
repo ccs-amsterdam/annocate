@@ -76,7 +76,9 @@ describe("set columns", () => {
     {
       type: "branch",
       condition: { script: "true" },
-      children: [{ type: "experiment", name: "set", variable: { type: "random", draw: "balanced", units: true } }],
+      children: [
+        { type: "experiment", name: "set", variable: { type: "experiment", draw: "balanced", selectsUnits: true } },
+      ],
     },
     {
       type: "unit_loop",

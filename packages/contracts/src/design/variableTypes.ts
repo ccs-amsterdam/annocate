@@ -205,13 +205,13 @@ export type TextType = z.infer<typeof TextTypeSchema>;
  * - `url_param`: the value of the URL parameter `param` (a URL parameter of
  *   the Study entry, by name, whose values are the conditions); nothing is drawn
  */
-export const RandomVariableSchema = z
+export const ExperimentVariableSchema = z
   .strictObject({
-    type: z.literal("random"),
+    type: z.literal("experiment"),
     draw: z.enum(["random", "balanced", "url_param"]),
     /** With `url_param`: the URL parameter (its name in the Study entry) whose value is the condition. */
     param: SafeNameSchema.optional(),
-    /** The possible values. Optional with `units`: then the values of `condition_set`, whatever they are. */
+    /** The possible values. Optional with `selectsUnits`: then the values of `condition_set`, whatever they are. */
     options: z
       .array(NominalOptionSchema.extend({ weight: z.number().positive().optional() }))
       .min(1, "List at least one value")
@@ -221,7 +221,7 @@ export const RandomVariableSchema = z
      * with the condition in the units' `condition_set`, in the loops after
      * this item. At most one experiment selects units.
      */
-    units: z.boolean().optional(),
+    selectsUnits: z.boolean().optional(),
     /**
      * Balanced within groups (stratified): coders count only against coders
      * with the same answers to these earlier coder-level questions, or the
@@ -231,7 +231,7 @@ export const RandomVariableSchema = z
     stratify: z.array(z.string().min(1).max(80)).max(5).optional(),
   })
   .superRefine((v, ctx) => {
-    if (!v.options && !v.units)
+    if (!v.options && !v.selectsUnits)
       ctx.addIssue({
         code: "custom",
         message: "List the values, or select units by the units' condition_set",
@@ -255,7 +255,7 @@ export const RandomVariableSchema = z
       ctx.addIssue({ code: "custom", message, path: ["options"] }),
     );
   });
-export type RandomVariable = z.infer<typeof RandomVariableSchema>;
+export type ExperimentVariable = z.infer<typeof ExperimentVariableSchema>;
 
 // ---- annotation-in-unit answer types (only valid inside a unit loop) ----
 
@@ -343,4 +343,4 @@ export const UnitVariableTypeSchema = z.discriminatedUnion("type", [
 export type UnitVariableType = z.infer<typeof UnitVariableTypeSchema>;
 
 /** Any variable an item produces: a question's answer type, or an experiment's conditions (`random`). */
-export type AnyVariableType = UnitVariableType | UserVariableType | RandomVariable;
+export type AnyVariableType = UnitVariableType | UserVariableType | ExperimentVariable;

@@ -156,7 +156,7 @@ describe("StudyManager error-handling, rollback, and retry contract", () => {
       {
         type: "experiment",
         name: "group",
-        variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }] },
+        variable: { type: "experiment", draw: "balanced", options: [{ value: "a" }, { value: "b" }] },
       },
       { type: "branch", condition: { script: `$var.group.is("a")` }, children: [confirm("shown_to_a")] },
       confirm("everyone"),
@@ -785,7 +785,7 @@ describe("end items", () => {
     name: "consent",
     variable: { type: "nominal", question: "?", options: [{ value: "yes" }, { value: "no" }] },
   };
-  const pid = { type: "experiment", name: "pid", variable: { type: "random", draw: "url_param", urlParam: "pid" } };
+  const pid = { type: "experiment", name: "pid", variable: { type: "experiment", draw: "url_param", urlParam: "pid" } };
   const stop = {
     type: "end",
     name: "stop",
@@ -988,7 +988,12 @@ describe("experiments", () => {
     const condition = {
       type: "experiment",
       name: "condition",
-      variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }], stratify: ["gender"] },
+      variable: {
+        type: "experiment",
+        draw: "balanced",
+        options: [{ value: "a" }, { value: "b" }],
+        stratify: ["gender"],
+      },
     };
     const onlyB = { type: "branch", condition: { script: `$var.condition.is("b")` }, children: [confirm("seen_b")] };
     const server = makeFlakyServer({

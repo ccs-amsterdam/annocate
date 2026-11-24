@@ -2,7 +2,7 @@ import { z } from "zod";
 import { IdSchema } from "../common.js";
 import type { Condition } from "./condition.js";
 import type { ExperimentItem, EndItem, InLoopItem, TopLevelItem, TopLevelQuestionItem, UnitLoopItem } from "./item.js";
-import type { RandomVariable } from "./variableTypes.js";
+import type { ExperimentVariable } from "./variableTypes.js";
 import { DisplaySchema, STUDY_END_NAME, type SessionItem } from "./session.js";
 
 // The coder codebook (docs/api/coder.md): what coders' browsers
@@ -14,8 +14,8 @@ import { DisplaySchema, STUDY_END_NAME, type SessionItem } from "./session.js";
 // URL parameter, weights, groups to balance within, selecting units).
 
 /** An experiment's variable as coders get it: its options (none for a column's free values), with their labels only if the design shows them (`$var.<name>.label`). */
-export type CoderRandomVariable = Pick<RandomVariable, "type"> & {
-  options: Omit<NonNullable<RandomVariable["options"]>[number], "weight">[];
+export type CoderRandomVariable = Pick<ExperimentVariable, "type"> & {
+  options: Omit<NonNullable<ExperimentVariable["options"]>[number], "weight">[];
 };
 
 /** An experiment as coders get it: an invisible step that asks the server for its value. */
@@ -80,7 +80,7 @@ function coderItems(items: readonly TopLevelItem[], labelUsed: (name: string) =>
         return [loop];
       }
       case "experiment":
-        return [{ ...item, variable: { type: "random", options: coderConditions(item, labelUsed(item.name)) } }];
+        return [{ ...item, variable: { type: "experiment", options: coderConditions(item, labelUsed(item.name)) } }];
       default:
         return [item];
     }

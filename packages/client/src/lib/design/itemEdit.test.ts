@@ -152,7 +152,7 @@ describe("itemEdit", () => {
       const autoQ: TopLevelItem = {
         type: "experiment",
         name: "auto_q",
-        variable: { type: "random", draw: "random", options: [{ value: "a" }] },
+        variable: { type: "experiment", draw: "random", options: [{ value: "a" }] },
       };
       const items: TopLevelItem[] = [autoQ, loop];
       expect(canMoveItemTo(items, "auto_q", "in_loop_q", "before")).toBe(false);

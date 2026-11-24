@@ -140,7 +140,7 @@ const SPECIAL = [
   { set: "gold", units: (s: Share) => s.gold, settings: (u: ResolvedLoopUnits) => u.gold },
 ] as const;
 
-type RandomVariable = Extract<AnyVariableType, { type: "random" }>;
+type ExperimentVariable = Extract<AnyVariableType, { type: "experiment" }>;
 
 /** One coder's request for units from a loop (`DeploymentRuntime.pick`). */
 interface PickRequest {
@@ -201,7 +201,7 @@ export class DeploymentRuntime {
   private coderVariableTypes = new Map<string, AnyVariableType>();
   /** Loop key -> the coder-level questions it depends on (`loopDependencies`), frozen once a coder coded a unit there. */
   private dependencies = new Map<string, string[]>();
-  private randomVariables: [string, RandomVariable][] = [];
+  private randomVariables: [string, ExperimentVariable][] = [];
   /** Set key (`column/set`, and `__all__`) -> its units in order. */
   private sets = new Map<string, number[]>();
   /** Column with a role -> its values (sets). */
@@ -286,7 +286,7 @@ export class DeploymentRuntime {
       ]),
     );
     this.randomVariables = [...this.coderVariableTypes].filter(
-      (e): e is [string, RandomVariable] => e[1].type === "random",
+      (e): e is [string, ExperimentVariable] => e[1].type === "experiment",
     );
     this.shareColumns = loopShareColumns(items);
     this.applySets(spec);
@@ -419,13 +419,14 @@ export class DeploymentRuntime {
     const variable = this.randomVariables.find(([n]) => n === name)?.[1];
     if (!variable) throw new HttpError(404, `No experiment '${name}'`);
     const options =
-      variable.options ?? (variable.units ? (this.groups.get(CONDITION_SET) ?? []).map((value) => ({ value })) : []);
+      variable.options ??
+      (variable.selectsUnits ? (this.groups.get(CONDITION_SET) ?? []).map((value) => ({ value })) : []);
     if (options.length === 0) throw new HttpError(409, `Experiment '${name}' has no values yet`);
     // Linked to units: the value goes into the session values, once (a session value never changes, so
     // the coder's units don't either); the session's value is the variable's
     const linked = async (value: VariableValue): Promise<VariableValue> => {
       const plain = valueOf(value);
-      if (!variable.units || plain === undefined) return value;
+      if (!variable.selectsUnits || plain === undefined) return value;
       const kept = await this.store.setSessionValue(coder.sessionId, name, String(plain));
       coder.session = { ...coder.session, [name]: kept };
       return kept === String(plain) ? value : singleValue(kept);
@@ -433,7 +434,7 @@ export class DeploymentRuntime {
     const stored = (await this.store.coderValues(coder.sessionId))[name];
     if (stored) return linked(stored.value);
     // Already in the session (e.g. its answers were reset): the same value again, not a new draw
-    const kept = variable.units ? coder.session[name] : undefined;
+    const kept = variable.selectsUnits ? coder.session[name] : undefined;
     // From a URL parameter: nothing is drawn, but the value must be a condition
     const given = variable.draw === "url_param" ? coder.session[variable.param ?? ""] : undefined;
     if (variable.draw === "url_param" && kept === undefined && !options.some((o) => o.value === given))

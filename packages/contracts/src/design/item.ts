@@ -5,7 +5,7 @@ import { UnitLayoutSchema } from "./layout.js";
 import { outputText, parseTemplate, referenceValue, type ReferenceScope } from "./references.js";
 import { UnitLoopDistributionShape } from "./unitLoop.js";
 import { SessionItemSchema, type SessionItem } from "./session.js";
-import { RandomVariableSchema, UserVariableTypeSchema, UnitVariableTypeSchema } from "./variableTypes.js";
+import { ExperimentVariableSchema, UserVariableTypeSchema, UnitVariableTypeSchema } from "./variableTypes.js";
 import { forEachItem, itemLists, loopKey } from "./walk.js";
 
 const ItemBaseSchema = z.strictObject({
@@ -103,7 +103,7 @@ export type EndItem = z.infer<typeof EndItemSchema>;
  */
 export const ExperimentItemSchema = ItemBaseSchema.extend({
   type: z.literal("experiment"),
-  variable: RandomVariableSchema,
+  variable: ExperimentVariableSchema,
 });
 export type ExperimentItem = z.infer<typeof ExperimentItemSchema>;
 

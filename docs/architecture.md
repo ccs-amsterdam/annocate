@@ -220,7 +220,7 @@ device for a coder who already has a session is asked first (409
 warns); links still follow the invitation, e.g. a survey of known experts.
 
 **Experiments** (`type: "experiment"`, §7) assign a condition when reached;
-with `units: true` they also select units for the loops after it: those
+with `selectsUnits: true` they also select units for the loops after it: those
 with the condition in `condition_set`. At most one experiment selects units,
 and only with one link (validation errors).
 
@@ -372,7 +372,7 @@ coders. The Units page's split tooling makes `condition_set` or `part_set`
 
 ## 7. Coder variables, URL parameters and links
 
-**Experiments** (`type: "experiment"`, variable type `random`) give each
+**Experiments** (`type: "experiment"`, variable type `experiment`) give each
 coder one of their conditions: drawn, never asked, never changed. The
 condition is drawn when the coder *reaches* the experiment: the client saves
 the answers so far, calls `POST /experiment/:name` and goes on with the
@@ -386,7 +386,7 @@ condition. Coders screened out before one don't count.
   (`param`: its name, i.e. `$session.<param>`), which must list `values`:
   they are the conditions (with `options`, the same values). Nothing is
   drawn; weights and `stratify` don't apply.
-- With `units: true`, the condition also selects the coder's units in later
+- With `selectsUnits: true`, the condition also selects the coder's units in later
   loops: those with it in `condition_set` (`options` optional: then
   `condition_set`'s values). At most one experiment selects units, only with
   one link. Not yet reached when a loop needs it, it is assigned then.

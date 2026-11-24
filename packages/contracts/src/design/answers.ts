@@ -35,7 +35,7 @@ export function validateAnswer(name: string, variable: AnyVariableType, value: V
   if (value.skip) return errors;
   if (variable.type === "unspecified") return [`'${name}': the question has no answer type yet`];
   const kind = questionKind(variable);
-  const values = variable.type === "random" && !variable.options?.length ? undefined : questionValues(variable);
+  const values = variable.type === "experiment" && !variable.options?.length ? undefined : questionValues(variable);
   const allowed = values ? new Set<unknown>(values) : null;
   const answers = value.values ?? [];
 

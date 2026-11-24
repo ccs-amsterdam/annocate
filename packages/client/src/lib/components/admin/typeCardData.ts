@@ -10,7 +10,7 @@ export interface TypeCard<T extends string> {
   icon: LucideIcon;
 }
 
-type AnswerType = Exclude<AnyVariableType["type"], "unspecified" | "random">;
+type AnswerType = Exclude<AnyVariableType["type"], "unspecified" | "experiment">;
 
 const ANSWER_TYPE_TEXT: Record<AnswerType, { label: string; description: string }> = {
   nominal: { label: "Categories", description: "One or several of a list of options" },

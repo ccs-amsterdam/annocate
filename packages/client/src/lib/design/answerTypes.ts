@@ -46,7 +46,7 @@ export const VARIABLE_TYPE_LABELS: Record<AnyVariableType["type"], string> = {
   swipe: "Swipe",
   confirm: "Confirm",
   text: "Open answer (typed text)",
-  random: "Random condition (drawn, not asked)",
+  experiment: "Random condition (drawn, not asked)",
   span: "Span (select text)",
   relation: "Relation (link spans)",
   unspecified: "Not chosen yet",
@@ -102,8 +102,8 @@ function defaultVariable(type: string): AnyVariableType {
       return { type: "confirm", question: "" };
     case "text":
       return { type: "text", question: "" };
-    case "random":
-      return { type: "random", draw: "random", options: defaultRandomOptions() };
+    case "experiment":
+      return { type: "experiment", draw: "random", options: defaultRandomOptions() };
     case "span":
       return { type: "span", question: "", fields: [], options: [{ value: "label_1", label: "Label 1" }] };
     case "relation":

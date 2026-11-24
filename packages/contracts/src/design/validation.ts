@@ -665,21 +665,28 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
    */
   function checkExperiment(item: RawItem, itemPath: Path, inLoop: boolean, available: ReadonlySet<string>) {
     const variable = (item as { variable?: unknown }).variable as
-      | { type?: unknown; units?: unknown; stratify?: unknown; draw?: unknown; param?: unknown; options?: unknown }
+      | {
+          type?: unknown;
+          selectsUnits?: unknown;
+          stratify?: unknown;
+          draw?: unknown;
+          param?: unknown;
+          options?: unknown;
+        }
       | undefined;
     if (inLoop) return issue([...itemPath, "type"], `Experiment '${item.name}' can only be used outside a unit loop`);
-    if (variable?.type !== "random") return;
+    if (variable?.type !== "experiment") return;
     if (selectsUnits(item)) {
       if (sessionNamed.has(item.name) || (RESERVED_SESSION_NAMES as readonly string[]).includes(item.name))
         issue([...itemPath, "name"], `Experiment '${item.name}' selects units: its name can't also be a session value`);
       if (inviteOf(sessionItem(items))?.mode === "coders")
         issue(
-          [...itemPath, "variable", "units"],
+          [...itemPath, "variable", "selectsUnits"],
           `Experiment '${item.name}' selects units by condition, but expert coders get the units of their coder set: invite a crowd`,
         );
       if (unitsExperiment !== null)
         issue(
-          [...itemPath, "variable", "units"],
+          [...itemPath, "variable", "selectsUnits"],
           `Experiment '${unitsExperiment}' already selects units: only one experiment can select units`,
         );
       else unitsExperiment = item.name;

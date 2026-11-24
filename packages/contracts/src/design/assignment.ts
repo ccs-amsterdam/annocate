@@ -16,14 +16,14 @@ export interface ShareColumn {
   random?: boolean;
 }
 
-/** Whether an item is an experiment that selects units (`units: true`). */
+/** Whether an item is an experiment that selects units (`selectsUnits: true`). */
 export function selectsUnits(item: unknown): item is { type: "experiment"; name: string } {
-  const it = item as { type?: unknown; name?: unknown; variable?: { type?: unknown; units?: unknown } } | null;
+  const it = item as { type?: unknown; name?: unknown; variable?: { type?: unknown; selectsUnits?: unknown } } | null;
   return (
     it?.type === "experiment" &&
     typeof it.name === "string" &&
-    it.variable?.type === "random" &&
-    it.variable.units === true
+    it.variable?.type === "experiment" &&
+    it.variable.selectsUnits === true
   );
 }
 

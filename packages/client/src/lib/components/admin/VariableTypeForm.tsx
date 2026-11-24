@@ -17,7 +17,7 @@ import type { SpanQuestion } from "./variableType/RelationRules";
 export function VariableTypeForm(props: VariableTypeFormProps) {
   const { variable, onChange } = props;
   // A random condition is drawn, not asked
-  if (variable.type === "random" || variable.type === "unspecified") return <TypeFields {...props} />;
+  if (variable.type === "experiment" || variable.type === "unspecified") return <TypeFields {...props} />;
   return (
     <>
       <QuestionField value={variable} onChange={(patch) => onChange({ ...variable, ...patch })} />
@@ -63,7 +63,7 @@ function TypeFields({
       return <SwipeFields variable={variable} onChange={onChange} />;
     case "text":
       return <TextFields variable={variable} onChange={onChange} />;
-    case "random":
+    case "experiment":
       return (
         <RandomConditionFields
           variable={variable}
