@@ -1,7 +1,7 @@
 import { MAX_TEXT_LENGTH, type AnyVariableType, type RelationType } from "./variableTypes.js";
 import { relationTypesFor, ruleVariables, type RuleSpan } from "./relations.js";
 import type { VariableValue } from "../variableValue.js";
-import { questionKind, questionValues } from "./references.js";
+import { questionKind, questionValues, type QuestionKind } from "./references.js";
 import { own } from "../common.js";
 
 // Checks answers against the *current* design. Shared by the server
@@ -26,7 +26,10 @@ export function numericValueError(
   return null;
 }
 
-/** Problems with one answer for one variable; empty means valid. */
+/** The kinds of question whose answer is one value: without it the question isn't answered. */
+const ONE_ANSWER_KINDS: readonly QuestionKind[] = ["single", "ordinal", "numeric", "text"];
+
+/** Problems with one answer for one variable; empty means valid. A skipped answer (`skip`) is always valid. */
 export function validateAnswer(name: string, variable: AnyVariableType, value: VariableValue): string[] {
   const errors: string[] = [];
   if (value.skip) return errors;
@@ -54,10 +57,14 @@ export function validateAnswer(name: string, variable: AnyVariableType, value: V
       else if (seen.has(answer.item)) errors.push(`'${name}': more than one answer for item '${answer.item}'`);
       else seen.add(answer.item);
     }
+    // Every item has an answer: a value, or a special answer
+    for (const item of items) if (!seen.has(item)) errors.push(`'${name}': no answer for item '${item}'`);
   } else if (answers.some((a) => a.item !== undefined)) {
     errors.push(`'${name}': items given for a question without items`);
   }
   if (kind !== "multiple" && kind !== "scale" && answers.length > 1) errors.push(`'${name}': only one answer allowed`);
+  // A question with one answer has it (several choices may be none; a confirmation has no value)
+  if (ONE_ANSWER_KINDS.includes(kind) && answers.length === 0) errors.push(`'${name}': no answer`);
 
   const specials = "specials" in variable ? (variable.specials ?? []) : [];
   if (kind === "multiple" && answers.length > 1 && answers.some((a) => a.special))
@@ -74,6 +81,7 @@ export function validateAnswer(name: string, variable: AnyVariableType, value: V
     } else if (variable.type === "text") {
       const max = variable.maxLength ?? MAX_TEXT_LENGTH;
       if (typeof answer.value !== "string") errors.push(`'${name}': ${JSON.stringify(answer.value)} is not text`);
+      else if (answer.value.trim() === "") errors.push(`'${name}': an empty text`);
       else if (answer.value.length > max) errors.push(`'${name}': longer than ${max} characters`);
     } else if (variable.type === "numeric") {
       const problem = typeof answer.value === "number" ? numericValueError(variable, answer.value) : "not a number";
@@ -84,11 +92,22 @@ export function validateAnswer(name: string, variable: AnyVariableType, value: V
   }
   for (const span of value.spans ?? []) {
     if (allowed && !allowed.has(span.value)) errors.push(`'${name}': unknown span value '${span.value}'`);
+    if (variable.type === "span" && !variable.fields.includes(span.field))
+      errors.push(`'${name}': a span in '${span.field}', which is not a field of this question`);
   }
   for (const relation of value.relations ?? []) {
     if (allowed && !allowed.has(relation.value)) errors.push(`'${name}': unknown relation value '${relation.value}'`);
   }
+  for (const id of repeated((value.spans ?? []).map((s) => s.id)))
+    errors.push(`'${name}': two spans have the id '${id}'`);
+  for (const id of repeated((value.relations ?? []).map((r) => r.id)))
+    errors.push(`'${name}': two relations have the id '${id}'`);
   return errors;
+}
+
+/** The values that occur more than once, each once. */
+function repeated(values: string[]): string[] {
+  return [...new Set(values.filter((v, i) => values.indexOf(v) !== i))];
 }
 
 /** Problems with a set of answers, given the variables that may be answered; empty means valid. */

@@ -63,8 +63,103 @@ describe("validateAnswer", () => {
           { item: "x", value: 2 },
         ]),
       ),
-    ).toEqual([`'q': more than one answer for item 'x'`]);
-    expect(validateAnswer("q", scale, answer([{ item: "z", value: 1 }]))).toEqual([`'q': unknown item 'z'`]);
+    ).toEqual([`'q': more than one answer for item 'x'`, `'q': no answer for item 'y'`]);
+    expect(validateAnswer("q", scale, answer([{ item: "z", value: 1 }]))).toEqual([
+      `'q': unknown item 'z'`,
+      `'q': no answer for item 'x'`,
+      `'q': no answer for item 'y'`,
+    ]);
+  });
+
+  describe("an answer without a skip answers the question", () => {
+    const empty = [
+      { done: true, skip: false },
+      { done: true, skip: false, values: [] },
+      { done: false, skip: false },
+    ];
+    const skipped = { done: true, skip: true };
+
+    it("one value for a single choice, a number and a text", () => {
+      const ordinal: AnyVariableType = { type: "ordinal", question: "?", options: [{ value: 1 }, { value: 2 }] };
+      const swipe: AnyVariableType = {
+        type: "annotinder",
+        question: "?",
+        options: [{ value: "no" }, { value: "yes" }],
+      };
+      const text: AnyVariableType = { type: "text", question: "?" };
+      for (const variable of [role, ordinal, swipe, age, text]) {
+        for (const value of empty)
+          expect([variable.type, validateAnswer("q", variable, value)]).toEqual([variable.type, [`'q': no answer`]]);
+        expect(validateAnswer("q", variable, skipped)).toEqual([]);
+      }
+      expect(validateAnswer("q", text, answer([{ value: "  " }]))).toEqual([`'q': an empty text`]);
+    });
+
+    it("but several choices may be none, and a confirmation has no value", () => {
+      for (const value of empty) {
+        expect(validateAnswer("q", topics, value)).toEqual([]);
+        expect(validateAnswer("q", { type: "confirm", question: "?" }, value)).toEqual([]);
+      }
+    });
+
+    it("every scale item, with a value or a special answer", () => {
+      const withSpecial: AnyVariableType = { ...scale, specials: [{ kind: "dont_know" }] } as AnyVariableType;
+      expect(validateAnswer("q", scale, answer([{ item: "x", value: 1 }]))).toEqual([`'q': no answer for item 'y'`]);
+      expect(validateAnswer("q", scale, { done: true, skip: false })).toEqual([
+        `'q': no answer for item 'x'`,
+        `'q': no answer for item 'y'`,
+      ]);
+      const mixed = {
+        done: true,
+        skip: false,
+        values: [
+          { item: "x", value: 1 },
+          { item: "y", special: "dont_know" as const },
+        ],
+      };
+      expect(validateAnswer("q", withSpecial, mixed)).toEqual([]);
+      expect(validateAnswer("q", scale, skipped)).toEqual([]);
+    });
+  });
+
+  describe("spans and relations", () => {
+    const entities: AnyVariableType = {
+      type: "span",
+      question: "?",
+      fields: ["headline", "text"],
+      options: [{ value: "person" }],
+    };
+    const links: AnyVariableType = {
+      type: "relation",
+      question: "?",
+      options: [{ value: "knows" }],
+      rules: [{ from: { variable: "entities" }, to: { variable: "entities" } }],
+    };
+    const span = (id: string, field = "text") => ({
+      id,
+      field,
+      value: "person",
+      slices: [{ offset: 0, length: 4, text: "Anna" }],
+    });
+    const spans = (...list: ReturnType<typeof span>[]) => ({ done: true, skip: false, spans: list });
+
+    it("a span is in one of the question's fields", () => {
+      expect(validateAnswer("q", entities, spans(span("1"), span("2", "headline")))).toEqual([]);
+      expect(validateAnswer("q", entities, spans(span("1", "byline")))).toEqual([
+        `'q': a span in 'byline', which is not a field of this question`,
+      ]);
+      // No spans: nothing to mark in this unit
+      expect(validateAnswer("q", entities, spans())).toEqual([]);
+    });
+
+    it("span ids and relation ids are unique", () => {
+      expect(validateAnswer("q", entities, spans(span("1"), span("2"), span("1")))).toEqual([
+        `'q': two spans have the id '1'`,
+      ]);
+      const relation = (id: string) => ({ id, fromId: "1", toId: "2", value: "knows" });
+      const relations = { done: true, skip: false, relations: [relation("r"), relation("r")] };
+      expect(validateAnswer("q", links, relations)).toEqual([`'q': two relations have the id 'r'`]);
+    });
   });
 });
 
