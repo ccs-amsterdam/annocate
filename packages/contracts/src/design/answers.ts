@@ -58,8 +58,19 @@ export function validateAnswer(name: string, variable: AnyVariableType, value: V
   }
   if (kind !== "multiple" && kind !== "scale" && answers.length > 1) errors.push(`'${name}': only one answer allowed`);
 
+  const specials = "specials" in variable ? (variable.specials ?? []) : [];
+  if (kind === "multiple" && answers.length > 1 && answers.some((a) => a.special))
+    errors.push(`'${name}': a special answer is the only answer`);
+
   for (const answer of answers) {
-    if (variable.type === "text") {
+    if (answer.special) {
+      const special = specials.find((s) => s.kind === answer.special);
+      if (!special) errors.push(`'${name}': the question has no '${answer.special}' answer`);
+      else if (answer.value !== special.value)
+        errors.push(`'${name}': '${answer.special}' is stored as ${JSON.stringify(special.value ?? null)}`);
+    } else if (answer.value === undefined) {
+      errors.push(`'${name}': an answer without a value`);
+    } else if (variable.type === "text") {
       const max = variable.maxLength ?? MAX_TEXT_LENGTH;
       if (typeof answer.value !== "string") errors.push(`'${name}': ${JSON.stringify(answer.value)} is not text`);
       else if (answer.value.length > max) errors.push(`'${name}': longer than ${max} characters`);

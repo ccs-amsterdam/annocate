@@ -77,6 +77,8 @@ A row per unit a coder coded:
 - **Values, not labels**: `2` or `pos`. With **Add label columns** (on by
   default) a `<question>_label` column has the label the coder saw.
 - **Several answers**: joined with `; `.
+- **Special answers** (don't know, not applicable): their code, or empty
+  without one; a `<question>_special` column says which.
 - **Spans**: `person: Angela Merkel`; parts of a gapped span joined with
   `…`.
 - **Relations**: `criticizes: Merkel → Commission`.
@@ -146,7 +148,9 @@ that.
 
 The codebook: per design version, question and option, the
 `loop_number` and `loop` (the loop's number and title; empty outside
-loops), `variable`, `type`, `question`, `value`, `label` and `special`.
+loops), `variable`, `type`, `question`, `value`, `label` and `special`
+(a special answer's kind: `not_applicable`, `dont_know`; its value is its
+code, empty if it has none).
 Swipe has the type `annotinder`. `loop_number` matches the coders'
 `finished_loop<n>` columns.
 

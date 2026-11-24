@@ -50,20 +50,28 @@ describe("the numbers mapping", () => {
     expect(numbersMapping.assign(targets(11)).slice(8)).toEqual(["9", null, null]);
   });
 
-  it("finds the option of a key, a fixed key too, never a disabled one", () => {
+  it("finds the option of a key, an extra key too, never a disabled one", () => {
     const group = [{ label: "a", keys: ["ArrowLeft"] }, { label: "b", disabled: true }, { label: "c" }];
     expect(targetForKey(numbersMapping, group, "3")).toBe(2);
     expect(targetForKey(numbersMapping, group, "ArrowLeft")).toBe(0);
     expect(targetForKey(numbersMapping, group, "2")).toBe(-1);
     expect(targetForKey(numbersMapping, group, "x")).toBe(-1);
   });
+});
 
-  it("leaves fixed keys (special options) out of the numbering", async () => {
-    const { keysOf } = await import("./mappings");
-    const group = [{ label: "a" }, { label: "Don't know", fixed: "." }, { label: "b" }, { label: "n/a", fixed: "0" }];
-    expect(keysOf(numbersMapping, group)).toEqual(["1", ".", "2", "0"]);
-    expect(targetForKey(numbersMapping, group, "0")).toBe(3);
-    expect(targetForKey(numbersMapping, group, "2")).toBe(2);
+describe("special answers' keys", () => {
+  it("are Ctrl + 1, 2, ... by the physical key, without Shift or Alt", async () => {
+    const { specialIndex, specialBadge } = await import("./commands");
+    const press = (key: string, more: object = {}) =>
+      ({ key, shiftKey: false, altKey: false, ctrlKey: true, metaKey: false, ...more }) as never;
+    expect(specialIndex(press("1"))).toBe(0);
+    expect(specialIndex(press("2", { code: "Digit2" }))).toBe(1);
+    // AZERTY: the 2 key types é
+    expect(specialIndex(press("é", { code: "Digit2" }))).toBe(1);
+    expect(specialIndex(press("1", { ctrlKey: false }))).toBe(-1);
+    expect(specialIndex(press("1", { shiftKey: true }))).toBe(-1);
+    expect(specialIndex(press("0"))).toBe(-1);
+    expect(specialBadge(0)).toBe("^1");
   });
 });
 
@@ -106,11 +114,7 @@ describe("the other mappings", () => {
     const labelled = (...labels: string[]) => labels.map((label) => ({ label }));
     // Each label's shortest start no other label shares
     expect(keysOf(lettersMapping, labelled("hello", "hi", "bye"))).toEqual(["he", "hi", "b"]);
-    expect(keysOf(lettersMapping, [...labelled("Positive", "Négatif"), { label: "n/a", fixed: "0" }])).toEqual([
-      "p",
-      "n",
-      "0",
-    ]);
+    expect(keysOf(lettersMapping, labelled("Positive", "Négatif"))).toEqual(["p", "n"]);
     // A label that starts another: numbers instead
     expect(labelKeys(["no", "none"])).toBeNull();
     expect(keysOf(lettersMapping, labelled("no", "none"))).toEqual(["1", "2"]);

@@ -2,6 +2,7 @@ import { NUMERIC_LAYOUTS, type AnyVariableType, type NumericType } from "@annoti
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LayoutSelect, selectClass } from "./LayoutSelect";
+import { SpecialAnswersFields } from "./SpecialAnswersFields";
 
 const STEP_PRESETS = [
   { step: 1, label: "Whole numbers" },
@@ -121,6 +122,7 @@ export function NumericFields({
           + Add label
         </Button>
       </div>
+      <SpecialAnswersFields specials={v.specials} onChange={(specials) => onChange({ ...v, specials })} />
       <LayoutSelect
         variable={v}
         layouts={NUMERIC_LAYOUTS}

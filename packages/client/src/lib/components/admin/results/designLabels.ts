@@ -3,7 +3,7 @@ import {
   collectQuestions,
   loopLayouts,
   loopTitle,
-  optionLabel,
+  valueLabel,
   unitLoops,
   type AnyVariableType,
   type TopLevelItem,
@@ -49,9 +49,10 @@ export function useDesignLabels(client: ResearcherApi): DesignLabels {
         const type = questions.get(name);
         return type && "question" in type && typeof type.question === "string" ? type.question : "";
       },
+      // Options, and special answers (by their code, or their kind: contracts `valueLabel`)
       valueLabel: (question, value) => {
-        const option = optionsOf(question).find((o) => o.value === value);
-        return option ? optionLabel(option) : String(value);
+        const type = questions.get(question);
+        return type ? valueLabel(type, value) : String(value);
       },
       itemLabel: (question, item) => {
         const type = questions.get(question);

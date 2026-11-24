@@ -304,6 +304,46 @@ describe("data download", () => {
     ]);
   });
 
+  it("writes a special answer as its code, missing without one, with a _special column and its label", () => {
+    const items = [
+      {
+        type: "question",
+        name: "age",
+        variable: {
+          type: "numeric",
+          question: "?",
+          specials: [{ kind: "dont_know" }, { kind: "not_applicable", label: "Rather not say", value: -1 }],
+        },
+      },
+    ] as TopLevelItem[];
+    const labels = new Labels(new Map([[2, items]]), 2);
+    const table = annotationsTable(
+      [row(1, 1, "age", { done: true, skip: false, values: [{ special: "dont_know" }] })],
+      [coder(1)],
+      [],
+      labels,
+    );
+    expect(table.headers.slice(-3)).toEqual(["age", "age_label", "age_special"]);
+    expect(table.rows[0].slice(-3)).toEqual(["", "Don't know", "dont_know"]);
+    expect(answerText({ done: true, skip: false, values: [{ special: "dont_know" }] })).toBe("");
+    expect(answerText({ done: true, skip: false, values: [{ special: "not_applicable", value: -1 }] })).toBe("-1");
+    expect(
+      answerText({ done: true, skip: false, values: [{ special: "dont_know" }] }, undefined, labels.writer("age", 2)),
+    ).toBe("Don't know");
+    expect(
+      answerText(
+        { done: true, skip: false, values: [{ special: "not_applicable", value: -1 }] },
+        undefined,
+        labels.writer("age", 2),
+      ),
+    ).toBe("Rather not say");
+    expect(answerJson({ done: true, skip: false, values: [{ special: "dont_know" }] })).toBe("[null]");
+    expect(variablesTable(new Map([[2, items]])).rows.map((r) => r.slice(-3))).toEqual([
+      ["", "Don't know", "dont_know"],
+      ["-1", "Rather not say", "not_applicable"],
+    ]);
+  });
+
   it("lists reset answers apart, with when they were given and reset", () => {
     const live = row(1, 1, "sentiment", { done: true, skip: false, values: [{ value: "neg" }] });
     const reset = {

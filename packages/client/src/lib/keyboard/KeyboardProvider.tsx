@@ -1,5 +1,6 @@
 import { useEffect, useMemo, type ReactNode } from "react";
 import { KeyController, inTextField } from "./controller";
+import { specialIndex } from "./commands";
 import { KeyboardContext } from "./context";
 import { mappingById, type KeyMapping } from "./mappings";
 import { useCoderSettings } from "../context/coderSettings";
@@ -22,7 +23,9 @@ export function KeyboardProvider({ children, mapping: given }: { children: React
   const controller = useMemo(() => new KeyController(), []);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.isComposing || inTextField(event.target)) return;
+      // In a text box only a special answer's Ctrl + digit (a number question's own box)
+      if (event.defaultPrevented || event.isComposing) return;
+      if (inTextField(event.target) && specialIndex(event) < 0) return;
       // Space and Enter on a focused button choose it (the browser clicks it), unless a scope needs them (typed filter)
       if ((event.key === " " || event.key === "Enter") && activates(event.target)) {
         const press = {

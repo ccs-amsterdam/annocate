@@ -7,24 +7,65 @@ import { z } from "zod";
 // the order of the options for ordinal ones.
 
 /**
- * Special options (docs/client.md §4): answers outside the categories or
- * the scale, each with its own key in every study (`SPECIAL_KEYS`), shown
- * apart from the other options. Their labels are free ("Prefer not to say"
- * is a `dont_know`, "None of these" a `not_applicable`).
+ * Special answers (docs/client.md §4): answers outside the categories, the
+ * scale or the range, defined once per question (`specials`), not options.
+ * Each kind at most once, with its own label ("Prefer not to say" is a
+ * `dont_know`, "None of these" a `not_applicable`) and an optional code;
+ * without a code the answer is missing (no value). Shown under the answers,
+ * chosen with Ctrl + 1, 2, ... in the order given.
  */
-export const SPECIAL_OPTIONS = ["not_applicable", "dont_know"] as const;
-export const SpecialOptionSchema = z.enum(SPECIAL_OPTIONS);
-export type SpecialOption = z.infer<typeof SpecialOptionSchema>;
+export const SPECIAL_KINDS = ["not_applicable", "dont_know"] as const;
+export const SpecialKindSchema = z.enum(SPECIAL_KINDS);
+export type SpecialKind = z.infer<typeof SpecialKindSchema>;
 
-/** The key of each special option, the same in every study and every keyboard mapping. */
-export const SPECIAL_KEYS: Record<SpecialOption, string> = { not_applicable: "0", dont_know: "." };
-/** How the editor names them. */
-export const SPECIAL_NAMES: Record<SpecialOption, string> = {
+/** Their default labels. */
+export const SPECIAL_NAMES: Record<SpecialKind, string> = {
   not_applicable: "Not applicable",
   dont_know: "Don't know",
 };
-/** The value an ordinal special option gets while values follow the order (outside the scale's 1..n). */
-export const SPECIAL_VALUES: Record<SpecialOption, number> = { not_applicable: 99, dont_know: 98 };
+
+export const SpecialAnswerSchema = z.object({
+  kind: SpecialKindSchema,
+  label: z.string().optional().describe("What the coder sees (default: Not applicable / Don't know)."),
+  value: z
+    .union([z.string(), z.number()])
+    .optional()
+    .describe("A code to store, e.g. 99 (nominal: text, otherwise a number). Default: none, the value is missing."),
+});
+export type SpecialAnswer = z.infer<typeof SpecialAnswerSchema>;
+
+export const SpecialAnswersSchema = z
+  .array(SpecialAnswerSchema)
+  .refine((specials) => new Set(specials.map((s) => s.kind)).size === specials.length, {
+    message: "A question has each special answer once",
+  })
+  .optional()
+  .describe("Answers outside the options or range: not_applicable, dont_know; chosen with Ctrl + 1, 2, ... in order.");
+
+/** What the coder sees for a special answer. */
+export const specialLabel = (special: SpecialAnswer): string => special.label ?? SPECIAL_NAMES[special.kind];
+
+/**
+ * Problems with the codes of special answers: of the question's kind of
+ * value (`text`: nominal), and not one of its option values.
+ */
+export function specialCodeErrors(
+  specials: readonly SpecialAnswer[] | undefined,
+  text: boolean,
+  values: readonly unknown[] = [],
+): string[] {
+  const errors: string[] = [];
+  for (const s of specials ?? []) {
+    if (s.value === undefined) continue;
+    const name = specialLabel(s);
+    if (text && (typeof s.value !== "string" || s.value.trim() === ""))
+      errors.push(`The code of "${name}" is text here, like the option values`);
+    else if (!text && (typeof s.value !== "number" || !Number.isFinite(s.value)))
+      errors.push(`The code of "${name}" is a number here`);
+    else if (values.includes(s.value)) errors.push(`The code of "${name}" is also an option's value`);
+  }
+  return errors;
+}
 
 export const OptionSchema = z.object({
   value: z
@@ -32,26 +73,9 @@ export const OptionSchema = z.object({
     .describe("What is stored, compared and exported. Nominal: a string; ordinal: a number, rising in option order."),
   label: z.string().optional().describe("What the coder sees (default: the value). Can change without touching data."),
   color: z.string().optional().describe("Optional color, e.g. '#FF0000' or 'red'."),
-  special: SpecialOptionSchema.optional().describe(
-    "An answer outside the categories or scale: not_applicable (key 0) or dont_know (key .). Shown apart; on an ordinal scale outside its order.",
-  ),
 });
 export type Option = z.infer<typeof OptionSchema>;
 
-/** The options that are categories or scale points (not special). */
-export const ordinaryOptions = <T extends { special?: unknown }>(options: readonly T[]): T[] =>
-  options.filter((o) => !o.special);
-/** The special options, in option order. */
-export const specialOptions = <T extends { special?: unknown }>(options: readonly T[]): T[] =>
-  options.filter((o) => !!o.special);
-
-/** Problems with special options: each kind once per question. */
-export function specialErrors(options: readonly { special?: SpecialOption }[]): string[] {
-  const kinds = options.flatMap((o) => (o.special ? [o.special] : []));
-  return [...new Set(kinds.filter((k, i) => kinds.indexOf(k) !== i))].map(
-    (k) => `Two options are "${SPECIAL_NAMES[k]}": a question has each special option once`,
-  );
-}
 export type OptionValue = Option["value"];
 
 export const NominalOptionSchema = OptionSchema.extend({
@@ -106,19 +130,15 @@ export function nominalValueErrors(options: { value: unknown }[]): string[] {
   return errors;
 }
 
-/** Problems with ordinal option values (numbers, rising in option order; special options outside the order, each value once). */
-export function ordinalValueErrors(options: { value: unknown; special?: unknown }[]): string[] {
+/** Problems with ordinal option values (numbers, rising in option order). */
+export function ordinalValueErrors(options: { value: unknown }[]): string[] {
   const errors: string[] = [];
   let previous: number | null = null;
-  const values = options.map((o) => o.value);
-  const twice = values.filter((v, i) => typeof v === "number" && values.indexOf(v) !== i);
-  if (twice.length > 0) errors.push(`Ordinal values are each used once (${twice[0]} is used twice)`);
-  for (const { value, special } of options) {
+  for (const { value } of options) {
     if (typeof value !== "number" || !Number.isFinite(value)) {
       errors.push(`Ordinal values are numbers, not ${JSON.stringify(value)}`);
       continue;
     }
-    if (special) continue;
     if (previous !== null && value <= previous)
       errors.push(`Ordinal values must rise in the order of the options (${value} after ${previous})`);
     previous = value;
@@ -132,24 +152,19 @@ const addErrors = (errors: string[], ctx: z.RefinementCtx) =>
 export const NominalOptionsSchema = z
   .array(NominalOptionSchema)
   .min(1, "At least one option is required")
-  .superRefine((options, ctx) => addErrors([...nominalValueErrors(options), ...specialErrors(options)], ctx));
+  .superRefine((options, ctx) => addErrors(nominalValueErrors(options), ctx));
 
 export const OrdinalOptionsSchema = z
   .array(OptionSchema)
   .min(1, "At least one option is required")
-  .superRefine((options, ctx) => addErrors([...ordinalValueErrors(options), ...specialErrors(options)], ctx));
-
-/** For questions whose options can't be special (swipe, spans, relations, random conditions). */
-export const noSpecialOptions = (options: readonly { special?: unknown }[]) => options.every((o) => !o.special);
-export const NO_SPECIAL_MESSAGE = "Only categories, ordinal and scale questions have special options";
+  .superRefine((options, ctx) => addErrors(ordinalValueErrors(options), ctx));
 
 /** Swipe answering takes 2 or 3 options; their order is the direction: left, right, up. */
 export const SwipeOptionsSchema = z
   .array(NominalOptionSchema)
   .min(2, "Swiping needs 2 or 3 options (left, right, up)")
   .max(3, "Swiping takes at most 3 options (left, right, up)")
-  .superRefine((options, ctx) => addErrors(nominalValueErrors(options), ctx))
-  .refine(noSpecialOptions, NO_SPECIAL_MESSAGE);
+  .superRefine((options, ctx) => addErrors(nominalValueErrors(options), ctx));
 
 export const SWIPE_DIRECTIONS = ["left", "right", "up"] as const;
 

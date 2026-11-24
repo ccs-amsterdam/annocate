@@ -40,7 +40,8 @@ units.csv        The units as deployed, a row per version: a unit replaced
                  practice or gold).
 variables.csv    Per design version (design_version), question and option: the question text,
                  the stored value, its label, and special (not_applicable,
-                 dont_know: an answer outside the categories or the scale).
+                 dont_know: a special answer, outside the options or range;
+                 its value is its code, empty if it has none).
 designs/v<n>.json  Each design version answers were given under (and the
                  live one): the whole design (questions, layouts, how units
                  were handed out, session, unit fields), with the AnnoTinder
@@ -80,7 +81,9 @@ reset_answers.csv  (if included) Answers a researcher reset, a row per
 Answers are the stored values; several answers are joined with "; ", spans
 are written as "value: text", relations as "value: from → to" (the spans'
 texts), a confirm question as true, and questions a condition skipped are
-empty. Questions with spans, relations or several answers also have a _json
+empty. A special answer (not_applicable, dont_know) is its code, or empty
+(missing) if it has none; a question answered so has a _special column
+that says which. Questions with spans, relations or several answers also have a _json
 column with the full answer: spans with their field and, per fragment, the
 offset and length in that field of the unit version (units.csv), relations
 with the ids of their spans.

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ClientIdSchema } from "./common.js";
+import { SpecialKindSchema } from "./design/options.js";
 
 // The coder-submitted "answer" for a single question: one
 // JSON-serializable value.
@@ -8,12 +9,19 @@ import { ClientIdSchema } from "./common.js";
 // variable's `type` stores is one of `values` (nominal, ordinal, numeric,
 // scale, annotinder, random), `spans` or `relations`; confirm stores none.
 
-/** One answer: an option value (or a number), for a scale per item. */
-export const ValueAnswerSchema = z.object({
-  value: z.union([z.string(), z.number()]),
-  /** The scale item this answer is for. */
-  item: z.string().optional(),
-});
+/**
+ * One answer: an option value (or a number, or text), for a scale per item;
+ * or a special answer of the question (`special`), with its code as the
+ * value if it has one, else without a value (missing).
+ */
+export const ValueAnswerSchema = z
+  .object({
+    value: z.union([z.string(), z.number()]).optional(),
+    /** The scale item this answer is for. */
+    item: z.string().optional(),
+    special: SpecialKindSchema.optional(),
+  })
+  .refine((a) => a.value !== undefined || a.special !== undefined, { message: "An answer has a value or is special" });
 export type ValueAnswer = z.infer<typeof ValueAnswerSchema>;
 
 /** A single contiguous text fragment within a span answer. */

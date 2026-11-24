@@ -8,6 +8,8 @@
 /** What a scope sees of a key press: the key and its modifiers. */
 export interface KeyPress {
   key: string;
+  /** The physical key (`Digit1`), where known: the same whatever the keyboard layout. */
+  code?: string;
   shiftKey: boolean;
   altKey: boolean;
   ctrlKey: boolean;

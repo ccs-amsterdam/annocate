@@ -19,7 +19,8 @@ name). **+ Add item** adds one.
 ## Options
 
 As for [ordered options](nominal-and-ordinal.md#ordinal-values-are-1-2-3):
-labels, rising values, optional colours and special options. A new scale
+labels, rising values and optional colours; and
+[special answers](nominal-and-ordinal.md#special-answers), for each item. A new scale
 has five, _Strongly disagree_ to _Strongly agree_.
 
 ## Compact or grid

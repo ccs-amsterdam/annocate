@@ -1,55 +1,76 @@
 import { describe, expect, it } from "vitest";
-import { AnnotinderTypeSchema, NominalTypeSchema, OrdinalTypeSchema } from "./variableTypes.js";
-import { ordinaryOptions, specialOptions } from "./options.js";
+import { AnnotinderTypeSchema, NominalTypeSchema, NumericTypeSchema, OrdinalTypeSchema } from "./variableTypes.js";
+import { validateAnswer, type AnyVariableType } from "./answers.js";
+import { buildScope } from "./references.js";
 
 const messages = (result: { success: boolean; error?: { issues: { message: string }[] } }) =>
   result.success ? [] : result.error!.issues.map((i) => i.message);
 
-describe("special options", () => {
-  it("are outside an ordinal scale's order, each kind once per question", () => {
-    const scale = (options: object[]) => OrdinalTypeSchema.safeParse({ type: "ordinal", question: "?", options });
-    expect(
-      messages(
-        scale([
-          { value: 1 },
-          { value: 2 },
-          { value: 98, special: "dont_know" },
-          { value: 99, special: "not_applicable" },
-        ]),
-      ),
-    ).toEqual([]);
-    // Anywhere, any number: the order is the other options'
-    expect(messages(scale([{ value: 0, special: "not_applicable" }, { value: 1 }, { value: 2 }]))).toEqual([]);
-    expect(messages(scale([{ value: 1 }, { value: 2, special: "dont_know" }, { value: 2 }]))).toEqual([
-      "Ordinal values are each used once (2 is used twice)",
+describe("special answers", () => {
+  it("are defined once per question: each kind once, a label and an optional code", () => {
+    const ordinal = (specials: object[]) =>
+      OrdinalTypeSchema.safeParse({ type: "ordinal", question: "?", options: [{ value: 1 }, { value: 2 }], specials });
+    expect(messages(ordinal([{ kind: "dont_know" }, { kind: "not_applicable", label: "None", value: 99 }]))).toEqual(
+      [],
+    );
+    expect(messages(ordinal([{ kind: "dont_know" }, { kind: "dont_know" }]))).toEqual([
+      "A question has each special answer once",
     ]);
-    expect(
-      messages(
-        NominalTypeSchema.safeParse({
-          type: "nominal",
-          question: "?",
-          options: [
-            { value: "a", special: "dont_know" },
-            { value: "b", special: "dont_know" },
-          ],
-        }),
-      ),
-    ).toEqual([`Two options are "Don't know": a question has each special option once`]);
+    expect(messages(ordinal([{ kind: "dont_know", value: 2 }]))).toEqual([
+      `The code of "Don't know" is also an option's value`,
+    ]);
+    expect(messages(ordinal([{ kind: "dont_know", value: "x" }]))).toEqual([
+      `The code of "Don't know" is a number here`,
+    ]);
+    const nominal = NominalTypeSchema.safeParse({
+      type: "nominal",
+      question: "?",
+      options: [{ value: "a" }],
+      specials: [{ kind: "not_applicable", value: 0 }],
+    });
+    expect(messages(nominal)).toEqual([`The code of "Not applicable" is text here, like the option values`]);
+    const age = NumericTypeSchema.safeParse({
+      type: "numeric",
+      question: "?",
+      min: 0,
+      max: 120,
+      specials: [{ kind: "dont_know", value: 99 }],
+    });
+    expect(messages(age)).toEqual(["A special answer's code (99) is inside min..max"]);
   });
 
   it("aren't for swiping", () => {
     const swipe = AnnotinderTypeSchema.safeParse({
       type: "annotinder",
       question: "?",
-      options: [{ value: "a" }, { value: "b", special: "not_applicable" }],
+      options: [{ value: "a" }, { value: "b" }],
+      specials: [{ kind: "dont_know" }],
     });
-    expect(messages(swipe)).toEqual(["Only categories, ordinal and scale questions have special options"]);
+    expect(swipe.success && "specials" in swipe.data).toBe(false);
   });
 
-  it("are told apart from the others", () => {
-    const options = [{ value: "a" }, { value: "na", special: "not_applicable" as const }, { value: "b" }];
-    expect(ordinaryOptions(options).map((o) => o.value)).toEqual(["a", "b"]);
-    expect(specialOptions(options).map((o) => o.value)).toEqual(["na"]);
+  it("are answered with their kind, and their code as the value if they have one", () => {
+    const variable = {
+      type: "nominal",
+      question: "?",
+      multiple: true,
+      options: [{ value: "a" }, { value: "b" }],
+      specials: [{ kind: "dont_know" }, { kind: "not_applicable", value: "na" }],
+    } as AnyVariableType;
+    expect(validateAnswer("q", variable, { done: true, skip: false, values: [{ special: "dont_know" }] })).toEqual([]);
+    expect(
+      validateAnswer("q", variable, { done: true, skip: false, values: [{ special: "not_applicable", value: "na" }] }),
+    ).toEqual([]);
+    expect(validateAnswer("q", variable, { done: true, skip: false, values: [{ special: "not_applicable" }] })).toEqual(
+      [`'q': 'not_applicable' is stored as "na"`],
+    );
+    expect(
+      validateAnswer("q", variable, { done: true, skip: false, values: [{ value: "a" }, { special: "dont_know" }] }),
+    ).toEqual(["'q': a special answer is the only answer"]);
+    const scope = buildScope(new Map([["q", variable]]), {
+      q: { done: true, skip: false, values: [{ special: "dont_know" }] },
+    });
+    expect(scope.$var.q).toEqual({ answered: true, values: [], labels: ["Don't know"] });
   });
 });
 

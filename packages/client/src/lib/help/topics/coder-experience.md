@@ -95,14 +95,14 @@ session** (empty).
 
 ## Keyboard shortcuts
 
-| Keys                    | Do                                                       |
-| ----------------------- | -------------------------------------------------------- |
-| **←** **→** **↑** **↓** | move between answer buttons                              |
-| **Space** / **Enter**   | choose the focused button                                |
+| Keys                    | Do                                                        |
+| ----------------------- | --------------------------------------------------------- |
+| **←** **→** **↑** **↓** | move between answer buttons                               |
+| **Space** / **Enter**   | choose the focused button                                 |
 | **Ctrl + Enter**        | continue, once answered (also while typing in a text box) |
-| **Ctrl + ←** / **→**    | previous or next question (back focuses its answer)      |
-| **Ctrl + Space**        | open the question's instructions                         |
-| **0** / **.**           | the special options: not applicable, don't know          |
+| **Ctrl + ←** / **→**    | previous or next question (back focuses its answer)       |
+| **Ctrl + Space**        | open the question's instructions                          |
+| **Ctrl + 1** / **2**    | a question's special answers (don't know, not applicable) |
 
 The Ctrl keys are commands: they work whatever the shortcut style, also
 while typing. On a Mac, **Option + ←** / **→** works too.
@@ -115,8 +115,8 @@ again ends it. The labels then have focus: the arrows move between them,
 labelled word opens its spans, **Backspace** removes the last span, and
 **Ctrl + Enter** is **Done**.
 
-Choosing answers with keys (numbers, letters, **0** / **.** for the
-special options) is off until a coder turns on **Answer with keys** under
+Choosing answers with keys (numbers, letters, **Ctrl + 1** / **2** for
+the special answers) is off until a coder turns on **Answer with keys** under
 the keyboard icon in the top bar, so stray keys answer nothing; the moving
 keys and the Ctrl commands above always work. A study can keep answers to
 clicking for its questions about the coder or about units (the Study

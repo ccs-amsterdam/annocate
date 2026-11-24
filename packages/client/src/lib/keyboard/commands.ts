@@ -17,5 +17,20 @@ export const isForward = (press: KeyPress) => press.key === "ArrowRight" && (pre
 /** Ctrl + Space: the question's instruction. */
 export const isHelp = (press: KeyPress) => press.key === " " && press.ctrlKey;
 
+/**
+ * Ctrl (or ⌘) + 1, 2, ...: a question's special answers (don't know, not
+ * applicable), in the order the question lists them. The index, or -1. By
+ * the physical key, so layouts that type digits with Shift (AZERTY) work.
+ */
+export function specialIndex(press: KeyPress): number {
+  if (!(press.ctrlKey || press.metaKey) || press.altKey || press.shiftKey) return -1;
+  const digit =
+    /^(?:Digit|Numpad)([1-9])$/.exec(press.code ?? "")?.[1] ?? (/^[1-9]$/.test(press.key) ? press.key : null);
+  return digit ? Number(digit) - 1 : -1;
+}
+
+/** The badge of the `index`-th special answer: ^1, ^2, ... */
+export const specialBadge = (index: number) => `^${index + 1}`;
+
 /** How the badges show them: ^ for Ctrl (symbols only, so a button's name stays its own). */
 export const COMMAND_BADGES = { continue: "^↵", back: "^←", forward: "^→", help: "^␣" } as const;

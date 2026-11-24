@@ -58,21 +58,25 @@ read well in light and dark mode; **Any colour** opens the browser's own
 picker. In the JSON a colour is a CSS colour name (`seagreen`, `crimson`)
 or a hex code (`#22c55e`); the picker's colours are names.
 
-### Special options
+### Special answers
 
-For answers outside the categories or scale, click the small circle at the
-end of an option's row and choose:
+For answers outside the options, tick them under **Special answers**:
 
-| Special            | Key   | For example                                     |
-| ------------------ | ----- | ----------------------------------------------- |
-| **Not applicable** | **0** | "Not applicable", "Doesn't mention it", "None"  |
-| **Don't know**     | **.** | "Don't know", "Can't tell", "Prefer not to say" |
+| Special answer     | Key          | For example                                     |
+| ------------------ | ------------ | ----------------------------------------------- |
+| **Don't know**     | **Ctrl + 1** | "Don't know", "Can't tell", "Prefer not to say" |
+| **Not applicable** | **Ctrl + 2** | "Not applicable", "Doesn't mention it", "None"  |
 
-They are shown apart from the other options, in a quieter style, and have
-fixed keyboard shortcuts: **0** for not applicable, **.** for don't know. With several answers, a special option is the only answer. On an
-ordered question it stays off the scale (default values 98 and 99), and
-the `special` column of `variables.csv` marks it so you can leave it out.
-Scales have them too; swipe doesn't.
+The label is yours. They are shown in a row under the options, in a
+quieter style. Coders who answer with keys choose them with **Ctrl + 1**,
+**Ctrl + 2**, in the order you ticked them. With several answers, a
+special answer is the only answer.
+
+A special answer has no value by default: it is stored as missing, and the
+results say which (a `_special` column in the download). Give it a
+**code** to store one instead, e.g. `99` (ordered questions: a number that
+isn't one of the options' values; categories: text). Numbers and scales
+have them too; swipe doesn't.
 
 ## Several answers
 
@@ -98,8 +102,8 @@ in the results; in references they are a list (`$var.topics.values`,
 ## Keys
 
 Coders press **1** to **9** for the options (or the keys they chose, see
-[Keyboard shortcuts](coder-experience.md#keyboard-shortcuts)), **0** and
-**.** for special options. With several answers a key ticks or unticks.
+[Keyboard shortcuts](coder-experience.md#keyboard-shortcuts)), **Ctrl + 1**,
+**Ctrl + 2** for special answers. With several answers a key ticks or unticks.
 
 ## Switching between nominal and ordinal
 

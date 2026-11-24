@@ -1,4 +1,4 @@
-import { optionLabel, ordinaryOptions } from "./options.js";
+import { optionLabel } from "./options.js";
 import type {
   AnyVariableType,
   CategoricalType,
@@ -62,8 +62,7 @@ function fitsGrid(labels: string[], columns: number, width = DESIGN_WIDTH): bool
 }
 
 function categoricalLayout(variable: CategoricalType, context?: LayoutContext): ResolvedLayout {
-  // Special options are laid out apart, under the others
-  const labels = ordinaryOptions(variable.options).map(optionLabel);
+  const labels = variable.options.map(optionLabel);
   if (variable.layout && variable.layout !== "auto") {
     return { layout: variable.layout, columns: variable.layout === "grid" ? (variable.columns ?? 1) : 1 };
   }
@@ -125,7 +124,7 @@ export function resolveLayout(variable: AnyVariableType, context?: LayoutContext
 export function layoutWarning(variable: AnyVariableType): string | null {
   if ((variable.type !== "nominal" && variable.type !== "ordinal") || !variable.layout || variable.layout === "auto")
     return null;
-  const labels = ordinaryOptions(variable.options).map(optionLabel);
+  const labels = variable.options.map(optionLabel);
   const tooTall = "doesn't fit half a small phone screen; coders would have to scroll (auto picks a layout that fits)";
   switch (variable.layout) {
     case "row":

@@ -1,5 +1,5 @@
-import type { VariableValue } from "../variableValue.js";
-import { optionLabel, type OptionValue } from "./options.js";
+import type { ValueAnswer, VariableValue } from "../variableValue.js";
+import { optionLabel, specialLabel, type OptionValue } from "./options.js";
 import type { AnyVariableType } from "./variableTypes.js";
 
 // One reference syntax for scripts, templates, question texts and conditions
@@ -757,11 +757,19 @@ export function unitScopeData(unit: { externalId: string; data: Record<string, u
   return { id: unit.externalId, test_set: null, ...unit.data };
 }
 
-/** The label of a value: the option's label, a numeric break-point label, or the value as text. */
+/**
+ * The label of a value: the option's label, a numeric break-point label, a
+ * special answer's label (by its code, or its kind if it has none), or the
+ * value as text.
+ */
 export function valueLabel(variable: AnyVariableType, value: OptionValue): string {
   if ("options" in variable && variable.options) {
     const option = variable.options.find((o) => o.value === value);
     if (option) return optionLabel(option);
+  }
+  if ("specials" in variable) {
+    const special = variable.specials?.find((s) => (s.value ?? s.kind) === value);
+    if (special) return specialLabel(special);
   }
   if (variable.type === "numeric") {
     const label = variable.labels?.find((l) => l.value === value);
@@ -775,6 +783,13 @@ function varEntry(variable: AnyVariableType, answer: VariableValue | undefined):
   const v = answered ? answer : undefined;
   const kind = questionKind(variable);
   const labelOf = (value: OptionValue) => valueLabel(variable, value);
+  // A special answer: its code (or null) and its label
+  const specials = "specials" in variable ? (variable.specials ?? []) : [];
+  const answerLabel = (a: ValueAnswer): string | null => {
+    const special = a.special && specials.find((s) => s.kind === a.special);
+    if (special) return specialLabel(special);
+    return a.value === undefined ? null : labelOf(a.value);
+  };
 
   switch (kind) {
     case "confirm":
@@ -796,19 +811,24 @@ function varEntry(variable: AnyVariableType, answer: VariableValue | undefined):
       const items: Record<string, ItemScopeEntry> = {};
       const values: OptionValue[] = [];
       for (const item of variable.type === "scale" ? variable.items : []) {
-        const value = v?.values?.find((a) => a.item === item.name)?.value;
-        items[item.name] = typeof value === "number" ? { value, label: labelOf(value) } : { value: null, label: null };
-        if (typeof value === "number") values.push(value);
+        const answer = v?.values?.find((a) => a.item === item.name);
+        const value = typeof answer?.value === "number" ? answer.value : null;
+        items[item.name] = { value, label: answer ? answerLabel(answer) : null };
+        if (value !== null) values.push(value);
       }
       return { answered, values, items };
     }
     case "multiple": {
-      const values = (v?.values ?? []).filter((a) => a.item === undefined).map((a) => a.value);
-      return { answered, values, labels: values.map(labelOf) };
+      const answers = (v?.values ?? []).filter((a) => a.item === undefined);
+      return {
+        answered,
+        values: answers.flatMap((a) => (a.value === undefined ? [] : [a.value])),
+        labels: answers.flatMap((a) => answerLabel(a) ?? []),
+      };
     }
     default: {
-      const value = v?.values?.find((a) => a.item === undefined)?.value ?? null;
-      return { answered, value, label: value === null ? null : labelOf(value) };
+      const answer = v?.values?.find((a) => a.item === undefined);
+      return { answered, value: answer?.value ?? null, label: answer ? answerLabel(answer) : null };
     }
   }
 }

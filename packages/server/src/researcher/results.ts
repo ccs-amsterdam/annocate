@@ -6,7 +6,6 @@ import {
   collectQuestions,
   krippendorffAlpha,
   percentAgreement,
-  specialOptions,
   type AlphaMetric,
   type AnyVariableType,
   type Coding,
@@ -16,6 +15,7 @@ import {
   type ResultUnit,
   type ResultsUnit,
   type SpanAnswer,
+  type ValueAnswer,
 } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
 import { rows, type Db } from "../db/index.js";
@@ -58,11 +58,12 @@ async function answerCounts(db: Db, studyId: number): Promise<QuestionAnswers[]>
           count(*) FILTER (WHERE NOT (${notSkipped}))::int AS skipped
         FROM annotation_values a WHERE ${live(studyId)} GROUP BY variable`,
   );
-  // Values (with a scale's item), span labels and relation labels, counted
+  // Values (with a scale's item), span labels and relation labels, counted; a
+  // special answer without a code by its kind (`dont_know`)
   const counted = await rows<{ variable: string; item: string | null; value: Value; count: number }>(
     db,
     sql`SELECT variable, item, value, count(*)::int AS count FROM (
-          SELECT a.variable, v->>'item' AS item, v->'value' AS value
+          SELECT a.variable, v->>'item' AS item, COALESCE(v->'value', v->'special') AS value
             FROM annotation_values a, jsonb_array_elements(COALESCE(a.value->'values', '[]')) v
             WHERE ${live(studyId)} AND ${notSkipped}
           UNION ALL
@@ -109,19 +110,17 @@ function valueRows(
   type: AnyVariableType,
   answers: { unit: number; session: number; values: unknown }[],
 ): { item: string | null; option: Value | null; metric: AlphaMetric; codings: Coding[] }[] {
-  const values = (a: { values: unknown }) => (a.values ?? []) as { value: Value; item?: string }[];
-  const special = new Set<Value>(
-    "options" in type && Array.isArray(type.options) ? specialOptions(type.options).map((o) => o.value) : [],
-  );
+  const values = (a: { values: unknown }) => (a.values ?? []) as ValueAnswer[];
   const single = (metric: AlphaMetric, item: string | null = null) => ({
     item,
     option: null,
     metric,
     codings: answers.flatMap((a) => {
-      const value = values(a).find((v) => (v.item ?? null) === item)?.value;
-      // Special options ("don't know") aren't on an ordered scale: missing there
-      if (value === undefined || (metric !== "nominal" && special.has(value))) return [];
-      return [{ unit: a.unit, coder: a.session, value }];
+      const answer = values(a).find((v) => (v.item ?? null) === item);
+      // A special answer ("don't know") is a category of its own; on an ordered scale it is missing
+      if (!answer || (metric !== "nominal" && answer.special)) return [];
+      const value = answer.value ?? answer.special;
+      return value === undefined ? [] : [{ unit: a.unit, coder: a.session, value }];
     }),
   });
   switch (type.type) {

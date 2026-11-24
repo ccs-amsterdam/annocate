@@ -1,13 +1,13 @@
 import { COMMAND_BADGES } from "../../keyboard/commands";
 import { useRef, useState } from "react";
 import { useAnswerLayout } from "../../display/hooks";
-import { SPECIAL_KEYS, optionLabel, ordinaryOptions, specialOptions, type Option } from "@annotinder/contracts";
+import { optionLabel, specialLabel, type Option, type SpecialAnswer, type ValueAnswer } from "@annotinder/contracts";
 import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { buildValues } from "./answerValue";
-import { CompactRow, EndLabels, SpecialButton } from "./OptionButtons";
+import { buildValues, specialValue } from "./answerValue";
+import { CompactRow, EndLabels, SpecialAnswersRow } from "./OptionButtons";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
-import { useKeyTargets } from "../../keyboard/hooks";
+import { useKeyTargets, useSpecialKeys } from "../../keyboard/hooks";
 import { ShortcutBadge } from "../ShortcutBadge";
 
 type ScaleVariable = Extract<QuestionVariable, { type: "scale" }>;
@@ -23,12 +23,11 @@ const itemLabel = (item: { name: string; label?: string }) => item.label ?? item
 export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFieldProps<ScaleVariable>) {
   const { layout } = useAnswerLayout(variable);
   const items = variable.items;
-  // The scale's points, then its special options (don't know, not applicable), apart
-  const points = ordinaryOptions(variable.options);
-  const specials = specialOptions(variable.options);
-  const columns = [...points, ...specials];
-  const [selected, setSelected] = useState<Record<string, Option["value"]>>(() =>
-    Object.fromEntries((initialValue?.values ?? []).filter((v) => v.item !== undefined).map((v) => [v.item!, v.value])),
+  // The scale's points; its special answers (don't know, not applicable) apart, for each item
+  const points = variable.options;
+  const specials = variable.specials ?? [];
+  const [selected, setSelected] = useState<Record<string, ValueAnswer>>(() =>
+    Object.fromEntries((initialValue?.values ?? []).filter((v) => v.item !== undefined).map((v) => [v.item!, v])),
   );
   const [missing, setMissing] = useState<string | null>(null);
   const rows = useRef<Record<string, HTMLElement | null>>({});
@@ -37,9 +36,14 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
   const done = nAnswered === items.length;
 
   function select(item: string, option: Option) {
-    setSelected((current) => ({ ...current, [item]: option.value }));
+    setSelected((current) => ({ ...current, [item]: { item, value: option.value } }));
     if (missing === item) setMissing(null);
   }
+  function selectSpecial(item: string, special: SpecialAnswer) {
+    setSelected((current) => ({ ...current, [item]: specialValue(special, item) }));
+    if (missing === item) setMissing(null);
+  }
+  const isPoint = (item: string, option: Option) => !selected[item]?.special && selected[item]?.value === option.value;
 
   function submit() {
     const first = items.find((item) => selected[item.name] === undefined);
@@ -48,19 +52,23 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
       rows.current[first.name]?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
-    onAnswer(buildValues(items.map((item) => ({ item: item.name, value: selected[item.name] }))));
+    onAnswer(buildValues(items.map((item) => ({ ...selected[item.name], item: item.name }))));
   }
 
-  // The keyboard answers the first unanswered item; Ctrl + Enter continues.
-  const keyed = columns.map((o) => ({
-    label: optionLabel(o),
-    ...(o.special ? { fixed: SPECIAL_KEYS[o.special] } : {}),
-  }));
+  // The keyboard answers the first unanswered item (Ctrl + 1, 2, ...: its special answers); Ctrl + Enter continues.
+  const keyed = points.map((o) => ({ label: optionLabel(o) }));
   const targets = items.map(() => keyed);
-  useKeyTargets(targets, (item, index) => select(items[item].name, columns[index]), {
-    activeGroup: items.findIndex((item) => selected[item.name] === undefined),
+  const active = items.findIndex((item) => selected[item.name] === undefined);
+  useKeyTargets(targets, (item, index) => select(items[item].name, points[index]), {
+    activeGroup: active,
     onEnter: submit,
   });
+  // The grid's special columns (a compact row has its own)
+  const specialBadges = useSpecialKeys(
+    specials.map(specialLabel),
+    (i) => selectSpecial(items[active].name, specials[i]),
+    layout === "grid" && active >= 0,
+  );
 
   const highlight = (name: string) =>
     missing === name ? "rounded-md ring-2 ring-destructive ring-offset-2 ring-offset-background" : "";
@@ -73,12 +81,20 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
             <thead>
               <tr>
                 <th />
-                {columns.map((option, i) => (
-                  <th
-                    key={String(option.value)}
-                    className={`px-1 text-center text-xs font-normal text-muted-foreground ${i === points.length ? "border-l border-dashed border-border" : ""}`}
-                  >
+                {points.map((option) => (
+                  <th key={String(option.value)} className="px-1 text-center text-xs font-normal text-muted-foreground">
                     {optionLabel(option)}
+                  </th>
+                ))}
+                {specials.map((special, i) => (
+                  <th
+                    key={special.kind}
+                    className={`px-1 text-center text-xs font-normal text-muted-foreground ${i === 0 ? "border-l border-dashed border-border" : ""}`}
+                  >
+                    {specialLabel(special)}
+                    {specialBadges[i] && (
+                      <span className="ml-1 rounded border px-1 font-mono text-[10px]">{specialBadges[i]}</span>
+                    )}
                   </th>
                 ))}
               </tr>
@@ -89,25 +105,36 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
                   <th scope="row" className="pr-2 text-left font-normal">
                     {itemLabel(item)}
                   </th>
-                  {columns.map((option, i) => {
-                    const checked = selected[item.name] === option.value;
-                    return (
-                      <td
-                        key={String(option.value)}
-                        className={`text-center ${i === points.length ? "border-l border-dashed border-border" : ""}`}
-                      >
-                        <input
-                          type="radio"
-                          className="size-5 cursor-pointer accent-primary"
-                          name={`${item.name}`}
-                          aria-label={`${itemLabel(item)}: ${optionLabel(option)}`}
-                          checked={checked}
-                          data-key-target=""
-                          onChange={() => select(item.name, option)}
-                        />
-                      </td>
-                    );
-                  })}
+                  {points.map((option) => (
+                    <td key={String(option.value)} className="text-center">
+                      <input
+                        type="radio"
+                        className="size-5 cursor-pointer accent-primary"
+                        name={`${item.name}`}
+                        aria-label={`${itemLabel(item)}: ${optionLabel(option)}`}
+                        checked={isPoint(item.name, option)}
+                        data-key-target=""
+                        onChange={() => select(item.name, option)}
+                      />
+                    </td>
+                  ))}
+                  {specials.map((special, i) => (
+                    <td
+                      key={special.kind}
+                      className={`text-center ${i === 0 ? "border-l border-dashed border-border" : ""}`}
+                    >
+                      <input
+                        type="radio"
+                        className="size-5 cursor-pointer accent-primary"
+                        name={`${item.name}`}
+                        aria-label={`${itemLabel(item)}: ${specialLabel(special)}`}
+                        checked={selected[item.name]?.special === special.kind}
+                        data-key-target=""
+                        data-special={special.kind}
+                        onChange={() => selectSpecial(item.name, special)}
+                      />
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
@@ -117,7 +144,7 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
         <>
           <EndLabels options={points} />
           <div className="flex flex-col gap-1.5">
-            {items.map((item) => (
+            {items.map((item, i) => (
               <div
                 key={item.name}
                 ref={(el) => void (rows.current[item.name] = el)}
@@ -127,18 +154,17 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
                 <div className="flex items-center gap-1.5">
                   <CompactRow
                     options={points}
-                    selected={selected[item.name]}
+                    selected={selected[item.name]?.special ? undefined : selected[item.name]?.value}
                     onSelect={(o) => select(item.name, o)}
                     label={itemLabel(item)}
                   />
-                  {specials.map((option) => (
-                    <SpecialButton
-                      key={String(option.value)}
-                      option={option}
-                      selected={selected[item.name] === option.value}
-                      onClick={() => select(item.name, option)}
-                    />
-                  ))}
+                  <SpecialAnswersRow
+                    specials={specials}
+                    selected={selected[item.name]?.special}
+                    onPick={(special) => selectSpecial(item.name, special)}
+                    keys={i === active}
+                    className="flex shrink-0 gap-1"
+                  />
                 </div>
               </div>
             ))}

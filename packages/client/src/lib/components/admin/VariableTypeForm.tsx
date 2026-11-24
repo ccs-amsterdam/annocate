@@ -2,6 +2,7 @@ import { MAX_TEXT_LENGTH } from "@annotinder/contracts";
 import { InfoTip } from "@/components/ui/info-tip";
 import { SCALE_LAYOUTS, type AnyVariableType } from "@annotinder/contracts";
 import { OptionsEditor } from "./OptionsEditor";
+import { SpecialAnswersFields } from "./variableType/SpecialAnswersFields";
 import { ScaleItemsEditor } from "./ScaleItemsEditor";
 import { QuestionField } from "./variableType/QuestionField";
 import { LayoutSelect } from "./variableType/LayoutSelect";
@@ -65,10 +66,10 @@ export function VariableTypeForm({
           <OptionsEditor
             key="ordinal"
             level="ordinal"
-            specials
             options={v.options}
             onChange={(options) => onChange({ ...v, options })}
           />
+          <SpecialAnswersFields specials={v.specials} onChange={(specials) => onChange({ ...v, specials })} />
           <LayoutSelect
             variable={v}
             layouts={SCALE_LAYOUTS}

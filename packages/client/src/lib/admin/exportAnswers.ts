@@ -2,6 +2,7 @@ import {
   collectQuestions,
   hasNumericCodes,
   optionLabel,
+  specialLabel,
   type AnyVariableType,
   type SpanAnswer,
   type OptionValue,
@@ -42,7 +43,12 @@ export function answerText(
   // A confirm question: answered, without a value.
   if (!value.values && !value.spans && !value.relations) return "true";
   const parts: string[] = [];
-  for (const v of value.values ?? []) if (v.item === item) parts.push(write(v.value));
+  for (const v of value.values ?? []) {
+    if (v.item !== item) continue;
+    // A special answer without a code is missing as a value (its `_special` column says which); as a label, its label
+    const key = v.value ?? (write === asIs ? undefined : v.special);
+    if (key !== undefined) parts.push(write(key));
+  }
   for (const s of value.spans ?? []) parts.push(`${write(s.value)}: ${spanText(s)}`);
   const end = (id: string) => {
     const span = spans?.get(id);
@@ -50,6 +56,12 @@ export function answerText(
   };
   for (const r of value.relations ?? []) parts.push(`${write(r.value)}: ${end(r.fromId)} → ${end(r.toId)}`);
   return parts.join("; ");
+}
+
+/** The special answer (not_applicable, dont_know) of an answer cell, or "". */
+export function specialText(value: VariableValue | undefined, item?: string): string {
+  if (!value || value.skip) return "";
+  return value.values?.find((v) => v.item === item && v.special)?.special ?? "";
 }
 
 /**
@@ -68,7 +80,7 @@ export function answerJson(value: VariableValue | undefined, numeric = false): s
     return JSON.stringify(
       value.relations.map(({ id, value, fromId, toId }) => ({ id, value: code(value), fromId, toId })),
     );
-  return JSON.stringify((value.values ?? []).map((v) => code(v.value)));
+  return JSON.stringify((value.values ?? []).map((v) => (v.value === undefined ? null : code(v.value))));
 }
 
 /** Questions whose option values are all plain numbers (numeric codes): numbers in the `_json` columns. */
@@ -104,7 +116,16 @@ export class Labels {
       const questions = new Map<string, Map<string, string>>();
       for (const [name, variable] of collectQuestions(items).questions) {
         const options = optionsOf(variable);
-        if (options) questions.set(name, new Map(options.map((o) => [String(o.value), optionLabel(o)])));
+        // Special answers by their code, or their kind if they have none
+        const specials = "specials" in variable ? (variable.specials ?? []) : [];
+        if (options || specials.length)
+          questions.set(
+            name,
+            new Map([
+              ...(options ?? []).map((o) => [String(o.value), optionLabel(o)] as const),
+              ...specials.map((x) => [String(x.value ?? x.kind), specialLabel(x)] as const),
+            ]),
+          );
       }
       this.byVersion.set(id, questions);
     }
@@ -133,11 +154,16 @@ export function optionsOf(variable: AnyVariableType): { value: OptionValue; labe
   return "options" in variable && Array.isArray(variable.options) ? variable.options : undefined;
 }
 
-/** An answer column: a question (a scale: one of its items), its labels, or its full answer as JSON. */
+/**
+ * An answer column: a question (a scale: one of its items), its labels, its
+ * special answers (`special`: not_applicable, dont_know), or its full answer
+ * as JSON.
+ */
 export interface Column {
   variable: string;
   item?: string;
   label?: boolean;
+  special?: boolean;
   json?: boolean;
 }
 
@@ -150,7 +176,9 @@ export function answerColumns(
 ): Column[] {
   const items = new Map<string, Set<string | undefined>>();
   const json = new Set(nested);
+  const special = new Set<string>();
   for (const [variable, value] of values) {
+    if (value.values?.some((v) => v.special)) special.add(variable);
     // Nested answers found in the data, also of questions the live design version no longer has
     if (value.spans || value.relations || (value.values ?? []).filter((v) => v.item === undefined).length > 1)
       json.add(variable);
@@ -167,14 +195,18 @@ export function answerColumns(
     const named = [...set].filter((i): i is string => i !== undefined).sort();
     // A question without items (or never answered with one) has one column.
     const columns: Column[] = named.length > 0 ? named.map((item) => ({ variable, item })) : [{ variable }];
-    const withLabels = labels?.has(variable) ? columns.flatMap((c) => [c, { ...c, label: true }]) : columns;
+    const withLabels = columns.flatMap((c) => [
+      c,
+      ...(labels?.has(variable) ? [{ ...c, label: true }] : []),
+      ...(special.has(variable) ? [{ ...c, special: true }] : []),
+    ]);
     return json.has(variable) && named.length === 0 ? [...withLabels, { variable, json: true }] : withLabels;
   });
 }
 
-/** A column's header: `question`, `question.item`, plus `_label` or `_json`. */
+/** A column's header: `question`, `question.item`, plus `_label`, `_special` or `_json`. */
 export const header = (c: Column) =>
-  `${c.item ? `${c.variable}.${c.item}` : c.variable}${c.label ? "_label" : c.json ? "_json" : ""}`;
+  `${c.item ? `${c.variable}.${c.item}` : c.variable}${c.label ? "_label" : c.special ? "_special" : c.json ? "_json" : ""}`;
 /** The cell of an answer in a column. */
 export const cellOf = (
   value: VariableValue | undefined,
@@ -186,7 +218,9 @@ export const cellOf = (
 ) =>
   c.json
     ? answerJson(value, numeric.has(c.variable))
-    : answerText(value, c.item, c.label && labels ? labels.writer(c.variable, designVersionId) : asIs, spans);
+    : c.special
+      ? specialText(value, c.item)
+      : answerText(value, c.item, c.label && labels ? labels.writer(c.variable, designVersionId) : asIs, spans);
 
 /** Question names in design order (the live design version's, if given). */
 export function questionOrder(items: TopLevelItem[] | undefined): string[] {

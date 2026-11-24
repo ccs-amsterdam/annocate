@@ -251,6 +251,17 @@ Stata value labels:
   Ordinal and scales: numbers rising in option order (default 1..n).
   Switching between them converts (`convertOptionsLevel`).
 
+**Special answers** (`specials`, on nominal, ordinal, numeric and scale
+questions): `[{ kind, label?, value? }]`, each kind (`dont_know`,
+`not_applicable`) at most once. They aren't options: shown in a row under
+the answers (a scale: per item), chosen with Ctrl + 1, 2, ... in their
+order. The answer is `{ special: kind }`, with `value` only if the special
+answer has a code (nominal: text; otherwise a number, not an option's value
+or, for numbers, inside min..max); without one the value is missing. With
+`multiple` it is the only answer. Results count it as a category of its own
+for nominal questions and leave it out of ordinal and interval agreement;
+the download writes the code (or nothing) with a `_special` column.
+
 ### Types
 
 | Type         | What                                                             | Stored (`VariableValue`)                   |
@@ -379,8 +390,11 @@ are handled there once.
   coding screen's top bar (`studyRunner/KeyboardMenu.tsx`) lists the
   shortcuts and holds the shortcut style and "Show shortcut badges".
 - The base layer: arrows move focus by screen position, Space/Enter click
-  the focused button, Shift + Left/Right go to the previous/next question
-  (back focuses its answer), Shift + Enter continues an answered question.
+  the focused button, Ctrl + Left/Right go to the previous/next question
+  (back focuses its answer), Ctrl + Enter continues an answered question
+  (`keyboard/commands.ts`).
+- A question's special answers take Ctrl + 1, 2, ... in their order
+  (`useSpecialKeys`, badges `^1`, `^2`), only with answer keys on.
 
 ### Study entry
 
@@ -636,7 +650,7 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   `variableType/`; `ItemForm.tsx`, with end items and loop-question fields in
   `itemForm/`): the options editor
   (`OptionsEditor.tsx`: label, value, colour, order; ordinal values renumber
-  unless "Custom values"), `multiple`, a layout select whose `auto` entry
+  unless "Custom values"), special answers (`variableType/SpecialAnswersFields.tsx`), `multiple`, a layout select whose `auto` entry
   names its choice, numeric range, step and labels. Switching nominal ↔
   ordinal keeps the options. A branch's or loop's condition
   ("Only show these items if…", always there for a branch; for a loop

@@ -1,5 +1,5 @@
 import { showKeyChoice } from "./keyChoice";
-import { isBack, isContinue, isForward } from "./commands";
+import { isBack, isContinue, isForward, specialBadge, specialIndex } from "./commands";
 import { useContext, useEffect, useRef, useState } from "react";
 import { PRIORITY, type KeyHandler, type KeyPress, type ScopeOptions } from "./controller";
 import { AnswerKeysContext, KeyboardContext } from "./context";
@@ -95,8 +95,7 @@ export function useKeyTargets(
   };
   const filtering = (group: readonly KeyTarget[] | undefined) =>
     !!group && effectiveMapping(mapping, group).kind === "filter";
-  const matchesOf = (group: readonly KeyTarget[]) =>
-    group.map((t) => t.fixed !== undefined || labelMatches(t.label, filter));
+  const matchesOf = (group: readonly KeyTarget[]) => group.map((t) => labelMatches(t.label, filter));
   const chooseByKey = (press: KeyPress): boolean => {
     if (!groups || press.onControl) return false;
     if (press.shiftKey) return false;
@@ -145,7 +144,7 @@ export function useKeyTargets(
         if (press.key === "Escape" && filter) setFilter("");
         else if (press.key === "Backspace" && filter) setFilter(filter.slice(0, -1));
         else if (press.key === "Enter" && filter) {
-          const first = matchesOf(group).findIndex((m, i) => m && group[i].fixed === undefined && !group[i].disabled);
+          const first = matchesOf(group).findIndex((m, i) => m && !group[i].disabled);
           if (first < 0) return true;
           setFilter("");
           choose(active, first, "Enter");
@@ -172,7 +171,7 @@ export function useKeyTargets(
       i === active && filtering(group)
         ? matchesOf(group)
         : i === active && typed
-          ? keysOf(mapping, group).map((k, j) => group[j].fixed !== undefined || !!k?.startsWith(typed))
+          ? keysOf(mapping, group).map((k) => !!k?.startsWith(typed))
           : group.map(() => true),
     ),
   };
@@ -186,6 +185,31 @@ export function useKeyTargets(
 export function useTargetKeys(group: readonly KeyTarget[]): (string | null)[] {
   const chosen = useKeyMapping();
   return keysOf(chosen.kind === "filter" ? numbersMapping : chosen, group);
+}
+
+/**
+ * A question's special answers for the keyboard (docs/client.md §4): Ctrl +
+ * 1, 2, ... in the order the question lists them, with answer keys on (and
+ * while `active`: a scale's item that keys answer). Returns their badges.
+ */
+export function useSpecialKeys(
+  labels: readonly string[],
+  onChoose: (index: number) => void,
+  active = true,
+): (string | null)[] {
+  const on = useContext(AnswerKeysContext) && active;
+  useKeyScope(
+    (press) => {
+      const index = specialIndex(press);
+      if (index < 0 || index >= labels.length) return false;
+      showKeyChoice(specialBadge(index), labels[index]);
+      onChoose(index);
+      return true;
+    },
+    on && labels.length > 0,
+    { priority: PRIORITY.field },
+  );
+  return labels.map((_, i) => (on ? specialBadge(i) : null));
 }
 
 export interface BaseKeys {

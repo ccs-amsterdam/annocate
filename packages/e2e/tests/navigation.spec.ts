@@ -261,31 +261,39 @@ test("answer keys are off until the coder turns them on; a study can turn them o
   await at(page, TEXTS[0], "Tone?");
 });
 
-test("special options: apart from the others, chosen with 0 and . in every question, the only answer of several", async ({
+test("special answers: under the answers, chosen with Ctrl + 1, 2 in their order, the only answer of several, per scale item", async ({
   page,
   request,
 }) => {
-  const created = await api<StudyResponse>(request, "POST", "/study", { name: "Special options" });
+  const created = await api<StudyResponse>(request, "POST", "/study", { name: "Special answers" });
   await api<UnitResponse[]>(request, "POST", `/study/${created.id}/units`, {
     units: [{ externalId: "u1", data: { text: "First text" } }],
   });
-  const options = [
-    { value: "politics" },
-    { value: "other" },
-    { value: "dk", label: "Don't know", special: "dont_know" },
-    { value: "na", label: "Not about anything", special: "not_applicable" },
-  ];
+  const options = [{ value: "politics" }, { value: "other" }];
+  // Don't know without a code (missing), not applicable with one
+  const specials = [{ kind: "dont_know" }, { kind: "not_applicable", label: "Not about anything", value: "na" }];
   const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, {
     items: [
       {
         type: "unit_loop",
         children: [
           { type: "layout", template: "$unit.text" },
-          { type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options } },
+          { type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options, specials } },
           {
             type: "question",
             name: "topics",
-            variable: { type: "nominal", question: "Topics?", options, multiple: true },
+            variable: { type: "nominal", question: "Topics?", options, specials, multiple: true },
+          },
+          {
+            type: "question",
+            name: "trust",
+            variable: {
+              type: "scale",
+              question: "Trust?",
+              items: [{ name: "source" }, { name: "facts" }],
+              options: [{ value: 1 }, { value: 2 }, { value: 3 }],
+              specials: [{ kind: "dont_know", value: 9 }],
+            },
           },
         ],
       },
@@ -295,28 +303,35 @@ test("special options: apart from the others, chosen with 0 and . in every quest
   const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
   await page.goto(`/code/${created.id}?link=${link.secret}`);
   await question(page, "Topic?");
-  // Their badges: . and 0 (the others are numbered 1, 2)
-  const special = page.locator("[data-special]");
-  await expect(special).toHaveCount(2);
-  await expect(page.locator("[data-special=dont_know] kbd")).toHaveText(".");
-  await expect(page.locator("[data-special=not_applicable] kbd")).toHaveText("0");
-  await page.keyboard.press(".");
+  // Their badges: ^1 and ^2 (the options are numbered 1, 2)
+  await expect(page.locator("[data-special]")).toHaveCount(2);
+  await expect(page.locator("[data-special=dont_know] kbd")).toHaveText("^1");
+  await expect(page.locator("[data-special=not_applicable] kbd")).toHaveText("^2");
+  await page.keyboard.press("Control+1");
   await question(page, "Topics?");
-  // Several answers: a special option clears the others, and they clear it
+  // Several answers: a special answer clears the others, and they clear it
   await page.keyboard.press("1");
   await page.keyboard.press("2");
-  await page.keyboard.press("0");
+  await page.keyboard.press("Control+2");
   await expect(page.locator("[aria-pressed=true]")).toHaveCount(1);
   await expect(page.locator("[data-special=not_applicable]")).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("1");
   await expect(page.locator("[data-special=not_applicable]")).toHaveAttribute("aria-pressed", "false");
   await page.keyboard.press("Control+Enter");
-  await expect.poll(async () => (await answers(request, created.id)).length).toBe(2);
+  // A scale: the keys answer the first unanswered item
+  await question(page, "Trust?");
+  await page.keyboard.press("Control+1");
+  await page.keyboard.press("3");
+  await page.keyboard.press("Control+Enter");
+  await expect.poll(async () => (await answers(request, created.id)).length).toBe(3);
   const saved = await answers(request, created.id);
-  const values = (name: string) =>
-    (saved.find((a) => a.variable === name)!.value as { values: { value: string }[] }).values.map((v) => v.value);
-  expect(values("topic")).toEqual(["dk"]);
-  expect(values("topics")).toEqual(["politics"]);
+  const values = (name: string) => (saved.find((a) => a.variable === name)!.value as { values: object[] }).values;
+  expect(values("topic")).toEqual([{ special: "dont_know" }]);
+  expect(values("topics")).toEqual([{ value: "politics" }]);
+  expect(values("trust")).toEqual([
+    { item: "source", special: "dont_know", value: 9 },
+    { item: "facts", value: 3 },
+  ]);
 });
 
 test("the coder chooses the keys for answers: letters, or typing to filter", async ({ page, request }) => {

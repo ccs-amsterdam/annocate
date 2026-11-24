@@ -39,7 +39,7 @@ per unit.
 - **Mutually exclusive and exhaustive**, unless you allow several
   answers. Frequent hesitation means overlapping definitions.
 - **"Other", "Unclear", "Not applicable"** on purpose, defined, and
-  watched in the pilot. Use the [special options](nominal-and-ordinal.md#special-options)
+  watched in the pilot. Use the [special answers](nominal-and-ordinal.md#special-answers)
   for not applicable and don't know.
 - **Short labels**: a label is a button, not a definition. Put
   definitions in the question's [instructions](questions.md#instructions).

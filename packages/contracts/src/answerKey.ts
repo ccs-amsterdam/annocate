@@ -60,13 +60,14 @@ function sameValue(a: string, b: string): boolean {
 
 /** Whether an answer (a question's value) matches a key; a skipped or missing answer never does. */
 export function answerMatchesKey(
-  answer: { skip?: boolean; values?: { value: unknown }[] } | undefined,
+  answer: { skip?: boolean; values?: { value?: unknown; special?: string }[] } | undefined,
   key: AnswerAlternative[],
 ): boolean {
   if (!answer || answer.skip) return false;
   return matchesAnswerKey(
     key,
-    (answer.values ?? []).map((v) => String(v.value)),
+    // A special answer without a code: its kind (`dont_know`)
+    (answer.values ?? []).map((v) => String(v.value ?? v.special)),
   );
 }
 

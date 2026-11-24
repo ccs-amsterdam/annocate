@@ -3,6 +3,7 @@ import {
   collectQuestions,
   loopTitle,
   optionLabel,
+  specialLabel,
   unitLoops,
   type SetGroupResponse,
   type AnnotationRow,
@@ -312,21 +313,14 @@ export function variablesTable(
       const text = "question" in variable && typeof variable.question === "string" ? variable.question : "";
       const names = variable.type === "scale" ? variable.items.map((i) => `${name}.${i.name}`) : [name];
       const options = optionsOf(variable) ?? [];
+      const specials = "specials" in variable ? (variable.specials ?? []) : [];
       for (const n of names) {
-        if (options.length === 0)
-          rows.push([versionCell(versionOf, id), number, loop, n, variable.type, text, "", "", ""]);
-        for (const o of options)
-          rows.push([
-            versionCell(versionOf, id),
-            number,
-            loop,
-            n,
-            variable.type,
-            text,
-            String(o.value),
-            optionLabel(o),
-            "special" in o && o.special ? String(o.special) : "",
-          ]);
+        const row = (value: string, label: string, special: string) =>
+          rows.push([versionCell(versionOf, id), number, loop, n, variable.type, text, value, label, special]);
+        if (options.length === 0 && specials.length === 0) row("", "", "");
+        for (const o of options) row(String(o.value), optionLabel(o), "");
+        // Special answers: their code (empty: none, the value is missing)
+        for (const s of specials) row(s.value === undefined ? "" : String(s.value), specialLabel(s), s.kind);
       }
     }
   }

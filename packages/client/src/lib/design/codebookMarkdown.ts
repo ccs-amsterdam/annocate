@@ -1,5 +1,6 @@
 import {
   fieldUsage,
+  specialLabel,
   unitLoops,
   loopTitle,
   type AnyVariableType,
@@ -51,6 +52,9 @@ function optionLines(variable: AnyVariableType): string[] {
   if (variable.type === "scale") {
     lines.push("Items:", ...(variable.items ?? []).map((i) => `- \`${i.name}\`: ${i.label ?? i.name}`));
   }
+  // Special answers: their code, or missing without one
+  for (const s of "specials" in variable ? (variable.specials ?? []) : [])
+    lines.push(`- ${s.value === undefined ? "missing" : `\`${String(s.value)}\``}: ${specialLabel(s)} (${s.kind})`);
   if (variable.type === "span") lines.push(`- In: ${(variable.fields ?? []).map((f) => `\`${f}\``).join(", ")}`);
   if ("multiple" in variable && variable.multiple) lines.push("- Several answers allowed");
   return lines;

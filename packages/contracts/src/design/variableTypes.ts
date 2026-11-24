@@ -3,9 +3,9 @@ import { SafeNameSchema } from "../common.js";
 import {
   NominalOptionSchema,
   NominalOptionsSchema,
-  noSpecialOptions,
-  NO_SPECIAL_MESSAGE,
   OrdinalOptionsSchema,
+  SpecialAnswersSchema,
+  specialCodeErrors,
   SwipeOptionsSchema,
   nominalValueErrors,
 } from "./options.js";
@@ -37,6 +37,16 @@ export type NominalLayout = (typeof NOMINAL_LAYOUTS)[number];
 export const ORDINAL_LAYOUTS = ["auto", "row", "grid", "compact", "dropdown"] as const;
 export type OrdinalLayout = (typeof ORDINAL_LAYOUTS)[number];
 
+/** Reports the problems with special answers' codes (`text`: codes are text, as nominal values). */
+const checkSpecials =
+  (text: boolean) =>
+  (v: { specials?: z.infer<typeof SpecialAnswersSchema>; options?: { value: unknown }[] }, ctx: z.RefinementCtx) =>
+    specialCodeErrors(
+      v.specials,
+      text,
+      v.options?.map((o) => o.value),
+    ).forEach((message) => ctx.addIssue({ code: "custom", message, path: ["specials"] }));
+
 const columnsField = z.number().int().min(1).max(4).optional().describe("Columns of layout grid (default 1).");
 
 /**
@@ -47,18 +57,20 @@ export const NominalTypeSchema = VariableBaseSchema.extend({
   type: z.literal("nominal"),
   options: NominalOptionsSchema,
   multiple: z.boolean().optional().describe("Several answers."),
+  specials: SpecialAnswersSchema,
   layout: z.enum(NOMINAL_LAYOUTS).optional().describe("Default auto: chosen from the options (resolveLayout)."),
   columns: columnsField,
-});
+}).superRefine(checkSpecials(true));
 export type NominalType = z.infer<typeof NominalTypeSchema>;
 
 /** Ordinal: pick one of ordered options. Values are numbers rising in option order (default 1..n). */
 export const OrdinalTypeSchema = VariableBaseSchema.extend({
   type: z.literal("ordinal"),
   options: OrdinalOptionsSchema,
+  specials: SpecialAnswersSchema,
   layout: z.enum(ORDINAL_LAYOUTS).optional().describe("Default auto: chosen from the options (resolveLayout)."),
   columns: columnsField,
-});
+}).superRefine(checkSpecials(false));
 export type OrdinalType = z.infer<typeof OrdinalTypeSchema>;
 
 /** The question types that pick from options, laid out the same way. */
@@ -77,8 +89,19 @@ export const NumericTypeSchema = VariableBaseSchema.extend({
     .array(z.object({ value: z.number(), label: z.string() }))
     .optional()
     .describe("Labels at break points, e.g. 0 'cold', 50 'neutral', 100 'warm'."),
+  specials: SpecialAnswersSchema,
   layout: z.enum(NUMERIC_LAYOUTS).optional().describe("Default auto: chosen from the range (resolveLayout)."),
 }).superRefine((v, ctx) => {
+  checkSpecials(false)(v, ctx);
+  for (const s of v.specials ?? []) {
+    const code = s.value;
+    if (typeof code === "number" && v.min !== undefined && v.max !== undefined && code >= v.min && code <= v.max)
+      ctx.addIssue({
+        code: "custom",
+        message: `A special answer's code (${code}) is inside min..max`,
+        path: ["specials"],
+      });
+  }
   if (v.min !== undefined && v.max !== undefined && v.min >= v.max)
     ctx.addIssue({ code: "custom", message: "min must be below max", path: ["max"] });
   if ((v.layout === "slider" || v.layout === "buttons") && (v.min === undefined || v.max === undefined)) {
@@ -115,8 +138,9 @@ export const ScaleTypeSchema = VariableBaseSchema.extend({
       message: "Item names must be unique",
     }),
   options: OrdinalOptionsSchema,
+  specials: SpecialAnswersSchema.describe("Answers outside the scale, for each item (Ctrl + 1, 2, ...)."),
   layout: z.enum(SCALE_LAYOUTS).optional(),
-});
+}).superRefine(checkSpecials(false));
 export type ScaleType = z.infer<typeof ScaleTypeSchema>;
 
 /** Swipe a card: 2 or 3 options, in the order left, right, up. */
@@ -229,7 +253,7 @@ export const SpanTypeSchema = VariableBaseSchema.extend({
       'The unit fields to select spans in (each span records its field), e.g. ["headline", "text"]: fields the layout ' +
         "shows as plain text, `$unit.<field>` (docs/client.md §3)",
     ),
-  options: NominalOptionsSchema.refine(noSpecialOptions, NO_SPECIAL_MESSAGE),
+  options: NominalOptionsSchema,
   selectionMode: z.enum(["word", "character"]).optional(),
   gaps: z.boolean().optional(),
 });
@@ -255,7 +279,7 @@ export type RelationRule = z.infer<typeof RelationRuleSchema>;
 /** Relations between spans: from a span to another, with a relation type (an option), as the rules allow. */
 export const RelationTypeSchema = VariableBaseSchema.extend({
   type: z.literal("relation"),
-  options: NominalOptionsSchema.refine(noSpecialOptions, NO_SPECIAL_MESSAGE),
+  options: NominalOptionsSchema,
   rules: z.array(RelationRuleSchema).min(1, "Add a rule: which spans a relation can go from and to"),
 });
 export type RelationType = z.infer<typeof RelationTypeSchema>;

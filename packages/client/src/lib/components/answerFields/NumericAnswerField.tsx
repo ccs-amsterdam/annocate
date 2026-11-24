@@ -1,10 +1,11 @@
 import { COMMAND_BADGES, isContinue } from "../../keyboard/commands";
 import { useCallback, useRef, useState } from "react";
 import { useAnswerLayout } from "../../display/hooks";
-import { numericSteps, numericValueError } from "@annotinder/contracts";
+import { numericSteps, numericValueError, type SpecialAnswer, type SpecialKind } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { buildValues, initialValues } from "./answerValue";
+import { buildValues, initialSpecial, initialValues, specialValue } from "./answerValue";
+import { SpecialAnswersRow } from "./OptionButtons";
 import { useKeyScope, useKeyTargets } from "../../keyboard/hooks";
 import { PRIORITY } from "../../keyboard/controller";
 import { ShortcutBadge } from "../ShortcutBadge";
@@ -35,7 +36,21 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
   const [value, setValue] = useState<number | null>(typeof initial === "number" ? initial : null);
   const [text, setText] = useState(typeof initial === "number" ? String(initial) : "");
 
-  const answer = useCallback((n: number) => onAnswer(buildValues([{ value: n }])), [onAnswer]);
+  // A special answer (don't know, not applicable) instead of a number
+  const [special, setSpecial] = useState<SpecialKind | undefined>(() => initialSpecial(initialValue));
+  const answer = useCallback(
+    (n: number) => {
+      setSpecial(undefined);
+      onAnswer(buildValues([{ value: n }]));
+    },
+    [onAnswer],
+  );
+  const pickSpecial = (s: SpecialAnswer) => {
+    setSpecial(s.kind);
+    setValue(null);
+    setText("");
+    onAnswer(buildValues([specialValue(s)]));
+  };
 
   const values =
     layout === "buttons"
@@ -91,9 +106,12 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
   );
 
   const labels = variable.labels ?? [];
+  const parsed = text.trim() === "" ? null : Number(text);
+  const error = parsed === null ? null : numericValueError(variable, parsed);
 
+  let field;
   if (layout === "buttons") {
-    return (
+    field = (
       <div className="flex flex-col gap-1">
         {/* Equal widths, up to 11 in a row (they fit a small phone); more are spread evenly over rows */}
         <div
@@ -117,11 +135,9 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
         <ScaleLabels labels={labels} min={variable.min!} max={variable.max!} />
       </div>
     );
-  }
-
-  if (layout === "slider") {
+  } else if (layout === "slider") {
     const current = value ?? (variable.min! + variable.max!) / 2;
-    return (
+    field = (
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-3">
           <input
@@ -151,40 +167,44 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
         </Button>
       </div>
     );
+  } else {
+    field = (
+      <form
+        className="flex flex-col gap-1"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (parsed !== null && !error) answer(parsed);
+        }}
+      >
+        <div className="flex gap-2">
+          <Input
+            ref={input}
+            type="number"
+            inputMode="decimal"
+            className="h-10"
+            min={variable.min}
+            max={variable.max}
+            step={step}
+            value={text}
+            aria-invalid={Boolean(error)}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <Button type="submit" className="h-10" disabled={parsed === null || Boolean(error)}>
+            Continue
+          </Button>
+        </div>
+        {error && <p className="text-xs text-destructive">This is {error}</p>}
+        {labels.length > 0 && (
+          <p className="text-xs text-muted-foreground">{labels.map((l) => `${l.value}: ${l.label}`).join(" · ")}</p>
+        )}
+      </form>
+    );
   }
-
-  const parsed = text.trim() === "" ? null : Number(text);
-  const error = parsed === null ? null : numericValueError(variable, parsed);
   return (
-    <form
-      className="flex flex-col gap-1"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (parsed !== null && !error) answer(parsed);
-      }}
-    >
-      <div className="flex gap-2">
-        <Input
-          ref={input}
-          type="number"
-          inputMode="decimal"
-          className="h-10"
-          min={variable.min}
-          max={variable.max}
-          step={step}
-          value={text}
-          aria-invalid={Boolean(error)}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <Button type="submit" className="h-10" disabled={parsed === null || Boolean(error)}>
-          Continue
-        </Button>
-      </div>
-      {error && <p className="text-xs text-destructive">This is {error}</p>}
-      {labels.length > 0 && (
-        <p className="text-xs text-muted-foreground">{labels.map((l) => `${l.value}: ${l.label}`).join(" · ")}</p>
-      )}
-    </form>
+    <div className="flex flex-col gap-1.5">
+      {field}
+      <SpecialAnswersRow specials={variable.specials} selected={special} onPick={pickSpecial} />
+    </div>
   );
 }
 

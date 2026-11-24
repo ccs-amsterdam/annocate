@@ -1,6 +1,7 @@
 import { NOMINAL_LAYOUTS, ORDINAL_LAYOUTS, type AnyVariableType, type CategoricalType } from "@annotinder/contracts";
 import { OptionsEditor } from "../OptionsEditor";
 import { LayoutSelect, selectClass } from "./LayoutSelect";
+import { SpecialAnswersFields } from "./SpecialAnswersFields";
 
 /** Options, several answers (nominal) and layout of a nominal or ordinal question. */
 export function CategoricalFields({
@@ -22,13 +23,17 @@ export function CategoricalFields({
         <OptionsEditor
           key="ordinal"
           level="ordinal"
-          specials
           options={v.options}
           onChange={(options) => onChange({ ...v, options })}
         />
       ) : (
-        <OptionsEditor key="nominal" specials options={v.options} onChange={(options) => onChange({ ...v, options })} />
+        <OptionsEditor key="nominal" options={v.options} onChange={(options) => onChange({ ...v, options })} />
       )}
+      <SpecialAnswersFields
+        specials={v.specials}
+        text={v.type === "nominal"}
+        onChange={(specials) => onChange({ ...v, specials })}
+      />
       {v.type === "nominal" && (
         <label className="flex items-center gap-2 text-sm">
           <input

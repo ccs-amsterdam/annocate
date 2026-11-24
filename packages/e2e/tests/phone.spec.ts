@@ -120,15 +120,12 @@ test("on a phone, a span is two taps: its first and last word", async ({ request
   expect(row.value.spans).toMatchObject([{ value: "person", slices: [{ text: "Anna de Wit" }] }]);
 });
 
-test("on a phone: a scale, special options and the instruction fit and work by tapping", async ({
+test("on a phone: a scale, special answers and the instruction fit and work by tapping", async ({
   request,
   browser,
 }) => {
-  const options = [
-    { value: "politics" },
-    { value: "other" },
-    { value: "dk", label: "Don't know", special: "dont_know" },
-  ];
+  const options = [{ value: "politics" }, { value: "other" }];
+  const specials = [{ kind: "dont_know", value: "dk" }];
   const { id, link } = await deploy(
     request,
     "Phone",
@@ -141,7 +138,7 @@ test("on a phone: a scale, special options and the instruction fit and work by t
           {
             type: "question",
             name: "topic",
-            variable: { type: "nominal", question: "Topic?", options },
+            variable: { type: "nominal", question: "Topic?", options, specials },
             instruction: "Pick the **main** topic.",
           },
           {
@@ -177,7 +174,7 @@ test("on a phone: a scale, special options and the instruction fit and work by t
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
 
-  // A special option, tapped
+  // A special answer, tapped
   await page.locator("[data-special=dont_know]").tap();
   await question(page, "How much do you trust it?");
   await fitsWidth(page);

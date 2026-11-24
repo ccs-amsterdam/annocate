@@ -726,8 +726,9 @@ coders they share units with, weighed by the units shared), and `pairs`:
 every pair of coders with units in common, with Cohen's kappa and percent
 agreement. A question with
 several answers has a row per option (given or not); a span question a row
-per label, over the words of each text (labelled or not). Special options
-("don't know") are left out of ordinal and interval alpha. Measures:
+per label, over the words of each text (labelled or not). Special answers
+("don't know") are a category of their own in nominal alpha and left out of
+ordinal and interval alpha. Measures:
 [`contracts/src/agreement.ts`](../../packages/contracts/src/agreement.ts).
 
 ### listResultUnits

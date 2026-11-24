@@ -48,8 +48,15 @@ label for an exact match, else the number.
 - **Number input** refuses numbers outside the range or between steps.
   Use it for counts and age.
 
+Tick **Don't know** or **Not applicable** under **Special answers** for a
+button under the number (**Ctrl + 1** / **2**). Without a code the answer
+is missing; a code (e.g. `-1`) must be outside the range. See
+[Special answers](nominal-and-ordinal.md#special-answers).
+
 ## Using the answers
 
 `$var.age.value` is the number; conditions compare it
 (`$var.age.lt(18)`, see [Conditions](conditions.md)). The results have one
-column, without a `_label` column.
+column, without a `_label` column (with special answers: their labels in
+one, and a `_special` column). `$var.age.value` of a special answer is its
+code, or null.

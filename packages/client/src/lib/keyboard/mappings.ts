@@ -8,8 +8,6 @@ export interface KeyTarget {
   label: string;
   /** Keys that also choose it, whatever the mapping (e.g. a swipe's arrow; no badge). */
   keys?: string[];
-  /** Its own key instead of the mapping's, shown on its badge (special options: 0 and .). */
-  fixed?: string;
   /** Where it is on screen, in a grid (row and column from 0), for mappings that follow the layout (numpad). */
   pos?: { row: number; col: number };
   disabled?: boolean;
@@ -25,7 +23,7 @@ export interface KeyMapping {
   kind?: "keys" | "filter";
   /** Whether it can map this group (else the question uses numbers). Default: yes. */
   supports?(group: readonly KeyTarget[]): boolean;
-  /** The key of each target of a group (null: none), shown on its badge and pressed to choose it. Gets the targets without a fixed key. */
+  /** The key of each target of a group (null: none), shown on its badge and pressed to choose it. */
   assign(group: readonly KeyTarget[]): (string | null)[];
 }
 
@@ -133,7 +131,7 @@ export const mappingById = (id: string | null | undefined): KeyMapping =>
 
 /** The mapping a group uses: the chosen one, or numbers where it can't map it. */
 export const effectiveMapping = (mapping: KeyMapping, group: readonly KeyTarget[]): KeyMapping =>
-  mapping.supports && !mapping.supports(group.filter((t) => t.fixed === undefined)) ? numbersMapping : mapping;
+  mapping.supports && !mapping.supports(group) ? numbersMapping : mapping;
 
 /** Whether a label matches typed text: a word of it starts with the text (case and accents ignored). */
 export function labelMatches(label: string, typed: string): boolean {
@@ -151,13 +149,10 @@ export function labelMatches(label: string, typed: string): boolean {
   );
 }
 
-/** The key of each target of a group: its fixed key, else the mapping's (which assigns the others in order). */
+/** The key of each target of a group. */
 export function keysOf(mapping: KeyMapping, group: readonly KeyTarget[]): (string | null)[] {
   if (mapping.id === "none") return group.map(() => null);
-  const free = group.filter((t) => t.fixed === undefined);
-  const assigned = effectiveMapping(mapping, group).assign(free);
-  let i = 0;
-  return group.map((t) => t.fixed ?? assigned[i++] ?? null);
+  return effectiveMapping(mapping, group).assign(group);
 }
 
 /** The target of a group a key chooses (its key, or one of its extra keys), or -1. */
