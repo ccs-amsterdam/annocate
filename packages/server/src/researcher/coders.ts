@@ -16,22 +16,29 @@ export function coders(server: Server): Hono<Env> {
     c.json(await listCoderProgress(db, c.get("studyId"))),
   );
 
-  // Per coder id, the units their sessions were shown or answered: what a new distribution can keep with them
+  // Per coder id, the units their sessions answered (they stay with the coder when units are
+  // redistributed or moved), and the ones they were sent but didn't answer
   app.get("/study/:studyId/coders/units", requireStudyUser(server, "READ"), async (c) => {
     const studyId = c.get("studyId");
-    const found = await rows<{ coder: string; unitIds: number[] }>(
+    const found = await rows<{ coder: string; coded: number[]; served: number[] }>(
       db,
-      sql`SELECT s.coder, array_agg(DISTINCT seen.unit_id ORDER BY seen.unit_id) AS "unitIds"
+      sql`SELECT coder,
+            coalesce(array_agg(unit_id ORDER BY unit_id) FILTER (WHERE coded), '{}') AS "coded",
+            coalesce(array_agg(unit_id ORDER BY unit_id) FILTER (WHERE NOT coded), '{}') AS "served"
           FROM (
-            SELECT session_id, unit_id FROM unit_serves WHERE study_id = ${studyId}
-            UNION
-            SELECT session_id, unit_id FROM annotation_values
-              WHERE study_id = ${studyId} AND unit_id IS NOT NULL AND retired_at IS NULL
-          ) seen
-          JOIN coder_sessions s ON s.id = seen.session_id
-          WHERE s.coder IS NOT NULL
-          GROUP BY s.coder
-          ORDER BY s.coder`,
+            SELECT s.coder, seen.unit_id, bool_or(seen.coded) AS coded
+            FROM (
+              SELECT session_id, unit_id, false AS coded FROM unit_serves WHERE study_id = ${studyId}
+              UNION ALL
+              SELECT session_id, unit_id, true AS coded FROM annotation_values
+                WHERE study_id = ${studyId} AND unit_id IS NOT NULL AND retired_at IS NULL
+            ) seen
+            JOIN coder_sessions s ON s.id = seen.session_id
+            WHERE s.coder IS NOT NULL
+            GROUP BY s.coder, seen.unit_id
+          ) per_unit
+          GROUP BY coder
+          ORDER BY coder`,
     );
     return c.json({ coders: found });
   });

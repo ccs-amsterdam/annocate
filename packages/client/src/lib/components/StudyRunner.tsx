@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, type ComponentProps, type ReactNode } from "react";
 import type { RelationType, VariableValue } from "@annotinder/contracts";
-import { CircleCheck } from "lucide-react";
+import { CircleCheck, Sparkles, X } from "lucide-react";
 import { HttpCoderApi } from "../api/httpCoderApi";
 import { defaultTransferUrl, redeemTransfer, type CoderSessionScope } from "../session/coderSession";
 import { useStudyManager } from "../studyManager/useStudyManager";
@@ -317,6 +317,23 @@ function CodingScreen({
           onBack={goBack}
           onForward={goForward}
         />
+        {snapshot.newUnits && (
+          <div
+            role="status"
+            className="flex items-center justify-center gap-2 border-b border-border bg-primary/10 px-4 py-1.5 text-sm text-foreground"
+          >
+            <Sparkles className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+            <span>{snapshot.newUnits}</span>
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={() => manager.dismissNewUnits()}
+              className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         {hasUnitLayout ? (
           <SpanAnnotationProvider

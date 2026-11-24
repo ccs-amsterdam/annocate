@@ -22,14 +22,14 @@ export function study(server: Server): Hono<Env> {
     const parsed = StudyWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-    const { name, archived, keepSessionsOpen, redirectUrls } = parsed.data;
+    const { name, archived, reopenMinutes, redirectUrls } = parsed.data;
     const [row] = await db
       .update(studies)
       // Left out: kept (except archived: false)
       .set({
         name,
         archived: archived ?? false,
-        ...(keepSessionsOpen !== undefined ? { keepSessionsOpen } : {}),
+        ...(reopenMinutes !== undefined ? { reopenMinutes } : {}),
         ...(redirectUrls ? { redirectUrls } : {}),
       })
       .where(eq(studies.id, c.get("studyId")))

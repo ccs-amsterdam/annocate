@@ -32,8 +32,8 @@ type Who = "names" | "emails" | "count";
  * units (`test_set`: overlap, practice, gold) are everyone's, not divided:
  * an existing `test_set` column is kept; with "Redistribute test units",
  * that many units of each type are drawn anew. With "keep", units a coder
- * was already shown or answered stay theirs first, so dividing again loses
- * no work. The units are shuffled first (seeded); the Units page shows and
+ * already coded stay theirs first, so dividing again loses no work (units
+ * they were only sent are divided again). The units are shuffled first (seeded); the Units page shows and
  * edits the columns. Replacing the coder set asks first; or it keeps the
  * coder set and gives the units without a coder (not test units) to its
  * coders.
@@ -86,7 +86,9 @@ export function CoderSetDialog({
   const twice = names.find((n, j) => names.findIndex((m) => m.toLowerCase() === n.toLowerCase()) !== j);
 
   // Units coders of these names already saw (the coder id is what counts)
-  const keepMap = new Map(seen.filter((c) => names.includes(c.coder)).map((c) => [c.coder, c.unitIds]));
+  const keepMap = new Map(
+    seen.filter((c) => names.includes(c.coder) && c.coded.length > 0).map((c) => [c.coder, c.coded]),
+  );
   const { sets, testUnits, kept } =
     names.length > 0
       ? distributeUnits(unitIds, names, {
@@ -294,10 +296,11 @@ export function CoderSetDialog({
             <label className="flex items-start gap-2 text-xs">
               <input type="checkbox" className="mt-0.5" checked={keep} onChange={(e) => setKeep(e.target.checked)} />
               <span>
-                Keep the units coders already have ({[...keepMap.values()].reduce((n, u) => n + u.length, 0)} units
-                shown to {keepMap.size} of these coders)
+                Keep the units coders already coded ({[...keepMap.values()].reduce((n, u) => n + u.length, 0)} units, by{" "}
+                {keepMap.size} of these coders)
                 <span className="block text-muted-foreground">
-                  A coder who already saw units gets those first, so nobody loses work; the rest is divided as usual.
+                  A coder who already coded units keeps those, so nobody loses work or codes a unit twice; the rest is
+                  divided as usual.
                   {keep && kept > 0 ? ` ${kept} unit assignments are kept.` : ""}
                 </span>
               </span>

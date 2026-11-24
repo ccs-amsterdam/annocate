@@ -209,7 +209,7 @@ export const researcherEndpoints = {
     request: z.void(),
     response: z.array(CoderProgressSchema),
   },
-  /** Per coder id: the units they were shown or answered (coders.ts). */
+  /** Per coder id: the units they answered, and the ones they were sent but didn't answer (coders.ts). */
   listCoderUnits: {
     method: "GET",
     path: "/study/:studyId/coders/units",

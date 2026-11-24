@@ -45,6 +45,9 @@ export const PendingChangesSchema = z.object({
 });
 export type PendingChanges = z.infer<typeof PendingChangesSchema>;
 
+/** What returning coders who got new units are told by default (`DeploymentWrite.newUnitsMessage`). */
+export const DEFAULT_NEW_UNITS_MESSAGE = "{n} new units were added for you.";
+
 /** Researcher-facing: `PUT /study/:studyId/deployment`. */
 export const DeploymentWriteSchema = z.object({
   /** The design version coders get (the deployed one: keep it). */
@@ -58,6 +61,12 @@ export const DeploymentWriteSchema = z.object({
   /** Set to false to stop handing out units (coders get a 409). */
   active: z.boolean().default(true),
   /**
+   * What returning coders who got new units are told, once (`{n}`: how
+   * many). null: nothing. Left out: unchanged (the first deploy:
+   * `DEFAULT_NEW_UNITS_MESSAGE`).
+   */
+  newUnitsMessage: z.string().max(500).nullable().optional(),
+  /**
    * The researcher confirmed deploying although it makes more than
    * `CONFIRM_LINKS` links (409 `confirm_links` otherwise). At most `MAX_LINKS`.
    */
@@ -66,6 +75,7 @@ export const DeploymentWriteSchema = z.object({
 export type DeploymentWrite = z.infer<typeof DeploymentWriteSchema>;
 
 export const DeploymentResponseSchema = DeploymentWriteSchema.omit({ units: true }).extend({
+  newUnitsMessage: z.string().nullable(),
   studyId: IdSchema,
   /** Bumped on every change. */
   version: z.number().int().positive(),

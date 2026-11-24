@@ -251,8 +251,9 @@ deploy's errors ([putDeployment](#putdeployment)); nothing is created then. Exam
 ### updateStudy
 
 `PUT /study/:id` → `StudyResponseSchema`. Rename, set `archived` (hidden from
-active lists), `keepSessionsOpen`: finished coder sessions stay open
-(off by default: `docs/coder-identity.md` §9), or `redirectUrls`: the
+active lists), `reopenMinutes`: how long coders can go back after
+finishing (null: always, the session stays open; a day by default:
+`docs/coder-identity.md` §9), or `redirectUrls`: the
 deployment settings end items' `redirectSetting` names, e.g. a panel's
 return links (`docs/architecture.md` §5); coders get them at once, without
 a deploy. `StudyResponseSchema` also has
@@ -528,10 +529,12 @@ researcher chose to delete later), or null.
 ### listCoderUnits
 
 `GET /study/:studyId/coders/units` → `CoderUnitsSchema` (`{ coders: [{
-coder, unitIds }] }`): per coder id, the units their sessions were shown
-or answered (retired answers left out). The researcher UI keeps these
-with their coders when it makes the coder set (`coder_set`) again (contracts
-`distributeUnits`).
+coder, coded, served }] }`): per coder id, the units their sessions
+answered (`coded`; retired answers left out) and the ones they were sent
+but didn't answer (`served`: prefetched, or on their screen). The
+researcher UI keeps coded units with their coders when it makes the coder
+set (`coder_set`) again (contracts `distributeUnits`) or moves units
+between coders (the Units page's coders panel, `admin/moveUnits.ts`).
 
 ### deleteCoders
 
@@ -576,7 +579,10 @@ design version id, `active`, `version`; null if never deployed.
 design version, with the draft units and sets if `units: true`
 (default false: the deployed ones stay, so a new design version or a pause deploys
 no units by accident; the first deploy always takes the draft's),
-or pause/resume with `active`. Units and sets are drafts until deployed
+or pause/resume with `active`. `newUnitsMessage`: what returning coders
+who got new units are told, once (`{n}`: how many; null: nothing; left
+out: unchanged, the first deploy: "{n} new units were added for you.";
+`docs/coder-identity.md` §9). Units and sets are drafts until deployed
 (`docs/architecture.md` §8.4):
 
 1. check that the design version passes validation (400 with `issues` if not:

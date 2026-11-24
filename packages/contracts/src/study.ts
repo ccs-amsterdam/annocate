@@ -1,17 +1,23 @@
 import { z } from "zod";
 import { IdSchema, RoleSchema } from "./common.js";
 
+/** The reopen time of new studies (`reopenMinutes`): a day. */
+export const DEFAULT_REOPEN_MINUTES = 24 * 60;
+/** The longest reopen time short of "always": a year. */
+export const MAX_REOPEN_MINUTES = 365 * 24 * 60;
+
 /** A study: the top-level entity, owning its designs, units, coders and answers (CONTRACTS.md). */
 export const StudyWriteSchema = z.object({
   name: z.string().min(1).max(256),
   archived: z.boolean().optional().default(false),
   /**
-   * Finished sessions stay open: coders can always go back to their answers.
-   * Off by default: once a session ended, the coder gets only what its end
-   * screen shows, and can go back only within 15 minutes after finishing
-   * (docs/coder-identity.md §9). Left out: unchanged.
+   * How long coders can go back after finishing, in minutes (counted from
+   * when they last finished). null: always, the session stays open (coders
+   * who get new units later pick them up). Once the time is up, the coder
+   * gets only what the end screen shows (docs/coder-identity.md §9). New
+   * studies: a day. Left out: unchanged.
    */
-  keepSessionsOpen: z.boolean().optional(),
+  reopenMinutes: z.number().int().min(0).max(MAX_REOPEN_MINUTES).nullable().optional(),
   /**
    * Deployment settings (docs/architecture.md §5): per name, the URL end
    * items with that `redirectSetting` send coders to, e.g. a panel's return
@@ -33,7 +39,7 @@ export type StudyWrite = z.infer<typeof StudyWriteSchema>;
 export const StudyResponseSchema = StudyWriteSchema.extend({
   id: IdSchema,
   created: z.coerce.date(),
-  keepSessionsOpen: z.boolean(),
+  reopenMinutes: z.number().int().nullable(),
   redirectUrls: z.record(z.string(), z.string()),
   /** Set when a server admin suspended the study: no coding and no changes (reading and deleting data still work). */
   suspendedAt: z.coerce.date().nullable().optional(),

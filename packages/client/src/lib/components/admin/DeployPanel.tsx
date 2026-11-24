@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { designItems, type DesignVersion, type TopLevelItem } from "@annotinder/contracts";
+import {
+  DEFAULT_NEW_UNITS_MESSAGE,
+  DEFAULT_REOPEN_MINUTES,
+  designItems,
+  inviteOf,
+  sessionItem,
+  type DesignVersion,
+  type TopLevelItem,
+} from "@annotinder/contracts";
 import { describeUnitChanges, hasUnitChanges } from "../../admin/unitChanges";
 import { AlertTriangle, Loader2, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,7 +15,16 @@ import { diffDesigns, summarizeChanges, valueChanges, type DesignChange } from "
 import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../help/HelpButton";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { usePendingChangesQuery } from "../../admin/queries";
+import { useDeploymentQuery, usePendingChangesQuery } from "../../admin/queries";
+import { ReopenSetting } from "./session/ReopenSetting";
+
+/** Settings deployed with this deploy: left out, unchanged. */
+export interface DeploySettings {
+  /** The study's `reopenMinutes` (the first deploy asks). */
+  reopenMinutes?: number | null;
+  /** What returning coders who got new units are told; null: nothing. */
+  newUnitsMessage?: string | null;
+}
 
 interface DeployPanelProps {
   client: ResearcherApi;
@@ -19,17 +36,20 @@ interface DeployPanelProps {
   liveNumber: number | null;
   /**
    * Deploys: the design version (null: keep the live one; its note stored first,
-   * empty: none) and the draft units and sets or not.
+   * empty: none), the draft units and sets or not, and the settings.
    */
-  onDeploy: (version: DesignVersion | null, note: string, units: boolean) => Promise<unknown>;
+  onDeploy: (version: DesignVersion | null, note: string, units: boolean, settings: DeploySettings) => Promise<unknown>;
 }
 
 /**
  * Deploying (docs/architecture.md §8.4): everything is a draft until
  * deployed. Lists both parts, the design draft (what changed compared
  * with the live version, and a version note) and the draft units and sets,
- * each with a checkbox; what is left out stays a draft. The Deploy page's
- * content; the page says when it was deployed.
+ * each with a checkbox; what is left out stays a draft. The first deploy
+ * also asks what happens when coders finish (by default: coder links stay
+ * open, one link closes after a day). Deploying units asks what returning
+ * coders who get new ones are told. The Deploy page's content; the page
+ * says when it was deployed.
  *
  * Mount it with a `key` per design version, so the note starts fresh.
  */
@@ -45,6 +65,12 @@ export function DeployPanel({ client, version, versionNumber, live, liveNumber, 
   const [withUnits, setWithUnits] = useState(true);
   const deployDesign = version !== null && (withDesign || firstDeploy);
   const deployUnits = firstDeploy || (unitsChanged && withUnits);
+  // Coders with their own link usually come back: their sessions stay open. One link (a crowd): closed after a day.
+  const crowd = version !== null && inviteOf(sessionItem(designItems(version))).mode === "crowd";
+  const [reopenMinutes, setReopenMinutes] = useState<number | null>(crowd ? DEFAULT_REOPEN_MINUTES : null);
+  const currentMessage = useDeploymentQuery(client).data?.newUnitsMessage;
+  const [message, setMessage] = useState<string | null>(null);
+  const newUnitsMessage = message ?? (firstDeploy ? DEFAULT_NEW_UNITS_MESSAGE : (currentMessage ?? ""));
 
   const liveItems = live ? (designItems(live) as TopLevelItem[]) : [];
   const draftItems = version ? (designItems(version) as TopLevelItem[]) : [];
@@ -56,7 +82,10 @@ export function DeployPanel({ client, version, versionNumber, live, liveNumber, 
   async function deploy() {
     setState({ step: "deploying" });
     try {
-      await onDeploy(deployDesign ? version : null, note.trim(), deployUnits);
+      await onDeploy(deployDesign ? version : null, note.trim(), deployUnits, {
+        ...(firstDeploy ? { reopenMinutes } : {}),
+        ...(message !== null ? { newUnitsMessage: message.trim() || null } : {}),
+      });
       setState({ step: "confirm" });
     } catch (e) {
       setState({ step: "error", message: e instanceof Error ? e.message : String(e) });
@@ -148,7 +177,18 @@ export function DeployPanel({ client, version, versionNumber, live, liveNumber, 
           {unitsChanged && !deployUnits && (
             <p className="text-xs text-muted-foreground">The units stay drafts, for a later deploy.</p>
           )}
+          {deployUnits && !firstDeploy && <NewUnitsMessage value={newUnitsMessage} onChange={setMessage} />}
         </section>
+        {firstDeploy && (
+          <section className="space-y-3 rounded-md border border-border p-3">
+            <p className="font-semibold text-foreground">Before coders start</p>
+            <ReopenSetting value={reopenMinutes} onChange={setReopenMinutes} name="first-deploy-reopen" />
+            <NewUnitsMessage value={newUnitsMessage} onChange={setMessage} />
+            <p className="text-xs text-muted-foreground">
+              You can change these later in the study&apos;s Settings and when you deploy.
+            </p>
+          </section>
+        )}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           What happens when you deploy
           <InfoTip label="What happens when you deploy">
@@ -188,6 +228,30 @@ export function DeployPanel({ client, version, versionNumber, live, liveNumber, 
         </Button>
       </div>
     </div>
+  );
+}
+
+/** What returning coders who got new units are told (`{n}`: how many); empty: nothing. */
+function NewUnitsMessage({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="block space-y-1">
+      <span className="flex items-center gap-1 font-medium text-foreground">
+        Coders who get new units are told
+        <InfoTip label="About the new units message">
+          Shown once, when a coder comes back and has units they didn&apos;t have before (you added units or moved units
+          to them). {"{n}"} is how many. Leave it empty to tell them nothing. A finished session opens again for them,
+          unless it has closed.
+        </InfoTip>
+      </span>
+      <input
+        aria-label="Message for coders who get new units"
+        value={value}
+        maxLength={500}
+        placeholder="Nothing"
+        onChange={(e) => onChange(e.target.value)}
+        className="h-8 w-full rounded-md border border-input bg-background px-2.5 text-sm"
+      />
+    </label>
   );
 }
 

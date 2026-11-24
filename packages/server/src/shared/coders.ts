@@ -17,6 +17,7 @@ export function toCoder(row: CoderRow): Coder {
     session: row.session,
     linkId: row.linkId,
     email: row.email,
+    knownUnits: row.knownUnits,
   };
 }
 

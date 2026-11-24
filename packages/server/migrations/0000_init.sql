@@ -107,6 +107,7 @@ CREATE TABLE "deployments" (
 	"annotation_epoch" integer DEFAULT 0 NOT NULL,
 	"revision" integer DEFAULT 0 NOT NULL,
 	"codings_basis" text,
+	"new_units_message" text,
 	"updated" timestamp with time zone NOT NULL
 );
 --> statement-breakpoint
@@ -145,7 +146,7 @@ CREATE TABLE "studies" (
 	"owner_id" integer,
 	"origin" text,
 	"archived" boolean DEFAULT false NOT NULL,
-	"keep_sessions_open" boolean DEFAULT false NOT NULL,
+	"reopen_minutes" integer DEFAULT 1440,
 	"redirect_urls" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"created" timestamp with time zone DEFAULT now() NOT NULL,
 	"suspended_at" timestamp with time zone
@@ -243,7 +244,8 @@ CREATE TABLE "coder_sessions" (
 	"created" timestamp with time zone DEFAULT now() NOT NULL,
 	"ended" jsonb,
 	"deletion_request" jsonb,
-	"display" jsonb DEFAULT '[]'::jsonb NOT NULL
+	"display" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"known_units" integer
 );
 --> statement-breakpoint
 CREATE TABLE "session_deletions" (

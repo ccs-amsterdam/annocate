@@ -812,6 +812,64 @@ describe("coders", () => {
     await deployDrafts();
     expect((await c.next())!.externalId).toBe("unit-new");
   });
+
+  it("coders who got new units are told once, and a finished session opens again for them", async () => {
+    await server.request("/api/study/1", {
+      method: "PUT",
+      headers: adminHeaders,
+      body: JSON.stringify({ name: "Demo", reopenMinutes: null }),
+    });
+    await createSet("anna", ["unit-1"], "coder_set");
+    await redeploy({}, [coders]);
+    const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
+    const anna = coder("anna", secret);
+    const first = await anna.next();
+    await anna.submit(first!.id, sentiment("neutral"));
+    expect(await anna.next()).toBeNull();
+    await anna.call("/end", { method: "POST", body: "{}" });
+    expect((await anna.session()).newUnits).toBeNull();
+
+    await createSet("anna", ["unit-1", "unit-2"], "coder_set");
+    await deployDrafts();
+    const back = await anna.session();
+    expect(back.newUnits).toEqual({ count: 1, message: "1 new units were added for you." });
+    expect(back.ended).toBeNull();
+    expect((await anna.next())!.externalId).toBe("unit-2");
+    expect((await anna.session()).newUnits).toBeNull();
+
+    // The message is the deployment's: changed or turned off on deploy
+    const current = (await (await server.request("/api/study/1/deployment", { headers: adminHeaders })).json()) as {
+      designVersionId: number;
+      newUnitsMessage: string | null;
+    };
+    expect(current.newUnitsMessage).toBe("{n} new units were added for you.");
+    await createSet("anna", ["unit-1", "unit-2", "unit-3"], "coder_set");
+    const res = await server.request("/api/study/1/deployment", {
+      method: "PUT",
+      headers: adminHeaders,
+      body: JSON.stringify({ designVersionId: current.designVersionId, units: true, newUnitsMessage: "More: {n}" }),
+    });
+    expect(res.status).toBe(200);
+    expect((await anna.session()).newUnits).toEqual({ count: 1, message: "More: 1" });
+  });
+
+  it("a session that can't be reopened any more isn't told of new units", async () => {
+    let now = Date.now();
+    server = restart({ now: () => now });
+    await createSet("anna", ["unit-1"], "coder_set");
+    await redeploy({}, [coders]);
+    const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
+    const anna = coder("anna", secret);
+    await anna.submit((await anna.next())!.id, sentiment("neutral"));
+    await anna.call("/end", { method: "POST", body: "{}" });
+    await anna.session();
+    now += 25 * 60 * 60 * 1000;
+    await createSet("anna", ["unit-1", "unit-2"], "coder_set");
+    await deployDrafts();
+    const late = await anna.session();
+    expect(late.newUnits).toBeNull();
+    expect(late.ended).toMatchObject({ outcome: "complete" });
+  });
 });
 
 describe("experiments that select units", () => {
@@ -989,6 +1047,8 @@ describe("assignment edge cases (review of the unit assignment)", () => {
     await deployDrafts();
     expect((await anna.call(`/loop/1/units/${unit1!.id}`)).status).toBe(200);
     expect((await anna.submit(unit1!.id, sentiment("negative"))).status).toBe(200);
+    // It stays in anna's progress, next to her new unit
+    expect((await anna.session()).progress[0]).toMatchObject({ doneUnitIds: [unit1!.id], totalUnits: 2 });
     const bob = coder("bob", byCoder.bob);
     const bobs = (await bob.batch(10)).map((u) => u.externalId);
     expect(bobs).toContain("unit-1");
@@ -2672,7 +2732,7 @@ describe("end items", () => {
     expect((await c.call(`/loop/1/units/${unit!.id}`)).status).toBe(409);
   });
 
-  it("finishing without an end item ends the session too; the coder can go back for 15 minutes", async () => {
+  it("finishing without an end item ends the session too; the coder can go back for a day", async () => {
     let now = Date.now();
     server = restart({ now: () => now });
     await redeploy({}, [{ type: "question", name: "age", variable: { type: "numeric", question: "Age?" } }]);
@@ -2695,7 +2755,7 @@ describe("end items", () => {
     expect((await c.session()).variables).toMatchObject({ age: expect.anything() });
 
     await c.call("/end", { method: "POST", body: "{}" });
-    now += 16 * 60 * 1000;
+    now += 25 * 60 * 60 * 1000;
     expect((await c.session()).reopen).toBeNull();
     expect((await c.call("/reopen", { method: "POST" })).status).toBe(409);
   });
@@ -2704,7 +2764,7 @@ describe("end items", () => {
     await server.request("/api/study/1", {
       method: "PUT",
       headers: adminHeaders,
-      body: JSON.stringify({ name: "Demo", keepSessionsOpen: true }),
+      body: JSON.stringify({ name: "Demo", reopenMinutes: null }),
     });
     await redeploy({});
     const c = coder("keeper");

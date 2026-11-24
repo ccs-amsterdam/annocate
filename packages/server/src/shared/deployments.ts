@@ -6,6 +6,8 @@ import {
   unitLoops,
   DesignItemsSchema,
   type DesignItem,
+  DEFAULT_NEW_UNITS_MESSAGE,
+  DEFAULT_REOPEN_MINUTES,
   type DeploymentChanges,
   type DeploymentResponse,
   type DeploymentVersion,
@@ -40,6 +42,7 @@ export async function getDeployment(db: Db, studyId: number): Promise<Deployment
     studyId: row.studyId,
     designVersionId: row.designVersionId,
     active: row.active,
+    newUnitsMessage: row.newUnitsMessage,
     version: row.version,
     updated: row.updated,
   };
@@ -77,7 +80,19 @@ export async function putDeployment(db: Db, studyId: number, body: DeploymentWri
   const version = !previous ? 1 : previous.version + (changed ? 1 : 0);
   // The units of this version: new versions of changed units, the draft's sets
   if (newUnits) await deployDraftUnits(db, studyId, version);
-  const deployment = { designVersionId: body.designVersionId, active: body.active, version, updated: sql`now()` };
+  const deployment = {
+    designVersionId: body.designVersionId,
+    active: body.active,
+    version,
+    // Left out: kept (the first deploy: the default)
+    newUnitsMessage:
+      body.newUnitsMessage !== undefined
+        ? body.newUnitsMessage
+        : previous
+          ? previous.newUnitsMessage
+          : DEFAULT_NEW_UNITS_MESSAGE,
+    updated: sql`now()`,
+  };
   await db
     .insert(deployments)
     .values({ studyId, ...deployment })
@@ -188,6 +203,7 @@ export async function getDeploymentSpec(db: Db, studyId: number): Promise<Deploy
     active: deployment.active,
     annotationEpoch: deployment.annotationEpoch,
     liveUnits: true,
+    newUnitsMessage: deployment.newUnitsMessage,
   });
 }
 
@@ -207,6 +223,7 @@ export async function getPreviewSpec(db: Db, studyId: number): Promise<Deploymen
     active: true,
     annotationEpoch: 0,
     liveUnits: false,
+    newUnitsMessage: null,
   });
   const digest = createHash("sha256")
     .update(JSON.stringify([spec.design, spec.sets]))
@@ -219,16 +236,16 @@ async function buildSpec(
   db: Db,
   studyId: number,
   versionRow: DesignVersionRow,
-  meta: Pick<DeploymentSpec, "version" | "active" | "annotationEpoch" | "liveUnits">,
+  meta: Pick<DeploymentSpec, "version" | "active" | "annotationEpoch" | "liveUnits" | "newUnitsMessage">,
 ): Promise<DeploymentSpec> {
   const [study] = await db
-    .select({ keepSessionsOpen: studies.keepSessionsOpen, redirectUrls: studies.redirectUrls })
+    .select({ reopenMinutes: studies.reopenMinutes, redirectUrls: studies.redirectUrls })
     .from(studies)
     .where(eq(studies.id, studyId));
   return {
     studyId,
     ...meta,
-    keepSessionsOpen: study?.keepSessionsOpen ?? false,
+    reopenMinutes: study ? study.reopenMinutes : DEFAULT_REOPEN_MINUTES,
     redirectUrls: study?.redirectUrls ?? {},
     // The runtime works on the items with the session first
     design: { ...toDesignVersion(versionRow), items: designVersionItems(versionRow) },

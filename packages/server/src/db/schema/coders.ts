@@ -33,6 +33,8 @@ export const coderSessions = pgTable(
     deletionRequest: jsonb().$type<DeletionRequest>(),
     /** How the coder's screen looked, and when it changed (keys, width class, theme), at most 100. */
     display: jsonb().$type<DisplayChange[]>().notNull().default([]),
+    /** How many units the coder had in the loops they reached, when they last loaded the session (for "new units" notices). */
+    knownUnits: integer(),
   },
   (t) => [
     index("coder_sessions_email").on(t.studyId, sql`lower(${t.email})`),

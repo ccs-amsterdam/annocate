@@ -1,5 +1,5 @@
 import { boolean, index, integer, jsonb, pgTable, primaryKey, text } from "drizzle-orm/pg-core";
-import type { DeploymentChanges } from "@annotinder/contracts";
+import { DEFAULT_REOPEN_MINUTES, type DeploymentChanges } from "@annotinder/contracts";
 import { users } from "./accounts.js";
 import { timestamptz } from "./columns.js";
 
@@ -8,8 +8,8 @@ import { timestamptz } from "./columns.js";
 
 /**
  * A study. owner_id: who created it (counts against their plan); origin: an
- * example or recipe it came from; keep_sessions_open: coders' sessions
- * aren't closed when they finish; redirect_urls: panel return links by
+ * example or recipe it came from; reopen_minutes: how long coders can go
+ * back after finishing (null: always, the session stays open); redirect_urls: panel return links by
  * setting name; suspended_at: blocked by an admin.
  */
 export const studies = pgTable("studies", {
@@ -18,7 +18,7 @@ export const studies = pgTable("studies", {
   ownerId: integer().references(() => users.id, { onDelete: "set null" }),
   origin: text(),
   archived: boolean().notNull().default(false),
-  keepSessionsOpen: boolean().notNull().default(false),
+  reopenMinutes: integer().default(DEFAULT_REOPEN_MINUTES),
   redirectUrls: jsonb().$type<Record<string, string>>().notNull().default({}),
   created: timestamptz().notNull().defaultNow(),
   suspendedAt: timestamptz(),
@@ -57,7 +57,8 @@ export const designVersions = pgTable(
  * study). version: bumped per deploy (unit versions name deploys by it);
  * annotation_epoch: bumped when answers are reset; revision: bumped on any
  * change coders' sessions must notice; codings_basis: what the stored
- * codings (unit_codings) were counted under.
+ * codings (unit_codings) were counted under; new_units_message: what
+ * returning coders who got new units are told (null: nothing).
  */
 export const deployments = pgTable("deployments", {
   studyId: integer()
@@ -71,6 +72,7 @@ export const deployments = pgTable("deployments", {
   annotationEpoch: integer().notNull().default(0),
   revision: integer().notNull().default(0),
   codingsBasis: text(),
+  newUnitsMessage: text(),
   updated: timestamptz().notNull(),
 });
 

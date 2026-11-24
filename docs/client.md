@@ -405,8 +405,11 @@ codes everything), or gives the units without a coder (not test units) to
 its coders and keeps the rest. Its test units: the current ones (counts per type from
 `test_set`) are kept and shown disabled; with "Redistribute test units"
 that many overlap, practice and gold units are drawn anew. It keeps the
-units coders were already shown or answered with them by default
-(`GET /coders/units`, contracts `distributeUnits`). The One link form has
+units coders already coded with them by default (`GET /coders/units`,
+contracts `distributeUnits`). On **Units**, **Coders…** next to the coder
+set (`units/CodersPanel.tsx`) shows per coder their units, coded and to
+code, and moves uncoded units between coders, hands a coder's uncoded
+units to the others, or adds a coder (`admin/moveUnits.ts`). The One link form has
 the coder id URL parameter, "Coders sign in" and "Max. nr of coders". **At the end**, a button below the tree, edits the normal end
 (`session.end`).
 

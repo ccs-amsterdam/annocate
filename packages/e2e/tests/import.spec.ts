@@ -21,7 +21,7 @@ async function contents(request: Parameters<typeof api>[0], id: number) {
   const versions = await api<DesignVersionMeta[]>(request, "GET", `/study/${id}/design`);
   const design = await api<DesignVersion>(request, "GET", `/study/${id}/design/${versions.at(-1)!.id}`);
   return {
-    settings: { keepSessionsOpen: study.keepSessionsOpen, redirectUrls: study.redirectUrls },
+    settings: { reopenMinutes: study.reopenMinutes, redirectUrls: study.redirectUrls },
     units: page.units.map((u) => [u.externalId, u.data]),
     sets: groups.map((g) => [g.name, g.sets.map((s) => [s.name, s.unitIds.map((u) => ids.get(u))])]),
     design: { items: design.items, session: design.session, units: design.units, public: design.public },

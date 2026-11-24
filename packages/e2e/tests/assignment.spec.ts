@@ -356,7 +356,7 @@ test("the preview runs as a coder picked above it", async ({ page, request }) =>
   await expect(page.getByText("Bob's text")).toBeVisible();
 });
 
-test("dividing units again keeps the units coders already saw", async ({ page, request, browser }) => {
+test("dividing units again keeps the units coders already coded", async ({ page, request, browser }) => {
   const study = await studyWithColumn(request, "Redistribute", "coder_set", {
     "Anna's text": "anna",
     "Bob's text": "bob",
@@ -367,11 +367,19 @@ test("dividing units again keeps the units coders already saw", async ({ page, r
   });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
   const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
-  // Anna starts coding: she is shown her unit
+  // Anna codes her unit
   const anna = await (await browser.newContext()).newPage();
   await anna.goto(`/code/${study.id}?link=${link.secret}`);
   await anna.getByRole("button", { name: "anna", exact: true }).click();
   await question(anna, "Topic?");
+  await anna.getByRole("button", { name: /politics/ }).click();
+  await expect
+    .poll(
+      async () =>
+        (await api<{ coders: { coded: number[] }[] }>(request, "GET", `/study/${study.id}/coders/units`)).coders[0]
+          ?.coded.length,
+    )
+    .toBe(1);
 
   await page.goto(`/research/studies/${study.id}/design`);
   await page.getByRole("button", { name: /^Coder unit assignments/ }).click();
@@ -379,7 +387,7 @@ test("dividing units again keeps the units coders already saw", async ({ page, r
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Names, each with their own link").check();
   await dialog.getByLabel(/Names \(one per line\)/).fill("anna\nbob\ncarla");
-  const keep = dialog.getByLabel(/Keep the units coders already have/);
+  const keep = dialog.getByLabel(/Keep the units coders already coded/);
   await expect(keep).toBeChecked();
   await expect(dialog.getByText(/1 unit assignments are kept/)).toBeVisible();
   await dialog.getByRole("button", { name: "Make the coder set" }).click();

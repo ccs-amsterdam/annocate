@@ -67,6 +67,29 @@ New units with the column get their values. Without it, you choose per
 column: leave them out, spread them over existing values, or make new
 values. Test units stay as they are.
 
+Coders with their own link keep it: once you deploy the units, they pick up
+their new units on their next visit, and are told how many (the message is
+set when you deploy). A finished session opens again for them, unless it has
+closed (**When coders finish** in the study's **Settings**).
+
+## Moving units between coders
+
+**Coders…** next to the coder set shows per coder how many units they
+have, coded, and still have to code. Units a coder coded always stay
+theirs:
+
+- **Move** _n_ units from one coder to another: units the first coder
+  hasn't coded, the ones they were never sent first (a unit they were sent
+  may be on their screen).
+- **Hand out** gives all of a coder's uncoded units to the others, those
+  with the fewest left first. A coder who coded nothing leaves the coder set
+  (their link stops working).
+- **Add coder**, then move units to them.
+
+Like every change to sets, this is a draft until you deploy the units. When
+you divide units again with the coder set dialog, **Keep the units coders
+already coded** does the same: coded units stay, the rest is divided anew.
+
 ## Changing values by hand
 
 Tick units, then **Put in set**: a value and the column → **Put in**.

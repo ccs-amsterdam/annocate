@@ -142,9 +142,6 @@ const SPECIAL = [
 
 type RandomVariable = Extract<AnyVariableType, { type: "random" }>;
 
-/** How long a coder can go back after completing a session (docs/coder-identity.md §9). */
-const REOPEN_MS = 15 * 60 * 1000;
-
 /** One coder's request for units from a loop (`DeploymentRuntime.pick`). */
 interface PickRequest {
   coder: Coder;
@@ -256,7 +253,8 @@ export class DeploymentRuntime {
           this.spec = {
             ...this.spec,
             active: spec.active,
-            keepSessionsOpen: spec.keepSessionsOpen,
+            reopenMinutes: spec.reopenMinutes,
+            newUnitsMessage: spec.newUnitsMessage,
             sets: spec.sets,
             redirectUrls: spec.redirectUrls,
           };
@@ -547,11 +545,13 @@ export class DeploymentRuntime {
 
   /** The session for the client. */
   async session(coder: Coder): Promise<SessionResponse> {
+    const newUnits = await this.noticeNewUnits(coder);
     const values = await this.store.coderValues(coder.sessionId);
     const [endValues, codings] = await Promise.all([
       this.endValues(coder, values),
       this.store.listCodings({ sessionId: coder.sessionId }),
     ]);
+    const live = new Set(this.sets.get(ALL_UNITS_SET) ?? []);
     return {
       sessionId: coder.sessionId,
       studyId: this.spec.studyId,
@@ -561,10 +561,14 @@ export class DeploymentRuntime {
       progress: [...this.loops.values()].map((info) => {
         const route = this.routeOf(coder, info);
         const units = this.routeUnits(route);
+        // Units the coder coded here stay theirs, also once moved to another coder (not once deleted)
+        const done = codings.filter((c) => c.loop === info.key && (units.has(c.unitId) || live.has(c.unitId)));
+        const expected = this.expectedUnits(route);
+        const elsewhere = done.filter((c) => !units.has(c.unitId)).length;
         return {
           set: info.key,
-          doneUnitIds: codings.filter((c) => c.loop === info.key && units.has(c.unitId)).map((c) => c.unitId),
-          totalUnits: this.expectedUnits(route),
+          doneUnitIds: done.map((c) => c.unitId),
+          totalUnits: expected === null ? null : expected + elsewhere,
         };
       }),
       // A closed session: only what its end screen shows.
@@ -576,7 +580,35 @@ export class DeploymentRuntime {
       deletionRequest: coder.deletionRequest,
       session: coder.session,
       login: coder.email,
+      newUnits,
     };
+  }
+
+  /**
+   * Units the coder got since they last loaded the session (the researcher
+   * added units or moved units to them): counted in the loops they reached,
+   * where their number doesn't depend on other coders. A finished session
+   * that can still be reopened is opened again, so they code them. Told
+   * once, with the deployment's message.
+   */
+  private async noticeNewUnits(coder: Coder): Promise<SessionResponse["newUnits"]> {
+    let total = 0;
+    for (const info of this.loops.values()) {
+      if (coder.assignments[info.key]) total += this.expectedUnits(this.routeOf(coder, info)) ?? 0;
+    }
+    if (total === coder.knownUnits) return null;
+    const count = coder.knownUnits === null ? 0 : total - coder.knownUnits;
+    coder.knownUnits = total;
+    await this.store.setKnownUnits(coder.sessionId, total);
+    if (count <= 0) return null;
+    if (coder.ended) {
+      // Too late to go back: nothing to tell
+      if (!this.reopen(coder)) return null;
+      coder.ended = null;
+      await this.store.setEnded(coder.sessionId, null);
+    }
+    const message = this.spec.newUnitsMessage;
+    return message ? { count, message: message.replaceAll("{n}", String(count)) } : null;
   }
 
   /**
@@ -609,15 +641,15 @@ export class DeploymentRuntime {
 
   /**
    * Whether an ended session can be opened again: after completing it,
-   * within `REOPEN_MS` (always, if the study keeps sessions open). Not after a
+   * within the study's reopen time (`reopenMinutes`; null: always). Not after a
    * screenout (the answers that screened the coder out stay), quitting, or
    * asking for deletion.
    */
   private reopen(coder: Coder): Reopen {
     const { ended } = coder;
     if (!ended || ended.outcome !== "complete" || coder.deletionRequest) return null;
-    if (this.spec.keepSessionsOpen) return { until: null };
-    const until = new Date(new Date(ended.at).getTime() + REOPEN_MS);
+    if (this.spec.reopenMinutes === null) return { until: null };
+    const until = new Date(new Date(ended.at).getTime() + this.spec.reopenMinutes * 60_000);
     return until.getTime() > this.options.now() ? { until } : null;
   }
 
@@ -631,7 +663,7 @@ export class DeploymentRuntime {
 
   /** An ended session is closed, unless the study keeps sessions open: the coder gets only what the end screen shows. */
   private closed(coder: Coder): boolean {
-    return coder.ended !== null && !this.spec.keepSessionsOpen;
+    return coder.ended !== null && this.spec.reopenMinutes !== null;
   }
 
   /** The values an ended session's end screen uses (contracts EndValues): its message's and redirect link's references. */

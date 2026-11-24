@@ -436,6 +436,8 @@ interface DeployVars {
   designVersionId: number;
   units?: boolean;
   confirmLinks?: boolean;
+  /** What returning coders who got new units are told; left out: unchanged. */
+  newUnitsMessage?: string | null;
 }
 
 /**
@@ -455,13 +457,15 @@ export function useDeployMutation(
         designVersionId,
         confirmLinks,
         units = false,
-      } = typeof vars === "number" ? { designVersionId: vars } : vars;
+        newUnitsMessage,
+      }: DeployVars = typeof vars === "number" ? { designVersionId: vars } : vars;
       const current = queryClient.getQueryData<DeploymentResponse | null>(keys.deployment(client.studyId));
       return client.putDeployment({
         designVersionId,
         units,
         active: current?.active ?? true,
         ...(confirmLinks ? { confirmLinks } : {}),
+        ...(newUnitsMessage !== undefined ? { newUnitsMessage } : {}),
       });
     },
     onSuccess: (deployment) => {

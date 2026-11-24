@@ -9,7 +9,7 @@ export function toStudyResponse(row: StudyRow): StudyResponse {
     name: row.name,
     archived: row.archived,
     created: row.created,
-    keepSessionsOpen: row.keepSessionsOpen,
+    reopenMinutes: row.reopenMinutes,
     redirectUrls: row.redirectUrls ?? {},
     suspendedAt: row.suspendedAt,
     origin: row.origin,

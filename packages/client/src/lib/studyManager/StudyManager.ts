@@ -92,6 +92,7 @@ const INITIAL_SNAPSHOT: StudyManagerSnapshot = {
   login: null,
   canLogIn: false,
   reopen: null,
+  newUnits: null,
   unsaved: 0,
   retrying: false,
   practiceWrong: null,
@@ -269,6 +270,8 @@ export class StudyManager {
       this.drafts.sessionId = session.sessionId;
       if (session.deletionRequest) this.publish({ deletionRequested: true });
       this.publish({ login: session.login ?? null, canLogIn: session.canLogIn ?? false });
+      // Told once (the server doesn't repeat it): kept until dismissed
+      if (session.newUnits) this.publish({ newUnits: session.newUnits.message });
       if (session.ended) {
         this.endedOn = session.ended.unit ?? null;
         // The coder reached an `end` item before, or quit: show the ending
@@ -800,6 +803,11 @@ export class StudyManager {
     this.leaveLoop();
     this.expressionCache = new ExpressionCache();
     await this.start();
+  }
+
+  /** The coder read the new units message. */
+  dismissNewUnits(): void {
+    this.publish({ newUnits: null });
   }
 
   /** Repeats the operation that failed, and tries saving again. */

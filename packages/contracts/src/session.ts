@@ -80,8 +80,8 @@ export const EndSessionSchema = z.object({ item: z.string().min(1).optional(), u
 
 /**
  * Whether the coder can go back after the session ended (`POST /reopen`):
- * null: not (screened out, quit, or the 15 minutes after finishing are
- * over); `until` null: always (the study keeps sessions open).
+ * null: not (screened out, quit, or the study's reopen time after
+ * finishing is over); `until` null: always (the study keeps sessions open).
  */
 export const ReopenSchema = z.object({ until: z.coerce.date().nullable() }).nullable();
 export type Reopen = z.infer<typeof ReopenSchema>;
@@ -143,6 +143,13 @@ export const SessionResponseSchema = z.object({
   endValues: EndValuesSchema.nullable().optional(),
   /** With `ended`: whether the coder can go back. */
   reopen: ReopenSchema.optional(),
+  /**
+   * The coder got units since they last loaded the session (the researcher
+   * added or moved units to them): how many, and the deployment's message
+   * for it (its `{n}` filled in). Sent once. A finished session that can
+   * be reopened is opened again for them.
+   */
+  newUnits: z.object({ count: z.number().int().positive(), message: z.string() }).nullable().optional(),
 });
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 

@@ -83,6 +83,8 @@ export interface Store {
   setSessionValue(sessionId: number, name: string, value: string): Promise<string>;
   /** Stores how the session ended (null: reopened). */
   setEnded(sessionId: number, ended: SessionEnd | null): Promise<void>;
+  /** Stores how many units the coder has in the loops they reached (`Coder.knownUnits`). */
+  setKnownUnits(sessionId: number, count: number): Promise<void>;
   /** A "continue on another device" link (only its hash is stored). */
   createTransfer(tokenHash: string, transfer: Transfer): Promise<void>;
   /** Uses up a transfer link: what it was for, if it exists and hasn't expired. */
@@ -290,6 +292,10 @@ export class DbStore implements Store {
       .where(this.sessionWhere(sessionId))
       .returning({ id: coderSessions.id });
     if (updated.length === 0) throw new HttpError(404, "Coder not found");
+  }
+
+  async setKnownUnits(sessionId: number, count: number): Promise<void> {
+    await this.db.update(coderSessions).set({ knownUnits: count }).where(this.sessionWhere(sessionId));
   }
 
   async createTransfer(tokenHash: string, transfer: Transfer): Promise<void> {

@@ -85,6 +85,7 @@ export class PreviewStore implements Store {
       session: request.sessionRules ? previewSessionValues(request.sessionRules, request.urlParams ?? {}) : {},
       linkId: null,
       email: null,
+      knownUnits: null,
       created: new Date(this.now()),
     };
     this.coders.set(coder.sessionId, coder);
@@ -161,6 +162,11 @@ export class PreviewStore implements Store {
 
   /** Previews keep nothing. */
   async recordDisplay(): Promise<void> {}
+
+  async setKnownUnits(sessionId: number, count: number): Promise<void> {
+    const coder = this.coders.get(sessionId);
+    if (coder) coder.knownUnits = count;
+  }
 
   async requestDeletion(sessionId: number, request: DeletionRequest): Promise<void> {
     const coder = this.coders.get(sessionId);

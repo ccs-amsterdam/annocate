@@ -110,11 +110,11 @@ describe("results", () => {
     for (const c of coders) expect(c.medianUnitSeconds === null || c.medianUnitSeconds > 0).toBe(true);
   });
 
-  it("list per coder id the units they saw or answered (to keep them when redistributing)", async () => {
+  it("list per coder id the units they answered (kept with them when redistributing) and were only sent", async () => {
     const study = await example("swipe-sentiment");
     const { coders } = await get(`/study/${study}/coders/units`, CoderUnitsSchema);
     expect(coders.map((c) => c.coder)).toEqual(["Example coder 1", "Example coder 2", "Example coder 3"]);
-    expect(coders.every((c) => c.unitIds.length === 10)).toBe(true);
+    expect(coders.every((c) => c.coded.length === 10 && c.served.length === 0)).toBe(true);
   });
 
   it("answer a repeated request with 304 while the study is unchanged", async () => {

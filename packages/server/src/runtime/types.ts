@@ -28,8 +28,10 @@ export interface DeploymentSpec {
    * researcher resets units), so it reloads what it derived from them.
    */
   annotationEpoch: number;
-  /** The study keeps finished sessions open (else they close: docs/coder-identity.md §9). */
-  keepSessionsOpen: boolean;
+  /** What returning coders who got new units are told (`{n}`: how many); null: nothing. */
+  newUnitsMessage: string | null;
+  /** How long coders can go back after finishing, in minutes; null: always (docs/coder-identity.md §9). */
+  reopenMinutes: number | null;
   /** Deployment settings: the URL per `redirectSetting` name of end items (docs/architecture.md §5). */
   redirectUrls: Record<string, string>;
 }
@@ -73,6 +75,8 @@ export interface Coder {
   linkId: number | null;
   /** The email the session is linked to (the coder logged in once, docs/coder-identity.md §5); null without. */
   email: string | null;
+  /** How many units the coder had in the loops they reached when they last loaded the session (null: not yet). */
+  knownUnits: number | null;
 }
 
 /** The coder for a device's request (docs/coder-identity.md §4). */

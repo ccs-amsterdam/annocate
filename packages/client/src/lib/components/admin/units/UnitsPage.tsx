@@ -26,6 +26,7 @@ import {
   Tags,
   Trash2,
   Upload,
+  Users,
 } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import {
@@ -49,6 +50,7 @@ import { UploadUnits } from "./UploadUnits";
 import { SplitIntoSets, type SplitColumn } from "./SplitIntoSets";
 import { TestSetDialog } from "./TestSetDialog";
 import { CoderSetDialog } from "../session/CoderSetDialog";
+import { CodersPanel } from "./CodersPanel";
 import { HelpButton } from "../../../help/HelpButton";
 
 const PAGE_SIZE = 50;
@@ -76,7 +78,7 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
   const [shownSet, setShownSet] = useState<ShownSet | null>(null);
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [panel, setPanel] = useState<"upload" | RoleColumn | null>(null);
+  const [panel, setPanel] = useState<"upload" | "coders" | RoleColumn | null>(null);
 
   const pageQuery = useUnitPageQuery(client, { offset, limit: PAGE_SIZE, group: shownSet?.group, set: shownSet?.set });
   const fields = fieldsQuery.data ?? [];
@@ -85,6 +87,7 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
     ? (groups.find((g) => g.name === shownSet.group)?.sets.find((s) => s.name === shownSet.set) ?? null)
     : null;
   const total = pageQuery.data?.total ?? 0;
+  const coderGroup = groups.find((g) => g.name === CODER_SET);
 
   // group -> unit id -> its cell (the unit's sets in the group)
   const cells = useMemo(() => {
@@ -142,7 +145,11 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
         current={shownSet}
         onSelect={selectSet}
         onCreate={setPanel}
+        onManageCoders={() => setPanel(panel === "coders" ? null : "coders")}
       />
+      {panel === "coders" && coderGroup && (
+        <CodersPanel client={client} group={coderGroup} onClose={() => setPanel(null)} />
+      )}
 
       {(panel === CONDITION_SET || panel === PART_SET) && (
         <SplitIntoSets
@@ -207,6 +214,7 @@ function SetsBar({
   current,
   onSelect,
   onCreate,
+  onManageCoders,
 }: {
   client: ResearcherApi;
   groups: SetGroupResponse[];
@@ -214,6 +222,8 @@ function SetsBar({
   current: ShownSet | null;
   onSelect: (set: ShownSet | null) => void;
   onCreate: (column: RoleColumn) => void;
+  /** Opens the coders panel (coded and left per coder, moving units). */
+  onManageCoders: () => void;
 }) {
   const deleteGroup = useDeleteSetGroupMutation(client);
   const chip = (active: boolean) =>
@@ -257,6 +267,11 @@ function SetsBar({
               <span className="text-muted-foreground">{set.unitIds.length}</span>
             </button>
           ))}
+          {g.name === CODER_SET && (
+            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={onManageCoders}>
+              <Users className="h-3.5 w-3.5" /> Coders…
+            </Button>
+          )}
           <Button
             size="icon-sm"
             variant="ghost"

@@ -226,8 +226,8 @@ and a `deletion_requested` column.
 ## 9. Closing finished sessions
 
 A session that ended (an `end` item, finishing the study, or quitting) is
-**closed** unless the study keeps sessions open (`studies.keep_sessions_open`,
-off by default). So finished data won't change, and someone who later gets
+**closed** unless the study keeps sessions open (`studies.reopen_minutes`
+null; the first deploy suggests this for coder links, and a day for one link). So finished data won't change, and someone who later gets
 into a coder's login or device doesn't see their answers.
 
 - A closed session gets only what its end screen shows: `GET /session`
@@ -237,9 +237,16 @@ into a coder's login or device doesn't see their answers.
 - Finishing without an `end` item also ends the session (`POST /end` without
   an item, outcome `complete`).
 - **Going back**: after completing (not after a screen-out, quitting or a
-  deletion request) the coder can go back for 15 minutes (`REOPEN_MS`; always
-  if the study keeps sessions open): `POST /reopen`. `reopen` in `POST /end`'s
+  deletion request) the coder can go back within the study's reopen time
+  (`reopen_minutes`, counted from when they last finished; always if the
+  study keeps sessions open): `POST /reopen`. Going back opens the session
+  again; nothing counts down while it is open. `reopen` in `POST /end`'s
   response and in `GET /session` says until when.
+- **New units**: when a coder got units since they last loaded the session
+  (the researcher added units or moved units to them, and deployed),
+  `GET /session` says how many (`newUnits`, with the deployment's
+  `newUnitsMessage`), once. A finished session that can still be reopened
+  is opened again for them, so they code the new units.
 
 Not done on purpose: limiting how far back coders can go during a session.
 Coder-level answers are in the browser anyway (conditions use them).

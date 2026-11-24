@@ -95,6 +95,8 @@ export interface StudyManagerSnapshot {
   canLogIn: boolean;
   /** With phase `finished`: whether the coder can go back (`reopen()`); `until` null: always. */
   reopen: Reopen;
+  /** The coder got new units since they were last here: the study's message for it, until dismissed (`dismissNewUnits()`). */
+  newUnits: string | null;
   /** Answers not saved on the server yet (they are sent in the background, `save`). */
   unsaved: number;
   /** Saving failed for lack of a connection (or a server hiccup): it is tried again. */

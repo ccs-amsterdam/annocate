@@ -8,7 +8,9 @@ import {
   useDesignVersionQuery,
   useDesignVersionsQuery,
   usePendingChangesQuery,
+  useStudyQuery,
   useUpdateDesignVersionMutation,
+  useUpdateStudyMutation,
 } from "../../admin/queries";
 import { describeVersions } from "../../design/versions";
 import { hasUnitChanges } from "../../admin/unitChanges";
@@ -35,6 +37,8 @@ export function DeployPage({ client, onOpenDesign }: { client: ResearcherApi; on
   const live = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data ?? null;
   const deploy = useConfirmedDeploy(client);
   const updateDesignVersion = useUpdateDesignVersionMutation(client);
+  const study = useStudyQuery(client).data ?? null;
+  const updateStudy = useUpdateStudyMutation(client);
   // The last deploy's warnings: shown after the page has moved on to what is (not) deployed now
   const [deployed, setDeployed] = useState<string[] | null>(null);
 
@@ -109,14 +113,24 @@ export function DeployPage({ client, onOpenDesign }: { client: ResearcherApi; on
             versionNumber={candidateNumber}
             live={live}
             liveNumber={liveNumber}
-            onDeploy={async (version, note, units) => {
+            onDeploy={async (version, note, units, settings) => {
+              if (study && settings.reopenMinutes !== undefined && settings.reopenMinutes !== study.reopenMinutes) {
+                await updateStudy.mutateAsync({
+                  id: study.id,
+                  body: { name: study.name, archived: study.archived, reopenMinutes: settings.reopenMinutes },
+                });
+              }
               if (version && note !== (version.note ?? "")) {
                 await updateDesignVersion.mutateAsync({
                   id: version.id,
                   body: { note: note || undefined, items: version.items, revision: version.revision },
                 });
               }
-              const result = await deploy({ designVersionId: version?.id ?? deployment!.designVersionId, units });
+              const result = await deploy({
+                designVersionId: version?.id ?? deployment!.designVersionId,
+                units,
+                ...(settings.newUnitsMessage !== undefined ? { newUnitsMessage: settings.newUnitsMessage } : {}),
+              });
               setDeployed(result.warnings ?? []);
               return result;
             }}

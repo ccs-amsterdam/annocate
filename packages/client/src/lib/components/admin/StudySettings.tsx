@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Download, Trash2 } from "lucide-react";
 import { downloadFile } from "../../admin/download";
+import { ReopenSetting } from "./session/ReopenSetting";
 
 /**
  * Study settings (docs/client.md §7), on the Settings page: the study's name,
@@ -78,7 +79,7 @@ function StudyEditForm({
   const deleteStudy = useDeleteStudyMutation(client);
   const [name, setName] = useState(study.name);
   const [archived, setArchived] = useState(study.archived);
-  const [keepOpen, setKeepOpen] = useState(study.keepSessionsOpen);
+  const [reopenMinutes, setReopenMinutes] = useState(study.reopenMinutes);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [redirects, setRedirects] = useState<Record<string, string>>(study.redirectUrls ?? {});
   // The end items' redirect settings in the latest design version, and any URL already set
@@ -90,7 +91,7 @@ function StudyEditForm({
   // Compared as saved: without empty URLs, in any key order (the server stores JSONB)
   const redirectsDirty = JSON.stringify(setUrls(redirects)) !== JSON.stringify(setUrls(study.redirectUrls ?? {}));
   const dirty =
-    name !== study.name || archived !== study.archived || keepOpen !== study.keepSessionsOpen || redirectsDirty;
+    name !== study.name || archived !== study.archived || reopenMinutes !== study.reopenMinutes || redirectsDirty;
 
   return (
     <div className="max-w-md space-y-6">
@@ -104,7 +105,7 @@ function StudyEditForm({
             body: {
               name,
               archived,
-              keepSessionsOpen: keepOpen,
+              reopenMinutes,
               redirectUrls,
             },
           });
@@ -125,21 +126,7 @@ function StudyEditForm({
           <span>Archived (hide from active coding lists)</span>
         </label>
 
-        <label className="flex cursor-pointer items-start gap-2 text-sm text-foreground">
-          <input
-            type="checkbox"
-            checked={keepOpen}
-            onChange={(e) => setKeepOpen(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-input text-primary focus:ring-primary"
-          />
-          <span className="flex items-center gap-1">
-            Keep finished sessions open
-            <InfoTip label="About keeping sessions open">
-              Off (recommended): once coders finish, they can go back for 15 minutes; then their answers can&apos;t be
-              looked at or changed, also not by someone who gets into their account or device later.
-            </InfoTip>
-          </span>
-        </label>
+        <ReopenSetting value={reopenMinutes} onChange={setReopenMinutes} />
 
         {settingNames.length > 0 && (
           <fieldset className="flex flex-col gap-2">

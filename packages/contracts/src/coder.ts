@@ -122,8 +122,13 @@ export const LinkResponseSchema = z.object({
 });
 export type LinkResponse = z.infer<typeof LinkResponseSchema>;
 
-/** `GET /study/:studyId/coders/units`: per coder id, the units their sessions were shown or answered (to keep them when redistributing). */
+/**
+ * `GET /study/:studyId/coders/units`: per coder id, the units their
+ * sessions answered (`coded`: they stay with the coder when redistributing
+ * or moving units), and the ones they were sent but didn't answer (`served`:
+ * prefetched, or on their screen now).
+ */
 export const CoderUnitsSchema = z.object({
-  coders: z.array(z.object({ coder: z.string(), unitIds: z.array(IdSchema) })),
+  coders: z.array(z.object({ coder: z.string(), coded: z.array(IdSchema), served: z.array(IdSchema) })),
 });
 export type CoderUnits = z.infer<typeof CoderUnitsSchema>;

@@ -160,7 +160,16 @@ message and an optional redirect to a panel.
 ### Finished sessions are closed
 
 Opening the link after the end shows only the end screen: answers can't be
-seen or changed, so data doesn't change afterwards. For 15 minutes after
-finishing, **Go back to my answers** lets a coder fix a mistake. To keep
-sessions open, tick **Keep finished sessions open** in the study's
-**Settings**.
+seen or changed, so data doesn't change afterwards. For a while after
+finishing (a day, unless you set another time), **Go back to my answers**
+lets a coder fix a mistake. To keep sessions open, choose **Keep their
+session open** under **When coders finish** in the study's **Settings**. The
+first deploy asks: coders with their own link keep their session open by
+default, coders from one link get a day.
+
+### When you add units later
+
+Coders whose units you add or move pick them up on their next visit, once
+you deploy the units. They are told once ("2 new units were added for you.";
+you set the message when you deploy), and a finished session opens again for
+them, unless it has closed.

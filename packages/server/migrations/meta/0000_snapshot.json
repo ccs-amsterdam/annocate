@@ -1021,6 +1021,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "new_units_message": {
+          "name": "new_units_message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "updated": {
           "name": "updated",
           "type": "timestamp with time zone",
@@ -1373,12 +1379,12 @@
           "notNull": true,
           "default": false
         },
-        "keep_sessions_open": {
-          "name": "keep_sessions_open",
-          "type": "boolean",
+        "reopen_minutes": {
+          "name": "reopen_minutes",
+          "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "default": false
+          "notNull": false,
+          "default": 1440
         },
         "redirect_urls": {
           "name": "redirect_urls",
@@ -2493,6 +2499,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'[]'::jsonb"
+        },
+        "known_units": {
+          "name": "known_units",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
