@@ -1,5 +1,5 @@
-import { useRef, type ComponentProps, type ReactNode } from "react";
-import type { RelationType, VariableValue } from "@annotinder/contracts";
+import { useRef, type ReactNode } from "react";
+import type { VariableValue } from "@annotinder/contracts";
 import { RelationAnnotationProvider } from "../../context/RelationAnnotationContext";
 import { SpanAnnotationProvider } from "../../context/SpanAnnotationContext";
 import type { StudyManagerSnapshot } from "../../studyManager/types";
@@ -58,8 +58,14 @@ export function UnitQuestionLayout({
   );
 }
 
-/** The spans and relations marked in the unit: the state of a span and of a relation question, around the unit and the answer pane. */
-function UnitAnnotations({
+/**
+ * The spans and relations marked in the unit: the state of a span and of a
+ * relation question, around the unit and the answer pane. Mounted once per
+ * unit: the same components for every question, so the unit (its frames,
+ * how far it is scrolled) stays as it is from question to question. The
+ * providers start over per question themselves.
+ */
+export function UnitAnnotations({
   question,
   snapshot,
   children,
@@ -78,30 +84,16 @@ function UnitAnnotations({
       variableName={item.name}
       allowComments={Boolean(spanVariable && item.comments)}
     >
-      <MaybeRelations
-        key={`relations-${unitId}-${item.name}`}
+      <RelationAnnotationProvider
         variable={relationVariable}
+        question={item.name}
         loopVariables={snapshot.currentLoopVariables}
         unitVariables={snapshot.currentUnitVariables ?? undefined}
         initialRelations={relationVariable ? answer?.relations : undefined}
       >
         {children}
-      </MaybeRelations>
+      </RelationAnnotationProvider>
     </SpanAnnotationProvider>
-  );
-}
-
-/** The relation question's state, while one is on screen. */
-function MaybeRelations({
-  variable,
-  children,
-  ...props
-}: Omit<ComponentProps<typeof RelationAnnotationProvider>, "variable"> & { variable: RelationType | null }) {
-  if (!variable) return <>{children}</>;
-  return (
-    <RelationAnnotationProvider variable={variable} {...props}>
-      {children}
-    </RelationAnnotationProvider>
   );
 }
 

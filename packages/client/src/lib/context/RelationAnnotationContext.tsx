@@ -13,53 +13,87 @@ import { RelationAnnotationContext, type RelationAnnotationState, type RelationS
 
 const newId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-/**
- * Holds a relation question's relations while it is on screen
- * (`RelationAnnotationState`): the spans its rules name come from this
- * unit's answers so far; it starts from its earlier answer, as far as its
- * spans still exist.
- */
-export function RelationAnnotationProvider({
-  variable,
-  loopVariables,
-  unitVariables,
-  initialRelations,
-  children,
-}: {
-  variable: RelationType;
+interface RelationAnnotationProps {
+  /** The relation question on screen; null: another kind of question (no state, the unit stays as it is). */
+  variable: RelationType | null;
+  /** The question's name: another question of the unit starts over. */
+  question?: string;
   /** The loop's questions: the span questions give their spans' labels and colours. */
   loopVariables: ReadonlyMap<string, AnyVariableType> | null;
   unitVariables: Record<string, VariableValue> | undefined;
   initialRelations: RelationAnswer[] | undefined;
   children: ReactNode;
-}) {
-  const spans = useMemo<RelationSpan[]>(
-    () =>
-      ruleVariables(variable.rules).flatMap((name) => {
-        const question = loopVariables?.get(name);
-        const options = question?.type === "span" ? question.options : [];
-        return (unitVariables?.[name]?.spans ?? []).map((s) => ({
-          ...s,
-          variable: name,
-          label: optionLabelOf(options, s.value),
-          color: optionColor(options, s.value),
-        }));
-      }),
-    [variable.rules, unitVariables, loopVariables],
+}
+
+type Sources = Pick<RelationAnnotationProps, "loopVariables" | "unitVariables">;
+
+/** The spans a relation question's rules name, from this unit's answers so far. */
+function relationSpans(rules: RelationType["rules"] | undefined, sources: Sources): RelationSpan[] {
+  if (!rules) return [];
+  const { loopVariables, unitVariables } = sources;
+  return ruleVariables(rules).flatMap((name) => {
+    const question = loopVariables?.get(name);
+    const options = question?.type === "span" ? question.options : [];
+    return (unitVariables?.[name]?.spans ?? []).map((s) => ({
+      ...s,
+      variable: name,
+      label: optionLabelOf(options, s.value),
+      color: optionColor(options, s.value),
+    }));
+  });
+}
+
+/** An earlier answer's relations, as far as their spans still exist. */
+function existingRelations(relations: RelationAnswer[] | undefined, spans: RelationSpan[]): RelationAnswer[] {
+  const ids = new Set(spans.map((s) => s.id));
+  return (relations ?? []).filter((r) => ids.has(r.fromId) && ids.has(r.toId));
+}
+
+/**
+ * Holds a relation question's relations while it is on screen
+ * (`RelationAnnotationState`): the spans its rules name come from this
+ * unit's answers so far; it starts from its earlier answer, as far as its
+ * spans still exist. It stays around the unit for all of the unit's
+ * questions (so the unit isn't mounted again per question), without state
+ * for the other ones, and starts over at each question.
+ */
+export function RelationAnnotationProvider({
+  variable,
+  question,
+  loopVariables,
+  unitVariables,
+  initialRelations,
+  children,
+}: RelationAnnotationProps) {
+  const rules = variable?.rules;
+  const options = variable?.options;
+  const spans = useMemo(
+    () => relationSpans(rules, { loopVariables, unitVariables }),
+    [rules, loopVariables, unitVariables],
   );
-  const [relations, setRelations] = useState<RelationAnswer[]>(() =>
-    (initialRelations ?? []).filter((r) => spans.some((s) => s.id === r.fromId) && spans.some((s) => s.id === r.toId)),
-  );
+  const [relations, setRelations] = useState(() => existingRelations(initialRelations, spans));
   const [start, setStart] = useState<string | null>(null);
   const [pending, setPending] = useState<{ fromId: string; toId: string } | null>(null);
   const [highlighted, setHighlighted] = useState<string | null>(null);
 
-  const value = useMemo<RelationAnnotationState>(() => {
+  // Another question: start over. Adjusted while rendering rather than in an
+  // effect, so there is no render with the previous question's relations.
+  const [shownQuestion, setShownQuestion] = useState(question);
+  if (question !== shownQuestion) {
+    setShownQuestion(question);
+    setRelations(existingRelations(initialRelations, spans));
+    setStart(null);
+    setPending(null);
+    setHighlighted(null);
+  }
+
+  const value = useMemo<RelationAnnotationState | null>(() => {
+    if (!rules || !options) return null;
     const byId = new Map(spans.map((s) => [s.id, s]));
     const typesFor = (fromId: string, toId: string) => {
       const from = byId.get(fromId);
       const to = byId.get(toId);
-      return from && to ? relationTypesFor(variable.rules, variable.options, from, to) : [];
+      return from && to ? relationTypesFor(rules, options, from, to) : [];
     };
     const toggle = (fromId: string, toId: string, type: string) =>
       setRelations((list) => {
@@ -68,10 +102,10 @@ export function RelationAnnotationProvider({
       });
     const canStart = (id: string) => {
       const span = byId.get(id);
-      return !!span && canStartRelation(variable.rules, span);
+      return !!span && canStartRelation(rules, span);
     };
     return {
-      options: variable.options,
+      options,
       spans,
       relations,
       start,
@@ -120,7 +154,7 @@ export function RelationAnnotationProvider({
         setPending(null);
       },
     };
-  }, [spans, relations, start, pending, highlighted, variable.rules, variable.options]);
+  }, [spans, relations, start, pending, highlighted, rules, options]);
 
   return <RelationAnnotationContext.Provider value={value}>{children}</RelationAnnotationContext.Provider>;
 }
