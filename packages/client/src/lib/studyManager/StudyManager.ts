@@ -191,9 +191,9 @@ export class StudyManager {
   private frozen = new Set<string>();
   /**
    * After a new design version: answers to units that weren't saved yet
-   * (the open unit, and finished units still in the outbox), by
-   * `<loop>/<unitId>`, put back when the reloaded session serves the unit
-   * again (`reloadAfterPublish`).
+   * (units the coder started and didn't finish, and finished units still in
+   * the outbox), by `<loop>/<unitId>`, put back when the reloaded session
+   * has the unit again (`reloadAfterPublish`).
    */
   private carryOver = new Map<string, Record<string, VariableValue>>();
 
@@ -375,14 +375,18 @@ export class StudyManager {
     this.history().index = index;
   }
 
-  /** Makes a history entry the current unit, loading it from the server if needed. */
+  /**
+   * Makes a history entry the current unit, loading it from the server if
+   * needed (a unit finished in an earlier visit), with the answers it had
+   * before a new design version, if those weren't saved.
+   */
   private async openEntry(index: number): Promise<void> {
     const loop = this.activeLoop!;
     const entry = this.unitHistory[index];
     if (!entry.unit) {
       const unit = await this.coderApi.getLoopUnit(this.keyOf(loop), entry.unitId);
       entry.unit = unit;
-      entry.answers = { ...(unit.variables ?? {}) };
+      entry.answers = { ...(unit.variables ?? {}), ...this.takeCarryOver(loop, unit.id) };
     }
     this.unitHistoryIndex = index;
     this.currentUnit = entry.unit;
@@ -397,13 +401,19 @@ export class StudyManager {
     await this.publishLoopStep();
   }
 
-  /** Adds a unit just fetched from the server to the history, with any answers it had before a reload or new design version. */
+  /**
+   * Adds a unit just fetched from the server to the history, with any answers
+   * it had before a reload (the browser's draft) or a new design version:
+   * those are newer than what the server has.
+   */
   private pushFetchedUnit(unit: CoderUnitResponse): void {
-    const carried = this.takeCarryOver(this.activeLoop!, unit.id);
+    const loop = this.activeLoop!;
+    const draft = this.drafts.read(this.keyOf(loop), unit.id);
+    const carried = this.takeCarryOver(loop, unit.id);
     this.unitHistory.push({
       unitId: unit.id,
       unit,
-      answers: { ...carried, ...(unit.variables ?? {}) },
+      answers: { ...(unit.variables ?? {}), ...draft, ...carried },
       done: false,
     });
   }
@@ -893,13 +903,10 @@ export class StudyManager {
    * unsaved coder-level answers are asked again.
    */
   private async reloadAfterPublish(): Promise<void> {
-    for (const { unit } of this.outbox.waiting)
-      if (unit) this.carryOver.set(`${unit.loop}/${unit.unitId}`, unit.answers);
+    this.carryUnsavedUnits();
     this.outbox.clear();
     // A practice question's feedback belongs to the unit, which is served again
     this.publish({ practiceWrong: null });
-    if (this.activeLoop && this.currentUnit)
-      this.carryOver.set(`${this.keyOf(this.activeLoop)}/${this.currentUnit.id}`, { ...this.unitVariableValues });
     this.unitQueues.clear();
     this.publish({ unsaved: 0, retrying: false });
     this.starting = null;
@@ -907,6 +914,34 @@ export class StudyManager {
     this.leaveLoop();
     this.expressionCache = new ExpressionCache();
     await this.start();
+  }
+
+  /** Keeps the answers to every unit that isn't saved (`carryOver`): started and not finished, or finished and still to be sent. */
+  private carryUnsavedUnits(): void {
+    this.syncCurrentUnitAnswers();
+    for (const [loop, history] of this.histories) {
+      for (const entry of history.entries) {
+        if (!entry.done && entry.answers) this.carryOver.set(`${loop}/${entry.unitId}`, entry.answers);
+      }
+    }
+    for (const { unit } of this.outbox.waiting) {
+      if (unit) this.carryOver.set(`${unit.loop}/${unit.unitId}`, unit.answers);
+    }
+  }
+
+  /**
+   * After a new design version: the finished units of the loop whose changed
+   * answers weren't saved (`carryOver`) are saved again, as far as the
+   * answers still fit.
+   */
+  private async saveCarriedUnits(): Promise<void> {
+    const loopKey = this.keyOf(this.activeLoop!);
+    for (const [index, entry] of this.unitHistory.entries()) {
+      if (!entry.done || !this.carryOver.has(`${loopKey}/${entry.unitId}`)) continue;
+      await this.openEntry(index);
+      await this.refreshLoopSteps();
+      this.saveFinishedUnit();
+    }
   }
 
   /** The coder read the new units message. */
@@ -1122,24 +1157,20 @@ export class StudyManager {
     return queue.filling;
   }
 
-  /**
-   * Answers to a unit not saved yet: kept over a new design version
-   * (`carryOver`, once), or the browser's draft of it (after a reload).
-   */
+  /** Answers to a unit not saved yet, kept over a new design version (`carryOver`): given once. */
   private takeCarryOver(loop: CoderUnitLoopItem, unitId: number): Record<string, VariableValue> {
     const key = `${this.keyOf(loop)}/${unitId}`;
     const answers = this.carryOver.get(key) ?? {};
     this.carryOver.delete(key);
-    const draft = this.drafts.read();
-    return draft && draft.loop === this.keyOf(loop) && draft.unitId === unitId
-      ? { ...draft.answers, ...answers }
-      : answers;
+    return answers;
   }
 
-  /** Keeps the answers to the unit on screen in the browser (`UnitDraftStore`). */
+  /** Keeps the answers to the unit on screen in the browser (`UnitDraftStore`), until the unit is finished. */
   private writeDraft(): void {
     // Not for practice units: a restored answer would skip its check
     if (!this.activeLoop || !this.currentUnit || this.currentUnit.practice) return;
+    // A finished unit (gone back to) is saved again at once (`advanceUnit`)
+    if (this.unitHistory[this.unitHistoryIndex]?.done) return;
     this.drafts.write({
       loop: this.keyOf(this.activeLoop),
       unitId: this.currentUnit.id,
@@ -1217,7 +1248,7 @@ export class StudyManager {
       redirectUrl: item.redirectUrl ? fillRedirectUrl(item.redirectUrl, scope) : null,
     };
     this.leaveLoop();
-    this.drafts.clear();
+    this.drafts.clearAll();
     this.publish({
       phase: "finished",
       currentItem: null,
@@ -1241,7 +1272,7 @@ export class StudyManager {
   private endedByServer(name: string): void {
     if (this.serverEnded) return;
     this.serverEnded = true;
-    this.drafts.clear();
+    this.drafts.clearAll();
     this.outbox.clear();
     this.publish({ unsaved: 0, retrying: false, practiceWrong: null });
     void this.publishEnding(findEnd(this.stepItems, name), this.scope(this.coderVisible));
@@ -1348,7 +1379,7 @@ export class StudyManager {
       send: async () => {
         const submitted: SubmitUnitResponse | null =
           (await this.coderApi.postUnitVariables(id, doneValues, loopKey, timings)) || null;
-        this.drafts.clear(id);
+        this.drafts.clear(loopKey, id);
         // Gold checks ended the session (health ran out): it ends now, wherever the coder is.
         if (submitted?.end) this.endedByServer(submitted.end);
       },
@@ -1435,6 +1466,7 @@ export class StudyManager {
   private async enterLoop(loop: CoderUnitLoopItem, atStart = false): Promise<void> {
     this.leaveLoop();
     this.activeLoop = loop;
+    if (this.carryOver.size > 0) await this.saveCarriedUnits();
     const unfinished = this.unitHistory.findIndex((entry) => !entry.done);
     if (unfinished >= 0) await this.openAtFirstOpenStep(unfinished, atStart);
     else await this.nextUnitAtFrontier();

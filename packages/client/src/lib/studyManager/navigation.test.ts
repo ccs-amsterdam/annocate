@@ -381,6 +381,21 @@ describe("reloads and the end", () => {
     expect(shown(m)).toBe("B");
   });
 
+  it("changing a finished unit's answer keeps the answers to the unit the coder is halfway (a draft per unit)", async () => {
+    const first = await started(server);
+    await answerUntil(first, "2:q2");
+    await first.goBack();
+    await first.goBack();
+    expect(where(first)).toBe("1:q2");
+    await first.answer(pick("B"));
+    expect(where(first)).toBe("2:q1");
+    const m = await started(server);
+    expect(picked(server.answers.get("1/1")!.q2)).toBe("B");
+    expect(where(m)).toBe("2:q2");
+    await m.goBack();
+    expect(shown(m)).toBe("A");
+  });
+
   it("after the end: reopening lands on the last question; finishing again ends again", async () => {
     const m = await started(server);
     await answerUntil(m, "finished");
@@ -529,6 +544,47 @@ describe("a new design version while coding", () => {
     await m.answer(pick("A"));
     expect(where(m)).toBe("2:q2");
     expect(Object.keys(server.answers.get("1/1")!)).toEqual(["q2"]);
+  });
+});
+
+describe("a new design version while a finished unit is changed", () => {
+  const withTitle = () => [confirm("intro"), loop("Coding (new)", [pickQ("q1"), pickQ("q2")]), confirm("outro")];
+
+  it("the change is saved under the new version, and the coder continues where they were", async () => {
+    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    const m = await started(server);
+    await answerUntil(m, "2:q1");
+    await m.goBack();
+    expect(where(m)).toBe("1:q2");
+    server.redeploy(withTitle());
+    await m.answer(pick("B"));
+    await idle(m);
+    expect(where(m)).toBe("2:q1");
+    await settle();
+    expect(picked(server.answers.get("1/1")!.q2)).toBe("B");
+    expect(picked(server.answers.get("1/1")!.q1)).toBe("A");
+  });
+
+  it("the unit the coder is halfway keeps its answers, also without the browser's draft", async () => {
+    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    const m = await started(server);
+    await answerUntil(m, "2:q2");
+    for (let i = 0; i < 3; i++) await m.goBack();
+    expect(where(m)).toBe("1:q1");
+    storage.clear();
+    server.redeploy(withTitle());
+    await m.answer(pick("B"));
+    await idle(m);
+    expect(where(m)).toBe("2:q2");
+    await settle();
+    expect(picked(server.answers.get("1/1")!.q1)).toBe("B");
+    await m.goBack();
+    expect(shown(m)).toBe("A");
+    // Going back to the changed unit shows the change, not what the server had before
+    await m.goBack();
+    expect(where(m)).toBe("1:q2");
+    await m.goBack();
+    expect(shown(m)).toBe("B");
   });
 });
 

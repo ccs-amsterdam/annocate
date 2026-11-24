@@ -1124,6 +1124,7 @@ describe("a draft of the unit on screen (browser storage)", () => {
     await first.start();
     await first.answer(A);
     expect(first.getSnapshot().currentItem).toMatchObject({ name: "q2" });
+    expect(localStorage.getItem("annotinder:unit-drafts:42")).not.toBeNull();
 
     // A reload: the unit comes again, with q1 answered from the draft
     const server = make();
@@ -1132,6 +1133,6 @@ describe("a draft of the unit on screen (browser storage)", () => {
     expect(second.getSnapshot().currentItem).toMatchObject({ name: "q2" });
     await second.answer(A);
     expect(server.postUnitVariables).toHaveBeenCalledWith(3, { q1: A, q2: A }, "1", expect.anything());
-    expect(localStorage.getItem("annotinder:unit-draft:42")).toBeNull();
+    expect(localStorage.getItem("annotinder:unit-drafts:42")).toBeNull();
   });
 });
