@@ -2,7 +2,7 @@ import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
 
 // How coders come to a study (the Study entry, docs/architecture.md §6-7):
-// the coder unit assignment (`invite`: specific coders with a link each, a
+// the who codes (`invite`: specific coders with a link each, a
 // login or names to pick, or a crowd with one link), and the URL parameters a link may
 // carry (context such as a distribution channel, or a panel's ids for its
 // return link). All are `$session.<name>` values, stored on the session
@@ -160,12 +160,9 @@ export const CrowdInviteSchema = z.object({
 });
 export type CrowdInvite = z.infer<typeof CrowdInviteSchema>;
 
-/** How coders come to the study: specific coders, or a crowd (the default: one open link). */
+/** How coders come to the study (who codes): specific coders, or a crowd (one link). */
 export const InviteSchema = z.discriminatedUnion("mode", [CodersInviteSchema, CrowdInviteSchema]);
 export type Invite = z.infer<typeof InviteSchema>;
-
-/** Without an invitation: a crowd, one open link, every coder gets all units. */
-export const DEFAULT_INVITE: Invite = { mode: "crowd" };
 
 /**
  * What coders see about a study (the design's `public`, docs/glossary.md
@@ -216,7 +213,7 @@ export const DisplaySchema = z.object({
 export type Display = z.infer<typeof DisplaySchema>;
 
 /**
- * The Study entry: the design's `session` (the coder unit assignment, the URL
+ * The Study entry: the design's `session` (the who codes, the URL
  * parameters and the normal end) and its `public` info, as
  * the first item of the design's items (`designItems`). Validation, the
  * runtime and the editor work on it there; it is stored as the design's
@@ -288,13 +285,17 @@ export function sessionItem(items: readonly unknown[]): SessionItem | null {
   return (found as SessionItem | undefined) ?? null;
 }
 
-/** A design's coder unit assignment (`DEFAULT_INVITE` without one). */
-export const inviteOf = (item: SessionItem | null | undefined): Invite => item?.invite ?? DEFAULT_INVITE;
+/**
+ * Who codes (the design's invitation): specific coders or a crowd. null:
+ * not chosen yet. A design can't be deployed without it (`deployErrors`);
+ * previews run it as a crowd.
+ */
+export const inviteOf = (item: SessionItem | null | undefined): Invite | null => item?.invite ?? null;
 
 /** Whether coders must sign in to start: specific coders with a login, or a crowd that requires it. */
 export function loginRequired(item: SessionItem | null | undefined): boolean {
   const invite = inviteOf(item);
-  return invite.mode === "coders" ? invite.link === "login" : invite.login === true;
+  return invite?.mode === "coders" ? invite.link === "login" : invite?.login === true;
 }
 
 /** The names `$session` has under a design: its URL parameters and the built-in ones. */
@@ -316,7 +317,7 @@ export function coderAccess(values: readonly string[]): "email" | "link" | "mixe
 /** The most sessions a link takes: a crowd's limit. */
 export function linkMaxCoders(item: SessionItem | null | undefined): number | undefined {
   const invite = inviteOf(item);
-  return invite.mode === "crowd" ? invite.maxCoders : undefined;
+  return invite?.mode === "crowd" ? invite.maxCoders : undefined;
 }
 
 /**
@@ -326,7 +327,7 @@ export function linkMaxCoders(item: SessionItem | null | undefined): number | un
  */
 export function linkCombinations(item: SessionItem | null, coders: readonly string[]): Record<string, string>[] {
   const invite = inviteOf(item);
-  if (invite.mode === "coders" && invite.link === "per_coder") return coders.map((coder) => ({ coder }));
+  if (invite?.mode === "coders" && invite.link === "per_coder") return coders.map((coder) => ({ coder }));
   return [{}];
 }
 

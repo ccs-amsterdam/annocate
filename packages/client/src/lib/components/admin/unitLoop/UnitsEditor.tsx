@@ -16,7 +16,7 @@ import { MakeSetColumnButton } from "../units/SplitIntoSets";
 import { selectClass, labelClass, numberOrUndefined, range } from "./helpers";
 
 // A unit loop's units settings (contracts `LoopUnitsSchema`), within the
-// coder's units (who the coders are is the coder unit assignment's): an
+// coder's units (who the coders are is the who codes's): an
 // earlier loop's units or one part of the study (`part_set`), and for a
 // crowd whether they are divided among the coders. The test units are
 // SpecialUnits.tsx's.
@@ -80,7 +80,7 @@ export function UnitsEditor({
         <PartEditor groups={groups} part={settings.part} client={client} onChange={(part) => set("part", part)} />
       )}
       {/* For a crowd; shown for specific coders only to undo a leftover divide (an error there) */}
-      {(invite.mode === "crowd" || settings.divide) && sameAs === undefined && (
+      {(invite?.mode === "crowd" || settings.divide) && sameAs === undefined && (
         <Divide criteria={settings.divide} agreeable={agreeable} onChange={(divide) => set("divide", divide)} />
       )}
       <IssueList issues={issues} />
@@ -201,7 +201,7 @@ export function SharedSettings({
   criteria: Criteria;
   agreeable: string[];
   onChange: (c: Criteria) => void;
-  /** Offer "agreement per unit" (not in the setup wizard: it needs a question with options). */
+  /** Offer "agreement per unit" (it needs a question with options). */
   allowAgreement?: boolean;
 }) {
   const until = criteria.until;

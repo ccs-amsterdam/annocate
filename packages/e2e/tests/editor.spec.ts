@@ -59,7 +59,6 @@ test("writing a design in the editor, as the help describes it, and saving it", 
 });
 
 test("an experiment: balanced conditions, each with its own units (condition_set)", async ({ page, request }) => {
-  // (No "Experiment" in the name: the setup wizard's tests look for an Experiment button on the studies page)
   const study = await api<StudyResponse>(request, "POST", "/study", { name: "Conditions in the editor" });
   const units = await api<{ id: number; externalId: string }[]>(request, "POST", `/study/${study.id}/units`, {
     units: [

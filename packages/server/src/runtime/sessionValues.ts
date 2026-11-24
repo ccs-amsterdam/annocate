@@ -1,5 +1,19 @@
-import { MAX_SESSION_VALUE, inviteOf, loginRequired, urlParamKey, type SessionItem } from "@annotinder/contracts";
+import {
+  MAX_SESSION_VALUE,
+  inviteOf,
+  loginRequired,
+  urlParamKey,
+  type Invite,
+  type SessionItem,
+} from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
+
+/**
+ * Who codes, as the runtime runs it: a deployed design always chose
+ * (contracts `deployErrors`); a preview of a design that hasn't yet runs
+ * as a crowd (one link).
+ */
+export const runtimeInvite = (item: SessionItem | null | undefined): Invite => inviteOf(item) ?? { mode: "crowd" };
 
 // A new session's `$session` values (docs/architecture.md §6-7): the URL
 // parameters the design declares, `source`, and who the coder is (`coder`):
@@ -15,7 +29,7 @@ export interface SessionRules {
 
 /** Specific coders who sign in: their units are their address's. */
 export const emailCoders = (rules: SessionRules) => {
-  const invite = inviteOf(rules.item);
+  const invite = runtimeInvite(rules.item);
   return invite.mode === "coders" && invite.link === "login";
 };
 
@@ -63,7 +77,7 @@ export function sessionValues(
   if (loginRequired(rules.item) && !email) throw new HttpError(401, "This study requires login", "auth_required");
   // Who the coder is ($session.coder): per the invitation
   let coderId: string | null = null;
-  const invite = inviteOf(rules.item);
+  const invite = runtimeInvite(rules.item);
   if (invite.mode === "coders") {
     // The coder: the login's email, or the link's
     const values = rules.coders;
@@ -105,7 +119,7 @@ export function previewSessionValues(rules: SessionRules, urlParams: Record<stri
     const value = given(urlParamKey(p)) ?? p.default ?? p.values?.[0]?.value;
     if (value !== undefined) session[p.name] = value;
   }
-  const invite = inviteOf(rules.item);
+  const invite = runtimeInvite(rules.item);
   if (invite.mode === "coders") {
     const coder = given("coder") ?? rules.coders[0];
     if (coder !== undefined) session.coder = coder;

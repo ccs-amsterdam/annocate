@@ -10,7 +10,7 @@ for reliability.
 
 ## In four steps
 
-1. **Coder unit assignments** (above the item tree) → **Specific coders**.
+1. **Who codes** (above the item tree) → **Specific coders**.
 2. **The coder set**: the units' `coder_set` column names the coder(s) of
    each unit (`anna`, `bob`). From your CSV (a column named `coder_set`,
    see [Uploading units](uploading-units.md)), or **Create coder set…**:
@@ -60,8 +60,8 @@ coder's link is retired.
 
 ## When this isn't what you need
 
-- Every coder codes **all** units: **One link**.
-- Coders come and go, each unit needs e.g. two codings: **One link**, with
+- Every coder codes **all** units: **Crowd (one link)**.
+- Coders come and go, each unit needs e.g. two codings: **Crowd (one link)**, with
   the loop's units divided ([crowd coding](shared-queues.md)).
 - Units per experimental **condition**:
   [Experimental conditions](experimental-conditions.md) (with one link).

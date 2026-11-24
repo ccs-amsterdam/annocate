@@ -24,7 +24,7 @@ import { saveUnits } from "./units.js";
 
 // Recipes (contracts recipe.ts, docs/examples.md): a new study's units, its
 // columns with a role and first design version in one document; deploying it makes its
-// links (shared/links.ts `syncLinks`). Example studies and the setup wizard
+// links (shared/links.ts `syncLinks`). Example studies and design files
 // both make studies through here.
 
 export interface RecipeOptions {

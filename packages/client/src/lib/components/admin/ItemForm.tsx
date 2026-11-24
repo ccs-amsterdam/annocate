@@ -86,7 +86,7 @@ export function ItemForm({
   validationIssues?: DesignIssue[];
   /** The design's screen-out end items (a loop's gold checks can end there). */
   screenouts?: string[];
-  /** For a unit loop: the coder unit assignment, what selects a session's units, the loops before it. */
+  /** For a unit loop: the who codes, what selects a session's units, the loops before it. */
   unitsContext?: LoopUnitsContext;
   /** The Study entry's URL parameters (an experiment can take its condition from one). */
   urlParams?: UrlParam[];

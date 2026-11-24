@@ -141,9 +141,9 @@ never which unit ids or which people.
 
 | Layer | Contains | Reproducible? |
 | --- | --- | --- |
-| Design | questions, experiments, branches (items only some coders get: a condition, optionally a label and else items; end items only in a branch), unit loops (optionally a condition; a part, placements of test units, checks, a crowd's distribution criteria), the session (coder unit assignment, URL parameters, the normal end). Refers to role columns' values (a part, conditions) by name, to coders only via `$session` values | yes |
+| Design | questions, experiments, branches (items only some coders get: a condition, optionally a label and else items; end items only in a branch), unit loops (optionally a condition; a part, placements of test units, checks, a crowd's distribution criteria), the session (who codes, URL parameters, the normal end). Refers to role columns' values (a part, conditions) by name, to coders only via `$session` values | yes |
 | Role columns | the units' `coder_set`, `condition_set`, `part_set` and `test_set`: per value, its units in order | data |
-| Links | made from the coder unit assignment (one, or one per coder of `coder_set`), with their secrets and uses | no (server only) |
+| Links | made from the who codes (one, or one per coder of `coder_set`), with their secrets and uses | no (server only) |
 
 **Role columns** (`docs/plans/unit-sets.md`, contracts `sets.ts`). Four unit
 columns have a fixed name and meaning; any other column is data:
@@ -169,7 +169,7 @@ coders, with some overlap" is then one setting and two columns
 ### 6.1 A session's units
 
 Decided per session, for the whole study (contracts `design/session.ts`,
-`shareOf` in the runtime). The coder unit assignment (`session.invite`) says who
+`shareOf` in the runtime). The who codes (`session.invite`) says who
 codes:
 
 ```yaml
@@ -197,7 +197,7 @@ saves, deploying can't.
 | `login` | one link, sign-in required; the coder is the login's address (all coders must be email addresses; others get 403 `email_not_allowed`) |
 | `pick_name` | one link; coders pick their name (`GET /names`, then `x-coder-name`; 409 `name_required` until they do). `nameDevices: "first"` (default): a name belongs to the first device that picks it (others: 409 `name_taken`); `"any"`: picking a name continues its session. Names are visible to anyone with the link |
 
-**One link** (`mode: "crowd"`, also for surveys and survey experiments): one
+**Crowd (one link)** (`mode: "crowd"`, also for surveys and survey experiments): one
 link for everyone.
 
 - `coderParam`: the coder id from a URL parameter, required (400
@@ -389,7 +389,7 @@ frozen once the coder coded a unit in that loop
 (`annotation_values.frozen`); the coding screen shows it read-only.
 
 **The session.** The design's `session` (the Study entry, edited above the
-item tree) holds the coder unit assignment (§6.1), the URL parameters, the normal
+item tree) holds the who codes (§6.1), the URL parameters, the normal
 end and the display settings:
 
 ```yaml
@@ -549,7 +549,7 @@ transaction.
 | Where | What |
 | --- | --- |
 | `contracts/src/design/unitLoop.ts` | a loop's `units`: part, placements of test units, practice and gold checks, distribution criteria, `sameAsPrevious` |
-| `contracts/src/design/session.ts` | the Study entry: coder unit assignment, URL parameters, normal end, display |
+| `contracts/src/design/session.ts` | the Study entry: who codes, URL parameters, normal end, display |
 | `contracts/src/design/references.ts`, `condition.ts` | `$unit`/`$var`/`$session` references, templates, conditions, helpers |
 | `contracts/src/sets.ts` | role columns (`coder_set`, `condition_set`, `part_set`, `test_set`), `distributeUnits`, `splitIntoSets` |
 | `contracts/src/deployment.ts` | deployment, reset, status and preview schemas |

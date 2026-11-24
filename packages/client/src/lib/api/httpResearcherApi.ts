@@ -119,7 +119,7 @@ export interface ResearcherApi {
   listExamples(): Promise<ExampleSummary[]>;
   /** A new study from an example: units, a deployed design version, a link and example answers. */
   createStudyFromExample(body: StudyFromExample): Promise<StudyResponse>;
-  /** A new study from a recipe (the setup wizard): units, their columns with a role, a design (a draft unless `publish`; deploying makes its links). */
+  /** A new study from a recipe (a design file, contracts `recipe.ts`): units, their columns with a role, a design (a draft unless `publish`; deploying makes its links). */
   createStudyFromRecipe(body: RecipeInput): Promise<StudyResponse>;
   /** The study export (coders and answers included), with its file name. Sensitive: may ask for a step-up login. */
   exportStudy(): Promise<{ file: string; bytes: Blob }>;

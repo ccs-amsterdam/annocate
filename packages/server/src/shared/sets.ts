@@ -203,7 +203,7 @@ export async function assignmentChecks(
   const session = sessionItem(items);
   const invite = inviteOf(session);
   const coders = valuesOf(CODER_SET);
-  if (invite.mode === "coders") {
+  if (invite?.mode === "coders") {
     if (coders.length === 0)
       errors.push(
         `Specific coders: the units have no ${CODER_SET} column yet, which says who codes which units: make one.`,
@@ -260,7 +260,7 @@ export async function assignmentChecks(
   // Units no coder gets: test units aside, those without a coder or condition, or a part a loop shows
   const tests = placed(TEST_SET);
   const selections: { label: string; units: Set<number> }[] = [];
-  if (invite.mode === "coders" && coders.length > 0) selections.push({ label: "coder", units: placed(CODER_SET) });
+  if (invite?.mode === "coders" && coders.length > 0) selections.push({ label: "coder", units: placed(CODER_SET) });
   if (experiments.length > 0 && conditions.length > 0)
     selections.push({ label: "condition", units: placed(CONDITION_SET) });
   if (everyLoopAPart && parts.length > 0)

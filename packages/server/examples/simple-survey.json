@@ -15,6 +15,7 @@
       "title": "A short survey"
     },
     "session": {
+      "invite": { "mode": "crowd" },
       "end": {
         "message": "Thank you for taking part!"
       }

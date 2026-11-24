@@ -62,6 +62,7 @@ export function SessionPreview({
 
 function InvitePreview({ item, groups, base }: { item: SessionItem; groups: SetGroupResponse[]; base: string }) {
   const invite = inviteOf(item);
+  if (!invite) return <p className="text-sm text-muted-foreground">Who codes isn&apos;t chosen yet.</p>;
   if (invite.mode === "crowd") {
     const id = invite.coderParam;
     return (

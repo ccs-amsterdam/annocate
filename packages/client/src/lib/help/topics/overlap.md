@@ -13,14 +13,12 @@ only some coders, write `anna;bob` in `coder_set` instead.
 
 ## Setting it up
 
-1. Mark the overlap units: in **Coder unit assignments**, **Create coder
+1. Mark the overlap units: in **Who codes**, **Create coder
    set…** (or **Update coder set…**) with **Redistribute test units** and a
    number of **Overlap units**; or write `overlap` in a `test_set` column
    of your CSV; or put selected units in `overlap` on **Units**.
 2. Select the loop: the **Overlap units** row shows the count;
    choose where they go.
-
-In the [guided setup](setup-wizard.md), the overlap is a number of units.
 
 ## Placement
 

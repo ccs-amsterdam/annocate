@@ -20,14 +20,14 @@ expect them back when done.
 
 ## The link for the panel
 
-1. **Coder unit assignments** → **One link** → tick **Coder id from a URL
+1. **Who codes** → **Crowd (one link)** → tick **Coder id from a URL
    parameter**, with the panel's name for it (`PROLIFIC_PID`). Keep
    **Required** on; optionally a **pattern** such as `[0-9a-f]{24}`.
 2. Deploy. The link under **Links** ends in
    `PROLIFIC_PID=<coder id>`.
 3. Replace `<coder id>` with the panel's placeholder (Prolific:
    `{{%PROLIFIC_PID%}}`) and give that link to the panel.
-4. Optionally set **Max. nr of coders** (in **Coder unit assignments**,
+4. Optionally set **Max. nr of coders** (in **Who codes**,
    before deploying) a bit above the number of places.
 
 The id shows on **Coders** and as `coder` in the results, and keeps

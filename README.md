@@ -80,7 +80,7 @@ on `127.0.0.1:8787` for a proxy that does HTTPS. The step-by-step guide
 - [docs/accounts.md](docs/accounts.md): account roles, researchers, limits, admins.
 - [docs/security.md](docs/security.md): login and second factor, headers, rate limits.
 - [docs/glossary.md](docs/glossary.md): the terms used everywhere.
-- [docs/examples.md](docs/examples.md): recipes, example studies, the setup wizard.
+- [docs/examples.md](docs/examples.md): recipes and example studies.
 - [docs/compositions.md](docs/compositions.md): hosted, self-hosted, and local coding from R and Python.
 - [docs/release-checklist.md](docs/release-checklist.md): before a pilot or a release.
 - [docs/philosophy.md](docs/philosophy.md): why AnnoTinder works the way it does.

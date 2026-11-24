@@ -224,7 +224,7 @@ The study's `origin` is the example's id. 404 for an unknown example.
 ### createStudyFromRecipe
 
 `POST /study/from-recipe` → `StudyResponseSchema` (201): a new study from a
-recipe (`contracts/src/recipe.ts`), as the setup wizard writes one, like
+recipe (`contracts/src/recipe.ts`), as importing a design file writes one, like
 `createStudy` (the same role, limits and ownership), in one transaction:
 
 - `units` (`{ id, data }`; the first unit's fields become the study's) and
@@ -333,7 +333,7 @@ deploying and previewing require. Versions also have `updated`,
 
 A design version is `{ public, session, units, items }`: `public` what
 coders see about the study (`{ title }`, or null), `session` how a coder's
-session starts (the coder unit assignment `invite`, URL parameters `urlParams`,
+session starts (the who codes `invite`, URL parameters `urlParams`,
 the normal end `end`; `{}` without), `units.fields` the declared unit
 fields, `items` the top-level questions, experiments, branches and unit loops
 (branches and loops holding questions, end items and nested branches;
@@ -520,7 +520,7 @@ loop of the live design version, `special`: the deployed test units
 the kinds the study has), `variables`: their coder-level values
 (answers outside unit loops, and experiments' conditions), `session`: their
 `$session` values (URL parameters, `source`, the coder), `email` only where
-the coder unit assignment requires sign-in, `ended`: how the
+the who codes requires sign-in, `ended`: how the
 session ended (at an `end` item: item, outcome `screenout` or `complete`;
 or outcome `quit`; and the time), or null, and `deletionRequest`: the
 coder's request to delete their answers (`at`, `postponedAt` once the

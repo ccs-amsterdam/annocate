@@ -6,6 +6,11 @@ import { DbStore } from "../runtime/store.js";
 import { HttpError } from "../shared/http.js";
 import { splitDesignItems, type DesignItem, type VariableValue } from "@annotinder/contracts";
 
+/** Who codes, chosen (deploying needs it): a crowd, unless the design says otherwise. */
+function chosen<T extends { session?: object }>(design: T): T {
+  return { ...design, session: { invite: { mode: "crowd" }, ...design.session } };
+}
+
 let db: Db;
 let app: ReturnType<typeof createApp>;
 
@@ -81,11 +86,11 @@ describe("codebook routes", () => {
         ],
       },
     ];
-    const post = (items: unknown) =>
+    const post = (items: unknown, session: object = { invite: { mode: "crowd" } }) =>
       app.request(`/api/study/${study.id}/design`, {
         method: "POST",
         headers: adminHeaders,
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ items, session }),
       });
     const publish = (designVersionId: number) =>
       app.request(`/api/study/${study.id}/deployment`, {
@@ -110,6 +115,13 @@ describe("codebook routes", () => {
     expect((await json(refused)).issues.length).toBeGreaterThan(0);
 
     expect((await post("not a list")).status).toBe(400);
+
+    // Who codes isn't chosen: never silently a crowd
+    const unchosen = await publish((await json(await post(validItems, {}))).id);
+    expect(unchosen.status).toBe(400);
+    expect((await json(unchosen)).issues).toContainEqual(
+      expect.objectContaining({ message: expect.stringContaining("Choose who codes") }),
+    );
 
     const good = await json(await post(validItems));
     expect(good.valid).toBe(true);
@@ -429,7 +441,7 @@ describe("links, coder progress and overview", () => {
         await app.request(`/api/study/${study.id}/design`, {
           method: "POST",
           headers: adminHeaders,
-          body: JSON.stringify(splitDesignItems(items)),
+          body: JSON.stringify(chosen(splitDesignItems(items))),
         }),
       );
       return app.request(`/api/study/${study.id}/deployment`, {

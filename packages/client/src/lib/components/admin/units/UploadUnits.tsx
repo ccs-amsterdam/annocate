@@ -124,7 +124,7 @@ export function UploadUnits({
 
   return (
     <Section onCancel={onDone}>
-      <CsvUnitsForm studyFields={studyFields} allowSets onResult={setResult} />
+      <CsvUnitsForm studyFields={studyFields} onResult={setResult} />
       {result && replaced.length > 0 && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} />
@@ -211,16 +211,14 @@ export function UploadUnits({
  * The CSV part of an upload: the file, the id column, and per column
  * whether and as which field it is uploaded, with the checks and a
  * preview. `onResult`: the units it makes (with `errors` that block them),
- * or null without a file. Also the setup wizard's units step.
+ * or null without a file. Columns named like a column with a role (coder_set,
+ * condition_set, part_set, test_set) are that column.
  */
-export function CsvUnitsForm({
+function CsvUnitsForm({
   studyFields,
-  allowSets = false,
   onResult,
 }: {
   studyFields: UnitField[];
-  /** Offer the columns with a role (coder_set, condition_set, part_set, test_set). */
-  allowSets?: boolean;
   onResult: (result: CsvUpload | null) => void;
 }) {
   const [csv, setCsv] = useState<Csv | null>(null);
@@ -273,7 +271,7 @@ export function CsvUnitsForm({
     // Columns named like a column with a role are that column
     const roles: Record<number, RoleColumn> = {};
     parsed.headers.forEach((h, i) => {
-      if (allowSets && i !== idAt && isRoleColumn(h.trim())) roles[i] = h.trim() as RoleColumn;
+      if (i !== idAt && isRoleColumn(h.trim())) roles[i] = h.trim() as RoleColumn;
     });
     setSetColumns(roles);
     setIdColumn(idAt);
@@ -363,8 +361,7 @@ export function CsvUnitsForm({
                   mapping={m}
                   existing={studyFields.find((f) => f.name === m.field)}
                   isId={m.column === idColumn}
-                  group={allowSets ? setColumns[m.column] : undefined}
-                  allowSets={allowSets}
+                  group={setColumns[m.column]}
                   problem={problems[i]}
                   onChange={(next) => setColumn(i, next)}
                   onGroup={(group) => {
@@ -397,16 +394,14 @@ export function CsvUnitsForm({
         <p className="text-[11px] text-muted-foreground">
           Field names: letters, digits and _, so a design can show them as <code>$unit.name</code>. A column named like
           a field of this study is uploaded as that field, with its type.
-          {allowSets && (
-            <>
-              {" "}
-              Columns with a role: <code>coder_set</code> (who codes a unit: <code>anna</code> or <code>anna;bob</code>
-              ), <code>condition_set</code> (the experiment&apos;s conditions), <code>part_set</code> (e.g.{" "}
-              <code>pre</code>, <code>post</code>), optionally with a position (<code>anna#3</code>); and{" "}
-              <code>test_set</code> (<code>overlap</code>, <code>practice</code> or <code>gold</code>). A column with
-              such a name is one; uploading it replaces what it had.
-            </>
-          )}
+          <>
+            {" "}
+            Columns with a role: <code>coder_set</code> (who codes a unit: <code>anna</code> or <code>anna;bob</code>
+            ), <code>condition_set</code> (the experiment&apos;s conditions), <code>part_set</code> (e.g.{" "}
+            <code>pre</code>, <code>post</code>), optionally with a position (<code>anna#3</code>); and{" "}
+            <code>test_set</code> (<code>overlap</code>, <code>practice</code> or <code>gold</code>). A column with such
+            a name is one; uploading it replaces what it had.
+          </>
         </p>
       </div>
 
@@ -499,7 +494,6 @@ function ColumnRow({
   existing,
   isId,
   group,
-  allowSets,
   problem,
   onChange,
   onId,
@@ -513,7 +507,6 @@ function ColumnRow({
   isId: boolean;
   /** For a column with a role: which one. */
   group: RoleColumn | undefined;
-  allowSets: boolean;
   problem: string | null;
   onChange: (next: Partial<ColumnMapping>) => void;
   /** This column is (or is no longer) the units' ids. */
@@ -584,7 +577,7 @@ function ColumnRow({
             }}
           >
             <option value="id">unit id</option>
-            {allowSets && <option value="sets">column with a role</option>}
+            <option value="sets">column with a role</option>
             {TYPES.map((t) => (
               <option key={t} value={t}>
                 {t}

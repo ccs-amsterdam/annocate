@@ -47,7 +47,7 @@ study (vary what coders see, compare how groups read the same texts).
 3. **Reproducible by design.** One design file describes a whole study.
    Every deployed version is kept with the release it ran on, so anyone can
    see what coders saw.
-4. **Simple first.** Sensible defaults and a setup wizard get a study running
+4. **Simple first.** Sensible defaults and a guide in the app get a study running
    in minutes. Advanced options are there when you need them and out of the
    way when you don't.
 5. **Open.** Open source and self-hostable, with your data in formats you can

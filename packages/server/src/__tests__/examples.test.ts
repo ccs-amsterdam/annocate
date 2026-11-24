@@ -121,7 +121,7 @@ describe("studies from a recipe", () => {
     },
   ];
   const recipe = {
-    name: "From the wizard",
+    name: "From a design file",
     units,
     sets: [
       {
@@ -141,7 +141,7 @@ describe("studies from a recipe", () => {
     const res = await post(recipe);
     expect(res.status).toBe(201);
     const study = StudyResponseSchema.parse(await res.json());
-    expect(study.name).toBe("From the wizard");
+    expect(study.name).toBe("From a design file");
     const groups = (await (await researcher(`/api/study/${study.id}/sets`)).json()) as {
       name: string;
       sets: { name: string; unitIds: number[] }[];

@@ -22,10 +22,6 @@ a003,Local team wins cup,"Thousands celebrated in the city centre after the fina
 
 On the **Studies** page, click **Create new study** and choose:
 
-- **Guided setup**: answers a few questions (units, who codes what, the
-  names of your questions) and makes steps 2 to 4 for you. You then only
-  choose each question's answer type (step 3). See
-  [Guided setup](setup-wizard.md).
 - **Empty study**: type a name and click **Create Study**. Follow the
   steps below.
 - **From an example**: a ready study to look around in.
@@ -85,9 +81,10 @@ coder's units. More: [Layout templates](layout-templates.md).
 
 ## 5. Choose who codes
 
-Click **Coder unit assignments** above the tree:
+A new design asks first, with two cards (also **Who codes** above the
+tree). It can't be deployed until you choose:
 
-- **One link** (the default): one link for anyone. Without more settings,
+- **Crowd (one link)**: one link for anyone. Without more settings,
   every coder codes all units. Optionally take a coder id from the URL
   (for a panel), ask coders to sign in, or set a maximum number of
   coders. Whether coders divide the units is set on each unit loop.
@@ -95,7 +92,7 @@ Click **Coder unit assignments** above the tree:
   in the units' coder set (`coder_set`). They get a link each, pick their
   name from one link, or sign in.
 
-For this study, keep **One link**. More: [Links](links.md#coder-unit-assignments),
+For this study, choose **Crowd (one link)**. More: [Links](links.md#who-codes),
 [Giving each coder their own units](own-units.md).
 
 ## 6. Save and preview

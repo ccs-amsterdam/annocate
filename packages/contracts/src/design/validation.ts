@@ -435,7 +435,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   }
 
   /**
-   * A loop's units against the coder unit assignment: dividing only for a crowd, its agreement
+   * A loop's units against the who codes: dividing only for a crowd, its agreement
    * question one of this loop's with one categorical answer; an earlier
    * previous loop's units only with a previous loop, and then not divided again.
    */
@@ -451,7 +451,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     if (units.divide && invite?.mode !== "crowd")
       issue(
         [...path, "divide"],
-        "Dividing units among coders is for a crowd: specific coders get the units of their set (Coder unit assignments)",
+        "Dividing units among coders is for a crowd: specific coders get the units of their set (Who codes)",
       );
     if (units.sameAsPrevious) {
       if (Number(loopName) <= 1) issue([...path, "sameAsPrevious"], "There is no previous loop to take the units of");
@@ -607,7 +607,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     if (selectsUnits(item)) {
       if (sessionNamed.has(item.name) || (RESERVED_SESSION_NAMES as readonly string[]).includes(item.name))
         issue([...itemPath, "name"], `Experiment '${item.name}' selects units: its name can't also be a session value`);
-      if (inviteOf(sessionItem(items)).mode === "coders")
+      if (inviteOf(sessionItem(items))?.mode === "coders")
         issue(
           [...itemPath, "variable", "units"],
           `Experiment '${item.name}' selects units by condition, but specific coders get the units of their coder set: invite a crowd`,
@@ -904,6 +904,16 @@ export function callArgumentProblems(
 /** Validation errors only (warnings left out): what blocks saving a design. */
 export function designErrors(items: unknown[]): DesignIssue[] {
   return validateDesignItems(items).filter((i) => !i.warning);
+}
+
+/** What deploying asks of a design (contracts `NO_INVITE`): no errors, and who codes chosen. */
+export const NO_INVITE = "Choose who codes first: specific coders or a crowd (one link)";
+
+/** The errors that keep a design from being deployed: `designErrors`, and who codes not chosen. */
+export function deployErrors(items: unknown[]): DesignIssue[] {
+  if (inviteOf(sessionItem(items)) !== null) return designErrors(items);
+  const at = items.findIndex((i) => (i as { type?: unknown } | null)?.type === "session");
+  return [...designErrors(items), { path: at >= 0 ? [at, "invite"] : [], message: NO_INVITE }];
 }
 
 /** Every question in the tree (name -> type), and the key of the loop it is in (`unitLoops`; null: coder-level). */

@@ -33,7 +33,6 @@ import {
   type Reopen,
   type SessionResponse,
   type ResolvedLoopUnits,
-  inviteOf,
   type TransferResponse,
   type TopLevelItem,
   type VariableValue,
@@ -55,7 +54,7 @@ import type {
   ResolvedCoder,
   Unit,
 } from "./types.js";
-import type { SessionRules } from "./sessionValues.js";
+import { runtimeInvite, type SessionRules } from "./sessionValues.js";
 import {
   agreementKey,
   singleValue,
@@ -324,7 +323,7 @@ export class DeploymentRuntime {
    * are taken (where a name is the first device's that picks it).
    */
   async pickNames(): Promise<PickNamesResponse> {
-    const invite = inviteOf(this.sessionRules.item);
+    const invite = runtimeInvite(this.sessionRules.item);
     if (invite.mode !== "coders" || invite.link !== "pick_name")
       throw new HttpError(404, "This link has no names to pick", "link_not_found");
     const taken = new Set<string>();
@@ -336,7 +335,7 @@ export class DeploymentRuntime {
 
   /** The URL parameter with a crowd's coder id, if any: part of a device's session key. */
   get coderParam(): string | null {
-    const invite = inviteOf(sessionItem(this.spec.design.items as TopLevelItem[]));
+    const invite = runtimeInvite(sessionItem(this.spec.design.items as TopLevelItem[]));
     return invite.mode === "crowd" ? (invite.coderParam?.param ?? null) : null;
   }
 

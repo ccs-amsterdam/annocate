@@ -23,7 +23,7 @@ const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 
 /**
  * One part of the design's Study entry (docs/architecture.md §6), the one
- * opened from the buttons above the tree: the coder unit assignment (who codes,
+ * opened from the buttons above the tree: the who codes (who codes,
  * and how they get in), the URL parameters (values a link carries, e.g.
  * from a panel: `$session.<name>`) or the display. The public title is
  * edited above the tree, the normal end in its "At the end" row.

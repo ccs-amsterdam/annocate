@@ -26,7 +26,7 @@ export function useSessionTab(): [SessionTab, (tab: SessionTab) => void] {
 
 /** Each part's name, as the buttons above the tree and the panel's header call it. */
 export const SESSION_PART_LABELS: Record<SessionTab, string> = {
-  invite: "Coder unit assignments",
+  invite: "Who codes",
   urlParams: "URL parameters",
   display: "Display",
 };

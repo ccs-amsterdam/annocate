@@ -4,7 +4,7 @@ import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useUnitsQuery } from "../../../admin/queries";
 
 /**
- * Without units, coder unit assignments have nothing to assign: says so,
+ * Without units, who codes have nothing to assign: says so,
  * and points to the Units page. The settings stay reachable (folded): who
  * the coder is and how they get in still matter for a survey.
  */

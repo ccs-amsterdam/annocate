@@ -9,12 +9,14 @@ export const DEV_HEADERS = {
 };
 
 export async function api<T>(request: APIRequestContext, method: string, path: string, data?: unknown): Promise<T> {
-  // A design's top-level end items go in a branch
+  // A design's top-level end items go in a branch; who codes: a crowd, unless the test says otherwise
   const items = (data as { items?: unknown })?.items;
+  const session = (data as { session?: object })?.session;
   const body =
     method === "POST" && /\/design$/.test(path) && Array.isArray(items)
       ? {
           ...(data as object),
+          session: { invite: { mode: "crowd" }, ...session },
           items: items.map((i) =>
             (i as { type?: string }).type === "end"
               ? { type: "branch", condition: { script: "true" }, children: [i] }

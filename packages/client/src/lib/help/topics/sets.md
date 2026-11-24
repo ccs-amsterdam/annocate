@@ -43,7 +43,7 @@ counts; click a value to see its units. The table shows each unit's cell.
 **Create special set…** on **Units** makes any of them:
 
 - **Coder set**: divides the units over your coders (also **Create coder
-  set…** in **Coder unit assignments**, Specific coders; see
+  set…** in **Who codes**, Specific coders; see
   [Giving each coder their own units](own-units.md)).
 - **Part set** or **condition set**: a number of values (`part1`,
   `part2`, ...) or names, one per line (`pre`, `post`). Units are shuffled

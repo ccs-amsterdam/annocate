@@ -241,8 +241,7 @@ export const RelationTypeSchema = VariableBaseSchema.extend({
 export type RelationType = z.infer<typeof RelationTypeSchema>;
 
 /**
- * A question whose answer type isn't chosen yet: what the setup wizard
- * makes from a question name (docs/examples.md). Saving works;
+ * A question whose answer type isn't chosen yet (a new question). Saving works;
  * validation reports it, so the design can't be previewed or deployed
  * until the researcher chooses a type in the editor.
  */

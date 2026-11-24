@@ -87,7 +87,7 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
   },
   session: {
     label: "Session",
-    description: "Coder unit assignments and URL parameters",
+    description: "Who codes and URL parameters",
     // The Start row: a sprout where the main line begins
     icon: Sprout,
     color: "text-card",

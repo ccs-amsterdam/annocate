@@ -385,17 +385,17 @@ are handled there once.
 ### Study entry
 
 The design's `session` item (always first, never shown to coders) holds the
-coder unit assignment (`architecture.md` §6.1), the URL parameters (§7), the
+who codes (`architecture.md` §6.1), the URL parameters (§7), the
 normal end and the display. The server reads them when a session starts; the
 client sees only the values, as `$session.<name>`.
 
 In the editor it isn't a tree item: above the tree, `SessionHeader.tsx` edits
-the public title and has a button per part (**Coder unit assignments**, **URL
+the public title and has a button per part (**Who codes**, **URL
 parameters**, **Display**) that opens that part alone (`SessionItemForm.tsx`,
 the open part in `session/sessionTab.ts`); its JSON is that part only
 (`SessionPartJson.tsx`) and its preview shows what it means for coders
 (`SessionPreview.tsx`: the links, what a link must carry, the screen). Two modes:
-**Specific coders** and **One link** (`session/InvitationSettings.tsx`). The
+**Specific coders** and **Crowd (one link)** (`session/InvitationSettings.tsx`). The
 specific coders form shows the units' coder set (`coder_set`: how many
 coders, or that one is required) and how coders get in (disabled until
 there is a coder set). "Create coder set…" / "Update coder set…"
@@ -522,27 +522,6 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   read in the browser, then `POST /study/import`, with or without coders) or a
   design file (sent as a recipe, `docs/examples.md`). Export is in the study's
   Settings (`docs/hosting.md` "Moving a study").
-- **Guided setup** (`SetupWizard.tsx`, its steps in `setupWizard/`;
-  `lib/admin/setupRecipe.ts`): a short
-  way to a new study's skeleton. It writes a recipe (`docs/examples.md`) and
-  opens the study in the editor; there is no way back into the wizard. Steps:
-  1. **What do you want to do?** Name; annotate units, ask questions, or
-     experiment.
-  2. **The experiment**: a condition's name and values, balanced or random (an
-     experiment, first in the design).
-  3. **Units**: the CSV upload (or later), and the order.
-  4. **Who codes what**: everyone everything (one link); sets per coder, each
-     with a link (`per_coder`, `coder_set`); crowd coding (one link, the
-     loop's `units.divide`); or experimental groups (the experiment selects
-     units, `condition_set` by a column's values). Overlap units are a count
-     (`test_set` overlap); a column with the values overlap, practice and
-     gold gives test units too.
-  5. **How coders see a unit**: the layout sketch (`LayoutDesigner.tsx`:
-     title, byline, body), with a preview.
-  6. **Questions**: names, one per line, before, per unit and after. They get
-     the answer type `unspecified`, which must be set in the editor before
-     previewing or deploying.
-  7. **Check and create**: a summary; the design is created as a draft.
      The questions before and after the loop go at the top level.
 - **Tree** (`DesignTreeView.tsx`, `designTree/`): the top level holds
   questions, experiments, `branch`es and unit loops; validation refuses an

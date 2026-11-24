@@ -24,8 +24,8 @@ coders answer and what is stored, and so your measurement level.
 An [experiment](random-condition.md) is not a question but an item of
 its own (outside unit loops): its condition is drawn, never asked.
 
-Questions from **Guided setup** start **to specify**: you can save, but
-not preview or deploy, until each has a type.
+A new question starts **to specify**: you can save, but not preview or
+deploy, until it has a type.
 
 ## Measurement levels
 

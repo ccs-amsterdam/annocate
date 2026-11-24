@@ -96,7 +96,7 @@ export const researcherEndpoints = {
     request: StudyFromExampleSchema,
     response: StudyResponseSchema,
   },
-  /** A new study from a recipe (the setup wizard): units, their columns with a role, a design (a draft unless `publish`; deploying makes its links). */
+  /** A new study from a recipe (a design file, contracts `recipe.ts`): units, their columns with a role, a design (a draft unless `publish`; deploying makes its links). */
   createStudyFromRecipe: {
     method: "POST",
     path: "/study/from-recipe",

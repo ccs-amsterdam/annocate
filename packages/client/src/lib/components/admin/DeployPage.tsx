@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AlertTriangle, CircleCheck, CircleDot, Loader2 } from "lucide-react";
-import { designErrors, designItems, undeclaredFields, type TopLevelItem } from "@annotinder/contracts";
+import { NO_INVITE, deployErrors, designItems, undeclaredFields, type TopLevelItem } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import {
   useConfirmedDeploy,
@@ -52,10 +52,12 @@ export function DeployPage({ client, onOpenDesign }: { client: ResearcherApi; on
   const liveNumber = deployment ? versions.numberOf(deployment.designVersionId) : null;
   const candidateNumber = candidateId !== null ? (versions.numberOf(candidateId) ?? 0) : 0;
   // As the server checks it: no errors, and every unit field it uses declared
+  const candidateErrors = candidate ? deployErrors(designItems(candidate) as TopLevelItem[]) : [];
   const problems =
     candidate !== null &&
-    (designErrors(designItems(candidate) as TopLevelItem[]).length > 0 ||
-      undeclaredFields(designItems(candidate), candidate.units.fields).length > 0);
+    (candidateErrors.length > 0 || undeclaredFields(designItems(candidate), candidate.units.fields).length > 0);
+  // Who codes isn't chosen: said as it is, not as "problems"
+  const noInvite = candidateErrors.length === 1 && candidateErrors[0].message === NO_INVITE;
   const unitsChanged = !!pending && hasUnitChanges(pending.units);
 
   return (
@@ -100,7 +102,9 @@ export function DeployPage({ client, onOpenDesign }: { client: ResearcherApi; on
         <>
           {problems && (
             <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
-              Design v{candidateNumber} has problems: fix them before deploying it.{" "}
+              {noInvite
+                ? `Design v${candidateNumber}: choose who codes (specific coders or a crowd) before deploying it.`
+                : `Design v${candidateNumber} has problems: fix them before deploying it.`}{" "}
               <Button variant="link" className="h-auto p-0" onClick={onOpenDesign}>
                 Open the design
               </Button>

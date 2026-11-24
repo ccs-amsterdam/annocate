@@ -61,8 +61,8 @@ export function shareSources(
 
 /** What the loop's Units settings need to know of the rest of the design. */
 export interface LoopUnitsContext {
-  /** The coder unit assignment. */
-  invite: Invite;
+  /** Who codes (null: not chosen yet). */
+  invite: Invite | null;
   /** What selects a session's units (its coder, the experiment's condition). */
   sources: ShareSource[];
   /** The loops before this one (their number, from 1), whose units this loop can take. */

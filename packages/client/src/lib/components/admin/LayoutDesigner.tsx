@@ -1,24 +1,15 @@
-import { useEffect, useState, type DragEvent, type ReactNode } from "react";
-import { buildScope, type UnitFieldType } from "@annotinder/contracts";
+import { useState, type DragEvent, type ReactNode } from "react";
+import type { UnitFieldType } from "@annotinder/contracts";
 import { ChevronDown, ChevronUp, FlaskConical, Hash, Plus, Tags, ToggleLeft, Type, X } from "lucide-react";
 import { cn } from "cn";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  placeField,
-  placedFields,
-  removeField,
-  simpleTemplate,
-  type LayoutSlot,
-  type SimpleLayout,
-} from "../../design/simpleLayout";
-import { renderTemplate, type RenderedTemplate } from "../../codebook/renderTemplate";
-import { UnitFields } from "../UnitFields";
+import { placeField, placedFields, removeField, type LayoutSlot, type SimpleLayout } from "../../design/simpleLayout";
 
 // A unit's layout as a sketch of a document (design/simpleLayout.ts): an
 // empty title, byline and body, and the unit fields not shown yet. Click a
 // place to choose a field for it, or drag a field onto it; clicking a field
 // adds it to the body. Title and byline hold one field; the body any
-// number, in order. The default layout form, in the setup wizard and a
+// number, in order. The default layout form, in a
 // layout item's form. More places (an image, a footer, columns) can join the
 // sketch later.
 
@@ -392,21 +383,4 @@ function AddToBody({
       />
     </Popover>
   );
-}
-
-/** A unit as coders would see it with a layout (the setup wizard's preview). */
-export function UnitPreview({ layout, unit }: { layout: SimpleLayout; unit: Record<string, unknown> }) {
-  const template = simpleTemplate(layout);
-  const [rendered, setRendered] = useState<RenderedTemplate | null>(null);
-  useEffect(() => {
-    let current = true;
-    renderTemplate(template, buildScope(new Map(), {}, unit), undefined, "preview")
-      .then((r) => current && setRendered(r))
-      .catch(() => current && setRendered(null));
-    return () => {
-      current = false;
-    };
-  }, [template, unit]);
-  if (!template) return <p className="text-xs text-muted-foreground">Choose fields to see a unit here.</p>;
-  return rendered ? <UnitFields layout={{ template }} rendered={rendered} /> : null;
 }

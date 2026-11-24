@@ -8,7 +8,7 @@ import { toStudyResponse } from "../shared/studies.js";
 import { createStudyFromRecipe } from "../shared/recipes.js";
 
 // New studies made for the researcher, owned by them like any study they
-// create: from an example, and from a recipe, as the setup wizard writes one
+// create: from an example, and from a recipe, as importing a design file writes one
 // (docs/examples.md).
 export function examples(server: Server): Hono<Env> {
   const { db } = server;

@@ -96,6 +96,7 @@ async function setUpStudy(key: string): Promise<{ studyId: number; unitIds: numb
       "createDesignVersion",
       { studyId: study.id },
       {
+        session: { invite: { mode: "crowd" } },
         items: [
           {
             type: "unit_loop",

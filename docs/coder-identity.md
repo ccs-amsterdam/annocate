@@ -7,7 +7,7 @@ quitting and deleting data (§8), closing sessions (§9) and response times
 ## 1. Principles
 
 - **The login provider proves who someone is; the server decides whether
-  they get in** (study roles, the coder unit assignment). No passwords on the
+  they get in** (study roles, the who codes). No passwords on the
   server.
 - **Only authentication unlocks earlier work from another device.** An id
   from a link (a coder id in a panel URL, or a specific coder's own link) is a
@@ -34,7 +34,7 @@ one person group them by coder id or email in analysis.
 Links are made by deploying: one, or one per coder for specific coders with
 a link each (`architecture.md` §7). A link no longer part of the design is
 retired (403 `link_inactive` for new sessions; started sessions go on). A
-revoked link (403 `link_revoked`) can be reopened. The coder unit assignment
+revoked link (403 `link_revoked`) can be reopened. The who codes
 (`architecture.md` §6.1) decides how a session starts:
 
 | Invitation | Sign-in | The coder (`$session.coder`) |

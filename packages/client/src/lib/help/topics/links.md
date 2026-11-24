@@ -2,21 +2,22 @@
 title: Links
 section: Coders
 order: 1
-summary: The links coders open to start - made from the design's coder unit assignments, with coder ids, sign-in and a maximum number of coders per link.
+summary: The links coders open to start - made from the design's who codes, with coder ids, sign-in and a maximum number of coders per link.
 ---
 
 Coders start by opening a **link**, listed under **Links**.
 Deploying makes the links: you don't create them by hand. The design's
-**Coder unit assignments** decide which links there are.
+**Who codes** decides which links there are.
 
-## Coder unit assignments
+## Who codes
 
-Open **Coder unit assignments** above the item tree and choose:
+Open **Who codes** above the item tree and choose (a new design asks
+first; it can't be deployed without a choice):
 
-| Invitation          | Who codes                                         | Links                                                     |
-| ------------------- | ------------------------------------------------- | --------------------------------------------------------- |
-| **Specific coders** | coders you know, each with their own units        | a link per coder, or one link to pick a name or sign in   |
-| **One link** (default) | anyone with the link (a panel, a newsletter; a survey, an experiment, a crowd) | one link                     |
+| Who codes            | For                                                                             | Links                                                   |
+| -------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **Specific coders**  | coders you know, each with their own units (content analysis, trained coders)   | a link per coder, or one link to pick a name or sign in |
+| **Crowd (one link)** | anyone with the link (a panel, a newsletter; annotation at scale, an experiment) | one link                                                |
 
 **Specific coders**: the units' **coder set** (`coder_set`) names the
 coder(s) of each unit; **Create coder set…** makes one. Then how they get
@@ -30,7 +31,7 @@ in:
 
 See [Giving each coder their own units](own-units.md).
 
-**One link**, optionally with:
+**Crowd (one link)**, optionally with:
 
 - **Coder id from a URL parameter**, e.g. a panel's `PROLIFIC_PID` (see
   [Coder ids](#coder-ids));

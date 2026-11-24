@@ -38,7 +38,7 @@ compatibility; examples, tests and docs move to the new format.
   (the `column` field goes; its absence-handling from 88bcfdc becomes "the
   units have no coder_set column yet"). Links: a link per coder, pick a
   name, or sign in — as now.
-- `crowd` — **One link** (UI name; also for surveys and survey
+- `crowd` — **Crowd (one link)** (UI name; also for surveys and survey
   experiments): coder id from a URL parameter, optional sign-in,
   `maxCoders`. The crowd's `column`, the link per set, `groupMaxCoders` and
   `$session.group` go.

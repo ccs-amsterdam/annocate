@@ -25,11 +25,11 @@ export function UnitLoopForm({
   groups,
   screenouts = [],
   validationIssues,
-  unitsContext = { invite: { mode: "crowd" }, sources: [], earlier: [] },
+  unitsContext = { invite: null, sources: [], earlier: [] },
   onChange,
 }: {
   loop: UnitLoopItem;
-  /** The rest of the design as the units settings need it: the coder unit assignment, earlier loops. */
+  /** The rest of the design as the units settings need it: the who codes, earlier loops. */
   unitsContext?: LoopUnitsContext;
   /** The design's end items with outcome `screenout`: where gold checks can end a session. */
   screenouts?: string[];

@@ -48,7 +48,7 @@ get the answer and feedback columns (_server only_).
   **Units**: give a number of overlap, practice and gold units and they are
   drawn at random (an existing test set is overwritten, after asking). Or
   **Create coder set…** / **Update coder set…** (Specific coders, in
-  **Coder unit assignments**), which shows the current test units; with
+  **Who codes**), which shows the current test units; with
   **Redistribute test units** they are drawn anew.
 - **Single units**: select units on **Units** → **Put in** `gold`,
   `practice` or `overlap` of `test_set`.

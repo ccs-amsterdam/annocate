@@ -7,7 +7,7 @@ summary: Experiments - how coders get a condition, using it in the design, and g
 
 A **condition** (such as `control` or `treatment`) is assigned by an
 [experiment](random-condition.md) item when the coder reaches it.
-Everyone uses the same link (**One link**); the draw, or the link's URL
+Everyone uses the same link (**Crowd (one link)**); the draw, or the link's URL
 parameter, decides the condition.
 
 ## Adding an experiment
@@ -19,8 +19,7 @@ parameter, decides the condition.
    parameter** (e.g. a panel that sends each group its own link).
 4. **Options**: the conditions, unless they come from the units (below).
 
-Put it first to assign at the start (the [guided setup](setup-wizard.md)
-does this), or later, after screening or to balance on earlier answers.
+Put it first to assign at the start, or later, after screening or to balance on earlier answers.
 
 ## Using a condition
 
@@ -44,7 +43,7 @@ values are the conditions, e.g. 100 sets drawn balanced for a multilevel
 design.
 
 One experiment at most gives its conditions their own units, and only
-with **One link** (specific coders get the units of their coder set).
+with **Crowd (one link)** (specific coders get the units of their coder set).
 
 ## Conditions from a URL parameter
 

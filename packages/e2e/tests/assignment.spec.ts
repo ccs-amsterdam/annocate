@@ -3,7 +3,7 @@ import type { StudyResponse, UnitResponse } from "@annotinder/contracts";
 import { api, question } from "./helpers";
 
 // Who gets which units (docs/architecture.md §6, docs/plans/unit-sets.md):
-// the coder unit assignments show the coders of the units' coder_set, and a
+// the who codes show the coders of the units' coder_set, and a
 // dialog makes it; an experiment that selects units gives each session the
 // units of its condition (condition_set); a loop shows one part (part_set).
 
@@ -56,7 +56,7 @@ async function studyWithColumn(
 
 type Groups = { name: string; sets: { name: string; unitIds: number[]; ordered?: boolean }[] }[];
 
-test("the coder unit assignments show the coders; a dialog makes or updates the coder set, keeping the test units; a link per coder", async ({
+test("the who codes show the coders; a dialog makes or updates the coder set, keeping the test units; a link per coder", async ({
   page,
   request,
 }) => {
@@ -70,7 +70,7 @@ test("the coder unit assignments show the coders; a dialog makes or updates the 
   });
 
   await page.goto(`/research/studies/${study.id}/design`);
-  await page.getByRole("button", { name: /^Coder unit assignments/ }).click();
+  await page.getByRole("button", { name: /^Who codes/ }).click();
   await expect(page.getByText("2 coders.", { exact: true })).toBeVisible();
 
   // Signing in needs email addresses
@@ -122,7 +122,7 @@ test("the coder set dialog draws test units anew when redistributing them", asyn
     items: [loop()],
   });
   await page.goto(`/research/studies/${study.id}/design`);
-  await page.getByRole("button", { name: /^Coder unit assignments/ }).click();
+  await page.getByRole("button", { name: /^Who codes/ }).click();
   await page.getByRole("button", { name: "Create coder set…" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel(/Names \(one per line\)/).fill("anna\nbob");
@@ -382,7 +382,7 @@ test("dividing units again keeps the units coders already coded", async ({ page,
     .toBe(1);
 
   await page.goto(`/research/studies/${study.id}/design`);
-  await page.getByRole("button", { name: /^Coder unit assignments/ }).click();
+  await page.getByRole("button", { name: /^Who codes/ }).click();
   await page.getByRole("button", { name: "Update coder set…" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Names, each with their own link").check();
@@ -413,7 +413,7 @@ test("specific coders without a coder set: how coders get in waits for one, and 
   await api(request, "POST", `/study/${study.id}/units`, { units: [{ externalId: "u1", data: { text: "A text" } }] });
   await api(request, "POST", `/study/${study.id}/design`, { items: [loop()] });
   await page.goto(`/research/studies/${study.id}/design`);
-  await page.getByRole("button", { name: /^Coder unit assignments/ }).click();
+  await page.getByRole("button", { name: /^Who codes/ }).click();
   await page.getByRole("radio", { name: /^Specific coders/ }).click();
   await expect(page.getByText(/A coder set is required/)).toBeVisible();
   await expect(page.getByLabel(/A link per coder/)).toBeDisabled();
@@ -422,7 +422,7 @@ test("specific coders without a coder set: how coders get in waits for one, and 
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
   await page.reload();
-  await page.getByRole("button", { name: /^Coder unit assignments/ }).click();
+  await page.getByRole("button", { name: /^Who codes/ }).click();
   await expect(page.getByText(/A coder set is required/)).toBeVisible();
 });
 

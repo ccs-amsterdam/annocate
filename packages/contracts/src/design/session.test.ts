@@ -50,7 +50,7 @@ describe("URL parameter patterns", () => {
   });
 });
 
-describe("coder unit assignments and links", () => {
+describe("who codes and links", () => {
   const coders = ["anna", "bob"];
   const item = (extra: Partial<SessionItem>): SessionItem => ({ type: "session", ...extra });
 

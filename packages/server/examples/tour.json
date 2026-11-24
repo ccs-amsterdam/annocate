@@ -37,7 +37,7 @@
     "public": {
       "title": "A tour of AnnoTinder"
     },
-    "session": {},
+    "session": { "invite": { "mode": "crowd" } },
     "items": [
       {
         "type": "question",

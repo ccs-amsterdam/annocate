@@ -17,18 +17,16 @@ import {
   Archive,
   Shield,
   Sparkles,
-  Wand2,
   ChevronDown,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ExamplesDialog } from "./ExamplesDialog";
 import { ImportStudyDialog } from "./ImportStudyDialog";
-import { SetupWizard } from "./SetupWizard";
 import { HelpButton } from "../../help/HelpButton";
 
 interface StudyListProps {
   client: ResearcherApi;
-  /** `design`: open the study on its Design page (after the setup wizard). */
+  /** `design`: open the study on its Design page (a new study). */
   onSelectStudy: (studyId: number, open?: "design") => void;
   /** Who is logged in (null: unknown, e.g. a host app without accounts): only researchers create studies. */
   me?: MeResponse | null;
@@ -46,7 +44,6 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
   const [search, setSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showExamples, setShowExamples] = useState(false);
-  const [showWizard, setShowWizard] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [newStudyName, setNewStudyName] = useState("");
   const [studyToDelete, setStudyToDelete] = useState<StudyResponse | null>(null);
@@ -83,7 +80,7 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
         onSuccess: (created) => {
           setNewStudyName("");
           setShowCreateModal(false);
-          onSelectStudy(created.id);
+          onSelectStudy(created.id, "design");
         },
       },
     );
@@ -120,7 +117,6 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
           )}
           {canCreate && (
             <CreateStudyMenu
-              onWizard={() => setShowWizard(true)}
               onExample={() => setShowExamples(true)}
               onImport={() => setShowImport(true)}
               onEmpty={() => setShowCreateModal(true)}
@@ -148,17 +144,13 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
           </p>
           {studies.length === 0 && canCreate && (
             <div className="mt-5 flex flex-wrap justify-center gap-2">
-              <Button onClick={() => setShowWizard(true)} className="gap-2">
-                <Wand2 className="h-4 w-4" />
-                Guided setup
+              <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create study
               </Button>
               <Button onClick={() => setShowExamples(true)} variant="outline" className="gap-2">
                 <Sparkles className="h-4 w-4" />
                 Start from an example
-              </Button>
-              <Button onClick={() => setShowCreateModal(true)} variant="outline" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create study
               </Button>
             </div>
           )}
@@ -231,17 +223,6 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
           onClose={() => setShowImport(false)}
           onCreated={(study) => {
             setShowImport(false);
-            onSelectStudy(study.id, "design");
-          }}
-        />
-      )}
-
-      {showWizard && (
-        <SetupWizard
-          client={client}
-          onClose={() => setShowWizard(false)}
-          onCreated={(study) => {
-            setShowWizard(false);
             onSelectStudy(study.id, "design");
           }}
         />
@@ -334,14 +315,12 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
   );
 }
 
-/** "Create new study": the guided setup, an example, a file (a study export or a design file), or an empty study. */
+/** "Create new study": an empty study, an example, or a file (a study export or a design file). */
 function CreateStudyMenu({
-  onWizard,
   onExample,
   onImport,
   onEmpty,
 }: {
-  onWizard: () => void;
   onExample: () => void;
   onImport: () => void;
   onEmpty: () => void;
@@ -374,12 +353,7 @@ function CreateStudyMenu({
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-1.5" role="menu">
-        {item(
-          <Wand2 className="h-4 w-4" />,
-          "Guided setup",
-          "Units, who codes what and your questions, step by step.",
-          onWizard,
-        )}
+        {item(<Plus className="h-4 w-4" />, "Empty study", "Start from scratch in the editor.", onEmpty)}
         {item(<Sparkles className="h-4 w-4" />, "From an example", "A ready study to try and change.", onExample)}
         {item(
           <FileUp className="h-4 w-4" />,
@@ -387,7 +361,6 @@ function CreateStudyMenu({
           "A copy of a study from its export, or a study from a design file.",
           onImport,
         )}
-        {item(<Plus className="h-4 w-4" />, "Empty study", "Start from scratch in the editor.", onEmpty)}
       </PopoverContent>
     </Popover>
   );

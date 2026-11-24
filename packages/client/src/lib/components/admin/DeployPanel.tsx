@@ -66,7 +66,7 @@ export function DeployPanel({ client, version, versionNumber, live, liveNumber, 
   const deployDesign = version !== null && (withDesign || firstDeploy);
   const deployUnits = firstDeploy || (unitsChanged && withUnits);
   // Coders with their own link usually come back: their sessions stay open. One link (a crowd): closed after a day.
-  const crowd = version !== null && inviteOf(sessionItem(designItems(version))).mode === "crowd";
+  const crowd = version !== null && inviteOf(sessionItem(designItems(version)))?.mode === "crowd";
   const [reopenMinutes, setReopenMinutes] = useState<number | null>(crowd ? DEFAULT_REOPEN_MINUTES : null);
   const currentMessage = useDeploymentQuery(client).data?.newUnitsMessage;
   const [message, setMessage] = useState<string | null>(null);

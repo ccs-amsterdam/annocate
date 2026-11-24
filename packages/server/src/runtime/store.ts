@@ -1,7 +1,6 @@
 import type { DeviceDetails } from "../shared/devices.js";
 import {
   MAX_DISPLAY_CHANGES,
-  inviteOf,
   linkMaxCoders,
   type CodersInvite,
   type DeletionRequest,
@@ -29,7 +28,7 @@ import { coderAnswers, putCoderValues, toCoder, type CoderRow } from "../shared/
 import { getDeploymentSpec, getPreviewSpec } from "../shared/deployments.js";
 import { listFinished } from "../shared/finished.js";
 import { HttpError } from "../shared/http.js";
-import { emailCoders, sessionValues } from "./sessionValues.js";
+import { emailCoders, runtimeInvite, sessionValues } from "./sessionValues.js";
 import { getSettings } from "../shared/accounts.js";
 import { checkAnswerSize, checkNewCoder, studyLimits } from "../shared/limits.js";
 import { lockUnits, servedUnits } from "../shared/units.js";
@@ -690,7 +689,7 @@ async function findOrCreateCoder(
   // Revoked or retired: no new sessions, also not for a known coder (existing sessions go on).
   if (link.revokedAt !== null) throw new HttpError(403, "This link has been revoked", "link_revoked");
   if (link.retiredAt !== null) throw new HttpError(403, "This link is no longer active", "link_inactive");
-  const invite = inviteOf(request.sessionRules?.item);
+  const invite = runtimeInvite(request.sessionRules?.item);
   let params = link.params;
   if (invite.mode === "coders" && invite.link === "pick_name") {
     const picked = await pickName(db, studyId, request, invite);

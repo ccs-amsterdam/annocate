@@ -1,4 +1,4 @@
-# Recipes, example studies and the setup wizard
+# Recipes and example studies
 
 A **recipe** (contracts `recipe.ts`) is everything a new study starts
 with, in one document: units, role columns (`sets`: `coder_set`,
@@ -10,14 +10,11 @@ limits and ownership checks as creating a study. Afterwards it is an
 ordinary study: nothing records how it was made except `origin` for an
 example.
 
-Three things make recipes:
+Two things make recipes:
 
 - **Example studies** (`packages/server/examples/<id>.json`, loaded by
   `server/src/examples.ts`): recipes with a deployed design, a title, a
   category, a description, and sometimes example answers.
-- **The setup wizard** builds a recipe in the browser
-  (`client/src/lib/admin/setupRecipe.ts`; `client.md` §7, "Guided setup").
-  The server knows nothing about wizard steps.
 - **A design file** (`designs/v<n>.json` in the results download, or
   Export › Design file in the editor): **Create new study › From a file**
   makes a recipe of it in the browser (`client/src/lib/admin/designImport.ts`):
@@ -57,7 +54,7 @@ empty database creates the tour through the same code.
   labeled actor. Needs value loops (`plans/question-loops.md`).
 - **Templates**: "Save as template" writes a recipe without units, with
   the unit fields the design declares. Making a study from one asks for a
-  CSV and matches its columns to those fields (the wizard's units step).
+  CSV and matches its columns to those fields.
 - **A library**: templates shared between researchers and linked to the
   publications that used or introduced them, so a coding scheme or
   experiment can be found, reused and cited.

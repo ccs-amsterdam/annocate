@@ -64,6 +64,7 @@
       "title": "News and you"
     },
     "session": {
+      "invite": { "mode": "crowd" },
       "end": {
         "message": "Thank you for coding the headlines!"
       }

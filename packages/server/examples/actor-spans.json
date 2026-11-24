@@ -51,7 +51,7 @@
     "public": {
       "title": "Who acts in the news?"
     },
-    "session": {},
+    "session": { "invite": { "mode": "crowd" } },
     "items": [
       {
         "type": "unit_loop",

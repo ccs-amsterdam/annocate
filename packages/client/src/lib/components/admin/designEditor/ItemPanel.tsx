@@ -33,6 +33,8 @@ import { SESSION_PART_LABELS, useSessionTab } from "../session/sessionTab";
 import type { DesignDraft } from "./useDesignDraft";
 import type { UnitFieldWarning } from "../../../design/unitFieldRefs";
 import { savedLoop, shownByLayouts } from "../../../design/loopLayouts";
+import { WhoCodesCards } from "../session/WhoCodesCards";
+import { firstInvite } from "../session/whoCodes";
 
 type ItemPane = "edit" | "json" | "preview";
 
@@ -44,6 +46,7 @@ export function ItemPanel({
   warnings,
   previewBeside = false,
   onBack,
+  onLearnMore,
 }: {
   client: ResearcherApi;
   draft: DesignDraft;
@@ -53,6 +56,8 @@ export function ItemPanel({
   previewBeside?: boolean;
   /** Narrow screens: back to the tree (the panes are shown one at a time). */
   onBack?: () => void;
+  /** Opens the guide on who codes. */
+  onLearnMore?: () => void;
 }) {
   const [chosenPane, setPane] = useState<ItemPane>("edit");
   const [sessionPart] = useSessionTab();
@@ -138,11 +143,43 @@ export function ItemPanel({
             )}
           </div>
         </div>
+      ) : !readOnly && sessionItem(draft.items) && !inviteOf(sessionItem(draft.items)) ? (
+        <ChooseWhoCodes draft={draft} onLearnMore={onLearnMore} />
       ) : (
         <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
           Select an item in the tree to edit properties or preview.
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Before who codes is chosen (needed to deploy, contracts `deployErrors`):
+ * the two ways, explained; choosing one opens its form.
+ */
+function ChooseWhoCodes({ draft, onLearnMore }: { draft: DesignDraft; onLearnMore?: () => void }) {
+  const [, setTab] = useSessionTab();
+  const session = sessionItem(draft.items)!;
+  const key = getItemKey(session as DesignItem);
+  return (
+    <div className="flex h-full flex-col justify-center gap-3 overflow-y-auto p-6">
+      <div>
+        <h3 className="font-heading text-lg font-semibold">Who codes?</h3>
+        <p className="text-sm text-muted-foreground">
+          Choose first: it decides how coders get in and how units are handed out. You can change it later.
+        </p>
+      </div>
+      <WhoCodesCards
+        value={null}
+        long
+        learnMore={onLearnMore}
+        onChoose={(mode) => {
+          draft.update(key, { ...session, invite: firstInvite(mode) });
+          setTab("invite");
+          draft.select(key);
+        }}
+      />
     </div>
   );
 }
@@ -229,7 +266,7 @@ export function PreviewPanel({ client, draft }: { client: ResearcherApi; draft: 
 
 /**
  * What a loop's Units settings need of the design (`LoopUnitsContext`): the
- * coder unit assignment, what selects a session's units (its coder, the
+ * who codes, what selects a session's units (its coder, the
  * experiment that selects units), and the loops before this one.
  */
 function loopUnitsContext(items: readonly DesignItem[], cleanItems: readonly unknown[], key: string): LoopUnitsContext {

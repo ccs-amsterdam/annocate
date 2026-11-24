@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { Globe, Users } from "lucide-react";
 import {
   CODER_SET,
-  DEFAULT_INVITE,
   type CrowdInvite,
   type DesignIssue,
   type Invite,
@@ -18,6 +16,8 @@ import { coderSummary, columnValues } from "../../../design/assignment";
 import { IssueList } from "../IssueList";
 import { issuesAt } from "../issues";
 import { CoderSetDialog } from "./CoderSetDialog";
+import { WhoCodesCards } from "./WhoCodesCards";
+import { firstInvite } from "./whoCodes";
 
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs font-normal";
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
@@ -32,12 +32,13 @@ const labelClass = "flex flex-col gap-1 text-xs font-semibold";
  * coders). Whether one link's coders divide the units is each unit loop's.
  */
 export function InvitationSettings({
-  invite = DEFAULT_INVITE,
+  invite,
   groups,
   issues,
   client,
   onChange,
 }: {
+  /** Not chosen yet: only the choice. */
   invite?: Invite;
   groups: SetGroupResponse[];
   issues: DesignIssue[];
@@ -46,74 +47,25 @@ export function InvitationSettings({
   onChange: (invite: Invite) => void;
 }) {
   const setMode = (mode: Invite["mode"]) => {
-    if (mode === invite.mode) return;
+    if (mode === invite?.mode) return;
     // Switching back brings back what was set in that mode (in this editing session)
     const memory = rememberedModes(client?.studyId);
-    memory[invite.mode] = invite;
-    const back = memory[mode];
-    if (back) onChange(back);
-    else if (mode === "crowd") onChange({ mode: "crowd" });
-    else onChange({ mode: "coders", link: "per_coder" });
+    if (invite) memory[invite.mode] = invite;
+    onChange(memory[mode] ?? firstInvite(mode));
   };
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Who codes">
-        <ModeCard
-          active={invite.mode === "coders"}
-          icon={Users}
-          title="Specific coders"
-          text="Coders you know, each with their own units"
-          onClick={() => setMode("coders")}
-        />
-        <ModeCard
-          active={invite.mode === "crowd"}
-          icon={Globe}
-          title="One link"
-          text="One link for anyone: a survey, an experiment, or a crowd"
-          onClick={() => setMode("crowd")}
-        />
-      </div>
-      {invite.mode === "coders" ? (
+      <WhoCodesCards value={invite?.mode ?? null} onChoose={setMode} />
+      {invite?.mode === "coders" ? (
         <CodersForm invite={invite} groups={groups} client={client} onChange={onChange} />
-      ) : (
+      ) : invite?.mode === "crowd" ? (
         <CrowdForm invite={invite} onChange={onChange} />
+      ) : (
+        <p className="text-xs text-muted-foreground">Choose who codes: the study can be deployed once you have.</p>
       )}
       <IssueList issues={issuesAt(issues, "invite")} />
     </div>
-  );
-}
-
-function ModeCard({
-  active,
-  icon: Icon,
-  title,
-  text,
-  onClick,
-}: {
-  active: boolean;
-  icon: typeof Users;
-  title: string;
-  text: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={active}
-      onClick={onClick}
-      className={cn(
-        "flex flex-col items-start gap-0.5 rounded-lg border p-2.5 text-left transition-colors",
-        active ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
-      )}
-    >
-      <span className="flex items-center gap-1.5 text-sm font-semibold">
-        <Icon className={cn("h-4 w-4", active ? "text-primary" : "text-muted-foreground")} />
-        {title}
-      </span>
-      <span className="text-[11px] text-muted-foreground">{text}</span>
-    </button>
   );
 }
 

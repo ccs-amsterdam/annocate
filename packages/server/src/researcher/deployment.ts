@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { DeploymentWriteSchema, designErrors, redirectSettings, undeclaredFields } from "@annotinder/contracts";
+import { DeploymentWriteSchema, deployErrors, redirectSettings, undeclaredFields } from "@annotinder/contracts";
 import { designVersionItems, designVersionUnits, itemsValid } from "../shared/designVersions.js";
 import { and, eq } from "drizzle-orm";
 import { deployments, designVersions, studies } from "../db/schema/index.js";
@@ -35,8 +35,8 @@ export function deployment(server: Server): Hono<Env> {
     if (!version) return c.json({ error: "Design version not found" }, 404);
     const items = designVersionItems(version);
     const fields = designVersionUnits(version).fields;
-    // Drafts may be saved with issues; coders only ever get a valid design version.
-    const errors = designErrors(items);
+    // Drafts may be saved with issues; coders only ever get a valid design version, with who codes chosen.
+    const errors = deployErrors(items);
     if (errors.length > 0 || !itemsValid(items)) {
       return c.json({ error: "Fix the design's issues before deploying it", issues: errors }, 400);
     }

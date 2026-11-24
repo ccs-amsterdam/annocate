@@ -26,6 +26,11 @@ import { createSession } from "../shared/sessions.js";
 const CODER_LOGIN = { mfa: false, authTime: null, issuer: "https://idp.test" };
 import { SESSION_COOKIE } from "../researcher/login.js";
 
+/** Who codes, chosen (deploying needs it): a crowd, unless the design says otherwise. */
+function chosen<T extends { session?: object }>(design: T): T {
+  return { ...design, session: { invite: { mode: "crowd" }, ...design.session } };
+}
+
 // End-to-end: client -> server -> database, through the app's fetch handler
 // (no sockets). A new app on the same database is a restart.
 
@@ -279,18 +284,20 @@ async function redeploy(
     body: JSON.stringify({
       note: "v2",
       // A Session item among them goes into `session` (docs/architecture.md §6)
-      ...splitDesignItems(
-        withDivide([
-          ...extraItems,
-          {
-            type: "unit_loop",
-            label: "main_loop",
-            units: {},
-            // `layout`: the loop's layout item (first)
-            children: [{ type: "layout", template: "", ...layout }, sentimentQuestion],
-            ...loop,
-          },
-        ]),
+      ...chosen(
+        splitDesignItems(
+          withDivide([
+            ...extraItems,
+            {
+              type: "unit_loop",
+              label: "main_loop",
+              units: {},
+              // `layout`: the loop's layout item (first)
+              children: [{ type: "layout", template: "", ...layout }, sentimentQuestion],
+              ...loop,
+            },
+          ]),
+        ),
       ),
     }),
   });
@@ -719,10 +726,12 @@ describe("coders", () => {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify(
-        splitDesignItems([
-          codersInvite("login"),
-          { type: "unit_loop", units: {}, children: [{ type: "layout", template: "" }, sentimentQuestion] },
-        ]),
+        chosen(
+          splitDesignItems([
+            codersInvite("login"),
+            { type: "unit_loop", units: {}, children: [{ type: "layout", template: "" }, sentimentQuestion] },
+          ]),
+        ),
       ),
     });
     const { id } = (await design.json()) as { id: number };
@@ -753,10 +762,12 @@ describe("coders", () => {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify(
-        splitDesignItems([
-          codersInvite(),
-          { type: "unit_loop", units: {}, children: [{ type: "layout", template: "" }, sentimentQuestion] },
-        ]),
+        chosen(
+          splitDesignItems([
+            codersInvite(),
+            { type: "unit_loop", units: {}, children: [{ type: "layout", template: "" }, sentimentQuestion] },
+          ]),
+        ),
       ),
     });
     expect(design.status).toBe(201);
@@ -2500,6 +2511,7 @@ describe("unit fields in the design", () => {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({
+        session: { invite: { mode: "crowd" } },
         items: [
           {
             type: "unit_loop",
@@ -2837,10 +2849,12 @@ describe("conditions from a URL parameter", () => {
         method: "POST",
         headers: adminHeaders,
         body: JSON.stringify(
-          splitDesignItems([
-            ...items,
-            { type: "unit_loop", children: [{ type: "layout", template: "" }, sentimentQuestion] },
-          ]),
+          chosen(
+            splitDesignItems([
+              ...items,
+              { type: "unit_loop", children: [{ type: "layout", template: "" }, sentimentQuestion] },
+            ]),
+          ),
         ),
       });
       expect(design.status).toBe(201);
@@ -2880,7 +2894,7 @@ describe("deploy checks of the columns with a role", () => {
     const design = await server.request("/api/study/1/design", {
       method: "POST",
       headers: adminHeaders,
-      body: JSON.stringify(splitDesignItems(items)),
+      body: JSON.stringify(chosen(splitDesignItems(items))),
     });
     expect(design.status, await design.clone().text()).toBe(201);
     const { id } = (await design.json()) as { id: number };
