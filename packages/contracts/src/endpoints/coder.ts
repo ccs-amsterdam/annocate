@@ -1,3 +1,4 @@
+import { UserSettingsSchema } from "../userSettings.js";
 import { z } from "zod";
 import { CoderUnitResponseSchema } from "../unit.js";
 import { PostUnitVariablesSchema, PostCoderVariablesSchema, VariableValueSchema } from "../variableValue.js";
@@ -131,4 +132,8 @@ export type CoderEndpointName = keyof typeof coderEndpoints;
  */
 export const coderAccountEndpoints = {
   listSessions: { method: "GET", path: "/coder/sessions", request: z.void(), response: z.array(CoderStudySchema) },
+  /** The logged-in person's own settings (theme, keys), on every device (401 without a login). */
+  getSettings: { method: "GET", path: "/coder/settings", request: z.void(), response: UserSettingsSchema },
+  /** Replaces them. */
+  putSettings: { method: "PUT", path: "/coder/settings", request: UserSettingsSchema, response: UserSettingsSchema },
 } as const;

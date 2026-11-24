@@ -59,7 +59,8 @@ export interface StudyRunnerProps {
  */
 export function StudyRunner(props: StudyRunnerProps) {
   return (
-    <CoderSettingsProvider>
+    // A coder's own settings follow their login (not in previews): the API without the deployment
+    <CoderSettingsProvider accountUrl={props.preview ? undefined : props.baseUrl.replace(/\/d\/[^/]+\/?$/, "")}>
       <KeyboardProvider>
         <CoderSessionGate {...props} />
       </KeyboardProvider>

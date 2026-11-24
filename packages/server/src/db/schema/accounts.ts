@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { boolean, check, index, integer, jsonb, pgTable, primaryKey, text, uniqueIndex } from "drizzle-orm/pg-core";
-import type { Limits } from "@annotinder/contracts";
+import type { Limits, UserSettings } from "@annotinder/contracts";
 import { timestamptz } from "./columns.js";
 import { studies } from "./studies.js";
 
@@ -36,6 +36,8 @@ export const users = pgTable(
     emailVerified: boolean(),
     hasMfa: boolean().notNull().default(false),
     reactivatedAt: timestamptz(),
+    /** Their own settings (contracts `UserSettings`: theme, keys), on every device. */
+    settings: jsonb().$type<UserSettings>().notNull().default({}),
   },
   (t) => [
     index("users_email").on(t.email),

@@ -3046,4 +3046,28 @@ describe("the coder home", () => {
     const other = await ensureUser(db, "other@uni.nl");
     expect(await (await sessions(await createSession(db, other.id, CODER_LOGIN))).json()).toEqual([]);
   });
+
+  it("keeps a logged-in person's own settings (theme, keys) for every device", async () => {
+    const user = await ensureUser(db, "keys@uni.nl");
+    const cookie = await createSession(db, user.id, CODER_LOGIN);
+    const settings = (init: RequestInit = {}, login: string | null = cookie) =>
+      server.request("/api/coder/settings", {
+        ...init,
+        headers: {
+          "x-annotinder": "1",
+          "content-type": "application/json",
+          ...(login ? { cookie: `${SESSION_COOKIE}=${login}` } : {}),
+        },
+      });
+    expect((await settings({}, null)).status).toBe(401);
+    expect(await (await settings()).json()).toEqual({});
+    const mine = { theme: "dark", answerKeys: true, keyMapping: "letters" };
+    expect((await settings({ method: "PUT", body: JSON.stringify(mine) })).status).toBe(200);
+    // Another device with the same login
+    const device = await createSession(db, user.id, CODER_LOGIN);
+    expect(await (await settings({}, device)).json()).toEqual(mine);
+    // Only known settings
+    expect((await settings({ method: "PUT", body: JSON.stringify({ keyMapping: "qwerty" }) })).status).toBe(400);
+    expect((await settings({ method: "PUT", body: JSON.stringify({ other: 1 }) })).status).toBe(400);
+  });
 });

@@ -28,6 +28,7 @@ are relative to `/api/d/<deploymentId>`, e.g. `/api/d/42/session`
 | [postDisplay](#postdisplay) | `POST /display` | `DisplayEntrySchema` | – |
 | [getNames](#getnames) | `GET /names` | – | `PickNamesResponseSchema` |
 | [listSessions](#listsessions-outside-deployments) | `GET /api/coder/sessions` (not under `/d/`) | – | `CoderStudySchema[]` |
+| [getSettings / putSettings](#settings-outside-deployments) | `GET` / `PUT /api/coder/settings` (not under `/d/`) | `UserSettingsSchema` | `UserSettingsSchema` |
 
 ## Sessions and headers
 
@@ -261,3 +262,13 @@ screen shows them after `getSession` answered 409 `name_required` (or
 
 No session needed: adds this device to the transferred session (and gives
 it a device cookie if it has none). Each token works once.
+
+### Settings (outside deployments)
+
+`GET /api/coder/settings` → `UserSettingsSchema`; `PUT` replaces them (the
+same body, 400 for anything unknown). The logged-in person's own settings
+(the login cookie; 401 without): the theme, answering with keys, the
+shortcut style and the shortcut badges, so they follow them to every
+device. The coding screen reads them when it opens and saves each change
+there too (`CoderSettingsProvider`); without a login they stay in the
+browser.

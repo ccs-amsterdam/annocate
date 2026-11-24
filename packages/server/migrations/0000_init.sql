@@ -85,7 +85,8 @@ CREATE TABLE "users" (
 	"registered_at" timestamp with time zone,
 	"email_verified" boolean,
 	"has_mfa" boolean DEFAULT false NOT NULL,
-	"reactivated_at" timestamp with time zone
+	"reactivated_at" timestamp with time zone,
+	"settings" jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "deployment_versions" (
