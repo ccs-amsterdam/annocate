@@ -279,9 +279,27 @@ export class StudyManager {
   /**
    * Loads the session and moves to where the coder left off. Idempotent:
    * calling it again while (or after) it runs reuses the same start, so
-   * React StrictMode's double effects don't interleave two starts.
+   * React StrictMode's double effects don't interleave two starts. After
+   * `dispose()` it goes on where the manager was.
    */
   start(): Promise<void> {
+    this.timer.listen();
+    this.outbox.resume();
+    return this.load();
+  }
+
+  /**
+   * The coding screen is gone: stops following the page (response times) and
+   * saving in the background. Finished units still to be sent stay in the
+   * browser, and are sent on the next visit.
+   */
+  dispose(): void {
+    this.timer.dispose();
+    this.outbox.dispose();
+  }
+
+  /** Loads the session, unless that is underway or done (`start`). */
+  private load(): Promise<void> {
     this.starting ??= this.doStart();
     return this.starting;
   }
@@ -340,7 +358,7 @@ export class StudyManager {
       await this.advanceTop();
     } catch (err) {
       this.starting = null;
-      this.showError(err, () => this.start());
+      this.showError(err, () => this.load());
     }
   }
 
@@ -1012,7 +1030,7 @@ export class StudyManager {
     this.userVariableValues = {};
     this.leaveLoop();
     this.expressionCache = new ExpressionCache();
-    await this.start();
+    await this.load();
   }
 
   /** Keeps the answers to every unit that isn't saved (`carryOver`): started and not finished, or finished and still to be sent. */
@@ -1321,7 +1339,7 @@ export class StudyManager {
       await this.coderApi.reopenSession();
       this.backFromEnd = true;
       this.starting = null;
-      await this.start();
+      await this.load();
     });
   }
 
@@ -1369,8 +1387,9 @@ export class StudyManager {
   /**
    * The server ended the session (gold checks, after a unit posted in the
    * background): the coder sees the ending at once, even if they started on
-   * the next unit; what they do after is not saved (the server accepts
-   * nothing more), and no error shows for it.
+   * the next unit (once the step they were taking is done); what they do
+   * after is not saved (the server accepts nothing more), and no error shows
+   * for it.
    */
   private endedByServer(name: string): void {
     if (this.serverEnded) return;
@@ -1378,7 +1397,7 @@ export class StudyManager {
     this.drafts.clearAll();
     this.outbox.clear();
     this.publish({ practiceWrong: null });
-    void this.publishEnding(findEnd(this.stepItems, name), this.scope(this.coderVisible));
+    void this.guarded(() => this.publishEnding(findEnd(this.stepItems, name), this.scope(this.coderVisible)));
   }
 
   // --- Moving on after an answer ---

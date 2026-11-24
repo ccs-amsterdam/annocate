@@ -27,10 +27,20 @@ export class QuestionTimer {
   private since = 0;
   private hidden = false;
 
+  private readonly onVisibilityChange = () => this.visibility(document.visibilityState === "hidden");
+
   constructor(private readonly now: () => number = () => performance.now()) {
-    if (typeof document !== "undefined") {
-      document.addEventListener("visibilitychange", () => this.visibility(document.visibilityState === "hidden"));
-    }
+    this.listen();
+  }
+
+  /** Follows whether the page is hidden: from the start, and again after `dispose()`. */
+  listen(): void {
+    if (typeof document !== "undefined") document.addEventListener("visibilitychange", this.onVisibilityChange);
+  }
+
+  /** Stops following the page (the coding screen is gone). */
+  dispose(): void {
+    if (typeof document !== "undefined") document.removeEventListener("visibilitychange", this.onVisibilityChange);
   }
 
   /** A question is on screen (the same key again: no change). */

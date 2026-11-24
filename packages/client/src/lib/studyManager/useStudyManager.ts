@@ -13,8 +13,10 @@ export function useStudyManager(coderApi: CoderApi): { manager: StudyManager; sn
     () => manager.getSnapshot(),
   );
 
+  // (StrictMode runs this twice: `start()` after `dispose()` goes on with the same session)
   useEffect(() => {
     void manager.start();
+    return () => manager.dispose();
   }, [manager]);
 
   return { manager, snapshot };

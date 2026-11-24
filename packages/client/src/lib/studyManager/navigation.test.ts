@@ -897,6 +897,69 @@ describe("finished units that weren't sent when the page closed", () => {
   });
 });
 
+describe("a coding screen that is gone (dispose)", () => {
+  it("stops trying to save; starting again goes on with the same session", async () => {
+    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    let online = false;
+    let attempts = 0;
+    const m = new StudyManager(
+      {
+        ...server,
+        postUnitVariables: async (...post: Parameters<FakeCoderServer["postUnitVariables"]>) => {
+          attempts += 1;
+          if (!online) throw new TypeError("Failed to fetch");
+          return server.postUnitVariables(...post);
+        },
+      },
+      { retryMs: () => 1 },
+    );
+    await m.start();
+    await answerUntil(m, "2:q1");
+    m.dispose();
+    await settle();
+    const tried = attempts;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(attempts).toBe(tried);
+    expect(server.done.get("1")).toBeUndefined();
+
+    // (React StrictMode: the screen is mounted again)
+    online = true;
+    await m.start();
+    await settle();
+    await settle();
+    expect(server.done.get("1")).toEqual([1]);
+    expect(where(m)).toBe("2:q1");
+    expect(server.calls.filter((c) => c === "getSession")).toHaveLength(1);
+  });
+});
+
+describe("the server ends the session (gold checks) while the coder goes on", () => {
+  it("the ending comes after the step the coder was taking, which is taken whole", async () => {
+    const end = { type: "end", name: "low_quality" } as TopLevelItem;
+    server = fakeCoderServer({ items: [loop("Coding", [pickQ("q1")]), end], units: { "1": units(1, 2, 3) } });
+    const m = new StudyManager(
+      {
+        ...server,
+        postUnitVariables: async (...post: Parameters<FakeCoderServer["postUnitVariables"]>) => {
+          await server.postUnitVariables(...post);
+          return { end: "low_quality" };
+        },
+      },
+      { retryMs: () => 0 },
+    );
+    await m.start();
+    const seen: string[] = [];
+    m.subscribe(() => {
+      if (seen.at(-1) !== where(m)) seen.push(where(m));
+    });
+    await m.answer(pick("A"));
+    await settle();
+    expect(seen).toEqual(["1:q1", "2:q1", "finished"]);
+    expect(m.getSnapshot().ending?.item.name).toBe("low_quality");
+    expect(m.getSnapshot().navigation.totalUnitsInHistory).toBe(0);
+  });
+});
+
 describe("preview navigation (free)", () => {
   it("next goes ahead without answers, and a unit far ahead can be opened", async () => {
     server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });

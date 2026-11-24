@@ -134,6 +134,13 @@ export class Outbox {
     this.stopWaiting();
   }
 
+  /** Sends again after `dispose()` (the page wasn't left after all). */
+  resume(): void {
+    if (!this.disposed) return;
+    this.disposed = false;
+    if (this.items.length > 0 && this.error === null) this.drain().catch(() => {});
+  }
+
   /** The items changed: kept in the browser (the finished units), and reported. */
   private changed(state: { retrying?: boolean } = {}): void {
     const units = this.items.flatMap((item) => (item.unit ? [item.unit] : []));

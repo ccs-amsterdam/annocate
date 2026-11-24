@@ -295,5 +295,22 @@ describe("an outbox that is disposed", () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(attempts).toBe(1);
     expect(sent).toEqual([]);
+    await expect(box.flush()).rejects.toThrow("Saving has stopped");
+  });
+
+  it("goes on when it is resumed", async () => {
+    const { box, sent, item } = outbox();
+    let connected = false;
+    box.add(
+      item("coder", "coder", async () => {
+        if (!connected) throw offline();
+      }),
+    );
+    await tick();
+    box.dispose();
+    connected = true;
+    box.resume();
+    await box.flush();
+    expect(sent).toEqual(["coder"]);
   });
 });
