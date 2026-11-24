@@ -17,5 +17,5 @@ export const isForward = (press: KeyPress) => press.key === "ArrowRight" && (pre
 /** Ctrl + Space: the question's instruction. */
 export const isHelp = (press: KeyPress) => press.key === " " && press.ctrlKey;
 
-/** How the badges show them. */
-export const COMMAND_BADGES = { continue: "Ctrl ↵", back: "Ctrl ←", forward: "Ctrl →", help: "Ctrl ␣" } as const;
+/** How the badges show them: ^ for Ctrl (symbols only, so a button's name stays its own). */
+export const COMMAND_BADGES = { continue: "^↵", back: "^←", forward: "^→", help: "^␣" } as const;
