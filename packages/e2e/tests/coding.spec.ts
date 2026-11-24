@@ -280,3 +280,34 @@ test("the menus list only what the coder got to; the loop's own menu keeps numbe
   await expect(page.getByRole("dialog").getByText("Headlines", { exact: true })).toBeVisible();
   if (process.env.E2E_SHOTS) await page.screenshot({ path: `${process.env.E2E_SHOTS}/menu-main-loop.png` });
 });
+
+test("open answers: one line continues with Enter, a text area with Ctrl + Enter", async ({ page, request }) => {
+  const study = await api<{ id: number }>(request, "POST", "/study", { name: "Open answers" });
+  const design = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
+    items: [
+      { type: "question", name: "name", variable: { type: "text", question: "Your nickname?" } },
+      { type: "question", name: "comment", variable: { type: "text", question: "Any comments?", multiline: true } },
+    ],
+  });
+  await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  await page.goto(`/code/${study.id}?link=${link.secret}`);
+
+  await question(page, "Your nickname?");
+  await page.getByRole("textbox", { name: "Your answer" }).fill("Kit");
+  await page.keyboard.press("Enter");
+  await question(page, "Any comments?");
+  const area = page.getByRole("textbox", { name: "Your answer" });
+  await area.fill("First line");
+  // Enter is a new line here; Ctrl + Enter continues
+  await area.press("Enter");
+  await area.pressSequentially("second line");
+  await area.press("Control+Enter");
+  await expect(page.getByText(/completed|Thank you/i).first()).toBeVisible();
+  await expect
+    .poll(async () => (await answers(request, study.id)).map((a) => [a.variable, a.value.values?.[0]?.value]).sort())
+    .toEqual([
+      ["comment", "First line\nsecond line"],
+      ["name", "Kit"],
+    ]);
+});

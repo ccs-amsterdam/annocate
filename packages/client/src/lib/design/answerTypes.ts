@@ -21,6 +21,7 @@ export const VARIABLE_TYPE_OPTIONS_USER: UserVariableType["type"][] = [
   "scale",
   "annotinder",
   "confirm",
+  "text",
 ];
 
 /** The answer types of questions in a unit loop: also selecting text (span) and linking spans (relation). */
@@ -31,6 +32,7 @@ export const VARIABLE_TYPE_OPTIONS_UNIT: UnitVariableType["type"][] = [
   "scale",
   "annotinder",
   "confirm",
+  "text",
   "span",
   "relation",
 ];
@@ -43,6 +45,7 @@ export const VARIABLE_TYPE_LABELS: Record<AnyVariableType["type"], string> = {
   scale: "Scale (items on the same options)",
   annotinder: "Swipe",
   confirm: "Confirm",
+  text: "Open answer (typed text)",
   random: "Random condition (drawn, not asked)",
   span: "Span (select text)",
   relation: "Relation (link spans)",
@@ -97,6 +100,8 @@ function defaultVariable(type: string): AnyVariableType {
       };
     case "confirm":
       return { type: "confirm", question: "" };
+    case "text":
+      return { type: "text", question: "" };
     case "random":
       return { type: "random", draw: "random", options: defaultRandomOptions() };
     case "span":

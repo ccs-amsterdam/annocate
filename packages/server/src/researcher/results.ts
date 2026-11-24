@@ -76,9 +76,11 @@ async function answerCounts(db: Db, studyId: number): Promise<QuestionAnswers[]>
   return questions.flatMap(({ name, type, loop }) => {
     const items = type.type === "scale" ? type.items.map((i) => i.name) : [null];
     return items.map((item) => {
-      const counts = counted
-        .filter((c) => c.variable === name && c.item === item)
-        .map(({ value, count }) => ({ value, count }));
+      // Open answers: no counts per value (nearly every one differs; the download has them)
+      const counts =
+        type.type === "text"
+          ? []
+          : counted.filter((c) => c.variable === name && c.item === item).map(({ value, count }) => ({ value, count }));
       const row = total.get(name);
       // A scale's item: the answers that rate it
       const answered = item === null ? (row?.answered ?? 0) : counts.reduce((sum, c) => sum + c.count, 0);
@@ -262,7 +264,10 @@ function canonical(values: unknown, spans: unknown): string {
 
 /** Units two or more coders answered, per loop, with the share of coder pairs answering differently (averaged over its questions). */
 async function resultUnits(db: Db, studyId: number): Promise<ResultUnit[]> {
-  const questions = (await deployedQuestions(db, studyId)).filter((q) => q.loop !== null && q.type.type !== "confirm");
+  // Open answers nearly always differ: no disagreement to look at
+  const questions = (await deployedQuestions(db, studyId)).filter(
+    (q) => q.loop !== null && q.type.type !== "confirm" && q.type.type !== "text",
+  );
   const byUnit = new Map<
     string,
     { unitId: number; loop: string; coders: Set<number>; sum: number; questions: number }

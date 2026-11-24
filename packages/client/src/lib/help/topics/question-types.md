@@ -18,6 +18,7 @@ coders answer and what is stored, and so your measurement level.
 | [Scale](scale.md)                                   | rate several items on one set of options | a number per item         | a Likert battery                     |
 | [Swipe](swipe.md)                                   | swipe the unit left, right (or up)       | text                      | fast yes/no judgements on phones     |
 | [Confirm](confirm.md)                               | click one button                         | that it was clicked       | instructions, "I have read the text" |
+| [Open answer](open-answers.md)                      | type a line or a longer text             | the text                  | comments, reasons, a name            |
 | [Mark text](span.md) (loops only)                   | select words and label them              | the text and its position | entities, quotes, frames             |
 | [Relations](relation.md) (loops only)               | link two marked passages                 | pairs with a label        | who criticizes whom                  |
 

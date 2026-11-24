@@ -17,6 +17,7 @@ import {
   Sprout,
   Tag,
   type LucideIcon,
+  TextCursorInput,
 } from "lucide-react";
 import type { AnyVariableType } from "@annotinder/contracts";
 import type { ItemType, TreeNode } from "./utils";
@@ -111,6 +112,7 @@ export const ANSWER_TYPE_ICONS: Record<AnyVariableType["type"], LucideIcon> = {
   scale: Grid3x3,
   annotinder: ArrowLeftRight,
   confirm: CircleCheck,
+  text: TextCursorInput,
   random: Shuffle,
   span: Highlighter,
   relation: Spline,
@@ -125,6 +127,7 @@ const ANSWER_TYPE_WORDS: Record<AnyVariableType["type"], string> = {
   scale: "scale",
   annotinder: "swipe",
   confirm: "confirm",
+  text: "open",
   random: "random",
   span: "spans",
   relation: "relations",

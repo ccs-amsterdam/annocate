@@ -1,3 +1,4 @@
+import { MAX_TEXT_LENGTH } from "@annotinder/contracts";
 import { InfoTip } from "@/components/ui/info-tip";
 import { SCALE_LAYOUTS, type AnyVariableType } from "@annotinder/contracts";
 import { OptionsEditor } from "./OptionsEditor";
@@ -109,6 +110,42 @@ export function VariableTypeForm({
     case "confirm": {
       const v = variable;
       return <QuestionField value={v} onChange={(patch) => onChange({ ...v, ...patch })} />;
+    }
+    case "text": {
+      const v = variable;
+      const set = (patch: Partial<typeof v>) => {
+        const next = { ...v, ...patch };
+        if (!next.multiline) delete next.multiline;
+        if (next.maxLength === undefined) delete next.maxLength;
+        onChange(next);
+      };
+      return (
+        <>
+          <QuestionField value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={v.multiline ?? false}
+              onChange={(e) => set({ multiline: e.target.checked || undefined })}
+            />
+            Several lines (a text area; Ctrl + Enter continues)
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            At most
+            <input
+              type="number"
+              min={1}
+              max={MAX_TEXT_LENGTH}
+              placeholder={String(MAX_TEXT_LENGTH)}
+              aria-label="Most characters"
+              value={v.maxLength ?? ""}
+              onChange={(e) => set({ maxLength: e.target.value ? Math.max(1, Number(e.target.value)) : undefined })}
+              className="h-8 w-24 rounded-md border border-input bg-background px-2 text-sm"
+            />
+            characters
+          </label>
+        </>
+      );
     }
     case "random":
       return (

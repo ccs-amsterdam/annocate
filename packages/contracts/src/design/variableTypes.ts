@@ -136,6 +136,26 @@ export const ConfirmTypeSchema = VariableBaseSchema.extend({
   type: z.literal("confirm"),
 });
 
+/** The longest open answer (characters), unless a question sets less. */
+export const MAX_TEXT_LENGTH = 10_000;
+
+/** An open answer: the coder types it. One line (Enter continues) or, `multiline`, a text area (Ctrl + Enter). */
+export const TextTypeSchema = VariableBaseSchema.extend({
+  type: z.literal("text"),
+  multiline: z
+    .boolean()
+    .optional()
+    .describe("A text area for longer answers (Ctrl + Enter continues). Default: one line (Enter continues)."),
+  maxLength: z
+    .number()
+    .int()
+    .positive()
+    .max(MAX_TEXT_LENGTH)
+    .optional()
+    .describe(`The most characters an answer may have (default and at most ${MAX_TEXT_LENGTH}).`),
+});
+export type TextType = z.infer<typeof TextTypeSchema>;
+
 /**
  * An experiment's conditions and how they are assigned (an `experiment`
  * item's variable, item.ts): on the server, once, when the coder reaches the
@@ -259,6 +279,7 @@ export const UserVariableTypeSchema = z.discriminatedUnion("type", [
   ScaleTypeSchema,
   AnnotinderTypeSchema,
   ConfirmTypeSchema,
+  TextTypeSchema,
   UnspecifiedTypeSchema,
 ]);
 export type UserVariableType = z.infer<typeof UserVariableTypeSchema>;
@@ -275,6 +296,7 @@ export const UnitVariableTypeSchema = z.discriminatedUnion("type", [
   ScaleTypeSchema,
   AnnotinderTypeSchema,
   ConfirmTypeSchema,
+  TextTypeSchema,
   SpanTypeSchema,
   RelationTypeSchema,
   UnspecifiedTypeSchema,

@@ -39,7 +39,7 @@ function QuestionCard({ answers, labels }: { answers: QuestionAnswers; labels: D
       {type === "numeric" ? (
         <NumberSummary answers={answers} />
       ) : (
-        type !== "confirm" && <Bars answers={answers} labels={labels} />
+        type !== "confirm" && type !== "text" && <Bars answers={answers} labels={labels} />
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+import { TextAnswerField } from "./answerFields/TextAnswerField";
 import type { CSSProperties, ReactNode } from "react";
 import type { VariableValue } from "@annotinder/contracts";
 import {
@@ -74,6 +75,9 @@ export function Question({ item, onAnswer, unitVariables, initialValue, texts }:
   switch (variable.type) {
     case "confirm":
       answerField = <ConfirmAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;
+      break;
+    case "text":
+      answerField = <TextAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;
       break;
     case "nominal":
     case "ordinal":

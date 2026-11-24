@@ -1,4 +1,4 @@
-import type { AnyVariableType, RelationType } from "./variableTypes.js";
+import { MAX_TEXT_LENGTH, type AnyVariableType, type RelationType } from "./variableTypes.js";
 import { relationTypesFor, ruleVariables, type RuleSpan } from "./relations.js";
 import type { VariableValue } from "../variableValue.js";
 import { questionKind, questionValues } from "./references.js";
@@ -59,7 +59,11 @@ export function validateAnswer(name: string, variable: AnyVariableType, value: V
   if (kind !== "multiple" && kind !== "scale" && answers.length > 1) errors.push(`'${name}': only one answer allowed`);
 
   for (const answer of answers) {
-    if (variable.type === "numeric") {
+    if (variable.type === "text") {
+      const max = variable.maxLength ?? MAX_TEXT_LENGTH;
+      if (typeof answer.value !== "string") errors.push(`'${name}': ${JSON.stringify(answer.value)} is not text`);
+      else if (answer.value.length > max) errors.push(`'${name}': longer than ${max} characters`);
+    } else if (variable.type === "numeric") {
       const problem = typeof answer.value === "number" ? numericValueError(variable, answer.value) : "not a number";
       if (problem) errors.push(`'${name}': ${JSON.stringify(answer.value)} is ${problem}`);
     } else if (allowed && !allowed.has(answer.value)) {

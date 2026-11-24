@@ -473,9 +473,18 @@ export function codeRanges(source: string): [number, number][] {
 /**
  * What a question holds, which decides its references and helper methods:
  * one answer (`single`, `ordinal`, `numeric`), several (`multiple`, `span`,
- * `relation`), one per item (`scale`), or none (`confirm`).
+ * `relation`), one per item (`scale`), none (`confirm`), or typed text (`text`).
  */
-export type QuestionKind = "single" | "ordinal" | "numeric" | "multiple" | "span" | "relation" | "scale" | "confirm";
+export type QuestionKind =
+  | "single"
+  | "ordinal"
+  | "numeric"
+  | "multiple"
+  | "span"
+  | "relation"
+  | "scale"
+  | "confirm"
+  | "text";
 
 export function questionKind(variable: AnyVariableType): QuestionKind {
   switch (variable.type) {
@@ -503,6 +512,7 @@ const KIND_PROPERTIES: Record<QuestionKind, readonly string[]> = {
   relation: ["values", "labels"],
   scale: ["values", "items"],
   confirm: [],
+  text: ["value", "label"],
 };
 
 /** The helper methods per kind; scale items take the `ordinal` ones. */
@@ -515,6 +525,7 @@ export const KIND_METHODS: Record<QuestionKind, readonly HelperMethod[]> = {
   relation: ["has", "count"],
   scale: [],
   confirm: [],
+  text: [],
 };
 
 /** The option values of a question (for checking arguments and rule values); undefined for numeric and confirm. */
@@ -587,6 +598,8 @@ export function describeQuestion(variable: AnyVariableType): string {
       return "a random value";
     case "scale":
       return "a scale";
+    case "text":
+      return "an open question";
     case "ordinal":
     case "numeric":
     case "confirm":

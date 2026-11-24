@@ -21,6 +21,7 @@ const TYPE: Record<AnyVariableType["type"], string> = {
   annotinder: "Swipe",
   numeric: "A number",
   confirm: "Confirm",
+  text: "An open answer (typed)",
   scale: "A scale per item",
   span: "Select spans in the text",
   relation: "Relations between spans",

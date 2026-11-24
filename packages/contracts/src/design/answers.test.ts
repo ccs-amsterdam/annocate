@@ -26,6 +26,16 @@ describe("validateAnswer", () => {
     expect(validateAnswer("q", topics, answer([{ value: "a" }, { value: "b" }]))).toEqual([]);
   });
 
+  it("takes typed text for an open answer, up to its length", () => {
+    const comment: AnyVariableType = { type: "text", question: "?", maxLength: 5 };
+    expect(validateAnswer("q", comment, answer([{ value: "hello" }]))).toEqual([]);
+    expect(validateAnswer("q", comment, answer([{ value: "hello!" }]))).toEqual([`'q': longer than 5 characters`]);
+    expect(validateAnswer("q", comment, answer([{ value: 3 }]))).toEqual([`'q': 3 is not text`]);
+    expect(validateAnswer("q", comment, answer([{ value: "a" }, { value: "b" }]))).toEqual([
+      `'q': only one answer allowed`,
+    ]);
+  });
+
   it("checks numbers against the range and step", () => {
     expect(validateAnswer("q", age, answer([{ value: 2.5 }]))).toEqual([]);
     expect(validateAnswer("q", age, answer([{ value: 2.3 }]))).toEqual([`'q': 2.3 is not a multiple of 0.5`]);
