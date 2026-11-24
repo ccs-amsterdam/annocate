@@ -5,6 +5,7 @@ import type { Reopen } from "@annotinder/contracts";
 import type { SessionEnding } from "../studyManager/types";
 import { TemplateMarkdown } from "./TemplateMarkdown";
 import { QuitDialog } from "./QuitMenu";
+import { webRedirect } from "./redirect";
 
 /** Seconds before an ending's redirect happens on its own. */
 const REDIRECT_DELAY = 3;
@@ -45,7 +46,7 @@ export function SessionEnd({
   onFinished,
   homeUrl,
 }: SessionEndProps) {
-  const redirect = ending?.redirectUrl ?? null;
+  const redirect = webRedirect(ending?.redirectUrl);
   const [asking, setAsking] = useState(false);
 
   useEffect(() => {
