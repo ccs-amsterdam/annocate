@@ -23,8 +23,8 @@ export function GuidePrompt() {
           <Compass className="h-8 w-8 text-primary" aria-hidden />
           <DialogTitle className="font-heading text-xl">Your first study: take the guide?</DialogTitle>
           <DialogDescription>
-            A few minutes through the design, who codes, the units and deploying, shown on a sample study. You can
-            open it again any time with the Guide button.
+            A few minutes through the design, who codes, the units and deploying, shown on a sample study. You can open
+            it again any time with the Guide button.
           </DialogDescription>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => answerGuidePrompt(false)}>

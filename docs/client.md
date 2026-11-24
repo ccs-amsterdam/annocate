@@ -523,22 +523,25 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   design file (sent as a recipe, `docs/examples.md`). Export is in the study's
   Settings (`docs/hosting.md` "Moving a study"). A researcher's first study
   (empty, from an example or a file) asks whether to take the guide.
-- **Guide** (`guide/`): a dialog over the study's pages, a few steps per
-  topic (`guideSteps.ts`: the design, who codes, coder questions, the unit
-  loop, units, preview, deploy, links, results). Each step shows the
-  sample study (`sampleStudy.ts`: a design with two coder questions and a
-  unit loop with three questions, the third in a branch, and three units)
-  drawn with the real page, read only: the design editor (wide, the step's
-  item selected) or the Units page, from an in-memory API, inert and
-  scaled to fit (`GuideSample.tsx`). "Show me" closes it and rings the real
-  element on the researcher's page (`data-guide` attributes, `ShowMe.tsx`);
-  nothing is blocked. The header's **Guide** opens the topic of the page,
-  or the full guide, which goes through every topic and remembers where it
-  was in this browser. After a first study, `GuidePrompt.tsx` asks (yes or
-  no, it can't be dismissed otherwise).
-- **Who codes** (`session/WhoCodesCards.tsx`): until a design chooses
+- **Guide** (`guide/`): a dialog over the study's pages, like the help: a
+  menu of sections (one per page: the study designer, units, preview,
+  deploy, links, results) and their steps beside the open step, at a fixed
+  height. Next and Back go through all steps in order (`guideSteps.ts`).
+  Each step shows the sample study (`sampleStudy.ts`: a design with two
+  coder questions and a unit loop with three questions, the third in a
+  branch, and three units; with a crowd or specific coders) drawn with the
+  real page, read only: the design editor (wide, the step's item selected;
+  all of it, or only its tree or its form) or the Units page, from an
+  in-memory API, inert and scaled to fit (`GuideSample.tsx`). "Show me"
+  closes it and rings the real element on the researcher's page
+  (`data-guide` attributes, `ShowMe.tsx`); nothing is blocked. The header's
+  **Guide** opens the page's section, at the step last open there in this
+  session. After a first study, `GuidePrompt.tsx` asks (yes or no, it can't
+  be dismissed otherwise).
+- **Who codes** (`session/ChooseWhoCodes.tsx`): until a design chooses
   (`invite`; deploying refuses it without, contracts `deployErrors`), the
-  design page shows the two ways as cards; choosing one opens its form.
+  design page is only the two ways, as cards; choosing one opens the editor
+  on its form.
 - **Tree** (`DesignTreeView.tsx`, `designTree/`): the top level holds
   questions, experiments, `branch`es and unit loops; validation refuses an
   end item there ("An end item goes in a branch") and a loop inside a

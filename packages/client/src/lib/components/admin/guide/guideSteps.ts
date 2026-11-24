@@ -1,119 +1,122 @@
 import type { TabId } from "../../../admin/tabs";
 
-// The guide (docs/client.md §7, "Guide"): topics per page, each a few steps.
-// A step says one thing, shows it on the sample study (drawn with the real
-// page, read only) and can point at the real button on the researcher's own
-// page ("Show me": an element with that `data-guide` attribute).
+// The guide (docs/client.md §7, "Guide"): a section per page, each a few
+// steps, in one flow. A step says one thing, shows it on the sample study
+// (drawn with the real page, read only) and can point at the real button on
+// the researcher's own page ("Show me": an element with that `data-guide`
+// attribute).
 
 /** What a step shows of the sample study. */
 export type GuideSample =
-  /** The design editor, with an item selected (by name; `session`: who codes). */
-  | { page: "design"; select?: string }
+  | {
+      page: "design";
+      /** The item selected, by name (`session`: who codes). */
+      select?: string;
+      /** The whole editor, or only its tree or its form. */
+      view?: "full" | "tree" | "form";
+      /** Who codes in the sample (default: a crowd). */
+      invite?: "coders" | "crowd";
+    }
   | { page: "units" };
 
 export interface GuideStep {
+  id: string;
   title: string;
   /** A few short sentences. */
   text: string[];
   sample?: GuideSample;
   /** The real thing on the researcher's page: the page it is on, and its `data-guide` name. */
   showMe?: { page: TabId; target: string; label: string };
-  /** Named ways on (other topics), besides Next. */
-  jumps?: { label: string; topic: string }[];
 }
 
-export interface GuideTopic {
-  id: string;
-  /** Where the guide button opens this topic. */
+export interface GuideSection {
+  /** The page the section is about: the guide opens on it there. */
   page: TabId;
   title: string;
   steps: GuideStep[];
 }
 
-export const GUIDE_TOPICS: GuideTopic[] = [
+export const GUIDE_SECTIONS: GuideSection[] = [
   {
-    id: "design",
     page: "Design",
-    title: "The design",
+    title: "The study designer",
     steps: [
       {
-        title: "What coders go through",
+        id: "designer",
+        title: "The study designer",
         text: [
           "The design is what coders see, from top to bottom: here two questions about the coder, then a unit loop that shows each headline with its questions.",
-          "Left the tree, in the middle the form of the selected item, right a preview. Use a wide window to see all three side by side.",
+          "Left the tree, in the middle the form of the selected item, right a preview of it. Work on a wide screen to see the preview beside the form.",
         ],
         sample: { page: "design", select: "topic" },
-        jumps: [
-          { label: "Who codes", topic: "who-codes" },
-          { label: "Questions about the coder", topic: "coder-questions" },
-          { label: "The annotation task", topic: "unit-loop" },
-        ],
       },
-    ],
-  },
-  {
-    id: "who-codes",
-    page: "Design",
-    title: "Who codes",
-    steps: [
       {
-        title: "Specific coders or a crowd",
+        id: "modes",
+        title: "Two modes: specific coders or a crowd",
         text: [
-          "Choose this first: a design can't be deployed without it.",
-          "Specific coders: content analysis with trained coders. Each has their own session and units, and you can add and redistribute units at any time.",
-          "Crowd (one link): many one-time coders, for annotation at scale or an experiment. Everyone starts from one link, e.g. from a panel company.",
+          "The first choice for a study is who codes. It decides how coders get in and how units are handed out, and a design can't be deployed without it.",
+          "It is at the top of the tree: Who codes.",
         ],
-        sample: { page: "design", select: "session" },
+        sample: { page: "design", view: "tree" },
         showMe: { page: "Design", target: "who-codes", label: "Who codes: open it to choose" },
       },
-    ],
-  },
-  {
-    id: "coder-questions",
-    page: "Design",
-    title: "Questions about the coder",
-    steps: [
       {
-        title: "Asked once per coder",
+        id: "coders",
+        title: "Specific coders",
+        text: [
+          "For content analysis with trained coders. Each coder has their own units: the units' coder set (the coder_set column) says whose they are.",
+          "Coders get a link each, pick their name from one link, or sign in. Their session stays open: they come back to their job, and you can add and redistribute units at any time.",
+        ],
+        sample: { page: "design", select: "session", view: "form", invite: "coders" },
+        showMe: { page: "Design", target: "who-codes", label: "Who codes: choose Specific coders" },
+      },
+      {
+        id: "crowd",
+        title: "Crowd (one link)",
+        text: [
+          "For many one-time coders: annotation at scale, or an experiment. Everyone starts from one link, which a panel company can hand out.",
+          "Optionally take a coder id from the link, ask coders to sign in, or set a maximum. Whether coders divide the units or each code all is set on each unit loop.",
+        ],
+        sample: { page: "design", select: "session", view: "form" },
+        showMe: { page: "Design", target: "who-codes", label: "Who codes: choose Crowd (one link)" },
+      },
+      {
+        id: "coder-questions",
+        title: "Questions about the coder",
         text: [
           "Questions outside a unit loop are asked once: before the units (age, news use) or after them.",
-          "Add one with Add, choose Question, and pick its answer type. The preview shows it as coders will.",
+          "Add one with Add item, choose Question, and pick its answer type. The preview shows it as coders will.",
         ],
         sample: { page: "design", select: "news_use" },
-        showMe: { page: "Design", target: "add-item", label: "Add: a question, a unit loop and more" },
+        showMe: { page: "Design", target: "add-item", label: "Add item: a question, a unit loop and more" },
       },
-    ],
-  },
-  {
-    id: "unit-loop",
-    page: "Design",
-    title: "The annotation task",
-    steps: [
       {
-        title: "A unit loop",
+        id: "unit-loop",
+        title: "The annotation task",
         text: [
           "A unit loop goes through the units, one at a time. Its layout says how a unit looks; the questions after it are asked about each unit.",
           "Select the loop itself to choose which units it gives each coder.",
         ],
         sample: { page: "design", select: "topic" },
-        showMe: { page: "Design", target: "add-item", label: "Add: choose Unit loop" },
+        showMe: { page: "Design", target: "add-item", label: "Add item: choose Unit loop" },
       },
       {
+        id: "branch",
         title: "Questions only sometimes",
         text: [
           "A branch asks its questions only when its condition holds: here the actor, only for headlines about politics.",
           "Conditions can use earlier answers, the unit's fields, and the session.",
         ],
-        sample: { page: "design", select: "actor" },
+        sample: { page: "design", select: "actor", view: "tree" },
       },
     ],
   },
   {
-    id: "units",
     page: "Units",
     title: "Units",
     steps: [
       {
+        id: "units",
         title: "What coders code",
         text: [
           "Upload a CSV: each row is a unit, its columns the fields a layout shows ($unit.headline).",
@@ -125,25 +128,23 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     ],
   },
   {
-    id: "preview",
     page: "Preview",
     title: "Trying it",
     steps: [
       {
+        id: "preview",
         title: "Preview as a coder",
-        text: [
-          "Preview runs the saved design with your units, as a coder sees it. Nothing you answer there is kept.",
-        ],
+        text: ["Preview runs the saved design with your units, as a coder sees it. Nothing you answer there is kept."],
         showMe: { page: "Design", target: "preview", label: "Preview: try the study as a coder" },
       },
     ],
   },
   {
-    id: "deploy",
     page: "Deploy",
     title: "Deploying",
     steps: [
       {
+        id: "deploy",
         title: "Coders get what you deploy",
         text: [
           "Everything you edit is a draft until you deploy it: the design, the units, the coder sets.",
@@ -154,11 +155,11 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     ],
   },
   {
-    id: "links",
     page: "Links",
     title: "Links",
     steps: [
       {
+        id: "links",
         title: "How coders start",
         text: [
           "Coders start from a link: one per coder, or one for the crowd. Copy it here and send it, or give it to a panel company.",
@@ -168,11 +169,11 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     ],
   },
   {
-    id: "results",
     page: "Results",
     title: "Results",
     steps: [
       {
+        id: "results",
         title: "Answers and agreement",
         text: [
           "Results shows the answers so far, each coder's progress and the agreement between coders, and downloads everything as CSV or Excel.",
@@ -183,11 +184,11 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   },
 ];
 
-/** The topic the guide button opens on a page. */
-export function topicForPage(page: TabId): string {
-  return GUIDE_TOPICS.find((t) => t.page === page)?.id ?? GUIDE_TOPICS[0].id;
+/** The section a page's guide opens on (the overview and settings: the designer). */
+export function sectionIndexOf(page: TabId): number {
+  const at = GUIDE_SECTIONS.findIndex((s) => s.page === page);
+  return at >= 0 ? at : 0;
 }
 
-export function topicById(id: string): GuideTopic {
-  return GUIDE_TOPICS.find((t) => t.id === id) ?? GUIDE_TOPICS[0];
-}
+/** Every step in order, with its section: Next and Back go through these. */
+export const GUIDE_FLOW = GUIDE_SECTIONS.flatMap((section, s) => section.steps.map((step, i) => ({ s, i, step })));

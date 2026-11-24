@@ -125,22 +125,24 @@ const units: UnitResponse[] = [
 
 const now = new Date("2026-01-01T12:00:00Z");
 
-/** The sample's design version, as the server would send it. */
-export const SAMPLE_DESIGN: DesignVersion = {
-  id: DESIGN_ID,
-  studyId: STUDY_ID,
-  note: null,
-  created: now,
-  updated: now,
-  updatedBy: null,
-  revision: 1,
-  immutable: false,
-  valid: true,
-  items,
-  units: { fields },
-  session: { invite: { mode: "crowd" } },
-  public: { title: "News headlines" },
-};
+/** The sample's design version, as the server would send it: with a crowd, or specific coders. */
+export function sampleDesign(invite: "coders" | "crowd" = "crowd"): DesignVersion {
+  return {
+    id: invite === "crowd" ? DESIGN_ID : DESIGN_ID - 1,
+    studyId: STUDY_ID,
+    note: null,
+    created: now,
+    updated: now,
+    updatedBy: null,
+    revision: 1,
+    immutable: false,
+    valid: true,
+    items,
+    units: { fields },
+    session: { invite: invite === "crowd" ? { mode: "crowd" } : { mode: "coders", link: "per_coder" } },
+    public: { title: "News headlines" },
+  };
+}
 
 const study: StudyResponse = {
   id: STUDY_ID,
@@ -151,15 +153,24 @@ const study: StudyResponse = {
   redirectUrls: {},
 };
 
-const groups: SetGroupResponse[] = [];
+// Specific coders: whose units are whose
+const groups: SetGroupResponse[] = [
+  {
+    name: "coder_set",
+    sets: [
+      { name: "anna", unitIds: [1, 2], ordered: false },
+      { name: "bob", unitIds: [2, 3], ordered: false },
+    ],
+  },
+];
 
 /** What the sample's pages ask the API for; anything else gets nothing. */
 const answers: Partial<Record<keyof ResearcherApi, (...args: never[]) => unknown>> = {
   getStudy: () => study,
   listStudies: () => [study],
   getDeployment: () => null,
-  getDesignVersion: () => SAMPLE_DESIGN,
-  listDesignVersions: () => [SAMPLE_DESIGN],
+  getDesignVersion: (id: number) => sampleDesign(id === DESIGN_ID ? "crowd" : "coders"),
+  listDesignVersions: () => [sampleDesign()],
   getUnitFields: () => fields,
   listUnits: () => units.map((u) => ({ id: u.id, externalId: u.externalId, hash: String(u.id), coded: false })),
   listUnitPage: (q: { offset?: number; limit?: number }) => ({

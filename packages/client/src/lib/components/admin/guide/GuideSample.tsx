@@ -2,12 +2,17 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DesignEditor } from "../DesignEditor";
 import { UnitsPage } from "../units/UnitsPage";
-import { SAMPLE_DESIGN, sampleClient } from "./sampleStudy";
+import { sampleClient, sampleDesign } from "./sampleStudy";
 import type { GuideSample as Sample } from "./guideSteps";
 
-/** The size the sample is drawn at, then scaled to fit: a wide window (the Units page needs less height). */
+/** The size the sample is drawn at (a wide window), before it is scaled to fit. */
 const WIDTH = 1500;
 const HEIGHTS: Record<Sample["page"], number> = { design: 760, units: 360 };
+/**
+ * The part of the design editor a step shows (x and width, in the drawn
+ * size): its three columns (1fr 1.15fr 1fr, between 12px padding and gaps).
+ */
+const VIEWS = { full: [0, WIDTH], tree: [0, 487], form: [473, 554] } as const;
 
 // The sample's own data: its queries never mix with the researcher's study
 const queries = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
@@ -15,52 +20,63 @@ const client = sampleClient();
 
 /**
  * A step's picture: the sample study drawn with the real page (the design
- * editor, wide, with an item selected; the Units page), scaled down to the
- * dialog's width. Inert: it can't be clicked or focused, so nothing changes.
+ * editor, wide, with an item selected, or only its tree or its form; the
+ * Units page), scaled to fit the space (never larger than drawn). Inert: it
+ * can't be clicked or focused, so nothing changes.
  */
 export function GuideSample({ sample }: { sample: Sample }) {
   const box = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(0.5);
-  const height = HEIGHTS[sample.page];
+  const [room, setRoom] = useState<{ w: number; h: number } | null>(null);
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
-    const fit = () => setScale(Math.min(1, el.clientWidth / WIDTH));
-    fit();
-    const observer = new ResizeObserver(fit);
+    const measure = () => setRoom({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
+  const height = HEIGHTS[sample.page];
+  const [x, width] = sample.page === "design" ? VIEWS[sample.view ?? "full"] : VIEWS.full;
+  const scale = room ? Math.min(1, room.w / width, room.h / height) : 0;
+
   return (
-    <div
-      ref={box}
-      className="relative w-full overflow-hidden rounded-lg border border-border bg-page"
-      style={{ height: height * scale }}
-      aria-label="The sample study"
-      role="img"
-    >
+    <div ref={box} className="flex h-full w-full items-start justify-center overflow-hidden">
       <div
-        inert
-        className="absolute top-0 left-0 p-3"
-        style={{ width: WIDTH, height, transform: `scale(${scale})`, transformOrigin: "top left" }}
+        className="relative overflow-hidden rounded-lg border border-border bg-page"
+        style={{ width: width * scale, height: height * scale }}
+        aria-label="The sample study"
+        role="img"
       >
-        <QueryClientProvider client={queries}>
-          {sample.page === "design" ? (
-            <DesignEditor
-              // A fresh editor per step: its selection is the step's
-              key={sample.select ?? "none"}
-              client={client}
-              version={SAMPLE_DESIGN}
-              mode="history"
-              wideLayout
-              initialSelect={sample.select}
-              onSaved={() => {}}
-            />
-          ) : (
-            <UnitsPage client={client} />
-          )}
-        </QueryClientProvider>
+        <div
+          inert
+          className="absolute top-0 p-3"
+          style={{
+            left: -x * scale,
+            width: WIDTH,
+            height,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+          }}
+        >
+          <QueryClientProvider client={queries}>
+            {sample.page === "design" ? (
+              <DesignEditor
+                // A fresh editor per sample: its selection is the step's
+                key={`${sample.invite ?? "crowd"}:${sample.select ?? "none"}`}
+                client={client}
+                version={sampleDesign(sample.invite)}
+                mode="history"
+                wideLayout
+                initialSelect={sample.select}
+                onSaved={() => {}}
+              />
+            ) : (
+              <UnitsPage client={client} />
+            )}
+          </QueryClientProvider>
+        </div>
       </div>
     </div>
   );

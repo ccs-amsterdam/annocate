@@ -33,9 +33,6 @@ import { SESSION_PART_LABELS, useSessionTab } from "../session/sessionTab";
 import type { DesignDraft } from "./useDesignDraft";
 import type { UnitFieldWarning } from "../../../design/unitFieldRefs";
 import { savedLoop, shownByLayouts } from "../../../design/loopLayouts";
-import { WhoCodesCards } from "../session/WhoCodesCards";
-import { firstInvite } from "../session/whoCodes";
-import { openGuide } from "../guide/guideStore";
 
 type ItemPane = "edit" | "json" | "preview";
 
@@ -141,43 +138,11 @@ export function ItemPanel({
             )}
           </div>
         </div>
-      ) : !readOnly && sessionItem(draft.items) && !inviteOf(sessionItem(draft.items)) ? (
-        <ChooseWhoCodes draft={draft} />
       ) : (
         <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
           Select an item in the tree to edit properties or preview.
         </div>
       )}
-    </div>
-  );
-}
-
-/**
- * Before who codes is chosen (needed to deploy, contracts `deployErrors`):
- * the two ways, explained; choosing one opens its form.
- */
-function ChooseWhoCodes({ draft }: { draft: DesignDraft }) {
-  const [, setTab] = useSessionTab();
-  const session = sessionItem(draft.items)!;
-  const key = getItemKey(session as DesignItem);
-  return (
-    <div className="flex h-full flex-col justify-center gap-3 overflow-y-auto p-6">
-      <div>
-        <h3 className="font-heading text-lg font-semibold">Who codes?</h3>
-        <p className="text-sm text-muted-foreground">
-          Choose first: it decides how coders get in and how units are handed out. You can change it later.
-        </p>
-      </div>
-      <WhoCodesCards
-        value={null}
-        long
-        learnMore={() => openGuide("who-codes")}
-        onChoose={(mode) => {
-          draft.update(key, { ...session, invite: firstInvite(mode) });
-          setTab("invite");
-          draft.select(key);
-        }}
-      />
     </div>
   );
 }

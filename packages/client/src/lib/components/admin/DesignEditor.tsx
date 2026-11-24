@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { codebookMarkdown } from "../../design/codebookMarkdown";
-import { RELEASE, designFile, splitDesignItems, type DesignVersion } from "@annotinder/contracts";
+import {
+  RELEASE,
+  designFile,
+  inviteOf,
+  sessionItem,
+  splitDesignItems,
+  type DesignVersion,
+} from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useDeploymentQuery, useDesignVersionQuery, useStudyQuery, useUnitFieldsQuery } from "../../admin/queries";
 import { DeployedValuesContext, deployedOptionValues } from "../../design/deployedValues";
@@ -26,6 +33,7 @@ import {
 import { TreePanel } from "./designEditor/TreePanel";
 import { downloadFile } from "../../admin/download";
 import { ItemPanel, PreviewPanel } from "./designEditor/ItemPanel";
+import { ChooseWhoCodes } from "./session/ChooseWhoCodes";
 
 /**
  * How the opened version can be edited (docs/client.md §7):
@@ -188,6 +196,15 @@ export function DesignEditor({
     registerSave?.(draft.save);
     return () => registerSave?.(null);
   });
+
+  // Who codes comes first: until it is chosen, the page is only that choice
+  const session = sessionItem(draft.items);
+  if (!readOnly && session && !inviteOf(session))
+    return (
+      <div className="flex h-full min-h-[32rem] flex-col">
+        <ChooseWhoCodes draft={draft} />
+      </div>
+    );
 
   return (
     <DeployedValuesContext.Provider value={deployedValues}>

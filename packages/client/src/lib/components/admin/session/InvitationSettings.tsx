@@ -57,7 +57,7 @@ export function InvitationSettings({
 
   return (
     <div className="flex flex-col gap-4">
-      <WhoCodesCards value={invite?.mode ?? null} onChoose={setMode} learnMore={() => openGuide("who-codes")} />
+      <WhoCodesCards value={invite?.mode ?? null} onChoose={setMode} learnMore={() => openGuide("Design", "modes")} />
       {invite?.mode === "coders" ? (
         <CodersForm invite={invite} groups={groups} client={client} onChange={onChange} />
       ) : invite?.mode === "crowd" ? (
