@@ -7,6 +7,7 @@ import {
   sessionItem,
   splitDesignItems,
   type DesignVersion,
+  type DesignVersionMeta,
 } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useDeploymentQuery, useDesignVersionQuery, useStudyQuery, useUnitFieldsQuery } from "../../admin/queries";
@@ -19,6 +20,7 @@ import { EditorToolbar, type ChangedItem, type EditorIssue, type EditorView } fr
 import { findItem, flattenTree, itemAtPath, keyOf } from "../../codebook/tree";
 import { itemTitle } from "../../codebook/conditions";
 import type { DesignBackup } from "../../design/localBackup";
+import type { DesignEditorMode } from "../../design/versions";
 import { Button } from "@/components/ui/button";
 import { cn } from "cn";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
@@ -34,15 +36,6 @@ import { TreePanel } from "./designEditor/TreePanel";
 import { downloadFile } from "../../admin/download";
 import { ItemPanel, PreviewPanel } from "./designEditor/ItemPanel";
 import { ChooseWhoCodes } from "./session/ChooseWhoCodes";
-
-/**
- * How the opened version can be edited (docs/client.md §7):
- * - draft:   saving updates it (or creates it, for a new design version).
- * - live:    the live version, with no draft yet. Editable, but saving
- *            creates a new design version: the draft. Coders keep the live version.
- * - history: an older version, read only.
- */
-export type DesignEditorMode = "draft" | "live" | "history";
 
 /** The editor's save function, for a parent to save from e.g. an "unsaved changes" dialog. */
 export type SaveFn = () => Promise<DesignVersion>;
@@ -63,8 +56,10 @@ interface DesignEditorProps {
   registerSave?: (save: SaveFn | null) => void;
   /** Loads the saved version again, dropping the editor's state (after a save conflict). */
   onReload?: () => void;
-  /** Unsaved edits of this version from an earlier session, to continue with. */
+  /** Unsaved edits from an earlier session, to continue with on this version. */
   restore?: DesignBackup | null;
+  /** A draft someone else made while this version was edited: saving asks before it replaces that one. */
+  newerDraft?: DesignVersionMeta | null;
   /** Called once the editor started from `restore` (it is used once). */
   onRestored?: () => void;
   /** Tree, form and preview side by side, whatever the window's width (the guide's sample). */
@@ -102,12 +97,13 @@ export function DesignEditor({
   registerSave,
   onReload,
   restore,
+  newerDraft,
   onRestored,
   wideLayout = false,
   initialSelect,
 }: DesignEditorProps) {
   const readOnly = mode === "history";
-  const draft = useDesignDraft({ client, version, readOnly, onSaved, restore });
+  const draft = useDesignDraft({ client, version, readOnly, onSaved, restore, newerDraft });
   // The deployed design's answer values: label edits don't change them (OptionsEditor)
   const deployment = useDeploymentQuery(client).data ?? null;
   const deployed = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data ?? null;
@@ -254,7 +250,7 @@ export function DesignEditor({
         <Dialog open={draft.conflict !== null} onOpenChange={(open) => !open && draft.dismissConflict()}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Someone else saved this draft</DialogTitle>
+              <DialogTitle>Someone else saved a draft</DialogTitle>
               <DialogDescription>
                 {draft.conflict?.updatedBy ?? "Someone"} saved it at{" "}
                 {draft.conflict ? new Date(draft.conflict.updated).toLocaleTimeString() : ""}, while you were editing.

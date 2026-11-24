@@ -8,12 +8,13 @@ import {
   useDeploymentQuery,
   useUpdateDesignVersionMutation,
 } from "../../admin/queries";
-import { describeVersions } from "../../design/versions";
-import { DesignEditor, type DesignEditorMode, type SaveFn } from "./DesignEditor";
+import { describeVersions, draftMadeMeanwhile, editorMode, type OpenVersion } from "../../design/versions";
+import { DesignEditor, type SaveFn } from "./DesignEditor";
 import { DesignStatusBanner } from "./DesignStatusBanner";
 import { DesignVersionsDialog } from "./DesignVersionsDialog";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
-import { Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { clearBackup, type DesignBackup } from "../../design/localBackup";
 
 interface DesignManagerProps {
@@ -24,7 +25,7 @@ interface DesignManagerProps {
   registerSave?: (save: SaveFn | null) => void;
   /** Version to open first (e.g. from the overview); null opens the current version. */
   initialVersionId?: number | null;
-  /** Unsaved edits from an earlier session to continue with (localBackup.ts): opens their version. */
+  /** Unsaved edits from an earlier session to continue with (localBackup.ts), on the current version. */
   restore?: DesignBackup | null;
   /** The version to open by its number (v1, v2, ...: the URL's `?version=`), if not `initialVersionId`. */
   initialVersion?: number;
@@ -32,6 +33,22 @@ interface DesignManagerProps {
   onVersionChange?: (version: number | undefined) => void;
   /** To the Deploy page (deploying happens there). */
   onOpenDeploy?: () => void;
+}
+
+/**
+ * The version to open first: a number is its id, null follows the current
+ * version (the draft, else the latest), undefined is the URL's version
+ * number (`initialVersion`), known once the versions are. Unsaved edits to
+ * continue with go on the current version.
+ */
+function firstChosen({
+  restore,
+  initialVersionId,
+  initialVersion,
+}: Pick<DesignManagerProps, "restore" | "initialVersionId" | "initialVersion">): number | null | undefined {
+  if (restore) return null;
+  if (initialVersionId != null) return initialVersionId;
+  return initialVersion !== undefined ? undefined : null;
 }
 
 /**
@@ -53,28 +70,20 @@ export function DesignManager({
   onVersionChange,
   onOpenDeploy,
 }: DesignManagerProps) {
+  const studyId = client.studyId ?? 0;
   const designVersionsQuery = useDesignVersionsQuery(client);
   const deploymentQuery = useDeploymentQuery(client);
   const designVersions = designVersionsQuery.data ?? [];
   const versions = describeVersions(designVersions, deploymentQuery.data?.designVersionId ?? null);
 
-  // The version shown in the editor; null follows the current version (draft, else latest)
-  // (undefined: the URL's version number, `initialVersion`, once the versions are known)
-  const [chosenId, setChosenId] = useState<number | null | undefined>(
-    restore
-      ? restore.designVersionId
-      : initialVersionId !== null
-        ? initialVersionId
-        : initialVersion !== undefined
-          ? undefined
-          : null,
-  );
+  // The version shown in the editor (see `firstChosen`)
+  const [chosenId, setChosenId] = useState(() => firstChosen({ restore, initialVersionId, initialVersion }));
+  // The URL's version by its number: undefined until the versions are known, null if there is none (or it is the current one)
   const urlId = designVersionsQuery.data
     ? (designVersionsQuery.data[(initialVersion ?? 0) - 1]?.id ?? null)
     : undefined;
-  const selectedId =
-    chosenId !== undefined ? chosenId : urlId === undefined ? null : urlId === versions.currentId ? null : urlId;
   const fromUrl = chosenId === undefined && urlId === undefined;
+  const selectedId = chosenId !== undefined ? chosenId : urlId === versions.currentId ? null : (urlId ?? null);
   // The backup is used by the first editor only: later ones start from what is saved
   const [pendingRestore, setPendingRestore] = useState(restore);
   // The open version, in the URL (the current one: none)
@@ -83,7 +92,11 @@ export function DesignManager({
     if (!fromUrl) onVersionChange?.(shownNumber);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the open version changes
   }, [shownNumber, fromUrl]);
-  const openId = fromUrl ? null : (selectedId ?? versions.currentId);
+  // Unsaved edits stay on the version they are of, whatever becomes the current one meanwhile
+  // (a draft made by a colleague, or by an upload in another tab)
+  const [pinned, setPinned] = useState<{ id: number | null } | null>(null);
+  const followedId = fromUrl ? null : (selectedId ?? versions.currentId);
+  const openId = pinned ? pinned.id : followedId;
   const openQuery = useDesignVersionQuery(client, openId);
 
   // Bumped when the open version's content is replaced underneath the editor (restore)
@@ -103,6 +116,7 @@ export function DesignManager({
 
   function setIsDirty(dirty: boolean) {
     setIsDirtyInternal(dirty);
+    setPinned((p) => (dirty ? (p ?? { id: openId }) : null));
     onDirtyChange?.(dirty);
   }
 
@@ -126,17 +140,9 @@ export function DesignManager({
     }
   }
 
-  // An id that isn't listed yet was just created: it's the new current version
-  const isListed = openId !== null && versions.numberOf(openId) !== null;
   const openVersion = openId === null ? null : (openQuery.data ?? null);
-  const mode: DesignEditorMode =
-    openId === null
-      ? "draft"
-      : isListed && openId !== versions.currentId
-        ? "history"
-        : openVersion?.immutable
-          ? "live"
-          : "draft";
+  const open: OpenVersion = { id: openId, immutable: openVersion?.immutable, pinned: pinned !== null };
+  const mode = editorMode(open, versions);
   const openNumber = openId === null ? null : (versions.numberOf(openId) ?? designVersions.length + 1);
   const liveNumber = versions.liveId === null ? null : versions.numberOf(versions.liveId);
   const draftNumber = versions.draftId === null ? null : versions.numberOf(versions.draftId);
@@ -187,10 +193,20 @@ export function DesignManager({
       return;
     }
     setVersionsDialogOpen(false);
-    clearBackup();
+    clearBackup(studyId);
     setIsDirty(false);
     setChosenId(null);
     setEditorEpoch((n) => n + 1);
+  }
+
+  const loadError =
+    (designVersionsQuery.data ? null : designVersionsQuery.error) ??
+    (deploymentQuery.data !== undefined ? null : deploymentQuery.error) ??
+    (openId !== null && !openVersion ? openQuery.error : null);
+  if (loadError) {
+    // A version that can't be opened (e.g. deleted since): the current one can
+    const toCurrent = selectedId !== null ? () => setChosenId(null) : undefined;
+    return <LoadError error={loadError} onOpenCurrent={toCurrent} />;
   }
 
   if (fromUrl || designVersionsQuery.isLoading || deploymentQuery.isLoading || (openId !== null && !openVersion)) {
@@ -232,10 +248,12 @@ export function DesignManager({
             setIsDirty(false);
             setChosenId(saved.id);
           }}
-          restore={pendingRestore && pendingRestore.designVersionId === openId ? pendingRestore : null}
+          restore={pendingRestore}
           onRestored={() => setPendingRestore(null)}
+          newerDraft={draftMadeMeanwhile(open, designVersions, versions)}
           onReload={async () => {
             await openQuery.refetch();
+            clearBackup(studyId);
             setIsDirty(false);
             setEditorEpoch((n) => n + 1);
           }}
@@ -262,7 +280,7 @@ export function DesignManager({
           setPendingError(null);
         }}
         onDiscard={() => {
-          clearBackup();
+          clearBackup(studyId);
           setIsDirty(false);
           const action = pendingAction;
           setPendingAction(null);
@@ -271,6 +289,23 @@ export function DesignManager({
         }}
         onSave={saveAndContinue}
       />
+    </div>
+  );
+}
+
+/** The design (its versions, or the one to open) couldn't be loaded. */
+function LoadError({ error, onOpenCurrent }: { error: Error; onOpenCurrent?: () => void }) {
+  return (
+    <div className="flex h-64 flex-col items-center justify-center gap-3 text-sm">
+      <p className="flex items-center gap-2 text-destructive">
+        <AlertCircle className="h-5 w-5 shrink-0" />
+        Could not load the design: {error.message}
+      </p>
+      {onOpenCurrent && (
+        <Button size="sm" variant="outline" onClick={onOpenCurrent}>
+          Open the current version
+        </Button>
+      )}
     </div>
   );
 }

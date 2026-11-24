@@ -16,7 +16,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SegmentedToggle } from "./SegmentedToggle";
-import type { DesignEditorMode } from "../DesignEditor";
+import type { DesignEditorMode } from "../../../design/versions";
 
 export type EditorView = "tree" | "json";
 

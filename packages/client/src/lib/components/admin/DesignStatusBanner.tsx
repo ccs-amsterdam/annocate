@@ -3,7 +3,7 @@ import { CircleDot, FilePen, History, Sparkles } from "lucide-react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
-import type { DesignEditorMode } from "./DesignEditor";
+import type { DesignEditorMode } from "../../design/versions";
 
 interface DesignStatusBannerProps {
   mode: DesignEditorMode;

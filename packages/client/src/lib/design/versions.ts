@@ -32,3 +32,43 @@ export function describeVersions(designVersions: DesignVersionMeta[], liveId: nu
     statusOf: (id) => (id === liveId ? "live" : id === draftId ? "draft" : "history"),
   };
 }
+
+/**
+ * How the opened version can be edited (docs/client.md §7):
+ * - draft:   saving updates it (or creates it, for a new design version).
+ * - live:    the live version, with no draft yet. Editable, but saving
+ *            creates a new design version: the draft. Coders keep the live version.
+ * - history: an older version, read only.
+ */
+export type DesignEditorMode = "draft" | "live" | "history";
+
+/** The version open in the editor; `id` null: a new design, nothing saved yet. */
+export interface OpenVersion {
+  id: number | null;
+  /** Whether it is frozen (deployed); unknown for a new design. */
+  immutable?: boolean;
+  /** It has unsaved edits: it stays open, and editable, whatever happens to the versions meanwhile. */
+  pinned: boolean;
+}
+
+export function editorMode(open: OpenVersion, versions: DesignVersions): DesignEditorMode {
+  if (open.id === null) return "draft";
+  // An id that isn't listed yet was just created: it's the new current version
+  const listed = versions.numberOf(open.id) !== null;
+  if (listed && open.id !== versions.currentId && !open.pinned) return "history";
+  return open.immutable ? "live" : "draft";
+}
+
+/**
+ * The draft someone else made while the open version was being edited (a
+ * colleague, an upload in another tab): saving the edits would pass it by,
+ * so the editor asks first. Null if the draft is the open version, or there is none.
+ */
+export function draftMadeMeanwhile(
+  open: OpenVersion,
+  designVersions: DesignVersionMeta[],
+  versions: DesignVersions,
+): DesignVersionMeta | null {
+  if (!open.pinned || versions.draftId === null || versions.draftId === open.id) return null;
+  return designVersions.find((v) => v.id === versions.draftId) ?? null;
+}

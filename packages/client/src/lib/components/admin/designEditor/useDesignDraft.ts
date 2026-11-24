@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   undeclaredFields,
-  designItems,
-  splitDesignItems,
   DesignConflictSchema,
   validateDesignItems,
   type DesignConflict,
@@ -10,6 +8,7 @@ import {
   type DesignItem,
   type StudyEnd,
   type DesignVersion,
+  type DesignVersionMeta,
   type TopLevelItem,
 } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
@@ -34,7 +33,8 @@ import { pathOfItem, unknownUnitFields } from "../../../design/unitFieldRefs";
 import { carryKeys } from "../../../design/itemShape";
 import { changedKeys, emptyHistory, recordChange, redo, revertItem, undo } from "../../../design/editHistory";
 import { ResearcherApiError } from "../../../api/httpResearcherApi";
-import { clearBackup, writeBackup, type DesignBackup } from "../../../design/localBackup";
+import { backupKeeper, type DesignBackup } from "../../../design/localBackup";
+import { saveRequest, startDraft } from "../../../design/draft";
 
 import { defaultItemForType } from "../../../design/newItem";
 import { withOptional } from "../../../design/itemSettings";
@@ -50,8 +50,10 @@ interface UseDesignDraftOptions {
   version?: DesignVersion | null;
   readOnly: boolean;
   onSaved: (version: DesignVersion) => void;
-  /** Unsaved edits of this version from an earlier session (localBackup.ts), to continue with. */
+  /** Unsaved edits from an earlier session (localBackup.ts), to continue with on this version. */
   restore?: DesignBackup | null;
+  /** A draft someone else made while this version was edited: saving asks before it replaces that one. */
+  newerDraft?: DesignVersionMeta | null;
 }
 
 /**
@@ -63,16 +65,14 @@ interface UseDesignDraftOptions {
  * State is initialised from `version` once: mount the editor with a `key`
  * per version (DesignManager does) to start over for another version.
  */
-export function useDesignDraft({ client, version, readOnly, onSaved, restore }: UseDesignDraftOptions) {
-  const [items, setItemsState] = useState<TopLevelItem[]>(() =>
-    // The Study entry (session and public info) is edited as the first item (contracts designItems), stored next to the items
-    ensureKeys(restore ? restore.items : (designItems(version ?? { items: [] }) as TopLevelItem[])),
-  );
+export function useDesignDraft({ client, version, readOnly, onSaved, restore, newerDraft }: UseDesignDraftOptions) {
+  const [start] = useState(() => startDraft(version, restore));
+  const [items, setItemsState] = useState(start.items);
   const [selected, setSelected] = useState<string | null>(null);
   // The items as last saved (with the same keys), to tell what changed and to revert to
-  const [saved, setSaved] = useState<TopLevelItem[]>(() => (restore ? ensureKeys(restore.saved) : items));
+  const [saved, setSaved] = useState(start.saved);
   // The saved revision the edits are based on (contracts DesignWriteSchema `revision`)
-  const [revision, setRevision] = useState<number | undefined>(restore ? restore.revision : version?.revision);
+  const [revision, setRevision] = useState(start.revision);
   const [history, setHistory] = useState(() => emptyHistory<TopLevelItem[]>());
   const [conflict, setConflict] = useState<DesignConflict | null>(null);
 
@@ -124,23 +124,23 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
 
   useWarnBeforeUnload(dirty);
 
-  // A copy of unsaved edits in the browser, in case it closes (localBackup.ts)
-  const backupOf = useMemo(
-    () => ({ studyId: client.studyId ?? 0, designVersionId: version?.id ?? null }),
-    [client.studyId, version?.id],
-  );
+  // A copy of unsaved edits in the browser, in case it closes (localBackup.ts). Without edits this
+  // editor's own backup goes; one of an earlier session that is still on offer stays.
+  const studyId = client.studyId ?? 0;
+  const designVersionId = version?.id ?? null;
+  const [backup] = useState(() => backupKeeper(studyId, Boolean(restore)));
   useEffect(() => {
     if (readOnly) return;
     if (!dirty) {
-      clearBackup(backupOf);
+      backup.clear();
       return;
     }
     const timer = setTimeout(
-      () => writeBackup({ ...backupOf, revision, items, saved, at: Date.now() }),
+      () => backup.write({ studyId, designVersionId, revision, items, saved, at: Date.now() }),
       BACKUP_DELAY_MS,
     );
     return () => clearTimeout(timer);
-  }, [readOnly, dirty, backupOf, revision, items, saved]);
+  }, [readOnly, dirty, backup, studyId, designVersionId, revision, items, saved]);
 
   /** Every edit goes through here: it becomes an undo step (see editHistory.ts). */
   function setItems(next: TopLevelItem[]) {
@@ -234,28 +234,26 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
 
   /**
    * Saves the draft (even with validation errors). A save based on an older
-   * revision than the server has is refused (someone else saved): then
+   * revision than the server has is refused (someone else saved), and so is
+   * one that would pass by a draft someone else made meanwhile: then
    * `conflict` is set, and `save({ overwrite: true })` saves anyway.
    */
   async function save({ overwrite = false }: { overwrite?: boolean } = {}): Promise<DesignVersion> {
     if (readOnly) throw new Error("This version is read only");
     const sent = items;
+    const request = saveRequest({ items: cleanItems, version, revision, newerDraft, overwrite });
+    if ("conflict" in request) {
+      setConflict(request.conflict);
+      throw new Error("Someone else saved a draft meanwhile");
+    }
     try {
-      // A frozen (live) version is never overwritten: its changes become a new draft
       const result =
-        version && !version.immutable
-          ? await updateDesignVersion.mutateAsync({
-              id: version.id,
-              body: {
-                note: version.note ?? undefined,
-                ...splitDesignItems(cleanItems),
-                revision: overwrite ? undefined : revision,
-              },
-            })
-          : await createDesignVersion.mutateAsync(splitDesignItems(cleanItems));
+        "create" in request
+          ? await createDesignVersion.mutateAsync(request.create)
+          : await updateDesignVersion.mutateAsync({ id: request.update, body: request.body });
       setSaved(sent);
       setRevision(result.revision);
-      clearBackup(backupOf);
+      backup.clear();
       setConflict(null);
       onSaved(result);
       return result;
