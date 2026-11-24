@@ -1,16 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { buildSkipValue } from "./answerValue";
-import type { AnswerFieldProps, QuestionVariable } from "./types";
+import type { AnswerFieldProps } from "./types";
 
-interface UnsupportedAnswerFieldProps extends AnswerFieldProps {
-  variable: QuestionVariable;
-}
-
-export function UnsupportedAnswerField({ variable, onAnswer }: UnsupportedAnswerFieldProps) {
+/** A question of a type this version of the app has no answer field for: the coder can only skip it. */
+export function UnsupportedAnswerField({ onAnswer }: AnswerFieldProps) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Variable type &quot;{variable.type}&quot; does not have a renderer yet.
+        This question can&apos;t be shown here. Skip it to go on, and please tell the researchers.
       </p>
       <Button type="button" variant="outline" onClick={() => onAnswer(buildSkipValue())}>
         Skip

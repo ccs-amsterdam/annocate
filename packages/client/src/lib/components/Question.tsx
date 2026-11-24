@@ -1,4 +1,3 @@
-import { TextAnswerField } from "./answerFields/TextAnswerField";
 import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import { MessageSquarePlus } from "lucide-react";
@@ -12,6 +11,7 @@ import {
   RelationAnswerField,
   ScaleAnswerField,
   SpanAnswerField,
+  TextAnswerField,
   UnsupportedAnswerField,
 } from "./answerFields";
 import { useSpanAnnotation } from "../context/spanAnnotation";

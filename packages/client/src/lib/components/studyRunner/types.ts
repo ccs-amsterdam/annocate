@@ -10,7 +10,6 @@ export interface StudyRunnerProps {
   onTransferRedeemed?: () => void;
   /** Builds the link shown for "Continue on another device". Defaults to this page with `?transfer=<token>`. */
   transferUrl?: (token: string) => string;
-  onFinished?: () => void;
   preview?: boolean;
   /** Start a new session rather than continue this browser's (e.g. resetting a preview). */
   newSession?: boolean;

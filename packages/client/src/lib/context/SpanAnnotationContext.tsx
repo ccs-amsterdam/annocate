@@ -14,8 +14,6 @@ export function SpanAnnotationProvider({
   defaultSelectionMode = "word",
   allowGaps = false,
   initialSpans,
-  initialPendingSpan,
-  initialIsViewingAllLabels,
   variableName,
   allowComments = false,
   children,
@@ -26,8 +24,6 @@ export function SpanAnnotationProvider({
   allowGaps?: boolean;
   /** The spans to start with: the question's earlier answer. */
   initialSpans?: SpanAnswer[];
-  initialPendingSpan?: PendingSpan;
-  initialIsViewingAllLabels?: boolean;
   /** The span question: another question in the same unit starts over. */
   variableName?: string;
   /** Coders can comment on each span. */
@@ -36,20 +32,20 @@ export function SpanAnnotationProvider({
 }) {
   const [spans, setSpans] = useState<SpanAnswer[]>(initialSpans ?? []);
   const [selectionMode, setSelectionMode] = useState<"word" | "character">(defaultSelectionMode);
-  const [pendingSpan, setPendingSpanState] = useState<PendingSpan | null>(initialPendingSpan ?? null);
-  const [isViewingAllLabels, setIsViewingAllLabels] = useState(initialIsViewingAllLabels ?? false);
+  const [pendingSpan, setPendingSpanState] = useState<PendingSpan | null>(null);
+  const [isViewingAllLabels, setIsViewingAllLabels] = useState(false);
   const [focusedSpanId, setFocusedSpanId] = useState<string | null>(null);
   const [cursor, setCursor] = useState<SpanAnnotationState["cursor"]>(null);
 
   // Another question or other initial values: start over. Adjusted while
   // rendering rather than in an effect, so there is no render with stale state.
-  const inputs = { variableName, initialSpans, initialPendingSpan, initialIsViewingAllLabels, defaultSelectionMode };
+  const inputs = { variableName, initialSpans, defaultSelectionMode };
   const [previousInputs, setPreviousInputs] = useState(inputs);
   if ((Object.keys(inputs) as (keyof typeof inputs)[]).some((k) => inputs[k] !== previousInputs[k])) {
     setPreviousInputs(inputs);
     setSpans(initialSpans ?? []);
-    setPendingSpanState(initialPendingSpan ?? null);
-    setIsViewingAllLabels(initialIsViewingAllLabels ?? false);
+    setPendingSpanState(null);
+    setIsViewingAllLabels(false);
     setFocusedSpanId(null);
     setSelectionMode(defaultSelectionMode);
   }

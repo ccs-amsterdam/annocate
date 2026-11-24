@@ -24,7 +24,6 @@ interface SessionEndProps {
   onReopen?: () => Promise<void>;
   /** In a preview, the redirect is shown but not followed. */
   preview?: boolean;
-  onFinished?: () => void;
   /** The coder's overview of their studies (`/code`): linked at the bottom; without it, not. */
   homeUrl?: string;
 }
@@ -43,7 +42,6 @@ export function SessionEnd({
   reopen = null,
   onReopen,
   preview,
-  onFinished,
   homeUrl,
 }: SessionEndProps) {
   const redirect = webRedirect(ending?.redirectUrl);
@@ -67,11 +65,6 @@ export function SessionEnd({
         {redirect && (
           <Button asChild className="mt-6">
             <a href={redirect}>{preview ? "Redirect (not followed in a preview)" : "Continue"}</a>
-          </Button>
-        )}
-        {!redirect && onFinished && (
-          <Button onClick={onFinished} className="mt-6">
-            Done
           </Button>
         )}
         {reopen && onReopen && (

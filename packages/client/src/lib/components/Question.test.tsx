@@ -1,12 +1,49 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { DesignItem } from "@annotinder/contracts";
 import { Question } from "./Question";
 import { SwipeCard, SwipeProvider, SwipeSurface } from "./SwipeCard";
 import { RelationAnnotationProvider } from "../context/RelationAnnotationContext";
 import { SpanAnnotationProvider } from "../context/SpanAnnotationContext";
+import { SpanAnnotationContext, type SpanAnnotationState } from "../context/spanAnnotation";
 
 type QuestionItem = Extract<DesignItem, { type: "question" }>;
+
+/**
+ * A span question's state at some point of answering it (a selection
+ * waiting for its label, the list of spans open): what
+ * `SpanAnnotationProvider` holds by then.
+ */
+function SpanState({
+  children,
+  ...state
+}: Pick<SpanAnnotationState, "fields" | "options"> &
+  Partial<Pick<SpanAnnotationState, "spans" | "pendingSpan" | "isViewingAllLabels">> & { children: ReactNode }) {
+  const value: SpanAnnotationState = {
+    spans: [],
+    pendingSpan: null,
+    isViewingAllLabels: false,
+    selectionMode: "word",
+    allowGaps: false,
+    allowComments: false,
+    focusedSpanId: null,
+    cursor: null,
+    setSelectionMode: () => {},
+    setPendingSpan: () => {},
+    addSpan: () => {},
+    updateSpan: () => {},
+    setSpanComment: () => {},
+    removeSpan: () => {},
+    overlapsExisting: () => false,
+    hasExactSpan: () => false,
+    setIsViewingAllLabels: () => {},
+    setFocusedSpanId: () => {},
+    setCursor: () => {},
+    ...state,
+  };
+  return <SpanAnnotationContext.Provider value={value}>{children}</SpanAnnotationContext.Provider>;
+}
 
 describe("Question dispatcher", () => {
   const onAnswer = vi.fn();
@@ -221,14 +258,9 @@ describe("Question dispatcher", () => {
       { id: "s1", field: "text", value: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
     ];
     const html = renderToStaticMarkup(
-      <SpanAnnotationProvider
-        fields={["text"]}
-        options={[{ value: "actor" }]}
-        initialSpans={initialSpans}
-        initialIsViewingAllLabels={true}
-      >
+      <SpanState fields={["text"]} options={[{ value: "actor" }]} spans={initialSpans} isViewingAllLabels>
         <Question item={item} onAnswer={onAnswer} />
-      </SpanAnnotationProvider>,
+      </SpanState>,
     );
     // Question text should be hidden to keep docked card compact
     expect(html).not.toContain("Select spans");
@@ -278,14 +310,14 @@ describe("Question dispatcher", () => {
     };
 
     const html = renderToStaticMarkup(
-      <SpanAnnotationProvider
+      <SpanState
         fields={["text"]}
         options={[{ value: "actor" }, { value: "issue" }]}
-        initialSpans={initialSpans}
-        initialPendingSpan={initialPendingSpan}
+        spans={initialSpans}
+        pendingSpan={initialPendingSpan}
       >
         <Question item={item} onAnswer={onAnswer} />
-      </SpanAnnotationProvider>,
+      </SpanState>,
     );
     // When clicking a word with existing label (even single label), shows menu first
     expect(html).toContain("Current labels (1):");
@@ -315,14 +347,14 @@ describe("Question dispatcher", () => {
     };
 
     const html = renderToStaticMarkup(
-      <SpanAnnotationProvider
+      <SpanState
         fields={["text"]}
         options={[{ value: "actor" }, { value: "issue" }]}
-        initialSpans={initialSpans}
-        initialPendingSpan={initialPendingSpan}
+        spans={initialSpans}
+        pendingSpan={initialPendingSpan}
       >
         <Question item={item} onAnswer={onAnswer} />
-      </SpanAnnotationProvider>,
+      </SpanState>,
     );
     // Shows Delete button and code buttons to change, and NO 'new label' button in SpanEditLabel
     expect(html).toContain("Delete");
@@ -354,14 +386,14 @@ describe("Question dispatcher", () => {
     };
 
     const html = renderToStaticMarkup(
-      <SpanAnnotationProvider
+      <SpanState
         fields={["text"]}
         options={[{ value: "actor" }, { value: "issue" }]}
-        initialSpans={initialSpans}
-        initialPendingSpan={initialPendingSpan}
+        spans={initialSpans}
+        pendingSpan={initialPendingSpan}
       >
         <Question item={item} onAnswer={onAnswer} />
-      </SpanAnnotationProvider>,
+      </SpanState>,
     );
     expect(html).toContain("Current labels (2):");
     expect(html).toContain("actor");
@@ -381,13 +413,13 @@ describe("Question dispatcher", () => {
       },
     };
     const html = renderToStaticMarkup(
-      <SpanAnnotationProvider
+      <SpanState
         fields={["text"]}
         options={[{ value: "actor" }, { value: "issue" }]}
-        initialPendingSpan={{ slices: [{ offset: 0, length: 5, text: "hello" }], mode: "create" }}
+        pendingSpan={{ slices: [{ offset: 0, length: 5, text: "hello" }], mode: "create" }}
       >
         <Question item={item} onAnswer={onAnswer} />
-      </SpanAnnotationProvider>,
+      </SpanState>,
     );
     expect(html).toContain("hello");
     expect(html).toContain("actor");

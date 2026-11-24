@@ -5,5 +5,6 @@ export * from "./ConfirmAnswerField";
 export * from "./RelationAnswerField";
 export * from "./ScaleAnswerField";
 export * from "./SpanAnswerField";
+export * from "./TextAnswerField";
 export * from "./UnsupportedAnswerField";
 export * from "./types";

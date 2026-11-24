@@ -72,7 +72,6 @@ export function CodingScreen(props: CodingScreenProps) {
           reopen={snapshot.reopen}
           onReopen={() => manager.reopen()}
           preview={props.preview}
-          onFinished={props.onFinished}
           homeUrl={props.homeUrl}
         />
       );
