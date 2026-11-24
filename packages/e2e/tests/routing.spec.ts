@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 import type { StudyResponse } from "@annotinder/contracts";
-import { answers, api, coders, fromExample, question } from "./helpers";
+import { answers, api, chooseWhoCodes, coders, fromExample, question } from "./helpers";
 
 // The app's pages have URLs (docs/client.md §1): a reload stays where it
 // was, and leaving the editor with unsaved edits asks first.
@@ -33,9 +33,10 @@ test("a study's pages are URLs: a reload stays; leaving unsaved edits asks first
   await page.getByRole("button", { name: "Design", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/research/studies/${study.id}/design$`));
   await page.reload();
-  await expect(page.getByRole("button", { name: /Add item/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Who codes?" })).toBeVisible();
 
-  // An unsaved edit: going elsewhere (another page, the browser's back button) asks first
+  // An unsaved edit (choosing who codes is one): going elsewhere (another page, the browser's back button) asks first
+  await chooseWhoCodes(page);
   await page.getByRole("button", { name: /Add item/ }).click();
   await page.getByRole("button", { name: /^Question\b/ }).click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();

@@ -14,7 +14,7 @@ test("a new design asks who codes first; it can't be deployed without", async ({
   await page.getByRole("radio", { name: /Crowd \(one link\)/ }).click();
   // The editor opens on its form, with the choice made
   await expect(page.getByRole("button", { name: "Add item" })).toBeVisible();
-  await expect(page.getByRole("radio", { name: /Crowd \(one link\)/ })).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByText("crowd, one link").first()).toBeVisible();
 
   // Saved without it, the server refuses to deploy it
   const other = await api<StudyResponse>(request, "POST", "/study", { name: "Unchosen" });

@@ -10,20 +10,25 @@ export const DEV_HEADERS = {
 
 export async function api<T>(request: APIRequestContext, method: string, path: string, data?: unknown): Promise<T> {
   // A design's top-level end items go in a branch; who codes: a crowd, unless the test says otherwise
+  const withInvite = (design: { session?: object }) => ({
+    ...design,
+    session: { invite: { mode: "crowd" }, ...design.session },
+  });
   const items = (data as { items?: unknown })?.items;
-  const session = (data as { session?: object })?.session;
+  const recipeDesign = (data as { design?: { session?: object } })?.design;
   const body =
     method === "POST" && /\/design$/.test(path) && Array.isArray(items)
       ? {
-          ...(data as object),
-          session: { invite: { mode: "crowd" }, ...session },
+          ...withInvite(data as { session?: object }),
           items: items.map((i) =>
             (i as { type?: string }).type === "end"
               ? { type: "branch", condition: { script: "true" }, children: [i] }
               : i,
           ),
         }
-      : data;
+      : method === "POST" && path === "/study/from-recipe" && recipeDesign
+        ? { ...(data as object), design: withInvite(recipeDesign) }
+        : data;
   const res = await request.fetch(`/api${path}`, {
     method,
     headers: DEV_HEADERS,
@@ -64,4 +69,10 @@ export async function shortcutStyle(page: Page, name: string): Promise<void> {
   await page.getByRole("button", { name: /^Shortcut style/ }).click();
   await page.getByRole("option", { name: new RegExp(`^${name}`) }).click();
   await page.keyboard.press("Escape");
+}
+
+/** A new design asks who codes first (the design page shows only that): choose. */
+export async function chooseWhoCodes(page: Page, mode: "Crowd" | "Specific coders" = "Crowd"): Promise<void> {
+  await page.getByRole("radio", { name: new RegExp(`^${mode}`) }).click();
+  await expect(page.getByRole("button", { name: /Add item/ })).toBeVisible();
 }
