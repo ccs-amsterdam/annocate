@@ -24,7 +24,8 @@ export type Condition = z.infer<typeof ConditionSchema>;
 /** What helper methods work on: a question in the scope, or a scale item. */
 export interface HelperTarget {
   value?: OptionValue | null;
-  values?: OptionValue[];
+  /** A scale's values have null for an item without one. */
+  values?: (OptionValue | null)[];
   /** The special answer given: `is`, `has` and the like also match its kind (`.is("dont_know")`). */
   special?: string | null;
 }

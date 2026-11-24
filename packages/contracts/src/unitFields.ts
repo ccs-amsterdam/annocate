@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ListItemSchema, type ListItem, type UnitData, type UnitDataValue } from "./common.js";
+import { ListItemSchema, isReservedName, type ListItem, type UnitData, type UnitDataValue } from "./common.js";
 import { TEST_SET, isRoleColumn } from "./sets.js";
 
 /**
@@ -26,7 +26,10 @@ export const UnitFieldTypeSchema = z.enum(["text", "number", "boolean", "list", 
 export type UnitFieldType = z.infer<typeof UnitFieldTypeSchema>;
 
 export const UnitFieldSchema = z.object({
-  name: z.string().min(1).max(64),
+  name: z.string().superRefine((name, ctx) => {
+    const problem = fieldNameProblem(name);
+    if (problem) ctx.addIssue({ code: "custom", message: `Field name '${name}': ${problem}` });
+  }),
   type: UnitFieldTypeSchema,
   /** What the field holds, for people (and for whoever reuses the design). */
   description: z.string().max(1000).optional(),
@@ -44,6 +47,8 @@ export const UnitsSpecSchema = z.object({
     .max(500)
     .superRefine((fields, ctx) =>
       fields.forEach((f, i) => {
+        if (fields.findIndex((other) => other.name === f.name) < i)
+          ctx.addIssue({ code: "custom", path: [i, "name"], message: `Two fields are named '${f.name}'` });
         // A role is in the name: such a column has its role's type, and only it has that type
         const wanted = isRoleColumn(f.name) ? roleColumnType(f.name) : null;
         if (wanted ? f.type !== wanted : isSetType(f.type))
@@ -60,18 +65,22 @@ export const UnitsSpecSchema = z.object({
 export type UnitsSpec = z.infer<typeof UnitsSpecSchema>;
 
 /**
- * What a new field may be called: letters, digits and underscores, not
- * starting with a digit, so design versions can refer to it as `$unit.<name>`.
- * (Fields of older studies may have other names.)
+ * What a field may be called: letters, digits and underscores, not starting
+ * with a digit, so design versions can refer to it as `$unit.<name>`.
  */
 export const UNIT_FIELD_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
-/** Why a name can't be a new field's name, or null if it can. */
-export function unitFieldNameError(name: string): string | null {
+/** Why a name can't be a field's name (a column with a role included), or null if it can. */
+function fieldNameProblem(name: string): string | null {
   if (name.length > 64) return "at most 64 characters";
   if (!UNIT_FIELD_NAME.test(name)) return "only letters, digits and _, not starting with a digit";
-  if (isRoleColumn(name)) return "a column with a role: its cells are uploaded as sets";
+  if (isReservedName(name)) return `'${name}' can't be used as a name`;
   return null;
+}
+
+/** Why a name can't be the name of a field with data (in an upload), or null if it can. */
+export function unitFieldNameError(name: string): string | null {
+  return fieldNameProblem(name) ?? (isRoleColumn(name) ? "a column with a role: its cells are uploaded as sets" : null);
 }
 
 /**
@@ -126,12 +135,14 @@ export function typeOfValue(value: UnitDataValue): UnitFieldType | null {
 /**
  * The fields of a first upload: every key that occurs, in order of first
  * occurrence, typed by its non-empty values (text if all are empty).
- * An error if a field mixes types.
+ * An error if a key can't be a field's name, or a field mixes types.
  */
 export function fieldsOfUnits(units: UnitData[]): { fields: UnitField[] } | { error: string } {
   const types = new Map<string, UnitFieldType | null>();
   for (const data of units) {
     for (const [name, value] of Object.entries(data)) {
+      const problem = types.has(name) ? null : unitFieldNameError(name);
+      if (problem) return { error: `Field name '${name}': ${problem}` };
       const type = isAnswerColumn(name) ? "text" : typeOfValue(value);
       const known = types.get(name);
       if (known === undefined || known === null) types.set(name, type);
@@ -150,15 +161,9 @@ export function fieldsOfUnits(units: UnitData[]): { fields: UnitField[] } | { er
  */
 export function addedFields(units: UnitData[], fields: UnitField[]): { fields: UnitField[] } | { error: string } {
   const known = new Set(fields.map((f) => f.name));
-  const added = fieldsOfUnits(
+  return fieldsOfUnits(
     units.map((data) => Object.fromEntries(Object.entries(data).filter(([name]) => !known.has(name)))),
   );
-  if ("error" in added) return added;
-  for (const field of added.fields) {
-    const problem = unitFieldNameError(field.name);
-    if (problem) return { error: `Field name '${field.name}': ${problem}` };
-  }
-  return added;
 }
 
 /** Whether a field type is a role column's: stored as sets, not data. */
@@ -192,14 +197,24 @@ const NUMBER = /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/;
 const BOOLEAN = /^(true|false)$/i;
 
 /**
+ * Whether a text is a number as JavaScript writes it: read as a number it
+ * is written back the same, so nothing is lost. Not `01234` (a code with a
+ * leading zero), an id of more digits than a number holds, `1.50` or `1e3`.
+ */
+function readsBackAsNumber(text: string): boolean {
+  const value = Number(text);
+  return NUMBER.test(text) && String(value) === text && (!Number.isInteger(value) || Number.isSafeInteger(value));
+}
+
+/**
  * The type of a text column (e.g. from a CSV): number if every non-empty
- * value is a number, boolean if every one is true/false, list if every one
- * is a JSON list, else text.
+ * value is a number that reads back as written, boolean if every one is
+ * true/false, list if every one is a JSON list, else text.
  */
 export function inferFieldType(values: string[]): UnitFieldType {
   const filled = values.map((v) => v.trim()).filter((v) => v !== "");
   if (filled.length === 0) return "text";
-  if (filled.every((v) => NUMBER.test(v))) return "number";
+  if (filled.every(readsBackAsNumber)) return "number";
   if (filled.every((v) => BOOLEAN.test(v))) return "boolean";
   if (filled.every((v) => v.startsWith("[") && parseList(v) !== undefined)) return "list";
   return "text";

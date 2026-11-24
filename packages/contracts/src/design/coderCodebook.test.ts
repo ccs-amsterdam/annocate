@@ -39,7 +39,7 @@ describe("the coder codebook", () => {
       },
     ] as TopLevelItem[];
     expect(toCoderItems(items)).toEqual([
-      { type: "experiment", name: "condition", variable: { type: "random", options: [{ value: "a", label: "A" }] } },
+      { type: "experiment", name: "condition", variable: { type: "random", options: [{ value: "a" }] } },
       {
         type: "branch",
         condition: { script: "true" },

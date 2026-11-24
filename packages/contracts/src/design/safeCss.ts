@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 // The inline CSS a design may use (a layout's `style`, `::: style` blocks):
 // an allow-list of properties that change how text and boxes look, without
 // taking content out of the unit area (no position, z-index, transforms) or
@@ -66,6 +68,11 @@ export function cssProblem(property: string, value: string): string | null {
   if (UNSAFE_VALUE.test(value)) return `${property}: ${value} isn't allowed (no url(), image-set() or markup)`;
   return null;
 }
+
+/** An inline style a design may set (a layout's `style`, a question's `questionStyle`): only what `styleProblems` lets through. */
+export const SafeStyleSchema = z.record(z.string(), z.string()).superRefine((style, ctx) => {
+  for (const message of styleProblems(style)) ctx.addIssue({ code: "custom", message });
+});
 
 /** The problems of a style object (camelCase or kebab-case keys, as React styles). */
 export function styleProblems(style: Record<string, string>): string[] {

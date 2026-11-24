@@ -10,6 +10,7 @@ import {
   SwipeOptionsSchema,
   nominalValueErrors,
 } from "./options.js";
+import { SafeStyleSchema } from "./safeCss.js";
 
 // Shared question presentation fields.
 export const VariableBaseSchema = z.object({
@@ -18,7 +19,9 @@ export const VariableBaseSchema = z.object({
     .describe(
       "The question shown to the coder: a markdown template with $var references and {{ }} (in a loop also $unit and [[snippets]]).",
     ),
-  questionStyle: z.record(z.string(), z.string()).optional(),
+  questionStyle: SafeStyleSchema.optional().describe(
+    "Inline CSS for the question text (the properties safeCss.ts allows)",
+  ),
   focus: z
     .array(z.string().min(1))
     .optional()

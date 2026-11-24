@@ -13,7 +13,7 @@ import {
 
 describe("unit fields", () => {
   it("infers a CSV column's type from its non-empty values", () => {
-    expect(inferFieldType(["42", " -1.5", "", "1e3"])).toBe("number");
+    expect(inferFieldType(["42", " -1.5", "", "0.5"])).toBe("number");
     expect(inferFieldType(["true", "FALSE", ""])).toBe("boolean");
     expect(inferFieldType(["42", "abc"])).toBe("text");
     expect(inferFieldType(["", ""])).toBe("text");

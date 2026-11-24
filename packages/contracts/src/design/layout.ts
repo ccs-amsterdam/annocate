@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { HighlightSchema } from "./highlight.js";
-import { styleProblems } from "./safeCss.js";
+import { SafeStyleSchema } from "./safeCss.js";
 import { SafeNameSchema } from "../common.js";
 
 /** The most snippets a layout has, and the longest a snippet is (snippets.ts: what they add up to in a template is bounded too). */
@@ -40,12 +40,8 @@ export const UnitLayoutSchema = z.object({
     .describe(
       'Words to mark in the unit, each query with a colour: climate energy (or), AND, "a phrase", "near words"~5, climat*',
     ),
-  style: z
-    .record(z.string(), z.string())
-    .superRefine((style, ctx) => {
-      for (const message of styleProblems(style)) ctx.addIssue({ code: "custom", message });
-    })
-    .optional()
-    .describe("Optional inline CSS for the layout's root container (the properties safeCss.ts allows)"),
+  style: SafeStyleSchema.optional().describe(
+    "Optional inline CSS for the layout's root container (the properties safeCss.ts allows)",
+  ),
 });
 export type UnitLayout = z.infer<typeof UnitLayoutSchema>;

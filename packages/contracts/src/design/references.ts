@@ -739,7 +739,7 @@ export interface VarScopeEntry {
   answered: boolean;
   value?: OptionValue | null;
   label?: string | null;
-  values?: OptionValue[];
+  values?: (OptionValue | null)[];
   labels?: string[];
   texts?: string[];
   /** The special answer given (`dont_know`, `not_applicable`), else null; questions with special answers only. */
@@ -837,14 +837,13 @@ function varEntry(variable: AnyVariableType, answer: VariableValue | undefined):
       return { answered, values: relations.map((r) => r.value), labels: relations.map((r) => labelOf(r.value)) };
     }
     case "scale": {
-      const values: OptionValue[] = [];
       const entries = (variable.type === "scale" ? variable.items : []).map((item): [string, ItemScopeEntry] => {
         const answer = v?.values?.find((a) => a.item === item.name);
         const value = typeof answer?.value === "number" ? answer.value : null;
-        if (value !== null) values.push(value);
         return [item.name, withSpecial({ value, label: answer ? answerLabel(answer) : null }, answer ? [answer] : [])];
       });
-      return { answered, values, items: Object.fromEntries(entries) };
+      // One value per item, in the items' order: null for an item without one
+      return { answered, values: entries.map(([, item]) => item.value), items: Object.fromEntries(entries) };
     }
     case "multiple": {
       const answers = (v?.values ?? []).filter((a) => a.item === undefined);

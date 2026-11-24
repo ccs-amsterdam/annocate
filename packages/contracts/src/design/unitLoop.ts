@@ -90,8 +90,8 @@ export const GoldCheckSchema = z.object({
 });
 export type GoldCheck = z.infer<typeof GoldCheckSchema>;
 
-/** Answer types a gold or practice question can have: compared by value. */
-export const CHECKABLE_TYPES = ["nominal", "ordinal", "annotinder", "numeric", "confirm"] as const;
+/** Answer types a gold or practice question can have: compared by value (a confirmation has none). */
+export const CHECKABLE_TYPES = ["nominal", "ordinal", "annotinder", "numeric"] as const;
 
 /**
  * Dividing a loop's units among a crowd's coders (`divide`): the loop's

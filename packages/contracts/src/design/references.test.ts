@@ -219,11 +219,15 @@ describe("referenceOptions", () => {
 });
 
 describe("buildScope", () => {
-  it("has every question, null or [] when unanswered", () => {
+  it("has every question, null or [] when unanswered (a scale: null per item)", () => {
     const scope = buildScope(questions, {});
     expect(scope.$var.role).toEqual({ answered: false, value: null, label: null });
     expect(scope.$var.topics).toEqual({ answered: false, values: [], labels: [] });
-    expect(scope.$var.interest).toEqual({ answered: false, values: [], items: { tech: { value: null, label: null } } });
+    expect(scope.$var.interest).toEqual({
+      answered: false,
+      values: [null],
+      items: { tech: { value: null, label: null } },
+    });
     expect(scope.$var.ok).toEqual({ answered: false });
     expect(scope.$var.ents).toEqual({ answered: false, values: [], labels: [], texts: [] });
     expect(scope.$unit).toEqual({});

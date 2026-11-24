@@ -24,6 +24,9 @@ function loopReferences(loop: UnitLoopItem, spanFields?: (field: string) => void
   const addScript = (source: unknown) =>
     typeof source === "string" && refs.push(...extractReferences(source).references);
 
+  // The feedback on a wrong practice answer
+  addTemplate(loop.units?.practiceCheck?.message);
+
   forEachItem(loop.children, (item) => {
     if (item.type === "branch") {
       addScript(item.condition?.script);
@@ -69,8 +72,8 @@ export function shownUnitFields(items: readonly unknown[]): string[] {
 
 /**
  * Per unit loop (by key), the questions its units depend on: every `$var`
- * the loop refers to that isn't one of its own questions (so a coder-level
- * question). A coder's answers to them are frozen once they coded a unit in
+ * the loop or its condition refers to that isn't one of its own questions
+ * (so a coder-level question). A coder's answers to them are frozen once they coded a unit in
  * the loop (docs/architecture.md §7, "Frozen answers"): changing them would change
  * what those units were coded with.
  */
@@ -83,9 +86,9 @@ export function loopDependencies(items: readonly unknown[]): Map<string, string[
       if ("name" in item && typeof item.name === "string") own.add(item.name);
       return "skip";
     });
-    const names = new Set(
-      loopReferences(loop).flatMap((r) => (r.ns === "var" && !own.has(r.path[0]) ? [r.path[0]] : [])),
-    );
+    // Also what decides whether the coder gets the loop at all: its own condition
+    const references = [...extractReferences(loop.condition?.script ?? "").references, ...loopReferences(loop)];
+    const names = new Set(references.flatMap((r) => (r.ns === "var" && !own.has(r.path[0]) ? [r.path[0]] : [])));
     out.set(key, [...names]);
   }
   return out;

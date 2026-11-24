@@ -24,7 +24,15 @@ export const StudyWriteSchema = z.object({
    * link, which differs per run. May contain `$var` and `$session`
    * references, like an end item's own URL. Left out: unchanged.
    */
-  redirectUrls: z.record(SafeNameSchema, z.string().max(2000)).optional(),
+  redirectUrls: z
+    .record(
+      SafeNameSchema,
+      z
+        .string()
+        .max(2000)
+        .regex(/^https?:\/\//, "A redirect URL starts with https:// (or http://)"),
+    )
+    .optional(),
 });
 export type StudyWrite = z.infer<typeof StudyWriteSchema>;
 

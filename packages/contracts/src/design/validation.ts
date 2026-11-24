@@ -28,6 +28,7 @@ import {
 import {
   METHOD_TEXT,
   describeQuestion,
+  orList,
   questionValues,
   specialKinds,
   extractReferences,
@@ -39,6 +40,7 @@ import {
   type ReferenceShape,
 } from "./references.js";
 import { nameError, own } from "../common.js";
+import { matchesUrlPattern } from "./urlPattern.js";
 
 export interface DesignIssue {
   path: (string | number)[];
@@ -107,7 +109,7 @@ function schemaIssues(items: unknown[]): DesignIssue[] {
   for (let i = 0; i < items.length; i++) {
     const result = TopLevelItemSchema.safeParse(items[i]);
     if (!result.success) {
-      for (const err of flattenUnions(result.error.issues))
+      for (const err of flattenUnions(result.error.issues, items[i]))
         issues.push({ path: [i, ...err.path], message: err.message });
     }
   }
@@ -118,29 +120,60 @@ interface RawIssue {
   code?: string;
   path: PropertyKey[];
   message: string;
+  /** Of a union: each member's issues. */
   errors?: RawIssue[][];
+  /** Of a value that had to be one of some: those. */
+  values?: unknown[];
 }
+
+/** The keys that say which member of a union a value is. */
+const KIND_KEYS = ["type", "mode"];
 
 /**
  * Item types are a union, so zod reports a bad item as "Invalid input" with
  * the issues of every member. This keeps the member whose `type` matched
  * (the one with the fewest issues if several did), recursively, so the
- * message is about the actual problem.
+ * message is about the actual problem. If no member's did, the problem is
+ * the type: the message names the types there are. `root` is the value the
+ * issues' paths are in.
  */
 function flattenUnions(
   issues: readonly RawIssue[],
+  root: unknown,
   prefix: (string | number)[] = [],
 ): { path: (string | number)[]; message: string }[] {
   return issues.flatMap((issue) => {
     const path = [...prefix, ...issue.path.filter((p): p is string | number => typeof p !== "symbol")];
     if (issue.code !== "invalid_union" || !issue.errors?.length) return [{ path, message: issue.message }];
-    const matching = issue.errors.filter(
-      (branch) => !branch.some((e) => e.path.length === 1 && (e.path[0] === "type" || e.path[0] === "mode")),
-    );
-    if (matching.length === 0) return [{ path, message: issue.message }];
+    const kindIssue = (branch: RawIssue[]) =>
+      branch.find((e) => e.path.length === 1 && KIND_KEYS.includes(String(e.path[0])));
+    const matching = issue.errors.filter((branch) => !kindIssue(branch));
+    if (matching.length === 0) return [unknownKind(issue.errors.map(kindIssue), valueAt(root, path), path)];
     const best = matching.reduce((a, b) => (b.length < a.length ? b : a));
-    return flattenUnions(best, path);
+    return flattenUnions(best, root, path);
   });
+}
+
+/** The issue for a value that is none of a union's kinds: `Unknown type 'x': use a, b or c`. */
+function unknownKind(
+  kindIssues: (RawIssue | undefined)[],
+  value: unknown,
+  path: (string | number)[],
+): { path: (string | number)[]; message: string } {
+  const key = String(kindIssues[0]?.path[0]);
+  const kinds = [...new Set(kindIssues.flatMap((e) => e?.values ?? []))].map(String);
+  const given = (value as Record<string, unknown> | null)?.[key];
+  const what = given === undefined ? `No ${key}` : `Unknown ${key} '${String(given)}'`;
+  return { path: [...path, key], message: `${what}: use ${orList(kinds)}` };
+}
+
+/** The value at a path in a value (undefined if the path leads nowhere). */
+function valueAt(root: unknown, path: readonly (string | number)[]): unknown {
+  return path.reduce<unknown>(
+    (value, key) =>
+      value !== null && typeof value === "object" ? own(value as Record<string, unknown>, String(key)) : undefined,
+    root,
+  );
 }
 /** One end of a relation rule, as validation reads it (unparsed). */
 type RuleEnd = { variable?: string; values?: string[] };
@@ -418,7 +451,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
         if (!(CHECKABLE_TYPES as readonly string[]).includes(type ?? "")) {
           issue(
             at,
-            `'${name}' can't be checked against a right answer: ${describeQuestion(questions.get(name)!)} (use nominal, ordinal, swipe, numeric or confirm)`,
+            `'${name}' can't be checked against a right answer: ${describeQuestion(questions.get(name)!)} (use nominal, ordinal, swipe or numeric)`,
           );
         }
       });
@@ -482,12 +515,25 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     const loop = item as { units?: Partial<LoopUnits> | null; children?: unknown };
     const loopQuestions = questionNames(loop.children);
     // The right answers and feedback must never reach coders (they'd be sent with every unit): no text may use them
-    const answers = new Set(JSON.stringify(loop.children ?? null).match(/\$unit\.(answer|feedback)_\w+/g) ?? []);
+    const practiceMessage = loop.units?.practiceCheck?.message;
+    const texts = JSON.stringify([loop.children ?? null, practiceMessage ?? null]);
+    const answers = new Set(texts.match(/\$unit\.(answer|feedback)_\w+/g) ?? []);
     for (const ref of answers)
       issue(
         itemPath,
         `The answer column ${ref.slice("$unit.".length)} is shown to coders (in the layout, a question or a condition): it must stay hidden`,
       );
+    // Shown after a wrong answer to any of the loop's questions
+    checkTemplate(
+      practiceMessage,
+      {
+        path: [...itemPath, "units", "practiceCheck", "message"],
+        loop: loopName,
+        available: new Set([...coderAvailable, ...loopQuestions]),
+        snippets: loopSnippets(loop.children),
+      },
+      "text",
+    );
     checkUnitChecks(loop, itemPath, loopQuestions);
     checkLoopUnits(loop.units, [...itemPath, "units"], loopName, loopQuestions);
     return {
@@ -501,22 +547,34 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
 
   /** A layout item's template (with its own snippets): what it shows, for the questions after it. */
   function checkLayoutItem(item: RawItem, itemPath: Path, loop: LoopContext) {
-    const layout = item as { template?: unknown; snippets?: Record<string, string> };
+    const layout = item as { template?: unknown; snippets?: Record<string, string>; highlight?: unknown };
     if (typeof layout.template !== "string") return;
-    loop.layoutNames.set(
-      item,
-      checkTemplate(
-        layout.template,
-        {
-          path: [...itemPath, "template"],
-          loop: loop.name,
-          available: coderAvailable,
-          snippets: layout.snippets ?? {},
-          loopOrder: loop.order,
-        },
-        "layout",
-      ),
+    const names = checkTemplate(
+      layout.template,
+      {
+        path: [...itemPath, "template"],
+        loop: loop.name,
+        available: coderAvailable,
+        snippets: layout.snippets ?? {},
+        loopOrder: loop.order,
+      },
+      "layout",
     );
+    loop.layoutNames.set(item, names);
+    checkHighlightFields(layout.highlight, [...itemPath, "highlight"], names.shown);
+  }
+
+  /** A layout's highlights search the fields they name: unit fields and named text blocks the layout shows. */
+  function checkHighlightFields(highlights: unknown, path: Path, shown: ReadonlySet<string>) {
+    (Array.isArray(highlights) ? (highlights as ({ fields?: unknown } | null)[]) : []).forEach((highlight, h) => {
+      for (const field of Array.isArray(highlight?.fields) ? (highlight.fields as unknown[]) : []) {
+        if (typeof field !== "string" || shown.has(`unit.${field}`) || shown.has(field)) continue;
+        issue(
+          [...path, h, "fields"],
+          `Highlight field '${field}' is not shown in this layout (as $unit.${field} or a ::: text block named '${field}')`,
+        );
+      }
+    });
   }
 
   /**
@@ -586,6 +644,8 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     params.forEach((p, i) => {
       if (p?.default !== undefined && p.values && !p.values.some((v) => v.value === p.default))
         issue([...itemPath, "urlParams", i, "default"], `The default '${p.default}' is not one of the values`);
+      if (p?.default !== undefined && typeof p.pattern === "string" && !matchesUrlPattern(p.default, p.pattern))
+        issue([...itemPath, "urlParams", i, "default"], `The default '${p.default}' doesn't match the pattern`);
     });
     // Unit settings without a unit loop: kept, but not used (yet)
     const hasLoop = items.some((i) => (i as { type?: unknown } | null)?.type === "unit_loop");
