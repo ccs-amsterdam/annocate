@@ -1,4 +1,3 @@
-import { CloudOff } from "lucide-react";
 import type { CoderApi } from "../../api/httpCoderApi";
 import type { StudyManager } from "../../studyManager/StudyManager";
 import type { StudyManagerSnapshot } from "../../studyManager/types";
@@ -6,6 +5,7 @@ import { CodingNav } from "../CodingNav";
 import { CodingProgress } from "../codingNav/CodingProgress";
 import { QuitMenu } from "../QuitMenu";
 import { CoderSettingsMenu } from "./CoderSettingsMenu";
+import { UnsavedNotice } from "./ConnectionNotices";
 import { KeyboardMenu } from "./KeyboardMenu";
 import { TransferMenu } from "./TransferMenu";
 
@@ -44,16 +44,7 @@ export function CodingTopBar({
         onForward={onForward}
       />
       <div className="flex shrink-0 items-center gap-1">
-        {snapshot.retrying && (
-          <span
-            className="flex items-center gap-1 text-xs"
-            role="status"
-            title="Your answers are kept and saved as soon as the connection is back."
-          >
-            <CloudOff className="h-4 w-4" />
-            <span className="hidden sm:inline">Not saved yet: no connection</span>
-          </span>
-        )}
+        {snapshot.retrying && <UnsavedNotice unsavedUnits={snapshot.unsavedUnits} />}
         {!preview && (
           <TransferMenu
             coderApi={coderApi}
@@ -68,6 +59,7 @@ export function CodingTopBar({
           onQuit={(requestDeletion) => manager.quit(requestDeletion)}
           canTransfer={!preview && !!coderApi.createTransfer}
           login={snapshot.login}
+          waitingForConnection={snapshot.retrying}
         />
       </div>
     </header>

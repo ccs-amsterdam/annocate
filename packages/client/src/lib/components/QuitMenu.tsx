@@ -29,11 +29,14 @@ export function QuitMenu({
   onQuit,
   canTransfer,
   login = null,
+  waitingForConnection = false,
 }: {
   onQuit: (requestDeletion: boolean) => Promise<void>;
   canTransfer: boolean;
   /** The email the coder is logged in with: they continue anywhere by logging in. */
   login?: string | null;
+  /** Saving waits for the connection: quitting waits with it, and the dialog says so. */
+  waitingForConnection?: boolean;
 }) {
   const [choice, setChoice] = useState<Choice | null>(null);
   const [open, setOpen] = useState(false);
@@ -73,6 +76,7 @@ export function QuitMenu({
         choice={choice}
         canTransfer={canTransfer}
         login={login}
+        waitingForConnection={waitingForConnection}
         onClose={() => setChoice(null)}
         onQuit={onQuit}
       />
@@ -98,12 +102,14 @@ export function QuitDialog({
   choice,
   canTransfer = false,
   login = null,
+  waitingForConnection = false,
   onClose,
   onQuit,
 }: {
   choice: Choice | null;
   canTransfer?: boolean;
   login?: string | null;
+  waitingForConnection?: boolean;
   onClose: () => void;
   onQuit: (requestDeletion: boolean) => Promise<void>;
 }) {
@@ -127,9 +133,18 @@ export function QuitDialog({
     <Dialog open={choice !== null} onOpenChange={(open) => !open && close()}>
       <DialogContent className="max-w-md">
         {choice === "pause" && <PauseBody login={login} canTransfer={canTransfer} onClose={close} />}
-        {choice === "quit" && <QuitBody busy={busy} onCancel={close} onQuit={() => void run(false)} />}
+        {choice === "quit" && (
+          <QuitBody busy={busy} waiting={waitingForConnection} onCancel={close} onQuit={() => void run(false)} />
+        )}
         {choice === "delete" && (
-          <DeleteBody typed={typed} onType={setTyped} busy={busy} onCancel={close} onQuit={() => void run(true)} />
+          <DeleteBody
+            typed={typed}
+            onType={setTyped}
+            busy={busy}
+            waiting={waitingForConnection}
+            onCancel={close}
+            onQuit={() => void run(true)}
+          />
         )}
       </DialogContent>
     </Dialog>
@@ -182,12 +197,23 @@ function PauseBody({
 interface ConfirmProps {
   /** Quitting is being sent. */
   busy: boolean;
+  /** Saving waits for the connection, and quitting with it. */
+  waiting: boolean;
   onCancel: () => void;
   onQuit: () => void;
 }
 
+/** Why the Quit button does nothing yet: everything is saved before the session ends. */
+function ConnectionWait() {
+  return (
+    <p role="status" className="text-sm text-muted-foreground">
+      Waiting for the connection… You quit as soon as it is back.
+    </p>
+  );
+}
+
 /** Quit for good: the answers so far are kept. */
-function QuitBody({ busy, onCancel, onQuit }: ConfirmProps) {
+function QuitBody({ busy, waiting, onCancel, onQuit }: ConfirmProps) {
   return (
     <>
       <DialogHeader>
@@ -198,6 +224,7 @@ function QuitBody({ busy, onCancel, onQuit }: ConfirmProps) {
         The answers you gave so far are kept, and the researchers can use them. Answers to the item you have open now
         and didn&apos;t finish are not saved.
       </p>
+      {waiting && <ConnectionWait />}
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>
           Cancel
@@ -215,6 +242,7 @@ function DeleteBody({
   typed,
   onType,
   busy,
+  waiting,
   onCancel,
   onQuit,
 }: ConfirmProps & { typed: string; onType: (typed: string) => void }) {
@@ -238,6 +266,7 @@ function DeleteBody({
           Type &ldquo;{CONFIRM_WORD}&rdquo; to confirm
           <Input value={typed} onChange={(e) => onType(e.target.value)} autoComplete="off" />
         </label>
+        {waiting && <ConnectionWait />}
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>

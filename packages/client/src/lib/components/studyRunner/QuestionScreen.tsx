@@ -8,6 +8,7 @@ import { KeyChoiceFlash } from "../KeyChoiceFlash";
 import { AnsweredQuestion } from "./AnsweredQuestion";
 import { CoderQuestionCard } from "./CoderQuestionCard";
 import { CodingTopBar } from "./CodingTopBar";
+import { WaitingForConnection } from "./ConnectionNotices";
 import type { NavDirection } from "./hooks";
 import { NewUnitsBanner } from "./NewUnitsBanner";
 import { PracticeCorrectFlash } from "./PracticeCorrectFlash";
@@ -80,6 +81,7 @@ export function QuestionScreen({
             onBack={moves.back}
             onForward={moves.forward}
           />
+          {snapshot.retrying && <WaitingForConnection />}
           {snapshot.newUnits && (
             <NewUnitsBanner message={snapshot.newUnits} onDismiss={() => manager.dismissNewUnits()} />
           )}
