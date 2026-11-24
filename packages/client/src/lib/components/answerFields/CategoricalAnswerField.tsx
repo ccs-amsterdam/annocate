@@ -56,6 +56,11 @@ export function CategoricalAnswerField({ variable, onAnswer, initialValue }: Ans
 
   const pickSpecial = (s: SpecialAnswer) => {
     setSelected([]);
+    // Several answers: ticked (or unticked) until Continue, as an option
+    if (multiple) {
+      setSpecial((current) => (current === s.kind ? undefined : s.kind));
+      return;
+    }
     setSpecial(s.kind);
     onAnswer(buildValues([specialValue(s)]));
   };
