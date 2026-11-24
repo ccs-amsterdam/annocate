@@ -6,6 +6,7 @@ import { checkStudyLimit } from "./study.js";
 import { createStudyFromExample, listExamples } from "../examples.js";
 import { toStudyResponse } from "../shared/studies.js";
 import { createStudyFromRecipe } from "../shared/recipes.js";
+import { parseJson } from "../shared/request.js";
 
 // New studies made for the researcher, owned by them like any study they
 // create: from an example, and from a recipe, as importing a design file writes one
@@ -25,20 +26,18 @@ export function examples(server: Server): Hono<Env> {
   }
 
   app.post("/study/from-example", requireResearcher(server, { role: "researcher" }), async (c) => {
-    const parsed = StudyFromExampleSchema.safeParse(await c.req.json());
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
-    const study = await createStudyFromExample(db, parsed.data.example, {
-      name: parsed.data.name,
+    const body = await parseJson(c, StudyFromExampleSchema);
+    const study = await createStudyFromExample(db, body.example, {
+      name: body.name,
       ...(await owner(c)),
     });
     return c.json(toStudyResponse(study), 201);
   });
 
   app.post("/study/from-recipe", requireResearcher(server, { role: "researcher" }), async (c) => {
-    const parsed = RecipeSchema.safeParse(await c.req.json());
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const body = await parseJson(c, RecipeSchema);
     const options = await owner(c);
-    const { study } = await db.transaction((tx) => createStudyFromRecipe(tx, parsed.data, options));
+    const { study } = await db.transaction((tx) => createStudyFromRecipe(tx, body, options));
     return c.json(toStudyResponse(study), 201);
   });
 

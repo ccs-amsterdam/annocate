@@ -12,6 +12,7 @@ import { unitDraft, unitFieldNames, units, unitValues } from "../db/schema/index
 import { requireStudyUser } from "./auth.js";
 import { designVersionItems } from "../shared/designVersions.js";
 import { dropDraftFields, getUnitFields, latestDesignVersion, setUnitFields } from "../shared/units.js";
+import { parseJson } from "../shared/request.js";
 
 // The design's unit fields (docs/architecture.md §8.4).
 // Static path: mounted before units.$id.ts so `/study/:studyId/units/fields` is not read as a unit id.
@@ -27,10 +28,9 @@ export function unitsFields(server: Server): Hono<Env> {
   // leave the draft units (deployed versions keep them); a retyped field's
   // values must fit its new type.
   app.put("/study/:studyId/units/fields", requireStudyUser(server, "WRITE"), async (c) => {
-    const parsed = UnitsSpecSchema.safeParse(await c.req.json());
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const body = await parseJson(c, UnitsSpecSchema);
     const studyId = c.get("studyId");
-    const { fields } = parsed.data;
+    const { fields } = body;
     const names = fields.map((f) => f.name);
     const twice = names.find((n, i) => names.indexOf(n) !== i);
     if (twice !== undefined) return c.json({ error: `Field '${twice}' is given twice` }, 400);

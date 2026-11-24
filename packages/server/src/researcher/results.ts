@@ -26,6 +26,7 @@ import { ensureResultsExport, exportStamp } from "../shared/resultsExport.js";
 import { unitVersionData } from "../db/sql.js";
 import { designVersionItems } from "../shared/designVersions.js";
 import { requireStudyUser } from "./auth.js";
+import { idParam } from "../shared/request.js";
 
 // The researcher's look at the answers so far (contracts results.ts): counts
 // per question, and agreement per unit-loop question. Live answers only,
@@ -419,8 +420,7 @@ export function results(server: Server): Hono<Env> {
     cache.respond(c, db, "units", async () => ({ units: await resultUnits(db, c.get("studyId")) })),
   );
   app.get("/study/:studyId/results/units/:unitId", requireStudyUser(server, "READ"), async (c) => {
-    const unitId = Number(c.req.param("unitId"));
-    if (!Number.isInteger(unitId) || unitId <= 0) throw new HttpError(404, "Unit not found");
+    const unitId = idParam(c, "unitId");
     return cache.respond(c, db, `unit-${unitId}`, async () => {
       const found = await resultUnit(db, c.get("studyId"), unitId);
       if (!found) throw new HttpError(404, "Unit not found");

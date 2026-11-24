@@ -6,6 +6,7 @@ import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Db } from "../db/index.js";
 import { anyOf } from "../db/sql.js";
 import { annotationValues as a, deployments } from "../db/schema/index.js";
+import { parseJson } from "../shared/request.js";
 
 // Reset: retire the live values of these variables (e.g. a loop's
 // questions), so the units are coded again. Nothing is deleted.
@@ -18,10 +19,9 @@ export function annotationsReset(server: Server): Hono<Env> {
     requireStudyUser(server, "ADMIN"),
     requireSensitive(server),
     async (c) => {
-      const parsed = ResetAnnotationsSchema.safeParse(await c.req.json());
-      if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+      const body = await parseJson(c, ResetAnnotationsSchema);
       const studyId = c.get("studyId");
-      const retired = await db.transaction((tx) => retireAnnotations(tx, studyId, parsed.data));
+      const retired = await db.transaction((tx) => retireAnnotations(tx, studyId, body));
       await server.deployments.refresh(studyId);
       return c.json({ retired });
     },

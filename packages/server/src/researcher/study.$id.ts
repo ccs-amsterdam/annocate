@@ -5,6 +5,7 @@ import { studies } from "../db/schema/index.js";
 import type { Server, Env } from "../context.js";
 import { requireSensitive, requireStudyUser } from "./auth.js";
 import { toStudyResponse } from "../shared/studies.js";
+import { parseJson } from "../shared/request.js";
 
 export function study(server: Server): Hono<Env> {
   const { db } = server;
@@ -19,10 +20,9 @@ export function study(server: Server): Hono<Env> {
   });
 
   app.put("/study/:studyId", requireStudyUser(server, "ADMIN"), async (c) => {
-    const parsed = StudyWriteSchema.safeParse(await c.req.json());
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const body = await parseJson(c, StudyWriteSchema);
 
-    const { name, archived, reopenMinutes, redirectUrls } = parsed.data;
+    const { name, archived, reopenMinutes, redirectUrls } = body;
     const [row] = await db
       .update(studies)
       // Left out: kept (except archived: false)

@@ -6,6 +6,7 @@ import { identities, researcherRequests } from "../db/schema/index.js";
 import { freshUntil, requireResearcher, requireSensitive } from "./auth.js";
 import { HttpError } from "../shared/http.js";
 import { createApiKey, effectiveLimits, getSettings, listApiKeys, revokeApiKey, usage } from "../shared/accounts.js";
+import { idParam, parseJson } from "../shared/request.js";
 
 /** The authenticated user: their account (role, limits), becoming a researcher, and their API keys. */
 export function me(server: Server): Hono<Env> {
@@ -55,14 +56,13 @@ export function me(server: Server): Hono<Env> {
   app.get("/me", signedIn, async (c) => c.json(await meResponse(c)));
 
   app.post("/me/researcher-request", signedIn, async (c) => {
-    const parsed = ResearcherRequestWriteSchema.safeParse(await c.req.json().catch(() => undefined));
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const body = await parseJson(c, ResearcherRequestWriteSchema);
     if (c.get("researcher").accountRole !== "user") throw new HttpError(409, "You are a researcher already");
     if (!(await getSettings(db)).registration.requests)
       throw new HttpError(403, "This server doesn't take requests: ask its admins to invite your email address");
     await db
       .insert(researcherRequests)
-      .values({ userId: userId(c), message: parsed.data.message })
+      .values({ userId: userId(c), message: body.message })
       .onConflictDoUpdate({
         target: researcherRequests.userId,
         set: { message: sql`excluded.message`, at: sql`now()`, decidedAt: null, decidedBy: null, approved: null },
@@ -74,13 +74,12 @@ export function me(server: Server): Hono<Env> {
 
   // Sensitive: only in a web session with a recent second factor (step-up), never with an API key
   app.post("/me/keys", signedIn, requireSensitive(server), async (c) => {
-    const parsed = ApiKeyWriteSchema.safeParse(await c.req.json().catch(() => undefined));
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
-    return c.json(await createApiKey(db, userId(c), parsed.data.label), 201);
+    const body = await parseJson(c, ApiKeyWriteSchema);
+    return c.json(await createApiKey(db, userId(c), body.label), 201);
   });
 
   app.post("/me/keys/:id/revoke", signedIn, requireSensitive(server), async (c) => {
-    const key = await revokeApiKey(db, userId(c), Number(c.req.param("id")));
+    const key = await revokeApiKey(db, userId(c), idParam(c, "id"));
     if (!key) return c.json({ error: "API key not found" }, 404);
     return c.json(key);
   });

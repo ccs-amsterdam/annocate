@@ -5,6 +5,7 @@ import { designVersions } from "../db/schema/index.js";
 import type { Server, Env } from "../context.js";
 import { requireStudyUser } from "./auth.js";
 import { toDesignVersion, type DesignVersionRow } from "../shared/designVersions.js";
+import { idParam, parseJson } from "../shared/request.js";
 
 /** The 409 for a save based on an older revision (contracts `DesignConflictSchema`). */
 function conflict(row: DesignVersionRow): DesignConflict {
@@ -27,28 +28,27 @@ export function designVersion(server: Server): Hono<Env> {
     (await db.select().from(designVersions).where(versionWhere(studyId, id)))[0];
 
   app.get("/study/:studyId/design/:id", requireStudyUser(server, "READ"), async (c) => {
-    const row = await findVersion(c.get("studyId"), Number(c.req.param("id")));
+    const row = await findVersion(c.get("studyId"), idParam(c, "id"));
     if (!row) return c.json({ error: "Design version not found" }, 404);
     return c.json(toDesignVersion(row));
   });
 
   app.put("/study/:studyId/design/:id", requireStudyUser(server, "WRITE"), async (c) => {
     const studyId = c.get("studyId");
-    const id = Number(c.req.param("id"));
+    const id = idParam(c, "id");
     const existing = await findVersion(studyId, id);
     if (!existing) return c.json({ error: "Design version not found" }, 404);
     if (existing.immutable) return c.json({ error: "Design version is deployed and cannot be edited" }, 409);
 
-    const parsed = DesignWriteSchema.safeParse(await c.req.json());
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const body = await parseJson(c, DesignWriteSchema);
 
-    if (sessionItem(parsed.data.items))
+    if (sessionItem(body.items))
       return c.json({ error: "The session and public info go in `session` and `public`, not among the items" }, 400);
     // Saved by someone else since the edits started: don't overwrite their work.
-    const { revision } = parsed.data;
+    const { revision } = body;
     if (revision !== undefined && revision !== existing.revision) return c.json(conflict(existing), 409);
 
-    const { note, items, units, session, public: info } = parsed.data;
+    const { note, items, units, session, public: info } = body;
     const [row] = await db
       .update(designVersions)
       .set({
@@ -81,7 +81,7 @@ export function designVersion(server: Server): Hono<Env> {
 
   app.delete("/study/:studyId/design/:id", requireStudyUser(server, "WRITE"), async (c) => {
     const studyId = c.get("studyId");
-    const id = Number(c.req.param("id"));
+    const id = idParam(c, "id");
     const existing = await findVersion(studyId, id);
     if (!existing) return c.json({ error: "Design version not found" }, 404);
     if (existing.immutable) return c.json({ error: "Design version is deployed and cannot be deleted" }, 409);

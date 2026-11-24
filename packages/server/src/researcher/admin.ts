@@ -33,6 +33,7 @@ import { checkSensitive, requireResearcher } from "./auth.js";
 import { serverWarnings } from "../shared/warnings.js";
 import { HttpError } from "../shared/http.js";
 import { effectiveLimits, everyoneResearcher, getSettings, setServerRole, userForEmail } from "../shared/accounts.js";
+import { idParam, parseJson } from "../shared/request.js";
 
 // The server admin's API (contracts admin.ts, docs/accounts.md): account
 // role `admin`. Admins manage accounts and studies, never study data: nothing
@@ -138,15 +139,6 @@ function selectStudies(db: Db) {
     .$dynamic();
 }
 
-async function parseBody<T>(
-  c: Context,
-  schema: { safeParse(v: unknown): { success: true; data: T } | { success: false; error: unknown } },
-): Promise<T> {
-  const parsed = schema.safeParse(await c.req.json().catch(() => undefined));
-  if (!parsed.success) throw new HttpError(400, "Invalid request body");
-  return parsed.data;
-}
-
 export function admin(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
@@ -170,7 +162,7 @@ export function admin(server: Server): Hono<Env> {
   app.get("/admin/settings", async (c) => c.json(await getSettings(db)));
 
   app.put("/admin/settings", async (c) => {
-    const settings = await parseBody(c, ServerSettingsSchema);
+    const settings = await parseJson(c, ServerSettingsSchema, "message");
     await getSettings(db); // the row exists
     // Open registration is a role: researcher, for every user with an email address
     await db.delete(roles).where(everyoneResearcher);
@@ -191,18 +183,18 @@ export function admin(server: Server): Hono<Env> {
   app.get("/admin/plans", async (c) => c.json(await db.select().from(plans).orderBy(asc(plans.name))));
 
   app.post("/admin/plans", async (c) => {
-    const plan = await parseBody(c, PlanWriteSchema);
+    const plan = await parseJson(c, PlanWriteSchema, "message");
     const [row] = await db.insert(plans).values({ name: plan.name, limits: plan.limits }).returning();
     await log(c, "create plan", plan.name, plan.limits);
     return c.json(row, 201);
   });
 
   app.put("/admin/plans/:id", async (c) => {
-    const plan = await parseBody(c, PlanWriteSchema);
+    const plan = await parseJson(c, PlanWriteSchema, "message");
     const [row] = await db
       .update(plans)
       .set({ name: plan.name, limits: plan.limits })
-      .where(eq(plans.id, Number(c.req.param("id"))))
+      .where(eq(plans.id, idParam(c, "id")))
       .returning();
     if (!row) throw new HttpError(404, "Plan not found");
     await log(c, "update plan", plan.name, plan.limits);
@@ -210,7 +202,7 @@ export function admin(server: Server): Hono<Env> {
   });
 
   app.delete("/admin/plans/:id", async (c) => {
-    const id = Number(c.req.param("id"));
+    const id = idParam(c, "id");
     if ((await getSettings(db)).defaultPlanId === id)
       throw new HttpError(409, "This is the default plan: choose another default first");
     const [row] = await db.delete(plans).where(eq(plans.id, id)).returning({ name: plans.name });
@@ -236,7 +228,7 @@ export function admin(server: Server): Hono<Env> {
   app.put("/admin/domains/:domain", async (c) => {
     const domain = DomainSchema.safeParse(c.req.param("domain"));
     if (!domain.success) throw new HttpError(400, "A domain like uni.nl or *.uni.nl");
-    const rule = await parseBody(c, DomainRuleWriteSchema);
+    const rule = await parseJson(c, DomainRuleWriteSchema, "message");
     await db.transaction(async (tx) => {
       await tx.delete(roles).where(and(domainRoles, eq(roles.emailDomain, domain.data)));
       if (rule.researcher)
@@ -283,7 +275,7 @@ export function admin(server: Server): Hono<Env> {
   };
 
   app.post("/admin/users", async (c) => {
-    const user = await parseBody(c, AdminUserCreateSchema);
+    const user = await parseJson(c, AdminUserCreateSchema, "message");
     if (user.role === "admin") checkSensitive(server, c.get("researcher"));
     const email = user.email.trim().toLowerCase();
     // A user with this email, else an invitation: a shadow user, claimed at their first login
@@ -299,7 +291,7 @@ export function admin(server: Server): Hono<Env> {
 
   // Withdraws an invitation (a shadow user, with its roles)
   app.delete("/admin/users/:id", async (c) => {
-    const id = Number(c.req.param("id"));
+    const id = idParam(c, "id");
     const user = await adminUser(id);
     if (user.registered) throw new HttpError(409, "This user has logged in: block them instead");
     await db.delete(users).where(and(eq(users.id, id), isNull(users.registeredAt)));
@@ -308,8 +300,8 @@ export function admin(server: Server): Hono<Env> {
   });
 
   app.put("/admin/users/:id", async (c) => {
-    const id = Number(c.req.param("id"));
-    const update = await parseBody(c, AdminUserUpdateSchema);
+    const id = idParam(c, "id");
+    const update = await parseJson(c, AdminUserUpdateSchema, "message");
     const before = await adminUser(id);
     if (id === c.get("researcher").userId && (update.blocked || (update.role && update.role !== "admin"))) {
       throw new HttpError(409, "You can't block yourself or take away your own admin role");
@@ -372,8 +364,8 @@ export function admin(server: Server): Hono<Env> {
   );
 
   app.post("/admin/requests/:userId", async (c) => {
-    const userId = Number(c.req.param("userId"));
-    const { approve } = await parseBody(c, ResearcherRequestDecisionSchema);
+    const userId = idParam(c, "userId");
+    const { approve } = await parseJson(c, ResearcherRequestDecisionSchema, "message");
     const [row] = await db
       .update(researcherRequests)
       .set({ decidedAt: sql`now()`, decidedBy: c.get("researcher").email, approved: approve })
@@ -399,8 +391,8 @@ export function admin(server: Server): Hono<Env> {
   app.get("/admin/studies", async (c) => c.json(await selectStudies(db).orderBy(desc(studies.id))));
 
   app.put("/admin/studies/:id", async (c) => {
-    const id = Number(c.req.param("id"));
-    const update = await parseBody(c, AdminStudyUpdateSchema);
+    const id = idParam(c, "id");
+    const update = await parseJson(c, AdminStudyUpdateSchema, "message");
     const [study] = await db.select({ name: studies.name }).from(studies).where(eq(studies.id, id));
     if (!study) throw new HttpError(404, "Study not found");
     if (update.owner !== undefined) {

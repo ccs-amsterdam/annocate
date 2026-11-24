@@ -7,6 +7,7 @@ import type { Server, Env } from "../context.js";
 import { designVersionItems } from "../shared/designVersions.js";
 import { requireStudyUser } from "./auth.js";
 import { deleteSetGroup, listSetGroups, putSetGroup } from "../shared/sets.js";
+import { parseJson } from "../shared/request.js";
 
 /** Whether the deployed or latest design selects units by a column (`designSetColumns`). */
 async function groupInUse(db: Db, studyId: number, group: string): Promise<boolean> {
@@ -39,11 +40,10 @@ export function sets(server: Server): Hono<Env> {
   );
 
   app.put("/study/:studyId/sets/:group", requireStudyUser(server, "WRITE"), async (c) => {
-    const parsed = SetGroupWriteSchema.safeParse(await c.req.json());
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const body = await parseJson(c, SetGroupWriteSchema);
     const studyId = c.get("studyId");
     const group = c.req.param("group")!;
-    await db.transaction((tx) => putSetGroup(tx, studyId, group, parsed.data.sets));
+    await db.transaction((tx) => putSetGroup(tx, studyId, group, body.sets));
     const stored = (await listSetGroups(db, studyId)).find((g) => g.name === group) ?? { name: group, sets: [] };
     return c.json(stored);
   });

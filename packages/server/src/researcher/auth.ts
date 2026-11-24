@@ -11,6 +11,7 @@ import { ensureUser, userForKey } from "../shared/accounts.js";
 import { userForSession } from "../shared/sessions.js";
 import { CLIENT_HEADER } from "../runtime/session.js";
 import { isFresh, SESSION_COOKIE } from "./login.js";
+import { idParam } from "../shared/request.js";
 
 // Researcher authentication (docs/api/researcher.md).
 //
@@ -40,9 +41,6 @@ const SUSPENDED_ALLOWED = [
   /^\/api\/study\/\d+\/coders\/delete$/,
   /^\/api\/study\/\d+\/coders\/\d+\/deletion-request\/postpone$/,
 ];
-
-/** Ids are Postgres INTEGERs. */
-const MAX_ID = 2 ** 31 - 1;
 
 /** Who a researcher request is from. */
 export interface Researcher {
@@ -184,10 +182,7 @@ export function requireStudyUser(server: Server, minRole: Role) {
     const researcher = await authenticate(c, server);
     if (!researcher) return c.json({ error: "Unauthorized" }, 401);
 
-    const raw = c.req.param("studyId");
-    const studyId = raw ? Number(raw) : NaN;
-    if (!Number.isInteger(studyId) || studyId <= 0 || studyId > MAX_ID)
-      return c.json({ error: "Invalid study id" }, 400);
+    const studyId = idParam(c, "studyId");
     const [study] = await server.db
       .select({ suspendedAt: studies.suspendedAt })
       .from(studies)

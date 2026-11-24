@@ -6,6 +6,7 @@ import { deleteCoders, listCoderDeletions, postponeDeletion } from "../shared/co
 import { DeleteCodersSchema } from "@annotinder/contracts";
 import { sql } from "drizzle-orm";
 import { rows } from "../db/index.js";
+import { idParam, parseJson } from "../shared/request.js";
 
 /** Coder progress: who has joined and how far along they are. */
 export function coders(server: Server): Hono<Env> {
@@ -44,10 +45,9 @@ export function coders(server: Server): Hono<Env> {
   });
 
   app.post("/study/:studyId/coders/delete", requireStudyUser(server, "ADMIN"), requireSensitive(server), async (c) => {
-    const parsed = DeleteCodersSchema.safeParse(await c.req.json());
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const body = await parseJson(c, DeleteCodersSchema);
     const studyId = c.get("studyId");
-    const result = await deleteCoders(db, studyId, parsed.data, c.get("researcher").email);
+    const result = await deleteCoders(db, studyId, body, c.get("researcher").email);
     return c.json(result);
   });
 
@@ -56,7 +56,7 @@ export function coders(server: Server): Hono<Env> {
   );
 
   app.post("/study/:studyId/coders/:id/deletion-request/postpone", requireStudyUser(server, "ADMIN"), async (c) => {
-    if (!(await postponeDeletion(db, c.get("studyId"), Number(c.req.param("id")))))
+    if (!(await postponeDeletion(db, c.get("studyId"), idParam(c, "id"))))
       return c.json({ error: "No deletion request for this coder" }, 404);
     return c.body(null, 204);
   });

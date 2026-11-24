@@ -7,6 +7,7 @@ import type { Db } from "../db/index.js";
 import { roles, users } from "../db/schema/index.js";
 import { roleApplies } from "../db/sql.js";
 import { userForEmail } from "../shared/accounts.js";
+import { parseJson } from "../shared/request.js";
 
 // A study's users: roles in the study given to users (docs/accounts.md). An
 // email address without a user becomes an invitation (a shadow user), which
@@ -57,13 +58,12 @@ export function studyUsers(server: Server): Hono<Env> {
   });
 
   app.put("/study/:studyId/users", requireStudyUser(server, "ADMIN"), async (c) => {
-    const parsed = StudyUsersWriteSchema.safeParse(await c.req.json());
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const body = await parseJson(c, StudyUsersWriteSchema);
     // The list replaces the study's users: it must keep someone who can manage them.
-    if (!parsed.data.users.some((u) => u.role === "ADMIN"))
+    if (!body.users.some((u) => u.role === "ADMIN"))
       return c.json({ error: "A study needs at least one ADMIN" }, 400);
 
-    const users = parsed.data.users.map((u) => ({ ...u, email: u.email.trim().toLowerCase() }));
+    const users = body.users.map((u) => ({ ...u, email: u.email.trim().toLowerCase() }));
     const emails = users.map((u) => u.email);
     const twice = emails.find((e, i) => emails.indexOf(e) !== i);
     if (twice) return c.json({ error: `${twice} is in the list twice` }, 400);

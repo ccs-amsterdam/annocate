@@ -18,7 +18,7 @@ import { coderAccount } from "./coderAccount.js";
 import { Deployments } from "./runtime/registry.js";
 import { DEFAULT_RUNTIME_OPTIONS, type RuntimeOptions } from "./runtime/runtime.js";
 import type { Store } from "./runtime/store.js";
-import { HttpError } from "./shared/http.js";
+import { HttpError, logLines, postgresCode } from "./shared/http.js";
 import { annotationsReset } from "./researcher/annotations.reset.js";
 import { annotations } from "./researcher/annotations.js";
 import { results } from "./researcher/results.js";
@@ -128,13 +128,13 @@ export function createApp(db: Db, options: AppOptions = {}) {
   app.use("*", compress({ encoding: "gzip" }));
   const onError = (err: Error, c: Context) => {
     if (err instanceof HttpError)
-      return c.json({ error: err.message, ...(err.code ? { code: err.code } : {}) }, err.status);
-    // Postgres: a malformed or out-of-range value in a parameter (e.g. an id in the path).
-    const pgCode = (err as { code?: unknown }).code;
+      return c.json({ error: err.issues ?? err.message, ...(err.code ? { code: err.code } : {}) }, err.status);
+    const pgCode = postgresCode(err);
+    // Postgres: a malformed or out-of-range value in a parameter (e.g. a number in the query).
     if (pgCode === "22P02" || pgCode === "22003") return c.json({ error: "Invalid parameter" }, 400);
     // A unique constraint, e.g. two units with the same external id in one upload.
     if (pgCode === "23505") return c.json({ error: "Already exists" }, 409);
-    console.error(err);
+    console.error(logLines(err).join("\n"));
     return c.json({ error: "Internal error" }, 500);
   };
   app.onError(onError);

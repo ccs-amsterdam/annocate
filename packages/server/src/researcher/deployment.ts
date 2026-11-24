@@ -8,6 +8,7 @@ import { requireStudyUser } from "./auth.js";
 import { deploymentVersions, getDeployment, pendingChanges, putDeployment } from "../shared/deployments.js";
 import { checkLinkCount, syncLinks } from "../shared/links.js";
 import { assignmentChecks } from "../shared/sets.js";
+import { parseJson } from "../shared/request.js";
 
 export function deployment(server: Server): Hono<Env> {
   const { db } = server;
@@ -24,14 +25,13 @@ export function deployment(server: Server): Hono<Env> {
   );
 
   app.put("/study/:studyId/deployment", requireStudyUser(server, "ADMIN"), async (c) => {
-    const parsed = DeploymentWriteSchema.safeParse(await c.req.json());
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const body = await parseJson(c, DeploymentWriteSchema);
 
     const studyId = c.get("studyId");
     const [version] = await db
       .select()
       .from(designVersions)
-      .where(and(eq(designVersions.studyId, studyId), eq(designVersions.id, parsed.data.designVersionId)));
+      .where(and(eq(designVersions.studyId, studyId), eq(designVersions.id, body.designVersionId)));
     if (!version) return c.json({ error: "Design version not found" }, 404);
     const items = designVersionItems(version);
     const fields = designVersionUnits(version).fields;
@@ -53,14 +53,14 @@ export function deployment(server: Server): Hono<Env> {
     }
     // The units it runs: the drafts (`units`, and always the first time), or the deployed ones.
     const deployed = (await db.$count(deployments, eq(deployments.studyId, studyId))) > 0;
-    const live = !parsed.data.units && deployed;
+    const live = !body.units && deployed;
     // Who gets which units: the columns with a role (docs/plans/unit-sets.md)
     const checks = await assignmentChecks(db, studyId, items, live);
     if (checks.errors.length > 0) return c.json({ error: checks.errors.join(" "), code: "assignment_invalid" }, 400);
     // Links follow the design's coder unit assignment (docs/architecture.md §7).
-    await checkLinkCount(db, studyId, items, parsed.data.confirmLinks ?? false, live);
+    await checkLinkCount(db, studyId, items, body.confirmLinks ?? false, live);
     const result = await db.transaction(async (tx) => {
-      const deployment = await putDeployment(tx, studyId, parsed.data);
+      const deployment = await putDeployment(tx, studyId, body);
       const [study] = await tx
         .select({ redirectUrls: studies.redirectUrls })
         .from(studies)

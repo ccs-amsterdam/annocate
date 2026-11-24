@@ -9,6 +9,7 @@ import { requireResearcher } from "./auth.js";
 import { toStudyResponse } from "../shared/studies.js";
 import { effectiveLimits, usage } from "../shared/accounts.js";
 import { HttpError } from "../shared/http.js";
+import { parseJson } from "../shared/request.js";
 
 // A server hosts any number of studies. A researcher (account role, see
 // docs/accounts.md) may create one within their limits: they own it (it
@@ -29,8 +30,7 @@ export function studies(server: Server): Hono<Env> {
   });
 
   app.post("/study", requireResearcher(server, { role: "researcher" }), async (c) => {
-    const parsed = StudyWriteSchema.safeParse(await c.req.json());
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const body = await parseJson(c, StudyWriteSchema);
 
     const researcher = c.get("researcher");
     const ownerId = researcher.userId;
@@ -39,10 +39,10 @@ export function studies(server: Server): Hono<Env> {
       const [study] = await tx
         .insert(studiesTable)
         .values({
-          name: parsed.data.name,
-          archived: parsed.data.archived ?? false,
+          name: body.name,
+          archived: body.archived ?? false,
           ownerId,
-          ...(parsed.data.reopenMinutes !== undefined ? { reopenMinutes: parsed.data.reopenMinutes } : {}),
+          ...(body.reopenMinutes !== undefined ? { reopenMinutes: body.reopenMinutes } : {}),
         })
         .returning();
       // Development headers keep the bootstrap rule instead (a study without user roles is open).

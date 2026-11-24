@@ -5,14 +5,14 @@ import { links as linksTable } from "../db/schema/index.js";
 import type { Server, Env } from "../context.js";
 import { requireStudyUser } from "./auth.js";
 import { deployedSession, forgetLink, toLinkResponse, type LinkRow } from "../shared/links.js";
+import { idParam } from "../shared/request.js";
 
 // Links (docs/architecture.md §7): made from the deployed design version
 // (shared/links.ts `syncLinks`), with the design's settings; here only
 // revoking and reopening, and a new secret.
 
 /** A study's link, by id (from the path). */
-const linkWhere = (studyId: number, id: string | undefined) =>
-  and(eq(linksTable.studyId, studyId), eq(linksTable.id, Number(id)));
+const linkWhere = (studyId: number, id: number) => and(eq(linksTable.studyId, studyId), eq(linksTable.id, id));
 
 export function links(server: Server): Hono<Env> {
   const { db } = server;
@@ -34,7 +34,7 @@ export function links(server: Server): Hono<Env> {
     const [row] = await db
       .update(linksTable)
       .set({ revokedAt: sql`COALESCE(${linksTable.revokedAt}, now())` })
-      .where(linkWhere(c.get("studyId"), c.req.param("id")))
+      .where(linkWhere(c.get("studyId"), idParam(c, "id")))
       .returning();
     if (!row) return c.json({ error: "Link not found" }, 404);
     return respond(row);
@@ -45,7 +45,7 @@ export function links(server: Server): Hono<Env> {
     const [row] = await db
       .update(linksTable)
       .set({ revokedAt: null })
-      .where(linkWhere(c.get("studyId"), c.req.param("id")))
+      .where(linkWhere(c.get("studyId"), idParam(c, "id")))
       .returning();
     if (!row) return c.json({ error: "Link not found" }, 404);
     return respond(row);
@@ -56,7 +56,7 @@ export function links(server: Server): Hono<Env> {
     const [old] = await db
       .select()
       .from(linksTable)
-      .where(linkWhere(c.get("studyId"), c.req.param("id")));
+      .where(linkWhere(c.get("studyId"), idParam(c, "id")));
     if (!old) return c.json({ error: "Link not found" }, 404);
     const [row] = await db
       .update(linksTable)

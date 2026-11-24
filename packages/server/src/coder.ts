@@ -20,6 +20,7 @@ import { sessionDevices, coderSessions, links } from "./db/schema/index.js";
 import { SESSION_COOKIE } from "./researcher/login.js";
 import { coderKey, newDeviceId, readDevice, requireClientHeader, writeDevice } from "./runtime/session.js";
 import type { Coder, DeploymentRuntime } from "./runtime/runtime.js";
+import { idParam, parseJson } from "./shared/request.js";
 
 /** The deployment version the client's codebook belongs to (contracts SessionResponse.version). */
 const VERSION_HEADER = "x-annotinder-version";
@@ -45,7 +46,7 @@ export function coderApi(server: Server): Hono {
   // coder's link.
   app.post("/transfer/redeem", async (c) => {
     requireClientHeader(c);
-    const body = await parseBody(c, RedeemTransferSchema);
+    const body = await parseJson(c, RedeemTransferSchema, "message");
     const deploymentId = c.req.param("deployment")!;
     const runtime = await server.deployments.get(deploymentId);
     // A suspended or deleted study (stamp changed in another process) takes no new devices.
@@ -178,11 +179,11 @@ export function coderApi(server: Server): Hono {
   });
 
   session.get("/loop/:loop/units/:unitId", async (c) =>
-    c.json(await c.get("runtime").loopUnit(c.get("coder"), c.req.param("loop"), Number(c.req.param("unitId")))),
+    c.json(await c.get("runtime").loopUnit(c.get("coder"), c.req.param("loop"), idParam(c, "unitId"))),
   );
 
   session.post("/variables/unit", async (c) => {
-    const body = await parseBody(c, PostUnitVariablesSchema);
+    const body = await parseJson(c, PostUnitVariablesSchema, "message");
     return c.json(
       await c
         .get("runtime")
@@ -195,7 +196,7 @@ export function coderApi(server: Server): Hono {
   );
 
   session.post("/end", async (c) => {
-    const body = await parseBody(c, EndSessionSchema);
+    const body = await parseJson(c, EndSessionSchema, "message");
     return c.json(await c.get("runtime").endSession(c.get("coder"), body.item, body.unit));
   });
 
@@ -205,40 +206,25 @@ export function coderApi(server: Server): Hono {
   });
 
   session.post("/display", async (c) => {
-    const body = await parseBody(c, DisplayEntrySchema);
+    const body = await parseJson(c, DisplayEntrySchema, "message");
     await c.get("runtime").recordDisplay(c.get("coder"), body);
     return c.body(null, 204);
   });
 
   session.post("/quit", async (c) => {
-    const body = await parseBody(c, QuitSessionSchema);
+    const body = await parseJson(c, QuitSessionSchema, "message");
     await c.get("runtime").quitSession(c.get("coder"), body.requestDeletion);
     return c.body(null, 204);
   });
 
   session.post("/variables/coder", async (c) => {
-    const body = await parseBody(c, PostCoderVariablesSchema);
+    const body = await parseJson(c, PostCoderVariablesSchema, "message");
     await c.get("runtime").submitCoderVariables(c.get("coder"), body.variables, c.get("deviceId"), body.timings);
     return c.body(null, 204);
   });
 
   app.route("/", session);
   return app;
-}
-
-async function parseBody<T>(
-  c: Context,
-  schema: { safeParse(v: unknown): { success: true; data: T } | { success: false } },
-) {
-  let raw: unknown;
-  try {
-    raw = await c.req.json();
-  } catch {
-    throw new HttpError(400, "Invalid JSON body");
-  }
-  const parsed = schema.safeParse(raw);
-  if (!parsed.success) throw new HttpError(400, "Invalid request body");
-  return parsed.data;
 }
 
 /** The page's query parameters (`x-url-params`): the coder id and the design's URL parameters. */

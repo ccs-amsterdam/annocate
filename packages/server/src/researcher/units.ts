@@ -23,6 +23,7 @@ import {
   toUnitResponse,
   unitCount,
 } from "../shared/units.js";
+import { parseJson } from "../shared/request.js";
 
 /**
  * The unit fields after an upload: the declared ones and the columns it
@@ -72,18 +73,17 @@ export function units(server: Server): Hono<Env> {
   // empty). The first upload (no units yet) takes its types from the values,
   // and drops declared fields it lacks that the design doesn't use.
   app.post("/study/:studyId/units", requireStudyUser(server, "WRITE"), async (c) => {
-    const parsed = UnitsCreateBodySchema.safeParse(await c.req.json());
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const body = await parseJson(c, UnitsCreateBodySchema);
     const studyId = c.get("studyId");
-    const { overwrite, overwriteCoded } = parsed.data;
+    const { overwrite, overwriteCoded } = body;
 
     const declared = await getUnitFields(db, studyId);
-    const upload = await uploadFields(db, studyId, declared, parsed.data.units);
+    const upload = await uploadFields(db, studyId, declared, body.units);
     if ("error" in upload) return c.json({ error: upload.error }, 400);
     const { fields } = upload;
     // Columns with a role aren't data (their cells are sets): an empty one given is left out
     const setFields = new Set(fields.filter((f) => isSetType(f.type)).map((f) => f.name));
-    const units = parsed.data.units.map((u) => ({
+    const units = body.units.map((u) => ({
       ...u,
       data: Object.fromEntries(
         Object.entries(u.data).filter(([name, value]) => !(setFields.has(name) && value === null)),

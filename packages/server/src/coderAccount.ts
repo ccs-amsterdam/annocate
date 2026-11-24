@@ -9,6 +9,7 @@ import { coderStudies } from "./shared/coderStudies.js";
 import { eq, sql } from "drizzle-orm";
 import { UserSettingsSchema } from "@annotinder/contracts";
 import { coderSessions, users } from "./db/schema/index.js";
+import { parseJson } from "./shared/request.js";
 
 /**
  * Coder routes outside a deployment (`/api/coder`, contracts
@@ -39,10 +40,9 @@ export function coderAccount(server: Server): Hono<Env> {
   });
   app.put("/coder/settings", async (c) => {
     const user = await loggedIn(c);
-    const parsed = UserSettingsSchema.safeParse(await c.req.json().catch(() => null));
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
-    await server.db.update(users).set({ settings: parsed.data }).where(eq(users.id, user.id));
-    return c.json(parsed.data);
+    const body = await parseJson(c, UserSettingsSchema);
+    await server.db.update(users).set({ settings: body }).where(eq(users.id, user.id));
+    return c.json(body);
   });
   return app;
 }
