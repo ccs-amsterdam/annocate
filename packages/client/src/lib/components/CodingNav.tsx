@@ -1,7 +1,7 @@
 import { COMMAND_BADGES } from "../keyboard/commands";
 import { useState } from "react";
 import { PRIORITY } from "../keyboard/controller";
-import { useKeyScope } from "../keyboard/hooks";
+import { useKeyScope, useMenuKeys } from "../keyboard/hooks";
 import { ShortcutBadge } from "./ShortcutBadge";
 import {
   Check,
@@ -62,11 +62,6 @@ function loopUnits(
   const reached = Math.max(1, phase.unitCount ?? 0);
   const current = phase.isCurrent ? (phase.currentUnitIndex ?? navigation.currentUnitIndex ?? 0) + 1 : reached;
   return { current, reached, total: phase.totalUnits ? Math.max(reached, phase.totalUnits) : null };
-}
-
-/** While `active` (a menu is open), keys never reach the question behind the menu. */
-function useMenuKeys(active: boolean) {
-  useKeyScope(() => false, active, { priority: PRIORITY.menu, exclusive: true });
 }
 
 export interface CodingNavProps {

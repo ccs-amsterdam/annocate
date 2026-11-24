@@ -6,6 +6,7 @@ import { cn } from "cn";
 import { useCoderSettings } from "../../context/coderSettings";
 import { useDisplay } from "../../display/context";
 import { MAPPINGS, mappingById } from "../../keyboard/mappings";
+import { useMenuKeys } from "../../keyboard/hooks";
 
 /** The shortcuts every question has, whatever the shortcut style. */
 const DEFAULT_SHORTCUTS: [string, string][] = [
@@ -31,9 +32,11 @@ export function KeyboardMenu() {
   const numpadAllowed = useDisplay().layouts === "responsive";
   const shown = mappingById(keyMapping === "numpad" && !numpadAllowed ? "numbers" : keyMapping);
   const [choosing, setChoosing] = useState(false);
+  const [open, setOpen] = useState(false);
+  useMenuKeys(open);
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"

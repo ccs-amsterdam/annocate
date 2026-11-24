@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { TemplateMarkdown } from "./TemplateMarkdown";
 import { ShortcutBadge } from "./ShortcutBadge";
 import { PRIORITY } from "../keyboard/controller";
-import { useKeyScope } from "../keyboard/hooks";
+import { useKeyScope, useMenuKeys } from "../keyboard/hooks";
 import type { RenderedTemplate } from "../codebook/renderTemplate";
 
 // A question's instruction (docs/client.md §4 "Questions and instructions"):
@@ -65,7 +65,7 @@ export function QuestionInstruction({
     !open,
     { priority: PRIORITY.editor },
   );
-  useKeyScope(() => false, open, { priority: PRIORITY.menu, exclusive: true });
+  useMenuKeys(open);
   return (
     <>
       <button

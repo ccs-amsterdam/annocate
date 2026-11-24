@@ -1,12 +1,14 @@
 import { PRIORITY } from "../../keyboard/controller";
 import { useKeyScope } from "../../keyboard/hooks";
-import { useState, useEffect } from "react";
+import { useContext, useState, useEffect } from "react";
+import { AnswerKeysContext } from "../../keyboard/context";
 import type { SpanAnswer, SpanSlice } from "@annotinder/contracts";
 import type { SpanAnnotationState } from "../../context/spanAnnotation";
 import { useCoderSettings } from "../../context/coderSettings";
 import { ShortcutBadge } from "../ShortcutBadge";
 import { SpanEditLabel } from "./SpanEditLabel";
 import { SpanListRow } from "./SpanListRow";
+import { spanKey, spanOfKey } from "./fieldKeys";
 import { Button } from "@/components/ui/button";
 import { X, Plus } from "lucide-react";
 
@@ -39,16 +41,17 @@ export function SpanManageLabels({ annotation, spans, initialTargetSpanId, fallb
     if (activeId) annotation.setFocusedSpanId(activeId);
   }, [activeId, annotation]);
 
-  // The list of spans: number keys open one, Escape leaves
+  // The list of spans: number keys open one (when answers take keys), Escape leaves
+  const answerKeys = useContext(AnswerKeysContext);
   useKeyScope(
     (press) => {
       if (press.key === "Escape") {
         annotation.setPendingSpan(null);
         return true;
       }
-      const num = parseInt(press.key, 10);
-      if (isNaN(num) || num < 1 || num > spans.length) return false;
-      setSelectedSpanId(spans[num - 1].id);
+      const index = spanOfKey(press.key, spans.length, answerKeys);
+      if (index < 0) return false;
+      setSelectedSpanId(spans[index].id);
       return true;
     },
     !activeSpan,
@@ -96,7 +99,7 @@ export function SpanManageLabels({ annotation, spans, initialTargetSpanId, fallb
             options={annotation.options}
             isDark={isDark}
             variant="menu"
-            shortcut={idx < 9 ? String(idx + 1) : undefined}
+            shortcut={spanKey(idx, answerKeys) ?? undefined}
             onClick={() => setSelectedSpanId(span.id)}
           />
         ))}

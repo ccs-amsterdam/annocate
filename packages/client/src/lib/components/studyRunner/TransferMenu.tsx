@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { CoderApi } from "../../api/httpCoderApi";
 import { coderLoginUrl } from "../../session/coderSession";
+import { useMenuKeys } from "../../keyboard/hooks";
 
 /**
  * "Continue on another device": a one-time link + QR code for this session.
@@ -25,9 +26,12 @@ export function TransferMenu({
   const [link, setLink] = useState<{ url: string; expiresAt: Date } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  useMenuKeys(isOpen);
 
-  async function open(isOpen: boolean) {
-    if (!isOpen || !coderApi.createTransfer) return;
+  async function open(next: boolean) {
+    setIsOpen(next);
+    if (!next || !coderApi.createTransfer) return;
     setError(null);
     setCopied(false);
     try {
@@ -39,7 +43,7 @@ export function TransferMenu({
   }
 
   return (
-    <Popover onOpenChange={open}>
+    <Popover open={isOpen} onOpenChange={open}>
       <PopoverTrigger asChild>
         <button
           type="button"

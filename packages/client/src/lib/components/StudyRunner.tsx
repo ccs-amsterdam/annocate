@@ -377,7 +377,10 @@ function CodingScreen({
                   <div className="flex min-h-0 flex-1 flex-col @5xl:p-6">
                     <SwipeSurface className="[container-type:size] relative flex w-full flex-1 flex-col overflow-hidden @5xl:mx-auto @5xl:my-auto @5xl:max-h-[56rem] @5xl:max-w-3xl @5xl:rounded-2xl @5xl:border @5xl:border-border @5xl:bg-card @5xl:shadow-sm">
                       {/* The unit, scrolling. Stable gutter: a scrollbar appearing doesn't move the text. */}
-                      <div className="min-h-[100px] flex-1 subtle-scrollbar [scrollbar-gutter:stable] overflow-x-hidden overflow-y-auto p-3 sm:p-5">
+                      <div
+                        data-key-scroll=""
+                        className="min-h-[100px] flex-1 subtle-scrollbar [scrollbar-gutter:stable] overflow-x-hidden overflow-y-auto p-3 sm:p-5"
+                      >
                         <div
                           key={unitAnimationKey}
                           ref={unitContentRef}

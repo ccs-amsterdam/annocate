@@ -67,11 +67,25 @@ export function nearest(from: DOMRect, candidates: { rect: DOMRect }[], directio
   return best;
 }
 
-/** Moves focus to the nearest target in a direction (from the focused one, else the chosen or first); false without targets. */
+/** Whether a part of the screen that scrolls with the keys (`data-key-scroll`: the unit) has more to show up or down. */
+function canScroll(direction: Direction): boolean {
+  if (direction !== "up" && direction !== "down") return false;
+  return [...document.querySelectorAll<HTMLElement>("[data-key-scroll]")].some((el) =>
+    direction === "up" ? el.scrollTop > 0 : el.scrollTop + el.clientHeight < el.scrollHeight - 1,
+  );
+}
+
+/**
+ * Moves focus to the nearest target in a direction (from the focused one,
+ * else the chosen or first). False when the key is not used: without
+ * targets, and for ↑ / ↓ with focus outside the targets while the unit can
+ * still scroll that way (the browser scrolls it; at its end the key moves to
+ * the answers).
+ */
 export function moveFocus(direction: Direction): boolean {
   const all = targets();
   const current = all.find((el) => el === document.activeElement);
-  if (!current) return focusChosen();
+  if (!current) return canScroll(direction) ? false : focusChosen();
   const others = all.filter((el) => el !== current).map((el) => ({ el, rect: el.getBoundingClientRect() }));
   const i = nearest(current.getBoundingClientRect(), others, direction);
   if (i >= 0) others[i].el.focus();

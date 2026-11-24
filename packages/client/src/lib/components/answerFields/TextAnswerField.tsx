@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ShortcutBadge } from "../ShortcutBadge";
 import { COMMAND_BADGES } from "../../keyboard/commands";
+import { continuesText } from "./fieldKeys";
 
 type TextVariable = Extract<QuestionVariable, { type: "text" }>;
 
@@ -23,11 +24,9 @@ export function TextAnswerField({ variable, onAnswer, initialValue }: AnswerFiel
     if (ready) onAnswer({ done: true, skip: false, values: [{ value: text.trim() }] });
   };
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key !== "Enter") return;
-    if (variable.multiline ? e.ctrlKey || e.metaKey : !e.shiftKey) {
-      e.preventDefault();
-      submit();
-    }
+    if (!continuesText(e.nativeEvent, !!variable.multiline)) return;
+    e.preventDefault();
+    submit();
   };
   return (
     <div className="flex flex-col gap-2 pt-1">

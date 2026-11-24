@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useMenuKeys } from "../keyboard/hooks";
 
 type Choice = "pause" | "quit" | "delete";
 
@@ -35,9 +36,11 @@ export function QuitMenu({
   login?: string | null;
 }) {
   const [choice, setChoice] = useState<Choice | null>(null);
+  const [open, setOpen] = useState(false);
+  useMenuKeys(open);
   return (
     <>
-      <Popover>
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
             type="button"
@@ -106,6 +109,7 @@ export function QuitDialog({
 }) {
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
+  useMenuKeys(choice !== null);
   const close = () => {
     setTyped("");
     onClose();

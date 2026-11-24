@@ -43,6 +43,11 @@ export function useKeyScope(handler: KeyHandler, active = true, options: ScopeOp
   }, [controller, active, priority, exclusive]);
 }
 
+/** While `open` (a menu, popover or dialog of the coding screen), keys never reach the question behind it. */
+export function useMenuKeys(open: boolean): void {
+  useKeyScope(() => false, open, { priority: PRIORITY.menu, exclusive: true });
+}
+
 export interface KeyTargetOptions {
   /** The group keys choose in (a scale's item); default the first, -1: none. */
   activeGroup?: number;

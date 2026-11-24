@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Moon, Settings, Sun } from "lucide-react";
 import { useCoderSettings } from "../../context/coderSettings";
+import { useMenuKeys } from "../../keyboard/hooks";
 
 const THEMES = [
   { value: "light", label: "Light", Icon: Sun },
@@ -11,9 +13,11 @@ const THEMES = [
 export function CoderSettingsMenu() {
   // A study may show one theme for everyone
   const { theme, setTheme, themeLocked } = useCoderSettings();
+  const [open, setOpen] = useState(false);
+  useMenuKeys(open);
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
