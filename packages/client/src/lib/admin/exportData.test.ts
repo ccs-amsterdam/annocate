@@ -289,8 +289,8 @@ describe("data download", () => {
     };
     const now = row(2, 1, "sentiment", { done: true, skip: false, values: [{ value: "pos" }, { value: "neg" }] });
     const table = annotationsTable([old, now], [coder(1)], [], labels);
-    // Two answers to one question: also a _json column
-    expect(table.headers.slice(-3)).toEqual(["sentiment", "sentiment_label", "sentiment_json"]);
+    // Two answers to one question: also a .json column
+    expect(table.headers.slice(-3)).toEqual(["sentiment", "sentiment.label", "sentiment.json"]);
     expect(table.rows.map((r) => r.slice(-3))).toEqual([
       ["pos", "Positive", '["pos"]'],
       ["pos; neg", "Good; neg", '["pos","neg"]'],
@@ -302,7 +302,7 @@ describe("data download", () => {
       [],
       labels,
     );
-    expect(mixed.rows[0][mixed.headers.indexOf("sentiment_label")]).toBe("Positive");
+    expect(mixed.rows[0][mixed.headers.indexOf("sentiment.label")]).toBe("Positive");
 
     expect(variablesTable(new Map([[2, version("Good")]])).rows).toEqual([
       ["2", "loop_1", "", "sentiment", "nominal", "?", "pos", "Good", ""],
@@ -315,7 +315,7 @@ describe("data download", () => {
     expect(variables.rows[0].slice(0, 4)).toEqual(["2", "loop_1", "News", "sentiment"]);
   });
 
-  it("writes a special answer as its code, missing without one, with a _special column and its label", () => {
+  it("writes a special answer as its code, missing without one, with a .special column and its label", () => {
     const items = [
       {
         type: "question",
@@ -334,7 +334,7 @@ describe("data download", () => {
       [],
       labels,
     );
-    expect(table.headers.slice(-3)).toEqual(["age", "age_label", "age_special"]);
+    expect(table.headers.slice(-3)).toEqual(["age", "age.label", "age.special"]);
     expect(table.rows[0].slice(-3)).toEqual(["", "Don't know", "dont_know"]);
     expect(answerText({ done: true, skip: false, values: [{ special: "dont_know" }] })).toBe("");
     expect(answerText({ done: true, skip: false, values: [{ special: "not_applicable", value: -1 }] })).toBe("-1");
@@ -355,13 +355,13 @@ describe("data download", () => {
     ]);
   });
 
-  it("writes comments in a _comment column, and on spans and relations in the JSON", () => {
+  it("writes comments in a .comment column, and on spans and relations in the JSON", () => {
     const table = annotationsTable(
       [row(1, 1, "topic", { done: true, skip: false, values: [{ value: "eu" }], comment: "Hard to tell" })],
       [coder(1)],
       [],
     );
-    expect(table.headers.slice(-2)).toEqual(["topic", "topic_comment"]);
+    expect(table.headers.slice(-2)).toEqual(["topic", "topic.comment"]);
     expect(table.rows[0].slice(-2)).toEqual(["eu", "Hard to tell"]);
     const span = {
       done: true,

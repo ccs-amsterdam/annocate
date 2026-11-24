@@ -86,8 +86,8 @@ going back), it is saved when the coder leaves the box, without moving on.
 In span and relation questions coders comment on each span (when editing
 it) or relation (in the list); these are saved with **Done**, as the spans
 and relations are. The results download has a
-`<question>_comment` column; span and relation comments are in the
-`_json` column.
+`<question>.comment` column; span and relation comments are in the
+`.json` column.
 
 ## Focus on
 

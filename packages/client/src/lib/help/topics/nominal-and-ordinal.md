@@ -74,7 +74,7 @@ quieter style. Coders can choose them with the leader key **/** and then
 special answer is the only answer.
 
 A special answer has no value by default: it is stored as missing, and the
-results say which (a `_special` column in the download). Give it a
+results say which (a `.special` column in the download). Give it a
 **code** to store one instead, e.g. `99` (ordered questions: a number that
 isn't one of the options' values; categories: text). Numbers and scales
 have them too; swipe doesn't.
@@ -90,7 +90,7 @@ A category question can also offer options that differ per unit. Choose
 - **The spans of an earlier span question** in the same loop: one option
   per span the coder marked, with its text and its label's colour. The
   value is the span's id, so the answer links to that exact span in the
-  download (`_json` columns).
+  download (`.json` columns).
 
 They appear as one fixed row among the options: move it to put them
 before, between or after the question's own options (e.g. _None of
@@ -139,4 +139,4 @@ Click **Change type** and pick the other; the options are kept:
 `$var.topic.value`, `$var.topic.label`, or for several answers
 `$var.topics.values` / `.labels`. Ordered answers also compare:
 `$var.tone.gte(4)`. The results have a column of values and, with **Add
-label columns**, a `_label` column. See [Downloading results](results.md).
+label columns**, a `.label` column. See [Downloading results](results.md).

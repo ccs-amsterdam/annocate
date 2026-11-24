@@ -55,7 +55,7 @@ span shows its labels, with **Edit**, **Delete** and **Create new label**.
 Per span: its label's value, the field, each piece's start and length (in
 characters of your data), and the text. In `annotations.csv` the column
 reads `person: Angela Merkel; organisation: European Commission`; the
-`_json` column has the positions. A replaced unit's spans still point
+`.json` column has the positions. A replaced unit's spans still point
 into the version the coder saw (`units.csv` has every version).
 
 ## Using the answers

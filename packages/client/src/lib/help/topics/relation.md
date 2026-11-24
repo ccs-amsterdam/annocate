@@ -53,7 +53,7 @@ a missing span; relations stay unless their spans were deleted.
 
 Per relation: its value and the ids of its two spans. In
 `annotations.csv` it reads `value: from → to` with the span texts; the
-`_json` column has span ids that match the span question's `_json`. See
+`.json` column has span ids that match the span question's `.json`. See
 [Downloading results](results.md).
 
 ## Using the answers

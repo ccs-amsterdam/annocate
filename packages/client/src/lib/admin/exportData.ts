@@ -1,5 +1,9 @@
 import {
+  ANNOTATION_COLUMNS,
+  CODER_COLUMNS,
   cellsFromSets,
+  finishedColumn,
+  testUnitsColumn,
   collectQuestions,
   optionLabel,
   specialLabel,
@@ -103,20 +107,7 @@ export function annotationsTable(
     nested,
   );
   return {
-    headers: [
-      "unit_id",
-      "unit_version_id",
-      "session_id",
-      "coder",
-      "link",
-      "first_answer",
-      "last_change",
-      "design_version",
-      "device_id",
-      "unit_ms_client",
-      "unit_ms_server",
-      ...columns.map(header),
-    ],
+    headers: [...ANNOTATION_COLUMNS, ...columns.map(header)],
     rows: [...byUnitCoder.values()].map(({ first, last, deviceId, values, designVersions }) => {
       const times = unitTimes.get(`${first.unitId}/${first.sessionId}`);
       // The unit's spans, by id, so relations can name them by their text
@@ -220,19 +211,10 @@ export function codersTable(
   );
   return {
     headers: [
-      "session_id",
-      "coder",
-      "email",
-      "link",
-      "started",
-      "last_active",
-      "ended",
-      "ended_at",
-      "deletion_requested",
-      "display",
+      ...CODER_COLUMNS,
       ...sessionNames.map((n) => `session.${n}`),
-      ...loops.map((loop) => `finished_${loop}`),
-      ...specials.map((kind) => `${kind}_finished`),
+      ...loops.map(finishedColumn),
+      ...specials.map(testUnitsColumn),
       ...columns.map(header),
     ],
     rows: coders.map((c) => [

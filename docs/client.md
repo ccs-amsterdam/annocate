@@ -271,7 +271,7 @@ answer has a code (nominal: text; otherwise a number, not an option's value
 or, for numbers, inside min..max); without one the value is missing. With
 `multiple` it is the only answer. Results count it as a category of its own
 for nominal questions and leave it out of ordinal and interval agreement;
-the download writes the code (or nothing) with a `_special` column.
+the download writes the code (or nothing) with a `.special` column.
 
 **Options from data** (`optionsFrom: { from, at? }` on a nominal question,
 `design/optionsFrom.ts`): `$unit.<list field>` (its items: words, or
@@ -388,7 +388,7 @@ and the relation list. A comment is saved with the answer; one changed on
 an answer already given is saved when the box is left
 (`StudyManager.comment`: coder-level answers at once, a unit's in its draft,
 a finished unit posted again), without moving on. Exports: a
-`<question>_comment` column; span and relation comments in `_json`.
+`<question>.comment` column; span and relation comments in `.json`.
 
 ### Display
 
@@ -763,10 +763,10 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
     §4, §10, §8), `display_changes.csv`, `README.txt`, optionally
     `reset_answers.csv`.
 
-  Cells hold values; "Add label columns" (default on) adds `_label` columns
+  Cells hold values; "Add label columns" (default on) adds `.label` columns
   (the label the coder saw). Several answers are joined with "; ", spans as
   "value: text", relations as "value: from → to". Answers that don't fit a
-  cell also get a `_json` column. CSV is UTF-8, written as it is.
+  cell also get a `.json` column. CSV is UTF-8, written as it is.
 
 - **Preview** runs the latest design as deployment `<studyId>.preview`
   (`POST /study/:studyId/deployment/preview`); nothing is stored

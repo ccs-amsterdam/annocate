@@ -26,7 +26,7 @@ export interface DownloadOptions {
   study: string;
   /** The deployed design version: its labels where an answer's own version has none, and its question order. */
   liveDesignVersionId: number | null;
-  /** Adds `_label` columns (the label each coder saw). */
+  /** Adds `.label` columns (the label each coder saw). */
   withLabels: boolean;
   /** Includes answers that were reset (`reset_answers`). */
   withReset: boolean;

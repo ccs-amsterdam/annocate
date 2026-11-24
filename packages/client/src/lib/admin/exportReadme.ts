@@ -1,3 +1,5 @@
+import { EXPORT_FORMAT_VERSION } from "@annotinder/contracts";
+
 // The README.txt of the data download (results/DownloadView.tsx): what each file and
 // column holds. Keep it in step with the tables in exportData.ts.
 
@@ -13,6 +15,7 @@ export const CSV_FORMULA_ADVICE =
 /** What the files in the download are, for the README. */
 export function readme(study: string, exported: Date, labels: boolean, format: "csv" | "xlsx" = "csv"): string {
   return `Data of ${study}, downloaded ${exported.toISOString()} from AnnoTinder.
+export_format: ${EXPORT_FORMAT_VERSION}
 ${format === "xlsx" ? XLSX_NOTE : CSV_NOTE}
 annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
                  version the coder saw (unit_version_id), the coder, when they
@@ -25,8 +28,9 @@ annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
                  question.item).${
                    labels
                      ? `
-                 Each answer column is followed by a _label column: the label
-                 in the design version the answer was given under.`
+                 Each answer column is followed by a .label column
+                 (question.label): the label in the design version the
+                 answer was given under.`
                      : ""
                  }
 coders.csv       A row per coder session (session_id): the coder (their name
@@ -94,9 +98,10 @@ Answers are the stored values; several answers are joined with "; ", spans
 are written as "value: text", relations as "value: from → to" (the spans'
 texts), a confirm question as true, and questions a condition skipped are
 empty. A special answer (not_applicable, dont_know) is its code, or empty
-(missing) if it has none; a question answered so has a _special column
-that says which. Questions with spans, relations or several answers also have a _json
-column with the full answer: spans with their field and, per fragment, the
+(missing) if it has none; a question answered so has a .special column
+(question.special) that says which. A coder's comment on an answer is in
+question.comment. Questions with spans, relations or several answers also
+have a .json column (question.json) with the full answer: spans with their field and, per fragment, the
 offset and length in that field of the unit version (units.csv), relations
 with the ids of their spans.
 Join annotations and coders on session_id. Times are UTC (ISO 8601).

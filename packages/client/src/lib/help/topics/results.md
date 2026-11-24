@@ -75,16 +75,16 @@ A row per unit a coder coded:
 ### How answers are written
 
 - **Values, not labels**: `2` or `pos`. With **Add label columns** (on by
-  default) a `<question>_label` column has the label the coder saw.
+  default) a `<question>.label` column has the label the coder saw.
 - **Several answers**: joined with `; `.
 - **Special answers** (don't know, not applicable): their code, or empty
-  without one; a `<question>_special` column says which.
+  without one; a `<question>.special` column says which.
 - **Spans**: `person: Angela Merkel`; parts of a gapped span joined with
   `…`.
 - **Relations**: `criticizes: Merkel → Commission`.
 - **Confirm**: `true`.
 - **Empty**: skipped, or not in the coder's design version.
-- **`<question>_json`** for spans, relations and several answers: the
+- **`<question>.json`** for spans, relations and several answers: the
   full answer, with span positions (`offset` from 0, `length`, `text`)
   and span ids. Read with `jsonlite::fromJSON` or `json.loads`.
 
@@ -143,6 +143,23 @@ Per answer, in milliseconds:
 
 Browsers can be tampered with, the server can't: `exceeds_server` flags
 that.
+
+## Column names
+
+A question's name is its column, so a question can't be called like one of
+the download's own columns (`coder`, `link`, `session_id`, `started`, …):
+the design editor says so. Names are also unique without regard to capitals
+(`Topic` and `topic` can't both be questions), since SPSS, Stata and
+spreadsheets don't tell them apart. A question's extra columns are named
+after it with a dot: `topic.label`, `topic.special`, `topic.comment`,
+`topic.json`; a scale's items likewise (`media.emotional`,
+`media.emotional.label`), so a scale item can't be called `label`,
+`special`, `comment` or `json`. In R, read the files with
+`check.names = FALSE` (or readr) to keep the dots as they are; in Stata and
+SPSS the dots become underscores on import.
+
+`README.txt` starts with `export_format: 1`: the version of these file and
+column names.
 
 ## variables.csv
 

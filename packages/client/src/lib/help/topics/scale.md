@@ -53,4 +53,4 @@ item; **Ctrl + Enter** continues.
 | `$var.media.values`                | all item values, as a list |
 
 Conditions compare an item: `$var.interest.items.technology.gte(4)`. The
-results have a column per item, `media.emotional`, with a `_label` column.
+results have a column per item, `media.emotional`, with a `.label` column.

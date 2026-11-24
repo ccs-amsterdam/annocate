@@ -57,6 +57,6 @@ is missing; a code (e.g. `-1`) must be outside the range. See
 
 `$var.age.value` is the number; conditions compare it
 (`$var.age.lt(18)`, see [Conditions](conditions.md)). The results have one
-column, without a `_label` column (with special answers: their labels in
-one, and a `_special` column). `$var.age.value` of a special answer is its
+column, without a `.label` column (with special answers: their labels in
+one, and a `.special` column). `$var.age.value` of a special answer is its
 code, or null.

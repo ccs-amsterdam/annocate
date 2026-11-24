@@ -41,6 +41,7 @@ import {
 } from "./references.js";
 import { nameError, own } from "../common.js";
 import { matchesUrlPattern } from "./urlPattern.js";
+import { DERIVED_COLUMNS, reservedColumnName, reservedScaleItemName } from "../exportColumns.js";
 
 export interface DesignIssue {
   path: (string | number)[];
@@ -185,7 +186,8 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   /** Loop key -> how messages call it. */
   const loopTitles = new Map(unitLoops(items).map(({ key, loop }) => [key, loopTitle(loop)]));
   let loopCount = 0;
-  const seenNames = new Map<string, Path>();
+  /** Item names so far, by the name in lower case: names are unique without regard to capitals. */
+  const seenNames = new Map<string, string>();
   /** Span questions seen so far: name -> their loop and option values (what relation rules can name). */
   const spanVariables = new Map<string, { loop: string | null; values: Set<string> }>();
   /** Coder-level questions seen so far. */
@@ -470,6 +472,27 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
           );
       }
     }
+  }
+
+  /** A scale's items are columns `question.item`: unique without regard to capitals, and not a question's extra columns. */
+  function checkScaleItemNames(item: RawItem, itemPath: Path) {
+    const variable = (item as { variable?: { type?: unknown; items?: unknown } }).variable;
+    if (variable?.type !== "scale" || !Array.isArray(variable.items)) return;
+    const seenItems = new Map<string, string>();
+    variable.items.forEach((scaleItem: { name?: unknown } | null, i: number) => {
+      const name = scaleItem?.name;
+      if (typeof name !== "string") return;
+      const at = [...itemPath, "variable", "items", i, "name"];
+      const sameName = seenItems.get(name.toLowerCase());
+      if (sameName !== undefined && sameName !== name)
+        issue(at, `The item names '${sameName}' and '${name}' differ only in capitals: give one another name`);
+      seenItems.set(name.toLowerCase(), name);
+      if (reservedScaleItemName(name))
+        issue(
+          at,
+          `A scale item can't be called '${name}': ${item.name}.${name.toLowerCase()} is a column of the data download (${DERIVED_COLUMNS.join(", ")})`,
+        );
+    });
   }
 
   /**
@@ -768,8 +791,22 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
         if (problem) issue([...itemPath, "name"], `Name '${item.name}': ${problem}`);
         if (item.name === STUDY_END_NAME)
           issue([...itemPath, "name"], `'${STUDY_END_NAME}' is the study's own end: choose another name`);
-        if (seenNames.has(item.name)) issue([...itemPath, "name"], `Duplicate name '${item.name}'`);
-        else seenNames.set(item.name, itemPath);
+        // Unique without regard to capitals: SPSS, Stata and spreadsheets don't tell `Topic` from `topic`
+        const sameName = seenNames.get(item.name.toLowerCase());
+        if (sameName === item.name) issue([...itemPath, "name"], `Duplicate name '${item.name}'`);
+        else if (sameName !== undefined)
+          issue(
+            [...itemPath, "name"],
+            `The names '${sameName}' and '${item.name}' differ only in capitals: give one another name`,
+          );
+        else seenNames.set(item.name.toLowerCase(), item.name);
+        // A question is a column of the data download, next to the download's own columns
+        if ((item.type === "question" || item.type === "experiment") && reservedColumnName(item.name))
+          issue(
+            [...itemPath, "name"],
+            `'${item.name}' is a column of the data download (as are session_id, coder, link, started, …): choose another name`,
+          );
+        checkScaleItemNames(item, itemPath);
       }
 
       if (item.type === "experiment") {

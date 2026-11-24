@@ -36,6 +36,7 @@ export * from "./design/jsonSchema.js";
 export * from "./unit.js";
 export * from "./unitFields.js";
 export * from "./sets.js";
+export * from "./exportColumns.js";
 export * from "./answerKey.js";
 export * from "./study.js";
 export * from "./recipe.js";

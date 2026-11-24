@@ -51,7 +51,7 @@ cost of coders' time. See
 | `designs/v<n>.json`                  | each design version whole, with the AnnoTinder release              |
 | `devices.csv`, `display_changes.csv` | each coder's devices, keys, screen width and theme                  |
 
-`_label` columns show what the coder saw. See
+`.label` columns show what the coder saw. See
 [Downloading results](results.md).
 
 ## What isn't recorded

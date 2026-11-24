@@ -1,5 +1,6 @@
 import {
   collectQuestions,
+  derivedColumn,
   hasNumericCodes,
   optionLabel,
   specialLabel,
@@ -16,7 +17,7 @@ import {
 // (`question.item`), several answers are joined with "; ", spans are
 // "value: text", a confirm question is `true`, and a question a condition
 // skipped is empty. Answers that don't fit one cell (spans, relations,
-// several answers) also get a `_json` column with everything (span
+// several answers) also get a `.json` column with everything (span
 // positions and fields, ids). In those, the codes of a question whose
 // option values are all plain numbers ("1", "2", "99"; not "01") are
 // numbers.
@@ -45,7 +46,7 @@ export function answerText(
   const parts: string[] = [];
   for (const v of value.values ?? []) {
     if (v.item !== item) continue;
-    // A special answer without a code is missing as a value (its `_special` column says which); as a label, its label
+    // A special answer without a code is missing as a value (its `.special` column says which); as a label, its label
     const key = v.value ?? (write === asIs ? undefined : v.special);
     if (key !== undefined) parts.push(write(key));
   }
@@ -65,7 +66,7 @@ function specialText(value: VariableValue | undefined, item?: string): string {
 }
 
 /**
- * An answer in full, as JSON (for the `_json` columns): values, spans with
+ * An answer in full, as JSON (for the `.json` columns): values, spans with
  * their fields and positions, relations with their span ids. With `numeric`
  * (a question with numeric codes), its codes are written as numbers.
  */
@@ -95,14 +96,14 @@ export function answerJson(value: VariableValue | undefined, numeric = false): s
   return JSON.stringify((value.values ?? []).map((v) => (v.value === undefined ? null : code(v.value))));
 }
 
-/** Questions whose option values are all plain numbers (numeric codes): numbers in the `_json` columns. */
+/** Questions whose option values are all plain numbers (numeric codes): numbers in the `.json` columns. */
 export function numericCodeQuestions(items: TopLevelItem[] | undefined): Set<string> {
   if (!items) return new Set();
   const numeric = [...collectQuestions(items).questions].filter(([, v]) => hasNumericCodes(optionsOf(v)));
   return new Set(numeric.map(([name]) => name));
 }
 
-/** Questions whose answers don't fit one cell (spans, relations, several answers): they get a `_json` column. */
+/** Questions whose answers don't fit one cell (spans, relations, several answers): they get a `.json` column. */
 export function nestedQuestions(items: TopLevelItem[] | undefined): Set<string> {
   if (!items) return new Set();
   const nested = [...collectQuestions(items).questions].filter(
@@ -176,7 +177,7 @@ export interface Column {
   item?: string;
   label?: boolean;
   special?: boolean;
-  /** The coder's comment on the answer (spans and relations: in the `_json` column). */
+  /** The coder's comment on the answer (spans and relations: in the `.json` column). */
   comment?: boolean;
   json?: boolean;
 }
@@ -221,11 +222,17 @@ export function answerColumns(
   });
 }
 
-/** A column's header: `question`, `question.item`, plus `_label`, `_special` or `_json`. */
-export const header = (c: Column) =>
-  `${c.item ? `${c.variable}.${c.item}` : c.variable}${
-    c.label ? "_label" : c.special ? "_special" : c.comment ? "_comment" : c.json ? "_json" : ""
-  }`;
+/**
+ * A column's header: `question` or `question.item`, and for its extra
+ * columns `.label`, `.special`, `.comment` or `.json` after it (contracts
+ * exportColumns.ts: a question or scale item can't have a name that makes
+ * two columns the same).
+ */
+export const header = (c: Column) => {
+  const column = c.item ? `${c.variable}.${c.item}` : c.variable;
+  const derived = c.label ? "label" : c.special ? "special" : c.comment ? "comment" : c.json ? "json" : null;
+  return derived ? derivedColumn(column, derived) : column;
+};
 /** The cell of an answer in a column. */
 export const cellOf = (
   value: VariableValue | undefined,
