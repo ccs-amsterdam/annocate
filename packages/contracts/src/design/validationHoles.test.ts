@@ -7,7 +7,7 @@ import { toCoderItems } from "./coderCodebook.js";
 import type { TopLevelItem } from "./item.js";
 import type { AnyVariableType } from "./variableTypes.js";
 import { StudyWriteSchema } from "../study.js";
-import { UnitsSpecSchema, addedFields, fieldsOfUnits, inferFieldType } from "../unitFields.js";
+import { UnitsSpecSchema, addedFields, fieldsOfUnits, inferFieldType, reservedColumnError } from "../unitFields.js";
 
 const confirm = { type: "confirm", question: "?" };
 const nominal = { type: "nominal", question: "?", options: [{ value: "a" }, { value: "b" }] };
@@ -206,6 +206,29 @@ describe("design validation: what a stored design can't hold", () => {
     // A loop's label is in the coder's navigation menu
     expect(sent[3]).toMatchObject({ type: "unit_loop", label: "Main" });
     expect(items[2]).toMatchObject({ label: "Screen-out" });
+  });
+
+  it("nominal values can be written in answer keys and exports: no ; | or new line, not like 3..5, at most 128", () => {
+    const withValues = (...values: string[]) => [
+      question("q", { type: "nominal", question: "?", options: values.map((value) => ({ value })) }),
+    ];
+    expect(messages(withValues("human_interest", "a.b", "3.5", "1-2", "a".repeat(128)))).toEqual([]);
+    for (const value of ["a;b", "a|b", "a\nb", "3..5", "-1.5 ..2", "a".repeat(129)])
+      expect([value, messages(withValues(value)).length]).toEqual([value, 1]);
+    expect(messages(withValues("a;b"))[0]).toContain("has a ; or |");
+    expect(messages(withValues("3..5"))[0]).toContain("starts like a range of numbers");
+    const swipe = { type: "annotinder", question: "?", options: [{ value: "a|b" }, { value: "c" }] };
+    expect(messages([question("s", swipe)])).toHaveLength(1);
+  });
+
+  it("answer_ and feedback_ columns are the design's questions'", () => {
+    const questions = new Set(["topic"]);
+    expect(reservedColumnError("answer_topic", questions)).toBeNull();
+    expect(reservedColumnError("feedback_topic", questions)).toBeNull();
+    expect(reservedColumnError("answers", questions)).toBeNull();
+    expect(reservedColumnError("text", questions)).toBeNull();
+    expect(reservedColumnError("answer_text", questions)).toContain("reserved");
+    expect(reservedColumnError("feedback_x", questions)).toContain("'x' is not a question of the design");
   });
 
   it("11. an unknown type names the types there are", () => {

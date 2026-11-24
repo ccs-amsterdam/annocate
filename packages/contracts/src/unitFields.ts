@@ -123,6 +123,21 @@ export const feedbackColumn = (question: string) => `feedback_${question}`;
  */
 export const isAnswerColumn = (name: string) => /^(answer|feedback)_./.test(name);
 
+/**
+ * Why an uploaded column can't be an answer or feedback column, or null: the
+ * prefixes `answer_` and `feedback_` are reserved for the questions of the
+ * study's design (`questions`), so a data column that happens to be called
+ * `answer_text` isn't hidden from coders without a word.
+ */
+export function reservedColumnError(name: string, questions: ReadonlySet<string>): string | null {
+  const question = /^(?:answer|feedback)_(.+)$/.exec(name)?.[1];
+  if (question === undefined || questions.has(question)) return null;
+  return (
+    `Column '${name}': names starting with answer_ and feedback_ are reserved for the right answers and feedback ` +
+    `of practice and gold units, and '${question}' is not a question of the design. Rename the column, or add the question first`
+  );
+}
+
 /** The type of a stored value; null for an empty value (fits every type). */
 export function typeOfValue(value: UnitDataValue): UnitFieldType | null {
   if (value === null) return null;

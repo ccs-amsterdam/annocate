@@ -3,6 +3,8 @@ import {
   DesignItemsSchema,
   EMPTY_SESSION,
   addedFields,
+  collectQuestions,
+  reservedColumnError,
   designItems,
   checkUnitData,
   isSetType,
@@ -72,6 +74,12 @@ async function saveRecipeUnits(
     declared,
   );
   if ("error" in added) throw invalid(added.error);
+  // answer_<q> and feedback_<q> are the design's questions' columns
+  const questions = new Set(collectQuestions(recipe.design.items).questions.keys());
+  for (const field of [...declared, ...added.fields]) {
+    const reserved = reservedColumnError(field.name, questions);
+    if (reserved) throw invalid(reserved);
+  }
   const all = [...declared, ...added.fields];
   for (const unit of recipe.units) {
     const problem = checkUnitData(unit.data as UnitData, all);

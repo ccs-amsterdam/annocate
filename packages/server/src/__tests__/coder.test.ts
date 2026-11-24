@@ -2988,6 +2988,8 @@ describe("deploy checks of the columns with a role", () => {
 
   it("warn about checked test units without them or without right answers", async () => {
     const { data: base } = await draftUnit((await unitByExternalId("unit-1")).id);
+    // The design has the question before its answer column is uploaded
+    await deploy([loop({})]);
     const upload = await server.request("/api/study/1/units", {
       method: "POST",
       headers: adminHeaders,

@@ -182,6 +182,30 @@ describe("codebook routes", () => {
 });
 
 describe("units: fields and pages", () => {
+  it("refuses an uploaded column answer_<x> or feedback_<x> unless <x> is a question of the design", async () => {
+    const study = await createStudy();
+    const upload = (data: object) =>
+      app.request(`/api/study/${study.id}/units`, {
+        method: "POST",
+        headers: adminHeaders,
+        body: JSON.stringify({ units: [{ externalId: "u1", data }], overwrite: true }),
+      });
+    const refused = await upload({ text: "a", answer_text: "b" });
+    expect(refused.status).toBe(400);
+    expect((await json(refused)).error).toContain("answer_ and feedback_ are reserved");
+    const question = { type: "question", name: "topic", variable: { type: "confirm", question: "?" } };
+    const loop = { type: "unit_loop", children: [{ type: "layout", template: "" }, question] };
+    await app.request(`/api/study/${study.id}/design`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify(splitDesignItems([loop])),
+    });
+    expect((await upload({ text: "a", answer_topic: "x", feedback_topic: "No" })).status).toBe(201);
+    expect((await upload({ text: "a", answer_topic: "x", feedback_topic: "No", feedback_other: "?" })).status).toBe(
+      400,
+    );
+  });
+
   async function upload(studyId: number, units: object[], overwrite = false) {
     return app.request(`/api/study/${studyId}/units`, {
       method: "POST",

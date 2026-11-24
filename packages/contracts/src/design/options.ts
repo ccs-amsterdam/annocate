@@ -116,14 +116,31 @@ export function optionLabel(option: Pick<Option, "value" | "label">): string {
   return option.label ?? String(option.value);
 }
 
-/** Problems with nominal option values (non-empty, trimmed, unique strings). */
+/** The longest a nominal value is. */
+export const MAX_NOMINAL_VALUE = 128;
+
+/**
+ * Why a nominal value can't be written in an answer key or a cell of an
+ * export (answerKey.ts: `a;b` is several values, `a|b` alternatives, `3..5`
+ * a range), or null if it can.
+ */
+function unwritableValue(value: string): string | null {
+  if (value.length > MAX_NOMINAL_VALUE) return `has more than ${MAX_NOMINAL_VALUE} characters`;
+  if (/[;|\r\n]/.test(value)) return "has a ; or | or a new line (they separate values in answer keys and exports)";
+  if (/^-?\d+(\.\d+)?\s*\.\./.test(value)) return "starts like a range of numbers (3..5)";
+  return null;
+}
+
+/** Problems with nominal option values (non-empty, trimmed, unique strings that answer keys and exports can hold). */
 export function nominalValueErrors(options: { value: unknown }[]): string[] {
   const errors: string[] = [];
   const seen = new Set<string>();
   for (const { value } of options) {
+    const unwritable = typeof value === "string" ? unwritableValue(value) : null;
     if (typeof value !== "string") errors.push(`Nominal values are strings, not ${JSON.stringify(value)}`);
     else if (value.trim() === "") errors.push("Values can't be empty");
     else if (value !== value.trim()) errors.push(`'${value}' has spaces around it`);
+    else if (unwritable) errors.push(`The value '${value.slice(0, 40)}' ${unwritable}`);
     else if (seen.has(value)) errors.push(`Duplicate value '${value}'`);
     if (typeof value === "string") seen.add(value);
   }

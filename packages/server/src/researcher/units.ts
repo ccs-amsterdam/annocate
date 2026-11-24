@@ -3,7 +3,9 @@ import {
   UnitsCreateBodySchema,
   addedFields,
   checkUnitData,
+  collectQuestions,
   fieldUsage,
+  reservedColumnError,
   isSetType,
   type UnitData,
   type UnitField,
@@ -38,8 +40,8 @@ async function uploadFields(
   units: { data: UnitData }[],
 ): Promise<{ fields: UnitField[] } | { error: string }> {
   let known = declared;
+  const latest = await latestDesignVersion(db, studyId);
   if ((await unitCount(db, studyId)) === 0) {
-    const latest = await latestDesignVersion(db, studyId);
     const used = latest ? fieldUsage(designVersionItems(latest)) : new Map();
     const given = new Set(units.flatMap((u) => Object.keys(u.data)));
     known = declared.filter((f) => used.has(f.name) && !given.has(f.name));
@@ -49,6 +51,12 @@ async function uploadFields(
     known,
   );
   if ("error" in added) return added;
+  // answer_<q> and feedback_<q> are the design's questions' columns (D7)
+  const questions = new Set(collectQuestions(latest ? designVersionItems(latest) : []).questions.keys());
+  for (const field of added.fields) {
+    const reserved = reservedColumnError(field.name, questions);
+    if (reserved) return { error: reserved };
+  }
   const withDeclaredDescription = (f: UnitField) => {
     const description = declared.find((d) => d.name === f.name)?.description;
     return description ? { ...f, description } : f;
