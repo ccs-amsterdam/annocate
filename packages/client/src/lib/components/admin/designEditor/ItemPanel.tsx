@@ -11,6 +11,7 @@ import {
   inviteOf,
   type DesignItem,
   type EndItem,
+  type SessionItem,
 } from "@annotinder/contracts";
 import { AlertTriangle, ArrowLeft, Code2, Edit3, Eye } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
@@ -57,7 +58,6 @@ export function ItemPanel({
 }) {
   const [chosenPane, setPane] = useState<ItemPane>("edit");
   const [sessionPart] = useSessionTab();
-  const groupsQuery = useSetGroupsQuery(client);
   const pane: ItemPane = previewBeside && chosenPane === "preview" ? "edit" : chosenPane;
   const item = draft.selectedItem;
   const itemWarnings = item ? warnings.filter((w) => w.item === itemTitle(item)) : [];
@@ -114,29 +114,7 @@ export function ItemPanel({
                 ))}
               </ul>
             )}
-            {pane === "preview" && item.type === "session" ? (
-              <SessionPreview item={item} part={sessionPart} groups={groupsQuery.data ?? []} studyId={client.studyId} />
-            ) : pane === "preview" ? (
-              <ItemPreview key={getItemKey(item)} client={client} draft={draft} item={item} />
-            ) : pane === "json" && item.type === "session" ? (
-              <SessionPartJson
-                item={item}
-                part={sessionPart}
-                readOnly={readOnly}
-                issues={draft.validationIssues.filter((i) => i.path[0] === 0 && i.path[1] === sessionPart)}
-                onChange={(next) => draft.update(getItemKey(item), next)}
-              />
-            ) : pane === "json" ? (
-              <ItemJsonEditor
-                key={getItemKey(item)}
-                item={item}
-                readOnly={readOnly}
-                issues={draft.validationIssues.filter((issue) => issueIsAbout(draft.items, issue, item))}
-                onChange={(next) => draft.update(getItemKey(item), next)}
-              />
-            ) : (
-              <ItemEditForm client={client} draft={draft} item={item} readOnly={readOnly} />
-            )}
+            <ItemPaneView pane={pane} client={client} draft={draft} item={item} readOnly={readOnly} />
           </div>
         </div>
       ) : (
@@ -146,6 +124,52 @@ export function ItemPanel({
       )}
     </div>
   );
+}
+
+interface ItemPaneProps {
+  pane: ItemPane;
+  client: ResearcherApi;
+  draft: DesignDraft;
+  item: DesignItem;
+  readOnly: boolean;
+}
+
+/** The selected item in the chosen pane: its form, its JSON or its preview. */
+function ItemPaneView(props: ItemPaneProps) {
+  const { pane, client, draft, item, readOnly } = props;
+  const key = getItemKey(item);
+  if (item.type === "session") return <SessionPaneView {...props} item={item} />;
+  if (pane === "preview") return <ItemPreview key={key} client={client} draft={draft} item={item} />;
+  if (pane === "json")
+    return (
+      <ItemJsonEditor
+        key={key}
+        item={item}
+        readOnly={readOnly}
+        issues={draft.validationIssues.filter((issue) => issueIsAbout(draft.items, issue, item))}
+        onChange={(next) => draft.update(key, next)}
+      />
+    );
+  return <ItemEditForm client={client} draft={draft} item={item} readOnly={readOnly} />;
+}
+
+/** The Study entry's open part (who codes, URL parameters, display) in the chosen pane. */
+function SessionPaneView({ pane, client, draft, item, readOnly }: ItemPaneProps & { item: SessionItem }) {
+  const [part] = useSessionTab();
+  const groupsQuery = useSetGroupsQuery(client);
+  if (pane === "preview")
+    return <SessionPreview item={item} part={part} groups={groupsQuery.data ?? []} studyId={client.studyId} />;
+  if (pane === "json")
+    return (
+      <SessionPartJson
+        item={item}
+        part={part}
+        readOnly={readOnly}
+        issues={draft.validationIssues.filter((i) => i.path[0] === 0 && i.path[1] === part)}
+        onChange={(next) => draft.update(getItemKey(item), next)}
+      />
+    );
+  return <ItemEditForm client={client} draft={draft} item={item} readOnly={readOnly} />;
 }
 
 /** The names of the design's end items that screen out, anywhere in it. */
