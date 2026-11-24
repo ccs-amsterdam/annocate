@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import { answers, api, coders, fromExample, question, shortcutStyle } from "./helpers";
+import { answers, api, coders, fromExample, list, question, shortcutStyle } from "./helpers";
 import type { StudyResponse, UnitResponse } from "@annotinder/contracts";
 
 // Coders at work, in a real browser, on studies made from the examples.
@@ -235,7 +235,7 @@ test("an ::html field shows in its sandboxed frame, sized by its script, within 
     },
     deploy: true,
   });
-  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
   await page.goto(`/code/${study.id}?link=${link.secret}`);
   await question(page, "Seen it?");
   const frame = page.locator("iframe[sandbox]");
@@ -292,7 +292,7 @@ test("open answers: one line continues with Enter, a text area with Ctrl + Enter
     ],
   });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
-  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
   await page.goto(`/code/${study.id}?link=${link.secret}`);
 
   await question(page, "Your nickname?");
@@ -347,7 +347,7 @@ test("options from data: each unit's own list of topics, among the question's ow
     ],
   });
   await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
-  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
+  const [link] = await list<{ secret: string }>(request, `/study/${created.id}/links`);
   await page.goto(`/code/${created.id}?link=${link.secret}`);
   await question(page, "Topic?");
   const buttons = page.locator("[data-key-target]");

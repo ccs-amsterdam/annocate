@@ -39,13 +39,24 @@ export async function api<T>(request: APIRequestContext, method: string, path: s
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
+/**
+ * A list of the researcher API (`{ <items>: [...], next? }`): its items
+ * (the tests' lists fit one page).
+ */
+export async function list<T>(request: APIRequestContext, path: string): Promise<T[]> {
+  const page = await api<Record<string, unknown>>(request, "GET", path);
+  const items = Object.values(page).find((value) => Array.isArray(value));
+  expect(items, `GET ${path} is a list`).toBeDefined();
+  return items as T[];
+}
+
 /** A new study from an example, and the link of its (first) link. */
 export async function fromExample(
   request: APIRequestContext,
   example: string,
 ): Promise<{ study: StudyResponse; link: string }> {
   const study = await api<StudyResponse>(request, "POST", "/study/from-example", { example });
-  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
   return { study, link: `/code/${study.id}?link=${link.secret}` };
 }
 
@@ -55,7 +66,7 @@ export async function answers(request: APIRequestContext, studyId: number): Prom
 }
 
 export async function coders(request: APIRequestContext, studyId: number): Promise<CoderProgress[]> {
-  return api<CoderProgress[]>(request, "GET", `/study/${studyId}/coders`);
+  return list<CoderProgress>(request, `/study/${studyId}/coders`);
 }
 
 /** Waits until the coding screen shows this question. */

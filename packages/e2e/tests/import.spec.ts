@@ -6,7 +6,7 @@ import type {
   UnitPage,
 } from "@annotinder/contracts";
 import { expect, test } from "./fixtures";
-import { answers, api, coders, fromExample } from "./helpers";
+import { answers, api, coders, fromExample, list } from "./helpers";
 
 // Create new study › From a file: a copy of a study from its export
 // (Settings › Export study), coders and answers included, and a study from a
@@ -18,7 +18,7 @@ async function contents(request: Parameters<typeof api>[0], id: number) {
   const page = await api<UnitPage>(request, "GET", `/study/${id}/units/page?offset=0&limit=200`);
   const ids = new Map(page.units.map((u) => [u.id, u.externalId]));
   const groups = await api<SetGroupResponse[]>(request, "GET", `/study/${id}/sets`);
-  const versions = await api<DesignVersionMeta[]>(request, "GET", `/study/${id}/design`);
+  const versions = await list<DesignVersionMeta>(request, `/study/${id}/design`);
   const design = await api<DesignVersion>(request, "GET", `/study/${id}/design/${versions.at(-1)!.id}`);
   return {
     settings: { reopenMinutes: study.reopenMinutes, redirectUrls: study.redirectUrls },
@@ -33,7 +33,7 @@ test("a design file makes a study with that design and no units; other files are
   request,
 }) => {
   const { study } = await fromExample(request, "swipe-sentiment");
-  const versions = await api<DesignVersionMeta[]>(request, "GET", `/study/${study.id}/design`);
+  const versions = await list<DesignVersionMeta>(request, `/study/${study.id}/design`);
   const design = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${versions.at(-1)!.id}`);
   const file = {
     format: "annotinder-design",

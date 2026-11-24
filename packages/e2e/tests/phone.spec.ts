@@ -1,7 +1,7 @@
 import { devices, type Browser, type Page } from "@playwright/test";
 import type { StudyResponse, UnitResponse } from "@annotinder/contracts";
 import { expect, test } from "./fixtures";
-import { answers, api, coders, fromExample, question } from "./helpers";
+import { answers, api, coders, fromExample, list, question } from "./helpers";
 
 // The main coding flows on a phone: a touch screen, a narrow viewport.
 
@@ -71,7 +71,7 @@ async function deploy(request: Parameters<typeof api>[0], name: string, units: s
   });
   const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, { items });
   await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
-  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
+  const [link] = await list<{ secret: string }>(request, `/study/${created.id}/links`);
   return { id: created.id, link: `/code/${created.id}?link=${link.secret}` };
 }
 
@@ -215,7 +215,7 @@ test("on a phone, a coder picks their name from the list", async ({ request, bro
     ],
   });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
-  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
   const page = await phone(browser);
   await page.goto(`/code/${study.id}?link=${link.secret}`);
   await expect(page.getByText("Who are you?")).toBeVisible();

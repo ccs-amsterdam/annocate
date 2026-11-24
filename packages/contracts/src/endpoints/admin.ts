@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { listResponse } from "../paging.js";
 import {
   AdminStudySchema,
   AdminStudyUpdateSchema,
@@ -46,7 +47,12 @@ export const adminEndpoints = {
   deleteDomain: { method: "DELETE", path: "/admin/domains/:domain", request: z.void(), response: z.void() },
 
   /** `?q=` filters by email; at most 200, most recent logins first. */
-  listUsers: { method: "GET", path: "/admin/users", request: z.void(), response: z.array(AdminUserSchema) },
+  listUsers: {
+    method: "GET",
+    path: "/admin/users",
+    request: z.void(),
+    response: listResponse("users", AdminUserSchema),
+  },
   /** Invites by email (or changes the role of a user with that email). With role `admin`: sensitive. */
   createUser: { method: "POST", path: "/admin/users", request: AdminUserCreateSchema, response: AdminUserSchema },
   /** An invitation not claimed yet (a shadow user): withdrawn. 409 for a registered user. */

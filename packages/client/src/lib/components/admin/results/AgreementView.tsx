@@ -1,4 +1,5 @@
 import { Fragment, useState } from "react";
+import { labelOf } from "../../../api/lenient";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { QuestionAgreement } from "@annotinder/contracts";
 import type { DesignLabels } from "./designLabels";
@@ -75,7 +76,7 @@ export function AgreementView({ questions, labels }: { questions: QuestionAgreem
                               <span className="font-mono">{q.question}</span>
                               {q.item && <span>· {labels.itemLabel(q.question, q.item)}</span>}
                               {q.option !== null && <span>· {labels.valueLabel(q.question, q.option)}</span>}
-                              <span className="text-xs text-muted-foreground">({METRICS[q.metric]})</span>
+                              <span className="text-xs text-muted-foreground">({labelOf(METRICS, q.metric)})</span>
                             </button>
                           </td>
                           <td className={cn("px-3 py-2 text-right font-medium tabular-nums", alphaClass(q.alpha))}>

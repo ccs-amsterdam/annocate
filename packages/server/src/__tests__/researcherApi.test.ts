@@ -111,7 +111,7 @@ async function setUpStudy(key: string): Promise<{ studyId: number; unitIds: numb
   ).data;
   expect((await call(key, "putDeployment", { studyId: study.id }, { designVersionId: codebook.id })).status).toBe(200);
   // Deploying made the study's link
-  const [link] = (await call(key, "listLinks", { studyId: study.id })).data;
+  const [link] = (await call(key, "listLinks", { studyId: study.id })).data.links;
   return { studyId: study.id, unitIds: units.map((u) => u.id), linkSecret: link.secret };
 }
 
@@ -189,8 +189,8 @@ describe("studies and roles", () => {
     const bob = await keyFor("bob@uni.nl");
     const { studyId } = await setUpStudy(alice);
 
-    expect((await call(alice, "listStudies")).data.map((j) => j.id)).toEqual([studyId]);
-    expect((await call(bob, "listStudies")).data).toEqual([]);
+    expect((await call(alice, "listStudies")).data.studies.map((j) => j.id)).toEqual([studyId]);
+    expect((await call(bob, "listStudies")).data.studies).toEqual([]);
     expect((await call(bob, "getStudy", { id: studyId, studyId })).status).toBe(403);
     expect((await call(alice, "getStudy", { id: 999, studyId: 999 })).status).toBe(404);
 
@@ -202,7 +202,7 @@ describe("studies and roles", () => {
     const twice = [...users, { email: "bob@uni.nl", role: "WRITE" }];
     expect((await call(alice, "putStudyUsers", { id: studyId, studyId }, { users: twice })).status).toBe(400);
     expect((await call(alice, "putStudyUsers", { id: studyId, studyId }, { users })).status).toBe(204);
-    expect((await call(bob, "listStudies")).data.map((j) => j.id)).toEqual([studyId]);
+    expect((await call(bob, "listStudies")).data.studies.map((j) => j.id)).toEqual([studyId]);
     expect((await call(bob, "listAnnotations", { studyId })).status).toBe(200);
     expect((await call(bob, "putDeployment", { studyId }, { designVersionId: 1 })).status).toBe(403);
   });
@@ -235,7 +235,7 @@ describe("downloading annotations", () => {
     expect(rows[0]).not.toHaveProperty("retiredAt");
 
     // Coder-level values and progress come with the coders.
-    const coders = (await call(key, "listCoders", { studyId })).data;
+    const coders = (await call(key, "listCoders", { studyId })).data.coders;
     expect(coders.map((c) => c.finished)).toEqual([
       [{ loop: "loop_1", title: "loop", units: 2 }],
       [{ loop: "loop_1", title: "loop", units: 2 }],

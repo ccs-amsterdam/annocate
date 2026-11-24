@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 import type { DesignVersion, StudyResponse } from "@annotinder/contracts";
-import { api, chooseWhoCodes } from "./helpers";
+import { api, chooseWhoCodes, list } from "./helpers";
 
 // The design editor, step by step as "Your first study" (help) describes it.
 
@@ -41,11 +41,11 @@ test("writing a design in the editor, as the help describes it, and saving it", 
 
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect
-    .poll(async () => (await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`)).length, {
+    .poll(async () => (await list<DesignVersion>(request, `/study/${study.id}/design`)).length, {
       timeout: 10_000,
     })
     .toBe(1);
-  const [saved] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
+  const [saved] = await list<{ id: number }>(request, `/study/${study.id}/design`);
   const { items } = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${saved.id}`);
   expect(items).toMatchObject([
     {
@@ -91,11 +91,11 @@ test("an experiment: balanced conditions, each with its own units (condition_set
 
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect
-    .poll(async () => (await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`)).length, {
+    .poll(async () => (await list<DesignVersion>(request, `/study/${study.id}/design`)).length, {
       timeout: 10_000,
     })
     .toBe(1);
-  const [saved] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
+  const [saved] = await list<{ id: number }>(request, `/study/${study.id}/design`);
   const { items } = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${saved.id}`);
   expect(items).toMatchObject([
     { type: "experiment", name: "framing", variable: { type: "experiment", draw: "balanced", selectsUnits: true } },
@@ -149,11 +149,11 @@ test("branches: a label and a condition, else items; questions and loops at the 
 
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect
-    .poll(async () => (await api<DesignVersion[]>(request, "GET", `/study/${study.id}/design`)).length, {
+    .poll(async () => (await list<DesignVersion>(request, `/study/${study.id}/design`)).length, {
       timeout: 10_000,
     })
     .toBe(1);
-  const [saved] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
+  const [saved] = await list<{ id: number }>(request, `/study/${study.id}/design`);
   const version = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${saved.id}`);
   expect(version.session).toMatchObject({ end: { message: "Thanks for coding!" } });
   expect(version.items).toMatchObject([
@@ -211,7 +211,7 @@ test("an answer option's colour: from the palette, or none", async ({ page, requ
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect
     .poll(async () => {
-      const [saved] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
+      const [saved] = await list<{ id: number }>(request, `/study/${study.id}/design`);
       const version = await api<DesignVersion>(request, "GET", `/study/${study.id}/design/${saved.id}`);
       return JSON.stringify(version.items);
     })

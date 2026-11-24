@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { listPage } from "../shared/paging.js";
 import {
   AnnotationsQuerySchema,
   UnitVersionsQuerySchema,
@@ -66,18 +67,22 @@ export function annotations(server: Server): Hono<Env> {
 
   app.get("/study/:studyId/devices", requireStudyUser(server, "READ"), async (c) =>
     c.json(
-      await db
-        .select({
-          id: sessionDevices.id,
-          sessionId: sessionDevices.sessionId,
-          type: sessionDevices.deviceType,
-          browser: sessionDevices.browser,
-          os: sessionDevices.os,
-          created: sessionDevices.created,
-        })
-        .from(sessionDevices)
-        .where(eq(sessionDevices.studyId, c.get("studyId")))
-        .orderBy(asc(sessionDevices.id)),
+      listPage(
+        c,
+        "devices",
+        await db
+          .select({
+            id: sessionDevices.id,
+            sessionId: sessionDevices.sessionId,
+            type: sessionDevices.deviceType,
+            browser: sessionDevices.browser,
+            os: sessionDevices.os,
+            created: sessionDevices.created,
+          })
+          .from(sessionDevices)
+          .where(eq(sessionDevices.studyId, c.get("studyId")))
+          .orderBy(asc(sessionDevices.id)),
+      ),
     ),
   );
 

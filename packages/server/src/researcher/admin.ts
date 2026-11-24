@@ -1,4 +1,5 @@
 import { Hono, type Context } from "hono";
+import { listPage } from "../shared/paging.js";
 import {
   AdminStudyUpdateSchema,
   AdminUserCreateSchema,
@@ -139,6 +140,9 @@ function selectStudies(db: Db) {
     .$dynamic();
 }
 
+/** The users list shows this many at once (the most recently active); searching finds the others. */
+const USERS_PAGE = 200;
+
 export function admin(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
@@ -263,9 +267,15 @@ export function admin(server: Server): Hono<Env> {
     const q = (c.req.query("q") ?? "").trim().toLowerCase();
     const rows = await selectUsers(db, issuer())
       .where(q === "" ? undefined : like(users.email, `%${q}%`))
-      .orderBy(sql`${users.lastLoginAt} DESC NULLS LAST`, desc(users.id))
-      .limit(200);
-    return c.json(await Promise.all(rows.map((r) => toAdminUser(db, r))));
+      .orderBy(sql`${users.lastLoginAt} DESC NULLS LAST`, desc(users.id));
+    // A page of the most recently active: the admin searches for the others (or pages on)
+    const page = listPage(
+      c,
+      "users",
+      rows.map((row) => ({ id: row.user.id, row })),
+      USERS_PAGE,
+    );
+    return c.json({ ...page, users: await Promise.all(page.users.map(({ row }) => toAdminUser(db, row))) });
   });
 
   const adminUser = async (id: number) => {

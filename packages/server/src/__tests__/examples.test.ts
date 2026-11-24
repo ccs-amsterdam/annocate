@@ -57,14 +57,17 @@ describe("example studies", () => {
 
       // The researcher owns it, and it is deployed with an invitation
       expect((await researcher(`/api/study/${study.id}`)).status).toBe(200);
-      const [link] = (await (await researcher(`/api/study/${study.id}/links`)).json()) as { secret: string }[];
+      const { links } = (await (await researcher(`/api/study/${study.id}/links`)).json()) as {
+        links: { secret: string }[];
+      };
+      const [link] = links;
       expect(
         (await (await researcher(`/api/study/${study.id}/deployment`)).json()) as { active: boolean },
       ).toMatchObject({ active: true });
 
       // Example answers: every coder's answers are in the download
       const coders = CoderProgressSchema.array().parse(
-        await (await researcher(`/api/study/${study.id}/coders`)).json(),
+        ((await (await researcher(`/api/study/${study.id}/coders`)).json()) as { coders: unknown }).coders,
       );
       const page = AnnotationPageSchema.parse(
         await (await researcher(`/api/study/${study.id}/annotations?limit=10000`)).json(),
@@ -165,7 +168,9 @@ describe("studies from a recipe", () => {
       ],
     ]);
     // A draft with a question to specify: saved, not deployed
-    const designVersions = (await (await researcher(`/api/study/${study.id}/design`)).json()) as { items: unknown[] }[];
+    const { versions: designVersions } = (await (await researcher(`/api/study/${study.id}/design`)).json()) as {
+      versions: { items: unknown[] }[];
+    };
     expect(designVersions).toHaveLength(1);
     // Its columns with a role are unit fields of their type
     const [{ units: spec }] = await query<{ units: { fields: unknown[] } }>(
@@ -178,7 +183,9 @@ describe("studies from a recipe", () => {
       { name: "condition_set", type: "set" },
     ]);
     expect(await (await researcher(`/api/study/${study.id}/deployment`)).json()).toBeNull();
-    expect(((await (await researcher(`/api/study/${study.id}/links`)).json()) as unknown[]).length).toBe(0);
+    expect(((await (await researcher(`/api/study/${study.id}/links`)).json()) as { links: unknown[] }).links).toEqual(
+      [],
+    );
 
     // Published (the question specified): one open link
     const specified = structuredClone(items);
@@ -188,7 +195,9 @@ describe("studies from a recipe", () => {
     expect(published.status, await published.clone().text()).toBe(201);
     const { id } = StudyResponseSchema.parse(await published.json());
     expect(
-      ((await (await researcher(`/api/study/${id}/links`)).json()) as { label: string }[]).map((l) => l.label),
+      ((await (await researcher(`/api/study/${id}/links`)).json()) as { links: { label: string }[] }).links.map(
+        (l) => l.label,
+      ),
     ).toEqual(["Open link"]);
   });
 

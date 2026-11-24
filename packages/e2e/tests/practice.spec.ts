@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 import type { StudyResponse } from "@annotinder/contracts";
-import { api, question } from "./helpers";
+import { api, list, question } from "./helpers";
 
 // Practice and gold units (docs/architecture.md §6.2): a practice question
 // tells the coder when they are wrong, and they answer again; a gold unit is checked silently, and
@@ -17,7 +17,7 @@ test("a practice question gives feedback when wrong, answered again until right;
   await page.getByPlaceholder(/Sentiment Analysis/).fill("Checked coders");
   await page.getByRole("button", { name: "Create Study" }).click();
   await expect(page.getByRole("button", { name: "Overview" })).toBeVisible();
-  const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "Checked coders")!;
+  const study = (await list<StudyResponse>(request, "/study")).find((j) => j.name === "Checked coders")!;
 
   // The design first: answer_ and feedback_ columns are for its questions
   const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {

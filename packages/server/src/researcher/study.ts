@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { listPage } from "../shared/paging.js";
 import { StudyWriteSchema } from "@annotinder/contracts";
 import { asc, isNotNull } from "drizzle-orm";
 import type { Db } from "../db/index.js";
@@ -26,7 +27,7 @@ export function studies(server: Server): Hono<Env> {
       .from(studiesTable)
       .where(researcher.devRole ? undefined : isNotNull(studyRole(studiesTable.id, researcher.userId)))
       .orderBy(asc(studiesTable.id));
-    return c.json(rows.map(toStudyResponse));
+    return c.json(listPage(c, "studies", rows.map(toStudyResponse)));
   });
 
   app.post("/study", requireResearcher(server, { role: "researcher" }), async (c) => {

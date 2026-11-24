@@ -1,4 +1,5 @@
 import { RotateCcw, Trash2 } from "lucide-react";
+import { labelOf } from "../../../api/lenient";
 import type { CoderProgress } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { formatWhen } from "../../../admin/format";
@@ -11,7 +12,7 @@ const ENDED_TEXT = { complete: "Complete", screenout: "Screened out", quit: "Qui
 
 /** How a session ended, in words. */
 function endedText(ended: CoderProgress["ended"]): string {
-  return ended ? ENDED_TEXT[ended.outcome] : "–";
+  return ended ? labelOf(ENDED_TEXT, ended.outcome) : "–";
 }
 
 /**

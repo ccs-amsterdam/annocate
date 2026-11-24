@@ -2,7 +2,7 @@ import { type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { unzipSync, strFromU8 } from "fflate";
 import type { StudyResponse } from "@annotinder/contracts";
-import { answers, api, fromExample, question } from "./helpers";
+import { answers, api, fromExample, list, question } from "./helpers";
 
 // The researcher UI, in a real browser (development login).
 
@@ -115,7 +115,7 @@ test("your first study, as the help describes it: units, a design, deploy, a lin
   await page.getByPlaceholder(/Sentiment Analysis/).fill("News pilot");
   await page.getByRole("button", { name: "Create Study" }).click();
   await expect(page.getByRole("button", { name: "Overview" })).toBeVisible();
-  const study = (await api<StudyResponse[]>(request, "GET", "/study")).find((j) => j.name === "News pilot")!;
+  const study = (await list<StudyResponse>(request, "/study")).find((j) => j.name === "News pilot")!;
 
   // 2. Upload the units
   await page.getByRole("button", { name: "Units", exact: true }).click();
@@ -132,7 +132,7 @@ test("your first study, as the help describes it: units, a design, deploy, a lin
   });
   await page.getByRole("button", { name: /Use column names/ }).click();
   await page.getByRole("button", { name: /Upload 3 units/ }).click();
-  await expect.poll(async () => (await api<unknown[]>(request, "GET", `/study/${study.id}/units`)).length).toBe(3);
+  await expect.poll(async () => (await list<unknown>(request, `/study/${study.id}/units`)).length).toBe(3);
 
   // 3-6. A design (written through the API: the editor has its own unit tests), published
   const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
@@ -179,7 +179,7 @@ test("your first study, as the help describes it: units, a design, deploy, a lin
   // 7. Link coders: deploying made the study's link
   await page.getByRole("button", { name: "Links", exact: true }).click();
   await expect(page.getByText("Open link")).toBeVisible();
-  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
 
   // A coder codes the three articles
   const coder = await (await browser.newContext()).newPage();

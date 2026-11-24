@@ -24,6 +24,52 @@ coder API in `src/coder.ts` with the runtime in `src/runtime/`. Client side:
 | researcher and admin API | The session cookie from logging in (same origin, with `x-annotinder: 1`), or a personal API key (`authorization: Bearer <key>`, also cross-origin: CORS is allowed). Development servers (`AUTH_DEV_MODE=1`, localhost only) also accept `x-dev-role` / `x-dev-email`. See [researcher.md](researcher.md). |
 | coder API | A device cookie the server sets (httpOnly, same origin), a session started from a link secret. No CORS. See [coder.md](coder.md#sessions-and-headers). |
 
+## Stability
+
+`/api` is version 1 of the API. Within it:
+
+- **Fields and enum values may be added.** A client ignores fields it doesn't
+  know, and treats an enum value it doesn't know (an error `code`, a device
+  `type`, a session's `outcome`, a warning's `code`, an agreement `metric`)
+  as "something else", not as an error.
+- **Nothing is removed or renamed, and no field changes its meaning.** A
+  breaking change gets a new prefix (`/api/v2`), next to this one.
+- **Errors** are `{ error: string, code?, issues? }` with a 4xx or 5xx status:
+  `error` is for people, `code` for programs.
+- **`PUT` replaces what is sent and keeps what is left out** (e.g.
+  `PUT /study/:id` with only `name` keeps `archived`).
+
+## Lists
+
+The lists that can grow with a study are objects, not bare arrays, so they
+can be read in pages: `{ <items>: [...], next? }`, e.g.
+`GET /study/:studyId/units` → `{ units: [...] }`. These are the studies
+(`studies`), a study's design versions (`versions`), units (`units`), links
+(`links`), coders (`coders`) and devices (`devices`), and the admin API's
+users (`users`).
+
+- `limit` (query, optional): the most items to return, at most 10,000.
+  Without it a list comes whole, up to 10,000 items (the admin's users: 200).
+- `next` (response): present when items are left: the id of the last item
+  returned.
+- `after` (query, optional): the `next` of the page before; the list
+  continues after that item. 400 if the item is no longer in the list:
+  start again.
+
+A script that wants everything reads until a response has no `next`:
+
+```r
+units <- list()
+after <- NULL
+repeat {
+  page <- api(sprintf("study/%d/units", study)) |>
+    req_url_query(after = after) |> req_perform() |> resp_body_json()
+  units <- c(units, page$units)
+  if (is.null(page$`next`)) break
+  after <- page$`next`
+}
+```
+
 ## Deployment ids
 
 A deployed study runs as a deployment identified by the study id

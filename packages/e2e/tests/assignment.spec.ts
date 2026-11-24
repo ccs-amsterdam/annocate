@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 import type { StudyResponse, UnitResponse } from "@annotinder/contracts";
-import { api, question } from "./helpers";
+import { api, list, question } from "./helpers";
 
 // Who gets which units (docs/architecture.md §6, docs/plans/unit-sets.md):
 // the who codes show the coders of the units' coder_set, and a
@@ -165,7 +165,7 @@ test("an experiment that selects units: balanced, each session codes its conditi
     ],
   });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
-  const links = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  const links = await list<{ secret: string }>(request, `/study/${study.id}/links`);
   expect(links).toHaveLength(1);
 
   // Two sessions on the one link: one of each condition, each with only its own unit
@@ -208,7 +208,7 @@ test("an experiment whose condition is a URL parameter's value selects that cond
     ],
   });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
-  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
 
   // The same condition every time: the link's
   for (const [arm, text, other] of [
@@ -247,7 +247,7 @@ test("two loops each show one part: first the pre units, then the post units", a
     items: [filtered("pre", "before", "Before?"), filtered("post", "after", "After?")],
   });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
-  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
 
   const coder = await (await browser.newContext()).newPage();
   await coder.goto(`/code/${study.id}?link=${link.secret}`);
@@ -276,7 +276,7 @@ test("a loop's part, chosen in the editor from the part set's values", async ({ 
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect
     .poll(async () => {
-      const versions = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
+      const versions = await list<{ id: number }>(request, `/study/${study.id}/design`);
       const latest = await api<{ items: { units?: unknown }[] }>(
         request,
         "GET",
@@ -325,7 +325,7 @@ test("a link where coders pick their name: a name stays on the first device that
     items: [loop()],
   });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
-  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
 
   const first = await (await browser.newContext()).newPage();
   await first.goto(`/code/${study.id}?link=${link.secret}`);
@@ -368,7 +368,7 @@ test("dividing units again keeps the units coders already coded", async ({ page,
     items: [loop()],
   });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
-  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
   // Anna codes her unit
   const anna = await (await browser.newContext()).newPage();
   await anna.goto(`/code/${study.id}?link=${link.secret}`);
@@ -401,7 +401,7 @@ test("dividing units again keeps the units coders already coded", async ({ page,
     `/study/${study.id}/sets`,
   );
   // Anna's text is the first unit (u1)
-  const units = await api<{ id: number; externalId: string }[]>(request, "GET", `/study/${study.id}/units`);
+  const units = await list<{ id: number; externalId: string }>(request, `/study/${study.id}/units`);
   const annaUnit = units.find((u) => u.externalId === "u1")!.id;
   const column = groups.find((g) => g.name === "coder_set")!;
   expect(column.sets.find((s) => s.name === "anna")!.unitIds).toContain(annaUnit);

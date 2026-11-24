@@ -63,8 +63,13 @@ export class ServerApi {
   deleteDomain(domain: string): Promise<void> {
     return this.api.call("DELETE", this.path(adminEndpoints.deleteDomain.path, { domain }));
   }
-  listUsers(q = ""): Promise<AdminUser[]> {
-    return this.api.call("GET", `${adminEndpoints.listUsers.path}${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+  /** The users matching `q`, most recently active first: the first page (searching narrows it down). */
+  async listUsers(q = ""): Promise<AdminUser[]> {
+    const page = await this.api.call<{ users: AdminUser[] }>(
+      "GET",
+      `${adminEndpoints.listUsers.path}${q ? `?q=${encodeURIComponent(q)}` : ""}`,
+    );
+    return page.users;
   }
   createUser(user: AdminUserCreate): Promise<AdminUser> {
     return this.api.call("POST", adminEndpoints.createUser.path, user);

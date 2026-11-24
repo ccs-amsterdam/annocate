@@ -27,7 +27,7 @@ account role `admin` (`docs/accounts.md`). Called by the server admin page
 | listDomains | `GET /admin/domains` | – | `DomainRuleSchema[]` |
 | putDomain | `PUT /admin/domains/:domain` | `DomainRuleWriteSchema` | `DomainRuleSchema` |
 | deleteDomain | `DELETE /admin/domains/:domain` | – | – |
-| listUsers | `GET /admin/users?q=` | – | `AdminUserSchema[]` (at most 200) |
+| listUsers | `GET /admin/users?q=` | – | `{ users: AdminUserSchema[], next? }` (a [list](README.md#lists); 200 at a time unless `limit` says otherwise) |
 | createUser | `POST /admin/users` | `AdminUserCreateSchema` | `AdminUserSchema` (201) |
 | updateUser | `PUT /admin/users/:id` | `AdminUserUpdateSchema` | `AdminUserSchema` |
 | deleteInvitation | `DELETE /admin/users/:id` | – | – (409 for a registered user) |

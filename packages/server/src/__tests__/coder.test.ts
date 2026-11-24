@@ -359,11 +359,20 @@ async function createSet(name: string, externalIds: string[], group: string) {
   return ids;
 }
 
+/** A list of study 1 from the researcher API (`{ <items>: [...] }`): its items. */
+async function listOf(path: "coders" | "links" | "devices" | "design"): Promise<unknown[]> {
+  const page = (await (await server.request(`/api/study/1/${path}`, { headers: adminHeaders })).json()) as Record<
+    string,
+    unknown[]
+  >;
+  return page[path === "design" ? "versions" : path]!;
+}
+
 /** The deployed design version's links: params -> secret. */
 async function links(): Promise<
   { id: number; secret: string; params: Record<string, string>; retiredAt: string | null }[]
 > {
-  return (await (await server.request("/api/study/1/links", { headers: adminHeaders })).json()) as never;
+  return (await listOf("links")) as never;
 }
 
 let extraLinks = 0;
@@ -1370,7 +1379,7 @@ describe("sessions", () => {
     );
     expect(rows).toHaveLength(1);
     expect(rows[0].device_id).not.toBeNull();
-    const listed = (await (await server.request("/api/study/1/devices", { headers: adminHeaders })).json()) as {
+    const listed = (await listOf("devices")) as {
       id: number;
     }[];
     expect(listed.map((d) => d.id)).toContain(rows[0].device_id);
@@ -1464,9 +1473,7 @@ describe("URL parameters", () => {
       ((await (await send("u4", "/session", {}, { "x-url-params": "PROLIFIC_PID=ab12" })).json()) as SessionResponse)
         .session,
     ).toEqual(ok.session);
-    const coders = (await (
-      await server.request("/api/study/1/coders", { headers: adminHeaders })
-    ).json()) as CoderProgress[];
+    const coders = (await listOf("coders")) as CoderProgress[];
     expect(coders.find((c) => c.coder === "ab12")?.session, JSON.stringify(coders)).toEqual({
       coder: "ab12",
       study: "s1",
@@ -1485,8 +1492,7 @@ describe("the coder's display", () => {
     await post({ keys: "numbers", width: "narrow" });
     await post({ keys: "numpad", width: "wide" });
     expect((await post({ keys: "" })).status).toBe(400);
-    const progress = async () =>
-      ((await (await server.request("/api/study/1/coders", { headers: adminHeaders })).json()) as CoderProgress[])[0];
+    const progress = async () => ((await listOf("coders")) as CoderProgress[])[0];
     expect((await progress()).display).toEqual([
       { keys: "numbers", width: "narrow", at: expect.any(String) },
       { keys: "numpad", width: "wide", at: expect.any(String) },
@@ -1541,10 +1547,7 @@ describe("quitting and deleting a coder's data", () => {
     expect(session.deletionRequest).toMatchObject({ at: expect.any(String) });
     expect((await send("quitter", "/loop/loop_1/next", {}, link)).status).toBe(409);
 
-    const listed = async () =>
-      ((await (await server.request("/api/study/1/coders", { headers: adminHeaders })).json()) as CoderProgress[]).find(
-        (c) => c.coder === "P77",
-      );
+    const listed = async () => ((await listOf("coders")) as CoderProgress[]).find((c) => c.coder === "P77");
     const before = (await listed())!;
     expect(before.deletionRequest).toMatchObject({ at: expect.any(String) });
     expect(
@@ -1661,7 +1664,7 @@ describe("practice and gold units", () => {
     expect(await submit(g2.id, "positive")).toEqual({ end: "low_quality" }); // wrong again: health 0
     expect((await c.session()).ended).toMatchObject({ item: "low_quality", outcome: "screenout" });
     // Results › Coders counts the test units each coder finished
-    const coders = (await (await server.request("/api/study/1/coders", { headers: adminHeaders })).json()) as {
+    const coders = (await listOf("coders")) as {
       ended: unknown;
       testUnits: object;
     }[];
@@ -1859,9 +1862,7 @@ describe("coder-level answers", () => {
         .map((a) => a.variable)
         .sort(),
     ).toEqual(["age", "city", "group"]);
-    const coders = (await (
-      await server.request("/api/study/1/coders", { headers: adminHeaders })
-    ).json()) as CoderProgress[];
+    const coders = (await listOf("coders")) as CoderProgress[];
     expect(coders[0].variables).toMatchObject({ age: value(31), city: value("Utrecht") });
     // A reload (a restart of the runtime) reads them back
     server = restart();
@@ -2023,9 +2024,7 @@ describe("coder login", () => {
     // A transfer link works too
     expect((await send("phone", "/transfer", { method: "POST" })).status).toBe(200);
 
-    const coders = (await (
-      await server.request("/api/study/1/coders", { headers: adminHeaders })
-    ).json()) as CoderProgress[];
+    const coders = (await listOf("coders")) as CoderProgress[];
     expect(coders.find((c) => c.id === phone.body.sessionId)?.email).toBe("a@example.org");
   });
 
@@ -2048,9 +2047,7 @@ describe("coder login", () => {
     expect((await session("phone", secret)).body.sessionId).toBe(before.body.sessionId);
 
     // The researcher sees no email where the invitation doesn't require sign-in
-    const coders = (await (
-      await server.request("/api/study/1/coders", { headers: adminHeaders })
-    ).json()) as CoderProgress[];
+    const coders = (await listOf("coders")) as CoderProgress[];
     expect(coders.find((c) => c.id === before.body.sessionId)).toMatchObject({ id: before.body.sessionId });
     expect(coders.find((c) => c.id === before.body.sessionId)!.email).toBeUndefined();
   });
@@ -2577,7 +2574,7 @@ describe("review regressions", () => {
       body: JSON.stringify({ units: [{ externalId: "n1", data: { ...data, extra: "x" } }] }),
     });
     expect(upload.status).toBe(201);
-    const list = (await (await server.request("/api/study/1/design", { headers: adminHeaders })).json()) as {
+    const list = (await listOf("design")) as {
       id: number;
     }[];
     const draft = (await (
@@ -2639,7 +2636,7 @@ describe("unit fields in the design", () => {
     });
     expect(upload.status, await upload.clone().text()).toBe(201);
     // The deployed version is frozen: the new field goes into a new draft
-    const list = (await (await server.request("/api/study/1/design", { headers: adminHeaders })).json()) as {
+    const list = (await listOf("design")) as {
       id: number;
       note: string | null;
     }[];
@@ -2841,7 +2838,7 @@ describe("end items", () => {
     expect(answers.status).toBe(409);
 
     // Researchers see how the session ended.
-    const coders = (await (await server.request("/api/study/1/coders", { headers: adminHeaders })).json()) as {
+    const coders = (await listOf("coders")) as {
       ended: unknown;
     }[];
     expect(coders[0].ended).toMatchObject({ item: "screen_out_young", outcome: "screenout" });
@@ -2961,7 +2958,7 @@ describe("a crowd", () => {
     await redeploy({}, [crowd(undefined, { maxCoders: 1 })]);
     const active = (await links()).filter((l) => !l.retiredAt);
     expect(active.map((l) => l.params)).toEqual([{}]);
-    const listed = (await (await server.request("/api/study/1/links", { headers: adminHeaders })).json()) as {
+    const listed = (await listOf("links")) as {
       maxUses?: number;
     }[];
     expect(listed.map((l) => l.maxUses)).toContain(1);
@@ -3153,9 +3150,7 @@ describe("test units per coder", () => {
     expect(seen).toEqual(["unit-1", "unit-2", "g1"]);
     // A coder who never asked for units: not routed, so no test units yet
     await send("idle", "/session", {}, { "x-link-secret": secret, "x-new-session": "1" });
-    const coders = (await (
-      await server.request("/api/study/1/coders", { headers: adminHeaders })
-    ).json()) as CoderProgress[];
+    const coders = (await listOf("coders")) as CoderProgress[];
     const routed = coders.find((x) => x.finished.some((f) => f.title === "main_loop" && f.units === 3))!;
     expect(routed.testUnits).toEqual({ overlap: { done: 1, total: 1 }, gold: { done: 1, total: 1 } });
     expect(coders.filter((x) => x.id !== routed.id).map((x) => x.testUnits)).toEqual([{}]);

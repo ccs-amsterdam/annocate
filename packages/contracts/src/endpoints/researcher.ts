@@ -8,6 +8,7 @@ import {
   StudyFromExampleSchema,
 } from "../study.js";
 import { RecipeSchema } from "../recipe.js";
+import { listResponse } from "../paging.js";
 import { DesignWriteSchema, DesignVersionSchema, DesignVersionMetaSchema } from "../design/designVersion.js";
 import { UnitsCreateBodySchema, UnitMetaSchema, UnitPageSchema, UnitResponseSchema } from "../unit.js";
 import { UnitFieldSchema, UnitsSpecSchema } from "../unitFields.js";
@@ -86,7 +87,13 @@ export const researcherEndpoints = {
   /** Sensitive, as createApiKey. */
   revokeApiKey: { method: "POST", path: "/me/keys/:id/revoke", request: z.void(), response: ApiKeyResponseSchema },
 
-  listStudies: { method: "GET", path: "/study", request: z.void(), response: z.array(StudyResponseSchema) },
+  /** Query: `after`, `limit` (paging.ts). */
+  listStudies: {
+    method: "GET",
+    path: "/study",
+    request: z.void(),
+    response: listResponse("studies", StudyResponseSchema),
+  },
   createStudy: { method: "POST", path: "/study", request: StudyWriteSchema, response: StudyResponseSchema },
   listExamples: { method: "GET", path: "/examples", request: z.void(), response: z.array(ExampleSummarySchema) },
   /** A new study from an example: units, a deployed design, a link and example answers. */
@@ -131,7 +138,7 @@ export const researcherEndpoints = {
     method: "GET",
     path: "/study/:studyId/design",
     request: z.void(),
-    response: z.array(DesignVersionMetaSchema),
+    response: listResponse("versions", DesignVersionMetaSchema),
   },
   getDesignVersion: {
     method: "GET",
@@ -153,7 +160,12 @@ export const researcherEndpoints = {
   },
   deleteDesignVersion: { method: "DELETE", path: "/study/:studyId/design/:id", request: z.void(), response: z.void() },
 
-  listUnits: { method: "GET", path: "/study/:studyId/units", request: z.void(), response: z.array(UnitMetaSchema) },
+  listUnits: {
+    method: "GET",
+    path: "/study/:studyId/units",
+    request: z.void(),
+    response: listResponse("units", UnitMetaSchema),
+  },
   /** Static paths: a server must match these before `/units/:id`. */
   getUnitFields: {
     method: "GET",
@@ -207,7 +219,7 @@ export const researcherEndpoints = {
     method: "GET",
     path: "/study/:studyId/coders",
     request: z.void(),
-    response: z.array(CoderProgressSchema),
+    response: listResponse("coders", CoderProgressSchema),
   },
   /** Per coder id: the units they answered, and the ones they were sent but didn't answer (coders.ts). */
   listCoderUnits: {
@@ -241,7 +253,7 @@ export const researcherEndpoints = {
     method: "GET",
     path: "/study/:studyId/links",
     request: z.void(),
-    response: z.array(LinkResponseSchema),
+    response: listResponse("links", LinkResponseSchema),
   },
   /** No new coders from this link (coders who started keep working); a redeploy keeps it revoked. Undone by `reopenLink`. */
   revokeLink: {
@@ -364,7 +376,12 @@ export const researcherEndpoints = {
     response: ResultsCodersSchema,
   },
   /** The devices coders used, for the export (`deviceId` on annotations). */
-  listDevices: { method: "GET", path: "/study/:studyId/devices", request: z.void(), response: z.array(DeviceSchema) },
+  listDevices: {
+    method: "GET",
+    path: "/study/:studyId/devices",
+    request: z.void(),
+    response: listResponse("devices", DeviceSchema),
+  },
   resetAnnotations: {
     method: "POST",
     path: "/study/:studyId/annotations/reset",

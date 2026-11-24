@@ -64,7 +64,7 @@ work with an API key (403 `not_with_api_key`).
 | [createApiKey](#createapikey) | `POST /me/keys` | any | `ApiKeyWriteSchema` | `ApiKeyCreatedSchema` |
 | [revokeApiKey](#revokeapikey) | `POST /me/keys/:id/revoke` | any | – | `ApiKeyResponseSchema` |
 | **Studies** | | | | |
-| [listStudies](#liststudies) | `GET /study` | any | – | `StudyResponseSchema[]` |
+| [listStudies](#liststudies) | `GET /study` | any | – | `{ studies: StudyResponseSchema[], next? }` |
 | [createStudy](#createstudy) | `POST /study` | any | `StudyWriteSchema` | `StudyResponseSchema` |
 | [listExamples](#listexamples) | `GET /examples` | any | – | `ExampleSummarySchema[]` |
 | [createStudyFromExample](#createstudyfromexample) | `POST /study/from-example` | any | `StudyFromExampleSchema` | `StudyResponseSchema` |
@@ -78,13 +78,13 @@ work with an API key (403 `not_with_api_key`).
 | [putStudyUsers](#putstudyusers) | `PUT /study/:id/users` | ADMIN | `StudyUsersWriteSchema` | – |
 | [getOverview](#getoverview) | `GET /study/:studyId/overview` | READ | – | `StudyOverviewSchema` |
 | **Designs** | | | | |
-| [listDesignVersions](#listdesignversions) | `GET /study/:studyId/design` | READ | – | `DesignVersionMetaSchema[]` |
+| [listDesignVersions](#listdesignversions) | `GET /study/:studyId/design` | READ | – | `{ versions: DesignVersionMetaSchema[], next? }` |
 | [getDesignVersion](#getdesignversion) | `GET /study/:studyId/design/:id` | READ | – | `DesignVersionSchema` |
 | [createDesignVersion](#createdesignversion) | `POST /study/:studyId/design` | WRITE | `DesignWriteSchema` | `DesignVersionSchema` |
 | [updateDesignVersion](#updatedesignversion) | `PUT /study/:studyId/design/:id` | WRITE | `DesignWriteSchema` | `DesignVersionSchema` |
 | [deleteDesignVersion](#deletedesignversion) | `DELETE /study/:studyId/design/:id` | WRITE | – | – |
 | **Units and sets** | | | | |
-| [listUnits](#listunits) | `GET /study/:studyId/units` | READ | – | `UnitMetaSchema[]` |
+| [listUnits](#listunits) | `GET /study/:studyId/units` | READ | – | `{ units: UnitMetaSchema[], next? }` |
 | [getUnitFields](#getunitfields) | `GET /study/:studyId/units/fields` | READ | – | `UnitFieldSchema[]` |
 | [putUnitFields](#putunitfields) | `PUT /study/:studyId/units/fields` | WRITE | `UnitsSpecSchema` | `UnitFieldSchema[]` |
 | [listUnitPage](#listunitpage) | `GET /study/:studyId/units/page` | READ | – | `UnitPageSchema` |
@@ -95,11 +95,11 @@ work with an API key (403 `not_with_api_key`).
 | [putSetGroup](#putsetgroup) | `PUT /study/:studyId/sets/:group` | WRITE | `SetGroupWriteSchema` | `SetGroupResponseSchema` |
 | [deleteSetGroup](#deletesetgroup) | `DELETE /study/:studyId/sets/:group` | WRITE | – | – |
 | **Links and coders** | | | | |
-| [listLinks](#listlinks) | `GET /study/:studyId/links` | WRITE | – | `LinkResponseSchema[]` |
+| [listLinks](#listlinks) | `GET /study/:studyId/links` | WRITE | – | `{ links: LinkResponseSchema[], next? }` |
 | [revokeLink](#revokelink) | `POST /study/:studyId/links/:id/revoke` | WRITE | – | `LinkResponseSchema` |
 | [reopenLink](#reopenlink) | `POST /study/:studyId/links/:id/reopen` | WRITE | – | `LinkResponseSchema` |
 | [renewLinkSecret](#renewlinksecret) | `POST /study/:studyId/links/:id/secret` | WRITE | – | `LinkResponseSchema` |
-| [listCoders](#listcoders) | `GET /study/:studyId/coders` | READ | – | `CoderProgressSchema[]` |
+| [listCoders](#listcoders) | `GET /study/:studyId/coders` | READ | – | `{ coders: CoderProgressSchema[], next? }` |
 | [deleteCoders](#deletecoders) | `POST /study/:studyId/coders/delete` | ADMIN | `DeleteCodersSchema` | `DeleteCodersResponseSchema` |
 | [postponeDeletion](#postponedeletion) | `POST /study/:studyId/coders/:id/deletion-request/postpone` | ADMIN | – | – |
 | [listCoderDeletions](#listcoderdeletions) | `GET /study/:studyId/coders/deletions` | READ | – | `CoderDeletionSchema[]` |
@@ -114,7 +114,7 @@ work with an API key (403 `not_with_api_key`).
 | **Annotations** | | | | |
 | [listAnnotations](#listannotations) | `GET /study/:studyId/annotations` | READ | query `AnnotationsQuerySchema` | `AnnotationPageSchema` |
 | [listUnitVersions](#listunitversions) | `GET /study/:studyId/unit-versions` | READ | query `UnitVersionsQuerySchema` | `UnitVersionPageSchema` |
-| [listDevices](#listdevices) | `GET /study/:studyId/devices` | READ | – | `DeviceSchema[]` |
+| [listDevices](#listdevices) | `GET /study/:studyId/devices` | READ | – | `{ devices: DeviceSchema[], next? }` |
 | [getResultsAnswers](#getresultsanswers) | `GET /study/:studyId/results/answers` | READ | – | `ResultsAnswersSchema` |
 | [getResultsAgreement](#getresultsagreement) | `GET /study/:studyId/results/agreement` | READ | – | `ResultsAgreementSchema` |
 | [listResultUnits](#listresultunits) | `GET /study/:studyId/results/units` | READ | – | `ResultsUnitsSchema` |
@@ -196,7 +196,7 @@ Implementation: [`researcher/study.ts`](../../packages/server/src/researcher/stu
 
 ### listStudies
 
-`GET /study` → `StudyResponseSchema[]`. The studies the user has a role in (with
+`GET /study` → `{ studies: StudyResponseSchema[], next? }` (a [list](README.md#lists)). The studies the user has a role in (with
 development headers: all studies).
 
 ### createStudy
@@ -314,7 +314,7 @@ Implementation: [`researcher/design.ts`](../../packages/server/src/researcher/de
 
 ### listDesignVersions
 
-`GET /study/:studyId/design` → `DesignVersionMetaSchema[]` (id, note, created,
+`GET /study/:studyId/design` → `{ versions: DesignVersionMetaSchema[], next? }` (a [list](README.md#lists)) (id, note, created,
 immutable), oldest first: the position is the version number.
 
 ### getDesignVersion
@@ -389,7 +389,7 @@ unit data: the client's CSV upload writes them with
 
 ### listUnits
 
-`GET /study/:studyId/units` → `UnitMetaSchema[]`: id, external id and content
+`GET /study/:studyId/units` → `{ units: UnitMetaSchema[], next? }` (a [list](README.md#lists)): id, external id and content
 hash of every unit, without data.
 
 ### getUnitFields
@@ -504,7 +504,7 @@ link"), and its `maxUses` (read-only) is the deployed design's One link limit
 
 ### listLinks
 
-`GET /study/:studyId/links` → `LinkResponseSchema[]`, active links
+`GET /study/:studyId/links` → `{ links: LinkResponseSchema[], next? }` (a [list](README.md#lists)), active links
 first, with `label`, `params` (`{ coder }` for a coder's link, else `{}`), `uses`, `maxUses`, `created`, `revokedAt` and
 `retiredAt`.
 
@@ -527,7 +527,7 @@ coders who already started keep working.
 
 ### listCoders
 
-`GET /study/:studyId/coders` → `CoderProgressSchema[]`: per coder session
+`GET /study/:studyId/coders` → `{ coders: CoderProgressSchema[], next? }` (a [list](README.md#lists)): per coder session
 (`id`) the link, the coder id (`coder`), started, last active, live answers, `finished`: per
 loop of the live design version (in design order) `{ loop, title, units }` (the loop's id, its label or else its id, the units finished), `testUnits`: the deployed test units
 (`test_set`: `overlap`, `gold`, `practice`) they finished, of how many (for
@@ -715,7 +715,7 @@ annotations. Join answers on `unitVersionId`.
 
 ### listDevices
 
-`GET /study/:studyId/devices` → `DeviceSchema[]`: the devices coders used
+`GET /study/:studyId/devices` → `{ devices: DeviceSchema[], next? }` (a [list](README.md#lists)): the devices coders used
 (`coder-identity.md` §4), each with its coder, coarse `type` (phone,
 tablet, desktop), `browser`, `os`, and when it joined the session. Answers
 carry the device they were given on (`deviceId` in `listAnnotations`).

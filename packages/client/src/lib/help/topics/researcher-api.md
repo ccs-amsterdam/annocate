@@ -107,7 +107,8 @@ name with AnnoTinder's unit ids (`id` from
 `GET /study/<id>/units`); `"ordered": true` keeps that order.
 
 ```r
-uploaded <- api(sprintf("study/%d/units", study)) |> req_perform() |> resp_body_json()
+# A list is an object with its items (and `next` if there are more than 10,000: see docs/api/README.md)
+uploaded <- (api(sprintf("study/%d/units", study)) |> req_perform() |> resp_body_json())$units
 ids <- sapply(uploaded, \(u) u$id)
 api(sprintf("study/%d/sets/part_set", study)) |>
   req_method("PUT") |>

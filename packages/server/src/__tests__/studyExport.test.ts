@@ -69,16 +69,16 @@ async function contents(studyId: number) {
   const sets = await json<{ name: string; sets: { name: string; unitIds: number[] }[] }[]>(
     `/api/study/${studyId}/sets`,
   );
-  const versions = await json<DesignVersionMeta[]>(`/api/study/${studyId}/design`);
+  const { versions } = await json<{ versions: DesignVersionMeta[] }>(`/api/study/${studyId}/design`);
   const versionIndex = new Map(versions.map((v, i) => [v.id, i]));
   const designs = await Promise.all(versions.map((v) => json<DesignVersion>(`/api/study/${studyId}/design/${v.id}`)));
   const deployment = await json<{ designVersionId: number; version: number; active: boolean } | null>(
     `/api/study/${studyId}/deployment`,
   );
-  const links = await json<{ label: string; params: unknown; maxUses?: number; uses: number; secret: string }[]>(
-    `/api/study/${studyId}/links`,
-  );
-  const coders = await json<CoderProgress[]>(`/api/study/${studyId}/coders`);
+  const { links } = await json<{
+    links: { label: string; params: unknown; maxUses?: number; uses: number; secret: string }[];
+  }>(`/api/study/${studyId}/links`);
+  const { coders } = await json<{ coders: CoderProgress[] }>(`/api/study/${studyId}/coders`);
   const coderIndex = new Map(coders.map((c, i) => [c.id, i]));
   const answers = (await json<{ annotations: AnnotationRow[] }>(`/api/study/${studyId}/annotations?limit=10000`))
     .annotations;
@@ -128,7 +128,7 @@ describe("study exports", { timeout: 30_000 }, () => {
     expect({ ...after, study: { ...after.study, name: before.study.name } }).toEqual(before);
     // Links are this server's: new secrets
     const secrets = async (id: number) =>
-      (await json<{ secret: string }[]>(`/api/study/${id}/links`)).map((l) => l.secret);
+      (await json<{ links: { secret: string }[] }>(`/api/study/${id}/links`)).links.map((l) => l.secret);
     const [old, made] = [await secrets(original), await secrets(copy.id)];
     expect(made.filter((s) => old.includes(s))).toEqual([]);
     // The importer owns it (development headers: no study roles), and the codings are derived again

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { listPage } from "../shared/paging.js";
 import {
   UnitsCreateBodySchema,
   addedFields,
@@ -70,7 +71,7 @@ export function units(server: Server): Hono<Env> {
 
   app.get("/study/:studyId/units", requireStudyUser(server, "READ"), async (c) => {
     const rows = await draftUnits(db, c.get("studyId"));
-    return c.json(rows.map(toUnitMeta));
+    return c.json(listPage(c, "units", rows.map(toUnitMeta)));
   });
 
   // Into the draft (docs/architecture.md §8.4): coders get the units when they

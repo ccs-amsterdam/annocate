@@ -1,4 +1,5 @@
 import { DESIGN_FORMAT_VERSION } from "@annotinder/contracts";
+import { listPage } from "../shared/paging.js";
 import { Hono } from "hono";
 import { DesignWriteSchema, EMPTY_SESSION, sessionItem } from "@annotinder/contracts";
 import { asc, eq } from "drizzle-orm";
@@ -19,7 +20,7 @@ export function designVersions(server: Server): Hono<Env> {
       .from(versions)
       .where(eq(versions.studyId, c.get("studyId")))
       .orderBy(asc(versions.id));
-    return c.json(rows.map(toDesignVersionMeta));
+    return c.json(listPage(c, "versions", rows.map(toDesignVersionMeta)));
   });
 
   app.post("/study/:studyId/design", requireStudyUser(server, "WRITE"), async (c) => {

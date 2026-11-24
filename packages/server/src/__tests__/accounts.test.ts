@@ -103,11 +103,11 @@ describe("account roles", () => {
       invited.id,
     );
     expect((await call(admin, "deleteInvitation", { id: invited.id })).status).toBe(204);
-    expect(((await call(admin, "listUsers")).data as { email: string }[]).map((u) => u.email)).not.toContain(
+    expect(((await call(admin, "listUsers")).data.users as { email: string }[]).map((u) => u.email)).not.toContain(
       "jane@uni.nl",
     );
     // A registered user can't be withdrawn
-    const users = (await call(admin, "listUsers")).data as { id: number; email: string }[];
+    const users = (await call(admin, "listUsers")).data.users as { id: number; email: string }[];
     expect(
       (await call(admin, "deleteInvitation", { id: users.find((u) => u.email === "boss@uni.nl")!.id })).status,
     ).toBe(409);
@@ -152,11 +152,11 @@ describe("identities and invitations (JIT account claiming, safeguards)", () => 
     await setServerRole(db, (await ensureUser(db, "boss@uni.nl")).id, "admin");
     const invited = (await call(admin, "createUser", {}, { email: "late@uni.nl", role: "researcher" })).data;
     await backdate("late@uni.nl", "granted", 4);
-    expect((await call(admin, "listUsers")).data.find((u: { id: number }) => u.id === invited.id)).toMatchObject({
+    expect((await call(admin, "listUsers")).data.users.find((u: { id: number }) => u.id === invited.id)).toMatchObject({
       invitationExpired: true,
     });
     expect(await login("late", "late@uni.nl")).toMatchObject({ role: "user" });
-    expect((await call(admin, "listUsers")).data.find((u: { id: number }) => u.id === invited.id)).toMatchObject({
+    expect((await call(admin, "listUsers")).data.users.find((u: { id: number }) => u.id === invited.id)).toMatchObject({
       rolesDisabled: 1,
     });
     expect((await call(admin, "updateUser", { id: invited.id }, { restoreRoles: true })).status).toBe(200);
@@ -209,7 +209,7 @@ describe("identities and invitations (JIT account claiming, safeguards)", () => 
     const coll = await login("coll", "coll@uni.nl");
     await setServerRole(db, coll.id, "researcher");
     const collKey = (await createApiKey(db, coll.id, "t")).key;
-    expect((await call(collKey, "listStudies")).data.map((s: { id: number }) => s.id)).toContain(study.id);
+    expect((await call(collKey, "listStudies")).data.studies.map((s: { id: number }) => s.id)).toContain(study.id);
     expect((await call(owner, "getStudyUsers", { id: study.id })).data).toContainEqual({
       email: "coll@uni.nl",
       role: "WRITE",
@@ -239,7 +239,7 @@ describe("limits", () => {
     await call(admin, "putDomain", { domain: "*.uni.nl" }, { researcher: false, planId: big.id });
     expect((await call(r, "getMe")).data.limits).toMatchObject({ studies: 5, units: null });
 
-    const users = (await call(admin, "listUsers")).data as { id: number; email: string }[];
+    const users = (await call(admin, "listUsers")).data.users as { id: number; email: string }[];
     const id = users.find((u) => u.email === "r@dept.uni.nl")!.id;
     const updated = await call(admin, "updateUser", { id }, { planId: small.id, limits: { units: 50 } });
     expect(updated.data.effectiveLimits).toMatchObject({ studies: 1, units: 50 });
@@ -277,13 +277,13 @@ describe("admin", () => {
   it("blocks a user: their API keys stop working", async () => {
     const admin = await keyFor("boss@uni.nl", "admin");
     const r = await keyFor("r@uni.nl", "researcher");
-    const id = ((await call(admin, "listUsers")).data as { id: number; email: string }[]).find(
+    const id = ((await call(admin, "listUsers")).data.users as { id: number; email: string }[]).find(
       (u) => u.email === "r@uni.nl",
     )!.id;
     expect((await call(admin, "updateUser", { id }, { blocked: true })).data.blockedAt).not.toBeNull();
     expect((await call(r, "getMe")).status).toBe(401);
     // Not themselves
-    const self = ((await call(admin, "listUsers")).data as { id: number; email: string }[]).find(
+    const self = ((await call(admin, "listUsers")).data.users as { id: number; email: string }[]).find(
       (u) => u.email === "boss@uni.nl",
     )!.id;
     expect((await call(admin, "updateUser", { id: self }, { blocked: true })).status).toBe(409);

@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { listPage } from "../shared/paging.js";
 import { Hono } from "hono";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { links as linksTable } from "../db/schema/index.js";
@@ -26,7 +27,13 @@ export function links(server: Server): Hono<Env> {
       .where(eq(linksTable.studyId, c.get("studyId")))
       .orderBy(sql`${linksTable.retiredAt} IS NOT NULL`, asc(linksTable.id));
     const session = await deployedSession(db, c.get("studyId"));
-    return c.json(rows.map((row) => toLinkResponse(row, session)));
+    return c.json(
+      listPage(
+        c,
+        "links",
+        rows.map((row) => toLinkResponse(row, session)),
+      ),
+    );
   });
 
   // No new coders from this link; coders who already started keep working.

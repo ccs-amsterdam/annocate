@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { listPage } from "../shared/paging.js";
 import type { Server, Env } from "../context.js";
 import { requireSensitive, requireStudyUser } from "./auth.js";
 import { listCoderProgress } from "../shared/progress.js";
@@ -14,7 +15,7 @@ export function coders(server: Server): Hono<Env> {
   const app = new Hono<Env>();
 
   app.get("/study/:studyId/coders", requireStudyUser(server, "READ"), async (c) =>
-    c.json(await listCoderProgress(db, c.get("studyId"))),
+    c.json(listPage(c, "coders", await listCoderProgress(db, c.get("studyId")))),
   );
 
   // Per coder id, the units their sessions answered (they stay with the coder when units are

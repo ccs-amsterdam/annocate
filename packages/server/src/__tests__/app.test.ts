@@ -43,7 +43,7 @@ describe("responses", () => {
     expect(zipped.headers.get("content-encoding")).toBe("gzip");
     const plain = await app.request("/api/study", { headers: adminHeaders });
     expect(plain.headers.get("content-encoding")).toBeNull();
-    expect((await json(plain)).length).toBe(20);
+    expect((await json(plain)).studies.length).toBe(20);
   });
 });
 
@@ -61,8 +61,55 @@ describe("study routes", () => {
     const study2 = await createStudy("Second");
     const res = await app.request("/api/study", { headers: adminHeaders });
     expect(res.status).toBe(200);
-    const studies = (await json(res)) as { id: number; name: string }[];
+    const { studies } = (await json(res)) as { studies: { id: number; name: string }[] };
     expect(studies.map((j) => j.id).sort()).toEqual([study1.id, study2.id].sort());
+  });
+
+  it("lists are objects that can be read in pages: limit, and after with the next of the page before", async () => {
+    const ids: number[] = [];
+    for (const name of ["a", "b", "c", "d", "e"]) ids.push((await createStudy(name)).id);
+    const list = async (query = "") => {
+      const res = await app.request(`/api/study${query}`, { headers: adminHeaders });
+      return { status: res.status, body: (await json(res)) as { studies: { id: number }[]; next?: number } };
+    };
+    // Whole, without next
+    const whole = (await list()).body;
+    expect(whole.studies.map((s) => s.id)).toEqual(ids);
+    expect(whole).not.toHaveProperty("next");
+    // In pages of two
+    const first = (await list("?limit=2")).body;
+    expect(first).toMatchObject({ studies: [{ id: ids[0] }, { id: ids[1] }], next: ids[1] });
+    const second = (await list(`?limit=2&after=${first.next}`)).body;
+    expect(second).toMatchObject({ studies: [{ id: ids[2] }, { id: ids[3] }], next: ids[3] });
+    const last = (await list(`?limit=2&after=${second.next}`)).body;
+    expect(last.studies.map((s) => s.id)).toEqual([ids[4]]);
+    expect(last).not.toHaveProperty("next");
+    // A page that ends the list exactly has no next
+    expect((await list(`?limit=1&after=${ids[3]}`)).body).not.toHaveProperty("next");
+    // What the request can't ask
+    expect((await list("?limit=0")).status).toBe(400);
+    expect((await list("?limit=10001")).status).toBe(400);
+    expect((await list("?after=x")).status).toBe(400);
+    const gone = await list("?after=99999");
+    expect(gone.status).toBe(400);
+    expect((gone.body as unknown as { error: string }).error).toContain("start again without after");
+  });
+
+  it("every list that grows with a study is such an object", async () => {
+    const study = await createStudy("Lists");
+    for (const [path, key] of [
+      ["/design", "versions"],
+      ["/units", "units"],
+      ["/links", "links"],
+      ["/coders", "coders"],
+      ["/devices", "devices"],
+    ]) {
+      const res = await app.request(`/api/study/${study.id}${path}?limit=5`, { headers: adminHeaders });
+      expect(res.status, path).toBe(200);
+      expect(await json(res), path).toEqual({ [key]: [] });
+    }
+    const users = await app.request("/api/admin/users?limit=1", { headers: adminHeaders });
+    expect(Object.keys(await json(users))).toContain("users");
   });
 
   it("PUT keeps what is left out: an archived study stays archived when it is renamed", async () => {
@@ -251,7 +298,8 @@ describe("units: fields and pages", () => {
     expect(
       (await json(await upload(study.id, [{ externalId: "u2", data: { n: 2, t: "b", "a b": 1 } }]))).error,
     ).toMatch(/'a b'/);
-    expect(await json(await app.request(`/api/study/${study.id}/units`, { headers: adminHeaders }))).toHaveLength(1);
+    const listed = await json(await app.request(`/api/study/${study.id}/units`, { headers: adminHeaders }));
+    expect(listed.units).toHaveLength(1);
 
     // empty values fit any type
     expect((await upload(study.id, [{ externalId: "u2", data: { n: null, t: "b" } }])).status).toBe(201);
@@ -549,14 +597,14 @@ describe("links, coder progress and overview", () => {
   }
   it("makes a link per coder; links are revoked, renewed or retired, never deleted", async () => {
     const { study, loop, publish, resolve, get } = await setup(["used", "waiting"]);
-    const links = await get("/links");
+    const { links } = await get("/links");
     expect(links.map((i: { label: string; params: object }) => [i.label, i.params])).toEqual([
       ["used", { coder: "used" }],
       ["waiting", { coder: "waiting" }],
     ]);
     const [used, unused] = links;
     expect(await status(resolve("a", used.secret))).toBe(200);
-    expect((await get("/links"))[0].uses).toBe(1);
+    expect((await get("/links")).links[0].uses).toBe(1);
 
     // A new secret: the old one stops working
     const renewed = await json(
@@ -582,7 +630,7 @@ describe("links, coder progress and overview", () => {
     // Republished with other coders: "waiting" is retired, "new" made; "used" keeps its row
     await setCoders(study.id, ["used", "zeta"]);
     expect((await publish([coders, loop])).status).toBe(200);
-    const after = await get("/links");
+    const after = (await get("/links")).links;
     expect(
       after.map((i: { params: { coder: string }; retiredAt: string | null }) => [i.params.coder, i.retiredAt === null]),
     ).toEqual([
@@ -614,13 +662,13 @@ describe("links, coder progress and overview", () => {
 
   it("reports coder progress and the overview from live answers", async () => {
     const { units, resolve, put, get } = await setup(["batch 1"]);
-    const [link] = await get("/links");
+    const [link] = (await get("/links")).links;
     const coderA = await resolve("a", link.secret);
     await resolve("b", link.secret);
     await put(coderA.sessionId, units[0].id, { q1: value("x"), q2: value("y") });
     await put(coderA.sessionId, units[1].id, { q1: value("x") });
 
-    const coders = await get("/coders");
+    const { coders } = await get("/coders");
     expect(coders[0]).toMatchObject({
       linkLabel: "batch 1",
       answers: 3,

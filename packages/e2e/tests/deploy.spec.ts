@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 import { RELEASE, type StudyResponse } from "@annotinder/contracts";
-import { api } from "./helpers";
+import { api, list } from "./helpers";
 
 // Everything is a draft until deployed (docs/architecture.md §8.4): units and
 // sets too. Coders get the deployed snapshot.
@@ -34,7 +34,7 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
   await api(request, "POST", `/study/${study.id}/units`, {
     units: [{ externalId: "a2", data: { text: "Second text" } }],
   });
-  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${study.id}/links`);
+  const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
 
   // A coder gets only the deployed unit
   const coder = await (await browser.newContext()).newPage();
@@ -72,7 +72,7 @@ test("the design's unit fields: how the design uses each, removing an unused one
   await api(request, "POST", `/study/${study.id}/units`, {
     units: [{ externalId: "a1", data: { text: "Hello", year: 2020, note: "x" } }],
   });
-  const [draft] = await api<{ id: number }[]>(request, "GET", `/study/${study.id}/design`);
+  const [draft] = await list<{ id: number }>(request, `/study/${study.id}/design`);
   const { units } = await api<{ units: unknown }>(request, "GET", `/study/${study.id}/design/${draft.id}`);
   await api(request, "PUT", `/study/${study.id}/design/${draft.id}`, {
     units,

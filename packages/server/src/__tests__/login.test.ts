@@ -116,16 +116,16 @@ describe("researcher login", () => {
 
     // Their studies: the same user as an API key for the same address.
     expect((await b.api("/api/study", { method: "POST", body: JSON.stringify({ name: "Mine" }) })).status).toBe(201);
-    expect(((await (await b.api("/api/study")).json()) as unknown[]).length).toBe(1);
+    expect(((await (await b.api("/api/study")).json()) as { studies: unknown[] }).studies.length).toBe(1);
 
     // A second login with the same identity (another device) is the same user
     const device = browser();
     await device.logIn(verified);
-    expect(((await (await device.api("/api/study")).json()) as unknown[]).length).toBe(1);
+    expect(((await (await device.api("/api/study")).json()) as { studies: unknown[] }).studies.length).toBe(1);
     // Another identity with the same email address is not: the identity is iss + sub, never the email
     const other = browser();
     await other.logIn({ ...verified, sub: "other-sub" });
-    expect(((await (await other.api("/api/study")).json()) as unknown[]).length).toBe(0);
+    expect(((await (await other.api("/api/study")).json()) as { studies: unknown[] }).studies.length).toBe(0);
   });
 
   it("needs the CSRF header with the session cookie", async () => {

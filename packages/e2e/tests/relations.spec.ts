@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { answers, api, question } from "./helpers";
+import { answers, api, list, question } from "./helpers";
 
 // Relations between spans: click where one starts, then where it goes; the
 // rules decide which spans can be clicked and which relation types fit.
@@ -58,7 +58,7 @@ async function study(request: Parameters<typeof api>[0]) {
     },
     deploy: true,
   });
-  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
+  const [link] = await list<{ secret: string }>(request, `/study/${created.id}/links`);
   return { id: created.id, link: `/code/${created.id}?link=${link.secret}` };
 }
 

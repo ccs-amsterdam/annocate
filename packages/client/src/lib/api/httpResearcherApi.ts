@@ -260,6 +260,20 @@ export class HttpResearcherApi implements ResearcherApi {
     return this.request(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
   }
 
+  /**
+   * A whole list (contracts paging.ts): the items under `key` of every page,
+   * following `next` until the server has no more.
+   */
+  private async listAll<T>(path: string, key: string): Promise<T[]> {
+    const items: T[] = [];
+    for (let after: number | undefined; ;) {
+      const page = await this.request<Record<string, unknown>>(after === undefined ? path : `${path}?after=${after}`);
+      items.push(...((page[key] as T[] | undefined) ?? []));
+      if (typeof page.next !== "number") return items;
+      after = page.next;
+    }
+  }
+
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await this.send(path, init);
     if (res.status === 204) return undefined as T;
@@ -336,7 +350,7 @@ export class HttpResearcherApi implements ResearcherApi {
   }
 
   async listDevices(): Promise<Device[]> {
-    return this.request(this.studyPath(researcherEndpoints.listDevices.path));
+    return this.listAll(this.studyPath(researcherEndpoints.listDevices.path), "devices");
   }
 
   async getResultsAnswers(): Promise<ResultsAnswers> {
@@ -382,7 +396,7 @@ export class HttpResearcherApi implements ResearcherApi {
   }
 
   async listStudies(): Promise<StudyResponse[]> {
-    return this.request(researcherEndpoints.listStudies.path);
+    return this.listAll(researcherEndpoints.listStudies.path, "studies");
   }
 
   async getStudy(id?: number): Promise<StudyResponse | null> {
@@ -462,7 +476,7 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async listDesignVersions(): Promise<DesignVersionMeta[]> {
     const studyId = this.requireStudyId();
-    return this.request(researcherEndpoints.listDesignVersions.path.replace(":studyId", String(studyId)));
+    return this.listAll(researcherEndpoints.listDesignVersions.path.replace(":studyId", String(studyId)), "versions");
   }
 
   async getDesignVersion(id: number): Promise<DesignVersion> {
@@ -501,7 +515,7 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async listUnits(): Promise<UnitMeta[]> {
     const studyId = this.requireStudyId();
-    return this.request(researcherEndpoints.listUnits.path.replace(":studyId", String(studyId)));
+    return this.listAll(researcherEndpoints.listUnits.path.replace(":studyId", String(studyId)), "units");
   }
 
   async getUnitFields(): Promise<UnitField[]> {
@@ -572,7 +586,7 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async listCoders(): Promise<CoderProgress[]> {
     const studyId = this.requireStudyId();
-    return this.request(researcherEndpoints.listCoders.path.replace(":studyId", String(studyId)));
+    return this.listAll(researcherEndpoints.listCoders.path.replace(":studyId", String(studyId)), "coders");
   }
 
   async deleteCoders(select: DeleteCoders): Promise<DeleteCodersResponse> {
@@ -597,7 +611,7 @@ export class HttpResearcherApi implements ResearcherApi {
   }
 
   async listLinks(): Promise<LinkResponse[]> {
-    return this.request(this.studyPath(researcherEndpoints.listLinks.path));
+    return this.listAll(this.studyPath(researcherEndpoints.listLinks.path), "links");
   }
 
   async revokeLink(id: number): Promise<LinkResponse> {
