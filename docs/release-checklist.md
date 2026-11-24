@@ -6,8 +6,9 @@ the maintainer.
 
 ## 1. Pilot server
 
-The step-by-step guide is `hosting.md`, "Pilot server, step by step": from
-an empty Ubuntu 24.04 VM to AnnoTinder on HTTPS, with the lab's Keycloak.
+The step-by-step guide is `hosting.md`, "A server on one VM, step by step":
+from an empty Ubuntu 24.04 VM to AnnoTinder on HTTPS, with the lab's Keycloak.
+The owner's checklists for going live are in `plans/go-live.md`.
 
 Ready:
 
@@ -44,8 +45,8 @@ To do on the server (the guide's steps):
    - logging out;
    - a coder signing in on a link whose invitation requires sign-in.
 6. **The smoke test with an API key**, and one full study (steps 8 and 9).
-7. **Backups:** add the VM to the nightly backup of `/opt`, and run the
-   restore test once (step 10).
+7. **Backups:** add the VM to the nightly backup of `/opt` or copy the dumps
+   off the machine, and run the restore test once (`hosting.md`, "Backups").
 8. **Email coders, by hand.** Use a design whose coder set (`coder_set`) holds email
    addresses, with one link and sign-in required. Each coder gets the units
    of their own address; any other address gets 403 `email_not_allowed`.

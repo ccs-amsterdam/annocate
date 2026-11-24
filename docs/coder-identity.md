@@ -166,7 +166,10 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
   Connect provider, by issuer URL. The server runs the authorization code flow
   with PKCE itself (`/auth/login`, `/api/auth/callback`), so tokens never reach
   the browser; it checks the ID token and starts its own session: a random key
-  in an httpOnly cookie, its hash in `sessions`, 14 days, sliding. Requests
+  in an httpOnly cookie, its hash in `sessions`, 14 days, sliding on the
+  server; the cookie itself is set at login for 14 days and not renewed, so
+  a browser is logged out 14 days after the login (`plans/go-live.md`,
+  P-17). Requests
   need `x-annotinder: 1` (CSRF). Provider tokens aren't kept. Logging out
   (`POST /auth/logout`) ends our session, not the provider's.
 - **Identity is the login, not the email** (`accounts.md` §1). A login

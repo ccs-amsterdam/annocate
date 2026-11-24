@@ -16,7 +16,7 @@ these parts, not separate code.
 
 | Product | Status | What |
 | --- | --- | --- |
-| **annotinder.com** | planned | hosted by us, EU, researcher login through a self-hosted OpenID Connect provider |
+| **annotinder.com** | planned | a public server run by us (`hosting.md`, "The public server"), researcher login through a self-hosted OpenID Connect provider. Where it is hosted is stated on the server's own information page (release plan, P-A3) |
 | **Self-hosted** | built | the same server and client on a university's or project's own machines (`hosting.md`) |
 | **Local coding from R and Python** | not built | R or Python hosts the data, the browser runs the study: developing a design with a live preview, or coding one's own data |
 | **R package, Python module** | not built | a client of any server's researcher API (`docs/api/researcher.md`), plus the host for local coding |

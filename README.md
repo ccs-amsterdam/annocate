@@ -58,8 +58,10 @@ scripts/smoke-test.sh https://annotinder.example.org
 
 `compose.yml` runs the app with Postgres and daily database dumps, listening
 on `127.0.0.1:8787` for a proxy that does HTTPS. The step-by-step guide
-(VM, login provider, Caddy, backups, updates) is in
-[docs/hosting.md](docs/hosting.md).
+(VM, login provider, Caddy, backups, monitoring, updates, and a public
+server behind the Cloudflare proxy) is in [docs/hosting.md](docs/hosting.md).
+Who runs a server, and where, is for each server to say: the software and
+these docs make no statement about it.
 
 ## Packages
 
@@ -72,7 +74,9 @@ on `127.0.0.1:8787` for a proxy that does HTTPS. The step-by-step guide
 
 ## Documentation
 
-- [docs/hosting.md](docs/hosting.md): running a server, settings, backups, capacity.
+- [docs/hosting.md](docs/hosting.md): running a server: settings, backups, monitoring, a public server, capacity.
+- [docs/plans/go-live.md](docs/plans/go-live.md): checklists for taking a server live.
+- [docs/legal/](docs/legal/README.md): drafts of a privacy statement, terms of use and a data processing agreement outline (not reviewed by a lawyer).
 - [docs/architecture.md](docs/architecture.md): how the server works: distribution, resuming, design updates, the database.
 - [docs/client.md](docs/client.md): the client: coding runtime, templates, question types, the researcher UI.
 - [docs/api/](docs/api/README.md): the researcher, coder and admin APIs.

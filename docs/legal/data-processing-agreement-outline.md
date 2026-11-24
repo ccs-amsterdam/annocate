@@ -54,7 +54,7 @@ column says what is already true of AnnoTinder, to help fill it in.
 | The agreement must say | For AnnoTinder |
 | --- | --- |
 | **Subject, duration, nature and purpose** of the processing | Hosting an annotation and survey tool: storing studies, distributing units to coders, collecting answers, offering the results for download. For as long as the researcher uses the service |
-| **The kinds of personal data** | Coders' and participants' answers and response times; rough device details; participant ids and link parameters the study keeps; email addresses of coders who log in; whatever personal data is in the uploaded units (decided by the researcher) |
+| **The kinds of personal data** | Coders' and participants' answers and response times; rough device details and how their screen looked (shortcut style, width, theme); participant ids and link parameters the study keeps; email addresses of coders who log in; whatever personal data is in the uploaded units (decided by the researcher) |
 | **The kinds of people** | Coders, survey and experiment participants, people mentioned in the material being coded, the researcher's team |
 | **Only on documented instructions** of the controller | The researcher's actions in the app and the terms are the instructions. The operator doesn't use study data for anything else and doesn't look into it except as the terms allow |
 | **Confidentiality** of everyone with access | Who at the operator has access to the server and the database: `[NAMES OR ROLES]`, bound by `[EMPLOYMENT TERMS / A SIGNED STATEMENT]` |
@@ -62,7 +62,7 @@ column says what is already true of AnnoTinder, to help fill it in.
 | **Sub-processors**: only with permission, under the same obligations | An annex with the list: `[HOSTING PROVIDER]`, `[BACKUP STORE]`, `[PROXY, e.g. Cloudflare]`, `[LOGIN PROVIDER HOST]`, each with location. General permission, with notice of changes `[N weeks]` ahead and a right to object |
 | **Help with data subjects' requests** | The app supports it: coders can ask for deletion, researchers can delete a coder's data, find a coder's data in the results download, and delete a study. The operator forwards requests it receives to the researcher |
 | **Help with security duties, data breaches and impact assessments** | The operator reports a breach that affects study data to the researchers concerned without undue delay, and at the latest within `[N hours, often 24 to 48]`, with what is known. Contact: `[SECURITY EMAIL]`. The controller decides about reporting to the authority and to participants |
-| **Delete or return the data at the end** | Researchers download results and can export a whole study at any time. After the account ends, data is deleted, and gone from backups after `[BACKUP RETENTION]` |
+| **Delete or return the data at the end** | Researchers download results and can export a whole study at any time, and can delete a study themselves. Deleting an account and its remaining studies is done by the operator on request (not yet in the app: release plan, P-A2). Deleted data is gone from backups after `[BACKUP RETENTION]` |
 | **Information and audits** | The operator answers reasonable questions and provides this documentation. On-site audits: `[TO AGREE; for a free service, usually limited to documentation and questionnaires, at the controller's cost]` |
 
 Also usual, and asked for by universities:

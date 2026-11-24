@@ -43,7 +43,7 @@ them as well.
 | **DPA with researchers' institutions** | Not for researchers of the own university (the same organisation can't be its own processor). Yes when researchers of other institutions put their study data on it | Yes, with every institution whose researchers use it. In practice: a standard DPA that is part of the terms, plus a signed one for institutions that ask |
 | **Agreements with suppliers** | The VM is the university's own. Check the backup store and the login provider | Hosting provider, Cloudflare, backup store, login provider: each needs a DPA (most offer a standard one online) |
 | **Entry in the register of processing** | Ask the privacy officer: universities keep a register, and a new system that holds research data usually has to be entered | The same, for whichever organisation runs it |
-| **Server info page** (who runs this, where, contact; `../plans/go-live.md`, P-01) | Yes | Yes |
+| **Server info page** (who runs this, where, contact; planned, not built: release plan, P-A3) | Yes | Yes |
 
 ## What the owner must decide or get checked
 
@@ -66,16 +66,20 @@ Each of these is also in the checklists of
 3. **Cloudflare in front of the public server.** Cloudflare decrypts all
    traffic, so it handles coders' answers and login cookies. It is a US
    company. It offers a standard DPA with the EU's standard contractual
-   clauses and takes part in the EU–US Data Privacy Framework, which is
-   what makes such a transfer lawful on paper. Whether the university
+   clauses and, by its own account, takes part in the EU–US Data Privacy
+   Framework (not checked for this draft: look up its current status),
+   which is what makes such a transfer lawful on paper. On the Free plan
+   a visitor is served by the nearest Cloudflare data centre, anywhere in
+   the world. Whether the university
    accepts it for research data is a policy question: ask before the
    domain is moved. If the answer is no, the alternatives are a proxy from
    an EU company, or no proxy and the hosting provider's own protection
    against attacks (`../hosting.md`, "Cloudflare in front").
-4. **The hosting location.** The drafts and the app must not say "hosted
-   in the EU" as a general fact. Each server states its own provider and
-   location, on its info page and in its privacy statement, and it must be
-   true for the VM, the database, the backups and the proxy.
+4. **The hosting location.** The drafts, the docs and the app say nothing
+   about where any server is hosted. Each server states its own provider
+   and location, on its info page (release plan, P-A3) and in its privacy
+   statement, and it must be true for the VM, the database, the backups
+   and the proxy.
 5. **Retention.** How long accounts and studies are kept when nobody uses
    them, and how long backups go back (privacy statement §7). The app
    deletes nothing by itself today, so whatever is promised must be done
@@ -108,8 +112,8 @@ Each of these is also in the checklists of
 - **Dependencies.** The packages AnnoTinder uses must have licences that
   fit (permissive ones do). Run a licence check on the dependencies once
   before the release.
-- The `package.json` files have no `license` field yet
-  (`../plans/go-live.md`, P-14).
+- The `package.json` files have no `license` field yet, and there is no
+  `SECURITY.md` (release plan, B7-06).
 
 **MIT or AGPL-3.0?**
 

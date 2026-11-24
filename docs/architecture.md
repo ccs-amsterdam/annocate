@@ -84,8 +84,10 @@ Previews are the exception: coders and answers live in one process's memory
 ## 4. Trust and hosting
 
 The server sees units and answers in plaintext, like any web application.
-Where it runs is the researcher's choice: annotinder.com (hosted by us, in
-the EU) or self-hosted for sensitive data. Encrypting answers in the browser
+Where it runs is the researcher's choice: a server someone else runs, or
+their own institution's for sensitive data. Who runs a server and where it
+is hosted is for that server to state, on its own information page (release
+plan, P-A3), not for these docs. Encrypting answers in the browser
 is a possible later hardening (`plans/encryption.md`).
 
 ## 5. Lifecycle

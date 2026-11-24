@@ -3,6 +3,11 @@
 Designs for features that are not built. The rest of `docs/` describes
 what exists.
 
+Two files are about the release, not about a feature:
+[release-plan.md](release-plan.md) (the work before the first release) and
+[go-live.md](go-live.md) (the owner's checklists for the lab's server and
+the public server, the open questions, and the code items they lead to).
+
 | Plan | What |
 | --- | --- |
 | [design-viewer.md](design-viewer.md) | Reproducibility: a browser-only viewer to go through a design file as coders did (placeholder units, the export's units, a coder's answers), versioned per release; importing a design file into a new study |

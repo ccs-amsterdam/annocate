@@ -58,19 +58,23 @@ You don't need an account. Per study, the server stores:
 | What | Details |
 | --- | --- |
 | Your answers | Per question: the answer, when you first gave it and last changed it |
-| Response times | Per question: how long it was on screen before you answered and in total, how long the page was hidden meanwhile, and how often you changed the answer |
+| Response times | Per question: how long it was on screen before you answered and in total, how long the page was hidden meanwhile, and how often you changed the answer. Per unit: when the server handed it to you |
 | Your session | Which link you used, when you started, which units you were given, and how the session ended |
 | Your device, roughly | The kind of device (phone, tablet, desktop), the browser and the operating system. Not the full "user agent" |
-| A participant id | Only if the researcher's link carries one (for example the id a panel company gave you) |
+| How your screen looked | The style of keyboard shortcuts, whether the screen was narrow or wide, light or dark theme, and when these changed |
+| A participant id | If the researcher's link carries one (for example the id a panel company gave you), or a name you picked from the study's list |
 | Other link details | Only the ones the study is set up to keep (for example a condition, or a panel's session id) |
-| Your email address | Only if the study asks you to log in |
+| Your email address | Only if you log in. Some studies require that; in others it is your own choice (to continue on another device). It is also stored if you were already logged in on this server when you opened the study's link. The researcher sees it in the results only where the study requires login `[SEE REVIEWER NOTE 8]` |
 | A request to delete | If you quit and ask for your answers to be deleted (§8) |
 
-Not stored about you by AnnoTinder: your name, your IP address, your
-location, or which other studies you took part in. (Your browser keeps
-one random id for all studies in a cookie, but the server stores only a
-separate code per study derived from it, so stored data from two studies
-can't be linked to one device.)
+If you log in, you also get an account like a researcher's (below), without
+the right to create studies.
+
+Not stored about you by AnnoTinder: your name, your IP address or your
+location. Without a login, nothing stored links the studies you took part
+in: your browser keeps one random id for all studies in a cookie, but the
+server stores only a separate code per study derived from it. With a login,
+your sessions in different studies carry the same email address.
 
 **Purpose and legal basis:** these are decided by the researcher, for
 their research. They should be in the information you got from the
@@ -85,10 +89,11 @@ for what they include.
 
 | What | Details | Why | Legal basis |
 | --- | --- | --- | --- |
-| Your account | Your email address, an id from your login provider, whether the provider verified your address, whether your last login used a second factor, when you registered and last logged in | To give you access and let colleagues add you to a study by email address | `[TO DECIDE, e.g. performing the agreement with you (the terms of use) / legitimate interest / public task]` |
+| Your account | Your email address, an id from your login provider, whether the provider verified your address, whether your last login used a second factor, when you registered and last logged in, and your display and keyboard settings | To give you access and let colleagues add you to a study by email address | `[TO DECIDE, e.g. performing the agreement with you (the terms of use) / legitimate interest / public task]` |
 | Roles and limits | Your role on the server and in studies, your plan and limits, a request to become a researcher if you made one | To decide what you may do | The same |
-| Login sessions and API keys | A random key per session or API key, stored only as a hash | To keep you logged in; for R and Python clients | The same |
-| Security log | Your logins: when, with which provider, with a second factor or not; logins you linked | To detect misuse of accounts | `[TO DECIDE, e.g. legitimate interest in a secure service]` |
+| An invitation | If a colleague or an admin gives your email address a role before you ever logged in: that address and the role, waiting for your first login | So that you get the role when you log in | The same |
+| Login sessions and API keys | A random key per session or API key, stored only as a hash; for a session also the provider, when it authenticated you and whether with a second factor; for an API key its label and when it was made and last used | To keep you logged in; for R and Python clients | The same |
+| Security log | Your logins: when, with which provider, with a second factor or not; logins you linked; exports of a whole study you made | To detect misuse of accounts | `[TO DECIDE, e.g. legitimate interest in a secure service]` |
 | Admin log | Changes that the server's admins made to accounts and studies, with the admin's email address | Accountability | The same |
 | Your studies | Everything you put in them: see "Study data" in §3 | To provide the service | Processing on your behalf |
 
@@ -103,10 +108,10 @@ or a change of these terms. Not for anything else.
 
 - **IP addresses.** The application doesn't store them, with one
   exception: to limit floods and guessing, it counts requests per address
-  for a minute. These counters are deleted after about ten minutes.
-- **Server logs.** `[DESCRIBE: e.g. "The web server in front of the
-  application keeps no access logs" / "keeps access logs with IP addresses
-  for N days, for security"]`.
+  and per minute. These counters are deleted after about ten minutes.
+- **Server logs.** The application itself writes no log of requests.
+  `[DESCRIBE THE WEB SERVER IN FRONT: e.g. "It keeps no access logs" /
+  "It keeps access logs with IP addresses for N days, for security"]`.
 - **Our proxy and hosting suppliers** process IP addresses and traffic to
   deliver the pages and to stop attacks (§6).
 
@@ -121,9 +126,9 @@ tracking and other non-essential storage, not for this.
 
 | Name | For | Set when | Kept |
 | --- | --- | --- | --- |
-| `annotinder_device` | A random id that lets you continue a study on the same device without an account. Scripts on the page can't read it | You open a study link | 400 days |
-| `annotinder_session` | Keeps a researcher (or a coder who logged in) logged in | You log in | 14 days after your last visit; removed at logout |
-| `annotinder_login` | Carries a login from this site to the login provider and back | You start a login | At most 10 minutes |
+| `annotinder_device` | A random id that lets you continue a study on the same device without an account. Scripts on the page can't read it | A study accepts your link for the first time | 400 days |
+| `annotinder_session` | Keeps a researcher (or a coder who logged in) logged in. Scripts on the page can't read it | You log in | 14 days after the login; removed at logout |
+| `annotinder_login` | Carries a login from this site to the login provider and back | You start a login | Until you come back from the login provider, at most 10 minutes |
 | `[ANY COOKIES OF THE PROXY, e.g. Cloudflare's "__cf_bm" or "cf_clearance": only if the features that set them are switched on]` | Security of the proxy | | |
 
 **Local storage** (data your browser keeps for this site, not sent to us
@@ -131,9 +136,10 @@ automatically):
 
 | What | For |
 | --- | --- |
-| Your colour theme (light or dark), whether shortcut hints are shown, the height of the answer panel | Your display preferences |
-| The answers to the unit on your screen that are not yet saved | So that they survive an accidental reload |
-| The list of studies you opened on this device | The "continue coding" list on the coder home page |
+| Your colour theme (light or dark), whether shortcut hints are shown and which keys answer, the height of the answer panel | Your display and keyboard preferences |
+| Which instructions of a study you have already seen | So that they are not opened again each time |
+| The answers to the unit on your screen that are not yet saved | So that they survive an accidental reload. Removed when the unit is saved |
+| The list of studies you opened on this device, each with the details from its link (such as a participant id), never the link's secret | The list of your studies on the coder home page |
 | For researchers: unsaved edits of a design, and notices you dismissed | So that a crash or reload doesn't lose your work |
 
 You can delete all of this in your browser's settings. Deleting the
@@ -166,8 +172,10 @@ it to another AnnoTinder server.
 | --- | --- |
 | Study data | As long as the researcher keeps the study. The researcher decides when to delete it. `[IF A LIMIT APPLIES: "Studies that nobody opened for N months are deleted after a warning to the owner."]` |
 | Researcher accounts | Until you ask us to delete it. `[OPTIONAL: "Accounts not used for N years are deleted after a warning."]` |
-| Login sessions | 14 days after your last visit |
-| Security and admin logs | `[PERIOD]` |
+| Login sessions | They stop working 14 days after their last use, and at logout. `[The record of an expired session (a hash, the provider, times) is not removed automatically today: SEE REVIEWER NOTE 5]` |
+| Links to continue on another device | 15 minutes |
+| Security and admin logs | `[PERIOD; today they are kept until someone removes them: SEE REVIEWER NOTE 5]` |
+| Invitations nobody used | They stop working after 3 months; `[PERIOD UNTIL REMOVED]` |
 | Rate limit counters with IP addresses | About 10 minutes |
 | Backups | `[PERIOD, e.g. 60 days]`. Deleted data disappears from the backups when they expire |
 
@@ -175,17 +183,21 @@ it to another AnnoTinder server.
 
 - **Coders and participants.** You can quit a study at any time, and
   when you quit you can ask for your answers to be deleted. The
-  researcher sees that request and carries it out; a record that a
-  deletion happened is kept (without your answers), so that the
-  researcher can also remove you from data they downloaded earlier. If
+  researcher sees that request and carries it out. A record that a
+  deletion happened is kept, so that the researcher can also remove you
+  from data they downloaded earlier: the session's number, your
+  participant id if you had one, when you asked, when and by whom it was
+  deleted, and how many answers; not the answers `[SEE REVIEWER NOTE 8]`. If
   the researcher doesn't respond, contact us at `[PRIVACY EMAIL]` and
   tell us which study it was (the link you used helps).
-- **Researchers** can delete individual coders' data, reset answers, and
-  delete a whole study. This is immediate and permanent on the server,
-  and disappears from backups after `[PERIOD]`.
-- **Your researcher account.** Write to `[PRIVACY EMAIL]`. Before we
-  delete an account, its studies must be deleted or handed over to
-  another owner.
+- **Researchers** can delete a coder's data and delete a whole study.
+  This is immediate and permanent in the database, and disappears from
+  backups after `[PERIOD]`. (Resetting answers is not deleting: reset
+  answers are set aside and stay in the researcher's download until the
+  coder's data or the study is deleted.)
+- **Your account.** Write to `[PRIVACY EMAIL]`. Before we delete an
+  account, the studies it owns must be deleted or handed over to another
+  owner.
 
 ## 9. Security
 
@@ -193,7 +205,7 @@ In short: connections are encrypted; researchers log in through a login
 provider, and sensitive actions (deleting data, API keys, admin work)
 need a recent login with a second factor; session keys and API keys are
 stored only as hashes; the database is not reachable from the internet;
-backups are encrypted before they leave the server. No system is
+`[IF SET UP SO: backups are encrypted before they leave the server]`. No system is
 perfectly secure. If something goes wrong with your data, we tell the
 researchers concerned and, where the law requires it, the supervisory
 authority and you.
@@ -225,13 +237,24 @@ email.
 
 ## Notes for the reviewer (not part of the statement)
 
-1. **Facts checked in the code** (November 2026): the lists in §4 and §5
-   follow what the server stores (`docs/coder-identity.md`,
-   `docs/accounts.md`, the database schema) and what the client keeps in
-   the browser (`annotinder_device`, `annotinder_session`,
-   `annotinder_login`; local storage for theme, shortcut hints, panel
-   height, draft answers, opened studies, design backup, dismissed
-   notices). Check them again at each release.
+1. **Facts checked in the code** (November 2026, commit `9b26c2a`): the
+   lists in §4 and §5 follow what the server stores
+   (`server/src/db/schema/`, `docs/coder-identity.md`, `docs/accounts.md`)
+   and what the client keeps in the browser. Cookies: `annotinder_device`
+   (`runtime/session.ts`: path `/api/d`, 400 days), `annotinder_session`
+   (`researcher/login.ts`: 14 days) and `annotinder_login` (10 minutes,
+   path `/api/auth`). Local storage keys: `annocate_theme`,
+   `annocate_show_shortcuts`, `annotinder_key_mapping`,
+   `annotinder_answer_keys`, `annocate_docked_pane_height`,
+   `annotinder:instruction-seen:…`, `annotinder:unit-draft:<session>`,
+   `annotinder:studies`, `annotinder:design-backup`,
+   `annotinder.exampleNotice.<study>`. No session storage, no IndexedDB, no
+   cookies set by scripts, and the pages load nothing from other sites
+   except what a researcher puts in a study. Check them again at each
+   release: several items of the release plan change them (notes 5 and 8).
+   The session cookie lasts 14 days from the login: the server extends the
+   session with each use, but does not renew the cookie, so the browser
+   drops it after 14 days whatever the use.
 2. **No cookie banner: the reasoning.** The ePrivacy Directive (article
    5(3); in the Netherlands article 11.7a of the Telecommunicatiewet)
    requires consent for storing or reading information on a device,
@@ -250,10 +273,28 @@ email.
 4. **Legal bases in §4** are placeholders on purpose. For a university
    the basis may be the public task; for another operator, the agreement
    with the researcher or legitimate interest.
-5. **Things promised that need doing by hand today:** deleting a
-   researcher account on request (no self-service yet), and any automatic
-   retention in §7 (`docs/plans/go-live.md`, P-03 and P-11).
+5. **Things promised that need doing by hand today:** deleting an
+   account on request (no self-service and no admin button yet: work in the
+   database; release plan P-A2), and everything about retention in §7: the
+   server removes nothing by itself except rate limit counters and used or
+   expired links to continue on another device. Expired login sessions, the
+   security log and the admin log stay until someone removes them
+   (`docs/plans/go-live.md`, P-11).
 6. **The lab's own server** can use a shortened version: §2, §4, §5, §7,
    §8, with the university's general privacy statement for the rest, if
    the privacy officer agrees.
 7. A Dutch translation may be needed, depending on the participants.
+8. **Three things in the code that this statement has to follow**, each
+   with an item in the release plan. (a) An email address is linked to a
+   coder session whenever a logged-in browser opens a study link, also when
+   the study doesn't ask for it (D15, B2-04: planned to happen only where
+   sign-in is required or the coder chooses it). (b) Where a study requires
+   login, the participant id is the email address, so the deletion record
+   keeps it; and the export of a whole study (for the study's admins)
+   holds the email address of every session that has one, also where the
+   results hide it (D18, B1-23). (c) The results download is kept as a
+   file on the server until the next download of that study is made; it is
+   not removed when a coder's data or the study is deleted
+   (`docs/plans/go-live.md`, P-15). On the standard installation the file
+   disappears at the next update of the server. Until these are changed,
+   say what is true.

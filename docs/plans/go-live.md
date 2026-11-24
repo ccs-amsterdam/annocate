@@ -7,11 +7,16 @@ open, and the code changes they lead to.
 - **Part B: this month.** The public server at annotinder.com.
 - **Part C: open questions**, each with what it is about and where to
   read more.
-- **Part D: proposed code items** (P-01 to P-14), for the release plan.
+- **Part D: code items**: how they map onto the release plan, and the ones
+  that are new here.
 
 The how-to for almost every line is in [`../hosting.md`](../hosting.md);
 the legal drafts are in [`../legal/`](../legal/README.md). A box you can't
 tick is not a reason to stop: write down why, and who decides.
+
+The facts in this file were checked against the code at commit `9b26c2a`
+(November 2026). Where the release plan changes one of them, the item is
+named.
 
 ## A. This week: the lab pilot (invite-only)
 
@@ -24,9 +29,10 @@ university VM, with Caddy, without Cloudflare.
   domain, and someone who can add the record
   ([hosting, step 1](../hosting.md#1-dns)).
 - [ ] **A VM.** Ubuntu 24.04, 2 cores, 4 GB, 40 GB disk is enough for a
-  pilot ([sizing](../hosting.md#a-server-on-one-vm-step-by-step)). Ask IT
-  at the same time: are there daily snapshots, and does the VM restart
-  elsewhere when its host fails ([Staying up](../hosting.md#staying-up))?
+  pilot ([the recommendation](../hosting.md#the-recommendation-in-short)).
+  Ask IT at the same time: are there daily snapshots, where are they kept,
+  and does the VM restart elsewhere when its hardware fails
+  ([Staying up](../hosting.md#staying-up))?
 - [ ] **A quick word with the privacy officer**: "we start a pilot of a
   research tool on a university VM, invite-only, with these people". Ask
   whether it must be registered, and send them
@@ -37,8 +43,10 @@ university VM, with Caddy, without Cloudflare.
 
 - [ ] VM set up: firewall, Docker, Caddy, the `sal` account (step 2).
 - [ ] The login client in the lab's Keycloak (step 4).
-- [ ] `.env` filled in, with two generated secrets (step 5). The secrets
-  are also in the password manager.
+- [ ] `.env` filled in, with two generated secrets (step 5). The three
+  secrets (those two and the login client's) are also in the password
+  manager. The startup log shows the right public address and no warning
+  about `ANNOTINDER_SECRET`.
 - [ ] **First admins**: two people, not one, in `ANNOTINDER_ADMINS`. Each
   has a verified address and a second factor at the login provider
   (steps 5 and 9).
@@ -51,37 +59,44 @@ university VM, with Caddy, without Cloudflare.
 
 **Registration: invite-only**
 
-- [ ] In *Server admin › Registration*: open registration **off**,
-  researcher domains **empty**. Decide whether people may send a request
-  to become a researcher (handy) or not.
+- [ ] In *Server admin › Registration*: "anyone who logs in" **off**, no
+  email domains. Decide whether people may send a request to become a
+  researcher (handy) or not.
 - [ ] Invite each pilot researcher by email address in *Server admin ›
   Users*. **AnnoTinder sends no email**: tell them yourself that they are
-  invited and where to log in. An invitation expires after 3 months.
-- [ ] Check the default plan's limits (studies, units, coders, answers)
-  in *Server admin*.
+  invited and where to log in. An invitation is good for 3 months.
+- [ ] Check the default plan in *Server admin › Plans*. It starts at 20
+  studies, 50,000 units per study, 200,000 units in total, 5,000 coders and
+  2,000,000 answers per study. The release plan (D21) suggests a smaller
+  default for accounts you did not invite (5 studies, 20,000 units, 200,000
+  answers) and a larger plan for the people you did.
 
 **Before real data comes in**
 
 - [ ] **Backups.** The daily dump is written (`dump written` in the
-  log). The VM is in the nightly backup, or restic copies the dumps
-  off-site ([Backups](../hosting.md#backups)). Check with IT whether
+  log). The VM is in the nightly backup, or restic copies the dumps to
+  another place ([Backups](../hosting.md#backups)). Check with IT whether
   backups of this data may leave the university.
 - [ ] **One restore test, on another machine**, with the date and who
   did it written down here: `[DATE, NAME, HOW LONG IT TOOK]`
   ([The restore test](../hosting.md#the-restore-test)).
-- [ ] **Monitoring.** An uptime check on `/api/health` from outside, the
-  disk warning, and the backup check ([Monitoring](../hosting.md#monitoring)).
+- [ ] **Monitoring.** An uptime check on `/api/health` from outside, a
+  second check that reaches the database (the health check does not), the
+  disk warning, and the backup check
+  ([Monitoring](../hosting.md#monitoring)).
 - [ ] **A reboot test**: reboot the VM, run the smoke test.
 - [ ] **A short privacy note for the pilot**, sent to the pilot
-  researchers or put where they can find it: who runs the server, that it
-  is a pilot, what is stored, who to contact. Take it from
+  researchers or put where they can find it: who runs the server, where it
+  is, that it is a pilot, what is stored, who to contact. Take it from
   [`../legal/privacy-statement.md`](../legal/privacy-statement.md) §2, §4,
-  §5 and §8.
+  §5 and §8. The app has no page for this yet (release plan, P-A3).
 - [ ] **Tell pilot researchers what a pilot means**: keep your own
-  downloads; the server may be reset before the first release
-  (migrations are only stable from the release tag on:
-  [hosting, step 11](../hosting.md#11-updating)); no sensitive data yet,
-  unless the privacy officer agreed.
+  downloads; the server will be started again with an empty database at
+  the first release (a database from before the release tag can't be
+  updated, and study export files from before it can't be imported:
+  [hosting, step 11](../hosting.md#11-updating)); deleting a study asks
+  for a fresh login and one confirming click, and can't be undone (release
+  plan, P-A1); no sensitive data yet, unless the privacy officer agreed.
 - [ ] **Who to call.** Two people can log in to the VM. Both know where
   the secrets and the restic password are. A contact address for users,
   and one for security reports.
@@ -115,60 +130,69 @@ matters: the first block takes the longest and blocks the rest.
 **2. The server**
 
 - [ ] A VM of 4 cores, 8 GB, 80 GB, with the provider's snapshots on
-  ([the recommendation](../hosting.md#the-recommendation-in-short)).
+  ([the recommendation](../hosting.md#the-recommendation-in-short)). If the
+  pilot's VM is reused: a new public address
+  ([why](../hosting.md#3-only-cloudflare-may-reach-the-server)).
 - [ ] Set up as in part A. One app process, Postgres on the same VM.
 - [ ] **A login provider for the public** (C4), with its own registration
   protected against bots, and working email (the provider sends the
   verification and password mails).
-- [ ] Hourly dumps, off-site copies at **another** provider, and a
-  restore test on another machine
-  ([Backups](../hosting.md#backups)): `[DATE, NAME]`.
+- [ ] Hourly dumps, copies at **another** provider, and a restore test on
+  another machine ([Backups](../hosting.md#backups)): `[DATE, NAME]`.
 - [ ] Monitoring as in part A, plus the daily smoke test with an API key.
 
-**3. The domain and Cloudflare**
+**3. The domain and Cloudflare** (only after C2 is answered with yes)
 
 - [ ] List the domain's current DNS records, mail records above all.
-- [ ] Is DNSSEC on at the registrar? If so, turn it off a day before the
-  switch ([Bringing the domain to Cloudflare](../hosting.md#1-bringing-the-domain-to-cloudflare)).
+- [ ] Is DNSSEC on at the registrar? If so, turn it off a day or two before
+  the switch
+  ([Bringing the domain to Cloudflare](../hosting.md#1-bringing-the-domain-to-cloudflare)).
 - [ ] Add the domain to Cloudflare (Free), copy the records, switch the
   nameservers at the registrar, turn DNSSEC on again.
 - [ ] The `.nl` domain and `www` redirect to the one public address.
 - [ ] TLS mode **Full (strict)**, with an origin certificate in Caddy;
   Always Use HTTPS.
-- [ ] The VM's firewall accepts ports 80 and 443 from Cloudflare only.
+- [ ] The VM's firewall accepts port 443 from Cloudflare only.
 - [ ] **The visitor's real address reaches the app**: the Caddy
   configuration of
   [hosting](../hosting.md#4-the-visitors-real-address), and its test. Do
   not open the server before this test passes (or P-02 is built).
 - [ ] A cache rule that bypasses the cache for `/api/`.
-- [ ] Rocket Loader, Email Obfuscation, automatic Web Analytics, Bot
-  Fight Mode: off ([settings](../hosting.md#6-settings-to-turn-off)).
+- [ ] Rocket Loader, Web Analytics, Email Obfuscation, Bot Fight Mode: off
+  ([settings](../hosting.md#6-settings-to-turn-off)).
 - [ ] One rate limiting rule on `/api/auth/`.
 - [ ] Tested through Cloudflare: the smoke test with an API key; coding
   in a private window; an upload near 100 MB; the results download and a
-  study export of a large study (the 100-second limit:
-  [Limits of the proxy](../hosting.md#7-limits-of-the-proxy)); an R or
-  Python client call.
+  study export of the largest study you have (the limit of about 100
+  seconds: [Limits of the proxy](../hosting.md#7-limits-of-the-proxy)); an
+  R or Python client call.
 
 **4. What the public sees**
 
-- [ ] The privacy statement and the terms are published and linked from
-  the welcome page (until P-01 exists: on a page you host elsewhere, with
-  the link sent to every new researcher).
-- [ ] Who runs the server, where it is hosted, and the contact addresses
-  are stated there. Nothing says "hosted in the EU" unless every part
-  (VM, database, backups, proxy) is.
+- [ ] The privacy statement and the terms are published, and who runs the
+  server, where each part of it is hosted (VM, database, backups, proxy)
+  and the contact addresses are stated: on the server's own information
+  page (release plan, P-A3). Until that page exists: on a page you host
+  elsewhere, with the link sent to every new researcher.
+- [ ] Nothing, anywhere, says "hosted in the EU" as a general fact. With
+  the Cloudflare proxy on the Free plan it would not be true
+  ([Cloudflare in front](../hosting.md#cloudflare-in-front)).
 - [ ] Mailboxes that are read: contact, privacy, security.
 - [ ] A one-page incident note: who decides, who tells the researchers,
   the university's procedure for data breaches (C8).
 - [ ] `robots.txt` is served (`https://<host>/robots.txt`).
 
-**5. Code items that should be in before opening to the public**
+**5. Code that should be in before opening to the public**
 
-P-01 (server info page), P-02 (real address behind Cloudflare), P-03
-(deleting accounts), P-04 (typing the name to delete a study), P-06
-(health check with the database) and P-12 (accepting the terms). The
-others can follow. See part D.
+From the release plan: P-A1 (typing the name to delete a study), P-A2
+(deleting an account), P-A3 (server information page), B1-23 and B2-04
+(email addresses of coders: when they are stored and where they stay),
+B7-04 (the server refuses to start without its secret and public address)
+and B7-05 (request logging without link secrets). From part D below: P-02
+(real address behind Cloudflare, or the Caddy workaround tested), P-06
+(health check with the database), P-12 (accepting the terms), P-15
+(results files removed with the data) and P-16 (missing asset files). The
+others can follow.
 
 ## C. Open questions
 
@@ -181,7 +205,8 @@ other institutions' research data. Ask the legal office first.
 
 **C2. Is Cloudflare acceptable for research data?**
 Cloudflare protects the server against attacks, for free, and that is
-hard to get otherwise. But it can read all traffic and is a US company.
+hard to get otherwise. But it can read all traffic, is a US company, and
+on the Free plan serves a visitor from its nearest data centre, anywhere.
 The law allows it with the right agreements; the university's policy may
 not. If not: an EU proxy company, or no proxy and the hosting provider's
 own protection. The lab's server is not affected (no Cloudflare).
@@ -190,8 +215,8 @@ own protection. The lab's server is not affected (no Cloudflare).
 
 **C3. Where does the public server run?**
 A university VM (free, on premises, but meant for the university's own
-work: may it serve the whole world?) or an EU hosting provider (about
-€15 to €30 a month, a data processing agreement with the provider, and
+work: may it serve the whole world?) or an EU hosting provider (roughly
+€15 to €50 a month, a data processing agreement with the provider, and
 someone has to pay the bill for years). A mix makes sense as "runs at
 one, spare and backups at the other", not as two halves of one system.
 → [hosting, "One VM, several processes or several VMs?"](../hosting.md#one-vm-several-processes-or-several-vms),
@@ -226,12 +251,16 @@ of the accounts. Fine for the start. If automatic mail is wanted later,
 it is a feature to plan, with a mail provider as one more supplier.
 
 **C7. How long is data kept?**
-The app deletes nothing by itself: a study stays until its researcher
-deletes it, an account until someone removes it. For a public server
-that grows forever, and the law expects a limit. Decide: after how long
-without use is a study or account removed (after a warning), and how far
-back do backups go (which is how long deleted data survives)? Until P-11
-exists, anything promised here is done by hand.
+The app deletes almost nothing by itself: a study stays until its
+researcher deletes it, an account until someone removes it from the
+database, and the security log, the admin log and the records of expired
+login sessions stay too. (It does clear rate limit counters after ten
+minutes, and links to continue on another device after 15.) For a public
+server that grows forever, and the law expects a limit. Decide: after how
+long without use is a study or account removed (after a warning), how
+long are logs kept, and how far back do backups go (which is how long
+deleted data survives)? Until P-11 exists, anything promised here is done
+by hand.
 → [`../legal/privacy-statement.md`](../legal/privacy-statement.md) §7.
 
 **C8. What happens when something goes wrong?**
@@ -243,12 +272,15 @@ and publish a security contact address.
 → [`../legal/data-processing-agreement-outline.md`](../legal/data-processing-agreement-outline.md).
 
 **C9. Deleting accounts and studies.**
-A researcher can delete a study (after a fresh login with a second
-factor), and coders' data. A researcher can't delete their own account,
-and an admin can only block one, not remove it. Until P-03 exists, a
-request to delete an account means work in the database by whoever runs
-the server. Decide what happens to the studies of someone who leaves:
-they must be deleted or given to another owner first.
+A study's ADMIN can delete it, and coders' data. The server asks for a
+fresh login with a second factor; the app then asks only "are you sure"
+(P-A1 adds typing the study's name). Nobody can delete an account in the
+app: a user can't delete their own, and an admin can block a user and
+withdraw an unused invitation, not remove someone who has logged in.
+Until P-A2 exists, a request to delete an account means work in the
+database by whoever runs the server. Decide what happens to the studies
+of someone who leaves: they must be deleted or given to another owner
+first (an admin can move a study to another owner).
 → `../accounts.md` §4; `../coder-identity.md` §8.
 
 **C10. How much downtime and data loss is acceptable?**
@@ -271,39 +303,52 @@ It keeps the public server's risk and paperwork small.
 → [`../legal/terms-of-use.md`](../legal/terms-of-use.md) §5.
 
 **C13. No cookie banner: confirmed?**
-The app sets only cookies it needs to work, and uses no tracking, so the
-developers' reading is that no banner is needed, only the cookie section
-in the privacy statement. Ask the privacy officer to confirm. It changes
-if analytics or outside widgets are ever added, or if Cloudflare features
-that set extra cookies are switched on.
+The app sets three cookies, all needed to work (the device id, the login
+session, and one that lives for the minutes of a login), keeps
+preferences and unsaved work in the browser's local storage, and loads
+nothing from other sites. So the developers' reading is that no banner is
+needed, only the cookie section in the privacy statement. Ask the privacy
+officer to confirm (release plan, P-A4). It changes if analytics or
+outside widgets are ever added, or if Cloudflare features that set extra
+cookies are switched on.
 → [`../legal/privacy-statement.md`](../legal/privacy-statement.md) §5 and
-reviewer note 2.
+reviewer notes 1 and 2.
 
-## D. Proposed code items
+## D. Code items
 
-For the release plan. "Before public" means: should be built before the
-public server opens. None is needed for the lab pilot.
+### What the release plan already has
+
+An earlier version of this file numbered its own proposals P-01 to P-14.
+The owner's items in the release plan (P-A1 to P-A5) and its B7 items
+cover some of them; those numbers are no longer used.
+
+| Was | Now | State at `9b26c2a` |
+| --- | --- | --- |
+| P-01 server info page | **P-A3** | Not built. No page, no settings, no endpoint. The help topic "Privacy and where data lives" tells researchers to ask whoever runs their server; change it to point at the page when it exists. Worth adding to P-A3: a hardening warning in *Server admin* while the page is empty, and the same contact in `/.well-known/security.txt` |
+| P-03 deleting a researcher account | **P-A2** | Not built. `DELETE /admin/users/:id` only withdraws an invitation nobody used (409 for a user who has logged in); admins can block. Worth adding to P-A2: an admin can delete an account too (a request by mail from someone who can't log in any more), and what stays in `admin_log` (it names admins by email on purpose). In the database, deleting a user removes their identities, sessions, API keys, roles and security log (cascades), and leaves the studies they own without an owner (`owner_id` becomes empty): the route must deal with those first |
+| P-04 typing the name to delete a study | **P-A1** | The server half is done: `DELETE /study/:studyId` needs the study's ADMIN and a fresh second factor (`requireSensitive`). The client half is open, in two places: the dialog on the studies page ("Are you sure…") and **Delete Study** in a study's settings ("Confirm Delete"). Say in the dialog how many coders and answers go |
+| Web basics (robots.txt, page metadata) | **P-A4** | Done: `packages/client/public/robots.txt` (the welcome page may be visited; `/code`, `/research` and `/api/` not) and, in `packages/client/index.html`, a description, theme colours and neutral social tags. No web app manifest: AnnoTinder is not installed as an app. Open in P-A4: the privacy officer's confirmation that no cookie banner is needed (C13) |
+| The hosting guide, the legal drafts, this file | **P-A5** | Done as drafts: `../hosting.md`, `../legal/`, `LICENSE` (MIT). The Redis question is answered in [hosting](../hosting.md#does-it-need-redis-or-another-key-value-store): Postgres only. Open: everything marked untested in the guide, and the owner's and the university's review of the legal texts |
+| P-14 licence metadata | **B7-06** | `LICENSE` exists. Open: `"license": "MIT"` in the `package.json` files (none has it), `SECURITY.md`, a line on contributions in the README, a check of the dependencies' licences |
+| Backups off the machine, restore drill, monitoring, Cloudflare limits in the guide | **B7-07** | Written in `../hosting.md`. Open: the restore drill itself (B7-09), and hourly dumps in `scripts/db-backup.sh` (now a crontab line in the guide; see P-09) |
+
+### New here
+
+"Before public" means: should be built before the public server opens.
+None is needed for the lab pilot.
 
 | Id | What | Why | When |
 | --- | --- | --- | --- |
-| **P-01** | **Server info page.** A public page (`/about`, linked from the welcome page, the footer of coder pages, and the account menu) that shows who runs this server, where it is hosted, the contact, privacy and security addresses, and the privacy statement and terms (as links or as text). Filled in by the server's admin in *Server admin* (stored in `server_settings`), served by a public `GET /api/server-info`. A hardening warning in *Server admin* while it is empty. The same data can fill `/.well-known/security.txt`. No default text about hosting location | Every server is run by someone else, so the software can't state it. Researchers need it for their data management plan, coders to know who holds their data. The help topic "Privacy and where data lives" already points to it | Before public |
-| **P-02** | **The real client address behind Cloudflare.** A setting (for example `ANNOTINDER_TRUST_PROXY=cloudflare`, or a header name) that makes the rate limiter read `CF-Connecting-IP`, and a startup log line that says where addresses come from. Today it reads the last `X-Forwarded-For` entry, which behind Cloudflare is a Cloudflare server (`server/src/shared/rateLimit.ts`) | Without it, rate limits lump all visitors of one Cloudflare location together. There is a workaround in the Caddy configuration ([hosting](../hosting.md#4-the-visitors-real-address)), untested | Before public (or the workaround, tested) |
-| **P-03** | **Deleting a researcher account.** By the user (account menu, with a fresh second factor) and by an admin. Refused while the user owns studies: delete or hand them over first. Removes identities, sessions, API keys, roles and the security log; decide what stays in the admin log. Today admins can only block a user, and `DELETE /admin/users/:id` only removes unclaimed invitations | The right to erasure; the privacy statement promises it | Before public |
-| **P-04** | **Deleting a study: type its name.** The server already asks for a fresh second factor (`DELETE /study/:id`). The client's dialog is a plain "Are you sure?"; add typing the study's name, and say how many coders and answers go | Deleting is permanent and takes coders' data with it | Before public |
-| **P-05** | **Turnstile on starting a coder session**, as a study or link option ("check that coders are human"): the widget in the client, `challenges.cloudflare.com` in the Content Security Policy only when configured, a check on the server (`siteverify`) with keys from settings, and a line in the privacy statement. Not on login or registration: those are at the login provider | Open links can be filled by scripts | Later |
-| **P-06** | **A health check that includes the database**: `GET /api/health?db=1` (or `/api/ready`) runs `select 1` and answers 503 when it fails. Keep the plain one for the container's own check | The uptime check and a load balancer stay green today when Postgres is down | Before public |
+| **P-02** | **The real client address behind Cloudflare.** A setting (for example `ANNOTINDER_TRUST_PROXY=cloudflare`, or a header name) that makes the rate limiter read `CF-Connecting-IP`, and a startup log line that says where addresses come from. Today it reads the last `X-Forwarded-For` entry (`server/src/shared/rateLimit.ts`), which behind Cloudflare and Caddy is a Cloudflare data centre | Without it, rate limits lump all visitors of one Cloudflare address together. There is a workaround in the Caddy configuration ([hosting](../hosting.md#4-the-visitors-real-address)), untested | Before public (or the workaround, tested) |
+| **P-05** | **Turnstile on starting a coder session**, as a study or link option ("check that coders are human"): the widget in the client, `challenges.cloudflare.com` in the Content Security Policy only when configured, a check on the server (`siteverify`) with keys from settings, and a line in the privacy statement. Not on login or registration: those are at the login provider. Compare with the caps on open links of the release plan (D16, B1-22), which need no outside service | Open links can be filled by scripts | Later |
+| **P-06** | **A health check that includes the database**: `GET /api/health?db=1` (or `/api/ready`) runs `select 1` and answers 503 when it fails. Keep the plain one for the container's own check. Today `/api/health` answers `{ ok: true, … }` without touching the database (`app.ts`) | The uptime check and a load balancer stay green when Postgres is down | Before public |
 | **P-07** | **Pages and search engines.** The server sends `X-Robots-Tag: noindex` for every page except `/` (coder links hold a secret; `robots.txt` only asks crawlers not to visit). A social preview image (`og:image`, 1200×630) and `og:url`, which need the server's public address, so the server fills them into `index.html` | `index.html` is one file for all pages, so it can't carry `noindex` without hiding the welcome page | Later |
-| **P-08** | **Previews in the database** (marked as preview data, deleted when they expire), instead of in one process's memory | The only thing that stops several app servers from working without session affinity; previews also end at every restart | With a second app server |
-| **P-09** | **`compose.yml` for an external database**: `DATABASE_URL` from `.env` when set, the `db` and `db-backup` services optional (a compose profile), TLS to the database documented and tested. Optionally a `BACKUP_INTERVAL` for hourly dumps in `db-backup.sh` | A managed Postgres, and dumps more often than daily, now need hand edits | With a managed database |
-| **P-10** | **Upload size behind a proxy.** A setting for the largest upload that the client shows and checks before sending, or uploads split into parts by the client | Cloudflare's Free and Pro plans refuse bodies over 100 MB; the server accepts 256 MB. Today a large upload fails with Cloudflare's error page | Before public (the setting), later (splitting) |
-| **P-11** | **Retention tooling.** In *Server admin*: when each account and study was last used, a filter for "not used for N months", and deleting from there. Removing expired rows (login sessions, transfer links) on a schedule if that doesn't happen yet. Later: warnings by email | The app deletes nothing by itself; the privacy statement must state a period | Soon after public |
+| **P-08** | **Previews in the database** (marked as preview data, deleted when they expire), instead of in one process's memory (`runtime/preview.ts`) | One of the two things that stop several app servers from working without session affinity; previews also end at every restart | With a second app server |
+| **P-09** | **`compose.yml` for an external database**: `DATABASE_URL` from `.env` when set, the `db` and `db-backup` services optional (a compose profile), TLS to the database documented and tested. And a `BACKUP_INTERVAL` for hourly dumps in `db-backup.sh` (it writes one file per day now) | A managed Postgres, and dumps more often than daily, now need hand edits | With a managed database; the interval before public |
+| **P-10** | **Upload size behind a proxy.** A setting for the largest upload that the client shows and checks before sending, or uploads split into parts by the client | Cloudflare's Free and Pro plans refuse requests over 100 MB; the server accepts 256 MB on `/api/study/*`. Today a larger upload fails with Cloudflare's error page | Before public (the setting), later (splitting) |
+| **P-11** | **Retention tooling.** In *Server admin*: when each account and study was last used, a filter for "not used for N months", and deleting from there. A scheduled clean-up of what nothing removes today: expired rows in `sessions`, `security_log` and `admin_log` older than a set period, shadow users whose invitation expired. Later: warnings by email. (The release plan defers "cleanup jobs for logs" to after the release; this is that, with the admin's view added) | The app deletes almost nothing by itself; the privacy statement must state a period | Soon after public |
 | **P-12** | **Accepting the terms.** At the first login as a researcher, and again when the terms' version changes: show the terms and the data processing terms, and record who accepted which version and when | A standard data processing agreement as part of the terms only works if acceptance is recorded | Before public |
-| **P-13** | **Slow actions behind a proxy.** Measure the results download, study export and import, and deploy on a large study through Cloudflare. Whatever doesn't start answering within 100 seconds must stream its answer or run in the background | Cloudflare cuts off answers that take longer to start (error 524) | Before public (measuring) |
-| **P-14** | **Licence metadata.** `"license": "MIT"` in every `package.json`, a line on contributions in the README, and a check of the dependencies' licences in the release checklist | `LICENSE` was added; the packages don't say it yet | With the release |
-
-**Web basics done in this change** (no code item needed):
-`packages/client/public/robots.txt` (the welcome page may be visited;
-`/code`, `/research` and `/api/` not), and in `packages/client/index.html`
-a description, theme colours and neutral social tags. No web app manifest:
-AnnoTinder is not installed as an app, and a manifest would add nothing
-for coders who arrive by a link.
+| **P-13** | **Slow actions behind a proxy.** Measure, on a large study through Cloudflare: making the results download (`POST …/results/export` answers when the whole zip is written), the study export (built in memory before the first byte is sent), the study import, and a deploy. Whatever doesn't start answering within about 100 seconds must stream its answer or run in the background | Cloudflare cuts off answers that take longer to start (error 524) | Before public (measuring) |
+| **P-15** | **Results files follow the data.** The results download of a study is kept as a file (`ANNOTINDER_FILES_DIR`, `shared/resultsExport.ts`) until the next download replaces it. Remove it when the study is deleted and when a coder's data is deleted; and a shared store (S3, `exports-and-files.md`) for several app servers, where a download link made on one server now fails on another | A deleted coder's answers stay on disk (for up to an hour reachable by anyone who still has the download link), until the next download or the next update of the server. The privacy statement says deleting is immediate | Before public (the removal); with a second app server (the store) |
+| **P-16** | **A missing file under `/assets/` answers 404.** Today it answers with the app's page, status 200 and `cache-control: public, max-age=31536000, immutable` (the fallback to `index.html` in `app.ts`; checked with a request) | A proxy that caches keeps that wrong answer for a year under the script's name. It bites after going back to an older version. Until fixed: purge the proxy's cache after a rollback | Before public |
+| **P-17** | **The session cookie follows the session.** The server extends a login session at each use (14 days, sliding), but sets the cookie only at login with a fixed 14 days (`researcher/login.ts`), so the browser drops it 14 days after the login whatever the use. Either renew the cookie when the session is extended, or call it a fixed 14 days in the docs (`coder-identity.md` §7 says sliding) | The docs, the privacy statement and the behaviour should say the same | With the release |

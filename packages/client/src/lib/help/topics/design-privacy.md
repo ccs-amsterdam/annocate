@@ -2,7 +2,7 @@
 title: Privacy and where data lives
 section: Design notes
 order: 7
-summary: What AnnoTinder stores about coders, where it runs, how sessions work without accounts, and what coders' browsers receive.
+summary: What AnnoTinder stores about coders, who runs the server, how sessions work without accounts, and what coders' browsers receive.
 ---
 
 For your data management plan, ethics application and coder information:
@@ -24,18 +24,24 @@ On the AnnoTinder server you use:
 | **Response times**      | per question, measured in the browser; per unit, when the server handed it out. Always recorded: mention it to coders if it matters |
 
 Not stored: coders' names, email addresses (unless they
-[sign in](links.md#login) where required), IP addresses, other device
-details, or URL parameters the design doesn't declare. The web server in
-front may keep access logs; ask whoever runs it.
+[sign in](links.md#login); you see the address only where sign-in is
+required), IP addresses, other device details, or URL parameters the
+design doesn't declare. The web server or proxy in front may keep access
+logs; ask whoever runs it.
 
 A browser has one random device id (a cookie), but per study only a code
 derived from it is stored, so the data can't link one device across
 studies. Units and answers are not encrypted in the browser.
 
-## Hosted or self-hosted
+## Who runs the server
 
-annotinder.com is hosted in the EU; you can also run the same software on
-your institution's server, to keep sensitive data in-house.
+AnnoTinder is software: each server is run by someone, such as your lab,
+your university or a public service. Who that is, where the server, its
+backups and any proxy in front of it are located, and which privacy
+statement applies differ per server. Ask the people who run the server you
+use, and put their answer in your data management plan. You can also run
+the same software on your institution's server, to keep sensitive data
+in-house.
 
 ## Coder ids are labels
 

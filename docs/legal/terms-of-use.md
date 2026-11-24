@@ -98,13 +98,16 @@ allow us to store, copy and show them as far as needed to run the
 service for you (including backups). We don't look into the content of
 studies, except when you ask for help, to investigate a suspected breach
 of these terms or a security problem, or when the law requires it.
-Admins of the server can see accounts and how much studies hold, not
-their content, unless they are given a role in the study.
+In the app, admins of the server can see accounts and how much studies
+hold, not their content, unless they are given a role in the study. The
+people who maintain the server itself can technically reach the database;
+they are named in the privacy statement or the data processing terms.
 
 ## 7. Limits
 
 Accounts have limits on the number of studies, units, coders and answers
-(shown in the app). Uploads are limited in size. We can change limits,
+(the app shows your use). Uploads, single units and single answers are
+limited in size. We can change limits,
 and raise them on request where capacity allows.
 
 ## 8. Availability, and no guarantees
@@ -186,18 +189,24 @@ data.
    law is unlikely to apply (researchers act professionally), but check.
    A university may have standard wording for services it offers to
    outsiders.
-3. **How researchers accept the terms.** Today the app doesn't ask. A
-   link on the server's information page is the minimum. A recorded
-   acceptance at the first login as a researcher, and again when the
-   terms change, is better, and needed if the data processing terms are
-   to be agreed this way (`docs/plans/go-live.md`, P-12).
+3. **How researchers accept the terms.** Today the app doesn't ask, and
+   it has no place to show them: the server's information page that §5
+   refers to is planned, not built (release plan, P-A3). Until then the
+   terms are sent to each researcher who is let in. A recorded acceptance
+   at the first login as a researcher, and again when the terms change,
+   is better, and needed if the data processing terms are to be agreed
+   this way (`docs/plans/go-live.md`, P-12).
 4. **Sensitive data (§5.3)** is a real choice. Saying "not on the public
    server" keeps the risk and the paperwork small, and gives the
    self-hosted option a clear purpose.
-5. **What the app already does** to back these terms: admins can block a
-   user and suspend a study (a suspended study stays downloadable); plans
-   and limits per account; deleting studies and coders' data needs a
-   recent login with a second factor; study export for moving to another
-   server.
+5. **What the app already does** to back these terms (checked in the
+   code, November 2026): admins can block a user and suspend a study (a
+   suspended study stays readable and downloadable, and can be deleted);
+   plans and limits per account; deleting a study or coders' data,
+   resetting answers and exporting a study need a recent login with a
+   second factor; study export for moving to another server. **Not yet:**
+   an account can't be deleted in the app, by its owner or by an admin
+   (§9; release plan, P-A2), and the app sends no email, so every "we tell
+   you by email" in these terms is done by hand.
 6. **The lab's server** can do with a short "house rules" version: §4,
    §5 and §8.

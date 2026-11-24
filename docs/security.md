@@ -136,7 +136,10 @@ what answer timings are for, `coder-identity.md` §10). Per minute
 A class behind one address stays well below them. Over a limit: 429
 `rate_limited` with `Retry-After: 60`; the coding client waits and retries.
 Counts live in an `UNLOGGED` Postgres table shared by all processes. Behind a
-proxy set `ANNOTINDER_TRUST_PROXY=1` (compose does). `ANNOTINDER_RATE_LIMITS=off`
+proxy set `ANNOTINDER_TRUST_PROXY=1` (compose does): the address is then the
+last entry of `X-Forwarded-For`. With a second proxy in front (Cloudflare)
+that entry is the proxy, unless the first one is set up as in `hosting.md`,
+"The visitor's real address". `ANNOTINDER_RATE_LIMITS=off`
 turns them off (e.g. a load test).
 
 ## 4. Exported data
