@@ -1,3 +1,4 @@
+import { KeyChoiceFlash } from "./KeyChoiceFlash";
 import { useState, useMemo, useEffect, useRef, type ComponentProps, type ReactNode } from "react";
 import type { RelationType, VariableValue } from "@annotinder/contracts";
 import { CircleCheck, Sparkles, X } from "lucide-react";
@@ -308,6 +309,7 @@ function CodingScreen({
             </div>
           </div>
         )}
+        <KeyChoiceFlash />
         <CodingTopBar
           snapshot={snapshot}
           manager={manager}

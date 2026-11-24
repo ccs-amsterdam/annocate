@@ -1,3 +1,4 @@
+import { showKeyChoice } from "./keyChoice";
 import { useContext, useEffect, useRef, useState } from "react";
 import { PRIORITY, type KeyHandler, type KeyPress, type ScopeOptions } from "./controller";
 import { KeyboardContext } from "./context";
@@ -82,6 +83,12 @@ export function useKeyTargets(
     return () => cancelAnimationFrame(frame);
   }, [controller]);
   const active = options.activeGroup ?? 0;
+  // A choice by key shows what it chose (KeyChoiceFlash)
+  const choose = (group: number, index: number, key: string) => {
+    const label = groups?.[group]?.[index]?.label;
+    if (label) showKeyChoice(key, label);
+    onChoose(group, index);
+  };
   const filtering = (group: readonly KeyTarget[] | undefined) =>
     !!group && effectiveMapping(mapping, group).kind === "filter";
   const matchesOf = (group: readonly KeyTarget[]) =>
@@ -98,7 +105,7 @@ export function useKeyTargets(
     if (!group) return false;
     const index = targetForKey(mapping, group, press.key);
     if (index < 0) return false;
-    onChoose(active, index);
+    choose(active, index, press.key);
     return true;
   };
   useKeyScope(
@@ -118,7 +125,7 @@ export function useKeyTargets(
             const exact = keys.findIndex((k, i) => k === next && !group[i].disabled);
             if (exact >= 0) {
               setTyped("");
-              onChoose(active, exact);
+              choose(active, exact, next);
               return true;
             }
             if (keys.some((k) => k && k.length > next.length && k.startsWith(next))) {
@@ -137,7 +144,7 @@ export function useKeyTargets(
           const first = matchesOf(group).findIndex((m, i) => m && group[i].fixed === undefined && !group[i].disabled);
           if (first < 0) return true;
           setFilter("");
-          onChoose(active, first);
+          choose(active, first, "Enter");
         } else if (
           press.key.length === 1 &&
           press.key !== " " &&
