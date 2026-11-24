@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatJson } from "./jsonFormat";
+import { canonicalJson, formatJson } from "./jsonFormat";
 
 describe("formatJson", () => {
   it("keeps small objects and arrays of plain values on one line", () => {
@@ -53,5 +53,18 @@ describe("formatJson", () => {
     expect(text.split("\n").length).toBeGreaterThan(3);
     expect(JSON.parse(text)).toEqual(long);
     expect(formatJson({ a: [], b: {}, c: null })).toBe('{ "a": [], "b": {}, "c": null }');
+  });
+});
+
+describe("canonicalJson", () => {
+  it("is the same for the same content in another key order, at any depth", () => {
+    const a = { name: "q", variable: { type: "confirm", options: [{ value: 1, label: "One" }] } };
+    const b = { variable: { options: [{ label: "One", value: 1 }], type: "confirm" }, name: "q" };
+    expect(canonicalJson(a)).toBe(canonicalJson(b));
+  });
+
+  it("keeps the order of lists, and leaves out undefined", () => {
+    expect(canonicalJson([2, 1])).not.toBe(canonicalJson([1, 2]));
+    expect(canonicalJson({ a: 1, b: undefined })).toBe('{"a":1}');
   });
 });

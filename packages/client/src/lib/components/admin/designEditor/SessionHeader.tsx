@@ -6,6 +6,7 @@ import { getItemKey } from "../designTree/utils";
 import type { DesignDraft } from "./useDesignDraft";
 import { useSessionTab, type SessionTab } from "../session/sessionTab";
 import { inviteSummary } from "../session/inviteSummary";
+import { withSessionTitle } from "../../../design/itemSettings";
 
 /**
  * Above the item tree: what the study is, rather than an item in it. The
@@ -39,11 +40,7 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
           maxLength={200}
           disabled={readOnly}
           value={session.public?.title ?? ""}
-          onChange={(e) => {
-            const next: SessionItem = { ...session, public: { ...session.public, title: e.target.value } };
-            if (!e.target.value) delete next.public;
-            draft.update(key, next);
-          }}
+          onChange={(e) => draft.update(key, withSessionTitle(session, e.target.value))}
         />
         <InfoTip label="About the title">
           What coders see as the study&apos;s name: on their list of studies and while coding. The study&apos;s own name

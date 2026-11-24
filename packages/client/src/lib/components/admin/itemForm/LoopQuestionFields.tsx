@@ -3,6 +3,9 @@ import { useState } from "react";
 import { MarkdownField } from "../MarkdownField";
 import { HelpButton } from "../../../help/HelpButton";
 import { ToggleChip } from "../variableType/ToggleChip";
+import { withInstruction, withOptionals } from "../../../design/itemSettings";
+
+type Focus = { focus?: string[]; focusDim?: boolean };
 
 // The fields only a question in a unit loop has: its instruction, and the
 // parts of the unit it is about.
@@ -20,11 +23,14 @@ export function FocusSelect({
   const focus = ("focus" in variable ? variable.focus : undefined) ?? [];
   const dim = "focusDim" in variable && variable.focusDim === true;
   const ids = [...new Set([...loopIds, ...focus])];
-  const set = (next: { focus?: string[]; focusDim?: boolean }) => {
-    const updated = { ...variable, ...next } as AnyVariableType & { focus?: string[]; focusDim?: boolean };
-    if (!updated.focus?.length) delete updated.focus;
-    if (!updated.focusDim) delete updated.focusDim;
-    onChange(updated);
+  const set = (next: Focus) => {
+    const updated = { focus, focusDim: dim, ...next };
+    onChange(
+      withOptionals<AnyVariableType & Focus>(variable, {
+        focus: updated.focus.length > 0 ? updated.focus : undefined,
+        focusDim: updated.focusDim || undefined,
+      }),
+    );
   };
   const toggle = (id: string) => set({ focus: focus.includes(id) ? focus.filter((f) => f !== id) : [...focus, id] });
   const spanDefault = variable.type === "span" && focus.length === 0;
@@ -85,15 +91,8 @@ export function InstructionFields({
   item: InLoopQuestionItem;
   onChange: (item: InLoopQuestionItem) => void;
 }) {
-  const set = (patch: Partial<Pick<InLoopQuestionItem, "instruction" | "instructionOpen">>) => {
-    const next = { ...item, ...patch };
-    if (!next.instruction) {
-      delete next.instruction;
-      delete next.instructionOpen;
-    }
-    if (!next.instructionOpen) delete next.instructionOpen;
-    onChange(next);
-  };
+  const set = (patch: Partial<Pick<InLoopQuestionItem, "instruction" | "instructionOpen">>) =>
+    onChange(withInstruction(item, patch));
   // Ticked: shown (an empty instruction is none, so the box keeps its own state while it is written)
   const [adding, setAdding] = useState(Boolean(item.instruction));
   return (

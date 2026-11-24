@@ -4,6 +4,7 @@ import type { DesignIssue, SessionItem } from "@annotinder/contracts";
 import { IssueList } from "../IssueList";
 import { JsonCodeEditor, SESSION_PART_MODEL } from "../jsonEditor/JsonCodeEditor";
 import type { SessionTab } from "./sessionTab";
+import { withSessionPart } from "../../../design/itemSettings";
 
 const show = (value: unknown) => JSON.stringify(value ?? null, null, 2);
 
@@ -49,9 +50,7 @@ export function SessionPartJson({
     }
     setError(null);
     applied.current = show(value);
-    const updated = { ...item, [part]: value } as SessionItem & Record<string, unknown>;
-    if (value === null) delete updated[part];
-    onChange(updated);
+    onChange(withSessionPart(item, part, value));
   }
 
   return (

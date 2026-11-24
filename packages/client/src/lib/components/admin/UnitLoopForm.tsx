@@ -13,6 +13,7 @@ import { selectClass, checkableQuestions, agreeableQuestions, testUnitsSummary }
 import { FoldedSection, Section } from "./unitLoop/Section";
 import { UnitsEditor } from "./unitLoop/UnitsEditor";
 import { TestUnitsEditor } from "./unitLoop/SpecialUnits";
+import { withLoopUnits } from "../../design/itemSettings";
 
 /**
  * Edits a unit_loop: which units coders get (contracts unitLoop.ts: the
@@ -40,12 +41,7 @@ export function UnitLoopForm({
   validationIssues: DesignIssue[];
   onChange: (loop: UnitLoopItem) => void;
 }) {
-  const setUnits = (units: LoopUnits) => {
-    const next: UnitLoopItem = { ...loop, units };
-    // Nothing set: all the session's units, once (the default)
-    if (Object.keys(units).length === 0) delete next.units;
-    onChange(next);
-  };
+  const setUnits = (units: LoopUnits) => onChange(withLoopUnits(loop, units));
   const units = loop.units ?? {};
   const unitsIssues = issuesAt(validationIssues, "units");
   // The checks' issues go with the test units; the rest (part, dividing) with the units

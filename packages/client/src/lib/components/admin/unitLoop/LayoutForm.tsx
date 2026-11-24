@@ -21,6 +21,7 @@ import { LayoutDesigner } from "../LayoutDesigner";
 import { questionNames, questionsOf } from "./helpers";
 import { Section } from "./Section";
 import { HighlightsSection } from "./HighlightsSection";
+import { withHighlights, withSnippets } from "../../../design/itemSettings";
 
 // A layout item's form: how a unit is shown from there on (template, snippets).
 
@@ -62,12 +63,7 @@ export function LayoutForm({
   const simple = parseSimpleLayout(layout.template);
   const [advanced, setAdvanced] = useState(simple === null);
   const setLayout = (next: Partial<UnitLayout>) => onChange({ ...layout, ...next });
-  const setSnippets = (entries: [string, string][]) => {
-    const next = { ...layout };
-    if (entries.length === 0) delete next.snippets;
-    else next.snippets = Object.fromEntries(entries);
-    onChange(next);
-  };
+  const setSnippets = (entries: [string, string][]) => onChange(withSnippets(layout, entries));
 
   if (!advanced && simple) {
     return (
@@ -90,11 +86,7 @@ export function LayoutForm({
           highlights={layout.highlight}
           unitFields={unitFields}
           readOnly={readOnly}
-          onChange={(highlight) => {
-            const next = { ...layout, highlight };
-            if (!highlight) delete next.highlight;
-            onChange(next);
-          }}
+          onChange={(highlights) => onChange(withHighlights(layout, highlights))}
         />
         <button
           type="button"
@@ -183,11 +175,7 @@ export function LayoutForm({
         highlights={layout.highlight}
         unitFields={unitFields}
         readOnly={readOnly}
-        onChange={(highlight) => {
-          const next = { ...layout, highlight };
-          if (!highlight) delete next.highlight;
-          onChange(next);
-        }}
+        onChange={(highlights) => onChange(withHighlights(layout, highlights))}
       />
       {/* Optional: open by itself when in use */}
       <details className="group rounded-md border border-border/70 px-3 py-2" open={snippets.length > 0}>

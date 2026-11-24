@@ -48,23 +48,34 @@ export function generateKey(): string {
 }
 
 /**
- * The items, with an editor key on every item that has none. A branch's
- * else items (`elseChildren`) become a stand-in container after its own
- * items (codebook/tree.ts `ELSE`), so the tree edits them like any list.
+ * The items as the editor holds them: a branch's else items
+ * (`elseChildren`) are a stand-in container after its own items
+ * (codebook/tree.ts `ELSE`), so the tree edits them like any list.
  */
-export function ensureKeys<T extends TopLevelItem[] | InLoopItem[]>(items: T): T {
-  const withKeys = (nodes: Node[]): Node[] =>
+export function elseAsStandIns<T extends TopLevelItem[] | InLoopItem[]>(items: T): T {
+  const convert = (nodes: Node[]): Node[] =>
     nodes.map((node) => {
-      const copy: Node & { elseChildren?: Node[] } = { ...node, _key: node._key || generateKey() };
+      const copy: Node = { ...node };
       if (Array.isArray(copy.elseChildren)) {
         const otherwise = copy.elseChildren;
         delete copy.elseChildren;
         if (otherwise.length > 0) copy.children = [...(copy.children ?? []), { type: ELSE, children: otherwise }];
       }
+      if (hasChildren(copy)) copy.children = convert(copy.children);
+      return copy;
+    });
+  return convert(asNodes(items)) as unknown as T;
+}
+
+/** The items as the editor holds them (`elseAsStandIns`), with an editor key on every item that has none. */
+export function ensureKeys<T extends TopLevelItem[] | InLoopItem[]>(items: T): T {
+  const withKeys = (nodes: Node[]): Node[] =>
+    nodes.map((node) => {
+      const copy: Node = { ...node, _key: node._key || generateKey() };
       if (hasChildren(copy)) copy.children = withKeys(copy.children);
       return copy;
     });
-  return withKeys(asNodes(items)) as unknown as T;
+  return withKeys(asNodes(elseAsStandIns(items))) as unknown as T;
 }
 
 /** The items without their editor keys (as saved): the else stand-in back as the branch's `elseChildren`. */

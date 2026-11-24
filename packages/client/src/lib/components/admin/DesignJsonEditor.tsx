@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { designItems, splitDesignItems, type TopLevelItem } from "@annotinder/contracts";
+import type { TopLevelItem } from "@annotinder/contracts";
 import { AlertCircle, Maximize2, Minimize2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatJson } from "../../design/jsonFormat";
-import { designShapeError } from "../../design/itemShape";
+import { designFromJson, designToJson } from "../../design/designJson";
 import { getFoldableLineNumbers } from "../../design/jsonFolding";
 import { DESIGN_MODEL, JsonCodeEditor } from "./jsonEditor/JsonCodeEditor";
 import type { MonacoEditor } from "./jsonEditor/MonacoJson";
@@ -38,16 +38,6 @@ async function foldDetails(editor: MonacoEditor | null) {
 }
 
 /**
- * The editor's items as the design shows them: `{ public, session, items }`.
- * (The editor holds the session and public info as its first item, the
- * Study entry: contracts `designItems`.)
- */
-function designText(items: TopLevelItem[]): string {
-  const { items: rest, session, public: info } = splitDesignItems(items);
-  return formatJson({ public: info, session, items: rest });
-}
-
-/**
  * The whole design as JSON (docs/client.md §7), with completion and checks
  * from the design's JSON Schema. Applied to the draft on every edit that
  * parses to items the editor can show; validation issues are listed in the
@@ -62,14 +52,14 @@ export function DesignJsonEditor({
   onChange: (items: TopLevelItem[]) => void;
   disabled?: boolean;
 }) {
-  const [text, setText] = useState(() => designText(items));
+  const [text, setText] = useState(() => designToJson(items));
   const [error, setError] = useState<string | null>(null);
-  const applied = useRef(designText(items));
+  const applied = useRef(designToJson(items));
   const editorRef = useRef<MonacoEditor | null>(null);
 
   // Changes from elsewhere (undo, revert) replace the text.
   useEffect(() => {
-    const json = designText(items);
+    const json = designToJson(items);
     if (json === applied.current) return;
     applied.current = json;
     setText(json);
@@ -78,23 +68,14 @@ export function DesignJsonEditor({
 
   function edit(next: string) {
     setText(next);
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(next);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid JSON");
-      return;
-    }
-    const shape = designShapeError(parsed);
-    if (shape) {
-      setError(shape);
+    const result = designFromJson(next);
+    if ("error" in result) {
+      setError(result.error);
       return;
     }
     setError(null);
-    const design = parsed as { items: TopLevelItem[]; session?: never; public?: never };
-    const nextItems = designItems(design) as TopLevelItem[];
-    applied.current = designText(nextItems);
-    onChange(nextItems);
+    applied.current = designToJson(result.items);
+    onChange(result.items);
   }
 
   return (

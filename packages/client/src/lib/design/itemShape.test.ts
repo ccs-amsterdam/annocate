@@ -61,6 +61,78 @@ describe("item shape", () => {
     expect(keyed[0].children!.map((i) => i._key)).toEqual(["c2"]);
   });
 
+  it("keeps the keys of layouts at the same place in their loop", () => {
+    const loop = (key: string | undefined, children: object[]) => ({
+      ...(key ? { _key: key } : {}),
+      type: "unit_loop",
+      children,
+    });
+    const before = [
+      loop("l1", [
+        { _key: "y1", type: "layout", template: "a" },
+        { _key: "q", name: "q", type: "end" },
+        { _key: "y2", type: "layout", template: "b" },
+      ]),
+    ];
+    const next = [
+      loop(undefined, [
+        { type: "layout", template: "a", style: { fontSize: "1.2em" } },
+        { name: "q", type: "end" },
+        { type: "layout", template: "b" },
+        { type: "layout", template: "c" },
+      ]),
+    ];
+    const keyed = carryKeys(next as unknown as TopLevelItem[], before as unknown as TopLevelItem[]) as unknown as {
+      children: { _key?: string }[];
+    }[];
+    expect(keyed[0].children.map((i) => i._key)).toEqual(["y1", "q", "y2", undefined]);
+  });
+
+  it("keeps the keys of a branch's else items, which come as elseChildren", () => {
+    const before = [
+      {
+        _key: "c1",
+        type: "branch",
+        condition: { script: "true" },
+        children: [
+          { _key: "a", name: "a", type: "end" },
+          { _key: "e1", type: "else", children: [{ _key: "y1", type: "layout", template: "x" }] },
+        ],
+      },
+    ];
+    const next = [
+      {
+        type: "branch",
+        condition: { script: "false" },
+        children: [{ name: "a", type: "end" }],
+        elseChildren: [{ type: "layout", template: "x" }],
+      },
+    ];
+    const keyed = carryKeys(next as unknown as TopLevelItem[], before as unknown as TopLevelItem[]);
+    expect(keyed).toEqual([
+      {
+        _key: "c1",
+        type: "branch",
+        condition: { script: "false" },
+        children: [
+          { _key: "a", name: "a", type: "end" },
+          { _key: "e1", type: "else", children: [{ _key: "y1", type: "layout", template: "x" }] },
+        ],
+      },
+    ]);
+  });
+
+  it("checks a branch's else items", () => {
+    const branch = (elseChildren: unknown) => [
+      { type: "branch", condition: { script: "true" }, children: [], elseChildren },
+    ];
+    expect(itemsShapeError(branch([{ name: "e", type: "end" }]))).toBeNull();
+    expect(itemsShapeError(branch([{ name: "x", type: "question" }]))).toBe(
+      `'x': a question needs a "variable" with a "type"`,
+    );
+    expect(itemsShapeError(branch({}))).toBe(`An item: "elseChildren" must be a list`);
+  });
+
   it("doesn't ask conditions for a name", () => {
     expect(itemsShapeError([{ type: "branch", condition: { script: "true" }, children: [] }])).toBeNull();
   });

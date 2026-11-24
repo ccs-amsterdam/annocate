@@ -13,6 +13,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { cn } from "cn";
 import { HelpButton } from "../../../help/HelpButton";
 import { coderSummary, columnValues } from "../../../design/assignment";
+import { withOptional, withOptionals } from "../../../design/itemSettings";
 import { IssueList } from "../IssueList";
 import { issuesAt } from "../issues";
 import { CoderSetDialog } from "./CoderSetDialog";
@@ -123,7 +124,7 @@ function CodersForm({
           <input
             type="radio"
             checked={invite.link === "per_coder"}
-            onChange={() => onChange({ ...invite, link: "per_coder", nameDevices: undefined })}
+            onChange={() => onChange(withOptionals(invite, { link: "per_coder", nameDevices: undefined }))}
           />
           A link per coder (deploying makes them; send each coder theirs)
         </label>
@@ -141,7 +142,9 @@ function CodersForm({
               aria-label="A picked name"
               className={cn(selectClass, "w-fit")}
               value={invite.nameDevices ?? "first"}
-              onChange={(e) => onChange({ ...invite, nameDevices: e.target.value === "any" ? "any" : undefined })}
+              onChange={(e) =>
+                onChange(withOptional(invite, "nameDevices", e.target.value === "any" ? "any" : undefined))
+              }
             >
               <option value="first">A name stays on the first device that picks it</option>
               <option value="any">Any device that picks a name continues its session</option>
@@ -157,7 +160,7 @@ function CodersForm({
           <input
             type="radio"
             checked={invite.link === "login"}
-            onChange={() => onChange({ ...invite, link: "login", nameDevices: undefined })}
+            onChange={() => onChange(withOptionals(invite, { link: "login", nameDevices: undefined }))}
           />
           One link: coders sign in with the email address in the coder set
         </label>
@@ -187,11 +190,8 @@ function CodersForm({
 }
 
 function CrowdForm({ invite, onChange }: { invite: CrowdInvite; onChange: (invite: Invite) => void }) {
-  const set = <K extends keyof CrowdInvite>(key: K, value: CrowdInvite[K] | undefined) => {
-    const next = { ...invite, [key]: value };
-    if (value === undefined) delete next[key];
-    onChange(next);
-  };
+  const set = <K extends keyof CrowdInvite>(key: K, value: CrowdInvite[K] | undefined) =>
+    onChange(withOptional(invite, key, value));
   const count = (value: string) => (value === "" ? undefined : Math.max(1, Number(value)));
   return (
     <section className="flex flex-col gap-4">
@@ -221,7 +221,9 @@ function CrowdForm({ invite, onChange }: { invite: CrowdInvite; onChange: (invit
                 className="h-8 w-44 font-mono text-xs font-normal"
                 placeholder="e.g. [0-9a-f]{24}"
                 value={invite.coderParam.pattern ?? ""}
-                onChange={(e) => set("coderParam", { ...invite.coderParam!, pattern: e.target.value || undefined })}
+                onChange={(e) =>
+                  set("coderParam", withOptional(invite.coderParam!, "pattern", e.target.value || undefined))
+                }
               />
             </label>
             <label className="flex items-center gap-2 pb-2 text-xs">

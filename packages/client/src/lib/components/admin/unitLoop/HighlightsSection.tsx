@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ColorPicker } from "../ColorPicker";
 import { DEFAULT_HIGHLIGHT_COLOR } from "../../../codebook/highlights";
 import { Section } from "./Section";
+import { withOptionals } from "../../../design/itemSettings";
 
 /**
  * A layout's highlights (docs/client.md §3, "Highlights"): per row a query
@@ -20,18 +21,19 @@ export function HighlightsSection({
   highlights: Highlight[] | undefined;
   unitFields: string[];
   readOnly: boolean;
-  onChange: (highlights: Highlight[] | undefined) => void;
+  onChange: (highlights: Highlight[]) => void;
 }) {
   const list = highlights ?? [];
-  const set = (next: Highlight[]) => onChange(next.length ? next : undefined);
+  /** A highlight changed: without a colour it has the default one, without fields it searches all. */
   const update = (i: number, patch: Partial<Highlight>) =>
-    set(
+    onChange(
       list.map((h, j) => {
         if (j !== i) return h;
         const next = { ...h, ...patch };
-        if (!next.color) delete next.color;
-        if (!next.fields?.length) delete next.fields;
-        return next;
+        return withOptionals(next, {
+          color: next.color || undefined,
+          fields: next.fields?.length ? next.fields : undefined,
+        });
       }),
     );
   return (
@@ -65,7 +67,7 @@ export function HighlightsSection({
                   variant="ghost"
                   size="icon-sm"
                   aria-label={`Remove highlight ${i + 1}`}
-                  onClick={() => set(list.filter((_, j) => j !== i))}
+                  onClick={() => onChange(list.filter((_, j) => j !== i))}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -108,7 +110,7 @@ export function HighlightsSection({
           variant="outline"
           size="sm"
           className="w-fit"
-          onClick={() => set([...list, { query: "" }])}
+          onClick={() => onChange([...list, { query: "" }])}
         >
           <Plus className="h-3.5 w-3.5" /> Highlight
         </Button>

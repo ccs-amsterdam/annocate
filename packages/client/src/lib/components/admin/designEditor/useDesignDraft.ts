@@ -8,7 +8,6 @@ import {
   type DesignConflict,
   type DesignIssue,
   type DesignItem,
-  type SessionItem,
   type StudyEnd,
   type DesignVersion,
   type TopLevelItem,
@@ -38,6 +37,8 @@ import { ResearcherApiError } from "../../../api/httpResearcherApi";
 import { clearBackup, writeBackup, type DesignBackup } from "../../../design/localBackup";
 
 import { defaultItemForType } from "../../../design/newItem";
+import { withOptional } from "../../../design/itemSettings";
+import { canonicalJson } from "../../../design/jsonFormat";
 import type { ItemType } from "../designTree/utils";
 
 /** Unsaved edits are copied to the browser's storage this long after the last change. */
@@ -79,8 +80,9 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
   const updateDesignVersion = useUpdateDesignVersionMutation(client);
 
   const cleanItems = useMemo(() => stripKeys(items), [items]);
-  const serialized = useMemo(() => JSON.stringify(cleanItems), [cleanItems]);
-  const savedSerialized = useMemo(() => JSON.stringify(stripKeys(saved)), [saved]);
+  // Compared whatever the order of keys: text from the JSON views has its own
+  const serialized = useMemo(() => canonicalJson(cleanItems), [cleanItems]);
+  const savedSerialized = useMemo(() => canonicalJson(stripKeys(saved)), [saved]);
   // Errors and warnings; drafts can be saved with errors, deploying needs none. Plus unit fields the
   // design uses but doesn't declare (docs/architecture.md §8.4), against the open version's fields as the
   // server checks them at deploy (a new design: the study's current fields). Also the study's current
@@ -215,21 +217,9 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
     );
   }
 
-  /** A setting of the Study entry (its `invite`, `urlParams` or `end`); undefined: removed. */
-  function setSession<K extends "invite" | "urlParams" | "end">(field: K, value: SessionItem[K] | undefined) {
-    setItems(
-      items.map((i) => {
-        if (i.type !== "session") return i;
-        const next = { ...i, [field]: value } as TopLevelItem & Partial<SessionItem>;
-        if (value === undefined) delete next[field];
-        return next;
-      }),
-    );
-  }
-
   /** The study's normal end (the Study entry's `end`); undefined: none. */
   function setStudyEnd(end: StudyEnd | undefined) {
-    setSession("end", end);
+    setItems(items.map((i) => (i.type === "session" ? withOptional(i, "end", end) : i)));
   }
 
   function update(key: string, next: DesignItem) {
@@ -306,7 +296,6 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
     remove,
     move,
     update,
-    setSession,
     setStudyEnd,
     replaceAll,
     undo: undoChange,

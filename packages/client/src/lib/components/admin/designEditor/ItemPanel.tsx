@@ -33,6 +33,7 @@ import { SESSION_PART_LABELS, useSessionTab } from "../session/sessionTab";
 import type { DesignDraft } from "./useDesignDraft";
 import type { UnitFieldWarning } from "../../../design/unitFieldRefs";
 import { savedLoop, shownByLayouts } from "../../../design/loopLayouts";
+import { studyEndOf } from "../../../design/itemSettings";
 
 type ItemPane = "edit" | "json" | "preview";
 
@@ -283,15 +284,7 @@ function StudyEndPanel({ draft, readOnly, onBack }: { draft: DesignDraft; readOn
             studyEnd
             item={{ type: "end", name: "_end", outcome: "complete", ...end }}
             issues={issues}
-            onChange={(next) => {
-              const { message, redirectUrl, redirectSetting } = next as EndItem;
-              const updated = {
-                ...(message ? { message } : {}),
-                ...(redirectUrl !== undefined ? { redirectUrl } : {}),
-                ...(redirectSetting !== undefined ? { redirectSetting } : {}),
-              };
-              draft.setStudyEnd(Object.keys(updated).length > 0 ? updated : undefined);
-            }}
+            onChange={(next) => draft.setStudyEnd(studyEndOf(next as EndItem))}
           />
         </fieldset>
       </div>

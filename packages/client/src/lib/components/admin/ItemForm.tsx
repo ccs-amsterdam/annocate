@@ -2,7 +2,6 @@ import type { ResearcherApi } from "../../api/httpResearcherApi";
 import {
   type AnyVariableType,
   type DesignItem,
-  type Condition,
   type UnitLoopItem,
   type SessionItem,
   type SetGroupResponse,
@@ -27,6 +26,7 @@ import { switchVariableType, VARIABLE_TYPE_OPTIONS_USER, VARIABLE_TYPE_OPTIONS_U
 import { TypeCardGrid, TypeHeader } from "./TypeCards";
 import { answerTypeCards } from "./typeCardData";
 import { EndItemFields } from "./itemForm/EndItemFields";
+import { withComments, withLoopCondition, withOptional } from "../../design/itemSettings";
 import { FocusSelect, InstructionFields } from "./itemForm/LoopQuestionFields";
 
 /** The help topic for each answer type. */
@@ -127,7 +127,7 @@ export function ItemForm({
             </span>
             <Input
               value={item.label ?? ""}
-              onChange={(e) => onChange({ ...item, label: e.target.value || undefined })}
+              onChange={(e) => onChange(withOptional(item, "label", e.target.value || undefined))}
               placeholder={
                 item.type === "branch"
                   ? "e.g. Screen-out"
@@ -218,11 +218,7 @@ export function ItemForm({
                   <input
                     type="checkbox"
                     checked={Boolean(item.comments)}
-                    onChange={(e) => {
-                      const next = { ...item, comments: e.target.checked || undefined };
-                      if (!next.comments) delete next.comments;
-                      onChange(next as DesignItem);
-                    }}
+                    onChange={(e) => onChange(withComments(item, e.target.checked))}
                   />
                   Coders can add a comment
                   <HelpButton topic="questions#comments" label="Help: comments" />
@@ -309,11 +305,7 @@ export function ItemForm({
               <input
                 type="checkbox"
                 checked={item.condition !== undefined}
-                onChange={(e) => {
-                  const next = { ...item, condition: e.target.checked ? { script: "true" } : undefined } as DesignItem;
-                  if (!e.target.checked) delete (next as { condition?: Condition }).condition;
-                  onChange(next);
-                }}
+                onChange={(e) => onChange(withLoopCondition(item as UnitLoopItem, e.target.checked))}
               />
               Only give coders this loop if…
               <HelpButton topic="conditions" label="Help: conditions" />

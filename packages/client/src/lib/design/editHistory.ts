@@ -1,6 +1,7 @@
 import type { TopLevelItem } from "@annotinder/contracts";
 import { deleteItem, updateItem } from "./itemEdit";
 import { findItem, flattenTree, keyOf } from "../codebook/tree";
+import { canonicalJson } from "./jsonFormat";
 
 // Undo/redo and "what changed since the last save" for the design editor
 // (docs/client.md §7). The editor keeps whole snapshots of the items: the
@@ -52,12 +53,12 @@ export function redo<T>(history: EditHistory<T>, current: T): { value: T; histor
   };
 }
 
-/** An item's own content (without its children and editor key), to compare versions of it. */
+/** An item's own content (without its children and editor key; the order of its keys doesn't count), to compare versions of it. */
 function ownContent(item: object): string {
   const own: Record<string, unknown> = { ...item };
   delete own.children;
   delete own._key;
-  return JSON.stringify(own);
+  return canonicalJson(own);
 }
 
 /** Keys of the items that are new or changed since `saved` (moves alone don't count). */

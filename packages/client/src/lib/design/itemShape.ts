@@ -1,4 +1,6 @@
 import type { TopLevelItem } from "@annotinder/contracts";
+import { ELSE } from "../codebook/tree";
+import { elseAsStandIns } from "./itemEdit";
 
 // What the visual editor needs of items edited as text (the JSON views):
 // a known type, a name (except branches, unit loops and layouts), and for questions a variable with a type. Everything
@@ -21,15 +23,25 @@ export function itemShapeError(raw: unknown, { children }: { children: boolean }
   if (isQuestion && (!variable || typeof variable !== "object" || typeof variable.type !== "string")) {
     return `${label}: a question needs a "variable" with a "type"`;
   }
-  if (!children) {
-    return "children" in item ? `${label}: children are edited as items of their own: leave out "children"` : null;
-  }
-  if ("children" in item) {
-    if (!Array.isArray(item.children)) return `${label}: "children" must be a list`;
-    for (const child of item.children) {
-      const error = itemShapeError(child, { children: true });
-      if (error) return error;
-    }
+  if (!children) return ownListError(item, label);
+  return listError(item, "children", label) ?? listError(item, "elseChildren", label);
+}
+
+/** An item edited by itself (the item's JSON) has no lists of items: the tree edits those. */
+function ownListError(item: Record<string, unknown>, label: string): string | null {
+  if ("children" in item) return `${label}: children are edited as items of their own: leave out "children"`;
+  if ("elseChildren" in item) return `${label}: else items are edited as items of their own: leave out "elseChildren"`;
+  return null;
+}
+
+/** Why an item's list of items (`children`, a branch's `elseChildren`) can't be shown; null if it can, or it has none. */
+function listError(item: Record<string, unknown>, list: "children" | "elseChildren", label: string): string | null {
+  if (!(list in item)) return null;
+  const items = item[list];
+  if (!Array.isArray(items)) return `${label}: "${list}" must be a list`;
+  for (const child of items) {
+    const error = itemShapeError(child, { children: true });
+    if (error) return error;
   }
   return null;
 }
@@ -44,29 +56,38 @@ export function itemsShapeError(raw: unknown): string | null {
   return null;
 }
 
-type Unnamed = "branch" | "unit_loop";
-const unnamed = (type: unknown): type is Unnamed => type === "branch" || type === "unit_loop";
+/** The items without a name: the Study entry, branches, unit loops, layouts, and the editor's stand-in for a branch's else items. */
+const UNNAMED = ["session", "branch", "unit_loop", "layout", ELSE];
+
+/** How many items of each unnamed type came before in a list. */
+type Counts = Map<string, number>;
 
 /**
- * An item's identity for matching keys: its name, or for a branch or
- * unit loop (no name) its place: the nth of its type in `parent`.
+ * An item's identity for matching keys: its name, or for an item without
+ * one its place: the nth of its type in `parent`.
  */
-function matchId(item: Record<string, unknown>, parent: string, counts: Record<Unnamed, number>): string | null {
-  if (unnamed(item.type)) return `${parent}/${item.type} ${counts[item.type]++}`;
+function matchId(item: Record<string, unknown>, parent: string, counts: Counts): string | null {
+  if (typeof item.type === "string" && UNNAMED.includes(item.type)) {
+    const nth = counts.get(item.type) ?? 0;
+    counts.set(item.type, nth + 1);
+    return `${parent}/${item.type} ${nth}`;
+  }
   return typeof item.name === "string" ? item.name : null;
 }
 
 /**
  * Gives items that come without editor keys (e.g. from text) the keys of the
  * items with the same name in `previous`, so they stay the same items:
- * selected, and compared with the last save. Branches and unit loops have
- * no name: they match the one at the same place (the nth branch, or
- * loop, in the same parent).
+ * selected, and compared with the last save. Branches, unit loops and
+ * layouts have no name: they match the one at the same place (the nth
+ * branch, loop or layout in the same parent). A branch's else items
+ * (`elseChildren` in text) come back as the editor holds them, in their
+ * stand-in, which keeps its key too.
  */
 export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLevelItem[] {
   const keys = new Map<string, string>();
   const index = (list: unknown[], parent: string) => {
-    const counts = { branch: 0, unit_loop: 0 };
+    const counts: Counts = new Map();
     for (const raw of list) {
       const item = raw as Record<string, unknown>;
       const id = matchId(item, parent, counts);
@@ -79,7 +100,7 @@ export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLe
 
   const used = new Set<string>();
   const walk = (list: unknown[], parent: string): unknown[] => {
-    const counts = { branch: 0, unit_loop: 0 };
+    const counts: Counts = new Map();
     return list.map((raw) => {
       const item = { ...(raw as Record<string, unknown>) };
       const id = matchId(item, parent, counts);
@@ -93,7 +114,7 @@ export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLe
       return item;
     });
   };
-  return walk(next, "") as TopLevelItem[];
+  return walk(elseAsStandIns(next), "") as TopLevelItem[];
 }
 
 /** Why parsed text isn't a design the editor can show; null if it is. */

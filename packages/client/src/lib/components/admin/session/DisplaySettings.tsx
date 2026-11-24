@@ -1,5 +1,6 @@
 import type { Display } from "@annotinder/contracts";
 import { HelpButton } from "../../../help/HelpButton";
+import { withOptional } from "../../../design/itemSettings";
 
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 const selectClass = "h-8 w-fit rounded-md border border-input bg-background px-2 text-xs font-normal";
@@ -16,11 +17,8 @@ export function DisplaySettings({
   display?: Display;
   onChange: (display: Display) => void;
 }) {
-  const set = <K extends keyof Display>(key: K, value: Display[K] | undefined) => {
-    const next = { ...display, [key]: value };
-    if (value === undefined) delete next[key];
-    onChange(next);
-  };
+  const set = <K extends keyof Display>(key: K, value: Display[K] | undefined) =>
+    onChange(withOptional(display, key, value));
   const responsive = display.layouts === "responsive";
   return (
     <section className="flex flex-col gap-4">
@@ -71,8 +69,7 @@ export function DisplaySettings({
               type="checkbox"
               checked={display.answerKeys?.[key] !== false}
               onChange={(e) => {
-                const next = { ...display.answerKeys, [key]: e.target.checked ? undefined : false };
-                if (next[key] === undefined) delete next[key];
+                const next = withOptional(display.answerKeys ?? {}, key, e.target.checked ? undefined : false);
                 set("answerKeys", Object.keys(next).length > 0 ? next : undefined);
               }}
             />

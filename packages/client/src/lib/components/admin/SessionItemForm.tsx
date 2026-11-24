@@ -18,6 +18,7 @@ import { InvitationSettings } from "./session/InvitationSettings";
 import { NoUnitsNotice } from "./session/NoUnitsNotice";
 import { useSessionTab } from "./session/sessionTab";
 import { DisplaySettings } from "./session/DisplaySettings";
+import { withOptional, withOptionals, withUrlParams } from "../../design/itemSettings";
 
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 
@@ -43,23 +44,15 @@ export function SessionItemForm({
   onChange: (item: SessionItem) => void;
 }) {
   const [tab] = useSessionTab();
-  const setDisplay = (display: NonNullable<SessionItem["display"]>) => {
-    const next: SessionItem = { ...item, display };
-    if (Object.keys(display).length === 0) delete next.display;
-    onChange(next);
-  };
-  const set = <K extends "invite" | "urlParams">(key: K, value: SessionItem[K] | undefined) => {
-    const next = { ...item, [key]: value };
-    if (value === undefined) delete next[key];
-    onChange(next);
-  };
+  const setDisplay = (display: NonNullable<SessionItem["display"]>) =>
+    onChange(withOptional(item, "display", Object.keys(display).length > 0 ? display : undefined));
   const inviteForm = (
     <InvitationSettings
       invite={item.invite}
       groups={groups}
       issues={issues}
       client={client}
-      onChange={(invite) => set("invite", invite)}
+      onChange={(invite) => onChange(withOptional(item, "invite", invite))}
     />
   );
   return (
@@ -76,7 +69,7 @@ export function SessionItemForm({
         <UrlParamsSettings
           params={item.urlParams ?? []}
           issues={issuesAt(issues, "urlParams")}
-          onChange={(params) => set("urlParams", params.length > 0 ? params : undefined)}
+          onChange={(params) => onChange(withUrlParams(item, params))}
         />
       )}
       <IssueList issues={issues.filter((i) => !i.path.includes("invite") && !i.path.includes("urlParams"))} />
@@ -143,11 +136,7 @@ function ParamEditor({
   onRemove: () => void;
 }) {
   const kind: ValuesKind = param.values ? "list" : param.pattern !== undefined ? "pattern" : "any";
-  const update = (patch: Partial<UrlParam>) => {
-    const next = { ...param, ...patch } as UrlParam & Record<string, unknown>;
-    for (const [k, v] of Object.entries(patch)) if (v === undefined) delete next[k];
-    onChange(next);
-  };
+  const update = (patch: Partial<UrlParam>) => onChange(withOptionals(param, patch));
   const setKind = (next: ValuesKind) =>
     update({
       values: next === "list" ? [{ value: "a" }] : undefined,

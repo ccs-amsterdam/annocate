@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { HelpButton } from "../../../help/HelpButton";
 import { IssueList } from "../IssueList";
 import { issuesAt } from "../issues";
+import { redirectKind, withOptional, withRedirect, type RedirectKind } from "../../../design/itemSettings";
 
 /**
  * An end item's outcome, message and where coders are sent next. With
@@ -41,7 +42,7 @@ export function EndItemFields({
         <Textarea
           value={item.message ?? ""}
           rows={3}
-          onChange={(e) => onChange({ ...item, message: e.target.value || undefined })}
+          onChange={(e) => onChange(withOptional(item, "message", e.target.value || undefined))}
           placeholder="Thank you for your time."
         />
         <IssueList issues={issuesAt(issues, "message")} />
@@ -51,17 +52,8 @@ export function EndItemFields({
         <select
           aria-label="Redirect"
           className="h-8 w-fit rounded-md border border-input bg-background px-2 text-xs"
-          value={item.redirectSetting !== undefined ? "setting" : item.redirectUrl !== undefined ? "url" : ""}
-          onChange={(e) => {
-            const next: EndItem = { ...item };
-            delete next.redirectUrl;
-            delete next.redirectSetting;
-            if (e.target.value === "url") next.redirectUrl = "";
-            // Separate settings by default: panels give a return link per outcome
-            if (e.target.value === "setting")
-              next.redirectSetting = item.outcome === "screenout" ? "panel_screenout" : "panel_return";
-            onChange(next);
-          }}
+          value={redirectKind(item)}
+          onChange={(e) => onChange(withRedirect(item, e.target.value as RedirectKind))}
         >
           <option value="">Nowhere: they stay on the end screen</option>
           <option value="setting">A panel's return link (set per run, in the study's Settings)</option>

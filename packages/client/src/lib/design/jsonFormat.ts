@@ -70,3 +70,15 @@ function format(value: unknown, depth: number, prefixLength: number): string {
 export function formatJson(value: unknown): string {
   return format(value, 0, 0);
 }
+
+/**
+ * The value as JSON with every object's keys sorted: the same text for the
+ * same content, whatever order its keys are in (the JSON views show keys in
+ * reading order, the database returns them in its own). For comparing.
+ */
+export function canonicalJson(value: unknown): string {
+  return JSON.stringify(value, (_key, v: unknown) => {
+    if (!v || typeof v !== "object" || Array.isArray(v)) return v;
+    return Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+  });
+}
