@@ -5,6 +5,25 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AnnoTinder</title>
+    <!--
+      This one file is served for every page (the welcome page, coder links, the researcher app), so these
+      tags are the same everywhere: keep them neutral. Which pages search engines may visit is in
+      public/robots.txt. No og:image or og:url: they need the server's own address (docs/plans/go-live.md, P-07).
+    -->
+    <meta
+      name="description"
+      content="AnnoTinder is an open-source tool for annotation tasks and surveys in research."
+    />
+    <meta name="theme-color" content="#fdfdfc" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#161413" media="(prefers-color-scheme: dark)" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="AnnoTinder" />
+    <meta property="og:title" content="AnnoTinder" />
+    <meta
+      property="og:description"
+      content="AnnoTinder is an open-source tool for annotation tasks and surveys in research."
+    />
+    <meta name="twitter:card" content="summary" />
   </head>
   <body>
     <div id="root"></div>

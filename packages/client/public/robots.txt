@@ -1,0 +1,8 @@
+# AnnoTinder (docs/hosting.md). Search engines may visit the welcome page (/).
+# Not the rest: coder pages (/code) are reached by links that hold a secret,
+# the researcher app (/research, with the server admin at /research/admin)
+# is behind a login, and the API (/api) is not for crawlers.
+User-agent: *
+Disallow: /api/
+Disallow: /code
+Disallow: /research
