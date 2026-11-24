@@ -476,15 +476,7 @@ export function codeRanges(source: string): [number, number][] {
  * `relation`), one per item (`scale`), none (`confirm`), or typed text (`text`).
  */
 export type QuestionKind =
-  | "single"
-  | "ordinal"
-  | "numeric"
-  | "multiple"
-  | "span"
-  | "relation"
-  | "scale"
-  | "confirm"
-  | "text";
+  "single" | "ordinal" | "numeric" | "multiple" | "span" | "relation" | "scale" | "confirm" | "text";
 
 export function questionKind(variable: AnyVariableType): QuestionKind {
   switch (variable.type) {
