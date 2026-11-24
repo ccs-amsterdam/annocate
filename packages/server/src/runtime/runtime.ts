@@ -226,6 +226,11 @@ export class DeploymentRuntime {
     private options: RuntimeOptions = DEFAULT_RUNTIME_OPTIONS,
   ) {}
 
+  /** The study this deployment runs (once loaded). */
+  get studyId(): number {
+    return this.spec.studyId;
+  }
+
   // --- state ------------------------------------------------------------------
 
   /** Reads the deployment, and makes sure the finished codings fit its codebook. */
@@ -555,7 +560,6 @@ export class DeploymentRuntime {
     const live = new Set(this.sets.get(ALL_UNITS_SET) ?? []);
     return {
       sessionId: coder.sessionId,
-      studyId: this.spec.studyId,
       // Only what coding needs (contracts toCoderItems): not how units are handed out
       codebook: this.coderCodebook,
       version: this.spec.version,

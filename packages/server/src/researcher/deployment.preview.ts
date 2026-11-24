@@ -9,11 +9,11 @@ const PREVIEW_TTL_MS = 12 * 60 * 60_000;
 export function deploymentPreview(server: Server): Hono<Env> {
   const app = new Hono<Env>();
 
-  app.post("/study/:studyId/deployment/preview", requireStudyUser(server, "WRITE"), (c) => {
+  app.post("/study/:studyId/deployment/preview", requireStudyUser(server, "WRITE"), async (c) => {
     const studyId = c.get("studyId");
     const expiresAt = Date.now() + PREVIEW_TTL_MS;
     return c.json({
-      deploymentId: `${studyId}.preview`,
+      deploymentId: `${await server.deployments.deploymentId(studyId)}.preview`,
       token: server.deployments.previewToken(studyId, expiresAt),
       expiresAt: new Date(expiresAt),
     });

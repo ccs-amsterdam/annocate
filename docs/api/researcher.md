@@ -506,7 +506,9 @@ link"), and its `maxUses` (read-only) is the deployed design's One link limit
 
 `GET /study/:studyId/links` → `{ links: LinkResponseSchema[], next? }` (a [list](README.md#lists)), active links
 first, with `label`, `params` (`{ coder }` for a coder's link, else `{}`), `uses`, `maxUses`, `created`, `revokedAt` and
-`retiredAt`.
+`retiredAt`. The address to send a coder is
+`<server>/code/<publicId>?link=<secret>`, with the study's `publicId` (from
+`GET /study/:id`), not its `id`.
 
 ### revokeLink
 
@@ -660,7 +662,7 @@ deployed.
 ### createPreview
 
 `POST /study/:studyId/deployment/preview` → `PreviewSessionSchema`. A preview of
-the latest design version (deployed or not), as deployment `<studyId>.preview`:
+the latest design version (deployed or not), as deployment `<publicId>.preview`:
 the real units, but coders and answers kept in memory only. The token (an
 HMAC with the server's secret, valid 12 hours) is used like a link
 secret. A latest design version with validation issues can't be previewed: the

@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { newPublicId } from "../db/publicId.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
@@ -344,6 +345,8 @@ function transform(
       return {
         ...r,
         owner_id: options.ownerId,
+        // A new study here: its own coder links
+        public_id: newPublicId(),
         name: options.name?.trim() || r.name,
         suspended_at: null,
       };

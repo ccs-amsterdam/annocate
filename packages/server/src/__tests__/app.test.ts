@@ -725,7 +725,7 @@ describe("rate limits", () => {
   it("count per kind and address (or account) per minute, in the database; 429 with Retry-After", async () => {
     const limited = createApp(db, { devMode: true, rateLimits: { coderStart: 2, researcher: 3 } });
     const start = () =>
-      limited.request("/api/d/1/session", { headers: { "x-annotinder": "1", "x-link-secret": "nope" } });
+      limited.request("/api/d/demostudy001/session", { headers: { "x-annotinder": "1", "x-link-secret": "nope" } });
     expect((await start()).status).not.toBe(429); // refused for other reasons (no such study), but counted
     expect((await start()).status).not.toBe(429);
     const third = await start();
@@ -734,8 +734,11 @@ describe("rate limits", () => {
     expect(await third.json()).toMatchObject({ code: "rate_limited" });
     // A browser with a session cookie isn't starting one: not counted
     expect(
-      (await limited.request("/api/d/1/session", { headers: { "x-annotinder": "1", cookie: "annotinder_device=x" } }))
-        .status,
+      (
+        await limited.request("/api/d/demostudy001/session", {
+          headers: { "x-annotinder": "1", cookie: "annotinder_device=x" },
+        })
+      ).status,
     ).not.toBe(429);
 
     const me = () => limited.request("/api/study", { headers: adminHeaders });

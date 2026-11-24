@@ -68,16 +68,12 @@ test("a coder_set column makes the coder set; a link per coder; a coder codes th
   await page.getByRole("button", { name: "Links", exact: true }).click();
   await expect(page.getByRole("cell", { name: "coder s1" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "coder s2" })).toBeVisible();
-  const links = await api<{ secret: string; params: Record<string, string> }[]>(
-    request,
-    "GET",
-    `/study/${study.id}/links`,
-  );
+  const links = await list<{ secret: string; params: Record<string, string> }>(request, `/study/${study.id}/links`);
   const s2 = links.find((l) => l.params.coder === "s2")!;
 
   // A coder with the s2 link: the overlap unit, then their own
   const coder = await (await browser.newContext()).newPage();
-  await coder.goto(`/code/${study.id}?link=${s2.secret}`);
+  await coder.goto(`/code/${study.publicId}?link=${s2.secret}`);
   for (const text of ["Shared text", "Second text"]) {
     await question(coder, "Topic?");
     await expect(coder.getByText(text)).toBeVisible();

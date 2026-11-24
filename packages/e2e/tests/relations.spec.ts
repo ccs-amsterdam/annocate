@@ -8,7 +8,7 @@ import { answers, api, list, question } from "./helpers";
 const TEXT = "Mayor Anna de Wit met the board of the Harbour Company on Monday.";
 
 async function study(request: Parameters<typeof api>[0]) {
-  const created = await api<{ id: number }>(request, "POST", "/study/from-recipe", {
+  const created = await api<{ id: number; publicId: string }>(request, "POST", "/study/from-recipe", {
     name: "Relations",
     units: [{ id: "u1", data: { text: TEXT } }],
     design: {
@@ -59,7 +59,7 @@ async function study(request: Parameters<typeof api>[0]) {
     deploy: true,
   });
   const [link] = await list<{ secret: string }>(request, `/study/${created.id}/links`);
-  return { id: created.id, link: `/code/${created.id}?link=${link.secret}` };
+  return { id: created.id, link: `/code/${created.publicId}?link=${link.secret}` };
 }
 
 /** Drags over a phrase in the selectable text, then labels it. */

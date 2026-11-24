@@ -74,7 +74,7 @@ test("the coder home lists the studies this browser takes part in, to continue t
   await expect(card).toContainText("1 unit done");
   // Continue: the same session, without the link
   await card.click();
-  await expect(page).toHaveURL(new RegExp(`/code/${study.id}$`));
+  await expect(page).toHaveURL(new RegExp(`/code/${study.publicId}$`));
   await question(page, "Is this headline good news or bad news?");
 });
 

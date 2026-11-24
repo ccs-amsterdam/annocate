@@ -110,6 +110,8 @@ export interface FromExampleOptions {
   ownerIsAdmin: boolean;
   /** Fixed link secrets, in order (the development demo's `demo-secret`); random otherwise. */
   secrets?: string[];
+  /** A fixed public id (the development demo's); random otherwise. */
+  publicId?: string;
 }
 
 /**
@@ -130,7 +132,13 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
     const { study, designVersionId, unitIds, firstLink } = await createStudyFromRecipe(
       tx,
       { ...example, name: options.name ?? example.name },
-      { ownerId: options.ownerId, ownerIsAdmin: options.ownerIsAdmin, origin: id, secrets: options.secrets },
+      {
+        ownerId: options.ownerId,
+        ownerIsAdmin: options.ownerIsAdmin,
+        origin: id,
+        secrets: options.secrets,
+        publicId: options.publicId,
+      },
     );
     const unitId = (externalId: string) => {
       const found = unitIds.get(externalId);

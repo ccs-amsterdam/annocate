@@ -131,6 +131,13 @@ describe("study exports", { timeout: 30_000 }, () => {
       (await json<{ links: { secret: string }[] }>(`/api/study/${id}/links`)).links.map((l) => l.secret);
     const [old, made] = [await secrets(original), await secrets(copy.id)];
     expect(made.filter((s) => old.includes(s))).toEqual([]);
+    // And its own public id: the copy's coder links are not the original's
+    const publicIds = await query<{ public_id: string }>(db, "SELECT public_id FROM studies WHERE id IN ($1, $2)", [
+      original,
+      copy.id,
+    ]);
+    expect(new Set(publicIds.map((s) => s.public_id)).size).toBe(2);
+    expect(copy.publicId).toMatch(/^[a-z0-9]{12}$/);
     // The importer owns it (development headers: no study roles), and the codings are derived again
     const [row] = await query<{ owner_id: number | null }>(db, "SELECT owner_id FROM studies WHERE id = $1", [copy.id]);
     expect(row!.owner_id).not.toBeNull();

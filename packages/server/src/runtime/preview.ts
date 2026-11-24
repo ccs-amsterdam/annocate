@@ -18,7 +18,7 @@ import type {
   Transfer,
 } from "./types.js";
 
-// Researcher previews (`<studyId>.preview`, contracts PreviewSessionSchema):
+// Researcher previews (`<publicId>.preview`, contracts PreviewSessionSchema):
 // the latest codebook and the real units come from the database, but coders
 // and answers stay here, in memory. Nothing a preview does is stored, and it
 // is gone when the server forgets the deployment.

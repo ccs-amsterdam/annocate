@@ -37,9 +37,22 @@ export const StudyWriteSchema = z.object({
 });
 export type StudyWrite = z.infer<typeof StudyWriteSchema>;
 
+/** How long a study's public id is. */
+export const PUBLIC_STUDY_ID_LENGTH = 12;
+
+/**
+ * A study's public id: random, made when the study is made, never changed.
+ * Coder links (`/code/<publicId>?link=…`) and the coder API
+ * (`/d/<publicId>/…`) name the study by it, not by its sequential `id`
+ * (which would let anyone count and probe studies). The researcher API
+ * keeps `id`.
+ */
+export const PublicStudyIdSchema = z.string().regex(new RegExp(`^[a-z0-9]{${PUBLIC_STUDY_ID_LENGTH}}$`));
+
 export const StudyResponseSchema = StudyWriteSchema.extend({
   archived: z.boolean(),
   id: IdSchema,
+  publicId: PublicStudyIdSchema,
   created: z.coerce.date(),
   reopenMinutes: z.number().int().nullable(),
   redirectUrls: z.record(z.string(), z.string()),

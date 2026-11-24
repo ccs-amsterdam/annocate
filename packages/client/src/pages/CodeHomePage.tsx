@@ -62,7 +62,8 @@ export function CodeHomePage({ apiUrl, dev = false }: { apiUrl: string; dev?: bo
           Development server:{" "}
           <Link
             to="/code/$deployment"
-            params={{ deployment: "1" }}
+            // The demo study's public id (the server's seed.ts)
+            params={{ deployment: "demostudy001" }}
             search={{ link: "demo-secret" }}
             className="underline"
           >

@@ -16,6 +16,7 @@ import { annotationValues, links as linksTable, units } from "../db/schema/index
 import { unitDraftData, unitVersionData } from "../db/sql.js";
 import { emptyDb, query } from "./testDb.js";
 import { seed } from "../seed.js";
+import { DEMO_PUBLIC_ID } from "../db/publicId.js";
 import { createApp } from "../app.js";
 import type { RuntimeOptions } from "../runtime/runtime.js";
 import { DbStore, type Store } from "../runtime/store.js";
@@ -95,7 +96,7 @@ async function send(
   let device = devices.get(name);
   if (!device) devices.set(name, (device = { cookies: new Map(), linkSecret: null }));
   const cookie = [...device.cookies].map(([k, v]) => `${k}=${v}`).join("; ");
-  const res = await app().request(`/api/d/1${path}`, {
+  const res = await app().request(`/api/d/${DEMO_PUBLIC_ID}${path}`, {
     ...init,
     headers: {
       "content-type": "application/json",
@@ -186,7 +187,8 @@ describe("coder flow", () => {
   it("serves the session and units, and stores annotations", async () => {
     const c = coder("coder-a");
     const session = await c.session();
-    expect(session.studyId).toBe(1);
+    // Coders aren't told the study's sequential id
+    expect(session).not.toHaveProperty("studyId");
     // The coder codebook: no researcher notes, and loops without how units are handed out
     expect(session.codebook).not.toHaveProperty("note");
     const loop = session.codebook.items.find((i) => i.type === "unit_loop");
@@ -229,7 +231,26 @@ describe("coder flow", () => {
   it("returns 404 for unknown or undeployed studies", async () => {
     const headers = { "x-annotinder": "1", "x-link-secret": "demo-secret" };
     expect((await server.request("/api/d/other/session", { headers })).status).toBe(404);
-    expect((await server.request("/api/d/99/session", { headers })).status).toBe(404);
+    expect((await server.request("/api/d/unknownstudy/session", { headers })).status).toBe(404);
+  });
+
+  it("a study is reached by its public id only: not by its sequential id", async () => {
+    const headers = { "x-annotinder": "1", "x-link-secret": "demo-secret" };
+    const [study] = await query<{ id: number; public_id: string }>(db, "SELECT id, public_id FROM studies");
+    expect(study).toEqual({ id: 1, public_id: DEMO_PUBLIC_ID });
+    expect((await server.request(`/api/d/${study!.public_id}/session`, { headers })).status).toBe(200);
+    expect((await server.request(`/api/d/${study!.id}/session`, { headers })).status).toBe(404);
+    // A new study gets a random one: 12 characters, each its own
+    const made = async (name: string) =>
+      (
+        (await (
+          await server.request("/api/study", { method: "POST", headers: adminHeaders, body: JSON.stringify({ name }) })
+        ).json()) as { publicId: string }
+      ).publicId;
+    const [one, other] = [await made("One"), await made("Other")];
+    expect(one).toMatch(/^[a-z0-9]{12}$/);
+    expect(other).toMatch(/^[a-z0-9]{12}$/);
+    expect(one).not.toBe(other);
   });
 
   it("rebuilds its state from the database after a restart", async () => {
@@ -774,7 +795,7 @@ describe("coders", () => {
     const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
     const names = async () =>
       (await (
-        await server.request("/api/d/1/names", { headers: { "x-annotinder": "1", "x-link-secret": secret } })
+        await server.request("/api/d/demostudy001/names", { headers: { "x-annotinder": "1", "x-link-secret": secret } })
       ).json()) as PickNamesResponse;
     expect(await names()).toEqual({
       names: [
@@ -809,7 +830,7 @@ describe("coders", () => {
 
     // A revoked link lists no names
     await db.update(linksTable).set({ revokedAt: new Date() }).where(eq(linksTable.secret, secret));
-    const revoked = await server.request("/api/d/1/names", {
+    const revoked = await server.request("/api/d/demostudy001/names", {
       headers: { "x-annotinder": "1", "x-link-secret": secret },
     });
     expect(revoked.status).toBe(403);
@@ -1354,7 +1375,7 @@ describe("sessions", () => {
     );
     const { createHash } = await import("node:crypto");
     expect(stored).toEqual({
-      key_hash: createHash("sha256").update(`${deviceId}\n1\n`).digest("hex"),
+      key_hash: createHash("sha256").update(`${deviceId}\n${DEMO_PUBLIC_ID}\n`).digest("hex"),
       device_type: "phone",
       browser: "Safari",
       os: "iOS",
@@ -1386,7 +1407,7 @@ describe("sessions", () => {
   });
 
   it("refuses requests without the client header (CSRF)", async () => {
-    const res = await server.request("/api/d/1/session", { headers: { "x-link-secret": "demo-secret" } });
+    const res = await server.request("/api/d/demostudy001/session", { headers: { "x-link-secret": "demo-secret" } });
     expect(res.status).toBe(403);
   });
 
@@ -1414,7 +1435,7 @@ describe("sessions", () => {
   });
 
   it("knows a deployment by one spelling only", async () => {
-    for (const id of ["01", "0001.preview", "1e3", "99999999999"]) {
+    for (const id of ["DEMOSTUDY001", "demostudy001.Preview", "demostudy001.preview.preview", "demostudy001 "]) {
       const res = await server.request(`/api/d/${id}/session`, {
         headers: { "x-annotinder": "1", "x-link-secret": "demo-secret" },
       });
@@ -2782,7 +2803,7 @@ describe("researcher preview", () => {
   it("runs the latest design version, deployed or not, and picks up edits", async () => {
     await draft("draft 1");
     const { deploymentId, token } = await openPreview();
-    expect(deploymentId).toBe("1.preview");
+    expect(deploymentId).toBe(`${DEMO_PUBLIC_ID}.preview`);
     const call = previewer(deploymentId, token);
     const label = (session: SessionResponse) => (session.codebook.items[0] as { label?: string }).label;
     expect(label((await (await call("/session")).json()) as SessionResponse)).toBe("draft 1");
@@ -2819,7 +2840,7 @@ describe("researcher preview", () => {
       `preview.1.${Date.now() - 1000}.${sig}`, // expired (and so the signature no longer matches either)
       token.replace("preview.1.", "preview.2."), // another study
     ];
-    for (const t of tries) expect((await previewer("1.preview", t)("/session")).status).toBe(401);
+    for (const t of tries) expect((await previewer(`${DEMO_PUBLIC_ID}.preview`, t)("/session")).status).toBe(401);
   });
 });
 
@@ -3166,7 +3187,7 @@ describe("the coder home", () => {
     expect(summary.status).toBe(200);
     // The deployed design's public title, never the study's name (which is private)
     const first = (await summary.json()) as { title: unknown };
-    expect(first).toMatchObject({ deployment: "1", title: "A tour of AnnoTinder", ended: null, units: 1 });
+    expect(first).toMatchObject({ deployment: DEMO_PUBLIC_ID, title: "A tour of AnnoTinder", ended: null, units: 1 });
     expect(JSON.stringify(first)).not.toContain(
       (await query<{ name: string }>(db, "SELECT name FROM studies WHERE id = 1"))[0].name,
     );
@@ -3195,7 +3216,7 @@ describe("the coder home", () => {
     expect((await sessions()).status).toBe(401);
     const res = await sessions(await createSession(db, user.id, CODER_LOGIN));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual([expect.objectContaining({ deployment: "1", ended: null, units: 0 })]);
+    expect(await res.json()).toEqual([expect.objectContaining({ deployment: DEMO_PUBLIC_ID, ended: null, units: 0 })]);
     // Someone else's login sees none of them
     const other = await ensureUser(db, "other@uni.nl");
     expect(await (await sessions(await createSession(db, other.id, CODER_LOGIN))).json()).toEqual([]);

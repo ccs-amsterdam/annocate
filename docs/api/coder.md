@@ -1,7 +1,7 @@
 # Coder API
 
 What the coding screen (`HttpCoderApi`, driven by `StudyManager`) calls. Paths
-are relative to `/api/d/<deploymentId>`, e.g. `/api/d/42/session`
+are relative to `/api/d/<deploymentId>` (the study's public id), e.g. `/api/d/k3v9x2m4q7ta/session`
 ([deployment ids](README.md#deployment-ids)).
 
 - Contracts: `coderEndpoints` in

@@ -145,6 +145,7 @@ CREATE TABLE "links" (
 --> statement-breakpoint
 CREATE TABLE "studies" (
 	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "studies_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
+	"public_id" text NOT NULL,
 	"name" text NOT NULL,
 	"owner_id" integer,
 	"origin" text,
@@ -152,7 +153,8 @@ CREATE TABLE "studies" (
 	"reopen_minutes" integer DEFAULT 1440,
 	"redirect_urls" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"created" timestamp with time zone DEFAULT now() NOT NULL,
-	"suspended_at" timestamp with time zone
+	"suspended_at" timestamp with time zone,
+	CONSTRAINT "studies_public_id_key" UNIQUE("public_id")
 );
 --> statement-breakpoint
 CREATE TABLE "unit_draft" (

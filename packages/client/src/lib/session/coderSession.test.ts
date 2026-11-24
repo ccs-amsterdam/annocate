@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { redeemTransfer } from "./coderSession";
+import { codeLinkUrl, redeemTransfer } from "./coderSession";
 
 describe("redeemTransfer", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -44,5 +44,16 @@ describe("HttpCoderApi", () => {
     const headers = (call: number) => (fetch.mock.calls[call] as unknown as [string, RequestInit])[1].headers;
     expect(headers(0)).not.toHaveProperty("x-annotinder-version");
     expect(headers(1)).toMatchObject({ "x-annotinder-version": "3" });
+  });
+});
+
+describe("a coder link", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("names the study by its public id, with the link's secret", () => {
+    vi.stubGlobal("window", { location: { origin: "https://annotinder.example.org" } });
+    expect(codeLinkUrl("k3v9x2m4q7ta", "s e/cret")).toBe(
+      "https://annotinder.example.org/code/k3v9x2m4q7ta?link=s%20e%2Fcret",
+    );
   });
 });

@@ -3,7 +3,7 @@ import { StudyRunner } from "../lib/components/StudyRunner";
 import { rememberStudy } from "../lib/session/studies";
 
 /**
- * Coding (`/code/<deployment>`): the study as coders see it, without the
+ * Coding (`/code/<deployment>`, the study's public id): the study as coders see it, without the
  * app's header. A coder link adds `?link=<secret>`, and may carry URL
  * parameters (the coder id, the design's URL parameters); "Continue on
  * another device" links add `?transfer=<token>`; without either, this

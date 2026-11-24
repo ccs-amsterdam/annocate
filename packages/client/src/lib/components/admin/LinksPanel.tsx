@@ -9,7 +9,13 @@ import {
   type TopLevelItem,
 } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useDesignVersionQuery, useDeploymentQuery, useLinksQuery, useSetGroupsQuery } from "../../admin/queries";
+import {
+  useDesignVersionQuery,
+  useDeploymentQuery,
+  useLinksQuery,
+  useSetGroupsQuery,
+  useStudyQuery,
+} from "../../admin/queries";
 import { HelpButton } from "../../help/HelpButton";
 import { InfoTip } from "@/components/ui/info-tip";
 import { codeLinkUrl } from "../../session/coderSession";
@@ -31,6 +37,8 @@ interface LinksPanelProps {
 export function LinksPanel({ client }: LinksPanelProps) {
   const linksQuery = useLinksQuery(client);
   const deployment = useDeploymentQuery(client).data;
+  // Links name the study by its public id
+  const publicId = useStudyQuery(client).data?.publicId ?? "";
   const version = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data;
   const items = (version ? designItems(version) : []) as TopLevelItem[];
   const session = sessionItem(items);
@@ -47,7 +55,7 @@ export function LinksPanel({ client }: LinksPanelProps) {
     ...(session?.urlParams ?? []).filter((p) => p.default === undefined).map((p) => `${urlParamKey(p)}=<${p.name}>`),
   ];
   const linkOf = (link: LinkResponse) => {
-    const url = codeLinkUrl(link.studyId, link.secret);
+    const url = codeLinkUrl(publicId, link.secret);
     return urlParams.length ? `${url}${url.includes("?") ? "&" : "?"}${urlParams.join("&")}` : url;
   };
   // Coders signing in with their email address: only those addresses may code.

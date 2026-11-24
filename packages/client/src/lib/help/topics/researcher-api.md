@@ -50,6 +50,7 @@ curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/a
 | Deploy (makes the links)              | `PUT /study/<id>/deployment` with `{ "designVersionId": ..., "units": true }` |
 | What deploying would change; versions | `GET /study/<id>/deployment/pending`, `.../deployment/versions`               |
 | List links, change one                | `GET /study/<id>/links`; `PUT /study/<id>/links/<link id>`                    |
+| A coder's address                     | `<server>/code/<publicId>?link=<secret>`: the study's `publicId`, not `<id>`  |
 | Coders, with answers outside loops    | `GET /study/<id>/coders`                                                      |
 | Answers, a page at a time             | `GET /study/<id>/annotations`                                                 |
 | Units as coders saw them              | `GET /study/<id>/unit-versions`                                               |

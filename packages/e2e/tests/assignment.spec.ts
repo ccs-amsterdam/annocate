@@ -172,7 +172,7 @@ test("an experiment that selects units: balanced, each session codes its conditi
   const seen: string[] = [];
   for (let i = 0; i < 2; i++) {
     const coder = await (await browser.newContext()).newPage();
-    await coder.goto(`/code/${study.id}?link=${links[0].secret}`);
+    await coder.goto(`/code/${study.publicId}?link=${links[0].secret}`);
     await question(coder, "Topic?");
     const text = (await coder
       .getByText(/report/)
@@ -217,7 +217,7 @@ test("an experiment whose condition is a URL parameter's value selects that cond
     ["control", "Calm report", "Alarming report"],
   ]) {
     const coder = await (await browser.newContext()).newPage();
-    await coder.goto(`/code/${study.id}?link=${link.secret}&arm=${arm}`);
+    await coder.goto(`/code/${study.publicId}?link=${link.secret}&arm=${arm}`);
     await question(coder, "Topic?");
     await expect(coder.getByText(text)).toBeVisible();
     await expect(coder.getByText(other)).toHaveCount(0);
@@ -250,7 +250,7 @@ test("two loops each show one part: first the pre units, then the post units", a
   const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
 
   const coder = await (await browser.newContext()).newPage();
-  await coder.goto(`/code/${study.id}?link=${link.secret}`);
+  await coder.goto(`/code/${study.publicId}?link=${link.secret}`);
   await question(coder, "Before?");
   await expect(coder.getByText("Before text")).toBeVisible();
   await coder.getByRole("button", { name: /yes/ }).click();
@@ -328,7 +328,7 @@ test("a link where coders pick their name: a name stays on the first device that
   const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
 
   const first = await (await browser.newContext()).newPage();
-  await first.goto(`/code/${study.id}?link=${link.secret}`);
+  await first.goto(`/code/${study.publicId}?link=${link.secret}`);
   await expect(first.getByText("Who are you?")).toBeVisible();
   await first.getByRole("button", { name: "anna", exact: true }).click();
   await question(first, "Topic?");
@@ -336,7 +336,7 @@ test("a link where coders pick their name: a name stays on the first device that
 
   // Another device: anna is taken
   const second = await (await browser.newContext()).newPage();
-  await second.goto(`/code/${study.id}?link=${link.secret}`);
+  await second.goto(`/code/${study.publicId}?link=${link.secret}`);
   await expect(second.getByRole("button", { name: /anna/ })).toBeDisabled();
   await second.getByRole("button", { name: "bob", exact: true }).click();
   await expect(second.getByText("Bob's text")).toBeVisible();
@@ -371,7 +371,7 @@ test("dividing units again keeps the units coders already coded", async ({ page,
   const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
   // Anna codes her unit
   const anna = await (await browser.newContext()).newPage();
-  await anna.goto(`/code/${study.id}?link=${link.secret}`);
+  await anna.goto(`/code/${study.publicId}?link=${link.secret}`);
   await anna.getByRole("button", { name: "anna", exact: true }).click();
   await question(anna, "Topic?");
   await anna.getByRole("button", { name: /politics/ }).click();

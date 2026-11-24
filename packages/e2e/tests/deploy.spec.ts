@@ -38,7 +38,7 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
 
   // A coder gets only the deployed unit
   const coder = await (await browser.newContext()).newPage();
-  await coder.goto(`/code/${study.id}?link=${link.secret}`);
+  await coder.goto(`/code/${study.publicId}?link=${link.secret}`);
   await expect(coder.getByText("First text")).toBeVisible();
   await coder.getByRole("button", { name: "politics", exact: true }).click();
   await expect(coder.getByText(/completed|Thank you/i).first()).toBeVisible();
@@ -61,7 +61,7 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
 
   // A new coder gets both
   const second = await (await browser.newContext()).newPage();
-  await second.goto(`/code/${study.id}?link=${link.secret}`);
+  await second.goto(`/code/${study.publicId}?link=${link.secret}`);
   await expect(second.getByText("First text")).toBeVisible();
   await second.getByRole("button", { name: "politics", exact: true }).click();
   await expect(second.getByText("Second text")).toBeVisible();

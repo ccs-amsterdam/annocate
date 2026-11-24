@@ -211,7 +211,7 @@ test("an ::html field shows in its sandboxed frame, sized by its script, within 
   page,
   request,
 }) => {
-  const study = await api<{ id: number }>(request, "POST", "/study/from-recipe", {
+  const study = await api<{ id: number; publicId: string }>(request, "POST", "/study/from-recipe", {
     name: "HTML unit",
     units: [
       {
@@ -236,7 +236,7 @@ test("an ::html field shows in its sandboxed frame, sized by its script, within 
     deploy: true,
   });
   const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
-  await page.goto(`/code/${study.id}?link=${link.secret}`);
+  await page.goto(`/code/${study.publicId}?link=${link.secret}`);
   await question(page, "Seen it?");
   const frame = page.locator("iframe[sandbox]");
   await expect(frame).toBeVisible();
@@ -284,7 +284,7 @@ test("the menus list only what the coder got to; the loop's own menu keeps numbe
 });
 
 test("open answers: one line continues with Enter, a text area with Ctrl + Enter", async ({ page, request }) => {
-  const study = await api<{ id: number }>(request, "POST", "/study", { name: "Open answers" });
+  const study = await api<{ id: number; publicId: string }>(request, "POST", "/study", { name: "Open answers" });
   const design = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
     items: [
       { type: "question", name: "name", variable: { type: "text", question: "Your nickname?" } },
@@ -293,7 +293,7 @@ test("open answers: one line continues with Enter, a text area with Ctrl + Enter
   });
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
   const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
-  await page.goto(`/code/${study.id}?link=${link.secret}`);
+  await page.goto(`/code/${study.publicId}?link=${link.secret}`);
 
   await question(page, "Your nickname?");
   await page.getByRole("textbox", { name: "Your answer" }).fill("Kit");
@@ -348,7 +348,7 @@ test("options from data: each unit's own list of topics, among the question's ow
   });
   await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
   const [link] = await list<{ secret: string }>(request, `/study/${created.id}/links`);
-  await page.goto(`/code/${created.id}?link=${link.secret}`);
+  await page.goto(`/code/${created.publicId}?link=${link.secret}`);
   await question(page, "Topic?");
   const buttons = page.locator("[data-key-target]");
   // Each unit's list first (its row is at 0), then the question's own option

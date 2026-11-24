@@ -75,7 +75,7 @@ export interface CoderApi {
 }
 
 export interface HttpCoderApiConfig {
-  /** Base URL of the coder API including the deployment, e.g. "/d/42" (same origin as the client). */
+  /** Base URL of the coder API including the deployment, e.g. "/d/k3v9x2m4q7ta" (same origin as the client). */
   baseUrl: string;
   /** The link: creates the coder on first use (and says which URL parameter is the coder id). */
   linkSecret?: string;

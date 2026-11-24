@@ -1,5 +1,5 @@
 {
-  "id": "6a626cc3-66f5-4f40-8d12-ffc18e880c41",
+  "id": "ce092fb0-d27a-419a-8f96-1032c73695eb",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1373,6 +1373,12 @@
             "cycle": false
           }
         },
+        "public_id": {
+          "name": "public_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "name": {
           "name": "name",
           "type": "text",
@@ -1443,7 +1449,15 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "studies_public_id_key": {
+          "name": "studies_public_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "public_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

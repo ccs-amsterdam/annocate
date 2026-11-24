@@ -20,7 +20,7 @@ export async function coderStudies(db: Db, where: SQL | undefined): Promise<Code
   >`(SELECT max(${a.updated}) FROM ${a} WHERE ${a.sessionId} = ${coderSessions.id})`;
   const rows = await db
     .select({
-      studyId: coderSessions.studyId,
+      publicId: studies.publicId,
       title: sql<string | null>`${designVersions.public}->>'title'`,
       created: coderSessions.created,
       ended: coderSessions.ended,
@@ -36,7 +36,7 @@ export async function coderStudies(db: Db, where: SQL | undefined): Promise<Code
   return rows.map((r) => {
     const lastActive = r.lastActive ? new Date(r.lastActive) : null;
     return {
-      deployment: String(r.studyId),
+      deployment: r.publicId,
       title: r.title,
       started: r.created,
       lastActive: lastActive && lastActive > r.created ? lastActive : r.created,

@@ -41,7 +41,7 @@ async function study(request: Parameters<typeof api>[0]): Promise<{ id: number; 
   const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, { items: studyItems() });
   await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
   const [link] = await list<{ secret: string }>(request, `/study/${created.id}/links`);
-  return { id: created.id, link: `/code/${created.id}?link=${link.secret}` };
+  return { id: created.id, link: `/code/${created.publicId}?link=${link.secret}` };
 }
 
 /** The unit on screen and its question. */
@@ -303,7 +303,7 @@ test("special answers: under the answers, chosen with the leader key / and 8 or 
   });
   await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
   const [link] = await list<{ secret: string }>(request, `/study/${created.id}/links`);
-  await page.goto(`/code/${created.id}?link=${link.secret}`);
+  await page.goto(`/code/${created.publicId}?link=${link.secret}`);
   await question(page, "Topic?");
   // Their badges: /8 and /9 (the options are numbered 1, 2)
   await expect(page.locator("[data-special]")).toHaveCount(2);
@@ -396,7 +396,7 @@ test("display: the numpad only in a responsive study (three columns, 7 8 9 at th
     });
     await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
     const [link] = await list<{ secret: string }>(request, `/study/${created.id}/links`);
-    return `/code/${created.id}?link=${link.secret}`;
+    return `/code/${created.publicId}?link=${link.secret}`;
   };
   const settings = () => page.getByRole("button", { name: "Coder Settings" }).click();
 
@@ -447,7 +447,7 @@ test("display: each coder's keys and screen are recorded when they change; quick
     (await coders(request, created.id))[0]?.display.map((d) => [d.keys, d.width ?? "", d.theme ?? ""].join(" ")) ?? [];
 
   await page.setViewportSize({ width: 390, height: 800 });
-  await page.goto(`/code/${created.id}?link=${link.secret}`);
+  await page.goto(`/code/${created.publicId}?link=${link.secret}`);
   await question(page, "Topic?");
   await expect.poll(logged).toEqual([expect.stringMatching(/^numbers narrow (light|dark)$/)]);
 
@@ -498,7 +498,7 @@ test("an instruction: behind the ? button or key, a dot until read; it can open 
   });
   await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
   const [link] = await list<{ secret: string }>(request, `/study/${created.id}/links`);
-  await page.goto(`/code/${created.id}?link=${link.secret}`);
+  await page.goto(`/code/${created.publicId}?link=${link.secret}`);
   // Markdown with a heading: shown as written (the question's own heading)
   await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible();
   await page.getByRole("button", { name: "I confirm", exact: true }).click();
@@ -544,7 +544,7 @@ test("the keyboard reaches Continue below a question with several answers", asyn
   const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, { items: [question_] });
   await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
   const [link] = await list<{ secret: string }>(request, `/study/${created.id}/links`);
-  await page.goto(`/code/${created.id}?link=${link.secret}`);
+  await page.goto(`/code/${created.publicId}?link=${link.secret}`);
   await question(page, "Topics?");
   // Choose one with the arrows and Space, then down to Continue and Enter
   await page.keyboard.press("ArrowDown");
@@ -571,7 +571,7 @@ test("a dropdown: the arrows open it to browse; typing opens it with the filter"
   const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, { items: [country] });
   await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
   const [link] = await list<{ secret: string }>(request, `/study/${created.id}/links`);
-  await page.goto(`/code/${created.id}?link=${link.secret}`);
+  await page.goto(`/code/${created.publicId}?link=${link.secret}`);
   await question(page, "Country?");
   // Typing opens it with the filter
   await page.keyboard.type("neth");
@@ -600,7 +600,7 @@ test("a slider (auto from 7 values): Left / Right from the middle, End, Ctrl + E
   const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, { items: [score] });
   await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
   const [link] = await list<{ secret: string }>(request, `/study/${created.id}/links`);
-  await page.goto(`/code/${created.id}?link=${link.secret}`);
+  await page.goto(`/code/${created.publicId}?link=${link.secret}`);
   await question(page, "Score?");
   const slider = page.getByRole("slider", { name: "Value" });
   await expect(slider).toBeVisible();
@@ -640,7 +640,7 @@ async function loopStudy(
   });
   await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
   const [link] = await list<{ secret: string }>(request, `/study/${created.id}/links`);
-  return { id: created.id, link: `/code/${created.id}?link=${link.secret}` };
+  return { id: created.id, link: `/code/${created.publicId}?link=${link.secret}` };
 }
 
 test("layout items: before the first, a question without the unit; then the unit as each layout shows it", async ({

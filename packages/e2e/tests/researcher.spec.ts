@@ -183,7 +183,7 @@ test("your first study, as the help describes it: units, a design, deploy, a lin
 
   // A coder codes the three articles
   const coder = await (await browser.newContext()).newPage();
-  await coder.goto(`/code/${study.id}?link=${link.secret}`);
+  await coder.goto(`/code/${study.publicId}?link=${link.secret}`);
   for (const topic of ["Disasters", "Politics", "Sports"]) {
     await question(coder, "What is this article mainly about?");
     await coder.getByRole("button", { name: new RegExp(topic) }).click();

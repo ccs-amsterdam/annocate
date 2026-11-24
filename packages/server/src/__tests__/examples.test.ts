@@ -87,7 +87,7 @@ describe("example studies", () => {
       }
 
       // A coder can start
-      const coder = await app.request(`/api/d/${study.id}/session`, {
+      const coder = await app.request(`/api/d/${study.publicId}/session`, {
         headers: { "x-annotinder": "1", "x-link-secret": link.secret },
       });
       expect(coder.status).toBe(200);

@@ -148,6 +148,7 @@ export function sampleDesign(invite: "coders" | "crowd" = "crowd"): DesignVersio
 
 const study: StudyResponse = {
   id: STUDY_ID,
+  publicId: "samplestudy1",
   name: "Sample: news headlines",
   archived: false,
   created: now,

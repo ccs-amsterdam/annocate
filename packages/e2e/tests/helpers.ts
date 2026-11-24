@@ -57,7 +57,7 @@ export async function fromExample(
 ): Promise<{ study: StudyResponse; link: string }> {
   const study = await api<StudyResponse>(request, "POST", "/study/from-example", { example });
   const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
-  return { study, link: `/code/${study.id}?link=${link.secret}` };
+  return { study, link: `/code/${study.publicId}?link=${link.secret}` };
 }
 
 export async function answers(request: APIRequestContext, studyId: number): Promise<AnnotationRow[]> {

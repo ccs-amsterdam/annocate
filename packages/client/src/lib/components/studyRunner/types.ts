@@ -1,5 +1,5 @@
 export interface StudyRunnerProps {
-  /** Server URL including the deployment, e.g. `/api/d/42` (same origin as the client). */
+  /** Server URL including the deployment, e.g. `/api/d/k3v9x2m4q7ta` (same origin as the client). */
   baseUrl: string;
   linkSecret?: string;
   /** The page's other query parameters: the coder id and the design's URL parameters (the server stores the ones it needs when the coder starts). */

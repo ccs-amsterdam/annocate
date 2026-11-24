@@ -135,7 +135,7 @@ export type DeploymentStatus = z.infer<typeof DeploymentStatusSchema>;
 
 /**
  * Researcher `POST /study/:studyId/deployment/preview`: a preview of the study's
- * latest design version (deployed or not), run as deployment `<studyId>.preview`.
+ * latest design version (deployed or not), run as deployment `<publicId>.preview`.
  * Coders and answers stay in the server's memory; nothing is stored. The
  * client uses `token` like a link secret (`x-link-secret`).
  */

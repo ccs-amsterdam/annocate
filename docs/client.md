@@ -14,7 +14,7 @@ How the web client (`packages/client`) works and why. Server side:
 | `/research/studies/<id>/<page>`    | A study's page (`overview`, `design`, `units`, `deploy`, `links`, `results`, `settings`, `preview`); `design` takes `?version=<n>`                    |
 | `/research/admin`                  | The server admin page                                                                                                                                 |
 | `/code`                            | The coder home: studies on this device (`pages/CodeHomePage.tsx`)                                                                                     |
-| `/code/<deployment>?link=<secret>` | Coding (`pages/CodePage.tsx`), plus the link's URL parameters; `?transfer=<token>` continues on another device; without either, this device's session |
+| `/code/<deployment>?link=<secret>` | Coding (`pages/CodePage.tsx`; `<deployment>` is the study's public id), plus the link's URL parameters; `?transfer=<token>` continues on another device; without either, this device's session |
 
 - A reload stays where it was. The researcher section is one `AdminApp`
   whose place comes from the URL (`AdminLocation`). Leaving the editor with
@@ -768,7 +768,7 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   "value: text", relations as "value: from → to". Answers that don't fit a
   cell also get a `.json` column. CSV is UTF-8, written as it is.
 
-- **Preview** runs the latest design as deployment `<studyId>.preview`
+- **Preview** runs the latest design as deployment `<publicId>.preview`
   (`POST /study/:studyId/deployment/preview`); nothing is stored
   (`architecture.md` §5).
 

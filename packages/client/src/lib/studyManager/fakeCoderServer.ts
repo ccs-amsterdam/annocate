@@ -128,7 +128,6 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
       stale = false;
       return {
         sessionId: 1,
-        studyId: 1,
         version: 1,
         codebook: {
           id: 1,

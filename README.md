@@ -26,7 +26,7 @@ Then open http://localhost:5173.
 - The researcher UI is at `/research`. Without login settings you are logged
   in automatically (development auth, localhost only).
 - An empty database gets a demo study. Code it at
-  http://localhost:5173/code/1?link=demo-secret.
+  http://localhost:5173/code/demostudy001?link=demo-secret.
 - `pnpm reset-db` starts over with an empty database.
 
 To try a real login locally, set `OIDC_HOST`, `OIDC_CLIENT_ID`,

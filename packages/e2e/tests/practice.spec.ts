@@ -63,15 +63,11 @@ test("a practice question gives feedback when wrong, answered again until right;
   await expect(page.getByRole("button", { name: /^s1 1$/ })).toBeVisible();
 
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: codebook.id });
-  const links = await api<{ secret: string; params: Record<string, string> }[]>(
-    request,
-    "GET",
-    `/study/${study.id}/links`,
-  );
+  const links = await list<{ secret: string; params: Record<string, string> }>(request, `/study/${study.id}/links`);
   const s1 = links.find((l) => l.params.coder === "s1")!;
 
   const coder = await (await browser.newContext()).newPage();
-  await coder.goto(`/code/${study.id}?link=${s1.secret}`);
+  await coder.goto(`/code/${study.publicId}?link=${s1.secret}`);
 
   // The practice unit, answered wrongly: feedback with the question, and answering again until right
   await question(coder, "Topic?");

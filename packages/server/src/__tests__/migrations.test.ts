@@ -94,7 +94,7 @@ describe("migrations", () => {
 
   it("an answer about a unit names the version of the unit the coder saw", async () => {
     const db = await openPglite();
-    await query(db, "INSERT INTO studies (name) VALUES ('s')");
+    await query(db, "INSERT INTO studies (name, public_id) VALUES ('s', 'abcdefghijkl')");
     await query(db, "INSERT INTO design_versions (study_id, items) VALUES (1, '[]')");
     await query(db, "INSERT INTO links (study_id, label, secret) VALUES (1, 'l', 'x')");
     await query(db, "INSERT INTO coder_sessions (study_id, link_id) VALUES (1, 1)");

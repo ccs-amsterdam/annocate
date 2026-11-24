@@ -10,7 +10,7 @@ import { CLIENT_HEADERS, HttpCoderApi } from "../api/httpCoderApi";
 
 /** Which study and link a page belongs to. */
 export interface CoderSessionScope {
-  /** Server base URL including the deployment, e.g. `/api/d/42` (same origin as the client). */
+  /** Server base URL including the deployment, e.g. `/api/d/k3v9x2m4q7ta` (same origin as the client). */
   baseUrl: string;
   linkSecret?: string;
 }
@@ -71,7 +71,11 @@ export async function logOut(): Promise<void> {
   await fetch("/api/auth/logout", { method: "POST", headers: CLIENT_HEADERS, credentials: "same-origin" });
 }
 
-/** A coder link's URL (`/code/<deployment>?link=<secret>`): what researchers send coders (docs/coder-identity.md). */
-export function codeLinkUrl(deploymentId: number, secret: string): string {
-  return `${window.location.origin}/code/${deploymentId}?link=${encodeURIComponent(secret)}`;
+/**
+ * A coder link's URL (`/code/<publicId>?link=<secret>`): what researchers
+ * send coders (docs/coder-identity.md). `publicId`: the study's public id,
+ * not its sequential id.
+ */
+export function codeLinkUrl(publicId: string, secret: string): string {
+  return `${window.location.origin}/code/${publicId}?link=${encodeURIComponent(secret)}`;
 }

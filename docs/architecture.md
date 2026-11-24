@@ -39,7 +39,8 @@ The APIs ([docs/api/](api/README.md)), all under `/api`:
   and by scripts and other systems (API keys). Login: `coder-identity.md` §7.
 - **Coder API** (`coderEndpoints`, [spec](api/coder.md)):
   `/d/<deploymentId>/...`, used by the coding screen. The deployment id is the
-  study id, or `<studyId>.preview` for a preview. No CORS: the session is an
+  study's public id (`studies.public_id`: random, so coder links don't show
+  how many studies there are), or `<publicId>.preview` for a preview. No CORS: the session is an
   httpOnly cookie on the client's origin.
 - **Admin API** ([spec](api/admin.md)): `/admin/...`, server settings and accounts.
 
@@ -127,7 +128,7 @@ secret.
    (`StudyManager.save`); the coder goes on at once.
 
 **Preview.** `POST /study/:studyId/deployment/preview` returns deployment id
-`<studyId>.preview` and a token signed with `ANNOTINDER_SECRET` (random per
+`<publicId>.preview` and a token signed with `ANNOTINDER_SECRET` (random per
 process if unset, so previews end at a restart). The runtime runs the latest
 design version (checked on every request, so edits show at once) with the
 real units, but keeps coders and answers in memory: a preview stores nothing.

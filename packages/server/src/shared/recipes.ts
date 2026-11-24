@@ -39,6 +39,8 @@ export interface RecipeOptions {
   origin?: string;
   /** Fixed link secrets, in order (the development demo's `demo-secret`); random otherwise. */
   secrets?: string[];
+  /** A fixed public id (the development demo's); random otherwise. */
+  publicId?: string;
 }
 
 export interface MadeStudy {
@@ -148,6 +150,7 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
     .insert(studies)
     .values({
       name: recipe.name,
+      ...(options.publicId ? { publicId: options.publicId } : {}),
       ownerId: options.ownerId,
       origin: options.origin ?? null,
     })

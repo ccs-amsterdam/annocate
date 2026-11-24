@@ -1,4 +1,5 @@
 import { Hono, type Context } from "hono";
+import { isPreviewId } from "./runtime/registry.js";
 import {
   EndSessionSchema,
   QuitSessionSchema,
@@ -32,7 +33,7 @@ interface Env {
 
 /**
  * The coder API (contracts `coderEndpoints`, docs/api/coder.md), under
- * `/d/<deploymentId>`: `<studyId>`, or `<studyId>.preview`. The client's
+ * `/d/<deploymentId>`: the study's public id, or `<publicId>.preview`. The client's
  * `HttpCoderApi` uses `/d/<deploymentId>` as its base URL.
  *
  * No CORS: the client is served from this server's origin, so the browser
@@ -68,13 +69,13 @@ export function coderApi(server: Server): Hono {
     requireClientHeader(c);
     const deploymentId = c.req.param("deployment")!;
     const device = readDevice(c);
-    if (!device || !/^\d+$/.test(deploymentId)) throw new HttpError(404, "No session here");
+    if (!device || isPreviewId(deploymentId)) throw new HttpError(404, "No session here");
     const runtime = await server.deployments.get(deploymentId);
     const key = await coderKey(device, deploymentId, coderFromUrl(runtime, urlParamsOf(c)));
     const [study] = await coderStudies(
       server.db,
       and(
-        eq(coderSessions.studyId, Number(deploymentId)),
+        eq(coderSessions.studyId, runtime.studyId),
         eq(
           coderSessions.id,
           server.db
@@ -93,8 +94,9 @@ export function coderApi(server: Server): Hono {
     requireClientHeader(c);
     const deploymentId = c.req.param("deployment")!;
     const secret = c.req.header("x-link-secret");
-    const link = secret && /^\d+$/.test(deploymentId) ? await linkInfo(server.db, secret) : null;
-    if (!link || String(link.studyId) !== deploymentId)
+    const link = secret && !isPreviewId(deploymentId) ? await linkInfo(server.db, secret) : null;
+    const runtime = link ? await server.deployments.get(deploymentId) : null;
+    if (!link || !runtime || link.studyId !== runtime.studyId)
       throw new HttpError(404, "This link doesn't exist", "link_not_found");
     // Names only for a link that still takes new coders (as starting a session checks)
     const [state] = await server.db
@@ -103,7 +105,6 @@ export function coderApi(server: Server): Hono {
       .where(eq(links.secret, secret!));
     if (state?.revokedAt) throw new HttpError(403, "This link has been revoked", "link_revoked");
     if (state?.retiredAt) throw new HttpError(403, "This link is no longer active", "link_inactive");
-    const runtime = await server.deployments.get(deploymentId);
     await runtime.refresh();
     return c.json(await runtime.pickNames());
   });
@@ -141,7 +142,7 @@ export function coderApi(server: Server): Hono {
     // a new device. Never in previews.
     const loginCookie = getCookie(c, SESSION_COOKIE);
     const login =
-      loginCookie && /^\d+$/.test(deploymentId)
+      loginCookie && !isPreviewId(deploymentId)
         ? async () => {
             const user = await userForSession(server.db, loginCookie);
             return user ? { email: user.email } : null;

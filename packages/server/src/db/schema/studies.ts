@@ -1,4 +1,5 @@
 import { boolean, index, integer, jsonb, pgTable, primaryKey, text } from "drizzle-orm/pg-core";
+import { newPublicId } from "../publicId.js";
 import { DEFAULT_REOPEN_MINUTES, type DeploymentChanges } from "@annotinder/contracts";
 import { users } from "./accounts.js";
 import { bigId, timestamptz } from "./columns.js";
@@ -14,6 +15,8 @@ import { bigId, timestamptz } from "./columns.js";
  */
 export const studies = pgTable("studies", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  /** What coder links and the coder API name the study by (random, never changed): not the sequential id. */
+  publicId: text().notNull().unique("studies_public_id_key").$defaultFn(newPublicId),
   name: text().notNull(),
   ownerId: integer().references(() => users.id, { onDelete: "set null" }),
   origin: text(),

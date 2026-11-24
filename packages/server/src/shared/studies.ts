@@ -6,6 +6,7 @@ export type StudyRow = typeof studies.$inferSelect;
 export function toStudyResponse(row: StudyRow): StudyResponse {
   return {
     id: row.id,
+    publicId: row.publicId,
     name: row.name,
     archived: row.archived,
     created: row.created,

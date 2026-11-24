@@ -108,7 +108,6 @@ export type EndSession = z.infer<typeof EndSessionSchema>;
 /** Response for `GET /session`. */
 export const SessionResponseSchema = z.object({
   sessionId: IdSchema,
-  studyId: IdSchema,
   /** The deployed codebook coders get now: its coder codebook (only what coding needs). */
   codebook: CoderCodebookSchema,
   /**

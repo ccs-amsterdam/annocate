@@ -10,8 +10,8 @@ import {
 import type { SessionTab } from "./sessionTab";
 
 /** A link as coders get it (the secret is made when deploying). */
-const linkBase = (studyId: number | undefined) =>
-  `${typeof window === "undefined" ? "" : window.location.origin}/code/${studyId ?? "<study>"}?link=…`;
+const linkBase = (publicId: string | undefined) =>
+  `${typeof window === "undefined" ? "" : window.location.origin}/code/${publicId ?? "<study>"}?link=…`;
 
 /** The URL parameters a link must or may carry, as they look in it. */
 const paramPart = (params: UrlParam[]) =>
@@ -42,15 +42,16 @@ export function SessionPreview({
   item,
   part,
   groups,
-  studyId,
+  publicId,
 }: {
   item: SessionItem;
   part: SessionTab;
   groups: SetGroupResponse[];
-  studyId: number | undefined;
+  /** The study's public id (in coder links); undefined until it is known. */
+  publicId: string | undefined;
 }) {
   const params = item.urlParams ?? [];
-  const base = linkBase(studyId) + paramPart(params);
+  const base = linkBase(publicId) + paramPart(params);
   return (
     <div className="flex flex-col gap-3">
       {part === "invite" && <InvitePreview item={item} groups={groups} base={base} />}

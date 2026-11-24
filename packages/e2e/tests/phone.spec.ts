@@ -72,7 +72,7 @@ async function deploy(request: Parameters<typeof api>[0], name: string, units: s
   const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, { items });
   await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
   const [link] = await list<{ secret: string }>(request, `/study/${created.id}/links`);
-  return { id: created.id, link: `/code/${created.id}?link=${link.secret}` };
+  return { id: created.id, link: `/code/${created.publicId}?link=${link.secret}` };
 }
 
 test("on a phone, a swipe with a finger answers", async ({ request, browser }) => {
@@ -217,7 +217,7 @@ test("on a phone, a coder picks their name from the list", async ({ request, bro
   await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
   const [link] = await list<{ secret: string }>(request, `/study/${study.id}/links`);
   const page = await phone(browser);
-  await page.goto(`/code/${study.id}?link=${link.secret}`);
+  await page.goto(`/code/${study.publicId}?link=${link.secret}`);
   await expect(page.getByText("Who are you?")).toBeVisible();
   await fitsWidth(page);
   await page.getByRole("button", { name: "bob", exact: true }).tap();

@@ -15,7 +15,7 @@ import {
 } from "@annotinder/contracts";
 import { AlertTriangle, ArrowLeft, Code2, Edit3, Eye } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useSetGroupsQuery, useUnitFieldsQuery } from "../../../admin/queries";
+import { useSetGroupsQuery, useStudyQuery, useUnitFieldsQuery } from "../../../admin/queries";
 import { enclosingLoop, flattenTree, issueIsAbout, itemPath } from "../../../codebook/tree";
 import { itemTitle } from "../../../codebook/conditions";
 import { ItemForm } from "../ItemForm";
@@ -157,8 +157,9 @@ function ItemPaneView(props: ItemPaneProps) {
 function SessionPaneView({ pane, client, draft, item, readOnly }: ItemPaneProps & { item: SessionItem }) {
   const [part] = useSessionTab();
   const groupsQuery = useSetGroupsQuery(client);
+  const publicId = useStudyQuery(client).data?.publicId;
   if (pane === "preview")
-    return <SessionPreview item={item} part={part} groups={groupsQuery.data ?? []} studyId={client.studyId} />;
+    return <SessionPreview item={item} part={part} groups={groupsQuery.data ?? []} publicId={publicId} />;
   if (pane === "json")
     return (
       <SessionPartJson
@@ -236,11 +237,12 @@ export function PreviewPanel({ client, draft }: { client: ResearcherApi; draft: 
   const item = draft.selectedItem;
   const [sessionPart] = useSessionTab();
   const groupsQuery = useSetGroupsQuery(client);
+  const publicId = useStudyQuery(client).data?.publicId;
   return (
     <div className="flex min-h-0 flex-col overflow-hidden">
       {item?.type === "session" ? (
         <div className="overflow-y-auto rounded-xl border border-border bg-card p-4">
-          <SessionPreview item={item} part={sessionPart} groups={groupsQuery.data ?? []} studyId={client.studyId} />
+          <SessionPreview item={item} part={sessionPart} groups={groupsQuery.data ?? []} publicId={publicId} />
         </div>
       ) : item ? (
         <ItemPreview key={getItemKey(item)} client={client} draft={draft} item={item} />

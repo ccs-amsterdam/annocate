@@ -72,8 +72,14 @@ repeat {
 
 ## Deployment ids
 
-A deployed study runs as a deployment identified by the study id
-(`/d/42/session`); a researcher preview as `<studyId>.preview`.
+A deployed study runs as a deployment identified by the study's **public
+id** (`/d/k3v9x2m4q7ta/session`): 12 random characters (`a-z`, `0-9`), made
+with the study and never changed (`StudyResponse.publicId`). Coder links
+carry it too: `/code/<publicId>?link=<secret>`. The study's sequential `id`
+is the researcher API's only: coders never see it, so a link doesn't tell
+how many studies a server has, and studies can't be probed by counting. A
+researcher preview is `<publicId>.preview`. An imported study gets a new
+public id.
 
 ## Machine-readable spec
 
