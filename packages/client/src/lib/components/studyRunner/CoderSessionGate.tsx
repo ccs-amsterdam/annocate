@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { redeemTransfer, type CoderSessionScope } from "../../session/coderSession";
 import { CodingScreen } from "./CodingScreen";
-import { LoadingScreen, SessionNotice } from "./SessionNotices";
+import { LoadingScreen, SessionNotice } from "./SessionNotice";
 import type { StudyRunnerProps } from "./types";
 
 interface GateSession {

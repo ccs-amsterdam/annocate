@@ -1,28 +1,14 @@
-import { COMMAND_BADGES, isContinue } from "../../keyboard/commands";
 import { useCallback, useRef, useState } from "react";
+import type { SpecialAnswer, SpecialKind } from "@annotinder/contracts";
 import { useAnswerLayout } from "../../display/hooks";
-import { numericSteps, numericValueError, type SpecialAnswer, type SpecialKind } from "@annotinder/contracts";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useKeyTargets } from "../../keyboard/hooks";
 import { buildValues, initialSpecial, initialValues, specialValue } from "./answerValue";
+import { NumberButtons } from "./NumberButtons";
+import { NumberInput } from "./NumberInput";
+import { NumberSlider } from "./NumberSlider";
+import { buttonValues, useSliderKeys, useTypeIntoInput, type NumericVariable } from "./numericKeys";
 import { SpecialAnswersRow } from "./OptionButtons";
-import { useKeyScope, useKeyTargets } from "../../keyboard/hooks";
-import { PRIORITY } from "../../keyboard/controller";
-import { ShortcutBadge } from "../ShortcutBadge";
-import type { AnswerFieldProps, QuestionVariable } from "./types";
-
-type NumericVariable = Extract<QuestionVariable, { type: "numeric" }>;
-
-/** The number of decimals a step needs (0.1 -> 1). */
-function decimals(step: number): number {
-  const text = String(step);
-  return text.includes(".") ? text.split(".")[1].length : 0;
-}
-
-/** Buttons per row: all of them up to 11, else as many rows as needed, evenly filled (20: 2 rows of 10). */
-function rowLength(n: number): number {
-  return Math.ceil(n / Math.ceil(n / 11));
-}
+import type { AnswerFieldProps } from "./types";
 
 /**
  * One number: `buttons` (one per value, for small ranges), `slider` (a
@@ -31,7 +17,6 @@ function rowLength(n: number): number {
  */
 export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerFieldProps<NumericVariable>) {
   const { layout } = useAnswerLayout(variable);
-  const step = variable.step ?? 1;
   const initial = initialValues(initialValue)[0];
   const [value, setValue] = useState<number | null>(typeof initial === "number" ? initial : null);
   const [text, setText] = useState(typeof initial === "number" ? String(initial) : "");
@@ -52,178 +37,22 @@ export function NumericAnswerField({ variable, onAnswer, initialValue }: AnswerF
     onAnswer(buildValues([specialValue(s)]));
   };
 
-  const values =
-    layout === "buttons"
-      ? Array.from({ length: numericSteps(variable) ?? 0 }, (_, i) =>
-          Number(((variable.min ?? 0) + i * step).toFixed(decimals(step))),
-        )
-      : [];
+  const isInput = layout !== "buttons" && layout !== "slider";
+  const values = layout === "buttons" ? buttonValues(variable) : [];
   // Up to nine buttons: number keys choose them
   const targets = values.length && values.length <= 9 ? [values.map((n) => ({ label: String(n) }))] : null;
   useKeyTargets(targets, (_, i) => answer(values[i]));
-  // An input: typing a number starts it, without first going to the input (Tab)
   const input = useRef<HTMLInputElement>(null);
-  useKeyScope(
-    (press) => {
-      if (press.altKey || press.ctrlKey || press.metaKey || !/^[0-9.,-]$/.test(press.key)) return false;
-      setText((t) => t + (press.key === "," ? "." : press.key));
-      input.current?.focus();
-      return true;
-    },
-    layout !== "buttons" && layout !== "slider",
-    { priority: PRIORITY.field },
-  );
+  useTypeIntoInput(input, setText, isInput);
+  const slider = { variable, value, setValue, onAnswer: answer };
+  useSliderKeys(slider, layout === "slider");
 
-  // A slider: Left / Right step the value (from the middle at first), Home / End go to the ends, Ctrl + Enter continues
-  const round = (n: number) => Number(n.toFixed(decimals(step)));
-  useKeyScope(
-    (press) => {
-      if (isContinue(press)) {
-        if (value === null) return false;
-        answer(value);
-        return true;
-      }
-      if (press.altKey || press.ctrlKey || press.metaKey || press.shiftKey) return false;
-      const min = variable.min!;
-      const max = variable.max!;
-      const from = value ?? min + Math.floor((max - min) / 2 / step) * step;
-      const next =
-        press.key === "ArrowLeft"
-          ? from - step
-          : press.key === "ArrowRight"
-            ? from + step
-            : press.key === "Home"
-              ? min
-              : press.key === "End"
-                ? max
-                : null;
-      if (next === null) return false;
-      setValue(round(Math.min(max, Math.max(min, next))));
-      return true;
-    },
-    layout === "slider",
-    { priority: PRIORITY.field },
-  );
-
-  const labels = variable.labels ?? [];
-  const parsed = text.trim() === "" ? null : Number(text);
-  const error = parsed === null ? null : numericValueError(variable, parsed);
-
-  let field;
-  if (layout === "buttons") {
-    field = (
-      <div className="flex flex-col gap-1">
-        {/* Equal widths, up to 11 in a row (they fit a small phone); more are spread evenly over rows */}
-        <div
-          className="grid gap-1"
-          style={{ gridTemplateColumns: `repeat(${rowLength(values.length)}, minmax(0, 1fr))` }}
-        >
-          {values.map((n) => (
-            <Button
-              key={n}
-              type="button"
-              variant={value === n ? "default" : "outline"}
-              className="h-10 min-w-0 px-1"
-              aria-pressed={value === n}
-              data-key-target=""
-              onClick={() => answer(n)}
-            >
-              {n}
-            </Button>
-          ))}
-        </div>
-        <ScaleLabels labels={labels} min={variable.min!} max={variable.max!} />
-      </div>
-    );
-  } else if (layout === "slider") {
-    const current = value ?? (variable.min! + variable.max!) / 2;
-    field = (
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-3">
-          <input
-            type="range"
-            className="h-10 flex-1 cursor-pointer accent-primary"
-            min={variable.min}
-            max={variable.max}
-            step={step}
-            value={current}
-            aria-label="Value"
-            onChange={(e) => setValue(Number(e.target.value))}
-            // A tap on the thumb changes nothing: it chooses the value shown (the middle, at first)
-            onClick={(e) => setValue(Number(e.currentTarget.value))}
-          />
-          <span className={`w-12 text-right font-mono text-sm ${value === null ? "text-muted-foreground" : ""}`}>
-            {value ?? "–"}
-          </span>
-        </div>
-        <ScaleLabels labels={labels} min={variable.min!} max={variable.max!} />
-        <Button
-          type="button"
-          className="relative h-10"
-          data-key-target=""
-          disabled={value === null}
-          onClick={() => value !== null && answer(value)}
-        >
-          Continue
-          {value !== null && <ShortcutBadge shortcut={COMMAND_BADGES.continue} />}
-        </Button>
-      </div>
-    );
-  } else {
-    field = (
-      <form
-        className="flex flex-col gap-1"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (parsed !== null && !error) answer(parsed);
-        }}
-      >
-        <div className="flex gap-2">
-          <Input
-            ref={input}
-            type="number"
-            inputMode="decimal"
-            className="h-10"
-            min={variable.min}
-            max={variable.max}
-            step={step}
-            value={text}
-            aria-invalid={Boolean(error)}
-            onChange={(e) => setText(e.target.value)}
-          />
-          <Button type="submit" className="h-10" disabled={parsed === null || Boolean(error)}>
-            Continue
-          </Button>
-        </div>
-        {error && <p className="text-xs text-destructive">This is {error}</p>}
-        {labels.length > 0 && (
-          <p className="text-xs text-muted-foreground">{labels.map((l) => `${l.value}: ${l.label}`).join(" · ")}</p>
-        )}
-      </form>
-    );
-  }
   return (
     <div className="flex flex-col gap-1.5">
-      {field}
+      {layout === "buttons" && <NumberButtons variable={variable} values={values} value={value} onAnswer={answer} />}
+      {layout === "slider" && <NumberSlider {...slider} />}
+      {isInput && <NumberInput variable={variable} input={input} text={text} setText={setText} onAnswer={answer} />}
       <SpecialAnswersRow specials={variable.specials} selected={special} onPick={pickSpecial} />
-    </div>
-  );
-}
-
-/** Break-point labels at their positions under buttons or a slider. */
-function ScaleLabels({ labels, min, max }: { labels: { value: number; label: string }[]; min: number; max: number }) {
-  if (!labels.length) return null;
-  return (
-    <div className="relative h-4 text-xs text-muted-foreground">
-      {labels.map((l) => {
-        const pct = ((l.value - min) / (max - min)) * 100;
-        const align = pct < 15 ? "translate-x-0" : pct > 85 ? "-translate-x-full" : "-translate-x-1/2";
-        return (
-          <span key={l.value} className={`absolute whitespace-nowrap ${align}`} style={{ left: `${pct}%` }}>
-            {l.label}
-          </span>
-        );
-      })}
     </div>
   );
 }

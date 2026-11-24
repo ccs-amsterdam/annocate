@@ -5,14 +5,12 @@ import { optionLabel, specialLabel, type Option, type SpecialAnswer, type ValueA
 import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildValues, specialValue } from "./answerValue";
-import { CompactRow, EndLabels, SpecialAnswersRow } from "./OptionButtons";
-import type { AnswerFieldProps, QuestionVariable } from "./types";
+import { ScaleCompactRows } from "./ScaleCompactRows";
+import { ScaleGrid } from "./ScaleGrid";
+import type { ScaleRowsProps, ScaleVariable } from "./scaleRows";
+import type { AnswerFieldProps } from "./types";
 import { useKeyTargets, useSpecialKeys } from "../../keyboard/hooks";
 import { ShortcutBadge } from "../ShortcutBadge";
-
-type ScaleVariable = Extract<QuestionVariable, { type: "scale" }>;
-
-const itemLabel = (item: { name: string; label?: string }) => item.label ?? item.name.replaceAll("_", " ");
 
 /**
  * A battery: every item rated on the same options, `compact` (a row of
@@ -43,7 +41,6 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
     setSelected((current) => ({ ...current, [item]: specialValue(special, item) }));
     if (missing === item) setMissing(null);
   }
-  const isPoint = (item: string, option: Option) => !selected[item]?.special && selected[item]?.value === option.value;
 
   function submit() {
     const first = items.find((item) => selected[item.name] === undefined);
@@ -74,106 +71,25 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
     layout === "grid" && active >= 0,
   );
 
-  const highlight = (name: string) =>
-    missing === name ? "rounded-md ring-2 ring-destructive ring-offset-2 ring-offset-background" : "";
+  const rowsProps: ScaleRowsProps = {
+    items,
+    points,
+    specials,
+    selected,
+    onSelect: select,
+    onSelectSpecial: selectSpecial,
+    active,
+    rowRef: (name) => (el) => void (rows.current[name] = el),
+    highlight: (name) =>
+      missing === name ? "rounded-md ring-2 ring-destructive ring-offset-2 ring-offset-background" : "",
+  };
 
   return (
     <div className="flex flex-col gap-2">
       {layout === "grid" ? (
-        <div className="overflow-x-auto">
-          <table className="w-full border-separate border-spacing-y-1 text-sm">
-            <thead>
-              <tr>
-                <th />
-                {points.map((option) => (
-                  <th key={String(option.value)} className="px-1 text-center text-xs font-normal text-muted-foreground">
-                    {optionLabel(option)}
-                  </th>
-                ))}
-                {specials.map((special, i) => (
-                  <th
-                    key={special.kind}
-                    className={`px-1 text-center text-xs font-normal text-muted-foreground ${i === 0 ? "border-l border-dashed border-border" : ""}`}
-                  >
-                    {specialLabel(special)}
-                    {specialBadges[i] && (
-                      <span className="ml-1 rounded border px-1 font-mono text-[10px]">{specialBadges[i]}</span>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.name} ref={(el) => void (rows.current[item.name] = el)} className={highlight(item.name)}>
-                  <th scope="row" className="pr-2 text-left font-normal">
-                    {itemLabel(item)}
-                  </th>
-                  {points.map((option) => (
-                    <td key={String(option.value)} className="text-center">
-                      <input
-                        type="radio"
-                        className="size-5 cursor-pointer accent-primary"
-                        name={`${item.name}`}
-                        aria-label={`${itemLabel(item)}: ${optionLabel(option)}`}
-                        checked={isPoint(item.name, option)}
-                        data-key-target=""
-                        onChange={() => select(item.name, option)}
-                      />
-                    </td>
-                  ))}
-                  {specials.map((special, i) => (
-                    <td
-                      key={special.kind}
-                      className={`text-center ${i === 0 ? "border-l border-dashed border-border" : ""}`}
-                    >
-                      <input
-                        type="radio"
-                        className="size-5 cursor-pointer accent-primary"
-                        name={`${item.name}`}
-                        aria-label={`${itemLabel(item)}: ${specialLabel(special)}`}
-                        checked={selected[item.name]?.special === special.kind}
-                        data-key-target=""
-                        data-special={special.kind}
-                        onChange={() => selectSpecial(item.name, special)}
-                      />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ScaleGrid {...rowsProps} specialBadges={specialBadges} />
       ) : (
-        <>
-          <EndLabels options={points} />
-          <div className="flex flex-col gap-1.5">
-            {items.map((item, i) => (
-              <div
-                key={item.name}
-                ref={(el) => void (rows.current[item.name] = el)}
-                className={`flex flex-col gap-0.5 ${highlight(item.name)}`}
-              >
-                <div className="text-center text-sm text-foreground">{itemLabel(item)}</div>
-                <div className="flex items-center gap-1.5">
-                  <CompactRow
-                    options={points}
-                    selected={selected[item.name]?.special ? undefined : selected[item.name]?.value}
-                    onSelect={(o) => select(item.name, o)}
-                    label={itemLabel(item)}
-                  />
-                  <SpecialAnswersRow
-                    specials={specials}
-                    selected={selected[item.name]?.special}
-                    onPick={(special) => selectSpecial(item.name, special)}
-                    keys={i === active}
-                    className="flex shrink-0 gap-1"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
+        <ScaleCompactRows {...rowsProps} />
       )}
 
       <Button

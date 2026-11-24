@@ -15,7 +15,8 @@ import {
   type NavDirection,
 } from "./hooks";
 import { QuestionScreen, type CodingMoves } from "./QuestionScreen";
-import { LoadingScreen, SessionErrorScreen } from "./SessionNotices";
+import { LoadingScreen } from "./SessionNotice";
+import { SessionErrorScreen } from "./SessionNotices";
 import type { CodingScreenProps } from "./types";
 import { useCurrentQuestion } from "./useCurrentQuestion";
 import { useUnitSlide } from "./useUnitSlide";
