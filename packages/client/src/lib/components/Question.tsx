@@ -4,7 +4,7 @@ import { MessageSquarePlus } from "lucide-react";
 import { MAX_COMMENT_LENGTH, type VariableValue } from "@annotinder/contracts";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  AnnotinderAnswerField,
+  SwipeAnswerField,
   CategoricalAnswerField,
   ConfirmAnswerField,
   NumericAnswerField,
@@ -102,8 +102,8 @@ export function Question({ item, onAnswer: answer, unitVariables, initialValue, 
     case "scale":
       answerField = <ScaleAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;
       break;
-    case "annotinder":
-      answerField = <AnnotinderAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;
+    case "swipe":
+      answerField = <SwipeAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;
       break;
     case "span":
       answerField = <SpanAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;

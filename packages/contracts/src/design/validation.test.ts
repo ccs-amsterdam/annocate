@@ -703,7 +703,7 @@ describe("question types", () => {
 
   it("takes 2 or 3 swipe options", () => {
     const swipe = (n: number) => ({
-      type: "annotinder",
+      type: "swipe",
       question: "?",
       options: ["l", "r", "u", "x"].slice(0, n).map((value) => ({ value })),
     });

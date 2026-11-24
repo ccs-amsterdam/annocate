@@ -219,7 +219,7 @@ describe("design validation: what a stored design can't hold", () => {
       expect([value, messages(withValues(value)).length]).toEqual([value, 1]);
     expect(messages(withValues("a;b"))[0]).toContain("has a ; or |");
     expect(messages(withValues("3..5"))[0]).toContain("starts like a range of numbers");
-    const swipe = { type: "annotinder", question: "?", options: [{ value: "a|b" }, { value: "c" }] };
+    const swipe = { type: "swipe", question: "?", options: [{ value: "a|b" }, { value: "c" }] };
     expect(messages([question("s", swipe)])).toHaveLength(1);
   });
 

@@ -36,7 +36,7 @@ in the server, not here.
   `{ value, label?, color? }`: the value is stored and compared, the label
   shown; nominal values are strings, ordinal values numbers rising in
   option order (`src/design/options.ts`). Types: `nominal`,
-  `ordinal`, `numeric`, `scale`, `annotinder`, `confirm`, `unspecified`
+  `ordinal`, `numeric`, `scale`, `swipe`, `confirm`, `unspecified`
   (not chosen yet), and in loops `span` and `relation`; computed items have
   the variable type `random` (`src/design/variableTypes.ts`); plus the `end` item
   (`src/design/item.ts`). `resolveLayout` (`src/design/answerLayout.ts`)

@@ -83,7 +83,7 @@ describe("validateAnswer", () => {
     it("one value for a single choice, a number and a text", () => {
       const ordinal: AnyVariableType = { type: "ordinal", question: "?", options: [{ value: 1 }, { value: 2 }] };
       const swipe: AnyVariableType = {
-        type: "annotinder",
+        type: "swipe",
         question: "?",
         options: [{ value: "no" }, { value: "yes" }],
       };

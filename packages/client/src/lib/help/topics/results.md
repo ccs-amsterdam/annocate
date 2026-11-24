@@ -151,7 +151,7 @@ The codebook: per design version, question and option, the
 outside loops), `variable`, `type`, `question`, `value`, `label` and `special`
 (a special answer's kind: `not_applicable`, `dont_know`; its value is its
 code, empty if it has none).
-Swipe has the type `annotinder`. `loop` matches the coders'
+`loop` matches the coders'
 `finished_<loop id>` columns.
 
 ## Reading the files in R

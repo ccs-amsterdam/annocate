@@ -19,7 +19,7 @@ export const VARIABLE_TYPE_OPTIONS_USER: UserVariableType["type"][] = [
   "ordinal",
   "numeric",
   "scale",
-  "annotinder",
+  "swipe",
   "confirm",
   "text",
 ];
@@ -30,7 +30,7 @@ export const VARIABLE_TYPE_OPTIONS_UNIT: UnitVariableType["type"][] = [
   "ordinal",
   "numeric",
   "scale",
-  "annotinder",
+  "swipe",
   "confirm",
   "text",
   "span",
@@ -43,7 +43,7 @@ export const VARIABLE_TYPE_LABELS: Record<AnyVariableType["type"], string> = {
   ordinal: "Ordinal (ordered options)",
   numeric: "Numeric (interval/ratio)",
   scale: "Scale (items on the same options)",
-  annotinder: "Swipe",
+  swipe: "Swipe",
   confirm: "Confirm",
   text: "Open answer (typed text)",
   random: "Random condition (drawn, not asked)",
@@ -89,9 +89,9 @@ function defaultVariable(type: string): AnyVariableType {
           { value: 5, label: "Strongly agree" },
         ],
       };
-    case "annotinder":
+    case "swipe":
       return {
-        type: "annotinder",
+        type: "swipe",
         question: "",
         options: [
           { value: "no", label: "No" },

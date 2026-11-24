@@ -17,7 +17,7 @@ const ANSWER_TYPE_TEXT: Record<AnswerType, { label: string; description: string 
   ordinal: { label: "Ordered options", description: "Options in an order, such as a 1 to 5 rating" },
   numeric: { label: "Number", description: "A number, optionally within a range" },
   scale: { label: "Scale", description: "Several items, each rated on the same options" },
-  annotinder: { label: "Swipe", description: "Swipe the unit left, right or up" },
+  swipe: { label: "Swipe", description: "Swipe the unit left, right or up" },
   confirm: { label: "Confirm", description: "One button, e.g. to agree or continue" },
   text: { label: "Open answer", description: "The coder types an answer: a line or a longer text" },
   span: { label: "Mark text", description: "Select words or passages in the unit" },

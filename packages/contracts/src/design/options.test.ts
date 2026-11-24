@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AnnotinderTypeSchema, NominalTypeSchema, NumericTypeSchema, OrdinalTypeSchema } from "./variableTypes.js";
+import { SwipeTypeSchema, NominalTypeSchema, NumericTypeSchema, OrdinalTypeSchema } from "./variableTypes.js";
 import { validateAnswer, type AnyVariableType } from "./answers.js";
 import { buildScope } from "./references.js";
 
@@ -40,8 +40,8 @@ describe("special answers", () => {
   });
 
   it("aren't for swiping", () => {
-    const swipe = AnnotinderTypeSchema.safeParse({
-      type: "annotinder",
+    const swipe = SwipeTypeSchema.safeParse({
+      type: "swipe",
       question: "?",
       options: [{ value: "a" }, { value: "b" }],
       specials: [{ kind: "dont_know" }],

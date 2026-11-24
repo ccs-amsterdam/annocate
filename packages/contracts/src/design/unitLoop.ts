@@ -26,7 +26,7 @@ import { SetNameSchema } from "../sets.js";
  */
 export function supportsAgreement(variable: AnyVariableType): boolean {
   return (
-    (variable.type === "nominal" && !variable.multiple) || variable.type === "ordinal" || variable.type === "annotinder"
+    (variable.type === "nominal" && !variable.multiple) || variable.type === "ordinal" || variable.type === "swipe"
   );
 }
 
@@ -91,7 +91,7 @@ export const GoldCheckSchema = z.strictObject({
 export type GoldCheck = z.infer<typeof GoldCheckSchema>;
 
 /** Answer types a gold or practice question can have: compared by value (a confirmation has none). */
-export const CHECKABLE_TYPES = ["nominal", "ordinal", "annotinder", "numeric"] as const;
+export const CHECKABLE_TYPES = ["nominal", "ordinal", "swipe", "numeric"] as const;
 
 /**
  * Dividing a loop's units among a crowd's coders (`divide`): the loop's

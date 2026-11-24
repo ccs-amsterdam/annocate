@@ -137,7 +137,7 @@ function valueRows(
           value: values(a).some((v) => v.value === o.value) ? 1 : 0,
         })),
       }));
-    case "annotinder":
+    case "swipe":
       return [single("nominal")];
     case "ordinal":
       return [single("ordinal")];

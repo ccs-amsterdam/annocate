@@ -18,7 +18,7 @@ import {
 const TYPE: Record<AnyVariableType["type"], string> = {
   nominal: "Choose an option",
   ordinal: "Choose a point on a scale",
-  annotinder: "Swipe",
+  swipe: "Swipe",
   numeric: "A number",
   confirm: "Confirm",
   text: "An open answer (typed)",

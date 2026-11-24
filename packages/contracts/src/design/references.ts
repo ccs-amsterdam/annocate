@@ -487,7 +487,7 @@ export function questionKind(variable: AnyVariableType): QuestionKind {
     case "ordinal":
       return "ordinal";
     // `unspecified`: references work as for one answer until a type is chosen.
-    case "annotinder":
+    case "swipe":
     case "random":
     case "unspecified":
       return "single";
@@ -594,7 +594,7 @@ export function describeQuestion(variable: AnyVariableType): string {
   switch (variable.type) {
     case "nominal":
       return variable.multiple ? "a nominal question with multiple answers" : "a nominal question";
-    case "annotinder":
+    case "swipe":
       return "a swipe question";
     case "random":
       return "a random value";

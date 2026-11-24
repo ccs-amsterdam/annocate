@@ -198,7 +198,7 @@ describe("Question dispatcher", () => {
       name: "swipe_q",
       type: "question",
       variable: {
-        type: "annotinder",
+        type: "swipe",
         question: "Relevant?",
         options: [{ value: "no" }, { value: "yes" }, { value: "unsure", label: "Not sure" }],
       },
@@ -219,7 +219,7 @@ describe("Question dispatcher", () => {
       <SwipeProvider question="q" options={options} onAnswer={onAnswer}>
         <SwipeSurface>
           <SwipeCard className="card">unit text</SwipeCard>
-          <Question item={{ variable: { type: "annotinder", question: "?", options } }} onAnswer={onAnswer} />
+          <Question item={{ variable: { type: "swipe", question: "?", options } }} onAnswer={onAnswer} />
         </SwipeSurface>
       </SwipeProvider>,
     );

@@ -59,7 +59,7 @@ function TypeFields({
       return <NumericFields variable={variable} onChange={onChange} />;
     case "scale":
       return <ScaleFields variable={variable} onChange={onChange} />;
-    case "annotinder":
+    case "swipe":
       return <SwipeFields variable={variable} onChange={onChange} />;
     case "text":
       return <TextFields variable={variable} onChange={onChange} />;

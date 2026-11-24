@@ -159,8 +159,8 @@ export const ScaleTypeSchema = VariableBaseSchema.extend({
 export type ScaleType = z.infer<typeof ScaleTypeSchema>;
 
 /** Swipe a card: 2 or 3 options, in the order left, right, up. */
-export const AnnotinderTypeSchema = VariableBaseSchema.extend({
-  type: z.literal("annotinder"),
+export const SwipeTypeSchema = VariableBaseSchema.extend({
+  type: z.literal("swipe"),
   options: SwipeOptionsSchema,
   card: z
     .boolean()
@@ -169,7 +169,7 @@ export const AnnotinderTypeSchema = VariableBaseSchema.extend({
       "In a unit loop: show the unit on a card while this question is asked. Default: the unit as it is (the layout doesn't change between questions); it moves when swiped either way.",
     ),
 });
-export type AnnotinderType = z.infer<typeof AnnotinderTypeSchema>;
+export type SwipeType = z.infer<typeof SwipeTypeSchema>;
 
 export const ConfirmTypeSchema = VariableBaseSchema.extend({
   type: z.literal("confirm"),
@@ -316,7 +316,7 @@ export const UserVariableTypeSchema = z.discriminatedUnion("type", [
   OrdinalTypeSchema,
   NumericTypeSchema,
   ScaleTypeSchema,
-  AnnotinderTypeSchema,
+  SwipeTypeSchema,
   ConfirmTypeSchema,
   TextTypeSchema,
   UnspecifiedTypeSchema,
@@ -333,7 +333,7 @@ export const UnitVariableTypeSchema = z.discriminatedUnion("type", [
   OrdinalTypeSchema,
   NumericTypeSchema,
   ScaleTypeSchema,
-  AnnotinderTypeSchema,
+  SwipeTypeSchema,
   ConfirmTypeSchema,
   TextTypeSchema,
   SpanTypeSchema,

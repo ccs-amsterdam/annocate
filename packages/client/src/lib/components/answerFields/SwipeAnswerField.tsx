@@ -7,7 +7,7 @@ import { useSwipe, type SwipeDirection } from "../swipe";
 import { useKeyTargets } from "../../keyboard/hooks";
 import { ShortcutBadge } from "../ShortcutBadge";
 
-type AnnotinderVariable = Extract<QuestionVariable, { type: "annotinder" }>;
+type SwipeVariable = Extract<QuestionVariable, { type: "swipe" }>;
 
 const ICONS = { left: ArrowLeft, right: ArrowRight, up: ArrowUp };
 /** The arrow key of each direction: it always answers (the mapping's keys too). */
@@ -25,7 +25,7 @@ const NUMPAD_POSITION: Record<SwipeDirection, { row: number; col: number }> = {
  * The buttons, the arrow keys and the coder's shortcut style (1, 2, 3,
  * letters, typing to filter) do the same; with a card they fly it off first.
  */
-export function AnnotinderAnswerField({ variable, onAnswer }: AnswerFieldProps<AnnotinderVariable>) {
+export function SwipeAnswerField({ variable, onAnswer }: AnswerFieldProps<SwipeVariable>) {
   const swipe = useSwipe();
   const options = variable.options.slice(0, 3);
 

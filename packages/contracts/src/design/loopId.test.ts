@@ -22,7 +22,8 @@ const errors = (items: object[]) =>
 describe("a unit loop's id", () => {
   it("is required: a loop without one is an error, as is an id that isn't loop_<number>", () => {
     expect(errors([session, loop("loop_1", "a")])).toEqual([]);
-    const needsId = "A unit loop needs an id of its own: loop_1, loop_2, … (a new loop gets the next number never used)";
+    const needsId =
+      "A unit loop needs an id of its own: loop_1, loop_2, … (a new loop gets the next number never used)";
     expect(errors([session, loop(undefined, "a")])).toEqual([`1.id: ${needsId}`]);
     for (const bad of ["", "1", "loop_0", "loop_01", "loop_x", "Loop_1", "loop_1 "]) {
       expect(errors([session, loop(bad, "a")]), bad).toEqual([`1.id: ${needsId}`]);

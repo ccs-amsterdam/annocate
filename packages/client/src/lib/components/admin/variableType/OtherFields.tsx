@@ -9,7 +9,7 @@ import { SpanFieldsPicker } from "./SpanFields";
 import { SpecialAnswersFields } from "./SpecialAnswersFields";
 
 // What the answer types without a file of their own need besides the
-// question text: scale, swipe (annotinder), text, span and relation.
+// question text: scale, swipe, text, span and relation.
 
 type Variable<T extends AnyVariableType["type"]> = Extract<AnyVariableType, { type: T }>;
 type OnChange = (next: AnyVariableType) => void;
@@ -36,7 +36,7 @@ export function ScaleFields({ variable: v, onChange }: { variable: Variable<"sca
 }
 
 /** A swipe question's options (three at most), and whether the unit is on a card. */
-export function SwipeFields({ variable: v, onChange }: { variable: Variable<"annotinder">; onChange: OnChange }) {
+export function SwipeFields({ variable: v, onChange }: { variable: Variable<"swipe">; onChange: OnChange }) {
   return (
     <>
       <OptionsEditor swipe max={3} options={v.options} onChange={(options) => onChange({ ...v, options })} />

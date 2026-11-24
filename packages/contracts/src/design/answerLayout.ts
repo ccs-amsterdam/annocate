@@ -110,7 +110,7 @@ export function resolveLayout(variable: AnyVariableType, context?: LayoutContext
       return numericLayout(variable);
     case "scale":
       return { layout: variable.layout && variable.layout !== "auto" ? variable.layout : "compact" };
-    case "annotinder":
+    case "swipe":
       return { layout: "swipe" };
     default:
       return { layout: "none" };

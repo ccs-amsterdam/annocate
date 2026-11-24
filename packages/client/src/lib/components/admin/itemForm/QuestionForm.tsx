@@ -22,7 +22,7 @@ const TYPE_HELP: Record<AnyVariableType["type"], string> = {
   ordinal: "nominal-and-ordinal",
   numeric: "numeric",
   scale: "scale",
-  annotinder: "swipe",
+  swipe: "swipe",
   confirm: "confirm",
   text: "open-answers",
   random: "random-condition",

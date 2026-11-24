@@ -1,6 +1,6 @@
 import {
   resolveVariable,
-  type AnnotinderType,
+  type SwipeType,
   type OptionsContext,
   type RelationType,
   type SpanType,
@@ -28,7 +28,7 @@ export interface CurrentQuestion {
   spanVariable: SpanType | null;
   relationVariable: RelationType | null;
   /** A swipe question: the unit (or the question card) is the card to swipe. */
-  swipeVariable: AnnotinderType | null;
+  swipeVariable: SwipeType | null;
   /** What the question is about, by id: scrolled to when it comes up (docs/client.md §3, "Focus"). */
   focus?: string[];
   focusDim?: boolean;
@@ -61,7 +61,7 @@ export function useCurrentQuestion(snapshot: StudyManagerSnapshot): CurrentQuest
     unit: inUnit ? unitOf(snapshot) : null,
     spanVariable,
     relationVariable: inUnit && variable.type === "relation" ? variable : null,
-    swipeVariable: variable.type === "annotinder" ? variable : null,
+    swipeVariable: variable.type === "swipe" ? variable : null,
     focus: ("focus" in variable ? variable.focus : undefined) ?? spanVariable?.fields.map((f) => `unit.${f}`),
     focusDim: "focusDim" in variable ? variable.focusDim : undefined,
   };

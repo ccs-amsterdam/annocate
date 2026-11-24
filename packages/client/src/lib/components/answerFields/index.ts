@@ -1,4 +1,4 @@
-export * from "./AnnotinderAnswerField";
+export * from "./SwipeAnswerField";
 export * from "./CategoricalAnswerField";
 export * from "./NumericAnswerField";
 export * from "./ConfirmAnswerField";

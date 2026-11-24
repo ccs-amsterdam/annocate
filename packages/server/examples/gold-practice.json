@@ -338,7 +338,7 @@
             "type": "question",
             "name": "clickbait",
             "variable": {
-              "type": "annotinder",
+              "type": "swipe",
               "question": "Is this headline clickbait?",
               "options": [
                 {

@@ -184,7 +184,7 @@
             "type": "question",
             "name": "sentiment",
             "variable": {
-              "type": "annotinder",
+              "type": "swipe",
               "question": "Is this headline good news or bad news?",
               "options": [
                 {

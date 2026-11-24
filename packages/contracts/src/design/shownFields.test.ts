@@ -115,6 +115,9 @@ describe("set columns", () => {
   it("select a loop's units: the coder's, and the experiment before the loop", () => {
     const shares = loopShareColumns(items);
     expect(shares.get("loop_1")).toEqual([{ name: "coder", column: "coder_set" }]);
-    expect(shares.get("loop_2")).toEqual([...shares.get("loop_1")!, { name: "set", column: "condition_set", random: true }]);
+    expect(shares.get("loop_2")).toEqual([
+      ...shares.get("loop_1")!,
+      { name: "set", column: "condition_set", random: true },
+    ]);
   });
 });

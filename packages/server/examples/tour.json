@@ -274,7 +274,7 @@
             "type": "question",
             "name": "is_news",
             "variable": {
-              "type": "annotinder",
+              "type": "swipe",
               "question": "Is this a news article?",
               "options": [
                 {

@@ -292,7 +292,7 @@ or words with `;` in a CSV.
 | `ordinal`    | pick from ordered options                                        | `values: [{ value }]`                      |
 | `numeric`    | a number; `min`, `max`, `step` (default 1), break-point `labels` | `values: [{ value }]`                      |
 | `scale`      | `items` rated on the same ordinal `options` (a Likert battery)   | `values: [{ item, value }]`                |
-| `annotinder` | swipe a card: 2 or 3 options (left, right, up)                   | `values: [{ value }]`                      |
+| `swipe`      | swipe a card: 2 or 3 options (left, right, up)                   | `values: [{ value }]`                      |
 | `confirm`    | a button                                                         | nothing besides `done`                     |
 | `span`       | select text in the unit (loops only)                             | `spans: [{ id, field, value, slices }]`    |
 | `relation`   | link two spans (loops only)                                      | `relations: [{ id, fromId, toId, value }]` |
@@ -320,7 +320,7 @@ shows what it picks and warns when a chosen layout doesn't fit.
 The shortcut style's keys (by default 1-9, §4 "Keyboard") pick an option;
 one answer is given on the first click, several are confirmed with Continue.
 
-**Swiping** (`annotinder`, `components/SwipeCard.tsx`): in a loop the unit is
+**Swiping** (`swipe`, `components/SwipeCard.tsx`): in a loop the unit is
 the card (framed only with `card: true`). The coder drags anywhere on the
 coding area; past 30% of the width (120 px up), or flung, the card flies off
 and that option is the answer. Direction buttons, arrow keys and the
