@@ -1,7 +1,8 @@
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import type { UnitLayout } from "@annotinder/contracts";
 import type { RenderedTemplate } from "../codebook/renderTemplate";
 import { TemplateMarkdown } from "./TemplateMarkdown";
+import { layoutMarks } from "../codebook/highlights";
 import { cn } from "cn";
 
 /**
@@ -24,6 +25,8 @@ export function UnitFields({
   focusDim?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // The layout's highlights, over the unit fields it shows
+  const marks = useMemo(() => layoutMarks(layout.highlight, rendered.values), [layout.highlight, rendered.values]);
   const focusKey = (focus ?? []).join("\n");
   useEffect(() => {
     const root = ref.current;
@@ -49,7 +52,7 @@ export function UnitFields({
         focusDim && focus && focus.length > 0 && "focus-dim",
       )}
     >
-      <TemplateMarkdown rendered={rendered} />
+      <TemplateMarkdown rendered={rendered} marks={marks} />
     </div>
   );
 }

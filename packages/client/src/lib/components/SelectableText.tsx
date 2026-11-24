@@ -8,6 +8,7 @@ import { useRelationAnnotation } from "../context/relationAnnotation";
 import { RelationText } from "./RelationText";
 import { getStackedUnderlineStyle } from "../utils/color";
 import { SpanLabelMenu } from "./SpanLabelMenu";
+import { markBackground, type Mark } from "../codebook/highlights";
 import {
   getWordAtPosition,
   optionColor,
@@ -125,18 +126,39 @@ function focusLabels(frames = 20, seen = false): void {
  *   have focus (the arrows move between them, Space or Enter or their key
  *   chooses one, Esc cancels). Enter on a labelled word opens its spans.
  */
-export function SelectableText({ text, field, inline = false }: { text: string; field?: string; inline?: boolean }) {
+export function SelectableText({
+  text,
+  field,
+  inline = false,
+  marks,
+}: {
+  text: string;
+  field?: string;
+  inline?: boolean;
+  /** Highlighted words (the layout's highlights). */
+  marks?: Mark[];
+}) {
   const spanContext = useSpanAnnotation();
   const relations = useRelationAnnotation();
   const own = field !== undefined ? field.replace(/^unit\./, "") : spanContext?.fields[0];
   // A relation question on screen: its spans to click (no span question selects here then)
   if (relations && own !== undefined && !spanContext?.fields.includes(own))
     return <RelationText text={text} field={own} inline={inline} />;
-  return <SpanSelectableText text={text} field={field} inline={inline} />;
+  return <SpanSelectableText text={text} field={field} inline={inline} marks={marks} />;
 }
 
 /** The text a span question selects in (see SelectableText). */
-function SpanSelectableText({ text, field, inline = false }: { text: string; field?: string; inline?: boolean }) {
+function SpanSelectableText({
+  text,
+  field,
+  inline = false,
+  marks,
+}: {
+  text: string;
+  field?: string;
+  inline?: boolean;
+  marks?: Mark[];
+}) {
   const context = useSpanAnnotation();
   // Only the span question on screen that selects in this field can select;
   // otherwise the text looks the same, so the layout doesn't shift.
@@ -384,7 +406,10 @@ function SpanSelectableText({ text, field, inline = false }: { text: string; fie
     { priority: PRIORITY.field },
   );
 
-  const segments = textSegments(text, annotation?.spans ?? [], pending, cursorRange ?? []);
+  // Highlighted words (the layout's highlights) are cut apart too
+  const markCuts = (marks ?? []).flatMap((m) => [m.start, m.end]);
+  const segments = textSegments(text, annotation?.spans ?? [], pending, [...(cursorRange ?? []), ...markCuts]);
+  const markOf = (seg: Segment) => marks?.find((m) => m.start <= seg.start && m.end >= seg.end);
 
   function handleSegmentClick(e: React.MouseEvent, spans: SpanAnswer[]) {
     // Creating a span: mouseup (processSelection) extends or toggles it
@@ -409,6 +434,16 @@ function SpanSelectableText({ text, field, inline = false }: { text: string; fie
           key={i}
           {...cursorProps}
           className={`rounded-xs bg-wood/25 text-foreground ring-2 ring-wood/70 ${cursorClass}`}
+        >
+          {content}
+        </mark>
+      ) : markOf(seg) ? (
+        <mark
+          key={i}
+          {...cursorProps}
+          data-highlight=""
+          className={cursorClass || undefined}
+          style={{ backgroundColor: markBackground(markOf(seg)!.color), color: "inherit" }}
         >
           {content}
         </mark>

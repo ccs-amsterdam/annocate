@@ -129,6 +129,27 @@ links (`[the source]($unit.url)`), tables, and `---` for a line. A value
 alone on its line is a paragraph; inside a sentence it stays in the
 sentence.
 
+## Highlights
+
+Under **Highlights**, add words to mark in every unit, each with a
+colour, e.g. names of politicians or the words your codebook defines.
+They help coders find what matters, without changing the text.
+
+| Write                 | Marks                                                      |
+| --------------------- | ---------------------------------------------------------- |
+| `climate energy`      | either word (spaces are _or_)                              |
+| `climate AND energy`  | both words, if both are in the unit (`AND` in capitals)    |
+| `"climate change"`    | the words in this order                                    |
+| `"climate policy"~5`  | the words within 5 words of each other, in any order       |
+| `climat*`             | words starting with _climat_ (`*` works anywhere in a word) |
+
+Capitals and accents don't count. `AND` binds tighter than a space:
+`EU AND nuclear energy` is _energy_, or _EU_ and _nuclear_ together. A
+query searches all the unit fields the layout shows as text; pick fields
+under **In** to search (and mark) only those. Highlights show in plain
+text and in text coders mark spans in (where a span is, its own colour
+shows).
+
 ## Beyond values
 
 - [Showing parts conditionally](template-blocks.md): `::: if` and

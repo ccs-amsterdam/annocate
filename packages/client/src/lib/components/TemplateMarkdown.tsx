@@ -5,6 +5,7 @@ import type { RenderedTemplate, TemplateValue } from "../codebook/renderTemplate
 import { remarkTemplateValues } from "../codebook/templateValues";
 import { SelectableText } from "./SelectableText";
 import { SandboxedHtml } from "./SandboxedHtml";
+import { markBackground, markedPieces, type Mark, type Marks } from "../codebook/highlights";
 
 /**
  * Renders a template (docs/client.md §3): the unit layout, or a question or
@@ -14,12 +15,28 @@ import { SandboxedHtml } from "./SandboxedHtml";
  * `html` in a sandboxed iframe; a unit field span questions select in as
  * selectable text.
  */
-export function TemplateMarkdown({ rendered, components }: { rendered: RenderedTemplate; components?: Components }) {
+export function TemplateMarkdown({
+  rendered,
+  components,
+  marks,
+}: {
+  rendered: RenderedTemplate;
+  components?: Components;
+  /** Highlighted words per value (a layout's highlights, `layoutMarks`). */
+  marks?: Marks;
+}) {
   const allComponents = {
     ...components,
     "template-value": ({ index, block }: { index?: string; block?: string }) => {
       const value = rendered.values[Number(index)];
-      return value ? <TemplateValueView value={value} block={block === "true"} styles={rendered.styles} /> : null;
+      return value ? (
+        <TemplateValueView
+          value={value}
+          block={block === "true"}
+          styles={rendered.styles}
+          marks={marks?.[Number(index)]}
+        />
+      ) : null;
     },
     ...styleComponents(rendered.styles),
   } as Components;
@@ -48,10 +65,12 @@ function TemplateValueView({
   value,
   block,
   styles,
+  marks,
 }: {
   value: TemplateValue;
   block: boolean;
   styles?: Record<string, string>[];
+  marks?: Mark[];
 }) {
   // A unit field's element is marked (data-field), so a question can scroll to it (UnitFields).
   const field = value.field ? { "data-field": value.field } : {};
@@ -90,8 +109,24 @@ function TemplateValueView({
       // A field span questions select in: the same element during every
       // question (selecting only works during theirs), so nothing shifts.
       if (value.selectable && value.field) {
-        return wrap(<SelectableText text={value.text} field={value.field} inline={!block} />, false);
+        return wrap(<SelectableText text={value.text} field={value.field} inline={!block} marks={marks} />, false);
       }
+      if (marks?.length)
+        return wrap(
+          markedPieces(value.text, marks).map((piece, i) =>
+            piece.color ? (
+              <mark
+                key={i}
+                data-highlight=""
+                style={{ backgroundColor: markBackground(piece.color), color: "inherit" }}
+              >
+                {piece.text}
+              </mark>
+            ) : (
+              piece.text
+            ),
+          ),
+        );
       return wrap(value.text);
   }
 }

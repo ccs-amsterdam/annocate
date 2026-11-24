@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { HighlightSchema } from "./highlight.js";
 import { styleProblems } from "./safeCss.js";
 
 // A unit's layout (docs/client.md §3): a single markdown template, rendered
@@ -26,6 +27,12 @@ export const UnitLayoutSchema = z.object({
     .optional()
     .describe(
       "Named pieces of the template, put in with [[name]] as if typed there (anywhere: lines, block fences, scripts)",
+    ),
+  highlight: z
+    .array(HighlightSchema)
+    .optional()
+    .describe(
+      'Words to mark in the unit, each query with a colour: climate energy (or), AND, "a phrase", "near words"~5, climat*',
     ),
   style: z
     .record(z.string(), z.string())

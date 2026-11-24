@@ -31,6 +31,24 @@ describe("UnitFields", () => {
     expect(html).not.toContain("<strong>");
   });
 
+  it("marks the words of the layout's highlights, in all fields or the chosen ones, never in answers", async () => {
+    const props = await render(
+      {
+        template: "# $unit.headline\n\n$unit.text",
+        highlight: [
+          { query: "climate AND energy", color: "seagreen" },
+          { query: "talks", fields: ["text"] },
+        ],
+      },
+      { headline: "Climate talks", text: "Energy talks go on." },
+    );
+    const html = renderToStaticMarkup(<UnitFields {...props} />);
+    const marked = [...html.matchAll(/<mark data-highlight="" style="([^"]*)">([^<]*)<\/mark>/g)].map((m) => m[2]);
+    // "talks" only in the text field
+    expect(marked).toEqual(["Climate", "Energy", "talks"]);
+    expect(html).toContain("seagreen");
+  });
+
   it("renders ::markdown and ::image values, and snippets", async () => {
     const props = await render(
       {

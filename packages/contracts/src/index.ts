@@ -16,6 +16,7 @@ export * from "./design/safeCss.js";
 export * from "./design/snippets.js";
 export * from "./design/condition.js";
 export * from "./design/layout.js";
+export * from "./design/highlight.js";
 export * from "./design/layoutItems.js";
 export * from "./design/answerLayout.js";
 export * from "./design/unitLoop.js";

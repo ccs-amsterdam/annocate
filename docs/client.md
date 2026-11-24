@@ -235,6 +235,17 @@ and conditions (cached, §6). A remark plugin turns placeholders into
 `<template-value>` elements: a text node, nested markdown, an `<img>` or
 `SelectableText`. (Not `remark-directive`: it misreads text like `10:30`.)
 
+**Highlights** (`highlight: [{ query, color?, fields? }]` on a layout,
+`design/highlight.ts`): words to mark. Query syntax, on purpose no more:
+spaces are OR, `AND` (capitals) binds tighter, `"phrase"`, `"near words"~n`
+(within n words, any order), `*` a wildcard in a word; case and accents
+don't count; words are runs of letters and digits. An AND holds when each
+side matches somewhere in the searched texts together: the unit fields the
+layout shows as text and its named text blocks, or only `fields`.
+`codebook/highlights.ts` (`layoutMarks`) turns them into marks per template
+value; `TemplateMarkdown` and `SelectableText` draw them (spans keep their
+own colours).
+
 ## 4. Questions and answers
 
 ### Options: a value and a label

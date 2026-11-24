@@ -20,6 +20,7 @@ import { parseSimpleLayout, simpleTemplate } from "../../../design/simpleLayout"
 import { LayoutDesigner } from "../LayoutDesigner";
 import { questionNames, questionsOf } from "./helpers";
 import { Section } from "./Section";
+import { HighlightsSection } from "./HighlightsSection";
 
 // A layout item's form: how a unit is shown from there on (template, snippets).
 
@@ -85,6 +86,16 @@ export function LayoutForm({
           )}
           <IssueList issues={issues} />
         </Section>
+        <HighlightsSection
+          highlights={layout.highlight}
+          unitFields={unitFields}
+          readOnly={readOnly}
+          onChange={(highlight) => {
+            const next = { ...layout, highlight };
+            if (!highlight) delete next.highlight;
+            onChange(next);
+          }}
+        />
         <button
           type="button"
           onClick={() => setAdvanced(true)}
@@ -168,6 +179,16 @@ export function LayoutForm({
         />
       </Section>
 
+      <HighlightsSection
+        highlights={layout.highlight}
+        unitFields={unitFields}
+        readOnly={readOnly}
+        onChange={(highlight) => {
+          const next = { ...layout, highlight };
+          if (!highlight) delete next.highlight;
+          onChange(next);
+        }}
+      />
       {/* Optional: open by itself when in use */}
       <details className="group rounded-md border border-border/70 px-3 py-2" open={snippets.length > 0}>
         <summary className="cursor-pointer text-xs font-medium text-muted-foreground select-none hover:text-foreground">
