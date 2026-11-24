@@ -1,4 +1,5 @@
 import {
+  DesignConflictSchema,
   designItems,
   splitDesignItems,
   type DesignConflict,
@@ -7,12 +8,16 @@ import {
   type DesignWrite,
   type TopLevelItem,
 } from "@annotinder/contracts";
+import { ResearcherApiError } from "../api/httpResearcherApi";
+import { emptyHistory, recordChange, redo, undo, type EditHistory } from "./editHistory";
 import { ensureKeys, stripKeys } from "./itemEdit";
 import { carryKeys } from "./itemShape";
+import { canonicalJson } from "./jsonFormat";
 import type { DesignBackup } from "./localBackup";
 
-// How the editor's draft (useDesignDraft) starts from a version, and what
-// saving it asks of the server.
+// The editor's draft (useDesignDraft holds it): how it starts from a
+// version, how edits, undo and saving change it, and what saving asks of
+// the server.
 
 export interface DraftStart {
   /** The items to edit, with editor keys. */
@@ -81,4 +86,50 @@ function conflictWith(draft: DesignVersionMeta): DesignConflict {
     updatedBy: draft.updatedBy,
     revision: draft.revision,
   };
+}
+
+/** The draft while it is edited: its items, what is saved, the undo steps, and a save someone else was ahead of. */
+export interface DraftState extends DraftStart {
+  history: EditHistory<TopLevelItem[]>;
+  /** A save was refused because someone else saved meanwhile: the editor asks what to do. */
+  conflict: DesignConflict | null;
+}
+
+export function openDraft(start: DraftStart): DraftState {
+  return { ...start, history: emptyHistory(), conflict: null };
+}
+
+/** An edit: the items replaced, which is an undo step (editHistory.ts: edits close in time are one). */
+export function withEdit(draft: DraftState, items: TopLevelItem[], now: number): DraftState {
+  return { ...draft, items, history: recordChange(draft.history, draft.items, now) };
+}
+
+export function withUndo(draft: DraftState): DraftState {
+  const step = undo(draft.history, draft.items);
+  return step ? { ...draft, items: step.value, history: step.history } : draft;
+}
+
+export function withRedo(draft: DraftState): DraftState {
+  const step = redo(draft.history, draft.items);
+  return step ? { ...draft, items: step.value, history: step.history } : draft;
+}
+
+/** The draft after `sent` was saved as `result`: edits made while it was saving stay unsaved. */
+export function withSaved(draft: DraftState, sent: TopLevelItem[], result: { revision: number }): DraftState {
+  return { ...draft, saved: sent, revision: result.revision, conflict: null };
+}
+
+export function withConflict(draft: DraftState, conflict: DesignConflict | null): DraftState {
+  return { ...draft, conflict };
+}
+
+/** Whether the draft differs from what is saved (the order of keys, and editor keys, don't count). */
+export function isDirty(draft: Pick<DraftState, "items" | "saved">): boolean {
+  return canonicalJson(stripKeys(draft.items)) !== canonicalJson(stripKeys(draft.saved));
+}
+
+/** The conflict a failed save is about (the server's 409: someone saved the draft meanwhile), if that is why. */
+export function conflictOf(error: unknown): DesignConflict | null {
+  if (!(error instanceof ResearcherApiError) || error.code !== "design_conflict") return null;
+  return DesignConflictSchema.parse(error.body);
 }

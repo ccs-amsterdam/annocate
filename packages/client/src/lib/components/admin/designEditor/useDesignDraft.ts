@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   undeclaredFields,
-  DesignConflictSchema,
   validateDesignItems,
-  type DesignConflict,
   type DesignIssue,
   type DesignItem,
   type StudyEnd,
@@ -31,14 +29,23 @@ import {
 import { ELSE, findItem } from "../../../codebook/tree";
 import { pathOfItem, unknownUnitFields } from "../../../design/unitFieldRefs";
 import { carryKeys } from "../../../design/itemShape";
-import { changedKeys, emptyHistory, recordChange, redo, revertItem, undo } from "../../../design/editHistory";
-import { ResearcherApiError } from "../../../api/httpResearcherApi";
+import { changedKeys, revertItem } from "../../../design/editHistory";
 import { backupKeeper, type DesignBackup } from "../../../design/localBackup";
-import { saveRequest, startDraft } from "../../../design/draft";
+import {
+  conflictOf,
+  isDirty,
+  openDraft,
+  saveRequest,
+  startDraft,
+  withConflict,
+  withEdit,
+  withRedo,
+  withSaved,
+  withUndo,
+} from "../../../design/draft";
 
 import { defaultItemForType } from "../../../design/newItem";
 import { withOptional } from "../../../design/itemSettings";
-import { canonicalJson } from "../../../design/jsonFormat";
 import type { ItemType } from "../designTree/utils";
 
 /** Unsaved edits are copied to the browser's storage this long after the last change. */
@@ -66,23 +73,15 @@ interface UseDesignDraftOptions {
  * per version (DesignManager does) to start over for another version.
  */
 export function useDesignDraft({ client, version, readOnly, onSaved, restore, newerDraft }: UseDesignDraftOptions) {
-  const [start] = useState(() => startDraft(version, restore));
-  const [items, setItemsState] = useState(start.items);
+  // The items, the items as last saved, the revision the edits are based on, undo steps (design/draft.ts)
+  const [draft, setDraft] = useState(() => openDraft(startDraft(version, restore)));
+  const { items, saved, revision, history, conflict } = draft;
   const [selected, setSelected] = useState<string | null>(null);
-  // The items as last saved (with the same keys), to tell what changed and to revert to
-  const [saved, setSaved] = useState(start.saved);
-  // The saved revision the edits are based on (contracts DesignWriteSchema `revision`)
-  const [revision, setRevision] = useState(start.revision);
-  const [history, setHistory] = useState(() => emptyHistory<TopLevelItem[]>());
-  const [conflict, setConflict] = useState<DesignConflict | null>(null);
 
   const createDesignVersion = useCreateDesignVersionMutation(client);
   const updateDesignVersion = useUpdateDesignVersionMutation(client);
 
   const cleanItems = useMemo(() => stripKeys(items), [items]);
-  // Compared whatever the order of keys: text from the JSON views has its own
-  const serialized = useMemo(() => canonicalJson(cleanItems), [cleanItems]);
-  const savedSerialized = useMemo(() => canonicalJson(stripKeys(saved)), [saved]);
   // Errors and warnings; drafts can be saved with errors, deploying needs none. Plus unit fields the
   // design uses but doesn't declare (docs/architecture.md §8.4), against the open version's fields as the
   // server checks them at deploy (a new design: the study's current fields). Also the study's current
@@ -116,7 +115,7 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore, ne
     return issues;
   }, [cleanItems, declared, undeclared]);
   const validationErrors = useMemo(() => validationIssues.filter((i) => !i.warning), [validationIssues]);
-  const dirty = serialized !== savedSerialized;
+  const dirty = useMemo(() => isDirty({ items, saved }), [items, saved]);
   const valid = items.length > 0 && validationErrors.length === 0;
   const canSave = !readOnly && dirty;
   const changed = useMemo(() => changedKeys(items, saved), [items, saved]);
@@ -145,22 +144,7 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore, ne
   /** Every edit goes through here: it becomes an undo step (see editHistory.ts). */
   function setItems(next: TopLevelItem[]) {
     if (readOnly) return;
-    setHistory((h) => recordChange(h, items, Date.now()));
-    setItemsState(next);
-  }
-
-  function undoChange() {
-    const step = undo(history, items);
-    if (!step) return;
-    setHistory(step.history);
-    setItemsState(step.value);
-  }
-
-  function redoChange() {
-    const step = redo(history, items);
-    if (!step) return;
-    setHistory(step.history);
-    setItemsState(step.value);
+    setDraft((d) => withEdit(d, next, Date.now()));
   }
 
   /** One item back as it was last saved (removed, if it is new). */
@@ -243,7 +227,7 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore, ne
     const sent = items;
     const request = saveRequest({ items: cleanItems, version, revision, newerDraft, overwrite });
     if ("conflict" in request) {
-      setConflict(request.conflict);
+      setDraft((d) => withConflict(d, request.conflict));
       throw new Error("Someone else saved a draft meanwhile");
     }
     try {
@@ -251,18 +235,15 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore, ne
         "create" in request
           ? await createDesignVersion.mutateAsync(request.create)
           : await updateDesignVersion.mutateAsync({ id: request.update, body: request.body });
-      setSaved(sent);
-      setRevision(result.revision);
+      setDraft((d) => withSaved(d, sent, result));
       backup.clear();
-      setConflict(null);
       onSaved(result);
       return result;
     } catch (err) {
-      if (err instanceof ResearcherApiError && err.code === "design_conflict") {
-        setConflict(DesignConflictSchema.parse(err.body));
-        throw new Error("Someone else saved this draft meanwhile", { cause: err });
-      }
-      throw err;
+      const refused = conflictOf(err);
+      if (!refused) throw err;
+      setDraft((d) => withConflict(d, refused));
+      throw new Error("Someone else saved this draft meanwhile", { cause: err });
     }
   }
 
@@ -285,7 +266,7 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore, ne
     canUndo: history.past.length > 0,
     canRedo: history.future.length > 0,
     conflict,
-    dismissConflict: () => setConflict(null),
+    dismissConflict: () => setDraft((d) => withConflict(d, null)),
     saving: createDesignVersion.isPending || updateDesignVersion.isPending,
     saveError: conflict ? null : (createDesignVersion.error ?? updateDesignVersion.error),
     select: setSelected,
@@ -296,8 +277,8 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore, ne
     update,
     setStudyEnd,
     replaceAll,
-    undo: undoChange,
-    redo: redoChange,
+    undo: () => setDraft(withUndo),
+    redo: () => setDraft(withRedo),
     revert,
     revertAll,
     save,
