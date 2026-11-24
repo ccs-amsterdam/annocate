@@ -3,6 +3,7 @@ import type { StudyManager } from "../../studyManager/StudyManager";
 import type { StudyManagerSnapshot } from "../../studyManager/types";
 import { dropRepeatedClick } from "../inputGuards";
 import { Question } from "../Question";
+import { practiceFeedback } from "./practiceFeedback";
 import { QuestionPanel } from "./QuestionPanel";
 import type { CurrentQuestion } from "./useCurrentQuestion";
 
@@ -41,7 +42,7 @@ export function AnsweredQuestion({
           />
         </div>
       }
-      practiceWrong={snapshot.practiceWrong?.question === item.name ? snapshot.practiceWrong : null}
+      practiceWrong={practiceFeedback(snapshot, item.name)}
       onContinueAfterPractice={() => void manager.continueAfterPractice()}
       frozen={snapshot.currentFrozen}
       onContinueFrozen={() => onAnswer(snapshot.userVariableValues[item.name] ?? { done: true, skip: true })}
