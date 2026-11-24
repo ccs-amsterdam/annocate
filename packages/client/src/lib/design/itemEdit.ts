@@ -337,17 +337,22 @@ export function moveItemTo(
   return insertSibling(asNodes(withoutSource)).list as TopLevelItem[];
 }
 
-/** An item replaced by `updated` (keeping its children unless `updated` has its own). */
+/**
+ * An item replaced by `updated`: its settings are `updated`'s (a setting it
+ * left out is removed), its children (and else children) stay unless
+ * `updated` has its own; the editor's key stays.
+ */
 export function updateItem(items: TopLevelItem[], identifier: string, updated: DesignItem): TopLevelItem[] {
   function updateInNodes(nodes: Node[]): Node[] {
     return nodes.map((node) => {
       if (node._key === identifier || node.name === identifier) {
         const children = "children" in updated ? asNodes(childrenOf(updated) ?? []) : node.children;
-
+        const elseChildren = "elseChildren" in updated ? undefined : node.elseChildren;
         return {
-          ...node,
-          ...updated,
+          ...(node._key !== undefined ? { _key: node._key } : {}),
+          ...(updated as unknown as Node),
           ...(children !== undefined ? { children } : {}),
+          ...(elseChildren !== undefined ? { elseChildren } : {}),
         };
       }
       if (hasChildren(node)) {

@@ -191,6 +191,18 @@ describe("itemEdit", () => {
       expect(flattenTree(next).map(keyOf)).toEqual(["p1", "child"]);
       expect(next[0]).toMatchObject({ label: "relabeled", condition: { script: "$var.x.value > 1" } });
     });
+
+    it("removes a setting the update leaves out (unticking, emptying)", () => {
+      const items = [
+        { type: "question", name: "q", comments: true, variable: { type: "confirm", question: "?" } },
+      ] as unknown as TopLevelItem[];
+      const next = updateItem(items, "q", {
+        type: "question",
+        name: "q",
+        variable: { type: "confirm", question: "?" },
+      } as unknown as TopLevelItem);
+      expect(next[0]).not.toHaveProperty("comments");
+    });
   });
 
   describe("positions, selections and moving several items", () => {

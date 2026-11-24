@@ -9,6 +9,10 @@ describe("item shape", () => {
     expect(
       itemsShapeError([{ type: "branch", condition: { script: "true" }, children: [{ name: "x", type: "question" }] }]),
     ).toBe(`'x': a question needs a "variable" with a "type"`);
+    // Layout items, without a name
+    expect(
+      itemsShapeError([{ type: "unit_loop", units: {}, children: [{ type: "layout", template: "$unit.text" }] }]),
+    ).toBeNull();
   });
 
   it("keeps the keys of items with the same name", () => {

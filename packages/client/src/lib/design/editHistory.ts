@@ -85,9 +85,8 @@ export function revertItem(items: TopLevelItem[], saved: TopLevelItem[], key: st
   if (!current) return items;
   const before = findItem(saved, key);
   if (!before) return deleteItem(items, key);
-  // updateItem merges, so fields the saved item didn't have are cleared explicitly.
-  const reverted: Record<string, unknown> = {};
-  for (const field of Object.keys(current)) if (field !== "children" && field !== "_key") reverted[field] = undefined;
-  for (const [field, value] of Object.entries(before)) if (field !== "children") reverted[field] = value;
-  return updateItem(items, key, reverted as unknown as Parameters<typeof updateItem>[2]);
+  // Its own settings as saved (fields added since are dropped); its children stay as they are now
+  const { children: _children, ...own } = before as { children?: unknown };
+  void _children;
+  return updateItem(items, key, own as unknown as Parameters<typeof updateItem>[2]);
 }

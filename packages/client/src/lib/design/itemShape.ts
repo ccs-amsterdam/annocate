@@ -1,10 +1,10 @@
 import type { TopLevelItem } from "@annotinder/contracts";
 
 // What the visual editor needs of items edited as text (the JSON views):
-// a known type, a name (except branches and unit loops), and for questions a variable with a type. Everything
+// a known type, a name (except branches, unit loops and layouts), and for questions a variable with a type. Everything
 // else is left to validation, whose messages the editor shows.
 
-const ITEM_TYPES = ["question", "experiment", "unit_loop", "branch", "end"];
+const ITEM_TYPES = ["question", "experiment", "unit_loop", "branch", "end", "layout"];
 
 /** Why a parsed value isn't an item the editor can show; null if it is. With `children`, they are checked too. */
 export function itemShapeError(raw: unknown, { children }: { children: boolean }): string | null {
@@ -14,7 +14,7 @@ export function itemShapeError(raw: unknown, { children }: { children: boolean }
   const label = typeof item.name === "string" && item.name ? `'${item.name}'` : "An item";
   if (typeof item.type !== "string" || !ITEM_TYPES.includes(item.type))
     return `${label}: type must be one of ${ITEM_TYPES.join(", ")}`;
-  if (item.type !== "branch" && item.type !== "unit_loop" && typeof item.name !== "string")
+  if (!["branch", "unit_loop", "layout"].includes(item.type) && typeof item.name !== "string")
     return `${label} needs a name`;
   const isQuestion = item.type === "question" || item.type === "experiment";
   const variable = item.variable as { type?: unknown } | undefined;
