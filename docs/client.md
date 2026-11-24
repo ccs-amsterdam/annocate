@@ -366,6 +366,15 @@ shows the ending (`coder-identity.md` §9).
   once. With `instructionOpen` it opens by itself on the first unit with the
   question, or on practice units (`StudyManager.opensInstruction`).
 
+### Comments
+
+A question item's `comments: true` lets coders comment on their answer
+(`VariableValue.comment`, at most `MAX_COMMENT_LENGTH`); span and relation
+questions comment on each span or relation (`SpanAnswer.comment`,
+`RelationAnswer.comment`) instead: in the span editor (`SpanEditLabel`)
+and the relation list. A comment is saved with the answer. Exports: a
+`<question>_comment` column; span and relation comments in `_json`.
+
 ### Display
 
 The Study entry's `display` (`{ layouts?: "fixed" | "responsive", theme?:

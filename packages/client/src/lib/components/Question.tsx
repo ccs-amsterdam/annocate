@@ -1,6 +1,9 @@
 import { TextAnswerField } from "./answerFields/TextAnswerField";
 import type { CSSProperties, ReactNode } from "react";
-import type { VariableValue } from "@annotinder/contracts";
+import { useState } from "react";
+import { MessageSquarePlus } from "lucide-react";
+import { MAX_COMMENT_LENGTH, type VariableValue } from "@annotinder/contracts";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AnnotinderAnswerField,
   CategoricalAnswerField,
@@ -21,7 +24,7 @@ import type { QuestionItem } from "./answerFields/types";
 
 interface QuestionProps {
   /** A question: its variable, and in a unit loop its instruction. */
-  item: Pick<QuestionItem, "variable"> & { name?: string; instruction?: string };
+  item: Pick<QuestionItem, "variable"> & { name?: string; instruction?: string; comments?: boolean };
   onAnswer: (value: VariableValue) => void;
   /** This unit's answers so far (see `AnswerFieldProps.unitVariables`). */
   unitVariables?: Record<string, VariableValue>;
@@ -63,9 +66,15 @@ function renderQuestionText(variable: QuestionItem["variable"], rendered?: Rende
   );
 }
 
-export function Question({ item, onAnswer, unitVariables, initialValue, texts }: QuestionProps) {
+export function Question({ item, onAnswer: answer, unitVariables, initialValue, texts }: QuestionProps) {
   const { variable } = item;
   const spanAnnotation = useSpanAnnotation();
+  // A comment on the answer (`comments`); span and relation questions comment on each span or relation instead
+  const commentable = Boolean(item.comments) && variable.type !== "span" && variable.type !== "relation";
+  const [comment, setComment] = useState(initialValue?.comment ?? "");
+  const [commenting, setCommenting] = useState(Boolean(initialValue?.comment));
+  const onAnswer = (value: VariableValue) =>
+    answer(commentable && comment.trim() ? { ...value, comment: comment.trim() } : value);
 
   // A span question labelling a selection, or listing its spans, needs the room: no question text then
   const hideHeader =
@@ -102,6 +111,7 @@ export function Question({ item, onAnswer, unitVariables, initialValue, texts }:
           unitVariables={unitVariables}
           onAnswer={onAnswer}
           initialValue={initialValue}
+          comments={item.comments}
         />
       );
       break;
@@ -115,6 +125,20 @@ export function Question({ item, onAnswer, unitVariables, initialValue, texts }:
       {!hideHeader && (
         <div className="flex items-start gap-1">
           <div className="min-w-0 flex-1">{renderQuestionText(variable, texts?.question)}</div>
+          {commentable && (
+            <button
+              type="button"
+              aria-pressed={commenting}
+              aria-label="Add a comment"
+              title="Add a comment to your answer"
+              onClick={() => setCommenting(!commenting)}
+              className={`flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md hover:bg-muted ${
+                commenting || comment ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+            </button>
+          )}
           {item.instruction && (
             <QuestionInstruction
               name={item.name ?? ""}
@@ -123,6 +147,17 @@ export function Question({ item, onAnswer, unitVariables, initialValue, texts }:
             />
           )}
         </div>
+      )}
+      {commentable && commenting && (
+        <Textarea
+          aria-label="Comment"
+          autoFocus={!comment}
+          maxLength={MAX_COMMENT_LENGTH}
+          placeholder="A comment on your answer (kept when you answer)"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          className="min-h-14 text-sm"
+        />
       )}
       <div className={hideHeader ? "" : "pt-0.5"}>{answerField}</div>
     </div>

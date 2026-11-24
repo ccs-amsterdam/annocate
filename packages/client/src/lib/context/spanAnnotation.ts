@@ -37,6 +37,10 @@ export interface SpanAnnotationState {
   /** Adds a span in the pending selection's field. */
   addSpan: (slices: SpanSlice[], value: string) => void;
   updateSpan: (id: string, newValue: string) => void;
+  /** Coders can comment on each span (the question's `comments`). */
+  allowComments: boolean;
+  /** A span's comment ("" removes it). */
+  setSpanComment: (id: string, comment: string) => void;
   removeSpan: (id: string) => void;
   /** True if any candidate slice overlaps an already-collected span (in the pending selection's field). */
   overlapsExisting: (slices: SpanSlice[]) => boolean;

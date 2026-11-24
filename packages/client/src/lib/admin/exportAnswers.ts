@@ -74,11 +74,23 @@ export function answerJson(value: VariableValue | undefined, numeric = false): s
   const code = (v: OptionValue) => (numeric && typeof v === "string" ? Number(v) : v);
   if (value.spans)
     return JSON.stringify(
-      value.spans.map(({ id, value, field, slices }) => ({ id, value: code(value), field, slices })),
+      value.spans.map(({ id, value, field, slices, comment }) => ({
+        id,
+        value: code(value),
+        field,
+        slices,
+        ...(comment ? { comment } : {}),
+      })),
     );
   if (value.relations)
     return JSON.stringify(
-      value.relations.map(({ id, value, fromId, toId }) => ({ id, value: code(value), fromId, toId })),
+      value.relations.map(({ id, value, fromId, toId, comment }) => ({
+        id,
+        value: code(value),
+        fromId,
+        toId,
+        ...(comment ? { comment } : {}),
+      })),
     );
   return JSON.stringify((value.values ?? []).map((v) => (v.value === undefined ? null : code(v.value))));
 }
@@ -164,6 +176,8 @@ export interface Column {
   item?: string;
   label?: boolean;
   special?: boolean;
+  /** The coder's comment on the answer (spans and relations: in the `_json` column). */
+  comment?: boolean;
   json?: boolean;
 }
 
@@ -177,7 +191,9 @@ export function answerColumns(
   const items = new Map<string, Set<string | undefined>>();
   const json = new Set(nested);
   const special = new Set<string>();
+  const commented = new Set<string>();
   for (const [variable, value] of values) {
+    if (value.comment) commented.add(variable);
     if (value.values?.some((v) => v.special)) special.add(variable);
     // Nested answers found in the data, also of questions the live design version no longer has
     if (value.spans || value.relations || (value.values ?? []).filter((v) => v.item === undefined).length > 1)
@@ -200,13 +216,16 @@ export function answerColumns(
       ...(labels?.has(variable) ? [{ ...c, label: true }] : []),
       ...(special.has(variable) ? [{ ...c, special: true }] : []),
     ]);
-    return json.has(variable) && named.length === 0 ? [...withLabels, { variable, json: true }] : withLabels;
+    const all = [...withLabels, ...(commented.has(variable) ? [{ variable, comment: true }] : [])];
+    return json.has(variable) && named.length === 0 ? [...all, { variable, json: true }] : all;
   });
 }
 
 /** A column's header: `question`, `question.item`, plus `_label`, `_special` or `_json`. */
 export const header = (c: Column) =>
-  `${c.item ? `${c.variable}.${c.item}` : c.variable}${c.label ? "_label" : c.special ? "_special" : c.json ? "_json" : ""}`;
+  `${c.item ? `${c.variable}.${c.item}` : c.variable}${
+    c.label ? "_label" : c.special ? "_special" : c.comment ? "_comment" : c.json ? "_json" : ""
+  }`;
 /** The cell of an answer in a column. */
 export const cellOf = (
   value: VariableValue | undefined,
@@ -220,7 +239,11 @@ export const cellOf = (
     ? answerJson(value, numeric.has(c.variable))
     : c.special
       ? specialText(value, c.item)
-      : answerText(value, c.item, c.label && labels ? labels.writer(c.variable, designVersionId) : asIs, spans);
+      : c.comment
+        ? value && !value.skip
+          ? (value.comment ?? "")
+          : ""
+        : answerText(value, c.item, c.label && labels ? labels.writer(c.variable, designVersionId) : asIs, spans);
 
 /** Question names in design order (the live design version's, if given). */
 export function questionOrder(items: TopLevelItem[] | undefined): string[] {

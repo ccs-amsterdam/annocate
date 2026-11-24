@@ -135,13 +135,13 @@ Under **Highlights**, add words to mark in every unit, each with a
 colour, e.g. names of politicians or the words your codebook defines.
 They help coders find what matters, without changing the text.
 
-| Write                 | Marks                                                      |
-| --------------------- | ---------------------------------------------------------- |
-| `climate energy`      | either word (spaces are _or_)                              |
-| `climate AND energy`  | both words, if both are in the unit (`AND` in capitals)    |
-| `"climate change"`    | the words in this order                                    |
-| `"climate policy"~5`  | the words within 5 words of each other, in any order       |
-| `climat*`             | words starting with _climat_ (`*` works anywhere in a word) |
+| Write                | Marks                                                       |
+| -------------------- | ----------------------------------------------------------- |
+| `climate energy`     | either word (spaces are _or_)                               |
+| `climate AND energy` | both words, if both are in the unit (`AND` in capitals)     |
+| `"climate change"`   | the words in this order                                     |
+| `"climate policy"~5` | the words within 5 words of each other, in any order        |
+| `climat*`            | words starting with _climat_ (`*` works anywhere in a word) |
 
 Capitals and accents don't count. `AND` binds tighter than a space:
 `EU AND nuclear energy` is _energy_, or _EU_ and _nuclear_ together. A

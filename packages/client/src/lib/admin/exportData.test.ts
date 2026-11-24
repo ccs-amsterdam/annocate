@@ -344,6 +344,24 @@ describe("data download", () => {
     ]);
   });
 
+  it("writes comments in a _comment column, and on spans and relations in the JSON", () => {
+    const table = annotationsTable(
+      [row(1, 1, "topic", { done: true, skip: false, values: [{ value: "eu" }], comment: "Hard to tell" })],
+      [coder(1)],
+      [],
+    );
+    expect(table.headers.slice(-2)).toEqual(["topic", "topic_comment"]);
+    expect(table.rows[0].slice(-2)).toEqual(["eu", "Hard to tell"]);
+    const span = {
+      done: true,
+      skip: false,
+      spans: [
+        { id: "s1", field: "text", value: "actor", slices: [{ offset: 0, length: 4, text: "Lena" }], comment: "?" },
+      ],
+    };
+    expect(JSON.parse(answerJson(span))[0].comment).toBe("?");
+  });
+
   it("lists reset answers apart, with when they were given and reset", () => {
     const live = row(1, 1, "sentiment", { done: true, skip: false, values: [{ value: "neg" }] });
     const reset = {

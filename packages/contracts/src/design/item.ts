@@ -38,6 +38,10 @@ export const TopLevelQuestionItemSchema = ItemBaseSchema.extend({
     .never({ error: "Instructions are for questions in unit loops: put details in the question text" })
     .optional(),
   instructionOpen: z.never({ error: "Instructions are for questions in unit loops" }).optional(),
+  comments: z
+    .boolean()
+    .optional()
+    .describe("Coders can add a comment to their answer (span and relation questions: to each span or relation)."),
 });
 export type TopLevelQuestionItem = z.infer<typeof TopLevelQuestionItemSchema>;
 
@@ -61,6 +65,10 @@ export const InLoopQuestionItemSchema = ItemBaseSchema.extend({
     ),
   /** The instruction also opens by itself: the first time the question comes up, or on practice units. */
   instructionOpen: z.enum(["first", "practice"]).optional(),
+  comments: z
+    .boolean()
+    .optional()
+    .describe("Coders can add a comment to their answer (span and relation questions: to each span or relation)."),
 });
 export type InLoopQuestionItem = z.infer<typeof InLoopQuestionItemSchema>;
 

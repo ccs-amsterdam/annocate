@@ -199,6 +199,19 @@ export function ItemForm({
                     onChange={(next) => onChange(next as DesignItem)}
                   />
                 )}
+                <label className="flex items-center gap-1.5 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(item.comments)}
+                    onChange={(e) => {
+                      const next = { ...item, comments: e.target.checked || undefined };
+                      if (!next.comments) delete next.comments;
+                      onChange(next as DesignItem);
+                    }}
+                  />
+                  Coders can add a comment
+                  <HelpButton topic="questions#comments" label="Help: comments" />
+                </label>
                 {inLoop && loopNames && (
                   <FocusSelect
                     variable={item.variable}

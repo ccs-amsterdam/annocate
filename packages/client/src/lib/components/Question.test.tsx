@@ -38,6 +38,27 @@ describe("Question dispatcher", () => {
     expect(html).toContain(">neg<");
   });
 
+  it("offers a comment when the question allows it, open with an earlier comment", () => {
+    const item: QuestionItem = {
+      name: "c",
+      type: "question",
+      comments: true,
+      variable: { type: "nominal", question: "Pick", options: [{ value: "a" }] },
+    };
+    expect(renderToStaticMarkup(<Question item={item} onAnswer={onAnswer} />)).toContain('aria-label="Add a comment"');
+    const html = renderToStaticMarkup(
+      <Question
+        item={item}
+        onAnswer={onAnswer}
+        initialValue={{ done: true, skip: false, values: [{ value: "a" }], comment: "Unsure" }}
+      />,
+    );
+    expect(html).toContain("Unsure");
+    expect(
+      renderToStaticMarkup(<Question item={{ ...item, comments: undefined }} onAnswer={onAnswer} />),
+    ).not.toContain("Add a comment");
+  });
+
   it("renders long lists as a dropdown", () => {
     const item: QuestionItem = {
       name: "search_q",

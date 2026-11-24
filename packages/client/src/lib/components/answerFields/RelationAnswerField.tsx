@@ -1,5 +1,6 @@
 import { ArrowRight, X } from "lucide-react";
-import { optionLabel } from "@annotinder/contracts";
+import { useState } from "react";
+import { MAX_COMMENT_LENGTH, optionLabel, type RelationAnswer } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { PRIORITY } from "../../keyboard/controller";
 import { useKeyScope, useKeyTargets } from "../../keyboard/hooks";
@@ -21,8 +22,18 @@ const spanName = (span: RelationSpan | undefined) => (span ? `"${spanSummary(spa
  * type when there is a choice (keys 1-9, Esc to cancel), and the relations
  * made, to open or remove.
  */
-export function RelationAnswerField({ onAnswer }: AnswerFieldProps<RelationVariable>) {
+export function RelationAnswerField({
+  onAnswer,
+  initialValue,
+  comments = false,
+}: AnswerFieldProps<RelationVariable> & { comments?: boolean }) {
   const ctx = useRelationAnnotation();
+  // A comment per relation (the question's `comments`), by relation id
+  const [notes, setNotes] = useState<Record<string, string>>(() =>
+    Object.fromEntries((initialValue?.relations ?? []).flatMap((r) => (r.comment ? [[r.id, r.comment]] : []))),
+  );
+  const withComments = (relations: RelationAnswer[]) =>
+    relations.map((r) => (notes[r.id]?.trim() ? { ...r, comment: notes[r.id].trim() } : r));
   const { theme } = useCoderSettings();
   const pending = ctx?.pending ?? null;
   const types = pending && ctx ? ctx.typesFor(pending.fromId, pending.toId) : [];
@@ -109,6 +120,16 @@ export function RelationAnswerField({ onAnswer }: AnswerFieldProps<RelationVaria
                 <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" />
                 <span className="truncate">{spanName(span(r.toId))}</span>
               </button>
+              {comments && (
+                <input
+                  aria-label="Comment on this relation"
+                  placeholder="comment"
+                  maxLength={MAX_COMMENT_LENGTH}
+                  value={notes[r.id] ?? ""}
+                  onChange={(e) => setNotes({ ...notes, [r.id]: e.target.value })}
+                  className="h-6 w-28 shrink-0 rounded border border-border bg-background px-1.5 text-xs"
+                />
+              )}
               <button
                 type="button"
                 onClick={() => ctx.remove(r.id)}
@@ -131,7 +152,7 @@ export function RelationAnswerField({ onAnswer }: AnswerFieldProps<RelationVaria
         >
           Skip
         </Button>
-        <Button size="sm" onClick={() => onAnswer({ done: true, skip: false, relations: ctx.relations })}>
+        <Button size="sm" onClick={() => onAnswer({ done: true, skip: false, relations: withComments(ctx.relations) })}>
           Done ({ctx.relations.length})
         </Button>
       </div>

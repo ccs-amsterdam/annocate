@@ -354,6 +354,7 @@ function CodingScreen({
               allowGaps={spanVariable?.gaps ?? false}
               initialSpans={spanVariable ? snapshot.currentUnitVariables?.[item.name]?.spans : undefined}
               variableName={item.name}
+              allowComments={Boolean(spanVariable && item.comments)}
             >
               <MaybeRelations
                 key={`relations-${snapshot.currentUnit!.id}-${item.name}`}

@@ -24,6 +24,11 @@ export const ValueAnswerSchema = z
   .refine((a) => a.value !== undefined || a.special !== undefined, { message: "An answer has a value or is special" });
 export type ValueAnswer = z.infer<typeof ValueAnswerSchema>;
 
+/** The longest comment a coder can add to an answer, a span or a relation. */
+export const MAX_COMMENT_LENGTH = 2000;
+/** A coder's comment (docs/client.md §4 "Comments"): a question's `comments` allows it. */
+const CommentSchema = z.string().max(MAX_COMMENT_LENGTH).optional();
+
 /** A single contiguous text fragment within a span answer. */
 export const SpanSliceSchema = z.object({
   offset: z.number().int().nonnegative(),
@@ -45,6 +50,7 @@ export const SpanAnswerSchema = z.object({
   field: z.string(),
   value: z.string(),
   slices: z.array(SpanSliceSchema).min(1),
+  comment: CommentSchema,
 });
 export type SpanAnswer = z.infer<typeof SpanAnswerSchema>;
 
@@ -54,6 +60,7 @@ export const RelationAnswerSchema = z.object({
   fromId: ClientIdSchema,
   toId: ClientIdSchema,
   value: z.string(),
+  comment: CommentSchema,
 });
 export type RelationAnswer = z.infer<typeof RelationAnswerSchema>;
 
@@ -63,6 +70,8 @@ export const VariableValueSchema = z.object({
   values: z.array(ValueAnswerSchema).optional(),
   spans: z.array(SpanAnswerSchema).optional(),
   relations: z.array(RelationAnswerSchema).optional(),
+  /** The coder's comment on the answer (span and relation questions: on each span or relation). */
+  comment: CommentSchema,
 });
 export type VariableValue = z.infer<typeof VariableValueSchema>;
 

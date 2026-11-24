@@ -76,6 +76,17 @@ the first time a coder gets the question, or on
 Questions outside loops have no instruction: write everything in the
 question text.
 
+## Comments
+
+Tick **Coders can add a comment** to let coders add a note to their
+answer: something odd in the unit, a doubt, a reminder. A speech-bubble
+button by the question opens a text box; the comment is saved with the
+answer (written before answering, or after going back and answering
+again). In span and relation questions coders comment on each span (when
+editing it) or relation (in the list). The results download has a
+`<question>_comment` column; span and relation comments are in the
+`_json` column.
+
 ## Focus on
 
 For a loop question, **Focus on (optional)** picks the part of the unit

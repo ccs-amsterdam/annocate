@@ -1,4 +1,5 @@
-import { optionLabel } from "@annotinder/contracts";
+import { MAX_COMMENT_LENGTH, optionLabel } from "@annotinder/contracts";
+import { Textarea } from "@/components/ui/textarea";
 import { PRIORITY } from "../../keyboard/controller";
 import { useKeyScope, useKeyTargets } from "../../keyboard/hooks";
 import { useCallback } from "react";
@@ -172,6 +173,16 @@ export function SpanEditLabel({ annotation, span, onBack, onCancel, onCodeChange
           <span>Delete</span>
         </Button>
       </div>
+      {annotation.allowComments && (
+        <Textarea
+          aria-label="Comment on this span"
+          maxLength={MAX_COMMENT_LENGTH}
+          placeholder="A comment on this span (optional)"
+          value={annotation.spans.find((s) => s.id === span.id)?.comment ?? ""}
+          onChange={(e) => annotation.setSpanComment(span.id, e.target.value)}
+          className="min-h-12 text-xs"
+        />
+      )}
     </div>
   );
 }

@@ -17,6 +17,7 @@ export function SpanAnnotationProvider({
   initialPendingSpan,
   initialIsViewingAllLabels,
   variableName,
+  allowComments = false,
   children,
 }: {
   fields: string[];
@@ -29,6 +30,8 @@ export function SpanAnnotationProvider({
   initialIsViewingAllLabels?: boolean;
   /** The span question: another question in the same unit starts over. */
   variableName?: string;
+  /** Coders can comment on each span. */
+  allowComments?: boolean;
   children: ReactNode;
 }) {
   const [spans, setSpans] = useState<SpanAnswer[]>(initialSpans ?? []);
@@ -93,6 +96,16 @@ export function SpanAnnotationProvider({
         }),
       updateSpan: (id, newValue) => setSpans((prev) => prev.map((s) => (s.id === id ? { ...s, value: newValue } : s))),
       removeSpan: (id) => setSpans((prev) => prev.filter((s) => s.id !== id)),
+      allowComments,
+      setSpanComment: (id, comment) =>
+        setSpans((prev) =>
+          prev.map((s) => {
+            if (s.id !== id) return s;
+            const next = { ...s, comment: comment || undefined };
+            if (!comment) delete next.comment;
+            return next;
+          }),
+        ),
       overlapsExisting: (slices) =>
         inPendingField(spans).some((s) =>
           s.slices.some((sSlice) =>
@@ -111,6 +124,7 @@ export function SpanAnnotationProvider({
       setCursor,
     };
   }, [
+    allowComments,
     cursor,
     sameFields,
     options,
