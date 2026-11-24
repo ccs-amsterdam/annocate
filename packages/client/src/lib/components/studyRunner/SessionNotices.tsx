@@ -24,7 +24,7 @@ interface SessionErrorProps {
 }
 
 /** The notice for each error code that has its own. */
-const ERROR_NOTICES: Partial<Record<string, ComponentType<SessionErrorProps>>> = {
+const ERROR_NOTICES: Record<string, ComponentType<SessionErrorProps>> = {
   coder_has_session: ({ onStartNewSession }) => <CoderElsewhere onStartNewSession={onStartNewSession} />,
   name_required: PickNameNotice,
   name_taken: PickNameNotice,
@@ -41,7 +41,9 @@ const ERROR_NOTICES: Partial<Record<string, ComponentType<SessionErrorProps>>> =
 
 /** A session that failed to load or save: the notice for its error code, else the message with Retry. */
 export function SessionErrorScreen(props: SessionErrorProps) {
-  const Notice = ERROR_NOTICES[props.errorCode ?? ""];
+  // A code comes from the server: only the table's own entries count (not `constructor`)
+  const code = props.errorCode ?? "";
+  const Notice = Object.hasOwn(ERROR_NOTICES, code) ? ERROR_NOTICES[code] : null;
   if (Notice) return <Notice {...props} />;
   return <UnknownError error={props.error} onRetry={props.onRetry} onBackToUnit={props.onBackToUnit} />;
 }
@@ -116,29 +118,41 @@ function EmailNotAllowedNotice() {
   );
 }
 
-/** What a coder sees when their link can't start a session (the server's error codes). */
-const LINK_NOTICES: Partial<Record<string, { title: string; text: string }>> = {
-  link_not_found: {
-    title: "This link doesn't work",
-    text: "Check that you opened the whole link you were given. If it still doesn't work, contact the researchers.",
-  },
-  link_revoked: {
-    title: "This link has been withdrawn",
-    text: "The researchers no longer accept new coders through this link. If you were sent a new link, use that one.",
-  },
-  link_used_up: {
-    title: "This link is full",
-    text: "As many people as the researchers planned have already started through this link. Thank you for your interest.",
-  },
-  link_inactive: {
-    title: "This link is no longer active",
-    text: "The researchers no longer use this link for new coders. If you were sent a new link, use that one.",
-  },
-};
+/** What a coder sees when their link can't start a session, by the server's error code. */
+const LINK_NOTICES = new Map<string, { title: string; text: string }>([
+  [
+    "link_not_found",
+    {
+      title: "This link doesn't work",
+      text: "Check that you opened the whole link you were given. If it still doesn't work, contact the researchers.",
+    },
+  ],
+  [
+    "link_revoked",
+    {
+      title: "This link has been withdrawn",
+      text: "The researchers no longer accept new coders through this link. If you were sent a new link, use that one.",
+    },
+  ],
+  [
+    "link_used_up",
+    {
+      title: "This link is full",
+      text: "As many people as the researchers planned have already started through this link. Thank you for your interest.",
+    },
+  ],
+  [
+    "link_inactive",
+    {
+      title: "This link is no longer active",
+      text: "The researchers no longer use this link for new coders. If you were sent a new link, use that one.",
+    },
+  ],
+]);
 
 /** A link that can't start a session. */
 function LinkNotice({ errorCode }: SessionErrorProps) {
-  const notice = LINK_NOTICES[errorCode ?? ""];
+  const notice = LINK_NOTICES.get(errorCode ?? "");
   if (!notice) return null;
   return (
     <SessionNotice title={notice.title}>

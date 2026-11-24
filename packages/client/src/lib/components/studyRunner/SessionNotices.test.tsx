@@ -19,6 +19,20 @@ describe("SessionErrorScreen", () => {
     expect(html).not.toContain("Go back to the unit");
   });
 
+  it("shows a link's own notice by its error code", () => {
+    const html = renderToStaticMarkup(<SessionErrorScreen {...props} errorCode="link_used_up" />);
+    expect(html).toContain("This link is full");
+    expect(html).not.toContain("Retry");
+  });
+
+  it("treats a code that is a property of every object as any unknown code", () => {
+    for (const errorCode of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
+      const html = renderToStaticMarkup(<SessionErrorScreen {...props} errorCode={errorCode} />);
+      expect(html).toContain("The answers were refused");
+      expect(html).toContain("Retry");
+    }
+  });
+
   it("offers to go back to a unit the server refused, next to Retry", () => {
     const html = renderToStaticMarkup(<SessionErrorScreen {...props} onBackToUnit={() => {}} />);
     expect(html).toContain("Go back to the unit");
