@@ -372,7 +372,10 @@ A question item's `comments: true` lets coders comment on their answer
 (`VariableValue.comment`, at most `MAX_COMMENT_LENGTH`); span and relation
 questions comment on each span or relation (`SpanAnswer.comment`,
 `RelationAnswer.comment`) instead: in the span editor (`SpanEditLabel`)
-and the relation list. A comment is saved with the answer. Exports: a
+and the relation list. A comment is saved with the answer; one changed on
+an answer already given is saved when the box is left
+(`StudyManager.comment`: coder-level answers at once, a unit's in its draft,
+a finished unit posted again), without moving on. Exports: a
 `<question>_comment` column; span and relation comments in `_json`.
 
 ### Display

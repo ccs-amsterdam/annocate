@@ -368,6 +368,33 @@ describe("StudyManager navigation, backwards navigation, and answer re-editing",
     expect(postedUnits[101].sentiment).toEqual({ values: [{ value: "B" }], done: true });
   });
 
+  it("saves a comment added after answering at once (a finished unit again), without moving on", async () => {
+    let served = 0;
+    const posted: Record<number, Record<string, VariableValue>[]> = {};
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session([unitLoop("loop", [unitVar("sentiment")])])),
+      getNextUnit: vi.fn(async () => (++served <= 2 ? unit(100 + served) : null)),
+      postUnitVariables: vi.fn(async (unitId, vars) => void (posted[unitId] ??= []).push(vars)),
+    });
+    const manager = new StudyManager(server);
+    await manager.start();
+    await manager.answer({ done: true, skip: false, values: [{ value: "A" }] });
+    expect(manager.getSnapshot().currentUnit?.id).toBe(102);
+    await manager.goBack();
+    await manager.comment("sentiment", "Not sure");
+    // Still on unit 101, saved again with the comment
+    expect(manager.getSnapshot().currentUnit?.id).toBe(101);
+    expect(posted[101].at(-1)?.sentiment).toEqual({
+      done: true,
+      skip: false,
+      values: [{ value: "A" }],
+      comment: "Not sure",
+    });
+    // The same comment again: nothing to save
+    await manager.comment("sentiment", "Not sure");
+    expect(posted[101]).toHaveLength(2);
+  });
+
   it("supports jumping directly to previous units via jumpToUnit", async () => {
     let unitsServed = 0;
     const server = makeFlakyServer({

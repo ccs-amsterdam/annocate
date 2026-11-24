@@ -32,6 +32,8 @@ interface QuestionProps {
   initialValue?: VariableValue;
   /** The question and instruction texts with their values filled in (StudyManager); without, values show their source. */
   texts?: QuestionTexts | null;
+  /** A comment changed after answering (the comment box left): saved with the answer, without moving on. */
+  onComment?: (comment: string) => void;
 }
 
 /** A question's texts, rendered as templates (docs/client.md §4 "Questions and instructions"). */
@@ -66,7 +68,7 @@ function renderQuestionText(variable: QuestionItem["variable"], rendered?: Rende
   );
 }
 
-export function Question({ item, onAnswer: answer, unitVariables, initialValue, texts }: QuestionProps) {
+export function Question({ item, onAnswer: answer, unitVariables, initialValue, texts, onComment }: QuestionProps) {
   const { variable } = item;
   const spanAnnotation = useSpanAnnotation();
   // A comment on the answer (`comments`); span and relation questions comment on each span or relation instead
@@ -153,9 +155,11 @@ export function Question({ item, onAnswer: answer, unitVariables, initialValue, 
           aria-label="Comment"
           autoFocus={!comment}
           maxLength={MAX_COMMENT_LENGTH}
-          placeholder="A comment on your answer (kept when you answer)"
+          placeholder="A comment on your answer"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
+          // Already answered: the comment is saved when the box is left (answering also takes it)
+          onBlur={() => initialValue && !initialValue.skip && onComment?.(comment.trim())}
           className="min-h-14 text-sm"
         />
       )}

@@ -645,6 +645,39 @@ export class StudyManager {
     });
   }
 
+  /**
+   * The coder's comment on the answer on screen, changed after answering
+   * (the comment box closed): kept in the answer without moving on. A
+   * coder-level answer is saved at once; a unit's is in the browser's draft
+   * until the unit is saved, and a finished unit (gone back to) is saved
+   * again now. Before answering, the comment goes with the answer instead.
+   */
+  async comment(name: string, comment: string): Promise<void> {
+    const unitId = this.snapshot.currentUnit?.id ?? null;
+    await this.guarded(async () => {
+      const now = this.snapshot.currentItem;
+      if (now?.type !== "question" || now.name !== name || (this.snapshot.currentUnit?.id ?? null) !== unitId) return;
+      const answers = this.activeLoop === null ? this.userVariableValues : this.unitVariableValues;
+      const answer = answers[name];
+      if (!answer || (answer.comment ?? "") === comment) return;
+      const next = { ...answer, comment: comment || undefined };
+      if (!comment) delete next.comment;
+      if (this.activeLoop === null) {
+        if (this.frozen.has(name)) return;
+        this.userVariableValues[name] = next;
+        const values = await this.postedCoderValues();
+        this.save({ key: "coder", send: () => this.coderApi.postCoderVariables(values, {}) });
+        return;
+      }
+      this.unitVariableValues[name] = next;
+      if (this.unitVisible[name]) this.unitVisible[name] = next;
+      this.writeDraft();
+      this.syncCurrentUnitAnswers();
+      const entry = this.unitHistory[this.unitHistoryIndex];
+      if (entry?.done) this.saveFinishedUnit();
+    });
+  }
+
   /** The timer's key for a question on screen now (`QuestionTimer`): coder-level, or in the current unit. */
   private timingKey(name: string): string | null {
     if (this.activeLoop === null) return `c:${name}`;

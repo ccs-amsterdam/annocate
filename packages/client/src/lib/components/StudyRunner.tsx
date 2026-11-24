@@ -274,6 +274,7 @@ function CodingScreen({
             initialValue={inUnit ? snapshot.currentUnitVariables?.[item.name] : snapshot.userVariableValues[item.name]}
             unitVariables={snapshot.currentUnitVariables ?? undefined}
             texts={snapshot.currentTexts}
+            onComment={(comment) => void manager.comment(item.name, comment)}
           />
         </div>
       }
