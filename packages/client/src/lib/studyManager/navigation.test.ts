@@ -826,6 +826,77 @@ describe("answers the server refuses", () => {
   });
 });
 
+describe("finished units that weren't sent when the page closed", () => {
+  /** Whether the first visit has a connection for saving units. */
+  let online: boolean;
+  /** A visit whose unit posts don't arrive while there is no connection. */
+  const visit = async () => {
+    const m = new StudyManager(
+      {
+        ...server,
+        postUnitVariables: async (...post: Parameters<FakeCoderServer["postUnitVariables"]>) => {
+          // (Sent, and never answered: the page is closed before it is)
+          if (!online) return new Promise<void>(() => {});
+          return server.postUnitVariables(...post);
+        },
+      },
+      { retryMs: () => 0 },
+    );
+    await m.start();
+    return m;
+  };
+  beforeEach(() => {
+    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    online = false;
+  });
+
+  it("are sent when the coder comes back, who then continues after them", async () => {
+    const first = await visit();
+    await answerUntil(first, "3:q1");
+    expect(first.getSnapshot()).toMatchObject({ unsaved: 2, unsavedUnits: 2 });
+    expect(server.done.get("1")).toBeUndefined();
+
+    const m = await started(server);
+    expect(server.done.get("1")).toEqual([1, 2]);
+    expect(picked(server.answers.get("1/2")!.q2)).toBe("A");
+    expect(where(m)).toBe("3:q1");
+    expect(m.getSnapshot().unsaved).toBe(0);
+    await m.goBack();
+    expect(where(m)).toBe("2:q2");
+    // Sent: not sent again by a later visit
+    const posts = server.calls.filter((c) => c.startsWith("postUnitVariables")).length;
+    await started(server);
+    expect(server.calls.filter((c) => c.startsWith("postUnitVariables"))).toHaveLength(posts);
+  });
+
+  it("one the server doesn't take any more comes again with its answers", async () => {
+    const first = await visit();
+    await answerUntil(first, "2:q1");
+
+    server.fail("postUnitVariables");
+    const m = await started(server);
+    expect(m.getSnapshot().phase).not.toBe("error");
+    expect(where(m)).toBe("1:q2");
+    expect(shown(m)).toBe("A");
+    await m.answer(pick("B"));
+    await settle();
+    expect(picked(server.answers.get("1/1")!.q2)).toBe("B");
+    expect(where(m)).toBe("2:q1");
+  });
+
+  it("without a connection at the start: the start fails, and retry sends them", async () => {
+    const first = await visit();
+    await answerUntil(first, "2:q1");
+
+    server.fail("postUnitVariables", new TypeError("Failed to fetch"));
+    const m = await started(server);
+    expect(m.getSnapshot().phase).toBe("error");
+    await m.retry();
+    expect(where(m)).toBe("2:q1");
+    expect(server.done.get("1")).toEqual([1]);
+  });
+});
+
 describe("preview navigation (free)", () => {
   it("next goes ahead without answers, and a unit far ahead can be opened", async () => {
     server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });

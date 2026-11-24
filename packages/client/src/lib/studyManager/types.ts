@@ -105,6 +105,8 @@ export interface StudyManagerSnapshot {
   newUnits: string | null;
   /** Answers not saved on the server yet (they are sent in the background, `save`). */
   unsaved: number;
+  /** The finished units among them. */
+  unsavedUnits: number;
   /** Saving failed for lack of a connection (or a server hiccup): it is tried again. */
   retrying: boolean;
   navigation: StudyManagerNavigation;

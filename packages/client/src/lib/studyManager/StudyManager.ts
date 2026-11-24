@@ -35,10 +35,10 @@ import { computeLoopSteps, computeTopLevelSteps, spanColumns, type StepContext }
 import { renderTemplate, staticTemplate } from "../codebook/renderTemplate";
 import type { QuestionTexts } from "../components/Question";
 import { QuestionTimer } from "./timing";
-import { errorCodeOf, errorFields, isRefusal } from "./errors";
+import { errorCodeOf, errorFields, isRefusal, isTransient } from "./errors";
 import { currentAnswers, findEnd, loopQuestionNames, loopVariables } from "./items";
 import { stepLabel } from "./navigationLabels";
-import { Outbox, type OutboxItem } from "./outbox";
+import { Outbox, UnsentUnits, type OutboxItem, type UnitPost } from "./outbox";
 import { expectedAnswerText } from "./practice";
 import { UnitDraftStore } from "./unitDraft";
 import type {
@@ -115,6 +115,7 @@ const INITIAL_SNAPSHOT: StudyManagerSnapshot = {
   reopen: null,
   newUnits: null,
   unsaved: 0,
+  unsavedUnits: 0,
   retrying: false,
   practiceWrong: null,
   practiceRight: 0,
@@ -142,6 +143,7 @@ export class StudyManager {
   private readonly timer: QuestionTimer;
   private readonly outbox: Outbox;
   private readonly drafts = new UnitDraftStore();
+  private readonly unsent = new UnsentUnits();
   private expressionCache = new ExpressionCache();
   private snapshot: StudyManagerSnapshot = INITIAL_SNAPSHOT;
 
@@ -261,6 +263,7 @@ export class StudyManager {
       options.retryMs ?? ((attempt) => Math.min(30_000, 1000 * 2 ** (attempt - 1))),
       (state) => this.publish(state),
       () => this.reportSaveError(),
+      this.unsent,
     );
   }
 
@@ -286,7 +289,10 @@ export class StudyManager {
   private async doStart(): Promise<void> {
     try {
       this.publish({ phase: "loading", error: null, errorCode: null });
-      const session: SessionResponse = await this.coderApi.getSession();
+      let session: SessionResponse = await this.coderApi.getSession();
+      this.drafts.sessionId = this.unsent.sessionId = session.sessionId;
+      // With the units an earlier visit left unsent, the session is another one: finished units, what is next
+      if (await this.sendUnsentUnits()) session = await this.coderApi.getSession();
       this.items = session.codebook.items;
       this.publish({ title: session.codebook.title ?? null, display: session.codebook.display ?? {} });
       this.loopKeys = new Map(unitLoops(this.items).map(({ key, loop }) => [loop, key]));
@@ -307,7 +313,6 @@ export class StudyManager {
       this.histories.clear();
       this.progress = new Map(session.progress.map((p) => [p.set, p]));
       this.session = session.session ?? {};
-      this.drafts.sessionId = session.sessionId;
       if (session.deletionRequest) this.publish({ deletionRequested: true });
       this.publish({ login: session.login ?? null, canLogIn: session.canLogIn ?? false });
       // Told once (the server doesn't repeat it): kept until dismissed
@@ -825,6 +830,27 @@ export class StudyManager {
   }
 
   /**
+   * Finished units an earlier visit didn't get sent (`UnsentUnits`: the tab
+   * was closed without a connection) are sent now. One the server doesn't
+   * take any more (a new design version) comes again with its answers, as
+   * far as they fit (`carryOver`). Returns whether there were any.
+   */
+  private async sendUnsentUnits(): Promise<boolean> {
+    // (Starting again in the same visit: what waits is in the outbox)
+    const posts = this.outbox.waiting.length === 0 ? this.unsent.read() : [];
+    for (const post of posts) {
+      try {
+        await this.coderApi.postUnitVariables(post.unitId, post.answers, post.loop, post.timings);
+      } catch (err) {
+        if (isTransient(err)) throw err;
+        this.carryOver.set(`${post.loop}/${post.unitId}`, post.answers);
+      }
+    }
+    this.unsent.write([]);
+    return posts.length > 0;
+  }
+
+  /**
    * Saving failed in the background. While the coder's last action is still
    * being handled, that action meets the error itself (`guarded`).
    * Otherwise: a new design version loads the session again
@@ -982,7 +1008,6 @@ export class StudyManager {
     // A practice question's feedback belongs to the unit, which is served again
     this.publish({ practiceWrong: null });
     this.unitQueues.clear();
-    this.publish({ unsaved: 0, retrying: false });
     this.starting = null;
     this.userVariableValues = {};
     this.leaveLoop();
@@ -1352,7 +1377,7 @@ export class StudyManager {
     this.serverEnded = true;
     this.drafts.clearAll();
     this.outbox.clear();
-    this.publish({ unsaved: 0, retrying: false, practiceWrong: null });
+    this.publish({ practiceWrong: null });
     void this.publishEnding(findEnd(this.stepItems, name), this.scope(this.coderVisible));
   }
 
@@ -1445,29 +1470,35 @@ export class StudyManager {
       const value = this.unitVisible[name];
       doneValues[name] = value ? { ...value, done: true } : { done: true, skip: true };
     }
-    const loopKey = this.keyOf(loop);
     const timings = this.timer.take(`u:${id}:`);
     // Practice questions: how many tries it took (1: right the first time)
     for (const [name, tries] of this.practiceTries.get(id) ?? []) {
       if (timings[name]) timings[name] = { ...timings[name], tries };
     }
     this.practiceTries.delete(id);
-    this.save({
-      key: `unit:${loopKey}/${id}`,
-      send: async () => {
-        const submitted: SubmitUnitResponse | null =
-          (await this.coderApi.postUnitVariables(id, doneValues, loopKey, timings)) || null;
-        this.drafts.clear(loopKey, id);
-        // Gold checks ended the session (health ran out): it ends now, wherever the coder is.
-        if (submitted?.end) this.endedByServer(submitted.end);
-      },
-      unit: { loop: loopKey, unitId: id, answers: doneValues },
-    });
+    const loopKey = this.keyOf(loop);
+    this.saveUnit({ loop: loopKey, unitId: id, answers: doneValues, timings });
     for (const name of this.dependencies.get(loopKey) ?? []) if (name in this.userVariableValues) this.frozen.add(name);
     if (this.unitHistoryIndex >= 0 && this.unitHistoryIndex < this.unitHistory.length) {
       this.unitHistory[this.unitHistoryIndex].answers = { ...doneValues };
       this.unitHistory[this.unitHistoryIndex].done = true;
     }
+  }
+
+  /** Saves a finished unit in the background. */
+  private saveUnit(post: UnitPost): void {
+    const { loop, unitId, answers, timings } = post;
+    this.save({
+      key: `unit:${loop}/${unitId}`,
+      send: async () => {
+        const submitted: SubmitUnitResponse | null =
+          (await this.coderApi.postUnitVariables(unitId, answers, loop, timings)) || null;
+        this.drafts.clear(loop, unitId);
+        // Gold checks ended the session (health ran out): it ends now, wherever the coder is.
+        if (submitted?.end) this.endedByServer(submitted.end);
+      },
+      unit: post,
+    });
   }
 
   /** After a unit is finished and saved: an `end` in the loop, the next unit in history, or the next one from the server. */
