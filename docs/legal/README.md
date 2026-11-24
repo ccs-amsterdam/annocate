@@ -93,7 +93,10 @@ Each of these is also in the checklists of
 ## The licence: MIT, and what to check
 
 `LICENSE` at the top of the repository is the MIT licence, with the line
-"Copyright (c) 2026 The AnnoTinder authors".
+"Copyright (c) 2026 Kasper Welbers and Wouter van Atteveldt". More names
+can be added later (the line is just text); contributors keep the
+copyright on what they contribute, under the same licence, whether or not
+they are named.
 
 **Check before the release:**
 

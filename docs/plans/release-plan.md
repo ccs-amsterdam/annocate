@@ -84,6 +84,17 @@ B1-26 still stand (the fix narrows B1-26 but makes B1-27 easier to reach).
 - **P-A4 · Web basics**: robots.txt, page metadata, no cookie banner if only strictly necessary storage is used (to confirm), a cookie/storage section in the privacy statement. `docs` + client `index.html`.
 - **P-A5 · Hosting and legal**: one deployment guide (lab VM; public server behind the Cloudflare proxy; backups with restic/rustic to an off-site store; monitoring), KV assessment (Postgres only?), first drafts of the privacy statement, terms and a DPA outline, an MIT LICENSE, and `docs/plans/go-live.md` with this week's and this month's checklists. `docs` + `ops`.
 
+### The owner's answers (24 November 2026)
+
+- **Yes as recommended:** D3–D7, D10–D15, D17–D22, D25.
+- **D1, loop identity:** every `unit_loop` has an `id` (`loop_1`, `loop_2`, …: the next number never used, so it says nothing about order; never reused). The editor gives a new loop its id; the form shows it small and read-only (it is not a name: no renaming). **A loop without an id is a validation error, never filled in silently** (an R or Python client creating a loop must give it a new id; the docs say so). Ids are unique within a design. Deleting a loop with coder progress: a warning in the editor and in the deploy warnings. Exports use the id (`finished_loop_1`), `variables.csv` gives id and label.
+- **D2:** unknown keys are validation errors (drafts with errors can still be saved, as now); no `meta` field.
+- **D8:** keep `done` (documented); answers strict; span/relation ids at most 64 characters of `[A-Za-z0-9_-]`.
+- **D9:** reserved system column names; derived columns with a dot (`q.label`, `q.special`, `q.comment`, `q.json`); question names unique ignoring case.
+- **D16:** 5 sessions per coder id per study; per IP address only a high brake (about 500 new sessions per 10 minutes; a whole class can share one address), adjustable or off by the server admin.
+- **D23:** MIT, "Copyright (c) 2026 Kasper Welbers and Wouter van Atteveldt" (to be confirmed with the university before the official release).
+- **D24:** yes; at the release the migrations are reset to one fresh initial migration, which is then frozen.
+
 ## A. Decisions for the owner
 
 Only choices about product behaviour or the frozen surfaces. Recommendation
