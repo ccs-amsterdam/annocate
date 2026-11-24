@@ -219,7 +219,7 @@ export function useUnitFieldsMutation(client: ResearcherApi): UseMutationResult<
 
 export function useUnitPageQuery(
   client: ResearcherApi,
-  query: { offset: number; limit: number; group?: string; set?: string },
+  query: { offset: number; limit: number; column?: string; set?: string },
 ): UseQueryResult<UnitPage> {
   return useQuery({
     queryKey: [...keys.unitPages(client.studyId), query],

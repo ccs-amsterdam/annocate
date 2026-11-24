@@ -105,15 +105,19 @@ export type ResetAnnotations = z.infer<typeof ResetAnnotationsSchema>;
 
 /** Progress of one source (a share of a loop's units, or a test unit type) of one unit_loop. */
 export const SourceStatusSchema = z.object({
+  /** The unit loop's id. */
   loop: z.string(),
+  /** How the loop is called (`loopTitle`): its label, or else its id. */
+  title: z.string(),
   set: z.string(),
-  mode: z.enum(["fixed", "dynamic"]),
+  /** `shared`: the coders divide the units (a shared queue); `own`: every coder codes all of them. */
+  queue: z.enum(["own", "shared"]),
   totalUnits: z.number().int().nonnegative(),
-  /** Dynamic: units that met their saturation rule. Fixed: units every routed coder finished. */
+  /** A shared queue: units that are done by its rule. Own: units every routed coder finished. */
   completeUnits: z.number().int().nonnegative(),
   /** Units with at least one coding. */
   startedUnits: z.number().int().nonnegative(),
-  /** Dynamic: units currently reserved for a coder. */
+  /** A shared queue: units currently reserved for a coder. */
   leasedUnits: z.number().int().nonnegative(),
   codings: z.number().int().nonnegative(),
   /** Coders routed to this source. */

@@ -3,7 +3,7 @@
 A **recipe** (contracts `recipe.ts`) is everything a new study starts
 with, in one document: units, role columns (`sets`: `coder_set`,
 `condition_set`, `part_set`, `test_set`, by the units' ids), the first
-design version (a draft, or deployed with `publish`, with its declared unit
+design version (a draft, or deployed with `deploy`, with its declared unit
 fields). `POST /study/from-recipe` makes a study from one in a
 single transaction (`server/src/shared/recipes.ts`), with the same role,
 limits and ownership checks as creating a study. Afterwards it is an

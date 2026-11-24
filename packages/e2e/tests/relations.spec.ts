@@ -56,7 +56,7 @@ async function study(request: Parameters<typeof api>[0]) {
         },
       ],
     },
-    publish: true,
+    deploy: true,
   });
   const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
   return { id: created.id, link: `/code/${created.id}?link=${link.secret}` };

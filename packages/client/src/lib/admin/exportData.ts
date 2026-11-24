@@ -207,7 +207,7 @@ export function codersTable(
   // since labels can repeat and hold spaces; the variables table has each loop's id and label
   const loops = [...new Set(coders.flatMap((c) => c.finished.map((f) => f.loop)))];
   // Units of the special sets each coder finished (overlap, gold, practice)
-  const specials = (["overlap", "gold", "practice"] as const).filter((kind) => coders.some((c) => c.special?.[kind]));
+  const specials = (["overlap", "gold", "practice"] as const).filter((kind) => coders.some((c) => c.testUnits?.[kind]));
   // The session's values (URL parameters, source) by their $session name; its coder has its own column
   const sessionNames = [...new Set(coders.flatMap((c) => Object.keys(c.session ?? {})))]
     .filter((n) => n !== "coder")
@@ -248,7 +248,7 @@ export function codersTable(
       displaySummary(c.display ?? []),
       ...sessionNames.map((n) => c.session?.[n] ?? ""),
       ...loops.map((loop) => String(c.finished.find((f) => f.loop === loop)?.units ?? 0)),
-      ...specials.map((kind) => String(c.special?.[kind]?.done ?? 0)),
+      ...specials.map((kind) => String(c.testUnits?.[kind]?.done ?? 0)),
       ...columns.map((col) => cellOf(c.variables[col.variable], col, labels, null, numeric)),
     ]),
   };

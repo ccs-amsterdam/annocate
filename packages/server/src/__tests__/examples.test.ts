@@ -134,7 +134,7 @@ describe("studies from a recipe", () => {
     units,
     sets: [
       {
-        group: "condition_set",
+        column: "condition_set",
         sets: [
           { name: "x", units: ["a"] },
           { name: "y", units: ["b"] },
@@ -184,7 +184,7 @@ describe("studies from a recipe", () => {
     const specified = structuredClone(items);
     // (Its first child is the layout item)
     (specified[1] as { children: { variable: object }[] }).children[1].variable = { type: "confirm", question: "?" };
-    const published = await post({ ...recipe, design: { items: specified }, publish: true });
+    const published = await post({ ...recipe, design: { items: specified }, deploy: true });
     expect(published.status, await published.clone().text()).toBe(201);
     const { id } = StudyResponseSchema.parse(await published.json());
     expect(
@@ -193,7 +193,7 @@ describe("studies from a recipe", () => {
   });
 
   it("publishes only a valid codebook; a refused recipe leaves nothing", async () => {
-    const res = await post({ ...recipe, publish: true });
+    const res = await post({ ...recipe, deploy: true });
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({
       code: "recipe_invalid",
@@ -201,10 +201,10 @@ describe("studies from a recipe", () => {
     });
     expect((await post({ ...recipe, units: [...units, { id: "a", data: { text: "again" } }] })).status).toBe(400);
     expect(
-      (await post({ ...recipe, sets: [{ group: "part_set", sets: [{ name: "s", units: ["nope"] }] }] })).status,
+      (await post({ ...recipe, sets: [{ column: "part_set", sets: [{ name: "s", units: ["nope"] }] }] })).status,
     ).toBe(400);
     // Only the columns with a role
-    expect((await post({ ...recipe, sets: [{ group: "g", sets: [{ name: "s", units: ["a"] }] }] })).status).toBe(400);
+    expect((await post({ ...recipe, sets: [{ column: "g", sets: [{ name: "s", units: ["a"] }] }] })).status).toBe(400);
     expect(await studyCount()).toBe(0);
   });
 

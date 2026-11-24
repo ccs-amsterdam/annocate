@@ -22,7 +22,7 @@ const TYPE_ICON: Record<UnitFieldType, typeof Type> = {
   boolean: ToggleLeft,
   list: List,
   set: Tags,
-  unit_type: FlaskConical,
+  test_set: FlaskConical,
 };
 
 /** Drop handlers for a place: highlights while a field is over it. */

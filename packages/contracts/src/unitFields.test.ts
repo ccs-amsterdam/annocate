@@ -56,7 +56,7 @@ describe("unit fields", () => {
     const withSet = [
       ...fields,
       { name: "coder_set", type: "set" as const },
-      { name: "test_set", type: "unit_type" as const },
+      { name: "test_set", type: "test_set" as const },
     ];
     expect(checkUnitData({ a: 1, b: "x" }, withSet)).toBeNull();
     expect(checkUnitData({ a: 1, b: "x", coder_set: "anna" }, withSet)).toMatch(/is a column with a role/);
@@ -80,7 +80,7 @@ describe("unit fields", () => {
   });
 
   it("gives the columns with a role their type, and only them", () => {
-    expect(UnitsSpecSchema.safeParse({ fields: [{ name: "test_set", type: "unit_type" }] }).success).toBe(true);
+    expect(UnitsSpecSchema.safeParse({ fields: [{ name: "test_set", type: "test_set" }] }).success).toBe(true);
     expect(UnitsSpecSchema.safeParse({ fields: [{ name: "coder_set", type: "set" }] }).success).toBe(true);
     expect(UnitsSpecSchema.safeParse({ fields: [{ name: "test_set", type: "set" }] }).success).toBe(false);
     expect(UnitsSpecSchema.safeParse({ fields: [{ name: "coder_set", type: "text" }] }).success).toBe(false);

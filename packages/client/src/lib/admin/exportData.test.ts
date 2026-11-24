@@ -44,7 +44,7 @@ const coder = (id: number, extra: Partial<CoderProgress> = {}): CoderProgress =>
   lastActive: at,
   answers: 0,
   finished: [{ loop: "loop_1", title: "main", units: 1 }],
-  special: {},
+  testUnits: {},
   variables: {},
   ended: null,
   deletionRequest: null,

@@ -55,7 +55,7 @@ that isn't one of the coders 403 `email_not_allowed`.
 **New design versions.** `GET /session` returns the deployment's `version`,
 bumped on each deploy; the client sends it back on every request. Requests
 with an old version (all but `/session` and `/transfer`) get 409
-`codebook_changed` before anything is stored; the client reloads the session
+`design_changed` before anything is stored; the client reloads the session
 and continues (`docs/client.md` §2).
 
 Errors are `{ error, code? }`, with `code` from `CoderErrorCodeSchema`. See
@@ -110,7 +110,7 @@ login. Continuing one on a new device logs in there (`coder-identity.md`
 
 `:loop` is the loop's `id` in the design (`loop_1`, `loop_2`, ...; contracts
 `unitLoops`): the same loop in every version of the design. The same goes for
-`loop` in `POST /variables/unit` and `set` in the session's `progress`.
+`loop` in `POST /variables/unit` and in the session's `progress`.
 
 The server picks the coder's next `count` units (default 1, at most
 `MAX_UNIT_BATCH`, 20): their own units in the loop (fixed, or a

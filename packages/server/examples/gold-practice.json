@@ -10,7 +10,7 @@
     "See how each coder did on the test units in Results › Coders."
   ],
   "name": "Practice and gold units",
-  "publish": true,
+  "deploy": true,
   "units": [
     {
       "id": "practice-1",
@@ -205,7 +205,7 @@
   ],
   "sets": [
     {
-      "group": "test_set",
+      "column": "test_set",
       "sets": [
         {
           "name": "practice",

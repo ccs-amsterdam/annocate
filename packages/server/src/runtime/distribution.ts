@@ -86,8 +86,9 @@ export class UnitPool {
     this.unitSet = new Set(unitIds);
   }
 
-  get mode(): "fixed" | "dynamic" {
-    return this.rule ? "dynamic" : "fixed";
+  /** `shared`: the coders divide the units by `rule`; `own`: every coder codes all of them. */
+  get queue(): "own" | "shared" {
+    return this.rule ? "shared" : "own";
   }
 
   get size(): number {
@@ -258,7 +259,7 @@ export class UnitPool {
         : routedCoders.length > 0 && routedCoders.every((c) => coded.has(c));
       if (complete) completeUnits++;
     }
-    return { mode: this.mode, totalUnits: this.units.length, completeUnits, startedUnits, leasedUnits, codings };
+    return { queue: this.queue, totalUnits: this.units.length, completeUnits, startedUnits, leasedUnits, codings };
   }
 
   /**

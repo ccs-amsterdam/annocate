@@ -533,7 +533,7 @@ describe("resuming a session", () => {
               ],
             ),
             variables: opts.variables ?? { consent: { done: true, skip: false } },
-            progress: [{ set: "loop_1", doneUnitIds: [10, 11], totalUnits: 5 }],
+            progress: [{ loop: "loop_1", doneUnitIds: [10, 11], totalUnits: 5 }],
           }) as SessionResponse,
       ),
       getNextUnit: vi.fn(async () => {
@@ -715,7 +715,7 @@ describe("a new design version while coding", () => {
       async () =>
         ({
           ...session([unitLoop("loop", [unitVar("q1")])]),
-          progress: [{ set: "loop_1", doneUnitIds: [10], totalUnits: 2 }],
+          progress: [{ loop: "loop_1", doneUnitIds: [10], totalUnits: 2 }],
         }) as SessionResponse,
     );
     const server = makeFlakyServer({
@@ -724,7 +724,7 @@ describe("a new design version while coding", () => {
       getLoopUnit: vi.fn(async (_loop: string, id: number) => {
         if (refuse) {
           refuse = false;
-          throw Object.assign(new Error("A new version of the codebook was published"), { code: "codebook_changed" });
+          throw Object.assign(new Error("A new version of the codebook was published"), { code: "design_changed" });
         }
         return unit(id);
       }),
@@ -754,7 +754,7 @@ describe("a new design version while coding", () => {
           // Published meanwhile: the server refuses answers to the old version.
           rejectOnce = false;
           version = 2;
-          throw Object.assign(new Error("A new version of the codebook was published"), { code: "codebook_changed" });
+          throw Object.assign(new Error("A new version of the codebook was published"), { code: "design_changed" });
         }
         posted.push(variables);
       }),

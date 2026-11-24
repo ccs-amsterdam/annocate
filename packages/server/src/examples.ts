@@ -57,7 +57,7 @@ const ExampleFileSchema = RecipeSchema.extend({
       }),
     )
     .default([]),
-}).refine((e) => e.publish, "An example publishes its design");
+}).refine((e) => e.deploy, "An example deploys its design");
 type ExampleFile = z.infer<typeof ExampleFileSchema>;
 
 let catalogue: Map<string, ExampleFile> | null = null;
@@ -163,7 +163,7 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
       if (Object.keys(coder.session).length > 0 && !link)
         throw new Error(`examples/${id}.json: no link for example coder ${i + 1}'s session`);
       const linkId = link?.id ?? firstLink;
-      if (linkId === null) throw new Error(`examples/${id}.json: example coders need a deployed study (publish)`);
+      if (linkId === null) throw new Error(`examples/${id}.json: example coders need a deployed study (deploy)`);
       const [made] = await tx
         .insert(coderSessions)
         .values({

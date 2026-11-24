@@ -32,7 +32,7 @@ export function CodersTable({
   // Loops of the live design version (the same for every coder)
   const loops = (coders[0]?.finished ?? []).map(({ loop, title }) => ({ loop, title }));
   // The special sets the study has (overlap, gold, practice): units of them each coder finished
-  const specials = SPECIAL_KINDS.filter((kind) => coders.some((c) => c.special?.[kind]));
+  const specials = SPECIAL_KINDS.filter((kind) => coders.some((c) => c.testUnits?.[kind]));
   return (
     <div className="overflow-x-auto rounded-lg border">
       <table className="w-full text-sm">
@@ -95,7 +95,7 @@ function CoderSessionRow({
 }) {
   const named = coder.coder || coder.email;
   const special = (kind: SpecialKind) => {
-    const progress = coder.special?.[kind];
+    const progress = coder.testUnits?.[kind];
     return progress ? `${progress.done} of ${progress.total}` : "–";
   };
   return (

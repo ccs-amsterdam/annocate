@@ -141,7 +141,7 @@ export interface ResearcherApi {
   getUnitFields(): Promise<UnitField[]>;
   putUnitFields(fields: UnitField[]): Promise<UnitField[]>;
   /** A page of units with data: all units, or one set's (a value of a column with a role) in its order. */
-  listUnitPage(query: { offset: number; limit: number; group?: string; set?: string }): Promise<UnitPage>;
+  listUnitPage(query: { offset: number; limit: number; column?: string; set?: string }): Promise<UnitPage>;
   getUnit(id: number): Promise<UnitResponse>;
   createUnits(body: UnitsCreateBody): Promise<UnitResponse[]>;
   deleteUnit(id: number): Promise<void>;
@@ -515,10 +515,10 @@ export class HttpResearcherApi implements ResearcherApi {
     });
   }
 
-  async listUnitPage(query: { offset: number; limit: number; group?: string; set?: string }): Promise<UnitPage> {
+  async listUnitPage(query: { offset: number; limit: number; column?: string; set?: string }): Promise<UnitPage> {
     const params = new URLSearchParams({ offset: String(query.offset), limit: String(query.limit) });
-    if (query.group && query.set) {
-      params.set("group", query.group);
+    if (query.column && query.set) {
+      params.set("column", query.column);
       params.set("set", query.set);
     }
     return this.request(`${this.studyPath(researcherEndpoints.listUnitPage.path)}?${params}`);

@@ -7,7 +7,7 @@
     "Download the results: the headlines' answers are in annotations.csv, the survey answers in coders.csv; join them on session_id."
   ],
   "name": "Survey with annotations",
-  "publish": true,
+  "deploy": true,
   "units": [
     {
       "id": "headline-1",

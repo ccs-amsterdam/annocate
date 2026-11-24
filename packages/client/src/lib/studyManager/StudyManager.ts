@@ -329,7 +329,7 @@ export class StudyManager {
       // (A start that failed halfway may have entered a loop)
       this.leaveLoop();
       this.histories.clear();
-      this.progress = new Map(session.progress.map((p) => [p.set, p]));
+      this.progress = new Map(session.progress.map((p) => [p.loop, p]));
       this.session = session.session ?? {};
       if (session.deletionRequest) this.publish({ deletionRequested: true });
       this.publish({ login: session.login ?? null, canLogIn: session.canLogIn ?? false });
@@ -877,7 +877,7 @@ export class StudyManager {
   private reportSaveError(): void {
     const err = this.outbox.error;
     if (err === null || this.busy > 0 || this.snapshot.phase === "error") return;
-    if (errorCodeOf(err) === "codebook_changed") {
+    if (errorCodeOf(err) === "design_changed") {
       void this.guarded(() => this.reloadAfterPublish());
       return;
     }
@@ -948,7 +948,7 @@ export class StudyManager {
    * fast swipe, back pressed while an answer is handled): each starts from
    * where the one before left the coder. A failure leaves the coder where
    * they were, and shows as an error that `retry()` repeats; a new design
-   * version (`codebook_changed`) loads the session again. `afterError`
+   * version (`design_changed`) loads the session again. `afterError`
    * (`retry()`): the step the coder was on is shown again first.
    */
   private guarded(operation: () => Promise<void>, afterError = false): Promise<void> {
@@ -968,7 +968,7 @@ export class StudyManager {
       // The session already ended (gold checks): what was underway doesn't matter
       if (this.serverEnded) return;
       this.restore(before);
-      if (errorCodeOf(err) === "codebook_changed") await this.reloadAfterPublish();
+      if (errorCodeOf(err) === "design_changed") await this.reloadAfterPublish();
       else this.showError(err, this.failing);
       return;
     } finally {
@@ -1015,7 +1015,7 @@ export class StudyManager {
 
   /**
    * A new design version was deployed while the coder was working (the
-   * server answered `codebook_changed`): load the session again, as after a
+   * server answered `design_changed`): load the session again, as after a
    * reload, so the coder continues where they were under the new version.
    * Unsaved answers to units come back with their units, if they still fit;
    * unsaved coder-level answers are asked again.

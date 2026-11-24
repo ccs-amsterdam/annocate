@@ -10,7 +10,7 @@ export function isRefusal(err: unknown): boolean {
   return (err as { status?: unknown } | null)?.status === 400;
 }
 
-/** The server's machine-readable error code (e.g. `codebook_changed`), if any. */
+/** The server's machine-readable error code (e.g. `design_changed`), if any. */
 export function errorCodeOf(err: unknown): string | null {
   const code = (err as { code?: unknown } | null)?.code;
   return typeof code === "string" ? code : null;

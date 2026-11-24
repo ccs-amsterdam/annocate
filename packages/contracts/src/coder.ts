@@ -36,7 +36,7 @@ export const CoderProgressSchema = z.object({
    * docs/architecture.md §6.2) the coder finished, of how many (empty
    * before the coder reached a loop).
    */
-  special: z.partialRecord(
+  testUnits: z.partialRecord(
     z.enum(["overlap", "gold", "practice"]),
     z.object({ done: z.number().int().nonnegative(), total: z.number().int().nonnegative() }),
   ),

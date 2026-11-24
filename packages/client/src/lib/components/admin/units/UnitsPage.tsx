@@ -47,7 +47,7 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
   );
   const [panel, setPanel] = useState<"upload" | "coders" | RoleColumn | null>(null);
 
-  const pageQuery = useUnitPageQuery(client, { offset, limit: PAGE_SIZE, group: shownSet?.group, set: shownSet?.set });
+  const pageQuery = useUnitPageQuery(client, { offset, limit: PAGE_SIZE, column: shownSet?.group, set: shownSet?.set });
   const fields = fieldsQuery.data ?? [];
   const groups = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data]);
   const currentSet = shownSet

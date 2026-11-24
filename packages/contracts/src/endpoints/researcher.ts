@@ -172,7 +172,7 @@ export const researcherEndpoints = {
     request: UnitsSpecSchema,
     response: z.array(UnitFieldSchema),
   },
-  /** Query: `offset`, `limit` (max 200), and `group` (a column with a role) with `set` (that set's units, in its order). */
+  /** Query: `offset`, `limit` (max 200), and `column` (a column with a role) with `set` (that set's units, in its order). */
   listUnitPage: { method: "GET", path: "/study/:studyId/units/page", request: z.void(), response: UnitPageSchema },
   getUnit: { method: "GET", path: "/study/:studyId/units/:id", request: z.void(), response: UnitResponseSchema },
   createUnits: {

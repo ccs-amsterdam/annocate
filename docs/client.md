@@ -72,7 +72,7 @@ settings and transfer menus, and the loading, error and pick-a-name screens
   shows the ending (§4 "End items"). Reaching the end without one also calls
   `POST /end`.
 - **A new design version while coding.** The server answers 409
-  `codebook_changed` to requests under the old version. `StudyManager` then
+  `design_changed` to requests under the old version. `StudyManager` then
   reloads the session and returns to the unit the coder had open; unsaved unit
   answers are kept as far as they fit, coder-level ones asked again.
 - `start()` is idempotent (React StrictMode); `retry()` re-runs the last

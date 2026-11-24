@@ -8,7 +8,7 @@ const ICON: Record<UnitFieldType, typeof Type> = {
   boolean: ToggleLeft,
   list: List,
   set: Tags,
-  unit_type: FlaskConical,
+  test_set: FlaskConical,
 };
 
 /** A unit field's name with an icon for its type (a column with a role: its role). */

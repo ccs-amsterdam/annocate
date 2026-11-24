@@ -28,7 +28,7 @@ describe("a new study from a design file", () => {
     expect(read).toMatchObject({ items: 1, release: "0.1.0" });
     expect(read.recipe).toMatchObject({
       name: "Framing",
-      publish: false,
+      deploy: false,
       design: { note: "v3", units: { fields: [{ name: "text" }] } },
     });
     expect(RecipeSchema.safeParse(read.recipe).success).toBe(true);

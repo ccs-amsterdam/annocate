@@ -54,7 +54,7 @@ export function readDesignFile(bytes: Uint8Array): DesignImport {
       ...(design.units ? { units: design.units } : {}),
       items: design.items,
     },
-    publish: false,
+    deploy: false,
   } as RecipeInput;
   return { recipe, items: design.items.length, release };
 }

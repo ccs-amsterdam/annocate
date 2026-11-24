@@ -68,10 +68,10 @@ async function finishedPerLoop(db: Db, studyId: number): Promise<LoopFinished[]>
 
 /**
  * Per session, the deployed test units it finished, of how many (contracts
- * `CoderProgress.special`; docs/architecture.md §6): those of `test_set`.
+ * `CoderProgress.testUnits`; docs/architecture.md §6): those of `test_set`.
  * Counted for sessions that were routed in a loop.
  */
-async function specialProgress(db: Db, studyId: number, deployed: boolean) {
+async function testUnitProgress(db: Db, studyId: number, deployed: boolean) {
   const members = deployed
     ? await db
         .select({ name: sql<TestSetType>`${unitSets.name}`, unitId: unitSetMembers.unitId })
@@ -97,7 +97,7 @@ async function specialProgress(db: Db, studyId: number, deployed: boolean) {
   const done = new Map<number, Set<number>>();
   for (const r of doneRows) done.set(r.sessionId, (done.get(r.sessionId) ?? new Set()).add(r.unitId));
   return (sessionId: number, assignments: Record<string, unknown>) => {
-    const out: CoderProgress["special"] = {};
+    const out: CoderProgress["testUnits"] = {};
     if (Object.keys(assignments ?? {}).length === 0) return out;
     for (const kind of TEST_SET_TYPES) {
       const unitIds = new Set(members.filter((m) => m.name === kind).map((m) => m.unitId));
@@ -137,7 +137,7 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
   const deployedItems = deployed ? designVersionItems(deployed) : null;
   // Coders' emails only where the study requires sign-in: elsewhere coders sign in for themselves (other devices)
   const showEmails = deployedItems ? loginRequired(sessionItem(deployedItems)) : false;
-  const special = await specialProgress(db, studyId, deployedItems !== null);
+  const testUnits = await testUnitProgress(db, studyId, deployedItems !== null);
 
   return coders.map(({ coder: c, linkLabel }) => ({
     id: c.id,
@@ -149,7 +149,7 @@ export async function listCoderProgress(db: Db, studyId: number): Promise<CoderP
     lastActive: activity.get(c.id)?.lastActive ?? null,
     answers: activity.get(c.id)?.answers ?? 0,
     finished: finished.map(({ loop, title, perCoder }) => ({ loop, title, units: perCoder.get(c.id) ?? 0 })),
-    special: special(c.id, c.assignments),
+    testUnits: testUnits(c.id, c.assignments),
     variables: values.get(c.id) ?? {},
     ended: c.ended,
     deletionRequest: c.deletionRequest,

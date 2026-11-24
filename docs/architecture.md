@@ -98,7 +98,7 @@ units and sets (new unit versions, §8.4) or the deployed ones. The server
 bumps the deployment `version` when either changed and freezes the design
 version. Other changes runtimes must see (study settings, resets) bump
 `deployments.revision`. Coders' browsers send the version their codebook
-belongs to; an older one gets 409 `codebook_changed` and the client reloads
+belongs to; an older one gets 409 `design_changed` and the client reloads
 the session (`api/coder.md`).
 
 **Links** are made by deploying: one, or one per coder of the units'
@@ -342,7 +342,7 @@ gives a warning. Answers and "finished" are keyed by the loop's questions
 
 Sets are stored lists, not recipes, so adding units never changes an
 existing distribution. A role column is a unit field (`units.fields`; type
-`set`, `test_set` type `unit_type`), stored as a set group (`unit_sets`,
+`set`, `test_set` type `test_set`), stored as a set group (`unit_sets`,
 `unit_set_members`, draft and `live`). Each unit's cell names its values:
 `anna`, `anna;bob`, `anna#3` (with a position); `test_set` one of
 `overlap`, `practice`, `gold`. Sets aren't unit data: changing them makes no

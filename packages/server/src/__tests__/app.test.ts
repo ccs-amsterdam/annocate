@@ -304,7 +304,7 @@ describe("units: fields and pages", () => {
     const all = await page("offset=1&limit=2");
     expect(all.total).toBe(5);
     expect(all.units.map((u: { externalId: string }) => u.externalId)).toEqual(["u1", "u2"]);
-    const set = await page("group=part_set&set=set&offset=1&limit=5");
+    const set = await page("column=part_set&set=set&offset=1&limit=5");
     expect(set.total).toBe(3);
     expect(set.units.map((u: { externalId: string }) => u.externalId)).toEqual(["u0", "u2"]);
     expect(
@@ -363,7 +363,7 @@ describe("units: fields and pages", () => {
     expect(fields).toEqual(
       expect.arrayContaining([
         { name: "part_set", type: "set" },
-        { name: "test_set", type: "unit_type" },
+        { name: "test_set", type: "test_set" },
       ]),
     );
   });

@@ -105,7 +105,7 @@ test("practice headlines give feedback until right; two wrong gold headlines scr
   const mine = (await coders(request, study.id)).filter((c) => !examples.includes(c.id));
   expect(mine).toHaveLength(1);
   expect(mine[0].ended).toMatchObject({ item: "screened_out", outcome: "screenout" });
-  expect(mine[0].special).toMatchObject({
+  expect(mine[0].testUnits).toMatchObject({
     practice: { done: 4 },
     gold: { done: 2 },
   });

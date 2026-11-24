@@ -233,7 +233,7 @@ recipe (`contracts/src/recipe.ts`), as importing a design file writes one, like
   `test_set`);
 - `design` (`{ note?, public?, session?, units?, items }`): the first version, saved as a draft that
   may have issues (e.g. questions without an answer type yet). With
-  `publish: true` it is deployed, and must then pass validation. `units`:
+  `deploy: true` it is deployed, and must then pass validation. `units`:
   the unit fields, declared (types, descriptions, in their order), as a
   design file has them; the units' values must fit them, and
   fields only the units have are added after them.
@@ -415,9 +415,9 @@ design doesn't use (409 if it does): its values leave the draft units
 
 ### listUnitPage
 
-`GET /study/:studyId/units/page?offset=0&limit=50&group=&set=` → `UnitPageSchema`:
+`GET /study/:studyId/units/page?offset=0&limit=50&column=&set=` → `UnitPageSchema`:
 a page of units with their data (`limit` at most 200) and the `total`. All
-units by id, or with `group` and `set` that set's units in the set's order
+units by id, or with `column` and `set` that set's units in the set's order
 (404 for an unknown set).
 
 ### getUnit
@@ -467,7 +467,7 @@ draft's sets; `?live=true`: the deployed ones (what coders and links get).
 `PUT /study/:studyId/sets/:group` (`{ sets: [{ name, unitIds, ordered? }] }`)
 → `SetGroupResponseSchema`. Makes or replaces the whole column, and
 declares it in the draft as a unit field (type `set`; `test_set`:
-`unit_type`; 409 if a field of another type has the name). `group` must be
+`test_set`; 409 if a field of another type has the name). `:group` must be
 a role column (400 otherwise); `test_set` takes only `overlap`,
 `practice` and `gold`, one per unit (400). The unit ids in order: the order coders get
 them in, for loops in set order. Only the study's own units (400
@@ -529,7 +529,7 @@ coders who already started keep working.
 
 `GET /study/:studyId/coders` → `CoderProgressSchema[]`: per coder session
 (`id`) the link, the coder id (`coder`), started, last active, live answers, `finished`: per
-loop of the live design version (in design order) `{ loop, title, units }` (the loop's id, its label or else its id, the units finished), `special`: the deployed test units
+loop of the live design version (in design order) `{ loop, title, units }` (the loop's id, its label or else its id, the units finished), `testUnits`: the deployed test units
 (`test_set`: `overlap`, `gold`, `practice`) they finished, of how many (for
 the kinds the study has), `variables`: their coder-level values
 (answers outside unit loops, and experiments' conditions), `session`: their
@@ -652,8 +652,8 @@ contracts `DesignFileSchema`) is built from `getDesignVersion` and this.
 
 ### getDeploymentStatus
 
-`GET /study/:studyId/deployment/status` → `DeploymentStatusSchema`: per loop
-and set (`set`: `<role column>/<value>`, or `__all__` for all units) the units complete, started and leased, codings and coders,
+`GET /study/:studyId/deployment/status` → `DeploymentStatusSchema`: per loop (`loop`: its id, `title`)
+and set (`set`: `<role column>/<value>`, or `__all__` for all units; `queue`: `shared` when the coders divide the units, else `own`) the units complete, started and leased, codings and coders,
 computed on demand. 404 if not
 deployed.
 

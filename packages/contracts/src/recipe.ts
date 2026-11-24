@@ -23,14 +23,14 @@ export const RecipeSchema = z.object({
   sets: z
     .array(
       z.object({
-        group: RoleColumnSchema,
+        column: RoleColumnSchema,
         sets: z.array(
           z.object({ name: SetNameSchema, units: z.array(z.string()), ordered: z.boolean().default(false) }),
         ),
       }),
     )
     .default([]),
-  /** The first design version: a draft, or deployed with `publish` (then it must pass validation). */
+  /** The first design version: a draft, or deployed with `deploy` (then it must pass validation). */
   design: z.object({
     /** The design format the items are in, as in a design file. Left out: the current one. */
     formatVersion: WrittenDesignFormatSchema,
@@ -46,7 +46,7 @@ export const RecipeSchema = z.object({
     items: DraftItemsSchema,
   }),
   /** Deploy the design, so coders can start right away (examples). Default: a draft. */
-  publish: z.boolean().default(false),
+  deploy: z.boolean().default(false),
 });
 export type Recipe = z.infer<typeof RecipeSchema>;
 export type RecipeInput = z.input<typeof RecipeSchema>;

@@ -201,7 +201,7 @@ describe("coder flow", () => {
     expect((await dbAnnotations())[0].variables.sentiment.values).toEqual([{ value: "positive" }]);
 
     expect((await c.next())?.externalId).toBe("unit-2");
-    expect((await c.session()).progress).toEqual([{ set: "loop_1", doneUnitIds: [first!.id], totalUnits: 3 }]);
+    expect((await c.session()).progress).toEqual([{ loop: "loop_1", doneUnitIds: [first!.id], totalUnits: 3 }]);
   });
 
   it("rejects invalid annotations without writing them", async () => {
@@ -443,9 +443,10 @@ describe("shared queues", () => {
     expect(status.version).toBe(2);
     expect(status.sources).toEqual([
       expect.objectContaining({
-        loop: "main_loop",
+        loop: "loop_1",
+        title: "main_loop",
         set: "all",
-        mode: "dynamic",
+        queue: "shared",
         completeUnits: 1,
         leasedUnits: 1,
         codings: 3,
@@ -529,7 +530,7 @@ describe("shared queues", () => {
     const status = (await (
       await server.request("/api/study/1/deployment/status", { headers: adminHeaders })
     ).json()) as DeploymentStatus;
-    expect(status.sources.filter((s) => s.loop === "main_loop").map((s) => [s.set, s.coders])).toEqual([
+    expect(status.sources.filter((s) => s.title === "main_loop").map((s) => [s.set, s.coders])).toEqual([
       ["as loop_1", 2],
     ]);
   });
@@ -559,9 +560,9 @@ describe("shared queues", () => {
     const status = (await (
       await server.request("/api/study/1/deployment/status", { headers: adminHeaders })
     ).json()) as DeploymentStatus;
-    expect(status.sources.filter((s) => s.loop === "intro").map((s) => s.coders)).toEqual([]);
-    expect(status.sources.filter((s) => s.loop === "main_loop").map((s) => s.coders)).toEqual([2]);
-    expect((await a.session()).progress.map((p) => p.set)).toEqual(["loop_2", "loop_1"]);
+    expect(status.sources.filter((s) => s.title === "intro").map((s) => s.coders)).toEqual([]);
+    expect(status.sources.filter((s) => s.title === "main_loop").map((s) => s.coders)).toEqual([2]);
+    expect((await a.session()).progress.map((p) => p.loop)).toEqual(["loop_2", "loop_1"]);
   });
 
   it("a loop without an id is never given one: the draft saves with the issue, deploying is refused", async () => {
@@ -1662,9 +1663,9 @@ describe("practice and gold units", () => {
     // Results › Coders counts the test units each coder finished
     const coders = (await (await server.request("/api/study/1/coders", { headers: adminHeaders })).json()) as {
       ended: unknown;
-      special: object;
+      testUnits: object;
     }[];
-    expect(coders.find((x) => x.ended)?.special).toEqual({
+    expect(coders.find((x) => x.ended)?.testUnits).toEqual({
       practice: { done: 1, total: 1 },
       gold: { done: 2, total: 2 },
     });
@@ -2130,7 +2131,7 @@ describe("resuming and codebook updates", () => {
     await redeploy({ units: {} }); // v2: only `sentiment`
     const stale = await c.call("/variables/unit", { method: "POST", body: answers, ...withVersion(version) });
     expect(stale.status).toBe(409);
-    expect(await stale.json()).toMatchObject({ code: "codebook_changed" });
+    expect(await stale.json()).toMatchObject({ code: "design_changed" });
     expect(await dbAnnotations()).toHaveLength(0);
 
     // The session itself is always served, with the new version.
@@ -2329,7 +2330,7 @@ describe("finished units follow the current codebook", () => {
     // finished in main_loop, not in second_loop
     expect((await c.next("loop_2"))!.id).not.toBe(unit!.id);
     expect((await c.next("loop_1"))!.id).toBe(unit!.id);
-    const progress = Object.fromEntries((await c.session()).progress.map((p) => [p.set, p.doneUnitIds]));
+    const progress = Object.fromEntries((await c.session()).progress.map((p) => [p.loop, p.doneUnitIds]));
     expect(progress).toEqual({ loop_1: [], loop_2: [unit!.id] });
   });
 });
@@ -2725,7 +2726,7 @@ describe("columns with a role", () => {
     await createSet("anna", ["unit-1"], "coder_set");
     await createSet("gold", ["unit-2"], "test_set");
     expect(await draftFields()).toContainEqual({ name: "coder_set", type: "set" });
-    expect(await draftFields()).toContainEqual({ name: "test_set", type: "unit_type" });
+    expect(await draftFields()).toContainEqual({ name: "test_set", type: "test_set" });
     // An upload doesn't give set columns as data
     const { data } = await draftUnit((await unitByExternalId("unit-1")).id);
     const upload = await server.request("/api/study/1/units", {
@@ -3156,8 +3157,8 @@ describe("test units per coder", () => {
       await server.request("/api/study/1/coders", { headers: adminHeaders })
     ).json()) as CoderProgress[];
     const routed = coders.find((x) => x.finished.some((f) => f.title === "main_loop" && f.units === 3))!;
-    expect(routed.special).toEqual({ overlap: { done: 1, total: 1 }, gold: { done: 1, total: 1 } });
-    expect(coders.filter((x) => x.id !== routed.id).map((x) => x.special)).toEqual([{}]);
+    expect(routed.testUnits).toEqual({ overlap: { done: 1, total: 1 }, gold: { done: 1, total: 1 } });
+    expect(coders.filter((x) => x.id !== routed.id).map((x) => x.testUnits)).toEqual([{}]);
   });
 });
 

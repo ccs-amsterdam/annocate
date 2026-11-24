@@ -106,7 +106,7 @@ function scopeHeaders(scope: { linkSecret?: string }): Record<string, string> {
 export class HttpCoderApi implements CoderApi {
   /** Still to be sent: cleared once a request succeeded, so only one new session is made. */
   private newSession: boolean;
-  /** The deployment version of the loaded session, sent with every request (`codebook_changed` after a deploy). */
+  /** The deployment version of the loaded session, sent with every request (`design_changed` after a deploy). */
   private version: number | null = null;
 
   constructor(private config: HttpCoderApiConfig) {

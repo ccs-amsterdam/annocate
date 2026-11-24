@@ -11,7 +11,7 @@ const BATCH = 200;
 async function unitsOfSet(client: ResearcherApi, group: string, set: string): Promise<UnitResponse[]> {
   const all: UnitResponse[] = [];
   for (;;) {
-    const page = await client.listUnitPage({ offset: all.length, limit: BATCH, group, set });
+    const page = await client.listUnitPage({ offset: all.length, limit: BATCH, column: group, set });
     all.push(...page.units);
     if (page.units.length === 0 || all.length >= page.total) return all;
   }

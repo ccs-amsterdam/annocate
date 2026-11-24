@@ -76,7 +76,7 @@ function usePreviewUnit(client: ResearcherApi, loop: UnitLoopItem | undefined) {
   const [chosenSet, setChosenSet] = useState<string | null | undefined>(undefined);
   const setKey = chosenSet === undefined ? (sets.some((s) => s.key === loopSet) ? loopSet : null) : chosenSet;
   const chosen = sets.find((s) => s.key === setKey);
-  const page = useUnitPageQuery(client, { offset: index, limit: 1, group: chosen?.group, set: chosen?.set });
+  const page = useUnitPageQuery(client, { offset: index, limit: 1, column: chosen?.group, set: chosen?.set });
   return {
     index,
     setIndex,

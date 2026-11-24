@@ -51,13 +51,12 @@ Code says what the app says. Where it doesn't:
 | Identifier | Means |
 | --- | --- |
 | `CoderCodebook`, `toCoderItems`, the coder session's `codebook` | the **codebook** (what the coding client gets) |
-| `codebook_changed` (coder API error) | the coder's **codebook** changed: a new design version was deployed |
+| `design_changed` (coder API error) | the coder's **codebook** changed: a new design version was deployed |
 | `codebookMarkdown`, `codebook.md` (the editor's Export) | the **codebook** as a document |
 | client `codebook/` | the coding client's runtime (templates, conditions, expressions, the item tree) |
 | `putDeployment` (`PUT /deployment`) | **deploy** |
 | `variable` (a question's answer type; `VariableValue`) | a question's **answer type**; an **answer** |
 | `RandomConditionFields`, help topic `random-condition` | an **experiment**'s settings and help (its conditions, drawn at random or balanced) |
 | `condition.ts`, `ConditionEditor`, `conditionRules` | a branch's or unit loop's (or `::: if` block's) **condition**: a script, or simple rules |
-| set groups (`unit_sets`, the sets endpoints' `group`, the recipe's `sets[].group`) | **role columns** |
+| set groups (`unit_sets`, the sets endpoints' path `:group`) | **role columns** (`column` in the recipe's `sets[]` and the units page query) |
 | `invite.mode: "crowd"` | **Crowd (one link)** |
-| `unit_type` (a field type) | the type of `test_set` |

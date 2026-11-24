@@ -54,7 +54,7 @@ export interface FakeCoderServer extends CoderApi {
   /**
    * A new design version: the session's codebook becomes `items`, and the
    * next request (other than loading the session) answers 409
-   * `codebook_changed` without storing anything, as the server does.
+   * `design_changed` without storing anything, as the server does.
    */
   redeploy(items: TopLevelItem[]): void;
   /** The next request whose call name starts with `call` (e.g. `endSession`) fails, storing nothing. */
@@ -87,7 +87,7 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
     }
     if (!stale) return;
     stale = false;
-    throw new CoderApiError("A new version of the study was deployed", 409, "codebook_changed");
+    throw new CoderApiError("A new version of the study was deployed", 409, "design_changed");
   };
   /** Refuses answers the server refuses (400): unknown questions, values that don't fit. */
   const validate = (types: Map<string, AnyVariableType>, variables: Record<string, VariableValue>) => {
@@ -136,7 +136,7 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
           items,
         } as unknown as SessionResponse["codebook"],
         progress: loops.map((key) => ({
-          set: key,
+          loop: key,
           doneUnitIds: [...(server.done.get(key) ?? [])],
           totalUnits: (units[key] ?? []).length,
         })) as SessionResponse["progress"],

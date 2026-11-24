@@ -108,16 +108,16 @@ async function saveRecipeSets(
     if (found === undefined) throw invalid(`No unit '${id}'`);
     return found;
   };
-  const groups = recipe.sets.map((g) => g.group);
+  const groups = recipe.sets.map((g) => g.column);
   const twice = groups.find((g, i) => groups.indexOf(g) !== i);
   if (twice !== undefined) throw invalid(`Column '${twice}' is defined twice`);
   for (const group of recipe.sets) {
-    if (dataFields.some((f) => f.name === group.group))
-      throw invalid(`'${group.group}' is a field of the units and a column with a role`);
+    if (dataFields.some((f) => f.name === group.column))
+      throw invalid(`'${group.column}' is a field of the units and a column with a role`);
     await putSetGroup(
       tx,
       studyId,
-      group.group,
+      group.column,
       group.sets.map((set) => ({ name: set.name, unitIds: set.units.map(unitId), ordered: set.ordered })),
       { declare: false },
     );
@@ -138,7 +138,7 @@ async function saveRecipeSets(
  */
 export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: RecipeOptions): Promise<MadeStudy> {
   // A deployed design version must pass validation; a draft may have issues (questions to specify).
-  if (recipe.publish) {
+  if (recipe.deploy) {
     const parsed = DesignItemsSchema.safeParse(designItems(recipe.design));
     if (!parsed.success)
       throw invalid(`The design can't be deployed: ${parsed.error.issues.map((i) => i.message).join("; ")}`);
@@ -181,7 +181,7 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
     .returning({ id: designVersions.id });
   const designVersionId = designVersion!.id;
   let firstLink: number | null = null;
-  if (recipe.publish) {
+  if (recipe.deploy) {
     await putDeployment(tx, study.id, { designVersionId, active: true, units: true });
     const checks = await assignmentChecks(tx, study.id, designItems(recipe.design) as DesignItem[], true);
     if (checks.errors.length > 0) throw invalid(checks.errors.join(" "));

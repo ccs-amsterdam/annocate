@@ -567,7 +567,7 @@ export class DeploymentRuntime {
         const expected = this.expectedUnits(route);
         const elsewhere = done.filter((c) => !units.has(c.unitId)).length;
         return {
-          set: info.key,
+          loop: info.key,
           doneUnitIds: done.map((c) => c.unitId),
           totalUnits: expected === null ? null : expected + elsewhere,
         };
@@ -1326,7 +1326,8 @@ export class DeploymentRuntime {
       }
       for (const { pool, coders } of pools) {
         sources.push({
-          loop: loopTitle(info.loop),
+          loop,
+          title: loopTitle(info.loop),
           set: pool.set,
           ...pool.status(now, coders),
           coders: coders.length,

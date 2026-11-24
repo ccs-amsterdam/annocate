@@ -8,9 +8,9 @@ import { VariableValueSchema } from "./variableValue.js";
  * in the order they were coded. Which unit comes next is decided by the study
  * server (`GET /loop/:loop/next`).
  */
-export const SetProgressSchema = z.object({
+export const LoopProgressSchema = z.object({
   /** The unit loop's id (`unitLoops`). */
-  set: z.string(),
+  loop: z.string(),
   doneUnitIds: z.array(IdSchema),
   /**
    * How many units this coder will get in the loop, if known: the size of
@@ -114,11 +114,11 @@ export const SessionResponseSchema = z.object({
   /**
    * The deployment's version: bumped on every deploy. The client sends it
    * back as `x-annotinder-version`; after a deploy the server answers
-   * 409 `codebook_changed`, and the client loads the session again
+   * 409 `design_changed`, and the client loads the session again
    * (docs/api/coder.md).
    */
   version: z.number().int().positive(),
-  progress: z.array(SetProgressSchema),
+  progress: z.array(LoopProgressSchema),
   /**
    * The coder's coder-level variables so far, including drawn random
    * conditions (experiments), so conditions in the client can use them.
@@ -184,7 +184,7 @@ export const CoderErrorCodeSchema = z.enum([
   /** Transfer token unknown, used or expired. */
   "transfer_invalid",
   /** A new design version was deployed since the session was loaded: load it again. */
-  "codebook_changed",
+  "design_changed",
   /** The session has no units in this loop: it started before `coder_set` had its values. */
   "not_assigned",
   /** The coder reached an `end` item or quit: no more units or answers. */

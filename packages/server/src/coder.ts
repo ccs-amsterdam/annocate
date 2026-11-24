@@ -121,7 +121,7 @@ export function coderApi(server: Server): Hono {
     const version = c.req.header(VERSION_HEADER);
     const exempt = c.req.path.endsWith("/session") || c.req.path.endsWith("/transfer");
     if (version !== undefined && version !== String(runtime.version) && !exempt) {
-      throw new HttpError(409, "A new version of the study was deployed", "codebook_changed");
+      throw new HttpError(409, "A new version of the study was deployed", "design_changed");
     }
 
     // The device's session in this deployment (docs/coder-identity.md §4):

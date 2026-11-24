@@ -12,7 +12,7 @@ import { TEST_SET, isRoleColumn } from "./sets.js";
  *
  * The columns with a role (sets.ts, docs/plans/unit-sets.md) have a type
  * of their own: `set` for `coder_set`, `condition_set` and `part_set`
- * (cells name the sets a unit is in: `anna`, `anna;bob`), `unit_type` for
+ * (cells name the sets a unit is in: `anna`, `anna;bob`), `test_set` for
  * `test_set` (`overlap`, `practice` or `gold`, or empty). Their cells are
  * stored as sets (sets.ts), not in the units' data.
  *
@@ -22,7 +22,7 @@ import { TEST_SET, isRoleColumn } from "./sets.js";
  * a cell is a JSON list (`["EU", "NATO"]`, `[{"label": "EU", "color":
  * "blue"}]`) or, in a column uploaded as a list, words with `;` between them.
  */
-export const UnitFieldTypeSchema = z.enum(["text", "number", "boolean", "list", "set", "unit_type"]);
+export const UnitFieldTypeSchema = z.enum(["text", "number", "boolean", "list", "set", "test_set"]);
 export type UnitFieldType = z.infer<typeof UnitFieldTypeSchema>;
 
 export const UnitFieldSchema = z.object({
@@ -182,10 +182,10 @@ export function addedFields(units: UnitData[], fields: UnitField[]): { fields: U
 }
 
 /** Whether a field type is a role column's: stored as sets, not data. */
-export const isSetType = (type: UnitFieldType) => type === "set" || type === "unit_type";
+export const isSetType = (type: UnitFieldType) => type === "set" || type === "test_set";
 
-/** The type a role column has (`unit_type` for `test_set`, else `set`). */
-export const roleColumnType = (name: string): UnitFieldType => (name === TEST_SET ? "unit_type" : "set");
+/** The type a role column has (`test_set` for `test_set`, else `set`). */
+export const roleColumnType = (name: string): UnitFieldType => (name === TEST_SET ? "test_set" : "set");
 
 /** The role columns among the unit fields (stored as sets, not data). */
 export const setColumns = (fields: readonly UnitField[]) => fields.filter((f) => isSetType(f.type)).map((f) => f.name);
