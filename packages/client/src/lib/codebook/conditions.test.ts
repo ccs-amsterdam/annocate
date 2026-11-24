@@ -16,6 +16,10 @@ const questions = new Map<string, AnyVariableType>([
     { type: "scale", question: "?", items: [{ name: "x" }, { name: "y" }], options: [{ value: 1 }, { value: 5 }] },
   ],
   ["later", { type: "nominal", question: "?", options: [{ value: "a" }] }],
+  [
+    "income",
+    { type: "numeric", question: "?", specials: [{ kind: "dont_know" }, { kind: "not_applicable", value: -1 }] },
+  ],
 ]);
 const scope = buildScope(
   questions,
@@ -25,6 +29,7 @@ const scope = buildScope(
     edu: { done: true, skip: false, values: [{ value: 2 }] },
     age: { done: true, skip: false, values: [{ value: 30 }] },
     battery: { done: true, skip: false, values: [{ item: "x", value: 5 }] },
+    income: { done: true, skip: false, values: [{ special: "dont_know" }] },
   },
   { count: 20, source: "nyt" },
 );
@@ -58,6 +63,10 @@ describe("evaluateCondition", () => {
       ["topics", "count", []],
       ["battery.items.x", "gte", [5]],
       ["battery.items.y", "lt", [5]],
+      // A special answer: matched by its kind
+      ["income", "is", ["dont_know"]],
+      ["income", "is", ["not_applicable"]],
+      ["income", "gt", [0]],
     ];
     for (const [target, method, args] of calls) {
       const [q, , item] = target.split(".");
@@ -65,6 +74,13 @@ describe("evaluateCondition", () => {
       const script = `$var.${target}.${method}(${args.map((a) => JSON.stringify(a)).join(", ")})`;
       expect([script, await evaluateScript(script, scope)]).toEqual([script, applyHelper(entry, method, args)]);
     }
+  });
+
+  it("has $var.q.special: the special answer given, else null", async () => {
+    expect(scope.$var.income).toMatchObject({ value: null, label: "Don't know", special: "dont_know" });
+    expect(await evaluateScript(`$var.income.special === "dont_know"`, scope)).toBe(true);
+    expect(await evaluateCondition({ script: `$var.income.is("dont_know")` }, scope)).toBe(true);
+    expect("special" in scope.$var.role).toBe(false);
   });
 
   it("has no bare-name globals", async () => {

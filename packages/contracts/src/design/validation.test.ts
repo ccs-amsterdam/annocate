@@ -428,7 +428,7 @@ describe("reference validation", () => {
       messages([age, questionVar("q", { ...confirmVariable, question: "Costs $5. {{ $sesion.x + $var.age.foo }}" })]),
     ).toEqual([
       "$sesion is unknown: values are $var, $unit and $session",
-      "$var.age.foo: unknown property; use .value, .label, .values, .labels, .texts, .answered, .items or a method",
+      "$var.age.foo: unknown property; use .value, .label, .values, .labels, .texts, .special, .answered, .items or a method",
     ]);
     expect(messages([topBranch("c", [questionVar("q")], { script: "$vars.age > 1 && '$x' !== ''" })])).toEqual([
       "$vars is unknown: values are $var, $unit and $session",
@@ -518,7 +518,7 @@ describe("reference validation", () => {
 
   it("flags unknown properties", () => {
     expect(messages([role, topBranch("x", [questionVar("q")], { script: "$var.role.code === 'a'" })])).toEqual([
-      "$var.role.code: unknown property; use .value, .label, .values, .labels, .texts, .answered, .items or a method",
+      "$var.role.code: unknown property; use .value, .label, .values, .labels, .texts, .special, .answered, .items or a method",
     ]);
   });
 

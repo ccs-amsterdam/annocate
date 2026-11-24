@@ -49,7 +49,7 @@ describe("extractReferences", () => {
     expect(errors("$unit.x['y']")).toEqual(["Names in $unit.x[...] must be literal, not computed"]);
     expect(errors("$var.q.items")).toHaveLength(1);
     expect(errors("$var.q.code")).toEqual([
-      "$var.q.code: unknown property; use .value, .label, .values, .labels, .texts, .answered, .items or a method",
+      "$var.q.code: unknown property; use .value, .label, .values, .labels, .texts, .special, .answered, .items or a method",
     ]);
   });
 

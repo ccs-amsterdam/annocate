@@ -72,6 +72,10 @@ condition are listed, and values come from their options.
 
 Every question also has **is answered** / **is not answered**.
 
+A question's [special answers](nominal-and-ordinal.md#special-answers)
+(don't know, not applicable) are among the values of **is** and **has**
+(a number with special answers gets **is** / **is not** for them).
+
 > "Not" rules (_is not_, _is none of_, _≠_) also hold when the question
 > wasn't answered. If that matters, add _is answered_ with **All rules
 > must hold**.
@@ -111,6 +115,9 @@ click one to add it. See also [Scripts](scripts.md).
 - Ordered values are numbers: `is(2)`, not `is("2")`.
 - Helpers are false while unanswered (`count()` is 0).
 - A scale item: `$var.trust.items.media.gte(4)`.
+- A special answer by its kind: `$var.age.is("dont_know")`,
+  `$var.topics.has("not_applicable")`, or `$var.age.special` (the kind
+  given, else null).
 
 ## Questions a condition skips
 

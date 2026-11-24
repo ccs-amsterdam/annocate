@@ -70,7 +70,7 @@ describe("special answers", () => {
     const scope = buildScope(new Map([["q", variable]]), {
       q: { done: true, skip: false, values: [{ special: "dont_know" }] },
     });
-    expect(scope.$var.q).toEqual({ answered: true, values: [], labels: ["Don't know"] });
+    expect(scope.$var.q).toEqual({ answered: true, values: [], labels: ["Don't know"], special: "dont_know" });
   });
 });
 

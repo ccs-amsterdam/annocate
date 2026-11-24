@@ -1,5 +1,5 @@
 import type { ValueAnswer, VariableValue } from "../variableValue.js";
-import { optionLabel, specialLabel, type OptionValue } from "./options.js";
+import { optionLabel, specialLabel, type OptionValue, type SpecialKind } from "./options.js";
 import type { AnyVariableType } from "./variableTypes.js";
 
 // One reference syntax for scripts, templates, question texts and conditions
@@ -10,6 +10,7 @@ import type { AnyVariableType } from "./variableTypes.js";
 //   $var.<q>.values / .labels           several answers ([] when unanswered)
 //   $var.<q>.texts                      the selected texts (span questions)
 //   $var.<q>.items.<item>.value/.label  one item of a scale
+//   $var.<q>.special                    the special answer given (dont_know, not_applicable), else null
 //   $var.<q>.answered                   true if answered and not skipped
 //   $var.<q>.is("x"), .gte(3), ...      helper methods (HELPER_METHODS)
 //   $session.<name>                     the coder id (`coder`), `source` and the
@@ -26,9 +27,9 @@ export const OUTPUT_SUFFIXES = ["text", "markdown", "image", "html"] as const;
 export type OutputSuffix = (typeof OUTPUT_SUFFIXES)[number];
 
 /** `$var.<q>` properties. */
-export const VAR_PROPERTIES = ["value", "label", "values", "labels", "texts", "answered", "items"] as const;
+export const VAR_PROPERTIES = ["value", "label", "values", "labels", "texts", "special", "answered", "items"] as const;
 /** Properties of a scale item, `$var.<q>.items.<item>`. */
-export const ITEM_PROPERTIES = ["value", "label"] as const;
+export const ITEM_PROPERTIES = ["value", "label", "special"] as const;
 
 /** Helper methods on a question (or a scale item), e.g. `$var.topics.has("sports")`. */
 export const HELPER_METHODS = [
@@ -496,10 +497,10 @@ export function questionKind(variable: AnyVariableType): QuestionKind {
 
 /** The properties of `$var.<q>` per kind (besides `answered`). */
 const KIND_PROPERTIES: Record<QuestionKind, readonly string[]> = {
-  single: ["value", "label"],
-  ordinal: ["value", "label"],
-  numeric: ["value", "label"],
-  multiple: ["values", "labels"],
+  single: ["value", "label", "special"],
+  ordinal: ["value", "label", "special"],
+  numeric: ["value", "label", "special"],
+  multiple: ["values", "labels", "special"],
   span: ["values", "labels", "texts"],
   relation: ["values", "labels"],
   scale: ["values", "items"],
@@ -511,7 +512,7 @@ const KIND_PROPERTIES: Record<QuestionKind, readonly string[]> = {
 export const KIND_METHODS: Record<QuestionKind, readonly HelperMethod[]> = {
   single: ["is", "isAny"],
   ordinal: ["is", "isAny", "gt", "gte", "lt", "lte"],
-  numeric: ["eq", "gt", "gte", "lt", "lte", "between"],
+  numeric: ["eq", "is", "gt", "gte", "lt", "lte", "between"],
   multiple: ["has", "hasAny", "hasAll", "count"],
   span: ["has", "count"],
   relation: ["has", "count"],
@@ -519,6 +520,14 @@ export const KIND_METHODS: Record<QuestionKind, readonly HelperMethod[]> = {
   confirm: [],
   text: [],
 };
+
+/**
+ * The kinds of a question's special answers (`$var.q.special`; helper
+ * methods take them as values: `.is("dont_know")`).
+ */
+export function specialKinds(variable: AnyVariableType): SpecialKind[] {
+  return "specials" in variable ? (variable.specials ?? []).map((s) => s.kind) : [];
+}
 
 /** The option values of a question (for checking arguments and rule values); undefined for numeric and confirm. */
 export function questionValues(variable: AnyVariableType): OptionValue[] | undefined {
@@ -651,6 +660,7 @@ function varShape(name: string, variable: AnyVariableType, rest: string[], call:
     if (!variable.items.some((i) => i.name === item))
       return { ok: false, reason: `${label}: '${item}' is not an item of '${name}'` };
     if (call) return methodShape(`"${name} › ${item}"`, "a scale item", itemProperty, "ordinal", values);
+    if (itemProperty === "special") return specialShape(label, name, variable);
     return {
       ok: true,
       array: false,
@@ -660,8 +670,10 @@ function varShape(name: string, variable: AnyVariableType, rest: string[], call:
   }
   if (call) return methodShape(`"${name}"`, describeQuestion(variable), property, kind, values);
   if (property === "answered") return { ok: true, array: false, type: "boolean" };
+  if (property === "special" && KIND_PROPERTIES[kind].includes(property)) return specialShape(label, name, variable);
   if (!KIND_PROPERTIES[kind].includes(property)) {
-    const available = [...KIND_PROPERTIES[kind].map((p) => (p === "items" ? ".items.<item>" : `.${p}`)), ".answered"];
+    const shown = KIND_PROPERTIES[kind].filter((p) => p !== "special" || specialKinds(variable).length > 0);
+    const available = [...shown.map((p) => (p === "items" ? ".items.<item>" : `.${p}`)), ".answered"];
     return {
       ok: false,
       reason: `${label}: "${name}" is ${describeQuestion(variable)}, which has no .${property}; use ${orList(available)}`,
@@ -670,6 +682,13 @@ function varShape(name: string, variable: AnyVariableType, rest: string[], call:
   const array = property === "values" || property === "labels" || property === "texts";
   if (property === "value" || property === "values") return { ok: true, array, type: valueType(kind), values };
   return { ok: true, array, type: "string" };
+}
+
+/** `$var.q.special`: the kind of special answer given (null: none), for questions that have special answers. */
+function specialShape(label: string, name: string, variable: AnyVariableType): ReferenceShape {
+  const kinds = specialKinds(variable);
+  if (kinds.length === 0) return { ok: false, reason: `${label}: "${name}" has no special answers` };
+  return { ok: true, array: false, type: "string", values: kinds };
 }
 
 export interface ReferenceOption {
@@ -688,10 +707,11 @@ export function referenceOptions(questions: Iterable<{ name: string; variable: A
   for (const { name, variable } of questions) {
     const lookup = new Map([[name, variable]]);
     const kind = questionKind(variable);
+    const has = (p: string) => p !== "special" || specialKinds(variable).length > 0;
     const paths = [
-      ...KIND_PROPERTIES[kind].filter((p) => p !== "items").map((p) => [p]),
+      ...KIND_PROPERTIES[kind].filter((p) => p !== "items" && has(p)).map((p) => [p]),
       ...(variable.type === "scale"
-        ? variable.items.flatMap((item) => ITEM_PROPERTIES.map((p) => ["items", item.name, p]))
+        ? variable.items.flatMap((item) => ITEM_PROPERTIES.filter(has).map((p) => ["items", item.name, p]))
         : []),
       ["answered"],
     ];
@@ -710,6 +730,7 @@ export function referenceOptions(questions: Iterable<{ name: string; variable: A
 export interface ItemScopeEntry {
   value: number | null;
   label: string | null;
+  special?: SpecialKind | null;
 }
 
 /** A question in the scope: the properties its kind has (see KIND_PROPERTIES). */
@@ -720,6 +741,8 @@ export interface VarScopeEntry {
   values?: OptionValue[];
   labels?: string[];
   texts?: string[];
+  /** The special answer given (`dont_know`, `not_applicable`), else null; questions with special answers only. */
+  special?: SpecialKind | null;
   items?: Record<string, ItemScopeEntry>;
 }
 
@@ -785,6 +808,9 @@ function varEntry(variable: AnyVariableType, answer: VariableValue | undefined):
   const labelOf = (value: OptionValue) => valueLabel(variable, value);
   // A special answer: its code (or null) and its label
   const specials = "specials" in variable ? (variable.specials ?? []) : [];
+  // `special`: only on questions that have special answers
+  const withSpecial = <T extends object>(entry: T, answers: ValueAnswer[]): T =>
+    specials.length ? { ...entry, special: answers.find((a) => a.special)?.special ?? null } : entry;
   const answerLabel = (a: ValueAnswer): string | null => {
     const special = a.special && specials.find((s) => s.kind === a.special);
     if (special) return specialLabel(special);
@@ -813,22 +839,28 @@ function varEntry(variable: AnyVariableType, answer: VariableValue | undefined):
       for (const item of variable.type === "scale" ? variable.items : []) {
         const answer = v?.values?.find((a) => a.item === item.name);
         const value = typeof answer?.value === "number" ? answer.value : null;
-        items[item.name] = { value, label: answer ? answerLabel(answer) : null };
+        items[item.name] = withSpecial({ value, label: answer ? answerLabel(answer) : null }, answer ? [answer] : []);
         if (value !== null) values.push(value);
       }
       return { answered, values, items };
     }
     case "multiple": {
       const answers = (v?.values ?? []).filter((a) => a.item === undefined);
-      return {
-        answered,
-        values: answers.flatMap((a) => (a.value === undefined ? [] : [a.value])),
-        labels: answers.flatMap((a) => answerLabel(a) ?? []),
-      };
+      return withSpecial(
+        {
+          answered,
+          values: answers.flatMap((a) => (a.value === undefined ? [] : [a.value])),
+          labels: answers.flatMap((a) => answerLabel(a) ?? []),
+        },
+        answers,
+      );
     }
     default: {
       const answer = v?.values?.find((a) => a.item === undefined);
-      return { answered, value: answer?.value ?? null, label: answer ? answerLabel(answer) : null };
+      return withSpecial(
+        { answered, value: answer?.value ?? null, label: answer ? answerLabel(answer) : null },
+        answer ? [answer] : [],
+      );
     }
   }
 }

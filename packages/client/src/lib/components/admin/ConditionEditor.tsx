@@ -178,9 +178,11 @@ function RuleRowEditor({
   onRemove: () => void;
 }) {
   const target = findTarget(targets, row);
-  const operators = target ? ruleOperators(target.kind) : [];
+  const operators = target ? ruleOperators(target) : [];
   const operator = operators.find((o) => o.key === row.operator);
-  const options = target?.options ?? [];
+  // Special answers (don't know) are values for equality, not for comparing order
+  const ordered = operator?.method && ["gt", "gte", "lt", "lte"].includes(operator.method);
+  const options = [...(target?.options ?? []), ...(ordered ? [] : (target?.specials ?? []))];
   const problems = rowProblems(row, targets);
   const isOption = (value: OptionValue) => options.some((o) => o.value === value);
   const invalid = "border-destructive text-destructive";

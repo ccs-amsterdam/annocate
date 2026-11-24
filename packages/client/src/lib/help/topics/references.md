@@ -52,6 +52,11 @@ unknown field gets a warning (you may upload units later).
 | Scale                                                       | `.values`, `.items.<item>.value`, `.items.<item>.label` |
 | Confirm                                                     | only `.answered`                                        |
 
+A question with [special answers](nominal-and-ordinal.md#special-answers)
+also has `.special` (a scale item too: `.items.<item>.special`): the one
+given, `"dont_know"` or `"not_applicable"`, else null. Its `.value` is the
+special answer's code, or null without one; `.label` its label.
+
 Every question has `.answered`: false if not answered or skipped by a
 [condition](conditions.md). Using a property a question doesn't have is an
 error that lists the ones it has.

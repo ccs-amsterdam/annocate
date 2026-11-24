@@ -28,6 +28,7 @@ import {
   METHOD_TEXT,
   describeQuestion,
   questionValues,
+  specialKinds,
   extractReferences,
   parseTemplate,
   referenceShape,
@@ -877,10 +878,14 @@ export function callArgumentProblems(
     const n = min === max ? `${min}` : `at least ${min}`;
     return [`"${METHOD_TEXT[call.method]}" needs ${n} value${max > 1 && min > 1 ? "s" : ""}`];
   }
+  // A special answer's kind is a value too: `.is("dont_know")`
+  const specials = specialKinds(variable);
+  const isSpecial = (arg: unknown) => !ORDER_METHODS.has(call.method) && specials.includes(arg as never);
   if (variable.type === "numeric") {
     const range =
       variable.min !== undefined && variable.max !== undefined ? ` (${variable.min} to ${variable.max})` : "";
     return call.args.flatMap((arg) => {
+      if (isSpecial(arg)) return [];
       if (typeof arg !== "number") return [`${JSON.stringify(arg)} is not a number, and ${subject} is numeric`];
       if ((variable.min !== undefined && arg < variable.min) || (variable.max !== undefined && arg > variable.max)) {
         return [`${arg} is outside the range of ${subject}${range}`];
@@ -893,10 +898,11 @@ export function callArgumentProblems(
   return (
     call.args
       // `is(2)` matches the value "2"; order methods compare numbers only
+      .filter((arg) => !isSpecial(arg))
       .filter((arg) => !values.some((v) => (ORDER_METHODS.has(call.method) ? v === arg : sameValue(v, arg))))
       .map(
         (arg) =>
-          `${JSON.stringify(arg)} is not an answer option of ${subject} (${values.map((v) => JSON.stringify(v)).join(", ")})`,
+          `${JSON.stringify(arg)} is not an answer option of ${subject} (${[...values, ...specials].map((v) => JSON.stringify(v)).join(", ")})`,
       )
   );
 }

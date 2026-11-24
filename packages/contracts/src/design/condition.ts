@@ -24,6 +24,8 @@ export type Condition = z.infer<typeof ConditionSchema>;
 export interface HelperTarget {
   value?: OptionValue | null;
   values?: OptionValue[];
+  /** The special answer given: `is`, `has` and the like also match its kind (`.is("dont_know")`). */
+  special?: string | null;
 }
 
 /**
@@ -33,14 +35,17 @@ export interface HelperTarget {
 export function applyHelper(target: HelperTarget | undefined, method: HelperMethod, args: unknown[]): boolean | number {
   const value = target?.value ?? null;
   const values = target?.values ?? [];
+  const special = target?.special ?? null;
+  const matches = (x: unknown) => (value !== null && sameValue(value, x)) || (special !== null && special === x);
+  const holds = (x: unknown) => values.some((v) => sameValue(v, x)) || (special !== null && special === x);
   const n = typeof value === "number" ? value : null;
   const [a, b] = args;
   switch (method) {
     case "is":
     case "eq":
-      return value !== null && sameValue(value, a);
+      return matches(a);
     case "isAny":
-      return value !== null && args.some((x) => sameValue(value, x));
+      return args.some(matches);
     case "gt":
       return n !== null && typeof a === "number" && n > a;
     case "gte":
@@ -52,11 +57,11 @@ export function applyHelper(target: HelperTarget | undefined, method: HelperMeth
     case "between":
       return n !== null && typeof a === "number" && typeof b === "number" && n >= a && n <= b;
     case "has":
-      return values.some((v) => sameValue(v, a));
+      return holds(a);
     case "hasAny":
-      return args.some((x) => values.some((v) => sameValue(v, x)));
+      return args.some(holds);
     case "hasAll":
-      return args.length > 0 && args.every((x) => values.some((v) => sameValue(v, x)));
+      return args.length > 0 && args.every(holds);
     case "count":
       return values.length;
   }
@@ -71,8 +76,9 @@ export const HELPER_PRELUDE = `(($var) => {
   const same = (a, b) => a === b || (typeof a !== typeof b && (typeof a === "number" || typeof b === "number") && String(a) === String(b));
   const one = (t) => {
     const n = () => (typeof t.value === "number" ? t.value : null);
-    t.is = t.eq = (v) => t.value !== null && same(t.value, v);
-    t.isAny = (...vs) => t.value !== null && vs.some((v) => same(t.value, v));
+    const match = (v) => (t.value !== null && same(t.value, v)) || (t.special != null && t.special === v);
+    t.is = t.eq = match;
+    t.isAny = (...vs) => vs.some(match);
     t.gt = (x) => n() !== null && typeof x === "number" && n() > x;
     t.gte = (x) => n() !== null && typeof x === "number" && n() >= x;
     t.lt = (x) => n() !== null && typeof x === "number" && n() < x;
@@ -80,7 +86,7 @@ export const HELPER_PRELUDE = `(($var) => {
     t.between = (a, b) => n() !== null && typeof a === "number" && typeof b === "number" && n() >= a && n() <= b;
   };
   const many = (t) => {
-    const has = (v) => t.values.some((x) => same(x, v));
+    const has = (v) => t.values.some((x) => same(x, v)) || (t.special != null && t.special === v);
     t.has = has;
     t.hasAny = (...vs) => vs.some(has);
     t.hasAll = (...vs) => vs.length > 0 && vs.every(has);

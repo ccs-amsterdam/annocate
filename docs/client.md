@@ -458,6 +458,7 @@ redirect links (`design/references.ts`).
 | `$var.<q>.texts`                        | the selected texts                                                                 | span                                              |
 | `$var.<q>.values`                       | all items' values, in order                                                        | scale                                             |
 | `$var.<q>.items.<item>.value`, `.label` | one item                                                                           | scale                                             |
+| `$var.<q>.special`, `.items.<item>.special` | the special answer given (`dont_know`, `not_applicable`), else `null`; helpers also match it (`.is("dont_know")`) | questions with `specials` |
 | `$var.<q>.answered`                     | answered and not skipped                                                           | any                                               |
 | `$session.coder`, `.source`, `.<name>`  | the coder id, `?source=`, the declared URL parameters (strings; empty when absent) |                                                   |
 

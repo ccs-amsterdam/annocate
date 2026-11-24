@@ -5,6 +5,7 @@ import {
   questionKind,
   referenceShape,
   sameValue,
+  specialLabel,
   METHOD_TEXT,
   type AnyVariableType,
   type CountComparison,
@@ -33,6 +34,8 @@ export interface RuleTarget {
   kind: QuestionKind;
   /** The options, for picking values (none for numeric and confirm). */
   options?: Option[];
+  /** Its special answers as values to pick (`dont_know`), for the operators that compare equality. */
+  specials?: Option[];
   label: string;
   /** The question's type. */
   variable: AnyVariableType;
@@ -75,9 +78,9 @@ const COUNT: RuleOperator[] = [
   { key: "countLte", label: "count ≤", method: "count", count: "<=", args: "number" },
 ];
 
-/** The operators for a kind of question (or scale item). */
-export function ruleOperators(kind: QuestionKind): RuleOperator[] {
-  switch (kind) {
+/** The operators for a question (or scale item), by its kind; a number with special answers can be one. */
+export function ruleOperators(target: Pick<RuleTarget, "kind" | "specials">): RuleOperator[] {
+  switch (target.kind) {
     case "single":
       return [...SINGLE, ...ANSWERED];
     case "ordinal":
@@ -88,6 +91,12 @@ export function ruleOperators(kind: QuestionKind): RuleOperator[] {
         { key: "neq", label: "≠", method: "eq", negate: true, args: "number" },
         ...ORDER.map((o) => ({ ...o, args: "number" as const })),
         { key: "between", label: "between", method: "between", args: "range" },
+        ...(target.specials?.length
+          ? [
+              { key: "is", label: "is", method: "is" as const, args: "one" as const },
+              { key: "isnot", label: "is not", method: "is" as const, negate: true, args: "one" as const },
+            ]
+          : []),
         ...ANSWERED,
       ];
     case "multiple":
@@ -111,7 +120,11 @@ export function ruleOperators(kind: QuestionKind): RuleOperator[] {
 export function ruleTargets(questions: { name: string; variable: AnyVariableType }[]): RuleTarget[] {
   return questions.flatMap(({ name, variable }) => {
     const options = "options" in variable ? variable.options : undefined;
-    const own: RuleTarget = { question: name, kind: questionKind(variable), options, label: name, variable };
+    const specials =
+      "specials" in variable && variable.specials?.length
+        ? variable.specials.map((x) => ({ value: x.kind, label: specialLabel(x) }))
+        : undefined;
+    const own: RuleTarget = { question: name, kind: questionKind(variable), options, specials, label: name, variable };
     if (variable.type !== "scale") return [own];
     return [
       own,
@@ -120,6 +133,7 @@ export function ruleTargets(questions: { name: string; variable: AnyVariableType
         item: item.name,
         kind: "ordinal" as const,
         options,
+        specials,
         label: `${name} › ${item.label ?? item.name}`,
         variable,
       })),
@@ -144,7 +158,7 @@ export interface RuleRows {
 
 /** A row as a simple condition, given its target. */
 function rowCondition(row: RuleRow, target: RuleTarget | undefined): SimpleCondition | null {
-  const operator = target && ruleOperators(target.kind).find((o) => o.key === row.operator);
+  const operator = target && ruleOperators(target).find((o) => o.key === row.operator);
   if (!operator) return row.raw ?? null;
   let condition: SimpleCondition;
   if (operator.answered) condition = { op: "answered", question: row.question };
@@ -191,12 +205,13 @@ function conditionRow(condition: SimpleCondition, targets: RuleTarget[]): RuleRo
   if (inner.op !== "call") return null;
   const target = findTarget(targets, inner);
   const operator = target
-    ? ruleOperators(target.kind).find(
+    ? ruleOperators(target).find(
         (o) => o.method === inner.method && Boolean(o.negate) === negate && o.count === inner.compare?.op,
       )
     : undefined;
   // `.is(1)` for the value "1": the option's own value, so the editor finds it
   const asOption = (a: OptionValue) => target?.options?.find((o) => sameValue(o.value, a))?.value ?? a;
+
   const args = inner.compare ? [inner.compare.value] : inner.args.map(asOption);
   return {
     question: inner.question,
@@ -230,7 +245,7 @@ export function rowProblems(row: RuleRow, targets: RuleTarget[]): string[] {
       return [`${subject}: "${row.item}" is not an item of "${row.question}", ${describeQuestion(question.variable)}`];
     return [`${subject} is not a question asked before this point`];
   }
-  const operator = ruleOperators(target.kind).find((o) => o.key === row.operator);
+  const operator = ruleOperators(target).find((o) => o.key === row.operator);
   const inner = row.raw?.op === "not" ? row.raw.arg : row.raw;
   if (!operator) {
     if (inner?.op !== "call") return [`${subject} doesn't support this rule`];
@@ -260,8 +275,8 @@ export function conditionToRows(condition: SimpleCondition, targets: RuleTarget[
 
 /** A new row for a target: its first operator and value. */
 export function defaultRow(target: RuleTarget): RuleRow {
-  const operator = ruleOperators(target.kind)[0];
-  const first = target.options?.[0]?.value;
+  const operator = ruleOperators(target)[0];
+  const first = (target.options?.length ? target.options : target.specials)?.[0]?.value;
   const args =
     operator.args === "none"
       ? []

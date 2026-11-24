@@ -10,6 +10,10 @@ const targets = ruleTargets([
   },
   { name: "age", variable: { type: "numeric", question: "?" } },
   {
+    name: "income",
+    variable: { type: "numeric", question: "?", specials: [{ kind: "dont_know", label: "No idea" }] },
+  },
+  {
     name: "battery",
     variable: { type: "scale", question: "?", items: [{ name: "tech" }], options: [{ value: 1 }, { value: 5 }] },
   },
@@ -21,11 +25,23 @@ const roundTrip = (script: string) => {
 };
 
 describe("condition rules", () => {
+  it("offer special answers as values for equality, also for numbers", () => {
+    const income = targets.find((t) => t.question === "income")!;
+    expect(income.specials).toEqual([{ value: "dont_know", label: "No idea" }]);
+    expect(roundTrip(`$var.income.is("dont_know")`)).toBe(`$var.income.is("dont_know")`);
+    const rows = conditionToRows(parseSimpleCondition(`$var.income.is("dont_know")`)!, targets)!;
+    expect(rows.rows[0].operator).toBe("is");
+    expect(rowProblems(rows.rows[0], targets)).toEqual([]);
+    // A number without special answers has no "is"
+    expect(conditionToRows(parseSimpleCondition(`$var.age.is(3)`)!, targets)!.rows[0].operator).toBe("");
+  });
+
   it("lists scale items as their own targets", () => {
     expect(targets.map((t) => [t.label, t.kind])).toEqual([
       ["role", "single"],
       ["topics", "multiple"],
       ["age", "numeric"],
+      ["income", "numeric"],
       ["battery", "scale"],
       ["battery › tech", "ordinal"],
     ]);
@@ -73,7 +89,7 @@ describe("condition rules", () => {
 
   it("starts a row with the target's first operator and value", () => {
     expect(defaultRow(targets[0])).toEqual({ question: "role", operator: "is", args: ["a"] });
-    expect(defaultRow(targets[4])).toEqual({ question: "battery", item: "tech", operator: "is", args: [1] });
+    expect(defaultRow(targets[5])).toEqual({ question: "battery", item: "tech", operator: "is", args: [1] });
     expect(rowsToScript({ match: "all", rows: [] }, targets)).toBe("true");
   });
 });
