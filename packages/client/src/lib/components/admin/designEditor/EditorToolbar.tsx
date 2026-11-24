@@ -20,6 +20,14 @@ import type { DesignEditorMode } from "../../../design/versions";
 
 export type EditorView = "tree" | "json";
 
+/** What saving does now, for the Save button's tooltip. */
+function saveTitle({ dirty, live, withErrors }: { dirty: boolean; live: boolean; withErrors: boolean }): string {
+  if (!dirty) return "No changes to save";
+  if (live) return "Save your changes as a new draft. Coders keep using the live version until you deploy.";
+  if (withErrors) return "Saves the draft as it is; fix the issues before deploying";
+  return "Save the draft; deploy it on the Deploy page";
+}
+
 /** An issue as the toolbar lists it: the message, and the item it is about (if known). */
 export interface EditorIssue {
   message: string;
@@ -191,15 +199,7 @@ export function EditorToolbar({
             size="sm"
             onClick={onSave}
             disabled={saving || !canSave}
-            title={
-              !dirty
-                ? "No changes to save"
-                : mode === "live"
-                  ? "Save your changes as a new draft. Coders keep using the live version until you deploy."
-                  : errors.length > 0
-                    ? "Saves the draft as it is; fix the issues before deploying"
-                    : "Save the draft; deploy it on the Deploy page"
-            }
+            title={saveTitle({ dirty, live: mode === "live", withErrors: errors.length > 0 })}
           >
             {saving ? "Saving..." : mode === "live" ? "Save as draft" : "Save"}
           </Button>
