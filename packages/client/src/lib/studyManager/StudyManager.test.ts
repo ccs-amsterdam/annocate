@@ -292,6 +292,31 @@ describe("StudyManager error-handling, rollback, and retry contract", () => {
     expect(manager.getSnapshot().phase).toBe("unit_variable");
     expect(manager.getSnapshot().currentUnit?.id).toBe(10);
   });
+
+  it("a start that failed while entering a loop starts again from nothing", async () => {
+    let calls = 0;
+    const postCoderVariables = vi.fn(async () => {});
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session([unitLoop("loop", [unitVar("q1")]), confirm("outro")])),
+      // Fails once; after that the coder has no units in the loop
+      getNextUnit: vi.fn(async () => {
+        calls += 1;
+        if (calls === 1) throw new Error("no units now");
+        return null;
+      }),
+      postCoderVariables,
+    });
+    const manager = new StudyManager(server);
+    await manager.start();
+    expect(manager.getSnapshot().phase).toBe("error");
+
+    await manager.retry();
+    expect(manager.getSnapshot()).toMatchObject({ phase: "user_variable", currentItem: { name: "outro" } });
+    // The question after the loop is answered as a coder-level one
+    await manager.answer({ done: true } as VariableValue);
+    expect(postCoderVariables).toHaveBeenCalledTimes(1);
+    expect(manager.getSnapshot().phase).toBe("finished");
+  });
 });
 
 describe("StudyManager navigation, backwards navigation, and answer re-editing", () => {

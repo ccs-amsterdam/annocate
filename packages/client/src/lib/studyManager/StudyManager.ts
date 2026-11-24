@@ -69,6 +69,26 @@ interface LoopHistory {
   index: number;
 }
 
+/**
+ * Where the coder is: what a failed operation puts back (`runGuarded`), so
+ * that the coder is on the step they see and `retry()` starts from there.
+ */
+interface Position {
+  topSteps: DesignItem[];
+  topIndex: number;
+  reachedTopSteps: Set<string>;
+  coderVisible: Record<string, VariableValue>;
+  activeLoop: CoderUnitLoopItem | null;
+  currentUnit: CoderUnitResponse | null;
+  loopSteps: DesignItem[];
+  loopStepLayouts: (LayoutItem | null)[];
+  loopIndex: number;
+  unitVariableValues: Record<string, VariableValue>;
+  unitVisible: Record<string, VariableValue>;
+  /** Per loop key, the unit of its history the coder is on. */
+  historyIndexes: Map<string, number>;
+}
+
 /** Units fetched at once, and how few may be left before more are fetched (`fetchNextUnit`). */
 const UNIT_BATCH = 5;
 const UNIT_REFILL = 2;
@@ -141,6 +161,12 @@ export class StudyManager {
 
   private topSteps: DesignItem[] = [];
   private topIndex = -1;
+  /**
+   * The top-level steps the coder got to (`topStepKey`), and the last of
+   * them in `topSteps`: how far Next goes. Kept by step, not by index: a
+   * changed answer can hide steps before it.
+   */
+  private reachedTopSteps = new Set<string>();
   private maxReachedTopIndex = 0;
   private activeLoop: CoderUnitLoopItem | null = null;
   private currentUnit: CoderUnitResponse | null = null;
@@ -198,8 +224,12 @@ export class StudyManager {
   private turn: Promise<void> = Promise.resolve();
   /** Operations running: a failed background save is reported when they are done. */
   private busy = 0;
-  /** What `retry()` repeats. */
+  /** What `retry()` repeats: set when an operation failed, until it is retried. */
   private lastFailedOperation: (() => Promise<void>) | null = null;
+  /** What fails with the operation now running: all of it, or its part still to do (`retryFrom`). */
+  private failing: () => Promise<void> = async () => {};
+  /** The phase the error replaced: shown again when `retry()` starts. */
+  private phaseBeforeError: StudyManagerSnapshot["phase"] = "loading";
   /**
    * Per loop key: units fetched ahead (a batch), not shown yet
    * (`fetchNextUnit`), and every unit the queue ever held (`seen`): the server
@@ -263,7 +293,10 @@ export class StudyManager {
         this.userVariableValues[name] = value;
       }
       this.topIndex = -1;
+      this.reachedTopSteps.clear();
       this.maxReachedTopIndex = 0;
+      // (A start that failed halfway may have entered a loop)
+      this.leaveLoop();
       this.histories.clear();
       this.progress = new Map(session.progress.map((p) => [p.set, p]));
       this.session = session.session ?? {};
@@ -295,8 +328,7 @@ export class StudyManager {
       await this.advanceTop();
     } catch (err) {
       this.starting = null;
-      this.lastFailedOperation = () => this.start();
-      this.publish({ phase: "error", ...errorFields(err) });
+      this.showError(err, () => this.start());
     }
   }
 
@@ -397,7 +429,7 @@ export class StudyManager {
     const entry = this.history(loop).entries.findIndex((e) => e.unitId === target.id);
     if (entry < 0) return false;
     this.topIndex = index;
-    this.maxReachedTopIndex = Math.max(this.maxReachedTopIndex, index);
+    this.reachTopStep(index);
     this.leaveLoop();
     this.activeLoop = loop;
     await this.openEntry(entry);
@@ -635,12 +667,12 @@ export class StudyManager {
         const values = await this.postedCoderValues();
         const timings = this.timer.take("c:");
         this.save({ key: "coder", send: () => this.coderApi.postCoderVariables(values, timings) });
-        await this.advanceTop();
+        await this.retryFrom(() => this.advanceTop());
       } else {
         this.unitVariableValues[item.name] = value;
         this.writeDraft();
         if (!(await this.checkPractice(item.name, value))) return;
-        await this.advanceUnit();
+        await this.retryFrom(() => this.advanceUnit());
       }
     });
   }
@@ -763,55 +795,94 @@ export class StudyManager {
       void this.guarded(() => this.reloadAfterPublish());
       return;
     }
-    this.lastFailedOperation = async () => {
-      await this.outbox.flush();
-      await this.republish();
-    };
-    this.publish({ phase: "error", ...errorFields(err), retrying: false });
+    this.showError(err, () => this.outbox.flush());
+    this.publish({ retrying: false });
   }
 
-  /** Shows the current question again (after an error). */
+  /** Shows an error instead of the step the coder is on; `retry()` then runs `repeat`. */
+  private showError(err: unknown, repeat: () => Promise<void>): void {
+    if (this.snapshot.phase !== "error") this.phaseBeforeError = this.snapshot.phase;
+    this.lastFailedOperation = repeat;
+    this.publish({ phase: "error", ...errorFields(err) });
+  }
+
+  /** Shows the step the coder is on again (after an error): the question, else what was there (the ending). */
   private async republish(): Promise<void> {
-    if (this.activeLoop && this.currentUnit) await this.publishLoopStep();
-    else if (!this.activeLoop && this.topSteps[this.topIndex]?.type === "question")
-      await this.publishTopStep(this.topSteps[this.topIndex]);
+    const top = this.topSteps[this.topIndex];
+    if (this.inUnit) await this.publishLoopStep();
+    else if (!this.activeLoop && top?.type === "question") await this.publishTopStep(top);
+    else this.publish({ phase: this.phaseBeforeError });
   }
 
   /**
    * Runs an operation that talks to the server (answering, navigating).
    * Operations run one at a time, in the order they came (a double click, a
    * fast swipe, back pressed while an answer is handled): each starts from
-   * where the one before left the coder. A failure shows as an error that
-   * `retry()` repeats; a new design version (`codebook_changed`) loads the
-   * session again.
+   * where the one before left the coder. A failure leaves the coder where
+   * they were, and shows as an error that `retry()` repeats; a new design
+   * version (`codebook_changed`) loads the session again. `afterError`
+   * (`retry()`): the step the coder was on is shown again first.
    */
-  private guarded(operation: () => Promise<void>): Promise<void> {
-    const run = this.turn.then(() => this.runGuarded(operation));
+  private guarded(operation: () => Promise<void>, afterError = false): Promise<void> {
+    const run = this.turn.then(() => this.runGuarded(operation, afterError));
     this.turn = run.catch(() => {});
     return run;
   }
 
-  private async runGuarded(operation: () => Promise<void>): Promise<void> {
-    this.lastFailedOperation = operation;
+  private async runGuarded(operation: () => Promise<void>, afterError: boolean): Promise<void> {
+    const before = this.position();
+    this.failing = operation;
     this.busy += 1;
     try {
+      if (afterError) await this.republish();
       await operation();
-      // (An operation that handles its own failure, like start(), sets its own retry.)
-      if (this.lastFailedOperation === operation) this.lastFailedOperation = null;
     } catch (err) {
       // The session already ended (gold checks): what was underway doesn't matter
       if (this.serverEnded) return;
-      if (errorCodeOf(err) === "codebook_changed") {
-        this.lastFailedOperation = null;
-        await this.reloadAfterPublish();
-        return;
-      }
-      this.publish({ phase: "error", ...errorFields(err) });
+      this.restore(before);
+      if (errorCodeOf(err) === "codebook_changed") await this.reloadAfterPublish();
+      else this.showError(err, this.failing);
+      return;
     } finally {
       this.busy -= 1;
     }
     // A save that failed in the background meanwhile
     this.reportSaveError();
+  }
+
+  /**
+   * Runs the rest of an operation, `step`: if it fails, `retry()` repeats
+   * only this. What the operation did before (an answer kept, a save queued)
+   * is done, and isn't done again.
+   */
+  private retryFrom(step: () => Promise<void>): Promise<void> {
+    this.failing = step;
+    return step();
+  }
+
+  private position(): Position {
+    return {
+      topSteps: this.topSteps,
+      topIndex: this.topIndex,
+      reachedTopSteps: new Set(this.reachedTopSteps),
+      coderVisible: this.coderVisible,
+      activeLoop: this.activeLoop,
+      currentUnit: this.currentUnit,
+      loopSteps: this.loopSteps,
+      loopStepLayouts: this.loopStepLayouts,
+      loopIndex: this.loopIndex,
+      unitVariableValues: this.unitVariableValues,
+      unitVisible: this.unitVisible,
+      historyIndexes: new Map([...this.histories].map(([key, history]) => [key, history.index])),
+    };
+  }
+
+  private restore(position: Position): void {
+    const { historyIndexes, ...where } = position;
+    Object.assign(this, where);
+    this.setMaxReachedTopIndex();
+    // (A loop first entered in the failed operation: not on any unit of it)
+    for (const [key, history] of this.histories) history.index = historyIndexes.get(key) ?? -1;
   }
 
   /**
@@ -843,12 +914,16 @@ export class StudyManager {
     this.publish({ newUnits: null });
   }
 
-  /** Repeats the operation that failed, and tries saving again. */
+  /**
+   * Repeats what failed (the operation, or the part of it that was still to
+   * do), from the step the coder was on, and tries saving again.
+   */
   async retry(): Promise<void> {
     const op = this.lastFailedOperation;
     if (!op) return;
+    this.lastFailedOperation = null;
     this.outbox.error = null;
-    await this.guarded(op);
+    await this.guarded(op, true);
   }
 
   // --- Steps and rendering ---
@@ -866,6 +941,24 @@ export class StudyManager {
     const { steps, visible } = await computeTopLevelSteps(this.stepItems, this.userVariableValues, this.stepContext);
     this.topSteps = steps;
     this.coderVisible = visible;
+    this.setMaxReachedTopIndex();
+  }
+
+  /** A top-level step as `reachedTopSteps` knows it: a loop by its key, another item by its name. */
+  private topStepKey(step: DesignItem): string {
+    return step.type === "unit_loop" ? `loop:${this.keyOf(step as CoderUnitLoopItem)}` : `item:${itemName(step) ?? ""}`;
+  }
+
+  /** The coder got to a top-level step. */
+  private reachTopStep(index: number): void {
+    const step = this.topSteps[index];
+    if (step) this.reachedTopSteps.add(this.topStepKey(step));
+    this.setMaxReachedTopIndex();
+  }
+
+  private setMaxReachedTopIndex(): void {
+    const last = this.topSteps.findLastIndex((step) => this.reachedTopSteps.has(this.topStepKey(step)));
+    this.maxReachedTopIndex = Math.max(0, last);
   }
 
   private async refreshLoopSteps(): Promise<void> {
@@ -938,39 +1031,35 @@ export class StudyManager {
     const step = this.loopSteps[this.loopIndex];
     // The layout this step shows the unit with; none: the question alone
     const layout = this.loopStepLayouts[this.loopIndex] ?? null;
-    try {
-      const scope = this.scope(this.unitVisible, unitScopeData(unit) as UnitData);
-      const [template, texts] = await Promise.all([
-        layout
-          ? renderTemplate(
-              layout.template,
-              scope,
-              this.expressionCache,
-              `layout:${this.keyOf(loop)}:${loopLayouts(loop.children).indexOf(layout)}`,
-              {
-                progress: { current: step && "name" in step ? step.name : null, order: loopQuestionNames(loop) },
-                snippets: layout.snippets,
-                selectable: spanColumns(loop),
-              },
-            )
-          : null,
-        // Texts may use any of the loop's snippets
-        this.questionTexts(step, scope, loopSnippets(loop.children), reopen),
-      ]);
-      this.publish({
-        phase: "unit_variable",
-        currentItem: step,
-        currentUnit: unit,
-        currentUnitLayout: layout,
-        currentLoopVariables: loopVariables(loop),
-        currentUnitTemplate: template,
-        currentTexts: texts,
-        currentUnitVariables: { ...this.unitVariableValues },
-        currentFrozen: false,
-      });
-    } catch (err) {
-      this.publish({ phase: "error", ...errorFields(err) });
-    }
+    const scope = this.scope(this.unitVisible, unitScopeData(unit) as UnitData);
+    const [template, texts] = await Promise.all([
+      layout
+        ? renderTemplate(
+            layout.template,
+            scope,
+            this.expressionCache,
+            `layout:${this.keyOf(loop)}:${loopLayouts(loop.children).indexOf(layout)}`,
+            {
+              progress: { current: step && "name" in step ? step.name : null, order: loopQuestionNames(loop) },
+              snippets: layout.snippets,
+              selectable: spanColumns(loop),
+            },
+          )
+        : null,
+      // Texts may use any of the loop's snippets
+      this.questionTexts(step, scope, loopSnippets(loop.children), reopen),
+    ]);
+    this.publish({
+      phase: "unit_variable",
+      currentItem: step,
+      currentUnit: unit,
+      currentUnitLayout: layout,
+      currentLoopVariables: loopVariables(loop),
+      currentUnitTemplate: template,
+      currentTexts: texts,
+      currentUnitVariables: { ...this.unitVariableValues },
+      currentFrozen: false,
+    });
   }
 
   /** Publishes a top-level (coder-level) question. */
@@ -1065,12 +1154,15 @@ export class StudyManager {
    * without one the end of the study: tells the server, and shows the ending.
    */
   private async reachEnd(item: EndItem | null, scope: ReferenceScope, unit?: EndUnit): Promise<void> {
-    // Everything is saved before the session ends (the server accepts nothing after).
-    await this.outbox.flush();
-    const ended = await this.coderApi.endSession(item?.name, unit);
-    this.endedOn = unit ?? null;
-    this.publish({ reopen: ended?.reopen ?? null });
-    await this.publishEnding(item, scope);
+    // (If it fails, `retry()` ends the session: the steps that led here aren't taken again.)
+    await this.retryFrom(async () => {
+      // Everything is saved before the session ends (the server accepts nothing after).
+      await this.outbox.flush();
+      const ended = await this.coderApi.endSession(item?.name, unit);
+      this.endedOn = unit ?? null;
+      this.publish({ reopen: ended?.reopen ?? null });
+      await this.publishEnding(item, scope);
+    });
   }
 
   /**
@@ -1161,7 +1253,7 @@ export class StudyManager {
   private async advanceTop(): Promise<void> {
     await this.refreshTopSteps();
     this.topIndex += 1;
-    this.maxReachedTopIndex = Math.max(this.maxReachedTopIndex, this.topIndex);
+    this.reachTopStep(this.topIndex);
     const next = this.topSteps[this.topIndex];
 
     // Back from the end (`reopen`): the last question instead of ending again.
@@ -1226,7 +1318,8 @@ export class StudyManager {
       return;
     }
     this.saveFinishedUnit();
-    await this.continueAfterUnit(next);
+    // (If going on fails, `retry()` goes on: the unit isn't saved again.)
+    await this.retryFrom(() => this.continueAfterUnit(next));
   }
 
   /**

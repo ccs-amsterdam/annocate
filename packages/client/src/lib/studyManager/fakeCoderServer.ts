@@ -46,6 +46,8 @@ export interface FakeCoderServer extends CoderApi {
    * `codebook_changed` without storing anything, as the server does.
    */
   redeploy(items: TopLevelItem[]): void;
+  /** The next request whose call name starts with `call` (e.g. `endSession`) fails, storing nothing. */
+  fail(call: string, error?: Error): void;
 }
 
 const unitResponse = (unit: FakeUnit, variables: Record<string, VariableValue>): CoderUnitResponse => ({
@@ -62,7 +64,16 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
   let loops = unitLoops(items as never).map(({ key }) => key);
   /** The client's codebook is out of date: the next request is refused. */
   let stale = false;
-  const check = () => {
+  /** Requests to fail once (`fail`), by the start of their call name. */
+  const failing = new Map<string, Error>();
+  /** Logs a request, and refuses it if it was set to fail or the client's codebook is out of date. */
+  const request = (call: string) => {
+    server.calls.push(call);
+    for (const [start, error] of failing) {
+      if (!call.startsWith(start)) continue;
+      failing.delete(start);
+      throw error;
+    }
     if (!stale) return;
     stale = false;
     throw new CoderApiError("A new version of the study was deployed", 409, "codebook_changed");
@@ -79,6 +90,10 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
       items = next;
       loops = unitLoops(items as never).map(({ key }) => key);
       stale = true;
+    },
+
+    fail(call: string, error: Error = new CoderApiError(`${call} failed`, 400)) {
+      failing.set(call, error);
     },
 
     async getSession(): Promise<SessionResponse> {
@@ -107,8 +122,7 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
     },
 
     async getNextUnits(loop: string, count = 1) {
-      server.calls.push(`getNextUnits:${loop}`);
-      check();
+      request(`getNextUnits:${loop}`);
       const done = new Set(server.done.get(loop) ?? []);
       const next = (units[loop] ?? []).filter((u) => !done.has(u.id)).slice(0, count);
       server.served.set(loop, [...(server.served.get(loop) ?? []), ...next.map((u) => u.id)]);
@@ -116,51 +130,44 @@ export function fakeCoderServer(options: FakeCoderServerOptions): FakeCoderServe
     },
 
     async getLoopUnit(loop: string, unitId: number) {
-      server.calls.push(`getLoopUnit:${loop}/${unitId}`);
-      check();
+      request(`getLoopUnit:${loop}/${unitId}`);
       const unit = (units[loop] ?? []).find((u) => u.id === unitId);
       if (!unit) throw Object.assign(new Error("Unit not found"), { status: 404 });
       return unitResponse(unit, server.answers.get(`${loop}/${unitId}`) ?? {});
     },
 
     async postUnitVariables(unitId: number, variables: Record<string, VariableValue>, loop = "1") {
-      server.calls.push(`postUnitVariables:${loop}/${unitId}`);
-      check();
+      request(`postUnitVariables:${loop}/${unitId}`);
       server.answers.set(`${loop}/${unitId}`, variables);
       const done = server.done.get(loop) ?? [];
       if (!done.includes(unitId)) server.done.set(loop, [...done, unitId]);
     },
 
     async postCoderVariables(variables: Record<string, VariableValue>) {
-      server.calls.push("postCoderVariables");
-      check();
+      request("postCoderVariables");
       Object.assign(server.coder, variables);
     },
 
     async assignCondition(name: string) {
-      server.calls.push(`assignCondition:${name}`);
-      check();
+      request(`assignCondition:${name}`);
       const value = options.computed?.[name] ?? ({ done: true, values: [{ value: "a" }] } as VariableValue);
       server.coder[name] = value;
       return value;
     },
 
     async endSession(item?: string, unit?: EndUnit) {
-      server.calls.push(`endSession:${item ?? ""}`);
-      check();
+      request(`endSession:${item ?? ""}`);
       server.ended = { item, unit, outcome: "complete" };
       return { reopen: options.reopen === false ? null : { until: null } } as never;
     },
 
     async reopenSession() {
-      server.calls.push("reopenSession");
-      check();
+      request("reopenSession");
       server.ended = null;
     },
 
     async quitSession() {
-      server.calls.push("quitSession");
-      check();
+      request("quitSession");
       server.ended = { outcome: "quit" };
     },
   };

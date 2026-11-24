@@ -611,3 +611,188 @@ describe("experiments", () => {
     expect(server.calls.filter((c) => c === "assignCondition:group")).toHaveLength(1);
   });
 });
+
+describe("a failed request, and retry", () => {
+  const count = (call: string) => server.calls.filter((c) => c.startsWith(call)).length;
+  /** A manager that asks for one unit at a time (so each next unit is a request). */
+  const startedUnitByUnit = async () => {
+    const m = new StudyManager(
+      { ...server, getNextUnits: (key: string) => server.getNextUnits(key, 1) },
+      { retryMs: () => 0 },
+    );
+    await m.start();
+    return m;
+  };
+  const endInLoop = () => [
+    loop("Coding", [
+      pickQ("ok", ["yes", "no"]),
+      {
+        type: "branch",
+        condition: { script: `$var.ok.is("no")` },
+        children: [{ type: "end", name: "stop", message: "Bye" }],
+      } as InLoopItem,
+    ]),
+    confirm("outro"),
+  ];
+
+  it("drawing an experiment's condition: retry draws it, and the coder gets the questions for it", async () => {
+    const items = [
+      confirm("intro"),
+      {
+        type: "experiment",
+        name: "group",
+        variable: { type: "random", draw: "balanced", options: [{ value: "a" }, { value: "b" }] },
+      },
+      { type: "branch", condition: { script: `$var.group.is("a")` }, children: [confirm("for_a")] },
+      confirm("last"),
+    ] as TopLevelItem[];
+    server = fakeCoderServer({ items });
+    const m = await started(server);
+    server.fail("assignCondition");
+    await m.answer(yes);
+    expect(m.getSnapshot().phase).toBe("error");
+    await m.retry();
+    expect(where(m)).toBe("q:for_a");
+    expect(count("assignCondition:group")).toBe(2);
+    expect(count("postCoderVariables")).toBe(1);
+  });
+
+  it("ending the session: retry ends it", async () => {
+    server = fakeCoderServer({ items: [confirm("intro")] });
+    const m = await started(server);
+    server.fail("endSession");
+    await m.answer(yes);
+    expect(m.getSnapshot().phase).toBe("error");
+    expect(server.ended).toBeNull();
+    await m.retry();
+    expect(where(m)).toBe("finished");
+    expect(server.ended?.outcome).toBe("complete");
+    expect(count("postCoderVariables")).toBe(1);
+  });
+
+  it("an end item in a loop: retry ends the session on that unit, not on the next", async () => {
+    server = fakeCoderServer({ items: endInLoop(), units: { "1": units(1, 2, 3) } });
+    const m = await started(server);
+    await m.answer(pick("yes"));
+    server.fail("endSession");
+    await m.answer(pick("no"));
+    expect(m.getSnapshot().phase).toBe("error");
+    await m.retry();
+    expect(where(m)).toBe("finished");
+    expect(server.ended).toMatchObject({ item: "stop", unit: { loop: "1", id: 2 } });
+    expect(count("postUnitVariables:1/2")).toBe(1);
+    expect(server.done.get("1")).toEqual([1, 2]);
+  });
+
+  it("the first units of a loop: retry enters the loop", async () => {
+    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    const m = await started(server);
+    server.fail("getNextUnits");
+    await m.answer(yes);
+    expect(m.getSnapshot().phase).toBe("error");
+    await m.retry();
+    expect(where(m)).toBe("1:q1");
+    await m.goBack();
+    expect(where(m)).toBe("q:intro");
+    expect(count("postCoderVariables")).toBe(1);
+  });
+
+  it("the next unit after a finished one: retry gets it, and the finished unit is saved once", async () => {
+    server = fakeCoderServer({ items: [loop("Coding", [pickQ("q1")])], units: { "1": units(1, 2) } });
+    const m = await startedUnitByUnit();
+    server.fail("getNextUnits");
+    await m.answer(pick("A"));
+    expect(m.getSnapshot().phase).toBe("error");
+    await m.retry();
+    expect(where(m)).toBe("2:q1");
+    expect(count("postUnitVariables:1/1")).toBe(1);
+  });
+
+  it("going back to a unit of an earlier visit: retry goes back, from where the coder was", async () => {
+    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    await answerUntil(await started(server), "2:q2");
+    const m = await started(server);
+    await m.goBack();
+    expect(where(m)).toBe("2:q1");
+    server.fail("getLoopUnit");
+    await m.goBack();
+    expect(m.getSnapshot().phase).toBe("error");
+    await m.retry();
+    expect(where(m)).toBe("1:q2");
+    expect(count("getLoopUnit:1/1")).toBe(2);
+    await m.goForward();
+    expect(where(m)).toBe("2:q1");
+  });
+
+  it("jumping to a unit of an earlier visit: retry jumps", async () => {
+    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    await answerUntil(await started(server), "2:q2");
+    const m = await started(server);
+    server.fail("getLoopUnit");
+    await m.jumpToUnit(0);
+    expect(m.getSnapshot().phase).toBe("error");
+    expect(m.getSnapshot().navigation.currentUnitIndex).toBe(1);
+    await m.retry();
+    expect(where(m)).toBe("1:q1");
+  });
+
+  it("jumping to a loop: the coder stays where they were, and retry jumps", async () => {
+    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    await answerUntil(await started(server), "q:outro");
+    const m = await started(server);
+    expect(where(m)).toBe("q:outro");
+    server.fail("getNextUnits");
+    await m.jumpToPhase(1);
+    expect(m.getSnapshot().phase).toBe("error");
+    expect(m.getSnapshot().navigation.currentPhaseIndex).toBe(2);
+    await m.retry();
+    expect(m.getSnapshot().phase).not.toBe("error");
+    await m.jumpToPhase(2);
+    await m.goBack();
+    expect(where(m)).toBe("3:q2");
+  });
+
+  it("a request that fails again can be retried again", async () => {
+    server = fakeCoderServer({ items: basic(), units: { "1": units(1, 2, 3) } });
+    const m = await started(server);
+    server.fail("getNextUnits");
+    await m.answer(yes);
+    server.fail("getNextUnits");
+    await m.retry();
+    expect(m.getSnapshot().phase).toBe("error");
+    await m.retry();
+    expect(where(m)).toBe("1:q1");
+  });
+
+  it("next never goes past the last step after a changed answer hid earlier ones", async () => {
+    const items = [
+      {
+        name: "q1",
+        type: "question",
+        variable: { type: "nominal", question: "q1", options: [{ value: "a" }, { value: "b" }] },
+      },
+      { type: "branch", condition: { script: `$var.q1.is("a")` }, children: [confirm("q2"), confirm("q3")] },
+      confirm("q4"),
+      confirm("q5"),
+    ] as TopLevelItem[];
+    server = fakeCoderServer({ items });
+    const m = await started(server);
+    await m.answer(pick("a"));
+    await answerUntil(m, "q:q5");
+    for (let i = 0; i < 4; i++) await m.goBack();
+    expect(where(m)).toBe("q:q1");
+    await m.answer(pick("b"));
+    expect(where(m)).toBe("q:q4");
+    await m.goForward();
+    expect(where(m)).toBe("q:q5");
+    expect(m.getSnapshot().navigation.canGoForward).toBe(false);
+    await m.goForward();
+    expect(where(m)).toBe("q:q5");
+    // The hidden questions shown again: the coder still reached the last one
+    await m.goBack();
+    await m.goBack();
+    await m.answer(pick("a"));
+    expect(where(m)).toBe("q:q2");
+    expect(m.getSnapshot().navigation.maxReachedTopIndex).toBe(4);
+  });
+});
