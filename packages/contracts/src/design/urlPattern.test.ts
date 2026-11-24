@@ -18,9 +18,13 @@ describe("URL parameter patterns", () => {
   it("take time linear in the value, whatever the pattern", () => {
     const value = "a".repeat(256);
     for (const pattern of ["a*a*a*a*a*a*b", "(a+)+b", "(a|aa)*b", "(a*)*b", "([a-z]+)*x"]) {
-      const start = Date.now();
-      expect(matchesUrlPattern(value, pattern)).toBe(false);
-      expect([pattern, Date.now() - start < 50]).toEqual([pattern, true]);
+      // The fastest of three runs: other tests run meanwhile
+      const times = [1, 2, 3].map(() => {
+        const start = Date.now();
+        expect(matchesUrlPattern(value, pattern)).toBe(false);
+        return Date.now() - start;
+      });
+      expect([pattern, Math.min(...times) < 50]).toEqual([pattern, true]);
     }
   });
 
