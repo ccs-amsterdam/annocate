@@ -1,4 +1,4 @@
-import { WrittenDesignFormatSchema } from "./version.js";
+import { WrittenDesignFormatSchema } from "./design/format.js";
 import { z } from "zod";
 import { DraftItemsSchema } from "./design/designVersion.js";
 import { PublicInfoSchema, SessionSpecSchema } from "./design/session.js";

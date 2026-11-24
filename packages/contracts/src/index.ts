@@ -8,6 +8,7 @@
 export * from "./common.js";
 
 export * from "./design/options.js";
+export * from "./design/format.js";
 export * from "./design/optionsFrom.js";
 export * from "./design/variableTypes.js";
 export * from "./design/relations.js";

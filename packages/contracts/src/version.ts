@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DESIGN_FORMAT_VERSION } from "./design/format.js";
 import { UnitsSpecSchema } from "./unitFields.js";
 import { DesignItemsSchema } from "./design/designVersion.js";
 import { EMPTY_SESSION, PublicInfoSchema, SessionSpecSchema } from "./design/session.js";
@@ -17,27 +18,6 @@ export const RELEASE = "0.1.0";
  */
 export const ClientVersionSchema = z.object({ release: z.string().min(1).max(64), commit: z.string().min(1).max(64) });
 export type ClientVersion = z.infer<typeof ClientVersionSchema>;
-
-/**
- * The design file's format (`formatVersion`): bumped on a breaking change to
- * the design schema, so a viewer knows whether it can read a file. Older
- * files open in the viewer of the release they name.
- */
-export const DESIGN_FORMAT_VERSION = 1;
-
-/**
- * The format of a design someone sends (a design version, a recipe): left
- * out, the current one; never a newer one than this server knows.
- */
-export const WrittenDesignFormatSchema = z
-  .number()
-  .int()
-  .positive()
-  .max(
-    DESIGN_FORMAT_VERSION,
-    `This server knows design format ${DESIGN_FORMAT_VERSION} and older: update it for a newer design`,
-  )
-  .optional();
 
 /** The results export's format (its manifest's `formatVersion`): bumped when its files or their rows change. */
 export const RESULTS_EXPORT_FORMAT_VERSION = 1;

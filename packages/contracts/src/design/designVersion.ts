@@ -4,7 +4,7 @@ import { UnitsSpecSchema } from "../unitFields.js";
 import { PublicInfoSchema, SessionSpecSchema, type PublicInfo, type SessionSpec } from "./session.js";
 import { TopLevelItemSchema, type TopLevelItem } from "./item.js";
 import { semanticIssues } from "./validation.js";
-import { WrittenDesignFormatSchema } from "../version.js";
+import { WrittenDesignFormatSchema } from "./format.js";
 
 /** A design's items. */
 export const DesignItemsSchema = z
