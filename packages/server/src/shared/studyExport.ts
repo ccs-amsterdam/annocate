@@ -205,7 +205,9 @@ function readExport(bytes: Buffer): {
   const byTable = new Map<string, Record<string, unknown>[]>();
   for (const line of lines.slice(1)) {
     const { table, row } = JSON.parse(line) as { table: string; row: Record<string, unknown> };
-    byTable.set(table, [...(byTable.get(table) ?? []), row]);
+    const list = byTable.get(table);
+    if (list) list.push(row);
+    else byTable.set(table, [row]);
   }
   return { manifest: parsed.data, rows: byTable };
 }
