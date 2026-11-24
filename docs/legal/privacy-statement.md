@@ -243,10 +243,11 @@ email.
    and what the client keeps in the browser. Cookies: `annotinder_device`
    (`runtime/session.ts`: path `/api/d`, 400 days), `annotinder_session`
    (`researcher/login.ts`: 14 days) and `annotinder_login` (10 minutes,
-   path `/api/auth`). Local storage keys: `annocate_theme`,
-   `annocate_show_shortcuts`, `annotinder_key_mapping`,
-   `annotinder_answer_keys`, `annocate_docked_pane_height`,
-   `annotinder:instruction-seen:…`, `annotinder:unit-draft:<session>`,
+   path `/api/auth`). Local storage keys: `annotinder:theme`,
+   `annotinder:show-shortcuts`, `annotinder:key-mapping`,
+   `annotinder:answer-keys`, `annotinder:docked-pane-height`,
+   `annotinder:instruction-seen:…`, `annotinder:unit-drafts:<session>`,
+   `annotinder:unsent-units:<session>` (finished units not sent yet),
    `annotinder:studies`, `annotinder:design-backup`,
    `annotinder.exampleNotice.<study>`. No session storage, no IndexedDB, no
    cookies set by scripts, and the pages load nothing from other sites
