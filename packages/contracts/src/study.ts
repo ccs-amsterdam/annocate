@@ -9,7 +9,8 @@ export const MAX_REOPEN_MINUTES = 365 * 24 * 60;
 /** A study: the top-level entity, owning its designs, units, coders and answers (CONTRACTS.md). */
 export const StudyWriteSchema = z.object({
   name: z.string().min(1).max(256),
-  archived: z.boolean().optional().default(false),
+  /** Left out: a new study isn't archived; `PUT` keeps what it was. */
+  archived: z.boolean().optional(),
   /**
    * How long coders can go back after finishing, in minutes (counted from
    * when they last finished). null: always, the session stays open (coders
@@ -37,6 +38,7 @@ export const StudyWriteSchema = z.object({
 export type StudyWrite = z.infer<typeof StudyWriteSchema>;
 
 export const StudyResponseSchema = StudyWriteSchema.extend({
+  archived: z.boolean(),
   id: IdSchema,
   created: z.coerce.date(),
   reopenMinutes: z.number().int().nullable(),

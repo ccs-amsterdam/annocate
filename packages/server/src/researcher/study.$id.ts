@@ -25,10 +25,10 @@ export function study(server: Server): Hono<Env> {
     const { name, archived, reopenMinutes, redirectUrls } = body;
     const [row] = await db
       .update(studies)
-      // Left out: kept (except archived: false)
+      // Left out: kept
       .set({
         name,
-        archived: archived ?? false,
+        ...(archived !== undefined ? { archived } : {}),
         ...(reopenMinutes !== undefined ? { reopenMinutes } : {}),
         ...(redirectUrls ? { redirectUrls } : {}),
       })

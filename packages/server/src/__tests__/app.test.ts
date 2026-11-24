@@ -65,6 +65,21 @@ describe("study routes", () => {
     expect(studies.map((j) => j.id).sort()).toEqual([study1.id, study2.id].sort());
   });
 
+  it("PUT keeps what is left out: an archived study stays archived when it is renamed", async () => {
+    const study = await createStudy();
+    const put = async (body: object) =>
+      json(
+        await app.request(`/api/study/${study.id}`, {
+          method: "PUT",
+          headers: adminHeaders,
+          body: JSON.stringify(body),
+        }),
+      );
+    expect((await put({ name: "Old", archived: true })).archived).toBe(true);
+    expect(await put({ name: "Renamed" })).toMatchObject({ name: "Renamed", archived: true });
+    expect((await put({ name: "Renamed", archived: false })).archived).toBe(false);
+  });
+
   it("rejects study access without a role header", async () => {
     const study = await createStudy();
     const res = await app.request(`/api/study/${study.id}`);
