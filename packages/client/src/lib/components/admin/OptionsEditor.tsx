@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleHelp, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Ban, CircleDashed, CircleHelp, X } from "lucide-react";
 import {
   SPECIAL_NAMES,
   SPECIAL_OPTIONS,
@@ -146,20 +146,19 @@ export function OptionsEditor<T extends Option>({
       </div>
       <div
         ref={grid}
-        className={`grid ${specials ? "grid-cols-[auto_1fr_7rem_5rem_7.5rem_auto]" : "grid-cols-[auto_1fr_8rem_5.5rem_auto]"} items-center gap-1.5 text-[11px] text-muted-foreground`}
+        className={`grid ${specials ? "grid-cols-[auto_1fr_7rem_auto_auto_auto]" : "grid-cols-[auto_1fr_8rem_auto_auto]"} items-center gap-1.5 text-[11px] text-muted-foreground`}
       >
         <span />
         <span>Label (shown)</span>
         <span>Value (stored)</span>
         <span>Color</span>
         {specials && (
-          <span className="flex items-center gap-1">
-            Special
+          <span className="flex items-center">
             <InfoTip label="About special options">
-              An answer outside the categories or the scale. Coders get it with the same key in every study: 0 for not
-              applicable, . for don&apos;t know. It is shown apart from the other options, is the only answer when there
-              can be several, and on an ordinal scale stays outside its order. The label is yours, e.g. &quot;Prefer not
-              to say&quot; (don&apos;t know) or &quot;None of these&quot; (not applicable).
+              Special options (not applicable, don&apos;t know) are shown apart from the other options, and have fixed
+              keyboard shortcuts: 0 for not applicable, . for don&apos;t know. When coders can pick several options, a
+              special option is the only answer; on an ordered scale it stays outside the order. The label is yours,
+              e.g. &quot;Prefer not to say&quot; (don&apos;t know) or &quot;None of these&quot; (not applicable).
             </InfoTip>
           </span>
         )}
@@ -205,20 +204,7 @@ export function OptionsEditor<T extends Option>({
                 onChange={(color) => update(i, { color } as Partial<T>)}
               />
               {specials && (
-                <select
-                  data-option-row={i}
-                  aria-label="Special"
-                  className="h-8 rounded-md border border-input bg-background px-1 text-xs"
-                  value={option.special ?? ""}
-                  onChange={(e) => setSpecial(i, (e.target.value || undefined) as SpecialOption | undefined)}
-                >
-                  <option value="">–</option>
-                  {SPECIAL_OPTIONS.map((kind) => (
-                    <option key={kind} value={kind}>
-                      {SPECIAL_NAMES[kind]}
-                    </option>
-                  ))}
-                </select>
+                <SpecialButton value={option.special} onChange={(special) => setSpecial(i, special)} />
               )}
               <span data-option-row={i} className="flex items-center">
                 {extra?.(option, (patch) => update(i, patch))}
@@ -306,6 +292,60 @@ function NumericCodesHelp() {
         </div>
         <p>If all values are numbers, the variable is automatically exported as numeric type.</p>
         <HelpButton topic="nominal-and-ordinal#numeric-values">More about numeric values</HelpButton>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+const SPECIAL_ICONS: Record<SpecialOption, typeof Ban> = { not_applicable: Ban, dont_know: CircleHelp };
+const SPECIAL_KEYS: Record<SpecialOption, string> = { not_applicable: "0", dont_know: "." };
+
+/** Whether an option is special (not applicable, don't know): an icon, choosing in a small menu. */
+function SpecialButton({
+  value,
+  onChange,
+}: {
+  value: SpecialOption | undefined;
+  onChange: (value: SpecialOption | undefined) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const Icon = value ? SPECIAL_ICONS[value] : CircleDashed;
+  const choose = (next: SpecialOption | undefined) => {
+    onChange(next);
+    setOpen(false);
+  };
+  const item = (next: SpecialOption | undefined, label: string, key?: string) => {
+    const ItemIcon = next ? SPECIAL_ICONS[next] : CircleDashed;
+    return (
+      <button
+        key={label}
+        type="button"
+        role="menuitemradio"
+        aria-checked={value === next}
+        onClick={() => choose(next)}
+        className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-muted ${value === next ? "font-semibold" : ""}`}
+      >
+        <ItemIcon className="h-3.5 w-3.5 text-muted-foreground" />
+        {label}
+        {key && <kbd className="ml-auto rounded border border-border px-1 font-mono text-[10px]">{key}</kbd>}
+      </button>
+    );
+  };
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={value ? `Special: ${SPECIAL_NAMES[value]}` : "Special: no (a normal option)"}
+          title={value ? SPECIAL_NAMES[value] : "A normal option (click to make it special)"}
+          className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-muted ${value ? "text-foreground" : "text-muted-foreground/50"}`}
+        >
+          <Icon className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-56 p-1" role="menu">
+        {item(undefined, "A normal option")}
+        {SPECIAL_OPTIONS.map((kind) => item(kind, SPECIAL_NAMES[kind], SPECIAL_KEYS[kind]))}
       </PopoverContent>
     </Popover>
   );

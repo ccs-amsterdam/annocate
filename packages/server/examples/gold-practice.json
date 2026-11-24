@@ -343,12 +343,12 @@
                 {
                   "value": "no",
                   "label": "No",
-                  "color": "#22c55e"
+                  "color": "seagreen"
                 },
                 {
                   "value": "yes",
                   "label": "Clickbait",
-                  "color": "#f97316"
+                  "color": "darkorange"
                 }
               ]
             },

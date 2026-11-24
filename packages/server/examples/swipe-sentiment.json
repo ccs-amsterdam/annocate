@@ -189,17 +189,17 @@
                 {
                   "value": "negative",
                   "label": "Bad news",
-                  "color": "#ef4444"
+                  "color": "crimson"
                 },
                 {
                   "value": "positive",
                   "label": "Good news",
-                  "color": "#22c55e"
+                  "color": "seagreen"
                 },
                 {
                   "value": "neutral",
                   "label": "Neither",
-                  "color": "#9ca3af"
+                  "color": "darkgray"
                 }
               ]
             },

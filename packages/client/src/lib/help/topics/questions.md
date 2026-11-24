@@ -56,7 +56,8 @@ coder's menu lists questions by it.
 
 ## Instructions
 
-A question in a unit loop can have an **Instruction (optional)**: how to
+A question in a unit loop can have an instruction (tick **Add
+instruction**): how to
 apply the question, for coders to look up while coding. It is your
 codebook text for this question, as long as needed.
 

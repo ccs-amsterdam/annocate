@@ -99,17 +99,17 @@
             {
               "value": 1,
               "label": "New to it",
-              "color": "#22c55e"
+              "color": "seagreen"
             },
             {
               "value": 2,
               "label": "Some",
-              "color": "#3b82f6"
+              "color": "royalblue"
             },
             {
               "value": 3,
               "label": "Expert",
-              "color": "#a855f7"
+              "color": "mediumorchid"
             }
           ]
         }
@@ -279,17 +279,17 @@
                 {
                   "value": "no",
                   "label": "No",
-                  "color": "#ef4444"
+                  "color": "crimson"
                 },
                 {
                   "value": "yes",
                   "label": "Yes",
-                  "color": "#22c55e"
+                  "color": "seagreen"
                 },
                 {
                   "value": "unsure",
                   "label": "Not sure",
-                  "color": "#9ca3af"
+                  "color": "darkgray"
                 }
               ]
             },
@@ -307,17 +307,17 @@
                 {
                   "value": "positive",
                   "label": "Positive",
-                  "color": "#4caf50"
+                  "color": "seagreen"
                 },
                 {
                   "value": "neutral",
                   "label": "Neutral",
-                  "color": "#9e9e9e"
+                  "color": "gray"
                 },
                 {
                   "value": "negative",
                   "label": "Negative",
-                  "color": "#f44336"
+                  "color": "crimson"
                 }
               ]
             },
@@ -366,22 +366,22 @@
                 {
                   "value": "person",
                   "label": "Person",
-                  "color": "#2563eb"
+                  "color": "royalblue"
                 },
                 {
                   "value": "organisation",
                   "label": "Organisation",
-                  "color": "#7c3aed"
+                  "color": "blueviolet"
                 },
                 {
                   "value": "feature",
                   "label": "Feature",
-                  "color": "#ea580c"
+                  "color": "darkorange"
                 },
                 {
                   "value": "product",
                   "label": "Product",
-                  "color": "#059669"
+                  "color": "teal"
                 }
               ]
             },

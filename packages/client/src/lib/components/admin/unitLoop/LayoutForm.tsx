@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TemplateCodeEditor, type TemplateEditorApi } from "../jsonEditor/TemplateCodeEditor";
 import { ConditionDialog, TemplateInsertMenu } from "../TemplateInsertMenu";
+import { MarkdownToolbar } from "../MarkdownField";
 import { IssueList } from "../IssueList";
 import { parseSimpleLayout, simpleTemplate } from "../../../design/simpleLayout";
 import { LayoutDesigner } from "../LayoutDesigner";
@@ -123,22 +124,30 @@ export function LayoutForm({
               Use the simple form instead…
             </button>
           )}
-          <TemplateInsertMenu
-            editor={editor}
-            fields={unitFields}
-            loopQuestions={loopQuestions}
-            questions={conditionQuestions}
-            snippets={names.snippets}
-          />
         </div>
       )}
       <Section title="Template" topic="layout-templates">
         <div
           className={cn(
-            "overflow-hidden rounded-md border",
+            "rounded-md border",
             issues.some((i) => !i.warning && !i.path.includes("snippets")) ? "border-destructive" : "border-input",
           )}
         >
+          {!readOnly && (
+            // Formatting, and the Insert menu (fields, conditions, styles): both write the template
+            <MarkdownToolbar
+              className="border-b border-input/70 px-1 py-0.5"
+              insert={(snippet) => editor?.insertSnippet(snippet)}
+            >
+              <TemplateInsertMenu
+                editor={editor}
+                fields={unitFields}
+                loopQuestions={loopQuestions}
+                questions={conditionQuestions}
+                snippets={names.snippets}
+              />
+            </MarkdownToolbar>
+          )}
           <TemplateCodeEditor
             value={layout.template}
             names={names}

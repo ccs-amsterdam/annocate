@@ -1,5 +1,6 @@
 import type { AnyVariableType, InLoopQuestionItem } from "@annotinder/contracts";
-import { Textarea } from "@/components/ui/textarea";
+import { useState } from "react";
+import { MarkdownField } from "../MarkdownField";
 import { HelpButton } from "../../../help/HelpButton";
 import { ToggleChip } from "../variableType/ToggleChip";
 
@@ -93,20 +94,36 @@ export function InstructionFields({
     if (!next.instructionOpen) delete next.instructionOpen;
     onChange(next);
   };
+  // Ticked: shown (an empty instruction is none, so the box keeps its own state while it is written)
+  const [adding, setAdding] = useState(Boolean(item.instruction));
   return (
     <div className="flex flex-col gap-1">
       <label className="flex items-center gap-1.5 text-sm font-medium">
-        Instruction (optional)
+        <input
+          type="checkbox"
+          checked={adding}
+          onChange={(e) => {
+            setAdding(e.target.checked);
+            if (!e.target.checked) set({ instruction: undefined });
+          }}
+        />
+        Add instruction
         <HelpButton topic="questions#instructions" label="Help: instructions" />
       </label>
-      <Textarea
-        value={item.instruction ?? ""}
-        placeholder="How to apply the question to units, to look up while coding (markdown)"
-        onChange={(e) => set({ instruction: e.target.value || undefined })}
-      />
-      <span className="text-[11px] text-muted-foreground">
-        Coders open it with the ? button by the question, or the ? key; a dot points it out until they did.
-      </span>
+      {adding && (
+        <>
+          <MarkdownField
+            area
+            label="Instruction"
+            value={item.instruction ?? ""}
+            placeholder="How to apply the question to units, to look up while coding (markdown)"
+            onChange={(instruction) => set({ instruction: instruction || undefined })}
+          />
+          <span className="text-[11px] text-muted-foreground">
+            Coders open it with the ? button by the question, or the ? key; a dot points it out until they did.
+          </span>
+        </>
+      )}
       {item.instruction && (
         <label className="flex items-center gap-2 text-xs text-muted-foreground">
           Also opens by itself

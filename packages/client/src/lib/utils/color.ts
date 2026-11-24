@@ -58,6 +58,17 @@ const NAMED_COLORS: Record<string, string> = {
   turquoise: "#40e0d0",
   skyblue: "#87ceeb",
   crimson: "#dc143c",
+  darkorange: "#ff8c00",
+  seagreen: "#2e8b57",
+  lightseagreen: "#20b2aa",
+  dodgerblue: "#1e90ff",
+  slateblue: "#6a5acd",
+  mediumorchid: "#ba55d3",
+  hotpink: "#ff69b4",
+  royalblue: "#4169e1",
+  blueviolet: "#8a2be2",
+  darkgray: "#a9a9a9",
+  darkgrey: "#a9a9a9",
 };
 
 /** An `rgb()` or `rgba()` colour as 6-digit hex, e.g. "rgba(255, 0, 0, 0.5)" -> "#ff0000" (the alpha is dropped). */

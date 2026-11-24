@@ -3,18 +3,18 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "cn";
 import { standardizeColor } from "../../utils/color";
 
-/** Colours that read well on buttons and highlights, in light and dark mode. */
+/** Colours that read well on buttons and highlights, in light and dark mode: by name, so designs read well too. */
 const PALETTE = [
-  "#ef4444",
-  "#f97316",
-  "#eab308",
-  "#22c55e",
-  "#14b8a6",
-  "#0ea5e9",
-  "#6366f1",
-  "#a855f7",
-  "#ec4899",
-  "#78716c",
+  "crimson",
+  "darkorange",
+  "gold",
+  "seagreen",
+  "lightseagreen",
+  "dodgerblue",
+  "slateblue",
+  "mediumorchid",
+  "hotpink",
+  "gray",
 ];
 
 /**
@@ -39,17 +39,12 @@ export function ColorPicker({
           type="button"
           aria-label={value ? `${label}: ${value}` : `${label}: none`}
           title={value ?? "No colour"}
-          className="flex h-8 w-full cursor-pointer items-center gap-1.5 rounded-md border border-input bg-background px-2 text-xs"
-        >
-          <span
-            className={cn(
-              "h-4 w-4 shrink-0 rounded-sm border border-border",
-              !value && "bg-[repeating-linear-gradient(45deg,transparent_0_3px,var(--border)_3px_4px)]",
-            )}
-            style={value ? { backgroundColor: value } : undefined}
-          />
-          <span className="truncate font-mono text-muted-foreground">{value ?? "none"}</span>
-        </button>
+          className={cn(
+            "h-6 w-6 shrink-0 cursor-pointer rounded-md border border-border/60",
+            !value && "bg-[repeating-linear-gradient(45deg,transparent_0_3px,var(--border)_3px_4px)]",
+          )}
+          style={value ? { backgroundColor: value } : undefined}
+        />
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto p-2">
         <div className="grid grid-cols-5 gap-1.5" role="group" aria-label={label}>
@@ -58,11 +53,12 @@ export function ColorPicker({
               key={color}
               type="button"
               aria-label={color}
-              aria-pressed={hex === color}
+              title={color}
+              aria-pressed={hex === standardizeColor(color)}
               onClick={() => onChange(color)}
               className={cn(
                 "h-6 w-6 cursor-pointer rounded-md border border-border",
-                hex === color && "ring-2 ring-primary ring-offset-1 ring-offset-background",
+                hex === standardizeColor(color) && "ring-2 ring-primary ring-offset-1 ring-offset-background",
               )}
               style={{ backgroundColor: color }}
             />

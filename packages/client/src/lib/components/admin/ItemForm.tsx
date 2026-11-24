@@ -180,24 +180,32 @@ export function ItemForm({
                 help={<HelpButton topic={TYPE_HELP[item.variable.type]} label="Help: this answer type" />}
               />
             )}
-            <VariableTypeForm
-              variable={item.variable}
-              spanQuestions={availableQuestions.flatMap((q) =>
-                q.variable.type === "span" ? [{ name: q.name, options: q.variable.options }] : [],
-              )}
-              layoutFields={inLoop ? loopNames?.selectable : undefined}
-              stratifyChoices={stratifyChoices}
-              onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
-            />
-            {inLoop && (
-              <InstructionFields item={item as InLoopQuestionItem} onChange={(next) => onChange(next as DesignItem)} />
-            )}
-            {inLoop && loopNames && (
-              <FocusSelect
-                variable={item.variable}
-                loopIds={loopNames.shown}
-                onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
-              />
+            {/* The rest of the form once the answer type is chosen */}
+            {item.variable.type !== "unspecified" && (
+              <>
+                <VariableTypeForm
+                  variable={item.variable}
+                  spanQuestions={availableQuestions.flatMap((q) =>
+                    q.variable.type === "span" ? [{ name: q.name, options: q.variable.options }] : [],
+                  )}
+                  layoutFields={inLoop ? loopNames?.selectable : undefined}
+                  stratifyChoices={stratifyChoices}
+                  onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
+                />
+                {inLoop && (
+                  <InstructionFields
+                    item={item as InLoopQuestionItem}
+                    onChange={(next) => onChange(next as DesignItem)}
+                  />
+                )}
+                {inLoop && loopNames && (
+                  <FocusSelect
+                    variable={item.variable}
+                    loopIds={loopNames.shown}
+                    onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
+                  />
+                )}
+              </>
             )}
             {/* Reference problems in the question and instruction texts, and others about the answer type */}
             <IssueList

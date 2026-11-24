@@ -72,12 +72,12 @@
                 {
                   "value": "person",
                   "label": "Person",
-                  "color": "#2563eb"
+                  "color": "royalblue"
                 },
                 {
                   "value": "organisation",
                   "label": "Organisation",
-                  "color": "#7c3aed"
+                  "color": "blueviolet"
                 }
               ]
             },

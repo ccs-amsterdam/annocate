@@ -167,21 +167,9 @@ export function VariableTypeForm({
         </>
       );
     }
-    case "unspecified": {
-      const v = variable;
-      return (
-        <>
-          <p className="rounded-md border border-amber-500/60 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300">
-            This question has a name but no answer type yet. Choose one above: the form then shows what that type needs
-            (options, labels, a range). The design can be saved like this, but not previewed or deployed.
-          </p>
-          <QuestionField
-            value={{ ...v, question: v.question ?? "" }}
-            onChange={(patch) => onChange({ ...v, ...patch })}
-          />
-        </>
-      );
-    }
+    case "unspecified":
+      // Not asked yet: the form shows only the answer types (ItemForm)
+      return null;
     default:
       return null;
   }

@@ -55,20 +55,21 @@ change the list. Tick **Custom values** for other numbers (`-2 … 2`,
 A colour helps coders find an option (red negative, green positive). Use
 few: if everything is bright, nothing stands out. The palette's colours
 read well in light and dark mode; **Any colour** opens the browser's own
-picker. In the JSON a colour is e.g. `#22c55e` or `green`.
+picker. In the JSON a colour is a CSS colour name (`seagreen`, `crimson`)
+or a hex code (`#22c55e`); the picker's colours are names.
 
 ### Special options
 
-For answers outside the categories or scale, mark an option under
-**Special**:
+For answers outside the categories or scale, click the small circle at the
+end of an option's row and choose:
 
 | Special            | Key   | For example                                     |
 | ------------------ | ----- | ----------------------------------------------- |
 | **Not applicable** | **0** | "Not applicable", "Doesn't mention it", "None"  |
 | **Don't know**     | **.** | "Don't know", "Can't tell", "Prefer not to say" |
 
-They are shown apart, in a quieter style, with the same key in every
-study. With several answers, a special option is the only answer. On an
+They are shown apart from the other options, in a quieter style, and have
+fixed keyboard shortcuts: **0** for not applicable, **.** for don't know. With several answers, a special option is the only answer. On an
 ordered question it stays off the scale (default values 98 and 99), and
 the `special` column of `variables.csv` marks it so you can leave it out.
 Scales have them too; swipe doesn't.
