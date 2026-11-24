@@ -1,3 +1,4 @@
+import { DESIGN_FORMAT_VERSION } from "@annotinder/contracts";
 import {
   DesignItemsSchema,
   EMPTY_SESSION,
@@ -163,6 +164,7 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
     .values({
       studyId: study.id,
       note: recipe.design.note ?? null,
+      formatVersion: recipe.design.formatVersion ?? DESIGN_FORMAT_VERSION,
       items: recipe.design.items,
       units: { fields },
       session: recipe.design.session ?? EMPTY_SESSION,

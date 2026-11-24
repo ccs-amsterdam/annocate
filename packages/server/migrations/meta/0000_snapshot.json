@@ -1,5 +1,5 @@
 {
-  "id": "5059fee3-69df-4774-81de-3fd8dcbeb2cf",
+  "id": "6a626cc3-66f5-4f40-8d12-ffc18e880c41",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1113,6 +1113,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "format_version": {
+          "name": "format_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
         },
         "items": {
           "name": "items",

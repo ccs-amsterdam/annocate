@@ -117,6 +117,7 @@ CREATE TABLE "design_versions" (
 	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "design_versions_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
 	"study_id" integer NOT NULL,
 	"note" text,
+	"format_version" integer DEFAULT 1 NOT NULL,
 	"items" jsonb NOT NULL,
 	"session" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"units" jsonb DEFAULT '{"fields":[]}'::jsonb NOT NULL,

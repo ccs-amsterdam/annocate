@@ -48,11 +48,12 @@ export function designVersion(server: Server): Hono<Env> {
     const { revision } = body;
     if (revision !== undefined && revision !== existing.revision) return c.json(conflict(existing), 409);
 
-    const { note, items, units, session, public: info } = body;
+    const { note, items, units, session, public: info, formatVersion } = body;
     const [row] = await db
       .update(designVersions)
       .set({
         note: note ?? null,
+        ...(formatVersion ? { formatVersion } : {}),
         items,
         // Left out: kept (public: null is none)
         ...(units ? { units } : {}),

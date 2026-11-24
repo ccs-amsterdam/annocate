@@ -130,6 +130,7 @@ export function sampleDesign(invite: "coders" | "crowd" = "crowd"): DesignVersio
   return {
     id: invite === "crowd" ? DESIGN_ID : DESIGN_ID - 1,
     studyId: STUDY_ID,
+    formatVersion: 1,
     note: null,
     created: now,
     updated: now,

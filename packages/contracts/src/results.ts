@@ -141,7 +141,8 @@ export type ResultsExport = z.infer<typeof ResultsExportSchema>;
 
 /** The raw export's `manifest.json`, written last: its counts say every file is complete. */
 export const ResultsExportManifestSchema = z.object({
-  format: z.literal(1),
+  format: z.literal("annotinder-results-export"),
+  formatVersion: z.number().int().positive(),
   study: z.object({ id: IdSchema, name: z.string() }),
   exported: z.coerce.date(),
   release: z.string(),

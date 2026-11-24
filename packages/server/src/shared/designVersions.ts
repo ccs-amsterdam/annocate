@@ -91,6 +91,7 @@ export function toDesignVersion(row: DesignVersionRow): DesignVersion {
   return {
     ...toDesignVersionMeta(row),
     studyId: row.studyId,
+    formatVersion: row.formatVersion,
     items: storedItems(row),
     units: designVersionUnits(row),
     session: designVersionSession(row),

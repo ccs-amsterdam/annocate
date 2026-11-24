@@ -4,6 +4,7 @@ import { UnitsSpecSchema } from "../unitFields.js";
 import { PublicInfoSchema, SessionSpecSchema, type PublicInfo, type SessionSpec } from "./session.js";
 import { TopLevelItemSchema, type TopLevelItem } from "./item.js";
 import { semanticIssues } from "./validation.js";
+import { WrittenDesignFormatSchema } from "../version.js";
 
 /** A design's items. */
 export const DesignItemsSchema = z
@@ -28,6 +29,8 @@ export const DraftItemsSchema = z.array(z.unknown()).max(10_000);
  * Versions are identified by their order of creation, not by name.
  */
 export const DesignWriteSchema = z.object({
+  /** The design format the items are in (version.ts `DESIGN_FORMAT_VERSION`). Left out: the current one (`PUT`: kept). */
+  formatVersion: WrittenDesignFormatSchema,
   /** What changed in this version, e.g. "Added a sentiment question". */
   note: z.string().max(1000).optional(),
   items: DraftItemsSchema,
@@ -76,6 +79,8 @@ export type DesignVersionMeta = z.infer<typeof DesignVersionMetaSchema>;
 /** A design version as returned by the server. A draft's items may not pass validation (`valid`). */
 export const DesignVersionSchema = DesignVersionMetaSchema.extend({
   studyId: IdSchema,
+  /** The design format its items are in (version.ts `DESIGN_FORMAT_VERSION`). */
+  formatVersion: z.number().int().positive(),
   items: z.custom<TopLevelItem[]>((v) => Array.isArray(v)),
   units: UnitsSpecSchema,
   session: z.custom<SessionSpec>((v) => v !== null && typeof v === "object"),

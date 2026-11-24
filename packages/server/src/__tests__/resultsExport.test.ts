@@ -89,6 +89,7 @@ describe("results export", () => {
     for (const name of names.filter((n) => n.endsWith(".jsonl")))
       expect(lines(name)).toHaveLength(manifest.counts[name]);
     expect(manifest.counts["answers.jsonl"]).toBe(30);
+    expect(manifest).toMatchObject({ format: "annotinder-results-export", formatVersion: 1 });
     for (const row of lines("answers.jsonl")) AnnotationRowSchema.parse(row);
     for (const row of lines("units.jsonl")) UnitVersionSchema.parse(row);
     for (const row of lines("coders.jsonl")) CoderProgressSchema.parse(row);

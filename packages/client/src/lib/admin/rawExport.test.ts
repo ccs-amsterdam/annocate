@@ -5,7 +5,8 @@ import { readRawExport } from "./rawExport";
 const manifest = (counts: Record<string, number>) =>
   strToU8(
     JSON.stringify({
-      format: 1,
+      format: "annotinder-results-export",
+      formatVersion: 1,
       study: { id: 1, name: "S" },
       exported: "2026-11-22T10:00:00Z",
       release: "0.1.0",

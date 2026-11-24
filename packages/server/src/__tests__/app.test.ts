@@ -4,7 +4,7 @@ import { emptyDb, query } from "./testDb.js";
 import { createApp } from "../app.js";
 import { DbStore } from "../runtime/store.js";
 import { HttpError } from "../shared/http.js";
-import { splitDesignItems, type DesignItem, type VariableValue } from "@annotinder/contracts";
+import { DESIGN_FORMAT_VERSION, splitDesignItems, type DesignItem, type VariableValue } from "@annotinder/contracts";
 
 /** Who codes, chosen (deploying needs it): a crowd, unless the design says otherwise. */
 function chosen<T extends { session?: object }>(design: T): T {
@@ -73,6 +73,29 @@ describe("study routes", () => {
 });
 
 describe("codebook routes", () => {
+  it("stores a design version's format: the current one unless given, never a newer one", async () => {
+    const study = await createStudy();
+    const save = (method: string, path: string, body: object) =>
+      app.request(`/api/study/${study.id}/design${path}`, {
+        method,
+        headers: adminHeaders,
+        body: JSON.stringify({ items: [], ...body }),
+      });
+    const made = await json(await save("POST", "", {}));
+    expect(made.formatVersion).toBe(DESIGN_FORMAT_VERSION);
+    expect((await json(await save("PUT", `/${made.id}`, { note: "again" }))).formatVersion).toBe(DESIGN_FORMAT_VERSION);
+    expect((await json(await save("POST", "", { formatVersion: 1 }))).formatVersion).toBe(1);
+    const newer = { formatVersion: DESIGN_FORMAT_VERSION + 1 };
+    expect((await save("POST", "", newer)).status).toBe(400);
+    expect((await save("PUT", `/${made.id}`, newer)).status).toBe(400);
+    const recipe = await app.request("/api/study/from-recipe", {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ name: "r", design: { items: [], ...newer } }),
+    });
+    expect(recipe.status).toBe(400);
+  });
+
   it("saves drafts with issues, but only publishes valid design versions", async () => {
     const study = await createStudy();
     const validItems: DesignItem[] = [

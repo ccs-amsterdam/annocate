@@ -1,3 +1,4 @@
+import { DESIGN_FORMAT_VERSION } from "@annotinder/contracts";
 import { Hono } from "hono";
 import { DesignWriteSchema, EMPTY_SESSION, sessionItem } from "@annotinder/contracts";
 import { asc, eq } from "drizzle-orm";
@@ -33,6 +34,7 @@ export function designVersions(server: Server): Hono<Env> {
       .values({
         studyId: c.get("studyId"),
         note: body.note ?? null,
+        formatVersion: body.formatVersion ?? DESIGN_FORMAT_VERSION,
         items: body.items,
         units,
         session: body.session ?? EMPTY_SESSION,

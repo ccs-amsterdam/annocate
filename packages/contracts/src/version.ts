@@ -26,6 +26,23 @@ export type ClientVersion = z.infer<typeof ClientVersionSchema>;
 export const DESIGN_FORMAT_VERSION = 1;
 
 /**
+ * The format of a design someone sends (a design version, a recipe): left
+ * out, the current one; never a newer one than this server knows.
+ */
+export const WrittenDesignFormatSchema = z
+  .number()
+  .int()
+  .positive()
+  .max(
+    DESIGN_FORMAT_VERSION,
+    `This server knows design format ${DESIGN_FORMAT_VERSION} and older: update it for a newer design`,
+  )
+  .optional();
+
+/** The results export's format (its manifest's `formatVersion`): bumped when its files or their rows change. */
+export const RESULTS_EXPORT_FORMAT_VERSION = 1;
+
+/**
  * A design file (`design.json`, docs/plans/design-viewer.md §1): a whole
  * design version (public info, session, unit fields, items), with the format and the
  * client it ran on (a deployment's) or was exported from.

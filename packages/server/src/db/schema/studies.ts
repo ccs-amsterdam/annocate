@@ -38,6 +38,8 @@ export const designVersions = pgTable(
       .notNull()
       .references(() => studies.id, { onDelete: "cascade" }),
     note: text(),
+    // The design format the items are in (contracts DESIGN_FORMAT_VERSION)
+    formatVersion: integer().notNull().default(1),
     // As stored; read through shared/designVersions.ts
     items: jsonb().$type<unknown>().notNull(),
     session: jsonb().$type<unknown>().notNull().default({}),

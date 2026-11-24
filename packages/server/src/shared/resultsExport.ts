@@ -1,3 +1,4 @@
+import { RESULTS_EXPORT_FORMAT_VERSION } from "@annotinder/contracts";
 import { createHash } from "node:crypto";
 import { Zip, ZipDeflate, strToU8 } from "fflate";
 import { asc, eq, sql, type SQL } from "drizzle-orm";
@@ -27,9 +28,6 @@ export interface ExportOptions {
   batch?: number;
 }
 
-/** The export's format, in its manifest: bumped when files or their rows change. */
-export const RESULTS_EXPORT_FORMAT = 1;
-
 /**
  * What an export of the study holds, as a short hash: it changes when
  * answers, unit versions, design versions, deployments, sessions (their
@@ -51,7 +49,7 @@ export async function exportStamp(db: Db, studyId: number): Promise<string> {
         FROM unit_set_members m JOIN unit_sets s ON s.id = m.set_id WHERE s.study_id = ${studyId}) AS sets`,
   );
   return createHash("sha256")
-    .update(JSON.stringify([RESULTS_EXPORT_FORMAT, row]))
+    .update(JSON.stringify([RESULTS_EXPORT_FORMAT_VERSION, row]))
     .digest("hex")
     .slice(0, 16);
 }
@@ -160,7 +158,8 @@ async function* exportZip(tx: Db, studyId: number, studyName: string, batch: num
     strToU8(
       JSON.stringify(
         {
-          format: RESULTS_EXPORT_FORMAT,
+          format: "annotinder-results-export",
+          formatVersion: RESULTS_EXPORT_FORMAT_VERSION,
           study: { id: studyId, name: studyName },
           exported: new Date(),
           release: RELEASE,

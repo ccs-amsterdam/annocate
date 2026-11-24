@@ -1,3 +1,4 @@
+import { WrittenDesignFormatSchema } from "./version.js";
 import { z } from "zod";
 import { DraftItemsSchema } from "./design/designVersion.js";
 import { PublicInfoSchema, SessionSpecSchema } from "./design/session.js";
@@ -31,6 +32,8 @@ export const RecipeSchema = z.object({
     .default([]),
   /** The first design version: a draft, or deployed with `publish` (then it must pass validation). */
   design: z.object({
+    /** The design format the items are in, as in a design file. Left out: the current one. */
+    formatVersion: WrittenDesignFormatSchema,
     note: z.string().max(1000).optional(),
     public: PublicInfoSchema.optional(),
     session: SessionSpecSchema.optional(),

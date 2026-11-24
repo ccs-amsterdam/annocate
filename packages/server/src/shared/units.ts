@@ -1,3 +1,4 @@
+import { DESIGN_FORMAT_VERSION } from "@annotinder/contracts";
 import { and, asc, desc, eq, exists, inArray, isNotNull, isNull, notExists, or, sql } from "drizzle-orm";
 import {
   EMPTY_SESSION,
@@ -148,6 +149,7 @@ export async function setUnitFields(db: Db, studyId: number, fields: UnitField[]
     await db.insert(designVersions).values({
       studyId,
       note: latest ? "Unit fields from an upload" : null,
+      formatVersion: latest?.formatVersion ?? DESIGN_FORMAT_VERSION,
       items: latest?.items ?? [],
       units: { fields },
       session: latest?.session ?? EMPTY_SESSION,
